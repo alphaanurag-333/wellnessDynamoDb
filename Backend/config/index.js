@@ -11,4 +11,5 @@ module.exports = {
   jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN,
   jwtResetPasswordExpiresIn: process.env.JWT_RESET_PASSWORD_EXPIRES_IN,
   jwtVerifyEmailExpiresIn: process.env.JWT_VERIFY_EMAIL_EXPIRES_IN,
-};                      
+  adminRegistrationEnabled: process.env.ADMIN_REGISTRATION_ENABLED === "true",
+};

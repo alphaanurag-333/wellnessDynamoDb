@@ -46,11 +46,11 @@ async function refreshAdminToken() {
   }
 
   refreshPromise = axios
-    .post(`${API_BASE}/api/admin/auth/refresh`, { refreshToken })
+    .post(`${API_BASE}/api/admin/auth/refresh-token`, { refreshToken })
     .then(({ data }) => {
       const updated = {
         ...current,
-        adminToken: data?.token,
+        adminToken: data?.accessToken,
         refreshToken: data?.refreshToken || refreshToken,
       };
       writeStoredAuth(updated);
@@ -85,7 +85,7 @@ api.interceptors.response.use(
       originalRequest &&
       !originalRequest._retry &&
       !requestUrl.includes("/admin/auth/login") &&
-      !requestUrl.includes("/admin/auth/refresh")
+      !requestUrl.includes("/admin/auth/refresh-token")
     ) {
       originalRequest._retry = true;
       try {

@@ -5,7 +5,7 @@ const express = require("express");
 const cors = require("cors");
 
 const config = require("./config");
-const connectDatabase = require("./config/db");
+const { connectDatabase } = require("./config/db");
 const routes = require("./routes");
 const { notFound } = require("./middleware/notFound");
 const { errorHandler } = require("./middleware/errorHandler");

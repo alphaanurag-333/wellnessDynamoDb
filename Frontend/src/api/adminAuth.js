@@ -45,14 +45,12 @@ export async function adminUpdateMeWithFile(token, { name, phone, file }) {
   }
 }
 
-
-/** Authenticated admin: verify current password and set a new one. */
 export async function adminChangePassword(token, { currentPassword, newPassword }) {
   try {
     const { data } = await api.patch(
       "/admin/auth/me/password",
       { currentPassword, newPassword },
-      { headers: authHeader(token) }
+      { headers: authHeader(token) },
     );
     return data;
   } catch (error) {

@@ -112,15 +112,15 @@ function validateSettingsForm({ scalars, paymentGateways }) {
     }
   }
 
-  for (const g of paymentGateways) {
-    if (!g.isActive) continue;
-    const keyId = (g.credentials?.key_id || "").trim();
-    const keySecret = (g.credentials?.key_secret || "").trim();
-    if (!keyId || !keySecret) {
-      const title = GATEWAY_DEFS.find((x) => x.provider === g.provider)?.title ?? g.provider;
-      return { tab: "payment-gateways", text: `${title}: Key ID and Key secret are required when gateway is active.` };
-    }
-  }
+  // for (const g of paymentGateways) {
+  //   if (!g.isActive) continue;
+  //   const keyId = (g.credentials?.key_id || "").trim();
+  //   const keySecret = (g.credentials?.key_secret || "").trim();
+  //   if (!keyId || !keySecret) {
+  //     const title = GATEWAY_DEFS.find((x) => x.provider === g.provider)?.title ?? g.provider;
+  //     return { tab: "payment-gateways", text: `${title}: Key ID and Key secret are required when gateway is active.` };
+  //   }
+  // }
 
   return null;
 }
@@ -734,7 +734,7 @@ export function BusinessSetting() {
                 </>
               )}
 
-              {t.id === "payment-gateways" && (
+              {/* {t.id === "payment-gateways" && (
                 <>
                   <p className="settings-panel-hint">
                     Turn a gateway on only when credentials are correct. Key ID and key secret are required for most
@@ -859,7 +859,7 @@ export function BusinessSetting() {
                     })}
                   </div>
                 </>
-              )}
+              )} */}
 
             </div>
           );

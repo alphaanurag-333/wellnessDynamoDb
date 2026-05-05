@@ -6,6 +6,7 @@ exports.errorHandler = (err, req, res, _next) => {
     statusCode = err.code === "LIMIT_FILE_SIZE" ? 413 : 400;
   }
   const payload = {
+    status: err.status || false,
     message: err.message || "Internal Server Error",
   };
 

@@ -27,7 +27,6 @@ export function AdminProfile() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
-
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -48,7 +47,7 @@ export function AdminProfile() {
     (async () => {
       try {
         const data = await adminGetMe(adminToken);
-        if (!cancelled && data?.user) dispatch(setAdmin(data.user));
+        if (!cancelled && data?.admin) dispatch(setAdmin(data.admin));
       } catch {
         /* handled in layout */
       }
@@ -85,7 +84,7 @@ export function AdminProfile() {
         phone: phone.trim(),
         file,
       });
-      if (data?.user) dispatch(setAdmin(data.user));
+      if (data?.admin) dispatch(setAdmin(data.admin));
       await Swal.fire({ icon: "success", title: data?.message || "Profile photo updated", timer: 1300 });
     } catch (err) {
       await Swal.fire({ icon: "error", title: "Upload failed", text: err.message || "Photo upload failed" });
@@ -126,7 +125,7 @@ export function AdminProfile() {
       setLoading(true);
       try {
         const data = await adminUpdateMe(adminToken, { name: trimmedName, phone: trimmedPhone });
-        if (data?.user) dispatch(setAdmin(data.user));
+        if (data?.admin) dispatch(setAdmin(data.admin));
         await Swal.fire({ icon: "success", title: data?.message || "Profile updated", timer: 1300 });
       } catch (e) {
         await Swal.fire({ icon: "error", title: "Update failed", text: e.message || "Update failed" });
@@ -151,7 +150,7 @@ export function AdminProfile() {
       setLoading(true);
       try {
         const data = await adminChangePassword(adminToken, {
-          currentPassword: currentPassword,
+          currentPassword,
           newPassword,
         });
         await Swal.fire({ icon: "success", title: data?.message || "Password updated", timer: 1300 });
@@ -329,6 +328,7 @@ export function AdminProfile() {
             </div>
           </div>
         )}
+
       </div>
     </div>
   );

@@ -29,9 +29,9 @@ export function LoginPage() {
       data = await adminLogin({ email: email.trim(), password });
       dispatch(
         setCredentials({
-          adminToken: data.token,
+          adminToken: data.accessToken,
           refreshToken: data.refreshToken,
-          admin: data.user,
+          admin: data.admin,
         }),
       );
     } catch (err) {
@@ -46,7 +46,7 @@ export function LoginPage() {
       setLoading(false);
     }
 
-    const name = data.user?.name?.trim();
+    const name = data.admin?.name?.trim();
     await Swal.fire({
       icon: "success",
       title: "Signed in",

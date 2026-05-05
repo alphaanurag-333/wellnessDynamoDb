@@ -1,12 +1,16 @@
-import api, { authHeader, getApiBase, normalizeApiError } from "../api.js";
+import api, { authHeader, normalizeApiError } from "../api.js";
 
 function miscBase() {
   return "/admin/misc";
 }
 
+function appConfigBase() {
+  return "/admin/app-config";
+}
+
 export async function getAppConfig(token) {
   try {
-    const { data } = await api.get(`${miscBase()}/app-config`, {
+    const { data } = await api.get(appConfigBase(), {
       headers: authHeader(token),
     });
     return data;
@@ -17,7 +21,7 @@ export async function getAppConfig(token) {
 
 export async function postAppConfig(token, formData) {
   try {
-    const { data } = await api.post(`${miscBase()}/app-config`, formData, {
+    const { data } = await api.post(appConfigBase(), formData, {
       headers: authHeader(token),
     });
     return data;
@@ -28,7 +32,7 @@ export async function postAppConfig(token, formData) {
 
 export async function patchAppConfig(token, formData) {
   try {
-    const { data } = await api.patch(`${miscBase()}/app-config`, formData, {
+    const { data } = await api.patch(appConfigBase(), formData, {
       headers: authHeader(token),
     });
     return data;
