@@ -8,6 +8,10 @@ function appConfigBase() {
   return "/admin/app-config";
 }
 
+function staticPageBase() {
+  return "/admin/misc/pages";
+}
+
 export async function getAppConfig(token) {
   try {
     const { data } = await api.get(appConfigBase(), {
@@ -43,7 +47,7 @@ export async function patchAppConfig(token, formData) {
 
 export async function listPages(token) {
   try {
-    const { data: body } = await api.get(`${miscBase()}/pages`, {
+    const { data: body } = await api.get(staticPageBase(), {
       headers: authHeader(token),
     });
     return Array.isArray(body.data) ? body.data : [];
@@ -54,7 +58,7 @@ export async function listPages(token) {
 
 export async function getPageById(token, id) {
   try {
-    const { data: body } = await api.get(`${miscBase()}/pages/${encodeURIComponent(id)}`, {
+    const { data: body } = await api.get(`${staticPageBase()}/${encodeURIComponent(id)}`, {
       headers: authHeader(token),
     });
     return body.data;
@@ -65,7 +69,7 @@ export async function getPageById(token, id) {
 
 export async function createPage(token, payload) {
   try {
-    const { data } = await api.post(`${miscBase()}/pages`, payload, {
+    const { data } = await api.post(staticPageBase(), payload, {
       headers: authHeader(token),
     });
     return data;
@@ -76,7 +80,7 @@ export async function createPage(token, payload) {
 
 export async function updatePage(token, id, payload) {
   try {
-    const { data } = await api.patch(`${miscBase()}/pages/${encodeURIComponent(id)}`, payload, {
+    const { data } = await api.patch(`${staticPageBase()}/${encodeURIComponent(id)}`, payload, {
       headers: authHeader(token),
     });
     return data;
@@ -87,7 +91,7 @@ export async function updatePage(token, id, payload) {
 
 export async function deletePage(token, id) {
   try {
-    const { data } = await api.delete(`${miscBase()}/pages/${encodeURIComponent(id)}`, {
+    const { data } = await api.delete(`${staticPageBase()}/${encodeURIComponent(id)}`, {
       headers: authHeader(token),
     });
     return data;

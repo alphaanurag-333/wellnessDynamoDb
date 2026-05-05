@@ -44,6 +44,10 @@ function truncateText(value, maxLen) {
   return text.length > maxLen ? `${text.slice(0, maxLen)}...` : text;
 }
 
+function getFaqId(row) {
+  return row?.id || row?._id || "";
+}
+
 export function FaqPage() {
   const dispatch = useDispatch();
   const adminToken = useSelector((s) => s.auth.adminToken);
@@ -113,7 +117,7 @@ export function FaqPage() {
   };
 
   const onEdit = (row) => {
-    setEditId(row._id);
+    setEditId(getFaqId(row));
     setForm({
       question: row.question || "",
       answer: row.answer || "",
@@ -121,6 +125,7 @@ export function FaqPage() {
   };
 
   const onDelete = async (row) => {
+    const faqId = getFaqId(row);
     if (editId) return;
     const { isConfirmed } = await Swal.fire({
       icon: "warning",
@@ -130,11 +135,11 @@ export function FaqPage() {
       confirmButtonColor: "#dc2626",
       confirmButtonText: "Delete",
     });
-    if (!isConfirmed || !adminToken) return;
+    if (!isConfirmed || !adminToken || !faqId) return;
     try {
-      await adminDeleteFaq(adminToken, row._id);
+      await adminDeleteFaq(adminToken, faqId);
       await Swal.fire({ icon: "success", title: "FAQ deleted", timer: 1500 });
-      if (editId === row._id) resetForm();
+      if (editId === faqId) resetForm();
       await loadRows();
     } catch (e) {
       if (e?.status === 401) return dispatch(logout());
@@ -143,11 +148,13 @@ export function FaqPage() {
   };
 
   const onToggleStatus = async (row) => {
+    const faqId = getFaqId(row);
     if (!adminToken) return;
+    if (!faqId) return;
     const nextStatus = row.status === "active" ? "inactive" : "active";
-    setTogglingId(row._id);
+    setTogglingId(faqId);
     try {
-      await adminUpdateFaq(adminToken, row._id, { status: nextStatus });
+      await adminUpdateFaq(adminToken, faqId, { status: nextStatus });
       await Swal.fire({
         icon: "success",
         title: nextStatus === "active" ? "FAQ activated" : "FAQ deactivated",
@@ -241,7 +248,7 @@ export function FaqPage() {
                 </tr>
               ) : (
                 rows.map((row, idx) => (
-                  <tr key={row._id}>
+                  <tr key={getFaqId(row) || idx}>
                     <td className="data-table__muted">{idx + 1}</td>
                     <td title={row.question || ""}>{truncateText(row.question, QUESTION_PREVIEW_LEN)}</td>
                     <td title={row.answer || ""}>{truncateText(row.answer, ANSWER_PREVIEW_LEN)}</td>
@@ -253,7 +260,7 @@ export function FaqPage() {
                         aria-checked={row.status === "active"}
                         aria-label={`Toggle status for FAQ ${idx + 1}`}
                         onClick={() => onToggleStatus(row)}
-                        disabled={togglingId === row._id}
+                        disabled={togglingId === getFaqId(row)}
                         title={row.status === "active" ? "Deactivate FAQ" : "Activate FAQ"}
                       >
                         <span className="settings-switch__knob" aria-hidden />
