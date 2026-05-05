@@ -3,27 +3,30 @@ require("dotenv").config();
 const { CreateTableCommand } = require("@aws-sdk/client-dynamodb");
 const { client } = require("../config/db");
 
-async function createStaticPageTable() {
+async function createNotificationTable() {
   const params = {
-    TableName: "StaticPage",
+    TableName: "Notification",
     KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
     AttributeDefinitions: [
       { AttributeName: "id", AttributeType: "S" },
-      { AttributeName: "slug", AttributeType: "S" },
       { AttributeName: "status", AttributeType: "S" },
-      { AttributeName: "updatedAt", AttributeType: "S" },
+      { AttributeName: "sentAt", AttributeType: "S" },
+      { AttributeName: "audienceType", AttributeType: "S" },
     ],
     GlobalSecondaryIndexes: [
       {
-        IndexName: "SlugIndex",
-        KeySchema: [{ AttributeName: "slug", KeyType: "HASH" }],
+        IndexName: "StatusSentAtIndex",
+        KeySchema: [
+          { AttributeName: "status", KeyType: "HASH" },
+          { AttributeName: "sentAt", KeyType: "RANGE" },
+        ],
         Projection: { ProjectionType: "ALL" },
       },
       {
-        IndexName: "StatusUpdatedAtIndex",
+        IndexName: "AudienceSentAtIndex",
         KeySchema: [
-          { AttributeName: "status", KeyType: "HASH" },
-          { AttributeName: "updatedAt", KeyType: "RANGE" },
+          { AttributeName: "audienceType", KeyType: "HASH" },
+          { AttributeName: "sentAt", KeyType: "RANGE" },
         ],
         Projection: { ProjectionType: "ALL" },
       },
@@ -33,10 +36,10 @@ async function createStaticPageTable() {
 
   try {
     const result = await client.send(new CreateTableCommand(params));
-    console.log("StaticPage table created:", result.TableDescription.TableArn);
+    console.log("Notification table created:", result.TableDescription.TableArn);
   } catch (err) {
     if (err.name === "ResourceInUseException") {
-      console.log("StaticPage table already exists");
+      console.log("Notification table already exists");
     } else {
       console.error("Error creating table:", err.message);
       process.exitCode = 1;
@@ -44,4 +47,4 @@ async function createStaticPageTable() {
   }
 }
 
-createStaticPageTable();
+createNotificationTable();

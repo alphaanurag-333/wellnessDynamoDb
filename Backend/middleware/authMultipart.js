@@ -41,6 +41,11 @@ const notificationUpload = createUploader("notification").single("file");
 const productUploads = createUploader("product").any();
 const venueUploads = createUploader("venue").any();
 const amenitiesUpload = createUploader("amenities").single("file");
+const healthConcernUpload = createUploader("health-concern").single("file");
+const transformationUploads = createUploader("transformation").fields([
+  { name: "oldImage", maxCount: 1 },
+  { name: "newImage", maxCount: 1 },
+]);
 
 exports.optionalUserFile = optionalMultipart(userUpload);
 exports.optionalVendorFile = optionalMultipart(vendorUpload);
@@ -57,3 +62,5 @@ exports.optionalNotificationFile = optionalMultipart(notificationUpload);
 exports.optionalProductFiles = optionalMultipart(productUploads);
 exports.optionalVenueFiles = optionalMultipart(venueUploads);
 exports.optionalAmenitiesFile = optionalMultipart(amenitiesUpload);
+exports.optionalHealthConcernFile = optionalMultipart(healthConcernUpload);
+exports.optionalTransformationFiles = optionalMultipart(transformationUploads);

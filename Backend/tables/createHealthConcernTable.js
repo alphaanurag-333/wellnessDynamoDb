@@ -3,27 +3,21 @@ require("dotenv").config();
 const { CreateTableCommand } = require("@aws-sdk/client-dynamodb");
 const { client } = require("../config/db");
 
-async function createStaticPageTable() {
+async function createHealthConcernTable() {
   const params = {
-    TableName: "StaticPage",
+    TableName: "HealthConcern",
     KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
     AttributeDefinitions: [
       { AttributeName: "id", AttributeType: "S" },
-      { AttributeName: "slug", AttributeType: "S" },
       { AttributeName: "status", AttributeType: "S" },
-      { AttributeName: "updatedAt", AttributeType: "S" },
+      { AttributeName: "createdAt", AttributeType: "S" },
     ],
     GlobalSecondaryIndexes: [
       {
-        IndexName: "SlugIndex",
-        KeySchema: [{ AttributeName: "slug", KeyType: "HASH" }],
-        Projection: { ProjectionType: "ALL" },
-      },
-      {
-        IndexName: "StatusUpdatedAtIndex",
+        IndexName: "StatusCreatedAtIndex",
         KeySchema: [
           { AttributeName: "status", KeyType: "HASH" },
-          { AttributeName: "updatedAt", KeyType: "RANGE" },
+          { AttributeName: "createdAt", KeyType: "RANGE" },
         ],
         Projection: { ProjectionType: "ALL" },
       },
@@ -33,10 +27,10 @@ async function createStaticPageTable() {
 
   try {
     const result = await client.send(new CreateTableCommand(params));
-    console.log("StaticPage table created:", result.TableDescription.TableArn);
+    console.log("HealthConcern table created:", result.TableDescription.TableArn);
   } catch (err) {
     if (err.name === "ResourceInUseException") {
-      console.log("StaticPage table already exists");
+      console.log("HealthConcern table already exists");
     } else {
       console.error("Error creating table:", err.message);
       process.exitCode = 1;
@@ -44,4 +38,4 @@ async function createStaticPageTable() {
   }
 }
 
-createStaticPageTable();
+createHealthConcernTable();
