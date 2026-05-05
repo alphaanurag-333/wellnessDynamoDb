@@ -19,20 +19,17 @@ export const navItems = [
   },
 
   {
-    id: "wellness",
+    id: "program",
     label: "Program Management",
-    icon: "zap",  
+    icon: "zap",
     children: [
       { to: "programs", label: "Programs", icon: "list" },
       { to: "coaches", label: "Coaches", icon: "list" },
       { to: "awcs", label: "AWCs", icon: "list" },
     ],
   },
-  { to: "programs", label: "Programs", icon: "list" },
-  { to: "coaches", label: "Coaches", icon: "list" },
-  { to: "awcs", label: "AWCs", icon: "list" },
   { to: "banners", label: "Banner Management", icon: "image" },
-  { to: "health-concerns", label: "Health concerns", icon: "list" },
+  { to: "health-concerns", label: "Health Concerns", icon: "list" },
   { to: "transformations", label: "Transformations", icon: "image" },
   { to: "faq", label: "FAQ", icon: "help" },
   { to: "notifications", label: "Notifications", icon: "bell" },

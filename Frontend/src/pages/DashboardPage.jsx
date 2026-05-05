@@ -1,153 +1,121 @@
 const stats = [
-  { label: "Total Users", value: "12,543", tone: "yellow" },
-  { label: "Active Programs", value: "38", tone: "green" },
-  { label: "Active Coaches & AWCs", value: "214", tone: "green" },
-  { label: "Inactive Coaches & AWCs", value: "12", tone: "orange" },
-  { label: "Pending Approvals", value: "27", tone: "orange" },
-  { label: "Revenue", value: "$124,567", tone: "yellow" },
-  { label: "Payout", value: "$92,340", tone: "orange" },
-  { label: "Today Sessions Completed", value: "1,286", tone: "green" },
-  { label: "Upcoming Camp Events", value: "16", tone: "orange" },
-  { label: "Active Nutrition Plans", value: "4,392", tone: "yellow" },
-  { label: "Open Support Tickets", value: "42", tone: "orange" },
-  { label: "Program Completion Rate", value: "78.4%", tone: "green" },
+  { label: "Total Users", value: "12,482", tone: "blue" },
+  { label: "Active Programs", value: "84", tone: "green" },
+  { label: "Coaches (WC) Active", value: "142", tone: "purple" },
+  { label: "AWC's Active", value: "38", tone: "indigo" },
+  { label: "Pending Approvals", value: "18", tone: "amber" },
+  { label: "Revenue & Payouts", value: "$84,290", tone: "teal" },
 ];
 
-export function DashboardPage() {
-  const statusData = [
-    { label: "Active", value: 214, tone: "green" },
-    { label: "Inactive", value: 12, tone: "orange" },
-  ];
-  const totalAwc = statusData.reduce((sum, item) => sum + item.value, 0);
-  const financeData = [
-    { label: "Revenue", value: 124567, tone: "yellow" },
-    { label: "Payout", value: 92340, tone: "orange" },
-  ];
-  const maxFinanceValue = Math.max(...financeData.map((item) => item.value));
+const shortcuts = [
+  { title: "User Management", desc: "Manage all platform users", icon: "users" },
+  { title: "WC Management", desc: "Manage wellness coaches", icon: "coach" },
+  { title: "Role & Permissions", desc: "Access control", icon: "shield" },
+  { title: "Pricing Control", desc: "Manage programs & offers", icon: "settings" },
+  { title: "Payment Mgmt", desc: "Transactions & payouts", icon: "wallet" },
+  { title: "Video Meetings", desc: "Scheduled sessions", icon: "video" },
+];
 
+function ShortcutIcon({ type }) {
+  if (type === "users") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="3" />
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a3 3 0 0 1 0 5.75" />
+      </svg>
+    );
+  }
+  if (type === "coach") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+        <circle cx="12" cy="8" r="3" />
+        <path d="M5 20a7 7 0 0 1 14 0" />
+        <path d="M19 7h4M21 5v4" />
+      </svg>
+    );
+  }
+  if (type === "shield") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+        <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" />
+        <path d="M9.5 12.5l1.8 1.8 3.2-3.2" />
+      </svg>
+    );
+  }
+  if (type === "settings") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 15a1.7 1.7 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 1-3 0 1.7 1.7 0 0 0-1-.6 1.7 1.7 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 1 0-3 1.7 1.7 0 0 0 .6-1 1.7 1.7 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 1 3 0 1.7 1.7 0 0 0 1 .6 1.7 1.7 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.25.33.46.68.6 1a1.7 1.7 0 0 1 0 3 1.7 1.7 0 0 0-.6 1z" />
+      </svg>
+    );
+  }
+  if (type === "wallet") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+        <rect x="3" y="6" width="18" height="12" rx="2" />
+        <path d="M3 10h18" />
+        <circle cx="16.5" cy="14" r="1" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+      <rect x="3" y="6" width="15" height="12" rx="2" />
+      <path d="M18 10l3-2v8l-3-2z" />
+    </svg>
+  );
+}
+
+export function DashboardPage() {
   return (
     <div className="page-stack">
-      <section className="stat-grid" aria-label="Quick insights">
+      <section className="dashboard-intro" aria-label="Dashboard heading">
+        <h1 className="dashboard-intro__title">Dashboard</h1>
+        <p className="dashboard-intro__subtitle">Welcome back! Here&apos;s a quick overview of your platform.</p>
+      </section>
+
+      <section className="dashboard-section-head" aria-label="Quick insights heading">
+        <h2 className="dashboard-section-head__title">Quick Insights</h2>
+      </section>
+
+      <section className="stat-grid stat-grid--dashboard" aria-label="Quick insights">
         {stats.map((s) => (
-          <article key={s.label} className={`stat-card stat-card--${s.tone}`}>
+          <article key={s.label} className={`stat-card stat-card--dashboard stat-card--${s.tone}`}>
+            <div className="stat-card__icon" aria-hidden="true" />
             <div className="stat-card__meta">
               <div className="stat-card__label">{s.label}</div>
               <div className="stat-card__value">{s.value}</div>
             </div>
-            <div className="stat-card__icon" aria-hidden="true" />
           </article>
         ))}
       </section>
 
-      <section className="panel-row">
-        <div className="panel">
-          <h2 className="panel__title">Monthly Wellness Enrollment</h2>
-          <p className="panel__hint">Jan – Jun (demo trend)</p>
-          <div className="spark" role="img" aria-label="Trend up">
-            <svg viewBox="0 0 320 120" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="sparkFill" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor="#f4965d" stopOpacity="0.35" />
-                  <stop offset="100%" stopColor="#f4965d" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              <path
-                d="M0 90 L60 70 L120 80 L180 40 L240 55 L320 20 L320 120 L0 120 Z"
-                fill="url(#sparkFill)"
-              />
-              <path
-                d="M0 90 L60 70 L120 80 L180 40 L240 55 L320 20"
-                fill="none"
-                stroke="#e07d45"
-                strokeWidth="3"
-                strokeLinejoin="round"
-                strokeLinecap="round"
-              />
-            </svg>
-          </div>
-        </div>
-        <div className="panel">
-          <h2 className="panel__title">Program Performance</h2>
-          <p className="panel__hint">Sample wellness categories</p>
-          <div className="bars" role="img" aria-label="Bar chart placeholder">
-            {["Maternal Care", "Child Care", "Nutrition", "Fitness", "Mental Wellness"].map((name, i) => (
-              <div key={name} className="bars__item">
-                <div className="bars__track">
-                  <div className="bars__fill" style={{ height: `${45 + i * 10}%` }} />
-                </div>
-                <span className="bars__label">{name}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+      <section className="dashboard-section-head" aria-label="Quick shortcuts heading">
+        <h2 className="dashboard-section-head__title">Quick Shortcuts</h2>
       </section>
 
-      <section className="panel-row">
-        <div className="panel">
-          <h2 className="panel__title">Coaches & AWCs Status</h2>
-          <p className="panel__hint">Active vs Inactive</p>
-          <div className="status-stack" role="img" aria-label="Active and inactive ratio">
-            <div className="status-stack__bar">
-              {statusData.map((item) => (
-                <div
-                  key={item.label}
-                  className={`status-stack__fill status-stack__fill--${item.tone}`}
-                  style={{ width: `${Math.round((item.value / totalAwc) * 100)}%` }}
-                />
-              ))}
+      <section className="shortcut-grid" aria-label="Quick shortcuts">
+        {shortcuts.map((item) => (
+          <article key={item.title} className="shortcut-card">
+            <div className="shortcut-card__head">
+              <span className="shortcut-card__icon">
+                <ShortcutIcon type={item.icon} />
+              </span>
+              <span className="shortcut-card__arrow" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M5 12h14" />
+                  <path d="m13 5 7 7-7 7" />
+                </svg>
+              </span>
             </div>
-
-            <div className="status-stack__legend">
-              {statusData.map((item) => (
-                <div key={item.label} className="status-stack__legend-item">
-                  <span className={`status-stack__dot status-stack__dot--${item.tone}`} aria-hidden="true" />
-                  <span className="status-stack__label">{item.label}</span>
-                  <span className="status-stack__value">{item.value}</span>
-                  <span className="status-stack__percent">
-                    ({Math.round((item.value / totalAwc) * 100)}%)
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="panel">
-          <h2 className="panel__title">Revenue vs Payout</h2>
-          <p className="panel__hint">Current month comparison</p>
-          <div className="metric-compare" role="img" aria-label="Revenue and payout comparison">
-            {financeData.map((item) => (
-              <div key={item.label} className="metric-compare__row">
-                <div className="metric-compare__head">
-                  <span className="metric-compare__label">{item.label}</span>
-                  <span className="metric-compare__value">${item.value.toLocaleString()}</span>
-                </div>
-                <div className="metric-compare__track">
-                  <div
-                    className={`metric-compare__fill metric-compare__fill--${item.tone}`}
-                    style={{ width: `${Math.round((item.value / maxFinanceValue) * 100)}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+            <h3 className="shortcut-card__title">{item.title}</h3>
+            <p className="shortcut-card__desc">{item.desc}</p>
+          </article>
+        ))}
       </section>
-
-      {/* <section className="panel">
-        <h2 className="panel__title">Recent Activity</h2>
-        <ul className="activity-list">
-          {activities.map((a) => (
-            <li key={a.title} className="activity-list__item">
-              <div>
-                <div className="activity-list__title">{a.title}</div>
-                <div className="activity-list__meta">{a.meta}</div>
-                <div className="activity-list__mobile">Mobile: {a.mobile}</div>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section> */}
     </div>
   );
 }
