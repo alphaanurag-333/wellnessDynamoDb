@@ -11,7 +11,8 @@ import {
 } from "../../api/bannerController.js";
 import { logout } from "../../store/authSlice.js";
 import { mediaUrl } from "../../media.js";
-
+import { FadeLoader } from "react-spinners";
+import scrollToTop from "../../utils/scrollToTop";
 function emptyForm() {
   return {
     title: "",
@@ -150,6 +151,7 @@ export function BannerPage() {
     });
     setImageFile(null);
     setImagePreview(row.image ? mediaUrl(row.image) : "");
+    scrollToTop();
   };
 
   const onDelete = async (row) => {
@@ -315,7 +317,12 @@ export function BannerPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6}>Loading…</td>
+                  <td colSpan={6} className="static-cms-loading">
+                    <div style={{ display: "grid", justifyItems: "center", gap: 10 }}>
+                      <FadeLoader height={12} margin={-1} radius={20} width={4} color="#4f46e5" />
+                      <span>Loading banners...</span>
+                    </div>
+                  </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>

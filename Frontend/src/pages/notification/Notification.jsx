@@ -13,7 +13,7 @@ import {
 import { logout } from "../../store/authSlice.js";
 import { mediaUrl } from "../../media.js";
 import { FadeLoader } from "react-spinners";
-
+import scrollToTop from "../../utils/scrollToTop";
 const SEND_AUDIENCE_OPTIONS = [
   { value: "users", label: "Users", icon: <MdGroups size={16} /> },
   { value: "coaches", label: "Coaches", icon: <IoStorefrontOutline size={16} /> },
@@ -43,6 +43,7 @@ function sanitizeMessageInput(value) {
 function audienceLabel(type) {
   return SEND_AUDIENCE_OPTIONS.find((x) => x.value === type)?.label || type || "—";
 }
+
 
 function formatDateTime(value) {
   if (!value) return "—";
@@ -180,6 +181,7 @@ export function NotificationPage() {
     });
     setImageFile(null);
     setImagePreview(row.image ? mediaUrl(row.image) : "");
+    scrollToTop();
   };
 
   const onDelete = async (row) => {
@@ -494,6 +496,7 @@ export function NotificationPage() {
                           type="button"
                           className="icon-btn icon-btn--edit"
                           title="Edit"
+                          
                           onClick={() => onEdit(row)}
                         >
                           <MdEditSquare size={18} />

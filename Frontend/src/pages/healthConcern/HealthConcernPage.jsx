@@ -12,7 +12,7 @@ import {
 import { logout } from "../../store/authSlice.js";
 import { mediaUrl } from "../../media.js";
 import { FadeLoader } from "react-spinners";
-
+import scrollToTop from "../../utils/scrollToTop";
 function emptyForm() {
   return {
     title: "",
@@ -203,6 +203,7 @@ export function HealthConcernPage() {
     });
     setIconFile(null);
     setIconPreview(row.icon ? mediaUrl(row.icon) : "");
+    scrollToTop();
   };
 
   const onDelete = async (row) => {
@@ -530,9 +531,9 @@ export function HealthConcernPage() {
               <div className="col-6">
                 <strong>Created:</strong> {formatDate(viewRow.createdAt)}
               </div>
-              <div className="col-12">
+              {/* <div className="col-12">
                 <strong>Icon path:</strong> <span className="data-table__mono">{viewRow.icon || "—"}</span>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>

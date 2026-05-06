@@ -6,6 +6,7 @@ import { AiFillDelete, AiOutlineEye } from "react-icons/ai";
 import { adminCreateFaq, adminDeleteFaq, adminListFaqs, adminUpdateFaq } from "../../api/faqController.js";
 import { logout } from "../../store/authSlice.js";
 import { FadeLoader } from "react-spinners";
+import scrollToTop from "../../utils/scrollToTop";
 function emptyForm() {
   return { question: "", answer: "" };
 }
@@ -122,6 +123,7 @@ export function FaqPage() {
       question: row.question || "",
       answer: row.answer || "",
     });
+    scrollToTop();
   };
 
   const onDelete = async (row) => {

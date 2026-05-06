@@ -12,7 +12,7 @@ import {
 import { logout } from "../../store/authSlice.js";
 import { mediaUrl } from "../../media.js";
 import { FadeLoader } from "react-spinners";
-
+import scrollToTop from "../../utils/scrollToTop";
 function emptyForm() {
   return {
     timeTaken: "",
@@ -273,6 +273,7 @@ export function TransformationPage() {
     setNewPreview(row.newImage ? mediaUrl(row.newImage) : "");
     if (oldInputRef.current) oldInputRef.current.value = "";
     if (newInputRef.current) newInputRef.current.value = "";
+    scrollToTop();
   };
 
   const onDelete = async (row) => {
