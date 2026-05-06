@@ -4,11 +4,12 @@ function videoTestimonialsBase() {
   return "/admin/video-testimonials";
 }
 
-export async function adminListVideoTestimonials(token, { page = 1, limit = 10, type, search } = {}) {
+export async function adminListVideoTestimonials(token, { page = 1, limit = 10, type, status, search } = {}) {
   const q = new URLSearchParams();
   q.set("page", String(page));
   q.set("limit", String(limit));
   if (type) q.set("type", String(type));
+  if (status) q.set("status", String(status));
   if (search && String(search).trim()) q.set("search", String(search).trim());
   try {
     const { data } = await api.get(`${videoTestimonialsBase()}?${q}`, { headers: authHeader(token) });
@@ -27,6 +28,7 @@ export async function adminCreateVideoTestimonial(token, fields) {
     const fd = new FormData();
     fd.append("name", String(fields.name ?? "").trim());
     fd.append("type", normalizedType);
+    if (fields?.status !== undefined) fd.append("status", String(fields.status).trim());
     if (normalizedType === "link") {
       fd.append("ytLink", String(fields.ytLink ?? "").trim());
     }
@@ -43,6 +45,7 @@ export async function adminCreateVideoTestimonial(token, fields) {
   const payload = {
     name: String(fields?.name ?? "").trim(),
     type: normalizedType,
+    ...(fields?.status !== undefined ? { status: String(fields.status).trim() } : {}),
     ...(normalizedType === "link" ? { ytLink: String(fields?.ytLink ?? "").trim() } : {}),
   };
 
@@ -77,6 +80,7 @@ export async function adminUpdateVideoTestimonial(token, id, fields) {
   const payload = {};
   if (fields?.name !== undefined) payload.name = String(fields.name).trim();
   if (normalizedType !== undefined) payload.type = normalizedType;
+  if (fields?.status !== undefined) payload.status = String(fields.status).trim();
   if (normalizedType === "link" && fields?.ytLink !== undefined) payload.ytLink = String(fields.ytLink ?? "").trim();
 
   try {

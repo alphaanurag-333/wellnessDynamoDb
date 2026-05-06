@@ -9,14 +9,15 @@ const {
 } = require("../../models/videoTestimonials");
 
 const ALLOWED_TYPE = ["link", "video"];
+const ALLOWED_STATUS = ["active", "inactive"];
 function publicPathFromUploadedFile(file, folder) {
   if (!file?.filename) return "";
   return `/uploads/${folder}/${file.filename}`;
 }
 
 exports.listVideoTestimonialsController = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, type, search } = req.query;
-  const data = await listVideoTestimonials({ page, limit, type, search });
+  const { page = 1, limit = 10, type, status, search } = req.query;
+  const data = await listVideoTestimonials({ page, limit, type, status, search });
 
   return res.status(200).json({
     status: true,
@@ -43,10 +44,12 @@ exports.createVideoTestimonialController = asyncHandler(async (req, res) => {
   const profile_image = publicPathFromUploadedFile(uploadedProfileImage, "video-testimonials") || String(req.body.profile_image || "").trim();
   const video = publicPathFromUploadedFile(uploadedVideoFile, "video-testimonials") || String(req.body.video || "").trim();
   const type = String(req.body.type || (uploadedVideoFile ? "video" : "link")).trim().toLowerCase();
+  const status = String(req.body.status || "active").trim().toLowerCase();
 
   if (!name) throw new AppError("name is required", 400);
   if (!profile_image) throw new AppError("profile_image is required", 400);
   if (!ALLOWED_TYPE.includes(type)) throw new AppError("type must be link or video", 400);
+  if (!ALLOWED_STATUS.includes(status)) throw new AppError("status must be active or inactive", 400);
   if (type === "link" && !ytLink) throw new AppError("ytLink is required when type is link", 400);
   if (type === "video" && !video) throw new AppError("video is required when type is video", 400);
 
@@ -56,6 +59,7 @@ exports.createVideoTestimonialController = asyncHandler(async (req, res) => {
     ytLink,
     video,
     type,
+    status,
   });
 
   return res.status(201).json({
@@ -80,6 +84,11 @@ exports.updateVideoTestimonialController = asyncHandler(async (req, res) => {
     const type = String(req.body.type || "").trim().toLowerCase();
     if (!ALLOWED_TYPE.includes(type)) throw new AppError("type must be link or video", 400);
     updates.type = type;
+  }
+  if (req.body.status !== undefined) {
+    const status = String(req.body.status || "").trim().toLowerCase();
+    if (!ALLOWED_STATUS.includes(status)) throw new AppError("status must be active or inactive", 400);
+    updates.status = status;
   }
   if (req.body.ytLink !== undefined) {
     updates.ytLink = String(req.body.ytLink || "").trim();

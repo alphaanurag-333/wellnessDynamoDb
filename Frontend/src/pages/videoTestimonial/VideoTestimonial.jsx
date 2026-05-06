@@ -23,7 +23,7 @@ const VIDEO_MAX_SIZE_BYTES = 50 * 1024 * 1024;
 const IMAGE_MAX_SIZE_BYTES = 5 * 1024 * 1024;
 
 function emptyForm() {
-  return { name: "", type: "link", ytLink: "", video: "", profile_image: "" };
+  return { name: "", type: "link", ytLink: "", video: "", profile_image: "", status: "active" };
 }
 
 function formatDateTime(value) {
@@ -44,10 +44,12 @@ export function VideoTestimonialPage() {
   const [editId, setEditId] = useState("");
   const [listSearch, setListSearch] = useState("");
   const [listType, setListType] = useState("");
+  const [listStatus, setListStatus] = useState("");
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [viewRow, setViewRow] = useState(null);
+  const [togglingId, setTogglingId] = useState("");
   const [videoFile, setVideoFile] = useState(null);
   const [videoFileName, setVideoFileName] = useState("");
   const [editBaselineVideo, setEditBaselineVideo] = useState("");
@@ -65,6 +67,7 @@ export function VideoTestimonialPage() {
         page,
         limit: LIST_LIMIT,
         ...(listType ? { type: listType } : {}),
+        ...(listStatus ? { status: listStatus } : {}),
         ...(listSearch.trim() ? { search: listSearch.trim() } : {}),
       });
       setRows(videoTestimonials);
@@ -76,7 +79,7 @@ export function VideoTestimonialPage() {
     } finally {
       setLoading(false);
     }
-  }, [adminToken, dispatch, listSearch, listType, page]);
+  }, [adminToken, dispatch, listSearch, listStatus, listType, page]);
 
   useEffect(() => {
     loadRows();
@@ -84,7 +87,7 @@ export function VideoTestimonialPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [listSearch, listType]);
+  }, [listSearch, listStatus, listType]);
 
   useEffect(() => {
     // Keep fields mutually exclusive by selected type.
@@ -119,6 +122,7 @@ export function VideoTestimonialPage() {
       name: String(form.name || "").replace(/\s+/g, " ").slice(0, NAME_MAX_LEN).trim(),
       type: String(form.type || "link").trim().toLowerCase(),
       ytLink: String(form.ytLink || "").slice(0, YTLINK_MAX_LEN).trim(),
+      status: String(form.status || "active").trim().toLowerCase(),
     };
 
     if (!payload.name) {
@@ -179,6 +183,7 @@ export function VideoTestimonialPage() {
       ytLink: row.ytLink || "",
       video: row.video || "",
       profile_image: row.profile_image || "",
+      status: row.status || "active",
     });
     setVideoFile(null);
     setVideoFileName("");
@@ -207,6 +212,22 @@ export function VideoTestimonialPage() {
     } catch (e) {
       if (e?.status === 401) return dispatch(logout());
       await Swal.fire({ icon: "error", title: "Delete failed", text: e.message || "Could not delete video testimonial." });
+    }
+  };
+
+  const onToggleStatus = async (row) => {
+    if (!adminToken) return;
+    const nextStatus = row.status === "active" ? "inactive" : "active";
+    setTogglingId(row._id);
+    try {
+      await adminUpdateVideoTestimonial(adminToken, row._id, { status: nextStatus });
+      await Swal.fire({ icon: "success", title: "Status updated", timer: 1500 });
+      await loadRows();
+    } catch (e) {
+      if (e?.status === 401) return dispatch(logout());
+      await Swal.fire({ icon: "error", title: "Status update failed", text: e.message || "Could not update status." });
+    } finally {
+      setTogglingId("");
     }
   };
 
@@ -256,10 +277,19 @@ export function VideoTestimonialPage() {
                 <option value="video">Video</option>
               </select>
             </label>
-            <label className="user-field col-12">
-              <span className="user-field__label">YouTube Link {form.type === "link" ? <span className="required-dot">*</span> : null}</span>
-              <input className="user-field__input" maxLength={YTLINK_MAX_LEN} value={form.ytLink} onChange={(e) => setForm((p) => ({ ...p, ytLink: e.target.value }))} disabled={form.type !== "link"} required={form.type === "link"} />
+            <label className="user-field col-12 col-md-6">
+              <span className="user-field__label">Status <span className="required-dot">*</span></span>
+              <select className="user-field__input" value={form.status} onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
             </label>
+            {form.type === "link" ? (
+              <label className="user-field col-12">
+                <span className="user-field__label">YouTube Link <span className="required-dot">*</span></span>
+                <input className="user-field__input" maxLength={YTLINK_MAX_LEN} value={form.ytLink} onChange={(e) => setForm((p) => ({ ...p, ytLink: e.target.value }))} required />
+              </label>
+            ) : null}
             {form.type === "video" ? (
               <label className="user-field col-12">
                 <span className="user-field__label">Upload Video File <span className="required-dot">*</span></span>
@@ -314,6 +344,14 @@ export function VideoTestimonialPage() {
               <option value="video">Video</option>
             </select>
           </label>
+          <label className="user-field" style={{ flex: "0 1 160px", marginBottom: 0 }}>
+            <span className="user-field__label">Status</span>
+            <select className="user-field__input" value={listStatus} onChange={(e) => setListStatus(e.target.value)}>
+              <option value="">All</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </label>
         </div>
         <div className="table-scroll">
           <table className="data-table">
@@ -324,14 +362,15 @@ export function VideoTestimonialPage() {
                 <th>Name</th>
                 <th>Type</th>
                 <th>Content</th>
+                <th>Status</th>
                 <th className="data-table__actions-col">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} className="static-cms-loading"><div style={{ display: "grid", justifyItems: "center", gap: 10 }}><FadeLoader height={12} margin={-1} radius={20} width={4} color="#4f46e5" /><span>Loading testimonials...</span></div></td></tr>
+                <tr><td colSpan={7} className="static-cms-loading"><div style={{ display: "grid", justifyItems: "center", gap: 10 }}><FadeLoader height={12} margin={-1} radius={20} width={4} color="#4f46e5" /><span>Loading testimonials...</span></div></td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={6}>No video testimonials found.</td></tr>
+                <tr><td colSpan={7}>No video testimonials found.</td></tr>
               ) : (
                 rows.map((row, idx) => (
                   <tr key={row._id}>
@@ -341,12 +380,25 @@ export function VideoTestimonialPage() {
                     <td className="data-table__muted">{row.type || "—"}</td>
                     <td>
                       {row.type === "video" && row.video ? (
-                        <video src={row.video} controls style={{ width: 180, maxWidth: "100%", borderRadius: 6 }} />
+                        <video src={mediaUrl(row.video)} controls style={{ width: 180, maxWidth: "100%", borderRadius: 6 }} />
                       ) : row.type === "link" && row.ytLink ? (
                         <a href={row.ytLink} target="_blank" rel="noreferrer">Open Link</a>
                       ) : (
                         "—"
                       )}
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className={`settings-switch${row.status === "active" ? " settings-switch--on" : ""}`}
+                        role="switch"
+                        aria-checked={row.status === "active"}
+                        aria-label={`Toggle status for testimonial ${idx + 1}`}
+                        onClick={() => onToggleStatus(row)}
+                        disabled={togglingId === row._id}
+                      >
+                        <span className="settings-switch__knob" aria-hidden />
+                      </button>
                     </td>
                     <td><div className="row-actions"><button type="button" className="icon-btn icon-btn--view" title="View" onClick={() => setViewRow(row)}><AiOutlineEye size={18} /></button><button type="button" className="icon-btn icon-btn--edit" title="Edit" onClick={() => onEdit(row)}><MdEditSquare size={18} /></button><button type="button" className="icon-btn icon-btn--delete" title="Delete" onClick={() => onDelete(row)}><AiFillDelete size={18} /></button></div></td>
                   </tr>
@@ -391,13 +443,14 @@ export function VideoTestimonialPage() {
                   <strong>Video:</strong>
                   {viewRow.video ? (
                     <div style={{ marginTop: 8 }}>
-                      <video src={viewRow.video} controls style={{ width: "100%", maxHeight: 260, borderRadius: 8 }} />
+                      <video src={mediaUrl(viewRow.video)} controls style={{ width: "100%", maxHeight: 260, borderRadius: 8 }} />
                     </div>
                   ) : (
                     " —"
                   )}
                 </div>
               )}
+              <div className="col-6"><strong>Status:</strong> {viewRow.status || "—"}</div>
               <div className="col-6"><strong>Created:</strong> {formatDateTime(viewRow.createdAt)}</div>
               {/* <div className="col-6"><strong>Updated:</strong> {formatDateTime(viewRow.updatedAt)}</div> */}
             </div>
