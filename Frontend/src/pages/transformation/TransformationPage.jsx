@@ -11,6 +11,7 @@ import {
 } from "../../api/adminTransformations.js";
 import { logout } from "../../store/authSlice.js";
 import { mediaUrl } from "../../media.js";
+import { FadeLoader } from "react-spinners";
 
 function emptyForm() {
   return {
@@ -522,7 +523,12 @@ export function TransformationPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={9}>Loading…</td>
+                  <td colSpan={9} className="static-cms-loading">
+                    <div style={{ display: "grid", justifyItems: "center", gap: 10 }}>
+                      <FadeLoader height={12} margin={-1} radius={20} width={4} color="#4f46e5" />
+                      <span>Loading transformations...</span>
+                    </div>
+                  </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>

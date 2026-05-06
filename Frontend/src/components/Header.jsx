@@ -6,6 +6,7 @@ import { mediaUrl } from "../media.js";
 import { logout } from "../store/authSlice.js";
 import { confirmLogout } from "../utils/confirmLogout.js";
 import { NavIcon } from "./NavIcon.jsx";
+import defaultLogo from "../assets/logo/defaultlogo.png";
 
 export function Header({
   title,
@@ -20,7 +21,7 @@ export function Header({
   const admin = useSelector((s) => s.auth.admin);
   const brandLogoUrl = useSelector(selectPanelLogoUrl);
   const appDisplayName = useSelector(selectAppDisplayName);
-  const brandLogoSrc = mediaUrl(brandLogoUrl);
+  const brandLogoSrc = mediaUrl(brandLogoUrl) || defaultLogo;
 
   const [menuOpenState, setMenuOpenState] = useState(false);
   const wrapRef = useRef(null);
@@ -84,7 +85,7 @@ export function Header({
       </button>
 
       <div className="admin-header__brand">
-        {brandLogoSrc ? <img src={brandLogoSrc} alt="" className="admin-header__brand-logo" /> : null}
+        <img src={brandLogoSrc} alt="" className="admin-header__brand-logo" />
         <div className="admin-header__title-group">
           <p className="admin-header__app-line">{appDisplayName || "Wellness"}</p>
         </div>

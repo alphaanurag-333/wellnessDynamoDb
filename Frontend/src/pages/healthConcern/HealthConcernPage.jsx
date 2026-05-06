@@ -11,6 +11,7 @@ import {
 } from "../../api/adminHealthConcerns.js";
 import { logout } from "../../store/authSlice.js";
 import { mediaUrl } from "../../media.js";
+import { FadeLoader } from "react-spinners";
 
 function emptyForm() {
   return {
@@ -397,7 +398,12 @@ export function HealthConcernPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={7}>Loading…</td>
+                  <td colSpan={7} className="static-cms-loading">
+                    <div style={{ display: "grid", justifyItems: "center", gap: 10 }}>
+                      <FadeLoader height={12} margin={-1} radius={20} width={4} color="#4f46e5" />
+                      <span>Loading health concerns...</span>
+                    </div>
+                  </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>

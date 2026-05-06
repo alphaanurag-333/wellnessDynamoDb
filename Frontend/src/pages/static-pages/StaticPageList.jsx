@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { MdEditSquare } from "react-icons/md";
+import { FadeLoader } from "react-spinners";
 import { listPages } from "../../api/adminMisc.js";
 import { logout } from "../../store/authSlice.js";
 
@@ -56,7 +57,12 @@ export function StaticPageList() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6}>Loading...</td>
+                  <td colSpan={6} className="static-cms-loading">
+                    <div style={{ display: "grid", justifyItems: "center", gap: 10 }}>
+                      <FadeLoader height={12} margin={-1} radius={20} width={4} color="#4f46e5" />
+                      <span>Loading static pages...</span>
+                    </div>
+                  </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>

@@ -5,7 +5,7 @@ import { MdEditSquare } from "react-icons/md";
 import { AiFillDelete, AiOutlineEye } from "react-icons/ai";
 import { adminCreateFaq, adminDeleteFaq, adminListFaqs, adminUpdateFaq } from "../../api/faqController.js";
 import { logout } from "../../store/authSlice.js";
-
+import { FadeLoader } from "react-spinners";
 function emptyForm() {
   return { question: "", answer: "" };
 }
@@ -240,7 +240,12 @@ export function FaqPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={5}>Loading...</td>
+                  <td colSpan={5} className="static-cms-loading">
+                    <div style={{ display: "grid", justifyItems: "center", gap: 10 }}>
+                      <FadeLoader height={12} margin={-1} radius={20} width={4} color="#4f46e5" />
+                      <span>Loading FAQs...</span>
+                    </div>
+                  </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>

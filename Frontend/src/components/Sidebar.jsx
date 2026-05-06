@@ -7,6 +7,7 @@ import { mediaUrl } from "../media.js";
 import { logout } from "../store/authSlice.js";
 import { confirmLogout } from "../utils/confirmLogout.js";
 import { NavIcon } from "./NavIcon.jsx";
+import defaultLogo from "../assets/logo/defaultlogo.png";
 
 function pathInGroup(pathname, groupId) {
   if (groupId === "ecom") {
@@ -29,7 +30,7 @@ export function Sidebar({ id = "admin-sidebar", onNavigate, drawerOpen, desktopC
   const location = useLocation();
   const brandLogoUrl = useSelector(selectPanelLogoUrl);
   const appDisplayName = useSelector(selectAppDisplayName);
-  const logoSrc = mediaUrl(brandLogoUrl);
+  const logoSrc = mediaUrl(brandLogoUrl) || defaultLogo;
 
   const initialOpen = useMemo(
     () => ({
@@ -69,20 +70,7 @@ export function Sidebar({ id = "admin-sidebar", onNavigate, drawerOpen, desktopC
     >
       <div className="admin-sidebar__brand">
         <span className="admin-sidebar__logo" aria-hidden="true">
-          {logoSrc ? (
-            <img src={logoSrc} alt="" className="admin-sidebar__logo-img" width={36} height={36} />
-          ) : (
-            <svg viewBox="0 0 32 32" width="28" height="28">
-              <defs>
-                <linearGradient id="brandGrad" x1="0" x2="1" y1="0" y2="1">
-                  <stop offset="0%" stopColor="#ffd54a" />
-                  <stop offset="100%" stopColor="#ff8a00" />
-                </linearGradient>
-              </defs>
-              <rect x="4" y="6" width="18" height="20" rx="3" fill="url(#brandGrad)" />
-              <path d="M22 10h6v16a2 2 0 0 1-2 2h-4V10z" fill="#1a1a1a" opacity="0.85" />
-            </svg>
-          )}
+          <img src={logoSrc} alt="" className="admin-sidebar__logo-img" width={36} height={36} />
         </span>
         <div className="admin-sidebar__brand-text">
           <div className="admin-sidebar__title">{appDisplayName || "Wellness"}</div>

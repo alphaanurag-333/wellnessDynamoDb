@@ -4,13 +4,16 @@ import { Navigate, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { adminLogin } from "../api/adminAuth.js";
 import { selectAppDisplayName, selectLoginBrandLogoUrl } from "../store/appConfigSelectors.js";
+import { mediaUrl } from "../media.js";
 import { setCredentials } from "../store/authSlice.js";
+import defaultLogo from "../assets/logo/defaultlogo.png";
 
 export function LoginPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const adminToken = useSelector((s) => s.auth.adminToken);
   const brandLogoUrl = useSelector(selectLoginBrandLogoUrl);
+  const brandLogoSrc = mediaUrl(brandLogoUrl) || defaultLogo;
   const appDisplayName = useSelector(selectAppDisplayName);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -61,11 +64,7 @@ export function LoginPage() {
       <div className="auth-card">
         <div className="auth-brand">
           <span className="auth-brand__mark" aria-hidden="true">
-            {brandLogoUrl ? (
-              <img src={brandLogoUrl} alt="" className="auth-brand__logo-img" width={200} height="auto" />
-            ) : (
-              null
-            )}
+            <img src={brandLogoSrc} alt="" className="auth-brand__logo-img" width={200} height="auto" />
           </span>
        
         </div>

@@ -365,28 +365,13 @@ export function BusinessSetting() {
     );
   }
 
-  if (loading) {
-    return (
-      <div className="page-card ">
-        <div className="page-card__head">
-          <h2 className="page-card__title">Application settings</h2>
-        </div>
-        <div>
-        <div className="d-flex justify-content-center  h-full">
-          <FadeLoader height={15} margin={0} radius={35} width={5} color="#6366f1" />
-        </div>
-        </div>
-      </div>
-    );
-  }
-
   if (configNotFound) {
     return (
       <div className="page-card">
         <div className="page-card__head">
           <h2 className="page-card__title">Application settings</h2>
           <p className="page-card__desc">
-          Setting Not Found
+            Settings not found.
           </p>
         </div>
       </div>
@@ -399,7 +384,7 @@ export function BusinessSetting() {
         <div>
           <h2 className="page-card__title">Application settings</h2>
           <p className="page-card__desc">
-          Business Setting
+            Business settings
           </p>
         </div>
       </div>
@@ -428,19 +413,28 @@ export function BusinessSetting() {
           })}
         </div>
 
-        {SETTINGS_TABS.map((t) => {
-          const panelId = `${baseId}-panel-${t.id}`;
-          const tabId = `${baseId}-tab-${t.id}`;
-          if (tab !== t.id) return null;
-          return (
-            <div
-              key={t.id}
-              id={panelId}
-              role="tabpanel"
-              aria-labelledby={tabId}
-              className="settings-tab-panel"
-            >
-              {t.id === "general" && (
+        {loading ? (
+          <div className="static-cms-loading">
+            <div style={{ display: "grid", justifyItems: "center", gap: 10 }}>
+              <FadeLoader height={12} margin={-1} radius={20} width={4} color="#4f46e5" />
+              <span>Loading application settings...</span>
+            </div>
+          </div>
+        ) : (
+          <>
+            {SETTINGS_TABS.map((t) => {
+              const panelId = `${baseId}-panel-${t.id}`;
+              const tabId = `${baseId}-tab-${t.id}`;
+              if (tab !== t.id) return null;
+              return (
+                <div
+                  key={t.id}
+                  id={panelId}
+                  role="tabpanel"
+                  aria-labelledby={tabId}
+                  className="settings-tab-panel"
+                >
+                  {t.id === "general" && (
                 <>
                   {/* <p className="settings-panel-hint">Core identity fields (required; cannot be left blank on save).</p> */}
                   <div className="user-form__grid">
@@ -734,7 +728,7 @@ export function BusinessSetting() {
                 </>
               )}
 
-              {/* {t.id === "payment-gateways" && (
+                  {/* {t.id === "payment-gateways" && (
                 <>
                   <p className="settings-panel-hint">
                     Turn a gateway on only when credentials are correct. Key ID and key secret are required for most
@@ -859,17 +853,19 @@ export function BusinessSetting() {
                     })}
                   </div>
                 </>
-              )} */}
+                  )} */}
 
+                </div>
+              );
+            })}
+
+            <div className="settings-form-footer settings-form-footer--centered">
+              <button type="submit" className="btn--settings-save" disabled={saving || !hasDoc}>
+                {saving ? "Saving…" : "Save settings"}
+              </button>
             </div>
-          );
-        })}
-
-        <div className="settings-form-footer settings-form-footer--centered">
-          <button type="submit" className="btn--settings-save" disabled={saving || !hasDoc}>
-            {saving ? "Saving…" : "Save settings"}
-          </button>
-        </div>
+          </>
+        )}
       </form>
     </div>
   );

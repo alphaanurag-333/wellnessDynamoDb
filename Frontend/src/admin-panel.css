@@ -1133,6 +1133,84 @@ a.btn:hover {
   line-height: 1.5;
 }
 
+.section-page {
+  min-height: 68vh;
+}
+
+.section-page__head {
+  margin-bottom: 18px;
+}
+
+.section-page__heading {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.section-page__title {
+  font-size: 1.35rem;
+}
+
+.section-page__desc {
+  max-width: 62ch;
+}
+
+.section-page__actions {
+  gap: 10px;
+}
+
+.section-page__empty {
+  border: 1px dashed #d2dceb;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #fcfdff 0%, #f7faff 100%);
+  min-height: min(460px, 60vh);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 36px 20px;
+}
+
+.section-page__empty-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(145deg, rgba(255, 153, 51, 0.14), rgba(19, 136, 8, 0.14));
+  color: #1a3668;
+  border: 1px solid rgba(26, 54, 104, 0.14);
+  box-shadow: 0 10px 24px rgba(26, 54, 104, 0.08);
+}
+
+.section-page__empty-icon svg {
+  width: 30px;
+  height: 30px;
+}
+
+.section-page__empty-title {
+  margin: 16px 0 0;
+  font-size: 1.35rem;
+  color: #12233f;
+}
+
+.section-page__empty-text {
+  margin: 10px 0 0;
+  max-width: 56ch;
+  color: #627089;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.section-page__empty-actions {
+  margin-top: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
 /* -------------------------------------------------------------------------- */
 /*  Auth / login                                                               */
 /* -------------------------------------------------------------------------- */
