@@ -11,6 +11,9 @@ import { StaticPageUpdate } from "../pages/static-pages/StaticPageUpdate.jsx";
 import { NotificationPage } from "../pages/notification/Notification.jsx";
 import { HealthConcernPage } from "../pages/healthConcern/HealthConcernPage.jsx";
 import { TransformationPage } from "../pages/transformation/TransformationPage.jsx";
+import { CelebrationBannerPage } from "../pages/celebrationBanner/celebrationBanner.jsx";
+import { ClientTestimonialPage } from "../pages/clientTestimonial/ClientTestimonial.jsx";
+import { VideoTestimonialPage } from "../pages/videoTestimonial/VideoTestimonial.jsx";
 import {SectionPage} from "../pages/SectionPage.jsx";
 import { UserAdd } from "../pages/user/UserAdd.jsx";
 import { UserEdit } from "../pages/user/UserEdit.jsx";
@@ -48,6 +51,9 @@ export const adminRouteTree = (
     <Route path="transformations" element={<TransformationPage />} />
     <Route path="faq" element={<FaqPage />} />
     <Route path="notifications" element={<NotificationPage />} />
+    <Route path="celebration-banners" element={<CelebrationBannerPage />} />
+    <Route path="client-testimonials" element={<ClientTestimonialPage />} />
+    <Route path="video-testimonials" element={<VideoTestimonialPage />} />
 
     <Route path="*" element={<NotFoundPage />} />
   </Route>

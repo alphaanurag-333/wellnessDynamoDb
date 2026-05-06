@@ -22,7 +22,7 @@ function emptyForm() {
 }
 
 const TITLE_MIN_LEN = 2;
-const TITLE_MAX_LEN = 200;
+const TITLE_MAX_LEN = 100;
 const DESCRIPTION_MIN_LEN = 5;
 const DESCRIPTION_MAX_LEN = 2000;
 const LIST_SEARCH_MAX_LEN = 120;
@@ -40,7 +40,7 @@ function sanitizeDescription(value) {
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .slice(0, DESCRIPTION_MAX_LEN);
-}
+}      
 
 function truncate(str, max) {
   const s = String(str ?? "");
