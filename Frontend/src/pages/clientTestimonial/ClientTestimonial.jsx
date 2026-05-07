@@ -237,7 +237,7 @@ export function ClientTestimonialPage() {
               <textarea className="user-field__input" rows={3} maxLength={DESCRIPTION_MAX_LEN} value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: sanitizeMultiLine(e.target.value, DESCRIPTION_MAX_LEN) }))} required />
             </label>
             <label className="user-field col-12">
-              <span className="user-field__label">Upload Profile Image <span className="required-dot">*</span></span>
+              <span className="user-field__label">Upload Profile Image (upto 5mb) <span className="required-dot">*</span></span>
               <input
                 ref={fileInputRef}
                 type="file"

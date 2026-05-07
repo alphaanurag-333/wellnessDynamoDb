@@ -285,7 +285,7 @@ export function CelebrationBannerPage() {
               </label>
 
               <label className="user-field col-12 col-md-6">
-                <span className="user-field__label">Status</span>
+                <span className="user-field__label">Status <span className="required-dot">*</span></span>
                 <select className="user-field__input" value={form.status} onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}>
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
@@ -304,7 +304,7 @@ export function CelebrationBannerPage() {
 
               <label className="user-field col-12 col-md-6">
                 <span className="user-field__label">
-                  Add Image (max 5 MB) {editId ? "" : <span className="required-dot">*</span>}
+                  Add Image (upto 5mb) {editId ? "" : <span className="required-dot">*</span>}
                 </span>
                 <input
                   ref={fileInputRef}

@@ -246,7 +246,7 @@ export function VideoTestimonialPage() {
               <input className="user-field__input" maxLength={NAME_MAX_LEN} value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} required />
             </label>
             <label className="user-field col-12 col-md-6">
-              <span className="user-field__label">Upload Profile Image <span className="required-dot">*</span></span>
+              <span className="user-field__label">Upload Profile Image (upto 5mb) <span className="required-dot">*</span></span>
               <input
                 ref={profileFileInputRef}
                 className="user-field__input"
@@ -292,7 +292,7 @@ export function VideoTestimonialPage() {
             ) : null}
             {form.type === "video" ? (
               <label className="user-field col-12">
-                <span className="user-field__label">Upload Video File <span className="required-dot">*</span></span>
+                <span className="user-field__label">Upload Video File (upto 50mb) <span className="required-dot">*</span></span>
                 <input
                   ref={videoFileInputRef}
                   className="user-field__input"

@@ -35,7 +35,7 @@ export const navItems = [
   { to: "notifications", label: "Notifications", icon: "bell" },
   { to: "celebration-banners", label: "Celebration Banners", icon: "image" },
   { to: "client-testimonials", label: "Client Testimonials", icon: "users" },
-  { to: "video-testimonials", label: "Video Testimonials", icon: "video" },
+  { to: "video-testimonials", label: "Video Testimonials", icon: "users" },
   { to: "static-pages", label: "Static Pages", icon: "file" },
   { to: "settings", label: "App Settings", icon: "gear" },
   { to: "profile", label: "Admin Profile", icon: "profile" },
