@@ -63,6 +63,10 @@ exports.createAppConfigController = asyncHandler(async (req, res) => {
     app_footer_text,
     payment_methods,
     payment_gateways,
+    improved_user,
+    success_rate,
+    average_rating,
+    happy_clients,
   } = req.body;
 
   if (!app_name || !app_email || !app_mobile) {
@@ -85,6 +89,10 @@ exports.createAppConfigController = asyncHandler(async (req, res) => {
     linkedin: linkedin ?? "",
     app_details: app_details ?? "",
     app_footer_text: app_footer_text ?? "",
+    improved_user: improved_user ?? "",
+    success_rate: success_rate ?? "",
+    average_rating: average_rating ?? "",
+    happy_clients: happy_clients ?? "",
     payment_methods: parseJSON(payment_methods, config.payment_methods),
     payment_gateways: parseJSON(payment_gateways, config.payment_gateways),
     admin_logo: fileUrl(req, "admin_logo") ?? "",
@@ -121,6 +129,10 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
     "instagram",
     "linkedin",
     "app_details",
+    "improved_user",
+    "success_rate",
+    "average_rating",
+    "happy_clients",
     "app_footer_text",
   ];
 

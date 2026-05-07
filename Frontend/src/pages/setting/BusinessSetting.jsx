@@ -21,6 +21,10 @@ const SCALAR_KEYS = [
   "linkedin",
   "app_details",
   "app_footer_text",
+  "improved_user",
+  "success_rate",
+  "average_rating",
+  "happy_clients",
 ];
 
 const SETTINGS_TABS = [
@@ -48,6 +52,7 @@ const GATEWAY_DEFS = [
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^\d{10}$/;
+const INTEGER_REGEX = /^\d+$/;
 const LIMITS = {
   appName: 100,
   appEmail: 120,
@@ -57,6 +62,7 @@ const LIMITS = {
   socialUrl: 255,
   appDetails: 2000,
   footerText: 180,
+  statsField: 60,
   gatewayField: 180,
 };
 
@@ -77,6 +83,10 @@ function validateSettingsForm({ scalars, paymentGateways }) {
   const appName = (scalars.app_name || "").trim();
   const appEmail = (scalars.app_email || "").trim();
   const appMobile = (scalars.app_mobile || "").trim();
+  const improvedUser = (scalars.improved_user || "").trim();
+  const happyClients = (scalars.happy_clients || "").trim();
+  const averageRating = (scalars.average_rating || "").trim();
+  const successRate = (scalars.success_rate || "").trim();
   const latitude = (scalars.latitude || "").trim();
   const longitude = (scalars.longitude || "").trim();
 
@@ -85,6 +95,24 @@ function validateSettingsForm({ scalars, paymentGateways }) {
   if (!EMAIL_REGEX.test(appEmail)) return { tab: "general", text: "Support email format is invalid." };
   if (!appMobile) return { tab: "general", text: "Support mobile is required." };
   if (!PHONE_REGEX.test(appMobile)) return { tab: "general", text: "Support mobile must be exactly 10 digits." };
+  if (!improvedUser) return { tab: "general", text: "Improved users is required." };
+  if (!INTEGER_REGEX.test(improvedUser)) {
+    return { tab: "general", text: "Improved users must be a numeric value." };
+  }
+  if (!happyClients) return { tab: "general", text: "Happy clients is required." };
+  if (!INTEGER_REGEX.test(happyClients)) {
+    return { tab: "general", text: "Happy clients must be a numeric value." };
+  }
+  if (!averageRating) return { tab: "general", text: "Average rating is required." };
+  const rating = Number.parseFloat(averageRating);
+  if (!Number.isFinite(rating) || rating < 0 || rating > 5) {
+    return { tab: "general", text: "Average rating must be between 0 and 5." };
+  }
+  if (!successRate) return { tab: "general", text: "Success rate is required." };
+  const success = Number.parseFloat(successRate);
+  if (!Number.isFinite(success) || success < 0 || success > 100) {
+    return { tab: "general", text: "Success rate must be between 0 and 100 percent." };
+  }
 
   if (latitude || longitude) {
     if (!latitude) return { tab: "location", text: "Enter both latitude and longitude, or clear both." };
@@ -489,6 +517,87 @@ export function BusinessSetting() {
                       />
                       <span className="settings-char-count">{charCount(scalars.app_detail, LIMITS.appDetail)}</span>
                     </div>
+            
+                    {/* <div className="user-field user-field--full">
+                      <span className="user-field__label">App details</span>
+                      <textarea
+                        className="user-field__input"
+                        rows={4}
+                        value={scalars.app_details}
+                        onChange={(e) => setScalars((s) => ({ ...s, app_details: e.target.value }))}
+                        maxLength={LIMITS.appDetails}
+                      />
+                      <span className="settings-char-count">{charCount(scalars.app_details, LIMITS.appDetails)}</span>
+                    </div> */}
+                    <div className="user-field">
+                      <span className="user-field__label">Improved users <span className="required-dot">*</span></span>
+                      <input
+                        className="user-field__input"
+                        value={scalars.improved_user}
+                        onChange={(e) =>
+                          setScalars((s) => ({ ...s, improved_user: e.target.value.replace(/\D+/g, "") }))
+                        }
+                        maxLength={LIMITS.statsField}
+                        required
+                        inputMode="numeric"
+                      />
+                      <span className="settings-char-count">{charCount(scalars.improved_user, LIMITS.statsField)}</span>
+                    </div>
+                    <div className="user-field">
+                      <span className="user-field__label">Success rate (%) <span className="required-dot">*</span></span>
+                      <input
+                        className="user-field__input"
+                        value={scalars.success_rate}
+                        onChange={(e) => setScalars((s) => ({ ...s, success_rate: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (["-", "e", "E", "+"].includes(e.key)) e.preventDefault();
+                        }}
+                        maxLength={LIMITS.statsField}
+                        required
+                        inputMode="decimal"
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={1}
+                        placeholder="0 to 100"
+                      />
+                      <span className="settings-char-count">{charCount(scalars.success_rate, LIMITS.statsField)}</span>
+                    </div>
+                    <div className="user-field">
+                      <span className="user-field__label">Average rating <span className="required-dot">*</span></span>
+                      <input
+                        className="user-field__input"
+                        value={scalars.average_rating}
+                        onChange={(e) => setScalars((s) => ({ ...s, average_rating: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (["-", "e", "E", "+"].includes(e.key)) e.preventDefault();
+                        }}
+                        maxLength={LIMITS.statsField}
+                        required
+                        type="number"
+                        min={0}
+                        max={5}
+                        step={0.1}
+                        inputMode="decimal"
+                        placeholder="0 to 5"
+                      />
+                      <span className="settings-char-count">{charCount(scalars.average_rating, LIMITS.statsField)}</span>
+                    </div>
+                    <div className="user-field">
+                      <span className="user-field__label">Happy clients <span className="required-dot">*</span></span>
+                      <input
+                        className="user-field__input"
+                        value={scalars.happy_clients}
+                        onChange={(e) =>
+                          setScalars((s) => ({ ...s, happy_clients: e.target.value.replace(/\D+/g, "") }))
+                        }
+                        maxLength={LIMITS.statsField}
+                        required
+                        inputMode="numeric"
+                      />
+                      <span className="settings-char-count">{charCount(scalars.happy_clients, LIMITS.statsField)}</span>
+                    </div>
+
                     <div className="user-field ">
                       <span className="user-field__label">Footer text</span>
                       <textarea
@@ -499,7 +608,7 @@ export function BusinessSetting() {
                         maxLength={LIMITS.footerText}
                       />
                       <span className="settings-char-count">{charCount(scalars.app_footer_text, LIMITS.footerText)}</span>
-                    </div>      
+                    </div>
                   </div>
                 </>
               )}

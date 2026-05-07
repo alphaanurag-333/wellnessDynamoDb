@@ -30,6 +30,8 @@ export const navItems = [
   },
   { to: "banners", label: "Banner Management", icon: "image" },
   { to: "health-concerns", label: "Health Concerns", icon: "list" },
+  { to: "health-tools", label: "Health Tools", icon: "list" },
+  { to: "health-recipes", label: "Health Recipes", icon: "list" },
   { to: "transformations", label: "Transformations", icon: "image" },
   { to: "faq", label: "FAQ", icon: "help" },
   { to: "notifications", label: "Notifications", icon: "bell" },

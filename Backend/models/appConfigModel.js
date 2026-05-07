@@ -26,6 +26,10 @@ async function createAppConfig() {
     linkedin:       "",
     app_details:    "",
     app_footer_text:"",
+    improved_user:   "",
+    success_rate:    "",
+    average_rating:  "",
+    happy_clients:   "",
 
     // Nested array — DynamoDB mein List of Maps ke roop mein store hoga
     payment_methods: [

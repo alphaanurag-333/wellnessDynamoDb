@@ -19,6 +19,13 @@ const videoTestimonialsUpload = createUploader("video-testimonials").fields([
   { name: "videoFile", maxCount: 1 },
 ]);
 const healthConcernUpload = createUploader("health-concern").single("file");
+const healthToolUpload = createUploader("health-tool").single("file");
+const healthRecipeUpload = createUploader("health-recipe").fields([
+  { name: "thumbnailFile", maxCount: 1 },
+  { name: "videoFile", maxCount: 1 },
+  // Keep legacy "file" field support for older clients sending thumbnail as "file".
+  { name: "file", maxCount: 1 },
+]);
 const transformationUploads = createUploader("transformation").fields([
   { name: "oldImage", maxCount: 1 },
   { name: "newImage", maxCount: 1 },
@@ -31,4 +38,6 @@ exports.optionalNotificationFile = optionalMultipart(notificationUpload);
 exports.optionalClientTestimonialsFile = optionalMultipart(clientTestimonialsUpload);
 exports.optionalVideoTestimonialsFiles = optionalMultipart(videoTestimonialsUpload);
 exports.optionalHealthConcernFile = optionalMultipart(healthConcernUpload);
+exports.optionalHealthToolFile = optionalMultipart(healthToolUpload);
+exports.optionalHealthRecipeFile = optionalMultipart(healthRecipeUpload);
 exports.optionalTransformationFiles = optionalMultipart(transformationUploads);

@@ -7,6 +7,8 @@ const adminStaticPageRoutes = require("./adminRoutes/adminStaticPageRoutes");
 const adminTransformationRoutes = require("./adminRoutes/adminTransformationRoutes");
 const adminBannerRoutes = require("./adminRoutes/adminBannerRoutes");
 const adminHealthConcernRoutes = require("./adminRoutes/adminHealthConcernRoutes");
+const adminHealthToolRoutes = require("./adminRoutes/adminHealthToolRoutes");
+const adminHealthRecipeRoutes = require("./adminRoutes/adminHealthRecipeRoutes");
 const adminCelebrationRoutes = require("./adminRoutes/adminCelebrationRoutes");
 const adminClientTestimonialsRoutes = require("./adminRoutes/adminClientTestimonialsRoutes");
 const adminVideoTestimonialsRoutes = require("./adminRoutes/adminVideoTestimonialsRoutes");
@@ -28,6 +30,8 @@ router.use("/admin/celebration-banners", adminCelebrationRoutes);
 router.use("/admin/client-testimonials", adminClientTestimonialsRoutes);
 router.use("/admin/video-testimonials", adminVideoTestimonialsRoutes);
 router.use("/admin/health-concerns", adminHealthConcernRoutes);
+router.use("/admin/health-tools", adminHealthToolRoutes);
+router.use("/admin/health-recipes", adminHealthRecipeRoutes);
 router.use("/admin/misc/pages", adminStaticPageRoutes);
 router.use("/public", publicAppConfigRoutes);
 
