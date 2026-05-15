@@ -13,6 +13,7 @@ const adminCelebrationRoutes = require("./adminRoutes/adminCelebrationRoutes");
 const adminClientTestimonialsRoutes = require("./adminRoutes/adminClientTestimonialsRoutes");
 const adminVideoTestimonialsRoutes = require("./adminRoutes/adminVideoTestimonialsRoutes");
 const publicAppConfigRoutes = require("./publicRoutes/publicAppConfigRoutes");
+const miscRoutes = require("./userRoutes/miscRoutes");
 
 const router = express.Router();
 
@@ -34,5 +35,6 @@ router.use("/admin/health-tools", adminHealthToolRoutes);
 router.use("/admin/health-recipes", adminHealthRecipeRoutes);
 router.use("/admin/misc/pages", adminStaticPageRoutes);
 router.use("/public", publicAppConfigRoutes);
+router.use("/public/misc", miscRoutes);
 
 module.exports = router;

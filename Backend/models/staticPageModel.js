@@ -168,6 +168,7 @@ async function deletePage(id) {
 module.exports = {
   listPages,
   getPageById,
+  getPageBySlug,
   createPage,
   updatePage,
   deletePage,

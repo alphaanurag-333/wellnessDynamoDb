@@ -10,6 +10,7 @@ const allowedTypes = [
   "image/jpg",
   "image/gif",
   "image/webp",
+  "image/svg+xml",
   // Video
   "video/mp4",
   "video/quicktime",
@@ -69,7 +70,7 @@ function createUploader(folderName = "") {
     limits: {
       fileSize: 50 * 1024 * 1024,
     },
-  });
+  })
 }
 
 module.exports = createUploader;

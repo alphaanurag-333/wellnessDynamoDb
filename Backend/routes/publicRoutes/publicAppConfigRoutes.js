@@ -7,5 +7,6 @@ const {
 const router = express.Router();
 
 router.get("/app-config", getPublicAppConfig);
+router.get("/config", getPublicAppConfig);
 
 module.exports = router;

@@ -28,7 +28,23 @@ const DESCRIPTION_MIN_LEN = 5;
 const DESCRIPTION_MAX_LEN = 2000;
 const LIST_SEARCH_MAX_LEN = 120;
 const IMAGE_MAX_SIZE_BYTES = 5 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/jpg"]);
+const ALLOWED_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "image/jpg",
+  "image/svg+xml",
+]);
+
+/** Browsers sometimes omit MIME for SVG; allow `.svg` when type is empty. */
+function isAllowedHealthToolIconFile(file) {
+  if (!(file instanceof File)) return false;
+  if (ALLOWED_IMAGE_TYPES.has(file.type)) return true;
+  const name = String(file.name || "");
+  if (!file.type && /\.svg$/i.test(name)) return true;
+  return false;
+}
 const LIST_LIMIT = 10;
 
 function sanitizeTitle(value) {
@@ -72,15 +88,15 @@ function validateForm(form, { editId, iconFile, hasExistingIcon }) {
 
   if (!editId) {
     if (!(iconFile instanceof File)) {
-      return "Please upload an icon image (JPEG, PNG, GIF, or WebP, max 5 MB).";
+      return "Please upload an icon image (JPEG, PNG, GIF, WebP, or SVG, max 5 MB).";
     }
   } else if (!(iconFile instanceof File) && !hasExistingIcon) {
     return "Upload an icon image — this record has no icon yet.";
   }
 
   if (iconFile instanceof File) {
-    if (!ALLOWED_IMAGE_TYPES.has(iconFile.type)) {
-      return "Icon must be a JPEG, PNG, GIF, or WebP image.";
+    if (!isAllowedHealthToolIconFile(iconFile)) {
+      return "Icon must be a JPEG, PNG, GIF, WebP, or SVG image.";
     }
     if (iconFile.size > IMAGE_MAX_SIZE_BYTES) {
       return "Icon image must be 5 MB or smaller.";
@@ -306,19 +322,19 @@ export function HealthToolPage() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp"
+                accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml,.jpg,.jpeg,.png,.gif,.webp,.svg"
                 className="user-field__input"
                 onChange={(e) => {
                   const file = e.target.files?.[0] || null;
                   if (file) {
-                    if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+                    if (!isAllowedHealthToolIconFile(file)) {
                       setIconFile(null);
                       setIconPreview(editBaselineIcon ? mediaUrl(editBaselineIcon) : "");
                       e.target.value = "";
                       void Swal.fire({
                         icon: "error",
                         title: "Invalid file",
-                        text: "Use JPEG, PNG, GIF, or WebP only.",
+                        text: "Use JPEG, PNG, GIF, WebP, or SVG only.",
                       });
                       return;
                     }
