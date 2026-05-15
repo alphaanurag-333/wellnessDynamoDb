@@ -11,9 +11,10 @@ import { StaticPageUpdate } from "../pages/static-pages/StaticPageUpdate.jsx";
 import { NotificationPage } from "../pages/notification/Notification.jsx";
 import { HealthConcernPage } from "../pages/healthConcern/HealthConcernPage.jsx";
 import { HealthToolPage } from "../pages/healthTool/HealthTool.jsx";
-import { HealthRecipeManagePage } from "../pages/healthRecipe/HealthRecipeManage.jsx";
-import { HealthRecipeCreatePage } from "../pages/healthRecipe/HealthRecipeCreate.jsx";
-import { HealthRecipeEditPage } from "../pages/healthRecipe/HealthRecipeEdit.jsx";
+import { HealthRecipeList } from "../pages/healthRecipe/HealthRecipeList.jsx";
+import { HealthRecipeAdd } from "../pages/healthRecipe/HealthRecipeAdd.jsx";
+import { HealthRecipeEdit } from "../pages/healthRecipe/HealthRecipeEdit.jsx";
+import { HealthRecipeView } from "../pages/healthRecipe/HealthRecipeView.jsx";
 import { TransformationPage } from "../pages/transformation/TransformationPage.jsx";
 import { CelebrationBannerPage } from "../pages/celebrationBanner/celebrationBanner.jsx";
 import { ClientTestimonialPage } from "../pages/clientTestimonial/ClientTestimonial.jsx";
@@ -54,9 +55,10 @@ export const adminRouteTree = (
     <Route path="health-concerns" element={<HealthConcernPage />} />
     <Route path="health-tools" element={<HealthToolPage />} />
     <Route path="health-recipes" element={<Outlet />}>
-      <Route index element={<HealthRecipeManagePage />} />
-      <Route path="new" element={<HealthRecipeCreatePage />} />
-      <Route path=":recipeId/edit" element={<HealthRecipeEditPage />} />
+      <Route index element={<HealthRecipeList />} />
+      <Route path="new" element={<HealthRecipeAdd />} />
+      <Route path=":recipeId/edit" element={<HealthRecipeEdit />} />
+      <Route path=":recipeId" element={<HealthRecipeView />} />
     </Route>
     <Route path="transformations" element={<TransformationPage />} />
     <Route path="faq" element={<FaqPage />} />

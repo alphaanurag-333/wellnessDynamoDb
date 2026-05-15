@@ -9,6 +9,8 @@ export const DESCRIPTION_MIN_LEN = 5;
 export const DESCRIPTION_MAX_LEN = 2000;
 export const YT_LINK_MAX_LEN = 500;
 export const VIDEO_SPECS_MAX_LEN = 2000;
+export const VIDEO_SPEC_ITEM_MAX_LEN = 200;
+export const MAX_VIDEO_SPEC_ROWS = 25;
 export const LIST_SEARCH_MAX_LEN = 120;
 export const IMAGE_MAX_SIZE_BYTES = 5 * 1024 * 1024;
 export const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/jpg"]);
@@ -23,9 +25,27 @@ export function emptyForm() {
     type: "ytlink",
     ytLink: "",
     video: "",
-    videoSpecsInput: "",
+    videoSpecs: [""],
     status: "active",
   };
+}
+
+export function sanitizeVideoSpecItem(value) {
+  return String(value ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, VIDEO_SPEC_ITEM_MAX_LEN);
+}
+
+/** Map API array to editable rows (always at least one row). */
+export function videoSpecsFromApi(specs) {
+  const rows = Array.isArray(specs) ? specs.map((x) => sanitizeVideoSpecItem(x)).filter(Boolean) : [];
+  return rows.length ? rows : [""];
+}
+
+/** Non-empty trimmed strings for API payload. */
+export function videoSpecsToPayload(rows) {
+  return (Array.isArray(rows) ? rows : []).map((x) => sanitizeVideoSpecItem(x)).filter(Boolean);
 }
 
 export function sanitizeTitle(value) {
@@ -38,17 +58,6 @@ export function sanitizeDescription(value) {
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .slice(0, DESCRIPTION_MAX_LEN);
-}
-
-export function parseVideoSpecsInput(value) {
-  return String(value || "")
-    .split(/\r?\n|,/)
-    .map((x) => x.trim())
-    .filter(Boolean);
-}
-
-export function videoSpecsToText(specs) {
-  return Array.isArray(specs) ? specs.map((x) => String(x || "").trim()).filter(Boolean).join("\n") : "";
 }
 
 export function truncate(str, max) {
@@ -97,6 +106,23 @@ export function validateForm(form, { editId, thumbnailFile, hasExistingThumbnail
     if (thumbnailFile.size > IMAGE_MAX_SIZE_BYTES) return "Thumbnail image must be 5 MB or smaller.";
   }
   if (videoFile instanceof File && !ALLOWED_VIDEO_TYPES.has(videoFile.type)) return "Video must be MP4, WebM, OGG, MOV, or M4V.";
+
+  const specRows = Array.isArray(form.videoSpecs) ? form.videoSpecs : [];
+  if (specRows.length > MAX_VIDEO_SPEC_ROWS) {
+    return `You can add at most ${MAX_VIDEO_SPEC_ROWS} video specification rows.`;
+  }
+  const filledSpecs = videoSpecsToPayload(specRows);
+  const totalSpecLen = filledSpecs.reduce((sum, s) => sum + s.length, 0);
+  if (totalSpecLen > VIDEO_SPECS_MAX_LEN) {
+    return `Total video specification text cannot exceed ${VIDEO_SPECS_MAX_LEN} characters.`;
+  }
+  for (const spec of specRows) {
+    const trimmed = String(spec || "").trim();
+    if (trimmed && trimmed.length > VIDEO_SPEC_ITEM_MAX_LEN) {
+      return `Each video specification row cannot exceed ${VIDEO_SPEC_ITEM_MAX_LEN} characters.`;
+    }
+  }
+
   return "";
 }
 
