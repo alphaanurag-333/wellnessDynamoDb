@@ -189,11 +189,35 @@ export function HealthRecipeList() {
                     <td>{row.title || "—"}</td>
                     <td className="data-table__muted">{concernMap[row.healthConcernId] || row.healthConcernId || "—"}</td>
                     <td className="data-table__muted">{row.type || "—"}</td>
-                    <td className="data-table__muted" title={row.ytLink || ""}>
-                      {truncate(row.ytLink, 30)}
+                    <td className="data-table__muted">
+                      {row.type === "ytlink" ? (
+                        row.ytLink ? (
+                          <a href={row.ytLink} target="_blank" rel="noreferrer" title={row.ytLink}>
+                            {truncate(row.ytLink, 20)}
+                          </a>
+                        ) : (
+                          "—"
+                        )
+                      ) : (
+                        <span className="data-table__muted">N/A</span>
+                      )}
                     </td>
-                    <td className="data-table__muted" title={row.video || ""}>
-                      {truncate(row.video, 30)}
+                    <td>
+                      {row.type === "video" ? (
+                        row.video ? (
+                          <video
+                            src={mediaUrl(row.video)}
+                            controls
+                            preload="metadata"
+                            playsInline
+                            style={{ width: 160, maxWidth: "100%", height: 90, objectFit: "cover", borderRadius: 6, display: "block" }}
+                          />
+                        ) : (
+                          "—"
+                        )
+                      ) : (
+                        <span className="data-table__muted">N/A</span>
+                      )}
                     </td>
                     <td className="data-table__muted">{Array.isArray(row.video_specification) ? row.video_specification.length : 0}</td>
                     <td className="data-table__muted">{formatDate(row.createdAt)}</td>

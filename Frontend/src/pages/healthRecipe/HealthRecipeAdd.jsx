@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
@@ -127,8 +127,24 @@ export function HealthRecipeForm({ mode = "create", initialRecipe = null }) {
   const [videoName, setVideoName] = useState(() =>
     isEditMode && initialRecipe?.video ? String(initialRecipe.video).split("/").pop() : ""
   );
+  const [videoPreview, setVideoPreview] = useState(() => {
+    if (isEditMode && initialRecipe?.type === "video" && initialRecipe?.video) {
+      return mediaUrl(initialRecipe.video);
+    }
+    return "";
+  });
   const fileInputRef = useRef(null);
   const videoInputRef = useRef(null);
+  const videoPreviewBlobRef = useRef("");
+
+  const revokeVideoPreviewBlob = () => {
+    if (videoPreviewBlobRef.current) {
+      URL.revokeObjectURL(videoPreviewBlobRef.current);
+      videoPreviewBlobRef.current = "";
+    }
+  };
+
+  useEffect(() => () => revokeVideoPreviewBlob(), []);
 
   const resetForm = () => {
     setForm(emptyForm());
@@ -136,6 +152,8 @@ export function HealthRecipeForm({ mode = "create", initialRecipe = null }) {
     setThumbnailPreview("");
     setVideoFile(null);
     setVideoName("");
+    revokeVideoPreviewBlob();
+    setVideoPreview("");
     if (fileInputRef.current) fileInputRef.current.value = "";
     if (videoInputRef.current) videoInputRef.current.value = "";
   };
@@ -145,7 +163,14 @@ export function HealthRecipeForm({ mode = "create", initialRecipe = null }) {
     if (nextType === "ytlink") {
       setVideoFile(null);
       setVideoName("");
+      revokeVideoPreviewBlob();
+      setVideoPreview("");
       if (videoInputRef.current) videoInputRef.current.value = "";
+    } else {
+      setVideoFile(null);
+      if (videoInputRef.current) videoInputRef.current.value = "";
+      setVideoName(editBaselineVideo ? String(editBaselineVideo).split("/").pop() : "");
+      setVideoPreview(editBaselineVideo ? mediaUrl(editBaselineVideo) : "");
     }
   };
 
@@ -282,31 +307,65 @@ export function HealthRecipeForm({ mode = "create", initialRecipe = null }) {
             </small>
           </label>
         ) : (
-          <label className="user-field col-12">
-            <span className="user-field__label">
-              Video file <span className="required-dot">*</span>
-            </span>
-            <input
-              ref={videoInputRef}
-              type="file"
-              accept="video/mp4,video/webm,video/ogg,video/quicktime,video/x-m4v,.mp4,.webm,.ogg,.mov,.m4v"
-              className="user-field__input"
-              required={!form.video && !editBaselineVideo}
-              onChange={(e) => {
-                const file = e.target.files?.[0] || null;
-                if (file && !ALLOWED_VIDEO_TYPES.has(file.type)) {
-                  setVideoFile(null);
-                  setVideoName(editBaselineVideo ? String(editBaselineVideo).split("/").pop() : "");
-                  e.target.value = "";
-                  void Swal.fire({ icon: "error", title: "Invalid file", text: "Use MP4, WebM, OGG, MOV, or M4V only." });
-                  return;
-                }
-                setVideoFile(file);
-                setVideoName(file ? file.name : editBaselineVideo ? String(editBaselineVideo).split("/").pop() : "");
-              }}
-            />
-            <small className="data-table__muted">{videoName || "No video selected"}</small>
-          </label>
+          <div className="col-12">
+            <label className="user-field">
+              <span className="user-field__label">
+                Video file{" "}
+                {editId ? (
+                  "(optional — leave unchanged to keep current)"
+                ) : (
+                  <span className="required-dot">*</span>
+                )}
+              </span>
+              <input
+                ref={videoInputRef}
+                type="file"
+                accept="video/mp4,video/webm,video/ogg,video/quicktime,video/x-m4v,.mp4,.webm,.ogg,.mov,.m4v"
+                className="user-field__input"
+                required={!editBaselineVideo && !videoFile}
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  if (file && !ALLOWED_VIDEO_TYPES.has(file.type)) {
+                    setVideoFile(null);
+                    setVideoName(editBaselineVideo ? String(editBaselineVideo).split("/").pop() : "");
+                    revokeVideoPreviewBlob();
+                    setVideoPreview(editBaselineVideo ? mediaUrl(editBaselineVideo) : "");
+                    e.target.value = "";
+                    void Swal.fire({ icon: "error", title: "Invalid file", text: "Use MP4, WebM, OGG, MOV, or M4V only." });
+                    return;
+                  }
+                  setVideoFile(file);
+                  if (file) {
+                    revokeVideoPreviewBlob();
+                    const url = URL.createObjectURL(file);
+                    videoPreviewBlobRef.current = url;
+                    setVideoPreview(url);
+                    setVideoName(file.name);
+                  } else {
+                    revokeVideoPreviewBlob();
+                    setVideoPreview(editBaselineVideo ? mediaUrl(editBaselineVideo) : "");
+                    setVideoName(editBaselineVideo ? String(editBaselineVideo).split("/").pop() : "");
+                  }
+                }}
+              />
+              <small className="data-table__muted">{videoName || "No video selected"}</small>
+            </label>
+            {videoPreview ? (
+              <div style={{ marginTop: 12 }}>
+                <video
+                  key={videoPreview}
+                  src={videoPreview}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  style={{ width: "100%", maxWidth: 480, maxHeight: 270, borderRadius: 8, display: "block" }}
+                />
+                <small className="data-table__muted" style={{ display: "block", marginTop: 6 }}>
+                  {videoFile ? "New video preview" : "Current saved video"}
+                </small>
+              </div>
+            ) : null}
+          </div>
         )}
         <VideoSpecificationRows
           rows={form.videoSpecs}
