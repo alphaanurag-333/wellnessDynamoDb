@@ -4,11 +4,20 @@ import { AdminProfile } from "../pages/AdminProfile.jsx";
 import { DashboardPage } from "../pages/DashboardPage.jsx";
 import { NotFoundPage } from "../pages/NotFoundPage.jsx";
 import { BusinessSetting } from "../pages/setting/BusinessSetting.jsx";
-import { BannerPage } from "../pages/banners/BannerPage.jsx";
-import { FaqPage } from "../pages/faq/Faq.jsx";
+import { BannerList } from "../pages/banners/BannerList.jsx";
+import { BannerAdd } from "../pages/banners/BannerAdd.jsx";
+import { BannerEdit } from "../pages/banners/BannerEdit.jsx";
+import { BannerView } from "../pages/banners/BannerView.jsx";
+import { FaqList } from "../pages/faq/FaqList.jsx";
+import { FaqAdd } from "../pages/faq/FaqAdd.jsx";
+import { FaqEdit } from "../pages/faq/FaqEdit.jsx";
+import { FaqView } from "../pages/faq/FaqView.jsx";
 import { StaticPageList } from "../pages/static-pages/StaticPageList.jsx";
 import { StaticPageUpdate } from "../pages/static-pages/StaticPageUpdate.jsx";
-import { NotificationPage } from "../pages/notification/Notification.jsx";
+import { NotificationList } from "../pages/notification/NotificationList.jsx";
+import { NotificationAdd } from "../pages/notification/NotificationAdd.jsx";
+import { NotificationEdit } from "../pages/notification/NotificationEdit.jsx";
+import { NotificationView } from "../pages/notification/NotificationView.jsx";
 import { HealthConcernList } from "../pages/healthConcern/HealthConcernList.jsx";
 import { HealthConcernAdd } from "../pages/healthConcern/HealthConcernAdd.jsx";
 import { HealthConcernEdit } from "../pages/healthConcern/HealthConcernEdit.jsx";
@@ -33,7 +42,10 @@ import { TransformationList } from "../pages/transformation/TransformationList.j
 import { TransformationAdd } from "../pages/transformation/TransformationAdd.jsx";
 import { TransformationEdit } from "../pages/transformation/TransformationEdit.jsx";
 import { TransformationView } from "../pages/transformation/TransformationView.jsx";
-import { CelebrationBannerPage } from "../pages/celebrationBanner/celebrationBanner.jsx";
+import { CelebrationBannerList } from "../pages/celebrationBanner/CelebrationBannerList.jsx";
+import { CelebrationBannerAdd } from "../pages/celebrationBanner/CelebrationBannerAdd.jsx";
+import { CelebrationBannerEdit } from "../pages/celebrationBanner/CelebrationBannerEdit.jsx";
+import { CelebrationBannerView } from "../pages/celebrationBanner/CelebrationBannerView.jsx";
 import { ClientTestimonialList } from "../pages/clientTestimonial/ClientTestimonialList.jsx";
 import { ClientTestimonialAdd } from "../pages/clientTestimonial/ClientTestimonialAdd.jsx";
 import { ClientTestimonialEdit } from "../pages/clientTestimonial/ClientTestimonialEdit.jsx";
@@ -74,7 +86,12 @@ export const adminRouteTree = (
     <Route path="camp-events" element={<SectionPage title="Camp Events" />} />
     <Route path="program-completions" element={<SectionPage title="Program Completions" />} />
 
-    <Route path="banners" element={<BannerPage />} />
+    <Route path="banners" element={<Outlet />}>
+      <Route index element={<BannerList />} />
+      <Route path="new" element={<BannerAdd />} />
+      <Route path=":bannerId/edit" element={<BannerEdit />} />
+      <Route path=":bannerId" element={<BannerView />} />
+    </Route>
     <Route path="health-concerns" element={<Outlet />}>
       <Route index element={<HealthConcernList />} />
       <Route path="new" element={<HealthConcernAdd />} />
@@ -111,9 +128,24 @@ export const adminRouteTree = (
       <Route path=":transformationId/edit" element={<TransformationEdit />} />
       <Route path=":transformationId" element={<TransformationView />} />
     </Route>
-    <Route path="faq" element={<FaqPage />} />
-    <Route path="notifications" element={<NotificationPage />} />
-    <Route path="celebration-banners" element={<CelebrationBannerPage />} />
+    <Route path="faq" element={<Outlet />}>
+      <Route index element={<FaqList />} />
+      <Route path="new" element={<FaqAdd />} />
+      <Route path=":faqId/edit" element={<FaqEdit />} />
+      <Route path=":faqId" element={<FaqView />} />
+    </Route>
+    <Route path="notifications" element={<Outlet />}>
+      <Route index element={<NotificationList />} />
+      <Route path="new" element={<NotificationAdd />} />
+      <Route path=":notificationId/edit" element={<NotificationEdit />} />
+      <Route path=":notificationId" element={<NotificationView />} />
+    </Route>
+    <Route path="celebration-banners" element={<Outlet />}>
+      <Route index element={<CelebrationBannerList />} />
+      <Route path="new" element={<CelebrationBannerAdd />} />
+      <Route path=":celebrationId/edit" element={<CelebrationBannerEdit />} />
+      <Route path=":celebrationId" element={<CelebrationBannerView />} />
+    </Route>
     <Route path="client-testimonials" element={<Outlet />}>
       <Route index element={<ClientTestimonialList />} />
       <Route path="new" element={<ClientTestimonialAdd />} />

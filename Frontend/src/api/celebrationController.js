@@ -22,6 +22,17 @@ export async function adminListCelebrationBanners(token, { page = 1, limit = 10,
   }
 }
 
+export async function adminGetCelebrationBannerById(token, id) {
+  try {
+    const { data } = await api.get(`${celebrationBase()}/${encodeURIComponent(id)}`, {
+      headers: authHeader(token),
+    });
+    return data.celebrationBanner ?? null;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function adminCreateCelebrationBanner(token, fields, file) {
   if (file instanceof File) {
     const fd = new FormData();

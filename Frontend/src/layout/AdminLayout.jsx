@@ -79,6 +79,34 @@ function titleFromPath(pathname) {
     return "Health recipes";
   }
 
+  if (p.startsWith("/admin/banners")) {
+    if (/^\/admin\/banners\/new$/.test(p)) return "Add banner";
+    if (/^\/admin\/banners\/[^/]+\/edit$/.test(p)) return "Edit banner";
+    if (/^\/admin\/banners\/[^/]+$/.test(p)) return "Banner details";
+    return "Banners";
+  }
+
+  if (p.startsWith("/admin/notifications")) {
+    if (/^\/admin\/notifications\/new$/.test(p)) return "Add notification";
+    if (/^\/admin\/notifications\/[^/]+\/edit$/.test(p)) return "Edit notification";
+    if (/^\/admin\/notifications\/[^/]+$/.test(p)) return "Notification details";
+    return "Notifications";
+  }
+
+  if (p.startsWith("/admin/celebration-banners")) {
+    if (/^\/admin\/celebration-banners\/new$/.test(p)) return "Add celebration banner";
+    if (/^\/admin\/celebration-banners\/[^/]+\/edit$/.test(p)) return "Edit celebration banner";
+    if (/^\/admin\/celebration-banners\/[^/]+$/.test(p)) return "Celebration banner details";
+    return "Celebration banners";
+  }
+
+  if (p.startsWith("/admin/faq")) {
+    if (/^\/admin\/faq\/new$/.test(p)) return "Add FAQ";
+    if (/^\/admin\/faq\/[^/]+\/edit$/.test(p)) return "Edit FAQ";
+    if (/^\/admin\/faq\/[^/]+$/.test(p)) return "FAQ details";
+    return "FAQ";
+  }
+
   if (p.startsWith("/admin/static-pages")) {
     if (/^\/admin\/static-pages\/[^/]+\/edit\/?$/.test(p)) return "Edit static page";
     return "Static Pages";
