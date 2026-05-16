@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { AdminTableLoaderRow } from "../../components/AdminLoader.jsx";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { MdEditSquare } from "react-icons/md";
 import { AiFillDelete, AiOutlineEye } from "react-icons/ai";
-import { FadeLoader } from "react-spinners";
 import { adminDeleteHealthRecipe, adminListHealthRecipes, adminUpdateHealthRecipe } from "../../api/adminHealthRecipes.js";
 import { logout } from "../../store/authSlice.js";
+import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { mediaUrl } from "../../media.js";
 import { formatDate, LIST_LIMIT, LIST_SEARCH_MAX_LEN, truncate, useHealthConcerns } from "./HealthRecipeShared.js";
 
@@ -163,14 +164,7 @@ export function HealthRecipeList() {
             </thead>
             <tbody>
               {loading ? (
-                <tr>
-                  <td colSpan={11} className="static-cms-loading">
-                    <div style={{ display: "grid", justifyItems: "center", gap: 10 }}>
-                      <FadeLoader height={12} margin={-1} radius={20} width={4} color="#4f46e5" />
-                      <span>Loading health recipes...</span>
-                    </div>
-                  </td>
-                </tr>
+                <AdminTableLoaderRow colSpan={11} label="Loading health recipes..." />
               ) : rows.length === 0 ? (
                 <tr>
                   <td colSpan={11}>No health recipes found.</td>
@@ -181,7 +175,7 @@ export function HealthRecipeList() {
                     <td className="data-table__muted">{(page - 1) * LIST_LIMIT + idx + 1}</td>
                     <td>
                       {row.thumbnail ? (
-                        <img src={mediaUrl(row.thumbnail)} alt="" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8 }} />
+                        <AdminMediaImage path={row.thumbnail} width={44} height={44} radius={8} alt="" />
                       ) : (
                         "—"
                       )}

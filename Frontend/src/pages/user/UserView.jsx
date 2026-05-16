@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { adminGetUser } from "../../api/adminUsers.js";
 import { logout } from "../../store/authSlice.js";
-import { mediaUrl } from "../../media.js";
+import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { NotFoundPage } from "../NotFoundPage.jsx";
 import { UserPageLoadingState } from "./UserPageLoader.jsx";
 
@@ -92,8 +92,6 @@ export function UserView() {
     return null;
   }
 
-  const avatar = mediaUrl(user.profileImage);
-  const initial = (user.name || user.email || "?").charAt(0).toUpperCase();
   let dobLabel = "—";
   if (user.dob) {
     const d = new Date(user.dob);
@@ -132,11 +130,7 @@ export function UserView() {
       <div className="page-card user-view-card">
         <div className="user-view-head">
           <div className="user-view-avatar-wrap">
-            {avatar ? (
-              <img src={avatar} alt="" className="user-view-avatar" width={96} height={96} />
-            ) : (
-              <div className="user-view-avatar user-view-avatar--ph">{initial}</div>
-            )}
+            <AdminMediaImage path={user.profileImage} round width={96} height={96} alt={user.name || "Profile"} />
           </div>
           <div className="user-view-grid">
             <DetailRow label="Full name" value={user.name} />

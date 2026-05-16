@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AdminTableLoaderRow } from "../../components/AdminLoader.jsx";
 import { useDispatch, useSelector } from "react-redux";
 import Swal from "sweetalert2";
 import { MdEditSquare, MdGroups } from "react-icons/md";
@@ -11,8 +12,8 @@ import {
   adminUpdateNotification,
 } from "../../api/notificationController.js";
 import { logout } from "../../store/authSlice.js";
+import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { mediaUrl } from "../../media.js";
-import { FadeLoader } from "react-spinners";
 import scrollToTop from "../../utils/scrollToTop";
 const SEND_AUDIENCE_OPTIONS = [
   { value: "users", label: "Users", icon: <MdGroups size={16} /> },
@@ -336,15 +337,16 @@ export function NotificationPage() {
               </label>
             </div>
 
-            {imagePreview ? (
-              <div style={{ marginTop: 6 }}>
-                <img
-                  src={imagePreview}
-                  alt="Notification preview"
-                  style={{ width: 100, height: 60, objectFit: "cover", borderRadius: 8 }}
-                />
-              </div>
-            ) : null}
+            <div style={{ marginTop: 6 }}>
+              <AdminMediaImage
+                path={editBaselineImage}
+                src={imagePreview || undefined}
+                width={100}
+                height={60}
+                radius={8}
+                alt="Notification preview"
+              />
+            </div>
 
             <div className="user-form__actions">
               {editId ? (
@@ -439,14 +441,7 @@ export function NotificationPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr>
-                  <td colSpan={7} className="static-cms-loading">
-                    <div style={{ display: "grid", justifyItems: "center", gap: 10 }}>
-                      <FadeLoader height={12} margin={-1} radius={20} width={4} color="#4f46e5" />
-                      <span>Loading notifications...</span>
-                    </div>
-                  </td>
-                </tr>
+                <AdminTableLoaderRow colSpan={7} label="Loading notifications..." />
               ) : rows.length === 0 ? (
                 <tr>
                   <td colSpan={7}>No notifications found.</td>
@@ -456,15 +451,7 @@ export function NotificationPage() {
                   <tr key={row._id}>
                     <td className="data-table__muted">{(page - 1) * LIST_LIMIT + idx + 1}</td>
                     <td>
-                      {row.image ? (
-                        <img
-                          src={mediaUrl(row.image)}
-                          alt=""
-                          style={{ width: 56, height: 42, objectFit: "cover", borderRadius: 6 }}
-                        />
-                      ) : (
-                        "—"
-                      )}
+                      <AdminMediaImage path={row.image} width={56} height={42} radius={6} alt="" />
                     </td>
                     <td className="data-table__muted">{audienceLabel(row.audienceType)}</td>
                     <td>{row.message || "—"}</td>
@@ -565,15 +552,16 @@ export function NotificationPage() {
                 Close
               </button>
             </div>
-            {viewRow.image ? (
-              <div style={{ marginBottom: 12 }}>
-                <img
-                  src={mediaUrl(viewRow.image)}
-                  alt="Notification"
-                  style={{ width: "100%", maxHeight: 250, objectFit: "cover", borderRadius: 8 }}
-                />
-              </div>
-            ) : null}
+            <div style={{ marginBottom: 12 }}>
+              <AdminMediaImage
+                path={viewRow.image}
+                width={320}
+                height={200}
+                radius={8}
+                alt="Notification"
+                style={{ width: "100%", maxHeight: 250 }}
+              />
+            </div>
             <div className="row g-2">
               <div className="col-12">
                 <strong>Audience:</strong> {audienceLabel(viewRow.audienceType)}

@@ -64,7 +64,17 @@ export function LoginPage() {
       <div className="auth-card">
         <div className="auth-brand">
           <span className="auth-brand__mark" aria-hidden="true">
-            <img src={brandLogoSrc} alt="" className="auth-brand__logo-img" width={200} height="auto" />
+            <img
+              src={brandLogoSrc}
+              alt=""
+              className="auth-brand__logo-img"
+              width={200}
+              height="auto"
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = defaultLogo;
+              }}
+            />
           </span>
        
         </div>

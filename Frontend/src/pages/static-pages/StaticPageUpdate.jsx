@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { AdminPageLoadingState } from "../../components/AdminLoader.jsx";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import Swal from "sweetalert2";
@@ -7,7 +8,6 @@ import { Bold, ClassicEditor, Essentials, Heading, Italic, Link as LinkPlugin, L
 import "ckeditor5/ckeditor5.css";
 import { getPageById, updatePage } from "../../api/adminMisc.js";
 import { logout } from "../../store/authSlice.js";
-import { FadeLoader } from "react-spinners";
 function stripHtml(value) {
   return String(value ?? "")
     .replace(/<[^>]*>/g, " ")
@@ -106,18 +106,7 @@ export function StaticPageUpdate() {
   };
 
   if (loading) {
-    return (
-      <div className="user-page">
-        <div className="page-card">
-          <div className="static-cms-loading">
-            <div style={{ display: "grid", justifyItems: "center", gap: 10 }}>
-              <FadeLoader height={12} margin={-1} radius={20} width={4} color="#4f46e5" />
-              <span>Loading static                                                                                                                                                                                                                                                                                                                                                                                                                                                                    page...</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return <AdminPageLoadingState label="Loading static page…" />;
   }
 
   return (

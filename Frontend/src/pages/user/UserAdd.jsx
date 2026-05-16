@@ -11,6 +11,7 @@ import {
 } from "../../api/adminUsers.js";
 import { UserSubmitLoader } from "./UserPageLoader.jsx";
 import { adminListHealthConcerns } from "../../api/adminHealthConcerns.js";
+import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { mediaUrl } from "../../media.js";
 import { logout } from "../../store/authSlice.js";
 
@@ -445,9 +446,6 @@ export function UserProfileForm({
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const avatarDisplay = previewUrl || mediaUrl(initialUser?.profileImage);
-  const initial = (values.name || values.email || "?").charAt(0).toUpperCase();
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError("");
@@ -517,16 +515,17 @@ export function UserProfileForm({
               className="rounded-circle border border-2 overflow-hidden bg-body-secondary d-flex align-items-center justify-content-center position-relative shadow-sm"
               style={{ width: 112, height: 112 }}
             >
-              {avatarDisplay ? (
-                <img src={avatarDisplay} alt="" className="w-100 h-100 object-fit-cover" width={112} height={112} />
-              ) : (
-                <>
-                  <span className="fs-2 fw-medium text-secondary user-select-none">{initial}</span>
-                  <span className="position-absolute bottom-0 start-50 translate-middle-x badge rounded-pill bg-primary px-2 py-1 mb-1 small">
-                    Photo
-                  </span>
-                </>
-              )}
+              <AdminMediaImage
+                path={initialUser?.profileImage}
+                src={previewUrl || undefined}
+                round
+                width={112}
+                height={112}
+                alt="Profile"
+              />
+              <span className="position-absolute bottom-0 start-50 translate-middle-x badge rounded-pill bg-primary px-2 py-1 mb-1 small">
+                Photo
+              </span>
             </div>
             <div className="text-center small text-primary mt-2">Choose image</div>
           </label>
@@ -915,7 +914,7 @@ export function UserProfileForm({
         <button type="button" className="btn btn-outline-secondary px-4" onClick={onCancel} disabled={submitting}>
           Cancel
         </button>
-        <button type="submit" className="btn btn-primary px-4 d-inline-flex align-items-center gap-2" disabled={submitting}>
+        <button type="submit" className="btn btn--primary px-4 d-inline-flex align-items-center gap-2" disabled={submitting}>
           {submitting ? (
             <UserSubmitLoader />
           ) : (

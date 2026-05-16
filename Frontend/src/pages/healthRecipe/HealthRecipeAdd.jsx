@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { adminCreateHealthRecipe, adminUpdateHealthRecipe } from "../../api/adminHealthRecipes.js";
 import { logout } from "../../store/authSlice.js";
+import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { mediaUrl } from "../../media.js";
 import {
   ALLOWED_IMAGE_TYPES,
@@ -409,7 +410,7 @@ export function HealthRecipeForm({ mode = "create", initialRecipe = null }) {
       </div>
       {thumbnailPreview ? (
         <div style={{ marginTop: 10 }}>
-          <img src={thumbnailPreview} alt="" style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 8 }} />
+          <AdminMediaImage path={editBaselineThumbnail} src={thumbnailPreview || undefined} width={72} height={72} radius={8} alt="" />
         </div>
       ) : null}
       <div className="user-form__actions">

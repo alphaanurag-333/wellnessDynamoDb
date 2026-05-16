@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { selectAppDisplayName, selectPanelLogoUrl } from "../store/appConfigSelectors.js";
+import { AdminMediaImage } from "./AdminMediaImage.jsx";
 import { mediaUrl } from "../media.js";
 import { logout } from "../store/authSlice.js";
 import { confirmLogout } from "../utils/confirmLogout.js";
@@ -25,9 +26,6 @@ export function Header({
 
   const [menuOpenState, setMenuOpenState] = useState(false);
   const wrapRef = useRef(null);
-
-  const avatarSrc = mediaUrl(admin?.profileImage);
-  const initial = (admin?.name || admin?.email || "A").charAt(0).toUpperCase();
 
   const showCloseIcon = !isDesktop && mobileNavOpen;
   const navAriaExpanded = isDesktop ? !desktopSidebarCollapsed : mobileNavOpen;
@@ -85,7 +83,10 @@ export function Header({
       </button>
 
       <div className="admin-header__brand">
-        <img src={brandLogoSrc} alt="" className="admin-header__brand-logo" />
+        <img src={brandLogoSrc} alt="" className="admin-header__brand-logo" onError={(e) => {
+          e.currentTarget.onerror = null;
+          e.currentTarget.src = defaultLogo;
+        }} />
         <div className="admin-header__title-group">
           <p className="admin-header__app-line">{appDisplayName || "Wellness"}</p>
         </div>
@@ -102,11 +103,14 @@ export function Header({
           aria-expanded={menuOpenState}
           onClick={() => setMenuOpenState((v) => !v)}
         >
-          {avatarSrc ? (
-            <img src={avatarSrc} alt="" className="admin-header__avatar-img" width={36} height={36} />
-          ) : (
-            <span className="admin-header__avatar-initial">{initial}</span>
-          )}
+          <AdminMediaImage
+            path={admin?.profileImage}
+            round
+            width={36}
+            height={36}
+            alt={admin?.name || "Admin"}
+            className="admin-header__avatar-img"
+          />
         </button>
 
         {menuOpenState ? (

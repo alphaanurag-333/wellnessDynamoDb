@@ -5,25 +5,33 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap");
 
 :root {
-  --admin-brand-blue: #1a3668;
-  --admin-brand-blue-soft: #243d6f;
-  --admin-brand-saffron: #f4965d;
-  --admin-brand-saffron-light: #ffb088;
-  --admin-brand-saffron-deep: #e07d45;
-  --admin-brand-green: #2e7d32;
-  --admin-brand-green-bright: #4caf50;
+  --admin-brand-blue: #1e3a5f;
+  --admin-brand-blue-soft: #2c4f78;
+  --admin-brand-saffron: #e8884f;
+  --admin-brand-saffron-light: #f5ad78;
+  --admin-brand-saffron-deep: #d4692a;
+  --admin-brand-green: #2d6a3e;
+  --admin-brand-green-bright: #3d9b52;
+  --admin-loader-color: var(--admin-brand-blue-soft);
 
-  --admin-bg: #f0f4f9;
+  --admin-bg: #e6ecf5;
+  --admin-bg-gradient: linear-gradient(160deg, #edf2f9 0%, #e3eaf4 42%, #e8eef6 100%);
   --admin-surface: #ffffff;
-  --admin-sidebar: #f7f9fc;
-  --admin-sidebar-text: #22324d;
-  --admin-sidebar-muted: #64748b;
-  --admin-accent: var(--admin-brand-saffron);
+  --admin-surface-muted: #f6f9fc;
+  --admin-sidebar: #f2f6fb;
+  --admin-sidebar-text: #1e3354;
+  --admin-sidebar-muted: #5a6d88;
+  --admin-accent: var(--admin-brand-saffron-deep);
   --admin-accent-2: var(--admin-brand-green);
-  --admin-text: #1a2a3f;
-  --admin-muted: #5a6578;
-  --admin-border: #dde4ed;
-  --admin-shadow: 0 8px 28px rgba(26, 54, 104, 0.1);
+  --admin-text: #152238;
+  --admin-muted: #56657c;
+  --admin-border: #c5d2e3;
+  --admin-border-soft: #dce5f0;
+  --admin-shadow: 0 12px 36px rgba(30, 58, 95, 0.1);
+  --admin-shadow-sm: 0 2px 14px rgba(30, 58, 95, 0.07);
+  --admin-table-head-bg: #dfe8f5;
+  --admin-table-head-text: #3a5072;
+  --admin-table-row-hover: #f3f7fc;
   --admin-radius: 12px;
   --admin-sidebar-w: 260px;
   --admin-header-h: 64px;
@@ -91,7 +99,7 @@ a:hover {
 .admin-shell {
   min-height: 100%;
   display: flex;
-  background: var(--admin-bg);
+  background: var(--admin-bg-gradient);
 }
 
 .admin-main {
@@ -106,6 +114,7 @@ a:hover {
   flex: 1;
   padding: 20px 22px 28px;
   width: 100%;
+  background: transparent;
 }
 
 .admin-footer {
@@ -128,12 +137,13 @@ a:hover {
 
 .admin-sidebar {
   width: var(--admin-sidebar-w);
-  background: linear-gradient(180deg, #fbfcff 0%, var(--admin-sidebar) 100%);
+  background: linear-gradient(180deg, #f8fafd 0%, var(--admin-sidebar) 55%, #eef3fa 100%);
   color: var(--admin-sidebar-text);
   display: flex;
   flex-direction: column;
   z-index: var(--admin-z-sidebar);
-  border-right: 1px solid #dbe4f0;
+  border-right: 1px solid var(--admin-border-soft);
+  box-shadow: 4px 0 24px rgba(30, 58, 95, 0.04);
   transition: transform 0.22s ease;
 }
 
@@ -361,8 +371,10 @@ a:hover {
   align-items: center;
   gap: 12px;
   padding: 0 18px 0 14px;
-  background: var(--admin-surface);
-  border-bottom: 1px solid var(--admin-border);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--admin-border-soft);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
   position: sticky;
   top: 0;
   z-index: 60;
@@ -472,6 +484,13 @@ a:hover {
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+.admin-header__avatar-btn .admin-profile-thumb {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: transparent;
 }
 
 .admin-header__avatar-initial {
@@ -696,7 +715,7 @@ a.admin-header__dropdown-item {
   display: grid;
   place-items: center;
   background: #eef2ff;
-  color: #4f46e5;
+  color: var(--admin-loader-color);
 }
 
 .shortcut-card__icon svg {
@@ -964,8 +983,8 @@ a.admin-header__dropdown-item {
 .page-card {
   background: var(--admin-surface);
   border-radius: var(--admin-radius);
-  box-shadow: var(--admin-shadow);
-  border: 1px solid rgba(15, 23, 42, 0.04);
+  box-shadow: var(--admin-shadow-sm);
+  border: 1px solid var(--admin-border-soft);
   padding: 18px 18px 20px;
 }
 
@@ -982,6 +1001,8 @@ a.admin-header__dropdown-item {
   margin: 0;
   font-size: 1.2rem;
   font-weight: 700;
+  color: var(--admin-brand-blue);
+  letter-spacing: -0.01em;
 }
 
 .page-card__desc {
@@ -1075,8 +1096,14 @@ a.admin-header__dropdown-item {
   height: 40px;
   border-radius: 10px;
   border: 1px solid var(--admin-border);
-  background: #f7f8fa;
+  background: var(--admin-surface);
   min-width: 220px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.search-field:focus-within {
+  border-color: var(--admin-brand-blue-soft);
+  box-shadow: 0 0 0 3px rgba(44, 79, 120, 0.12);
 }
 
 .search-field input {
@@ -1102,12 +1129,12 @@ a.admin-header__dropdown-item {
   padding: 0 14px;
   border-radius: 10px;
   border: 1px solid var(--admin-border);
-  background: #fff;
+  background: var(--admin-surface);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
   text-decoration: none;
-  color: inherit;
+  color: var(--admin-text);
 }
 
 a.btn:hover {
@@ -1115,7 +1142,9 @@ a.btn:hover {
 }
 
 .btn--ghost:hover {
-  background: #fafafa;
+  background: var(--admin-surface-muted);
+  border-color: var(--admin-border);
+  color: var(--admin-brand-blue);
 }
 
 .btn--sm {
@@ -1577,29 +1606,36 @@ a.btn:hover {
 /*  Buttons — accent / primary                                                 */
 /* -------------------------------------------------------------------------- */
 
-.btn--accent {
+.btn--accent,
+.btn--primary,
+.admin-shell .btn.btn-primary {
   border: 0;
-  background: var(--admin-accent);
-  color: var(--admin-brand-blue);
+  background: var(--admin-gradient-cta);
+  color: #ffffff;
   font-weight: 700;
+  box-shadow: 0 4px 16px rgba(212, 105, 42, 0.32);
 }
 
-.btn--accent:hover {
-  filter: brightness(1.03);
+.btn--accent:hover,
+.btn--primary:hover,
+.admin-shell .btn.btn-primary:hover:not(:disabled) {
+  filter: brightness(1.05);
+  box-shadow: 0 6px 20px rgba(212, 105, 42, 0.38);
+  color: #ffffff;
 }
 
 .btn--primary {
-  border: 0;
-  background: var(--admin-gradient-cta);
-  color: var(--admin-brand-blue);
-  font-weight: 700;
   padding: 0 18px;
   height: 44px;
   border-radius: 10px;
 }
 
-.btn--primary:hover {
-  filter: brightness(1.02);
+.btn--primary:disabled,
+.btn--accent:disabled,
+.admin-shell .btn.btn-primary:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  filter: none;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1831,10 +1867,16 @@ a.btn:hover {
   padding: 0 12px;
   border-radius: 10px;
   border: 1px solid var(--admin-border);
-  background: #fff;
+  background: var(--admin-surface);
   font: inherit;
   font-weight: 600;
   color: var(--admin-text);
+}
+
+.user-list-status-select:focus {
+  outline: none;
+  border-color: var(--admin-brand-blue-soft);
+  box-shadow: 0 0 0 3px rgba(44, 79, 120, 0.15);
 }
 
 .user-list-error {
@@ -1879,6 +1921,47 @@ a.btn:hover {
   border-radius: 999px;
   object-fit: cover;
   display: block;
+}
+
+.admin-profile-thumb {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--admin-surface-muted);
+  border: 1px solid var(--admin-border-soft);
+  box-sizing: border-box;
+  vertical-align: middle;
+}
+
+.admin-profile-thumb img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.admin-profile-thumb--fallback {
+  background: #eef2f7;
+}
+
+.admin-profile-thumb--fallback img {
+  object-fit: cover;
+  transform: scale(1.08);
+}
+
+.admin-media-thumb {
+  display: block;
+  background: var(--admin-surface-muted);
+  border: 1px solid var(--admin-border-soft);
+  box-sizing: border-box;
+}
+
+.admin-media-thumb--fallback {
+  object-fit: contain;
+  padding: 3px;
 }
 
 .user-view-card .user-view-head {
@@ -2533,13 +2616,13 @@ a.btn:hover {
 .data-table thead th {
   text-align: left;
   padding: 12px 14px;
-  background: #f1f2f6;
-  color: var(--admin-muted);
-  font-weight: 600;
+  background: var(--admin-table-head-bg);
+  color: var(--admin-table-head-text);
+  font-weight: 700;
   font-size: 0.86rem;
   text-transform: none;
-  letter-spacing: 0.01em;
-  border-bottom: 1px solid var(--admin-border);
+  letter-spacing: 0.02em;
+  border-bottom: 2px solid rgba(30, 58, 95, 0.1);
   white-space: nowrap;
 }
 
@@ -2550,7 +2633,7 @@ a.btn:hover {
 }
 
 .data-table tbody tr:hover {
-  background: #fafbfc;
+  background: var(--admin-table-row-hover);
 }
 
 .data-table__actions-col {
@@ -2589,17 +2672,19 @@ a.btn:hover {
   width: 40px;
   height: 40px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #e8eaef, #d7dbe4);
+  background: linear-gradient(145deg, #dfe8f5, #c5d4e8);
+  border: 1px solid var(--admin-border-soft);
   display: grid;
   place-items: center;
   font-weight: 700;
   font-size: 0.9rem;
-  color: #4b5563;
+  color: var(--admin-brand-blue);
   flex-shrink: 0;
 }
 
 .user-cell__name {
   font-weight: 600;
+  color: var(--admin-text);
 }
 
 .user-cell__id {
@@ -2708,13 +2793,13 @@ a.icon-btn {
 }
 
 .icon-btn--view {
-  color: #2563eb;
-  background: rgba(37, 99, 235, 0.08);
+  color: var(--admin-brand-blue-soft);
+  background: rgba(44, 79, 120, 0.1);
 }
 
 .icon-btn--edit {
-  color: #ea580c;
-  background: rgba(234, 88, 12, 0.1);
+  color: var(--admin-brand-saffron-deep);
+  background: rgba(212, 105, 42, 0.12);
 }
 
 .icon-btn--block {
@@ -3289,11 +3374,13 @@ a.icon-btn {
   font-weight: 700;
   cursor: pointer;
   color: #fff;
-  background: #22c55e;
+  background: var(--admin-gradient-cta);
+  box-shadow: 0 4px 16px rgba(212, 105, 42, 0.32);
 }
 
 .btn--save-profile:hover:not(:disabled) {
   filter: brightness(1.05);
+  box-shadow: 0 6px 20px rgba(212, 105, 42, 0.38);
 }
 
 .btn--save-profile:disabled {
@@ -3951,12 +4038,13 @@ a.icon-btn {
   font-size: 0.9rem;
   cursor: pointer;
   color: #fff;
-  background: linear-gradient(90deg, var(--admin-brand-blue-soft), var(--admin-brand-blue));
-  box-shadow: 0 4px 14px rgba(26, 54, 104, 0.28);
+  background: var(--admin-gradient-cta);
+  box-shadow: 0 4px 16px rgba(212, 105, 42, 0.32);
 }
 
 .btn--settings-save:hover:not(:disabled) {
-  filter: brightness(1.06);
+  filter: brightness(1.05);
+  box-shadow: 0 6px 20px rgba(212, 105, 42, 0.38);
 }
 
 .btn--settings-save:disabled {
@@ -3996,6 +4084,12 @@ a.icon-btn {
   text-align: center;
   color: var(--admin-muted);
   font-size: 0.9rem;
+}
+
+.admin-loader__inner {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
 }
 
 .page-form__content-field textarea.user-field__input {

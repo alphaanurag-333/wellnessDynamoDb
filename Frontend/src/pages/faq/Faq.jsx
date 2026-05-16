@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
+import { AdminTableLoaderRow } from "../../components/AdminLoader.jsx";
 import { useDispatch, useSelector } from "react-redux";
 import Swal from "sweetalert2";
 import { MdEditSquare } from "react-icons/md";
 import { AiFillDelete, AiOutlineEye } from "react-icons/ai";
 import { adminCreateFaq, adminDeleteFaq, adminListFaqs, adminUpdateFaq } from "../../api/faqController.js";
 import { logout } from "../../store/authSlice.js";
-import { FadeLoader } from "react-spinners";
 import scrollToTop from "../../utils/scrollToTop";
 function emptyForm() {
   return { question: "", answer: "" };
@@ -241,14 +241,7 @@ export function FaqPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr>
-                  <td colSpan={5} className="static-cms-loading">
-                    <div style={{ display: "grid", justifyItems: "center", gap: 10 }}>
-                      <FadeLoader height={12} margin={-1} radius={20} width={4} color="#4f46e5" />
-                      <span>Loading FAQs...</span>
-                    </div>
-                  </td>
-                </tr>
+                <AdminTableLoaderRow colSpan={5} label="Loading FAQs..." />
               ) : rows.length === 0 ? (
                 <tr>
                   <td colSpan={5}>No FAQs found.</td>

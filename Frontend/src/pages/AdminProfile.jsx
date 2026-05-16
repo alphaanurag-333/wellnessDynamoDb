@@ -7,6 +7,7 @@ import {
   adminUpdateMe,
   adminUpdateMeWithFile,
 } from "../api/adminAuth.js";
+import { DEFAULT_IMAGE_SRC, handleMediaImageError } from "../components/AdminMediaImage.jsx";
 import { mediaUrl } from "../media.js";
 import { setAdmin } from "../store/authSlice.js";
 
@@ -59,8 +60,6 @@ export function AdminProfile() {
 
   const avatarSrc = useMemo(() => mediaUrl(admin?.profileImage), [admin]);
   const avatarCacheKey = admin?.updatedAt || admin?._id || "";
-  const initial = (admin?.name || admin?.email || "?").charAt(0).toUpperCase();
-
   const handleAvatarFile = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -187,18 +186,19 @@ export function AdminProfile() {
               tabIndex={-1}
               onChange={handleAvatarFile}
             />
-            {avatarSrc ? (
-              <img
-                key={avatarCacheKey}
-                src={`${avatarSrc}${avatarSrc.includes("?") ? "&" : "?"}v=${encodeURIComponent(String(avatarCacheKey))}`}
+            <img
+              key={avatarCacheKey}
+              src={
+                avatarSrc
+                  ? `${avatarSrc}${avatarSrc.includes("?") ? "&" : "?"}v=${encodeURIComponent(String(avatarCacheKey))}`
+                  : DEFAULT_IMAGE_SRC
+              }
                 alt=""
                 className="admin-profile-avatar"
                 width={88}
-                height={88}
-              />
-            ) : (
-              <div className="admin-profile-avatar admin-profile-avatar--ph">{initial}</div>
-            )}
+              height={88}
+              onError={handleMediaImageError}
+            />
             <button
               type="button"
               className="admin-profile-avatar-cam"

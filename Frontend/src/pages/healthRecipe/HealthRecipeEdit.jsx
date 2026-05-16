@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
+import { AdminPageLoader } from "../../components/AdminLoader.jsx";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 import Swal from "sweetalert2";
-import { FadeLoader } from "react-spinners";
 import { adminGetHealthRecipeById } from "../../api/adminHealthRecipes.js";
 import { logout } from "../../store/authSlice.js";
 import { NotFoundPage } from "../NotFoundPage.jsx";
@@ -67,10 +67,7 @@ export function HealthRecipeEdit() {
         </div>
         {loading ? (
           <div className="static-cms-loading">
-            <div style={{ display: "grid", justifyItems: "center", gap: 10 }}>
-              <FadeLoader height={12} margin={-1} radius={20} width={4} color="#4f46e5" />
-              <span>Loading health recipe...</span>
-            </div>
+            <AdminPageLoader label="Loading health recipe..." />
           </div>
         ) : recipe ? (
           <HealthRecipeForm mode="edit" initialRecipe={recipe} key={recipe._id || recipeId} />

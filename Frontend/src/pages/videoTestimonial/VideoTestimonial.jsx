@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AdminTableLoaderRow } from "../../components/AdminLoader.jsx";
 import { useDispatch, useSelector } from "react-redux";
 import Swal from "sweetalert2";
 import { MdEditSquare } from "react-icons/md";
 import { AiFillDelete, AiOutlineEye } from "react-icons/ai";
-import { FadeLoader } from "react-spinners";
 import {
   adminCreateVideoTestimonial,
   adminDeleteVideoTestimonial,
@@ -11,6 +11,7 @@ import {
   adminUpdateVideoTestimonial,
 } from "../../api/videoTestimonialsController.js";
 import { logout } from "../../store/authSlice.js";
+import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { mediaUrl } from "../../media.js";
 import scrollToTop from "../../utils/scrollToTop";
 
@@ -315,9 +316,16 @@ export function VideoTestimonialPage() {
               </label>
             ) : null}
           </div>
-          {profilePreview ? (
+          {(profilePreview || editBaselineProfileImage) ? (
             <div style={{ marginTop: 10 }}>
-              <img src={profilePreview} alt="Profile preview" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: "50%" }} />
+              <AdminMediaImage
+                path={editBaselineProfileImage}
+                src={profilePreview || undefined}
+                round
+                width={72}
+                height={72}
+                alt="Profile preview"
+              />
             </div>
           ) : null}
           <div className="user-form__actions">
@@ -368,14 +376,16 @@ export function VideoTestimonialPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} className="static-cms-loading"><div style={{ display: "grid", justifyItems: "center", gap: 10 }}><FadeLoader height={12} margin={-1} radius={20} width={4} color="#4f46e5" /><span>Loading testimonials...</span></div></td></tr>
+                <AdminTableLoaderRow colSpan={7} label="Loading testimonials..." />
               ) : rows.length === 0 ? (
                 <tr><td colSpan={7}>No video testimonials found.</td></tr>
               ) : (
                 rows.map((row, idx) => (
                   <tr key={row._id}>
                     <td className="data-table__muted">{(page - 1) * LIST_LIMIT + idx + 1}</td>
-                    <td>{row.profile_image ? <img src={mediaUrl(row.profile_image)} alt="" style={{ width: 46, height: 46, objectFit: "cover", borderRadius: "50%" }} /> : "—"}</td>
+                    <td>
+                      <AdminMediaImage path={row.profile_image} round width={46} height={46} alt={row.name || "Profile"} />
+                    </td>
                     <td>{row.name || "—"}</td>
                     <td className="data-table__muted">{row.type || "—"}</td>
                     <td>
@@ -426,11 +436,9 @@ export function VideoTestimonialPage() {
               <button type="button" className="btn btn--ghost" onClick={() => setViewRow(null)}>Close</button>
             </div>
             <div className="row g-2">
-              {viewRow.profile_image ? (
-                <div className="col-12" style={{ marginBottom: 8 }}>
-                  <img src={mediaUrl(viewRow.profile_image)} alt={viewRow.name || "Profile"} style={{ width: 84, height: 84, objectFit: "cover", borderRadius: "50%" }} />
-                </div>
-              ) : null}
+              <div className="col-12" style={{ marginBottom: 8 }}>
+                <AdminMediaImage path={viewRow.profile_image} round width={84} height={84} alt={viewRow.name || "Profile"} />
+              </div>
               <div className="col-12"><strong>Name:</strong> {viewRow.name || "—"}</div>
               <div className="col-12"><strong>Type:</strong> {viewRow.type || "—"}</div>
               {viewRow.type === "link" ? (

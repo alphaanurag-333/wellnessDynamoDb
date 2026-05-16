@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AdminTableLoaderRow } from "../../components/AdminLoader.jsx";
 import { useDispatch, useSelector } from "react-redux";
 import Swal from "sweetalert2";
 import { MdEditSquare } from "react-icons/md";
@@ -10,8 +11,8 @@ import {
   adminUpdateHealthTool,
 } from "../../api/adminHealthTools.js";
 import { logout } from "../../store/authSlice.js";
+import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { mediaUrl } from "../../media.js";
-import { FadeLoader } from "react-spinners";
 import scrollToTop from "../../utils/scrollToTop";
 
 function emptyForm() {
@@ -358,7 +359,7 @@ export function HealthToolPage() {
           </div>
           {iconPreview ? (
             <div style={{ marginTop: 10 }}>
-              <img src={iconPreview} alt="" style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 8 }} />
+              <AdminMediaImage path={editBaselineIcon} src={iconPreview || undefined} width={72} height={72} radius={8} alt="" />
             </div>
           ) : null}
           <div className="user-form__actions">
@@ -414,14 +415,7 @@ export function HealthToolPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr>
-                  <td colSpan={7} className="static-cms-loading">
-                    <div style={{ display: "grid", justifyItems: "center", gap: 10 }}>
-                      <FadeLoader height={12} margin={-1} radius={20} width={4} color="#4f46e5" />
-                      <span>Loading health tools...</span>
-                    </div>
-                  </td>
-                </tr>
+                <AdminTableLoaderRow colSpan={7} label="Loading health tools..." />
               ) : rows.length === 0 ? (
                 <tr>
                   <td colSpan={7}>No health tools found.</td>
@@ -432,7 +426,7 @@ export function HealthToolPage() {
                     <td className="data-table__muted">{(page - 1) * LIST_LIMIT + idx + 1}</td>
                     <td>
                       {row.icon ? (
-                        <img src={mediaUrl(row.icon)} alt="" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8 }} />
+                        <AdminMediaImage path={row.icon} width={44} height={44} radius={8} alt="" />
                       ) : (
                         "—"
                       )}
@@ -524,15 +518,9 @@ export function HealthToolPage() {
                 Close
               </button>
             </div>
-            {viewRow.icon ? (
-              <div style={{ marginBottom: 12 }}>
-                <img
-                  src={mediaUrl(viewRow.icon)}
-                  alt=""
-                  style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 8 }}
-                />
-              </div>
-            ) : null}
+            <div style={{ marginBottom: 12 }}>
+              <AdminMediaImage path={viewRow.icon} width={80} height={80} radius={8} alt="" />
+            </div>
             <div className="row g-2">
               <div className="col-12">
                 <strong>Title:</strong> {viewRow.title || "—"}

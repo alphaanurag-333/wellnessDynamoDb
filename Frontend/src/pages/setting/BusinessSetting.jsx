@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useId, useState } from "react";
+import { AdminPageLoader } from "../../components/AdminLoader.jsx";
+import { handleMediaImageError } from "../../components/AdminMediaImage.jsx";
 import { useDispatch, useSelector } from "react-redux";
 import Swal from "sweetalert2";
 import { getAppConfig, patchAppConfig } from "../../api/adminMisc.js";
 import { fetchAppConfig } from "../../store/appConfigSlice.js";
 import { logout } from "../../store/authSlice.js";
 import { mediaUrl } from "../../media.js";
-import { FadeLoader } from "react-spinners";
 
 const SCALAR_KEYS = [
   "app_name",
@@ -443,10 +444,7 @@ export function BusinessSetting() {
 
         {loading ? (
           <div className="static-cms-loading">
-            <div style={{ display: "grid", justifyItems: "center", gap: 10 }}>
-              <FadeLoader height={12} margin={-1} radius={20} width={4} color="#4f46e5" />
-              <span>Loading application settings...</span>
-            </div>
+            <AdminPageLoader label="Loading application settings..." />
           </div>
         ) : (
           <>
@@ -634,7 +632,7 @@ export function BusinessSetting() {
                         }}
                       />
                       <div className="settings-media-card__preview">
-                        {adminLogoPreview ? <img src={adminLogoPreview} alt="Admin logo preview" /> : null}
+                        {adminLogoPreview ? <img src={adminLogoPreview} alt="Admin logo preview" onError={handleMediaImageError} /> : null}
                       </div>
                     </div>
                     <div className="settings-media-card">
@@ -654,7 +652,7 @@ export function BusinessSetting() {
                         }}
                       />
                       <div className="settings-media-card__preview">
-                        {userLogoPreview ? <img src={userLogoPreview} alt="Storefront logo preview" /> : null}
+                        {userLogoPreview ? <img src={userLogoPreview} alt="Storefront logo preview" onError={handleMediaImageError} /> : null}
                       </div>
                     </div>
                     <div className="settings-media-card">
@@ -674,7 +672,7 @@ export function BusinessSetting() {
                         }}
                       />
                       <div className="settings-media-card__preview settings-media-card__preview--favicon">
-                        {faviconPreview ? <img src={faviconPreview} alt="Favicon preview" /> : null}
+                        {faviconPreview ? <img src={faviconPreview} alt="Favicon preview" onError={handleMediaImageError} /> : null}
                       </div>
                     </div>
                   </div>

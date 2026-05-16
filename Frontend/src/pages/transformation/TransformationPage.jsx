@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AdminTableLoaderRow } from "../../components/AdminLoader.jsx";
 import { useDispatch, useSelector } from "react-redux";
 import Swal from "sweetalert2";
 import { MdEditSquare } from "react-icons/md";
@@ -10,8 +11,8 @@ import {
   adminUpdateTransformation,
 } from "../../api/adminTransformations.js";
 import { logout } from "../../store/authSlice.js";
+import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { mediaUrl } from "../../media.js";
-import { FadeLoader } from "react-spinners";
 import scrollToTop from "../../utils/scrollToTop";
 function emptyForm() {
   return {
@@ -456,7 +457,7 @@ export function TransformationPage() {
                 <div className="data-table__muted" style={{ marginBottom: 4 }}>
                   Before
                 </div>
-                <img src={oldPreview} alt="" style={{ width: "100%", maxHeight: 140, objectFit: "cover", borderRadius: 8 }} />
+                <AdminMediaImage path={baselineOld} src={oldPreview || undefined} width={280} height={140} radius={8} alt="Before" style={{ width: "100%", maxHeight: 140 }} />
               </div>
             ) : null}
             {newPreview ? (
@@ -464,7 +465,7 @@ export function TransformationPage() {
                 <div className="data-table__muted" style={{ marginBottom: 4 }}>
                   After
                 </div>
-                <img src={newPreview} alt="" style={{ width: "100%", maxHeight: 140, objectFit: "cover", borderRadius: 8 }} />
+                <AdminMediaImage path={baselineNew} src={newPreview || undefined} width={280} height={140} radius={8} alt="After" style={{ width: "100%", maxHeight: 140 }} />
               </div>
             ) : null}
           </div>
@@ -523,14 +524,7 @@ export function TransformationPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr>
-                  <td colSpan={9} className="static-cms-loading">
-                    <div style={{ display: "grid", justifyItems: "center", gap: 10 }}>
-                      <FadeLoader height={12} margin={-1} radius={20} width={4} color="#4f46e5" />
-                      <span>Loading transformations...</span>
-                    </div>
-                  </td>
-                </tr>
+                <AdminTableLoaderRow colSpan={9} label="Loading transformations..." />
               ) : rows.length === 0 ? (
                 <tr>
                   <td colSpan={9}>No transformations found.</td>
@@ -540,26 +534,10 @@ export function TransformationPage() {
                   <tr key={row._id}>
                     <td className="data-table__muted">{(page - 1) * LIST_LIMIT + idx + 1}</td>
                     <td>
-                      {row.oldImage ? (
-                        <img
-                          src={mediaUrl(row.oldImage)}
-                          alt=""
-                          style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8 }}
-                        />
-                      ) : (
-                        "—"
-                      )}
+                      <AdminMediaImage path={row.oldImage} width={44} height={44} radius={8} alt="Before" />
                     </td>
                     <td>
-                      {row.newImage ? (
-                        <img
-                          src={mediaUrl(row.newImage)}
-                          alt=""
-                          style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8 }}
-                        />
-                      ) : (
-                        "—"
-                      )}
+                      <AdminMediaImage path={row.newImage} width={44} height={44} radius={8} alt="After" />
                     </td>
                     <td className="data-table__muted" title={row.achievements || ""}>
                       {truncate(row.achievements, 60)}
@@ -650,30 +628,32 @@ export function TransformationPage() {
               </button>
             </div>
             <div className="row g-2" style={{ marginBottom: 12 }}>
-              {viewRow.oldImage ? (
-                <div className="col-6">
-                  <div className="data-table__muted" style={{ marginBottom: 4 }}>
-                    Before
-                  </div>
-                  <img
-                    src={mediaUrl(viewRow.oldImage)}
-                    alt=""
-                    style={{ width: "100%", borderRadius: 8, objectFit: "cover", maxHeight: 200 }}
-                  />
+              <div className="col-6">
+                <div className="data-table__muted" style={{ marginBottom: 4 }}>
+                  Before
                 </div>
-              ) : null}
-              {viewRow.newImage ? (
-                <div className="col-6">
+                <AdminMediaImage
+                  path={viewRow.oldImage}
+                  width={240}
+                  height={200}
+                  radius={8}
+                  alt="Before"
+                  style={{ width: "100%", maxHeight: 200 }}
+                />
+              </div>
+              <div className="col-6">
                   <div className="data-table__muted" style={{ marginBottom: 4 }}>
                     After
                   </div>
-                  <img
-                    src={mediaUrl(viewRow.newImage)}
-                    alt=""
-                    style={{ width: "100%", borderRadius: 8, objectFit: "cover", maxHeight: 200 }}
+                  <AdminMediaImage
+                    path={viewRow.newImage}
+                    width={240}
+                    height={200}
+                    radius={8}
+                    alt="After"
+                    style={{ width: "100%", maxHeight: 200 }}
                   />
-                </div>
-              ) : null}
+              </div>
             </div>
             <div className="row g-2">
               <div className="col-12">

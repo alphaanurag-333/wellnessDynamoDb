@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import { AdminPageLoadingState } from "../../components/AdminLoader.jsx";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { adminGetHealthRecipeById } from "../../api/adminHealthRecipes.js";
 import { logout } from "../../store/authSlice.js";
+import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { mediaUrl } from "../../media.js";
 import { NotFoundPage } from "../NotFoundPage.jsx";
 import { formatDate, useHealthConcerns } from "./HealthRecipeShared.js";
@@ -87,9 +89,7 @@ export function HealthRecipeView() {
 
   if (!recipe) {
     return (
-      <div className="user-page">
-        <p className="static-cms-loading">Loading health recipe…</p>
-      </div>
+      <AdminPageLoadingState label="Loading health recipe…" />
     );
   }
 
@@ -114,15 +114,9 @@ export function HealthRecipeView() {
       </div>
 
       <div className="page-card user-view-card">
-        {recipe.thumbnail ? (
-          <div style={{ marginBottom: 16 }}>
-            <img
-              src={mediaUrl(recipe.thumbnail)}
-              alt=""
-              style={{ width: 96, height: 96, objectFit: "cover", borderRadius: 8 }}
-            />
-          </div>
-        ) : null}
+        <div style={{ marginBottom: 16 }}>
+          <AdminMediaImage path={recipe.thumbnail} width={96} height={96} radius={8} alt={recipe.title || ""} />
+        </div>
         <div className="user-view-grid">
           <DetailRow label="Title" value={recipe.title} />
           <DetailRow

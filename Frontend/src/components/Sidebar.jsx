@@ -70,7 +70,17 @@ export function Sidebar({ id = "admin-sidebar", onNavigate, drawerOpen, desktopC
     >
       <div className="admin-sidebar__brand">
         <span className="admin-sidebar__logo" aria-hidden="true">
-          <img src={logoSrc} alt="" className="admin-sidebar__logo-img" width={36} height={36} />
+          <img
+            src={logoSrc}
+            alt=""
+            className="admin-sidebar__logo-img"
+            width={36}
+            height={36}
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = defaultLogo;
+            }}
+          />
         </span>
         <div className="admin-sidebar__brand-text">
           <div className="admin-sidebar__title">{appDisplayName || "Wellness"}</div>

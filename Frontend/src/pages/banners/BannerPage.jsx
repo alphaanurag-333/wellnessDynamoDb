@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AdminTableLoaderRow } from "../../components/AdminLoader.jsx";
 import { useDispatch, useSelector } from "react-redux";
 import Swal from "sweetalert2";
 import { MdEditSquare } from "react-icons/md";
@@ -10,8 +11,8 @@ import {
   adminUpdateBanner,
 } from "../../api/bannerController.js";
 import { logout } from "../../store/authSlice.js";
+import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { mediaUrl } from "../../media.js";
-import { FadeLoader } from "react-spinners";
 import scrollToTop from "../../utils/scrollToTop";
 function emptyForm() {
   return {
@@ -263,7 +264,7 @@ export function BannerPage() {
           </div>
           {imagePreview ? (
             <div style={{ marginTop: 10 }}>
-              <img src={imagePreview} alt="Banner preview" style={{ width: 120, height: 70, objectFit: "cover", borderRadius: 8 }} />
+              <AdminMediaImage path={editBaselineImage} src={imagePreview || undefined} width={120} height={70} radius={8} alt="Banner preview" />
             </div>
           ) : null}
           <div className="user-form__actions">
@@ -316,14 +317,7 @@ export function BannerPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr>
-                  <td colSpan={6} className="static-cms-loading">
-                    <div style={{ display: "grid", justifyItems: "center", gap: 10 }}>
-                      <FadeLoader height={12} margin={-1} radius={20} width={4} color="#4f46e5" />
-                      <span>Loading banners...</span>
-                    </div>
-                  </td>
-                </tr>
+                <AdminTableLoaderRow colSpan={6} label="Loading banners..." />
               ) : rows.length === 0 ? (
                 <tr>
                   <td colSpan={6}>No banners found.</td>
@@ -332,7 +326,7 @@ export function BannerPage() {
                 rows.map((row, idx) => (
                   <tr key={row._id}>
                     <td className="data-table__muted">{(page - 1) * LIST_LIMIT + idx + 1}</td>
-                    <td>{row.image ? <img src={mediaUrl(row.image)} alt="" style={{ width: 56, height: 42, objectFit: "cover", borderRadius: 6 }} /> : "—"}</td>
+                    <td><AdminMediaImage path={row.image} width={56} height={42} radius={6} alt="" /></td>
                     <td>{row.title || "—"}</td>
                     <td className="data-table__muted">{formatDate(row.createdAt)}</td>
                     <td>
@@ -416,15 +410,16 @@ export function BannerPage() {
                 Close
               </button>
             </div>
-            {viewRow.image ? (
-              <div style={{ marginBottom: 12 }}>
-                <img
-                  src={mediaUrl(viewRow.image)}
-                  alt={viewRow.title || "Banner"}
-                  style={{ width: "100%", maxHeight: 250, objectFit: "cover", borderRadius: 8 }}
-                />
-              </div>
-            ) : null}
+            <div style={{ marginBottom: 12 }}>
+              <AdminMediaImage
+                path={viewRow.image}
+                width={320}
+                height={200}
+                radius={8}
+                alt={viewRow.title || "Banner"}
+                style={{ width: "100%", maxHeight: 250, height: "auto" }}
+              />
+            </div>
             <div className="row g-2">
               <div className="col-12">
                 <strong>Title:</strong> {viewRow.title || "—"}

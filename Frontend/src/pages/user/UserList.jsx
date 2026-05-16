@@ -8,7 +8,7 @@ import { AiFillDelete } from "react-icons/ai";
 import { adminDeleteUser, adminListUsers, adminUpdateUser, resolveUserId } from "../../api/adminUsers.js";
 import { UserTableLoaderRow } from "./UserPageLoader.jsx";
 import { logout } from "../../store/authSlice.js";
-import { mediaUrl } from "../../media.js";
+import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 
 function formatJoined(iso) {
   if (!iso) return "—";
@@ -238,8 +238,6 @@ export function UserList() {
             ) : (
               users.map((u, idx) => {
                 const uid = resolveUserId(u);
-                const avatar = mediaUrl(u?.profileImage);
-                const initial = (u.name || u.email || "?").charAt(0).toUpperCase();
                 const serialNo = (page - 1) * limit + idx + 1;
                 const phcTitle =
                   u.primaryHealthConcern && typeof u.primaryHealthConcern === "object"
@@ -251,11 +249,7 @@ export function UserList() {
                     <td>
                       <div className="user-cell">
                         <span className="user-cell__avatar" aria-hidden="true">
-                          {avatar ? (
-                            <img src={avatar} alt="" className="user-cell__avatar-img" width={40} height={40} />
-                          ) : (
-                            initial
-                          )}
+                          <AdminMediaImage path={u.profileImage} round width={40} height={40} alt="" />
                         </span>
                         <div>
                           <div className="user-cell__name">{u.name || "—"}</div>
