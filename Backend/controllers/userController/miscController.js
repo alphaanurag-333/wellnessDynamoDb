@@ -6,8 +6,10 @@ const { getPageBySlug, slugify } = require("../../models/staticPageModel");
 const { listClientTestimonials } = require("../../models/clientTestimonials");
 const { listVideoTestimonials } = require("../../models/videoTestimonials");
 const { listHealthConcerns } = require("../../models/healthConcernModel");
+const { listHealthDisorders } = require("../../models/healthDisorderModel");
 const { listHealthTools } = require("../../models/healthToolModel");
 const { listHealthRecipes } = require("../../models/healthRecipeModel");
+const { listYoga } = require("../../models/yogaModel");
 const { listTransformations } = require("../../models/transformationModel");
 const { listCelebrationBanners } = require("../../models/celebrationBanners");
 
@@ -80,6 +82,23 @@ exports.getActiveHealthConcerns = asyncHandler(async (req, res) => {
   });
 });
 
+exports.getActiveHealthDisorders = asyncHandler(async (req, res) => {
+  const { page, limit } = readPaging(req.query);
+  const type = String(req.query.type || "").trim().toLowerCase() || undefined;
+  const data = await listHealthDisorders({
+    page,
+    limit,
+    status: "active",
+    type,
+    search: readSearch(req.query),
+  });
+  return res.status(200).json({
+    status: true,
+    healthDisorders: data.healthDisorders,
+    pagination: data.pagination,
+  });
+});
+
 exports.getActiveHealthTools = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
   const data = await listHealthTools({
@@ -91,6 +110,23 @@ exports.getActiveHealthTools = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     healthTools: data.healthTools,
+    pagination: data.pagination,
+  });
+});
+
+exports.getActiveYoga = asyncHandler(async (req, res) => {
+  const { page, limit } = readPaging(req.query);
+  const type = String(req.query.type || "").trim().toLowerCase() || undefined;
+  const data = await listYoga({
+    page,
+    limit,
+    status: "active",
+    type,
+    search: readSearch(req.query),
+  });
+  return res.status(200).json({
+    status: true,
+    yoga: data.yoga,
     pagination: data.pagination,
   });
 });

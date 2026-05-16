@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const API_BASE = String(import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/$/, "");
+const API_BASE = "http://localhost:5000";
+// const API_BASE = "https://wellness.developmentalphawizz.com:5001";
 const AUTH_STORAGE_KEY = "wellness_admin_auth";
 
 export function getApiBase() {

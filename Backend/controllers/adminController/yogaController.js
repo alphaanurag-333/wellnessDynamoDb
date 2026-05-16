@@ -1,0 +1,148 @@
+const AppError = require("../../utils/AppError");
+const { asyncHandler } = require("../../utils/asyncHandler");
+const { deleteUploadFileByPublicUrl } = require("../../utils/deleteUploadFile");
+const {
+  createYoga,
+  getYogaById,
+  updateYoga,
+  deleteYoga,
+  listYoga,
+  normalizeType,
+  YOGA_ALLOWED_STATUS,
+  YOGA_ALLOWED_TYPE,
+} = require("../../models/yogaModel");
+
+function uploadedPath(req, field, folder) {
+  const file = req.files?.[field]?.[0];
+  return file?.filename ? `/uploads/${folder}/${file.filename}` : "";
+}
+
+exports.listYogaController = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10, status, type, search } = req.query;
+  const data = await listYoga({ page, limit, status, type, search });
+  return res.status(200).json({ status: true, yoga: data.yoga, pagination: data.pagination });
+});
+
+exports.getYogaByIdController = asyncHandler(async (req, res) => {
+  const item = await getYogaById(req.params.id);
+  if (!item) throw new AppError("Yoga not found", 404);
+  return res.status(200).json({ status: true, yoga: item });
+});
+
+exports.createYogaController = asyncHandler(async (req, res) => {
+  const title = String(req.body.title || "").trim();
+  const description = String(req.body.description || "").trim();
+  const uploadedThumbnail = uploadedPath(req, "thumbnailFile", "yoga") || uploadedPath(req, "file", "yoga");
+  const uploadedVideo = uploadedPath(req, "videoFile", "yoga");
+  const thumbnail = uploadedThumbnail || String(req.body.thumbnail || "").trim();
+  const rawType = String(req.body.type || "ytlink").trim().toLowerCase();
+  const type = normalizeType(rawType);
+  const ytLink = String(req.body.ytLink || req.body.ytlink || "").trim();
+  const video = uploadedVideo || String(req.body.video || "").trim();
+  const status = String(req.body.status || "active").trim().toLowerCase();
+
+  if (!title) throw new AppError("title is required", 400);
+  if (!description) throw new AppError("description is required", 400);
+  if (!thumbnail) throw new AppError("thumbnail is required", 400);
+  if (!YOGA_ALLOWED_TYPE.includes(rawType)) throw new AppError("type must be ytlink or video", 400);
+  if (!YOGA_ALLOWED_STATUS.includes(status)) throw new AppError("status must be active or inactive", 400);
+  if (type === "ytlink" && !ytLink) throw new AppError("ytLink is required when type is ytlink", 400);
+  if (type === "video" && !video) throw new AppError("video is required when type is video", 400);
+
+  const yoga = await createYoga({
+    title,
+    description,
+    thumbnail,
+    type,
+    ytLink,
+    video,
+    status,
+  });
+
+  return res.status(201).json({ status: true, message: "Yoga created successfully", yoga });
+});
+
+exports.updateYogaController = asyncHandler(async (req, res) => {
+  const current = await getYogaById(req.params.id);
+  if (!current) throw new AppError("Yoga not found", 404);
+
+  const updates = {};
+  if (req.body.title !== undefined) {
+    const title = String(req.body.title || "").trim();
+    if (!title) throw new AppError("title cannot be empty", 400);
+    updates.title = title;
+  }
+  if (req.body.description !== undefined) {
+    const description = String(req.body.description || "").trim();
+    if (!description) throw new AppError("description cannot be empty", 400);
+    updates.description = description;
+  }
+  if (req.body.status !== undefined) {
+    const status = String(req.body.status || "").trim().toLowerCase();
+    if (!YOGA_ALLOWED_STATUS.includes(status)) throw new AppError("status must be active or inactive", 400);
+    updates.status = status;
+  }
+  if (req.body.type !== undefined) {
+    const rawType = String(req.body.type || "").trim().toLowerCase();
+    if (!YOGA_ALLOWED_TYPE.includes(rawType)) throw new AppError("type must be ytlink or video", 400);
+    updates.type = normalizeType(rawType);
+  }
+  if (req.body.ytLink !== undefined || req.body.ytlink !== undefined) {
+    updates.ytLink = String(req.body.ytLink ?? req.body.ytlink ?? "").trim();
+  }
+  if (req.body.thumbnail !== undefined) {
+    updates.thumbnail = String(req.body.thumbnail || "").trim();
+  }
+  if (req.body.video !== undefined) {
+    updates.video = String(req.body.video || "").trim();
+  }
+
+  const uploadedThumbnail = uploadedPath(req, "thumbnailFile", "yoga") || uploadedPath(req, "file", "yoga");
+  const uploadedVideo = uploadedPath(req, "videoFile", "yoga");
+  if (uploadedThumbnail) {
+    if (current.thumbnail) deleteUploadFileByPublicUrl(current.thumbnail);
+    updates.thumbnail = uploadedThumbnail;
+  }
+  if (uploadedVideo) {
+    if (current.video) deleteUploadFileByPublicUrl(current.video);
+    updates.video = uploadedVideo;
+  }
+
+  const nextType = updates.type || current.type;
+  const nextYtLink = updates.ytLink !== undefined ? updates.ytLink : current.ytLink;
+  const nextVideo = updates.video !== undefined ? updates.video : current.video;
+  if (nextType === "ytlink" && !String(nextYtLink || "").trim()) {
+    throw new AppError("ytLink is required when type is ytlink", 400);
+  }
+  if (nextType === "video" && !String(nextVideo || "").trim()) {
+    throw new AppError("video is required when type is video", 400);
+  }
+
+  if (Object.keys(updates).length === 0) {
+    throw new AppError("At least one field is required for update", 400);
+  }
+
+  let yoga;
+  try {
+    yoga = await updateYoga(req.params.id, updates);
+  } catch (err) {
+    if (err?.name === "ConditionalCheckFailedException") throw new AppError("Yoga not found", 404);
+    throw err;
+  }
+  return res.status(200).json({ status: true, message: "Yoga updated successfully", yoga });
+});
+
+exports.deleteYogaController = asyncHandler(async (req, res) => {
+  const current = await getYogaById(req.params.id);
+  if (!current) throw new AppError("Yoga not found", 404);
+  if (current.thumbnail) deleteUploadFileByPublicUrl(current.thumbnail);
+  if (current.video) deleteUploadFileByPublicUrl(current.video);
+
+  try {
+    await deleteYoga(req.params.id);
+  } catch (err) {
+    if (err?.name === "ConditionalCheckFailedException") throw new AppError("Yoga not found", 404);
+    throw err;
+  }
+  return res.status(200).json({ status: true, message: "Yoga deleted successfully" });
+});

@@ -6,8 +6,10 @@ const {
   getActiveClientTestimonials,
   getActiveVideoTestimonials,
   getActiveHealthConcerns,
+  getActiveHealthDisorders,
   getActiveHealthTools,
   getActiveHealthRecipes,
+  getActiveYoga,
   getActiveTransformations,
   getActiveCelebrationBanners,
 } = require("../../controllers/userController/miscController");
@@ -20,8 +22,10 @@ router.get("/pages/:slug", getStaticPageBySlug);
 router.get("/client-testimonials", getActiveClientTestimonials);
 router.get("/video-testimonials", getActiveVideoTestimonials);
 router.get("/health-concerns", getActiveHealthConcerns);
+router.get("/health-disorders", getActiveHealthDisorders);
 router.get("/health-tools", getActiveHealthTools);
 router.get("/health-recipes", getActiveHealthRecipes);
+router.get("/yoga", getActiveYoga);
 router.get("/transformations", getActiveTransformations);
 router.get("/celebration-banners", getActiveCelebrationBanners);
 
