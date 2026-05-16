@@ -4,7 +4,7 @@
  */
 export const navItems = [
   { to: "dashboard", label: "Dashboard", icon: "grid" },
-  // { to: "users", label: "User Management", icon: "users" },
+  { to: "users", label: "User Management", icon: "users" },
 
   {
     id: "wellness",

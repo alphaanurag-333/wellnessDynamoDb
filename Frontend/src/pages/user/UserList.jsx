@@ -5,7 +5,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { IoEyeSharp } from "react-icons/io5";
 import { MdEditSquare } from "react-icons/md";
 import { AiFillDelete } from "react-icons/ai";
-import { adminDeleteUser, adminListUsers, adminUpdateUser } from "../../api/adminUsers.js";
+import { adminDeleteUser, adminListUsers, adminUpdateUser, resolveUserId } from "../../api/adminUsers.js";
+import { UserTableLoaderRow } from "./UserPageLoader.jsx";
 import { logout } from "../../store/authSlice.js";
 import { mediaUrl } from "../../media.js";
 
@@ -31,6 +32,7 @@ export function UserList() {
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [togglingUserId, setTogglingUserId] = useState("");
 
@@ -46,6 +48,7 @@ export function UserList() {
   const loadUsers = useCallback(async () => {
     if (!adminToken) return;
     setLoadError("");
+    setLoading(true);
     try {
       const { users: rows, pagination: pg } = await adminListUsers(adminToken, {
         page,
@@ -62,6 +65,8 @@ export function UserList() {
         return;
       }
       setLoadError(e.message || "Failed to load users.");
+    } finally {
+      setLoading(false);
     }
   }, [adminToken, debouncedSearch, dispatch, limit, page, statusFilter]);
 
@@ -87,7 +92,7 @@ export function UserList() {
     });
     if (!isConfirmed || !adminToken) return;
     try {
-      await adminDeleteUser(adminToken, u._id);
+      await adminDeleteUser(adminToken, resolveUserId(u));
       await Swal.fire({ icon: "success", title: "User deleted", timer: 1500 });
       loadUsers();
     } catch (e) {
@@ -102,9 +107,10 @@ export function UserList() {
   const handleToggleStatus = async (u) => {
     if (!adminToken) return;
     const nextStatus = u.status === "active" ? "inactive" : "active";
-    setTogglingUserId(u._id);
+    const uid = resolveUserId(u);
+    setTogglingUserId(uid);
     try {
-      await adminUpdateUser(adminToken, u._id, { status: nextStatus });
+      await adminUpdateUser(adminToken, uid, { status: nextStatus });
       await Swal.fire({
         icon: "success",
         title: nextStatus === "active" ? "User activated" : "User deactivated",
@@ -139,7 +145,7 @@ export function UserList() {
       u.dob ? new Date(u.dob).toISOString().slice(0, 10) : "",
       u.createdAt || "",
       u.updatedAt || "",
-      u._id || "",
+      resolveUserId(u),
     ]);
 
     const csv = [headers.map(csvEscape).join(","), ...rows.map((r) => r.map(csvEscape).join(","))].join("\n");
@@ -221,19 +227,26 @@ export function UserList() {
             </tr>
           </thead>
           <tbody>
-            {users.length === 0 ? (
+            {loading ? (
+              <UserTableLoaderRow colSpan={7} />
+            ) : users.length === 0 ? (
               <tr>
-                <td colSpan={6}>
+                <td colSpan={7}>
                   <p className="table-placeholder">No users match your filters.</p>
                 </td>
               </tr>
             ) : (
               users.map((u, idx) => {
+                const uid = resolveUserId(u);
                 const avatar = mediaUrl(u?.profileImage);
                 const initial = (u.name || u.email || "?").charAt(0).toUpperCase();
                 const serialNo = (page - 1) * limit + idx + 1;
+                const phcTitle =
+                  u.primaryHealthConcern && typeof u.primaryHealthConcern === "object"
+                    ? u.primaryHealthConcern.title
+                    : null;
                 return (
-                  <tr key={u._id}>
+                  <tr key={uid}>
                     <td className="data-table__muted">{serialNo}</td>
                     <td>
                       <div className="user-cell">
@@ -247,6 +260,7 @@ export function UserList() {
                         <div>
                           <div className="user-cell__name">{u.name || "—"}</div>
                           <div className="user-cell__id data-table__mono">{u.email || "—"}</div>
+                          {phcTitle ? <div className="user-cell__muted small">{phcTitle}</div> : null}
                         </div>
                       </div>
                     </td>
@@ -265,7 +279,7 @@ export function UserList() {
                         aria-checked={u.status === "active"}
                         aria-label={`Toggle status for ${u.name || u.email}`}
                         onClick={() => handleToggleStatus(u)}
-                        disabled={togglingUserId === u._id}
+                        disabled={togglingUserId === uid}
                         title={u.status === "active" ? "Deactivate user" : "Activate user"}
                       >
                         <span className="settings-switch__knob" aria-hidden />
@@ -273,10 +287,10 @@ export function UserList() {
                     </td>
                     <td>
                       <div className="row-actions">
-                        <Link to={u._id} className="icon-btn icon-btn--view" title="View">
+                        <Link to={uid} className="icon-btn icon-btn--view" title="View">
                           <IoEyeSharp size={18} />
                         </Link>
-                        <Link to={`${u._id}/edit`} className="icon-btn icon-btn--edit" title="Edit">
+                        <Link to={`${uid}/edit`} className="icon-btn icon-btn--edit" title="Edit">
                           <MdEditSquare size={18} />
                         </Link>
                         {/* <button type="button" className="icon-btn icon-btn--block" title="Block" onClick={() => handleBlock(u)}>

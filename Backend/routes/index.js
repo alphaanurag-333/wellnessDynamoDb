@@ -9,11 +9,13 @@ const adminBannerRoutes = require("./adminRoutes/adminBannerRoutes");
 const adminHealthConcernRoutes = require("./adminRoutes/adminHealthConcernRoutes");
 const adminHealthToolRoutes = require("./adminRoutes/adminHealthToolRoutes");
 const adminHealthRecipeRoutes = require("./adminRoutes/adminHealthRecipeRoutes");
+const adminUserRoutes = require("./adminRoutes/adminUserRoutes");
 const adminCelebrationRoutes = require("./adminRoutes/adminCelebrationRoutes");
 const adminClientTestimonialsRoutes = require("./adminRoutes/adminClientTestimonialsRoutes");
 const adminVideoTestimonialsRoutes = require("./adminRoutes/adminVideoTestimonialsRoutes");
 const publicAppConfigRoutes = require("./publicRoutes/publicAppConfigRoutes");
 const miscRoutes = require("./userRoutes/miscRoutes");
+const userAuthRoutes = require("./userRoutes/authRoutes");
 
 const router = express.Router();
 
@@ -33,7 +35,9 @@ router.use("/admin/video-testimonials", adminVideoTestimonialsRoutes);
 router.use("/admin/health-concerns", adminHealthConcernRoutes);
 router.use("/admin/health-tools", adminHealthToolRoutes);
 router.use("/admin/health-recipes", adminHealthRecipeRoutes);
+router.use("/admin/users", adminUserRoutes);
 router.use("/admin/misc/pages", adminStaticPageRoutes);
+router.use("/user/auth", userAuthRoutes);
 router.use("/public", publicAppConfigRoutes);
 router.use("/public/misc", miscRoutes);
 

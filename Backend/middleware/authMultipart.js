@@ -18,6 +18,7 @@ const videoTestimonialsUpload = createUploader("video-testimonials").fields([
   { name: "profileImage", maxCount: 1 },
   { name: "videoFile", maxCount: 1 },
 ]);
+const userUpload = createUploader("user").single("file");
 const healthConcernUpload = createUploader("health-concern").single("file");
 const healthToolUpload = createUploader("health-tool").single("file");
 const healthRecipeUpload = createUploader("health-recipe").fields([
@@ -32,6 +33,7 @@ const transformationUploads = createUploader("transformation").fields([
 ]);
 
 exports.optionalAdminFile = optionalMultipart(adminUpload);
+exports.optionalUserFile = optionalMultipart(userUpload);
 exports.optionalBannerFile = optionalMultipart(bannerUpload);
 exports.optionalCelebrationFile = optionalMultipart(celebrationUpload);
 exports.optionalNotificationFile = optionalMultipart(notificationUpload);

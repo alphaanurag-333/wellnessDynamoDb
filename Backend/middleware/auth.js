@@ -2,6 +2,7 @@ const AppError = require("../utils/AppError");
 const { asyncHandler } = require("../utils/asyncHandler");
 const { verifyAccessToken } = require("../utils/jwt");
 const { getAdminById } = require("../models/adminModel");
+const { getUserById } = require("../models/userModel");
 
 function readBearer(req) {
   const h = req.headers.authorization;
@@ -60,6 +61,41 @@ const protectAdmin = asyncHandler(async (req, res, next) => {
   next();
 });
 
+const protectUser = asyncHandler(async (req, res, next) => {
+  const token = readBearer(req);
+  if (!token) {
+    throw new AppError("Authentication required", 401);
+  }
+
+  let payload;
+  try {
+    payload = verifyAccessToken(token);
+  } catch {
+    throw new AppError("Invalid or expired token", 401);
+  }
+
+  if (payload.role !== "user") {
+    throw new AppError("Forbidden", 403);
+  }
+
+  const subject = resolveSubjectFromPayload(payload);
+  if (!subject) {
+    throw new AppError("Invalid token payload", 401);
+  }
+
+  const account = await getUserById(subject);
+  if (!account) {
+    throw new AppError("Account not found", 401);
+  }
+
+  assertActiveAccount(account);
+
+  req.user = account;
+  req.auth = { role: "user", sub: subject };
+  next();
+});
+
 module.exports = {
   protectAdmin,
+  protectUser,
 };

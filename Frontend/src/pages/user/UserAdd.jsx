@@ -3,7 +3,13 @@ import { useDispatch, useSelector } from "react-redux";
 import Swal from "sweetalert2";
 import { useNavigate } from "react-router-dom";
 import { City, Country, State } from "country-state-city";
-import { adminCreateUser, adminUpdateUser } from "../../api/adminUsers.js";
+import {
+  adminCreateUser,
+  adminUpdateUser,
+  buildCreateUserPayload,
+  buildUpdateUserPayload,
+} from "../../api/adminUsers.js";
+import { UserSubmitLoader } from "./UserPageLoader.jsx";
 import { adminListHealthConcerns } from "../../api/adminHealthConcerns.js";
 import { mediaUrl } from "../../media.js";
 import { logout } from "../../store/authSlice.js";
@@ -69,7 +75,6 @@ function emptyUserForm() {
   return {
     name: "",
     email: "",
-    password: "",
     phoneCountryIso: DEFAULT_ISO,
     phoneCountryCode: DEFAULT_DIAL,
     phone: "",
@@ -123,7 +128,6 @@ function userToFormValues(user) {
   return {
     name: sanitizePersonName(user.name != null ? String(user.name) : ""),
     email: user.email != null ? String(user.email) : "",
-    password: "",
     phoneCountryIso: phoneIso,
     phoneCountryCode: phoneCc,
     phone: user.phone != null ? String(user.phone) : "",
@@ -224,43 +228,20 @@ function validateUserFormForMode(values, mode) {
   return "";
 }
 
-function buildApiPayload(values, { includeTermsAccepted = true } = {}) {
-  const sameWa = Boolean(values.whatsappSameAsMobile);
-  const base = {
-    name: values.name.trim(),
-    email: values.email.trim().toLowerCase(),
-    phoneCountryCode: values.phoneCountryCode.trim() || DEFAULT_DIAL,
-    phone: values.phone.trim(),
-    whatsappSameAsMobile: sameWa,
-    whatsappCountryCode: sameWa
-      ? values.phoneCountryCode.trim() || DEFAULT_DIAL
-      : values.whatsappCountryCode.trim() || DEFAULT_DIAL,
-    whatsappPhone: sameWa ? values.phone.trim() : values.whatsappPhone.trim() || null,
+function buildPatchPayload(values, initialUser) {
+  const next = {
+    ...buildCreateUserPayload(values, { includeTermsAccepted: false }),
     dob: values.dob || "",
-    gender: values.gender,
     country: values.country.trim(),
     state: values.state.trim(),
     city: values.city.trim(),
     primaryHealthConcern: values.primaryHealthConcern.trim(),
     fcm_id: values.fcm_id.trim(),
-    status: values.status,
   };
-  if (includeTermsAccepted) {
-    base.termsAccepted = Boolean(values.termsAccepted);
-  }
-  if (values.password && String(values.password).trim()) {
-    base.password = String(values.password).trim();
-  }
-  return base;
-}
-
-function buildPatchPayload(values, initialUser) {
-  const next = buildApiPayload(values, { includeTermsAccepted: false });
   const patch = {};
   const initial = initialUser ? userToFormValues(initialUser) : null;
   if (!initial) return next;
   for (const key of Object.keys(next)) {
-    if (key === "password" && !next.password) continue;
     const a = next[key];
     const b = initial[key];
     if (key === "dob") {
@@ -283,7 +264,7 @@ function buildPatchPayload(values, initialUser) {
     }
     if (a !== b) patch[key] = a;
   }
-  return patch;
+  return buildUpdateUserPayload(patch);
 }
 
 export function UserProfileForm({
@@ -487,12 +468,15 @@ export function UserProfileForm({
     try {
       let user;
       if (mode === "create") {
-        const payload = buildApiPayload(values);
+        const payload = buildCreateUserPayload(values);
         user = await adminCreateUser(adminToken, payload, profileFile);
       } else {
         const patchPayload = buildPatchPayload(values, initialUser);
-        const hasPatch = Object.keys(patchPayload).length > 0;
-        user = await adminUpdateUser(adminToken, userId, hasPatch ? patchPayload : {}, profileFile);
+        if (Object.keys(patchPayload).length === 0 && !profileFile) {
+          onSuccess?.(initialUser);
+          return;
+        }
+        user = await adminUpdateUser(adminToken, userId, patchPayload, profileFile);
       }
       onSuccess?.(user);
     } catch (err) {
@@ -518,7 +502,6 @@ export function UserProfileForm({
           <span>{formError}</span>
         </div>
       ) : null}
-
       <div className="d-flex flex-column flex-sm-row align-items-start gap-3 gap-sm-4 pb-4 mb-4 border-bottom">
         <div className="position-relative flex-shrink-0">
           <input
@@ -908,9 +891,6 @@ export function UserProfileForm({
                     })}
                   </div>
                 ) : null}
-                {/* <div className="text-body-secondary mt-2 mb-0">
-                  This cannot be changed when editing a user.
-                </div> */}
               </div>
             </div>
           ) : (
@@ -929,22 +909,6 @@ export function UserProfileForm({
             </div>
           )}
         </div>
-        {mode === "edit" ? (
-          <div className="col-12 col-md-6">
-            <label htmlFor={`${fileInputId}-pwd`} className="form-label">
-              New password <span className="text-body-secondary fw-normal">(optional)</span>
-            </label>
-            <input
-              id={`${fileInputId}-pwd`}
-              type="password"
-              className="form-control"
-              value={values.password}
-              onChange={handleChange("password")}
-              placeholder="Leave blank to keep current"
-              autoComplete="new-password"
-            />
-          </div>
-        ) : null}
       </div>
 
       <div className="d-flex flex-wrap gap-2 justify-content-end pt-3 border-top">
@@ -953,7 +917,7 @@ export function UserProfileForm({
         </button>
         <button type="submit" className="btn btn-primary px-4 d-inline-flex align-items-center gap-2" disabled={submitting}>
           {submitting ? (
-            <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
+            <UserSubmitLoader />
           ) : (
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
               <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
@@ -986,7 +950,7 @@ export function UserAdd() {
         </button>
         <div>
           <h1 className="h3 fw-semibold mb-1">Add user</h1>
-          <p className="text-body-secondary mb-0">Create a new user account and profile.</p>
+          <p className="text-body-secondary mb-0">Create a profile; the user will log in with OTP on the app.</p>
         </div>
       </div>
 

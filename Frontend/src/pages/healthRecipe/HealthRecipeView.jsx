@@ -26,10 +26,15 @@ export function HealthRecipeView() {
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState("");
 
-  const concernMap = useMemo(
-    () => Object.fromEntries(healthConcerns.map((x) => [x._id, x.title || ""])),
-    [healthConcerns]
-  );
+  const concernMap = useMemo(() => {
+    const map = {};
+    for (const c of healthConcerns) {
+      const title = c.title || "";
+      if (c._id) map[c._id] = title;
+      if (c.id) map[c.id] = title;
+    }
+    return map;
+  }, [healthConcerns]);
 
   useEffect(() => {
     if (!adminToken || !recipeId) return;
@@ -120,12 +125,43 @@ export function HealthRecipeView() {
         ) : null}
         <div className="user-view-grid">
           <DetailRow label="Title" value={recipe.title} />
-          <DetailRow label="Health concern" value={concernMap[recipe.healthConcernId] || recipe.healthConcernId} />
-          <DetailRow label="Type" value={recipe.type} />
+          <DetailRow
+            label="Health concern"
+            value={recipe.healthConcern?.title || concernMap[recipe.healthConcernId] || recipe.healthConcernId}
+          />
+          <DetailRow label="Type" value={recipe.type === "video" ? "Video" : recipe.type === "ytlink" ? "YT Link" : recipe.type} />
           <DetailRow label="Status" value={recipe.status} />
-          <DetailRow label="YT Link" value={recipe.ytLink} />
-          <DetailRow label="Video" value={recipe.video} />
           <DetailRow label="Created" value={formatDate(recipe.createdAt)} />
+        </div>
+        <div style={{ marginTop: 16 }}>
+          <strong>{recipe.type === "video" ? "Video" : "YT Link"}</strong>
+          {recipe.type === "ytlink" ? (
+            recipe.ytLink ? (
+              <div style={{ marginTop: 8 }}>
+                <a href={recipe.ytLink} target="_blank" rel="noreferrer">
+                  {recipe.ytLink}
+                </a>
+              </div>
+            ) : (
+              <div style={{ marginTop: 6 }}>—</div>
+            )
+          ) : recipe.type === "video" ? (
+            recipe.video ? (
+              <div style={{ marginTop: 8 }}>
+                <video
+                  src={mediaUrl(recipe.video)}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  style={{ width: "100%", maxWidth: 560, maxHeight: 320, borderRadius: 8, display: "block" }}
+                />
+              </div>
+            ) : (
+              <div style={{ marginTop: 6 }}>—</div>
+            )
+          ) : (
+            <div style={{ marginTop: 6 }}>—</div>
+          )}
         </div>
         <div style={{ marginTop: 16 }}>
           <strong>Description</strong>

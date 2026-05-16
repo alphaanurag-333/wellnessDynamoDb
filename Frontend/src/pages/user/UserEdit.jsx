@@ -6,6 +6,7 @@ import { adminGetUser } from "../../api/adminUsers.js";
 import { logout } from "../../store/authSlice.js";
 import { NotFoundPage } from "../NotFoundPage.jsx";
 import { UserProfileForm } from "./UserAdd.jsx";
+import { UserPageLoadingState } from "./UserPageLoader.jsx";
 
 export function UserEdit() {
   const { userId } = useParams();
@@ -14,6 +15,7 @@ export function UserEdit() {
   const adminToken = useSelector((s) => s.auth.adminToken);
   const [user, setUser] = useState(null);
   const [notFound, setNotFound] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
@@ -22,6 +24,7 @@ export function UserEdit() {
     (async () => {
       setLoadError("");
       setNotFound(false);
+      setLoading(true);
       try {
         const u = await adminGetUser(adminToken, userId);
         if (cancelled) return;
@@ -41,6 +44,8 @@ export function UserEdit() {
           return;
         }
         setLoadError(e.message || "Failed to load user.");
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     })();
     return () => {
@@ -65,12 +70,12 @@ export function UserEdit() {
     );
   }
 
+  if (loading) {
+    return <UserPageLoadingState label="Loading user…" />;
+  }
+
   if (!user) {
-    return (
-      <div className="user-page">
-        <p className="static-cms-loading">Loading user…</p>
-      </div>
-    );
+    return null;
   }
 
   return (

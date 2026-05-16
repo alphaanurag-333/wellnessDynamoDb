@@ -4,6 +4,18 @@ function usersBase() {
   return "/admin/users";
 }
 
+/** DynamoDB items use `id`; API also returns `_id` for legacy UI. */
+export function resolveUserId(user) {
+  if (!user) return "";
+  return String(user._id || user.id || "");
+}
+
+function normalizeUser(user) {
+  if (!user) return null;
+  const id = resolveUserId(user);
+  return { ...user, id, _id: id };
+}
+
 function appendIfDefined(fd, key, value) {
   if (value === undefined) return;
   if (value === null) {
@@ -18,11 +30,9 @@ function appendIfDefined(fd, key, value) {
 }
 
 function appendUserFields(fd, fields) {
+  if (!fields || typeof fields !== "object") return;
   appendIfDefined(fd, "name", fields.name != null ? String(fields.name).trim() : undefined);
   appendIfDefined(fd, "email", fields.email != null ? String(fields.email).trim() : undefined);
-  if (fields.password != null && String(fields.password).length > 0) {
-    fd.append("password", String(fields.password));
-  }
   appendIfDefined(fd, "phone", fields.phone != null ? String(fields.phone).trim() : undefined);
   appendIfDefined(fd, "phoneCountryCode", fields.phoneCountryCode);
   if (fields.whatsappSameAsMobile !== undefined) {
@@ -42,7 +52,10 @@ function appendUserFields(fd, fields) {
     fd.append("termsAccepted", fields.termsAccepted ? "true" : "false");
   }
   if (fields.termsAcceptedAt !== undefined) {
-    fd.append("termsAcceptedAt", fields.termsAcceptedAt === "" || fields.termsAcceptedAt == null ? "" : String(fields.termsAcceptedAt));
+    fd.append(
+      "termsAcceptedAt",
+      fields.termsAcceptedAt === "" || fields.termsAcceptedAt == null ? "" : String(fields.termsAcceptedAt)
+    );
   }
   if (fields.fcm_id !== undefined) {
     fd.append("fcm_id", fields.fcm_id == null ? "" : String(fields.fcm_id));
@@ -50,12 +63,14 @@ function appendUserFields(fd, fields) {
   appendIfDefined(fd, "status", fields.status);
 }
 
-function jsonCreatePayload(fields) {
+/** Matches POST /admin/users body (admin userController.createUserController). */
+export function buildCreateUserPayload(fields, { includeTermsAccepted = true } = {}) {
   const phone = String(fields.phone ?? "").trim();
   const cc = String(fields.phoneCountryCode ?? "").trim() || "+91";
   const sameWa = Boolean(fields.whatsappSameAsMobile);
   const waCc = sameWa ? cc : String(fields.whatsappCountryCode ?? "").trim() || "+91";
   const waPhoneRaw = String(fields.whatsappPhone ?? "").trim();
+
   const payload = {
     name: String(fields.name ?? "").trim(),
     email: String(fields.email ?? "").trim().toLowerCase(),
@@ -65,26 +80,67 @@ function jsonCreatePayload(fields) {
     whatsappCountryCode: waCc,
     whatsappPhone: sameWa ? phone : waPhoneRaw || null,
     gender: fields.gender || "boy",
-    fcm_id: fields.fcm_id != null && String(fields.fcm_id).trim() ? String(fields.fcm_id).trim() : undefined,
     status: fields.status || "active",
   };
-  const pw = String(fields.password ?? "").trim();
-  if (pw) payload.password = pw;
-  if (fields.dob !== undefined && fields.dob !== "") {
-    payload.dob = fields.dob;
+
+  if (includeTermsAccepted) {
+    payload.termsAccepted = Boolean(fields.termsAccepted);
   }
+
+  const dob = fields.dob != null ? String(fields.dob).trim() : "";
+  if (dob) payload.dob = dob;
+
   const country = fields.country != null ? String(fields.country).trim() : "";
   const state = fields.state != null ? String(fields.state).trim() : "";
   const city = fields.city != null ? String(fields.city).trim() : "";
   if (country) payload.country = country;
   if (state) payload.state = state;
   if (city) payload.city = city;
+
   const phc = fields.primaryHealthConcern != null ? String(fields.primaryHealthConcern).trim() : "";
   if (phc) payload.primaryHealthConcern = phc;
-  payload.termsAccepted = Boolean(fields.termsAccepted);
-  if (payload.termsAccepted && fields.termsAcceptedAt) {
+
+  const fcm = fields.fcm_id != null ? String(fields.fcm_id).trim() : "";
+  if (fcm) payload.fcm_id = fcm;
+
+  if (includeTermsAccepted && payload.termsAccepted && fields.termsAcceptedAt) {
     payload.termsAcceptedAt = fields.termsAcceptedAt;
   }
+
+  return payload;
+}
+
+/** Matches PATCH /admin/users/:id partial body. */
+export function buildUpdateUserPayload(fields) {
+  const payload = {};
+  if (fields.name !== undefined) payload.name = String(fields.name).trim();
+  if (fields.email !== undefined) payload.email = String(fields.email).trim().toLowerCase();
+  if (fields.phone !== undefined) payload.phone = String(fields.phone).trim();
+  if (fields.phoneCountryCode !== undefined) payload.phoneCountryCode = String(fields.phoneCountryCode).trim();
+  if (fields.whatsappSameAsMobile !== undefined) {
+    payload.whatsappSameAsMobile = Boolean(fields.whatsappSameAsMobile);
+  }
+  if (fields.whatsappCountryCode !== undefined) {
+    payload.whatsappCountryCode = String(fields.whatsappCountryCode).trim();
+  }
+  if (fields.whatsappPhone !== undefined) {
+    payload.whatsappPhone = fields.whatsappPhone === "" || fields.whatsappPhone == null ? null : String(fields.whatsappPhone).trim();
+  }
+  if (fields.dob !== undefined) payload.dob = fields.dob === "" || fields.dob == null ? null : fields.dob;
+  if (fields.gender !== undefined) payload.gender = fields.gender;
+  if (fields.country !== undefined) payload.country = String(fields.country ?? "").trim() || null;
+  if (fields.state !== undefined) payload.state = String(fields.state ?? "").trim() || null;
+  if (fields.city !== undefined) payload.city = String(fields.city ?? "").trim() || null;
+  if (fields.primaryHealthConcern !== undefined) {
+    payload.primaryHealthConcern = String(fields.primaryHealthConcern ?? "").trim() || "";
+  }
+  if (fields.termsAccepted !== undefined) payload.termsAccepted = Boolean(fields.termsAccepted);
+  if (fields.termsAcceptedAt !== undefined) {
+    payload.termsAcceptedAt =
+      fields.termsAcceptedAt === "" || fields.termsAcceptedAt == null ? null : fields.termsAcceptedAt;
+  }
+  if (fields.fcm_id !== undefined) payload.fcm_id = fields.fcm_id == null ? "" : String(fields.fcm_id).trim() || null;
+  if (fields.status !== undefined) payload.status = fields.status;
   return payload;
 }
 
@@ -98,8 +154,9 @@ export async function adminListUsers(token, { page = 1, limit = 20, status, sear
     const { data: body } = await api.get(`${usersBase()}?${q}`, {
       headers: authHeader(token),
     });
+    const users = Array.isArray(body.users) ? body.users.map(normalizeUser) : [];
     return {
-      users: Array.isArray(body.users) ? body.users : [],
+      users,
       pagination: body.pagination ?? { page, limit, total: 0, pages: 1 },
     };
   } catch (error) {
@@ -112,24 +169,21 @@ export async function adminGetUser(token, id) {
     const { data: body } = await api.get(`${usersBase()}/${encodeURIComponent(id)}`, {
       headers: authHeader(token),
     });
-    return body.user ?? null;
+    return normalizeUser(body.user);
   } catch (error) {
     normalizeApiError(error);
   }
 }
 
-/** Create user — JSON or multipart when `file` is a File (field name `file`). `fields` = full create DTO (e.g. from buildApiPayload). */
 export async function adminCreateUser(token, fields, file) {
-  const body = jsonCreatePayload(fields);
+  const body = buildCreateUserPayload(fields);
   if (file instanceof File) {
     const fd = new FormData();
     appendUserFields(fd, body);
     fd.append("file", file);
     try {
-      const { data: res } = await api.post(usersBase(), fd, {
-        headers: authHeader(token),
-      });
-      return res.user;
+      const { data: res } = await api.post(usersBase(), fd, { headers: authHeader(token) });
+      return normalizeUser(res.user);
     } catch (error) {
       normalizeApiError(error);
     }
@@ -138,54 +192,31 @@ export async function adminCreateUser(token, fields, file) {
     const { data: res } = await api.post(usersBase(), body, {
       headers: authHeader(token),
     });
-    return res.user;
+    return normalizeUser(res.user);
   } catch (error) {
     normalizeApiError(error);
   }
 }
 
-/** PATCH user — JSON or multipart when `file` is a File. */
 export async function adminUpdateUser(token, id, fields, file) {
-  if (file instanceof File) {
+  const payload = buildUpdateUserPayload(fields);
+  const hasJsonFields = Object.keys(payload).length > 0;
+
+  if (file instanceof File || hasJsonFields) {
     const fd = new FormData();
-    appendUserFields(fd, fields);
-    fd.append("file", file);
+    if (hasJsonFields) appendUserFields(fd, payload);
+    if (file instanceof File) fd.append("file", file);
     try {
       const { data: body } = await api.patch(`${usersBase()}/${encodeURIComponent(id)}`, fd, {
         headers: authHeader(token),
       });
-      return body.user;
+      return normalizeUser(body.user);
     } catch (error) {
       normalizeApiError(error);
     }
   }
-  const payload = {};
-  if (fields.name !== undefined) payload.name = fields.name;
-  if (fields.email !== undefined) payload.email = fields.email;
-  if (fields.password && String(fields.password).length > 0) payload.password = fields.password;
-  if (fields.phone !== undefined) payload.phone = fields.phone;
-  if (fields.phoneCountryCode !== undefined) payload.phoneCountryCode = fields.phoneCountryCode;
-  if (fields.whatsappSameAsMobile !== undefined) payload.whatsappSameAsMobile = fields.whatsappSameAsMobile;
-  if (fields.whatsappCountryCode !== undefined) payload.whatsappCountryCode = fields.whatsappCountryCode;
-  if (fields.whatsappPhone !== undefined) payload.whatsappPhone = fields.whatsappPhone;
-  if (fields.dob !== undefined) payload.dob = fields.dob === "" ? null : fields.dob;
-  if (fields.gender !== undefined) payload.gender = fields.gender;
-  if (fields.country !== undefined) payload.country = fields.country;
-  if (fields.state !== undefined) payload.state = fields.state;
-  if (fields.city !== undefined) payload.city = fields.city;
-  if (fields.primaryHealthConcern !== undefined) payload.primaryHealthConcern = fields.primaryHealthConcern;
-  if (fields.termsAccepted !== undefined) payload.termsAccepted = fields.termsAccepted;
-  if (fields.termsAcceptedAt !== undefined) payload.termsAcceptedAt = fields.termsAcceptedAt;
-  if (fields.fcm_id !== undefined) payload.fcm_id = fields.fcm_id;
-  if (fields.status !== undefined) payload.status = fields.status;
-  try {
-    const { data: body } = await api.patch(`${usersBase()}/${encodeURIComponent(id)}`, payload, {
-      headers: authHeader(token),
-    });
-    return body.user;
-  } catch (error) {
-    normalizeApiError(error);
-  }
+
+  throw new Error("At least one field or profile image is required for update");
 }
 
 export async function adminDeleteUser(token, id) {
@@ -197,3 +228,6 @@ export async function adminDeleteUser(token, id) {
     normalizeApiError(error);
   }
 }
+
+/** @deprecated Use buildCreateUserPayload — kept for UserAdd.jsx */
+export const buildApiPayload = buildCreateUserPayload;

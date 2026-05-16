@@ -5,6 +5,7 @@ import { adminGetUser } from "../../api/adminUsers.js";
 import { logout } from "../../store/authSlice.js";
 import { mediaUrl } from "../../media.js";
 import { NotFoundPage } from "../NotFoundPage.jsx";
+import { UserPageLoadingState } from "./UserPageLoader.jsx";
 
 function formatDate(iso) {
   if (!iso) return "—";
@@ -28,6 +29,7 @@ export function UserView() {
   const adminToken = useSelector((s) => s.auth.adminToken);
   const [user, setUser] = useState(null);
   const [notFound, setNotFound] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -36,6 +38,7 @@ export function UserView() {
     (async () => {
       setError("");
       setNotFound(false);
+      setLoading(true);
       try {
         const u = await adminGetUser(adminToken, userId);
         if (cancelled) return;
@@ -55,6 +58,8 @@ export function UserView() {
           return;
         }
         setError(e.message || "Failed to load user.");
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     })();
     return () => {
@@ -79,15 +84,15 @@ export function UserView() {
     );
   }
 
-  if (!user) {
-    return (
-      <div className="user-page">
-        <p className="static-cms-loading">Loading user…</p>
-      </div>
-    );
+  if (loading) {
+    return <UserPageLoadingState label="Loading user…" />;
   }
 
-  const avatar = mediaUrl(user?.profileImage);
+  if (!user) {
+    return null;
+  }
+
+  const avatar = mediaUrl(user.profileImage);
   const initial = (user.name || user.email || "?").charAt(0).toUpperCase();
   let dobLabel = "—";
   if (user.dob) {
