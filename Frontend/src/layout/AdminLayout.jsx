@@ -24,7 +24,34 @@ function titleFromPath(pathname) {
   if (/^\/admin\/settings\/?$/.test(p)) return "App Settings";
 
   if (/^\/admin\/health-concerns\/?$/.test(p)) return "Health concerns";
-  if (/^\/admin\/transformations\/?$/.test(p)) return "Transformations";
+
+  if (p.startsWith("/admin/transformations")) {
+    if (/^\/admin\/transformations\/new$/.test(p)) return "Add transformation";
+    if (/^\/admin\/transformations\/[^/]+\/edit$/.test(p)) return "Edit transformation";
+    if (/^\/admin\/transformations\/[^/]+$/.test(p)) return "Transformation details";
+    return "Transformations";
+  }
+
+  if (p.startsWith("/admin/health-disorders")) {
+    if (/^\/admin\/health-disorders\/new$/.test(p)) return "Add health disorder";
+    if (/^\/admin\/health-disorders\/[^/]+\/edit$/.test(p)) return "Edit health disorder";
+    if (/^\/admin\/health-disorders\/[^/]+$/.test(p)) return "Health disorder details";
+    return "Health disorders";
+  }
+
+  if (p.startsWith("/admin/yoga")) {
+    if (/^\/admin\/yoga\/new$/.test(p)) return "Add yoga";
+    if (/^\/admin\/yoga\/[^/]+\/edit$/.test(p)) return "Edit yoga";
+    if (/^\/admin\/yoga\/[^/]+$/.test(p)) return "Yoga details";
+    return "Yoga";
+  }
+
+  if (p.startsWith("/admin/health-recipes")) {
+    if (/^\/admin\/health-recipes\/new$/.test(p)) return "Add health recipe";
+    if (/^\/admin\/health-recipes\/[^/]+\/edit$/.test(p)) return "Edit health recipe";
+    if (/^\/admin\/health-recipes\/[^/]+$/.test(p)) return "Health recipe details";
+    return "Health recipes";
+  }
 
   if (p.startsWith("/admin/static-pages")) {
     if (/^\/admin\/static-pages\/[^/]+\/edit\/?$/.test(p)) return "Edit static page";

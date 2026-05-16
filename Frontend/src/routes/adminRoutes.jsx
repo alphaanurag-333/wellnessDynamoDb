@@ -23,7 +23,10 @@ import { YogaList } from "../pages/yoga/YogaList.jsx";
 import { YogaAdd } from "../pages/yoga/YogaAdd.jsx";
 import { YogaEdit } from "../pages/yoga/YogaEdit.jsx";
 import { YogaView } from "../pages/yoga/YogaView.jsx";
-import { TransformationPage } from "../pages/transformation/TransformationPage.jsx";
+import { TransformationList } from "../pages/transformation/TransformationList.jsx";
+import { TransformationAdd } from "../pages/transformation/TransformationAdd.jsx";
+import { TransformationEdit } from "../pages/transformation/TransformationEdit.jsx";
+import { TransformationView } from "../pages/transformation/TransformationView.jsx";
 import { CelebrationBannerPage } from "../pages/celebrationBanner/celebrationBanner.jsx";
 import { ClientTestimonialPage } from "../pages/clientTestimonial/ClientTestimonial.jsx";
 import { VideoTestimonialPage } from "../pages/videoTestimonial/VideoTestimonial.jsx";
@@ -80,7 +83,12 @@ export const adminRouteTree = (
       <Route path=":yogaId/edit" element={<YogaEdit />} />
       <Route path=":yogaId" element={<YogaView />} />
     </Route>
-    <Route path="transformations" element={<TransformationPage />} />
+    <Route path="transformations" element={<Outlet />}>
+      <Route index element={<TransformationList />} />
+      <Route path="new" element={<TransformationAdd />} />
+      <Route path=":transformationId/edit" element={<TransformationEdit />} />
+      <Route path=":transformationId" element={<TransformationView />} />
+    </Route>
     <Route path="faq" element={<FaqPage />} />
     <Route path="notifications" element={<NotificationPage />} />
     <Route path="celebration-banners" element={<CelebrationBannerPage />} />
