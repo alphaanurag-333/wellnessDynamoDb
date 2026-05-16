@@ -23,7 +23,19 @@ function titleFromPath(pathname) {
   if (/^\/admin\/profile\/?$/.test(p)) return "Admin Profile";
   if (/^\/admin\/settings\/?$/.test(p)) return "App Settings";
 
-  if (/^\/admin\/health-concerns\/?$/.test(p)) return "Health concerns";
+  if (p.startsWith("/admin/health-concerns")) {
+    if (/^\/admin\/health-concerns\/new$/.test(p)) return "Add health concern";
+    if (/^\/admin\/health-concerns\/[^/]+\/edit$/.test(p)) return "Edit health concern";
+    if (/^\/admin\/health-concerns\/[^/]+$/.test(p)) return "Health concern details";
+    return "Health concerns";
+  }
+
+  if (p.startsWith("/admin/health-tools")) {
+    if (/^\/admin\/health-tools\/new$/.test(p)) return "Add health tool";
+    if (/^\/admin\/health-tools\/[^/]+\/edit$/.test(p)) return "Edit health tool";
+    if (/^\/admin\/health-tools\/[^/]+$/.test(p)) return "Health tool details";
+    return "Health tools";
+  }
 
   if (p.startsWith("/admin/transformations")) {
     if (/^\/admin\/transformations\/new$/.test(p)) return "Add transformation";
@@ -44,6 +56,20 @@ function titleFromPath(pathname) {
     if (/^\/admin\/yoga\/[^/]+\/edit$/.test(p)) return "Edit yoga";
     if (/^\/admin\/yoga\/[^/]+$/.test(p)) return "Yoga details";
     return "Yoga";
+  }
+
+  if (p.startsWith("/admin/client-testimonials")) {
+    if (/^\/admin\/client-testimonials\/new$/.test(p)) return "Add client testimonial";
+    if (/^\/admin\/client-testimonials\/[^/]+\/edit$/.test(p)) return "Edit client testimonial";
+    if (/^\/admin\/client-testimonials\/[^/]+$/.test(p)) return "Client testimonial details";
+    return "Client testimonials";
+  }
+
+  if (p.startsWith("/admin/video-testimonials")) {
+    if (/^\/admin\/video-testimonials\/new$/.test(p)) return "Add video testimonial";
+    if (/^\/admin\/video-testimonials\/[^/]+\/edit$/.test(p)) return "Edit video testimonial";
+    if (/^\/admin\/video-testimonials\/[^/]+$/.test(p)) return "Video testimonial details";
+    return "Video testimonials";
   }
 
   if (p.startsWith("/admin/health-recipes")) {

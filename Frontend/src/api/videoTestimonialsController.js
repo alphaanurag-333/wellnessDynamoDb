@@ -22,6 +22,17 @@ export async function adminListVideoTestimonials(token, { page = 1, limit = 10, 
   }
 }
 
+export async function adminGetVideoTestimonialById(token, id) {
+  try {
+    const { data } = await api.get(`${videoTestimonialsBase()}/${encodeURIComponent(id)}`, {
+      headers: authHeader(token),
+    });
+    return data.videoTestimonial ?? null;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function adminCreateVideoTestimonial(token, fields) {
   const normalizedType = String(fields?.type || "link").trim().toLowerCase();
   if (fields?.profileImageFile instanceof File || (normalizedType === "video" && fields?.videoFile instanceof File)) {

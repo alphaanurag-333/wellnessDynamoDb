@@ -21,6 +21,17 @@ export async function adminListClientTestimonials(token, { page = 1, limit = 10,
   }
 }
 
+export async function adminGetClientTestimonialById(token, id) {
+  try {
+    const { data } = await api.get(`${clientTestimonialsBase()}/${encodeURIComponent(id)}`, {
+      headers: authHeader(token),
+    });
+    return data.clientTestimonial ?? null;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function adminCreateClientTestimonial(token, fields) {
   if (fields?.file instanceof File) {
     const fd = new FormData();
