@@ -12,6 +12,8 @@ const {
   deleteAssistantWellnessCoach,
   listAssistantsByWellnessCoachId,
   listAssistantWellnessCoaches,
+  populateWellnessCoach,
+  populateWellnessCoaches,
   normalizeStatus,
   ALLOWED_STATUS,
 } = require("../../models/assistantWellnessCoachModel");
@@ -74,14 +76,17 @@ function assertAssistantBelongsToCoach(assistant, wellnessCoachId) {
 
 exports.listAssistantsController = asyncHandler(async (req, res) => {
   const { coachId } = req.params;
-  await assertCoachExists(coachId);
+  const coach = await assertCoachExists(coachId);
 
   const { page = 1, limit = 20, status, search } = req.query;
   const data = await listAssistantsByWellnessCoachId(coachId, { page, limit, status, search });
+  const assistants = await Promise.all(
+    data.assistants.map((row) => populateWellnessCoach(row, coach))
+  );
 
   return res.status(200).json({
     status: true,
-    assistants: data.assistants,
+    assistants,
     pagination: data.pagination,
   });
 });
@@ -96,27 +101,32 @@ exports.listAllAssistantsController = asyncHandler(async (req, res) => {
     wellnessCoachId,
   });
 
+  const assistants = await populateWellnessCoaches(data.assistants);
+
   return res.status(200).json({
     status: true,
-    assistants: data.assistants,
+    assistants,
     pagination: data.pagination,
   });
 });
 
 exports.getAssistantByIdController = asyncHandler(async (req, res) => {
   const { coachId, id } = req.params;
-  await assertCoachExists(coachId);
+  const coach = await assertCoachExists(coachId);
 
   const assistant = await getAssistantWellnessCoachById(id);
   if (!assistant) throw new AppError("Assistant wellness coach not found", 404);
   assertAssistantBelongsToCoach(assistant, coachId);
 
-  return res.status(200).json({ status: true, assistant });
+  return res.status(200).json({
+    status: true,
+    assistant: await populateWellnessCoach(assistant, coach),
+  });
 });
 
 exports.createAssistantController = asyncHandler(async (req, res) => {
   const { coachId } = req.params;
-  await assertCoachExists(coachId);
+  const coach = await assertCoachExists(coachId);
 
   const fields = parseAssistantBody(req.body, coachId);
   await assertUniqueAssistantEmail(fields.email);
@@ -125,7 +135,10 @@ exports.createAssistantController = asyncHandler(async (req, res) => {
   const uploaded = publicUploadPathFromFile(req, "assistant-wellness-coach");
   if (uploaded) fields.profileImage = uploaded;
 
-  const assistant = await createAssistantWellnessCoach(fields);
+  const assistant = await populateWellnessCoach(
+    await createAssistantWellnessCoach(fields),
+    coach
+  );
   return res.status(201).json({
     status: true,
     message: "Assistant wellness coach created successfully",
@@ -135,7 +148,7 @@ exports.createAssistantController = asyncHandler(async (req, res) => {
 
 exports.updateAssistantController = asyncHandler(async (req, res) => {
   const { coachId, id } = req.params;
-  await assertCoachExists(coachId);
+  const coach = await assertCoachExists(coachId);
 
   const current = await getAssistantWellnessCoachById(id);
   if (!current) throw new AppError("Assistant wellness coach not found", 404);
@@ -195,7 +208,10 @@ exports.updateAssistantController = asyncHandler(async (req, res) => {
     throw new AppError("At least one field is required for update", 400);
   }
 
-  const assistant = await updateAssistantWellnessCoach(current.id, updates);
+  const assistant = await populateWellnessCoach(
+    await updateAssistantWellnessCoach(current.id, updates),
+    coach
+  );
   return res.status(200).json({
     status: true,
     message: "Assistant wellness coach updated successfully",

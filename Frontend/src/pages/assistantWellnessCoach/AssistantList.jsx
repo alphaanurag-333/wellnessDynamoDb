@@ -168,7 +168,7 @@ export function AssistantList() {
               rows.map((row, idx) => {
                 const aid = resolveAssistantId(row);
                 const cid = row.wellnessCoachId;
-                const coach = coachMap[cid];
+                const coach = coachMap[cid] || row.wellnessCoach;
                 return (
                   <tr key={aid}>
                     <td className="data-table__muted">{(page - 1) * LIST_LIMIT + idx + 1}</td>
@@ -184,8 +184,8 @@ export function AssistantList() {
                       </div>
                     </td>
                     <td>
-                      {coach ? (
-                        <Link to={`/admin/coaches/${cid}`}>{coach.name}</Link>
+                      {coach?.name || row.wellnessCoachName ? (
+                        <Link to={`/admin/coaches/${cid}`}>{coach?.name || row.wellnessCoachName}</Link>
                       ) : (
                         <span className="data-table__mono">{cid || "—"}</span>
                       )}

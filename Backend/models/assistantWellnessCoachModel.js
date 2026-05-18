@@ -14,6 +14,8 @@ const {
   normalizeCountryCode,
   buildPhoneKey,
 } = require("./userModel");
+const { getWellnessCoachById } = require("./wellnessCoachModel");
+const { getSpecializationById } = require("./specializationModel");
 
 const TABLE = "AssistantWellnessCoach";
 const ALLOWED_STATUS = new Set(["active", "inactive"]);
@@ -89,6 +91,87 @@ async function getAssistantByPhone(phoneCountryCode, phone) {
     })
   );
   return withLegacyId(Items?.[0] || null);
+}
+
+async function specializationTitleForCoach(coach, titleCache) {
+  if (!coach?.specializationId) return null;
+  const sid = coach.specializationId;
+  if (titleCache.has(sid)) return titleCache.get(sid);
+  const spec = await getSpecializationById(sid);
+  const title = spec?.title ?? null;
+  titleCache.set(sid, title);
+  return title;
+}
+
+function slimWellnessCoach(coach, specializationTitle = null) {
+  if (!coach) return null;
+  return {
+    id: coach.id,
+    _id: coach._id ?? coach.id,
+    name: coach.name,
+    email: coach.email,
+    phone: coach.phone,
+    phoneCountryCode: coach.phoneCountryCode,
+    status: coach.status,
+    profileImage: coach.profileImage ?? null,
+    specializationId: coach.specializationId ?? null,
+    specializationTitle,
+  };
+}
+
+async function populateWellnessCoach(assistant, wellnessCoach = undefined) {
+  if (!assistant) return assistant;
+
+  const coachId = String(assistant.wellnessCoachId || "").trim();
+  if (!coachId) {
+    return { ...assistant, wellnessCoach: null, wellnessCoachName: null };
+  }
+
+  let coach = wellnessCoach;
+  if (coach === undefined) {
+    coach = await getWellnessCoachById(coachId);
+  }
+
+  const titleCache = new Map();
+  const specializationTitle = await specializationTitleForCoach(coach, titleCache);
+  const slim = slimWellnessCoach(coach, specializationTitle);
+
+  return {
+    ...assistant,
+    wellnessCoach: slim,
+    wellnessCoachName: slim?.name ?? null,
+  };
+}
+
+async function populateWellnessCoaches(assistants) {
+  if (!Array.isArray(assistants) || assistants.length === 0) return assistants;
+
+  const coachCache = new Map();
+  const titleCache = new Map();
+  const result = [];
+
+  for (const assistant of assistants) {
+    const coachId = String(assistant?.wellnessCoachId || "").trim();
+    if (!coachId) {
+      result.push({ ...assistant, wellnessCoach: null, wellnessCoachName: null });
+      continue;
+    }
+
+    if (!coachCache.has(coachId)) {
+      const coach = await getWellnessCoachById(coachId);
+      const specializationTitle = await specializationTitleForCoach(coach, titleCache);
+      coachCache.set(coachId, slimWellnessCoach(coach, specializationTitle));
+    }
+
+    const slim = coachCache.get(coachId);
+    result.push({
+      ...assistant,
+      wellnessCoach: slim,
+      wellnessCoachName: slim?.name ?? null,
+    });
+  }
+
+  return result;
 }
 
 async function countAssistantsByWellnessCoachId(wellnessCoachId) {
@@ -318,4 +401,7 @@ module.exports = {
   listAssistantsByWellnessCoachId,
   listAssistantWellnessCoaches,
   countAssistantsByWellnessCoachId,
+  slimWellnessCoach,
+  populateWellnessCoach,
+  populateWellnessCoaches,
 };
