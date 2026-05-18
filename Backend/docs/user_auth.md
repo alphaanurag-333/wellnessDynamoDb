@@ -44,6 +44,7 @@ $env:REFRESH_TOKEN = "<refreshToken from response>"
 | `POST` | `/user/auth/otp/verify` | No | Verify login OTP and receive tokens |
 | `POST` | `/user/auth/refresh-token` | No | Exchange refresh token for new pair |
 | `GET` | `/user/auth/me` | Bearer user | Current profile |
+| `PATCH` | `/user/auth/me` | Bearer user | Update own profile (optional `file` upload) |
 
 **Recommended flows**
 
@@ -317,6 +318,45 @@ curl -sS -X GET "${BASE_URL}/user/auth/me" \
 {
   "status": true,
   "message": "Profile fetched successfully",
+  "user": { }
+}
+```
+
+---
+
+## Update profile
+
+`PATCH` with `Authorization: Bearer ${ACCESS_TOKEN}`. Send JSON or `multipart/form-data` (field name **`file`** for profile photo).
+
+Updatable fields: `name`, `email`, `phone`, `phoneCountryCode`, `whatsappSameAsMobile`, `whatsappCountryCode`, `whatsappPhone`, `dob`, `gender`, `country`, `state`, `city`, `primaryHealthConcern`, `termsAccepted`, `termsAcceptedAt`, `fcm_id`, `password` (or `newPassword`, min 8 chars). **`status` is not allowed** (admin only).
+
+```bash
+curl -sS -X PATCH "${BASE_URL}/user/auth/me" \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Jane Doe Updated",
+    "city": "Mumbai",
+    "primaryHealthConcern": "PASTE_HEALTH_CONCERN_UUID"
+  }'
+```
+
+Profile photo upload:
+
+```bash
+curl -sS -X PATCH "${BASE_URL}/user/auth/me" \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  -F "file=@/path/to/photo.jpg" \
+  -F "name=Jane Doe"
+```
+
+**Response (200):**
+
+```json
+{
+  "status": true,
+  "message": "Profile updated successfully",
   "user": { }
 }
 ```

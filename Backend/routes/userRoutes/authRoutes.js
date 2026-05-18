@@ -1,6 +1,7 @@
 const express = require("express");
 
 const { protectUser } = require("../../middleware/auth");
+const { optionalUserFile } = require("../../middleware/authMultipart");
 const {
   registerUser,
   sendRegisterOtp,
@@ -10,6 +11,7 @@ const {
   verifyLoginOtp,
   refreshUserToken,
   getUserProfile,
+  updateUserProfile,
 } = require("../../controllers/userController/authController");
 
 const router = express.Router();
@@ -23,5 +25,6 @@ router.post("/otp/verify", verifyLoginOtp);
 router.post("/refresh-token", refreshUserToken);
 
 router.get("/me", protectUser, getUserProfile);
+router.patch("/me", protectUser, optionalUserFile, updateUserProfile);
 
 module.exports = router;

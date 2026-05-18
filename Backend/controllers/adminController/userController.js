@@ -180,8 +180,52 @@ exports.updateUserController = asyncHandler(async (req, res) => {
   const current = await getUserById(req.params.id);
   if (!current) throw new AppError("User not found", 404);
 
+  const updates = await buildUserUpdatesFromBody(req.body || {}, current, {
+    allowStatus: true,
+    req,
+  });
+
+  if (Object.keys(updates).length === 0) {
+    throw new AppError("At least one field is required for update", 400);
+  }
+
+  let user;
+  try {
+    user = await updateUser(req.params.id, updates);
+  } catch (err) {
+    if (err?.name === "ConditionalCheckFailedException" || err?.name === "NotFoundError") {
+      throw new AppError("User not found", 404);
+    }
+    throw err;
+  }
+
+  return res.status(200).json({
+    status: true,
+    message: "User updated successfully",
+    user: await enrichUser(user),
+  });
+});
+
+exports.deleteUserController = asyncHandler(async (req, res) => {
+  const current = await getUserById(req.params.id);
+  if (!current) throw new AppError("User not found", 404);
+  if (current.profileImage) deleteUploadFileByPublicUrl(current.profileImage);
+
+  try {
+    await deleteUser(req.params.id);
+  } catch (err) {
+    if (err?.name === "ConditionalCheckFailedException") {
+      throw new AppError("User not found", 404);
+    }
+    throw err;
+  }
+
+  return res.status(200).json({ status: true, message: "User deleted successfully" });
+});
+
+/** Build partial user updates from request body (shared by admin + self-service profile). */
+async function buildUserUpdatesFromBody(body, current, { allowStatus = true, req } = {}) {
   const updates = {};
-  const body = req.body || {};
 
   if (body.name !== undefined) {
     const name = String(body.name || "").trim();
@@ -244,63 +288,32 @@ exports.updateUserController = asyncHandler(async (req, res) => {
     updates.termsAcceptedAt = normalizeDob(body.termsAcceptedAt);
   }
   if (body.fcm_id !== undefined) updates.fcm_id = String(body.fcm_id || "").trim() || null;
-  if (body.status !== undefined) {
+
+  if (allowStatus && body.status !== undefined) {
     const status = normalizeStatus(body.status);
     if (!USER_ALLOWED_STATUS.includes(status)) {
       throw new AppError("status must be active, inactive, or blocked", 400);
     }
     updates.status = status;
   }
+
   if (body.profileImage !== undefined) {
     updates.profileImage = String(body.profileImage || "").trim() || null;
   }
 
-  const uploadedProfile = publicUploadPathFromFile(req, "user");
-  if (uploadedProfile) {
-    if (current.profileImage) deleteUploadFileByPublicUrl(current.profileImage);
-    updates.profileImage = uploadedProfile;
-  }
-
-  if (Object.keys(updates).length === 0) {
-    throw new AppError("At least one field is required for update", 400);
-  }
-
-  let user;
-  try {
-    user = await updateUser(req.params.id, updates);
-  } catch (err) {
-    if (err?.name === "ConditionalCheckFailedException" || err?.name === "NotFoundError") {
-      throw new AppError("User not found", 404);
+  if (req) {
+    const uploadedProfile = publicUploadPathFromFile(req, "user");
+    if (uploadedProfile) {
+      if (current.profileImage) deleteUploadFileByPublicUrl(current.profileImage);
+      updates.profileImage = uploadedProfile;
     }
-    throw err;
   }
 
-  return res.status(200).json({
-    status: true,
-    message: "User updated successfully",
-    user: await enrichUser(user),
-  });
-});
-
-exports.deleteUserController = asyncHandler(async (req, res) => {
-  const current = await getUserById(req.params.id);
-  if (!current) throw new AppError("User not found", 404);
-  if (current.profileImage) deleteUploadFileByPublicUrl(current.profileImage);
-
-  try {
-    await deleteUser(req.params.id);
-  } catch (err) {
-    if (err?.name === "ConditionalCheckFailedException") {
-      throw new AppError("User not found", 404);
-    }
-    throw err;
-  }
-
-  return res.status(200).json({ status: true, message: "User deleted successfully" });
-});
-
+  return updates;
+}
 
 exports.parseUserFields = parseUserFields;
 exports.assertUniqueEmail = assertUniqueEmail;
 exports.assertUniquePhone = assertUniquePhone;
 exports.enrichUser = enrichUser;
+exports.buildUserUpdatesFromBody = buildUserUpdatesFromBody;

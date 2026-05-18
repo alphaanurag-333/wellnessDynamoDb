@@ -25,6 +25,7 @@ const {
   parseUserFields,
   assertUniqueEmail,
   assertUniquePhone,
+  buildUserUpdatesFromBody,
 } = require("../adminController/userController");
 
 function sendAuthResponse(res, statusCode, user, message = "Authentication successful") {
@@ -290,10 +291,59 @@ exports.refreshUserToken = asyncHandler(async (req, res) => {
 exports.getUserProfile = asyncHandler(async (req, res) => {
   const user = await getUserById(req.auth?.sub);
   if (!user) throw new AppError("User not found", 404);
+  assertUserCanLogin(user);
 
   return res.status(200).json({
     status: true,
     message: "Profile fetched successfully",
+    user: await enrichUser(user),
+  });
+});
+
+/** PATCH /user/auth/me — update own profile (multipart field: file) */
+exports.updateUserProfile = asyncHandler(async (req, res) => {
+  const userId = req.auth?.sub;
+  if (!userId) throw new AppError("Unauthorized", 401);
+
+  const current = await getUserById(userId);
+  if (!current) throw new AppError("User not found", 404);
+  assertUserCanLogin(current);
+
+  const body = req.body || {};
+  if (body.status !== undefined) {
+    throw new AppError("status cannot be updated via profile", 400);
+  }
+
+  const updates = await buildUserUpdatesFromBody(body, current, {
+    allowStatus: false,
+    req,
+  });
+
+  const password = String(body.password ?? body.newPassword ?? "").trim();
+  if (password) {
+    if (password.length < 8) {
+      throw new AppError("password must be at least 8 characters", 400);
+    }
+    updates.passwordHash = await hashPassword(password);
+  }
+
+  if (Object.keys(updates).length === 0) {
+    throw new AppError("At least one field is required for update", 400);
+  }
+
+  let user;
+  try {
+    user = await updateUser(userId, updates);
+  } catch (err) {
+    if (err?.name === "ConditionalCheckFailedException" || err?.name === "NotFoundError") {
+      throw new AppError("User not found", 404);
+    }
+    throw err;
+  }
+
+  return res.status(200).json({
+    status: true,
+    message: "Profile updated successfully",
     user: await enrichUser(user),
   });
 });
