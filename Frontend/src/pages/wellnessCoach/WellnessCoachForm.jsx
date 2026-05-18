@@ -9,14 +9,18 @@ import {
   buildCoachUpdatePayload,
   resolveCoachId,
 } from "../../api/adminWellnessCoaches.js";
+import {
+  adminGetSpecializationById,
+  adminListSpecializations,
+} from "../../api/adminSpecializations.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { logout } from "../../store/authSlice.js";
 import {
   ALL_COUNTRIES,
   BIO_MAX_LEN,
   DEFAULT_ISO,
+  getSpecializationOptionId,
   NAME_MAX_LEN,
-  SPECIALIZATION_MAX_LEN,
   STATUS_OPTIONS,
   coachToForm,
   dialCodeFromPhonecode,
@@ -36,13 +40,51 @@ export function WellnessCoachForm({
 }) {
   const dispatch = useDispatch();
   const adminToken = useSelector((s) => s.auth.adminToken);
-  const [values, setValues] = useState(() => (initialCoach ? coachToForm(initialCoach) : emptyCoachForm()));
+  const [values, setValues] = useState(() => emptyCoachForm());
+  const [specializationOptions, setSpecializationOptions] = useState([]);
+  const [specializationsLoading, setSpecializationsLoading] = useState(false);
   const [profileFile, setProfileFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef(null);
   const fileInputId = useId();
+
+  useEffect(() => {
+    if (!adminToken) return;
+    let cancelled = false;
+    setSpecializationsLoading(true);
+    (async () => {
+      try {
+        const { specializations } = await adminListSpecializations(adminToken, {
+          page: 1,
+          limit: 200,
+          status: "active",
+        });
+        if (cancelled) return;
+        let options = Array.isArray(specializations) ? specializations : [];
+        const currentId = initialCoach?.specializationId
+          ? String(initialCoach.specializationId).trim()
+          : "";
+        if (currentId && !options.some((o) => getSpecializationOptionId(o) === currentId)) {
+          try {
+            const current = await adminGetSpecializationById(adminToken, currentId);
+            if (current) options = [...options, current];
+          } catch {
+            /* keep active list only */
+          }
+        }
+        setSpecializationOptions(options);
+      } catch {
+        if (!cancelled) setSpecializationOptions([]);
+      } finally {
+        if (!cancelled) setSpecializationsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [adminToken, initialCoach?.specializationId]);
 
   useEffect(() => {
     setValues(initialCoach ? coachToForm(initialCoach) : emptyCoachForm());
@@ -144,8 +186,9 @@ export function WellnessCoachForm({
         const initial = coachToForm(initialCoach);
         const patch = {};
         const next = buildCoachPayload(values);
+        const initialApi = buildCoachPayload(initial);
         for (const key of Object.keys(next)) {
-          if (next[key] !== initial[key]) patch[key] = next[key];
+          if (next[key] !== initialApi[key]) patch[key] = next[key];
         }
         const payload = buildCoachUpdatePayload(patch);
         if (Object.keys(payload).length === 0 && !profileFile) {
@@ -277,13 +320,33 @@ export function WellnessCoachForm({
           </span>
         </label>
         <label className="user-field col-12 col-md-6">
-          <span className="user-field__label">Specialization</span>
-          <input
-            className="user-field__input"
-            value={values.specialization}
-            onChange={handleChange("specialization")}
-            maxLength={SPECIALIZATION_MAX_LEN}
-          />
+          <span className="user-field__label">
+            Specialization <span className="required-dot">*</span>
+          </span>
+          <select
+            className="user-field__input form-select"
+            value={values.specializationId}
+            onChange={handleChange("specializationId")}
+            disabled={specializationsLoading || specializationOptions.length === 0}
+            required
+          >
+            <option value="">
+              {specializationsLoading ? "Loading specializations…" : "Select specialization"}
+            </option>
+            {specializationOptions.map((opt) => {
+              const id = getSpecializationOptionId(opt);
+              return (
+                <option key={id} value={id}>
+                  {opt.title}
+                </option>
+              );
+            })}
+          </select>
+          {!specializationsLoading && specializationOptions.length === 0 ? (
+            <span className="user-field__label small text-body-secondary d-block mt-1">
+              No active specializations. Add them under Specializations in the sidebar.
+            </span>
+          ) : null}
         </label>
         <label className="user-field col-12 col-md-6">
           <span className="user-field__label">Status</span>

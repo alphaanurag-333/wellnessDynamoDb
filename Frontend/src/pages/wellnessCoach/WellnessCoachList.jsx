@@ -165,7 +165,7 @@ export function WellnessCoachList() {
         <table className="data-table">
           <thead>
             <tr>
-              <th>#</th>
+              <th>S.No</th>
               <th>Coach</th>
               <th>Mobile</th>
               <th>Location</th>
@@ -197,8 +197,8 @@ export function WellnessCoachList() {
                         <div>
                           <div className="user-cell__name">{row.name || "—"}</div>
                           <div className="user-cell__id data-table__mono">{row.email || "—"}</div>
-                          {row.specialization ? (
-                            <div className="user-cell__muted small">{row.specialization}</div>
+                          {row.specializationTitle ? (
+                            <div className="user-cell__muted small">{row.specializationTitle}</div>
                           ) : null}
                         </div>
                       </div>

@@ -146,7 +146,7 @@ export function AssistantList() {
         <table className="data-table">
           <thead>
             <tr>
-              <th>#</th>
+              <th>S.No</th>
               <th>Assistant</th>
               <th>Wellness coach</th>
               <th>Mobile</th>

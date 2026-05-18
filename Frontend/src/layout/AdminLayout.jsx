@@ -107,6 +107,13 @@ function titleFromPath(pathname) {
     return "Coupons";
   }
 
+  if (p.startsWith("/admin/specializations")) {
+    if (/^\/admin\/specializations\/new$/.test(p)) return "Add specialization";
+    if (/^\/admin\/specializations\/[^/]+\/edit$/.test(p)) return "Edit specialization";
+    if (/^\/admin\/specializations\/[^/]+$/.test(p)) return "Specialization details";
+    return "Specializations";
+  }
+
   if (p.startsWith("/admin/faq")) {
     if (/^\/admin\/faq\/new$/.test(p)) return "Add FAQ";
     if (/^\/admin\/faq\/[^/]+\/edit$/.test(p)) return "Edit FAQ";

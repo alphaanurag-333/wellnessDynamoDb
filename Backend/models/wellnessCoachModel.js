@@ -42,7 +42,8 @@ function buildCoachItem(input, { id, now } = {}) {
     phoneKey: buildPhoneKey(phoneCountryCode, phone),
     profileImage: input.profileImage != null ? String(input.profileImage).trim() || null : null,
     bio: input.bio != null ? String(input.bio).trim() || null : null,
-    specialization: input.specialization != null ? String(input.specialization).trim() || null : null,
+    specializationId:
+      input.specializationId != null ? String(input.specializationId).trim() || null : null,
     country: input.country != null ? String(input.country).trim() || null : null,
     state: input.state != null ? String(input.state).trim() || null : null,
     city: input.city != null ? String(input.city).trim() || null : null,
@@ -57,7 +58,11 @@ function sanitizeUpdateField(key, value) {
   if (key === "phone") return normalizePhone(value);
   if (key === "phoneCountryCode") return normalizeCountryCode(value);
   if (key === "status") return normalizeStatus(value);
-  if (["name", "bio", "specialization", "country", "state", "city", "profileImage"].includes(key)) {
+  if (key === "specializationId") {
+    const s = value == null ? "" : String(value).trim();
+    return s || null;
+  }
+  if (["name", "bio", "country", "state", "city", "profileImage"].includes(key)) {
     const s = value == null ? "" : String(value).trim();
     return s || null;
   }
@@ -203,12 +208,12 @@ async function listWellnessCoaches({ page = 1, limit = 20, status, search } = {}
   }
   if (normalizedSearch) {
     filters.push(
-      "(contains(#name, :search) OR contains(#email, :search) OR contains(#phone, :search) OR contains(#specialization, :search))"
+      "(contains(#name, :search) OR contains(#email, :search) OR contains(#phone, :search) OR contains(#specializationId, :search))"
     );
     names["#name"] = "name";
     names["#email"] = "email";
     names["#phone"] = "phone";
-    names["#specialization"] = "specialization";
+    names["#specializationId"] = "specializationId";
     values[":search"] = normalizedSearch;
   }
 

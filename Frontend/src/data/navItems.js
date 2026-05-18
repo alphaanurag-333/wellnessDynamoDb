@@ -8,6 +8,7 @@ export const navItems = [
   { to: "users", label: "User Management", icon: "users" },
   { to: "coaches", label: "Wellness Coaches", icon: "users" },
   { to: "awcs", label: "Assistant Coaches", icon: "users" },
+  { to: "specializations", label: "Specializations", icon: "sliders" },
 
   { to: "health-concerns", label: "Health Concerns", icon: "heart" },
   { to: "health-tools", label: "Health Tools", icon: "sliders" },

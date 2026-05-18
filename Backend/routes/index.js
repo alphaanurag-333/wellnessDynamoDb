@@ -14,6 +14,7 @@ const adminHealthRecipeRoutes = require("./adminRoutes/adminHealthRecipeRoutes")
 const adminYogaRoutes = require("./adminRoutes/adminYogaRoutes");
 const adminUserRoutes = require("./adminRoutes/adminUserRoutes");
 const adminWellnessCoachRoutes = require("./adminRoutes/adminWellnessCoachRoutes");
+const adminSpecializationRoutes = require("./adminRoutes/adminSpecializationRoutes");
 const adminCelebrationRoutes = require("./adminRoutes/adminCelebrationRoutes");
 const adminClientTestimonialsRoutes = require("./adminRoutes/adminClientTestimonialsRoutes");
 const adminVideoTestimonialsRoutes = require("./adminRoutes/adminVideoTestimonialsRoutes");
@@ -44,6 +45,7 @@ router.use("/admin/health-recipes", adminHealthRecipeRoutes);
 router.use("/admin/yoga", adminYogaRoutes);
 router.use("/admin/users", adminUserRoutes);
 router.use("/admin/wellness-coaches", adminWellnessCoachRoutes);
+router.use("/admin/specializations", adminSpecializationRoutes);
 router.use("/admin/misc/pages", adminStaticPageRoutes);
 router.use("/user/auth", userAuthRoutes);
 router.use("/public", publicAppConfigRoutes);

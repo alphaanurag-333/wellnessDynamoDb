@@ -14,7 +14,49 @@ const {
   ALLOWED_STATUS,
 } = require("../../models/wellnessCoachModel");
 const { countAssistantsByWellnessCoachId } = require("../../models/assistantWellnessCoachModel");
+const { getSpecializationById } = require("../../models/specializationModel");
 const { normalizeEmail, normalizePhone, normalizeCountryCode } = require("../../models/userModel");
+
+function parseSpecializationId(value) {
+  const id = value == null ? "" : String(value).trim();
+  return id || null;
+}
+
+async function assertValidSpecializationId(specializationId) {
+  if (!specializationId) return;
+  const spec = await getSpecializationById(specializationId);
+  if (!spec) throw new AppError("Specialization not found", 400);
+}
+
+async function enrichWellnessCoach(coach) {
+  if (!coach) return coach;
+  if (!coach.specializationId) {
+    return { ...coach, specializationTitle: null };
+  }
+  const spec = await getSpecializationById(coach.specializationId);
+  return { ...coach, specializationTitle: spec?.title ?? null };
+}
+
+async function enrichWellnessCoaches(coaches) {
+  if (!Array.isArray(coaches) || coaches.length === 0) return coaches;
+  const titleById = new Map();
+  const enriched = [];
+  for (const coach of coaches) {
+    if (!coach?.specializationId) {
+      enriched.push({ ...coach, specializationTitle: null });
+      continue;
+    }
+    if (!titleById.has(coach.specializationId)) {
+      const spec = await getSpecializationById(coach.specializationId);
+      titleById.set(coach.specializationId, spec?.title ?? null);
+    }
+    enriched.push({
+      ...coach,
+      specializationTitle: titleById.get(coach.specializationId) ?? null,
+    });
+  }
+  return enriched;
+}
 
 async function assertUniqueCoachEmail(email, excludeId) {
   const existing = await getWellnessCoachByEmail(email);
@@ -51,8 +93,7 @@ function parseCoachBody(body) {
     phone,
     phoneCountryCode,
     bio: body.bio !== undefined ? String(body.bio || "").trim() || null : null,
-    specialization:
-      body.specialization !== undefined ? String(body.specialization || "").trim() || null : null,
+    specializationId: parseSpecializationId(body.specializationId),
     country: body.country !== undefined ? String(body.country || "").trim() || null : null,
     state: body.state !== undefined ? String(body.state || "").trim() || null : null,
     city: body.city !== undefined ? String(body.city || "").trim() || null : null,
@@ -65,9 +106,10 @@ function parseCoachBody(body) {
 exports.listWellnessCoachesController = asyncHandler(async (req, res) => {
   const { page = 1, limit = 20, status, search } = req.query;
   const data = await listWellnessCoaches({ page, limit, status, search });
+  const wellnessCoaches = await enrichWellnessCoaches(data.wellnessCoaches);
   return res.status(200).json({
     status: true,
-    wellnessCoaches: data.wellnessCoaches,
+    wellnessCoaches,
     pagination: data.pagination,
   });
 });
@@ -75,18 +117,22 @@ exports.listWellnessCoachesController = asyncHandler(async (req, res) => {
 exports.getWellnessCoachByIdController = asyncHandler(async (req, res) => {
   const coach = await getWellnessCoachById(req.params.id);
   if (!coach) throw new AppError("Wellness coach not found", 404);
-  return res.status(200).json({ status: true, wellnessCoach: coach });
+  return res.status(200).json({
+    status: true,
+    wellnessCoach: await enrichWellnessCoach(coach),
+  });
 });
 
 exports.createWellnessCoachController = asyncHandler(async (req, res) => {
   const fields = parseCoachBody(req.body);
   await assertUniqueCoachEmail(fields.email);
   await assertUniqueCoachPhone(fields.phoneCountryCode, fields.phone);
+  await assertValidSpecializationId(fields.specializationId);
 
   const uploaded = publicUploadPathFromFile(req, "wellness-coach");
   if (uploaded) fields.profileImage = uploaded;
 
-  const coach = await createWellnessCoach(fields);
+  const coach = await enrichWellnessCoach(await createWellnessCoach(fields));
   return res.status(201).json({
     status: true,
     message: "Wellness coach created successfully",
@@ -134,8 +180,10 @@ exports.updateWellnessCoachController = asyncHandler(async (req, res) => {
     updates.status = status;
   }
   if (body.bio !== undefined) updates.bio = String(body.bio || "").trim() || null;
-  if (body.specialization !== undefined) {
-    updates.specialization = String(body.specialization || "").trim() || null;
+  if (body.specializationId !== undefined) {
+    const specializationId = parseSpecializationId(body.specializationId);
+    await assertValidSpecializationId(specializationId);
+    updates.specializationId = specializationId;
   }
   if (body.country !== undefined) updates.country = String(body.country || "").trim() || null;
   if (body.state !== undefined) updates.state = String(body.state || "").trim() || null;
@@ -156,7 +204,7 @@ exports.updateWellnessCoachController = asyncHandler(async (req, res) => {
     throw new AppError("At least one field is required for update", 400);
   }
 
-  const coach = await updateWellnessCoach(current.id, updates);
+  const coach = await enrichWellnessCoach(await updateWellnessCoach(current.id, updates));
   return res.status(200).json({
     status: true,
     message: "Wellness coach updated successfully",

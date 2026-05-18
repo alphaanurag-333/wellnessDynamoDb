@@ -5,8 +5,11 @@ export const LIST_SEARCH_MAX_LEN = 120;
 export const NAME_MAX_LEN = 100;
 export const EMAIL_MAX_LEN = 120;
 export const BIO_MAX_LEN = 2000;
-export const SPECIALIZATION_MAX_LEN = 200;
 export const DEFAULT_DIAL = "+91";
+
+export function getSpecializationOptionId(option) {
+  return String(option?.id || option?._id || "");
+}
 
 export const ALL_COUNTRIES = Country.sortByIsoCode([...Country.getAllCountries()]);
 
@@ -85,7 +88,7 @@ export function emptyCoachForm() {
     phoneCountryCode: DEFAULT_DIAL,
     phone: "",
     bio: "",
-    specialization: "",
+    specializationId: "",
     countryIso: DEFAULT_ISO,
     country: DEFAULT_COUNTRY_NAME,
     stateCode: "",
@@ -117,7 +120,7 @@ export function coachToForm(coach) {
     phoneCountryCode: phoneCc,
     phone: coach.phone != null ? String(coach.phone) : "",
     bio: coach.bio != null ? String(coach.bio) : "",
-    specialization: coach.specialization != null ? String(coach.specialization) : "",
+    specializationId: coach.specializationId != null ? String(coach.specializationId) : "",
     countryIso,
     country: countryNm,
     stateCode,
@@ -147,6 +150,7 @@ export function validateCoachForm(form) {
     if (states.length > 0) return "State / region is required.";
   }
   if (!String(form.city ?? "").trim()) return "City is required.";
+  if (!String(form.specializationId ?? "").trim()) return "Specialization is required.";
   if (form.status && !["active", "inactive"].includes(form.status)) {
     return "Status must be active or inactive.";
   }

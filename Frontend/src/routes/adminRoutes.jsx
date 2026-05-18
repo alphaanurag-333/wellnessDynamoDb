@@ -71,6 +71,10 @@ import { AssistantList } from "../pages/assistantWellnessCoach/AssistantList.jsx
 import { AssistantAdd } from "../pages/assistantWellnessCoach/AssistantAdd.jsx";
 import { AssistantEdit } from "../pages/assistantWellnessCoach/AssistantEdit.jsx";
 import { AssistantView } from "../pages/assistantWellnessCoach/AssistantView.jsx";
+import { SpecializationList } from "../pages/specialization/SpecializationList.jsx";
+import { SpecializationAdd } from "../pages/specialization/SpecializationAdd.jsx";
+import { SpecializationEdit } from "../pages/specialization/SpecializationEdit.jsx";
+import { SpecializationView } from "../pages/specialization/SpecializationView.jsx";
 
 export const adminRouteTree = (
   <Route path="/admin" element={<AdminLayout />}>
@@ -101,6 +105,12 @@ export const adminRouteTree = (
       <Route path=":coachId" element={<WellnessCoachView />} />
     </Route>
     <Route path="awcs" element={<AssistantList />} />
+    <Route path="specializations" element={<Outlet />}>
+      <Route index element={<SpecializationList />} />
+      <Route path="new" element={<SpecializationAdd />} />
+      <Route path=":specializationId/edit" element={<SpecializationEdit />} />
+      <Route path=":specializationId" element={<SpecializationView />} />
+    </Route>
     <Route path="nutrition-plans" element={<SectionPage title="Nutrition Plans" />} />
     <Route path="support-tickets" element={<SectionPage title="Support Tickets" />} />
     <Route path="camp-events" element={<SectionPage title="Camp Events" />} />

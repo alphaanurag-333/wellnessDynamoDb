@@ -173,7 +173,7 @@ export function WellnessCoachView() {
         <div className="user-detail-fields">
           <DetailRow label="Email" value={coach.email} />
           <DetailRow label="Mobile" value={formatPhone(coach)} />
-          <DetailRow label="Specialization" value={coach.specialization} />
+          <DetailRow label="Specialization" value={coach.specializationTitle} />
           <DetailRow label="Location" value={[coach.city, coach.state, coach.country].filter(Boolean).join(", ")} />
           <DetailRow label="Bio" value={coach.bio} />
           <DetailRow label="Created" value={formatDate(coach.createdAt)} />

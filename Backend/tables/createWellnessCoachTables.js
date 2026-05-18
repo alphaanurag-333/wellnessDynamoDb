@@ -26,6 +26,7 @@ async function createWellnessCoachTables() {
         { AttributeName: "id", AttributeType: "S" },
         { AttributeName: "email", AttributeType: "S" },
         { AttributeName: "phoneKey", AttributeType: "S" },
+        { AttributeName: "specializationId", AttributeType: "S" },
         { AttributeName: "status", AttributeType: "S" },
         { AttributeName: "createdAt", AttributeType: "S" },
       ],
@@ -44,6 +45,14 @@ async function createWellnessCoachTables() {
           IndexName: "StatusCreatedAtIndex",
           KeySchema: [
             { AttributeName: "status", KeyType: "HASH" },
+            { AttributeName: "createdAt", KeyType: "RANGE" },
+          ],
+          Projection: { ProjectionType: "ALL" },
+        },
+        {
+          IndexName: "SpecializationIdIndex",
+          KeySchema: [
+            { AttributeName: "specializationId", KeyType: "HASH" },
             { AttributeName: "createdAt", KeyType: "RANGE" },
           ],
           Projection: { ProjectionType: "ALL" },

@@ -79,7 +79,7 @@ node Backend/tables/createWellnessCoachTables.js
 
 ### List wellness coaches
 
-Query: `page`, `limit` (max 200), `status` (`active` | `inactive`), `search` (name, email, phone, specialization).
+Query: `page`, `limit` (max 200), `status` (`active` | `inactive`), `search` (name, email, phone, specializationId).
 
 ```bash
 curl -sS -X GET "${BASE_URL}/admin/wellness-coaches?page=1&limit=20&status=active" \
@@ -122,7 +122,8 @@ curl -sS -X GET "${BASE_URL}/admin/wellness-coaches/${COACH_ID}" \
     "phoneKey": "+91#9876543210",
     "profileImage": null,
     "bio": null,
-    "specialization": "Weight management",
+    "specializationId": "PASTE_SPECIALIZATION_UUID",
+    "specializationTitle": "Weight management",
     "country": "India",
     "state": "Maharashtra",
     "city": "Mumbai",
@@ -146,7 +147,8 @@ curl -sS -X POST "${BASE_URL}/admin/wellness-coaches" \
     "phoneCountryCode": "+91",
     "phone": "9876543210",
     "bio": "Certified nutrition and lifestyle coach.",
-    "specialization": "Weight management",
+    "specializationId": "PASTE_SPECIALIZATION_UUID",
+    "specializationTitle": "Weight management",
     "country": "India",
     "state": "Maharashtra",
     "city": "Mumbai",
@@ -173,7 +175,7 @@ curl -sS -X POST "${BASE_URL}/admin/wellness-coaches" \
 | `phone` | yes | Unique with `phoneCountryCode` |
 | `phoneCountryCode` | no | Default `+91` |
 | `bio` | no | |
-| `specialization` | no | |
+| `specializationId` | no | UUID from Specializations admin |
 | `country`, `state`, `city` | no | |
 | `profileImage` | no | URL/path string, or upload via multipart (below) |
 | `status` | no | `active` or `inactive` (default `active`) |
@@ -204,7 +206,7 @@ curl -sS -X PATCH "${BASE_URL}/admin/wellness-coaches/${COACH_ID}" \
   -H "Authorization: Bearer ${ADMIN_TOKEN}" \
   -d '{
     "status": "inactive",
-    "specialization": "Diabetes care"
+    "specializationId": "PASTE_SPECIALIZATION_UUID"
   }'
 ```
 
@@ -444,7 +446,7 @@ curl -sS -X POST "${BASE_URL}/admin/wellness-coaches" \
     "email":"priya@example.com",
     "phoneCountryCode":"+91",
     "phone":"9876543210",
-    "specialization":"Weight management",
+    "specializationId":"PASTE_SPECIALIZATION_UUID",
     "status":"active"
   }'
 

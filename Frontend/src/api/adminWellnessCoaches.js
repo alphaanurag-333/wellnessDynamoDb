@@ -29,7 +29,7 @@ function appendCoachFields(fd, fields) {
     "phone",
     "phoneCountryCode",
     "bio",
-    "specialization",
+    "specializationId",
     "country",
     "state",
     "city",
@@ -59,7 +59,8 @@ export function buildCoachPayload(fields) {
     phone: String(fields.phone ?? "").trim(),
     phoneCountryCode: String(fields.phoneCountryCode ?? "+91").trim() || "+91",
     bio: fields.bio != null ? String(fields.bio).trim() || null : null,
-    specialization: fields.specialization != null ? String(fields.specialization).trim() || null : null,
+    specializationId:
+      fields.specializationId != null ? String(fields.specializationId).trim() || null : null,
     country: fields.country != null ? String(fields.country).trim() || null : null,
     state: fields.state != null ? String(fields.state).trim() || null : null,
     city: fields.city != null ? String(fields.city).trim() || null : null,
@@ -74,8 +75,8 @@ export function buildCoachUpdatePayload(fields) {
   if (fields.phone !== undefined) payload.phone = String(fields.phone).trim();
   if (fields.phoneCountryCode !== undefined) payload.phoneCountryCode = String(fields.phoneCountryCode).trim();
   if (fields.bio !== undefined) payload.bio = String(fields.bio ?? "").trim() || null;
-  if (fields.specialization !== undefined) {
-    payload.specialization = String(fields.specialization ?? "").trim() || null;
+  if (fields.specializationId !== undefined) {
+    payload.specializationId = String(fields.specializationId ?? "").trim() || null;
   }
   if (fields.country !== undefined) payload.country = String(fields.country ?? "").trim() || null;
   if (fields.state !== undefined) payload.state = String(fields.state ?? "").trim() || null;
