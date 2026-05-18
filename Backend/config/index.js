@@ -14,6 +14,5 @@ module.exports = {
   adminRegistrationEnabled: process.env.ADMIN_REGISTRATION_ENABLED === "false",
   otpLength: Number(process.env.OTP_LENGTH) || 6,
   otpExpiresMinutes: Number(process.env.OTP_EXPIRES_MINUTES) || 10,
-  /** When true, send-otp responses include the code (dev only — never enable in production). */
   exposeOtpInResponse: process.env.EXPOSE_OTP_IN_RESPONSE === "true",
 };
