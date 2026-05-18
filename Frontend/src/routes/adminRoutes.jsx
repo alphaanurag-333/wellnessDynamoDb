@@ -63,6 +63,14 @@ import { UserAdd } from "../pages/user/UserAdd.jsx";
 import { UserEdit } from "../pages/user/UserEdit.jsx";
 import { UserList } from "../pages/user/UserList.jsx";
 import { UserView } from "../pages/user/UserView.jsx";
+import { WellnessCoachList } from "../pages/wellnessCoach/WellnessCoachList.jsx";
+import { WellnessCoachAdd } from "../pages/wellnessCoach/WellnessCoachAdd.jsx";
+import { WellnessCoachEdit } from "../pages/wellnessCoach/WellnessCoachEdit.jsx";
+import { WellnessCoachView } from "../pages/wellnessCoach/WellnessCoachView.jsx";
+import { AssistantList } from "../pages/assistantWellnessCoach/AssistantList.jsx";
+import { AssistantAdd } from "../pages/assistantWellnessCoach/AssistantAdd.jsx";
+import { AssistantEdit } from "../pages/assistantWellnessCoach/AssistantEdit.jsx";
+import { AssistantView } from "../pages/assistantWellnessCoach/AssistantView.jsx";
 
 export const adminRouteTree = (
   <Route path="/admin" element={<AdminLayout />}>
@@ -83,8 +91,16 @@ export const adminRouteTree = (
       <Route path=":userId" element={<UserView />} />
     </Route>
     <Route path="programs" element={<SectionPage title="Programs" />} />
-    <Route path="coaches" element={<SectionPage title="Coaches" />} />
-    <Route path="awcs" element={<SectionPage title="AWCs" />} />
+    <Route path="coaches" element={<Outlet />}>
+      <Route index element={<WellnessCoachList />} />
+      <Route path="new" element={<WellnessCoachAdd />} />
+      <Route path=":coachId/edit" element={<WellnessCoachEdit />} />
+      <Route path=":coachId/assistants/new" element={<AssistantAdd />} />
+      <Route path=":coachId/assistants/:assistantId/edit" element={<AssistantEdit />} />
+      <Route path=":coachId/assistants/:assistantId" element={<AssistantView />} />
+      <Route path=":coachId" element={<WellnessCoachView />} />
+    </Route>
+    <Route path="awcs" element={<AssistantList />} />
     <Route path="nutrition-plans" element={<SectionPage title="Nutrition Plans" />} />
     <Route path="support-tickets" element={<SectionPage title="Support Tickets" />} />
     <Route path="camp-events" element={<SectionPage title="Camp Events" />} />

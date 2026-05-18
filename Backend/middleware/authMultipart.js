@@ -36,8 +36,12 @@ const transformationUploads = createUploader("transformation").fields([
   { name: "oldImage", maxCount: 1 },
   { name: "newImage", maxCount: 1 },
 ]);
+const wellnessCoachUpload = createUploader("wellness-coach").single("file");
+const assistantWellnessCoachUpload = createUploader("assistant-wellness-coach").single("file");
 
 exports.optionalAdminFile = optionalMultipart(adminUpload);
+exports.optionalWellnessCoachFile = optionalMultipart(wellnessCoachUpload);
+exports.optionalAssistantWellnessCoachFile = optionalMultipart(assistantWellnessCoachUpload);
 exports.optionalUserFile = optionalMultipart(userUpload);
 exports.optionalBannerFile = optionalMultipart(bannerUpload);
 exports.optionalCelebrationFile = optionalMultipart(celebrationUpload);

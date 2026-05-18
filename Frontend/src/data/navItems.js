@@ -6,6 +6,8 @@
 export const navItems = [
   { to: "dashboard", label: "Dashboard", icon: "grid" },
   { to: "users", label: "User Management", icon: "users" },
+  { to: "coaches", label: "Wellness Coaches", icon: "users" },
+  { to: "awcs", label: "Assistant Coaches", icon: "users" },
 
   { to: "health-concerns", label: "Health Concerns", icon: "heart" },
   { to: "health-tools", label: "Health Tools", icon: "sliders" },
