@@ -100,6 +100,13 @@ function titleFromPath(pathname) {
     return "Celebration banners";
   }
 
+  if (p.startsWith("/admin/coupons")) {
+    if (/^\/admin\/coupons\/new$/.test(p)) return "Add coupon";
+    if (/^\/admin\/coupons\/[^/]+\/edit$/.test(p)) return "Edit coupon";
+    if (/^\/admin\/coupons\/[^/]+$/.test(p)) return "Coupon details";
+    return "Coupons";
+  }
+
   if (p.startsWith("/admin/faq")) {
     if (/^\/admin\/faq\/new$/.test(p)) return "Add FAQ";
     if (/^\/admin\/faq\/[^/]+\/edit$/.test(p)) return "Edit FAQ";

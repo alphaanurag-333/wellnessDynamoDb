@@ -11,7 +11,7 @@ module.exports = {
   jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN,
   jwtResetPasswordExpiresIn: process.env.JWT_RESET_PASSWORD_EXPIRES_IN,
   jwtVerifyEmailExpiresIn: process.env.JWT_VERIFY_EMAIL_EXPIRES_IN,
-  adminRegistrationEnabled: process.env.ADMIN_REGISTRATION_ENABLED === "true",
+  adminRegistrationEnabled: process.env.ADMIN_REGISTRATION_ENABLED === "false",
   otpLength: Number(process.env.OTP_LENGTH) || 6,
   otpExpiresMinutes: Number(process.env.OTP_EXPIRES_MINUTES) || 10,
   /** When true, send-otp responses include the code (dev only — never enable in production). */

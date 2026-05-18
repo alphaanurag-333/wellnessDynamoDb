@@ -3,6 +3,7 @@ const express = require("express");
 const { protectUser } = require("../../middleware/auth");
 const {
   registerUser,
+  sendRegisterOtp,
   loginWithPassword,
   loginUser,
   sendLoginOtp,
@@ -13,6 +14,7 @@ const {
 
 const router = express.Router();
 
+router.post("/register/otp/send", sendRegisterOtp);
 router.post("/register", registerUser);
 router.post("/login", loginUser);
 router.post("/login/password", loginWithPassword);

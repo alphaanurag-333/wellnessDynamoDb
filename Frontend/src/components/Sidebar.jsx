@@ -9,14 +9,16 @@ import { confirmLogout } from "../utils/confirmLogout.js";
 import { NavIcon } from "./NavIcon.jsx";
 import defaultLogo from "../assets/logo/defaultlogo.png";
 
+const NAV_GROUP_PATTERNS = {
+  program: /\/admin\/(programs|coaches|awcs)(\/|$)/,
+  wellness: /\/admin\/(nutrition-plans|support-tickets|camp-events|program-completions)(\/|$)/,
+  content: /\/admin\/(banners|celebration-banners|notifications|faq|static-pages)(\/|$)/,
+  health: /\/admin\/(health-concerns|health-tools|health-recipes|health-disorders|yoga)(\/|$)/,
+  testimonials: /\/admin\/(transformations|client-testimonials|video-testimonials)(\/|$)/,
+};
+
 function pathInGroup(pathname, groupId) {
-  if (groupId === "ecom") {
-    return /\/admin\/(vendors|delivery|orders|products|attribute-sets|attributes)(\/|$)/.test(pathname);
-  }
-  if (groupId === "venue") {
-    return /\/admin\/(venue-vendors|venues)(\/|$)/.test(pathname);
-  }
-  return false;
+  return Boolean(NAV_GROUP_PATTERNS[groupId]?.test(pathname));
 }
 
 function childPathActive(pathname, segment) {
@@ -32,25 +34,29 @@ export function Sidebar({ id = "admin-sidebar", onNavigate, drawerOpen, desktopC
   const appDisplayName = useSelector(selectAppDisplayName);
   const logoSrc = mediaUrl(brandLogoUrl) || defaultLogo;
 
-  const initialOpen = useMemo(
-    () => ({
-      ecom: pathInGroup(location.pathname, "ecom"),
-      venue: pathInGroup(location.pathname, "venue"),
-    }),
-    [location.pathname]
-  );
+  const initialOpen = useMemo(() => {
+    const open = {};
+    for (const id of Object.keys(NAV_GROUP_PATTERNS)) {
+      open[id] = pathInGroup(location.pathname, id);
+    }
+    return open;
+  }, [location.pathname]);
 
-  const [openGroups, setOpenGroups] = useState(() => ({
-    ecom: true,
-    venue: true,
-  }));
+  const [openGroups, setOpenGroups] = useState(() => ({ ...initialOpen }));
 
   useEffect(() => {
-    setOpenGroups((prev) => ({
-      ecom: prev.ecom || initialOpen.ecom,
-      venue: prev.venue || initialOpen.venue,
-    }));
-  }, [initialOpen.ecom, initialOpen.venue]);
+    setOpenGroups((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const id of Object.keys(NAV_GROUP_PATTERNS)) {
+        if (initialOpen[id] && !prev[id]) {
+          next[id] = true;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [initialOpen]);
 
   const handleLogout = async () => {
     const ok = await confirmLogout();

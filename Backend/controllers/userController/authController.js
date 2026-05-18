@@ -3,22 +3,29 @@ const { asyncHandler } = require("../../utils/asyncHandler");
 const { hashPassword, comparePassword } = require("../../utils/password");
 const { createTokenPair, verifyRefreshToken } = require("../../utils/jwt");
 const { generateOtp, getOtpExpiryDate, isOtpExpired, deliverOtp } = require("../../utils/otp");
+const {
+  setRegistrationOtp,
+  clearRegistrationOtp,
+  verifyRegistrationOtp,
+} = require("../../utils/registrationOtpStore");
 const config = require("../../config");
+const { getHealthConcernById } = require("../../models/healthConcernModel");
 const {
   createUser,
   getUserById,
   getUserByEmail,
   getUserByPhone,
   updateUser,
-  toPublicUser,
   normalizeEmail,
   normalizePhone,
   normalizeCountryCode,
-  normalizeStatus,
-  normalizeGender,
-  USER_ALLOWED_STATUS,
 } = require("../../models/userModel");
-const { enrichUser } = require("../adminController/userController");
+const {
+  enrichUser,
+  parseUserFields,
+  assertUniqueEmail,
+  assertUniquePhone,
+} = require("../adminController/userController");
 
 function sendAuthResponse(res, statusCode, user, message = "Authentication successful") {
   const { accessToken, refreshToken } = createTokenPair({
@@ -36,7 +43,7 @@ function sendAuthResponse(res, statusCode, user, message = "Authentication succe
 
 function assertUserCanLogin(user) {
   if (!user) {
-    throw new AppError("Invalid credentials", 401);
+    throw new AppError("User Not Registered", 401);
   }
   if (user.status === "blocked") {
     throw new AppError("Account is blocked", 403);
@@ -59,44 +66,98 @@ async function resolveUserByIdentifier({ email, phone, phoneCountryCode }) {
   return null;
 }
 
-/** POST /user/auth/register — sign up with password */
-exports.registerUser = asyncHandler(async (req, res) => {
-  const name = String(req.body.name ?? "").trim();
+function assertRegistrationAvailable(email, phoneCountryCode, phone) {
+  return Promise.all([
+    assertUniqueEmail(email),
+    assertUniquePhone(phoneCountryCode, phone),
+  ]);
+}
+
+async function verifyRegistrationOtpOrThrow(identifiers, otp) {
+  const code = String(otp ?? "").trim();
+  if (!code) throw new AppError("otp is required", 400);
+
+  const result = await verifyRegistrationOtp(identifiers, code);
+  if (result.ok) return;
+
+  if (result.reason === "missing") {
+    throw new AppError("No OTP requested. Send registration OTP first.", 400);
+  }
+  throw new AppError("Invalid OTP", 401);
+}
+
+/** POST /user/auth/register/otp/send — send OTP before self-registration */
+exports.sendRegisterOtp = asyncHandler(async (req, res) => {
   const email = normalizeEmail(req.body.email);
   const phone = normalizePhone(req.body.phone);
   const phoneCountryCode = normalizeCountryCode(req.body.phoneCountryCode);
-  const password = String(req.body.password ?? "").trim();
 
-  if (!name) throw new AppError("name is required", 400);
   if (!email) throw new AppError("email is required", 400);
   if (!phone) throw new AppError("phone is required", 400);
-  if (!password) throw new AppError("password is required", 400);
-  if (password.length < 8) throw new AppError("password must be at least 8 characters", 400);
 
-  const existingEmail = await getUserByEmail(email);
-  if (existingEmail) throw new AppError("A user already exists with this email", 409);
+  await assertRegistrationAvailable(email, phoneCountryCode, phone);
 
-  const existingPhone = await getUserByPhone(phoneCountryCode, phone);
-  if (existingPhone) throw new AppError("A user already exists with this phone number", 409);
+  const otp = generateOtp();
+  const otpExpire = getOtpExpiryDate();
 
-  const termsAccepted = req.body.termsAccepted === true || String(req.body.termsAccepted).toLowerCase() === "true";
+  await setRegistrationOtp({ email, phone, phoneCountryCode }, { otp, otpExpire });
 
-  const user = await createUser({
-    name,
+  await deliverOtp({
     email,
     phone,
     phoneCountryCode,
-    passwordHash: await hashPassword(password),
-    gender: req.body.gender ? normalizeGender(req.body.gender) : "boy",
-    status: "active",
-    termsAccepted,
-    termsAcceptedAt: termsAccepted ? new Date().toISOString() : null,
-    primaryHealthConcern: req.body.primaryHealthConcern
-      ? String(req.body.primaryHealthConcern).trim() || null
-      : null,
-    country: req.body.country ? String(req.body.country).trim() : null,
-    state: req.body.state ? String(req.body.state).trim() : null,
-    city: req.body.city ? String(req.body.city).trim() : null,
+    otp,
+  });
+
+  const payload = {
+    status: true,
+    message: "Registration OTP sent successfully",
+  };
+   
+  if (config.exposeOtpInResponse && config.nodeEnv !== "production") {
+    payload.debugOtp = otp;
+  }
+
+  return res.status(200).json(payload);
+});
+
+/** POST /user/auth/register — verify OTP, then create account */
+exports.registerUser = asyncHandler(async (req, res) => {
+  const otp = req.body.otp;
+  const { fields, password } = parseUserFields(req.body, { requirePassword: false });
+
+  await verifyRegistrationOtpOrThrow(
+    { email: fields.email, phone: fields.phone, phoneCountryCode: fields.phoneCountryCode },
+    otp
+  );
+
+  await assertRegistrationAvailable(fields.email, fields.phoneCountryCode, fields.phone);
+
+  if (!fields.termsAccepted) {
+    throw new AppError("termsAccepted must be true", 400);
+  }
+  if (!fields.termsAcceptedAt) {
+    fields.termsAcceptedAt = new Date().toISOString();
+  }
+
+  if (password) {
+    if (password.length < 8) {
+      throw new AppError("password must be at least 8 characters", 400);
+    }
+    fields.passwordHash = await hashPassword(password);
+  }
+
+  if (fields.primaryHealthConcern) {
+    const concern = await getHealthConcernById(fields.primaryHealthConcern);
+    if (!concern) throw new AppError("primaryHealthConcern not found", 400);
+  }
+
+  const user = await createUser(fields);
+
+  await clearRegistrationOtp({
+    email: fields.email,
+    phone: fields.phone,
+    phoneCountryCode: fields.phoneCountryCode,
   });
 
   return sendAuthResponse(res, 201, await enrichUser(user), "Registration successful");

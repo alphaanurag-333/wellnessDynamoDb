@@ -119,8 +119,6 @@ async function enrichUser(user) {
   return pub;
 }
 
-exports.enrichUser = enrichUser;
-
 async function assertUniqueEmail(email, excludeUserId) {
   const existing = await getUserByEmail(email);
   if (existing && existing.id !== excludeUserId) {
@@ -300,3 +298,9 @@ exports.deleteUserController = asyncHandler(async (req, res) => {
 
   return res.status(200).json({ status: true, message: "User deleted successfully" });
 });
+
+
+exports.parseUserFields = parseUserFields;
+exports.assertUniqueEmail = assertUniqueEmail;
+exports.assertUniquePhone = assertUniquePhone;
+exports.enrichUser = enrichUser;

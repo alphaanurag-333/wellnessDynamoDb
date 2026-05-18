@@ -8,6 +8,10 @@ import { BannerList } from "../pages/banners/BannerList.jsx";
 import { BannerAdd } from "../pages/banners/BannerAdd.jsx";
 import { BannerEdit } from "../pages/banners/BannerEdit.jsx";
 import { BannerView } from "../pages/banners/BannerView.jsx";
+import { CouponList } from "../pages/coupon/CouponList.jsx";
+import { CouponAdd } from "../pages/coupon/CouponAdd.jsx";
+import { CouponEdit } from "../pages/coupon/CouponEdit.jsx";
+import { CouponView } from "../pages/coupon/CouponView.jsx";
 import { FaqList } from "../pages/faq/FaqList.jsx";
 import { FaqAdd } from "../pages/faq/FaqAdd.jsx";
 import { FaqEdit } from "../pages/faq/FaqEdit.jsx";
@@ -127,6 +131,12 @@ export const adminRouteTree = (
       <Route path="new" element={<TransformationAdd />} />
       <Route path=":transformationId/edit" element={<TransformationEdit />} />
       <Route path=":transformationId" element={<TransformationView />} />
+    </Route>
+    <Route path="coupons" element={<Outlet />}>
+      <Route index element={<CouponList />} />
+      <Route path="new" element={<CouponAdd />} />
+      <Route path=":couponId/edit" element={<CouponEdit />} />
+      <Route path=":couponId" element={<CouponView />} />
     </Route>
     <Route path="faq" element={<Outlet />}>
       <Route index element={<FaqList />} />

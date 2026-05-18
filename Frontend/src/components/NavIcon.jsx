@@ -231,6 +231,33 @@ export function NavIcon({ name }) {
           <line x1="12" y1="16.5" x2="12.01" y2="16.5" />
         </Icon>
       );
+    case "heart":
+      return (
+        <Icon>
+          <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z" />
+        </Icon>
+      );
+    case "utensils":
+      return (
+        <Icon>
+          <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" />
+          <path d="M7 2v20" />
+          <path d="M21 15V2a5 5 0 0 0-5 5v6a2 2 0 0 0 2 2h3v7" />
+        </Icon>
+      );
+    case "activity":
+      return (
+        <Icon>
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+        </Icon>
+      );
+    case "yoga":
+      return (
+        <Icon>
+          <circle cx="12" cy="5" r="2" />
+          <path d="M12 7v3M9 10h6M10 22l2-7 2 7M8 13h8" />
+        </Icon>
+      );
     default:
       return (
         <Icon>

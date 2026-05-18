@@ -18,7 +18,7 @@ $env:BASE_URL = "http://localhost:5000/api"
 
 Examples use `http://localhost:5000/api`; substitute your host if needed.
 
-After login, save tokens:
+After login or registration, save tokens:
 
 ```bash
 # bash
@@ -36,17 +36,28 @@ $env:REFRESH_TOKEN = "<refreshToken from response>"
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `POST` | `/user/auth/register` | No | Self-registration with password |
+| `POST` | `/user/auth/register/otp/send` | No | Send OTP before self-registration |
+| `POST` | `/user/auth/register` | No | Verify registration OTP and create account |
 | `POST` | `/user/auth/login` | No | Alias for password login |
 | `POST` | `/user/auth/login/password` | No | Login with email or phone + password |
-| `POST` | `/user/auth/otp/send` | No | Send login OTP |
-| `POST` | `/user/auth/otp/verify` | No | Verify OTP and receive tokens |
+| `POST` | `/user/auth/otp/send` | No | Send login OTP (existing users) |
+| `POST` | `/user/auth/otp/verify` | No | Verify login OTP and receive tokens |
 | `POST` | `/user/auth/refresh-token` | No | Exchange refresh token for new pair |
 | `GET` | `/user/auth/me` | Bearer user | Current profile |
 
-**Recommended flow for admin-created users (no password):** `otp/send` → `otp/verify`.
+**Recommended flows**
 
-**Password flow:** `register` or admin-set password → `login/password` (or `login`).
+| Scenario | Steps |
+|----------|--------|
+| **Self-registration** | `register/otp/send` → `register` (include `otp` + profile fields) |
+| **Admin-created user (no password)** | `otp/send` → `otp/verify` |
+| **Account with password** | `login/password` or `login` |
+
+Registration OTPs are stored in DynamoDB table **`RegistrationOtp`** (shared across API instances, TTL auto-expiry). Create once per environment:
+
+```bash
+node Backend/tables/createRegistrationOtpTable.js
+```
 
 ---
 
@@ -72,7 +83,93 @@ Authorization: Bearer <accessToken>
 
 ---
 
-## OTP login (primary)
+## Register (OTP required)
+
+Self-signup is a **two-step** flow: request a registration OTP, then submit the full profile with that OTP.
+
+### 1. Send registration OTP
+
+Requires `email` and `phone` (must not already be registered).
+
+```bash
+curl -sS -X POST "${BASE_URL}/user/auth/register/otp/send" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{
+    "email": "jane@example.com",
+    "phoneCountryCode": "+91",
+    "phone": "9876543210"
+  }'
+```
+
+**Response (200):**
+
+```json
+{
+  "status": true,
+  "message": "Registration OTP sent successfully"
+}
+```
+
+**Dev only:** if `EXPOSE_OTP_IN_RESPONSE=true` and `NODE_ENV` is not `production`, the response may include `debugOtp` for testing.
+
+OTP length and expiry come from `OTP_LENGTH` and `OTP_EXPIRES_MINUTES` in `.env` (defaults: 6 digits, 10 minutes).
+
+### 2. Register (verify OTP + create account)
+
+Use the **same** `email` and `phone` as in step 1. Include `otp` from SMS/email (or `debugOtp` in dev).
+
+```bash
+curl -sS -X POST "${BASE_URL}/user/auth/register" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{
+    "otp": "123456",
+    "name": "Jane Doe",
+    "email": "jane@example.com",
+    "phoneCountryCode": "+91",
+    "phone": "9876543210",
+    "termsAccepted": true,
+    "gender": "female",
+    "dob": "1990-05-15",
+    "whatsappSameAsMobile": true,
+    "primaryHealthConcern": "<health-concern-id>",
+    "country": "India",
+    "state": "Maharashtra",
+    "city": "Mumbai",
+    "fcm_id": "device-push-token",
+    "password": "securePass123"
+  }'
+```
+
+**Response:** `201` with tokens and `user` (same shape as login). Message: `"Registration successful"`.
+
+#### Register field reference
+
+| Field | Required | Notes |
+|-------|----------|--------|
+| `otp` | yes | From step 1; must not be expired |
+| `name` | yes | |
+| `email` | yes | Normalized to lowercase |
+| `phone` | yes | Trimmed |
+| `phoneCountryCode` | no | Default `+91` if omitted |
+| `termsAccepted` | yes | Must be `true` (or `"true"`) |
+| `password` | no | If sent, min 8 characters; omit for OTP-only accounts |
+| `gender` | no | `male`, `female`, `other`, `boy`, `girl`, `guess` (default `boy`) |
+| `dob` | no | ISO date string |
+| `whatsappSameAsMobile` | no | Default `false`; when `true`, WhatsApp copies mobile |
+| `whatsappCountryCode` | no | Used when `whatsappSameAsMobile` is `false` |
+| `whatsappPhone` | no | Used when `whatsappSameAsMobile` is `false` |
+| `primaryHealthConcern` | no | Health concern id; must exist in DB |
+| `country`, `state`, `city` | no | |
+| `fcm_id` | no | Push notification token |
+| `profileImage` | no | URL/path string |
+
+---
+
+## OTP login (existing users)
+
+For users already in the system (e.g. created in admin without a password).
 
 ### 1. Send OTP — by email
 
@@ -106,9 +203,7 @@ curl -sS -X POST "${BASE_URL}/user/auth/otp/send" \
 }
 ```
 
-**Dev only:** if `EXPOSE_OTP_IN_RESPONSE=true` and `NODE_ENV` is not `production`, the response may include `debugOtp` for testing.
-
-OTP length and expiry come from `OTP_LENGTH` and `OTP_EXPIRES_MINUTES` in `.env` (defaults: 6 digits, 10 minutes).
+Login OTP is stored on the **User** record (`otp`, `otpExpire`), not in `RegistrationOtp`.
 
 ### 3. Verify OTP — email
 
@@ -141,7 +236,7 @@ Use the same identifier (email or phone + country code) as in the send step.
 
 ## Password login
 
-Accounts created in admin **without** a password must use OTP. Password login returns `400` with *"Password login is not set up for this account. Use OTP login."*
+Accounts **without** a `passwordHash` must use OTP login. Password login returns `400` with *"Password login is not set up for this account. Use OTP login."*
 
 ### Login with email + password
 
@@ -181,43 +276,6 @@ curl -sS -X POST "${BASE_URL}/user/auth/login" \
     "password": "yourPassword123"
   }'
 ```
-
----
-
-## Register (self-signup with password)
-
-```bash
-curl -sS -X POST "${BASE_URL}/user/auth/register" \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json" \
-  -d '{
-    "name": "Jane Doe",
-    "email": "jane@example.com",
-    "phoneCountryCode": "+91",
-    "phone": "9876543210",
-    "password": "securePass123",
-    "termsAccepted": true,
-    "gender": "female",
-    "primaryHealthConcern": "<health-concern-id>",
-    "country": "India",
-    "state": "Maharashtra",
-    "city": "Mumbai"
-  }'
-```
-
-| Field | Required | Notes |
-|-------|----------|--------|
-| `name` | yes | |
-| `email` | yes | Normalized to lowercase |
-| `phone` | yes | Digits only (normalized) |
-| `phoneCountryCode` | no | Default `+91` if omitted |
-| `password` | yes | Min 8 characters |
-| `termsAccepted` | no | `true` / `"true"` sets `termsAcceptedAt` |
-| `gender` | no | `male`, `female`, `other`, `boy`, `girl`, `guess` (default `boy`) |
-| `primaryHealthConcern` | no | Health concern id |
-| `country`, `state`, `city` | no | |
-
-**Response:** `201` with tokens and `user` (same shape as login).
 
 ---
 
@@ -269,10 +327,10 @@ curl -sS -X GET "${BASE_URL}/user/auth/me" \
 
 | HTTP | Typical cause |
 |------|----------------|
-| `400` | Missing/invalid body (`name`, `email`, `phone`, `password`, `otp`, etc.) |
-| `401` | Wrong password/OTP, missing or invalid Bearer token |
+| `400` | Missing/invalid body; `termsAccepted` not true on register; no registration/login OTP sent first; OTP expired |
+| `401` | Wrong password/OTP; user not registered (login OTP); invalid Bearer token |
 | `403` | Account `inactive` or `blocked`; refresh token wrong role |
-| `404` | User not found on `/me` |
+| `404` | User not found on `/me`; `primaryHealthConcern` id invalid on register |
 | `409` | Email or phone already registered |
 
 Error body shape (from `AppError`):
@@ -286,12 +344,42 @@ Error body shape (from `AppError`):
 
 ---
 
-## End-to-end OTP example (bash)
+## End-to-end examples (bash)
+
+### Registration
 
 ```bash
 export BASE_URL="http://localhost:5000/api"
 
-# 1) Request OTP
+# 1) Send registration OTP
+curl -sS -X POST "${BASE_URL}/user/auth/register/otp/send" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"jane@example.com","phoneCountryCode":"+91","phone":"9876543210"}'
+
+# 2) Register with OTP (use code from SMS/email, or debugOtp in dev)
+curl -sS -X POST "${BASE_URL}/user/auth/register" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "otp":"123456",
+    "name":"Jane Doe",
+    "email":"jane@example.com",
+    "phoneCountryCode":"+91",
+    "phone":"9876543210",
+    "termsAccepted":true
+  }'
+
+# 3) Call /me with accessToken from step 2
+export ACCESS_TOKEN="paste-access-token-here"
+curl -sS -X GET "${BASE_URL}/user/auth/me" \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}"
+```
+
+### Login OTP (existing user)
+
+```bash
+export BASE_URL="http://localhost:5000/api"
+
+# 1) Request login OTP
 curl -sS -X POST "${BASE_URL}/user/auth/otp/send" \
   -H "Content-Type: application/json" \
   -d '{"email":"user@example.com"}'
@@ -311,5 +399,6 @@ curl -sS -X GET "${BASE_URL}/user/auth/me" \
 
 ## Related
 
-- Admin user CRUD: create users without password → they log in via OTP only.
+- Admin user CRUD: create users without password → they log in via **login** OTP (`otp/send` → `otp/verify`).
 - Public content APIs: `Backend/docs/user_curl.md` (`/api/public/misc/...`).
+- Registration OTP storage: `Backend/models/registrationOtpModel.js`, table script `Backend/tables/createRegistrationOtpTable.js`.

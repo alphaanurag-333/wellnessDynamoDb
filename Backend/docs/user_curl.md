@@ -62,6 +62,7 @@ There are **no** `/:id` misc routes; use list endpoints and filter client-side b
 
 | Method | Path | Auth |
 |--------|------|------|
+| `POST` | `/api/user/auth/register/otp/send` | No |
 | `POST` | `/api/user/auth/register` | No |
 | `POST` | `/api/user/auth/login` | No |
 | `POST` | `/api/user/auth/login/password` | No |
