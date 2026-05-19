@@ -10,6 +10,19 @@ export function emptyForm() {
   return { name: "", type: "link", ytLink: "", video: "", profile_image: "", status: "active" };
 }
 
+/** Normalize API row (snake_case or camelCase media fields). */
+export function testimonialFromApi(row) {
+  if (!row) return emptyForm();
+  return {
+    name: row.name || "",
+    type: row.type === "video" ? "video" : "link",
+    ytLink: row.ytLink || "",
+    video: row.video || "",
+    profile_image: row.profile_image || row.profileImage || "",
+    status: row.status || "active",
+  };
+}
+
 export function formatDateTime(value) {
   if (!value) return "—";
   const t = new Date(value).getTime();

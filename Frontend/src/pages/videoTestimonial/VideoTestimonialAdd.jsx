@@ -16,6 +16,7 @@ import {
   VIDEO_MAX_SIZE_BYTES,
   YTLINK_MAX_LEN,
   emptyForm,
+  testimonialFromApi,
 } from "./VideoTestimonialShared.js";
 
 export function VideoTestimonialForm({ mode = "create", initialTestimonial = null }) {
@@ -24,47 +25,97 @@ export function VideoTestimonialForm({ mode = "create", initialTestimonial = nul
   const navigate = useNavigate();
   const adminToken = useSelector((s) => s.auth.adminToken);
 
+  const initial = initialTestimonial ? testimonialFromApi(initialTestimonial) : null;
+
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState(() => {
-    if (!initialTestimonial) return emptyForm();
-    return {
-      name: initialTestimonial.name || "",
-      type: initialTestimonial.type || "link",
-      ytLink: initialTestimonial.ytLink || "",
-      video: initialTestimonial.video || "",
-      profile_image: initialTestimonial.profile_image || "",
-      status: initialTestimonial.status || "active",
-    };
-  });
-  const editId = isEditMode && initialTestimonial ? initialTestimonial._id || initialTestimonial.id || "" : "";
-  const editBaselineVideo = isEditMode && initialTestimonial ? initialTestimonial.video || "" : "";
-  const editBaselineProfileImage = isEditMode && initialTestimonial ? initialTestimonial.profile_image || "" : "";
-  const [videoFile, setVideoFile] = useState(null);
-  const [videoFileName, setVideoFileName] = useState("");
+  const [form, setForm] = useState(() => initial || emptyForm());
+  const editId =
+    isEditMode && initialTestimonial ? initialTestimonial._id || initialTestimonial.id || "" : "";
+  const editBaselineVideo = initial?.video || "";
+  const editBaselineProfileImage = initial?.profile_image || "";
+
   const [profileImageFile, setProfileImageFile] = useState(null);
   const [profilePreview, setProfilePreview] = useState(() =>
-    isEditMode && initialTestimonial?.profile_image ? mediaUrl(initialTestimonial.profile_image) : ""
+    editBaselineProfileImage ? mediaUrl(editBaselineProfileImage) : ""
   );
+  const [videoFile, setVideoFile] = useState(null);
+  const [videoFileName, setVideoFileName] = useState(() =>
+    editBaselineVideo ? String(editBaselineVideo).split("/").pop() : ""
+  );
+  const [videoPreview, setVideoPreview] = useState(() =>
+    initial?.type === "video" && editBaselineVideo ? mediaUrl(editBaselineVideo) : ""
+  );
+
   const videoFileInputRef = useRef(null);
   const profileFileInputRef = useRef(null);
+  const profilePreviewBlobRef = useRef("");
+  const videoPreviewBlobRef = useRef("");
+
+  const revokeProfilePreviewBlob = () => {
+    if (profilePreviewBlobRef.current) {
+      URL.revokeObjectURL(profilePreviewBlobRef.current);
+      profilePreviewBlobRef.current = "";
+    }
+  };
+
+  const revokeVideoPreviewBlob = () => {
+    if (videoPreviewBlobRef.current) {
+      URL.revokeObjectURL(videoPreviewBlobRef.current);
+      videoPreviewBlobRef.current = "";
+    }
+  };
 
   useEffect(() => {
-    if (form.type === "link") {
+    return () => {
+      revokeProfilePreviewBlob();
+      revokeVideoPreviewBlob();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!initialTestimonial) return;
+    const next = testimonialFromApi(initialTestimonial);
+    const savedProfile = next.profile_image || "";
+    const savedVideo = next.video || "";
+    setForm(next);
+    setProfileImageFile(null);
+    setVideoFile(null);
+    revokeProfilePreviewBlob();
+    revokeVideoPreviewBlob();
+    setProfilePreview(savedProfile ? mediaUrl(savedProfile) : "");
+    setVideoFileName(savedVideo ? String(savedVideo).split("/").pop() : "");
+    setVideoPreview(next.type === "video" && savedVideo ? mediaUrl(savedVideo) : "");
+    if (videoFileInputRef.current) videoFileInputRef.current.value = "";
+    if (profileFileInputRef.current) profileFileInputRef.current.value = "";
+  }, [initialTestimonial]);
+
+  const onTypeChange = (nextType) => {
+    setForm((p) =>
+      nextType === "link" ? { ...p, type: "link", video: "" } : { ...p, type: "video", ytLink: "" }
+    );
+    if (nextType === "link") {
       setVideoFile(null);
       setVideoFileName("");
+      revokeVideoPreviewBlob();
+      setVideoPreview("");
       if (videoFileInputRef.current) videoFileInputRef.current.value = "";
-      setForm((p) => ({ ...p, video: "" }));
-    } else if (form.type === "video") {
-      setForm((p) => ({ ...p, ytLink: "" }));
+    } else {
+      setVideoFile(null);
+      if (videoFileInputRef.current) videoFileInputRef.current.value = "";
+      setVideoFileName(editBaselineVideo ? String(editBaselineVideo).split("/").pop() : "");
+      setVideoPreview(editBaselineVideo ? mediaUrl(editBaselineVideo) : "");
     }
-  }, [form.type]);
+  };
 
   const resetForm = () => {
     setForm(emptyForm());
     setVideoFile(null);
     setVideoFileName("");
     setProfileImageFile(null);
+    revokeProfilePreviewBlob();
+    revokeVideoPreviewBlob();
     setProfilePreview("");
+    setVideoPreview("");
     if (videoFileInputRef.current) videoFileInputRef.current.value = "";
     if (profileFileInputRef.current) profileFileInputRef.current.value = "";
   };
@@ -131,6 +182,18 @@ export function VideoTestimonialForm({ mode = "create", initialTestimonial = nul
     }
   };
 
+  const profilePreviewLabel = profileImageFile
+    ? "New image preview"
+    : editBaselineProfileImage
+      ? "Current saved image"
+      : "";
+
+  const videoPreviewLabel = videoFile
+    ? "New video preview"
+    : editBaselineVideo && form.type === "video"
+      ? "Current saved video"
+      : "";
+
   return (
     <form onSubmit={onSubmit}>
       <div className="row g-3">
@@ -147,44 +210,80 @@ export function VideoTestimonialForm({ mode = "create", initialTestimonial = nul
           />
         </label>
         <label className="user-field col-12 col-md-6">
-          <span className="user-field__label">
-            Upload profile image (up to 5 MB){" "}
-            {editId ? "(optional — leave unchanged to keep current)" : <span className="required-dot">*</span>}
-          </span>
-          <input
-            ref={profileFileInputRef}
-            className="user-field__input"
-            type="file"
-            accept="image/*"
-            onChange={(e) => {
-              const file = e.target.files?.[0] || null;
-              if (file && file.size > IMAGE_MAX_SIZE_BYTES) {
-                setProfileImageFile(null);
-                setProfilePreview(editBaselineProfileImage ? mediaUrl(editBaselineProfileImage) : "");
-                e.target.value = "";
-                void Swal.fire({ icon: "error", title: "Validation error", text: "Profile image must be 5 MB or less." });
-                return;
-              }
-              setProfileImageFile(file);
-              setProfilePreview(
-                file ? URL.createObjectURL(file) : editBaselineProfileImage ? mediaUrl(editBaselineProfileImage) : ""
-              );
-            }}
-          />
-        </label>
-        <label className="user-field col-12 col-md-6">
           <span className="user-field__label">Type</span>
-          <select className="user-field__input" value={form.type} onChange={(e) => setForm((p) => ({ ...p, type: e.target.value }))}>
+          <select
+            className="user-field__input"
+            value={form.type}
+            onChange={(e) => onTypeChange(e.target.value)}
+          >
             <option value="link">Link</option>
             <option value="video">Video</option>
           </select>
         </label>
         <label className="user-field col-12 col-md-6">
           <span className="user-field__label">Status</span>
-          <select className="user-field__input" value={form.status} onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}>
+          <select
+            className="user-field__input"
+            value={form.status}
+            onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
+          >
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
           </select>
+        </label>
+        <label className="user-field col-12 col-md-6">
+          <span className="user-field__label">
+            Profile image (up to 5 MB){" "}
+            {editId ? "(optional — keep file empty to retain current)" : <span className="required-dot">*</span>}
+          </span>
+          <input
+            ref={profileFileInputRef}
+            className="user-field__input"
+            type="file"
+            accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp"
+            onChange={(e) => {
+              const file = e.target.files?.[0] || null;
+              if (file && file.size > IMAGE_MAX_SIZE_BYTES) {
+                setProfileImageFile(null);
+                revokeProfilePreviewBlob();
+                setProfilePreview(editBaselineProfileImage ? mediaUrl(editBaselineProfileImage) : "");
+                e.target.value = "";
+                void Swal.fire({
+                  icon: "error",
+                  title: "Validation error",
+                  text: "Profile image must be 5 MB or less.",
+                });
+                return;
+              }
+              setProfileImageFile(file);
+              if (file) {
+                revokeProfilePreviewBlob();
+                const url = URL.createObjectURL(file);
+                profilePreviewBlobRef.current = url;
+                setProfilePreview(url);
+              } else {
+                revokeProfilePreviewBlob();
+                setProfilePreview(editBaselineProfileImage ? mediaUrl(editBaselineProfileImage) : "");
+              }
+            }}
+          />
+          {profilePreview ? (
+            <div style={{ marginTop: 12 }}>
+              <AdminMediaImage
+                path={profileImageFile ? undefined : editBaselineProfileImage}
+                src={profilePreview}
+                round
+                width={96}
+                height={96}
+                alt="Profile preview"
+              />
+              {profilePreviewLabel ? (
+                <small className="data-table__muted" style={{ display: "block", marginTop: 6 }}>
+                  {profilePreviewLabel}
+                </small>
+              ) : null}
+            </div>
+          ) : null}
         </label>
         {form.type === "link" ? (
           <label className="user-field col-12">
@@ -203,47 +302,73 @@ export function VideoTestimonialForm({ mode = "create", initialTestimonial = nul
         {form.type === "video" ? (
           <label className="user-field col-12">
             <span className="user-field__label">
-              Upload video file (up to 50 MB){" "}
-              {editId ? "(optional — leave unchanged to keep current)" : <span className="required-dot">*</span>}
+              Video file (up to 50 MB){" "}
+              {editId ? "(optional — keep empty to retain current)" : <span className="required-dot">*</span>}
             </span>
             <input
               ref={videoFileInputRef}
               className="user-field__input"
               type="file"
-              accept="video/*"
+              accept="video/mp4,video/webm,video/ogg,video/quicktime,.mp4,.webm,.ogg,.mov,.m4v"
               onChange={(e) => {
                 const file = e.target.files?.[0] || null;
                 if (file && file.size > VIDEO_MAX_SIZE_BYTES) {
                   setVideoFile(null);
-                  setVideoFileName("");
+                  setVideoFileName(editBaselineVideo ? String(editBaselineVideo).split("/").pop() : "");
+                  revokeVideoPreviewBlob();
+                  setVideoPreview(editBaselineVideo ? mediaUrl(editBaselineVideo) : "");
                   e.target.value = "";
-                  void Swal.fire({ icon: "error", title: "Validation error", text: "Video size must be 50 MB or less." });
+                  void Swal.fire({
+                    icon: "error",
+                    title: "Validation error",
+                    text: "Video size must be 50 MB or less.",
+                  });
                   return;
                 }
                 setVideoFile(file);
-                setVideoFileName(file ? file.name : "");
+                if (file) {
+                  revokeVideoPreviewBlob();
+                  const url = URL.createObjectURL(file);
+                  videoPreviewBlobRef.current = url;
+                  setVideoPreview(url);
+                  setVideoFileName(file.name);
+                } else {
+                  revokeVideoPreviewBlob();
+                  setVideoPreview(editBaselineVideo ? mediaUrl(editBaselineVideo) : "");
+                  setVideoFileName(editBaselineVideo ? String(editBaselineVideo).split("/").pop() : "");
+                }
               }}
             />
-            {videoFileName ? (
-              <small className="data-table__muted">{videoFileName}</small>
-            ) : editBaselineVideo ? (
-              <small className="data-table__muted">Current video on file</small>
+            <small className="data-table__muted" style={{ display: "block", marginTop: 4 }}>
+              {videoFileName || "No video selected"}
+            </small>
+            {videoPreview ? (
+              <div style={{ marginTop: 12 }}>
+                <video
+                  key={videoPreview}
+                  src={videoPreview}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  style={{
+                    width: "100%",
+                    maxWidth: 560,
+                    maxHeight: 320,
+                    borderRadius: 8,
+                    display: "block",
+                    background: "#000",
+                  }}
+                />
+                {videoPreviewLabel ? (
+                  <small className="data-table__muted" style={{ display: "block", marginTop: 6 }}>
+                    {videoPreviewLabel}
+                  </small>
+                ) : null}
+              </div>
             ) : null}
           </label>
         ) : null}
       </div>
-      {(profilePreview || editBaselineProfileImage) ? (
-        <div style={{ marginTop: 10 }}>
-          <AdminMediaImage
-            path={editBaselineProfileImage}
-            src={profilePreview || undefined}
-            round
-            width={72}
-            height={72}
-            alt="Profile preview"
-          />
-        </div>
-      ) : null}
       <div className="user-form__actions">
         {isEditMode ? (
           <button type="button" className="btn btn--ghost" onClick={() => navigate("/admin/video-testimonials")}>
