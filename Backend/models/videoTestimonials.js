@@ -7,6 +7,9 @@ const {
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require("uuid");
 const { docClient } = require("../config/db");
+const { normalizeMediaField, resolveMediaFields } = require("../utils/s3");
+
+const VIDEO_TESTIMONIAL_MEDIA = ["profile_image", "video"];
 
 const TABLE = "VideoTestimonials";
 const TYPE = new Set(["link", "video"]);
@@ -27,10 +30,19 @@ function withLegacyId(item) {
   return { ...item, _id: item.id };
 }
 
+function toPublicVideoTestimonial(item) {
+  const row = withLegacyId(item);
+  return row ? resolveMediaFields(row, VIDEO_TESTIMONIAL_MEDIA) : null;
+}
+
 function sanitizeUpdateField(key, value) {
   if (key === "type") return normalizeType(value);
   if (key === "status") return normalizeStatus(value);
-  if (["name", "profile_image", "ytLink", "video"].includes(key)) return String(value).trim();
+  if (key === "profile_image" || key === "video") {
+    if (value == null || String(value).trim() === "") return "";
+    return normalizeMediaField(value, key);
+  }
+  if (["name", "ytLink"].includes(key)) return String(value).trim();
   return value;
 }
 
@@ -39,9 +51,9 @@ async function createVideoTestimonial({ name, profile_image, ytLink, video, type
   const item = {
     id: uuidv4(),
     name: String(name || "").trim(),
-    profile_image: String(profile_image || "").trim(),
+    profile_image: normalizeMediaField(profile_image, "profile_image"),
     ytLink: String(ytLink || "").trim(),
-    video: String(video || "").trim(),
+    video: video ? normalizeMediaField(video, "video") : "",
     type: normalizeType(type),
     status: normalizeStatus(status),
     createdAt: now,
@@ -53,15 +65,19 @@ async function createVideoTestimonial({ name, profile_image, ytLink, video, type
     Item: item,
     ConditionExpression: "attribute_not_exists(id)",
   }));
-  return withLegacyId(item);
+  return toPublicVideoTestimonial(item);
+}
+
+async function getVideoTestimonialRecordById(id) {
+  const { Item } = await docClient.send(
+    new GetCommand({ TableName: TABLE, Key: { id } })
+  );
+  return withLegacyId(Item || null);
 }
 
 async function getVideoTestimonialById(id) {
-  const { Item } = await docClient.send(new GetCommand({
-    TableName: TABLE,
-    Key: { id },
-  }));
-  return withLegacyId(Item || null);
+  const item = await getVideoTestimonialRecordById(id);
+  return item ? toPublicVideoTestimonial(item) : null;
 }
 
 async function updateVideoTestimonial(id, updates) {
@@ -90,7 +106,7 @@ async function updateVideoTestimonial(id, updates) {
     ConditionExpression: "attribute_exists(id)",
     ReturnValues: "ALL_NEW",
   }));
-  return withLegacyId(Attributes || null);
+  return toPublicVideoTestimonial(Attributes || null);
 }
 
 async function deleteVideoTestimonial(id) {
@@ -150,7 +166,9 @@ async function listVideoTestimonials({ page = 1, limit = 10, type, status, searc
   const total = rows.length;
   const pages = Math.max(1, Math.ceil(total / safeLimit));
   const start = (safePage - 1) * safeLimit;
-  const videoTestimonials = rows.slice(start, start + safeLimit).map(withLegacyId);
+  const videoTestimonials = rows
+    .slice(start, start + safeLimit)
+    .map((row) => toPublicVideoTestimonial(row));
 
   return {
     videoTestimonials,
@@ -163,6 +181,7 @@ module.exports = {
   normalizeStatus,
   createVideoTestimonial,
   getVideoTestimonialById,
+  getVideoTestimonialRecordById,
   updateVideoTestimonial,
   deleteVideoTestimonial,
   listVideoTestimonials,

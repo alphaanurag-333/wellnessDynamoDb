@@ -1,4 +1,5 @@
 const createUploader = require("../utils/fileUploader");
+const createMemoryUploader = createUploader.createMemoryUploader;
 
 function optionalMultipart(uploadMiddleware) {
   return (req, res, next) => {
@@ -9,37 +10,50 @@ function optionalMultipart(uploadMiddleware) {
   };
 }
 
-const adminUpload = createUploader("admin").single("file");
-const bannerUpload = createUploader("banner").single("file");
-const celebrationUpload = createUploader("celebration-banners").single("file");
-const notificationUpload = createUploader("notification").single("file");
-const clientTestimonialsUpload = createUploader("client-testimonials").single("file");
-const videoTestimonialsUpload = createUploader("video-testimonials").fields([
+const memoryFields = (fields) => createMemoryUploader().fields(fields);
+const memorySingle = (field) => createMemoryUploader().single(field);
+
+const adminUpload = memorySingle("file");
+const bannerUpload = memorySingle("file");
+const celebrationUpload = memorySingle("file");
+const notificationUpload = memorySingle("file");
+const clientTestimonialsUpload = memorySingle("file");
+const wellnessCoachUpload = memorySingle("file");
+const assistantWellnessCoachUpload = memorySingle("file");
+const healthConcernUpload = memorySingle("file");
+const healthToolUpload = memorySingle("file");
+const userUpload = memorySingle("file");
+
+const appConfigUpload = memoryFields([
+  { name: "admin_logo", maxCount: 1 },
+  { name: "user_logo", maxCount: 1 },
+  { name: "favicon", maxCount: 1 },
+]);
+
+const videoTestimonialsUpload = memoryFields([
   { name: "profileImage", maxCount: 1 },
   { name: "videoFile", maxCount: 1 },
 ]);
-const userUpload = createUploader("user").single("file");
-const healthConcernUpload = createUploader("health-concern").single("file");
-const healthToolUpload = createUploader("health-tool").single("file");
-const healthRecipeUpload = createUploader("health-recipe").fields([
-  { name: "thumbnailFile", maxCount: 1 },
-  { name: "videoFile", maxCount: 1 },
-  // Keep legacy "file" field support for older clients sending thumbnail as "file".
-  { name: "file", maxCount: 1 },
-]);
-const yogaUpload = createUploader("yoga").fields([
+
+const healthRecipeUpload = memoryFields([
   { name: "thumbnailFile", maxCount: 1 },
   { name: "videoFile", maxCount: 1 },
   { name: "file", maxCount: 1 },
 ]);
-const transformationUploads = createUploader("transformation").fields([
+
+const yogaUpload = memoryFields([
+  { name: "thumbnailFile", maxCount: 1 },
+  { name: "videoFile", maxCount: 1 },
+  { name: "file", maxCount: 1 },
+]);
+
+const transformationUploads = memoryFields([
   { name: "oldImage", maxCount: 1 },
   { name: "newImage", maxCount: 1 },
 ]);
-const wellnessCoachUpload = createUploader("wellness-coach").single("file");
-const assistantWellnessCoachUpload = createUploader("assistant-wellness-coach").single("file");
 
 exports.optionalAdminFile = optionalMultipart(adminUpload);
+exports.uploadAppConfigFiles = optionalMultipart(appConfigUpload);
 exports.optionalWellnessCoachFile = optionalMultipart(wellnessCoachUpload);
 exports.optionalAssistantWellnessCoachFile = optionalMultipart(assistantWellnessCoachUpload);
 exports.optionalUserFile = optionalMultipart(userUpload);

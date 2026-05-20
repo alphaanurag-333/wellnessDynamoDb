@@ -1,10 +1,14 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
-const { publicUploadPathFromFile } = require("../../utils/publicUploadPath");
-const { deleteUploadFileByPublicUrl } = require("../../utils/deleteUploadFile");
+const {
+  uploadFileFromRequest,
+  deleteStoredMedia,
+  parseMediaKeyFromBody,
+} = require("../../utils/s3");
 const {
   createWellnessCoach,
   getWellnessCoachById,
+  getWellnessCoachRecordById,
   getWellnessCoachByEmail,
   getWellnessCoachByPhone,
   updateWellnessCoach,
@@ -16,6 +20,8 @@ const {
 const { countAssistantsByWellnessCoachId } = require("../../models/assistantWellnessCoachModel");
 const { getSpecializationById } = require("../../models/specializationModel");
 const { normalizeEmail, normalizePhone, normalizeCountryCode } = require("../../models/userModel");
+
+const S3_FOLDER = "wellness-coach";
 
 function parseSpecializationId(value) {
   const id = value == null ? "" : String(value).trim();
@@ -87,6 +93,8 @@ function parseCoachBody(body) {
     throw new AppError("status must be active or inactive", 400);
   }
 
+  const profileImage = parseMediaKeyFromBody(body.profileImage, "profileImage");
+
   return {
     name,
     email,
@@ -97,8 +105,7 @@ function parseCoachBody(body) {
     country: body.country !== undefined ? String(body.country || "").trim() || null : null,
     state: body.state !== undefined ? String(body.state || "").trim() || null : null,
     city: body.city !== undefined ? String(body.city || "").trim() || null : null,
-    profileImage:
-      body.profileImage !== undefined ? String(body.profileImage || "").trim() || null : null,
+    profileImage: profileImage !== undefined ? profileImage : null,
     status,
   };
 }
@@ -129,8 +136,8 @@ exports.createWellnessCoachController = asyncHandler(async (req, res) => {
   await assertUniqueCoachPhone(fields.phoneCountryCode, fields.phone);
   await assertValidSpecializationId(fields.specializationId);
 
-  const uploaded = publicUploadPathFromFile(req, "wellness-coach");
-  if (uploaded) fields.profileImage = uploaded;
+  const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
+  if (uploadedKey) fields.profileImage = uploadedKey;
 
   const coach = await enrichWellnessCoach(await createWellnessCoach(fields));
   return res.status(201).json({
@@ -141,7 +148,7 @@ exports.createWellnessCoachController = asyncHandler(async (req, res) => {
 });
 
 exports.updateWellnessCoachController = asyncHandler(async (req, res) => {
-  const current = await getWellnessCoachById(req.params.id);
+  const current = await getWellnessCoachRecordById(req.params.id);
   if (!current) throw new AppError("Wellness coach not found", 404);
 
   const updates = {};
@@ -189,15 +196,20 @@ exports.updateWellnessCoachController = asyncHandler(async (req, res) => {
   if (body.state !== undefined) updates.state = String(body.state || "").trim() || null;
   if (body.city !== undefined) updates.city = String(body.city || "").trim() || null;
 
-  const uploaded = publicUploadPathFromFile(req, "wellness-coach");
-  if (uploaded) {
-    if (current.profileImage) deleteUploadFileByPublicUrl(current.profileImage);
-    updates.profileImage = uploaded;
-  } else if (body.profileImage !== undefined) {
-    if ((body.profileImage === null || body.profileImage === "") && current.profileImage) {
-      deleteUploadFileByPublicUrl(current.profileImage);
+  if (body.profileImage !== undefined) {
+    const profileImage = parseMediaKeyFromBody(body.profileImage, "profileImage");
+    if (profileImage === null && current.profileImage) {
+      await deleteStoredMedia(current.profileImage);
     }
-    updates.profileImage = body.profileImage || null;
+    updates.profileImage = profileImage;
+  }
+
+  const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
+  if (uploadedKey) {
+    if (current.profileImage && current.profileImage !== uploadedKey) {
+      await deleteStoredMedia(current.profileImage);
+    }
+    updates.profileImage = uploadedKey;
   }
 
   if (Object.keys(updates).length === 0) {
@@ -213,7 +225,7 @@ exports.updateWellnessCoachController = asyncHandler(async (req, res) => {
 });
 
 exports.deleteWellnessCoachController = asyncHandler(async (req, res) => {
-  const current = await getWellnessCoachById(req.params.id);
+  const current = await getWellnessCoachRecordById(req.params.id);
   if (!current) throw new AppError("Wellness coach not found", 404);
 
   const assistantCount = await countAssistantsByWellnessCoachId(current.id);
@@ -224,7 +236,7 @@ exports.deleteWellnessCoachController = asyncHandler(async (req, res) => {
     );
   }
 
-  if (current.profileImage) deleteUploadFileByPublicUrl(current.profileImage);
+  if (current.profileImage) await deleteStoredMedia(current.profileImage);
 
   try {
     await deleteWellnessCoach(current.id);

@@ -1,7 +1,10 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
-const { publicUploadPathFromFile } = require("../../utils/publicUploadPath");
-const { deleteUploadFileByPublicUrl } = require("../../utils/deleteUploadFile");
+const {
+  uploadFileFromRequest,
+  deleteStoredMedia,
+  normalizeStoredMedia,
+} = require("../../utils/s3");
 const { getWellnessCoachById } = require("../../models/wellnessCoachModel");
 const {
   createAssistantWellnessCoach,
@@ -18,6 +21,8 @@ const {
   ALLOWED_STATUS,
 } = require("../../models/assistantWellnessCoachModel");
 const { normalizeEmail, normalizePhone, normalizeCountryCode } = require("../../models/userModel");
+
+const S3_FOLDER = "assistant-wellness-coach";
 
 async function assertCoachExists(wellnessCoachId) {
   const coach = await getWellnessCoachById(wellnessCoachId);
@@ -39,6 +44,20 @@ async function assertUniqueAssistantPhone(phoneCountryCode, phone, excludeId) {
   }
 }
 
+function parseProfileImageFromBody(value) {
+  if (value === undefined) return undefined;
+  if (value === null || String(value).trim() === "") return null;
+
+  const raw = String(value).trim();
+  if (raw.startsWith("http://") || raw.startsWith("https://")) {
+    throw new AppError("profileImage must be an S3 object key, not a URL", 400);
+  }
+
+  const key = normalizeStoredMedia(raw);
+  if (!key) throw new AppError("profileImage is invalid", 400);
+  return key;
+}
+
 function parseAssistantBody(body, wellnessCoachId) {
   const name = String(body.name ?? "").trim();
   const email = normalizeEmail(body.email);
@@ -54,6 +73,8 @@ function parseAssistantBody(body, wellnessCoachId) {
     throw new AppError("status must be active or inactive", 400);
   }
 
+  const profileImage = parseProfileImageFromBody(body.profileImage);
+
   return {
     wellnessCoachId,
     name,
@@ -62,8 +83,7 @@ function parseAssistantBody(body, wellnessCoachId) {
     phoneCountryCode,
     designation:
       body.designation !== undefined ? String(body.designation || "").trim() || null : null,
-    profileImage:
-      body.profileImage !== undefined ? String(body.profileImage || "").trim() || null : null,
+    profileImage: profileImage !== undefined ? profileImage : null,
     status,
   };
 }
@@ -71,6 +91,26 @@ function parseAssistantBody(body, wellnessCoachId) {
 function assertAssistantBelongsToCoach(assistant, wellnessCoachId) {
   if (assistant.wellnessCoachId !== wellnessCoachId) {
     throw new AppError("Assistant does not belong to this wellness coach", 404);
+  }
+}
+
+async function applyProfileImageUpdates(body, current, updates, req) {
+  if (body.profileImage !== undefined) {
+    const profileImage = parseProfileImageFromBody(body.profileImage);
+    if (profileImage === null && current.profileImage) {
+      await deleteStoredMedia(current.profileImage);
+    }
+    updates.profileImage = profileImage;
+  }
+
+  if (req) {
+    const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
+    if (uploadedKey) {
+      if (current.profileImage && current.profileImage !== uploadedKey) {
+        await deleteStoredMedia(current.profileImage);
+      }
+      updates.profileImage = uploadedKey;
+    }
   }
 }
 
@@ -132,8 +172,8 @@ exports.createAssistantController = asyncHandler(async (req, res) => {
   await assertUniqueAssistantEmail(fields.email);
   await assertUniqueAssistantPhone(fields.phoneCountryCode, fields.phone);
 
-  const uploaded = publicUploadPathFromFile(req, "assistant-wellness-coach");
-  if (uploaded) fields.profileImage = uploaded;
+  const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
+  if (uploadedKey) fields.profileImage = uploadedKey;
 
   const assistant = await populateWellnessCoach(
     await createAssistantWellnessCoach(fields),
@@ -193,16 +233,7 @@ exports.updateAssistantController = asyncHandler(async (req, res) => {
     updates.designation = String(body.designation || "").trim() || null;
   }
 
-  const uploaded = publicUploadPathFromFile(req, "assistant-wellness-coach");
-  if (uploaded) {
-    if (current.profileImage) deleteUploadFileByPublicUrl(current.profileImage);
-    updates.profileImage = uploaded;
-  } else if (body.profileImage !== undefined) {
-    if ((body.profileImage === null || body.profileImage === "") && current.profileImage) {
-      deleteUploadFileByPublicUrl(current.profileImage);
-    }
-    updates.profileImage = body.profileImage || null;
-  }
+  await applyProfileImageUpdates(body, current, updates, req);
 
   if (Object.keys(updates).length === 0) {
     throw new AppError("At least one field is required for update", 400);
@@ -227,7 +258,7 @@ exports.deleteAssistantController = asyncHandler(async (req, res) => {
   if (!current) throw new AppError("Assistant wellness coach not found", 404);
   assertAssistantBelongsToCoach(current, coachId);
 
-  if (current.profileImage) deleteUploadFileByPublicUrl(current.profileImage);
+  if (current.profileImage) await deleteStoredMedia(current.profileImage);
 
   try {
     await deleteAssistantWellnessCoach(current.id);

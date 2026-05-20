@@ -1,13 +1,17 @@
 const { DynamoDBClient, ListTablesCommand } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient } = require("@aws-sdk/lib-dynamodb");
+const config = require("./index");
 
-const client = new DynamoDBClient({
-  region: process.env.AWS_REGION,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  },
-});
+const clientOptions = { region: config.awsRegion };
+
+if (config.awsAccessKeyId && config.awsSecretAccessKey) {
+  clientOptions.credentials = {
+    accessKeyId: config.awsAccessKeyId,
+    secretAccessKey: config.awsSecretAccessKey,
+  };
+}
+
+const client = new DynamoDBClient(clientOptions);
 
 const docClient = DynamoDBDocumentClient.from(client, {
   marshallOptions: {
@@ -17,6 +21,17 @@ const docClient = DynamoDBDocumentClient.from(client, {
 });
 
 async function connectDatabase() {
+  if (config.dynamodbSkipVerify) {
+    console.log("DynamoDB startup verify skipped (DYNAMODB_SKIP_VERIFY=true)");
+    return;
+  }
+
+  if (!config.awsAccessKeyId || !config.awsSecretAccessKey) {
+    throw new Error(
+      "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are required when DYNAMODB_SKIP_VERIFY is not true"
+    );
+  }
+
   await client.send(new ListTablesCommand({ Limit: 1 }));
   console.log("DB connected");
 }

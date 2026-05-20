@@ -1,14 +1,20 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
-const { deleteUploadFileByPublicUrl } = require("../../utils/deleteUploadFile");
-const { publicUploadPathFromFile } = require("../../utils/publicUploadPath");
+const {
+  uploadFileFromRequest,
+  deleteStoredMedia,
+  parseMediaKeyFromBody,
+} = require("../../utils/s3");
 const {
   createBanner,
   getBannerById,
+  getBannerRecordById,
   updateBanner,
   deleteBanner,
   listBanners,
 } = require("../../models/bannerModel");
+
+const S3_FOLDER = "banner";
 
 exports.listBannersController = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, status, search } = req.query;
@@ -25,18 +31,23 @@ exports.getBannerByIdController = asyncHandler(async (req, res) => {
 exports.createBannerController = asyncHandler(async (req, res) => {
   const title = String(req.body.title || "").trim();
   const status = String(req.body.status || "active").trim().toLowerCase();
-  const image = publicUploadPathFromFile(req, "banner") ?? String(req.body.image || "").trim();
+
+  const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
+  const image =
+    uploadedKey ?? parseMediaKeyFromBody(req.body.image, "image");
 
   if (!title) throw new AppError("title is required", 400);
   if (!image) throw new AppError("image is required", 400);
-  if (!["active", "inactive"].includes(status)) throw new AppError("status must be active or inactive", 400);
+  if (!["active", "inactive"].includes(status)) {
+    throw new AppError("status must be active or inactive", 400);
+  }
 
   const banner = await createBanner({ title, image, status });
   return res.status(201).json({ status: true, message: "Banner created successfully", banner });
 });
 
 exports.updateBannerController = asyncHandler(async (req, res) => {
-  const current = await getBannerById(req.params.id);
+  const current = await getBannerRecordById(req.params.id);
   if (!current) throw new AppError("Banner not found", 404);
 
   const updates = {};
@@ -47,20 +58,30 @@ exports.updateBannerController = asyncHandler(async (req, res) => {
   }
   if (req.body.status !== undefined) {
     const status = String(req.body.status || "").trim().toLowerCase();
-    if (!["active", "inactive"].includes(status)) throw new AppError("status must be active or inactive", 400);
+    if (!["active", "inactive"].includes(status)) {
+      throw new AppError("status must be active or inactive", 400);
+    }
     updates.status = status;
   }
   if (req.body.image !== undefined) {
-    updates.image = String(req.body.image || "").trim();
+    const image = parseMediaKeyFromBody(req.body.image, "image");
+    if (image === null && current.image) {
+      await deleteStoredMedia(current.image);
+    }
+    updates.image = image ?? "";
   }
 
-  const uploadedImage = publicUploadPathFromFile(req, "banner");
-  if (uploadedImage) {
-    if (current.image) deleteUploadFileByPublicUrl(current.image);
-    updates.image = uploadedImage;
+  const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
+  if (uploadedKey) {
+    if (current.image && current.image !== uploadedKey) {
+      await deleteStoredMedia(current.image);
+    }
+    updates.image = uploadedKey;
   }
 
-  if (Object.keys(updates).length === 0) throw new AppError("At least one field is required for update", 400);
+  if (Object.keys(updates).length === 0) {
+    throw new AppError("At least one field is required for update", 400);
+  }
 
   let banner;
   try {
@@ -73,9 +94,9 @@ exports.updateBannerController = asyncHandler(async (req, res) => {
 });
 
 exports.deleteBannerController = asyncHandler(async (req, res) => {
-  const current = await getBannerById(req.params.id);
+  const current = await getBannerRecordById(req.params.id);
   if (!current) throw new AppError("Banner not found", 404);
-  if (current.image) deleteUploadFileByPublicUrl(current.image);
+  if (current.image) await deleteStoredMedia(current.image);
 
   try {
     await deleteBanner(req.params.id);

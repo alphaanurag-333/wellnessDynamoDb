@@ -16,6 +16,10 @@ const {
 } = require("./userModel");
 const { getWellnessCoachById } = require("./wellnessCoachModel");
 const { getSpecializationById } = require("./specializationModel");
+const {
+  normalizeStoredMedia,
+  resolvePublicUrl,
+} = require("../utils/s3");
 
 const TABLE = "AssistantWellnessCoach";
 const ALLOWED_STATUS = new Set(["active", "inactive"]);
@@ -28,6 +32,24 @@ function normalizeStatus(value, fallback = "active") {
 function withLegacyId(item) {
   if (!item) return null;
   return { ...item, _id: item.id };
+}
+
+function normalizeProfileImageField(value) {
+  if (value == null || String(value).trim() === "") return null;
+  const objectKey = normalizeStoredMedia(String(value).trim());
+  if (!objectKey) {
+    throw new Error("profileImage must be a valid S3 object key (e.g. assistant-wellness-coach/photo.jpg)");
+  }
+  return objectKey;
+}
+
+function toPublicAssistant(assistant) {
+  if (!assistant) return assistant;
+  const pub = { ...assistant };
+  if (pub.profileImage) {
+    pub.profileImage = resolvePublicUrl(pub.profileImage);
+  }
+  return pub;
 }
 
 function buildAssistantItem(input, { id, now } = {}) {
@@ -43,7 +65,7 @@ function buildAssistantItem(input, { id, now } = {}) {
     phoneCountryCode,
     phone,
     phoneKey: buildPhoneKey(phoneCountryCode, phone),
-    profileImage: input.profileImage != null ? String(input.profileImage).trim() || null : null,
+    profileImage: normalizeProfileImageField(input.profileImage),
     designation: input.designation != null ? String(input.designation).trim() || null : null,
     status: normalizeStatus(input.status),
     createdAt: now,
@@ -56,7 +78,10 @@ function sanitizeUpdateField(key, value) {
   if (key === "phone") return normalizePhone(value);
   if (key === "phoneCountryCode") return normalizeCountryCode(value);
   if (key === "status") return normalizeStatus(value);
-  if (["name", "designation", "profileImage"].includes(key)) {
+  if (key === "profileImage") {
+    return normalizeProfileImageField(value);
+  }
+  if (["name", "designation"].includes(key)) {
     const s = value == null ? "" : String(value).trim();
     return s || null;
   }
@@ -113,7 +138,7 @@ function slimWellnessCoach(coach, specializationTitle = null) {
     phone: coach.phone,
     phoneCountryCode: coach.phoneCountryCode,
     status: coach.status,
-    profileImage: coach.profileImage ?? null,
+    profileImage: coach.profileImage ? resolvePublicUrl(coach.profileImage) : null,
     specializationId: coach.specializationId ?? null,
     specializationTitle,
   };
@@ -122,9 +147,10 @@ function slimWellnessCoach(coach, specializationTitle = null) {
 async function populateWellnessCoach(assistant, wellnessCoach = undefined) {
   if (!assistant) return assistant;
 
-  const coachId = String(assistant.wellnessCoachId || "").trim();
+  const pub = toPublicAssistant(withLegacyId(assistant));
+  const coachId = String(pub.wellnessCoachId || "").trim();
   if (!coachId) {
-    return { ...assistant, wellnessCoach: null, wellnessCoachName: null };
+    return { ...pub, wellnessCoach: null, wellnessCoachName: null };
   }
 
   let coach = wellnessCoach;
@@ -137,7 +163,7 @@ async function populateWellnessCoach(assistant, wellnessCoach = undefined) {
   const slim = slimWellnessCoach(coach, specializationTitle);
 
   return {
-    ...assistant,
+    ...pub,
     wellnessCoach: slim,
     wellnessCoachName: slim?.name ?? null,
   };
@@ -151,9 +177,10 @@ async function populateWellnessCoaches(assistants) {
   const result = [];
 
   for (const assistant of assistants) {
-    const coachId = String(assistant?.wellnessCoachId || "").trim();
+    const pub = toPublicAssistant(withLegacyId(assistant));
+    const coachId = String(pub?.wellnessCoachId || "").trim();
     if (!coachId) {
-      result.push({ ...assistant, wellnessCoach: null, wellnessCoachName: null });
+      result.push({ ...pub, wellnessCoach: null, wellnessCoachName: null });
       continue;
     }
 
@@ -165,7 +192,7 @@ async function populateWellnessCoaches(assistants) {
 
     const slim = coachCache.get(coachId);
     result.push({
-      ...assistant,
+      ...pub,
       wellnessCoach: slim,
       wellnessCoachName: slim?.name ?? null,
     });

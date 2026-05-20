@@ -1,14 +1,18 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
-const { deleteUploadFileByPublicUrl } = require("../../utils/deleteUploadFile");
-const createUploader = require("../../utils/fileUploader");
+const {
+  uploadMulterFile,
+  deleteStoredMedia,
+} = require("../../utils/s3");
 const {
   createAppConfig,
   getAppConfig,
   updateAppConfig,
+  toPublicAppConfig,
 } = require("../../models/appConfigModel");
 
-const upload = createUploader("appconfig");
+const S3_FOLDER = "appconfig";
+const LOGO_FIELDS = ["admin_logo", "user_logo", "favicon"];
 
 function parseJSON(value, fallback) {
   try {
@@ -18,23 +22,27 @@ function parseJSON(value, fallback) {
   }
 }
 
-function fileUrl(req, field) {
+async function s3KeyFromUploadedFile(req, field) {
   const file = req.files?.[field]?.[0];
-  return file ? `/uploads/appconfig/${file.filename}` : undefined;
+  if (!file) return undefined;
+  return uploadMulterFile(file, S3_FOLDER);
 }
 
-exports.uploadAppConfigFiles = upload.fields([
-  { name: "admin_logo", maxCount: 1 },
-  { name: "user_logo", maxCount: 1 },
-  { name: "favicon", maxCount: 1 },
-]);
+async function applyLogoUploads(req, config, updates) {
+  for (const field of LOGO_FIELDS) {
+    const uploadedKey = await s3KeyFromUploadedFile(req, field);
+    if (!uploadedKey) continue;
+    if (config?.[field]) await deleteStoredMedia(config[field]);
+    updates[field] = uploadedKey;
+  }
+}
 
 exports.getAppConfigController = asyncHandler(async (_req, res) => {
   const config = await getAppConfig();
   return res.status(200).json({
     status: true,
     message: "App configuration fetched",
-    data: config || null,
+    data: toPublicAppConfig(config),
   });
 });
 
@@ -43,7 +51,7 @@ exports.createAppConfigController = asyncHandler(async (req, res) => {
   if (existing) {
     throw new AppError(
       "App configuration already exists. Use PATCH /api/admin/app-config to update.",
-      409,
+      409
     );
   }
 
@@ -75,7 +83,7 @@ exports.createAppConfigController = asyncHandler(async (req, res) => {
 
   const config = await createAppConfig();
 
-  const created = await updateAppConfig({
+  const updates = {
     app_name,
     app_email: String(app_email).trim().toLowerCase(),
     app_mobile,
@@ -95,15 +103,17 @@ exports.createAppConfigController = asyncHandler(async (req, res) => {
     happy_clients: happy_clients ?? "",
     payment_methods: parseJSON(payment_methods, config.payment_methods),
     payment_gateways: parseJSON(payment_gateways, config.payment_gateways),
-    admin_logo: fileUrl(req, "admin_logo") ?? "",
-    user_logo: fileUrl(req, "user_logo") ?? "",
-    favicon: fileUrl(req, "favicon") ?? "",
-  });
+    admin_logo: (await s3KeyFromUploadedFile(req, "admin_logo")) ?? "",
+    user_logo: (await s3KeyFromUploadedFile(req, "user_logo")) ?? "",
+    favicon: (await s3KeyFromUploadedFile(req, "favicon")) ?? "",
+  };
+
+  const created = await updateAppConfig(updates);
 
   return res.status(201).json({
     status: true,
     message: "App configuration created",
-    data: created,
+    data: toPublicAppConfig(created),
   });
 });
 
@@ -112,7 +122,7 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
   if (!config) {
     throw new AppError(
       "App configuration not found. Use POST /api/admin/app-config to create.",
-      404,
+      404
     );
   }
 
@@ -153,22 +163,7 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
     updates.payment_gateways = parseJSON(req.body.payment_gateways, config.payment_gateways);
   }
 
-  const uploadedAdminLogo = fileUrl(req, "admin_logo");
-  const uploadedUserLogo = fileUrl(req, "user_logo");
-  const uploadedFavicon = fileUrl(req, "favicon");
-
-  if (uploadedAdminLogo) {
-    deleteUploadFileByPublicUrl(config.admin_logo);
-    updates.admin_logo = uploadedAdminLogo;
-  }
-  if (uploadedUserLogo) {
-    deleteUploadFileByPublicUrl(config.user_logo);
-    updates.user_logo = uploadedUserLogo;
-  }
-  if (uploadedFavicon) {
-    deleteUploadFileByPublicUrl(config.favicon);
-    updates.favicon = uploadedFavicon;
-  }
+  await applyLogoUploads(req, config, updates);
 
   if (Object.keys(updates).length === 0) {
     throw new AppError("At least one field is required for update", 400);
@@ -179,6 +174,6 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     message: "App configuration updated",
-    data: updated,
+    data: toPublicAppConfig(updated),
   });
 });

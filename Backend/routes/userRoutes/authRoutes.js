@@ -17,7 +17,7 @@ const {
 const router = express.Router();
 
 router.post("/register/otp/send", sendRegisterOtp);
-router.post("/register", registerUser);
+router.post("/register", optionalUserFile, registerUser);
 router.post("/login", loginUser);
 router.post("/login/password", loginWithPassword);
 router.post("/otp/send", sendLoginOtp);

@@ -8,6 +8,9 @@ const {
 const { v4: uuidv4 } = require("uuid");
 
 const { docClient } = require("../config/db");
+const { normalizeMediaField, resolveMediaFields } = require("../utils/s3");
+
+const TRANSFORMATION_MEDIA = ["oldImage", "newImage"];
 
 const TABLE = "Transformation";
 const STATUS = new Set(["active", "inactive"]);
@@ -22,14 +25,24 @@ function withLegacyId(item) {
   return { ...item, _id: item.id };
 }
 
+function toPublicTransformation(item) {
+  const row = withLegacyId(item);
+  return row ? resolveMediaFields(row, TRANSFORMATION_MEDIA) : null;
+}
+
+function normalizeImageField(value, fieldName) {
+  if (value == null || String(value).trim() === "") return "";
+  return normalizeMediaField(value, fieldName);
+}
+
 async function createTransformation({ timeTaken, achievements, oldImage, newImage, description, status = "active", userId = null }) {
   const now = new Date().toISOString();
   const item = {
     id: uuidv4(),
     timeTaken: Number(timeTaken),
     achievements: String(achievements || "").trim(),
-    oldImage: String(oldImage || "").trim(),
-    newImage: String(newImage || "").trim(),
+    oldImage: normalizeImageField(oldImage, "oldImage"),
+    newImage: normalizeImageField(newImage, "newImage"),
     description: String(description || "").trim(),
     status: normalizeStatus(status),
     createdAt: now,
@@ -47,15 +60,19 @@ async function createTransformation({ timeTaken, achievements, oldImage, newImag
     ConditionExpression: "attribute_not_exists(id)",
   }));
 
-  return withLegacyId(item);
+  return toPublicTransformation(item);
+}
+
+async function getTransformationRecordById(id) {
+  const { Item } = await docClient.send(
+    new GetCommand({ TableName: TABLE, Key: { id } })
+  );
+  return withLegacyId(Item || null);
 }
 
 async function getTransformationById(id) {
-  const { Item } = await docClient.send(new GetCommand({
-    TableName: TABLE,
-    Key: { id },
-  }));
-  return withLegacyId(Item || null);
+  const item = await getTransformationRecordById(id);
+  return item ? toPublicTransformation(item) : null;
 }
 
 async function updateTransformation(id, updates) {
@@ -78,7 +95,10 @@ async function updateTransformation(id, updates) {
     const n = `#${key}`;
     const v = `:${key}`;
     exprNames[n] = key;
-    exprValues[v] = value;
+    exprValues[v] =
+      key === "oldImage" || key === "newImage"
+        ? normalizeImageField(value, key)
+        : value;
     setExpr += `, ${n} = ${v}`;
   }
 
@@ -97,7 +117,7 @@ async function updateTransformation(id, updates) {
     ReturnValues: "ALL_NEW",
   }));
 
-  return withLegacyId(Attributes || null);
+  return toPublicTransformation(Attributes || null);
 }
 
 async function deleteTransformation(id) {
@@ -159,7 +179,9 @@ async function listTransformations({ page = 1, limit = 10, status, search, userI
   const total = rows.length;
   const pages = Math.max(1, Math.ceil(total / safeLimit));
   const start = (safePage - 1) * safeLimit;
-  const transformations = rows.slice(start, start + safeLimit).map(withLegacyId);
+  const transformations = rows
+    .slice(start, start + safeLimit)
+    .map((row) => toPublicTransformation(row));
 
   return {
     transformations,
@@ -170,6 +192,7 @@ async function listTransformations({ page = 1, limit = 10, status, search, userI
 module.exports = {
   createTransformation,
   getTransformationById,
+  getTransformationRecordById,
   updateTransformation,
   deleteTransformation,
   listTransformations,

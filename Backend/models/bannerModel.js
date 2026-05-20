@@ -7,6 +7,7 @@ const {
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require("uuid");
 const { docClient } = require("../config/db");
+const { normalizeStoredMedia, resolvePublicUrl } = require("../utils/s3");
 
 const TABLE = "Banner";
 const STATUS = new Set(["active", "inactive"]);
@@ -21,12 +22,26 @@ function withLegacyId(item) {
   return { ...item, _id: item.id };
 }
 
+function normalizeImageField(value) {
+  if (value == null || String(value).trim() === "") return "";
+  const objectKey = normalizeStoredMedia(String(value).trim());
+  if (!objectKey) throw new Error("image must be a valid S3 object key (e.g. banner/photo.jpg)");
+  return objectKey;
+}
+
+function toPublicBanner(banner) {
+  const item = withLegacyId(banner);
+  if (!item) return null;
+  if (item.image) item.image = resolvePublicUrl(item.image);
+  return item;
+}
+
 async function createBanner({ title, image, status = "active" }) {
   const now = new Date().toISOString();
   const item = {
     id: uuidv4(),
     title: String(title || "").trim(),
-    image: String(image || "").trim(),
+    image: normalizeImageField(image),
     status: normalizeStatus(status),
     createdAt: now,
     updatedAt: now,
@@ -37,15 +52,22 @@ async function createBanner({ title, image, status = "active" }) {
     Item: item,
     ConditionExpression: "attribute_not_exists(id)",
   }));
-  return withLegacyId(item);
+  return toPublicBanner(item);
+}
+
+async function getBannerRecordById(id) {
+  const { Item } = await docClient.send(
+    new GetCommand({
+      TableName: TABLE,
+      Key: { id },
+    })
+  );
+  return withLegacyId(Item || null);
 }
 
 async function getBannerById(id) {
-  const { Item } = await docClient.send(new GetCommand({
-    TableName: TABLE,
-    Key: { id },
-  }));
-  return withLegacyId(Item || null);
+  const item = await getBannerRecordById(id);
+  return item ? toPublicBanner(item) : null;
 }
 
 async function updateBanner(id, updates) {
@@ -58,7 +80,7 @@ async function updateBanner(id, updates) {
 
   for (const [k, v] of entries) {
     exprNames[`#${k}`] = k;
-    exprValues[`:${k}`] = v;
+    exprValues[`:${k}`] = k === "image" ? normalizeImageField(v) : v;
     setExpr += `, #${k} = :${k}`;
   }
 
@@ -71,7 +93,7 @@ async function updateBanner(id, updates) {
     ConditionExpression: "attribute_exists(id)",
     ReturnValues: "ALL_NEW",
   }));
-  return withLegacyId(Attributes || null);
+  return toPublicBanner(Attributes || null);
 }
 
 async function deleteBanner(id) {
@@ -125,7 +147,7 @@ async function listBanners({ page = 1, limit = 10, status, search } = {}) {
   const total = rows.length;
   const pages = Math.max(1, Math.ceil(total / safeLimit));
   const start = (safePage - 1) * safeLimit;
-  const banners = rows.slice(start, start + safeLimit).map(withLegacyId);
+  const banners = rows.slice(start, start + safeLimit).map((row) => toPublicBanner(row));
 
   return {
     banners,
@@ -136,7 +158,9 @@ async function listBanners({ page = 1, limit = 10, status, search } = {}) {
 module.exports = {
   createBanner,
   getBannerById,
+  getBannerRecordById,
   updateBanner,
   deleteBanner,
   listBanners,
+  toPublicBanner,
 };

@@ -7,6 +7,9 @@ const {
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require("uuid");
 const { docClient } = require("../config/db");
+const { normalizeMediaField, resolveMediaFields } = require("../utils/s3");
+
+const YOGA_MEDIA_FIELDS = ["thumbnail", "video"];
 
 const TABLE = "Yoga";
 const YOGA_ALLOWED_STATUS = ["active", "inactive"];
@@ -29,10 +32,19 @@ function withLegacyId(item) {
   return { ...item, _id: item.id };
 }
 
+function toPublicYoga(item) {
+  const row = withLegacyId(item);
+  return row ? resolveMediaFields(row, YOGA_MEDIA_FIELDS) : null;
+}
+
 function sanitizeUpdateField(key, value) {
   if (key === "status") return normalizeStatus(value);
   if (key === "type") return normalizeType(value);
-  if (["title", "description", "thumbnail", "ytLink", "video"].includes(key)) {
+  if (key === "thumbnail" || key === "video") {
+    if (value == null || String(value).trim() === "") return "";
+    return normalizeMediaField(value, key);
+  }
+  if (["title", "description", "ytLink"].includes(key)) {
     return String(value || "").trim();
   }
   return value;
@@ -52,10 +64,10 @@ async function createYoga({
     id: uuidv4(),
     title: String(title || "").trim(),
     description: String(description || "").trim(),
-    thumbnail: String(thumbnail || "").trim(),
+    thumbnail: normalizeMediaField(thumbnail, "thumbnail"),
     type: normalizeType(type),
     ytLink: String(ytLink || "").trim(),
-    video: String(video || "").trim(),
+    video: video ? normalizeMediaField(video, "video") : "",
     status: normalizeStatus(status),
     createdAt: now,
     updatedAt: now,
@@ -66,15 +78,19 @@ async function createYoga({
     Item: item,
     ConditionExpression: "attribute_not_exists(id)",
   }));
-  return withLegacyId(item);
+  return toPublicYoga(item);
+}
+
+async function getYogaRecordById(id) {
+  const { Item } = await docClient.send(
+    new GetCommand({ TableName: TABLE, Key: { id } })
+  );
+  return withLegacyId(Item || null);
 }
 
 async function getYogaById(id) {
-  const { Item } = await docClient.send(new GetCommand({
-    TableName: TABLE,
-    Key: { id },
-  }));
-  return withLegacyId(Item || null);
+  const item = await getYogaRecordById(id);
+  return item ? toPublicYoga(item) : null;
 }
 
 async function updateYoga(id, updates) {
@@ -103,7 +119,7 @@ async function updateYoga(id, updates) {
     ConditionExpression: "attribute_exists(id)",
     ReturnValues: "ALL_NEW",
   }));
-  return withLegacyId(Attributes || null);
+  return toPublicYoga(Attributes || null);
 }
 
 async function deleteYoga(id) {
@@ -164,7 +180,7 @@ async function listYoga({ page = 1, limit = 10, status, type, search } = {}) {
   const total = rows.length;
   const pages = Math.max(1, Math.ceil(total / safeLimit));
   const start = (safePage - 1) * safeLimit;
-  const yoga = rows.slice(start, start + safeLimit).map(withLegacyId);
+  const yoga = rows.slice(start, start + safeLimit).map((row) => toPublicYoga(row));
 
   return {
     yoga,
@@ -179,6 +195,7 @@ module.exports = {
   normalizeType,
   createYoga,
   getYogaById,
+  getYogaRecordById,
   updateYoga,
   deleteYoga,
   listYoga,

@@ -8,6 +8,7 @@ const {
 const { v4: uuidv4 } = require("uuid");
 
 const { docClient } = require("../config/db");
+const { normalizeMediaField, resolvePublicUrl } = require("../utils/s3");
 
 const TABLE = "Notification";
 const STATUS = new Set(["active", "inactive"]);
@@ -28,13 +29,20 @@ function withLegacyId(item) {
   return { ...item, _id: item.id };
 }
 
+function toPublicNotification(item) {
+  const row = withLegacyId(item);
+  if (!row) return null;
+  if (row.image) row.image = resolvePublicUrl(row.image);
+  return row;
+}
+
 async function createNotification({ audienceType, message, image = "", status = "active" }) {
   const now = new Date().toISOString();
   const item = {
     id: uuidv4(),
     audienceType: normalizeAudienceType(audienceType),
     message: String(message || "").trim(),
-    image: String(image || "").trim(),
+    image: image ? normalizeMediaField(image, "image") : "",
     status: normalizeStatus(status),
     sentAt: now,
     createdAt: now,
@@ -47,15 +55,19 @@ async function createNotification({ audienceType, message, image = "", status = 
     ConditionExpression: "attribute_not_exists(id)",
   }));
 
-  return withLegacyId(item);
+  return toPublicNotification(item);
+}
+
+async function getNotificationRecordById(id) {
+  const { Item } = await docClient.send(
+    new GetCommand({ TableName: TABLE, Key: { id } })
+  );
+  return withLegacyId(Item || null);
 }
 
 async function getNotificationById(id) {
-  const { Item } = await docClient.send(new GetCommand({
-    TableName: TABLE,
-    Key: { id },
-  }));
-  return withLegacyId(Item || null);
+  const item = await getNotificationRecordById(id);
+  return item ? toPublicNotification(item) : null;
 }
 
 async function updateNotification(id, updates) {
@@ -72,7 +84,7 @@ async function updateNotification(id, updates) {
     const n = `#${key}`;
     const v = `:${key}`;
     exprNames[n] = key;
-    exprValues[v] = value;
+    exprValues[v] = key === "image" ? normalizeMediaField(value, "image") : value;
     setExpr += `, ${n} = ${v}`;
   }
 
@@ -86,7 +98,7 @@ async function updateNotification(id, updates) {
     ReturnValues: "ALL_NEW",
   }));
 
-  return withLegacyId(Attributes || null);
+  return toPublicNotification(Attributes || null);
 }
 
 async function deleteNotification(id) {
@@ -147,7 +159,9 @@ async function listNotifications({ page = 1, limit = 10, status, audienceType, s
   const total = rows.length;
   const pages = Math.max(1, Math.ceil(total / safeLimit));
   const start = (safePage - 1) * safeLimit;
-  const notifications = rows.slice(start, start + safeLimit).map(withLegacyId);
+  const notifications = rows
+    .slice(start, start + safeLimit)
+    .map((row) => toPublicNotification(row));
 
   return {
     notifications,
@@ -163,6 +177,7 @@ async function listNotifications({ page = 1, limit = 10, status, audienceType, s
 module.exports = {
   createNotification,
   getNotificationById,
+  getNotificationRecordById,
   updateNotification,
   deleteNotification,
   listNotifications,

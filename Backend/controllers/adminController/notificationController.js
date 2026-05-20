@@ -1,10 +1,14 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
-const { deleteUploadFileByPublicUrl } = require("../../utils/deleteUploadFile");
-const { publicUploadPathFromFile } = require("../../utils/publicUploadPath");
+const {
+  uploadFileFromRequest,
+  deleteStoredMedia,
+  parseMediaKeyFromBody,
+} = require("../../utils/s3");
 const {
   createNotification,
   getNotificationById,
+  getNotificationRecordById,
   updateNotification,
   deleteNotification,
   listNotifications,
@@ -12,10 +16,11 @@ const {
   normalizeAudienceType,
 } = require("../../models/notificationModel");
 
+const S3_FOLDER = "notification";
+
 exports.listNotificationsController = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, status, audienceType, search } = req.query;
   const data = await listNotifications({ page, limit, status, audienceType, search });
-
   return res.status(200).json({
     status: true,
     notifications: data.notifications,
@@ -28,18 +33,15 @@ exports.getNotificationByIdController = asyncHandler(async (req, res) => {
   if (!notification) {
     throw new AppError("Notification not found", 404);
   }
-
-  return res.status(200).json({
-    status: true,
-    notification,
-  });
+  return res.status(200).json({ status: true, notification });
 });
 
 exports.createNotificationController = asyncHandler(async (req, res) => {
   const audienceType = normalizeAudienceType(req.body.audienceType, "");
   const message = String(req.body.message || "").trim();
   const status = normalizeStatus(req.body.status, "active");
-  const image = publicUploadPathFromFile(req, "notification") ?? String(req.body.image || "").trim();
+  const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
+  const image = uploadedKey ?? (req.body.image !== undefined ? parseMediaKeyFromBody(req.body.image, "image") : "");
 
   if (!audienceType) {
     throw new AppError("audienceType is required", 400);
@@ -64,7 +66,7 @@ exports.createNotificationController = asyncHandler(async (req, res) => {
 });
 
 exports.updateNotificationController = asyncHandler(async (req, res) => {
-  const current = await getNotificationById(req.params.id);
+  const current = await getNotificationRecordById(req.params.id);
   if (!current) {
     throw new AppError("Notification not found", 404);
   }
@@ -95,15 +97,13 @@ exports.updateNotificationController = asyncHandler(async (req, res) => {
   }
 
   if (req.body.image !== undefined) {
-    updates.image = String(req.body.image || "").trim();
+    updates.image = parseMediaKeyFromBody(req.body.image, "image") ?? "";
   }
 
-  const uploadedImage = publicUploadPathFromFile(req, "notification");
-  if (uploadedImage) {
-    if (current.image) {
-      deleteUploadFileByPublicUrl(current.image);
-    }
-    updates.image = uploadedImage;
+  const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
+  if (uploadedKey) {
+    if (current.image) await deleteStoredMedia(current.image);
+    updates.image = uploadedKey;
   }
 
   if (Object.keys(updates).length === 0) {
@@ -128,14 +128,12 @@ exports.updateNotificationController = asyncHandler(async (req, res) => {
 });
 
 exports.deleteNotificationController = asyncHandler(async (req, res) => {
-  const current = await getNotificationById(req.params.id);
+  const current = await getNotificationRecordById(req.params.id);
   if (!current) {
     throw new AppError("Notification not found", 404);
   }
 
-  if (current.image) {
-    deleteUploadFileByPublicUrl(current.image);
-  }
+  if (current.image) await deleteStoredMedia(current.image);
 
   try {
     await deleteNotification(req.params.id);

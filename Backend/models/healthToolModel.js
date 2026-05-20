@@ -7,6 +7,7 @@ const {
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require("uuid");
 const { docClient } = require("../config/db");
+const { normalizeMediaField, resolvePublicUrl } = require("../utils/s3");
 
 const TABLE = "HealthTool";
 const STATUS = new Set(["active", "inactive"]);
@@ -21,13 +22,20 @@ function withLegacyId(item) {
   return { ...item, _id: item.id };
 }
 
+function toPublicHealthTool(item) {
+  const row = withLegacyId(item);
+  if (!row) return null;
+  if (row.icon) row.icon = resolvePublicUrl(row.icon);
+  return row;
+}
+
 async function createHealthTool({ title, description, icon, status = "active" }) {
   const now = new Date().toISOString();
   const item = {
     id: uuidv4(),
     title: String(title || "").trim(),
     description: String(description || "").trim(),
-    icon: String(icon || "").trim(),
+    icon: normalizeMediaField(icon, "icon"),
     status: normalizeStatus(status),
     createdAt: now,
     updatedAt: now,
@@ -38,15 +46,19 @@ async function createHealthTool({ title, description, icon, status = "active" })
     Item: item,
     ConditionExpression: "attribute_not_exists(id)",
   }));
-  return withLegacyId(item);
+  return toPublicHealthTool(item);
+}
+
+async function getHealthToolRecordById(id) {
+  const { Item } = await docClient.send(
+    new GetCommand({ TableName: TABLE, Key: { id } })
+  );
+  return withLegacyId(Item || null);
 }
 
 async function getHealthToolById(id) {
-  const { Item } = await docClient.send(new GetCommand({
-    TableName: TABLE,
-    Key: { id },
-  }));
-  return withLegacyId(Item || null);
+  const item = await getHealthToolRecordById(id);
+  return item ? toPublicHealthTool(item) : null;
 }
 
 async function updateHealthTool(id, updates) {
@@ -59,7 +71,7 @@ async function updateHealthTool(id, updates) {
 
   for (const [k, v] of entries) {
     exprNames[`#${k}`] = k;
-    exprValues[`:${k}`] = v;
+    exprValues[`:${k}`] = k === "icon" ? normalizeMediaField(v, "icon") : v;
     setExpr += `, #${k} = :${k}`;
   }
 
@@ -72,7 +84,7 @@ async function updateHealthTool(id, updates) {
     ConditionExpression: "attribute_exists(id)",
     ReturnValues: "ALL_NEW",
   }));
-  return withLegacyId(Attributes || null);
+  return toPublicHealthTool(Attributes || null);
 }
 
 async function deleteHealthTool(id) {
@@ -127,7 +139,9 @@ async function listHealthTools({ page = 1, limit = 10, status, search } = {}) {
   const total = rows.length;
   const pages = Math.max(1, Math.ceil(total / safeLimit));
   const start = (safePage - 1) * safeLimit;
-  const healthTools = rows.slice(start, start + safeLimit).map(withLegacyId);
+  const healthTools = rows
+    .slice(start, start + safeLimit)
+    .map((row) => toPublicHealthTool(row));
 
   return {
     healthTools,
@@ -138,6 +152,7 @@ async function listHealthTools({ page = 1, limit = 10, status, search } = {}) {
 module.exports = {
   createHealthTool,
   getHealthToolById,
+  getHealthToolRecordById,
   updateHealthTool,
   deleteHealthTool,
   listHealthTools,

@@ -14,6 +14,7 @@ const {
   normalizeCountryCode,
   buildPhoneKey,
 } = require("./userModel");
+const { normalizeNullableMediaField, resolvePublicUrl } = require("../utils/s3");
 
 const TABLE = "WellnessCoach";
 const ALLOWED_STATUS = new Set(["active", "inactive"]);
@@ -28,6 +29,13 @@ function withLegacyId(item) {
   return { ...item, _id: item.id };
 }
 
+function toPublicWellnessCoach(coach) {
+  const row = withLegacyId(coach);
+  if (!row) return null;
+  if (row.profileImage) row.profileImage = resolvePublicUrl(row.profileImage);
+  return row;
+}
+
 function buildCoachItem(input, { id, now } = {}) {
   const phoneCountryCode = normalizeCountryCode(input.phoneCountryCode);
   const phone = normalizePhone(input.phone);
@@ -40,7 +48,10 @@ function buildCoachItem(input, { id, now } = {}) {
     phoneCountryCode,
     phone,
     phoneKey: buildPhoneKey(phoneCountryCode, phone),
-    profileImage: input.profileImage != null ? String(input.profileImage).trim() || null : null,
+    profileImage:
+      input.profileImage != null
+        ? normalizeNullableMediaField(input.profileImage, "profileImage")
+        : null,
     bio: input.bio != null ? String(input.bio).trim() || null : null,
     specializationId:
       input.specializationId != null ? String(input.specializationId).trim() || null : null,
@@ -62,7 +73,10 @@ function sanitizeUpdateField(key, value) {
     const s = value == null ? "" : String(value).trim();
     return s || null;
   }
-  if (["name", "bio", "country", "state", "city", "profileImage"].includes(key)) {
+  if (key === "profileImage") {
+    return normalizeNullableMediaField(value, "profileImage");
+  }
+  if (["name", "bio", "country", "state", "city"].includes(key)) {
     const s = value == null ? "" : String(value).trim();
     return s || null;
   }
@@ -115,10 +129,10 @@ async function createWellnessCoach(fields) {
     })
   );
 
-  return withLegacyId(item);
+  return toPublicWellnessCoach(item);
 }
 
-async function getWellnessCoachById(id) {
+async function getWellnessCoachRecordById(id) {
   const { Item } = await docClient.send(
     new GetCommand({
       TableName: TABLE,
@@ -126,6 +140,11 @@ async function getWellnessCoachById(id) {
     })
   );
   return withLegacyId(Item || null);
+}
+
+async function getWellnessCoachById(id) {
+  const item = await getWellnessCoachRecordById(id);
+  return item ? toPublicWellnessCoach(item) : null;
 }
 
 async function updateWellnessCoach(id, updates) {
@@ -136,7 +155,7 @@ async function updateWellnessCoach(id, updates) {
 
   if (entries.length === 0) throw new Error("No valid fields provided for update");
 
-  const current = await getWellnessCoachById(id);
+  const current = await getWellnessCoachRecordById(id);
   if (!current) {
     const err = new Error("Wellness coach not found");
     err.name = "NotFoundError";
@@ -178,7 +197,7 @@ async function updateWellnessCoach(id, updates) {
     })
   );
 
-  return withLegacyId(Attributes || null);
+  return toPublicWellnessCoach(Attributes || null);
 }
 
 async function deleteWellnessCoach(id) {
@@ -241,7 +260,9 @@ async function listWellnessCoaches({ page = 1, limit = 20, status, search } = {}
   const total = rows.length;
   const pages = Math.max(1, Math.ceil(total / safeLimit));
   const start = (safePage - 1) * safeLimit;
-  const wellnessCoaches = rows.slice(start, start + safeLimit).map(withLegacyId);
+  const wellnessCoaches = rows
+    .slice(start, start + safeLimit)
+    .map((row) => toPublicWellnessCoach(row));
 
   return {
     wellnessCoaches,
@@ -256,6 +277,7 @@ module.exports = {
   buildCoachItem,
   createWellnessCoach,
   getWellnessCoachById,
+  getWellnessCoachRecordById,
   getWellnessCoachByEmail,
   getWellnessCoachByPhone,
   updateWellnessCoach,

@@ -1,14 +1,20 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
-const { deleteUploadFileByPublicUrl } = require("../../utils/deleteUploadFile");
-const { publicUploadPathFromFile } = require("../../utils/publicUploadPath");
+const {
+  uploadFileFromRequest,
+  deleteStoredMedia,
+  parseMediaKeyFromBody,
+} = require("../../utils/s3");
 const {
   createHealthConcern,
   getHealthConcernById,
+  getHealthConcernRecordById,
   updateHealthConcern,
   deleteHealthConcern,
   listHealthConcerns,
 } = require("../../models/healthConcernModel");
+
+const S3_FOLDER = "health-concern";
 
 exports.listHealthConcernsController = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, status, search } = req.query;
@@ -26,7 +32,8 @@ exports.createHealthConcernController = asyncHandler(async (req, res) => {
   const title = String(req.body.title || "").trim();
   const description = String(req.body.description || "").trim();
   const status = String(req.body.status || "active").trim().toLowerCase();
-  const icon = publicUploadPathFromFile(req, "health-concern") ?? String(req.body.icon || "").trim();
+  const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
+  const icon = uploadedKey ?? parseMediaKeyFromBody(req.body.icon, "icon");
 
   if (!title) throw new AppError("title is required", 400);
   if (!description) throw new AppError("description is required", 400);
@@ -38,7 +45,7 @@ exports.createHealthConcernController = asyncHandler(async (req, res) => {
 });
 
 exports.updateHealthConcernController = asyncHandler(async (req, res) => {
-  const current = await getHealthConcernById(req.params.id);
+  const current = await getHealthConcernRecordById(req.params.id);
   if (!current) throw new AppError("Health concern not found", 404);
 
   const updates = {};
@@ -58,13 +65,13 @@ exports.updateHealthConcernController = asyncHandler(async (req, res) => {
     updates.status = status;
   }
   if (req.body.icon !== undefined) {
-    updates.icon = String(req.body.icon || "").trim();
+    updates.icon = parseMediaKeyFromBody(req.body.icon, "icon") ?? "";
   }
 
-  const uploadedIcon = publicUploadPathFromFile(req, "health-concern");
-  if (uploadedIcon) {
-    if (current.icon) deleteUploadFileByPublicUrl(current.icon);
-    updates.icon = uploadedIcon;
+  const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
+  if (uploadedKey) {
+    if (current.icon) await deleteStoredMedia(current.icon);
+    updates.icon = uploadedKey;
   }
 
   if (Object.keys(updates).length === 0) throw new AppError("At least one field is required for update", 400);
@@ -80,9 +87,9 @@ exports.updateHealthConcernController = asyncHandler(async (req, res) => {
 });
 
 exports.deleteHealthConcernController = asyncHandler(async (req, res) => {
-  const current = await getHealthConcernById(req.params.id);
+  const current = await getHealthConcernRecordById(req.params.id);
   if (!current) throw new AppError("Health concern not found", 404);
-  if (current.icon) deleteUploadFileByPublicUrl(current.icon);
+  if (current.icon) await deleteStoredMedia(current.icon);
 
   try {
     await deleteHealthConcern(req.params.id);

@@ -9,6 +9,10 @@ const {
 const { v4: uuidv4 } = require("uuid");
 const { docClient } = require("../config/db");
 const { toPublicProfile } = require("../utils/toPublicProfile");
+const {
+  normalizeStoredMedia,
+  resolvePublicUrl,
+} = require("../utils/s3");
 
 const TABLE = "User";
 
@@ -62,9 +66,21 @@ function withLegacyId(item) {
   return { ...item, _id: item.id };
 }
 
+function normalizeProfileImageField(value) {
+  if (value == null || String(value).trim() === "") return null;
+  const objectKey = normalizeStoredMedia(String(value).trim());
+  if (!objectKey) {
+    throw new Error("profileImage must be a valid S3 object key (e.g. user/photo.jpg)");
+  }
+  return objectKey;
+}
+
 function toPublicUser(user) {
   const pub = toPublicProfile(user);
   if (!pub) return null;
+  if (pub.profileImage) {
+    pub.profileImage = resolvePublicUrl(pub.profileImage);
+  }
   return withLegacyId(pub);
 }
 
@@ -84,6 +100,9 @@ function sanitizeUpdateField(key, value) {
   if (key === "whatsappSameAsMobile" || key === "termsAccepted") {
     return Boolean(value);
   }
+  if (key === "profileImage") {
+    return normalizeProfileImageField(value);
+  }
   if (
     [
       "name",
@@ -93,7 +112,6 @@ function sanitizeUpdateField(key, value) {
       "state",
       "city",
       "primaryHealthConcern",
-      "profileImage",
       "fcm_id",
       "otp",
       "resetPasswordToken",
@@ -141,7 +159,7 @@ function buildUserItem(input, { id, now } = {}) {
       input.primaryHealthConcern != null ? String(input.primaryHealthConcern).trim() || null : null,
     termsAccepted: Boolean(input.termsAccepted),
     termsAcceptedAt: input.termsAcceptedAt ? normalizeDob(input.termsAcceptedAt) : null,
-    profileImage: input.profileImage != null ? String(input.profileImage).trim() || null : null,
+    profileImage: normalizeProfileImageField(input.profileImage),
     fcm_id: input.fcm_id != null ? String(input.fcm_id).trim() || null : null,
     status: normalizeStatus(input.status),
     otp: input.otp != null ? String(input.otp) : null,

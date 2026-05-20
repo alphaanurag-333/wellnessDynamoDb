@@ -1,23 +1,24 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
-const { deleteUploadFileByPublicUrl } = require("../../utils/deleteUploadFile");
+const {
+  uploadMulterField,
+  deleteStoredMedia,
+  parseMediaKeyFromBody,
+} = require("../../utils/s3");
 const {
   createTransformation,
   getTransformationById,
+  getTransformationRecordById,
   updateTransformation,
   deleteTransformation,
   listTransformations,
 } = require("../../models/transformationModel");
 
-function imagePath(req, field) {
-  const file = req.files?.[field]?.[0];
-  return file ? `/uploads/transformation/${file.filename}` : undefined;
-}
+const S3_FOLDER = "transformation";
 
 exports.listTransformationsController = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, status, search, userId } = req.query;
   const data = await listTransformations({ page, limit, status, search, userId });
-
   return res.status(200).json({
     status: true,
     transformations: data.transformations,
@@ -39,8 +40,10 @@ exports.createTransformationController = asyncHandler(async (req, res) => {
   const description = String(req.body.description || "").trim();
   const status = String(req.body.status || "active").trim().toLowerCase();
   const userId = String(req.body.userId || "").trim();
-  const oldImage = imagePath(req, "oldImage") ?? String(req.body.oldImage || "").trim();
-  const newImage = imagePath(req, "newImage") ?? String(req.body.newImage || "").trim();
+  const uploadedOld = await uploadMulterField(req, "oldImage", S3_FOLDER);
+  const uploadedNew = await uploadMulterField(req, "newImage", S3_FOLDER);
+  const oldImage = uploadedOld ?? parseMediaKeyFromBody(req.body.oldImage, "oldImage");
+  const newImage = uploadedNew ?? parseMediaKeyFromBody(req.body.newImage, "newImage");
 
   if (!Number.isFinite(timeTaken) || timeTaken < 0) {
     throw new AppError("timeTaken must be a non-negative number", 400);
@@ -68,7 +71,7 @@ exports.createTransformationController = asyncHandler(async (req, res) => {
 });
 
 exports.updateTransformationController = asyncHandler(async (req, res) => {
-  const current = await getTransformationById(req.params.id);
+  const current = await getTransformationRecordById(req.params.id);
   if (!current) throw new AppError("Transformation not found", 404);
 
   const updates = {};
@@ -105,22 +108,22 @@ exports.updateTransformationController = asyncHandler(async (req, res) => {
   }
 
   if (req.body.oldImage !== undefined) {
-    updates.oldImage = String(req.body.oldImage || "").trim();
+    updates.oldImage = parseMediaKeyFromBody(req.body.oldImage, "oldImage") ?? "";
   }
   if (req.body.newImage !== undefined) {
-    updates.newImage = String(req.body.newImage || "").trim();
+    updates.newImage = parseMediaKeyFromBody(req.body.newImage, "newImage") ?? "";
   }
 
-  const uploadedOldImage = imagePath(req, "oldImage");
-  if (uploadedOldImage) {
-    deleteUploadFileByPublicUrl(current.oldImage);
-    updates.oldImage = uploadedOldImage;
+  const uploadedOld = await uploadMulterField(req, "oldImage", S3_FOLDER);
+  if (uploadedOld) {
+    if (current.oldImage) await deleteStoredMedia(current.oldImage);
+    updates.oldImage = uploadedOld;
   }
 
-  const uploadedNewImage = imagePath(req, "newImage");
-  if (uploadedNewImage) {
-    deleteUploadFileByPublicUrl(current.newImage);
-    updates.newImage = uploadedNewImage;
+  const uploadedNew = await uploadMulterField(req, "newImage", S3_FOLDER);
+  if (uploadedNew) {
+    if (current.newImage) await deleteStoredMedia(current.newImage);
+    updates.newImage = uploadedNew;
   }
 
   if (Object.keys(updates).length === 0) {
@@ -145,11 +148,11 @@ exports.updateTransformationController = asyncHandler(async (req, res) => {
 });
 
 exports.deleteTransformationController = asyncHandler(async (req, res) => {
-  const current = await getTransformationById(req.params.id);
+  const current = await getTransformationRecordById(req.params.id);
   if (!current) throw new AppError("Transformation not found", 404);
 
-  if (current.oldImage) deleteUploadFileByPublicUrl(current.oldImage);
-  if (current.newImage) deleteUploadFileByPublicUrl(current.newImage);
+  if (current.oldImage) await deleteStoredMedia(current.oldImage);
+  if (current.newImage) await deleteStoredMedia(current.newImage);
 
   try {
     await deleteTransformation(req.params.id);

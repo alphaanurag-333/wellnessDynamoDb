@@ -7,6 +7,9 @@ const {
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require("uuid");
 const { docClient } = require("../config/db");
+const { normalizeMediaField, resolveMediaFields } = require("../utils/s3");
+
+const RECIPE_MEDIA_FIELDS = ["thumbnail", "video"];
 
 const TABLE = "HealthRecipe";
 const HEALTH_RECIPE_ALLOWED_STATUS = ["active", "inactive"];
@@ -36,11 +39,22 @@ function withLegacyId(item) {
   return { ...item, _id: item.id };
 }
 
+function toPublicHealthRecipe(item) {
+  const row = withLegacyId(item);
+  return row ? resolveMediaFields(row, RECIPE_MEDIA_FIELDS) : null;
+}
+
 function sanitizeUpdateField(key, value) {
   if (key === "status") return normalizeStatus(value);
   if (key === "type") return normalizeType(value);
   if (key === "video_specification") return normalizeVideoSpecification(value);
-  if (["healthConcernId", "title", "description", "thumbnail", "ytLink", "video"].includes(key)) return String(value || "").trim();
+  if (key === "thumbnail" || key === "video") {
+    if (value == null || String(value).trim() === "") return "";
+    return normalizeMediaField(value, key);
+  }
+  if (["healthConcernId", "title", "description", "ytLink"].includes(key)) {
+    return String(value || "").trim();
+  }
   return value;
 }
 
@@ -61,10 +75,10 @@ async function createHealthRecipe({
     healthConcernId: String(healthConcernId || "").trim(),
     title: String(title || "").trim(),
     description: String(description || "").trim(),
-    thumbnail: String(thumbnail || "").trim(),
+    thumbnail: normalizeMediaField(thumbnail, "thumbnail"),
     type: normalizeType(type),
     ytLink: String(ytLink || "").trim(),
-    video: String(video || "").trim(),
+    video: video ? normalizeMediaField(video, "video") : "",
     video_specification: normalizeVideoSpecification(video_specification),
     status: normalizeStatus(status),
     createdAt: now,
@@ -76,15 +90,19 @@ async function createHealthRecipe({
     Item: item,
     ConditionExpression: "attribute_not_exists(id)",
   }));
-  return withLegacyId(item);
+  return toPublicHealthRecipe(item);
+}
+
+async function getHealthRecipeRecordById(id) {
+  const { Item } = await docClient.send(
+    new GetCommand({ TableName: TABLE, Key: { id } })
+  );
+  return withLegacyId(Item || null);
 }
 
 async function getHealthRecipeById(id) {
-  const { Item } = await docClient.send(new GetCommand({
-    TableName: TABLE,
-    Key: { id },
-  }));
-  return withLegacyId(Item || null);
+  const item = await getHealthRecipeRecordById(id);
+  return item ? toPublicHealthRecipe(item) : null;
 }
 
 async function updateHealthRecipe(id, updates) {
@@ -113,7 +131,7 @@ async function updateHealthRecipe(id, updates) {
     ConditionExpression: "attribute_exists(id)",
     ReturnValues: "ALL_NEW",
   }));
-  return withLegacyId(Attributes || null);
+  return toPublicHealthRecipe(Attributes || null);
 }
 
 async function deleteHealthRecipe(id) {
@@ -180,7 +198,9 @@ async function listHealthRecipes({ page = 1, limit = 10, status, type, healthCon
   const total = rows.length;
   const pages = Math.max(1, Math.ceil(total / safeLimit));
   const start = (safePage - 1) * safeLimit;
-  const healthRecipes = rows.slice(start, start + safeLimit).map(withLegacyId);
+  const healthRecipes = rows
+    .slice(start, start + safeLimit)
+    .map((row) => toPublicHealthRecipe(row));
 
   return {
     healthRecipes,
@@ -196,6 +216,7 @@ module.exports = {
   normalizeVideoSpecification,
   createHealthRecipe,
   getHealthRecipeById,
+  getHealthRecipeRecordById,
   updateHealthRecipe,
   deleteHealthRecipe,
   listHealthRecipes,

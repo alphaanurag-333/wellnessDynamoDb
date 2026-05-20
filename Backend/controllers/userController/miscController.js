@@ -12,6 +12,7 @@ const { listHealthRecipes } = require("../../models/healthRecipeModel");
 const { listYoga } = require("../../models/yogaModel");
 const { listTransformations } = require("../../models/transformationModel");
 const { listCelebrationBanners } = require("../../models/celebrationBanners");
+const { resolveListMedia } = require("./userMiscMedia");
 
 function readPaging(query, defaultLimit = 50) {
   const page = Math.max(1, Number(query.page) || 1);
@@ -26,7 +27,11 @@ function readSearch(query) {
 
 exports.getActiveBanners = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
-  const data = await listBanners({ page, limit, status: "active" });
+  const data = resolveListMedia(
+    await listBanners({ page, limit, status: "active" }),
+    "banners",
+    ["image"]
+  );
   return res.status(200).json({ status: true, banners: data.banners, pagination: data.pagination });
 });
 
@@ -49,7 +54,11 @@ exports.getStaticPageBySlug = asyncHandler(async (req, res) => {
 
 exports.getActiveClientTestimonials = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
-  const data = await listClientTestimonials({ page, limit, status: "active" });
+  const data = resolveListMedia(
+    await listClientTestimonials({ page, limit, status: "active" }),
+    "clientTestimonials",
+    ["profile_image"]
+  );
   return res.status(200).json({
     status: true,
     clientTestimonials: data.clientTestimonials,
@@ -59,7 +68,11 @@ exports.getActiveClientTestimonials = asyncHandler(async (req, res) => {
 
 exports.getActiveVideoTestimonials = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
-  const data = await listVideoTestimonials({ page, limit, status: "active" });
+  const data = resolveListMedia(
+    await listVideoTestimonials({ page, limit, status: "active" }),
+    "videoTestimonials",
+    ["profile_image", "video"]
+  );
   return res.status(200).json({
     status: true,
     videoTestimonials: data.videoTestimonials,
@@ -69,12 +82,16 @@ exports.getActiveVideoTestimonials = asyncHandler(async (req, res) => {
 
 exports.getActiveHealthConcerns = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
-  const data = await listHealthConcerns({
-    page,
-    limit,
-    status: "active",
-    search: readSearch(req.query),
-  });
+  const data = resolveListMedia(
+    await listHealthConcerns({
+      page,
+      limit,
+      status: "active",
+      search: readSearch(req.query),
+    }),
+    "healthConcerns",
+    ["icon"]
+  );
   return res.status(200).json({
     status: true,
     healthConcerns: data.healthConcerns,
@@ -101,12 +118,16 @@ exports.getActiveHealthDisorders = asyncHandler(async (req, res) => {
 
 exports.getActiveHealthTools = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
-  const data = await listHealthTools({
-    page,
-    limit,
-    status: "active",
-    search: readSearch(req.query),
-  });
+  const data = resolveListMedia(
+    await listHealthTools({
+      page,
+      limit,
+      status: "active",
+      search: readSearch(req.query),
+    }),
+    "healthTools",
+    ["icon"]
+  );
   return res.status(200).json({
     status: true,
     healthTools: data.healthTools,
@@ -117,13 +138,17 @@ exports.getActiveHealthTools = asyncHandler(async (req, res) => {
 exports.getActiveYoga = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
   const type = String(req.query.type || "").trim().toLowerCase() || undefined;
-  const data = await listYoga({
-    page,
-    limit,
-    status: "active",
-    type,
-    search: readSearch(req.query),
-  });
+  const data = resolveListMedia(
+    await listYoga({
+      page,
+      limit,
+      status: "active",
+      type,
+      search: readSearch(req.query),
+    }),
+    "yoga",
+    ["thumbnail", "video"]
+  );
   return res.status(200).json({
     status: true,
     yoga: data.yoga,
@@ -135,14 +160,18 @@ exports.getActiveHealthRecipes = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
   const healthConcernId = String(req.query.healthConcernId || "").trim() || undefined;
   const type = String(req.query.type || "").trim().toLowerCase() || undefined;
-  const data = await listHealthRecipes({
-    page,
-    limit,
-    status: "active",
-    healthConcernId,
-    type,
-    search: readSearch(req.query),
-  });
+  const data = resolveListMedia(
+    await listHealthRecipes({
+      page,
+      limit,
+      status: "active",
+      healthConcernId,
+      type,
+      search: readSearch(req.query),
+    }),
+    "healthRecipes",
+    ["thumbnail", "video"]
+  );
   return res.status(200).json({
     status: true,
     healthRecipes: data.healthRecipes,
@@ -152,12 +181,16 @@ exports.getActiveHealthRecipes = asyncHandler(async (req, res) => {
 
 exports.getActiveTransformations = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
-  const data = await listTransformations({
-    page,
-    limit,
-    status: "active",
-    search: readSearch(req.query),
-  });
+  const data = resolveListMedia(
+    await listTransformations({
+      page,
+      limit,
+      status: "active",
+      search: readSearch(req.query),
+    }),
+    "transformations",
+    ["oldImage", "newImage"]
+  );
   return res.status(200).json({
     status: true,
     transformations: data.transformations,
@@ -168,13 +201,17 @@ exports.getActiveTransformations = asyncHandler(async (req, res) => {
 exports.getActiveCelebrationBanners = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
   const type = String(req.query.type || "").trim().toLowerCase() || undefined;
-  const data = await listCelebrationBanners({
-    page,
-    limit,
-    status: "active",
-    type,
-    search: readSearch(req.query),
-  });
+  const data = resolveListMedia(
+    await listCelebrationBanners({
+      page,
+      limit,
+      status: "active",
+      type,
+      search: readSearch(req.query),
+    }),
+    "celebrationBanners",
+    ["image"]
+  );
   return res.status(200).json({
     status: true,
     celebrationBanners: data.celebrationBanners,

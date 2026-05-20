@@ -1,10 +1,14 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
-const { deleteUploadFileByPublicUrl } = require("../../utils/deleteUploadFile");
-const { publicUploadPathFromFile } = require("../../utils/publicUploadPath");
+const {
+  uploadFileFromRequest,
+  deleteStoredMedia,
+  parseMediaKeyFromBody,
+} = require("../../utils/s3");
 const {
   createCelebrationBanner,
   getCelebrationBannerById,
+  getCelebrationBannerRecordById,
   updateCelebrationBanner,
   deleteCelebrationBanner,
   listCelebrationBanners,
@@ -12,6 +16,7 @@ const {
 
 const ALLOWED_STATUS = ["active", "inactive"];
 const ALLOWED_TYPE = ["birthday", "championship"];
+const S3_FOLDER = "celebration-banners";
 
 exports.listCelebrationBannersController = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, status, type, search } = req.query;
@@ -40,7 +45,9 @@ exports.createCelebrationBannerController = asyncHandler(async (req, res) => {
   const status = String(req.body.status || "active").trim().toLowerCase();
   const startDate = req.body.startDate !== undefined ? String(req.body.startDate || "").trim() : "";
   const endDate = req.body.endDate !== undefined ? String(req.body.endDate || "").trim() : "";
-  const image = publicUploadPathFromFile(req, "celebration-banners") ?? String(req.body.image || "").trim();
+
+  const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
+  const image = uploadedKey ?? parseMediaKeyFromBody(req.body.image, "image");
 
   if (!title) throw new AppError("title is required", 400);
   if (!image) throw new AppError("image is required", 400);
@@ -64,7 +71,7 @@ exports.createCelebrationBannerController = asyncHandler(async (req, res) => {
 });
 
 exports.updateCelebrationBannerController = asyncHandler(async (req, res) => {
-  const current = await getCelebrationBannerById(req.params.id);
+  const current = await getCelebrationBannerRecordById(req.params.id);
   if (!current) throw new AppError("Celebration banner not found", 404);
 
   const updates = {};
@@ -96,22 +103,32 @@ exports.updateCelebrationBannerController = asyncHandler(async (req, res) => {
   }
 
   if (req.body.image !== undefined) {
-    updates.image = String(req.body.image || "").trim();
+    const image = parseMediaKeyFromBody(req.body.image, "image");
+    if (image === null && current.image) {
+      await deleteStoredMedia(current.image);
+    }
+    updates.image = image ?? "";
   }
 
-  const uploadedImage = publicUploadPathFromFile(req, "celebration-banners");
-  if (uploadedImage) {
-    if (current.image) deleteUploadFileByPublicUrl(current.image);
-    updates.image = uploadedImage;
+  const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
+  if (uploadedKey) {
+    if (current.image && current.image !== uploadedKey) {
+      await deleteStoredMedia(current.image);
+    }
+    updates.image = uploadedKey;
   }
 
-  if (Object.keys(updates).length === 0) throw new AppError("At least one field is required for update", 400);
+  if (Object.keys(updates).length === 0) {
+    throw new AppError("At least one field is required for update", 400);
+  }
 
   let celebrationBanner;
   try {
     celebrationBanner = await updateCelebrationBanner(req.params.id, updates);
   } catch (err) {
-    if (err?.name === "ConditionalCheckFailedException") throw new AppError("Celebration banner not found", 404);
+    if (err?.name === "ConditionalCheckFailedException") {
+      throw new AppError("Celebration banner not found", 404);
+    }
     throw err;
   }
 
@@ -123,14 +140,16 @@ exports.updateCelebrationBannerController = asyncHandler(async (req, res) => {
 });
 
 exports.deleteCelebrationBannerController = asyncHandler(async (req, res) => {
-  const current = await getCelebrationBannerById(req.params.id);
+  const current = await getCelebrationBannerRecordById(req.params.id);
   if (!current) throw new AppError("Celebration banner not found", 404);
-  if (current.image) deleteUploadFileByPublicUrl(current.image);
+  if (current.image) await deleteStoredMedia(current.image);
 
   try {
     await deleteCelebrationBanner(req.params.id);
   } catch (err) {
-    if (err?.name === "ConditionalCheckFailedException") throw new AppError("Celebration banner not found", 404);
+    if (err?.name === "ConditionalCheckFailedException") {
+      throw new AppError("Celebration banner not found", 404);
+    }
     throw err;
   }
 

@@ -1,20 +1,22 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
 const { hashPassword, comparePassword } = require("../../utils/password");
-const { toPublicProfile } = require("../../utils/toPublicProfile");
-const { publicUploadPathFromFile } = require("../../utils/publicUploadPath");
-const { deleteUploadFileByPublicUrl } = require("../../utils/deleteUploadFile");
 const {
-  createTokenPair,
-  verifyRefreshToken,
-} = require("../../utils/jwt");
+  uploadFileFromRequest,
+  deleteStoredMedia,
+  parseMediaKeyFromBody,
+} = require("../../utils/s3");
+const { createTokenPair, verifyRefreshToken } = require("../../utils/jwt");
 const {
   createAdmin,
   getAdminByEmail,
   getAdminById,
   updateAdmin,
+  toPublicAdmin,
 } = require("../../models/adminModel");
 const config = require("../../config");
+
+const S3_FOLDER = "admin";
 
 function sendAuthResponse(res, statusCode, admin) {
   const { accessToken, refreshToken } = createTokenPair({
@@ -26,7 +28,7 @@ function sendAuthResponse(res, statusCode, admin) {
     message: "Authentication successful",
     accessToken,
     refreshToken,
-    admin: toPublicProfile(admin),
+    admin: toPublicAdmin(admin),
   });
 }
 
@@ -46,12 +48,16 @@ exports.registerAdmin = asyncHandler(async (req, res) => {
   }
 
   const passwordHash = await hashPassword(password);
+  const parsedProfileImage = parseMediaKeyFromBody(profileImage, "profileImage");
+
+  const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
+
   const admin = await createAdmin({
     name,
     email,
     password: passwordHash,
     phone,
-    profileImage,
+    profileImage: uploadedKey ?? (parsedProfileImage !== undefined ? parsedProfileImage : null),
     status: "active",
   });
 
@@ -91,7 +97,7 @@ exports.getAdminProfile = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     message: "Admin profile fetched successfully",
-    admin: toPublicProfile(admin),
+    admin: toPublicAdmin(admin),
   });
 });
 
@@ -103,22 +109,25 @@ exports.updateAdminProfile = asyncHandler(async (req, res) => {
 
   const { name, phone, profileImage, password } = req.body;
   const updates = {};
-  const uploadedProfileImage = publicUploadPathFromFile(req, "admin");
 
   if (name !== undefined) updates.name = String(name).trim();
   if (phone !== undefined) updates.phone = phone ? String(phone).trim() : null;
   if (password !== undefined) updates.password = await hashPassword(password);
 
-  if (uploadedProfileImage) {
-    if (admin.profileImage) {
-      deleteUploadFileByPublicUrl(admin.profileImage);
+  if (profileImage !== undefined) {
+    const key = parseMediaKeyFromBody(profileImage, "profileImage");
+    if (key === null && admin.profileImage) {
+      await deleteStoredMedia(admin.profileImage);
     }
-    updates.profileImage = uploadedProfileImage;
-  } else if (profileImage !== undefined) {
-    if ((profileImage === null || profileImage === "") && admin.profileImage) {
-      deleteUploadFileByPublicUrl(admin.profileImage);
+    updates.profileImage = key;
+  }
+
+  const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
+  if (uploadedKey) {
+    if (admin.profileImage && admin.profileImage !== uploadedKey) {
+      await deleteStoredMedia(admin.profileImage);
     }
-    updates.profileImage = profileImage || null;
+    updates.profileImage = uploadedKey;
   }
 
   const updated = await updateAdmin(req.auth.sub, updates);
@@ -126,7 +135,7 @@ exports.updateAdminProfile = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     message: "Admin profile updated successfully",
-    admin: toPublicProfile(updated),
+    admin: toPublicAdmin(updated),
   });
 });
 

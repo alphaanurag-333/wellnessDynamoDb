@@ -26,7 +26,8 @@ const {
   assertUniqueEmail,
   assertUniquePhone,
   buildUserUpdatesFromBody,
-} = require("../adminController/userController");
+} = require("./userProfileHelpers");
+const { uploadFileFromRequest } = require("../../utils/s3");
 
 function sendAuthResponse(res, statusCode, user, message = "Authentication successful") {
   const { accessToken, refreshToken } = createTokenPair({
@@ -152,6 +153,9 @@ exports.registerUser = asyncHandler(async (req, res) => {
     const concern = await getHealthConcernById(fields.primaryHealthConcern);
     if (!concern) throw new AppError("primaryHealthConcern not found", 400);
   }
+
+  const uploadedProfile = await uploadFileFromRequest(req, "user");
+  if (uploadedProfile) fields.profileImage = uploadedProfile;
 
   const user = await createUser(fields);
 

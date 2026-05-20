@@ -7,6 +7,7 @@ const {
   } = require("@aws-sdk/lib-dynamodb");
   const { v4: uuidv4 } = require("uuid");
   const { docClient } = require("../config/db");
+  const { normalizeStoredMedia, resolvePublicUrl } = require("../utils/s3");
   
   const TABLE = "CelebrationBanners";
   const STATUS = new Set(["active", "inactive"]);
@@ -27,10 +28,27 @@ const {
     return { ...item, _id: item.id };
   }
 
+function normalizeImageField(value) {
+  if (value == null || String(value).trim() === "") return "";
+  const objectKey = normalizeStoredMedia(String(value).trim());
+  if (!objectKey) {
+    throw new Error("image must be a valid S3 object key (e.g. celebration-banners/photo.jpg)");
+  }
+  return objectKey;
+}
+
+function toPublicCelebrationBanner(banner) {
+  const item = withLegacyId(banner);
+  if (!item) return null;
+  if (item.image) item.image = resolvePublicUrl(item.image);
+  return item;
+}
+
 function sanitizeUpdateField(key, value) {
   if (key === "status") return normalizeStatus(value);
   if (key === "type") return normalizeType(value);
-  if (["title", "image", "startDate", "endDate"].includes(key)) return String(value).trim();
+  if (key === "image") return normalizeImageField(value);
+  if (["title", "startDate", "endDate"].includes(key)) return String(value).trim();
   return value;
 }
   
@@ -40,7 +58,7 @@ function sanitizeUpdateField(key, value) {
       id: uuidv4(),
       title: String(title || "").trim(),
       type: normalizeType(type),
-      image: String(image || "").trim(),
+      image: normalizeImageField(image),
       status: normalizeStatus(status),
       startDate: String(startDate || "").trim(),
       endDate: String(endDate || "").trim(),
@@ -53,15 +71,22 @@ function sanitizeUpdateField(key, value) {
       Item: item,
       ConditionExpression: "attribute_not_exists(id)",
     }));
-    return withLegacyId(item);
+    return toPublicCelebrationBanner(item);
   }
   
-  async function getCelebrationBannerById(id) {
-    const { Item } = await docClient.send(new GetCommand({
-      TableName: TABLE,
-      Key: { id },
-    }));
+  async function getCelebrationBannerRecordById(id) {
+    const { Item } = await docClient.send(
+      new GetCommand({
+        TableName: TABLE,
+        Key: { id },
+      })
+    );
     return withLegacyId(Item || null);
+  }
+
+  async function getCelebrationBannerById(id) {
+    const item = await getCelebrationBannerRecordById(id);
+    return item ? toPublicCelebrationBanner(item) : null;
   }
   
   async function updateCelebrationBanner(id, updates) {
@@ -91,7 +116,7 @@ function sanitizeUpdateField(key, value) {
       ConditionExpression: "attribute_exists(id)",
       ReturnValues: "ALL_NEW",
     }));
-    return withLegacyId(Attributes || null);
+    return toPublicCelebrationBanner(Attributes || null);
   }
   
   async function deleteCelebrationBanner(id) {
@@ -151,7 +176,9 @@ function sanitizeUpdateField(key, value) {
     const total = rows.length;
     const pages = Math.max(1, Math.ceil(total / safeLimit));
     const start = (safePage - 1) * safeLimit;
-    const celebrationBanners = rows.slice(start, start + safeLimit).map(withLegacyId);
+    const celebrationBanners = rows
+      .slice(start, start + safeLimit)
+      .map((row) => toPublicCelebrationBanner(row));
   
     return {
       celebrationBanners,
@@ -162,6 +189,7 @@ function sanitizeUpdateField(key, value) {
   module.exports = {
     createCelebrationBanner,
     getCelebrationBannerById,
+    getCelebrationBannerRecordById,
     updateCelebrationBanner,
     deleteCelebrationBanner,
     listCelebrationBanners,

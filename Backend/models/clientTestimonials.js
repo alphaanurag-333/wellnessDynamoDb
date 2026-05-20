@@ -7,6 +7,7 @@ const {
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require("uuid");
 const { docClient } = require("../config/db");
+const { normalizeStoredMedia, resolvePublicUrl } = require("../utils/s3");
 
 const TABLE = "ClientTestimonials";
 const STATUS = new Set(["active", "inactive"]);
@@ -21,8 +22,25 @@ function withLegacyId(item) {
   return { ...item, _id: item.id };
 }
 
+function normalizeProfileImageField(value) {
+  if (value == null || String(value).trim() === "") return "";
+  const objectKey = normalizeStoredMedia(String(value).trim());
+  if (!objectKey) {
+    throw new Error("profile_image must be a valid S3 object key (e.g. client-testimonials/photo.jpg)");
+  }
+  return objectKey;
+}
+
+function toPublicClientTestimonial(item) {
+  const row = withLegacyId(item);
+  if (!row) return null;
+  if (row.profile_image) row.profile_image = resolvePublicUrl(row.profile_image);
+  return row;
+}
+
 function sanitizeUpdateField(key, value) {
-  if (["name", "description", "profile_image"].includes(key)) return String(value).trim();
+  if (key === "profile_image") return normalizeProfileImageField(value);
+  if (["name", "description"].includes(key)) return String(value).trim();
   if (key === "rating") return Number(value);
   if (key === "status") return normalizeStatus(value);
   return value;
@@ -35,7 +53,7 @@ async function createClientTestimonial({ name, rating, description, profile_imag
     name: String(name || "").trim(),
     rating: Number(rating),
     description: String(description || "").trim(),
-    profile_image: String(profile_image || "").trim(),
+    profile_image: normalizeProfileImageField(profile_image),
     status: normalizeStatus(status),
     createdAt: now,
     updatedAt: now,
@@ -46,15 +64,22 @@ async function createClientTestimonial({ name, rating, description, profile_imag
     Item: item,
     ConditionExpression: "attribute_not_exists(id)",
   }));
-  return withLegacyId(item);
+  return toPublicClientTestimonial(item);
+}
+
+async function getClientTestimonialRecordById(id) {
+  const { Item } = await docClient.send(
+    new GetCommand({
+      TableName: TABLE,
+      Key: { id },
+    })
+  );
+  return withLegacyId(Item || null);
 }
 
 async function getClientTestimonialById(id) {
-  const { Item } = await docClient.send(new GetCommand({
-    TableName: TABLE,
-    Key: { id },
-  }));
-  return withLegacyId(Item || null);
+  const item = await getClientTestimonialRecordById(id);
+  return item ? toPublicClientTestimonial(item) : null;
 }
 
 async function updateClientTestimonial(id, updates) {
@@ -83,7 +108,7 @@ async function updateClientTestimonial(id, updates) {
     ConditionExpression: "attribute_exists(id)",
     ReturnValues: "ALL_NEW",
   }));
-  return withLegacyId(Attributes || null);
+  return toPublicClientTestimonial(Attributes || null);
 }
 
 async function deleteClientTestimonial(id) {
@@ -138,7 +163,9 @@ async function listClientTestimonials({ page = 1, limit = 10, status, search } =
   const total = rows.length;
   const pages = Math.max(1, Math.ceil(total / safeLimit));
   const start = (safePage - 1) * safeLimit;
-  const clientTestimonials = rows.slice(start, start + safeLimit).map(withLegacyId);
+  const clientTestimonials = rows
+    .slice(start, start + safeLimit)
+    .map((row) => toPublicClientTestimonial(row));
 
   return {
     clientTestimonials,
@@ -150,6 +177,7 @@ module.exports = {
   normalizeStatus,
   createClientTestimonial,
   getClientTestimonialById,
+  getClientTestimonialRecordById,
   updateClientTestimonial,
   deleteClientTestimonial,
   listClientTestimonials,

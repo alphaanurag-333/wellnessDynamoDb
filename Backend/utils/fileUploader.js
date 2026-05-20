@@ -37,10 +37,19 @@ const allowedTypes = [
   "application/x-zip-compressed",
 ];
 
+const uploadLimits = { fileSize: 50 * 1024 * 1024 }; // 50MB
+
+function fileFilter(req, file, cb) {
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new AppError("Unsupported file type", 400), false);
+  }
+}
+
 function createUploader(folderName = "") {
   const uploadPath = path.join("uploads", folderName);
 
-  // Ensure folder exists
   if (!fs.existsSync(uploadPath)) {
     fs.mkdirSync(uploadPath, { recursive: true });
   }
@@ -56,21 +65,21 @@ function createUploader(folderName = "") {
     },
   });
 
-  const fileFilter = (req, file, cb) => {
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new AppError("Unsupported file type", 400), false);
-    }
-  };
-
   return multer({
     storage,
     fileFilter,
-    limits: {
-      fileSize: 50 * 1024 * 1024,
-    },
-  })
+    limits: uploadLimits,
+  });
+}
+
+/** In-memory multer for S3 uploads (req.file.buffer). */
+function createMemoryUploader() {
+  return multer({
+    storage: multer.memoryStorage(),
+    fileFilter,
+    limits: uploadLimits,
+  });
 }
 
 module.exports = createUploader;
+module.exports.createMemoryUploader = createMemoryUploader;

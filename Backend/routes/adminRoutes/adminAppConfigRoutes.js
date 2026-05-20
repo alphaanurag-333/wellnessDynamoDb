@@ -1,18 +1,13 @@
 const express = require("express");
 
 const { protectAdmin } = require("../../middleware/auth");
-// const {
-//   uploadAppConfigFiles,
-//   getAppConfig,
-//   createAppConfig,
-//   updateAppConfig,
-// } = require("../../controllers/adminController/appConfigController");
+const { uploadAppConfigFiles } = require("../../middleware/authMultipart");
 const appConfigController = require("../../controllers/adminController/appConfigController");
 
 const router = express.Router();
 
 router.get("/", protectAdmin, appConfigController.getAppConfigController);
-router.post("/", protectAdmin, appConfigController.uploadAppConfigFiles, appConfigController.createAppConfigController);
-router.patch("/", protectAdmin, appConfigController.uploadAppConfigFiles, appConfigController.updateAppConfigController);
+router.post("/", protectAdmin, uploadAppConfigFiles, appConfigController.createAppConfigController);
+router.patch("/", protectAdmin, uploadAppConfigFiles, appConfigController.updateAppConfigController);
 
 module.exports = router;

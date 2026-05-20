@@ -1,9 +1,14 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
-const { publicUploadPathFromFile } = require("../../utils/publicUploadPath");
+const {
+  uploadFileFromRequest,
+  deleteStoredMedia,
+  parseMediaKeyFromBody,
+} = require("../../utils/s3");
 const {
   createClientTestimonial,
   getClientTestimonialById,
+  getClientTestimonialRecordById,
   updateClientTestimonial,
   deleteClientTestimonial,
   listClientTestimonials,
@@ -11,6 +16,7 @@ const {
 } = require("../../models/clientTestimonials");
 
 const ALLOWED_STATUS = ["active", "inactive"];
+const S3_FOLDER = "client-testimonials";
 
 exports.listClientTestimonialsController = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, status, search } = req.query;
@@ -36,9 +42,12 @@ exports.getClientTestimonialByIdController = asyncHandler(async (req, res) => {
 exports.createClientTestimonialController = asyncHandler(async (req, res) => {
   const name = String(req.body.name || "").trim();
   const description = String(req.body.description || "").trim();
-  const profile_image = publicUploadPathFromFile(req, "client-testimonials") ?? String(req.body.profile_image || "").trim();
   const rating = Number(req.body.rating);
   const status = normalizeStatus(req.body.status, "active");
+
+  const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
+  const profile_image =
+    uploadedKey ?? parseMediaKeyFromBody(req.body.profile_image, "profile_image");
 
   if (!name) throw new AppError("name is required", 400);
   if (!description) throw new AppError("description is required", 400);
@@ -66,7 +75,7 @@ exports.createClientTestimonialController = asyncHandler(async (req, res) => {
 });
 
 exports.updateClientTestimonialController = asyncHandler(async (req, res) => {
-  const current = await getClientTestimonialById(req.params.id);
+  const current = await getClientTestimonialRecordById(req.params.id);
   if (!current) throw new AppError("Client testimonial not found", 404);
 
   const updates = {};
@@ -82,14 +91,24 @@ exports.updateClientTestimonialController = asyncHandler(async (req, res) => {
     updates.description = description;
   }
   if (req.body.profile_image !== undefined) {
-    const profile_image = String(req.body.profile_image || "").trim();
-    if (!profile_image) throw new AppError("profile_image cannot be empty", 400);
+    const profile_image = parseMediaKeyFromBody(req.body.profile_image, "profile_image");
+    if (profile_image === null && current.profile_image) {
+      await deleteStoredMedia(current.profile_image);
+    }
+    if (profile_image === null) {
+      throw new AppError("profile_image cannot be empty", 400);
+    }
     updates.profile_image = profile_image;
   }
-  const uploadedProfileImage = publicUploadPathFromFile(req, "client-testimonials");
-  if (uploadedProfileImage) {
-    updates.profile_image = uploadedProfileImage;
+
+  const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
+  if (uploadedKey) {
+    if (current.profile_image && current.profile_image !== uploadedKey) {
+      await deleteStoredMedia(current.profile_image);
+    }
+    updates.profile_image = uploadedKey;
   }
+
   if (req.body.rating !== undefined) {
     const rating = Number(req.body.rating);
     if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
@@ -113,7 +132,9 @@ exports.updateClientTestimonialController = asyncHandler(async (req, res) => {
   try {
     clientTestimonial = await updateClientTestimonial(req.params.id, updates);
   } catch (err) {
-    if (err?.name === "ConditionalCheckFailedException") throw new AppError("Client testimonial not found", 404);
+    if (err?.name === "ConditionalCheckFailedException") {
+      throw new AppError("Client testimonial not found", 404);
+    }
     throw err;
   }
 
@@ -125,10 +146,16 @@ exports.updateClientTestimonialController = asyncHandler(async (req, res) => {
 });
 
 exports.deleteClientTestimonialController = asyncHandler(async (req, res) => {
+  const current = await getClientTestimonialRecordById(req.params.id);
+  if (!current) throw new AppError("Client testimonial not found", 404);
+  if (current.profile_image) await deleteStoredMedia(current.profile_image);
+
   try {
     await deleteClientTestimonial(req.params.id);
   } catch (err) {
-    if (err?.name === "ConditionalCheckFailedException") throw new AppError("Client testimonial not found", 404);
+    if (err?.name === "ConditionalCheckFailedException") {
+      throw new AppError("Client testimonial not found", 404);
+    }
     throw err;
   }
 

@@ -1,11 +1,29 @@
 const { PutCommand, GetCommand, UpdateCommand, DeleteCommand, QueryCommand } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../config/db");
 const { v4: uuidv4 } = require("uuid");
+const { toPublicProfile } = require("../utils/toPublicProfile");
+const { normalizeStoredMedia, resolvePublicUrl } = require("../utils/s3");
 
 const TABLE = "Admin";
 
 function normalizeEmail(email) {
   return String(email || "").toLowerCase().trim();
+}
+
+function normalizeProfileImageField(value) {
+  if (value == null || String(value).trim() === "") return null;
+  const objectKey = normalizeStoredMedia(String(value).trim());
+  if (!objectKey) {
+    throw new Error("profileImage must be a valid S3 object key (e.g. admin/photo.jpg)");
+  }
+  return objectKey;
+}
+
+function toPublicAdmin(admin) {
+  const pub = toPublicProfile(admin);
+  if (!pub) return null;
+  if (pub.profileImage) pub.profileImage = resolvePublicUrl(pub.profileImage);
+  return pub;
 }
 
 async function getAdminKeyById(id) {
@@ -35,7 +53,8 @@ async function createAdmin({ name, email, password, phone = null, profileImage =
     email:              normalizeEmail(email),
     password,
     phone:              phone ? phone.trim() : null,
-    profileImage:       profileImage ?? null,
+    profileImage:
+      profileImage != null ? normalizeProfileImageField(profileImage) : null,
     resetPasswordToken: null,
     resetPasswordExpire:null,
     status,                           
@@ -94,8 +113,9 @@ async function updateAdmin(id, updates) {
   for (const [key, val] of allowedUpdates) {
     const k = `#${key}`;
     const v = `:${key}`;
-    exprNames[k]  = key;
-    exprValues[v] = val;
+    exprNames[k] = key;
+    exprValues[v] =
+      key === "profileImage" ? normalizeProfileImageField(val) : val;
     setExpr += `, ${k} = ${v}`;
   }
 
@@ -160,4 +180,5 @@ module.exports = {
   setResetToken,
   clearResetToken,
   deleteAdmin,
+  toPublicAdmin,
 };
