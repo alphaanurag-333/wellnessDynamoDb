@@ -12,6 +12,8 @@ const {
   refreshUserToken,
   getUserProfile,
   updateUserProfile,
+  sendDeleteAccountOtp,
+  deleteUserByPhoneOtp,
 } = require("../../controllers/userController/authController");
 
 const router = express.Router();
@@ -23,6 +25,8 @@ router.post("/login/password", loginWithPassword);
 router.post("/otp/send", sendLoginOtp);
 router.post("/otp/verify", verifyLoginOtp);
 router.post("/refresh-token", refreshUserToken);
+router.post("/delete/otp/send", sendDeleteAccountOtp);
+router.post("/delete", deleteUserByPhoneOtp);
 
 router.get("/me", protectUser, getUserProfile);
 router.patch("/me", protectUser, optionalUserFile, updateUserProfile);

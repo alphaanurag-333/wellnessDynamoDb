@@ -26,6 +26,7 @@ const {
   assertUniqueEmail,
   assertUniquePhone,
   buildUserUpdatesFromBody,
+  deleteUserAccountByPhoneOtp,
 } = require("./userProfileHelpers");
 const { uploadFileFromRequest } = require("../../utils/s3");
 
@@ -349,6 +350,54 @@ exports.updateUserProfile = asyncHandler(async (req, res) => {
     status: true,
     message: "Profile updated successfully",
     user: await enrichUser(user),
+  });
+});
+
+/** POST /user/auth/delete/otp/send — OTP to registered mobile before account deletion */
+exports.sendDeleteAccountOtp = asyncHandler(async (req, res) => {
+  const phone = req.body.phone;
+  const phoneCountryCode = req.body.phoneCountryCode;
+
+  if (!phone) throw new AppError("phone is required", 400);
+
+  const user = await resolveUserByIdentifier({ phone, phoneCountryCode });
+  if (!user) throw new AppError("User not found", 404);
+
+  const otp = generateOtp();
+  const otpExpire = getOtpExpiryDate();
+
+  await updateUser(user.id, { otp, otpExpire });
+
+  await deliverOtp({
+    email: user.email,
+    phone: user.phone,
+    phoneCountryCode: user.phoneCountryCode,
+    otp,
+  });
+
+  const payload = {
+    status: true,
+    message: "Delete-account OTP sent successfully",
+  };
+
+  if (config.exposeOtpInResponse && config.nodeEnv !== "production") {
+    payload.debugOtp = otp;
+  }
+
+  return res.status(200).json(payload);
+});
+
+/** POST /user/auth/delete — confirm deletion with phone + OTP (no password, no login) */
+exports.deleteUserByPhoneOtp = asyncHandler(async (req, res) => {
+  await deleteUserAccountByPhoneOtp({
+    phone: req.body.phone,
+    phoneCountryCode: req.body.phoneCountryCode,
+    otp: req.body.otp,
+  });
+
+  return res.status(200).json({
+    status: true,
+    message: "Account deleted successfully",
   });
 });
 

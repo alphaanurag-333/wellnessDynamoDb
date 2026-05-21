@@ -1,5 +1,5 @@
 const AppError = require("../../utils/AppError");
-const { hashPassword } = require("../../utils/password");
+const { isOtpExpired } = require("../../utils/otp");
 const {
   uploadFileFromRequest,
   deleteStoredMedia,
@@ -7,8 +7,11 @@ const {
 } = require("../../utils/s3");
 const { getHealthConcernById } = require("../../models/healthConcernModel");
 const {
+  getUserById,
   getUserByEmail,
   getUserByPhone,
+  updateUser,
+  deleteUser,
   toPublicUser,
   normalizeEmail,
   normalizePhone,
@@ -230,6 +233,45 @@ async function buildUserUpdatesFromBody(body, current, { allowStatus = true, req
   return updates;
 }
 
+async function resolveUserByPhoneInput(phone, phoneCountryCode) {
+  const normalizedPhone = normalizePhone(phone);
+  if (!normalizedPhone) throw new AppError("phone is required", 400);
+  const cc = normalizeCountryCode(phoneCountryCode);
+  const user = await getUserByPhone(cc, normalizedPhone);
+  if (!user) throw new AppError("User not found", 404);
+  return user;
+}
+
+/** Delete account after OTP sent via sendDeleteAccountOtp (phone + country code + otp). */
+async function deleteUserAccountByPhoneOtp({ phone, phoneCountryCode, otp }) {
+  const user = await resolveUserByPhoneInput(phone, phoneCountryCode);
+  const code = String(otp ?? "").trim();
+  if (!code) throw new AppError("otp is required", 400);
+
+  if (!user.otp || !user.otpExpire) {
+    throw new AppError("No OTP requested. Send delete-account OTP first.", 400);
+  }
+  if (isOtpExpired(user.otpExpire)) {
+    throw new AppError("OTP has expired. Request a new code.", 400);
+  }
+  if (String(user.otp) !== code) {
+    throw new AppError("Invalid OTP", 401);
+  }
+
+  await updateUser(user.id, { otp: null, otpExpire: null });
+
+  if (user.profileImage) await deleteStoredMedia(user.profileImage);
+
+  try {
+    await deleteUser(user.id);
+  } catch (err) {
+    if (err?.name === "ConditionalCheckFailedException") {
+      throw new AppError("User not found", 404);
+    }
+    throw err;
+  }
+}
+
 module.exports = {
   parseUserFields,
   enrichUser,
@@ -237,4 +279,6 @@ module.exports = {
   assertUniquePhone,
   buildUserUpdatesFromBody,
   parseProfileImageFromBody,
+  resolveUserByPhoneInput,
+  deleteUserAccountByPhoneOtp,
 };

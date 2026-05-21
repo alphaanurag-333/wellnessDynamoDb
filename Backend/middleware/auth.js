@@ -89,7 +89,6 @@ const protectUser = asyncHandler(async (req, res, next) => {
   }
 
   assertActiveAccount(account);
-
   req.user = account;
   req.auth = { role: "user", sub: subject };
   next();

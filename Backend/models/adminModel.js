@@ -46,7 +46,6 @@ async function getAdminKeyById(id) {
 // CREATE admin
 async function createAdmin({ name, email, password, phone = null, profileImage = null, status = "active" }) {
   const now = new Date().toISOString();
-
   const item = {
     id:                 uuidv4(),
     name:               name.trim(),
