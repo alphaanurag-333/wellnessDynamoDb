@@ -107,6 +107,23 @@ export async function adminUpdateNotification(token, id, fields, file) {
   }
 }
 
+export async function adminResendNotification(token, id) {
+  try {
+    const { data } = await api.post(
+      `${notificationsBase()}/${encodeURIComponent(id)}/resend`,
+      {},
+      { headers: authHeader(token) }
+    );
+    return {
+      notification: data.notification,
+      push: data.push,
+      message: data.message,
+    };
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function adminDeleteNotification(token, id) {
   try {
     await api.delete(`${notificationsBase()}/${encodeURIComponent(id)}`, {

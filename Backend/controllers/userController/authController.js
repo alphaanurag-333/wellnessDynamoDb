@@ -23,6 +23,8 @@ const {
 const {
   enrichUser,
   parseUserFields,
+  parseFcmIdFromBody,
+  persistFcmIdIfPresent,
   assertUniqueEmail,
   assertUniquePhone,
   buildUserUpdatesFromBody,
@@ -158,6 +160,9 @@ exports.registerUser = asyncHandler(async (req, res) => {
   const uploadedProfile = await uploadFileFromRequest(req, "user");
   if (uploadedProfile) fields.profileImage = uploadedProfile;
 
+  const fcmFromBody = parseFcmIdFromBody(req.body);
+  if (fcmFromBody !== undefined) fields.fcm_id = fcmFromBody;
+
   const user = await createUser(fields);
 
   await clearRegistrationOtp({
@@ -191,7 +196,8 @@ exports.loginWithPassword = asyncHandler(async (req, res) => {
   const matched = await comparePassword(password, user.passwordHash);
   if (!matched) throw new AppError("Invalid credentials", 401);
 
-  return sendAuthResponse(res, 200, await enrichUser(user));
+  const updated = (await persistFcmIdIfPresent(user.id, req.body)) || user;
+  return sendAuthResponse(res, 200, await enrichUser(updated));
 });
 
 /** POST /user/auth/otp/send — request login OTP */
@@ -258,7 +264,11 @@ exports.verifyLoginOtp = asyncHandler(async (req, res) => {
     throw new AppError("Invalid OTP", 401);
   }
 
-  await updateUser(user.id, { otp: null, otpExpire: null });
+  const otpUpdates = { otp: null, otpExpire: null };
+  const fcm_id = parseFcmIdFromBody(req.body);
+  if (fcm_id !== undefined) otpUpdates.fcm_id = fcm_id;
+
+  await updateUser(user.id, otpUpdates);
 
   const fresh = await getUserById(user.id);
   return sendAuthResponse(res, 200, await enrichUser(fresh));

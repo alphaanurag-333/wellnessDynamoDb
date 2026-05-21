@@ -32,6 +32,20 @@ function parseBool(value) {
   return undefined;
 }
 
+/** Accepts fcm_id, fcmId, fcm_token, fcmToken. Undefined = omit; empty string = clear. */
+function parseFcmIdFromBody(body) {
+  if (!body || typeof body !== "object") return undefined;
+  const raw = body.fcm_id ?? body.fcmId ?? body.fcm_token ?? body.fcmToken;
+  if (raw === undefined || raw === null) return undefined;
+  return String(raw).trim() || null;
+}
+
+async function persistFcmIdIfPresent(userId, body) {
+  const fcm_id = parseFcmIdFromBody(body);
+  if (fcm_id === undefined) return null;
+  return updateUser(userId, { fcm_id });
+}
+
 /** Body field: S3 key or our public URL; null clears; undefined = omit. */
 function parseProfileImageFromBody(value) {
   if (value === undefined) return undefined;
@@ -64,7 +78,7 @@ function parseUserFields(body, { requirePassword = false } = {}) {
   const termsAccepted = parseBool(body.termsAccepted);
   const termsAcceptedAt =
     body.termsAcceptedAt !== undefined ? normalizeDob(body.termsAcceptedAt) : undefined;
-  const fcm_id = body.fcm_id !== undefined ? String(body.fcm_id || "").trim() || null : undefined;
+  const fcm_id = parseFcmIdFromBody(body);
   const status = body.status !== undefined ? normalizeStatus(body.status) : undefined;
   const profileImage = parseProfileImageFromBody(body.profileImage);
 
@@ -202,7 +216,8 @@ async function buildUserUpdatesFromBody(body, current, { allowStatus = true, req
   if (body.termsAcceptedAt !== undefined) {
     updates.termsAcceptedAt = normalizeDob(body.termsAcceptedAt);
   }
-  if (body.fcm_id !== undefined) updates.fcm_id = String(body.fcm_id || "").trim() || null;
+  const fcm_id = parseFcmIdFromBody(body);
+  if (fcm_id !== undefined) updates.fcm_id = fcm_id;
 
   if (allowStatus && body.status !== undefined) {
     const status = normalizeStatus(body.status);
@@ -274,6 +289,8 @@ async function deleteUserAccountByPhoneOtp({ phone, phoneCountryCode, otp }) {
 
 module.exports = {
   parseUserFields,
+  parseFcmIdFromBody,
+  persistFcmIdIfPresent,
   enrichUser,
   assertUniqueEmail,
   assertUniquePhone,

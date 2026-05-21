@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { AdminPageLoadingState } from "../../components/AdminLoader.jsx";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { adminGetNotificationById } from "../../api/notificationController.js";
+import Swal from "sweetalert2";
+import { adminGetNotificationById, adminResendNotification } from "../../api/notificationController.js";
 import { logout } from "../../store/authSlice.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { NotFoundPage } from "../NotFoundPage.jsx";
@@ -25,6 +26,7 @@ export function NotificationView() {
   const [notification, setNotification] = useState(null);
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState("");
+  const [resending, setResending] = useState(false);
 
   useEffect(() => {
     if (!adminToken || !notificationId) return;
@@ -79,6 +81,42 @@ export function NotificationView() {
     return <AdminPageLoadingState label="Loading notification…" />;
   }
 
+  const onResend = async () => {
+    if (!adminToken || resending) return;
+    if (notification.status !== "active") {
+      await Swal.fire({
+        icon: "warning",
+        title: "Cannot resend",
+        text: "Only active notifications can be resent.",
+      });
+      return;
+    }
+    const { isConfirmed } = await Swal.fire({
+      icon: "question",
+      title: "Resend notification?",
+      text: `Send again to all ${notification.audienceType === "coaches" ? "coaches" : "users"} with a registered device.`,
+      showCancelButton: true,
+      confirmButtonText: "Resend",
+    });
+    if (!isConfirmed) return;
+    setResending(true);
+    try {
+      const { notification: updated, message, push } = await adminResendNotification(
+        adminToken,
+        notification._id || notificationId
+      );
+      setNotification(updated);
+      const icon =
+        push?.successCount > 0 ? "success" : push?.reason === "no_tokens" ? "warning" : "info";
+      await Swal.fire({ icon, title: "Resend complete", text: message || "Done." });
+    } catch (e) {
+      if (e?.status === 401) return dispatch(logout());
+      await Swal.fire({ icon: "error", title: "Resend failed", text: e.message || "Could not resend." });
+    } finally {
+      setResending(false);
+    }
+  };
+
   return (
     <div className="user-page">
       <div className="user-page__toolbar">
@@ -90,9 +128,21 @@ export function NotificationView() {
         <div className="user-page__toolbar-text">
           <h2 className="user-page__title">Notification details</h2>
         </div>
-        <Link to="edit" className="btn btn--accent user-page__edit-link">
-          Edit notification
-        </Link>
+        <div className="user-page__toolbar-actions" style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
+          {notification.status === "active" ? (
+            <button
+              type="button"
+              className="btn btn--primary"
+              onClick={onResend}
+              disabled={resending}
+            >
+              {resending ? "Resending…" : "Resend"}
+            </button>
+          ) : null}
+          <Link to="edit" className="btn btn--accent user-page__edit-link">
+            Edit notification
+          </Link>
+        </div>
       </div>
 
       <div className="page-card user-view-card">

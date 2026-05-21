@@ -34,4 +34,6 @@ module.exports = {
 
   awsS3BucketName: process.env.AWS_S3_BUCKET_NAME,
   awsS3PublicBaseUrl: process.env.AWS_S3_PUBLIC_BASE_URL || "",
+
+  firebaseServiceAccountPath: process.env.FIREBASE_SERVICE_ACCOUNT_PATH || "",
 };

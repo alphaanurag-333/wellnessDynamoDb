@@ -4,11 +4,12 @@ import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
-import { MdEditSquare } from "react-icons/md";
+import { MdEditSquare, MdSend } from "react-icons/md";
 import { AiFillDelete, AiOutlineEye } from "react-icons/ai";
 import {
   adminDeleteNotification,
   adminListNotifications,
+  adminResendNotification,
   adminUpdateNotification,
 } from "../../api/notificationController.js";
 import { logout } from "../../store/authSlice.js";
@@ -29,6 +30,7 @@ export function NotificationList() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [togglingId, setTogglingId] = useState("");
+  const [resendingId, setResendingId] = useState("");
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [total, setTotal] = useState(0);
@@ -83,6 +85,28 @@ export function NotificationList() {
     } catch (e) {
       if (e?.status === 401) return dispatch(logout());
       await Swal.fire({ icon: "error", title: "Delete failed", text: e.message || "Could not delete." });
+    }
+  };
+
+  const onResend = async (row) => {
+    if (!adminToken || row.status !== "active") return;
+    const { isConfirmed } = await Swal.fire({
+      icon: "question",
+      title: "Resend notification?",
+      showCancelButton: true,
+      confirmButtonText: "Resend",
+    });
+    if (!isConfirmed) return;
+    setResendingId(row._id);
+    try {
+      const { message } = await adminResendNotification(adminToken, row._id);
+      await Swal.fire({ icon: "success", title: "Resent", text: message || "Notification resent." });
+      await loadRows();
+    } catch (e) {
+      if (e?.status === 401) return dispatch(logout());
+      await Swal.fire({ icon: "error", title: "Resend failed", text: e.message || "Could not resend." });
+    } finally {
+      setResendingId("");
     }
   };
 
@@ -199,6 +223,17 @@ export function NotificationList() {
                         <Link to={`/admin/notifications/${row._id}`} className="icon-btn icon-btn--view" title="View">
                           <AiOutlineEye size={18} />
                         </Link>
+                        {row.status === "active" ? (
+                          <button
+                            type="button"
+                            className="icon-btn icon-btn--view"
+                            title="Resend"
+                            disabled={resendingId === row._id}
+                            onClick={() => onResend(row)}
+                          >
+                            <MdSend size={18} />
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           className="icon-btn icon-btn--edit"
