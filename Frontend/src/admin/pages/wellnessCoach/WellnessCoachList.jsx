@@ -9,6 +9,7 @@ import {
   adminDeleteWellnessCoach,
   adminListWellnessCoaches,
   adminUpdateWellnessCoach,
+  adminUpdateWellnessCoachApproval,
   resolveCoachId,
 } from "../../api/adminWellnessCoaches.js";
 import { logout } from "../../../store/authSlice.js";
@@ -26,9 +27,11 @@ export function WellnessCoachList() {
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [approvalFilter, setApprovalFilter] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [togglingId, setTogglingId] = useState("");
+  const [approvingId, setApprovingId] = useState("");
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchInput.trim()), 400);
@@ -37,7 +40,7 @@ export function WellnessCoachList() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, statusFilter]);
+  }, [debouncedSearch, statusFilter, approvalFilter]);
 
   const loadRows = useCallback(async () => {
     if (!adminToken) return;
@@ -112,6 +115,32 @@ export function WellnessCoachList() {
     }
   };
 
+  const handleApprove = async (row, approvalStatus) => {
+    if (!adminToken) return;
+    const id = resolveCoachId(row);
+    const label = approvalStatus === "approved" ? "Approve" : "Reject";
+    const { isConfirmed } = await Swal.fire({
+      title: `${label} coach?`,
+      html: `<strong>${row.name || row.email}</strong> will be ${approvalStatus === "approved" ? "approved to login" : "rejected"}.`,
+      icon: approvalStatus === "approved" ? "question" : "warning",
+      showCancelButton: true,
+      confirmButtonText: label,
+      confirmButtonColor: approvalStatus === "approved" ? "#16a34a" : "#dc2626",
+    });
+    if (!isConfirmed) return;
+    setApprovingId(id);
+    try {
+      await adminUpdateWellnessCoachApproval(adminToken, id, approvalStatus);
+      await Swal.fire({ icon: "success", title: `Coach ${approvalStatus}`, timer: 1500 });
+      loadRows();
+    } catch (e) {
+      if (e?.status === 401) { dispatch(logout()); return; }
+      await Swal.fire({ icon: "error", title: "Failed", text: e.message });
+    } finally {
+      setApprovingId("");
+    }
+  };
+
   const pageInfo = useMemo(() => `Page ${page} of ${pages} · ${total} coaches`, [page, pages, total]);
 
   return (
@@ -148,6 +177,17 @@ export function WellnessCoachList() {
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
             </select>
+            <select
+              className="user-list-status-select"
+              value={approvalFilter}
+              onChange={(e) => setApprovalFilter(e.target.value)}
+              aria-label="Filter by approval"
+            >
+              <option value="">All approval</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
           </form>
           <Link to="new" className="btn btn--accent">
             + Add coach
@@ -171,21 +211,23 @@ export function WellnessCoachList() {
               <th>Location</th>
               <th>Created</th>
               <th>Status</th>
+              <th>Approval</th>
               <th className="data-table__actions-col">Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <WellnessCoachTableLoaderRow colSpan={7} />
+              <WellnessCoachTableLoaderRow colSpan={8} />
             ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={7}>
+                <td colSpan={8}>
                   <p className="table-placeholder">No wellness coaches found.</p>
                 </td>
               </tr>
             ) : (
-              rows.map((row, idx) => {
+              rows.filter((row) => !approvalFilter || row.approvalStatus === approvalFilter).map((row, idx) => {
                 const id = resolveCoachId(row);
+                const approval = row.approvalStatus || "approved";
                 return (
                   <tr key={id}>
                     <td className="data-table__muted">{(page - 1) * LIST_LIMIT + idx + 1}</td>
@@ -221,6 +263,51 @@ export function WellnessCoachList() {
                       >
                         <span className="settings-switch__knob" aria-hidden />
                       </button>
+                    </td>
+                    <td>
+                      <span className={`approval-badge approval-badge--${approval}`}>{approval}</span>
+                      {approval === "pending" ? (
+                        <div className="approval-actions">
+                          <button
+                            type="button"
+                            className="btn btn--xs btn--success"
+                            disabled={approvingId === id}
+                            onClick={() => handleApprove(row, "approved")}
+                          >
+                            Approve
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn--xs btn--danger"
+                            disabled={approvingId === id}
+                            onClick={() => handleApprove(row, "rejected")}
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      ) : approval === "rejected" ? (
+                        <div className="approval-actions">
+                          <button
+                            type="button"
+                            className="btn btn--xs btn--success"
+                            disabled={approvingId === id}
+                            onClick={() => handleApprove(row, "approved")}
+                          >
+                            Approve
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="approval-actions">
+                          <button
+                            type="button"
+                            className="btn btn--xs btn--danger"
+                            disabled={approvingId === id}
+                            onClick={() => handleApprove(row, "rejected")}
+                          >
+                            Revoke
+                          </button>
+                        </div>
+                      )}
                     </td>
                     <td>
                       <div className="row-actions">

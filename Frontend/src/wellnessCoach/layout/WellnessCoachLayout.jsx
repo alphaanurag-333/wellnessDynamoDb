@@ -12,6 +12,10 @@ import { logoutCoach, setCoach } from "../../store/authSlice.js";
 function titleFromPath(pathname) {
   const p = pathname.replace(/\/$/, "") || "/";
   if (/^\/coach\/profile\/?$/.test(p)) return "Profile";
+  if (/^\/coach\/my-assistants\/[^/]+\/edit\/?$/.test(p)) return "Edit assistant";
+  if (/^\/coach\/my-assistants\/new\/?$/.test(p)) return "Add assistant";
+  if (/^\/coach\/my-assistants\/[^/]+\/?$/.test(p)) return "Assistant details";
+  if (/^\/coach\/my-assistants\/?$/.test(p)) return "Assistants (AWC)";
   const segment = p.split("/").pop() || "dashboard";
   const found = flattenNavLinks(coachNavItems).find((n) => n.to === segment);
   return found ? found.label : segment.replace(/-/g, " ");

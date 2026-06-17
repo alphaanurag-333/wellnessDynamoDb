@@ -1,5 +1,6 @@
 export const coachNavItems = [
   { to: "dashboard", label: "Dashboard", icon: "grid" },
+  { to: "my-assistants", label: "Assistants (AWC)", icon: "users" },
   { to: "profile", label: "Profile", icon: "profile" },
 ];
 

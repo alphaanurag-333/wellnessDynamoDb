@@ -19,10 +19,16 @@ const { toPublicProfile } = require("../utils/toPublicProfile");
 
 const TABLE = "WellnessCoach";
 const ALLOWED_STATUS = new Set(["active", "inactive"]);
+const ALLOWED_APPROVAL_STATUS = new Set(["pending", "approved", "rejected"]);
 
 function normalizeStatus(value, fallback = "active") {
   const next = String(value || fallback).toLowerCase().trim();
   return ALLOWED_STATUS.has(next) ? next : fallback;
+}
+
+function normalizeApprovalStatus(value, fallback = "approved") {
+  const next = String(value || fallback).toLowerCase().trim();
+  return ALLOWED_APPROVAL_STATUS.has(next) ? next : fallback;
 }
 
 function withLegacyId(item) {
@@ -62,6 +68,7 @@ function buildCoachItem(input, { id, now } = {}) {
     city: input.city != null ? String(input.city).trim() || null : null,
     password: input.password != null ? String(input.password) : null,
     status: normalizeStatus(input.status),
+    approvalStatus: normalizeApprovalStatus(input.approvalStatus, input._defaultApproval || "approved"),
     createdAt: now,
     updatedAt: now,
   };
@@ -72,6 +79,7 @@ function sanitizeUpdateField(key, value) {
   if (key === "phone") return normalizePhone(value);
   if (key === "phoneCountryCode") return normalizeCountryCode(value);
   if (key === "status") return normalizeStatus(value);
+  if (key === "approvalStatus") return normalizeApprovalStatus(value);
   if (key === "specializationId") {
     const s = value == null ? "" : String(value).trim();
     return s || null;
@@ -276,10 +284,19 @@ async function listWellnessCoaches({ page = 1, limit = 20, status, search } = {}
   };
 }
 
+async function countAllWellnessCoaches() {
+  const { Count } = await docClient.send(
+    new ScanCommand({ TableName: TABLE, Select: "COUNT" })
+  );
+  return Count ?? 0;
+}
+
 module.exports = {
   TABLE,
   ALLOWED_STATUS,
+  ALLOWED_APPROVAL_STATUS,
   normalizeStatus,
+  normalizeApprovalStatus,
   buildCoachItem,
   createWellnessCoach,
   getWellnessCoachById,
@@ -289,5 +306,6 @@ module.exports = {
   updateWellnessCoach,
   deleteWellnessCoach,
   listWellnessCoaches,
+  countAllWellnessCoaches,
   toPublicWellnessCoach,
 };

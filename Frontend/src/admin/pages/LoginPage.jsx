@@ -68,7 +68,7 @@ export function AdminLoginPage() {
               src={brandLogoSrc}
               alt=""
               className="auth-brand__logo-img"
-              width={200}
+              width={112}
               height="auto"
               onError={(e) => {
                 e.currentTarget.onerror = null;
@@ -84,7 +84,7 @@ export function AdminLoginPage() {
         </p>
         <form className="auth-form" onSubmit={handleSubmit}>
           <label className="auth-field">
-            <span className="auth-field__label">Email ID</span>
+            <span className="auth-field__label">Email ID <span className="required-dot">*</span></span>
             <div className="auth-input-wrap">
               <span className="auth-input-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
@@ -105,7 +105,7 @@ export function AdminLoginPage() {
           </label>
           <label className="auth-field">
             <div className="auth-field__row">
-              <span className="auth-field__label">Password</span>
+              <span className="auth-field__label">Password <span className="required-dot">*</span></span>
               {/* <a className="auth-link" href="#forgot">
                 Forgot password?
               </a> */}

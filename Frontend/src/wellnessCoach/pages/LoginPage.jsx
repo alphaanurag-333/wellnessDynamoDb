@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { coachLogin } from "../api/coachAuth.js";
 import { selectLoginBrandLogoUrl } from "../../store/appConfigSelectors.js";
@@ -67,7 +67,7 @@ export function CoachLoginPage() {
               src={brandLogoSrc}
               alt=""
               className="auth-brand__logo-img"
-              width={200}
+              width={112}
               height="auto"
               onError={(e) => {
                 e.currentTarget.onerror = null;
@@ -80,7 +80,7 @@ export function CoachLoginPage() {
         <p className="auth-card__subtitle">Enter your credentials to access your coach dashboard.</p>
         <form className="auth-form" onSubmit={handleSubmit}>
           <label className="auth-field">
-            <span className="auth-field__label">Email ID</span>
+            <span className="auth-field__label">Email ID <span className="required-dot">*</span></span>
             <div className="auth-input-wrap">
               <input
                 type="email"
@@ -94,7 +94,7 @@ export function CoachLoginPage() {
             </div>
           </label>
           <label className="auth-field">
-            <span className="auth-field__label">Password</span>
+            <span className="auth-field__label">Password <span className="required-dot">*</span></span>
             <div className="auth-input-wrap">
               <input
                 type={passwordVisible ? "text" : "password"}
@@ -120,6 +120,12 @@ export function CoachLoginPage() {
             {loading ? "Signing in…" : "Sign In"}
           </button>
         </form>
+        <p className="auth-footer-link">
+          New here?{" "}
+          <Link to="/coach/register" className="auth-link">
+            Register as Wellness Coach
+          </Link>
+        </p>
       </div>
     </div>
   );

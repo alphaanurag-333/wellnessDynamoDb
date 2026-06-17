@@ -16,7 +16,9 @@ const {
   deleteWellnessCoach,
   listWellnessCoaches,
   normalizeStatus,
+  normalizeApprovalStatus,
   ALLOWED_STATUS,
+  ALLOWED_APPROVAL_STATUS,
 } = require("../../models/wellnessCoachModel");
 const { countAssistantsByWellnessCoachId } = require("../../models/assistantWellnessCoachModel");
 const { getSpecializationById } = require("../../models/specializationModel");
@@ -94,6 +96,10 @@ function parseCoachBody(body) {
     throw new AppError("status must be active or inactive", 400);
   }
 
+  const approvalStatus = body.approvalStatus !== undefined
+    ? normalizeApprovalStatus(body.approvalStatus)
+    : "approved";
+
   const profileImage = parseMediaKeyFromBody(body.profileImage, "profileImage");
 
   return {
@@ -108,6 +114,7 @@ function parseCoachBody(body) {
     city: body.city !== undefined ? String(body.city || "").trim() || null : null,
     profileImage: profileImage !== undefined ? profileImage : null,
     status,
+    approvalStatus,
     password: body.password !== undefined ? String(body.password || "").trim() : undefined,
   };
 }
@@ -201,6 +208,13 @@ exports.updateWellnessCoachController = asyncHandler(async (req, res) => {
       throw new AppError("status must be active or inactive", 400);
     }
     updates.status = status;
+  }
+  if (body.approvalStatus !== undefined) {
+    const approvalStatus = normalizeApprovalStatus(body.approvalStatus);
+    if (!ALLOWED_APPROVAL_STATUS.has(approvalStatus)) {
+      throw new AppError("approvalStatus must be pending, approved, or rejected", 400);
+    }
+    updates.approvalStatus = approvalStatus;
   }
   if (body.bio !== undefined) updates.bio = String(body.bio || "").trim() || null;
   if (body.specializationId !== undefined) {

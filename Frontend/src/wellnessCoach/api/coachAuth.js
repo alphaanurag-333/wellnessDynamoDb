@@ -1,5 +1,14 @@
 import coachApi, { authHeader, normalizeApiError } from "./coachApi.js";
 
+export async function coachRegister(fields) {
+  try {
+    const { data } = await coachApi.post("/coach/auth/register", fields);
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function coachLogin({ email, password }) {
   try {
     const { data } = await coachApi.post("/coach/auth/login", { email, password });

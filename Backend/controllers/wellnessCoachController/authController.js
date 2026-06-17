@@ -9,10 +9,26 @@ const {
 const { createTokenPair, verifyRefreshToken } = require("../../utils/jwt");
 const {
   getWellnessCoachByEmail,
+  getWellnessCoachByPhone,
   getWellnessCoachRecordById,
+  createWellnessCoach,
   updateWellnessCoach,
   toPublicWellnessCoach,
 } = require("../../models/wellnessCoachModel");
+const { getSpecializationById } = require("../../models/specializationModel");
+const { normalizeEmail, normalizePhone, normalizeCountryCode } = require("../../models/userModel");
+
+function parseSpecializationId(value) {
+  const id = value == null ? "" : String(value).trim();
+  return id || null;
+}
+
+async function assertValidActiveSpecializationId(specializationId) {
+  if (!specializationId) throw new AppError("Specialization is required", 400);
+  const spec = await getSpecializationById(specializationId);
+  if (!spec) throw new AppError("Specialization not found", 400);
+  if (spec.status !== "active") throw new AppError("Specialization is not available", 400);
+}
 
 const S3_FOLDER = "wellness-coach";
 const ROLE = "wellness_coach";
@@ -30,6 +46,55 @@ function sendAuthResponse(res, statusCode, coach) {
     coach: toPublicWellnessCoach(coach),
   });
 }
+
+exports.registerWellnessCoach = asyncHandler(async (req, res) => {
+  const { name, email, phone, phoneCountryCode, password, bio, country, state, city, specializationId } =
+    req.body;
+
+  const normEmail = normalizeEmail(email);
+  const normPhone = normalizePhone(phone);
+  const normCc = normalizeCountryCode(phoneCountryCode);
+  const normName = String(name || "").trim();
+
+  if (!normName) throw new AppError("Name is required", 400);
+  if (!normEmail) throw new AppError("Email is required", 400);
+  if (!normPhone) throw new AppError("Mobile number is required", 400);
+  if (!password || String(password).length < 8) {
+    throw new AppError("Password must be at least 8 characters", 400);
+  }
+
+  const existingByEmail = await getWellnessCoachByEmail(normEmail);
+  if (existingByEmail) throw new AppError("An account with this email already exists", 409);
+
+  const existingByPhone = await getWellnessCoachByPhone(normCc, normPhone);
+  if (existingByPhone) throw new AppError("An account with this phone number already exists", 409);
+
+  const parsedSpecializationId = parseSpecializationId(specializationId);
+  await assertValidActiveSpecializationId(parsedSpecializationId);
+
+  const hashedPassword = await hashPassword(String(password));
+
+  const coach = await createWellnessCoach({
+    name: normName,
+    email: normEmail,
+    phone: normPhone,
+    phoneCountryCode: normCc,
+    password: hashedPassword,
+    bio: bio != null ? String(bio).trim() || null : null,
+    specializationId: parsedSpecializationId,
+    country: country != null ? String(country).trim() || null : null,
+    state: state != null ? String(state).trim() || null : null,
+    city: city != null ? String(city).trim() || null : null,
+    status: "active",
+    _defaultApproval: "pending",
+  });
+
+  return res.status(201).json({
+    status: true,
+    message: "Registration successful. Your account is pending admin approval. You will be able to login once approved.",
+    coach,
+  });
+});
 
 exports.loginWellnessCoach = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
@@ -52,8 +117,16 @@ exports.loginWellnessCoach = asyncHandler(async (req, res) => {
     throw new AppError("Invalid credentials", 401);
   }
 
+  if (coach.approvalStatus === "pending") {
+    throw new AppError("Your account is pending admin approval. Please wait for approval.", 403);
+  }
+
+  if (coach.approvalStatus === "rejected") {
+    throw new AppError("Your account registration has been rejected. Please contact admin.", 403);
+  }
+
   if (coach.status === "inactive") {
-    throw new AppError("Account is inactive", 403);
+    throw new AppError("Account is inactive. Please contact admin.", 403);
   }
 
   return sendAuthResponse(res, 200, coach);

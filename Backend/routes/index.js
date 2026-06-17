@@ -22,6 +22,8 @@ const publicAppConfigRoutes = require("./publicRoutes/publicAppConfigRoutes");
 const miscRoutes = require("./userRoutes/miscRoutes");
 const userAuthRoutes = require("./userRoutes/authRoutes");
 const coachAuthRoutes = require("./wellnessCoachRoutes/coachAuthRoutes");
+const coachSpecializationRoutes = require("./wellnessCoachRoutes/coachSpecializationRoutes");
+const coachAssistantRoutes = require("./wellnessCoachRoutes/coachAssistantRoutes");
 const assistantAuthRoutes = require("./assistantWellnessCoachRoutes/assistantAuthRoutes");
 
 const router = express.Router();
@@ -32,6 +34,8 @@ router.get("/health", (req, res) => {
 
 router.use("/admin/auth", adminAuthRoutes);
 router.use("/coach/auth", coachAuthRoutes);
+router.use("/coach/specializations", coachSpecializationRoutes);
+router.use("/coach/assistants", coachAssistantRoutes);
 router.use("/assistant/auth", assistantAuthRoutes);
 router.use("/admin/app-config", adminAppConfigRoutes);
 router.use("/admin/faq", adminFaqRoutes);

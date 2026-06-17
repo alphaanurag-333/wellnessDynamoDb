@@ -10,6 +10,7 @@ import {
   adminGetWellnessCoach,
   adminListCoachAssistants,
   adminUpdateCoachAssistant,
+  adminUpdateWellnessCoachApproval,
   resolveCoachId,
 } from "../../api/adminWellnessCoaches.js";
 import { logout } from "../../../store/authSlice.js";
@@ -40,6 +41,7 @@ export function WellnessCoachView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [togglingAssistantId, setTogglingAssistantId] = useState("");
+  const [approvingCoach, setApprovingCoach] = useState(false);
 
   const loadAssistants = useCallback(async () => {
     if (!adminToken || !coachId) return;
@@ -111,6 +113,31 @@ export function WellnessCoachView() {
     }
   };
 
+  const handleApproveCoach = async (approvalStatus) => {
+    if (!adminToken || !coachId) return;
+    const label = approvalStatus === "approved" ? "Approve" : approvalStatus === "rejected" ? "Reject" : "Set Pending";
+    const { isConfirmed } = await Swal.fire({
+      title: `${label} coach?`,
+      html: `<strong>${coach?.name || coach?.email}</strong> will be set to <strong>${approvalStatus}</strong>.`,
+      icon: approvalStatus === "approved" ? "question" : "warning",
+      showCancelButton: true,
+      confirmButtonText: label,
+      confirmButtonColor: approvalStatus === "approved" ? "#16a34a" : "#dc2626",
+    });
+    if (!isConfirmed) return;
+    setApprovingCoach(true);
+    try {
+      const updated = await adminUpdateWellnessCoachApproval(adminToken, coachId, approvalStatus);
+      setCoach(updated);
+      await Swal.fire({ icon: "success", title: `Coach ${approvalStatus}`, timer: 1500 });
+    } catch (e) {
+      if (e?.status === 401) dispatch(logout());
+      else await Swal.fire({ icon: "error", title: "Failed", text: e.message });
+    } finally {
+      setApprovingCoach(false);
+    }
+  };
+
   const handleDeleteAssistant = async (assistant) => {
     const aid = resolveAssistantId(assistant);
     const { isConfirmed } = await Swal.fire({
@@ -160,10 +187,35 @@ export function WellnessCoachView() {
           <span className={`status-pill status-pill--${coach.status === "active" ? "active" : "inactive"}`}>
             {coach.status}
           </span>
+          <span className={`approval-badge approval-badge--${coach.approvalStatus || "approved"}`}>
+            {coach.approvalStatus || "approved"}
+          </span>
         </div>
-        <Link to={`/admin/coaches/${id}/edit`} className="btn btn--primary">
-          Edit coach
-        </Link>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {(coach.approvalStatus === "pending" || coach.approvalStatus === "rejected") && (
+            <button
+              type="button"
+              className="btn btn--success"
+              disabled={approvingCoach}
+              onClick={() => handleApproveCoach("approved")}
+            >
+              Approve
+            </button>
+          )}
+          {(coach.approvalStatus === "pending" || coach.approvalStatus === "approved" || !coach.approvalStatus) && (
+            <button
+              type="button"
+              className="btn btn--danger"
+              disabled={approvingCoach}
+              onClick={() => handleApproveCoach("rejected")}
+            >
+              Reject
+            </button>
+          )}
+          <Link to={`/admin/coaches/${id}/edit`} className="btn btn--primary">
+            Edit coach
+          </Link>
+        </div>
       </div>
 
       <div className="user-page__card user-detail-grid">
@@ -176,6 +228,7 @@ export function WellnessCoachView() {
           <DetailRow label="Specialization" value={coach.specializationTitle} />
           <DetailRow label="Location" value={[coach.city, coach.state, coach.country].filter(Boolean).join(", ")} />
           <DetailRow label="Bio" value={coach.bio} />
+          <DetailRow label="Approval Status" value={coach.approvalStatus || "approved"} />
           <DetailRow label="Created" value={formatDate(coach.createdAt)} />
           <DetailRow label="Updated" value={formatDate(coach.updatedAt)} />
         </div>

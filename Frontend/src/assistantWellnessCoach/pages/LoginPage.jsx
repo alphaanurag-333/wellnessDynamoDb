@@ -67,7 +67,7 @@ export function AssistantLoginPage() {
               src={brandLogoSrc}
               alt=""
               className="auth-brand__logo-img"
-              width={200}
+              width={112}
               height="auto"
               onError={(e) => {
                 e.currentTarget.onerror = null;
@@ -80,7 +80,7 @@ export function AssistantLoginPage() {
         <p className="auth-card__subtitle">Enter your credentials to access your assistant dashboard.</p>
         <form className="auth-form" onSubmit={handleSubmit}>
           <label className="auth-field">
-            <span className="auth-field__label">Email ID</span>
+            <span className="auth-field__label">Email ID <span className="required-dot">*</span></span>
             <div className="auth-input-wrap">
               <input
                 type="email"
@@ -94,7 +94,7 @@ export function AssistantLoginPage() {
             </div>
           </label>
           <label className="auth-field">
-            <span className="auth-field__label">Password</span>
+            <span className="auth-field__label">Password <span className="required-dot">*</span></span>
             <div className="auth-input-wrap">
               <input
                 type={passwordVisible ? "text" : "password"}

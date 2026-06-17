@@ -3,6 +3,7 @@ const express = require("express");
 const { protectWellnessCoach } = require("../../middleware/auth");
 const { optionalWellnessCoachFile } = require("../../middleware/authMultipart");
 const {
+  registerWellnessCoach,
   loginWellnessCoach,
   refreshWellnessCoachToken,
   getWellnessCoachProfile,
@@ -12,6 +13,7 @@ const {
 
 const router = express.Router();
 
+router.post("/register", registerWellnessCoach);
 router.post("/login", loginWellnessCoach);
 router.post("/refresh-token", refreshWellnessCoachToken);
 

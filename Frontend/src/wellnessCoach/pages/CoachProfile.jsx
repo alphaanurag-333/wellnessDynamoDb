@@ -12,6 +12,7 @@ import {
   ProfilePageLayout,
   ProfilePasswordField,
 } from "../../admin/components/PortalProfileLayout.jsx";
+import { CoachPageLoadingState } from "../components/CoachPageLoader.jsx";
 import { mediaUrl } from "../../media.js";
 import { logoutCoach, setCoach } from "../../store/authSlice.js";
 
@@ -28,6 +29,7 @@ export function CoachProfile() {
   const [phone, setPhone] = useState("");
   const [bio, setBio] = useState("");
   const [loading, setLoading] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(true);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -46,12 +48,15 @@ export function CoachProfile() {
   useEffect(() => {
     if (!coachToken) return;
     let cancelled = false;
+    setProfileLoading(true);
     (async () => {
       try {
         const data = await coachGetMe(coachToken);
         if (!cancelled && data?.coach) dispatch(setCoach(data.coach));
       } catch (e) {
         if (e?.status === 401) dispatch(logoutCoach());
+      } finally {
+        if (!cancelled) setProfileLoading(false);
       }
     })();
     return () => {
@@ -167,6 +172,10 @@ export function CoachProfile() {
       setLoading(false);
     }
   };
+
+  if (profileLoading) {
+    return <CoachPageLoadingState label="Loading profile…" wrapClassName="admin-profile-page" />;
+  }
 
   return (
     <ProfilePageLayout

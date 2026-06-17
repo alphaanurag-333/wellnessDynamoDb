@@ -8,6 +8,7 @@ import { adminRouteTree } from "./admin/routes/adminRoutes.jsx";
 import { AssistantLoginPage } from "./assistantWellnessCoach/pages/LoginPage.jsx";
 import { assistantWellnessCoachRouteTree } from "./assistantWellnessCoach/routes/assistantWellnessCoachRoutes.jsx";
 import { CoachLoginPage } from "./wellnessCoach/pages/LoginPage.jsx";
+import { CoachRegisterPage } from "./wellnessCoach/pages/RegisterPage.jsx";
 import { wellnessCoachRouteTree } from "./wellnessCoach/routes/wellnessCoachRoutes.jsx";
 import { selectAppConfigData } from "./store/appConfigSelectors.js";
 import { clearAppConfig, fetchAppConfig, fetchPublicAppConfig } from "./store/appConfigSlice.js";
@@ -65,6 +66,7 @@ export default function App() {
         <Route path="/admin/login" element={<AdminLoginPage />} />
         {adminRouteTree}
         <Route path="/coach/login" element={<CoachLoginPage />} />
+        <Route path="/coach/register" element={<CoachRegisterPage />} />
         {wellnessCoachRouteTree}
         <Route path="/assistant/login" element={<AssistantLoginPage />} />
         {assistantWellnessCoachRouteTree}

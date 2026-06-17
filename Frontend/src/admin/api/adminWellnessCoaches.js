@@ -195,6 +195,19 @@ export async function adminDeleteWellnessCoach(token, id) {
   }
 }
 
+export async function adminUpdateWellnessCoachApproval(token, id, approvalStatus) {
+  try {
+    const fd = new FormData();
+    fd.append("approvalStatus", approvalStatus);
+    const { data } = await api.patch(`${coachesBase()}/${encodeURIComponent(id)}`, fd, {
+      headers: authHeader(token),
+    });
+    return normalizeCoach(data.wellnessCoach);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function adminListAllAssistants(token, { page = 1, limit = 20, status, search, wellnessCoachId } = {}) {
   const q = new URLSearchParams();
   q.set("page", String(page));
