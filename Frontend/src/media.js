@@ -1,6 +1,6 @@
 import { getApiBase } from "./api.js";
 
-export { DEFAULT_IMAGE_SRC, handleMediaImageError, resolveMediaImageSrc } from "./components/AdminMediaImage.jsx";
+export { DEFAULT_IMAGE_SRC, handleMediaImageError, resolveMediaImageSrc } from "./admin/components/AdminMediaImage.jsx";
 
 /** Normalize stored upload paths and build absolute media URLs. */
 export function mediaUrl(path) {

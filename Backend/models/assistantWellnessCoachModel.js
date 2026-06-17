@@ -20,6 +20,7 @@ const {
   normalizeStoredMedia,
   resolvePublicUrl,
 } = require("../utils/s3");
+const { toPublicProfile } = require("../utils/toPublicProfile");
 
 const TABLE = "AssistantWellnessCoach";
 const ALLOWED_STATUS = new Set(["active", "inactive"]);
@@ -45,7 +46,7 @@ function normalizeProfileImageField(value) {
 
 function toPublicAssistant(assistant) {
   if (!assistant) return assistant;
-  const pub = { ...assistant };
+  const pub = toPublicProfile(withLegacyId(assistant));
   if (pub.profileImage) {
     pub.profileImage = resolvePublicUrl(pub.profileImage);
   }
@@ -67,6 +68,7 @@ function buildAssistantItem(input, { id, now } = {}) {
     phoneKey: buildPhoneKey(phoneCountryCode, phone),
     profileImage: normalizeProfileImageField(input.profileImage),
     designation: input.designation != null ? String(input.designation).trim() || null : null,
+    password: input.password != null ? String(input.password) : null,
     status: normalizeStatus(input.status),
     createdAt: now,
     updatedAt: now,
@@ -84,6 +86,9 @@ function sanitizeUpdateField(key, value) {
   if (["name", "designation"].includes(key)) {
     const s = value == null ? "" : String(value).trim();
     return s || null;
+  }
+  if (key === "password") {
+    return value != null ? String(value) : null;
   }
   return value;
 }
@@ -431,4 +436,5 @@ module.exports = {
   slimWellnessCoach,
   populateWellnessCoach,
   populateWellnessCoaches,
+  toPublicAssistant,
 };

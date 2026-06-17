@@ -1,5 +1,6 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
+const { hashPassword } = require("../../utils/password");
 const {
   uploadFileFromRequest,
   deleteStoredMedia,
@@ -85,7 +86,20 @@ function parseAssistantBody(body, wellnessCoachId) {
       body.designation !== undefined ? String(body.designation || "").trim() || null : null,
     profileImage: profileImage !== undefined ? profileImage : null,
     status,
+    password: body.password !== undefined ? String(body.password || "").trim() : undefined,
   };
+}
+
+function parseAssistantPassword(body, { required = false } = {}) {
+  const password = String(body.password ?? "").trim();
+  if (!password) {
+    if (required) throw new AppError("password is required", 400);
+    return undefined;
+  }
+  if (password.length < 8) {
+    throw new AppError("password must be at least 8 characters", 400);
+  }
+  return password;
 }
 
 function assertAssistantBelongsToCoach(assistant, wellnessCoachId) {
@@ -169,6 +183,8 @@ exports.createAssistantController = asyncHandler(async (req, res) => {
   const coach = await assertCoachExists(coachId);
 
   const fields = parseAssistantBody(req.body, coachId);
+  const plainPassword = parseAssistantPassword(req.body, { required: true });
+  fields.password = await hashPassword(plainPassword);
   await assertUniqueAssistantEmail(fields.email);
   await assertUniqueAssistantPhone(fields.phoneCountryCode, fields.phone);
 
@@ -231,6 +247,11 @@ exports.updateAssistantController = asyncHandler(async (req, res) => {
   }
   if (body.designation !== undefined) {
     updates.designation = String(body.designation || "").trim() || null;
+  }
+
+  if (body.password !== undefined) {
+    const plainPassword = parseAssistantPassword(body);
+    if (plainPassword) updates.password = await hashPassword(plainPassword);
   }
 
   await applyProfileImageUpdates(body, current, updates, req);

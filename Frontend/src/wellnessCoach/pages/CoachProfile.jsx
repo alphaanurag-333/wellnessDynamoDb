@@ -1,0 +1,253 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import Swal from "sweetalert2";
+import {
+  coachChangePassword,
+  coachGetMe,
+  coachUpdateMe,
+  coachUpdateMeWithFile,
+} from "../api/coachAuth.js";
+import {
+  ProfileField,
+  ProfilePageLayout,
+  ProfilePasswordField,
+} from "../../admin/components/PortalProfileLayout.jsx";
+import { mediaUrl } from "../../media.js";
+import { logoutCoach, setCoach } from "../../store/authSlice.js";
+
+const NAME_REGEX = /^[A-Za-z ]{2,40}$/;
+const PHONE_REGEX = /^\d{10}$/;
+
+export function CoachProfile() {
+  const dispatch = useDispatch();
+  const coachToken = useSelector((s) => s.auth.coachToken);
+  const coach = useSelector((s) => s.auth.coach);
+
+  const [tab, setTab] = useState("personal");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [bio, setBio] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPw, setShowPw] = useState({ cur: false, next: false, conf: false });
+
+  const fileInputRef = useRef(null);
+  const [photoLoading, setPhotoLoading] = useState(false);
+
+  useEffect(() => {
+    if (!coach) return;
+    setName(coach.name || "");
+    setPhone(coach.phone || "");
+    setBio(coach.bio || "");
+  }, [coach]);
+
+  useEffect(() => {
+    if (!coachToken) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await coachGetMe(coachToken);
+        if (!cancelled && data?.coach) dispatch(setCoach(data.coach));
+      } catch (e) {
+        if (e?.status === 401) dispatch(logoutCoach());
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [coachToken, dispatch]);
+
+  const avatarSrc = useMemo(() => mediaUrl(coach?.profileImage), [coach]);
+  const avatarCacheKey = coach?.updatedAt || coach?.id || coach?._id || "";
+
+  const handleAvatarFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !coachToken) return;
+
+    const okTypes = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/jpg"];
+    if (!okTypes.includes(file.type)) {
+      await Swal.fire({ icon: "error", title: "Invalid image", text: "Please choose a JPEG, PNG, GIF, or WebP image." });
+      return;
+    }
+    const maxMb = 5;
+    if (file.size > maxMb * 1024 * 1024) {
+      await Swal.fire({ icon: "error", title: "Image too large", text: `Image must be ${maxMb}MB or smaller.` });
+      return;
+    }
+
+    setPhotoLoading(true);
+    try {
+      const data = await coachUpdateMeWithFile(coachToken, {
+        name: name.trim(),
+        phone: phone.trim(),
+        phoneCountryCode: coach?.phoneCountryCode,
+        bio: bio.trim(),
+        file,
+      });
+      if (data?.coach) dispatch(setCoach(data.coach));
+      await Swal.fire({ icon: "success", title: data?.message || "Profile photo updated", timer: 1300 });
+    } catch (err) {
+      if (err?.status === 401) {
+        dispatch(logoutCoach());
+        return;
+      }
+      await Swal.fire({ icon: "error", title: "Upload failed", text: err.message || "Photo upload failed" });
+    } finally {
+      setPhotoLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (tab === "personal") {
+      const trimmedName = name.trim();
+      const trimmedPhone = phone.trim();
+      if (!trimmedName) {
+        await Swal.fire({ icon: "error", title: "Validation error", text: "Full name is required." });
+        return;
+      }
+      if (!NAME_REGEX.test(trimmedName)) {
+        await Swal.fire({ icon: "error", title: "Validation error", text: "Full name must contain only letters and spaces." });
+        return;
+      }
+      if (!trimmedPhone || !PHONE_REGEX.test(trimmedPhone)) {
+        await Swal.fire({ icon: "error", title: "Validation error", text: "Phone number must be exactly 10 digits." });
+        return;
+      }
+      setLoading(true);
+      try {
+        const data = await coachUpdateMe(coachToken, {
+          name: trimmedName,
+          phone: trimmedPhone,
+          phoneCountryCode: coach?.phoneCountryCode,
+          bio: bio.trim() || null,
+        });
+        if (data?.coach) dispatch(setCoach(data.coach));
+        await Swal.fire({ icon: "success", title: data?.message || "Profile updated", timer: 1300 });
+      } catch (e) {
+        if (e?.status === 401) {
+          dispatch(logoutCoach());
+          return;
+        }
+        await Swal.fire({ icon: "error", title: "Update failed", text: e.message || "Update failed" });
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    if (!currentPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
+      await Swal.fire({ icon: "error", title: "Validation error", text: "Fill in current password, new password, and confirmation." });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      await Swal.fire({ icon: "error", title: "Validation error", text: "New password and confirmation do not match." });
+      return;
+    }
+    if (newPassword.length < 8) {
+      await Swal.fire({ icon: "error", title: "Validation error", text: "New password must be at least 8 characters." });
+      return;
+    }
+    setLoading(true);
+    try {
+      const data = await coachChangePassword(coachToken, { currentPassword, newPassword });
+      await Swal.fire({ icon: "success", title: data?.message || "Password updated", timer: 1300 });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (e) {
+      if (e?.status === 401) {
+        dispatch(logoutCoach());
+        return;
+      }
+      await Swal.fire({ icon: "error", title: "Password change failed", text: e.message || "Password change failed" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <ProfilePageLayout
+      pageTitle="Wellness Coach Profile"
+      userName={coach?.name}
+      userEmail={coach?.email}
+      avatarSrc={avatarSrc}
+      avatarCacheKey={avatarCacheKey}
+      photoLoading={photoLoading}
+      fileInputRef={fileInputRef}
+      onAvatarFile={handleAvatarFile}
+      tab={tab}
+      onTabChange={setTab}
+      onSave={handleSave}
+      saving={loading}
+      personalFields={
+        <>
+          <ProfileField label="Full Name" required>
+            <input
+              className="user-field__input"
+              value={name}
+              onChange={(e) => setName(e.target.value.replace(/[^A-Za-z ]+/g, "").replace(/\s{2,}/g, " "))}
+              maxLength={40}
+              required
+            />
+          </ProfileField>
+          <ProfileField label="Email ID">
+            <input className="user-field__input input-disabled" value={coach?.email || ""} disabled />
+          </ProfileField>
+          <ProfileField label="Mobile Number" required>
+            <input
+              className="user-field__input"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value.replace(/\D+/g, "").slice(0, 10))}
+              placeholder="9876543210"
+              inputMode="numeric"
+              maxLength={10}
+              required
+            />
+          </ProfileField>
+          <ProfileField label="Bio" fullWidth>
+            <textarea
+              className="user-field__input"
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              rows={4}
+              maxLength={2000}
+              placeholder="Tell clients about your experience and approach."
+            />
+          </ProfileField>
+        </>
+      }
+      passwordFields={
+        <>
+          <ProfilePasswordField
+            label="Current Password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            visible={showPw.cur}
+            onToggleVisible={() => setShowPw((s) => ({ ...s, cur: !s.cur }))}
+            autoComplete="current-password"
+          />
+          <ProfilePasswordField
+            label="New Password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            visible={showPw.next}
+            onToggleVisible={() => setShowPw((s) => ({ ...s, next: !s.next }))}
+            autoComplete="new-password"
+            hint="Must be at least 8 characters."
+          />
+          <ProfilePasswordField
+            label="Confirm Password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            visible={showPw.conf}
+            onToggleVisible={() => setShowPw((s) => ({ ...s, conf: !s.conf }))}
+            autoComplete="new-password"
+          />
+        </>
+      }
+    />
+  );
+}

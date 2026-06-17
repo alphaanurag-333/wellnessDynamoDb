@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import { getAppConfig } from "../api/adminMisc.js";
-import { getPublicAppConfig } from "../api/publicAppConfig.js";
+import { getAppConfig } from "../admin/api/adminMisc.js";
+import { getPublicAppConfig } from "../admin/api/publicAppConfig.js";
 import { logout } from "./authSlice.js";
 
 function normalizeConfigPayload(body) {

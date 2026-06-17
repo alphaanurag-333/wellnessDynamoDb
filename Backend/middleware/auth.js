@@ -3,6 +3,8 @@ const { asyncHandler } = require("../utils/asyncHandler");
 const { verifyAccessToken } = require("../utils/jwt");
 const { getAdminById } = require("../models/adminModel");
 const { getUserById } = require("../models/userModel");
+const { getWellnessCoachRecordById } = require("../models/wellnessCoachModel");
+const { getAssistantWellnessCoachById } = require("../models/assistantWellnessCoachModel");
 
 function readBearer(req) {
   const h = req.headers.authorization;
@@ -94,7 +96,77 @@ const protectUser = asyncHandler(async (req, res, next) => {
   next();
 });
 
+const protectWellnessCoach = asyncHandler(async (req, res, next) => {
+  const token = readBearer(req);
+  if (!token) {
+    throw new AppError("Authentication required", 401);
+  }
+
+  let payload;
+  try {
+    payload = verifyAccessToken(token);
+  } catch {
+    throw new AppError("Invalid or expired token", 401);
+  }
+
+  if (payload.role !== "wellness_coach") {
+    throw new AppError("Forbidden", 403);
+  }
+
+  const subject = resolveSubjectFromPayload(payload);
+  if (!subject) {
+    throw new AppError("Invalid token payload", 401);
+  }
+
+  const account = await getWellnessCoachRecordById(subject);
+  if (!account) {
+    throw new AppError("Account not found", 401);
+  }
+
+  assertActiveAccount(account);
+
+  req.user = account;
+  req.auth = { role: "wellness_coach", sub: subject };
+  next();
+});
+
+const protectAssistantWellnessCoach = asyncHandler(async (req, res, next) => {
+  const token = readBearer(req);
+  if (!token) {
+    throw new AppError("Authentication required", 401);
+  }
+
+  let payload;
+  try {
+    payload = verifyAccessToken(token);
+  } catch {
+    throw new AppError("Invalid or expired token", 401);
+  }
+
+  if (payload.role !== "assistant_wellness_coach") {
+    throw new AppError("Forbidden", 403);
+  }
+
+  const subject = resolveSubjectFromPayload(payload);
+  if (!subject) {
+    throw new AppError("Invalid token payload", 401);
+  }
+
+  const account = await getAssistantWellnessCoachById(subject);
+  if (!account) {
+    throw new AppError("Account not found", 401);
+  }
+
+  assertActiveAccount(account);
+
+  req.user = account;
+  req.auth = { role: "assistant_wellness_coach", sub: subject };
+  next();
+});
+
 module.exports = {
   protectAdmin,
   protectUser,
+  protectWellnessCoach,
+  protectAssistantWellnessCoach,
 };

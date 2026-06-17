@@ -1,5 +1,6 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
+const { hashPassword } = require("../../utils/password");
 const {
   uploadFileFromRequest,
   deleteStoredMedia,
@@ -107,7 +108,20 @@ function parseCoachBody(body) {
     city: body.city !== undefined ? String(body.city || "").trim() || null : null,
     profileImage: profileImage !== undefined ? profileImage : null,
     status,
+    password: body.password !== undefined ? String(body.password || "").trim() : undefined,
   };
+}
+
+function parseCoachPassword(body, { required = false } = {}) {
+  const password = String(body.password ?? "").trim();
+  if (!password) {
+    if (required) throw new AppError("password is required", 400);
+    return undefined;
+  }
+  if (password.length < 8) {
+    throw new AppError("password must be at least 8 characters", 400);
+  }
+  return password;
 }
 
 exports.listWellnessCoachesController = asyncHandler(async (req, res) => {
@@ -132,6 +146,8 @@ exports.getWellnessCoachByIdController = asyncHandler(async (req, res) => {
 
 exports.createWellnessCoachController = asyncHandler(async (req, res) => {
   const fields = parseCoachBody(req.body);
+  const plainPassword = parseCoachPassword(req.body, { required: true });
+  fields.password = await hashPassword(plainPassword);
   await assertUniqueCoachEmail(fields.email);
   await assertUniqueCoachPhone(fields.phoneCountryCode, fields.phone);
   await assertValidSpecializationId(fields.specializationId);
@@ -195,6 +211,11 @@ exports.updateWellnessCoachController = asyncHandler(async (req, res) => {
   if (body.country !== undefined) updates.country = String(body.country || "").trim() || null;
   if (body.state !== undefined) updates.state = String(body.state || "").trim() || null;
   if (body.city !== undefined) updates.city = String(body.city || "").trim() || null;
+
+  if (body.password !== undefined) {
+    const plainPassword = parseCoachPassword(body);
+    if (plainPassword) updates.password = await hashPassword(plainPassword);
+  }
 
   if (body.profileImage !== undefined) {
     const profileImage = parseMediaKeyFromBody(body.profileImage, "profileImage");

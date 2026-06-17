@@ -15,6 +15,7 @@ const {
   buildPhoneKey,
 } = require("./userModel");
 const { normalizeNullableMediaField, resolvePublicUrl } = require("../utils/s3");
+const { toPublicProfile } = require("../utils/toPublicProfile");
 
 const TABLE = "WellnessCoach";
 const ALLOWED_STATUS = new Set(["active", "inactive"]);
@@ -32,8 +33,9 @@ function withLegacyId(item) {
 function toPublicWellnessCoach(coach) {
   const row = withLegacyId(coach);
   if (!row) return null;
-  if (row.profileImage) row.profileImage = resolvePublicUrl(row.profileImage);
-  return row;
+  const pub = toPublicProfile(row);
+  if (pub.profileImage) pub.profileImage = resolvePublicUrl(pub.profileImage);
+  return pub;
 }
 
 function buildCoachItem(input, { id, now } = {}) {
@@ -58,6 +60,7 @@ function buildCoachItem(input, { id, now } = {}) {
     country: input.country != null ? String(input.country).trim() || null : null,
     state: input.state != null ? String(input.state).trim() || null : null,
     city: input.city != null ? String(input.city).trim() || null : null,
+    password: input.password != null ? String(input.password) : null,
     status: normalizeStatus(input.status),
     createdAt: now,
     updatedAt: now,
@@ -79,6 +82,9 @@ function sanitizeUpdateField(key, value) {
   if (["name", "bio", "country", "state", "city"].includes(key)) {
     const s = value == null ? "" : String(value).trim();
     return s || null;
+  }
+  if (key === "password") {
+    return value != null ? String(value) : null;
   }
   return value;
 }
@@ -283,4 +289,5 @@ module.exports = {
   updateWellnessCoach,
   deleteWellnessCoach,
   listWellnessCoaches,
+  toPublicWellnessCoach,
 };

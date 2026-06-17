@@ -21,6 +21,8 @@ const adminVideoTestimonialsRoutes = require("./adminRoutes/adminVideoTestimonia
 const publicAppConfigRoutes = require("./publicRoutes/publicAppConfigRoutes");
 const miscRoutes = require("./userRoutes/miscRoutes");
 const userAuthRoutes = require("./userRoutes/authRoutes");
+const coachAuthRoutes = require("./wellnessCoachRoutes/coachAuthRoutes");
+const assistantAuthRoutes = require("./assistantWellnessCoachRoutes/assistantAuthRoutes");
 
 const router = express.Router();
 
@@ -29,6 +31,8 @@ router.get("/health", (req, res) => {
 });
 
 router.use("/admin/auth", adminAuthRoutes);
+router.use("/coach/auth", coachAuthRoutes);
+router.use("/assistant/auth", assistantAuthRoutes);
 router.use("/admin/app-config", adminAppConfigRoutes);
 router.use("/admin/faq", adminFaqRoutes);
 router.use("/admin/coupons", adminCouponRoutes);

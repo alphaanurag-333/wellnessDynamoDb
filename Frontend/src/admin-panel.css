@@ -2178,6 +2178,126 @@ a.btn:hover {
   max-width: min(100%, 420px);
 }
 
+.user-field--profile-wide {
+  max-width: 100%;
+}
+
+.user-form__grid--profile {
+  max-width: 720px;
+}
+
+.user-form__grid--profile-password {
+  max-width: 480px;
+}
+
+.profile-password-form {
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.profile-password-form__intro {
+  margin: 0 0 2px;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--admin-muted);
+}
+
+.user-field--password {
+  max-width: 100%;
+}
+
+.user-field__hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--admin-muted);
+}
+
+.profile-password-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 42px;
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  background: #fff;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.profile-password-wrap:focus-within {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.profile-password-wrap__input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0 44px 0 12px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  color: var(--admin-text);
+}
+
+.profile-password-wrap__toggle {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--admin-muted);
+  cursor: pointer;
+}
+
+.profile-password-wrap__toggle:hover {
+  background: #f3f4f6;
+  color: var(--admin-text);
+}
+
+.profile-password-wrap__toggle:focus-visible {
+  outline: 2px solid rgba(37, 99, 235, 0.45);
+  outline-offset: 1px;
+}
+
+.user-field textarea,
+.user-field textarea.user-field__input {
+  width: 100%;
+  min-height: 108px;
+  padding: 10px 12px;
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  font: inherit;
+  line-height: 1.45;
+  resize: vertical;
+  background: #fff;
+  color: var(--admin-text);
+}
+
+.user-field textarea:focus,
+.user-field textarea.user-field__input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.user-field input.input-disabled,
+.user-field input:disabled {
+  background: #f3f4f6;
+}
+
 .user-field--phone-combo {
   max-width: min(100%, 480px);
 }
@@ -3591,8 +3711,10 @@ a.icon-btn {
 .profile-password-row input {
   flex: 1;
   min-width: 0;
+  height: 42px;
 }
 
+/* Legacy — prefer profile-password-wrap in profile pages */
 .profile-password-eye {
   flex-shrink: 0;
   width: 40px;
