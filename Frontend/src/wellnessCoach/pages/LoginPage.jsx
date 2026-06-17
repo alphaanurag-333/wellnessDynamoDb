@@ -7,6 +7,7 @@ import { selectLoginBrandLogoUrl } from "../../store/appConfigSelectors.js";
 import { mediaUrl } from "../../media.js";
 import { setCoachCredentials } from "../../store/authSlice.js";
 import defaultLogo from "../../assets/logo/defaultlogo.png";
+import { AuthPasswordToggle } from "../../components/AuthPasswordToggle.jsx";
 
 export function CoachLoginPage() {
   const dispatch = useDispatch();
@@ -105,15 +106,10 @@ export function CoachLoginPage() {
                 autoComplete="current-password"
                 required
               />
-              <button
-                type="button"
-                className="auth-password-toggle"
-                aria-label={passwordVisible ? "Hide password" : "Show password"}
-                aria-pressed={passwordVisible}
-                onClick={() => setPasswordVisible((v) => !v)}
-              >
-                {passwordVisible ? "Hide" : "Show"}
-              </button>
+              <AuthPasswordToggle
+                visible={passwordVisible}
+                onToggle={() => setPasswordVisible((v) => !v)}
+              />
             </div>
           </label>
           <button type="submit" className="auth-submit" disabled={loading}>

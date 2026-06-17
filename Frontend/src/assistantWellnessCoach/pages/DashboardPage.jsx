@@ -2,9 +2,11 @@ import { PortalDashboardIntro } from "../../admin/components/PortalProfileLayout
 
 export function AssistantDashboardPage() {
   return (
-    <PortalDashboardIntro
-      title="Dashboard"
-      subtitle="Welcome back! Here is your assistant overview."
-    />
+    <div className="page-stack">
+      <PortalDashboardIntro
+        title="Dashboard"
+        subtitle="Welcome back! Here is your assistant overview."
+      />
+    </div>
   );
 }

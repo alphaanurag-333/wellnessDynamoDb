@@ -3,10 +3,11 @@ import { useDispatch, useSelector } from "react-redux";
 import { Navigate, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { adminLogin } from "../api/adminAuth.js";
-import { selectAppDisplayName, selectLoginBrandLogoUrl } from "../../store/appConfigSelectors.js";
+import { selectLoginBrandLogoUrl } from "../../store/appConfigSelectors.js";
 import { mediaUrl } from "../../media.js";
 import { setCredentials } from "../../store/authSlice.js";
 import defaultLogo from "../../assets/logo/defaultlogo.png";
+import { AuthPasswordToggle } from "../../components/AuthPasswordToggle.jsx";
 
 export function AdminLoginPage() {
   const dispatch = useDispatch();
@@ -14,7 +15,6 @@ export function AdminLoginPage() {
   const adminToken = useSelector((s) => s.auth.adminToken);
   const brandLogoUrl = useSelector(selectLoginBrandLogoUrl);
   const brandLogoSrc = mediaUrl(brandLogoUrl) || defaultLogo;
-  const appDisplayName = useSelector(selectAppDisplayName);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
@@ -76,7 +76,6 @@ export function AdminLoginPage() {
               }}
             />
           </span>
-       
         </div>
         <h1 className="auth-card__title">Admin Panel</h1>
         <p className="auth-card__subtitle">
@@ -86,12 +85,6 @@ export function AdminLoginPage() {
           <label className="auth-field">
             <span className="auth-field__label">Email ID <span className="required-dot">*</span></span>
             <div className="auth-input-wrap">
-              <span className="auth-input-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                  <path d="m22 6-10 7L2 6" />
-                </svg>
-              </span>
               <input
                 type="email"
                 name="email"
@@ -104,19 +97,8 @@ export function AdminLoginPage() {
             </div>
           </label>
           <label className="auth-field">
-            <div className="auth-field__row">
-              <span className="auth-field__label">Password <span className="required-dot">*</span></span>
-              {/* <a className="auth-link" href="#forgot">
-                Forgot password?
-              </a> */}
-            </div>
+            <span className="auth-field__label">Password <span className="required-dot">*</span></span>
             <div className="auth-input-wrap">
-              <span className="auth-input-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="5" y="11" width="14" height="10" rx="2" />
-                  <path d="M12 11V7a4 4 0 0 1 8 0v4" />
-                </svg>
-              </span>
               <input
                 type={passwordVisible ? "text" : "password"}
                 name="password"
@@ -126,25 +108,10 @@ export function AdminLoginPage() {
                 autoComplete="current-password"
                 required
               />
-              <button
-                type="button"
-                className="auth-password-toggle"
-                aria-label={passwordVisible ? "Hide password" : "Show password"}
-                aria-pressed={passwordVisible}
-                onClick={() => setPasswordVisible((v) => !v)}
-              >
-                {passwordVisible ? (
-                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                    <line x1="1" y1="1" x2="23" y2="23" />
-                  </svg>
-                ) : (
-                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
-                )}
-              </button>
+              <AuthPasswordToggle
+                visible={passwordVisible}
+                onToggle={() => setPasswordVisible((v) => !v)}
+              />
             </div>
           </label>
           <button type="submit" className="auth-submit" disabled={loading}>

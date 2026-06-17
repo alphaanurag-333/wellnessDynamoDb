@@ -17,6 +17,7 @@ import {
   getSpecializationOptionId,
 } from "../../admin/pages/wellnessCoach/WellnessCoachShared.js";
 import { CoachSubmitLoader } from "../components/CoachPageLoader.jsx";
+import { AuthPasswordToggle } from "../../components/AuthPasswordToggle.jsx";
 import { selectLoginBrandLogoUrl } from "../../store/appConfigSelectors.js";
 import { mediaUrl } from "../../media.js";
 import defaultLogo from "../../assets/logo/defaultlogo.png";
@@ -343,14 +344,10 @@ export function CoachRegisterPage() {
                   autoComplete="new-password"
                   required
                 />
-                <button
-                  type="button"
-                  className="auth-password-toggle"
-                  aria-label={passwordVisible ? "Hide password" : "Show password"}
-                  onClick={() => setPasswordVisible((v) => !v)}
-                >
-                  {passwordVisible ? "Hide" : "Show"}
-                </button>
+                <AuthPasswordToggle
+                  visible={passwordVisible}
+                  onToggle={() => setPasswordVisible((v) => !v)}
+                />
               </div>
             </label>
 
@@ -368,14 +365,10 @@ export function CoachRegisterPage() {
                   autoComplete="new-password"
                   required
                 />
-                <button
-                  type="button"
-                  className="auth-password-toggle"
-                  aria-label={confirmVisible ? "Hide password" : "Show password"}
-                  onClick={() => setConfirmVisible((v) => !v)}
-                >
-                  {confirmVisible ? "Hide" : "Show"}
-                </button>
+                <AuthPasswordToggle
+                  visible={confirmVisible}
+                  onToggle={() => setConfirmVisible((v) => !v)}
+                />
               </div>
             </label>
 

@@ -168,11 +168,9 @@ export function ProfilePasswordField({ label, value, onChange, visible, onToggle
 
 export function PortalDashboardIntro({ title, subtitle }) {
   return (
-    <div className="page-stack">
-      <section className="dashboard-intro" aria-label="Dashboard heading">
-        <h1 className="dashboard-intro__title">{title}</h1>
-        <p className="dashboard-intro__subtitle">{subtitle}</p>
-      </section>
-    </div>
+    <section className="dashboard-intro" aria-label="Dashboard heading">
+      <h1 className="dashboard-intro__title">{title}</h1>
+      <p className="dashboard-intro__subtitle">{subtitle}</p>
+    </section>
   );
 }

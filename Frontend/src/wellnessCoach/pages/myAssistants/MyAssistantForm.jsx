@@ -180,7 +180,7 @@ export function MyAssistantForm({
                 alt="Profile"
               />
             </div>
-            <div className="text-center small text-primary mt-2">Photo</div>
+            <div className="text-center  text-primary mt-2"> Choose image</div>
           </label>
         </div>
       </div>
