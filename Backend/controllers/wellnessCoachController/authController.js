@@ -17,6 +17,42 @@ const {
 } = require("../../models/wellnessCoachModel");
 const { getSpecializationById } = require("../../models/specializationModel");
 const { normalizeEmail, normalizePhone, normalizeCountryCode } = require("../../models/userModel");
+const config = require("../../config");
+const { generateOtp, getOtpExpiryDate, isOtpExpired, deliverOtp } = require("../../utils/otp");
+
+function assertCoachCanLogin(coach) {
+  if (!coach) {
+    throw new AppError("No account found with this mobile number", 404);
+  }
+  if (coach.approvalStatus === "pending") {
+    throw new AppError("Your account is pending admin approval. Please wait for approval.", 403);
+  }
+  if (coach.approvalStatus === "rejected") {
+    throw new AppError("Your account registration has been rejected. Please contact admin.", 403);
+  }
+  if (coach.status === "inactive") {
+    throw new AppError("Account is inactive. Please contact admin.", 403);
+  }
+}
+
+function otpSendPayload(otp) {
+  const payload = {
+    status: true,
+    message: "OTP sent successfully",
+  };
+  if (config.nodeEnv !== "production" || config.exposeOtpInResponse) {
+    payload.debugOtp = otp;
+  }
+  return payload;
+}
+
+function parsePhoneLoginBody(body) {
+  const phone = normalizePhone(body.phone);
+  const phoneCountryCode = normalizeCountryCode(body.phoneCountryCode);
+  if (!phone) throw new AppError("Mobile number is required", 400);
+  if (phone.length !== 10) throw new AppError("Mobile number must be exactly 10 digits", 400);
+  return { phone, phoneCountryCode };
+}
 
 function parseSpecializationId(value) {
   const id = value == null ? "" : String(value).trim();
@@ -130,6 +166,44 @@ exports.loginWellnessCoach = asyncHandler(async (req, res) => {
   }
 
   return sendAuthResponse(res, 200, coach);
+});
+
+exports.sendWellnessCoachLoginOtp = asyncHandler(async (req, res) => {
+  const { phone, phoneCountryCode } = parsePhoneLoginBody(req.body);
+  const coach = await getWellnessCoachByPhone(phoneCountryCode, phone);
+  assertCoachCanLogin(coach);
+
+  const otp = generateOtp();
+  const otpExpire = getOtpExpiryDate();
+
+  await updateWellnessCoach(coach.id, { otp, otpExpire });
+
+  await deliverOtp({ phone, phoneCountryCode, email: coach.email, otp });
+
+  return res.status(200).json(otpSendPayload(otp));
+});
+
+exports.verifyWellnessCoachLoginOtp = asyncHandler(async (req, res) => {
+  const { phone, phoneCountryCode } = parsePhoneLoginBody(req.body);
+  const otp = String(req.body.otp ?? "").trim();
+  if (!otp) throw new AppError("OTP is required", 400);
+
+  const coach = await getWellnessCoachByPhone(phoneCountryCode, phone);
+  assertCoachCanLogin(coach);
+
+  if (!coach.otp || !coach.otpExpire) {
+    throw new AppError("No OTP requested. Send OTP first.", 400);
+  }
+  if (isOtpExpired(coach.otpExpire)) {
+    throw new AppError("OTP has expired. Request a new code.", 400);
+  }
+  if (String(coach.otp) !== otp) {
+    throw new AppError("Invalid OTP", 401);
+  }
+
+  await updateWellnessCoach(coach.id, { otp: null, otpExpire: null });
+  const fresh = await getWellnessCoachRecordById(coach.id);
+  return sendAuthResponse(res, 200, fresh);
 });
 
 exports.getWellnessCoachProfile = asyncHandler(async (req, res) => {

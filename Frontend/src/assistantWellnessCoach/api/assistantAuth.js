@@ -9,6 +9,24 @@ export async function assistantLogin({ email, password }) {
   }
 }
 
+export async function assistantSendLoginOtp({ phone, phoneCountryCode }) {
+  try {
+    const { data } = await assistantApi.post("/assistant/auth/otp/send", { phone, phoneCountryCode });
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function assistantVerifyLoginOtp({ phone, phoneCountryCode, otp }) {
+  try {
+    const { data } = await assistantApi.post("/assistant/auth/otp/verify", { phone, phoneCountryCode, otp });
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function assistantGetMe(token) {
   try {
     const { data } = await assistantApi.get("/assistant/auth/me", { headers: authHeader(token) });

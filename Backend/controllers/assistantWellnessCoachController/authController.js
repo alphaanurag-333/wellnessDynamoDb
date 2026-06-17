@@ -9,14 +9,46 @@ const {
 const { createTokenPair, verifyRefreshToken } = require("../../utils/jwt");
 const {
   getAssistantByEmail,
+  getAssistantByPhone,
   getAssistantWellnessCoachById,
   updateAssistantWellnessCoach,
   populateWellnessCoach,
   toPublicAssistant,
 } = require("../../models/assistantWellnessCoachModel");
+const { normalizePhone, normalizeCountryCode } = require("../../models/userModel");
+const config = require("../../config");
+const { generateOtp, getOtpExpiryDate, isOtpExpired, deliverOtp } = require("../../utils/otp");
 
 const S3_FOLDER = "assistant-wellness-coach";
 const ROLE = "assistant_wellness_coach";
+
+function assertAssistantCanLogin(assistant) {
+  if (!assistant) {
+    throw new AppError("No account found with this mobile number", 404);
+  }
+  if (assistant.status === "inactive") {
+    throw new AppError("Account is inactive", 403);
+  }
+}
+
+function otpSendPayload(otp) {
+  const payload = {
+    status: true,
+    message: "OTP sent successfully",
+  };
+  if (config.nodeEnv !== "production" || config.exposeOtpInResponse) {
+    payload.debugOtp = otp;
+  }
+  return payload;
+}
+
+function parsePhoneLoginBody(body) {
+  const phone = normalizePhone(body.phone);
+  const phoneCountryCode = normalizeCountryCode(body.phoneCountryCode);
+  if (!phone) throw new AppError("Mobile number is required", 400);
+  if (phone.length !== 10) throw new AppError("Mobile number must be exactly 10 digits", 400);
+  return { phone, phoneCountryCode };
+}
 
 function sendAuthResponse(res, statusCode, assistant) {
   const { accessToken, refreshToken } = createTokenPair({
@@ -58,6 +90,44 @@ exports.loginAssistantWellnessCoach = asyncHandler(async (req, res) => {
   }
 
   return sendAuthResponse(res, 200, assistant);
+});
+
+exports.sendAssistantWellnessCoachLoginOtp = asyncHandler(async (req, res) => {
+  const { phone, phoneCountryCode } = parsePhoneLoginBody(req.body);
+  const assistant = await getAssistantByPhone(phoneCountryCode, phone);
+  assertAssistantCanLogin(assistant);
+
+  const otp = generateOtp();
+  const otpExpire = getOtpExpiryDate();
+
+  await updateAssistantWellnessCoach(assistant.id, { otp, otpExpire });
+
+  await deliverOtp({ phone, phoneCountryCode, email: assistant.email, otp });
+
+  return res.status(200).json(otpSendPayload(otp));
+});
+
+exports.verifyAssistantWellnessCoachLoginOtp = asyncHandler(async (req, res) => {
+  const { phone, phoneCountryCode } = parsePhoneLoginBody(req.body);
+  const otp = String(req.body.otp ?? "").trim();
+  if (!otp) throw new AppError("OTP is required", 400);
+
+  const assistant = await getAssistantByPhone(phoneCountryCode, phone);
+  assertAssistantCanLogin(assistant);
+
+  if (!assistant.otp || !assistant.otpExpire) {
+    throw new AppError("No OTP requested. Send OTP first.", 400);
+  }
+  if (isOtpExpired(assistant.otpExpire)) {
+    throw new AppError("OTP has expired. Request a new code.", 400);
+  }
+  if (String(assistant.otp) !== otp) {
+    throw new AppError("Invalid OTP", 401);
+  }
+
+  await updateAssistantWellnessCoach(assistant.id, { otp: null, otpExpire: null });
+  const fresh = await getAssistantWellnessCoachById(assistant.id);
+  return sendAuthResponse(res, 200, fresh);
 });
 
 exports.getAssistantWellnessCoachProfile = asyncHandler(async (req, res) => {

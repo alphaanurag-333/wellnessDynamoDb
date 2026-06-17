@@ -1456,6 +1456,114 @@ a.btn:hover {
   line-height: 1.5;
 }
 
+.auth-login-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 22px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--admin-surface-muted);
+  border: 1px solid var(--admin-border-soft);
+}
+
+.auth-login-tabs__btn {
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--admin-muted);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.3;
+  padding: 10px 8px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.auth-login-tabs__btn:hover {
+  color: var(--admin-brand-blue);
+}
+
+.auth-login-tabs__btn--active {
+  background: #fff;
+  color: var(--admin-brand-green);
+  box-shadow: var(--admin-shadow-sm);
+}
+
+.auth-otp-sent {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--admin-surface-muted);
+  border: 1px solid var(--admin-border-soft);
+}
+
+.auth-otp-sent__label {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--admin-muted);
+}
+
+.auth-otp-sent__phone {
+  margin: 4px 0 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--admin-brand-blue);
+}
+
+.auth-otp-sent__change {
+  margin-top: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.auth-otp-test {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(45, 106, 62, 0.08);
+  border: 1px dashed rgba(45, 106, 62, 0.35);
+}
+
+.auth-otp-test__label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--admin-brand-green);
+}
+
+.auth-otp-test__code {
+  font-size: 1.125rem;
+  letter-spacing: 0.2em;
+  color: var(--admin-brand-blue);
+}
+
+.auth-otp-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -4px;
+}
+
+.auth-otp-actions__resend {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.auth-otp-actions__resend:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
 .auth-field__optional {
   font-size: 0.75rem;
   font-weight: 400;

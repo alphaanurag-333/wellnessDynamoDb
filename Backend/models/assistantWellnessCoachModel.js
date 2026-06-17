@@ -90,6 +90,12 @@ function sanitizeUpdateField(key, value) {
   if (key === "password") {
     return value != null ? String(value) : null;
   }
+  if (key === "otp") {
+    return value != null ? (value === null ? null : String(value)) : null;
+  }
+  if (key === "otpExpire") {
+    return value != null && value !== "" ? String(value) : null;
+  }
   return value;
 }
 

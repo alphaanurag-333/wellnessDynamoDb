@@ -18,6 +18,24 @@ export async function coachLogin({ email, password }) {
   }
 }
 
+export async function coachSendLoginOtp({ phone, phoneCountryCode }) {
+  try {
+    const { data } = await coachApi.post("/coach/auth/otp/send", { phone, phoneCountryCode });
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function coachVerifyLoginOtp({ phone, phoneCountryCode, otp }) {
+  try {
+    const { data } = await coachApi.post("/coach/auth/otp/verify", { phone, phoneCountryCode, otp });
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function coachGetMe(token) {
   try {
     const { data } = await coachApi.get("/coach/auth/me", { headers: authHeader(token) });

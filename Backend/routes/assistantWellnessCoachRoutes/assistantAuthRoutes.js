@@ -4,6 +4,8 @@ const { protectAssistantWellnessCoach } = require("../../middleware/auth");
 const { optionalAssistantWellnessCoachFile } = require("../../middleware/authMultipart");
 const {
   loginAssistantWellnessCoach,
+  sendAssistantWellnessCoachLoginOtp,
+  verifyAssistantWellnessCoachLoginOtp,
   refreshAssistantWellnessCoachToken,
   getAssistantWellnessCoachProfile,
   updateAssistantWellnessCoachProfile,
@@ -13,6 +15,8 @@ const {
 const router = express.Router();
 
 router.post("/login", loginAssistantWellnessCoach);
+router.post("/otp/send", sendAssistantWellnessCoachLoginOtp);
+router.post("/otp/verify", verifyAssistantWellnessCoachLoginOtp);
 router.post("/refresh-token", refreshAssistantWellnessCoachToken);
 
 router.get("/me", protectAssistantWellnessCoach, getAssistantWellnessCoachProfile);
