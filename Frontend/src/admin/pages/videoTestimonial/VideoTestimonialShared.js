@@ -7,7 +7,7 @@ export const VIDEO_MAX_SIZE_BYTES = 50 * 1024 * 1024;
 export const IMAGE_MAX_SIZE_BYTES = 5 * 1024 * 1024;
 
 export function emptyForm() {
-  return { name: "", type: "link", ytLink: "", video: "", profile_image: "", status: "active" };
+  return { name: "", type: "link", ytLink: "", video: "", profileImage: "", status: "active" };
 }
 
 /** Normalize API row (snake_case or camelCase media fields). */
@@ -18,7 +18,7 @@ export function testimonialFromApi(row) {
     type: row.type === "video" ? "video" : "link",
     ytLink: row.ytLink || "",
     video: row.video || "",
-    profile_image: row.profile_image || row.profileImage || "",
+    profileImage: row.profileImage || "",
     status: row.status || "active",
   };
 }

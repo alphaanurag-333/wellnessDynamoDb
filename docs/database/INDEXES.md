@@ -120,3 +120,5 @@ All `list*` functions use `Backend/utils/dynamoList.js`:
 |---|---|
 | `Admin` single-key PK | `node migration/migrateAll.js` from `Backend/` (see `migration/README.md`) |
 | `ClientTestimonials` / `VideoTestimonials` GSI | Same — migration `02-testimonials-status-gsi` |
+| `Admin.PhoneIndex` removal | Migration `03-admin-drop-phone-index` (no-op if table recreated via `01`) |
+| Media attribute camelCase | Migration `04-media-field-camelcase` — `profileImage`, `videoSpecification` |

@@ -87,6 +87,9 @@ This is **not** single-table design. The GSIs named `StatusCreatedAtIndex` acros
 | Password hashing | `bcryptjs` (`Backend/utils/password.js`, 10 salt rounds) |
 | Media storage | AWS S3 (object keys stored in DynamoDB; URLs resolved at read time) |
 | Push notifications | Firebase Cloud Messaging (`Backend/utils/fcmAudience.js`) |
+| List pagination | `Backend/utils/dynamoList.js` — GSI Query + `ExclusiveStartKey` |
+| Media attribute aliases | `Backend/utils/mediaFieldAliases.js` — camelCase writes, dual-read legacy names |
+| Schema migrations | `Backend/migration/migrateAll.js` |
 
 **DynamoDB client options** (`Backend/config/db.js`):
 
@@ -468,7 +471,7 @@ Startup verifies connectivity via `ListTablesCommand` unless `DYNAMODB_SKIP_VERI
 
 ### 14. `ClientTestimonials`
 
-| PK | `id` (S) | Attributes: `name`, `rating` (N), `description`, `profile_image`, `status`, `createdAt`, `updatedAt` |
+| PK | `id` (S) | Attributes: `name`, `rating` (N), `description`, `profileImage`, `status`, `createdAt`, `updatedAt` |
 
 **API:** Admin `/api/admin/client-testimonials/*`; public `GET /api/public/misc/client-testimonials`.
 
@@ -476,7 +479,7 @@ Startup verifies connectivity via `ListTablesCommand` unless `DYNAMODB_SKIP_VERI
 
 ### 15. `VideoTestimonials`
 
-| PK | `id` (S) | Attributes: `name`, `profile_image`, `ytLink`, `video`, `type` (`link`/`video`), `status`, `createdAt`, `updatedAt` |
+| PK | `id` (S) | Attributes: `name`, `profileImage`, `ytLink`, `video`, `type` (`link`/`video`), `status`, `createdAt`, `updatedAt` |
 
 **API:** Admin `/api/admin/video-testimonials/*`; public `GET /api/public/misc/video-testimonials`.
 
@@ -508,7 +511,7 @@ Startup verifies connectivity via `ListTablesCommand` unless `DYNAMODB_SKIP_VERI
 
 ### 19. `HealthRecipe`
 
-| PK | `id` (S) | Attributes: `healthConcernId`, `title`, `description`, `thumbnail`, `type` (`ytlink`/`video`), `ytLink`, `video`, `video_specification` (L), `status`, `createdAt`, `updatedAt` |
+| PK | `id` (S) | Attributes: `healthConcernId`, `title`, `description`, `thumbnail`, `type` (`ytlink`/`video`), `ytLink`, `video`, `videoSpecification` (L), `status`, `createdAt`, `updatedAt` |
 
 **API:** Admin `/api/admin/health-recipes/*`; public list.
 
@@ -600,7 +603,7 @@ All GSIs use **`ProjectionType: ALL`** unless noted.
 | AP-02 | Login user by email | `User` / `EmailIndex` | Query | Unique email lookup |
 | AP-03 | Login user by phone | `User` / `PhoneKeyIndex` | Query | Composite phone key uniqueness |
 | AP-04 | Admin login by email | `Admin` / `EmailIndex` | Query | |
-| AP-05 | Resolve admin composite key | `Admin` PK | Query on `id` | Table has sort key `createdAt`; latest row selected |
+| AP-05 | Resolve admin by id | `Admin` PK | Get on `id` | Single-key PK in DDL; legacy composite fallback Query if sort key `createdAt` exists |
 | AP-06 | Coach login by email/phone | `WellnessCoach` / `EmailIndex`, `PhoneKeyIndex` | Query | |
 | AP-07 | Assistant login by email/phone | `AssistantWellnessCoach` / `EmailIndex`, `PhoneKeyIndex` | Query | |
 | AP-08 | Registration OTP save | `RegistrationOtp` PK | Put (×1–2 keys) | Separate items per email/phone lookup |
@@ -826,7 +829,7 @@ erDiagram
 | **`contains()` FilterExpression on Query** | Admin search on list endpoints | Filter applied after index key — acceptable at current scale |
 | **No BatchGet** for populate patterns | Assistant listing with coach embed | N+1 GetItem pattern when populating coaches |
 | **`WellnessCoach.SpecializationIdIndex` unused** | WellnessCoach | Could optimize specialization-filtered coach lists |
-| **Legacy Admin composite rows** | Admin | Fallback Query until data migrated to single-key PK |
+| **Legacy Admin composite rows** | Admin | Fallback Query only if unmigrated rows remain — migration `01` applied on dev |
 
 ### SDK retry behavior
 
@@ -843,15 +846,15 @@ The AWS SDK applies default retry with exponential backoff for throttling and tr
 3. **Seed / bootstrap data** scripts for Admin or AppConfig
 4. **Whether unused GSIs** were created for planned features or legacy Mongoose migration
 5. **IAM policies** restricting DynamoDB access per environment
-6. **Whether `payment_gateways` credentials** are filtered before public `AppConfig` response
+6. **Whether `payment_gateways` credentials** are filtered before public `AppConfig` response — **confirmed:** `publicAppConfigController.js` strips credentials
 
 ### Recommendations (remaining)
 
-1. **Migrate legacy Admin items** to single-key PK and drop composite-key fallback in `adminModel.js`.
+1. **Drop composite-key fallback** in `adminModel.js` after all environments run migration `01`.
 2. **Use `WellnessCoach.SpecializationIdIndex`** if admin UI filters coaches by specialization at scale.
 3. **Add BatchGetItem** in `populateWellnessCoaches()` for bulk assistant listings.
 4. **Rename Faq/Coupon `StatusIndex`** → `StatusCreatedAtIndex` for naming consistency (optional).
-5. **Medium-priority naming migrations** — see `STANDARD_DB_STRUCTURE.md` Phase C (`passwordHash`, `profileImage`, AppConfig camelCase).
+5. **Phase C naming migrations** — see `STANDARD_DB_STRUCTURE.md` (`passwordHash`, User `fcm_id` → `fcmId`, AppConfig camelCase). Media attrs ✅ done.
 6. **Implement BatchWrite retry** for `deleteRegistrationOtp` unprocessed items.
 7. **Consider GSI projection review** — `ALL` projections on every GSI maximize flexibility but increase storage; narrow projections if access patterns stabilize.
 8. **Add DynamoDB health metrics / alarms** — not present in application code.

@@ -6,6 +6,10 @@ const {
   parseMediaKeyFromBody,
 } = require("../../utils/s3");
 const {
+  readProfileImageKey,
+  parseProfileImageFromBody,
+} = require("../../utils/mediaFieldAliases");
+const {
   createClientTestimonial,
   getClientTestimonialById,
   getClientTestimonialRecordById,
@@ -46,12 +50,16 @@ exports.createClientTestimonialController = asyncHandler(async (req, res) => {
   const status = normalizeStatus(req.body.status, "active");
 
   const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
-  const profile_image =
-    uploadedKey ?? parseMediaKeyFromBody(req.body.profile_image, "profile_image");
+  const profileImageRaw = parseProfileImageFromBody(req.body);
+  const profileImage =
+    uploadedKey ??
+    (profileImageRaw !== undefined
+      ? parseMediaKeyFromBody(profileImageRaw, "profileImage")
+      : undefined);
 
   if (!name) throw new AppError("name is required", 400);
   if (!description) throw new AppError("description is required", 400);
-  if (!profile_image) throw new AppError("profile_image is required", 400);
+  if (!profileImage) throw new AppError("profileImage is required", 400);
   if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
     throw new AppError("rating must be a number between 1 and 5", 400);
   }
@@ -63,7 +71,7 @@ exports.createClientTestimonialController = asyncHandler(async (req, res) => {
     name,
     rating,
     description,
-    profile_image,
+    profileImage,
     status,
   });
 
@@ -79,6 +87,7 @@ exports.updateClientTestimonialController = asyncHandler(async (req, res) => {
   if (!current) throw new AppError("Client testimonial not found", 404);
 
   const updates = {};
+  const currentProfileImage = readProfileImageKey(current);
 
   if (req.body.name !== undefined) {
     const name = String(req.body.name || "").trim();
@@ -90,23 +99,25 @@ exports.updateClientTestimonialController = asyncHandler(async (req, res) => {
     if (!description) throw new AppError("description cannot be empty", 400);
     updates.description = description;
   }
-  if (req.body.profile_image !== undefined) {
-    const profile_image = parseMediaKeyFromBody(req.body.profile_image, "profile_image");
-    if (profile_image === null && current.profile_image) {
-      await deleteStoredMedia(current.profile_image);
+
+  const profileImageRaw = parseProfileImageFromBody(req.body);
+  if (profileImageRaw !== undefined) {
+    const profileImage = parseMediaKeyFromBody(profileImageRaw, "profileImage");
+    if (profileImage === null && currentProfileImage) {
+      await deleteStoredMedia(currentProfileImage);
     }
-    if (profile_image === null) {
-      throw new AppError("profile_image cannot be empty", 400);
+    if (profileImage === null) {
+      throw new AppError("profileImage cannot be empty", 400);
     }
-    updates.profile_image = profile_image;
+    updates.profileImage = profileImage;
   }
 
   const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
   if (uploadedKey) {
-    if (current.profile_image && current.profile_image !== uploadedKey) {
-      await deleteStoredMedia(current.profile_image);
+    if (currentProfileImage && currentProfileImage !== uploadedKey) {
+      await deleteStoredMedia(currentProfileImage);
     }
-    updates.profile_image = uploadedKey;
+    updates.profileImage = uploadedKey;
   }
 
   if (req.body.rating !== undefined) {
@@ -148,7 +159,8 @@ exports.updateClientTestimonialController = asyncHandler(async (req, res) => {
 exports.deleteClientTestimonialController = asyncHandler(async (req, res) => {
   const current = await getClientTestimonialRecordById(req.params.id);
   if (!current) throw new AppError("Client testimonial not found", 404);
-  if (current.profile_image) await deleteStoredMedia(current.profile_image);
+  const profileImage = readProfileImageKey(current);
+  if (profileImage) await deleteStoredMedia(profileImage);
 
   try {
     await deleteClientTestimonial(req.params.id);

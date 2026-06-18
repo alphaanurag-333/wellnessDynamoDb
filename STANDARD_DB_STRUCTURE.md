@@ -11,7 +11,7 @@ Target schema and conventions resolving issues in **`ISSUES_REPORT.md`**. Every 
 | Decision | Choice | Justification (from code) |
 |---|---|---|
 | **Table layout** | **Multi-table** (21 tables) | One `TABLE` constant per model; independent CRUD lifecycles; FK strings + app-level joins (`populateWellnessCoach`) — not single-table |
-| **Naming convention** | **camelCase** for all DynamoDB attributes | Align User/Coach majority; migrate snake_case outliers (`app_name`, `profile_image`, `fcm_id`, `video_specification`) |
+| **Naming convention** | **camelCase** for all DynamoDB attributes | Align User/Coach majority; remaining outliers: `app_name`, `fcm_id` (User), `password` (Admin/Coach). Testimonial `profileImage` and recipe `videoSpecification` ✅ migrated |
 | **Primary keys** | `id` (UUID string) for all entity tables except `RegistrationOtp` (`lookupKey`) and `AppConfig` (fixed `id`) | Matches all current `GetItem`/`PutItem` patterns |
 | **Admin PK** | **Single hash key `id` only** | Removes `getAdminKeyById` Query workaround (ISSUES #3) |
 | **Timestamps** | ISO 8601 **String** (`createdAt`, `updatedAt`, `sentAt`, `otpExpire`) | Consistent across all models today |
@@ -208,11 +208,11 @@ Shared content shape: `id`, `title`/`name`, media fields, `status`, `createdAt`,
 | `Faq` | `id` | `StatusCreatedAtIndex` | `question`, `answer` |
 | `Banner` | `id` | `StatusCreatedAtIndex` | `title`, `image` |
 | `CelebrationBanners` | `id` | `TypeCreatedAtIndex`, `StatusCreatedAtIndex` | `title`, `image`, `type`, `startDate`, `endDate` |
-| `ClientTestimonials` | `id` | `StatusCreatedAtIndex` *(add)* | `name`, `rating`, `description`, **`profileImage`** |
-| `VideoTestimonials` | `id` | `StatusCreatedAtIndex` *(add)* | `name`, **`profileImage`**, `ytLink`, `video`, `type` |
+| `ClientTestimonials` | `id` | `StatusCreatedAtIndex` | `name`, `rating`, `description`, **`profileImage`** |
+| `VideoTestimonials` | `id` | `StatusCreatedAtIndex` | `name`, **`profileImage`**, `ytLink`, `video`, `type` |
 | `Transformation` | `id` | `StatusCreatedAtIndex`, `UserIdCreatedAtIndex` | `timeTaken`, `achievements`, `oldImage`, `newImage`, `description`, `userId?` |
 
-*Add `StatusCreatedAtIndex` to `ClientTestimonials` and `VideoTestimonials` DDL — today they have PK only but every list filters by `status` (ISSUES #1).*
+*Testimonial tables use `StatusCreatedAtIndex` (DDL + migration `02`). `profileImage` standardized via migration `04` and `mediaFieldAliases.js`.*
 
 ---
 
@@ -227,7 +227,7 @@ Shared content shape: `id`, `title`/`name`, media fields, `status`, `createdAt`,
 | `Yoga` | `id` | `StatusCreatedAtIndex` | — |
 | `Specialization` | `id` | `TitleKeyIndex`, `StatusCreatedAtIndex` | — |
 
-**HealthRecipe** rename `video_specification` → `videoSpecification`.
+**HealthRecipe** uses `videoSpecification` (migration `04`; dual-read legacy `video_specification` during transition).
 
 Validate `healthConcernId` on create/update (ISSUES #15).
 
@@ -378,20 +378,21 @@ Ordered by **risk** and **impact**. Each step traces to ISSUES_REPORT IDs.
 
 | Priority | Change | Action | Issues |
 |---|---|---|---|
-| B1 | **Admin:** drop `createdAt` sort key; migrate to `id`-only PK | `createAdminTable.js`, `adminModel.js` | #3 | ✅ DDL + model done; data migration may be needed |
+| B1 | **Admin:** drop `createdAt` sort key; migrate to `id`-only PK | `createAdminTable.js`, `adminModel.js`, migration `01` | #3 | ✅ Done (DDL + model + data migration) |
 | B2 | **Rename GSIs** `StatusIndex` → `StatusCreatedAtIndex` on Faq, Coupon | Create new GSI, backfill, delete old | #12 | Pending |
-| B3 | **Add GSIs** to `ClientTestimonials`, `VideoTestimonials` | `StatusCreatedAtIndex` in create script | #1 | ✅ DDL updated |
-| B4 | **Remove** `Admin.PhoneIndex` if product confirms no phone login | Update `createAdminTable.js` | #5 | ✅ Done |
+| B3 | **Add GSIs** to `ClientTestimonials`, `VideoTestimonials` | `StatusCreatedAtIndex` in create script + migration `02` | #1 | ✅ Done |
+| B4 | **Remove** `Admin.PhoneIndex` if product confirms no phone login | Update `createAdminTable.js` + migration `03` | #5 | ✅ Done |
+| B5 | **Media attribute camelCase** on testimonials + HealthRecipe | `mediaFieldAliases.js` + migration `04` | #8, #11 | ✅ Done |
 
 ### Phase C — Attribute renames (breaking API / dual-read period)
 
 | Priority | Change | Strategy | Issues |
 |---|---|---|---|
 | C1 | `password` → `passwordHash` on Admin, Coach, Assistant | Dual-read both fields during migration; write new name only | #7 |
-| C2 | `profile_image` → `profileImage` on testimonials | DynamoDB update items + API accepts both during transition | #8 |
+| C2 | `profile_image` → `profileImage` on testimonials | `mediaFieldAliases.js` dual-read; migration `04` | #8 | ✅ Done |
 | C3 | `fcm_id` → `fcmId` on User | Same dual-read pattern | #10 |
 | C4 | AppConfig snake_case → camelCase | Mapper layer in model; accept old keys on PATCH | #9 |
-| C5 | `video_specification` → `videoSpecification` | Model alias | #11 |
+| C5 | `video_specification` → `videoSpecification` | `mediaFieldAliases.js` + migration `04` | #11 | ✅ Done |
 
 ### Phase D — Cleanup & docs
 
@@ -399,8 +400,8 @@ Ordered by **risk** and **impact**. Each step traces to ISSUES_REPORT IDs.
 |---|---|---|
 | D1 | Delete `assertObjectId.js` | #19 |
 | D2 | Deprecate `_id` in API responses (major version bump) | #18 |
-| D3 | Update `docs/database/SECURITY.md` for payment gateway handling | #21 |
-| D4 | Refresh `DATABASE_ARCHITECTURE.md` and `docs/database/*` after migrations | — |
+| D3 | Update `docs/database/SECURITY.md` for payment gateway handling | #21 | ✅ Done |
+| D4 | Refresh `DATABASE_ARCHITECTURE.md` and `docs/database/*` after migrations | — | ✅ Done (2026-06-18) |
 | D5 | Delete or implement `SpecializationIdIndex` usage in admin coach list | #6 |
 
 ### Phase E — Optional / product-dependent

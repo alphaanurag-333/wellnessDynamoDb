@@ -174,15 +174,25 @@ Models throw generic `Error` or named errors:
 
 ---
 
+## Migration scripts (active)
+
+Production schema upgrades use `Backend/migration/`:
+
+| Script | Purpose |
+|---|---|
+| `migrateAll.js` | Runs migrations `01`–`04` in order |
+| `01-admin-single-key.js` | Recreate `Admin` with single-key PK |
+| `02-testimonials-status-gsi.js` | Add `StatusCreatedAtIndex` to testimonial tables |
+| `03-admin-drop-phone-index.js` | Drop unused `PhoneIndex` |
+| `04-media-field-camelcase.js` | Rename `profile_image` → `profileImage`, `video_specification` → `videoSpecification` |
+
+Backups written to `migration/backup/*.json` (gitignored). See `Backend/migration/README.md`.
+
+---
+
 ## Migration script (inactive)
 
-`Backend/script/migrate.js` is fully commented out. When enabled, it would:
-
-- `Scan` source table in pages
-- `BatchWriteItem` Put to target region
-- Retry unprocessed items in a loop (commented reference implementation)
-
-Not active in production workflow.
+`Backend/script/migrate.js` is fully commented out (legacy cross-region copy). Superseded by `Backend/migration/`.
 
 ---
 

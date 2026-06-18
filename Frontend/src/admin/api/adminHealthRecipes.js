@@ -5,7 +5,7 @@ function base() {
 }
 
 function appendVideoSpecs(fd, specs) {
-  fd.append("video_specification", JSON.stringify(Array.isArray(specs) ? specs : []));
+  fd.append("videoSpecification", JSON.stringify(Array.isArray(specs) ? specs : []));
 }
 
 export async function adminListHealthRecipes(token, { page = 1, limit = 50, status, type, healthConcernId, search } = {}) {
@@ -39,7 +39,7 @@ export async function adminCreateHealthRecipe(token, fields, file) {
     fd.append("ytLink", String(fields.ytLink ?? "").trim());
     fd.append("video", String(fields.video ?? "").trim());
     fd.append("status", String(fields.status || "active"));
-    appendVideoSpecs(fd, fields.video_specification);
+    appendVideoSpecs(fd, fields.videoSpecification);
     if (thumbnailFile) fd.append("thumbnailFile", thumbnailFile);
     if (videoFile) fd.append("videoFile", videoFile);
     try {
@@ -60,7 +60,7 @@ export async function adminCreateHealthRecipe(token, fields, file) {
         type: String(fields.type || "ytlink"),
         ytLink: String(fields.ytLink ?? "").trim(),
         video: String(fields.video ?? "").trim(),
-        video_specification: Array.isArray(fields.video_specification) ? fields.video_specification : [],
+        videoSpecification: Array.isArray(fields.videoSpecification) ? fields.videoSpecification : [],
         status: String(fields.status || "active"),
       },
       { headers: authHeader(token) }
@@ -83,7 +83,7 @@ export async function adminUpdateHealthRecipe(token, id, fields, file) {
     if (fields.ytLink !== undefined) fd.append("ytLink", String(fields.ytLink).trim());
     if (fields.video !== undefined) fd.append("video", String(fields.video).trim());
     if (fields.status !== undefined) fd.append("status", String(fields.status));
-    if (fields.video_specification !== undefined) appendVideoSpecs(fd, fields.video_specification);
+    if (fields.videoSpecification !== undefined) appendVideoSpecs(fd, fields.videoSpecification);
     if (thumbnailFile) fd.append("thumbnailFile", thumbnailFile);
     if (videoFile) fd.append("videoFile", videoFile);
     try {
@@ -102,7 +102,7 @@ export async function adminUpdateHealthRecipe(token, id, fields, file) {
   if (fields.ytLink !== undefined) payload.ytLink = String(fields.ytLink).trim();
   if (fields.video !== undefined) payload.video = String(fields.video).trim();
   if (fields.status !== undefined) payload.status = String(fields.status);
-  if (fields.video_specification !== undefined) payload.video_specification = Array.isArray(fields.video_specification) ? fields.video_specification : [];
+  if (fields.videoSpecification !== undefined) payload.videoSpecification = Array.isArray(fields.videoSpecification) ? fields.videoSpecification : [];
   try {
     const { data: body } = await api.patch(`${base()}/${encodeURIComponent(id)}`, payload, { headers: authHeader(token) });
     return body.healthRecipe;

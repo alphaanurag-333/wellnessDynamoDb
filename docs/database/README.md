@@ -31,5 +31,6 @@ Supplementary DynamoDB documentation for the Wellness application. All content i
 - **Region default:** `ap-south-1` (`Backend/config/index.js`)
 - **API base path:** `/api`
 - **Table DDL scripts:** `Backend/tables/create*.js`
-- **Schema migrations:** `Backend/migration/` (backups in `migration/backup/`)
+- **Schema migrations:** `Backend/migration/` (backups in `migration/backup/`) — run `node migration/migrateAll.js` from `Backend/`
 - **List query utility:** `Backend/utils/dynamoList.js`
+- **Media field aliases:** `Backend/utils/mediaFieldAliases.js` — dual-read legacy snake_case media attrs during transition

@@ -97,7 +97,7 @@ export function ClientTestimonialView() {
 
       <div className="page-card user-view-card">
         <div style={{ marginBottom: 16 }}>
-          <AdminMediaImage path={row.profile_image} round width={96} height={96} alt={row.name || ""} />
+          <AdminMediaImage path={row.profileImage} round width={96} height={96} alt={row.name || ""} />
         </div>
         <div className="user-view-grid">
           <DetailRow label="Name" value={row.name} />

@@ -6,6 +6,10 @@ const {
   parseMediaKeyFromBody,
 } = require("../../utils/s3");
 const {
+  readProfileImageKey,
+  parseProfileImageFromBody,
+} = require("../../utils/mediaFieldAliases");
+const {
   createVideoTestimonial,
   getVideoTestimonialById,
   getVideoTestimonialRecordById,
@@ -39,14 +43,18 @@ exports.createVideoTestimonialController = asyncHandler(async (req, res) => {
   const ytLink = String(req.body.ytLink || "").trim();
   const uploadedProfile = await uploadMulterField(req, "profileImage", S3_FOLDER);
   const uploadedVideo = await uploadMulterField(req, "videoFile", S3_FOLDER);
-  const profile_image =
-    uploadedProfile ?? parseMediaKeyFromBody(req.body.profile_image, "profile_image");
+  const profileImageRaw = parseProfileImageFromBody(req.body);
+  const profileImage =
+    uploadedProfile ??
+    (profileImageRaw !== undefined
+      ? parseMediaKeyFromBody(profileImageRaw, "profileImage")
+      : undefined);
   const video = uploadedVideo ?? (req.body.video !== undefined ? parseMediaKeyFromBody(req.body.video, "video") : "");
   const type = String(req.body.type || (uploadedVideo ? "video" : "link")).trim().toLowerCase();
   const status = String(req.body.status || "active").trim().toLowerCase();
 
   if (!name) throw new AppError("name is required", 400);
-  if (!profile_image) throw new AppError("profile_image is required", 400);
+  if (!profileImage) throw new AppError("profileImage is required", 400);
   if (!ALLOWED_TYPE.includes(type)) throw new AppError("type must be link or video", 400);
   if (!ALLOWED_STATUS.includes(status)) throw new AppError("status must be active or inactive", 400);
   if (type === "link" && !ytLink) throw new AppError("ytLink is required when type is link", 400);
@@ -54,7 +62,7 @@ exports.createVideoTestimonialController = asyncHandler(async (req, res) => {
 
   const videoTestimonial = await createVideoTestimonial({
     name,
-    profile_image,
+    profileImage,
     ytLink,
     video,
     type,
@@ -73,6 +81,7 @@ exports.updateVideoTestimonialController = asyncHandler(async (req, res) => {
   if (!current) throw new AppError("Video testimonial not found", 404);
 
   const updates = {};
+  const currentProfileImage = readProfileImageKey(current);
 
   if (req.body.name !== undefined) {
     const name = String(req.body.name || "").trim();
@@ -92,8 +101,10 @@ exports.updateVideoTestimonialController = asyncHandler(async (req, res) => {
   if (req.body.ytLink !== undefined) {
     updates.ytLink = String(req.body.ytLink || "").trim();
   }
-  if (req.body.profile_image !== undefined) {
-    updates.profile_image = parseMediaKeyFromBody(req.body.profile_image, "profile_image") ?? "";
+
+  const profileImageRaw = parseProfileImageFromBody(req.body);
+  if (profileImageRaw !== undefined) {
+    updates.profileImage = parseMediaKeyFromBody(profileImageRaw, "profileImage") ?? "";
   }
   if (req.body.video !== undefined) {
     updates.video = parseMediaKeyFromBody(req.body.video, "video") ?? "";
@@ -102,8 +113,8 @@ exports.updateVideoTestimonialController = asyncHandler(async (req, res) => {
   const uploadedProfile = await uploadMulterField(req, "profileImage", S3_FOLDER);
   const uploadedVideo = await uploadMulterField(req, "videoFile", S3_FOLDER);
   if (uploadedProfile) {
-    if (current.profile_image) await deleteStoredMedia(current.profile_image);
-    updates.profile_image = uploadedProfile;
+    if (currentProfileImage) await deleteStoredMedia(currentProfileImage);
+    updates.profileImage = uploadedProfile;
   }
   if (uploadedVideo) {
     if (current.video) await deleteStoredMedia(current.video);
@@ -143,7 +154,8 @@ exports.updateVideoTestimonialController = asyncHandler(async (req, res) => {
 exports.deleteVideoTestimonialController = asyncHandler(async (req, res) => {
   const current = await getVideoTestimonialRecordById(req.params.id);
   if (!current) throw new AppError("Video testimonial not found", 404);
-  if (current.profile_image) await deleteStoredMedia(current.profile_image);
+  const profileImage = readProfileImageKey(current);
+  if (profileImage) await deleteStoredMedia(profileImage);
   if (current.video) await deleteStoredMedia(current.video);
 
   try {

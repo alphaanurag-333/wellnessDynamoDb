@@ -93,8 +93,8 @@ export function HealthRecipeView() {
     );
   }
 
-  const specRows = Array.isArray(recipe.video_specification)
-    ? recipe.video_specification.map((x) => String(x || "").trim()).filter(Boolean)
+  const specRows = Array.isArray(recipe.videoSpecification)
+    ? recipe.videoSpecification.map((x) => String(x || "").trim()).filter(Boolean)
     : [];
 
   return (

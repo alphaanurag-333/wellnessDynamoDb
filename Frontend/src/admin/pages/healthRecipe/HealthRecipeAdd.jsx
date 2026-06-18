@@ -113,7 +113,7 @@ export function HealthRecipeForm({ mode = "create", initialRecipe = null }) {
       type: initialRecipe.type || "ytlink",
       ytLink: initialRecipe.ytLink || "",
       video: initialRecipe.video || "",
-      videoSpecs: videoSpecsFromApi(initialRecipe.video_specification),
+      videoSpecs: videoSpecsFromApi(initialRecipe.videoSpecification),
       status: initialRecipe.status || "active",
     };
   });
@@ -196,7 +196,7 @@ export function HealthRecipeForm({ mode = "create", initialRecipe = null }) {
       type: form.type || "ytlink",
       ytLink: form.type === "ytlink" ? form.ytLink.trim() : "",
       video: form.type === "video" ? form.video.trim() : "",
-      video_specification: videoSpecsToPayload(form.videoSpecs),
+      videoSpecification: videoSpecsToPayload(form.videoSpecs),
       status: form.status || "active",
     };
     setSaving(true);

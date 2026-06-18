@@ -3,11 +3,15 @@ const {
   GetCommand,
   UpdateCommand,
   DeleteCommand,
-  QueryCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require("uuid");
 const { docClient } = require("../config/db");
 const { normalizeMediaField, resolveMediaFields } = require("../utils/s3");
+const {
+  normalizeMediaItemFromStorage,
+  legacyFieldsToRemoveOnUpdate,
+  normalizeUpdateFieldName,
+} = require("../utils/mediaFieldAliases");
 const {
   listByPartitionKey,
   buildContainsFilter,
@@ -35,9 +39,7 @@ function normalizeType(value, fallback = "ytlink") {
 
 function normalizeVideoSpecification(value) {
   if (!Array.isArray(value)) return [];
-  return value
-    .map((x) => String(x || "").trim())
-    .filter(Boolean);
+  return value.map((x) => String(x || "").trim()).filter(Boolean);
 }
 
 function withLegacyId(item) {
@@ -46,19 +48,20 @@ function withLegacyId(item) {
 }
 
 function toPublicHealthRecipe(item) {
-  const row = withLegacyId(item);
+  const row = withLegacyId(normalizeMediaItemFromStorage(item));
   return row ? resolveMediaFields(row, RECIPE_MEDIA_FIELDS) : null;
 }
 
 function sanitizeUpdateField(key, value) {
-  if (key === "status") return normalizeStatus(value);
-  if (key === "type") return normalizeType(value);
-  if (key === "video_specification") return normalizeVideoSpecification(value);
-  if (key === "thumbnail" || key === "video") {
+  const field = normalizeUpdateFieldName(key);
+  if (field === "status") return normalizeStatus(value);
+  if (field === "type") return normalizeType(value);
+  if (field === "videoSpecification") return normalizeVideoSpecification(value);
+  if (field === "thumbnail" || field === "video") {
     if (value == null || String(value).trim() === "") return "";
-    return normalizeMediaField(value, key);
+    return normalizeMediaField(value, field);
   }
-  if (["healthConcernId", "title", "description", "ytLink"].includes(key)) {
+  if (["healthConcernId", "title", "description", "ytLink"].includes(field)) {
     return String(value || "").trim();
   }
   return value;
@@ -72,6 +75,7 @@ async function createHealthRecipe({
   type = "ytlink",
   ytLink = "",
   video = "",
+  videoSpecification,
   video_specification = [],
   status = "active",
 }) {
@@ -85,25 +89,25 @@ async function createHealthRecipe({
     type: normalizeType(type),
     ytLink: String(ytLink || "").trim(),
     video: video ? normalizeMediaField(video, "video") : "",
-    video_specification: normalizeVideoSpecification(video_specification),
+    videoSpecification: normalizeVideoSpecification(videoSpecification ?? video_specification),
     status: normalizeStatus(status),
     createdAt: now,
     updatedAt: now,
   };
 
-  await docClient.send(new PutCommand({
-    TableName: TABLE,
-    Item: item,
-    ConditionExpression: "attribute_not_exists(id)",
-  }));
+  await docClient.send(
+    new PutCommand({
+      TableName: TABLE,
+      Item: item,
+      ConditionExpression: "attribute_not_exists(id)",
+    })
+  );
   return toPublicHealthRecipe(item);
 }
 
 async function getHealthRecipeRecordById(id) {
-  const { Item } = await docClient.send(
-    new GetCommand({ TableName: TABLE, Key: { id } })
-  );
-  return withLegacyId(Item || null);
+  const { Item } = await docClient.send(new GetCommand({ TableName: TABLE, Key: { id } }));
+  return withLegacyId(normalizeMediaItemFromStorage(Item || null));
 }
 
 async function getHealthRecipeById(id) {
@@ -115,7 +119,8 @@ async function updateHealthRecipe(id, updates) {
   const blockedFields = new Set(["id", "_id", "createdAt"]);
   const entries = Object.entries(updates || {})
     .filter(([k, v]) => !blockedFields.has(k) && v !== undefined)
-    .map(([k, v]) => [k, sanitizeUpdateField(k, v)]);
+    .map(([k, v]) => [normalizeUpdateFieldName(k), sanitizeUpdateField(k, v)]);
+
   if (entries.length === 0) throw new Error("No valid fields provided for update");
 
   const exprNames = {};
@@ -128,24 +133,34 @@ async function updateHealthRecipe(id, updates) {
     setExpr += `, #${k} = :${k}`;
   }
 
-  const { Attributes } = await docClient.send(new UpdateCommand({
-    TableName: TABLE,
-    Key: { id },
-    UpdateExpression: setExpr,
-    ExpressionAttributeNames: exprNames,
-    ExpressionAttributeValues: exprValues,
-    ConditionExpression: "attribute_exists(id)",
-    ReturnValues: "ALL_NEW",
-  }));
+  const removeFields = legacyFieldsToRemoveOnUpdate(Object.fromEntries(entries));
+  let updateExpression = setExpr;
+  if (removeFields.length > 0) {
+    updateExpression += ` REMOVE ${removeFields.join(", ")}`;
+  }
+
+  const { Attributes } = await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE,
+      Key: { id },
+      UpdateExpression: updateExpression,
+      ExpressionAttributeNames: exprNames,
+      ExpressionAttributeValues: exprValues,
+      ConditionExpression: "attribute_exists(id)",
+      ReturnValues: "ALL_NEW",
+    })
+  );
   return toPublicHealthRecipe(Attributes || null);
 }
 
 async function deleteHealthRecipe(id) {
-  await docClient.send(new DeleteCommand({
-    TableName: TABLE,
-    Key: { id },
-    ConditionExpression: "attribute_exists(id)",
-  }));
+  await docClient.send(
+    new DeleteCommand({
+      TableName: TABLE,
+      Key: { id },
+      ConditionExpression: "attribute_exists(id)",
+    })
+  );
 }
 
 async function listHealthRecipes({ page = 1, limit = 10, status, type, healthConcernId, search } = {}) {

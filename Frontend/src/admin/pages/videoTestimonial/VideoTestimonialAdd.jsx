@@ -32,7 +32,7 @@ export function VideoTestimonialForm({ mode = "create", initialTestimonial = nul
   const editId =
     isEditMode && initialTestimonial ? initialTestimonial._id || initialTestimonial.id || "" : "";
   const editBaselineVideo = initial?.video || "";
-  const editBaselineProfileImage = initial?.profile_image || "";
+  const editBaselineProfileImage = initial?.profileImage || "";
 
   const [profileImageFile, setProfileImageFile] = useState(null);
   const [profilePreview, setProfilePreview] = useState(() =>
@@ -75,7 +75,7 @@ export function VideoTestimonialForm({ mode = "create", initialTestimonial = nul
   useEffect(() => {
     if (!initialTestimonial) return;
     const next = testimonialFromApi(initialTestimonial);
-    const savedProfile = next.profile_image || "";
+    const savedProfile = next.profileImage || "";
     const savedVideo = next.video || "";
     setForm(next);
     setProfileImageFile(null);

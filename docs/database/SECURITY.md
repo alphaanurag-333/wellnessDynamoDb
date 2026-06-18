@@ -27,7 +27,7 @@ PII, health-related data, credentials, and access-control behavior as implemente
 | `WellnessCoach` | `name`, `email`, `phone`, `profileImage`, `bio`, location fields |
 | `AssistantWellnessCoach` | `name`, `email`, `phone`, `profileImage`, `designation` |
 | `AppConfig` | `app_email`, `app_mobile`, `address` |
-| `ClientTestimonials`, `VideoTestimonials` | `name`, `profile_image` |
+| `ClientTestimonials`, `VideoTestimonials` | `name`, `profileImage` |
 
 ### Tier 3 — Health & wellness data
 
@@ -42,7 +42,7 @@ PII, health-related data, credentials, and access-control behavior as implemente
 
 | Table | Field | Notes |
 |---|---|---|
-| `User`, coaches | `fcm_id` / `fcmId` | Firebase Cloud Messaging token — queried on `StatusCreatedAtIndex` for push broadcasts |
+| `User`, coaches | `fcmId` (coaches) / `fcm_id` (User legacy) | Firebase Cloud Messaging token — queried on `StatusCreatedAtIndex` for push broadcasts |
 
 ---
 

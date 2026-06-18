@@ -159,7 +159,7 @@ export function VideoTestimonialList() {
                   <tr key={row._id}>
                     <td className="data-table__muted">{(page - 1) * LIST_LIMIT + idx + 1}</td>
                     <td>
-                      <AdminMediaImage path={row.profile_image} round width={46} height={46} alt={row.name || "Profile"} />
+                      <AdminMediaImage path={row.profileImage} round width={46} height={46} alt={row.name || "Profile"} />
                     </td>
                     <td>{row.name || "—"}</td>
                     <td className="data-table__muted">{row.type || "—"}</td>

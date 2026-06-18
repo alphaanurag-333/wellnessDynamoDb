@@ -16,6 +16,7 @@ const {
   HEALTH_RECIPE_ALLOWED_STATUS,
   HEALTH_RECIPE_ALLOWED_TYPE,
 } = require("../../models/healthRecipeModel");
+const { parseVideoSpecificationFromBody } = require("../../utils/mediaFieldAliases");
 
 const S3_FOLDER = "health-recipe";
 
@@ -83,7 +84,7 @@ exports.createHealthRecipeController = asyncHandler(async (req, res) => {
   const type = normalizeType(rawType);
   const ytLink = String(req.body.ytLink || req.body.ytlink || "").trim();
   const video = resolveRecipeVideoField(req.body, uploadedVideo, type);
-  const videoSpecification = parseVideoSpecification(req.body.video_specification);
+  const videoSpecification = parseVideoSpecification(req.body.videoSpecification ?? req.body.video_specification);
   const status = String(req.body.status || "active").trim().toLowerCase();
 
   if (!healthConcernId) throw new AppError("healthConcernId is required", 400);
@@ -103,7 +104,7 @@ exports.createHealthRecipeController = asyncHandler(async (req, res) => {
     type,
     ytLink,
     video,
-    video_specification: videoSpecification || [],
+    videoSpecification: videoSpecification || [],
     status,
   });
 
@@ -146,8 +147,9 @@ exports.updateHealthRecipeController = asyncHandler(async (req, res) => {
   if (req.body.thumbnail !== undefined) {
     updates.thumbnail = parseMediaKeyFromBody(req.body.thumbnail, "thumbnail") ?? "";
   }
-  if (req.body.video_specification !== undefined) {
-    updates.video_specification = parseVideoSpecification(req.body.video_specification);
+  const specRaw = parseVideoSpecificationFromBody(req.body);
+  if (specRaw !== undefined) {
+    updates.videoSpecification = parseVideoSpecification(specRaw);
   }
 
   const { thumbnail: uploadedThumb, video: uploadedVideo } = await uploadRecipeMedia(req);

@@ -181,11 +181,11 @@ PK `id` · GSIs `TypeCreatedAtIndex`, `StatusCreatedAtIndex` · `title`, `image`
 
 ### `ClientTestimonials`
 
-PK `id` only · `name`, `rating`, `description`, `profile_image`, `status`, timestamps
+PK `id` only · `name`, `rating`, `description`, `profileImage`, `status`, timestamps
 
 ### `VideoTestimonials`
 
-PK `id` only · `name`, `profile_image`, `ytLink`, `video`, `type` (`link`|`video`), `status`, timestamps
+PK `id` only · `name`, `profileImage`, `ytLink`, `video`, `type` (`link`|`video`), `status`, timestamps
 
 ### `Transformation`
 
@@ -209,7 +209,7 @@ PK `id` · GSI `StatusCreatedAtIndex` · `title`, `description`, `icon`, `status
 
 ### `HealthRecipe`
 
-PK `id` · GSIs `StatusCreatedAtIndex`, `HealthConcernCreatedAtIndex` · `healthConcernId`, `title`, `description`, `thumbnail`, `type`, `ytLink`, `video`, `video_specification` (L), `status`, timestamps
+PK `id` · GSIs `StatusCreatedAtIndex`, `HealthConcernCreatedAtIndex` · `healthConcernId`, `title`, `description`, `thumbnail`, `type`, `ytLink`, `video`, `videoSpecification` (L), `status`, timestamps
 
 ### `Yoga`
 

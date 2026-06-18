@@ -219,3 +219,5 @@ Standard CRUD Query/Get/Put/Update/Delete per resource table. Notifications Quer
 | `listNotifications({ audienceType })` | `Notification.AudienceSentAtIndex` |
 | Coach FCM push | `fcmId` on coach models + Query harvest |
 | Admin PK | Single hash key `id` in DDL; legacy composite fallback in model |
+| `listPages` | `StaticPage.StatusUpdatedAtIndex` |
+| Testimonial / recipe media | `profileImage`, `videoSpecification` (migration `04`; dual-read via `mediaFieldAliases.js`) |

@@ -150,8 +150,8 @@ export function ClientTestimonialList() {
                     <td className="data-table__muted">{(page - 1) * LIST_LIMIT + idx + 1}</td>
                     <td>
                       <AdminMediaImage
-                        path={row.profile_image}
-                        src={row.profile_image ? mediaUrl(row.profile_image) : undefined}
+                        path={row.profileImage}
+                        src={row.profileImage ? mediaUrl(row.profileImage) : undefined}
                         round
                         width={48}
                         height={48}

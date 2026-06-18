@@ -213,7 +213,7 @@ export function HealthRecipeList() {
                         <span className="data-table__muted">N/A</span>
                       )}
                     </td>
-                    <td className="data-table__muted">{Array.isArray(row.video_specification) ? row.video_specification.length : 0}</td>
+                    <td className="data-table__muted">{Array.isArray(row.videoSpecification) ? row.videoSpecification.length : 0}</td>
                     <td className="data-table__muted">{formatDate(row.createdAt)}</td>
                     <td>
                       <button

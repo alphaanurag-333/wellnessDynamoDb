@@ -35,10 +35,10 @@ export function ClientTestimonialForm({ mode = "create", initialTestimonial = nu
     };
   });
   const editId = isEditMode && initialTestimonial ? initialTestimonial._id || initialTestimonial.id || "" : "";
-  const editBaselineProfileImage = isEditMode && initialTestimonial ? initialTestimonial.profile_image || "" : "";
+  const editBaselineProfileImage = isEditMode && initialTestimonial ? initialTestimonial.profileImage || "" : "";
   const [profileFile, setProfileFile] = useState(null);
   const [profilePreview, setProfilePreview] = useState(() =>
-    isEditMode && initialTestimonial?.profile_image ? mediaUrl(initialTestimonial.profile_image) : ""
+    isEditMode && initialTestimonial?.profileImage ? mediaUrl(initialTestimonial.profileImage) : ""
   );
   const fileInputRef = useRef(null);
 

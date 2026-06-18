@@ -12,11 +12,13 @@ require("dotenv").config();
 const adminMigration = require("./migrations/01-admin-single-key");
 const testimonialsMigration = require("./migrations/02-testimonials-status-gsi");
 const phoneIndexMigration = require("./migrations/03-admin-drop-phone-index");
+const mediaFieldsMigration = require("./migrations/04-media-field-camelcase");
 
 const MIGRATIONS = [
   adminMigration,
   testimonialsMigration,
   phoneIndexMigration,
+  mediaFieldsMigration,
 ];
 
 function parseOnlyArg() {
@@ -44,7 +46,8 @@ async function run() {
     const runner =
       migration.migrateAdminSingleKey ||
       migration.migrateTestimonialsStatusGsi ||
-      migration.migrateAdminDropPhoneIndex;
+      migration.migrateAdminDropPhoneIndex ||
+      migration.migrateMediaFieldCamelCase;
 
     console.log(`--- ${migration.id} ---`);
     await runner();

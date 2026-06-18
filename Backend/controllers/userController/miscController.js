@@ -57,7 +57,7 @@ exports.getActiveClientTestimonials = asyncHandler(async (req, res) => {
   const data = resolveListMedia(
     await listClientTestimonials({ page, limit, status: "active" }),
     "clientTestimonials",
-    ["profile_image"]
+    ["profileImage"]
   );
   return res.status(200).json({
     status: true,
@@ -71,7 +71,7 @@ exports.getActiveVideoTestimonials = asyncHandler(async (req, res) => {
   const data = resolveListMedia(
     await listVideoTestimonials({ page, limit, status: "active" }),
     "videoTestimonials",
-    ["profile_image", "video"]
+    ["profileImage", "video"]
   );
   return res.status(200).json({
     status: true,

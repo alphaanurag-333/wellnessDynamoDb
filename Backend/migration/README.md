@@ -19,7 +19,10 @@ migration/
 |---|---|---|---|
 | `01-admin-single-key` | `migrations/01-admin-single-key.js` | `Admin` | Recreate table: PK `id` only; drops `PhoneIndex` |
 | `02-testimonials-status-gsi` | `migrations/02-testimonials-status-gsi.js` | `ClientTestimonials`, `VideoTestimonials` | Add `StatusCreatedAtIndex` GSI |
-| `03-admin-drop-phone-index` | `migrations/03-admin-drop-phone-index.js` | `Admin` | Drop `PhoneIndex` if still present (no recreate) |
+| `03-admin-drop-phone-index` | `migrations/03-admin-drop-phone-index.js` | `Admin` | Drop `PhoneIndex` if still present |
+| `04-media-field-camelcase` | `migrations/04-media-field-camelcase.js` | `ClientTestimonials`, `VideoTestimonials`, `HealthRecipe` | `profile_image` → `profileImage`, `video_specification` → `videoSpecification` |
+
+Application code uses `Backend/utils/mediaFieldAliases.js` to dual-read legacy attribute names until all items are migrated.
 
 Other tables (User, Banner, Faq, etc.) already had the GSIs used by `dynamoList.js` — **no migration required**, only the application code change.
 
