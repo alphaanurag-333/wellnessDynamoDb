@@ -26,10 +26,14 @@ const SCALAR_KEYS = [
   "success_rate",
   "average_rating",
   "happy_clients",
+  "tax_type",
+  "tax_value",
+  "consultancy_amount",
 ];
 
 const SETTINGS_TABS = [
   { id: "general", label: "App config" },
+  { id: "pricing", label: "Pricing" },
   { id: "branding", label: "Media" },
   { id: "location", label: "Location" },
   { id: "social", label: "Social" },
@@ -51,6 +55,11 @@ const GATEWAY_DEFS = [
   { provider: "paytm", title: "Paytm" },
 ];
 
+const TAX_TYPES = [
+  { value: "inclusive", label: "Inclusive (tax included in price)" },
+  { value: "exclusive", label: "Exclusive (tax added on top)" },
+];
+
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^\d{10}$/;
 const INTEGER_REGEX = /^\d+$/;
@@ -64,6 +73,7 @@ const LIMITS = {
   appDetails: 2000,
   footerText: 180,
   statsField: 60,
+  amountField: 20,
   gatewayField: 180,
 };
 
@@ -88,6 +98,9 @@ function validateSettingsForm({ scalars, paymentGateways }) {
   const happyClients = (scalars.happy_clients || "").trim();
   const averageRating = (scalars.average_rating || "").trim();
   const successRate = (scalars.success_rate || "").trim();
+  const taxType = (scalars.tax_type || "").trim();
+  const taxValue = (scalars.tax_value || "").trim();
+  const consultancyAmount = (scalars.consultancy_amount || "").trim();
   const latitude = (scalars.latitude || "").trim();
   const longitude = (scalars.longitude || "").trim();
 
@@ -113,6 +126,22 @@ function validateSettingsForm({ scalars, paymentGateways }) {
   const success = Number.parseFloat(successRate);
   if (!Number.isFinite(success) || success < 0 || success > 100) {
     return { tab: "general", text: "Success rate must be between 0 and 100 percent." };
+  }
+
+  if (!consultancyAmount) return { tab: "pricing", text: "Consultancy amount is required." };
+  const consultancy = Number.parseFloat(consultancyAmount);
+  if (!Number.isFinite(consultancy) || consultancy < 0) {
+    return { tab: "pricing", text: "Consultancy amount must be a non-negative number." };
+  }
+
+  if (!taxType) return { tab: "pricing", text: "Tax type is required." };
+  if (!TAX_TYPES.some((t) => t.value === taxType)) {
+    return { tab: "pricing", text: "Tax type must be inclusive or exclusive." };
+  }
+  if (!taxValue) return { tab: "pricing", text: "Tax value is required." };
+  const tax = Number.parseFloat(taxValue);
+  if (!Number.isFinite(tax) || tax < 0 || tax > 100) {
+    return { tab: "pricing", text: "Tax value must be between 0 and 100 percent." };
   }
 
   if (latitude || longitude) {
@@ -412,9 +441,9 @@ export function BusinessSetting() {
       <div className="page-card__head">
         <div>
           <h2 className="page-card__title">Application settings</h2>
-          <p className="page-card__desc">
+          {/* <p className="page-card__desc">
             Business settings
-          </p>
+          </p> */}
         </div>
       </div>
 
@@ -606,6 +635,77 @@ export function BusinessSetting() {
                         maxLength={LIMITS.footerText}
                       />
                       <span className="settings-char-count">{charCount(scalars.app_footer_text, LIMITS.footerText)}</span>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {t.id === "pricing" && (
+                <>
+                  <p className="settings-panel-hint">
+                    Consultancy fee and tax settings. Inclusive tax is already part of the listed price; exclusive tax is calculated and added at checkout.
+                  </p>
+                  <div className="user-form__grid">
+                    <div className="user-field">
+                      <span className="user-field__label">Consultancy amount <span className="required-dot">*</span></span>
+                      <input
+                        className="user-field__input"
+                        value={scalars.consultancy_amount}
+                        onChange={(e) =>
+                          setScalars((s) => ({ ...s, consultancy_amount: e.target.value }))
+                        }
+                        onKeyDown={(e) => {
+                          if (["-", "e", "E", "+"].includes(e.key)) e.preventDefault();
+                        }}
+                        maxLength={LIMITS.amountField}
+                        required
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        inputMode="decimal"
+                        placeholder="0.00"
+                      />
+                      <span className="settings-char-count">
+                        {charCount(scalars.consultancy_amount, LIMITS.amountField)}
+                      </span>
+                    </div>
+                    <div className="user-field">
+                      <span className="user-field__label">Tax type <span className="required-dot">*</span></span>
+                      <select
+                        className="user-field__input"
+                        value={scalars.tax_type}
+                        onChange={(e) => setScalars((s) => ({ ...s, tax_type: e.target.value }))}
+                        required
+                      >
+                        <option value="">Select tax type</option>
+                        {TAX_TYPES.map((t) => (
+                          <option key={t.value} value={t.value}>
+                            {t.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="user-field">
+                      <span className="user-field__label">
+                        Tax value (%) <span className="required-dot">*</span>
+                      </span>
+                      <input
+                        className="user-field__input"
+                        value={scalars.tax_value}
+                        onChange={(e) => setScalars((s) => ({ ...s, tax_value: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (["-", "e", "E", "+"].includes(e.key)) e.preventDefault();
+                        }}
+                        maxLength={LIMITS.amountField}
+                        required
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={1}
+                        inputMode="decimal"
+                        placeholder="0 to 100"
+                      />
+                      <span className="settings-char-count">{charCount(scalars.tax_value, LIMITS.amountField)}</span>
                     </div>
                   </div>
                 </>

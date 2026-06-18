@@ -38,3 +38,18 @@ export function selectAppFooterText(state) {
   const text = selectAppConfigData(state)?.app_footer_text;
   return typeof text === "string" ? text.trim() : "";
 }
+
+export function selectTaxType(state) {
+  const type = selectAppConfigData(state)?.tax_type;
+  return typeof type === "string" ? type.trim() : "";
+}
+
+export function selectTaxValue(state) {
+  const value = selectAppConfigData(state)?.tax_value;
+  return value != null ? String(value).trim() : "";
+}
+
+export function selectConsultancyAmount(state) {
+  const amount = selectAppConfigData(state)?.consultancy_amount;
+  return amount != null ? String(amount).trim() : "";
+}

@@ -13,6 +13,16 @@ const {
 
 const S3_FOLDER = "appconfig";
 const LOGO_FIELDS = ["admin_logo", "user_logo", "favicon"];
+const ALLOWED_TAX_TYPES = new Set(["inclusive", "exclusive"]);
+
+function normalizeTaxType(taxType) {
+  const value = String(taxType ?? "").trim().toLowerCase();
+  if (!value) return "";
+  if (!ALLOWED_TAX_TYPES.has(value)) {
+    throw new AppError("tax_type must be inclusive or exclusive", 400);
+  }
+  return value;
+}
 
 function parseJSON(value, fallback) {
   try {
@@ -75,6 +85,9 @@ exports.createAppConfigController = asyncHandler(async (req, res) => {
     success_rate,
     average_rating,
     happy_clients,
+    tax_type,
+    tax_value,
+    consultancy_amount,
   } = req.body;
 
   if (!app_name || !app_email || !app_mobile) {
@@ -101,6 +114,9 @@ exports.createAppConfigController = asyncHandler(async (req, res) => {
     success_rate: success_rate ?? "",
     average_rating: average_rating ?? "",
     happy_clients: happy_clients ?? "",
+    tax_type: normalizeTaxType(tax_type),
+    tax_value: tax_value ?? "",
+    consultancy_amount: consultancy_amount ?? "",
     payment_methods: parseJSON(payment_methods, config.payment_methods),
     payment_gateways: parseJSON(payment_gateways, config.payment_gateways),
     admin_logo: (await s3KeyFromUploadedFile(req, "admin_logo")) ?? "",
@@ -143,6 +159,9 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
     "success_rate",
     "average_rating",
     "happy_clients",
+    "tax_type",
+    "tax_value",
+    "consultancy_amount",
     "app_footer_text",
   ];
 
@@ -152,7 +171,9 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
       updates[field] =
         field === "app_email"
           ? String(req.body[field]).trim().toLowerCase()
-          : req.body[field];
+          : field === "tax_type"
+            ? normalizeTaxType(req.body[field])
+            : req.body[field];
     }
   }
 

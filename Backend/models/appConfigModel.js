@@ -45,19 +45,22 @@ async function createAppConfig() {
     linkedin:       "",
     app_details:    "",
     app_footer_text:"",
-    improved_user:   "",
-    success_rate:    "",
-    average_rating:  "",
-    happy_clients:   "",
+    improved_user:      "",
+    success_rate:       "",
+    average_rating:     "",
+    happy_clients:      "",
+    tax_type:           "",
+    tax_value:          "",
+    consultancy_amount: "",
 
-    // Nested array — DynamoDB mein List of Maps ke roop mein store hoga
+    // Nested array 
     payment_methods: [
       { type: "cod",    isActive: true },
       { type: "online", isActive: true },
     ],
 
     // Nested array with credentials object
-    payment_gateways: [],   // default empty — baad mein add karo
+    payment_gateways: [],   // default empty 
 
     createdAt: now,
     updatedAt: now,
@@ -66,7 +69,7 @@ async function createAppConfig() {
   await docClient.send(new PutCommand({
     TableName: TABLE,
     Item: item,
-    ConditionExpression: "attribute_not_exists(id)", // agar already hai toh overwrite mat karo
+    ConditionExpression: "attribute_not_exists(id)",
   }));
 
   return item;
