@@ -1,20 +1,23 @@
-const { ScanCommand } = require("@aws-sdk/lib-dynamodb");
+const { QueryCommand } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../config/db");
+const { readFcmToken } = require("./parseFcmId");
 
 const AUDIENCE_TABLES = {
   users: ["User"],
   coaches: ["WellnessCoach", "AssistantWellnessCoach"],
 };
 
-async function scanActiveFcmTokens(tableName) {
+async function queryActiveFcmTokens(tableName) {
   const tokens = [];
   let lastKey;
 
   do {
     const { Items, LastEvaluatedKey } = await docClient.send(
-      new ScanCommand({
+      new QueryCommand({
         TableName: tableName,
-        FilterExpression: "#status = :active AND attribute_exists(fcm_id)",
+        IndexName: "StatusCreatedAtIndex",
+        KeyConditionExpression: "#status = :active",
+        FilterExpression: "attribute_exists(fcmId) OR attribute_exists(fcm_id)",
         ExpressionAttributeNames: { "#status": "status" },
         ExpressionAttributeValues: { ":active": "active" },
         ExclusiveStartKey: lastKey,
@@ -22,7 +25,7 @@ async function scanActiveFcmTokens(tableName) {
     );
 
     for (const item of Items || []) {
-      const token = String(item.fcm_id || "").trim();
+      const token = readFcmToken(item);
       if (token) tokens.push(token);
     }
     lastKey = LastEvaluatedKey;
@@ -37,7 +40,7 @@ async function collectFcmTokensForAudience(audienceType) {
 
   const merged = [];
   for (const tableName of tables) {
-    const rows = await scanActiveFcmTokens(tableName);
+    const rows = await queryActiveFcmTokens(tableName);
     merged.push(...rows);
   }
   return [...new Set(merged)];
@@ -45,4 +48,5 @@ async function collectFcmTokensForAudience(audienceType) {
 
 module.exports = {
   collectFcmTokensForAudience,
+  queryActiveFcmTokens,
 };

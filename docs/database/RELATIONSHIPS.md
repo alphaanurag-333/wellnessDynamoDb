@@ -180,7 +180,7 @@ flowchart LR
 | **Type** | Many-to-one |
 | **FK field** | `HealthRecipe.healthConcernId` → `HealthConcern.id` |
 | **Enforcement** | Not specified in code — needs confirmation whether create validates concern exists |
-| **GSI** | `HealthConcernCreatedAtIndex` defined but listing filters via **Scan**, not Query |
+| **GSI** | `HealthConcernCreatedAtIndex` defined; listing uses **Query** on that index when `healthConcernId` is provided |
 | **Cardinality** | Many recipes per concern |
 
 ---
@@ -192,7 +192,7 @@ flowchart LR
 | **Type** | Many-to-one (optional) |
 | **FK field** | `Transformation.userId` → `User.id` (optional attribute) |
 | **Enforcement** | None in model layer |
-| **GSI** | `UserIdCreatedAtIndex` defined but **not used** — `listTransformations({ userId })` uses Scan |
+| **GSI** | `UserIdCreatedAtIndex` — `listTransformations({ userId })` uses Query |
 | **Cardinality** | A user may have zero or many transformation stories |
 
 ---
@@ -222,12 +222,12 @@ These tables are **standalone** in the codebase — no FK attributes pointing to
 
 ## Notification → audience (logical, not relational)
 
-`Notification.audienceType` is either `users` or `coaches`. Sending a notification does **not** store recipient ids on the notification item. Instead, `fcmAudience.js` scans:
+`Notification.audienceType` is either `users` or `coaches`. Sending a notification does **not** store recipient ids on the notification item. Instead, `fcmAudience.js` queries `StatusCreatedAtIndex` on:
 
-- `users` → `User` table
-- `coaches` → `WellnessCoach` + `AssistantWellnessCoach` tables
+- `users` → `User` table (`fcm_id` or `fcmId`)
+- `coaches` → `WellnessCoach` + `AssistantWellnessCoach` tables (`fcmId`)
 
-This is a **runtime fan-out**, not a stored many-to-many relationship.
+Coaches persist `fcmId` via profile update endpoints. This is a **runtime fan-out**, not a stored many-to-many relationship.
 
 ```mermaid
 sequenceDiagram
@@ -238,7 +238,7 @@ sequenceDiagram
 
     Admin->>Notif: PutItem notification record
     Admin->>FCM: collectFcmTokensForAudience(audienceType)
-    FCM->>User: Scan active rows with fcm_id
+    FCM->>User: Query StatusCreatedAtIndex (active) + fcm filter
     FCM-->>Admin: deduplicated token list
 ```
 

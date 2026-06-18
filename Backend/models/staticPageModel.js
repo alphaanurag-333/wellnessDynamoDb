@@ -3,12 +3,15 @@ const {
   GetCommand,
   UpdateCommand,
   DeleteCommand,
-  ScanCommand,
   QueryCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require("uuid");
 
 const { docClient } = require("../config/db");
+const {
+  listByPartitionKey,
+  sortByUpdatedAtDesc,
+} = require("../utils/dynamoList");
 
 const TABLE = "StaticPage";
 const STATUS = new Set(["active", "inactive"]);
@@ -45,19 +48,17 @@ async function getPageBySlug(slug) {
 }
 
 async function listPages() {
-  const rows = [];
-  let lastKey;
-  do {
-    const { Items, LastEvaluatedKey } = await docClient.send(new ScanCommand({
-      TableName: TABLE,
-      ExclusiveStartKey: lastKey,
-    }));
-    if (Array.isArray(Items) && Items.length) rows.push(...Items);
-    lastKey = LastEvaluatedKey;
-  } while (lastKey);
+  const { items } = await listByPartitionKey({
+    tableName: TABLE,
+    indexName: "StatusUpdatedAtIndex",
+    scanIndexForward: false,
+    page: 1,
+    limit: Number.MAX_SAFE_INTEGER,
+    maxLimit: Number.MAX_SAFE_INTEGER,
+    sortFn: sortByUpdatedAtDesc,
+  });
 
-  rows.sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
-  return rows.map(withLegacyId);
+  return items.map(withLegacyId);
 }
 
 async function getPageById(id) {

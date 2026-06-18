@@ -2,6 +2,8 @@
 
 Complete catalog of DynamoDB operations as implemented in `Backend/models/` and `Backend/utils/fcmAudience.js`. Each pattern maps to the table/index the code actually uses.
 
+**Last updated:** 2026-06-18 — list endpoints use GSI Query via `Backend/utils/dynamoList.js`.
+
 **See also:** [INDEXES.md](./INDEXES.md) · [RELATIONSHIPS.md](./RELATIONSHIPS.md) · [OPERATIONS.md](./OPERATIONS.md)
 
 ---
@@ -32,10 +34,8 @@ Complete catalog of DynamoDB operations as implemented in `Backend/models/` and 
 | U-04 | Get by phone | Query | `PhoneKeyIndex` | `getUserByPhone` | Login, duplicate check |
 | U-05 | Update user | Update | PK `id` | `updateUser` | Profile, OTP fields, admin |
 | U-06 | Delete user | Delete | PK `id` | `deleteUser` | Admin, account deletion |
-| U-07 | List users (paginated) | Scan | Base table + FilterExpression | `listUsers` | Admin user list |
-| U-08 | FCM token harvest | Scan | Base + `status=active` filter | `fcmAudience.scanActiveFcmTokens` | Notification send |
-
-> **Note:** `StatusCreatedAtIndex` is **not** used; U-07 scans the full table.
+| U-07 | List users (paginated) | Query | `StatusCreatedAtIndex` + optional FilterExpression | `listUsers` | Admin user list |
+| U-08 | FCM token harvest | Query | `StatusCreatedAtIndex` (`status=active`) + `fcmId`/`fcm_id` filter | `fcmAudience.queryActiveFcmTokens` | Notification send |
 
 ---
 
@@ -43,14 +43,12 @@ Complete catalog of DynamoDB operations as implemented in `Backend/models/` and 
 
 | ID | Pattern | Op | Key / Index | Model function |
 |---|---|---|---|---|
-| A-01 | Create admin | Put | PK `id` + SK `createdAt` | `createAdmin` |
-| A-02 | Resolve key by id | Query | Base table `id = :id` | `getAdminKeyById` |
-| A-03 | Get by id | Get | Composite key | `getAdminById` |
+| A-01 | Create admin | Put | PK `id` | `createAdmin` |
+| A-02 | Resolve key by id | Get / Query fallback | PK `id` (legacy composite fallback) | `getAdminKeyById` |
+| A-03 | Get by id | Get | PK `id` | `getAdminById` |
 | A-04 | Get by email | Query | `EmailIndex` | `getAdminByEmail` |
-| A-05 | Update admin | Update | Composite key | `updateAdmin` |
-| A-06 | Delete admin | Delete | Composite key | `deleteAdmin` |
-
-> `PhoneIndex` is defined but **never queried**.
+| A-05 | Update admin | Update | PK `id` | `updateAdmin` |
+| A-06 | Delete admin | Delete | PK `id` | `deleteAdmin` |
 
 ---
 
@@ -65,9 +63,9 @@ Complete catalog of DynamoDB operations as implemented in `Backend/models/` and 
 | WC-05 | Get by phone | Query | `PhoneKeyIndex` | `getWellnessCoachByPhone` |
 | WC-06 | Update coach | Update | PK `id` | `updateWellnessCoach` |
 | WC-07 | Delete coach | Delete | PK `id` | `deleteWellnessCoach` |
-| WC-08 | List coaches | Scan | Base + filters | `listWellnessCoaches` |
-| WC-09 | Count all coaches | Scan | `Select: COUNT` | `countAllWellnessCoaches` |
-| WC-10 | FCM token harvest | Scan | Base + active filter | `fcmAudience` |
+| WC-08 | List coaches | Query | `StatusCreatedAtIndex` + filters | `listWellnessCoaches` |
+| WC-09 | Count all coaches | Query COUNT | `StatusCreatedAtIndex` (active + inactive) | `countAllWellnessCoaches` |
+| WC-10 | FCM token harvest | Query | `StatusCreatedAtIndex` + `fcmId` filter | `fcmAudience` |
 
 ---
 
@@ -81,9 +79,9 @@ Complete catalog of DynamoDB operations as implemented in `Backend/models/` and 
 | AWC-04 | Get by phone | Query | `PhoneKeyIndex` | `getAssistantByPhone` |
 | AWC-05 | List by coach | Query | `WellnessCoachIndex` | `listAssistantsByWellnessCoachId` |
 | AWC-06 | Count by coach | Query | `WellnessCoachIndex` COUNT | `countAssistantsByWellnessCoachId` |
-| AWC-07 | List all assistants | Scan | Base + filters | `listAssistantWellnessCoaches` |
+| AWC-07 | List all assistants | Query | `StatusCreatedAtIndex` + filters | `listAssistantWellnessCoaches` |
 | AWC-08 | Update / Delete | Update / Delete | PK `id` | `update*` / `delete*` |
-| AWC-09 | FCM token harvest | Scan | Base + active filter | `fcmAudience` |
+| AWC-09 | FCM token harvest | Query | `StatusCreatedAtIndex` + `fcmId` filter | `fcmAudience` |
 
 ---
 
@@ -118,14 +116,14 @@ Tables: `Faq`, `Coupon`, `Notification`, `StaticPage`, `Transformation`, `Banner
 | C-02 | Get by id | Get | PK `id` |
 | C-03 | Update | Update | PK `id`, `attribute_exists(id)` |
 | C-04 | Delete | Delete | PK `id`, `attribute_exists(id)` |
-| C-05 | List (admin/public) | Scan | Full table + FilterExpression + in-memory pagination |
+| C-05 | List (admin/public) | Query | `Status*Index` / domain GSIs via `dynamoList.js` |
 
 #### Content-specific Query patterns
 
 | Table | ID | Pattern | Op | Index |
 |---|---|---|---|---|
 | `StaticPage` | SP-01 | Get by slug | Query | `SlugIndex` |
-| `StaticPage` | SP-02 | List all pages | Scan | Base table |
+| `StaticPage` | SP-02 | List all pages | Query | `StatusUpdatedAtIndex` |
 | `Coupon` | CP-01 | Get by coupon code | Query | `CouponCodeIndex` |
 | `Specialization` | SPEC-01 | Get by title key | Query | `TitleKeyIndex` |
 
@@ -148,9 +146,16 @@ All entities with UUID PK; `AppConfig` uses fixed id; `RegistrationOtp` uses `lo
 | `CouponCodeIndex` | Coupon | Uniqueness + lookup by code |
 | `TitleKeyIndex` | Specialization | Uniqueness + lookup by title |
 
-### Full scans
+| `StatusCreatedAtIndex` / `StatusIndex` | User, coaches, content tables | Status-filtered lists |
+| `HealthConcernCreatedAtIndex` | HealthRecipe | Recipes per concern |
+| `UserIdCreatedAtIndex` | Transformation | Transformations per user |
+| `AudienceSentAtIndex` / `StatusSentAtIndex` | Notification | Notification admin lists |
+| `TypeCreatedAtIndex` | CelebrationBanners | Banners by type |
+| `StatusUpdatedAtIndex` | StaticPage | Admin page list |
 
-Used for **all paginated list endpoints** on content tables and for User/Coach admin lists, even when status-sort GSIs exist. See [INDEXES.md](./INDEXES.md) for unused indexes.
+### Scans
+
+**No table Scan** is used in `Backend/models/` list functions as of 2026-06-18. Text search uses `FilterExpression` on Query results.
 
 ### Batch operations
 
@@ -171,18 +176,18 @@ Used for **all paginated list endpoints** on content tables and for User/Coach a
 | Endpoint | Tables | Primary pattern |
 |---|---|---|
 | `GET /public/app-config` | AppConfig | Get |
-| `GET /public/misc/banners` | Banner | Scan + status filter |
-| `GET /public/misc/faqs` | Faq | Scan + status filter |
+| `GET /public/misc/banners` | Banner | Query `StatusCreatedAtIndex` |
+| `GET /public/misc/faqs` | Faq | Query `StatusIndex` |
 | `GET /public/misc/pages/:slug` | StaticPage | Query SlugIndex |
-| `GET /public/misc/client-testimonials` | ClientTestimonials | Scan |
-| `GET /public/misc/video-testimonials` | VideoTestimonials | Scan |
-| `GET /public/misc/health-concerns` | HealthConcern | Scan |
-| `GET /public/misc/health-disorders` | HealthDisorder | Scan |
-| `GET /public/misc/health-tools` | HealthTool | Scan |
-| `GET /public/misc/health-recipes` | HealthRecipe | Scan |
-| `GET /public/misc/yoga` | Yoga | Scan |
-| `GET /public/misc/transformations` | Transformation | Scan |
-| `GET /public/misc/celebration-banners` | CelebrationBanners | Scan |
+| `GET /public/misc/client-testimonials` | ClientTestimonials | Query `StatusCreatedAtIndex` |
+| `GET /public/misc/video-testimonials` | VideoTestimonials | Query `StatusCreatedAtIndex` |
+| `GET /public/misc/health-concerns` | HealthConcern | Query `StatusCreatedAtIndex` |
+| `GET /public/misc/health-disorders` | HealthDisorder | Query `StatusCreatedAtIndex` |
+| `GET /public/misc/health-tools` | HealthTool | Query `StatusCreatedAtIndex` |
+| `GET /public/misc/health-recipes` | HealthRecipe | Query `StatusCreatedAtIndex` / `HealthConcernCreatedAtIndex` |
+| `GET /public/misc/yoga` | Yoga | Query `StatusCreatedAtIndex` |
+| `GET /public/misc/transformations` | Transformation | Query `StatusCreatedAtIndex` / `UserIdCreatedAtIndex` |
+| `GET /public/misc/celebration-banners` | CelebrationBanners | Query `TypeCreatedAtIndex` / `StatusCreatedAtIndex` |
 
 ### User auth (`/api/user/auth/*`)
 
@@ -199,16 +204,18 @@ Same identity patterns on `WellnessCoach` and `AssistantWellnessCoach` respectiv
 
 ### Admin (`/api/admin/*`)
 
-Standard CRUD Scan/Get/Put/Update/Delete per resource table. Notifications additionally Scan User + Coach tables for FCM.
+Standard CRUD Query/Get/Put/Update/Delete per resource table. Notifications Query User + Coach tables on `StatusCreatedAtIndex` for FCM token harvest.
 
 ---
 
-## Anti-patterns observed (for optimization)
+## Resolved optimizations (2026-06-18)
 
-| Current code | Better index (already exists) |
+| Pattern | Implementation |
 |---|---|
-| `listUsers({ status })` → Scan | `User.StatusCreatedAtIndex` |
-| `listHealthRecipes({ healthConcernId })` → Scan | `HealthRecipe.HealthConcernCreatedAtIndex` |
-| `listTransformations({ userId })` → Scan | `Transformation.UserIdCreatedAtIndex` |
-| `listFaqs/Banners/...({ status })` → Scan | Respective `StatusIndex` / `StatusCreatedAtIndex` |
-| `listNotifications({ audienceType })` → Scan | `Notification.AudienceSentAtIndex` |
+| `listUsers({ status })` | `User.StatusCreatedAtIndex` |
+| `listHealthRecipes({ healthConcernId })` | `HealthRecipe.HealthConcernCreatedAtIndex` |
+| `listTransformations({ userId })` | `Transformation.UserIdCreatedAtIndex` |
+| `listFaqs/Banners/...({ status })` | Respective `StatusIndex` / `StatusCreatedAtIndex` |
+| `listNotifications({ audienceType })` | `Notification.AudienceSentAtIndex` |
+| Coach FCM push | `fcmId` on coach models + Query harvest |
+| Admin PK | Single hash key `id` in DDL; legacy composite fallback in model |

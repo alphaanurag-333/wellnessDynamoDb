@@ -3,7 +3,6 @@ const {
   GetCommand,
   UpdateCommand,
   DeleteCommand,
-  ScanCommand,
   QueryCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require("uuid");
@@ -21,6 +20,11 @@ const {
   resolvePublicUrl,
 } = require("../utils/s3");
 const { toPublicProfile } = require("../utils/toPublicProfile");
+const {
+  listByPartitionKey,
+  buildContainsFilter,
+  sortByCreatedAtDesc,
+} = require("../utils/dynamoList");
 
 const TABLE = "AssistantWellnessCoach";
 const ALLOWED_STATUS = new Set(["active", "inactive"]);
@@ -69,6 +73,7 @@ function buildAssistantItem(input, { id, now } = {}) {
     profileImage: normalizeProfileImageField(input.profileImage),
     designation: input.designation != null ? String(input.designation).trim() || null : null,
     password: input.password != null ? String(input.password) : null,
+    fcmId: input.fcmId != null ? String(input.fcmId).trim() || null : null,
     status: normalizeStatus(input.status),
     createdAt: now,
     updatedAt: now,
@@ -89,6 +94,9 @@ function sanitizeUpdateField(key, value) {
   }
   if (key === "password") {
     return value != null ? String(value) : null;
+  }
+  if (key === "fcmId") {
+    return value != null ? String(value).trim() || null : null;
   }
   if (key === "otp") {
     return value != null ? (value === null ? null : String(value)) : null;
@@ -368,60 +376,28 @@ async function listAssistantWellnessCoaches({ page = 1, limit = 20, status, sear
     return listAssistantsByWellnessCoachId(wellnessCoachId, { page, limit, status, search });
   }
 
-  const safePage = Math.max(1, Number(page) || 1);
-  const safeLimit = Math.min(200, Math.max(1, Number(limit) || 20));
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
-  const normalizedSearch = String(search || "").trim().toLowerCase();
-
-  const filters = [];
-  const names = {};
-  const values = {};
-
-  if (normalizedStatus) {
-    filters.push("#status = :status");
-    names["#status"] = "status";
-    values[":status"] = normalizedStatus;
-  }
-  if (normalizedSearch) {
-    filters.push(
-      "(contains(#name, :search) OR contains(#email, :search) OR contains(#phone, :search) OR contains(#designation, :search))"
-    );
-    names["#name"] = "name";
-    names["#email"] = "email";
-    names["#phone"] = "phone";
-    names["#designation"] = "designation";
-    values[":search"] = normalizedSearch;
-  }
-
-  const params = { TableName: TABLE };
-  if (filters.length > 0) {
-    params.FilterExpression = filters.join(" AND ");
-    params.ExpressionAttributeNames = names;
-    params.ExpressionAttributeValues = values;
-  }
-
-  const rows = [];
-  let lastKey;
-  do {
-    const { Items, LastEvaluatedKey } = await docClient.send(
-      new ScanCommand({
-        ...params,
-        ExclusiveStartKey: lastKey,
-      })
-    );
-    if (Array.isArray(Items) && Items.length) rows.push(...Items);
-    lastKey = LastEvaluatedKey;
-  } while (lastKey);
-
-  rows.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
-  const total = rows.length;
-  const pages = Math.max(1, Math.ceil(total / safeLimit));
-  const start = (safePage - 1) * safeLimit;
-  const assistants = rows.slice(start, start + safeLimit).map(withLegacyId);
+  const searchFilter = buildContainsFilter(
+    ["name", "email", "phone", "designation"],
+    search
+  );
+  const { items, pagination } = await listByPartitionKey({
+    tableName: TABLE,
+    indexName: "StatusCreatedAtIndex",
+    partitionKeyValue: normalizedStatus || undefined,
+    filterExpression: searchFilter.filterExpression,
+    exprNames: searchFilter.exprNames,
+    exprValues: searchFilter.exprValues,
+    scanIndexForward: false,
+    page,
+    limit,
+    maxLimit: 200,
+    sortFn: sortByCreatedAtDesc,
+  });
 
   return {
-    assistants,
-    pagination: { page: safePage, limit: safeLimit, total, pages },
+    assistants: items.map(withLegacyId),
+    pagination,
   };
 }
 

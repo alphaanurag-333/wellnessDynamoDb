@@ -42,7 +42,7 @@ PII, health-related data, credentials, and access-control behavior as implemente
 
 | Table | Field | Notes |
 |---|---|---|
-| `User`, coaches | `fcm_id` | Firebase Cloud Messaging token — scanned for push broadcasts |
+| `User`, coaches | `fcm_id` / `fcmId` | Firebase Cloud Messaging token — queried on `StatusCreatedAtIndex` for push broadcasts |
 
 ---
 
@@ -122,7 +122,7 @@ Profile images and content media stored as **S3 object keys** in DynamoDB; publi
 
 | Endpoint | Sensitive fields potentially returned |
 |---|---|
-| `GET /api/public/app-config` | Business contact, payment config — verify controller filters |
+| `GET /api/public/app-config` | Business contact, payment methods; gateway **credentials stripped** — `publicAppConfigController.js` returns only `{ provider, isActive }` per gateway |
 | `GET /api/public/misc/*` | Marketing/health **catalog** content only |
 | `GET /api/user/auth/me` | Full user profile minus password/OTP (PII returned to owner) |
 | Admin `GET /api/admin/users` | Full user records for admins |
@@ -131,7 +131,7 @@ Profile images and content media stored as **S3 object keys** in DynamoDB; publi
 
 ## Security recommendations
 
-1. **Audit `publicAppConfigController`** — ensure `payment_gateways` credentials never reach public clients.
+1. **Keep `toPublicClientAppConfig` in sync** — any new sensitive `AppConfig` fields must be excluded from `publicAppConfigController.js`.
 2. **Never enable `EXPOSE_OTP_IN_RESPONSE`** in production.
 3. **Consider KMS or Secrets Manager** for payment gateway credentials instead of `AppConfig` DynamoDB attributes.
 4. **Implement cascade or anonymization** on user delete for `Transformation.userId` references.

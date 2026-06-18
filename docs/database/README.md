@@ -6,6 +6,8 @@ Supplementary DynamoDB documentation for the Wellness application. All content i
 
 | Document | Description |
 |---|---|
+| [ISSUES_REPORT.md](../../ISSUES_REPORT.md) | Schema audit — mismatches, unused indexes, naming issues (Phase 1) |
+| [STANDARD_DB_STRUCTURE.md](../../STANDARD_DB_STRUCTURE.md) | Target standardized schema and migration plan (Phase 2) |
 | [DATABASE_ARCHITECTURE.md](../../DATABASE_ARCHITECTURE.md) | Master document — overview, tech stack, full table designs, scaling, recommendations |
 | [RELATIONSHIPS.md](./RELATIONSHIPS.md) | Entity relationships, foreign keys, cardinality, join patterns, ER diagrams |
 | [ACCESS_PATTERNS.md](./ACCESS_PATTERNS.md) | Every Query/Scan/Get/Put/Update/Delete/BatchWrite mapped to tables and indexes |
@@ -29,3 +31,5 @@ Supplementary DynamoDB documentation for the Wellness application. All content i
 - **Region default:** `ap-south-1` (`Backend/config/index.js`)
 - **API base path:** `/api`
 - **Table DDL scripts:** `Backend/tables/create*.js`
+- **Schema migrations:** `Backend/migration/` (backups in `migration/backup/`)
+- **List query utility:** `Backend/utils/dynamoList.js`

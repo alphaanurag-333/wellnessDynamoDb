@@ -4,6 +4,8 @@ Global Secondary Indexes (GSI) and Local Secondary Indexes (LSI) across all Dyna
 
 **Projection:** All GSIs in this codebase use `ProjectionType: ALL` unless noted.
 
+**Last updated:** 2026-06-18 — list endpoints wired to GSIs via `Backend/utils/dynamoList.js`.
+
 **See also:** [ACCESS_PATTERNS.md](./ACCESS_PATTERNS.md) · [TABLE_REFERENCE.md](./TABLE_REFERENCE.md)
 
 ---
@@ -17,20 +19,22 @@ Global Secondary Indexes (GSI) and Local Secondary Indexes (LSI) across all Dyna
 ## GSI usage overview
 
 ```mermaid
-pie title GSI usage in application code
-    "Queried by app" : 11
-    "Defined but not queried" : 20
+pie title GSI usage in application code (post-fix)
+    "Queried by app" : 30
+    "Defined but not queried" : 1
 ```
 
 | Status | Count | Meaning |
 |---|---|---|
-| **Active** | 11 index usages | Referenced in `QueryCommand` with `IndexName` |
-| **Inactive** | 20 index definitions | Created in DDL but list/filter logic uses `Scan` instead |
-| **Unused definition** | 1 | `Admin.PhoneIndex` — no code reference |
+| **Active** | ~30 index usages | Referenced in `QueryCommand` with `IndexName` (lookups + `list*` + FCM harvest) |
+| **Inactive** | 1 | `WellnessCoach.SpecializationIdIndex` — defined; admin coach list filters `specializationId` via `FilterExpression` on status Query |
+| **Removed from DDL** | 1 | `Admin.PhoneIndex` — removed from `createAdminTable.js` (was never queried) |
 
 ---
 
 ## Active indexes (queried in code)
+
+### Lookup indexes
 
 | Table | Index | PK | SK | Used by |
 |---|---|---|---|---|
@@ -41,47 +45,51 @@ pie title GSI usage in application code
 | `WellnessCoach` | `PhoneKeyIndex` | `phoneKey` | — | `getWellnessCoachByPhone` |
 | `AssistantWellnessCoach` | `EmailIndex` | `email` | — | `getAssistantByEmail` |
 | `AssistantWellnessCoach` | `PhoneKeyIndex` | `phoneKey` | — | `getAssistantByPhone` |
-| `AssistantWellnessCoach` | `WellnessCoachIndex` | `wellnessCoachId` | `createdAt` | `listAssistantsByWellnessCoachId`, `countAssistantsByWellnessCoachId` |
+| `AssistantWellnessCoach` | `WellnessCoachIndex` | `wellnessCoachId` | `createdAt` | `listAssistantsByWellnessCoachId` |
 | `StaticPage` | `SlugIndex` | `slug` | — | `getPageBySlug` |
 | `Coupon` | `CouponCodeIndex` | `couponCode` | — | `getCouponByCode` |
 | `Specialization` | `TitleKeyIndex` | `titleKey` | — | `getSpecializationByTitleKey` |
 
-### Base-table Query (not GSI)
+### List / filter indexes (via `dynamoList.js`)
+
+| Table | Index | PK | SK | Used by |
+|---|---|---|---|---|
+| `User` | `StatusCreatedAtIndex` | `status` | `createdAt` | `listUsers`, FCM harvest |
+| `WellnessCoach` | `StatusCreatedAtIndex` | `status` | `createdAt` | `listWellnessCoaches`, `countAllWellnessCoaches`, FCM harvest |
+| `AssistantWellnessCoach` | `StatusCreatedAtIndex` | `status` | `createdAt` | `listAssistantWellnessCoaches`, FCM harvest |
+| `Faq` | `StatusIndex` | `status` | `createdAt` | `listFaqs` |
+| `Coupon` | `StatusIndex` | `status` | `createdAt` | `listCoupons` |
+| `Notification` | `StatusSentAtIndex` | `status` | `sentAt` | `listNotifications` (status filter) |
+| `Notification` | `AudienceSentAtIndex` | `audienceType` | `sentAt` | `listNotifications` (audience filter) |
+| `StaticPage` | `StatusUpdatedAtIndex` | `status` | `updatedAt` | `listPages` |
+| `Transformation` | `StatusCreatedAtIndex` | `status` | `createdAt` | `listTransformations` |
+| `Transformation` | `UserIdCreatedAtIndex` | `userId` | `createdAt` | `listTransformations` (`userId` param) |
+| `Banner` | `StatusCreatedAtIndex` | `status` | `createdAt` | `listBanners` |
+| `CelebrationBanners` | `TypeCreatedAtIndex` | `type` | `createdAt` | `listCelebrationBanners` (`type` param) |
+| `CelebrationBanners` | `StatusCreatedAtIndex` | `status` | `createdAt` | `listCelebrationBanners` (status filter) |
+| `ClientTestimonials` | `StatusCreatedAtIndex` | `status` | `createdAt` | `listClientTestimonials` |
+| `VideoTestimonials` | `StatusCreatedAtIndex` | `status` | `createdAt` | `listVideoTestimonials` |
+| `HealthConcern` | `StatusCreatedAtIndex` | `status` | `createdAt` | `listHealthConcerns` |
+| `HealthDisorder` | `StatusCreatedAtIndex` | `status` | `createdAt` | `listHealthDisorders` |
+| `HealthTool` | `StatusCreatedAtIndex` | `status` | `createdAt` | `listHealthTools` |
+| `HealthRecipe` | `StatusCreatedAtIndex` | `status` | `createdAt` | `listHealthRecipes` |
+| `HealthRecipe` | `HealthConcernCreatedAtIndex` | `healthConcernId` | `createdAt` | `listHealthRecipes` (`healthConcernId` param) |
+| `Yoga` | `StatusCreatedAtIndex` | `status` | `createdAt` | `listYoga` |
+| `Specialization` | `StatusCreatedAtIndex` | `status` | `createdAt` | `listSpecializations` |
+
+### Base-table access
 
 | Table | Pattern | Keys |
 |---|---|---|
-| `Admin` | `getAdminKeyById` | Query base table `id = :id` (composite PK requires resolving `createdAt`) |
+| `Admin` | `getAdminById` / CRUD | `GetItem` on PK `id`; legacy composite rows resolved via fallback Query |
 
 ---
 
-## Inactive indexes (defined in DDL, not queried)
+## Inactive indexes
 
-These indexes support access patterns that **could** replace current Scan-based listings but are **not used** in `Backend/models/` as of this analysis.
-
-| Table | Index | PK | SK | Intended pattern |
+| Table | Index | PK | SK | Notes |
 |---|---|---|---|---|
-| `User` | `StatusCreatedAtIndex` | `status` | `createdAt` | List users by status, newest first |
-| `Admin` | `PhoneIndex` | `phone` | — | Lookup admin by phone (**no code**) |
-| `WellnessCoach` | `StatusCreatedAtIndex` | `status` | `createdAt` | List coaches by status |
-| `WellnessCoach` | `SpecializationIdIndex` | `specializationId` | `createdAt` | List coaches per specialization |
-| `AssistantWellnessCoach` | `StatusCreatedAtIndex` | `status` | `createdAt` | List assistants by status |
-| `Faq` | `StatusIndex` | `status` | `createdAt` | List FAQs by status |
-| `Coupon` | `StatusIndex` | `status` | `createdAt` | List coupons by status |
-| `Notification` | `StatusSentAtIndex` | `status` | `sentAt` | List by status, sorted by sent time |
-| `Notification` | `AudienceSentAtIndex` | `audienceType` | `sentAt` | List by audience |
-| `StaticPage` | `StatusUpdatedAtIndex` | `status` | `updatedAt` | List pages by status |
-| `Transformation` | `StatusCreatedAtIndex` | `status` | `createdAt` | List transformations by status |
-| `Transformation` | `UserIdCreatedAtIndex` | `userId` | `createdAt` | List transformations per user |
-| `Banner` | `StatusCreatedAtIndex` | `status` | `createdAt` | List banners by status |
-| `CelebrationBanners` | `TypeCreatedAtIndex` | `type` | `createdAt` | List by banner type |
-| `CelebrationBanners` | `StatusCreatedAtIndex` | `status` | `createdAt` | List by status |
-| `HealthConcern` | `StatusCreatedAtIndex` | `status` | `createdAt` | List concerns by status |
-| `HealthDisorder` | `StatusCreatedAtIndex` | `status` | `createdAt` | List disorders by status |
-| `HealthTool` | `StatusCreatedAtIndex` | `status` | `createdAt` | List tools by status |
-| `HealthRecipe` | `StatusCreatedAtIndex` | `status` | `createdAt` | List recipes by status |
-| `HealthRecipe` | `HealthConcernCreatedAtIndex` | `healthConcernId` | `createdAt` | List recipes per concern |
-| `Yoga` | `StatusCreatedAtIndex` | `status` | `createdAt` | List yoga by status |
-| `Specialization` | `StatusCreatedAtIndex` | `status` | `createdAt` | List specializations by status |
+| `WellnessCoach` | `SpecializationIdIndex` | `specializationId` | `createdAt` | Optional future optimization for coach-by-specialization admin filter |
 
 ---
 
@@ -89,39 +97,26 @@ These indexes support access patterns that **could** replace current Scan-based 
 
 | Convention | Example |
 |---|---|
-| Status listing | `{ status HASH, createdAt RANGE }` named `StatusCreatedAtIndex` |
+| Status listing | `{ status HASH, createdAt RANGE }` named `StatusCreatedAtIndex` (Faq/Coupon use legacy name `StatusIndex`) |
 | Unique lookup | Single-hash GSI: `EmailIndex`, `PhoneKeyIndex`, `SlugIndex`, `CouponCodeIndex`, `TitleKeyIndex` |
 | Parent-child | `WellnessCoachIndex`: `wellnessCoachId` + `createdAt` on assistants |
 | Phone normalization | `phoneKey` = `{countryCode}#{phone}` for stable GSI key |
 
 ---
 
-## Write amplification note
+## Pagination implementation
 
-Every GSI with `ProjectionType: ALL` duplicates the full item on each index. With ~31 GSIs across 21 tables, each `PutItem`/`UpdateItem` may propagate to multiple indexes. Inactive GSIs still incur **storage and write cost** without read benefit.
+All `list*` functions use `Backend/utils/dynamoList.js`:
+
+- **Query** on the appropriate GSI partition when `status`, `type`, `healthConcernId`, `userId`, or `audienceType` is provided (or merges `active`/`inactive` partitions when omitted).
+- **`ExclusiveStartKey`** iteration with skip/limit — avoids loading the full table before slicing.
+- **`FilterExpression`** for text `contains` search only (not indexable).
 
 ---
 
-## Recommended Query migrations
+## Deployment notes
 
-Priority replacements for Scan → Query (indexes already exist):
-
-| Model function | Current | Target index |
-|---|---|---|
-| `listUsers` | Scan | `User.StatusCreatedAtIndex` |
-| `listWellnessCoaches` | Scan | `WellnessCoach.StatusCreatedAtIndex` |
-| `listHealthRecipes` (with `healthConcernId`) | Scan | `HealthRecipe.HealthConcernCreatedAtIndex` |
-| `listTransformations` (with `userId`) | Scan | `Transformation.UserIdCreatedAtIndex` |
-| `listNotifications` (with `audienceType`) | Scan | `Notification.AudienceSentAtIndex` |
-| `listCelebrationBanners` (with `type`) | Scan | `CelebrationBanners.TypeCreatedAtIndex` |
-| All `list*` with `status` only | Scan | Respective `Status*Index` / `StatusCreatedAtIndex` |
-
-Example Query shape for status listing:
-
-```
-Query IndexName = StatusCreatedAtIndex
-  KeyConditionExpression = #status = :active
-  ScanIndexForward = false   // newest first
-```
-
-Add `FilterExpression` only for search text (cannot be indexed with `contains` on Scan replacement for search-heavy admin UIs).
+| Change | Action required on existing AWS tables |
+|---|---|
+| `Admin` single-key PK | `node migration/migrateAll.js` from `Backend/` (see `migration/README.md`) |
+| `ClientTestimonials` / `VideoTestimonials` GSI | Same — migration `02-testimonials-status-gsi` |

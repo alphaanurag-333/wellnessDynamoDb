@@ -3,11 +3,17 @@ const {
   GetCommand,
   UpdateCommand,
   DeleteCommand,
-  ScanCommand,
+  QueryCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require("uuid");
 const { docClient } = require("../config/db");
 const { normalizeMediaField, resolveMediaFields } = require("../utils/s3");
+const {
+  listByPartitionKey,
+  buildContainsFilter,
+  appendFilter,
+  sortByCreatedAtDesc,
+} = require("../utils/dynamoList");
 
 const RECIPE_MEDIA_FIELDS = ["thumbnail", "video"];
 
@@ -143,68 +149,52 @@ async function deleteHealthRecipe(id) {
 }
 
 async function listHealthRecipes({ page = 1, limit = 10, status, type, healthConcernId, search } = {}) {
-  const safePage = Math.max(1, Number(page) || 1);
-  const safeLimit = Math.min(200, Math.max(1, Number(limit) || 10));
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const normalizedType = type ? normalizeType(type, "") : "";
   const normalizedHealthConcernId = String(healthConcernId || "").trim();
-  const normalizedSearch = String(search || "").trim().toLowerCase();
+  const searchFilter = buildContainsFilter(["title", "description"], search);
+  let filterExpression = searchFilter.filterExpression;
+  const exprNames = { ...searchFilter.exprNames };
+  const exprValues = { ...searchFilter.exprValues };
 
-  const filters = [];
-  const names = {};
-  const values = {};
-
-  if (normalizedStatus) {
-    filters.push("#status = :status");
-    names["#status"] = "status";
-    values[":status"] = normalizedStatus;
-  }
   if (normalizedType) {
-    filters.push("#type = :type");
-    names["#type"] = "type";
-    values[":type"] = normalizedType;
+    exprNames["#type"] = "type";
+    exprValues[":type"] = normalizedType;
+    filterExpression = appendFilter(filterExpression, "#type = :type");
+  }
+  if (normalizedStatus) {
+    exprNames["#status"] = "status";
+    exprValues[":status"] = normalizedStatus;
+    filterExpression = appendFilter(filterExpression, "#status = :status");
   }
   if (normalizedHealthConcernId) {
-    filters.push("#healthConcernId = :healthConcernId");
-    names["#healthConcernId"] = "healthConcernId";
-    values[":healthConcernId"] = normalizedHealthConcernId;
-  }
-  if (normalizedSearch) {
-    filters.push("(contains(#title, :search) OR contains(#description, :search))");
-    names["#title"] = "title";
-    names["#description"] = "description";
-    values[":search"] = normalizedSearch;
+    exprNames["#healthConcernId"] = "healthConcernId";
+    exprValues[":healthConcernId"] = normalizedHealthConcernId;
+    filterExpression = appendFilter(filterExpression, "#healthConcernId = :healthConcernId");
   }
 
-  const params = { TableName: TABLE };
-  if (filters.length > 0) {
-    params.FilterExpression = filters.join(" AND ");
-    params.ExpressionAttributeNames = names;
-    params.ExpressionAttributeValues = values;
-  }
+  const indexName = normalizedHealthConcernId ? "HealthConcernCreatedAtIndex" : "StatusCreatedAtIndex";
+  const partitionKeyName = normalizedHealthConcernId ? "healthConcernId" : "status";
+  const partitionKeyValue = normalizedHealthConcernId || normalizedStatus || undefined;
 
-  const rows = [];
-  let lastKey;
-  do {
-    const { Items, LastEvaluatedKey } = await docClient.send(new ScanCommand({
-      ...params,
-      ExclusiveStartKey: lastKey,
-    }));
-    if (Array.isArray(Items) && Items.length) rows.push(...Items);
-    lastKey = LastEvaluatedKey;
-  } while (lastKey);
-
-  rows.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
-  const total = rows.length;
-  const pages = Math.max(1, Math.ceil(total / safeLimit));
-  const start = (safePage - 1) * safeLimit;
-  const healthRecipes = rows
-    .slice(start, start + safeLimit)
-    .map((row) => toPublicHealthRecipe(row));
+  const { items, pagination } = await listByPartitionKey({
+    tableName: TABLE,
+    indexName,
+    partitionKeyName,
+    partitionKeyValue,
+    filterExpression,
+    exprNames,
+    exprValues,
+    scanIndexForward: false,
+    page,
+    limit,
+    maxLimit: 200,
+    sortFn: sortByCreatedAtDesc,
+  });
 
   return {
-    healthRecipes,
-    pagination: { page: safePage, limit: safeLimit, total, pages },
+    healthRecipes: items.map((row) => toPublicHealthRecipe(row)),
+    pagination,
   };
 }
 

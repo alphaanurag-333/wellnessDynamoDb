@@ -27,8 +27,8 @@ Conditional writes, batch operations, transactions, and retry behavior as implem
 | **GetItem** | All tables except batch-only OTP delete path |
 | **UpdateItem** | All tables except `RegistrationOtp` |
 | **DeleteItem** | All entity tables |
-| **Query** | User, Admin, WellnessCoach, AssistantWellnessCoach, StaticPage, Coupon, Specialization |
-| **Scan** | User, WellnessCoach, AssistantWellnessCoach, all content `list*` functions, FCM audience |
+| **Query** | All tables — lookups, `list*` via `dynamoList.js`, FCM harvest |
+| **Scan** | **None** in models (as of 2026-06-18) |
 | **BatchWriteItem** | `RegistrationOtp` only |
 | **TransactWriteItem** | **None** |
 
@@ -59,13 +59,13 @@ ConditionExpression: attribute_exists(id)
 
 Standard for all content and identity updates.
 
-**Admin-specific:**
+**Admin-specific (legacy rows only):**
 
 ```
 ConditionExpression: attribute_exists(id) AND attribute_exists(createdAt)
 ```
 
-Required because `Admin` uses composite primary key (`id` + `createdAt`).
+Used when resolving legacy composite-key admin items. New deployments use single-key `id` only.
 
 ### Delete (existence check)
 
@@ -149,24 +149,13 @@ Configurable via SDK client options — **not customized** in `Backend/config/db
 
 ### DynamoDB native pagination
 
-Scan loops use `ExclusiveStartKey` / `LastEvaluatedKey` until exhaustion:
-
-```javascript
-do {
-  const { Items, LastEvaluatedKey } = await docClient.send(new ScanCommand({ ... }));
-  rows.push(...Items);
-  lastKey = LastEvaluatedKey;
-} while (lastKey);
-```
+`Backend/utils/dynamoList.js` iterates Query results with `ExclusiveStartKey` / `LastEvaluatedKey`, applying skip/limit for page-based API pagination without loading the full table into memory first.
 
 ### Application pagination
 
-After **full table scan**, results are:
+List endpoints accept `page` and `limit`. When no status partition is provided, `dynamoList` queries `active` and `inactive` (and `blocked` for users) partitions separately and merges — still bounded to status GSIs, not full-table Scan.
 
-1. Sorted in memory (`createdAt` or `sentAt` descending)
-2. Sliced by `page` and `limit`
-
-This is **not** DynamoDB cursor-based API pagination — every list request re-scans (or re-queries) the full dataset.
+Text search (`contains`) is applied as `FilterExpression` on Query results.
 
 ---
 

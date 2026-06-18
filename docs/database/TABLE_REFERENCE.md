@@ -52,8 +52,8 @@ Quick schema reference for all 21 DynamoDB tables. For narrative context and API
 | | |
 |---|---|
 | **PK** | `id` |
-| **SK** | `createdAt` |
-| **GSIs** | `EmailIndex`, `PhoneIndex` |
+| **SK** | — |
+| **GSIs** | `EmailIndex` |
 | **Model** | `adminModel.js` |
 
 | Attribute | Description |
@@ -81,6 +81,7 @@ Quick schema reference for all 21 DynamoDB tables. For narrative context and API
 | `specializationId` | → `Specialization.id` |
 | `country`, `state`, `city` | |
 | `password` | bcrypt |
+| `fcmId` | Push token (set via profile update) |
 | `status` | `active` \| `inactive` |
 | `approvalStatus` | `pending` \| `approved` \| `rejected` |
 | `otp`, `otpExpire` | |
@@ -103,6 +104,7 @@ Quick schema reference for all 21 DynamoDB tables. For narrative context and API
 | `name`, `email`, `phone`, `phoneCountryCode`, `phoneKey` | |
 | `profileImage`, `designation` | |
 | `password`, `status`, `otp`, `otpExpire` | |
+| `fcmId` | Push token (set via profile update) |
 | `createdAt`, `updatedAt` | |
 
 ---

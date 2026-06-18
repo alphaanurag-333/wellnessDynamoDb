@@ -3,12 +3,18 @@ const {
   GetCommand,
   UpdateCommand,
   DeleteCommand,
-  ScanCommand,
+  QueryCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require("uuid");
 
 const { docClient } = require("../config/db");
 const { normalizeMediaField, resolveMediaFields } = require("../utils/s3");
+const {
+  listByPartitionKey,
+  buildContainsFilter,
+  appendFilter,
+  sortByCreatedAtDesc,
+} = require("../utils/dynamoList");
 
 const TRANSFORMATION_MEDIA = ["oldImage", "newImage"];
 
@@ -129,63 +135,41 @@ async function deleteTransformation(id) {
 }
 
 async function listTransformations({ page = 1, limit = 10, status, search, userId } = {}) {
-  const safePage = Math.max(1, Number(page) || 1);
-  const safeLimit = Math.min(200, Math.max(1, Number(limit) || 10));
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
-  const normalizedSearch = String(search || "").trim().toLowerCase();
   const normalizedUserId = String(userId || "").trim();
-
-  const filters = [];
-  const exprNames = {};
-  const exprValues = {};
+  const searchFilter = buildContainsFilter(["achievements", "description"], search);
+  let filterExpression = searchFilter.filterExpression;
+  const exprNames = { ...searchFilter.exprNames };
+  const exprValues = { ...searchFilter.exprValues };
 
   if (normalizedStatus) {
-    filters.push("#status = :status");
     exprNames["#status"] = "status";
     exprValues[":status"] = normalizedStatus;
-  }
-  if (normalizedUserId) {
-    filters.push("#userId = :userId");
-    exprNames["#userId"] = "userId";
-    exprValues[":userId"] = normalizedUserId;
-  }
-  if (normalizedSearch) {
-    filters.push("(contains(#achievements, :search) OR contains(#description, :search))");
-    exprNames["#achievements"] = "achievements";
-    exprNames["#description"] = "description";
-    exprValues[":search"] = normalizedSearch;
+    filterExpression = appendFilter(filterExpression, "#status = :status");
   }
 
-  const params = { TableName: TABLE };
-  if (filters.length > 0) {
-    params.FilterExpression = filters.join(" AND ");
-    params.ExpressionAttributeNames = exprNames;
-    params.ExpressionAttributeValues = exprValues;
-  }
+  const indexName = normalizedUserId ? "UserIdCreatedAtIndex" : "StatusCreatedAtIndex";
+  const partitionKeyName = normalizedUserId ? "userId" : "status";
+  const partitionKeyValue = normalizedUserId || normalizedStatus || undefined;
 
-  const rows = [];
-  let lastKey;
-  do {
-    const { Items, LastEvaluatedKey } = await docClient.send(new ScanCommand({
-      ...params,
-      ExclusiveStartKey: lastKey,
-    }));
-    if (Array.isArray(Items) && Items.length) rows.push(...Items);
-    lastKey = LastEvaluatedKey;
-  } while (lastKey);
-
-  rows.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
-
-  const total = rows.length;
-  const pages = Math.max(1, Math.ceil(total / safeLimit));
-  const start = (safePage - 1) * safeLimit;
-  const transformations = rows
-    .slice(start, start + safeLimit)
-    .map((row) => toPublicTransformation(row));
+  const { items, pagination } = await listByPartitionKey({
+    tableName: TABLE,
+    indexName,
+    partitionKeyName,
+    partitionKeyValue,
+    filterExpression,
+    exprNames,
+    exprValues,
+    scanIndexForward: false,
+    page,
+    limit,
+    maxLimit: 200,
+    sortFn: sortByCreatedAtDesc,
+  });
 
   return {
-    transformations,
-    pagination: { page: safePage, limit: safeLimit, total, pages },
+    transformations: items.map((row) => toPublicTransformation(row)),
+    pagination,
   };
 }
 

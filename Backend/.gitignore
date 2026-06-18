@@ -34,5 +34,6 @@ Thumbs.db
 *.swo
 *~
 
-# npm
-.npm
+# DynamoDB migration backups (may contain password hashes)
+migration/backup/*.json
+

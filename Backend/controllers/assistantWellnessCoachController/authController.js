@@ -7,6 +7,7 @@ const {
   parseMediaKeyFromBody,
 } = require("../../utils/s3");
 const { createTokenPair, verifyRefreshToken } = require("../../utils/jwt");
+const { parseFcmIdFromBody } = require("../../utils/parseFcmId");
 const {
   getAssistantByEmail,
   getAssistantByPhone,
@@ -158,6 +159,9 @@ exports.updateAssistantWellnessCoachProfile = asyncHandler(async (req, res) => {
   if (phone !== undefined) updates.phone = String(phone).trim();
   if (phoneCountryCode !== undefined) updates.phoneCountryCode = String(phoneCountryCode).trim();
   if (designation !== undefined) updates.designation = String(designation || "").trim() || null;
+
+  const fcmId = parseFcmIdFromBody(req.body);
+  if (fcmId !== undefined) updates.fcmId = fcmId;
 
   if (profileImage !== undefined) {
     const key = parseMediaKeyFromBody(profileImage, "profileImage");

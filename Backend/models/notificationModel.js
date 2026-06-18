@@ -3,12 +3,18 @@ const {
   GetCommand,
   UpdateCommand,
   DeleteCommand,
-  ScanCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require("uuid");
 
 const { docClient } = require("../config/db");
 const { normalizeMediaField, resolvePublicUrl } = require("../utils/s3");
+const {
+  listByPartitionKey,
+  buildContainsFilter,
+  appendFilter,
+  sortBySentAtDesc,
+  DEFAULT_STATUS_PARTITIONS,
+} = require("../utils/dynamoList");
 
 const TABLE = "Notification";
 const STATUS = new Set(["active", "inactive"]);
@@ -110,67 +116,42 @@ async function deleteNotification(id) {
 }
 
 async function listNotifications({ page = 1, limit = 10, status, audienceType, search } = {}) {
-  const safePage = Math.max(1, Number(page) || 1);
-  const safeLimit = Math.min(200, Math.max(1, Number(limit) || 10));
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const normalizedAudience = audienceType ? normalizeAudienceType(audienceType, "") : "";
-  const normalizedSearch = String(search || "").trim().toLowerCase();
-
-  const filters = [];
-  const exprNames = {};
-  const exprValues = {};
+  const searchFilter = buildContainsFilter(["message"], search);
+  let filterExpression = searchFilter.filterExpression;
+  const exprNames = { ...searchFilter.exprNames };
+  const exprValues = { ...searchFilter.exprValues };
 
   if (normalizedStatus) {
-    filters.push("#status = :status");
     exprNames["#status"] = "status";
     exprValues[":status"] = normalizedStatus;
-  }
-  if (normalizedAudience) {
-    filters.push("#audienceType = :audienceType");
-    exprNames["#audienceType"] = "audienceType";
-    exprValues[":audienceType"] = normalizedAudience;
-  }
-  if (normalizedSearch) {
-    filters.push("contains(#message, :search)");
-    exprNames["#message"] = "message";
-    exprValues[":search"] = normalizedSearch;
+    filterExpression = appendFilter(filterExpression, "#status = :status");
   }
 
-  const params = { TableName: TABLE };
-  if (filters.length > 0) {
-    params.FilterExpression = filters.join(" AND ");
-    params.ExpressionAttributeNames = exprNames;
-    params.ExpressionAttributeValues = exprValues;
-  }
+  const indexName = normalizedAudience ? "AudienceSentAtIndex" : "StatusSentAtIndex";
+  const partitionKeyName = normalizedAudience ? "audienceType" : "status";
+  const partitionKeyValue = normalizedAudience || normalizedStatus || undefined;
 
-  const rows = [];
-  let lastKey;
-  do {
-    const { Items, LastEvaluatedKey } = await docClient.send(new ScanCommand({
-      ...params,
-      ExclusiveStartKey: lastKey,
-    }));
-    if (Array.isArray(Items) && Items.length) rows.push(...Items);
-    lastKey = LastEvaluatedKey;
-  } while (lastKey);
-
-  rows.sort((a, b) => String(b.sentAt || "").localeCompare(String(a.sentAt || "")));
-
-  const total = rows.length;
-  const pages = Math.max(1, Math.ceil(total / safeLimit));
-  const start = (safePage - 1) * safeLimit;
-  const notifications = rows
-    .slice(start, start + safeLimit)
-    .map((row) => toPublicNotification(row));
+  const { items, pagination } = await listByPartitionKey({
+    tableName: TABLE,
+    indexName,
+    partitionKeyName,
+    partitionKeyValue,
+    statusPartitions: !normalizedAudience && !normalizedStatus ? DEFAULT_STATUS_PARTITIONS : undefined,
+    filterExpression,
+    exprNames,
+    exprValues,
+    scanIndexForward: false,
+    page,
+    limit,
+    maxLimit: 200,
+    sortFn: sortBySentAtDesc,
+  });
 
   return {
-    notifications,
-    pagination: {
-      page: safePage,
-      limit: safeLimit,
-      total,
-      pages,
-    },
+    notifications: items.map((row) => toPublicNotification(row)),
+    pagination,
   };
 }
 

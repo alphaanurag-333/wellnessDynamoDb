@@ -3,7 +3,6 @@ const {
   GetCommand,
   UpdateCommand,
   DeleteCommand,
-  ScanCommand,
   QueryCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require("uuid");
@@ -13,6 +12,11 @@ const {
   normalizeStoredMedia,
   resolvePublicUrl,
 } = require("../utils/s3");
+const {
+  listByPartitionKey,
+  buildContainsFilter,
+  sortByCreatedAtDesc,
+} = require("../utils/dynamoList");
 
 const TABLE = "User";
 
@@ -309,59 +313,26 @@ async function deleteUser(id) {
 }
 
 async function listUsers({ page = 1, limit = 20, status, search } = {}) {
-  const safePage = Math.max(1, Number(page) || 1);
-  const safeLimit = Math.min(200, Math.max(1, Number(limit) || 20));
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
-  const normalizedSearch = String(search || "").trim().toLowerCase();
-
-  const filters = [];
-  const names = {};
-  const values = {};
-
-  if (normalizedStatus) {
-    filters.push("#status = :status");
-    names["#status"] = "status";
-    values[":status"] = normalizedStatus;
-  }
-  if (normalizedSearch) {
-    filters.push(
-      "(contains(#name, :search) OR contains(#email, :search) OR contains(#phone, :search))"
-    );
-    names["#name"] = "name";
-    names["#email"] = "email";
-    names["#phone"] = "phone";
-    values[":search"] = normalizedSearch;
-  }
-
-  const params = { TableName: TABLE };
-  if (filters.length > 0) {
-    params.FilterExpression = filters.join(" AND ");
-    params.ExpressionAttributeNames = names;
-    params.ExpressionAttributeValues = values;
-  }
-
-  const rows = [];
-  let lastKey;
-  do {
-    const { Items, LastEvaluatedKey } = await docClient.send(
-      new ScanCommand({
-        ...params,
-        ExclusiveStartKey: lastKey,
-      })
-    );
-    if (Array.isArray(Items) && Items.length) rows.push(...Items);
-    lastKey = LastEvaluatedKey;
-  } while (lastKey);
-
-  rows.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
-  const total = rows.length;
-  const pages = Math.max(1, Math.ceil(total / safeLimit));
-  const start = (safePage - 1) * safeLimit;
-  const users = rows.slice(start, start + safeLimit).map(withLegacyId);
+  const searchFilter = buildContainsFilter(["name", "email", "phone"], search);
+  const { items, pagination } = await listByPartitionKey({
+    tableName: TABLE,
+    indexName: "StatusCreatedAtIndex",
+    partitionKeyValue: normalizedStatus || undefined,
+    statusPartitions: ["active", "inactive", "blocked"],
+    filterExpression: searchFilter.filterExpression,
+    exprNames: searchFilter.exprNames,
+    exprValues: searchFilter.exprValues,
+    scanIndexForward: false,
+    page,
+    limit,
+    maxLimit: 200,
+    sortFn: sortByCreatedAtDesc,
+  });
 
   return {
-    users,
-    pagination: { page: safePage, limit: safeLimit, total, pages },
+    users: items.map(withLegacyId),
+    pagination,
   };
 }
 

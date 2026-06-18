@@ -6,29 +6,15 @@ const { client } = require("../config/db");
 async function createAdminTable() {
   const params = {
     TableName: "Admin",
-    KeySchema: [
-      { AttributeName: "id",        KeyType: "HASH"  },
-      { AttributeName: "createdAt", KeyType: "RANGE" },
-    ],
+    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
     AttributeDefinitions: [
-      { AttributeName: "id",        AttributeType: "S" }, // table HASH key
-      { AttributeName: "createdAt", AttributeType: "S" }, // table SORT key
-      { AttributeName: "email",     AttributeType: "S" }, // GSI HASH key
-      { AttributeName: "phone",     AttributeType: "S" }, // GSI HASH key
+      { AttributeName: "id", AttributeType: "S" },
+      { AttributeName: "email", AttributeType: "S" },
     ],
     GlobalSecondaryIndexes: [
       {
         IndexName: "EmailIndex",
-        KeySchema: [
-          { AttributeName: "email", KeyType: "HASH" },
-        ],
-        Projection: { ProjectionType: "ALL" },
-      },
-      {
-        IndexName: "PhoneIndex",
-        KeySchema: [
-          { AttributeName: "phone", KeyType: "HASH" },
-        ],
+        KeySchema: [{ AttributeName: "email", KeyType: "HASH" }],
         Projection: { ProjectionType: "ALL" },
       },
     ],

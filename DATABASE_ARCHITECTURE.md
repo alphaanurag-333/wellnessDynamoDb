@@ -7,6 +7,8 @@ Generated from codebase analysis — all schemas, indexes, and access patterns a
 
 | Document | Description |
 |---|---|
+| [ISSUES_REPORT.md](ISSUES_REPORT.md) | Schema audit — issues, severity, recommendations |
+| [STANDARD_DB_STRUCTURE.md](STANDARD_DB_STRUCTURE.md) | Target schema, naming conventions, migration plan |
 | [docs/database/README.md](docs/database/README.md) | Documentation index |
 | [docs/database/RELATIONSHIPS.md](docs/database/RELATIONSHIPS.md) | Entity relationships & ER diagrams |
 | [docs/database/ACCESS_PATTERNS.md](docs/database/ACCESS_PATTERNS.md) | Query/Scan catalog by table |
@@ -195,11 +197,11 @@ Startup verifies connectivity via `ListTablesCommand` unless `DYNAMODB_SKIP_VERI
 | Property | Value |
 |---|---|
 | **Partition key** | `id` (S) |
-| **Sort key** | `createdAt` (S) |
+| **Sort key** | — |
 | **TTL** | Not configured |
 | **Entity** | Platform admin accounts |
 
-> **Note:** Composite primary key (`id` + `createdAt`). `getAdminKeyById()` queries the base table by `id` only (returns latest `createdAt` via `ScanIndexForward: false, Limit: 1`) before `GetItem`/`UpdateItem`/`DeleteItem`.
+> **Note:** DDL uses single hash key `id`. `adminModel.js` falls back to Query for legacy composite-key rows (`id` + `createdAt`) during migration.
 
 **Attributes** (from `adminModel.js`):
 
@@ -210,7 +212,7 @@ Startup verifies connectivity via `ListTablesCommand` unless `DYNAMODB_SKIP_VERI
 | `name` | S | |
 | `email` | S | GSI key |
 | `password` | S | bcrypt hash (field name `password`, not `passwordHash`) |
-| `phone` | S | GSI key defined; **not queried in application code** |
+| `phone` | S | Optional |
 | `profileImage` | S | S3 key |
 | `resetPasswordToken`, `resetPasswordExpire` | S | |
 | `status` | S | |
@@ -298,7 +300,7 @@ Startup verifies connectivity via `ListTablesCommand` unless `DYNAMODB_SKIP_VERI
 | GET | `/api/coach/specializations` | Read `Specialization` (not coach table) |
 | — | `protectWellnessCoach` | Read `WellnessCoach` |
 | — | `assistantWellnessCoachModel` populate | Read `WellnessCoach` by id |
-| — | `fcmAudience.js` | Scan `WellnessCoach` for FCM tokens |
+| — | `fcmAudience.js` | Query `StatusCreatedAtIndex` for FCM tokens |
 
 ---
 
@@ -335,7 +337,7 @@ Startup verifies connectivity via `ListTablesCommand` unless `DYNAMODB_SKIP_VERI
 | GET/POST/PATCH/DELETE | `/api/admin/wellness-coaches/:coachId/assistants/*` | Admin CRUD |
 | GET | `/api/admin/wellness-coaches/assistants` | List all assistants |
 | — | `protectAssistantWellnessCoach` | Read by id |
-| — | `fcmAudience.js` | Scan for FCM tokens |
+| — | `fcmAudience.js` | Query `StatusCreatedAtIndex` for FCM tokens |
 
 ---
 
@@ -542,7 +544,7 @@ All GSIs use **`ProjectionType: ALL`** unless noted.
 |---|---|---|---|---|
 | `User` | `EmailIndex` | `email` | — | **Yes** — login, duplicate check |
 | `User` | `PhoneKeyIndex` | `phoneKey` | — | **Yes** — login, duplicate check |
-| `User` | `StatusCreatedAtIndex` | `status` | `createdAt` | **No** — listing uses Scan |
+| `User` | `StatusCreatedAtIndex` | `status` | `createdAt` | **Yes** — `listUsers`, FCM harvest |
 | `Admin` | `EmailIndex` | `email` | — | **Yes** — login |
 | `Admin` | `PhoneIndex` | `phone` | — | **No** |
 | `WellnessCoach` | `EmailIndex` | `email` | — | **Yes** |
@@ -610,12 +612,12 @@ All GSIs use **`ProjectionType: ALL`** unless noted.
 
 | # | Pattern | Table | Operation | Notes |
 |---|---|---|---|---|
-| AP-12 | List users (filter status, search name/email/phone) | `User` | **Scan** + in-memory sort/paginate | `StatusCreatedAtIndex` **not used** |
-| AP-13 | List wellness coaches | `WellnessCoach` | **Scan** | GSIs unused for listing |
-| AP-14 | Count all coaches | `WellnessCoach` | **Scan** `Select: COUNT` | |
-| AP-15 | List assistants (all or by coach) | `AssistantWellnessCoach` | **Scan** or **Query** `WellnessCoachIndex` | Query when `wellnessCoachId` provided |
+| AP-12 | List users (filter status, search name/email/phone) | `User` | **Query** `StatusCreatedAtIndex` + FilterExpression | Via `dynamoList.js` |
+| AP-13 | List wellness coaches | `WellnessCoach` | **Query** `StatusCreatedAtIndex` | |
+| AP-14 | Count all coaches | `WellnessCoach` | **Query COUNT** on `StatusCreatedAtIndex` | |
+| AP-15 | List assistants (all or by coach) | `AssistantWellnessCoach` | **Query** `StatusCreatedAtIndex` or `WellnessCoachIndex` | `WellnessCoachIndex` when `wellnessCoachId` provided |
 | AP-16 | Count assistants per coach | `AssistantWellnessCoach` / `WellnessCoachIndex` | Query `Select: COUNT` | Efficient parent-child pattern |
-| AP-17 | List FAQs, coupons, notifications, banners, etc. | Respective tables | **Scan** + filter | Despite `Status*Index` GSIs on many tables |
+| AP-17 | List FAQs, coupons, notifications, banners, etc. | Respective tables | **Query** on status/domain GSIs | Via `dynamoList.js` |
 
 ### Content CRUD (typical pattern)
 
@@ -639,14 +641,14 @@ All GSIs use **`ProjectionType: ALL`** unless noted.
 
 | # | Pattern | Tables | Operation |
 |---|---|---|---|
-| AP-26 | Public active lists (banners, FAQs, health content, etc.) | Content tables | Scan with `status=active` filter in model `list*()` |
+| AP-26 | Public active lists (banners, FAQs, health content, etc.) | Content tables | Query `Status*Index` with `status=active` |
 
 ### Push notifications (FCM)
 
 | # | Pattern | Tables | Operation |
 |---|---|---|---|
-| AP-27 | Collect FCM tokens for `users` audience | `User` | Scan: `status=active AND attribute_exists(fcm_id)` |
-| AP-28 | Collect FCM tokens for `coaches` audience | `WellnessCoach`, `AssistantWellnessCoach` | Scan (same filter) |
+| AP-27 | Collect FCM tokens for `users` audience | `User` | Query `StatusCreatedAtIndex` + `fcm_id`/`fcmId` filter |
+| AP-28 | Collect FCM tokens for `coaches` audience | `WellnessCoach`, `AssistantWellnessCoach` | Query `StatusCreatedAtIndex` + `fcmId` filter |
 
 ### Cross-table reads (application-level joins)
 
@@ -821,13 +823,10 @@ erDiagram
 
 | Issue | Affected tables | Impact |
 |---|---|---|
-| **Full table Scan** for admin/public listing | User, WellnessCoach, most content tables | RCU grows linearly with table size; latency increases |
-| **Unused GSIs** (~20 indexes defined but not queried) | Many tables | Extra storage cost and write amplification on every Put/Update |
-| **In-memory pagination** after full Scan | All `list*()` functions | Fetches entire table (paginated segments) then slices in Node — does not scale |
-| **`contains()` FilterExpression on Scan** | Search features | Expensive; cannot use indexes |
-| **Admin composite key** | `Admin` | Extra Query before every Get/Update/Delete by id |
+| **`contains()` FilterExpression on Query** | Admin search on list endpoints | Filter applied after index key — acceptable at current scale |
 | **No BatchGet** for populate patterns | Assistant listing with coach embed | N+1 GetItem pattern when populating coaches |
-| **FCM audience Scan** | User, WellnessCoach, AssistantWellnessCoach | Full scan of active users/coaches on each notification send |
+| **`WellnessCoach.SpecializationIdIndex` unused** | WellnessCoach | Could optimize specialization-filtered coach lists |
+| **Legacy Admin composite rows** | Admin | Fallback Query until data migrated to single-key PK |
 
 ### SDK retry behavior
 
@@ -846,13 +845,13 @@ The AWS SDK applies default retry with exponential backoff for throttling and tr
 5. **IAM policies** restricting DynamoDB access per environment
 6. **Whether `payment_gateways` credentials** are filtered before public `AppConfig` response
 
-### Recommendations (based on code gaps)
+### Recommendations (remaining)
 
-1. **Use existing GSIs for listing** — Replace `Scan` + filter with `Query` on `StatusCreatedAtIndex` / `StatusIndex` where `status=active` for public and admin list endpoints (e.g. `HealthRecipe`, `Banner`, `Faq`).
-2. **Use `HealthConcernCreatedAtIndex` and `UserIdCreatedAtIndex`** — `listHealthRecipes({ healthConcernId })` and `listTransformations({ userId })` currently Scan despite purpose-built GSIs.
-3. **Remove or use `Admin.PhoneIndex`** — defined but never queried.
-4. **Revisit `Admin` composite key** — `id` + `createdAt` sort key adds complexity; if only one admin row per `id` is intended, a simple `id` PK would simplify access.
-5. **Add BatchGetItem** in `populateWellnessCoaches()` for bulk assistant listings.
+1. **Migrate legacy Admin items** to single-key PK and drop composite-key fallback in `adminModel.js`.
+2. **Use `WellnessCoach.SpecializationIdIndex`** if admin UI filters coaches by specialization at scale.
+3. **Add BatchGetItem** in `populateWellnessCoaches()` for bulk assistant listings.
+4. **Rename Faq/Coupon `StatusIndex`** → `StatusCreatedAtIndex` for naming consistency (optional).
+5. **Medium-priority naming migrations** — see `STANDARD_DB_STRUCTURE.md` Phase C (`passwordHash`, `profileImage`, AppConfig camelCase).
 6. **Implement BatchWrite retry** for `deleteRegistrationOtp` unprocessed items.
 7. **Consider GSI projection review** — `ALL` projections on every GSI maximize flexibility but increase storage; narrow projections if access patterns stabilize.
 8. **Add DynamoDB health metrics / alarms** — not present in application code.

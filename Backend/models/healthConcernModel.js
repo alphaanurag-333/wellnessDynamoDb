@@ -3,11 +3,15 @@ const {
   GetCommand,
   UpdateCommand,
   DeleteCommand,
-  ScanCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require("uuid");
 const { docClient } = require("../config/db");
 const { normalizeMediaField, resolvePublicUrl } = require("../utils/s3");
+const {
+  listByPartitionKey,
+  buildContainsFilter,
+  sortByCreatedAtDesc,
+} = require("../utils/dynamoList");
 
 const TABLE = "HealthConcern";
 const STATUS = new Set(["active", "inactive"]);
@@ -96,56 +100,25 @@ async function deleteHealthConcern(id) {
 }
 
 async function listHealthConcerns({ page = 1, limit = 10, status, search } = {}) {
-  const safePage = Math.max(1, Number(page) || 1);
-  const safeLimit = Math.min(200, Math.max(1, Number(limit) || 10));
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
-  const normalizedSearch = String(search || "").trim().toLowerCase();
-
-  const filters = [];
-  const names = {};
-  const values = {};
-
-  if (normalizedStatus) {
-    filters.push("#status = :status");
-    names["#status"] = "status";
-    values[":status"] = normalizedStatus;
-  }
-  if (normalizedSearch) {
-    filters.push("(contains(#title, :search) OR contains(#description, :search))");
-    names["#title"] = "title";
-    names["#description"] = "description";
-    values[":search"] = normalizedSearch;
-  }
-
-  const params = { TableName: TABLE };
-  if (filters.length > 0) {
-    params.FilterExpression = filters.join(" AND ");
-    params.ExpressionAttributeNames = names;
-    params.ExpressionAttributeValues = values;
-  }
-
-  const rows = [];
-  let lastKey;
-  do {
-    const { Items, LastEvaluatedKey } = await docClient.send(new ScanCommand({
-      ...params,
-      ExclusiveStartKey: lastKey,
-    }));
-    if (Array.isArray(Items) && Items.length) rows.push(...Items);
-    lastKey = LastEvaluatedKey;
-  } while (lastKey);
-
-  rows.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
-  const total = rows.length;
-  const pages = Math.max(1, Math.ceil(total / safeLimit));
-  const start = (safePage - 1) * safeLimit;
-  const healthConcerns = rows
-    .slice(start, start + safeLimit)
-    .map((row) => toPublicHealthConcern(row));
+  const searchFilter = buildContainsFilter(["title", "description"], search);
+  const { items, pagination } = await listByPartitionKey({
+    tableName: TABLE,
+    indexName: "StatusCreatedAtIndex",
+    partitionKeyValue: normalizedStatus || undefined,
+    filterExpression: searchFilter.filterExpression,
+    exprNames: searchFilter.exprNames,
+    exprValues: searchFilter.exprValues,
+    scanIndexForward: false,
+    page,
+    limit,
+    maxLimit: 200,
+    sortFn: sortByCreatedAtDesc,
+  });
 
   return {
-    healthConcerns,
-    pagination: { page: safePage, limit: safeLimit, total, pages },
+    healthConcerns: items.map((row) => toPublicHealthConcern(row)),
+    pagination,
   };
 }
 

@@ -3,11 +3,15 @@ const {
   GetCommand,
   UpdateCommand,
   DeleteCommand,
-  ScanCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require("uuid");
 
 const { docClient } = require("../config/db");
+const {
+  listByPartitionKey,
+  buildContainsFilter,
+  sortByCreatedAtDesc,
+} = require("../utils/dynamoList");
 
 const TABLE = "Faq";
 const ALLOWED_STATUS = new Set(["active", "inactive"]);
@@ -85,67 +89,23 @@ async function deleteFaq(id) {
 }
 
 async function listFaqs({ page = 1, limit = 20, status, search } = {}) {
-  const safePage = Math.max(1, Number(page) || 1);
-  const safeLimit = Math.min(200, Math.max(1, Number(limit) || 20));
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
-  const normalizedSearch = String(search || "").trim().toLowerCase();
+  const searchFilter = buildContainsFilter(["question", "answer"], search);
+  const { items, pagination } = await listByPartitionKey({
+    tableName: TABLE,
+    indexName: "StatusIndex",
+    partitionKeyValue: normalizedStatus || undefined,
+    filterExpression: searchFilter.filterExpression,
+    exprNames: searchFilter.exprNames,
+    exprValues: searchFilter.exprValues,
+    scanIndexForward: false,
+    page,
+    limit,
+    maxLimit: 200,
+    sortFn: sortByCreatedAtDesc,
+  });
 
-  const filters = [];
-  const exprNames = {};
-  const exprValues = {};
-
-  if (normalizedStatus) {
-    filters.push("#status = :status");
-    exprNames["#status"] = "status";
-    exprValues[":status"] = normalizedStatus;
-  }
-
-  if (normalizedSearch) {
-    filters.push("(contains(#question, :search) OR contains(#answer, :search))");
-    exprNames["#question"] = "question";
-    exprNames["#answer"] = "answer";
-    exprValues[":search"] = normalizedSearch;
-  }
-
-  const params = {
-    TableName: TABLE,
-  };
-
-  if (filters.length > 0) {
-    params.FilterExpression = filters.join(" AND ");
-    params.ExpressionAttributeNames = exprNames;
-    params.ExpressionAttributeValues = exprValues;
-  }
-
-  const rows = [];
-  let lastKey;
-  do {
-    const { Items, LastEvaluatedKey } = await docClient.send(new ScanCommand({
-      ...params,
-      ExclusiveStartKey: lastKey,
-    }));
-    if (Array.isArray(Items) && Items.length) {
-      rows.push(...Items);
-    }
-    lastKey = LastEvaluatedKey;
-  } while (lastKey);
-
-  rows.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
-
-  const total = rows.length;
-  const pages = Math.max(1, Math.ceil(total / safeLimit));
-  const start = (safePage - 1) * safeLimit;
-  const faqs = rows.slice(start, start + safeLimit);
-
-  return {
-    faqs,
-    pagination: {
-      page: safePage,
-      limit: safeLimit,
-      total,
-      pages,
-    },
-  };
+  return { faqs: items, pagination };
 }
 
 module.exports = {

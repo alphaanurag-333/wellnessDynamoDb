@@ -3,11 +3,16 @@ const {
     GetCommand,
     UpdateCommand,
     DeleteCommand,
-    ScanCommand,
   } = require("@aws-sdk/lib-dynamodb");
   const { v4: uuidv4 } = require("uuid");
   const { docClient } = require("../config/db");
   const { normalizeStoredMedia, resolvePublicUrl } = require("../utils/s3");
+  const {
+    listByPartitionKey,
+    buildContainsFilter,
+    appendFilter,
+    sortByCreatedAtDesc,
+  } = require("../utils/dynamoList");
   
   const TABLE = "CelebrationBanners";
   const STATUS = new Set(["active", "inactive"]);
@@ -128,61 +133,44 @@ function sanitizeUpdateField(key, value) {
   }
   
   async function listCelebrationBanners({ page = 1, limit = 10, status, type, search } = {}) {
-    const safePage = Math.max(1, Number(page) || 1);
-    const safeLimit = Math.min(200, Math.max(1, Number(limit) || 10));
     const normalizedStatus = status ? normalizeStatus(status, "") : "";
     const normalizedType = type ? normalizeType(type, "") : "";
-    const normalizedSearch = String(search || "").trim().toLowerCase();
-  
-    const filters = [];
-    const names = {};
-    const values = {};
-  
+    const searchFilter = buildContainsFilter(["title"], search);
+    let filterExpression = searchFilter.filterExpression;
+    const exprNames = { ...searchFilter.exprNames };
+    const exprValues = { ...searchFilter.exprValues };
+
     if (normalizedStatus) {
-      filters.push("#status = :status");
-      names["#status"] = "status";
-      values[":status"] = normalizedStatus;
+      exprNames["#status"] = "status";
+      exprValues[":status"] = normalizedStatus;
+      filterExpression = appendFilter(filterExpression, "#status = :status");
     }
-    if (normalizedType) {
-      filters.push("#type = :type");
-      names["#type"] = "type";
-      values[":type"] = normalizedType;
-    }
-    if (normalizedSearch) {
-    filters.push("contains(#title, :search)");
-    names["#title"] = "title";
-      values[":search"] = normalizedSearch;
-    }
-  
-    const params = { TableName: TABLE };
-    if (filters.length > 0) {
-      params.FilterExpression = filters.join(" AND ");
-      params.ExpressionAttributeNames = names;
-      params.ExpressionAttributeValues = values;
-    }
-  
-    const rows = [];
-    let lastKey;
-    do {
-      const { Items, LastEvaluatedKey } = await docClient.send(new ScanCommand({
-        ...params,
-        ExclusiveStartKey: lastKey,
-      }));
-      if (Array.isArray(Items) && Items.length) rows.push(...Items);
-      lastKey = LastEvaluatedKey;
-    } while (lastKey);
-  
-    rows.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
-    const total = rows.length;
-    const pages = Math.max(1, Math.ceil(total / safeLimit));
-    const start = (safePage - 1) * safeLimit;
-    const celebrationBanners = rows
-      .slice(start, start + safeLimit)
-      .map((row) => toPublicCelebrationBanner(row));
-  
+
+    const useTypeIndex = Boolean(normalizedType);
+    const indexName = useTypeIndex ? "TypeCreatedAtIndex" : "StatusCreatedAtIndex";
+    const partitionKeyName = useTypeIndex ? "type" : "status";
+    const partitionKeyValue = useTypeIndex
+      ? normalizedType
+      : normalizedStatus || undefined;
+
+    const { items, pagination } = await listByPartitionKey({
+      tableName: TABLE,
+      indexName,
+      partitionKeyName,
+      partitionKeyValue,
+      filterExpression,
+      exprNames,
+      exprValues,
+      scanIndexForward: false,
+      page,
+      limit,
+      maxLimit: 200,
+      sortFn: sortByCreatedAtDesc,
+    });
+
     return {
-      celebrationBanners,
-      pagination: { page: safePage, limit: safeLimit, total, pages },
+      celebrationBanners: items.map((row) => toPublicCelebrationBanner(row)),
+      pagination,
     };
   }
   
