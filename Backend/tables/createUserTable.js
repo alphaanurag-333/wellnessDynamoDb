@@ -13,6 +13,7 @@ async function createUserTable() {
       { AttributeName: "phoneKey", AttributeType: "S" },
       { AttributeName: "status", AttributeType: "S" },
       { AttributeName: "createdAt", AttributeType: "S" },
+      { AttributeName: "parentCoachId", AttributeType: "S" },
     ],
     GlobalSecondaryIndexes: [
       {
@@ -29,6 +30,14 @@ async function createUserTable() {
         IndexName: "StatusCreatedAtIndex",
         KeySchema: [
           { AttributeName: "status", KeyType: "HASH" },
+          { AttributeName: "createdAt", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+      {
+        IndexName: "ParentCoachIndex",
+        KeySchema: [
+          { AttributeName: "parentCoachId", KeyType: "HASH" },
           { AttributeName: "createdAt", KeyType: "RANGE" },
         ],
         Projection: { ProjectionType: "ALL" },

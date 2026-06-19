@@ -20,6 +20,7 @@ const {
   updateAssistantController,
   deleteAssistantController,
 } = require("../../controllers/adminController/assistantWellnessCoachController");
+const { listHealUsersByCoachController } = require("../../controllers/adminController/userAssignmentController");
 
 const router = express.Router();
 
@@ -32,6 +33,7 @@ router.patch("/:id", protectAdmin, optionalWellnessCoachFile, updateWellnessCoac
 router.delete("/:id", protectAdmin, deleteWellnessCoachController);
 
 router.get("/:coachId/assistants", protectAdmin, listAssistantsController);
+router.get("/:coachId/heal-users", protectAdmin, listHealUsersByCoachController);
 router.post("/:coachId/assistants", protectAdmin, optionalAssistantWellnessCoachFile, createAssistantController);
 router.get("/:coachId/assistants/:id", protectAdmin, getAssistantByIdController);
 router.patch("/:coachId/assistants/:id", protectAdmin, optionalAssistantWellnessCoachFile, updateAssistantController);

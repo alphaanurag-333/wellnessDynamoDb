@@ -6,6 +6,8 @@ const {
   parseMediaKeyFromBody,
 } = require("../../utils/s3");
 const { getHealthConcernById } = require("../../models/healthConcernModel");
+const { getWellnessCoachById } = require("../../models/wellnessCoachModel");
+const { getAssistantWellnessCoachById } = require("../../models/assistantWellnessCoachModel");
 const {
   getUserById,
   getUserByEmail,
@@ -136,6 +138,33 @@ async function enrichUser(user) {
       };
     }
   }
+
+  if (pub.assignedCoachId && pub.assignedCoachType) {
+    if (pub.assignedCoachType === "wellness_coach") {
+      const coach = await getWellnessCoachById(pub.assignedCoachId);
+      pub.assignedCoach = coach
+        ? { id: coach.id, _id: coach._id ?? coach.id, name: coach.name, type: "wellness_coach" }
+        : null;
+    } else if (pub.assignedCoachType === "assistant_wellness_coach") {
+      const assistant = await getAssistantWellnessCoachById(pub.assignedCoachId);
+      pub.assignedCoach = assistant
+        ? {
+            id: assistant.id,
+            _id: assistant._id ?? assistant.id,
+            name: assistant.name,
+            type: "assistant_wellness_coach",
+          }
+        : null;
+    }
+  }
+
+  if (pub.parentCoachId) {
+    const parentCoach = await getWellnessCoachById(pub.parentCoachId);
+    pub.parentCoach = parentCoach
+      ? { id: parentCoach.id, _id: parentCoach._id ?? parentCoach.id, name: parentCoach.name }
+      : null;
+  }
+
   return pub;
 }
 

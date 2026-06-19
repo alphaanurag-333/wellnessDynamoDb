@@ -17,6 +17,7 @@ const {
   toPublicWellnessCoach,
 } = require("../../models/wellnessCoachModel");
 const { getSpecializationById } = require("../../models/specializationModel");
+const { ensureEntityReferralCode } = require("../../models/referralCodeModel");
 const { normalizeEmail, normalizePhone, normalizeCountryCode } = require("../../models/userModel");
 const config = require("../../config");
 const { generateOtp, getOtpExpiryDate, isOtpExpired, deliverOtp } = require("../../utils/otp");
@@ -208,10 +209,20 @@ exports.verifyWellnessCoachLoginOtp = asyncHandler(async (req, res) => {
 });
 
 exports.getWellnessCoachProfile = asyncHandler(async (req, res) => {
-  const coach = await getWellnessCoachRecordById(req.auth?.sub);
+  let coach = await getWellnessCoachRecordById(req.auth?.sub);
   if (!coach) {
     throw new AppError("Wellness coach not found", 404);
   }
+
+  await ensureEntityReferralCode({
+    tableName: "WellnessCoach",
+    entityType: "wellness_coach",
+    entityId: coach.id,
+    ownerCoachId: coach.id,
+    referralCode: coach.referralCode,
+  });
+
+  coach = await getWellnessCoachRecordById(req.auth?.sub);
 
   return res.status(200).json({
     status: true,

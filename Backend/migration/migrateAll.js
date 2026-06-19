@@ -13,12 +13,14 @@ const adminMigration = require("./migrations/01-admin-single-key");
 const testimonialsMigration = require("./migrations/02-testimonials-status-gsi");
 const phoneIndexMigration = require("./migrations/03-admin-drop-phone-index");
 const mediaFieldsMigration = require("./migrations/04-media-field-camelcase");
+const userReferralMigration = require("./migrations/05-user-referral-assignment");
 
 const MIGRATIONS = [
   adminMigration,
   testimonialsMigration,
   phoneIndexMigration,
   mediaFieldsMigration,
+  userReferralMigration,
 ];
 
 function parseOnlyArg() {
@@ -47,7 +49,8 @@ async function run() {
       migration.migrateAdminSingleKey ||
       migration.migrateTestimonialsStatusGsi ||
       migration.migrateAdminDropPhoneIndex ||
-      migration.migrateMediaFieldCamelCase;
+      migration.migrateMediaFieldCamelCase ||
+      migration.migrateUserReferralAssignment;
 
     console.log(`--- ${migration.id} ---`);
     await runner();

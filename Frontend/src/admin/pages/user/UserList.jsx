@@ -9,6 +9,7 @@ import { adminDeleteUser, adminListUsers, adminUpdateUser, resolveUserId } from 
 import { UserTableLoaderRow } from "./UserPageLoader.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
+import { UserTierBadge } from "../../../components/ReferralAssignmentShared.jsx";
 
 function formatJoined(iso) {
   if (!iso) return "—";
@@ -32,6 +33,8 @@ export function UserList() {
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [tierFilter, setTierFilter] = useState("");
+  const [assignmentFilter, setAssignmentFilter] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [togglingUserId, setTogglingUserId] = useState("");
@@ -43,7 +46,7 @@ export function UserList() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, statusFilter]);
+  }, [debouncedSearch, statusFilter, tierFilter, assignmentFilter]);
 
   const loadUsers = useCallback(async () => {
     if (!adminToken) return;
@@ -55,6 +58,8 @@ export function UserList() {
         limit,
         status: statusFilter || undefined,
         search: debouncedSearch || undefined,
+        userTier: tierFilter || undefined,
+        assignmentStatus: assignmentFilter || undefined,
       });
       setUsers(rows);
       setTotal(pg.total ?? 0);
@@ -68,7 +73,7 @@ export function UserList() {
     } finally {
       setLoading(false);
     }
-  }, [adminToken, debouncedSearch, dispatch, limit, page, statusFilter]);
+  }, [adminToken, debouncedSearch, dispatch, limit, page, statusFilter, tierFilter, assignmentFilter]);
 
   useEffect(() => {
     loadUsers();
@@ -188,6 +193,26 @@ export function UserList() {
             </div>
             <select
               className="user-list-status-select"
+              value={tierFilter}
+              onChange={(e) => setTierFilter(e.target.value)}
+              aria-label="Filter by tier"
+            >
+              <option value="">All tiers</option>
+              <option value="seek">Seek (free)</option>
+              <option value="heal">Heal (paid)</option>
+            </select>
+            <select
+              className="user-list-status-select"
+              value={assignmentFilter}
+              onChange={(e) => setAssignmentFilter(e.target.value)}
+              aria-label="Filter by assignment"
+            >
+              <option value="">All assignments</option>
+              <option value="pending_admin">Pending admin</option>
+              <option value="assigned">Assigned</option>
+            </select>
+            <select
+              className="user-list-status-select"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               aria-label="Filter by status"
@@ -219,6 +244,7 @@ export function UserList() {
             <tr>
               <th>S No.</th>
               <th>User Info</th>
+              <th>Tier</th>
               <th>Mobile Number</th>
               <th>Country & State</th>
               <th>Created At</th>
@@ -228,10 +254,10 @@ export function UserList() {
           </thead>
           <tbody>
             {loading ? (
-              <UserTableLoaderRow colSpan={7} />
+              <UserTableLoaderRow colSpan={8} />
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={7}>
+                <td colSpan={8}>
                   <p className="table-placeholder">No users match your filters.</p>
                 </td>
               </tr>
@@ -257,6 +283,9 @@ export function UserList() {
                           {phcTitle ? <div className="user-cell__muted small">{phcTitle}</div> : null}
                         </div>
                       </div>
+                    </td>
+                    <td>
+                      <UserTierBadge tier={u.userTier} assignmentStatus={u.assignmentStatus} />
                     </td>
                     <td>
                       <div className="user-cell__muted">{[u.phoneCountryCode, u.phone].filter(Boolean).join(" ") || "—"}</div>

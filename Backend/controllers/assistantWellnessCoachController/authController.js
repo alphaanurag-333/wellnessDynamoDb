@@ -17,6 +17,7 @@ const {
   toPublicAssistant,
 } = require("../../models/assistantWellnessCoachModel");
 const { normalizePhone, normalizeCountryCode } = require("../../models/userModel");
+const { ensureEntityReferralCode } = require("../../models/referralCodeModel");
 const config = require("../../config");
 const { generateOtp, getOtpExpiryDate, isOtpExpired, deliverOtp } = require("../../utils/otp");
 
@@ -132,9 +133,21 @@ exports.verifyAssistantWellnessCoachLoginOtp = asyncHandler(async (req, res) => 
 });
 
 exports.getAssistantWellnessCoachProfile = asyncHandler(async (req, res) => {
-  const assistant = await getAssistantWellnessCoachById(req.auth?.sub);
+  let assistant = await getAssistantWellnessCoachById(req.auth?.sub);
   if (!assistant) {
     throw new AppError("Assistant wellness coach not found", 404);
+  }
+
+  const parentCoachId = String(assistant.wellnessCoachId || "").trim();
+  if (parentCoachId) {
+    await ensureEntityReferralCode({
+      tableName: "AssistantWellnessCoach",
+      entityType: "assistant_wellness_coach",
+      entityId: assistant.id,
+      ownerCoachId: parentCoachId,
+      referralCode: assistant.referralCode,
+    });
+    assistant = await getAssistantWellnessCoachById(req.auth?.sub);
   }
 
   const populated = await populateWellnessCoach(assistant);

@@ -7,6 +7,7 @@ import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { NotFoundPage } from "../NotFoundPage.jsx";
 import { WellnessCoachPageLoadingState } from "../wellnessCoach/WellnessCoachPageLoader.jsx";
 import { formatDate, formatPhone, resolveAssistantId } from "./AssistantShared.js";
+import { CopyReferralCode } from "../../../components/ReferralAssignmentShared.jsx";
 
 function DetailRow({ label, value }) {
   return (
@@ -113,6 +114,7 @@ export function AssistantView() {
           <DetailRow label="Email" value={assistant.email} />
           <DetailRow label="Mobile" value={formatPhone(assistant)} />
           <DetailRow label="Designation" value={assistant.designation} />
+          <CopyReferralCode code={assistant.referralCode} label="Referral code" />
           <DetailRow label="Created" value={formatDate(assistant.createdAt)} />
           <DetailRow label="Updated" value={formatDate(assistant.updatedAt)} />
         </div>

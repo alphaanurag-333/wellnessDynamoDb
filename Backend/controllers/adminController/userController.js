@@ -19,8 +19,8 @@ const {
 } = require("../userController/userProfileHelpers");
 
 exports.listUsersController = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 20, status, search } = req.query;
-  const data = await listUsers({ page, limit, status, search });
+  const { page = 1, limit = 20, status, search, userTier, assignmentStatus } = req.query;
+  const data = await listUsers({ page, limit, status, search, userTier, assignmentStatus });
   const users = await Promise.all(data.users.map((u) => enrichUser(u)));
   return res.status(200).json({ status: true, users, pagination: data.pagination });
 });

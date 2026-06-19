@@ -15,6 +15,7 @@ import {
 import { CoachPageLoadingState } from "../components/CoachPageLoader.jsx";
 import { mediaUrl } from "../../media.js";
 import { logoutCoach, setCoach } from "../../store/authSlice.js";
+import { CopyReferralCode } from "../../components/ReferralAssignmentShared.jsx";
 
 const NAME_REGEX = /^[A-Za-z ]{2,40}$/;
 const PHONE_REGEX = /^\d{10}$/;
@@ -225,6 +226,9 @@ export function CoachProfile() {
               maxLength={2000}
               placeholder="Tell clients about your experience and approach."
             />
+          </ProfileField>
+          <ProfileField label="Referral code" fullWidth>
+            <CopyReferralCode code={coach?.referralCode} label="" />
           </ProfileField>
         </>
       }

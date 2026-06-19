@@ -21,6 +21,10 @@ const {
 } = require("../utils/s3");
 const { toPublicProfile } = require("../utils/toPublicProfile");
 const {
+  registerReferralCode,
+  generateUniqueReferralCode,
+} = require("./referralCodeModel");
+const {
   listByPartitionKey,
   buildContainsFilter,
   sortByCreatedAtDesc,
@@ -75,6 +79,7 @@ function buildAssistantItem(input, { id, now } = {}) {
     password: input.password != null ? String(input.password) : null,
     fcmId: input.fcmId != null ? String(input.fcmId).trim() || null : null,
     status: normalizeStatus(input.status),
+    referralCode: input.referralCode != null ? String(input.referralCode).trim().toUpperCase() || null : null,
     createdAt: now,
     updatedAt: now,
   };
@@ -235,12 +240,14 @@ async function countAssistantsByWellnessCoachId(wellnessCoachId) {
 
 async function createAssistantWellnessCoach(fields) {
   const now = new Date().toISOString();
-  const item = buildAssistantItem(fields, { now });
+  const referralCode = fields.referralCode || (await generateUniqueReferralCode());
+  const item = buildAssistantItem({ ...fields, referralCode }, { now });
 
   if (!item.wellnessCoachId) throw new Error("wellnessCoachId is required");
   if (!item.name) throw new Error("name is required");
   if (!item.email) throw new Error("email is required");
   if (!item.phone) throw new Error("phone is required");
+  if (!item.referralCode) throw new Error("referralCode is required");
 
   await docClient.send(
     new PutCommand({
@@ -249,6 +256,13 @@ async function createAssistantWellnessCoach(fields) {
       ConditionExpression: "attribute_not_exists(id)",
     })
   );
+
+  await registerReferralCode({
+    referralCode: item.referralCode,
+    entityType: "assistant_wellness_coach",
+    entityId: item.id,
+    ownerCoachId: item.wellnessCoachId,
+  });
 
   return withLegacyId(item);
 }

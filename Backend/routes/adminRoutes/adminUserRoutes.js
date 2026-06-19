@@ -9,12 +9,20 @@ const {
   updateUserController,
   deleteUserController,
 } = require("../../controllers/adminController/userController");
+const {
+  convertUserToHealController,
+  assignHealUserController,
+  reassignHealUserController,
+} = require("../../controllers/adminController/userAssignmentController");
 
 const router = express.Router();
 
 router.get("/", protectAdmin, listUsersController);
 router.get("/:id", protectAdmin, getUserByIdController);
 router.post("/", protectAdmin, optionalUserFile, createUserController);
+router.post("/:id/convert-to-heal", protectAdmin, convertUserToHealController);
+router.post("/:id/assign-coach", protectAdmin, assignHealUserController);
+router.post("/:id/reassign-coach", protectAdmin, reassignHealUserController);
 router.patch("/:id", protectAdmin, optionalUserFile, updateUserController);
 router.delete("/:id", protectAdmin, deleteUserController);
 

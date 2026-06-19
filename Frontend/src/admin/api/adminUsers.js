@@ -144,12 +144,14 @@ export function buildUpdateUserPayload(fields) {
   return payload;
 }
 
-export async function adminListUsers(token, { page = 1, limit = 20, status, search } = {}) {
+export async function adminListUsers(token, { page = 1, limit = 20, status, search, userTier, assignmentStatus } = {}) {
   const q = new URLSearchParams();
   q.set("page", String(page));
   q.set("limit", String(limit));
   if (status) q.set("status", status);
   if (search && String(search).trim()) q.set("search", String(search).trim());
+  if (userTier) q.set("userTier", userTier);
+  if (assignmentStatus) q.set("assignmentStatus", assignmentStatus);
   try {
     const { data: body } = await api.get(`${usersBase()}?${q}`, {
       headers: authHeader(token),
@@ -231,3 +233,5 @@ export async function adminDeleteUser(token, id) {
 
 /** @deprecated Use buildCreateUserPayload — kept for UserAdd.jsx */
 export const buildApiPayload = buildCreateUserPayload;
+
+export { normalizeUser };

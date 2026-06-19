@@ -22,9 +22,15 @@ const TABLE = "User";
 
 const USER_ALLOWED_STATUS = ["active", "inactive", "blocked"];
 const USER_ALLOWED_GENDERS = ["male", "female", "other", "boy", "girl", "guess"];
+const USER_ALLOWED_TIERS = ["seek", "heal"];
+const USER_ALLOWED_ASSIGNMENT_STATUSES = ["assigned", "pending_admin"];
+const USER_ALLOWED_ASSIGNED_COACH_TYPES = ["wellness_coach", "assistant_wellness_coach"];
 
 const STATUS = new Set(USER_ALLOWED_STATUS);
 const GENDERS = new Set(USER_ALLOWED_GENDERS);
+const TIERS = new Set(USER_ALLOWED_TIERS);
+const ASSIGNMENT_STATUSES = new Set(USER_ALLOWED_ASSIGNMENT_STATUSES);
+const ASSIGNED_COACH_TYPES = new Set(USER_ALLOWED_ASSIGNED_COACH_TYPES);
 
 function normalizeEmail(email) {
   return String(email || "").toLowerCase().trim();
@@ -56,6 +62,28 @@ function normalizeStatus(value, fallback = "active") {
 function normalizeGender(value, fallback = "boy") {
   const next = String(value || fallback).toLowerCase().trim();
   return GENDERS.has(next) ? next : fallback;
+}
+
+function normalizeUserTier(value, fallback = "seek") {
+  const next = String(value || fallback).toLowerCase().trim();
+  return TIERS.has(next) ? next : fallback;
+}
+
+function normalizeAssignmentStatus(value) {
+  if (value == null || value === "") return null;
+  const next = String(value).toLowerCase().trim();
+  return ASSIGNMENT_STATUSES.has(next) ? next : null;
+}
+
+function normalizeAssignedCoachType(value) {
+  if (value == null || value === "") return null;
+  const next = String(value).toLowerCase().trim();
+  return ASSIGNED_COACH_TYPES.has(next) ? next : null;
+}
+
+function normalizeReferralCodeField(value) {
+  if (value == null || value === "") return null;
+  return String(value).trim().toUpperCase() || null;
 }
 
 function normalizeDob(value) {
@@ -107,6 +135,11 @@ function sanitizeUpdateField(key, value) {
   if (key === "profileImage") {
     return normalizeProfileImageField(value);
   }
+  if (key === "userTier") return normalizeUserTier(value);
+  if (key === "assignmentStatus") return normalizeAssignmentStatus(value);
+  if (key === "assignedCoachType") return normalizeAssignedCoachType(value);
+  if (key === "referralCode" || key === "referredByCode") return normalizeReferralCodeField(value);
+  if (key === "convertedAt") return normalizeDob(value);
   if (
     [
       "name",
@@ -119,6 +152,11 @@ function sanitizeUpdateField(key, value) {
       "fcm_id",
       "otp",
       "resetPasswordToken",
+      "assignedCoachId",
+      "parentCoachId",
+      "referredByUserId",
+      "referredByEntityType",
+      "referredByEntityId",
     ].includes(key)
   ) {
     const s = value == null ? "" : String(value).trim();
@@ -170,6 +208,19 @@ function buildUserItem(input, { id, now } = {}) {
     otpExpire: input.otpExpire ? normalizeDob(input.otpExpire) : null,
     resetPasswordToken: input.resetPasswordToken != null ? String(input.resetPasswordToken) : null,
     resetPasswordExpire: input.resetPasswordExpire ? normalizeDob(input.resetPasswordExpire) : null,
+    userTier: normalizeUserTier(input.userTier),
+    referralCode: normalizeReferralCodeField(input.referralCode),
+    referredByUserId: input.referredByUserId != null ? String(input.referredByUserId).trim() || null : null,
+    referredByCode: normalizeReferralCodeField(input.referredByCode),
+    referredByEntityType:
+      input.referredByEntityType != null ? String(input.referredByEntityType).trim() || null : null,
+    referredByEntityId:
+      input.referredByEntityId != null ? String(input.referredByEntityId).trim() || null : null,
+    assignedCoachId: input.assignedCoachId != null ? String(input.assignedCoachId).trim() || null : null,
+    assignedCoachType: normalizeAssignedCoachType(input.assignedCoachType),
+    parentCoachId: input.parentCoachId != null ? String(input.parentCoachId).trim() || null : null,
+    assignmentStatus: normalizeAssignmentStatus(input.assignmentStatus),
+    convertedAt: input.convertedAt ? normalizeDob(input.convertedAt) : null,
     createdAt: now,
     updatedAt: now,
   };
@@ -237,9 +288,13 @@ async function getUserByPhone(phoneCountryCode, phone) {
 
 async function updateUser(id, updates) {
   const blockedFields = new Set(["id", "_id", "createdAt", "phoneKey"]);
-  const entries = Object.entries(updates || {})
-    .filter(([k, v]) => !blockedFields.has(k) && v !== undefined)
-    .map(([k, v]) => [k, sanitizeUpdateField(k, v)]);
+  const immutableOnceFields = new Set([
+    "referredByUserId",
+    "referredByCode",
+    "referredByEntityType",
+    "referredByEntityId",
+    "convertedAt",
+  ]);
 
   const current = await getUserById(id);
   if (!current) {
@@ -247,6 +302,18 @@ async function updateUser(id, updates) {
     err.name = "NotFoundError";
     throw err;
   }
+
+  for (const key of immutableOnceFields) {
+    if (updates?.[key] !== undefined && current[key] != null && String(current[key]).trim() !== "") {
+      const err = new Error(`${key} is immutable referral history`);
+      err.name = "ImmutableFieldError";
+      throw err;
+    }
+  }
+
+  const entries = Object.entries(updates || {})
+    .filter(([k, v]) => !blockedFields.has(k) && v !== undefined)
+    .map(([k, v]) => [k, sanitizeUpdateField(k, v)]);
 
   const merged = { ...current };
   for (const [k, v] of entries) {
@@ -312,8 +379,55 @@ async function deleteUser(id) {
   );
 }
 
-async function listUsers({ page = 1, limit = 20, status, search } = {}) {
+async function listUsersByParentCoachId(
+  parentCoachId,
+  { page = 1, limit = 20, search, userTier = "heal" } = {}
+) {
+  const coachId = String(parentCoachId || "").trim();
+  if (!coachId) {
+    return { users: [], pagination: { page: 1, limit: 20, total: 0, pages: 1 } };
+  }
+
+  const safePage = Math.max(1, Number(page) || 1);
+  const safeLimit = Math.min(200, Math.max(1, Number(limit) || 20));
+  const normalizedSearch = String(search || "").trim().toLowerCase();
+  const normalizedTier = normalizeUserTier(userTier, "heal");
+
+  const { Items = [] } = await docClient.send(
+    new QueryCommand({
+      TableName: TABLE,
+      IndexName: "ParentCoachIndex",
+      KeyConditionExpression: "parentCoachId = :parentCoachId",
+      ExpressionAttributeValues: { ":parentCoachId": coachId },
+      ScanIndexForward: false,
+    })
+  );
+
+  let rows = Items.map(withLegacyId).filter((row) => normalizeUserTier(row.userTier) === normalizedTier);
+
+  if (normalizedSearch) {
+    rows = rows.filter(
+      (r) =>
+        String(r.name || "").toLowerCase().includes(normalizedSearch) ||
+        String(r.email || "").toLowerCase().includes(normalizedSearch) ||
+        String(r.phone || "").includes(normalizedSearch)
+    );
+  }
+
+  const total = rows.length;
+  const pages = Math.max(1, Math.ceil(total / safeLimit));
+  const start = (safePage - 1) * safeLimit;
+
+  return {
+    users: rows.slice(start, start + safeLimit),
+    pagination: { page: safePage, limit: safeLimit, total, pages },
+  };
+}
+
+async function listUsers({ page = 1, limit = 20, status, search, userTier, assignmentStatus } = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
+  const normalizedTier = userTier ? normalizeUserTier(userTier, "") : "";
+  const normalizedAssignment = assignmentStatus ? normalizeAssignmentStatus(assignmentStatus) : "";
   const searchFilter = buildContainsFilter(["name", "email", "phone"], search);
   const { items, pagination } = await listByPartitionKey({
     tableName: TABLE,
@@ -330,9 +444,24 @@ async function listUsers({ page = 1, limit = 20, status, search } = {}) {
     sortFn: sortByCreatedAtDesc,
   });
 
+  let users = items.map(withLegacyId);
+
+  if (normalizedTier) {
+    users = users.filter((row) => normalizeUserTier(row.userTier) === normalizedTier);
+  }
+  if (normalizedAssignment) {
+    users = users.filter((row) => normalizeAssignmentStatus(row.assignmentStatus) === normalizedAssignment);
+  }
+
   return {
-    users: items.map(withLegacyId),
-    pagination,
+    users,
+    pagination: normalizedTier || normalizedAssignment
+      ? {
+          ...pagination,
+          total: users.length,
+          pages: Math.max(1, Math.ceil(users.length / Math.min(200, Math.max(1, Number(limit) || 20)))),
+        }
+      : pagination,
   };
 }
 
@@ -340,12 +469,18 @@ module.exports = {
   TABLE,
   USER_ALLOWED_STATUS,
   USER_ALLOWED_GENDERS,
+  USER_ALLOWED_TIERS,
+  USER_ALLOWED_ASSIGNMENT_STATUSES,
+  USER_ALLOWED_ASSIGNED_COACH_TYPES,
   normalizeEmail,
   normalizePhone,
   normalizeCountryCode,
   buildPhoneKey,
   normalizeStatus,
   normalizeGender,
+  normalizeUserTier,
+  normalizeAssignmentStatus,
+  normalizeAssignedCoachType,
   normalizeDob,
   buildUserItem,
   toPublicUser,
@@ -355,5 +490,6 @@ module.exports = {
   getUserByPhone,
   updateUser,
   deleteUser,
+  listUsersByParentCoachId,
   listUsers,
 };

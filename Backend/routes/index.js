@@ -24,6 +24,7 @@ const userAuthRoutes = require("./userRoutes/authRoutes");
 const coachAuthRoutes = require("./wellnessCoachRoutes/coachAuthRoutes");
 const coachSpecializationRoutes = require("./wellnessCoachRoutes/coachSpecializationRoutes");
 const coachAssistantRoutes = require("./wellnessCoachRoutes/coachAssistantRoutes");
+const coachHealUserRoutes = require("./wellnessCoachRoutes/coachHealUserRoutes");
 const assistantAuthRoutes = require("./assistantWellnessCoachRoutes/assistantAuthRoutes");
 
 const router = express.Router();
@@ -36,6 +37,7 @@ router.use("/admin/auth", adminAuthRoutes);
 router.use("/coach/auth", coachAuthRoutes);
 router.use("/coach/specializations", coachSpecializationRoutes);
 router.use("/coach/assistants", coachAssistantRoutes);
+router.use("/coach/heal-users", coachHealUserRoutes);
 router.use("/assistant/auth", assistantAuthRoutes);
 router.use("/admin/app-config", adminAppConfigRoutes);
 router.use("/admin/faq", adminFaqRoutes);

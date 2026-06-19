@@ -6,6 +6,13 @@ import { logout } from "../../../store/authSlice.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { NotFoundPage } from "../NotFoundPage.jsx";
 import { UserPageLoadingState } from "./UserPageLoader.jsx";
+import {
+  CopyReferralCode,
+  UserTierBadge,
+  formatAssignedCoachLabel,
+  formatReferredByLabel,
+} from "../../../components/ReferralAssignmentShared.jsx";
+import { ConvertToHealModal, UserAssignCoachModal } from "./UserAssignmentModals.jsx";
 
 function formatDate(iso) {
   if (!iso) return "—";
@@ -31,6 +38,9 @@ export function UserView() {
   const [notFound, setNotFound] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showConvertModal, setShowConvertModal] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [assignMode, setAssignMode] = useState("assign");
 
   useEffect(() => {
     if (!adminToken || !userId) return;
@@ -111,6 +121,15 @@ export function UserView() {
     ? `Same as mobile (${phoneDisplay})`
     : [user.whatsappCountryCode, user.whatsappPhone].filter(Boolean).join(" ") || "—";
 
+  const tier = String(user.userTier || "seek").toLowerCase();
+  const isSeek = tier !== "heal";
+  const isPendingHeal = tier === "heal" && user.assignmentStatus === "pending_admin";
+
+  const openAssignModal = (mode) => {
+    setAssignMode(mode);
+    setShowAssignModal(true);
+  };
+
   return (
     <div className="user-page">
       <div className="user-page__toolbar">
@@ -121,10 +140,28 @@ export function UserView() {
         </button>
         <div className="user-page__toolbar-text">
           <h2 className="user-page__title">User details</h2>
+          <UserTierBadge tier={user.userTier} assignmentStatus={user.assignmentStatus} />
         </div>
-        <Link to="edit" className="btn btn--accent user-page__edit-link">
-          Edit user
-        </Link>
+        <div className="user-page__toolbar-actions">
+          {isSeek ? (
+            <button type="button" className="btn btn--accent" onClick={() => setShowConvertModal(true)}>
+              Convert to Heal
+            </button>
+          ) : null}
+          {isPendingHeal ? (
+            <button type="button" className="btn btn--primary" onClick={() => openAssignModal("assign")}>
+              Assign coach
+            </button>
+          ) : null}
+          {tier === "heal" && !isPendingHeal ? (
+            <button type="button" className="btn btn--ghost" onClick={() => openAssignModal("reassign")}>
+              Reassign coach
+            </button>
+          ) : null}
+          <Link to="edit" className="btn btn--accent user-page__edit-link">
+            Edit user
+          </Link>
+        </div>
       </div>
 
       <div className="page-card user-view-card">
@@ -149,11 +186,36 @@ export function UserView() {
               value={user.termsAcceptedAt ? formatDate(user.termsAcceptedAt) : "—"}
             />
             <DetailRow label="Status" value={user.status} />
+            <DetailRow label="User tier" value={tier === "heal" ? "Heal (paid)" : "Seek (free)"} />
+            {tier === "heal" ? (
+              <>
+                <DetailRow label="Assignment status" value={user.assignmentStatus || "—"} />
+                <DetailRow label="Assigned to" value={formatAssignedCoachLabel(user)} />
+                <DetailRow label="Owning coach" value={user.parentCoach?.name || user.parentCoachId || "—"} />
+                <DetailRow label="Referred by" value={formatReferredByLabel(user)} />
+                <DetailRow label="Converted at" value={formatDate(user.convertedAt)} />
+                <CopyReferralCode code={user.referralCode} label="Referral code" />
+              </>
+            ) : null}
             <DetailRow label="Created At" value={formatDate(user.createdAt)} />
             <DetailRow label="Updated At" value={formatDate(user.updatedAt)} />
           </div>
         </div>
       </div>
+
+      <ConvertToHealModal
+        user={user}
+        open={showConvertModal}
+        onClose={() => setShowConvertModal(false)}
+        onSuccess={setUser}
+      />
+      <UserAssignCoachModal
+        user={user}
+        open={showAssignModal}
+        mode={assignMode}
+        onClose={() => setShowAssignModal(false)}
+        onSuccess={setUser}
+      />
     </div>
   );
 }

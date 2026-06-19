@@ -13,12 +13,14 @@ import {
   adminUpdateWellnessCoachApproval,
   resolveCoachId,
 } from "../../api/adminWellnessCoaches.js";
+import { adminListHealUsersByCoach } from "../../api/adminUserAssignment.js";
 import { logout } from "../../../store/authSlice.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { NotFoundPage } from "../NotFoundPage.jsx";
 import { formatDate, formatPhone } from "./WellnessCoachShared.js";
 import { WellnessCoachPageLoadingState, WellnessCoachTableLoaderRow } from "./WellnessCoachPageLoader.jsx";
 import { resolveAssistantId } from "../assistantWellnessCoach/AssistantShared.js";
+import { CopyReferralCode, UserTierBadge, formatAssignedCoachLabel } from "../../../components/ReferralAssignmentShared.jsx";
 
 function DetailRow({ label, value }) {
   return (
@@ -36,7 +38,9 @@ export function WellnessCoachView() {
   const adminToken = useSelector((s) => s.auth.adminToken);
   const [coach, setCoach] = useState(null);
   const [assistants, setAssistants] = useState([]);
+  const [healUsers, setHealUsers] = useState([]);
   const [loadingAssistants, setLoadingAssistants] = useState(false);
+  const [loadingHealUsers, setLoadingHealUsers] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -92,9 +96,26 @@ export function WellnessCoachView() {
     };
   }, [adminToken, coachId, dispatch]);
 
+  const loadHealUsers = useCallback(async () => {
+    if (!adminToken || !coachId) return;
+    setLoadingHealUsers(true);
+    try {
+      const { users } = await adminListHealUsersByCoach(adminToken, coachId, { limit: 50 });
+      setHealUsers(users || []);
+    } catch (e) {
+      if (e?.status === 401) dispatch(logout());
+    } finally {
+      setLoadingHealUsers(false);
+    }
+  }, [adminToken, coachId, dispatch]);
+
   useEffect(() => {
     if (coach) loadAssistants();
   }, [coach, loadAssistants]);
+
+  useEffect(() => {
+    if (coach) loadHealUsers();
+  }, [coach, loadHealUsers]);
 
   const handleToggleAssistantStatus = async (assistant) => {
     if (!adminToken || !coachId) return;
@@ -228,9 +249,50 @@ export function WellnessCoachView() {
           <DetailRow label="Specialization" value={coach.specializationTitle} />
           <DetailRow label="Location" value={[coach.city, coach.state, coach.country].filter(Boolean).join(", ")} />
           <DetailRow label="Bio" value={coach.bio} />
+          <CopyReferralCode code={coach.referralCode} label="Referral code" />
           <DetailRow label="Approval Status" value={coach.approvalStatus || "approved"} />
           <DetailRow label="Created" value={formatDate(coach.createdAt)} />
           <DetailRow label="Updated" value={formatDate(coach.updatedAt)} />
+        </div>
+      </div>
+
+      <div className="page-card" style={{ marginTop: 24 }}>
+        <div className="page-card__head">
+          <h3 className="page-card__title">Heal clients (direct + via assistants)</h3>
+        </div>
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Assigned to</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loadingHealUsers ? (
+                <WellnessCoachTableLoaderRow colSpan={4} />
+              ) : healUsers.length === 0 ? (
+                <tr>
+                  <td colSpan={4}>
+                    <p className="table-placeholder">No Heal clients under this coach yet.</p>
+                  </td>
+                </tr>
+              ) : (
+                healUsers.map((u) => (
+                  <tr key={u._id || u.id}>
+                    <td>{u.name}</td>
+                    <td className="data-table__mono">{u.email}</td>
+                    <td>{formatAssignedCoachLabel(u)}</td>
+                    <td>
+                      <UserTierBadge tier={u.userTier} assignmentStatus={u.assignmentStatus} />
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 

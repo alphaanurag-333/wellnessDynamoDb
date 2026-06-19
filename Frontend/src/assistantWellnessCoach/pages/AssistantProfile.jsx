@@ -14,6 +14,7 @@ import {
 } from "../../admin/components/PortalProfileLayout.jsx";
 import { mediaUrl } from "../../media.js";
 import { logoutAssistant, setAssistant } from "../../store/authSlice.js";
+import { CopyReferralCode } from "../../components/ReferralAssignmentShared.jsx";
 
 const NAME_REGEX = /^[A-Za-z ]{2,40}$/;
 const PHONE_REGEX = /^\d{10}$/;
@@ -215,6 +216,9 @@ export function AssistantProfile() {
               maxLength={120}
               placeholder="e.g. Senior Assistant Coach"
             />
+          </ProfileField>
+          <ProfileField label="Referral code" fullWidth>
+            <CopyReferralCode code={assistant?.referralCode} label="" />
           </ProfileField>
           {assistant?.wellnessCoachName ? (
             <ProfileField label="Wellness Coach" fullWidth>
