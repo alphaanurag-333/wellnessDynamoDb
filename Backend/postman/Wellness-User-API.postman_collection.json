@@ -524,7 +524,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"referralCode\": \"\",\n  \"paymentMethod\": \"upi\"\n}"
+              "raw": "{\n  \"healthConcernId\": \"PASTE_HEALTH_CONCERN_UUID\",\n  \"referralCode\": \"\",\n  \"paymentMethod\": \"upi\"\n}"
             },
             "url": "{{baseUrl}}/user/consultancy-payment/orders"
           },

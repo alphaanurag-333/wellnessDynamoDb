@@ -6,6 +6,7 @@ const {
   createConsultancyOrder,
   verifyConsultancyPayment,
 } = require("../../services/consultancyPaymentService");
+const { parseHealthConcernIdFromBody } = require("../../services/consultancyHealthConcern");
 const {
   getConsultancyTransactionById,
   listTransactionsByUserId,
@@ -44,10 +45,11 @@ exports.createConsultancyOrderController = asyncHandler(async (req, res) => {
   const userId = req.auth?.sub || req.user?.id;
   const referralCode = req.body?.referralCode ?? req.body?.referral_code ?? null;
   const paymentMethod = req.body?.paymentMethod ?? req.body?.payment_method ?? "upi";
+  const healthConcernId = parseHealthConcernIdFromBody(req.body);
 
   let result;
   try {
-    result = await createConsultancyOrder(userId, { referralCode, paymentMethod });
+    result = await createConsultancyOrder(userId, { referralCode, paymentMethod, healthConcernId });
   } catch (err) {
     mapCheckoutError(err);
   }

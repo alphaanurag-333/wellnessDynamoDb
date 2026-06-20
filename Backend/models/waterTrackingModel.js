@@ -60,10 +60,15 @@ function formatSettings(item) {
   };
 }
 
-function formatDayLog(item, goalGlasses) {
+function formatDayLog(item, fallbackGoalGlasses) {
   const date = dateFromRecordKey(item?.recordKey) || item?.date || "";
   const glassCount = Number(item?.glassCount ?? 0);
-  const goal = Number(goalGlasses ?? item?.goalGlasses ?? DEFAULT_GOAL_GLASSES);
+  const hasStoredGoal = item?.goalGlasses != null && item?.goalGlasses !== "";
+  const goal = hasStoredGoal
+    ? Number(item.goalGlasses)
+    : fallbackGoalGlasses != null
+      ? Number(fallbackGoalGlasses)
+      : null;
   const glassSizeMl = Number(item?.glassSizeMl ?? DEFAULT_GLASS_SIZE_ML);
   return {
     date,
@@ -72,7 +77,7 @@ function formatDayLog(item, goalGlasses) {
     goalGlasses: goal,
     glassSizeMl,
     totalMl: glassCount * glassSizeMl,
-    goalMl: goal * glassSizeMl,
+    goalMl: goal != null ? goal * glassSizeMl : null,
     updatedAt: item?.updatedAt ?? null,
   };
 }
@@ -108,6 +113,23 @@ async function upsertSettings(userId, { goalGlasses }) {
   return formatSettings(Attributes);
 }
 
+/** Set goal for a specific date; preserves glass count. Updates global default only for today. */
+async function setDayGoal(userId, date, goalGlasses) {
+  const normalizedGoal = normalizeGoalGlasses(goalGlasses);
+  const existing = await getDayLog(userId, date);
+  const glassCount = Number(existing?.glassCount ?? 0);
+  const settings = await getSettings(userId);
+  const dayLog = await setDayGlassCount(userId, date, glassCount, {
+    goalGlasses: normalizedGoal,
+    glassSizeMl: settings.glassSizeMl,
+    explicitGoal: true,
+  });
+  if (date === todayDateOnly()) {
+    await upsertSettings(userId, { goalGlasses: normalizedGoal });
+  }
+  return { settings: await getSettings(userId), day: dayLog };
+}
+
 async function getDayLog(userId, date) {
   const { Item } = await docClient.send(
     new GetCommand({
@@ -118,11 +140,18 @@ async function getDayLog(userId, date) {
   return Item || null;
 }
 
-async function setDayGlassCount(userId, date, glassCount, settings) {
+async function setDayGlassCount(userId, date, glassCount, options = {}) {
   const now = new Date().toISOString();
   const normalizedCount = normalizeGlassCount(glassCount);
-  const goalGlasses = settings?.goalGlasses ?? DEFAULT_GOAL_GLASSES;
-  const glassSizeMl = settings?.glassSizeMl ?? DEFAULT_GLASS_SIZE_ML;
+  const existing = await getDayLog(userId, date);
+  const globalSettings = options.goalGlasses != null && options.explicitGoal
+    ? null
+    : await getSettings(userId);
+  const goalGlasses =
+    options.explicitGoal && options.goalGlasses != null
+      ? options.goalGlasses
+      : existing?.goalGlasses ?? globalSettings?.goalGlasses ?? DEFAULT_GOAL_GLASSES;
+  const glassSizeMl = existing?.glassSizeMl ?? options.glassSizeMl ?? globalSettings?.glassSizeMl ?? DEFAULT_GLASS_SIZE_ML;
 
   const { Attributes } = await docClient.send(
     new UpdateCommand({
@@ -142,14 +171,27 @@ async function setDayGlassCount(userId, date, glassCount, settings) {
       ReturnValues: "ALL_NEW",
     })
   );
-  return formatDayLog(Attributes, goalGlasses);
+  return formatDayLog(Attributes);
 }
 
 async function adjustDayGlassCount(userId, date, delta, settings) {
   const existing = await getDayLog(userId, date);
   const current = Number(existing?.glassCount ?? 0);
   const next = Math.max(0, current + delta);
-  return setDayGlassCount(userId, date, next, settings);
+  return setDayGlassCount(userId, date, next, settings || {});
+}
+
+function emptyDayLog(date, { glassSizeMl = DEFAULT_GLASS_SIZE_ML } = {}) {
+  return {
+    date,
+    day: dayLabel(date),
+    glassCount: 0,
+    goalGlasses: null,
+    glassSizeMl,
+    totalMl: 0,
+    goalMl: null,
+    updatedAt: null,
+  };
 }
 
 async function listDayLogsBetween(userId, startDate, endDate) {
@@ -182,22 +224,18 @@ async function getUserWaterSummary(userId, { date, days = 7 } = {}) {
 
   const history = rangeDates.map((d) => {
     const item = logsByDate.get(d);
-    if (item) return formatDayLog(item, settings.goalGlasses);
-    return {
-      date: d,
-      day: dayLabel(d),
-      glassCount: 0,
-      goalGlasses: settings.goalGlasses,
-      glassSizeMl: settings.glassSizeMl,
-      totalMl: 0,
-      goalMl: settings.goalGlasses * settings.glassSizeMl,
-      updatedAt: null,
-    };
+    if (item) return formatDayLog(item);
+    return emptyDayLog(d, { glassSizeMl: settings.glassSizeMl });
   });
 
-  const todayLog =
-    history.find((h) => h.date === targetDate) ||
-    formatDayLog({ recordKey: dayRecordKey(targetDate), glassCount: 0 }, settings.goalGlasses);
+  const todayItem = logsByDate.get(targetDate);
+  const todayLog = todayItem
+    ? formatDayLog(todayItem)
+    : {
+        ...emptyDayLog(targetDate, { glassSizeMl: settings.glassSizeMl }),
+        goalGlasses: settings.goalGlasses,
+        goalMl: settings.goalGlasses * settings.glassSizeMl,
+      };
 
   return {
     settings,
@@ -232,17 +270,8 @@ async function getUserWaterHistory(userId, { fromDate, toDate, days = 30 } = {})
   const logsByDate = await listDayLogsBetween(userId, start, end);
   const history = rangeDates.map((d) => {
     const item = logsByDate.get(d);
-    if (item) return formatDayLog(item, settings.goalGlasses);
-    return {
-      date: d,
-      day: dayLabel(d),
-      glassCount: 0,
-      goalGlasses: settings.goalGlasses,
-      glassSizeMl: settings.glassSizeMl,
-      totalMl: 0,
-      goalMl: settings.goalGlasses * settings.glassSizeMl,
-      updatedAt: null,
-    };
+    if (item) return formatDayLog(item);
+    return emptyDayLog(d, { glassSizeMl: settings.glassSizeMl });
   });
 
   return {
@@ -260,6 +289,7 @@ module.exports = {
   normalizeGlassCount,
   getSettings,
   upsertSettings,
+  setDayGoal,
   getDayLog,
   setDayGlassCount,
   adjustDayGlassCount,

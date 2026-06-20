@@ -5,12 +5,16 @@ End-to-end consultancy checkout: pricing, Razorpay/mock payment, meeting assignm
 ## User flow (mobile)
 
 1. `GET /api/user/consultancy-payment/checkout-preview?referralCode=OPTIONAL`
-2. `POST /api/user/consultancy-payment/orders`
+2. `POST /api/user/consultancy-payment/orders` — body must include `healthConcernId` (active health concern UUID)
 3. Client completes payment (Razorpay or mock in dev)
 4. `POST /api/user/consultancy-payment/verify`
 5. `GET /api/user/consultancy-payment/transactions`
 
 In development, mock payments may auto-confirm when `AUTO_CONFIRM_MOCK_PAYMENT` is not `false`.
+
+## Transaction fields
+
+Each `ConsultancyTransaction` stores `healthConcernId` and `healthConcernSnapshot` (title/description at checkout). The user's `primaryHealthConcern` is updated when the order is created.
 
 ## Pricing
 

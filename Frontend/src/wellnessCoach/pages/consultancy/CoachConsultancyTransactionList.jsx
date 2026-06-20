@@ -9,6 +9,7 @@ import {
   ConsultancySearchIcon,
   formatDate,
   formatMoney,
+  healthConcernLabel,
   PaymentStatusPill,
 } from "../../../components/consultancy/ConsultancyPortalShared.jsx";
 
@@ -115,6 +116,7 @@ export function CoachConsultancyTransactionList() {
             <tr>
               <th>Reference</th>
               <th>Client</th>
+              <th>Health concern</th>
               <th>Amount</th>
               <th>Referral</th>
               <th>Meeting with</th>
@@ -125,10 +127,10 @@ export function CoachConsultancyTransactionList() {
           </thead>
           <tbody>
             {loading ? (
-              <CoachTableLoaderRow colSpan={8} label="Loading transactions…" />
+              <CoachTableLoaderRow colSpan={9} label="Loading transactions…" />
             ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={8}>
+                <td colSpan={9}>
                   <p className="table-placeholder">No consultancy transactions linked to your account yet.</p>
                 </td>
               </tr>
@@ -142,6 +144,7 @@ export function CoachConsultancyTransactionList() {
                     <div className="data-table__primary">{row.userSnapshot?.name || "—"}</div>
                     <div className="data-table__muted">{row.userSnapshot?.email || "—"}</div>
                   </td>
+                  <td>{healthConcernLabel(row)}</td>
                   <td>{formatMoney(row.totalAmount)}</td>
                   <td className="data-table__mono">{row.referralCodeUsed || "—"}</td>
                   <td>

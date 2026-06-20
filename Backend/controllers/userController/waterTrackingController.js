@@ -3,7 +3,7 @@ const { asyncHandler } = require("../../utils/asyncHandler");
 const { isValidDateOnly, todayDateOnly } = require("../../utils/dateOnly");
 const {
   getUserWaterSummary,
-  upsertSettings,
+  setDayGoal,
   adjustDayGlassCount,
   setDayGlassCount,
   getSettings,
@@ -44,10 +44,11 @@ exports.updateMyWaterGoalController = asyncHandler(async (req, res) => {
   if (goalGlasses == null || goalGlasses === "") {
     throw new AppError("goalGlasses is required", 400);
   }
+  const date = resolveTargetDate(req.body, req.query);
 
-  let settings;
+  let result;
   try {
-    settings = await upsertSettings(userId, { goalGlasses });
+    result = await setDayGoal(userId, date, goalGlasses);
   } catch (err) {
     mapWaterError(err);
   }
@@ -55,7 +56,7 @@ exports.updateMyWaterGoalController = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     message: "Daily water goal updated",
-    data: { settings },
+    data: result,
   });
 });
 

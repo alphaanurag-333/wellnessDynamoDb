@@ -9,6 +9,7 @@ import {
   ConsultancySearchIcon,
   formatJoined,
   formatMoney,
+  healthConcernLabel,
 } from "../../../components/consultancy/ConsultancyPortalShared.jsx";
 
 export function CoachConsultancyEnrolledUsersList() {
@@ -101,6 +102,7 @@ export function CoachConsultancyEnrolledUsersList() {
               <th>User</th>
               <th>Phone</th>
               <th>Referral used</th>
+              <th>Health concern</th>
               <th>Meeting with</th>
               <th>Latest payment</th>
               <th>Paid at</th>
@@ -108,10 +110,10 @@ export function CoachConsultancyEnrolledUsersList() {
           </thead>
           <tbody>
             {loading ? (
-              <CoachTableLoaderRow colSpan={6} label="Loading enrolled users…" />
+              <CoachTableLoaderRow colSpan={7} label="Loading enrolled users…" />
             ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={6}>
+                <td colSpan={7}>
                   <p className="table-placeholder">No consultancy enrolled users linked to your account yet.</p>
                 </td>
               </tr>
@@ -124,6 +126,7 @@ export function CoachConsultancyEnrolledUsersList() {
                   </td>
                   <td>{[row.user.phoneCountryCode, row.user.phone].filter(Boolean).join(" ") || "—"}</td>
                   <td className="data-table__mono">{row.latestTransaction?.referralCodeUsed || "—"}</td>
+                  <td>{healthConcernLabel(row.latestTransaction)}</td>
                   <td>{assigneeLabel(row.latestTransaction)}</td>
                   <td>
                     <div className="data-table__primary">{row.latestTransaction?.referenceNumber || "—"}</div>

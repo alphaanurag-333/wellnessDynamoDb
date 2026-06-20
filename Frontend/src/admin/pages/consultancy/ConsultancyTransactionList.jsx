@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { adminListConsultancyTransactions, adminConsultancyInvoiceUrl } from "../../api/adminConsultancy.js";
 import { logout } from "../../../store/authSlice.js";
 import { UserTableLoaderRow } from "../user/UserPageLoader.jsx";
+import { healthConcernLabel } from "../../../components/consultancy/ConsultancyPortalShared.jsx";
 
 function formatMoney(value) {
   const n = Number(value);
@@ -136,6 +137,7 @@ export function ConsultancyTransactionList() {
             <tr>
               <th>Reference</th>
               <th>Client</th>
+              <th>Health concern</th>
               <th>Amount</th>
               <th>Referral</th>
               <th>Assigned to</th>
@@ -146,10 +148,10 @@ export function ConsultancyTransactionList() {
           </thead>
           <tbody>
             {loading ? (
-              <UserTableLoaderRow colSpan={8} />
+              <UserTableLoaderRow colSpan={9} />
             ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={8}>
+                <td colSpan={9}>
                   <p className="table-placeholder">
                     No transactions found. Completed consultancy payments will appear here after users pay through
                     the app.
@@ -166,6 +168,7 @@ export function ConsultancyTransactionList() {
                     <div className="data-table__primary">{row.userSnapshot?.name || "—"}</div>
                     <div className="data-table__muted">{row.userSnapshot?.email || "—"}</div>
                   </td>
+                  <td>{healthConcernLabel(row)}</td>
                   <td>{formatMoney(row.totalAmount)}</td>
                   <td className="data-table__mono">{row.referralCodeUsed || "—"}</td>
                   <td>

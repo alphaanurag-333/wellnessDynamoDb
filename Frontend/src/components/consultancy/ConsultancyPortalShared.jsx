@@ -39,3 +39,7 @@ export function assigneeLabel(row) {
   if (row?.meetingAssigneeType === "admin") return "Admin";
   return row?.meetingAssigneeType || "—";
 }
+
+export function healthConcernLabel(row) {
+  return row?.healthConcernSnapshot?.title || row?.healthConcernId || "—";
+}

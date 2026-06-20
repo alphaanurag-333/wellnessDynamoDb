@@ -5,6 +5,7 @@ import { adminListEnrolledUsers } from "../../api/adminConsultancy.js";
 import { logout } from "../../../store/authSlice.js";
 import { UserTableLoaderRow } from "../user/UserPageLoader.jsx";
 import { formatAssignedCoachLabel } from "../../../components/ReferralAssignmentShared.jsx";
+import { healthConcernLabel } from "../../../components/consultancy/ConsultancyPortalShared.jsx";
 
 function formatDate(iso) {
   if (!iso) return "—";
@@ -101,6 +102,7 @@ export function ConsultancyEnrolledUsersList() {
               <th>User</th>
               <th>Tier</th>
               <th>Referral used</th>
+              <th>Health concern</th>
               <th>Assigned coach</th>
               <th>Enrollment</th>
               <th>Latest payment</th>
@@ -109,10 +111,10 @@ export function ConsultancyEnrolledUsersList() {
           </thead>
           <tbody>
             {loading ? (
-              <UserTableLoaderRow colSpan={7} />
+              <UserTableLoaderRow colSpan={8} />
             ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={7}>
+                <td colSpan={8}>
                   <p className="table-placeholder">No enrolled users match your search.</p>
                 </td>
               </tr>
@@ -127,6 +129,7 @@ export function ConsultancyEnrolledUsersList() {
                   <td className="data-table__mono">
                     {row.latestTransaction?.referralCodeUsed || row.user.referredByCode || "—"}
                   </td>
+                  <td>{healthConcernLabel(row.latestTransaction)}</td>
                   <td>{formatAssignedCoachLabel(row.user)}</td>
                   <td>{enrollmentLabel(row.enrollmentStatus)}</td>
                   <td>

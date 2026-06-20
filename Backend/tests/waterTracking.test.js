@@ -48,15 +48,30 @@ describe("waterTracking validation", () => {
     assert.throws(() => normalizeGlassCount(-1), /ValidationError/);
   });
 
-  it("formats day log payload", () => {
-    const row = formatDayLog(
-      { recordKey: "day#2026-06-23", glassCount: 12, glassSizeMl: 250 },
-      17
-    );
+  it("formats day log payload using stored goal when present", () => {
+    const row = formatDayLog({
+      recordKey: "day#2026-06-23",
+      glassCount: 12,
+      goalGlasses: 8,
+      glassSizeMl: 250,
+    });
     assert.equal(row.date, "2026-06-23");
     assert.equal(row.glassCount, 12);
-    assert.equal(row.goalGlasses, 17);
+    assert.equal(row.goalGlasses, 8);
     assert.equal(row.totalMl, 3000);
-    assert.equal(row.goalMl, 4250);
+    assert.equal(row.goalMl, 2000);
+  });
+
+  it("does not override stored goal with fallback", () => {
+    const row = formatDayLog(
+      { recordKey: "day#2026-06-23", glassCount: 5, goalGlasses: 8, glassSizeMl: 250 },
+      17
+    );
+    assert.equal(row.goalGlasses, 8);
+  });
+
+  it("uses fallback only when day record has no stored goal", () => {
+    const row = formatDayLog({ recordKey: "day#2026-06-23", glassCount: 5, glassSizeMl: 250 }, 17);
+    assert.equal(row.goalGlasses, 17);
   });
 });

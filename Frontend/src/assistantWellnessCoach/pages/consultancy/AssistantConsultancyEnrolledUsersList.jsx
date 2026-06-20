@@ -8,6 +8,7 @@ import {
   ConsultancySearchIcon,
   formatJoined,
   formatMoney,
+  healthConcernLabel,
 } from "../../../components/consultancy/ConsultancyPortalShared.jsx";
 
 export function AssistantConsultancyEnrolledUsersList() {
@@ -86,16 +87,17 @@ export function AssistantConsultancyEnrolledUsersList() {
               <th>User</th>
               <th>Phone</th>
               <th>Referral used</th>
+              <th>Health concern</th>
               <th>Latest payment</th>
               <th>Paid at</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <CoachTableLoaderRow colSpan={5} label="Loading enrolled users…" />
+              <CoachTableLoaderRow colSpan={6} label="Loading enrolled users…" />
             ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={5}>
+                <td colSpan={6}>
                   <p className="table-placeholder">No consultancy enrolled users assigned to you yet.</p>
                 </td>
               </tr>
@@ -108,6 +110,7 @@ export function AssistantConsultancyEnrolledUsersList() {
                   </td>
                   <td>{[row.user.phoneCountryCode, row.user.phone].filter(Boolean).join(" ") || "—"}</td>
                   <td className="data-table__mono">{row.latestTransaction?.referralCodeUsed || "—"}</td>
+                  <td>{healthConcernLabel(row.latestTransaction)}</td>
                   <td>
                     <div className="data-table__primary">{row.latestTransaction?.referenceNumber || "—"}</div>
                     <div className="data-table__muted">{formatMoney(row.latestTransaction?.totalAmount)}</div>

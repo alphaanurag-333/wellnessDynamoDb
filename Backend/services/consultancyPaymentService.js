@@ -1,6 +1,6 @@
 const { getAppConfig } = require("../models/appConfigModel");
 const config = require("../config");
-const { getUserById } = require("../models/userModel");
+const { getUserById, updateUser } = require("../models/userModel");
 const { getWellnessCoachRecordById } = require("../models/wellnessCoachModel");
 const { convertSeekToHeal } = require("../models/userConversionModel");
 const { normalizeUserTier } = require("../models/userAssignmentLogic");
@@ -28,6 +28,9 @@ const {
   updateConsultancyTransaction,
   toPublicTransaction,
 } = require("../models/consultancyTransactionModel");
+const {
+  resolveHealthConcernForConsultancy,
+} = require("./consultancyHealthConcern");
 
 function mapPaymentError(err) {
   if (err?.name === "InvalidReferralCodeError") {
@@ -38,13 +41,15 @@ function mapPaymentError(err) {
   throw err;
 }
 
-async function createConsultancyOrder(userId, { referralCode, paymentMethod = "upi" } = {}) {
+async function createConsultancyOrder(userId, { referralCode, paymentMethod = "upi", healthConcernId } = {}) {
   const user = await getUserById(userId);
   if (!user) {
     const err = new Error("User not found");
     err.name = "NotFoundError";
     throw err;
   }
+
+  const healthConcern = await resolveHealthConcernForConsultancy(healthConcernId);
 
   const preview = await buildCheckoutPreview({ referralCode });
   if (preview.pricing.totalAmount <= 0) {
@@ -89,7 +94,15 @@ async function createConsultancyOrder(userId, { referralCode, paymentMethod = "u
       whatsappCountryCode: user.whatsappCountryCode,
     },
     assigneeSnapshot: assigneePreview?.assignee || null,
+    healthConcernId: healthConcern.healthConcernId,
+    healthConcernSnapshot: healthConcern.healthConcernSnapshot,
   });
+
+  try {
+    await updateUser(userId, { primaryHealthConcern: healthConcern.healthConcernId });
+  } catch (err) {
+    console.error("[ConsultancyPayment] update user health concern failed", err.message);
+  }
 
   let order;
   if (useMock) {

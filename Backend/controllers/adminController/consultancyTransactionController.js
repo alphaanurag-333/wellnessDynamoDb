@@ -147,6 +147,8 @@ exports.listAdminEnrolledUsersController = asyncHandler(async (req, res) => {
             paymentStatus: txn.paymentStatus,
             totalAmount: txn.totalAmount,
             referralCodeUsed: txn.referralCodeUsed,
+            healthConcernId: txn.healthConcernId || null,
+            healthConcernSnapshot: txn.healthConcernSnapshot || null,
             paidAt: txn.paidAt,
             meetingAssigneeType: txn.meetingAssigneeType,
             meetingAssigneeId: txn.meetingAssigneeId,

@@ -6,7 +6,8 @@ function formatDateLabel(dateOnly) {
 }
 
 function progressPercent(glassCount, goalGlasses) {
-  const goal = Number(goalGlasses) || 1;
+  const goal = Number(goalGlasses);
+  if (!Number.isFinite(goal) || goal <= 0) return 0;
   const count = Number(glassCount) || 0;
   return Math.min(100, Math.round((count / goal) * 100));
 }
@@ -133,7 +134,7 @@ export function WaterTrackingHistoryPanel({
                           <td>
                             <strong>{row.glassCount ?? 0}</strong>
                           </td>
-                          <td>{row.goalGlasses ?? goalGlasses}</td>
+                          <td>{row.goalGlasses ?? "—"}</td>
                           <td>{row.totalMl ?? (row.glassCount || 0) * glassSizeMl} ml</td>
                           <td>
                             <div className="water-progress-cell">
