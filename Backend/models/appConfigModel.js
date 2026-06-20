@@ -52,6 +52,7 @@ async function createAppConfig() {
     happy_clients:      "",
     tax_type:           "",
     tax_value:          "",
+    referral_discount:  "",
     consultancy_amount: "",
 
     // Nested array 

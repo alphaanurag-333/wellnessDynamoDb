@@ -29,6 +29,7 @@ const SCALAR_KEYS = [
   "happy_clients",
   "tax_type",
   "tax_value",
+  "referral_discount",
   "consultancy_amount",
 ];
 
@@ -177,6 +178,7 @@ function validateSettingsForm({ scalars, paymentGateways }) {
   const successRate = (scalars.success_rate || "").trim();
   const taxType = (scalars.tax_type || "").trim();
   const taxValue = (scalars.tax_value || "").trim();
+  const referralDiscount = (scalars.referral_discount || "").trim();
   const consultancyAmount = (scalars.consultancy_amount || "").trim();
   const latitude = (scalars.latitude || "").trim();
   const longitude = (scalars.longitude || "").trim();
@@ -222,6 +224,12 @@ function validateSettingsForm({ scalars, paymentGateways }) {
   const tax = Number.parseFloat(taxValue);
   if (!Number.isFinite(tax) || tax < 0 || tax > 100) {
     return { tab: "pricing", text: "Tax value must be between 0 and 100 percent." };
+  }
+
+  if (!referralDiscount) return { tab: "pricing", text: "Referral discount amount is required." };
+  const referral = Number.parseFloat(referralDiscount);
+  if (!Number.isFinite(referral) || referral < 0) {
+    return { tab: "pricing", text: "Referral discount amount must be a non-negative number." };
   }
 
   if (latitude || longitude) {
@@ -769,7 +777,7 @@ export function BusinessSetting() {
               {t.id === "pricing" && (
                 <>
                   <p className="settings-panel-hint">
-                    Consultancy fee and tax settings. Inclusive tax is already part of the listed price; exclusive tax is calculated and added at checkout.
+                    Consultancy fee, tax, and referral discount (fixed amount) settings. Inclusive tax is already part of the listed price; exclusive tax is calculated and added at checkout.
                   </p>
                   <div className="user-form__grid">
                     <div className="user-field">
@@ -832,6 +840,29 @@ export function BusinessSetting() {
                         placeholder="0 to 100"
                       />
                       <span className="settings-char-count">{charCount(scalars.tax_value, LIMITS.amountField)}</span>
+                    </div>
+                    <div className="user-field">
+                      <span className="user-field__label">
+                        Referral discount amount <span className="required-dot">*</span>
+                      </span>
+                      <input
+                        className="user-field__input"
+                        value={scalars.referral_discount}
+                        onChange={(e) => setScalars((s) => ({ ...s, referral_discount: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (["-", "e", "E", "+"].includes(e.key)) e.preventDefault();
+                        }}
+                        maxLength={LIMITS.amountField}
+                        required
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        inputMode="decimal"
+                        placeholder="0.00"
+                      />
+                      <span className="settings-char-count">
+                        {charCount(scalars.referral_discount, LIMITS.amountField)}
+                      </span>
                     </div>
                   </div>
                 </>

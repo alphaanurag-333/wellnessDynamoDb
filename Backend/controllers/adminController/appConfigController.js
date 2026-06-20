@@ -15,13 +15,17 @@ const S3_FOLDER = "appconfig";
 const LOGO_FIELDS = ["admin_logo", "user_logo", "favicon"];
 const ALLOWED_TAX_TYPES = new Set(["inclusive", "exclusive"]);
 
-function normalizeTaxType(taxType) {
-  const value = String(taxType ?? "").trim().toLowerCase();
-  if (!value) return "";
-  if (!ALLOWED_TAX_TYPES.has(value)) {
-    throw new AppError("tax_type must be inclusive or exclusive", 400);
+function normalizeInclusiveExclusiveType(value, fieldName = "type") {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (!normalized) return "";
+  if (!ALLOWED_TAX_TYPES.has(normalized)) {
+    throw new AppError(`${fieldName} must be inclusive or exclusive`, 400);
   }
-  return value;
+  return normalized;
+}
+
+function normalizeTaxType(taxType) {
+  return normalizeInclusiveExclusiveType(taxType, "tax_type");
 }
 
 function parseJSON(value, fallback) {
@@ -88,6 +92,7 @@ exports.createAppConfigController = asyncHandler(async (req, res) => {
     happy_clients,
     tax_type,
     tax_value,
+    referral_discount,
     consultancy_amount,
   } = req.body;
 
@@ -118,6 +123,7 @@ exports.createAppConfigController = asyncHandler(async (req, res) => {
     happy_clients: happy_clients ?? "",
     tax_type: normalizeTaxType(tax_type),
     tax_value: tax_value ?? "",
+    referral_discount: referral_discount ?? "",
     consultancy_amount: consultancy_amount ?? "",
     payment_methods: parseJSON(payment_methods, config.payment_methods),
     payment_gateways: parseJSON(payment_gateways, config.payment_gateways),
@@ -164,6 +170,7 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
     "happy_clients",
     "tax_type",
     "tax_value",
+    "referral_discount",
     "consultancy_amount",
     "app_footer_text",
   ];

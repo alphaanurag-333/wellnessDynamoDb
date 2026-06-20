@@ -29,6 +29,7 @@ function toPublicClientAppConfig(doc) {
     improved_user: config.improved_user ?? "",
     tax_type: config.tax_type ?? "",
     tax_value: config.tax_value ?? "",
+    referral_discount: config.referral_discount ?? "",
     consultancy_amount: config.consultancy_amount ?? "",
     favicon: config.favicon ?? "",
     address: config.address ?? "",
