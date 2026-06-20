@@ -15,6 +15,7 @@ function titleFromPath(pathname) {
   if (p.startsWith("/admin/users")) {
     if (/^\/admin\/users\/new$/.test(p)) return "Add User";
     if (/^\/admin\/users\/[^/]+\/edit$/.test(p)) return "Edit User";
+    if (/^\/admin\/users\/[^/]+\/water-tracking$/.test(p)) return "Water Tracking";
     if (/^\/admin\/users\/[^/]+$/.test(p)) return "User Details";
     return "User Management";
   }

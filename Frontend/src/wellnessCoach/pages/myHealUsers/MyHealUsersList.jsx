@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import Swal from "sweetalert2";
 import { useDispatch, useSelector } from "react-redux";
 import { coachListAssistants } from "../../api/coachAssistants.js";
@@ -156,9 +157,17 @@ export function MyHealUsersList() {
                     <td>{formatAssignedCoachLabel(u)}</td>
                     <td>{formatDate(u.convertedAt || u.createdAt)}</td>
                     <td>
-                      <button type="button" className="btn btn--ghost btn--sm" onClick={() => handleReassign(u)}>
-                        Reassign
-                      </button>
+                      <div className="data-table__actions">
+                        <Link
+                          to={`${u._id || u.id}/water-tracking`}
+                          className="btn btn--ghost btn--sm"
+                        >
+                          Water history
+                        </Link>
+                        <button type="button" className="btn btn--ghost btn--sm" onClick={() => handleReassign(u)}>
+                          Reassign
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

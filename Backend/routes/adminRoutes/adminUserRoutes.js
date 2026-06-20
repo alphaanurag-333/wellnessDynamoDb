@@ -14,10 +14,12 @@ const {
   assignHealUserController,
   reassignHealUserController,
 } = require("../../controllers/adminController/userAssignmentController");
+const { getUserWaterTrackingHistoryController } = require("../../controllers/waterTrackingHistoryController");
 
 const router = express.Router();
 
 router.get("/", protectAdmin, listUsersController);
+router.get("/:id/water-tracking", protectAdmin, getUserWaterTrackingHistoryController);
 router.get("/:id", protectAdmin, getUserByIdController);
 router.post("/", protectAdmin, optionalUserFile, createUserController);
 router.post("/:id/convert-to-heal", protectAdmin, convertUserToHealController);

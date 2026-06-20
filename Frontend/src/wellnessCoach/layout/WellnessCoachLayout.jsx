@@ -16,6 +16,8 @@ function titleFromPath(pathname) {
   if (/^\/coach\/my-assistants\/new\/?$/.test(p)) return "Add assistant";
   if (/^\/coach\/my-assistants\/[^/]+\/?$/.test(p)) return "Assistant details";
   if (/^\/coach\/my-assistants\/?$/.test(p)) return "Assistants (AWC)";
+  if (/^\/coach\/my-heal-users\/[^/]+\/water-tracking\/?$/.test(p)) return "Water tracking";
+  if (/^\/coach\/my-heal-users\/?$/.test(p)) return "Heal Clients";
   const segment = p.split("/").pop() || "dashboard";
   const found = flattenNavLinks(coachNavItems).find((n) => n.to === segment);
   return found ? found.label : segment.replace(/-/g, " ");

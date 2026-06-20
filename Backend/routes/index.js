@@ -21,6 +21,7 @@ const adminVideoTestimonialsRoutes = require("./adminRoutes/adminVideoTestimonia
 const publicAppConfigRoutes = require("./publicRoutes/publicAppConfigRoutes");
 const miscRoutes = require("./userRoutes/miscRoutes");
 const userAuthRoutes = require("./userRoutes/authRoutes");
+const waterTrackingRoutes = require("./userRoutes/waterTrackingRoutes");
 const coachAuthRoutes = require("./wellnessCoachRoutes/coachAuthRoutes");
 const coachSpecializationRoutes = require("./wellnessCoachRoutes/coachSpecializationRoutes");
 const coachAssistantRoutes = require("./wellnessCoachRoutes/coachAssistantRoutes");
@@ -58,6 +59,7 @@ router.use("/admin/wellness-coaches", adminWellnessCoachRoutes);
 router.use("/admin/specializations", adminSpecializationRoutes);
 router.use("/admin/misc/pages", adminStaticPageRoutes);
 router.use("/user/auth", userAuthRoutes);
+router.use("/user/water-tracking", waterTrackingRoutes);
 router.use("/public", publicAppConfigRoutes);
 router.use("/public/misc", miscRoutes);
 

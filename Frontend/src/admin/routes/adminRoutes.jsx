@@ -63,6 +63,7 @@ import { UserAdd } from "../pages/user/UserAdd.jsx";
 import { UserEdit } from "../pages/user/UserEdit.jsx";
 import { UserList } from "../pages/user/UserList.jsx";
 import { UserView } from "../pages/user/UserView.jsx";
+import { AdminUserWaterTrackingPage } from "../pages/user/AdminUserWaterTrackingPage.jsx";
 import { WellnessCoachList } from "../pages/wellnessCoach/WellnessCoachList.jsx";
 import { WellnessCoachAdd } from "../pages/wellnessCoach/WellnessCoachAdd.jsx";
 import { WellnessCoachEdit } from "../pages/wellnessCoach/WellnessCoachEdit.jsx";
@@ -91,6 +92,7 @@ export const adminRouteTree = (
     <Route path="users" element={<Outlet />}>
       <Route index element={<UserList />} />
       <Route path="new" element={<UserAdd />} />
+      <Route path=":userId/water-tracking" element={<AdminUserWaterTrackingPage />} />
       <Route path=":userId/edit" element={<UserEdit />} />
       <Route path=":userId" element={<UserView />} />
     </Route>

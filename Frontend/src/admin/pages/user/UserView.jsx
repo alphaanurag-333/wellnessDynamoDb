@@ -161,6 +161,9 @@ export function UserView() {
           <Link to="edit" className="btn btn--accent user-page__edit-link">
             Edit user
           </Link>
+          <Link to="water-tracking" className="btn btn--ghost user-page__edit-link">
+            Water tracking
+          </Link>
         </div>
       </div>
 

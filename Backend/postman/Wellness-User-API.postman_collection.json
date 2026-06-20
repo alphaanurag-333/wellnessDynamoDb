@@ -1,0 +1,368 @@
+{
+  "info": {
+    "_postman_id": "wellness-user-api-collection",
+    "name": "Wellness — User API",
+    "description": "Mobile/user-side APIs for the Wellness app.\n\n## Setup\n1. Set the `baseUrl` collection variable (default `http://localhost:5000/api`).\n2. Run **Login with password** or **Verify login OTP** — tokens are saved automatically.\n3. Use the **Water Tracking** folder (Bearer auth uses `{{accessToken}}`).\n\n## Notes\n- Pass `date` as `YYYY-MM-DD` in the user's local timezone for water logs.\n- In non-production, if `EXPOSE_OTP_IN_RESPONSE=true`, login/register OTP responses include `debugOtp`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000/api" },
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "userDate", "value": "2026-06-23" },
+    { "key": "userEmail", "value": "user@example.com" },
+    { "key": "userPhone", "value": "9876543210" },
+    { "key": "userPhoneCountryCode", "value": "+91" },
+    { "key": "userPassword", "value": "password123" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const today = new Date();",
+          "const y = today.getFullYear();",
+          "const m = String(today.getMonth() + 1).padStart(2, '0');",
+          "const d = String(today.getDate()).padStart(2, '0');",
+          "pm.collectionVariables.set('userDate', `${y}-${m}-${d}`);"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Server health",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Public",
+      "item": [
+        {
+          "name": "Get app config",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/public/app-config"
+          },
+          "response": []
+        },
+        {
+          "name": "List banners",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/public/misc/banners"
+          },
+          "response": []
+        },
+        {
+          "name": "List health concerns",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/public/misc/health-concerns"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Send registration OTP",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"phone\": \"{{userPhone}}\",\n  \"phoneCountryCode\": \"{{userPhoneCountryCode}}\"\n}"
+            },
+            "url": "{{baseUrl}}/user/auth/register/otp/send"
+          },
+          "response": []
+        },
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const saveTokens = () => {",
+                  "  if (![200, 201].includes(pm.response.code)) return;",
+                  "  const json = pm.response.json();",
+                  "  if (json.accessToken) pm.collectionVariables.set('accessToken', json.accessToken);",
+                  "  if (json.refreshToken) pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                  "};",
+                  "saveTokens();"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"otp\": \"123456\",\n  \"name\": \"Test User\",\n  \"email\": \"{{userEmail}}\",\n  \"phone\": \"{{userPhone}}\",\n  \"phoneCountryCode\": \"{{userPhoneCountryCode}}\",\n  \"password\": \"{{userPassword}}\",\n  \"termsAccepted\": true,\n  \"gender\": \"male\",\n  \"country\": \"India\",\n  \"state\": \"Maharashtra\",\n  \"city\": \"Mumbai\"\n}"
+            },
+            "url": "{{baseUrl}}/user/auth/register"
+          },
+          "response": []
+        },
+        {
+          "name": "Login with password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const saveTokens = () => {",
+                  "  if (pm.response.code !== 200) return;",
+                  "  const json = pm.response.json();",
+                  "  if (json.accessToken) pm.collectionVariables.set('accessToken', json.accessToken);",
+                  "  if (json.refreshToken) pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                  "};",
+                  "saveTokens();"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\",\n  \"fcm_id\": \"optional-fcm-token\"\n}"
+            },
+            "url": "{{baseUrl}}/user/auth/login/password"
+          },
+          "response": []
+        },
+        {
+          "name": "Login with phone + password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.accessToken) pm.collectionVariables.set('accessToken', json.accessToken);",
+                  "  if (json.refreshToken) pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{userPhone}}\",\n  \"phoneCountryCode\": \"{{userPhoneCountryCode}}\",\n  \"password\": \"{{userPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/user/auth/login/password"
+          },
+          "response": []
+        },
+        {
+          "name": "Send login OTP",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\"\n}"
+            },
+            "url": "{{baseUrl}}/user/auth/otp/send"
+          },
+          "response": []
+        },
+        {
+          "name": "Verify login OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.accessToken) pm.collectionVariables.set('accessToken', json.accessToken);",
+                  "  if (json.refreshToken) pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"otp\": \"123456\",\n  \"fcm_id\": \"optional-fcm-token\"\n}"
+            },
+            "url": "{{baseUrl}}/user/auth/otp/verify"
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.accessToken) pm.collectionVariables.set('accessToken', json.accessToken);",
+                  "  if (json.refreshToken) pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": "{{baseUrl}}/user/auth/refresh-token"
+          },
+          "response": []
+        },
+        {
+          "name": "Get my profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/user/auth/me"
+          },
+          "response": []
+        },
+        {
+          "name": "Update my profile",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\",\n  \"city\": \"Pune\"\n}"
+            },
+            "url": "{{baseUrl}}/user/auth/me"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Water Tracking",
+      "description": "Per-user day-wise water intake. 1 glass = 250 ml by default.\n\nAll routes require Bearer `{{accessToken}}`.",
+      "item": [
+        {
+          "name": "Get summary (today + history)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/water-tracking?days=7&date={{userDate}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "water-tracking"],
+              "query": [
+                { "key": "days", "value": "7", "description": "1–90, default 7" },
+                { "key": "date", "value": "{{userDate}}", "description": "Reference day YYYY-MM-DD (defaults to today UTC if omitted)" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update daily goal",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"goalGlasses\": 17\n}"
+            },
+            "url": "{{baseUrl}}/user/water-tracking/goal"
+          },
+          "response": []
+        },
+        {
+          "name": "Increment (+1 glass)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{userDate}}\"\n}"
+            },
+            "url": "{{baseUrl}}/user/water-tracking/increment"
+          },
+          "response": []
+        },
+        {
+          "name": "Decrement (-1 glass)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{userDate}}\"\n}"
+            },
+            "url": "{{baseUrl}}/user/water-tracking/decrement"
+          },
+          "response": []
+        },
+        {
+          "name": "Set day count (absolute)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{userDate}}\",\n  \"glassCount\": 12\n}"
+            },
+            "url": "{{baseUrl}}/user/water-tracking/day"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
