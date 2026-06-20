@@ -1,5 +1,6 @@
 import coachApi, { normalizeApiError } from "./coachApi.js";
 import { getApiBase } from "../../api.js";
+import { downloadAuthenticatedBlob } from "../../utils/downloadAuthenticatedBlob.js";
 
 export async function coachListConsultancyTransactions(
   { page = 1, limit = 20, paymentStatus = "all", search, scope = "all" } = {}
@@ -40,4 +41,16 @@ export async function coachListConsultancyEnrolledUsers({ page = 1, limit = 20, 
 
 export function coachConsultancyInvoiceUrl(transactionId) {
   return `${getApiBase()}/api/coach/consultancy/transactions/${transactionId}/invoice`;
+}
+
+export async function coachDownloadConsultancyInvoice(transactionId, referenceNumber) {
+  try {
+    await downloadAuthenticatedBlob(
+      coachApi,
+      `/coach/consultancy/transactions/${transactionId}/invoice`,
+      `${referenceNumber || transactionId}.pdf`
+    );
+  } catch (error) {
+    normalizeApiError(error);
+  }
 }

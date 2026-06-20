@@ -1,4 +1,5 @@
-import api, { authHeader, normalizeApiError } from "../../api.js";
+import api, { authHeader, getApiBase, normalizeApiError } from "../../api.js";
+import { downloadAuthenticatedBlob } from "../../utils/downloadAuthenticatedBlob.js";
 
 function base() {
   return "/admin/consultancy";
@@ -61,5 +62,17 @@ export async function adminListEnrolledUsers(
 }
 
 export function adminConsultancyInvoiceUrl(transactionId) {
-  return `/api${base()}/transactions/${transactionId}/invoice`;
+  return `${getApiBase()}/api/admin/consultancy/transactions/${transactionId}/invoice`;
+}
+
+export async function adminDownloadConsultancyInvoice(transactionId, referenceNumber) {
+  try {
+    await downloadAuthenticatedBlob(
+      api,
+      `${base()}/transactions/${transactionId}/invoice`,
+      `${referenceNumber || transactionId}.pdf`
+    );
+  } catch (error) {
+    normalizeApiError(error);
+  }
 }

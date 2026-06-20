@@ -1,6 +1,7 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
 const { resolvePublicUrl } = require("../../utils/s3");
+const { sendConsultancyInvoicePdf } = require("../../utils/consultancyInvoiceResponse");
 const {
   getConsultancyTransactionById,
   listTransactionsForAssistant,
@@ -101,6 +102,8 @@ exports.getAssistantConsultancyInvoiceController = asyncHandler(async (req, res)
   if (!transactionVisibleToAssistant(transaction, assistantId)) {
     throw new AppError("Forbidden", 403);
   }
-  if (!transaction.invoicePdfKey) throw new AppError("Invoice not available", 404);
-  return res.redirect(resolvePublicUrl(transaction.invoicePdfKey));
+  if (String(transaction.paymentStatus || "").toLowerCase() !== "paid") {
+    throw new AppError("Invoice not available", 404);
+  }
+  await sendConsultancyInvoicePdf(res, transaction);
 });

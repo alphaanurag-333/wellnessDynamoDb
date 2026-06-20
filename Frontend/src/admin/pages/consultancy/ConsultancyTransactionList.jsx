@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { adminListConsultancyTransactions, adminConsultancyInvoiceUrl } from "../../api/adminConsultancy.js";
+import Swal from "sweetalert2";
+import { adminDownloadConsultancyInvoice, adminListConsultancyTransactions } from "../../api/adminConsultancy.js";
 import { logout } from "../../../store/authSlice.js";
 import { UserTableLoaderRow } from "../user/UserPageLoader.jsx";
 import { healthConcernLabel } from "../../../components/consultancy/ConsultancyPortalShared.jsx";
@@ -43,6 +44,7 @@ export function ConsultancyTransactionList() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [paymentStatus, setPaymentStatus] = useState("all");
   const [referralCode, setReferralCode] = useState("");
+  const [downloadingId, setDownloadingId] = useState(null);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, pages: 1 });
 
   useEffect(() => {
@@ -82,6 +84,21 @@ export function ConsultancyTransactionList() {
     () => `Page ${pagination.page} of ${pagination.pages} · ${pagination.total} transactions`,
     [pagination.page, pagination.pages, pagination.total]
   );
+
+  const handleInvoiceDownload = async (row) => {
+    setDownloadingId(row.id);
+    try {
+      await adminDownloadConsultancyInvoice(row.id, row.referenceNumber);
+    } catch (e) {
+      await Swal.fire({
+        icon: "error",
+        title: "Download failed",
+        text: e?.message || "Invoice could not be downloaded.",
+      });
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   return (
     <div className="page-card">
@@ -180,15 +197,15 @@ export function ConsultancyTransactionList() {
                   </td>
                   <td>{formatDate(row.paidAt || row.createdAt)}</td>
                   <td>
-                    {row.paymentStatus === "paid" && (row.invoiceUrl || row.invoicePdfKey) ? (
-                      <a
-                        href={row.invoiceUrl || adminConsultancyInvoiceUrl(row.id)}
+                    {row.paymentStatus === "paid" ? (
+                      <button
+                        type="button"
                         className="btn btn--ghost btn--sm"
-                        target="_blank"
-                        rel="noreferrer"
+                        disabled={downloadingId === row.id}
+                        onClick={() => handleInvoiceDownload(row)}
                       >
-                        PDF
-                      </a>
+                        {downloadingId === row.id ? "…" : "PDF"}
+                      </button>
                     ) : (
                       "—"
                     )}

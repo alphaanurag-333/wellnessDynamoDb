@@ -1,9 +1,9 @@
 export const coachNavItems = [
   { to: "dashboard", label: "Dashboard", icon: "grid" },
-  { to: "my-heal-users", label: "Heal Clients", icon: "users" },
+  { to: "my-heal-users", label: "Heal Clients", icon: "clipboard-list" },
   { to: "consultancy/transactions", label: "Consultancy Payments", icon: "wallet" },
-  { to: "consultancy/enrolled-users", label: "Consultancy Users", icon: "users" },
-  { to: "my-assistants", label: "Assistants (AWC)", icon: "users" },
+  { to: "consultancy/enrolled-users", label: "Consultancy Users", icon: "user-check" },
+  { to: "my-assistants", label: "Assistants (AWC)", icon: "user-plus" },
   { to: "profile", label: "Profile", icon: "profile" },
 ];
 

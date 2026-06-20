@@ -1,6 +1,7 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
 const { resolvePublicUrl } = require("../../utils/s3");
+const { sendConsultancyInvoicePdf } = require("../../utils/consultancyInvoiceResponse");
 const { listUsers } = require("../../models/userModel");
 const { enrichUser } = require("../userController/userProfileHelpers");
 const {
@@ -72,7 +73,7 @@ exports.listAdminConsultancyTransactionsController = asyncHandler(async (req, re
   return res.status(200).json({
     status: true,
     message: "Consultancy transactions fetched",
-    transactions: data.transactions,
+    transactions: data.transactions.map(enrichTransactionPublic),
     pagination: data.pagination,
   });
 });
@@ -91,8 +92,10 @@ exports.getAdminConsultancyTransactionController = asyncHandler(async (req, res)
 exports.getAdminConsultancyInvoiceController = asyncHandler(async (req, res) => {
   const transaction = await getConsultancyTransactionById(req.params.id);
   if (!transaction) throw new AppError("Transaction not found", 404);
-  if (!transaction.invoicePdfKey) throw new AppError("Invoice not available", 404);
-  return res.redirect(resolvePublicUrl(transaction.invoicePdfKey));
+  if (String(transaction.paymentStatus || "").toLowerCase() !== "paid") {
+    throw new AppError("Invoice not available", 404);
+  }
+  await sendConsultancyInvoicePdf(res, transaction);
 });
 
 exports.listAdminEnrolledUsersController = asyncHandler(async (req, res) => {

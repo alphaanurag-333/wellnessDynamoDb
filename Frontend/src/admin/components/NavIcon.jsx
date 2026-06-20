@@ -258,6 +258,121 @@ export function NavIcon({ name }) {
           <path d="M12 7v3M9 10h6M10 22l2-7 2 7M8 13h8" />
         </Icon>
       );
+    case "wallet":
+      return (
+        <Icon>
+          <path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+          <path d="M3 7h18" />
+          <path d="M16 12h.01" />
+        </Icon>
+      );
+    case "receipt":
+      return (
+        <Icon>
+          <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" />
+          <path d="M8 7h8" />
+          <path d="M8 11h8" />
+          <path d="M8 15h5" />
+        </Icon>
+      );
+    case "user":
+      return (
+        <Icon>
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </Icon>
+      );
+    case "user-check":
+      return (
+        <Icon>
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <polyline points="16 11 18 13 22 9" />
+        </Icon>
+      );
+    case "user-plus":
+      return (
+        <Icon>
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <line x1="19" y1="8" x2="19" y2="14" />
+          <line x1="16" y1="11" x2="22" y2="11" />
+        </Icon>
+      );
+    case "award":
+      return (
+        <Icon>
+          <circle cx="12" cy="8" r="6" />
+          <path d="M8.21 13.89 7 22l5-3 5 3-1.21-8.11" />
+        </Icon>
+      );
+    case "stethoscope":
+      return (
+        <Icon>
+          <path d="M11 2v2" />
+          <path d="M13 2v2" />
+          <path d="M11 4h2" />
+          <path d="M6 8a6 6 0 0 0 12 0" />
+          <path d="M12 14v3" />
+          <circle cx="12" cy="20" r="2" />
+        </Icon>
+      );
+    case "message-circle":
+      return (
+        <Icon>
+          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+        </Icon>
+      );
+    case "quote":
+      return (
+        <Icon>
+          <path d="M3 11h4a2 2 0 0 1 2 2v5H3z" />
+          <path d="M13 11h4a2 2 0 0 1 2 2v5h-6z" />
+        </Icon>
+      );
+    case "video":
+      return (
+        <Icon>
+          <path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5" />
+          <rect x="2" y="6" width="14" height="12" rx="2" />
+        </Icon>
+      );
+    case "trending-up":
+      return (
+        <Icon>
+          <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+          <polyline points="17 6 23 6 23 12" />
+        </Icon>
+      );
+    case "sparkles":
+      return (
+        <Icon>
+          <path d="M12 3 13.5 8.5 19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5Z" />
+          <path d="M5 3v2" />
+          <path d="M4 4h2" />
+          <path d="M19 17v2" />
+          <path d="M18 18h2" />
+        </Icon>
+      );
+    case "layout":
+      return (
+        <Icon>
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+          <path d="M3 9h18" />
+          <path d="M9 21V9" />
+        </Icon>
+      );
+    case "clipboard-list":
+      return (
+        <Icon>
+          <rect x="8" y="2" width="8" height="4" rx="1" />
+          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+          <path d="M12 11h4" />
+          <path d="M12 16h4" />
+          <path d="M8 11h.01" />
+          <path d="M8 16h.01" />
+        </Icon>
+      );
     default:
       return (
         <Icon>

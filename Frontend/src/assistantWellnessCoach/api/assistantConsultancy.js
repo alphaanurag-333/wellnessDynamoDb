@@ -1,5 +1,6 @@
 import assistantApi, { normalizeApiError } from "./assistantApi.js";
 import { getApiBase } from "../../api.js";
+import { downloadAuthenticatedBlob } from "../../utils/downloadAuthenticatedBlob.js";
 
 export async function assistantListConsultancyTransactions(
   { page = 1, limit = 20, paymentStatus = "all", search } = {}
@@ -38,4 +39,16 @@ export async function assistantListConsultancyEnrolledUsers({ page = 1, limit = 
 
 export function assistantConsultancyInvoiceUrl(transactionId) {
   return `${getApiBase()}/api/assistant/consultancy/transactions/${transactionId}/invoice`;
+}
+
+export async function assistantDownloadConsultancyInvoice(transactionId, referenceNumber) {
+  try {
+    await downloadAuthenticatedBlob(
+      assistantApi,
+      `/assistant/consultancy/transactions/${transactionId}/invoice`,
+      `${referenceNumber || transactionId}.pdf`
+    );
+  } catch (error) {
+    normalizeApiError(error);
+  }
 }

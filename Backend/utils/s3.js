@@ -4,6 +4,7 @@ const {
   S3Client,
   PutObjectCommand,
   DeleteObjectCommand,
+  GetObjectCommand,
 } = require("@aws-sdk/client-s3");
 const config = require("../config");
 const AppError = require("./AppError");
@@ -172,6 +173,33 @@ function parseMediaKeyFromBody(value, fieldName = "image") {
   return key;
 }
 
+async function sendStoredObjectAsAttachment(res, key, { filename, contentType = "application/octet-stream" } = {}) {
+  const objectKey = normalizeStoredMedia(key);
+  if (!objectKey) throw new AppError("File not found", 404);
+
+  assertS3Configured();
+  const result = await s3Client.send(
+    new GetObjectCommand({
+      Bucket: config.awsS3BucketName,
+      Key: objectKey,
+    })
+  );
+
+  res.setHeader("Content-Type", result.ContentType || contentType);
+  if (filename) {
+    const safeName = String(filename).replace(/[^\w.\-]+/g, "_");
+    res.setHeader("Content-Disposition", `attachment; filename="${safeName}"`);
+  }
+
+  if (result.Body && typeof result.Body.pipe === "function") {
+    result.Body.pipe(res);
+    return;
+  }
+
+  const bytes = await result.Body.transformToByteArray();
+  res.end(Buffer.from(bytes));
+}
+
 async function deleteStoredMedia(key) {
   const objectKey = normalizeStoredMedia(key);
   if (!objectKey) return;
@@ -204,4 +232,5 @@ module.exports = {
   uploadMulterField,
   uploadFileFromRequest,
   deleteStoredMedia,
+  sendStoredObjectAsAttachment,
 };

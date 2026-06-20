@@ -1,6 +1,7 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
 const { resolvePublicUrl } = require("../../utils/s3");
+const { sendConsultancyInvoicePdf } = require("../../utils/consultancyInvoiceResponse");
 const {
   previewCheckout,
   createConsultancyOrder,
@@ -119,8 +120,8 @@ exports.getMyConsultancyInvoiceController = asyncHandler(async (req, res) => {
   const transaction = await getConsultancyTransactionById(req.params.id);
   if (!transaction) throw new AppError("Transaction not found", 404);
   if (transaction.userId !== userId) throw new AppError("Forbidden", 403);
-  if (!transaction.invoicePdfKey) throw new AppError("Invoice not available", 404);
-
-  const url = resolvePublicUrl(transaction.invoicePdfKey);
-  return res.redirect(url);
+  if (String(transaction.paymentStatus || "").toLowerCase() !== "paid") {
+    throw new AppError("Invoice not available", 404);
+  }
+  await sendConsultancyInvoicePdf(res, transaction);
 });

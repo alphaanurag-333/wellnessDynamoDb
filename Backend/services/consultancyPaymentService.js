@@ -21,6 +21,7 @@ const {
 const { createZoomMeeting } = require("../utils/zoom");
 const { sendConsultancyWhatsAppNotifications } = require("../utils/whatsapp");
 const { generateConsultancyInvoicePdf } = require("../utils/invoicePdf");
+const { buildConsultancyInvoicePayload } = require("../utils/consultancyInvoiceResponse");
 const { uploadBufferToS3, resolvePublicUrl } = require("../utils/s3");
 const {
   createConsultancyTransaction,
@@ -228,20 +229,13 @@ async function finalizePaidConsultancyTransaction(transaction, { paymentId, prov
   let invoicePdfKey = null;
   try {
     const pdfBuffer = await generateConsultancyInvoicePdf({
-      referenceNumber: transaction.referenceNumber,
-      paidAt: new Date().toISOString(),
-      user: freshUser,
-      pricing: {
-        baseAmount: transaction.baseAmount,
-        discountAmount: transaction.discountAmount,
-        taxAmount: transaction.taxAmount,
-        taxPercent: transaction.taxPercent,
-        taxType: transaction.taxType,
-        totalAmount: transaction.totalAmount,
-      },
-      assignee: assignee.assignee,
-      zoomJoinUrl: zoom?.join_url || null,
-      appName: appConfig?.app_name || "Wellness",
+      ...(await buildConsultancyInvoicePayload({
+        ...transaction,
+        paidAt: new Date().toISOString(),
+        paymentProvider: provider,
+        assigneeSnapshot: assignee.assignee,
+        zoomMeetingLink: zoom?.join_url || null,
+      })),
     });
     invoicePdfKey = await uploadBufferToS3({
       buffer: pdfBuffer,
