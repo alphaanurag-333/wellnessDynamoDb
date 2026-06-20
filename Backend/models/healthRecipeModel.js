@@ -177,20 +177,19 @@ async function listHealthRecipes({ page = 1, limit = 10, status, type, healthCon
     exprValues[":type"] = normalizedType;
     filterExpression = appendFilter(filterExpression, "#type = :type");
   }
-  if (normalizedStatus) {
+
+  const useHealthConcernIndex = Boolean(normalizedHealthConcernId);
+  const indexName = useHealthConcernIndex ? "HealthConcernCreatedAtIndex" : "StatusCreatedAtIndex";
+  const partitionKeyName = useHealthConcernIndex ? "healthConcernId" : "status";
+  const partitionKeyValue = useHealthConcernIndex
+    ? normalizedHealthConcernId
+    : normalizedStatus || undefined;
+
+  if (normalizedStatus && partitionKeyName !== "status") {
     exprNames["#status"] = "status";
     exprValues[":status"] = normalizedStatus;
     filterExpression = appendFilter(filterExpression, "#status = :status");
   }
-  if (normalizedHealthConcernId) {
-    exprNames["#healthConcernId"] = "healthConcernId";
-    exprValues[":healthConcernId"] = normalizedHealthConcernId;
-    filterExpression = appendFilter(filterExpression, "#healthConcernId = :healthConcernId");
-  }
-
-  const indexName = normalizedHealthConcernId ? "HealthConcernCreatedAtIndex" : "StatusCreatedAtIndex";
-  const partitionKeyName = normalizedHealthConcernId ? "healthConcernId" : "status";
-  const partitionKeyValue = normalizedHealthConcernId || normalizedStatus || undefined;
 
   const { items, pagination } = await listByPartitionKey({
     tableName: TABLE,

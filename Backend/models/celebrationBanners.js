@@ -140,18 +140,18 @@ function sanitizeUpdateField(key, value) {
     const exprNames = { ...searchFilter.exprNames };
     const exprValues = { ...searchFilter.exprValues };
 
-    if (normalizedStatus) {
-      exprNames["#status"] = "status";
-      exprValues[":status"] = normalizedStatus;
-      filterExpression = appendFilter(filterExpression, "#status = :status");
-    }
-
     const useTypeIndex = Boolean(normalizedType);
     const indexName = useTypeIndex ? "TypeCreatedAtIndex" : "StatusCreatedAtIndex";
     const partitionKeyName = useTypeIndex ? "type" : "status";
     const partitionKeyValue = useTypeIndex
       ? normalizedType
       : normalizedStatus || undefined;
+
+    if (normalizedStatus && partitionKeyName !== "status") {
+      exprNames["#status"] = "status";
+      exprValues[":status"] = normalizedStatus;
+      filterExpression = appendFilter(filterExpression, "#status = :status");
+    }
 
     const { items, pagination } = await listByPartitionKey({
       tableName: TABLE,

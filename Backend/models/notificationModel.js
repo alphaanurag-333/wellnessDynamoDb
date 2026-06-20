@@ -123,15 +123,18 @@ async function listNotifications({ page = 1, limit = 10, status, audienceType, s
   const exprNames = { ...searchFilter.exprNames };
   const exprValues = { ...searchFilter.exprValues };
 
-  if (normalizedStatus) {
+  const useAudienceIndex = Boolean(normalizedAudience);
+  const indexName = useAudienceIndex ? "AudienceSentAtIndex" : "StatusSentAtIndex";
+  const partitionKeyName = useAudienceIndex ? "audienceType" : "status";
+  const partitionKeyValue = useAudienceIndex
+    ? normalizedAudience
+    : normalizedStatus || undefined;
+
+  if (normalizedStatus && partitionKeyName !== "status") {
     exprNames["#status"] = "status";
     exprValues[":status"] = normalizedStatus;
     filterExpression = appendFilter(filterExpression, "#status = :status");
   }
-
-  const indexName = normalizedAudience ? "AudienceSentAtIndex" : "StatusSentAtIndex";
-  const partitionKeyName = normalizedAudience ? "audienceType" : "status";
-  const partitionKeyValue = normalizedAudience || normalizedStatus || undefined;
 
   const { items, pagination } = await listByPartitionKey({
     tableName: TABLE,

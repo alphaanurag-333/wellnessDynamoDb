@@ -142,15 +142,16 @@ async function listTransformations({ page = 1, limit = 10, status, search, userI
   const exprNames = { ...searchFilter.exprNames };
   const exprValues = { ...searchFilter.exprValues };
 
-  if (normalizedStatus) {
+  const useUserIndex = Boolean(normalizedUserId);
+  const indexName = useUserIndex ? "UserIdCreatedAtIndex" : "StatusCreatedAtIndex";
+  const partitionKeyName = useUserIndex ? "userId" : "status";
+  const partitionKeyValue = useUserIndex ? normalizedUserId : normalizedStatus || undefined;
+
+  if (normalizedStatus && partitionKeyName !== "status") {
     exprNames["#status"] = "status";
     exprValues[":status"] = normalizedStatus;
     filterExpression = appendFilter(filterExpression, "#status = :status");
   }
-
-  const indexName = normalizedUserId ? "UserIdCreatedAtIndex" : "StatusCreatedAtIndex";
-  const partitionKeyName = normalizedUserId ? "userId" : "status";
-  const partitionKeyValue = normalizedUserId || normalizedStatus || undefined;
 
   const { items, pagination } = await listByPartitionKey({
     tableName: TABLE,
