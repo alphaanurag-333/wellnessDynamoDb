@@ -1,10 +1,14 @@
 export const TITLE_MIN_LEN = 2;
-export const TITLE_MAX_LEN = 100;
+export const TITLE_MAX_LEN = 50;
 export const DESCRIPTION_MIN_LEN = 5;
-export const DESCRIPTION_MAX_LEN = 2000;
+export const DESCRIPTION_MAX_LEN = 500;
 export const YT_LINK_MAX_LEN = 500;
-export const LIST_SEARCH_MAX_LEN = 120;
-export const IMAGE_MAX_SIZE_BYTES = 5 * 1024 * 1024;
+export const LIST_SEARCH_MAX_LEN = 50;
+export {
+  IMAGE_MAX_SIZE_BYTES,
+  VIDEO_MAX_SIZE_BYTES,
+  validateVideoFileSize,
+} from "../../../utils/mediaUploadValidation.js";
 export const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/jpg"]);
 export const ALLOWED_VIDEO_TYPES = new Set(["video/mp4", "video/webm", "video/ogg", "video/quicktime", "video/x-m4v"]);
 export const LIST_LIMIT = 10;
@@ -75,8 +79,12 @@ export function validateForm(form, { editId, thumbnailFile, hasExistingThumbnail
     if (!ALLOWED_IMAGE_TYPES.has(thumbnailFile.type)) return "Thumbnail must be a JPEG, PNG, GIF, or WebP image.";
     if (thumbnailFile.size > IMAGE_MAX_SIZE_BYTES) return "Thumbnail image must be 5 MB or smaller.";
   }
-  if (videoFile instanceof File && !ALLOWED_VIDEO_TYPES.has(videoFile.type)) {
-    return "Video must be MP4, WebM, OGG, MOV, or M4V.";
+  if (videoFile instanceof File) {
+    if (!ALLOWED_VIDEO_TYPES.has(videoFile.type)) {
+      return "Video must be MP4, WebM, OGG, MOV, or M4V.";
+    }
+    const videoErr = validateVideoFileSize(videoFile);
+    if (videoErr) return videoErr;
   }
 
   return "";

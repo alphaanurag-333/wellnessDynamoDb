@@ -1,5 +1,5 @@
 export const LIST_LIMIT = 10;
-export const IMAGE_MAX_SIZE_BYTES = 5 * 1024 * 1024;
+export { IMAGE_MAX_SIZE_BYTES } from "../../../utils/mediaUploadValidation.js";
 export const MESSAGE_MAX_LEN = 1000;
 
 export const SEND_AUDIENCE_OPTIONS = [

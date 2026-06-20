@@ -1,5 +1,5 @@
-  export const TITLE_MAX_LEN = 200;
-export const IMAGE_MAX_SIZE_BYTES = 5 * 1024 * 1024;
+  export const TITLE_MAX_LEN = 50;
+export { IMAGE_MAX_SIZE_BYTES } from "../../../utils/mediaUploadValidation.js";
 export const LIST_LIMIT = 10;
 
 export function emptyForm() {

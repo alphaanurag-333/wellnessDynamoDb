@@ -2,6 +2,7 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const AppError = require("./AppError");
+const { MULTER_MAX_FILE_SIZE_BYTES } = require("./mediaUploadLimits");
 
 const allowedTypes = [
   // Images
@@ -37,7 +38,7 @@ const allowedTypes = [
   "application/x-zip-compressed",
 ];
 
-const uploadLimits = { fileSize: 50 * 1024 * 1024 }; // 50MB
+const uploadLimits = { fileSize: MULTER_MAX_FILE_SIZE_BYTES };
 
 function fileFilter(req, file, cb) {
   if (allowedTypes.includes(file.mimetype)) {

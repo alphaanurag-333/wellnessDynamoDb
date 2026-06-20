@@ -302,7 +302,7 @@ export function VideoTestimonialForm({ mode = "create", initialTestimonial = nul
         {form.type === "video" ? (
           <label className="user-field col-12">
             <span className="user-field__label">
-              Video file (up to 50 MB){" "}
+              Video file (up to 25 MB){" "}
               {editId ? "(optional — keep empty to retain current)" : <span className="required-dot">*</span>}
             </span>
             <input
@@ -321,7 +321,7 @@ export function VideoTestimonialForm({ mode = "create", initialTestimonial = nul
                   void Swal.fire({
                     icon: "error",
                     title: "Validation error",
-                    text: "Video size must be 50 MB or less.",
+                    text: "Video size must be 25 MB or less.",
                   });
                   return;
                 }

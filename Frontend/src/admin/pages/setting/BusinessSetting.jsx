@@ -7,6 +7,20 @@ import { getAppConfig, patchAppConfig } from "../../api/adminMisc.js";
 import { fetchAppConfig } from "../../../store/appConfigSlice.js";
 import { logout } from "../../../store/authSlice.js";
 import { mediaUrl } from "../../../media.js";
+import {
+  blockPersonNameDigitKeyDown,
+  blockPhoneNonDigitKeyDown,
+  EMAIL_MAX_LEN,
+  sanitizeDigitsOnly,
+  sanitizeEmailInput,
+  sanitizePercentInput,
+  sanitizePersonName,
+  sanitizePhoneDigits,
+  validateEmail,
+  validatePersonName,
+  validatePhoneDigits,
+} from "../../../utils/personFieldValidation.js";
+import { IMAGE_MAX_SIZE_MB, validateImageFileSize } from "../../../utils/mediaUploadValidation.js";
 
 const SCALAR_KEYS = [
   "app_name",
@@ -40,14 +54,7 @@ const SETTINGS_TABS = [
   { id: "location", label: "Location" },
   { id: "social", label: "Social" },
   // { id: "content", label: "Content" },
-  { id: "payment-methods", label: "Payment methods" },
   // { id: "payment-gateways", label: "Payment gateways" },
-];
-
-const PAYMENT_METHOD_DEFS = [
-  { type: "cod", label: "Cash on delivery", hint: "Customer pays when the order is delivered" },
-  { type: "online", label: "Online payment", hint: "Cards, UPI, net banking, etc." },
-  { type: "wallet", label: "Wallet", hint: "Pay using in-app wallet balance" },
 ];
 
 const GATEWAY_DEFS = [
@@ -62,26 +69,41 @@ const TAX_TYPES = [
   { value: "exclusive", label: "Exclusive (tax added on top)" },
 ];
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PHONE_REGEX = /^\d{10}$/;
 const INTEGER_REGEX = /^\d+$/;
 const LIMITS = {
-  appName: 100,
-  appEmail: 120,
-  appDetail: 160,
-  address: 300,
-  latLng: 20,
-  socialUrl: 255,
-  appDetails: 2000,
-  footerText: 180,
-  statsField: 60,
+  appName: 35,
+  appEmail: EMAIL_MAX_LEN,
+  appDetail: 50,
+  address: 100,
+  latLng: 10,
+  socialUrl: 50,
+  appDetails: 500,
+  footerText: 100,
+  statsField: 10,
   decimalField: 3,
-  amountField: 20,
-  gatewayField: 180,
+  amountField: 10,
+  gatewayField: 100,
 };
 
 function charCount(value, max) {
   return `${String(value || "").length}/${max}`;
+}
+
+function handleBrandingImageChange(e, { setFile, setPreview, fallbackPreview }) {
+  const f = e.target.files?.[0];
+  if (!f) {
+    setFile(null);
+    setPreview(fallbackPreview);
+    return;
+  }
+  const sizeErr = validateImageFileSize(f);
+  if (sizeErr) {
+    e.target.value = "";
+    void Swal.fire({ icon: "error", title: "Validation error", text: sizeErr });
+    return;
+  }
+  setFile(f);
+  setPreview(URL.createObjectURL(f));
 }
 
 /** Max 3 chars, digits + one dot + at most one decimal digit (maxLength ignored on type=number). */
@@ -167,10 +189,7 @@ function isValidHttpUrl(value) {
   }
 }
 
-function validateSettingsForm({ scalars, paymentGateways }) {
-  const appName = (scalars.app_name || "").trim();
-  const appEmail = (scalars.app_email || "").trim();
-  const appMobile = (scalars.app_mobile || "").trim();
+function validateSettingsForm({ scalars, paymentGateways, brandingFiles = {} }) {
   const appVersion = (scalars.app_version || "").trim();
   const improvedUser = (scalars.improved_user || "").trim();
   const happyClients = (scalars.happy_clients || "").trim();
@@ -183,11 +202,19 @@ function validateSettingsForm({ scalars, paymentGateways }) {
   const latitude = (scalars.latitude || "").trim();
   const longitude = (scalars.longitude || "").trim();
 
-  if (!appName) return { tab: "general", text: "App name is required." };
-  if (!appEmail) return { tab: "general", text: "Support email is required." };
-  if (!EMAIL_REGEX.test(appEmail)) return { tab: "general", text: "Support email format is invalid." };
-  if (!appMobile) return { tab: "general", text: "Support mobile is required." };
-  if (!PHONE_REGEX.test(appMobile)) return { tab: "general", text: "Support mobile must be exactly 10 digits." };
+  const appNameErr = validatePersonName(scalars.app_name, {
+    label: "App name",
+    minLen: 2,
+    maxLen: LIMITS.appName,
+  });
+  if (appNameErr) return { tab: "general", text: appNameErr };
+
+  const emailErr = validateEmail(scalars.app_email, { label: "Support email" });
+  if (emailErr) return { tab: "general", text: emailErr };
+
+  const mobileErr = validatePhoneDigits(scalars.app_mobile, { label: "Support mobile" });
+  if (mobileErr) return { tab: "general", text: mobileErr };
+
   if (!improvedUser) return { tab: "general", text: "Improved users is required." };
   if (!INTEGER_REGEX.test(improvedUser)) {
     return { tab: "general", text: "Improved users must be a numeric value." };
@@ -258,6 +285,16 @@ function validateSettingsForm({ scalars, paymentGateways }) {
     }
   }
 
+  const brandingChecks = [
+    { file: brandingFiles.adminLogoFile, label: "Admin logo" },
+    { file: brandingFiles.userLogoFile, label: "Storefront logo" },
+    { file: brandingFiles.faviconFile, label: "Favicon" },
+  ];
+  for (const { file, label } of brandingChecks) {
+    const sizeErr = validateImageFileSize(file);
+    if (sizeErr) return { tab: "branding", text: `${label}: ${sizeErr}` };
+  }
+
   // for (const g of paymentGateways) {
   //   if (!g.isActive) continue;
   //   const keyId = (g.credentials?.key_id || "").trim();
@@ -307,24 +344,6 @@ function normalizeGateways(arr) {
   });
 }
 
-function normalizePaymentMethods(arr) {
-  const map = Object.fromEntries(
-    (Array.isArray(arr) ? arr : [])
-      .filter(Boolean)
-      .map((m) => [m.type, m]),
-  );
-  return PAYMENT_METHOD_DEFS.map(({ type, label, hint }) => ({
-    type,
-    label,
-    hint,
-    isActive: map[type] != null ? !!map[type].isActive : true,
-  }));
-}
-
-function methodsForApi(list) {
-  return list.map(({ type, isActive }) => ({ type, isActive }));
-}
-
 function gatewaysForApi(list) {
   return list.map(({ provider, isActive, credentials }) => ({
     provider,
@@ -362,7 +381,6 @@ export function BusinessSetting() {
   const [scalars, setScalars] = useState(() =>
     Object.fromEntries(SCALAR_KEYS.map((k) => [k, ""])),
   );
-  const [paymentMethods, setPaymentMethods] = useState(() => normalizePaymentMethods([]));
   const [paymentGateways, setPaymentGateways] = useState(() => normalizeGateways([]));
 
   const [adminLogoFile, setAdminLogoFile] = useState(null);
@@ -383,7 +401,6 @@ export function BusinessSetting() {
     if (!doc) {
       setHasDoc(false);
       setScalars(Object.fromEntries(SCALAR_KEYS.map((k) => [k, ""])));
-      setPaymentMethods(normalizePaymentMethods([]));
       setPaymentGateways(normalizeGateways([]));
       setAdminLogoPreview("");
       setUserLogoPreview("");
@@ -405,8 +422,13 @@ export function BusinessSetting() {
       1,
       10
     );
+    next.app_name = sanitizePersonName(next.app_name, LIMITS.appName);
+    next.app_email = sanitizeEmailInput(next.app_email, LIMITS.appEmail);
+    next.app_mobile = sanitizePhoneDigits(next.app_mobile);
+    next.improved_user = sanitizeDigitsOnly(next.improved_user, LIMITS.statsField);
+    next.happy_clients = sanitizeDigitsOnly(next.happy_clients, LIMITS.statsField);
+    next.success_rate = sanitizePercentInput(next.success_rate);
     setScalars(next);
-    setPaymentMethods(normalizePaymentMethods(doc.payment_methods));
     setPaymentGateways(normalizeGateways(doc.payment_gateways));
     const a = doc.admin_logo ? mediaUrl(doc.admin_logo) : "";
     const u = doc.user_logo ? mediaUrl(doc.user_logo) : "";
@@ -463,7 +485,6 @@ export function BusinessSetting() {
     for (const k of SCALAR_KEYS) {
       fd.append(k, scalars[k] ?? "");
     }
-    fd.append("payment_methods", JSON.stringify(methodsForApi(paymentMethods)));
     fd.append("payment_gateways", JSON.stringify(gatewaysForApi(paymentGateways)));
     if (adminLogoFile) fd.append("admin_logo", adminLogoFile);
     if (userLogoFile) fd.append("user_logo", userLogoFile);
@@ -485,7 +506,11 @@ export function BusinessSetting() {
       });
       return;
     }
-    const validationError = validateSettingsForm({ scalars, paymentGateways });
+    const validationError = validateSettingsForm({
+      scalars,
+      paymentGateways,
+      brandingFiles: { adminLogoFile, userLogoFile, faviconFile },
+    });
     if (validationError) {
       setTab(validationError.tab);
       await Swal.fire({ icon: "error", title: "Validation error", text: validationError.text });
@@ -596,12 +621,22 @@ export function BusinessSetting() {
                       <input
                         className="user-field__input"
                         value={scalars.app_name}
-                        onChange={(e) => setScalars((s) => ({ ...s, app_name: e.target.value }))}
+                        onChange={(e) =>
+                          setScalars((s) => ({
+                            ...s,
+                            app_name: sanitizePersonName(e.target.value, LIMITS.appName),
+                          }))
+                        }
+                        onKeyDown={blockPersonNameDigitKeyDown}
                         required
                         maxLength={LIMITS.appName}
+                        inputMode="text"
+                        autoCapitalize="words"
                         autoComplete="organization"
                       />
-                      <span className="settings-char-count">{charCount(scalars.app_name, LIMITS.appName)}</span>
+                      <span className="settings-char-count">
+                        {charCount(scalars.app_name, LIMITS.appName)} · letters only, no numbers
+                      </span>
                     </div>
                   
 
@@ -611,7 +646,12 @@ export function BusinessSetting() {
                         type="email"
                         className="user-field__input"
                         value={scalars.app_email}
-                        onChange={(e) => setScalars((s) => ({ ...s, app_email: e.target.value }))}
+                        onChange={(e) =>
+                          setScalars((s) => ({
+                            ...s,
+                            app_email: sanitizeEmailInput(e.target.value, LIMITS.appEmail),
+                          }))
+                        }
                         required
                         maxLength={LIMITS.appEmail}
                         autoComplete="email"
@@ -624,13 +664,18 @@ export function BusinessSetting() {
                         className="user-field__input"
                         value={scalars.app_mobile}
                         onChange={(e) =>
-                          setScalars((s) => ({ ...s, app_mobile: e.target.value.replace(/\D+/g, "").slice(0, 10) }))
+                          setScalars((s) => ({ ...s, app_mobile: sanitizePhoneDigits(e.target.value) }))
                         }
+                        onKeyDown={blockPhoneNonDigitKeyDown}
                         required
                         maxLength={10}
+                        minLength={10}
                         inputMode="numeric"
+                        pattern="[0-9]{10}"
+                        placeholder="9876543210"
                         autoComplete="tel"
                       />
+                      <span className="settings-char-count">10 digits only.</span>
                     </div>
                     <div className="user-field">
                       <span className="user-field__label">Short app detail</span>
@@ -660,8 +705,12 @@ export function BusinessSetting() {
                         className="user-field__input"
                         value={scalars.improved_user}
                         onChange={(e) =>
-                          setScalars((s) => ({ ...s, improved_user: e.target.value.replace(/\D+/g, "") }))
+                          setScalars((s) => ({
+                            ...s,
+                            improved_user: sanitizeDigitsOnly(e.target.value, LIMITS.statsField),
+                          }))
                         }
+                        onKeyDown={blockPhoneNonDigitKeyDown}
                         maxLength={LIMITS.statsField}
                         required
                         inputMode="numeric"
@@ -673,20 +722,16 @@ export function BusinessSetting() {
                       <input
                         className="user-field__input"
                         value={scalars.success_rate}
-                        onChange={(e) => setScalars((s) => ({ ...s, success_rate: e.target.value }))}
-                        onKeyDown={(e) => {
-                          if (["-", "e", "E", "+"].includes(e.key)) e.preventDefault();
-                        }}
-                        maxLength={LIMITS.statsField}
+                        onChange={(e) =>
+                          setScalars((s) => ({ ...s, success_rate: sanitizePercentInput(e.target.value) }))
+                        }
+                        onKeyDown={blockPhoneNonDigitKeyDown}
+                        maxLength={3}
                         required
-                        inputMode="decimal"
-                        type="number"
-                        min={0}
-                        max={100}
-                        step={1}
+                        inputMode="numeric"
                         placeholder="0 to 100"
                       />
-                      <span className="settings-char-count">{charCount(scalars.success_rate, LIMITS.statsField)}</span>
+                      <span className="settings-char-count">{charCount(scalars.success_rate, 3)}</span>
                     </div>
                     <div className="user-field">
                       <span className="user-field__label">Average rating <span className="required-dot">*</span></span>
@@ -750,8 +795,12 @@ export function BusinessSetting() {
                         className="user-field__input"
                         value={scalars.happy_clients}
                         onChange={(e) =>
-                          setScalars((s) => ({ ...s, happy_clients: e.target.value.replace(/\D+/g, "") }))
+                          setScalars((s) => ({
+                            ...s,
+                            happy_clients: sanitizeDigitsOnly(e.target.value, LIMITS.statsField),
+                          }))
                         }
+                        onKeyDown={blockPhoneNonDigitKeyDown}
                         maxLength={LIMITS.statsField}
                         required
                         inputMode="numeric"
@@ -870,23 +919,27 @@ export function BusinessSetting() {
 
               {t.id === "branding" && (
                 <>
-                  <p className="settings-panel-hint">Uploads replace existing files only when you pick a new file.</p>
+                  <p className="settings-panel-hint">
+                    Images only, max {IMAGE_MAX_SIZE_MB} MB each. Uploads replace existing files only when you pick a new file.
+                  </p>
                   <div className="settings-media-grid">
                     <div className="settings-media-card">
                       <label className="settings-media-card__label" htmlFor={`${baseId}-admin-logo`}>
                         Admin logo
-                        <span className="settings-media-card__hint">Shown in admin UI</span>
+                        <span className="settings-media-card__hint">Shown in admin UI · max {IMAGE_MAX_SIZE_MB} MB</span>
                       </label>
                       <input
                         id={`${baseId}-admin-logo`}
                         type="file"
                         accept="image/*"
                         className="settings-media-card__input user-field__input"
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          setAdminLogoFile(f || null);
-                          setAdminLogoPreview(f ? URL.createObjectURL(f) : serverMedia.admin);
-                        }}
+                        onChange={(e) =>
+                          handleBrandingImageChange(e, {
+                            setFile: setAdminLogoFile,
+                            setPreview: setAdminLogoPreview,
+                            fallbackPreview: serverMedia.admin,
+                          })
+                        }
                       />
                       <div className="settings-media-card__preview">
                         {adminLogoPreview ? <img src={adminLogoPreview} alt="Admin logo preview" onError={handleMediaImageError} /> : null}
@@ -895,18 +948,20 @@ export function BusinessSetting() {
                     <div className="settings-media-card">
                       <label className="settings-media-card__label" htmlFor={`${baseId}-user-logo`}>
                         Storefront logo
-                        <span className="settings-media-card__hint">Customer-facing app</span>
+                        <span className="settings-media-card__hint">Customer-facing app · max {IMAGE_MAX_SIZE_MB} MB</span>
                       </label>
                       <input
                         id={`${baseId}-user-logo`}
                         type="file"
                         accept="image/*"
                         className="settings-media-card__input user-field__input"
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          setUserLogoFile(f || null);
-                          setUserLogoPreview(f ? URL.createObjectURL(f) : serverMedia.user);
-                        }}
+                        onChange={(e) =>
+                          handleBrandingImageChange(e, {
+                            setFile: setUserLogoFile,
+                            setPreview: setUserLogoPreview,
+                            fallbackPreview: serverMedia.user,
+                          })
+                        }
                       />
                       <div className="settings-media-card__preview">
                         {userLogoPreview ? <img src={userLogoPreview} alt="Storefront logo preview" onError={handleMediaImageError} /> : null}
@@ -915,18 +970,20 @@ export function BusinessSetting() {
                     <div className="settings-media-card">
                       <label className="settings-media-card__label" htmlFor={`${baseId}-favicon`}>
                         Favicon
-                        <span className="settings-media-card__hint">ICO or PNG</span>
+                        <span className="settings-media-card__hint">ICO or PNG · max {IMAGE_MAX_SIZE_MB} MB</span>
                       </label>
                       <input
                         id={`${baseId}-favicon`}
                         type="file"
                         accept="image/*,.ico"
                         className="settings-media-card__input user-field__input"
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          setFaviconFile(f || null);
-                          setFaviconPreview(f ? URL.createObjectURL(f) : serverMedia.fav);
-                        }}
+                        onChange={(e) =>
+                          handleBrandingImageChange(e, {
+                            setFile: setFaviconFile,
+                            setPreview: setFaviconPreview,
+                            fallbackPreview: serverMedia.fav,
+                          })
+                        }
                       />
                       <div className="settings-media-card__preview settings-media-card__preview--favicon">
                         {faviconPreview ? <img src={faviconPreview} alt="Favicon preview" onError={handleMediaImageError} /> : null}
@@ -1061,33 +1118,6 @@ export function BusinessSetting() {
                       />
                       <span className="settings-char-count">{charCount(scalars.app_details, LIMITS.appDetails)}</span>
                     </div>
-                  </div>
-                </>
-              )}
-
-              {t.id === "payment-methods" && (
-                <>
-                  <p className="settings-panel-hint">
-                    Choose which checkout options are available. Changes apply after you save at the bottom of the page.
-                  </p>
-                  <div className="settings-toggle-list">
-                    {paymentMethods.map((m) => (
-                      <div key={m.type} className="settings-toggle-row">
-                        <div>
-                          <span className="settings-toggle-row__label">{m.label}</span>
-                          <span className="settings-toggle-row__hint">{m.hint}</span>
-                        </div>
-                        <SettingsToggle
-                          id={`${baseId}-pm-${m.type}`}
-                          checked={m.isActive}
-                          onChange={(next) =>
-                            setPaymentMethods((prev) =>
-                              prev.map((x) => (x.type === m.type ? { ...x, isActive: next } : x)),
-                            )
-                          }
-                        />
-                      </div>
-                    ))}
                   </div>
                 </>
               )}

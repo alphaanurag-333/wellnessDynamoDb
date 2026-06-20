@@ -15,9 +15,16 @@ import {
 import { mediaUrl } from "../../media.js";
 import { logoutAssistant, setAssistant } from "../../store/authSlice.js";
 import { CopyReferralCode } from "../../components/ReferralAssignmentShared.jsx";
-
-const NAME_REGEX = /^[A-Za-z ]{2,40}$/;
-const PHONE_REGEX = /^\d{10}$/;
+import {
+  blockPersonNameDigitKeyDown,
+  blockPhoneNonDigitKeyDown,
+  PERSON_NAME_MAX_LEN,
+  sanitizePersonName,
+  sanitizePhoneDigits,
+  validatePersonName,
+  validatePhoneDigits,
+} from "../../utils/personFieldValidation.js";
+import { validateImageFileSize } from "../../utils/mediaUploadValidation.js";
 
 export function AssistantProfile() {
   const dispatch = useDispatch();
@@ -73,9 +80,9 @@ export function AssistantProfile() {
       await Swal.fire({ icon: "error", title: "Invalid image", text: "Please choose a JPEG, PNG, GIF, or WebP image." });
       return;
     }
-    const maxMb = 5;
-    if (file.size > maxMb * 1024 * 1024) {
-      await Swal.fire({ icon: "error", title: "Image too large", text: `Image must be ${maxMb}MB or smaller.` });
+    const sizeErr = validateImageFileSize(file);
+    if (sizeErr) {
+      await Swal.fire({ icon: "error", title: "Image too large", text: sizeErr });
       return;
     }
 
@@ -105,16 +112,14 @@ export function AssistantProfile() {
     if (tab === "personal") {
       const trimmedName = name.trim();
       const trimmedPhone = phone.trim();
-      if (!trimmedName) {
-        await Swal.fire({ icon: "error", title: "Validation error", text: "Full name is required." });
+      const nameErr = validatePersonName(trimmedName);
+      if (nameErr) {
+        await Swal.fire({ icon: "error", title: "Validation error", text: nameErr });
         return;
       }
-      if (!NAME_REGEX.test(trimmedName)) {
-        await Swal.fire({ icon: "error", title: "Validation error", text: "Full name must contain only letters and spaces." });
-        return;
-      }
-      if (!trimmedPhone || !PHONE_REGEX.test(trimmedPhone)) {
-        await Swal.fire({ icon: "error", title: "Validation error", text: "Phone number must be exactly 10 digits." });
+      const phoneErr = validatePhoneDigits(trimmedPhone, { label: "Phone number" });
+      if (phoneErr) {
+        await Swal.fire({ icon: "error", title: "Validation error", text: phoneErr });
         return;
       }
       setLoading(true);
@@ -189,8 +194,11 @@ export function AssistantProfile() {
             <input
               className="user-field__input"
               value={name}
-              onChange={(e) => setName(e.target.value.replace(/[^A-Za-z ]+/g, "").replace(/\s{2,}/g, " "))}
-              maxLength={40}
+              onChange={(e) => setName(sanitizePersonName(e.target.value))}
+              onKeyDown={blockPersonNameDigitKeyDown}
+              maxLength={PERSON_NAME_MAX_LEN}
+              inputMode="text"
+              autoCapitalize="words"
               required
             />
           </ProfileField>
@@ -201,10 +209,13 @@ export function AssistantProfile() {
             <input
               className="user-field__input"
               value={phone}
-              onChange={(e) => setPhone(e.target.value.replace(/\D+/g, "").slice(0, 10))}
+              onChange={(e) => setPhone(sanitizePhoneDigits(e.target.value))}
+              onKeyDown={blockPhoneNonDigitKeyDown}
               placeholder="9876543210"
               inputMode="numeric"
+              pattern="[0-9]{10}"
               maxLength={10}
+              minLength={10}
               required
             />
           </ProfileField>

@@ -1,8 +1,8 @@
 export const LIST_LIMIT = 10;
-export const NAME_MAX_LEN = 80;
-export const DESCRIPTION_MAX_LEN = 600;
-export const SEARCH_MAX_LEN = 120;
-export const IMAGE_MAX_SIZE_BYTES = 5 * 1024 * 1024;
+export const NAME_MAX_LEN = 35;
+export const DESCRIPTION_MAX_LEN = 500;
+export const SEARCH_MAX_LEN = 50;
+export { IMAGE_MAX_SIZE_BYTES } from "../../../utils/mediaUploadValidation.js";
 
 export function emptyForm() {
   return { name: "", rating: "5", description: "", status: "active" };

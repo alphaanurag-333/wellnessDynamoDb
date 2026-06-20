@@ -15,6 +15,19 @@ const {
 } = require("../../models/transformationModel");
 
 const S3_FOLDER = "transformation";
+const TIME_TAKEN_MIN = 1;
+const TIME_TAKEN_MAX = 120;
+
+function normalizeTimeTaken(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num) || !Number.isInteger(num) || num < TIME_TAKEN_MIN || num > TIME_TAKEN_MAX) {
+    throw new AppError(
+      `timeTaken must be a whole number between ${TIME_TAKEN_MIN} and ${TIME_TAKEN_MAX} months`,
+      400
+    );
+  }
+  return num;
+}
 
 exports.listTransformationsController = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, status, search, userId } = req.query;
@@ -35,7 +48,7 @@ exports.getTransformationByIdController = asyncHandler(async (req, res) => {
 });
 
 exports.createTransformationController = asyncHandler(async (req, res) => {
-  const timeTaken = Number(req.body.timeTaken);
+  const timeTaken = normalizeTimeTaken(req.body.timeTaken);
   const achievements = String(req.body.achievements || "").trim();
   const description = String(req.body.description || "").trim();
   const status = String(req.body.status || "active").trim().toLowerCase();
@@ -45,9 +58,6 @@ exports.createTransformationController = asyncHandler(async (req, res) => {
   const oldImage = uploadedOld ?? parseMediaKeyFromBody(req.body.oldImage, "oldImage");
   const newImage = uploadedNew ?? parseMediaKeyFromBody(req.body.newImage, "newImage");
 
-  if (!Number.isFinite(timeTaken) || timeTaken < 0) {
-    throw new AppError("timeTaken must be a non-negative number", 400);
-  }
   if (!achievements) throw new AppError("achievements is required", 400);
   if (!description) throw new AppError("description is required", 400);
   if (!oldImage || !newImage) throw new AppError("oldImage and newImage are required", 400);
@@ -77,11 +87,7 @@ exports.updateTransformationController = asyncHandler(async (req, res) => {
   const updates = {};
 
   if (req.body.timeTaken !== undefined) {
-    const timeTaken = Number(req.body.timeTaken);
-    if (!Number.isFinite(timeTaken) || timeTaken < 0) {
-      throw new AppError("timeTaken must be a non-negative number", 400);
-    }
-    updates.timeTaken = timeTaken;
+    updates.timeTaken = normalizeTimeTaken(req.body.timeTaken);
   }
 
   if (req.body.achievements !== undefined) {

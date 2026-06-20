@@ -14,6 +14,19 @@ import { adminListHealthConcerns } from "../../api/adminHealthConcerns.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { mediaUrl } from "../../../media.js";
 import { logout } from "../../../store/authSlice.js";
+import {
+  PERSON_NAME_MAX_LEN,
+  blockPersonNameDigitKeyDown,
+  blockPhoneNonDigitKeyDown,
+  sanitizeEmailInput,
+  sanitizePersonName,
+  sanitizePhoneDigits,
+  validateEmail,
+  validatePersonName,
+  validatePhoneDigits,
+  EMAIL_MAX_LEN,
+} from "../../../utils/personFieldValidation.js";
+import { validateImageFileSize } from "../../../utils/mediaUploadValidation.js";
 
 const GENDER_VALUES = ["male", "female", "other", "boy", "girl", "guess"];
 
@@ -172,39 +185,25 @@ function yearsAgoDate(years) {
 }
 
 /** Letters (any script), spaces, apostrophe, hyphen, period — strips digits and other symbols. */
-function sanitizePersonName(raw) {
-  const collapsed = String(raw ?? "").replace(/\s{2,}/g, " ");
-  return collapsed.replace(/[^\p{L}\s'.\-]/gu, "");
-}
-
-const NAME_ALLOWED_PATTERN = /^[\p{L}][\p{L}\s'.\-]*$/u;
 
 function validateUserForm(values) {
-  const name = values.name.trim();
-  const email = values.email.trim();
-  const phone = values.phone.trim();
+  const nameErr = validatePersonName(values.name);
+  if (nameErr) return nameErr;
+
+  const emailErr = validateEmail(values.email);
+  if (emailErr) return emailErr;
+
+  const phoneErr = validatePhoneDigits(values.phone);
   const cc = values.phoneCountryCode.trim();
 
-  if (!name || name.length < 2) return "Full name is required (at least 2 characters).";
-  if (/\d/.test(name)) return "Name cannot contain numbers.";
-  if (!NAME_ALLOWED_PATTERN.test(name)) {
-    return "Name may only contain letters, spaces, hyphens (-), apostrophes ('), and periods (.).";
-  }
-  if (!email) return "Email is required.";
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "Enter a valid email address.";
-  if (!phone) return "Mobile number is required.";
+  if (phoneErr) return phoneErr;
   if (!values.gender) return "Gender is required.";
   if (!values.status) return "Account status is required.";
-
-  if (!/^\d+$/.test(phone)) return "Mobile number should contain digits only.";
-  if (phone.length !== 10) return "Mobile number must be exactly 10 digits.";
   if (!cc) return "Phone country code is required.";
 
   if (!values.whatsappSameAsMobile) {
-    const wa = values.whatsappPhone.trim();
-    if (!wa) return "WhatsApp number is required when not same as mobile.";
-    if (!/^\d+$/.test(wa)) return "WhatsApp number should contain digits only.";
-    if (wa.length !== 10) return "WhatsApp number must be exactly 10 digits.";
+    const waErr = validatePhoneDigits(values.whatsappPhone, { label: "WhatsApp number" });
+    if (waErr) return waErr;
     if (!values.whatsappCountryCode.trim()) return "WhatsApp country code is required.";
   }
 
@@ -412,30 +411,31 @@ export function UserProfileForm({
     setValues((prev) => ({ ...prev, name: sanitizePersonName(e.target.value) }));
   };
 
+  const handleEmailInput = (e) => {
+    setValues((prev) => ({ ...prev, email: sanitizeEmailInput(e.target.value) }));
+  };
+
   const handlePhoneInput = (e) => {
-    const onlyDigits = e.target.value.replace(/\D/g, "").slice(0, 10);
-    setValues((prev) => ({ ...prev, phone: onlyDigits }));
+    setValues((prev) => ({ ...prev, phone: sanitizePhoneDigits(e.target.value) }));
   };
 
   const handleWhatsappPhoneInput = (e) => {
-    const onlyDigits = e.target.value.replace(/\D/g, "").slice(0, 10);
-    setValues((prev) => ({ ...prev, whatsappPhone: onlyDigits }));
+    setValues((prev) => ({ ...prev, whatsappPhone: sanitizePhoneDigits(e.target.value) }));
   };
 
-  /** Block non-digit character keys in phone fields (paste still normalized in onChange). */
-  const handlePhoneKeyDown = (e) => {
-    if (e.ctrlKey || e.metaKey || e.altKey) return;
-    if (e.key.length === 1 && !/\d/.test(e.key)) e.preventDefault();
-  };
+  const handlePhoneKeyDown = blockPhoneNonDigitKeyDown;
 
-  const handleNameKeyDown = (e) => {
-    if (e.ctrlKey || e.metaKey || e.altKey) return;
-    if (e.key.length === 1 && /\d/.test(e.key)) e.preventDefault();
-  };
+  const handleNameKeyDown = blockPersonNameDigitKeyDown;
 
-  const handleFile = (e) => {
+  const handleFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const sizeErr = validateImageFileSize(file);
+    if (sizeErr) {
+      e.target.value = "";
+      await Swal.fire({ icon: "error", title: "Validation error", text: sizeErr });
+      return;
+    }
     setProfileFile(file);
     setFormError("");
   };
@@ -557,11 +557,12 @@ export function UserProfileForm({
             placeholder="Full name"
             autoComplete="name"
             minLength={2}
-            maxLength={100}
+            maxLength={PERSON_NAME_MAX_LEN}
             inputMode="text"
             autoCapitalize="words"
             required
           />
+          <div className="form-text">Letters only, up to {PERSON_NAME_MAX_LEN} characters.</div>
         </div>
         <div className="col-md-6">
           <label htmlFor={`${fileInputId}-email`} className="form-label">
@@ -572,13 +573,14 @@ export function UserProfileForm({
             type="email"
             className="form-control"
             value={values.email}
-            onChange={handleChange("email")}
+            onChange={handleEmailInput}
             placeholder="email@example.com"
             autoComplete="email"
             minLength={3}
-            maxLength={120}
+            maxLength={EMAIL_MAX_LEN}
             required
           />
+          <div className="form-text">Up to {EMAIL_MAX_LEN} characters.</div>
         </div>
         <div className="col-md-6">
           <label htmlFor={`${fileInputId}-dob`} className="form-label">

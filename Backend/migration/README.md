@@ -21,6 +21,8 @@ migration/
 | `02-testimonials-status-gsi` | `migrations/02-testimonials-status-gsi.js` | `ClientTestimonials`, `VideoTestimonials` | Add `StatusCreatedAtIndex` GSI |
 | `03-admin-drop-phone-index` | `migrations/03-admin-drop-phone-index.js` | `Admin` | Drop `PhoneIndex` if still present |
 | `04-media-field-camelcase` | `migrations/04-media-field-camelcase.js` | `ClientTestimonials`, `VideoTestimonials`, `HealthRecipe` | `profile_image` → `profileImage`, `video_specification` → `videoSpecification` |
+| `05-user-referral-assignment` | `migrations/05-user-referral-assignment.js` | `User`, `ReferralCode`, coaches | Referral registry, `ParentCoachIndex`, tier backfill |
+| `06-appconfig-drop-payment-methods` | `migrations/06-appconfig-drop-payment-methods.js` | `AppConfig` | Remove deprecated `payment_methods` attribute |
 
 Application code uses `Backend/utils/mediaFieldAliases.js` to dual-read legacy attribute names until all items are migrated.
 

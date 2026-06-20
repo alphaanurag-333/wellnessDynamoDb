@@ -19,6 +19,7 @@ import {
   sanitizeDescription,
   sanitizeTitle,
   validateForm,
+  validateVideoFileSize,
 } from "./YogaShared.js";
 
 export function YogaForm({ mode = "create", initialYoga = null }) {
@@ -213,7 +214,7 @@ export function YogaForm({ mode = "create", initialYoga = null }) {
           <div className="col-12">
             <label className="user-field">
               <span className="user-field__label">
-                Video file{" "}
+                Video file (up to 25 MB){" "}
                 {editId ? "(optional — leave unchanged to keep current)" : <span className="required-dot">*</span>}
               </span>
               <input
@@ -232,6 +233,18 @@ export function YogaForm({ mode = "create", initialYoga = null }) {
                     e.target.value = "";
                     void Swal.fire({ icon: "error", title: "Invalid file", text: "Use MP4, WebM, OGG, MOV, or M4V only." });
                     return;
+                  }
+                  if (file) {
+                    const videoErr = validateVideoFileSize(file);
+                    if (videoErr) {
+                      setVideoFile(null);
+                      setVideoName(editBaselineVideo ? String(editBaselineVideo).split("/").pop() : "");
+                      revokeVideoPreviewBlob();
+                      setVideoPreview(editBaselineVideo ? mediaUrl(editBaselineVideo) : "");
+                      e.target.value = "";
+                      void Swal.fire({ icon: "error", title: "Validation error", text: videoErr });
+                      return;
+                    }
                   }
                   setVideoFile(file);
                   if (file) {

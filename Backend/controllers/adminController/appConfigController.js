@@ -84,7 +84,6 @@ exports.createAppConfigController = asyncHandler(async (req, res) => {
     linkedin,
     app_details,
     app_footer_text,
-    payment_methods,
     payment_gateways,
     improved_user,
     success_rate,
@@ -125,7 +124,6 @@ exports.createAppConfigController = asyncHandler(async (req, res) => {
     tax_value: tax_value ?? "",
     referral_discount: referral_discount ?? "",
     consultancy_amount: consultancy_amount ?? "",
-    payment_methods: parseJSON(payment_methods, config.payment_methods),
     payment_gateways: parseJSON(payment_gateways, config.payment_gateways),
     admin_logo: (await s3KeyFromUploadedFile(req, "admin_logo")) ?? "",
     user_logo: (await s3KeyFromUploadedFile(req, "user_logo")) ?? "",
@@ -187,9 +185,6 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
     }
   }
 
-  if (req.body.payment_methods !== undefined) {
-    updates.payment_methods = parseJSON(req.body.payment_methods, config.payment_methods);
-  }
   if (req.body.payment_gateways !== undefined) {
     updates.payment_gateways = parseJSON(req.body.payment_gateways, config.payment_gateways);
   }

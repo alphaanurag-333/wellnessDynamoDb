@@ -41,7 +41,6 @@ function toPublicClientAppConfig(doc) {
     linkedin: config.linkedin ?? "",
     app_details: config.app_details ?? "",
     app_footer_text: config.app_footer_text ?? "",
-    payment_methods: config.payment_methods ?? [],
     payment_gateways,
     updatedAt: config.updatedAt,
   };

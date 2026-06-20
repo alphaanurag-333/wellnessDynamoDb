@@ -3,6 +3,12 @@ import {
   DEFAULT_ISO,
   findIsoForDial,
 } from "../wellnessCoach/WellnessCoachShared.js";
+import {
+  sanitizePersonName,
+  validateEmail,
+  validatePersonName,
+  validatePhoneDigits,
+} from "../../../utils/personFieldValidation.js";
 
 export const LIST_LIMIT = 10;
 export const DESIGNATION_MAX_LEN = 120;
@@ -35,7 +41,7 @@ export function assistantToForm(assistant) {
   const phoneCc =
     assistant.phoneCountryCode != null ? String(assistant.phoneCountryCode).trim() : DEFAULT_DIAL;
   return {
-    name: assistant.name != null ? String(assistant.name) : "",
+    name: sanitizePersonName(assistant.name != null ? String(assistant.name) : ""),
     email: assistant.email != null ? String(assistant.email) : "",
     password: "",
     phoneCountryIso: findIsoForDial(phoneCc) || DEFAULT_ISO,
@@ -56,19 +62,18 @@ export function validateAssistantPassword(password, { required = false } = {}) {
 }
 
 export function validateAssistantForm(form, { requirePassword = false } = {}) {
-  const name = String(form.name ?? "").trim();
-  const email = String(form.email ?? "").trim();
-  const phone = String(form.phone ?? "").trim();
+  const nameErr = validatePersonName(form.name, { label: "Name" });
+  if (nameErr) return nameErr;
+
+  const emailErr = validateEmail(form.email);
+  if (emailErr) return emailErr;
+
+  const phoneErr = validatePhoneDigits(form.phone);
   const cc = String(form.phoneCountryCode ?? "").trim();
 
-  if (!name || name.length < 2) return "Name is required (at least 2 characters).";
-  if (!email) return "Email is required.";
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "Enter a valid email address.";
   const passwordErr = validateAssistantPassword(form.password, { required: requirePassword });
   if (passwordErr) return passwordErr;
-  if (!phone) return "Mobile number is required.";
-  if (!/^\d+$/.test(phone)) return "Mobile number should contain digits only.";
-  if (phone.length !== 10) return "Mobile number must be exactly 10 digits.";
+  if (phoneErr) return phoneErr;
   if (!cc) return "Phone country code is required.";
   if (form.status && !["active", "inactive"].includes(form.status)) {
     return "Status must be active or inactive.";

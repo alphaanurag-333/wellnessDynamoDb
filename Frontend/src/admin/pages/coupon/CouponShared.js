@@ -1,6 +1,6 @@
-export const TITLE_MAX_LEN = 120;
+export const TITLE_MAX_LEN = 50;
 export const COUPON_CODE_MAX_LEN = 32;
-export const LIST_SEARCH_MAX_LEN = 120;
+export const LIST_SEARCH_MAX_LEN = 50;
 export const LIST_LIMIT = 10;
 
 export const DISCOUNT_TYPES = [

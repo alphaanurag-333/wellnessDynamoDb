@@ -1,10 +1,13 @@
 export const ACHIEVEMENTS_MIN_LEN = 2;
-export const ACHIEVEMENTS_MAX_LEN = 2000;
+export const ACHIEVEMENTS_MAX_LEN = 500;
 export const DESCRIPTION_MIN_LEN = 5;
-export const DESCRIPTION_MAX_LEN = 2000;
-export const LIST_SEARCH_MAX_LEN = 120;
+export const DESCRIPTION_MAX_LEN = 500;
+export const TIME_TAKEN_MIN = 1;
+export const TIME_TAKEN_MAX = 120;
+export const TIME_TAKEN_MAX_LEN = 3;
+export const LIST_SEARCH_MAX_LEN = 50;
 export const USER_ID_FILTER_MAX_LEN = 32;
-export const IMAGE_MAX_SIZE_BYTES = 5 * 1024 * 1024;
+export { IMAGE_MAX_SIZE_BYTES } from "../../../utils/mediaUploadValidation.js";
 export const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/jpg"]);
 export const LIST_LIMIT = 10;
 
@@ -32,6 +35,29 @@ export function sanitizeDescription(value) {
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .slice(0, DESCRIPTION_MAX_LEN);
+}
+
+/** Whole months only — digits capped at TIME_TAKEN_MAX_LEN and value at TIME_TAKEN_MAX. */
+export function sanitizeTimeTakenMonths(raw) {
+  const digits = String(raw ?? "").replace(/\D/g, "").slice(0, TIME_TAKEN_MAX_LEN);
+  if (!digits) return "";
+  const num = Number.parseInt(digits, 10);
+  if (!Number.isFinite(num)) return "";
+  return String(Math.min(TIME_TAKEN_MAX, num));
+}
+
+export function validateTimeTakenMonths(value) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "Time taken is required.";
+  if (!/^\d+$/.test(raw)) return "Time taken must be a whole number of months.";
+  const num = Number.parseInt(raw, 10);
+  if (!Number.isFinite(num) || num < TIME_TAKEN_MIN) {
+    return `Time taken must be at least ${TIME_TAKEN_MIN} month.`;
+  }
+  if (num > TIME_TAKEN_MAX) {
+    return `Time taken cannot exceed ${TIME_TAKEN_MAX} months.`;
+  }
+  return "";
 }
 
 export function truncate(str, max) {
@@ -65,14 +91,8 @@ export function userIdFromRow(row) {
 }
 
 export function validateForm(form, { editId, oldFile, newFile, hasExistingImages }) {
-  const timeTakenRaw = form.timeTaken;
-  const timeTaken = Number(timeTakenRaw);
-  if (timeTakenRaw === "" || timeTakenRaw === null || timeTakenRaw === undefined) {
-    return "Time taken is required.";
-  }
-  if (!Number.isFinite(timeTaken) || timeTaken < 0) {
-    return "Time taken must be a non-negative number.";
-  }
+  const timeTakenErr = validateTimeTakenMonths(form.timeTaken);
+  if (timeTakenErr) return timeTakenErr;
 
   const achievements = form.achievements.trim();
   const description = form.description.trim();

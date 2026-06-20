@@ -3,8 +3,10 @@ export const TYPE_OPTIONS = ["link", "video"];
 export const NAME_MAX_LEN = 100;
 export const YTLINK_MAX_LEN = 500;
 export const SEARCH_MAX_LEN = 120;
-export const VIDEO_MAX_SIZE_BYTES = 50 * 1024 * 1024;
-export const IMAGE_MAX_SIZE_BYTES = 5 * 1024 * 1024;
+export {
+  IMAGE_MAX_SIZE_BYTES,
+  VIDEO_MAX_SIZE_BYTES,
+} from "../../../utils/mediaUploadValidation.js";
 
 export function emptyForm() {
   return { name: "", type: "link", ytLink: "", video: "", profileImage: "", status: "active" };

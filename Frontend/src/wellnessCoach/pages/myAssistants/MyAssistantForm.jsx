@@ -24,6 +24,16 @@ import {
   resolveAssistantId,
   validateAssistantForm,
 } from "./MyAssistantShared.js";
+import {
+  blockPersonNameDigitKeyDown,
+  blockPhoneNonDigitKeyDown,
+  EMAIL_MAX_LEN,
+  PERSON_NAME_MAX_LEN,
+  sanitizeEmailInput,
+  sanitizePersonName,
+  sanitizePhoneDigits,
+} from "../../../utils/personFieldValidation.js";
+import { validateImageFileSize } from "../../../utils/mediaUploadValidation.js";
 
 export function MyAssistantForm({
   mode = "create",
@@ -63,14 +73,20 @@ export function MyAssistantForm({
     setValues((p) => ({ ...p, [field]: e.target.value }));
   };
 
-  const handlePhoneInput = (e) => {
-    setValues((p) => ({ ...p, phone: e.target.value.replace(/\D/g, "").slice(0, 10) }));
+  const handleNameInput = (e) => {
+    setValues((p) => ({ ...p, name: sanitizePersonName(e.target.value) }));
   };
 
-  const handlePhoneKeyDown = (e) => {
-    if (e.ctrlKey || e.metaKey || e.altKey) return;
-    if (e.key.length === 1 && !/\d/.test(e.key)) e.preventDefault();
+  const handleEmailInput = (e) => {
+    setValues((p) => ({ ...p, email: sanitizeEmailInput(e.target.value) }));
   };
+
+  const handlePhoneInput = (e) => {
+    setValues((p) => ({ ...p, phone: sanitizePhoneDigits(e.target.value) }));
+  };
+
+  const handlePhoneKeyDown = blockPhoneNonDigitKeyDown;
+  const handleNameKeyDown = blockPersonNameDigitKeyDown;
 
   const dialCountryOptions = useMemo(
     () =>
@@ -161,9 +177,16 @@ export function MyAssistantForm({
             type="file"
             accept="image/jpeg,image/png,image/gif,image/webp"
             className="d-none"
-            onChange={(e) => {
+            onChange={async (e) => {
               const file = e.target.files?.[0];
-              if (file) setProfileFile(file);
+              if (!file) return;
+              const sizeErr = validateImageFileSize(file);
+              if (sizeErr) {
+                e.target.value = "";
+                await Swal.fire({ icon: "error", title: "Validation error", text: sizeErr });
+                return;
+              }
+              setProfileFile(file);
             }}
           />
           <label htmlFor={fileInputId} className="mb-0 d-block" style={{ cursor: "pointer" }}>
@@ -190,7 +213,16 @@ export function MyAssistantForm({
           <span className="user-field__label">
             Name <span className="required-dot">*</span>
           </span>
-          <input className="user-field__input" value={values.name} onChange={handleChange("name")} required />
+          <input
+            className="user-field__input"
+            value={values.name}
+            onChange={handleNameInput}
+            onKeyDown={handleNameKeyDown}
+            maxLength={PERSON_NAME_MAX_LEN}
+            inputMode="text"
+            autoCapitalize="words"
+            required
+          />
         </label>
         <label className="user-field col-12 col-md-6">
           <span className="user-field__label">
@@ -200,7 +232,10 @@ export function MyAssistantForm({
             type="email"
             className="user-field__input"
             value={values.email}
-            onChange={handleChange("email")}
+            onChange={handleEmailInput}
+            placeholder="email@example.com"
+            autoComplete="email"
+            maxLength={EMAIL_MAX_LEN}
             required
           />
         </label>

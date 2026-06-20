@@ -14,7 +14,8 @@ function normalizeMediaField(value) {
 
 function toPublicAppConfig(config) {
   if (!config) return null;
-  const pub = { ...config, app_version: config.app_version ?? "" };
+  const { payment_methods: _paymentMethods, ...rest } = config;
+  const pub = { ...rest, app_version: config.app_version ?? "" };
   for (const field of MEDIA_FIELDS) {
     if (pub[field]) pub[field] = resolvePublicUrl(pub[field]) || "";
   }
@@ -54,12 +55,6 @@ async function createAppConfig() {
     tax_value:          "",
     referral_discount:  "",
     consultancy_amount: "",
-
-    // Nested array 
-    payment_methods: [
-      { type: "cod",    isActive: true },
-      { type: "online", isActive: true },
-    ],
 
     // Nested array with credentials object
     payment_gateways: [],   // default empty 

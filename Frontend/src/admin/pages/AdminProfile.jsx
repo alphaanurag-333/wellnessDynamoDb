@@ -11,14 +11,21 @@ import { DEFAULT_IMAGE_SRC, handleMediaImageError } from "../components/AdminMed
 import { ProfilePasswordField } from "../components/PortalProfileLayout.jsx";
 import { mediaUrl } from "../../media.js";
 import { setAdmin } from "../../store/authSlice.js";
+import {
+  blockPersonNameDigitKeyDown,
+  blockPhoneNonDigitKeyDown,
+  PERSON_NAME_MAX_LEN,
+  sanitizePersonName,
+  sanitizePhoneDigits,
+  validatePersonName,
+  validatePhoneDigits,
+} from "../../utils/personFieldValidation.js";
+import { validateImageFileSize } from "../../utils/mediaUploadValidation.js";
 
 const PROFILE_TABS = [
   { id: "personal", label: "Personal Details" },
   { id: "password", label: "Change Password" },
 ];
-
-const NAME_REGEX = /^[A-Za-z ]{2,40}$/;
-const PHONE_REGEX = /^\d{10}$/;
 
 export function AdminProfile() {
   const dispatch = useDispatch();
@@ -71,9 +78,9 @@ export function AdminProfile() {
       await Swal.fire({ icon: "error", title: "Invalid image", text: "Please choose a JPEG, PNG, GIF, or WebP image." });
       return;
     }
-    const maxMb = 5;
-    if (file.size > maxMb * 1024 * 1024) {
-      await Swal.fire({ icon: "error", title: "Image too large", text: `Image must be ${maxMb}MB or smaller.` });
+    const sizeErr = validateImageFileSize(file);
+    if (sizeErr) {
+      await Swal.fire({ icon: "error", title: "Image too large", text: sizeErr });
       return;
     }
 
@@ -94,32 +101,25 @@ export function AdminProfile() {
   };
 
   const handleNameInput = (e) => {
-    const value = e.target.value.replace(/[^A-Za-z ]+/g, "").replace(/\s{2,}/g, " ");
-    setName(value);
+    setName(sanitizePersonName(e.target.value));
   };
 
   const handlePhoneInput = (e) => {
-    setPhone(e.target.value.replace(/\D+/g, "").slice(0, 10));
+    setPhone(sanitizePhoneDigits(e.target.value));
   };
 
   const handleSave = async () => {
     if (tab === "personal") {
       const trimmedName = name.trim();
       const trimmedPhone = phone.trim();
-      if (!trimmedName) {
-        await Swal.fire({ icon: "error", title: "Validation error", text: "Full name is required." });
+      const nameErr = validatePersonName(trimmedName);
+      if (nameErr) {
+        await Swal.fire({ icon: "error", title: "Validation error", text: nameErr });
         return;
       }
-      if (!NAME_REGEX.test(trimmedName)) {
-        await Swal.fire({ icon: "error", title: "Validation error", text: "Full name must contain only letters and spaces." });
-        return;
-      }
-      if (!trimmedPhone) {
-        await Swal.fire({ icon: "error", title: "Validation error", text: "Phone number is required." });
-        return;
-      }
-      if (!PHONE_REGEX.test(trimmedPhone)) {
-        await Swal.fire({ icon: "error", title: "Validation error", text: "Phone number must be exactly 10 digits." });
+      const phoneErr = validatePhoneDigits(trimmedPhone, { label: "Phone number" });
+      if (phoneErr) {
+        await Swal.fire({ icon: "error", title: "Validation error", text: phoneErr });
         return;
       }
       setLoading(true);
@@ -243,7 +243,15 @@ export function AdminProfile() {
             <div className="user-form__grid" style={{ maxWidth: 640 }}>
               <label className="user-field">
                 <span className="user-field__label">Full Name <span className="required-dot">*</span></span>
-                <input value={name} onChange={handleNameInput} maxLength={40} required />
+                <input
+                  value={name}
+                  onChange={handleNameInput}
+                  onKeyDown={blockPersonNameDigitKeyDown}
+                  maxLength={PERSON_NAME_MAX_LEN}
+                  inputMode="text"
+                  autoCapitalize="words"
+                  required
+                />
               </label>
               <label className="user-field">
                 <span className="user-field__label">Email ID</span>
@@ -251,7 +259,17 @@ export function AdminProfile() {
               </label>
               <label className="user-field">
                 <span className="user-field__label">Mobile Number <span className="required-dot">*</span></span>
-                <input value={phone} onChange={handlePhoneInput} placeholder="9876543210" inputMode="numeric" maxLength={10} required />
+                <input
+                  value={phone}
+                  onChange={handlePhoneInput}
+                  onKeyDown={blockPhoneNonDigitKeyDown}
+                  placeholder="9876543210"
+                  inputMode="numeric"
+                  pattern="[0-9]{10}"
+                  maxLength={10}
+                  minLength={10}
+                  required
+                />
               </label>
             </div>
           </div>

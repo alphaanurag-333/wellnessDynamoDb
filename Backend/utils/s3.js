@@ -7,6 +7,7 @@ const {
 } = require("@aws-sdk/client-s3");
 const config = require("../config");
 const AppError = require("./AppError");
+const { assertUploadFileSize } = require("./mediaUploadLimits");
 
 const s3Client = new S3Client({
   region: config.awsRegion,
@@ -114,6 +115,8 @@ async function uploadMulterField(req, field, folder) {
 
 async function uploadMulterFile(file, folder) {
   if (!file?.buffer) return undefined;
+
+  assertUploadFileSize(file);
 
   return uploadBufferToS3({
     buffer: file.buffer,

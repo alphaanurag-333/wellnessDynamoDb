@@ -11,7 +11,6 @@ import {
   DEFAULT_COUNTRY_NAME,
   DEFAULT_ISO,
   DEFAULT_DIAL,
-  NAME_MAX_LEN,
   dialCodeFromPhonecode,
   getLocationOptions,
   getSpecializationOptionId,
@@ -21,6 +20,18 @@ import { AuthPasswordToggle } from "../../components/AuthPasswordToggle.jsx";
 import { selectLoginBrandLogoUrl } from "../../store/appConfigSelectors.js";
 import { mediaUrl } from "../../media.js";
 import defaultLogo from "../../assets/logo/defaultlogo.png";
+import {
+  blockPersonNameDigitKeyDown,
+  blockPhoneNonDigitKeyDown,
+  EMAIL_MAX_LEN,
+  PERSON_NAME_MAX_LEN,
+  sanitizeEmailInput,
+  sanitizePersonName,
+  sanitizePhoneDigits,
+  validateEmail,
+  validatePersonName,
+  validatePhoneDigits,
+} from "../../utils/personFieldValidation.js";
 
 function emptyRegisterForm() {
   return {
@@ -42,18 +53,17 @@ function emptyRegisterForm() {
 }
 
 function validateRegisterForm(form) {
-  const name = String(form.name ?? "").trim();
-  const email = String(form.email ?? "").trim();
-  const phone = String(form.phone ?? "").trim();
+  const nameErr = validatePersonName(form.name);
+  if (nameErr) return nameErr;
+
+  const emailErr = validateEmail(form.email, { label: "Email address" });
+  if (emailErr) return emailErr;
+
+  const phoneErr = validatePhoneDigits(form.phone);
   const password = String(form.password ?? "");
   const confirmPassword = String(form.confirmPassword ?? "");
 
-  if (!name || name.length < 2) return "Name is required (at least 2 characters).";
-  if (!email) return "Email is required.";
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "Enter a valid email address.";
-  if (!phone) return "Mobile number is required.";
-  if (!/^\d+$/.test(phone)) return "Mobile number should contain digits only.";
-  if (phone.length !== 10) return "Mobile number must be exactly 10 digits.";
+  if (phoneErr) return phoneErr;
   if (!password) return "Password is required (minimum 8 characters).";
   if (password.length < 8) return "Password must be at least 8 characters.";
   if (password !== confirmPassword) return "Passwords do not match.";
@@ -134,14 +144,20 @@ export function CoachRegisterPage() {
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
   };
 
-  const handlePhoneInput = (e) => {
-    setForm((prev) => ({ ...prev, phone: e.target.value.replace(/\D/g, "").slice(0, 10) }));
+  const handleEmailInput = (e) => {
+    setForm((prev) => ({ ...prev, email: sanitizeEmailInput(e.target.value) }));
   };
 
-  const handlePhoneKeyDown = (e) => {
-    if (e.ctrlKey || e.metaKey || e.altKey) return;
-    if (e.key.length === 1 && !/\d/.test(e.key)) e.preventDefault();
+  const handleNameInput = (e) => {
+    setForm((prev) => ({ ...prev, name: sanitizePersonName(e.target.value) }));
   };
+
+  const handlePhoneInput = (e) => {
+    setForm((prev) => ({ ...prev, phone: sanitizePhoneDigits(e.target.value) }));
+  };
+
+  const handlePhoneKeyDown = blockPhoneNonDigitKeyDown;
+  const handleNameKeyDown = blockPersonNameDigitKeyDown;
 
   const setPhoneCountryIso = (iso) => {
     const code = iso || DEFAULT_ISO;
@@ -244,9 +260,12 @@ export function CoachRegisterPage() {
                   type="text"
                   name="name"
                   value={form.name}
-                  onChange={handleChange("name")}
+                  onChange={handleNameInput}
+                  onKeyDown={handleNameKeyDown}
                   placeholder="Your full name"
-                  maxLength={NAME_MAX_LEN}
+                  maxLength={PERSON_NAME_MAX_LEN}
+                  inputMode="text"
+                  autoCapitalize="words"
                   required
                 />
               </div>
@@ -261,9 +280,10 @@ export function CoachRegisterPage() {
                   type="email"
                   name="email"
                   value={form.email}
-                  onChange={handleChange("email")}
+                  onChange={handleEmailInput}
                   placeholder="abc@example.com"
                   autoComplete="email"
+                  maxLength={EMAIL_MAX_LEN}
                   required
                 />
               </div>

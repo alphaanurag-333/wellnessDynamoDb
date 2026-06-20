@@ -1,10 +1,10 @@
 export const TITLE_MIN_LEN = 2;
-export const TITLE_MAX_LEN = 100;
+export const TITLE_MAX_LEN = 50;
 export const DESCRIPTION_MIN_LEN = 5;
-export const DESCRIPTION_MAX_LEN = 2000;
+export const DESCRIPTION_MAX_LEN = 500;
 export const SYMPTOM_ITEM_MAX_LEN = 200;
 export const MAX_SYMPTOM_ROWS = 30;
-export const LIST_SEARCH_MAX_LEN = 120;
+export const LIST_SEARCH_MAX_LEN = 50;
 export const LIST_LIMIT = 10;
 
 export function emptyForm() {

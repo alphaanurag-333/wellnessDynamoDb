@@ -6,6 +6,7 @@ import { adminCreateTransformation, adminUpdateTransformation } from "../../api/
 import { logout } from "../../../store/authSlice.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { mediaUrl } from "../../../media.js";
+import { blockPhoneNonDigitKeyDown } from "../../../utils/personFieldValidation.js";
 import {
   ACHIEVEMENTS_MAX_LEN,
   ACHIEVEMENTS_MIN_LEN,
@@ -13,9 +14,13 @@ import {
   DESCRIPTION_MAX_LEN,
   DESCRIPTION_MIN_LEN,
   IMAGE_MAX_SIZE_BYTES,
+  TIME_TAKEN_MAX,
+  TIME_TAKEN_MAX_LEN,
+  TIME_TAKEN_MIN,
   emptyForm,
   sanitizeAchievements,
   sanitizeDescription,
+  sanitizeTimeTakenMonths,
   userIdFromRow,
   validateForm,
 } from "./TransformationShared.js";
@@ -30,7 +35,9 @@ export function TransformationForm({ mode = "create", initialTransformation = nu
   const [form, setForm] = useState(() => {
     if (!initialTransformation) return emptyForm();
     return {
-      timeTaken: initialTransformation.timeTaken != null ? String(initialTransformation.timeTaken) : "",
+      timeTaken: sanitizeTimeTakenMonths(
+        initialTransformation.timeTaken != null ? String(initialTransformation.timeTaken) : ""
+      ),
       achievements: initialTransformation.achievements || "",
       description: initialTransformation.description || "",
       status: initialTransformation.status || "active",
@@ -146,14 +153,20 @@ export function TransformationForm({ mode = "create", initialTransformation = nu
           </span>
           <input
             className="user-field__input"
-            type="number"
-            min={0}
-            step="any"
             value={form.timeTaken}
-            onChange={(e) => setForm((p) => ({ ...p, timeTaken: e.target.value }))}
+            onChange={(e) =>
+              setForm((p) => ({ ...p, timeTaken: sanitizeTimeTakenMonths(e.target.value) }))
+            }
+            onKeyDown={blockPhoneNonDigitKeyDown}
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={TIME_TAKEN_MAX_LEN}
+            placeholder={`${TIME_TAKEN_MIN} to ${TIME_TAKEN_MAX}`}
             required
           />
-          <small className="data-table__muted">Numeric value (e.g. 1, 2, 3).</small>
+          <small className="data-table__muted">
+            Whole months only ({TIME_TAKEN_MIN}–{TIME_TAKEN_MAX}).
+          </small>
         </label>
         <label className="user-field col-12 col-md-4">
           <span className="user-field__label">Status</span>
