@@ -13,6 +13,7 @@ const SCALAR_KEYS = [
   "app_email",
   "app_mobile",
   "app_detail",
+  "app_version",
   "address",
   "latitude",
   "longitude",
@@ -73,12 +74,87 @@ const LIMITS = {
   appDetails: 2000,
   footerText: 180,
   statsField: 60,
+  decimalField: 3,
   amountField: 20,
   gatewayField: 180,
 };
 
 function charCount(value, max) {
   return `${String(value || "").length}/${max}`;
+}
+
+/** Max 3 chars, digits + one dot + at most one decimal digit (maxLength ignored on type=number). */
+function sanitizeShortDecimalInput(value, maxLen = LIMITS.decimalField) {
+  let result = "";
+  let hasDot = false;
+  const raw = String(value ?? "").replace(/[^\d.]/g, "");
+
+  for (const ch of raw) {
+    if (ch === ".") {
+      if (hasDot || result.length >= maxLen) continue;
+      hasDot = true;
+      result += ch;
+      continue;
+    }
+    if (hasDot && result.length - result.indexOf(".") > 1) continue;
+    if (result.length >= maxLen) break;
+    result += ch;
+  }
+
+  return result.slice(0, maxLen);
+}
+
+function normalizeShortDecimalOnBlur(value, min, max) {
+  let v = String(value || "").trim();
+  if (!v) return "";
+  if (v.endsWith(".")) v = v.slice(0, -1);
+  if (!v) return "";
+
+  const num = Number.parseFloat(v);
+  if (!Number.isFinite(num)) return v;
+
+  const clamped = Math.min(max, Math.max(min, num));
+  if (v.includes(".")) {
+    return clamped.toFixed(1).slice(0, LIMITS.decimalField);
+  }
+  return String(Math.round(clamped)).slice(0, LIMITS.decimalField);
+}
+
+function stepShortDecimal(value, delta, min, max) {
+  const current = Number.parseFloat(String(value || "").trim());
+  const base = Number.isFinite(current) ? current : min;
+  const next = Math.min(max, Math.max(min, Math.round((base + delta) * 10) / 10));
+  const formatted = Number.isInteger(next) ? String(next) : next.toFixed(1);
+  return sanitizeShortDecimalInput(formatted);
+}
+
+function handleShortDecimalKeyDown(e, field, min, max, setScalars) {
+  if (["-", "e", "E", "+"].includes(e.key)) {
+    e.preventDefault();
+    return;
+  }
+  if (e.key === "ArrowUp") {
+    e.preventDefault();
+    setScalars((s) => ({
+      ...s,
+      [field]: stepShortDecimal(s[field], 0.1, min, max),
+    }));
+  }
+  if (e.key === "ArrowDown") {
+    e.preventDefault();
+    setScalars((s) => ({
+      ...s,
+      [field]: stepShortDecimal(s[field], -0.1, min, max),
+    }));
+  }
+}
+
+function isValidShortDecimal(value, min, max) {
+  const raw = String(value || "").trim();
+  if (!raw || raw.length > LIMITS.decimalField) return false;
+  if (!/^\d+(\.\d)?$/.test(raw)) return false;
+  const num = Number.parseFloat(raw);
+  return Number.isFinite(num) && num >= min && num <= max;
 }
 
 function isValidHttpUrl(value) {
@@ -94,6 +170,7 @@ function validateSettingsForm({ scalars, paymentGateways }) {
   const appName = (scalars.app_name || "").trim();
   const appEmail = (scalars.app_email || "").trim();
   const appMobile = (scalars.app_mobile || "").trim();
+  const appVersion = (scalars.app_version || "").trim();
   const improvedUser = (scalars.improved_user || "").trim();
   const happyClients = (scalars.happy_clients || "").trim();
   const averageRating = (scalars.average_rating || "").trim();
@@ -118,9 +195,12 @@ function validateSettingsForm({ scalars, paymentGateways }) {
     return { tab: "general", text: "Happy clients must be a numeric value." };
   }
   if (!averageRating) return { tab: "general", text: "Average rating is required." };
-  const rating = Number.parseFloat(averageRating);
-  if (!Number.isFinite(rating) || rating < 0 || rating > 5) {
-    return { tab: "general", text: "Average rating must be between 0 and 5." };
+  if (!isValidShortDecimal(averageRating, 0, 5)) {
+    return { tab: "general", text: "Average rating must be between 0 and 5 (max 3 characters, e.g. 4.5)." };
+  }
+  if (!appVersion) return { tab: "general", text: "App version is required." };
+  if (!isValidShortDecimal(appVersion, 1, 10)) {
+    return { tab: "general", text: "App version must be between 1.0 and 10.0 (max 3 characters, e.g. 9.5)." };
   }
   if (!successRate) return { tab: "general", text: "Success rate is required." };
   const success = Number.parseFloat(successRate);
@@ -306,6 +386,16 @@ export function BusinessSetting() {
     setHasDoc(true);
     const next = Object.fromEntries(
       SCALAR_KEYS.map((k) => [k, doc[k] != null ? String(doc[k]) : ""]),
+    );
+    next.average_rating = normalizeShortDecimalOnBlur(
+      sanitizeShortDecimalInput(next.average_rating),
+      0,
+      5
+    );
+    next.app_version = normalizeShortDecimalOnBlur(
+      sanitizeShortDecimalInput(next.app_version),
+      1,
+      10
     );
     setScalars(next);
     setPaymentMethods(normalizePaymentMethods(doc.payment_methods));
@@ -595,11 +685,19 @@ export function BusinessSetting() {
                       <input
                         className="user-field__input"
                         value={scalars.average_rating}
-                        onChange={(e) => setScalars((s) => ({ ...s, average_rating: e.target.value }))}
-                        onKeyDown={(e) => {
-                          if (["-", "e", "E", "+"].includes(e.key)) e.preventDefault();
-                        }}
-                        maxLength={LIMITS.statsField}
+                        onChange={(e) =>
+                          setScalars((s) => ({
+                            ...s,
+                            average_rating: sanitizeShortDecimalInput(e.target.value),
+                          }))
+                        }
+                        onBlur={(e) =>
+                          setScalars((s) => ({
+                            ...s,
+                            average_rating: normalizeShortDecimalOnBlur(e.target.value, 0, 5),
+                          }))
+                        }
+                        onKeyDown={(e) => handleShortDecimalKeyDown(e, "average_rating", 0, 5, setScalars)}
                         required
                         type="number"
                         min={0}
@@ -608,7 +706,35 @@ export function BusinessSetting() {
                         inputMode="decimal"
                         placeholder="0 to 5"
                       />
-                      <span className="settings-char-count">{charCount(scalars.average_rating, LIMITS.statsField)}</span>
+                      <span className="settings-char-count">{charCount(scalars.average_rating, LIMITS.decimalField)}</span>
+                    </div>
+                    <div className="user-field">
+                      <span className="user-field__label">App version <span className="required-dot">*</span></span>
+                      <input
+                        className="user-field__input"
+                        value={scalars.app_version}
+                        onChange={(e) =>
+                          setScalars((s) => ({
+                            ...s,
+                            app_version: sanitizeShortDecimalInput(e.target.value),
+                          }))
+                        }
+                        onBlur={(e) =>
+                          setScalars((s) => ({
+                            ...s,
+                            app_version: normalizeShortDecimalOnBlur(e.target.value, 1, 10),
+                          }))
+                        }
+                        onKeyDown={(e) => handleShortDecimalKeyDown(e, "app_version", 1, 10, setScalars)}
+                        required
+                        type="number"
+                        min={1}
+                        max={10}
+                        step={0.1}
+                        inputMode="decimal"
+                        placeholder="1.0 to 10.0"
+                      />
+                      <span className="settings-char-count">{charCount(scalars.app_version, LIMITS.decimalField)}</span>
                     </div>
                     <div className="user-field">
                       <span className="user-field__label">Happy clients <span className="required-dot">*</span></span>

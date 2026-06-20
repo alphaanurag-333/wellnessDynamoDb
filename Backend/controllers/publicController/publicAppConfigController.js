@@ -21,6 +21,7 @@ function toPublicClientAppConfig(doc) {
     app_email: config.app_email,
     app_mobile: config.app_mobile,
     app_detail: config.app_detail ?? "",
+    app_version: config.app_version ?? "",
     user_logo: config.user_logo ?? "",
     success_rate: config.success_rate ?? "",
     average_rating: config.average_rating ?? "",

@@ -14,7 +14,7 @@ function normalizeMediaField(value) {
 
 function toPublicAppConfig(config) {
   if (!config) return null;
-  const pub = { ...config };
+  const pub = { ...config, app_version: config.app_version ?? "" };
   for (const field of MEDIA_FIELDS) {
     if (pub[field]) pub[field] = resolvePublicUrl(pub[field]) || "";
   }
@@ -33,6 +33,7 @@ async function createAppConfig() {
     app_email:      "",
     app_mobile:     "",
     app_detail:     "",
+    app_version:    "",
     admin_logo:     "",
     user_logo:      "",
     favicon:        "",
