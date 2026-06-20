@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { coachListAssistants } from "../../api/coachAssistants.js";
 import { coachListHealUsers, coachReassignHealUser } from "../../api/coachHealUsers.js";
 import { logoutCoach } from "../../../store/authSlice.js";
-import { CoachPageLoadingState } from "../../components/CoachPageLoader.jsx";
+import { CoachPageLoadingState, CoachTableLoaderRow } from "../../components/CoachPageLoader.jsx";
 import {
   formatAssignedCoachLabel,
   UserTierBadge,
@@ -15,6 +15,17 @@ function formatDate(iso) {
   if (!iso) return "—";
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString(undefined, { dateStyle: "medium" });
+}
+
+function SearchIcon() {
+  return (
+    <span className="search-field__icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
+        <circle cx="11" cy="11" r="8" />
+        <path d="m21 21-4.3-4.3" />
+      </svg>
+    </span>
+  );
 }
 
 export function MyHealUsersList() {
@@ -31,6 +42,7 @@ export function MyHealUsersList() {
   const [reassignUserId, setReassignUserId] = useState("");
   const [reassignAssistantId, setReassignAssistantId] = useState("");
   const [reassigning, setReassigning] = useState(false);
+  const [scope, setScope] = useState("all");
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search.trim()), 400);
@@ -44,6 +56,7 @@ export function MyHealUsersList() {
       const { users: rows } = await coachListHealUsers(coachToken, {
         limit: 100,
         search: debouncedSearch || undefined,
+        scope,
       });
       setUsers(rows);
     } catch (e) {
@@ -51,7 +64,7 @@ export function MyHealUsersList() {
     } finally {
       setLoading(false);
     }
-  }, [coachToken, debouncedSearch, dispatch]);
+  }, [coachToken, debouncedSearch, dispatch, scope]);
 
   useEffect(() => {
     loadUsers();
@@ -106,76 +119,93 @@ export function MyHealUsersList() {
   };
 
   return (
-    <div className="page-card">
-      <div className="page-card__head">
-        <div>
+    <div className="page-card heal-users-page">
+      <div className="page-card__head heal-users-page__head">
+        <div className="heal-users-page__intro">
           <h2 className="page-card__title">My Heal clients</h2>
-          <p className="page-card__subtitle">All paid users under your coaching hierarchy (direct + assistants).</p>
+          <p className="page-card__desc">
+            All Heal clients in your team — directly with you or assigned to your assistants.
+          </p>
         </div>
-        <div className="search-field">
-          <input
-            type="search"
-            placeholder="Search name, email, phone…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            aria-label="Search clients"
-          />
+        <div className="page-card__actions user-list-toolbar heal-users-page__toolbar">
+          <div className="user-list-filters heal-users-page__filters">
+            <div className="search-field heal-users-page__search">
+              <SearchIcon />
+              <input
+                type="search"
+                placeholder="Search name, email, phone"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                aria-label="Search clients"
+              />
+            </div>
+            <select
+              className="user-list-status-select"
+              value={scope}
+              onChange={(e) => setScope(e.target.value)}
+              aria-label="Filter clients"
+            >
+              <option value="all">All clients</option>
+              <option value="direct">My direct clients</option>
+              <option value="assistant">Assistant clients</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      {loading ? (
-        <CoachPageLoadingState label="Loading clients…" />
-      ) : (
-        <div className="table-scroll">
-          <table className="data-table">
-            <thead>
+      <div className="table-scroll">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Client</th>
+              <th>Phone</th>
+              <th>Tier</th>
+              <th>Assigned to</th>
+              <th>Joined</th>
+              <th className="data-table__actions-col">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <CoachTableLoaderRow colSpan={6} label="Loading clients…" />
+            ) : users.length === 0 ? (
               <tr>
-                <th>Client</th>
-                <th>Phone</th>
-                <th>Tier</th>
-                <th>Assigned to</th>
-                <th>Joined</th>
-                <th className="data-table__actions-col">Actions</th>
+                <td colSpan={6}>
+                  <p className="table-placeholder">No Heal clients found for the current filters.</p>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {users.length === 0 ? (
-                <tr>
-                  <td colSpan={6}>No Heal clients found.</td>
+            ) : (
+              users.map((u) => (
+                <tr key={u._id || u.id}>
+                  <td>
+                    <div className="data-table__primary">{u.name || "—"}</div>
+                    <div className="data-table__muted">{u.email}</div>
+                  </td>
+                  <td>{[u.phoneCountryCode, u.phone].filter(Boolean).join(" ") || "—"}</td>
+                  <td>
+                    <UserTierBadge tier={u.userTier} assignmentStatus={u.assignmentStatus} />
+                  </td>
+                  <td>{formatAssignedCoachLabel(u)}</td>
+                  <td>{formatDate(u.convertedAt || u.createdAt)}</td>
+                  <td>
+                    <div className="row-actions row-actions--text">
+                      <Link
+                        to={`${u._id || u.id}/water-tracking`}
+                        className="btn btn--ghost btn--sm"
+                      >
+                        Water history
+                      </Link>
+                      <button type="button" className="btn btn--ghost btn--sm" onClick={() => handleReassign(u)}>
+                        Reassign
+                      </button>
+                    </div>
+                  </td>
                 </tr>
-              ) : (
-                users.map((u) => (
-                  <tr key={u._id || u.id}>
-                    <td>
-                      <div className="data-table__primary">{u.name || "—"}</div>
-                      <div className="data-table__muted">{u.email}</div>
-                    </td>
-                    <td>{[u.phoneCountryCode, u.phone].filter(Boolean).join(" ") || "—"}</td>
-                    <td>
-                      <UserTierBadge tier={u.userTier} assignmentStatus={u.assignmentStatus} />
-                    </td>
-                    <td>{formatAssignedCoachLabel(u)}</td>
-                    <td>{formatDate(u.convertedAt || u.createdAt)}</td>
-                    <td>
-                      <div className="data-table__actions">
-                        <Link
-                          to={`${u._id || u.id}/water-tracking`}
-                          className="btn btn--ghost btn--sm"
-                        >
-                          Water history
-                        </Link>
-                        <button type="button" className="btn btn--ghost btn--sm" onClick={() => handleReassign(u)}>
-                          Reassign
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
 
       {reassignUserId ? (
         <div className="modal-overlay" role="dialog" aria-modal="true">

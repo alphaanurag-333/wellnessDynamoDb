@@ -6,11 +6,12 @@ function normalizeUser(user) {
   return { ...user, id, _id: id };
 }
 
-export async function coachListHealUsers(token, { page = 1, limit = 20, search } = {}) {
+export async function coachListHealUsers(token, { page = 1, limit = 20, search, scope = "all" } = {}) {
   const q = new URLSearchParams();
   q.set("page", String(page));
   q.set("limit", String(limit));
   if (search && String(search).trim()) q.set("search", String(search).trim());
+  if (scope && scope !== "all") q.set("scope", scope);
   try {
     const { data: body } = await coachApi.get(`/coach/heal-users?${q}`, {
       headers: authHeader(token),

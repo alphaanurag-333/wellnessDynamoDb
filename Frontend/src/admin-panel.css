@@ -1063,6 +1063,13 @@ a.admin-header__dropdown-item {
   max-width: 56ch;
 }
 
+.page-card__subtitle {
+  margin: 6px 0 0;
+  color: var(--admin-muted);
+  font-size: 0.95rem;
+  max-width: 56ch;
+}
+
 .page-card__actions {
   display: flex;
   flex-wrap: wrap;
@@ -3391,6 +3398,15 @@ a.btn:hover {
   white-space: nowrap;
 }
 
+.data-table__actions,
+.row-actions--text {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
 .data-table__mono {
   font-variant-numeric: tabular-nums;
   font-weight: 600;
@@ -5272,4 +5288,156 @@ a.icon-btn {
 .btn--sm {
   padding: 0.35rem 0.65rem;
   font-size: 0.8125rem;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Consultancy payments (admin)                                               */
+/* -------------------------------------------------------------------------- */
+
+.consultancy-page__head {
+  align-items: flex-start;
+}
+
+.consultancy-page__intro {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.consultancy-page__toolbar {
+  flex: 1 1 420px;
+  justify-content: flex-end;
+}
+
+.consultancy-page__filters {
+  flex: 1 1 auto;
+  justify-content: flex-end;
+}
+
+.consultancy-page__search {
+  flex: 1 1 280px;
+  min-width: min(100%, 280px);
+  max-width: 360px;
+}
+
+.consultancy-page__referral-input {
+  height: 40px;
+  min-width: 150px;
+  max-width: 200px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--admin-border);
+  background: var(--admin-surface);
+  font: inherit;
+  font-weight: 600;
+  color: var(--admin-text);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.consultancy-page__referral-input:focus {
+  outline: none;
+  border-color: var(--admin-brand-blue-soft);
+  box-shadow: 0 0 0 3px rgba(44, 79, 120, 0.15);
+}
+
+.payment-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: capitalize;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.payment-status-pill--paid {
+  color: #166534;
+  background: rgba(34, 197, 94, 0.14);
+  border: 1px solid rgba(34, 197, 94, 0.28);
+}
+
+.payment-status-pill--pending {
+  color: #92400e;
+  background: rgba(245, 158, 11, 0.14);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+}
+
+.payment-status-pill--failed {
+  color: #991b1b;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.payment-status-pill--refunded {
+  color: #1e40af;
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+@media (max-width: 900px) {
+  .consultancy-page__toolbar {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .consultancy-page__filters {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .consultancy-page__search {
+    max-width: none;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Heal clients list (coach + assistant)                                      */
+/* -------------------------------------------------------------------------- */
+
+.heal-users-page__head {
+  align-items: flex-start;
+}
+
+.heal-users-page__intro {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.heal-users-page__toolbar {
+  flex: 1 1 420px;
+  justify-content: flex-end;
+}
+
+.heal-users-page__filters {
+  flex: 1 1 auto;
+  justify-content: flex-end;
+}
+
+.heal-users-page__search {
+  flex: 1 1 280px;
+  min-width: min(100%, 280px);
+  max-width: 360px;
+}
+
+.heal-users-page .data-table__actions-col {
+  width: auto;
+  min-width: 220px;
+}
+
+@media (max-width: 900px) {
+  .heal-users-page__toolbar {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .heal-users-page__filters {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .heal-users-page__search {
+    max-width: none;
+  }
 }

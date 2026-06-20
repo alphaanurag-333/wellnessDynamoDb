@@ -6,6 +6,15 @@
 export const navItems = [
   { to: "dashboard", label: "Dashboard", icon: "grid" },
   { to: "users", label: "User Management", icon: "users" },
+  {
+    id: "consultancy",
+    label: "Consultancy Payments",
+    icon: "wallet",
+    children: [
+      { to: "consultancy/transactions", label: "Transactions", icon: "wallet" },
+      { to: "consultancy/enrolled-users", label: "Enrolled Users", icon: "users" },
+    ],
+  },
   { to: "coaches", label: "Wellness Coaches", icon: "users" },
   { to: "awcs", label: "Assistant Coaches", icon: "users" },
   { to: "specializations", label: "Specializations", icon: "sliders" },

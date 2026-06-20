@@ -18,6 +18,8 @@ function titleFromPath(pathname) {
   if (/^\/coach\/my-assistants\/?$/.test(p)) return "Assistants (AWC)";
   if (/^\/coach\/my-heal-users\/[^/]+\/water-tracking\/?$/.test(p)) return "Water tracking";
   if (/^\/coach\/my-heal-users\/?$/.test(p)) return "Heal Clients";
+  if (/^\/coach\/consultancy\/enrolled-users\/?$/.test(p)) return "Consultancy Enrolled Users";
+  if (/^\/coach\/consultancy\/transactions\/?$/.test(p)) return "Consultancy Transactions";
   const segment = p.split("/").pop() || "dashboard";
   const found = flattenNavLinks(coachNavItems).find((n) => n.to === segment);
   return found ? found.label : segment.replace(/-/g, " ");

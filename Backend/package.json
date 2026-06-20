@@ -10,7 +10,8 @@
     "test": "node --test tests/**/*.test.js",
     "start": "node server.js",
     "seed:referrals": "node script/seedReferralCodes.js",
-    "table:water-tracking": "node tables/createWaterTrackingTable.js"
+    "table:water-tracking": "node tables/createWaterTrackingTable.js",
+    "table:consultancy-transactions": "node tables/createConsultancyTransactionTable.js"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1041.0",
@@ -24,6 +25,7 @@
     "firebase-admin": "^13.10.0",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.1.1",
+    "pdfkit": "^0.19.1",
     "uuid": "^14.0.0"
   }
 }

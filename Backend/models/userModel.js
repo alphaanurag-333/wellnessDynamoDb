@@ -381,10 +381,69 @@ async function deleteUser(id) {
 
 async function listUsersByParentCoachId(
   parentCoachId,
-  { page = 1, limit = 20, search, userTier = "heal" } = {}
+  { page = 1, limit = 20, search, userTier = "heal", scope = "all" } = {}
 ) {
   const coachId = String(parentCoachId || "").trim();
   if (!coachId) {
+    return { users: [], pagination: { page: 1, limit: 20, total: 0, pages: 1 } };
+  }
+
+  const safePage = Math.max(1, Number(page) || 1);
+  const safeLimit = Math.min(200, Math.max(1, Number(limit) || 20));
+  const normalizedSearch = String(search || "").trim().toLowerCase();
+  const normalizedTier = normalizeUserTier(userTier, "heal");
+  const normalizedScope = String(scope || "all").toLowerCase().trim();
+
+  const { Items = [] } = await docClient.send(
+    new QueryCommand({
+      TableName: TABLE,
+      IndexName: "ParentCoachIndex",
+      KeyConditionExpression: "parentCoachId = :parentCoachId",
+      ExpressionAttributeValues: { ":parentCoachId": coachId },
+      ScanIndexForward: false,
+    })
+  );
+
+  let rows = Items.map(withLegacyId).filter((row) => normalizeUserTier(row.userTier) === normalizedTier);
+
+  if (normalizedScope === "direct") {
+    rows = rows.filter(
+      (row) =>
+        normalizeAssignedCoachType(row.assignedCoachType) === "wellness_coach" &&
+        String(row.assignedCoachId || "") === coachId
+    );
+  } else if (normalizedScope === "assistant") {
+    rows = rows.filter(
+      (row) => normalizeAssignedCoachType(row.assignedCoachType) === "assistant_wellness_coach"
+    );
+  }
+
+  if (normalizedSearch) {
+    rows = rows.filter(
+      (r) =>
+        String(r.name || "").toLowerCase().includes(normalizedSearch) ||
+        String(r.email || "").toLowerCase().includes(normalizedSearch) ||
+        String(r.phone || "").includes(normalizedSearch)
+    );
+  }
+
+  const total = rows.length;
+  const pages = Math.max(1, Math.ceil(total / safeLimit));
+  const start = (safePage - 1) * safeLimit;
+
+  return {
+    users: rows.slice(start, start + safeLimit),
+    pagination: { page: safePage, limit: safeLimit, total, pages },
+  };
+}
+
+async function listUsersByAssignedCoachId(
+  assignedCoachId,
+  { parentCoachId, page = 1, limit = 20, search, userTier = "heal" } = {}
+) {
+  const assigneeId = String(assignedCoachId || "").trim();
+  const ownerCoachId = String(parentCoachId || "").trim();
+  if (!assigneeId || !ownerCoachId) {
     return { users: [], pagination: { page: 1, limit: 20, total: 0, pages: 1 } };
   }
 
@@ -398,12 +457,16 @@ async function listUsersByParentCoachId(
       TableName: TABLE,
       IndexName: "ParentCoachIndex",
       KeyConditionExpression: "parentCoachId = :parentCoachId",
-      ExpressionAttributeValues: { ":parentCoachId": coachId },
+      ExpressionAttributeValues: { ":parentCoachId": ownerCoachId },
       ScanIndexForward: false,
     })
   );
 
-  let rows = Items.map(withLegacyId).filter((row) => normalizeUserTier(row.userTier) === normalizedTier);
+  let rows = Items.map(withLegacyId).filter((row) => {
+    if (normalizeUserTier(row.userTier) !== normalizedTier) return false;
+    if (String(row.assignedCoachId || "") !== assigneeId) return false;
+    return normalizeAssignedCoachType(row.assignedCoachType) === "assistant_wellness_coach";
+  });
 
   if (normalizedSearch) {
     rows = rows.filter(
@@ -491,5 +554,6 @@ module.exports = {
   updateUser,
   deleteUser,
   listUsersByParentCoachId,
+  listUsersByAssignedCoachId,
   listUsers,
 };

@@ -1,5 +1,8 @@
 export const assistantNavItems = [
   { to: "dashboard", label: "Dashboard", icon: "grid" },
+  { to: "my-heal-users", label: "My Heal Clients", icon: "users" },
+  { to: "consultancy/transactions", label: "Consultancy Payments", icon: "wallet" },
+  { to: "consultancy/enrolled-users", label: "Consultancy Users", icon: "users" },
   { to: "profile", label: "Profile", icon: "profile" },
 ];
 

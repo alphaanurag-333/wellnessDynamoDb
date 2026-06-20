@@ -12,6 +12,12 @@ import { logout, setAdmin } from "../../store/authSlice.js";
 function titleFromPath(pathname) {
   const p = pathname.replace(/\/$/, "") || "/";
 
+  if (p.startsWith("/admin/consultancy")) {
+    if (/^\/admin\/consultancy\/enrolled-users$/.test(p)) return "Enrolled Users";
+    if (/^\/admin\/consultancy\/transactions$/.test(p)) return "Consultancy Transactions";
+    return "Consultancy Payments";
+  }
+
   if (p.startsWith("/admin/users")) {
     if (/^\/admin\/users\/new$/.test(p)) return "Add User";
     if (/^\/admin\/users\/[^/]+\/edit$/.test(p)) return "Edit User";

@@ -62,6 +62,8 @@ import {SectionPage} from "../pages/SectionPage.jsx";
 import { UserAdd } from "../pages/user/UserAdd.jsx";
 import { UserEdit } from "../pages/user/UserEdit.jsx";
 import { UserList } from "../pages/user/UserList.jsx";
+import { ConsultancyTransactionList } from "../pages/consultancy/ConsultancyTransactionList.jsx";
+import { ConsultancyEnrolledUsersList } from "../pages/consultancy/ConsultancyEnrolledUsersList.jsx";
 import { UserView } from "../pages/user/UserView.jsx";
 import { AdminUserWaterTrackingPage } from "../pages/user/AdminUserWaterTrackingPage.jsx";
 import { WellnessCoachList } from "../pages/wellnessCoach/WellnessCoachList.jsx";
@@ -88,6 +90,9 @@ export const adminRouteTree = (
       <Route index element={<StaticPageList />} />
       <Route path=":pageId/edit" element={<StaticPageUpdate />} />
     </Route>
+
+    <Route path="consultancy/transactions" element={<ConsultancyTransactionList />} />
+    <Route path="consultancy/enrolled-users" element={<ConsultancyEnrolledUsersList />} />
 
     <Route path="users" element={<Outlet />}>
       <Route index element={<UserList />} />

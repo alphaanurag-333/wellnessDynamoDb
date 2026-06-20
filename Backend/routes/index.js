@@ -18,15 +18,20 @@ const adminSpecializationRoutes = require("./adminRoutes/adminSpecializationRout
 const adminCelebrationRoutes = require("./adminRoutes/adminCelebrationRoutes");
 const adminClientTestimonialsRoutes = require("./adminRoutes/adminClientTestimonialsRoutes");
 const adminVideoTestimonialsRoutes = require("./adminRoutes/adminVideoTestimonialsRoutes");
+const adminConsultancyRoutes = require("./adminRoutes/adminConsultancyRoutes");
 const publicAppConfigRoutes = require("./publicRoutes/publicAppConfigRoutes");
 const miscRoutes = require("./userRoutes/miscRoutes");
 const userAuthRoutes = require("./userRoutes/authRoutes");
 const waterTrackingRoutes = require("./userRoutes/waterTrackingRoutes");
+const consultancyPaymentRoutes = require("./userRoutes/consultancyPaymentRoutes");
 const coachAuthRoutes = require("./wellnessCoachRoutes/coachAuthRoutes");
 const coachSpecializationRoutes = require("./wellnessCoachRoutes/coachSpecializationRoutes");
 const coachAssistantRoutes = require("./wellnessCoachRoutes/coachAssistantRoutes");
 const coachHealUserRoutes = require("./wellnessCoachRoutes/coachHealUserRoutes");
+const coachConsultancyRoutes = require("./wellnessCoachRoutes/coachConsultancyRoutes");
 const assistantAuthRoutes = require("./assistantWellnessCoachRoutes/assistantAuthRoutes");
+const assistantHealUserRoutes = require("./assistantWellnessCoachRoutes/assistantHealUserRoutes");
+const assistantConsultancyRoutes = require("./assistantWellnessCoachRoutes/assistantConsultancyRoutes");
 
 const router = express.Router();
 
@@ -39,7 +44,10 @@ router.use("/coach/auth", coachAuthRoutes);
 router.use("/coach/specializations", coachSpecializationRoutes);
 router.use("/coach/assistants", coachAssistantRoutes);
 router.use("/coach/heal-users", coachHealUserRoutes);
+router.use("/coach/consultancy", coachConsultancyRoutes);
 router.use("/assistant/auth", assistantAuthRoutes);
+router.use("/assistant/heal-users", assistantHealUserRoutes);
+router.use("/assistant/consultancy", assistantConsultancyRoutes);
 router.use("/admin/app-config", adminAppConfigRoutes);
 router.use("/admin/faq", adminFaqRoutes);
 router.use("/admin/coupons", adminCouponRoutes);
@@ -49,6 +57,7 @@ router.use("/admin/banners", adminBannerRoutes);
 router.use("/admin/celebration-banners", adminCelebrationRoutes);
 router.use("/admin/client-testimonials", adminClientTestimonialsRoutes);
 router.use("/admin/video-testimonials", adminVideoTestimonialsRoutes);
+router.use("/admin/consultancy", adminConsultancyRoutes);
 router.use("/admin/health-concerns", adminHealthConcernRoutes);
 router.use("/admin/health-disorders", adminHealthDisorderRoutes);
 router.use("/admin/health-tools", adminHealthToolRoutes);
@@ -60,6 +69,7 @@ router.use("/admin/specializations", adminSpecializationRoutes);
 router.use("/admin/misc/pages", adminStaticPageRoutes);
 router.use("/user/auth", userAuthRoutes);
 router.use("/user/water-tracking", waterTrackingRoutes);
+router.use("/user/consultancy-payment", consultancyPaymentRoutes);
 router.use("/public", publicAppConfigRoutes);
 router.use("/public/misc", miscRoutes);
 

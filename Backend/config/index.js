@@ -36,4 +36,17 @@ module.exports = {
   awsS3PublicBaseUrl: process.env.AWS_S3_PUBLIC_BASE_URL || "",
 
   firebaseServiceAccountPath: process.env.FIREBASE_SERVICE_ACCOUNT_PATH || "",
+
+  mockPayments: process.env.MOCK_PAYMENTS === "true",
+  autoConfirmMockPayments:
+    process.env.AUTO_CONFIRM_MOCK_PAYMENT !== "false" &&
+    (process.env.NODE_ENV || "development") !== "production",
+
+  zoomAccountId: process.env.ZOOM_ACCOUNT_ID || "",
+  zoomClientId: process.env.ZOOM_CLIENT_ID || "",
+  zoomClientSecret: process.env.ZOOM_CLIENT_SECRET || "",
+  zoomUserId: process.env.ZOOM_USER_ID || "me",
+
+  whatsappPhoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || "",
+  whatsappAccessToken: process.env.WHATSAPP_ACCESS_TOKEN || "",
 };

@@ -1,23 +1,19 @@
 {
   "info": {
     "_postman_id": "wellness-user-api-collection",
-    "name": "Wellness — User API",
-    "description": "Mobile/user-side APIs for the Wellness app.\n\n## Setup\n1. Set the `baseUrl` collection variable (default `http://localhost:5000/api`).\n2. Run **Login with password** or **Verify login OTP** — tokens are saved automatically.\n3. Use the **Water Tracking** folder (Bearer auth uses `{{accessToken}}`).\n\n## Notes\n- Pass `date` as `YYYY-MM-DD` in the user's local timezone for water logs.\n- In non-production, if `EXPOSE_OTP_IN_RESPONSE=true`, login/register OTP responses include `debugOtp`.",
+    "name": "Wellness Dynamo — User API",
+    "description": "Mobile / user-facing API collection.\n\nBase path: `/api`\n\n**Auth flow**\n1. Send registration OTP → Register (or Login OTP / Password login)\n2. `accessToken` and `refreshToken` are saved automatically on successful auth responses.\n3. Protected routes use Bearer `{{accessToken}}`.\n\n**Water tracking**\nPass `date` as `YYYY-MM-DD` in the user's local timezone when logging intake.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
-  "variable": [
-    { "key": "baseUrl", "value": "http://localhost:5000/api" },
-    { "key": "accessToken", "value": "" },
-    { "key": "refreshToken", "value": "" },
-    { "key": "userDate", "value": "2026-06-23" },
-    { "key": "userEmail", "value": "user@example.com" },
-    { "key": "userPhone", "value": "9876543210" },
-    { "key": "userPhoneCountryCode", "value": "+91" },
-    { "key": "userPassword", "value": "password123" }
-  ],
   "auth": {
     "type": "bearer",
-    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
   },
   "event": [
     {
@@ -25,21 +21,32 @@
       "script": {
         "type": "text/javascript",
         "exec": [
-          "const today = new Date();",
-          "const y = today.getFullYear();",
-          "const m = String(today.getMonth() + 1).padStart(2, '0');",
-          "const d = String(today.getDate()).padStart(2, '0');",
-          "pm.collectionVariables.set('userDate', `${y}-${m}-${d}`);"
+          "// Collection-level Bearer auth uses {{accessToken}} for protected routes."
         ]
       }
     }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000/api" },
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "userEmail", "value": "user@example.com" },
+    { "key": "userPhone", "value": "9876543210" },
+    { "key": "userPhoneCountryCode", "value": "+91" },
+    { "key": "userPassword", "value": "password123" },
+    { "key": "userOtp", "value": "123456" },
+    { "key": "todayDate", "value": "2026-06-23" },
+    { "key": "primaryHealthConcernId", "value": "" },
+    { "key": "fcmId", "value": "sample-fcm-device-token" },
+    { "key": "transactionId", "value": "" },
+    { "key": "razorpayOrderId", "value": "" }
   ],
   "item": [
     {
       "name": "Health",
       "item": [
         {
-          "name": "Server health",
+          "name": "Server Health",
           "request": {
             "auth": { "type": "noauth" },
             "method": "GET",
@@ -51,267 +58,376 @@
       ]
     },
     {
-      "name": "Public",
-      "item": [
-        {
-          "name": "Get app config",
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "GET",
-            "header": [],
-            "url": "{{baseUrl}}/public/app-config"
-          },
-          "response": []
-        },
-        {
-          "name": "List banners",
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "GET",
-            "header": [],
-            "url": "{{baseUrl}}/public/misc/banners"
-          },
-          "response": []
-        },
-        {
-          "name": "List health concerns",
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "GET",
-            "header": [],
-            "url": "{{baseUrl}}/public/misc/health-concerns"
-          },
-          "response": []
-        }
-      ]
-    },
-    {
       "name": "Auth",
+      "description": "User authentication and profile (`/api/user/auth`).",
       "item": [
         {
-          "name": "Send registration OTP",
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"phone\": \"{{userPhone}}\",\n  \"phoneCountryCode\": \"{{userPhoneCountryCode}}\"\n}"
-            },
-            "url": "{{baseUrl}}/user/auth/register/otp/send"
-          },
-          "response": []
-        },
-        {
-          "name": "Register",
-          "event": [
+          "name": "Registration",
+          "item": [
             {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const saveTokens = () => {",
-                  "  if (![200, 201].includes(pm.response.code)) return;",
-                  "  const json = pm.response.json();",
-                  "  if (json.accessToken) pm.collectionVariables.set('accessToken', json.accessToken);",
-                  "  if (json.refreshToken) pm.collectionVariables.set('refreshToken', json.refreshToken);",
-                  "};",
-                  "saveTokens();"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"otp\": \"123456\",\n  \"name\": \"Test User\",\n  \"email\": \"{{userEmail}}\",\n  \"phone\": \"{{userPhone}}\",\n  \"phoneCountryCode\": \"{{userPhoneCountryCode}}\",\n  \"password\": \"{{userPassword}}\",\n  \"termsAccepted\": true,\n  \"gender\": \"male\",\n  \"country\": \"India\",\n  \"state\": \"Maharashtra\",\n  \"city\": \"Mumbai\"\n}"
+              "name": "Send Registration OTP",
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"phone\": \"{{userPhone}}\",\n  \"phoneCountryCode\": \"{{userPhoneCountryCode}}\"\n}"
+                },
+                "url": "{{baseUrl}}/user/auth/register/otp/send",
+                "description": "Send OTP before self-registration. In dev, response may include `debugOtp` when `EXPOSE_OTP_IN_RESPONSE=true`."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const json = pm.response.json();",
+                      "if (json.debugOtp) {",
+                      "  pm.collectionVariables.set('userOtp', json.debugOtp);",
+                      "  console.log('Saved userOtp from debugOtp');",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
             },
-            "url": "{{baseUrl}}/user/auth/register"
-          },
-          "response": []
-        },
-        {
-          "name": "Login with password",
-          "event": [
             {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const saveTokens = () => {",
-                  "  if (pm.response.code !== 200) return;",
-                  "  const json = pm.response.json();",
-                  "  if (json.accessToken) pm.collectionVariables.set('accessToken', json.accessToken);",
-                  "  if (json.refreshToken) pm.collectionVariables.set('refreshToken', json.refreshToken);",
-                  "};",
-                  "saveTokens();"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\",\n  \"fcm_id\": \"optional-fcm-token\"\n}"
+              "name": "Register (JSON)",
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"otp\": \"{{userOtp}}\",\n  \"name\": \"Test User\",\n  \"email\": \"{{userEmail}}\",\n  \"phone\": \"{{userPhone}}\",\n  \"phoneCountryCode\": \"{{userPhoneCountryCode}}\",\n  \"password\": \"{{userPassword}}\",\n  \"gender\": \"boy\",\n  \"country\": \"India\",\n  \"state\": \"Maharashtra\",\n  \"city\": \"Mumbai\",\n  \"primaryHealthConcern\": \"{{primaryHealthConcernId}}\",\n  \"termsAccepted\": true,\n  \"fcm_id\": \"{{fcmId}}\"\n}"
+                },
+                "url": "{{baseUrl}}/user/auth/register",
+                "description": "Verify registration OTP and create account. Set `primaryHealthConcern` to a valid HealthConcern id or leave empty string."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "  const json = pm.response.json();",
+                      "  if (json.accessToken) pm.collectionVariables.set('accessToken', json.accessToken);",
+                      "  if (json.refreshToken) pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
             },
-            "url": "{{baseUrl}}/user/auth/login/password"
-          },
-          "response": []
-        },
-        {
-          "name": "Login with phone + password",
-          "event": [
             {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "if (pm.response.code === 200) {",
-                  "  const json = pm.response.json();",
-                  "  if (json.accessToken) pm.collectionVariables.set('accessToken', json.accessToken);",
-                  "  if (json.refreshToken) pm.collectionVariables.set('refreshToken', json.refreshToken);",
-                  "}"
-                ]
-              }
+              "name": "Register (multipart + profile image)",
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    { "key": "otp", "value": "{{userOtp}}", "type": "text" },
+                    { "key": "name", "value": "Test User", "type": "text" },
+                    { "key": "email", "value": "{{userEmail}}", "type": "text" },
+                    { "key": "phone", "value": "{{userPhone}}", "type": "text" },
+                    { "key": "phoneCountryCode", "value": "{{userPhoneCountryCode}}", "type": "text" },
+                    { "key": "password", "value": "{{userPassword}}", "type": "text" },
+                    { "key": "termsAccepted", "value": "true", "type": "text" },
+                    { "key": "fcm_id", "value": "{{fcmId}}", "type": "text" },
+                    { "key": "file", "type": "file", "src": [], "description": "Optional profile image" }
+                  ]
+                },
+                "url": "{{baseUrl}}/user/auth/register"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "  const json = pm.response.json();",
+                      "  if (json.accessToken) pm.collectionVariables.set('accessToken', json.accessToken);",
+                      "  if (json.refreshToken) pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
             }
-          ],
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"phone\": \"{{userPhone}}\",\n  \"phoneCountryCode\": \"{{userPhoneCountryCode}}\",\n  \"password\": \"{{userPassword}}\"\n}"
-            },
-            "url": "{{baseUrl}}/user/auth/login/password"
-          },
-          "response": []
+          ]
         },
         {
-          "name": "Send login OTP",
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{userEmail}}\"\n}"
-            },
-            "url": "{{baseUrl}}/user/auth/otp/send"
-          },
-          "response": []
-        },
-        {
-          "name": "Verify login OTP",
-          "event": [
+          "name": "Login",
+          "item": [
             {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "if (pm.response.code === 200) {",
-                  "  const json = pm.response.json();",
-                  "  if (json.accessToken) pm.collectionVariables.set('accessToken', json.accessToken);",
-                  "  if (json.refreshToken) pm.collectionVariables.set('refreshToken', json.refreshToken);",
-                  "}"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"otp\": \"123456\",\n  \"fcm_id\": \"optional-fcm-token\"\n}"
+              "name": "Login with Password (email)",
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\",\n  \"fcm_id\": \"{{fcmId}}\"\n}"
+                },
+                "url": "{{baseUrl}}/user/auth/login/password"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "  const json = pm.response.json();",
+                      "  if (json.accessToken) pm.collectionVariables.set('accessToken', json.accessToken);",
+                      "  if (json.refreshToken) pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
             },
-            "url": "{{baseUrl}}/user/auth/otp/verify"
-          },
-          "response": []
-        },
-        {
-          "name": "Refresh token",
-          "event": [
             {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "if (pm.response.code === 200) {",
-                  "  const json = pm.response.json();",
-                  "  if (json.accessToken) pm.collectionVariables.set('accessToken', json.accessToken);",
-                  "  if (json.refreshToken) pm.collectionVariables.set('refreshToken', json.refreshToken);",
-                  "}"
-                ]
-              }
+              "name": "Login with Password (phone)",
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phone\": \"{{userPhone}}\",\n  \"phoneCountryCode\": \"{{userPhoneCountryCode}}\",\n  \"password\": \"{{userPassword}}\",\n  \"fcm_id\": \"{{fcmId}}\"\n}"
+                },
+                "url": "{{baseUrl}}/user/auth/login"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "  const json = pm.response.json();",
+                      "  if (json.accessToken) pm.collectionVariables.set('accessToken', json.accessToken);",
+                      "  if (json.refreshToken) pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "Send Login OTP",
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phone\": \"{{userPhone}}\",\n  \"phoneCountryCode\": \"{{userPhoneCountryCode}}\"\n}"
+                },
+                "url": "{{baseUrl}}/user/auth/otp/send"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const json = pm.response.json();",
+                      "if (json.debugOtp) {",
+                      "  pm.collectionVariables.set('userOtp', json.debugOtp);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "Verify Login OTP",
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phone\": \"{{userPhone}}\",\n  \"phoneCountryCode\": \"{{userPhoneCountryCode}}\",\n  \"otp\": \"{{userOtp}}\",\n  \"fcm_id\": \"{{fcmId}}\"\n}"
+                },
+                "url": "{{baseUrl}}/user/auth/otp/verify"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "  const json = pm.response.json();",
+                      "  if (json.accessToken) pm.collectionVariables.set('accessToken', json.accessToken);",
+                      "  if (json.refreshToken) pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "Refresh Token",
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+                },
+                "url": "{{baseUrl}}/user/auth/refresh-token"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "  const json = pm.response.json();",
+                      "  if (json.accessToken) pm.collectionVariables.set('accessToken', json.accessToken);",
+                      "  if (json.refreshToken) pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": []
             }
-          ],
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
-            },
-            "url": "{{baseUrl}}/user/auth/refresh-token"
-          },
-          "response": []
+          ]
         },
         {
-          "name": "Get my profile",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": "{{baseUrl}}/user/auth/me"
-          },
-          "response": []
+          "name": "Profile",
+          "item": [
+            {
+              "name": "Get My Profile",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/user/auth/me"
+              },
+              "response": []
+            },
+            {
+              "name": "Update My Profile (JSON)",
+              "request": {
+                "method": "PATCH",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Updated Name\",\n  \"city\": \"Pune\",\n  \"fcm_id\": \"{{fcmId}}\"\n}"
+                },
+                "url": "{{baseUrl}}/user/auth/me"
+              },
+              "response": []
+            },
+            {
+              "name": "Update My Profile (multipart + image)",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    { "key": "name", "value": "Updated Name", "type": "text" },
+                    { "key": "city", "value": "Pune", "type": "text" },
+                    { "key": "file", "type": "file", "src": [], "description": "Profile image upload field name: file" }
+                  ]
+                },
+                "url": "{{baseUrl}}/user/auth/me"
+              },
+              "response": []
+            }
+          ]
         },
         {
-          "name": "Update my profile",
-          "request": {
-            "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Updated Name\",\n  \"city\": \"Pune\"\n}"
+          "name": "Delete Account",
+          "item": [
+            {
+              "name": "Send Delete Account OTP",
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phone\": \"{{userPhone}}\",\n  \"phoneCountryCode\": \"{{userPhoneCountryCode}}\"\n}"
+                },
+                "url": "{{baseUrl}}/user/auth/delete/otp/send"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const json = pm.response.json();",
+                      "if (json.debugOtp) pm.collectionVariables.set('userOtp', json.debugOtp);"
+                    ]
+                  }
+                }
+              ],
+              "response": []
             },
-            "url": "{{baseUrl}}/user/auth/me"
-          },
-          "response": []
+            {
+              "name": "Delete Account (phone + OTP)",
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phone\": \"{{userPhone}}\",\n  \"phoneCountryCode\": \"{{userPhoneCountryCode}}\",\n  \"otp\": \"{{userOtp}}\"\n}"
+                },
+                "url": "{{baseUrl}}/user/auth/delete"
+              },
+              "response": []
+            }
+          ]
         }
       ]
     },
     {
       "name": "Water Tracking",
-      "description": "Per-user day-wise water intake. 1 glass = 250 ml by default.\n\nAll routes require Bearer `{{accessToken}}`.",
+      "description": "User hydration logs (`/api/user/water-tracking`). All routes require Bearer token.\n\n1 glass = 250 ml (default). Store `date` as `YYYY-MM-DD` in the user's local timezone.",
       "item": [
         {
-          "name": "Get summary (today + history)",
+          "name": "Get Summary (today + history)",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/user/water-tracking?days=7&date={{userDate}}",
+              "raw": "{{baseUrl}}/user/water-tracking?days=7&date={{todayDate}}",
               "host": ["{{baseUrl}}"],
               "path": ["user", "water-tracking"],
               "query": [
                 { "key": "days", "value": "7", "description": "1–90, default 7" },
-                { "key": "date", "value": "{{userDate}}", "description": "Reference day YYYY-MM-DD (defaults to today UTC if omitted)" }
+                { "key": "date", "value": "{{todayDate}}", "description": "Reference date YYYY-MM-DD (today)" }
               ]
             }
           },
           "response": []
         },
         {
-          "name": "Update daily goal",
+          "name": "Update Daily Goal",
           "request": {
             "method": "PATCH",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -330,9 +446,10 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"date\": \"{{userDate}}\"\n}"
+              "raw": "{\n  \"date\": \"{{todayDate}}\"\n}"
             },
-            "url": "{{baseUrl}}/user/water-tracking/increment"
+            "url": "{{baseUrl}}/user/water-tracking/increment",
+            "description": "Adds one glass for the given date. Omit `date` to use server UTC today."
           },
           "response": []
         },
@@ -343,24 +460,197 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"date\": \"{{userDate}}\"\n}"
+              "raw": "{\n  \"date\": \"{{todayDate}}\"\n}"
             },
             "url": "{{baseUrl}}/user/water-tracking/decrement"
           },
           "response": []
         },
         {
-          "name": "Set day count (absolute)",
+          "name": "Set Day Count",
           "request": {
             "method": "PUT",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"date\": \"{{userDate}}\",\n  \"glassCount\": 12\n}"
+              "raw": "{\n  \"date\": \"{{todayDate}}\",\n  \"glassCount\": 12\n}"
             },
-            "url": "{{baseUrl}}/user/water-tracking/day"
+            "url": "{{baseUrl}}/user/water-tracking/day",
+            "description": "Set exact glass count for a day (0–999)."
           },
           "response": []
+        }
+      ]
+    },
+    {
+      "name": "Consultancy Payment",
+      "description": "Checkout, Razorpay/mock payment, and transaction history.",
+      "item": [
+        {
+          "name": "Checkout Preview",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/consultancy-payment/checkout-preview?referralCode=",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "consultancy-payment", "checkout-preview"],
+              "query": [{ "key": "referralCode", "value": "", "description": "Optional valid referral code" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Payment Order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  const txnId = json?.data?.transaction?.id;",
+                  "  const orderId = json?.data?.payment?.orderId;",
+                  "  if (txnId) pm.collectionVariables.set('transactionId', txnId);",
+                  "  if (orderId) pm.collectionVariables.set('razorpayOrderId', orderId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"referralCode\": \"\",\n  \"paymentMethod\": \"upi\"\n}"
+            },
+            "url": "{{baseUrl}}/user/consultancy-payment/orders"
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Payment (mock dev)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transactionId\": \"{{transactionId}}\",\n  \"razorpay_order_id\": \"{{razorpayOrderId}}\",\n  \"razorpay_payment_id\": \"pay_mock_test\",\n  \"razorpay_signature\": \"mock\"\n}"
+            },
+            "url": "{{baseUrl}}/user/consultancy-payment/verify",
+            "description": "In dev without Razorpay, mock orders verify with order id starting with order_mock_."
+          },
+          "response": []
+        },
+        {
+          "name": "My Transaction History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/user/consultancy-payment/transactions"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Transaction by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/user/consultancy-payment/transactions/{{transactionId}}"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Public (App)",
+      "description": "Unauthenticated reads used by the mobile app.",
+      "auth": { "type": "noauth" },
+      "item": [
+        {
+          "name": "App Config",
+          "item": [
+            {
+              "name": "Get App Config",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/public/app-config"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Misc Content",
+          "item": [
+            {
+              "name": "Banners",
+              "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/public/misc/banners" },
+              "response": []
+            },
+            {
+              "name": "FAQs",
+              "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/public/misc/faqs" },
+              "response": []
+            },
+            {
+              "name": "Health Concerns",
+              "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/public/misc/health-concerns" },
+              "response": []
+            },
+            {
+              "name": "Health Disorders",
+              "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/public/misc/health-disorders" },
+              "response": []
+            },
+            {
+              "name": "Health Tools",
+              "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/public/misc/health-tools" },
+              "response": []
+            },
+            {
+              "name": "Health Recipes",
+              "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/public/misc/health-recipes" },
+              "response": []
+            },
+            {
+              "name": "Yoga",
+              "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/public/misc/yoga" },
+              "response": []
+            },
+            {
+              "name": "Transformations",
+              "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/public/misc/transformations" },
+              "response": []
+            },
+            {
+              "name": "Client Testimonials",
+              "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/public/misc/client-testimonials" },
+              "response": []
+            },
+            {
+              "name": "Video Testimonials",
+              "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/public/misc/video-testimonials" },
+              "response": []
+            },
+            {
+              "name": "Celebration Banners",
+              "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/public/misc/celebration-banners" },
+              "response": []
+            },
+            {
+              "name": "Static Page by Slug",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/public/misc/pages/about-us"
+              },
+              "response": []
+            }
+          ]
         }
       ]
     }

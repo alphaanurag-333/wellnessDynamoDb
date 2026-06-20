@@ -1,6 +1,6 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
-const { getUserById, listUsersByParentCoachId, normalizeUserTier } = require("../../models/userModel");
+const { getUserById, listUsersByParentCoachId, listUsersByAssignedCoachId, normalizeUserTier } = require("../../models/userModel");
 const { convertSeekToHeal } = require("../../models/userConversionModel");
 const { assignPendingHealUser, reassignHealUser } = require("../../models/userAssignmentModel");
 const { getWellnessCoachRecordById } = require("../../models/wellnessCoachModel");
@@ -130,8 +130,36 @@ exports.listHealUsersForCoachPortalController = asyncHandler(async (req, res) =>
   const coachId = req.auth?.sub || req.user?.id;
   if (!coachId) throw new AppError("Unauthorized", 401);
 
+  const { page = 1, limit = 20, search, scope = "all" } = req.query;
+  const data = await listUsersByParentCoachId(coachId, { page, limit, search, userTier: "heal", scope });
+  const users = await Promise.all(data.users.map((u) => enrichUser(u)));
+
+  return res.status(200).json({
+    status: true,
+    users,
+    pagination: data.pagination,
+    scope: String(scope || "all").toLowerCase(),
+  });
+});
+
+exports.listHealUsersForAssistantPortalController = asyncHandler(async (req, res) => {
+  const assistantId = req.auth?.sub || req.user?.id;
+  if (!assistantId) throw new AppError("Unauthorized", 401);
+
+  const assistant = await getAssistantWellnessCoachById(assistantId);
+  if (!assistant) throw new AppError("Account not found", 401);
+
+  const parentCoachId = String(assistant.wellnessCoachId || "").trim();
+  if (!parentCoachId) throw new AppError("Assistant is not linked to a wellness coach", 400);
+
   const { page = 1, limit = 20, search } = req.query;
-  const data = await listUsersByParentCoachId(coachId, { page, limit, search, userTier: "heal" });
+  const data = await listUsersByAssignedCoachId(assistantId, {
+    parentCoachId,
+    page,
+    limit,
+    search,
+    userTier: "heal",
+  });
   const users = await Promise.all(data.users.map((u) => enrichUser(u)));
 
   return res.status(200).json({
