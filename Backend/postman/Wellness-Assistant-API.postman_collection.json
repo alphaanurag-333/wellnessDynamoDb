@@ -1,0 +1,303 @@
+{
+  "info": {
+    "_postman_id": "wellness-assistant-api",
+    "name": "Assistant Coach API",
+    "description": "Wellness Dynamo — Assistant Coach API\n\nBase: `{{baseUrl}}` (default `http://localhost:5000/api`)\n\nImport `Wellness-API.postman_environment.json` for variables.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "auth",
+      "item": [
+        {
+          "name": "POST /assistant/auth/login",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/assistant/auth/login",
+            "description": "POST /assistant/auth/login"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.accessToken) pm.environment.set('assistantToken', json.accessToken);",
+                  "  if (json.refreshToken) pm.environment.set('refreshToken', json.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /assistant/auth/me",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/assistant/auth/me",
+            "description": "GET /assistant/auth/me"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /assistant/auth/me",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/assistant/auth/me",
+            "description": "PATCH /assistant/auth/me"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /assistant/auth/me/password",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/assistant/auth/me/password",
+            "description": "PATCH /assistant/auth/me/password"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /assistant/auth/otp/send",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/assistant/auth/otp/send",
+            "description": "POST /assistant/auth/otp/send"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /assistant/auth/otp/verify",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/assistant/auth/otp/verify",
+            "description": "POST /assistant/auth/otp/verify"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /assistant/auth/refresh-token",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/assistant/auth/refresh-token",
+            "description": "POST /assistant/auth/refresh-token"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "consultancy",
+      "item": [
+        {
+          "name": "GET /assistant/consultancy/enrolled-users",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/assistant/consultancy/enrolled-users",
+            "description": "GET /assistant/consultancy/enrolled-users"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /assistant/consultancy/transactions",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/assistant/consultancy/transactions",
+            "description": "GET /assistant/consultancy/transactions"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /assistant/consultancy/transactions/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/assistant/consultancy/transactions/:id",
+            "description": "GET /assistant/consultancy/transactions/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /assistant/consultancy/transactions/:id/invoice",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/assistant/consultancy/transactions/:id/invoice",
+            "description": "GET /assistant/consultancy/transactions/:id/invoice"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "heal-users",
+      "item": [
+        {
+          "name": "GET /assistant/heal-users",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/assistant/heal-users",
+            "description": "GET /assistant/heal-users"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /assistant/heal-users/:id/water-tracking",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/assistant/heal-users/:id/water-tracking",
+            "description": "GET /assistant/heal-users/:id/water-tracking"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{assistantToken}}",
+        "type": "string"
+      }
+    ]
+  }
+}

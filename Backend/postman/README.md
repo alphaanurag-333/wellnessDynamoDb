@@ -1,35 +1,63 @@
-# Wellness User API — Postman
+# Postman Collections
+
+Module-wise API collections for the Wellness backend. All collections use the shared environment.
 
 ## Import
 
 1. Open Postman → **Import**
-2. Add:
+2. Add collections from this folder:
+   - `Wellness-Admin-API.postman_collection.json`
    - `Wellness-User-API.postman_collection.json`
-   - `Wellness-User-Local.postman_environment.json` (optional)
-3. Select environment **Wellness User — Local**
-4. Start backend: `npm start` (default `http://localhost:5000`)
+   - `Wellness-Coach-API.postman_collection.json`
+   - `Wellness-Assistant-API.postman_collection.json`
+   - `Wellness-Public-API.postman_collection.json`
+3. Import environment: `Wellness-API.postman_environment.json`
+4. Select **Wellness API — Local** environment
 
-## Variables
+## Environment variables
 
 | Variable | Purpose |
 |----------|---------|
-| `baseUrl` | API root, e.g. `http://localhost:5000/api` |
-| `accessToken` | Auto-set after login/register |
-| `refreshToken` | Auto-set after login/register |
-| `userEmail`, `userPhone`, `userPassword` | Test credentials |
-| `userOtp` | Auto-set from `debugOtp` in dev when `EXPOSE_OTP_IN_RESPONSE=true` |
-| `todayDate` | `YYYY-MM-DD` for water tracking |
-| `primaryHealthConcernId` | Health concern UUID for registration |
+| `baseUrl` | Default `http://localhost:5000/api` |
+| `accessToken` | User (mobile) JWT |
+| `adminToken` | Admin JWT |
+| `coachToken` | Wellness coach JWT |
+| `assistantToken` | Assistant coach JWT |
+| `transactionId` | Consultancy transaction id |
 
-## Suggested test flow
+## Suggested test order
 
-1. **Send Registration OTP** → copy OTP (or use auto-saved `debugOtp`)
-2. **Register** or **Login with Password**
-3. **Get My Profile** (uses saved `accessToken`)
-4. **Water Tracking** folder — goal, increment, get summary
+### User (mobile)
+1. **Health** → Server Health
+2. **Auth** → Login or Register flow
+3. **Water Tracking** / **Consultancy Payment**
 
-## Collection folders
+### Admin
+1. `POST /admin/auth/login` — copy `accessToken` to `adminToken`
+2. CMS or user management folders
+3. **consultancy** — transactions & enrolled users
 
-- **Auth** — register, login, profile, delete account
-- **Water Tracking** — mobile hydration APIs
-- **Public (App)** — banners, FAQs, app config (no auth)
+### Coach
+1. `POST /coach/auth/login` — set `coachToken`
+2. **heal-users** — list & reassign
+3. **consultancy** — transactions & enrolled users
+
+### Assistant
+1. `POST /assistant/auth/login` — set `assistantToken`
+2. **heal-users** — assigned clients only
+3. **consultancy** — own transactions only
+
+## Regenerate collections
+
+After route changes (except User collection):
+
+```bash
+cd Backend
+node scripts/buildApiCatalog.js
+```
+
+The **User** collection is hand-maintained (auth test scripts, sample bodies). Other collections are generated from route files.
+
+## API documentation
+
+See [`../docs/api/README.md`](../docs/api/README.md) and [`../docs/api/QUICKSTART.md`](../docs/api/QUICKSTART.md).

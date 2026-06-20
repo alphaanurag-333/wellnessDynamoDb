@@ -1,0 +1,486 @@
+{
+  "info": {
+    "_postman_id": "wellness-coach-api",
+    "name": "Wellness Coach API",
+    "description": "Wellness Dynamo — Wellness Coach API\n\nBase: `{{baseUrl}}` (default `http://localhost:5000/api`)\n\nImport `Wellness-API.postman_environment.json` for variables.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "assistants",
+      "item": [
+        {
+          "name": "GET /coach/assistants",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/coach/assistants",
+            "description": "GET /coach/assistants"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /coach/assistants",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/coach/assistants",
+            "description": "POST /coach/assistants"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /coach/assistants/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/coach/assistants/:id",
+            "description": "DELETE /coach/assistants/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /coach/assistants/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/coach/assistants/:id",
+            "description": "GET /coach/assistants/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /coach/assistants/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/coach/assistants/:id",
+            "description": "PATCH /coach/assistants/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /coach/assistants/count",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/coach/assistants/count",
+            "description": "GET /coach/assistants/count"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "auth",
+      "item": [
+        {
+          "name": "POST /coach/auth/login",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/coach/auth/login",
+            "description": "POST /coach/auth/login"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.accessToken) pm.environment.set('coachToken', json.accessToken);",
+                  "  if (json.refreshToken) pm.environment.set('refreshToken', json.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /coach/auth/me",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/coach/auth/me",
+            "description": "GET /coach/auth/me"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /coach/auth/me",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/coach/auth/me",
+            "description": "PATCH /coach/auth/me"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /coach/auth/me/password",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/coach/auth/me/password",
+            "description": "PATCH /coach/auth/me/password"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /coach/auth/otp/send",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/coach/auth/otp/send",
+            "description": "POST /coach/auth/otp/send"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /coach/auth/otp/verify",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/coach/auth/otp/verify",
+            "description": "POST /coach/auth/otp/verify"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /coach/auth/refresh-token",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/coach/auth/refresh-token",
+            "description": "POST /coach/auth/refresh-token"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /coach/auth/register",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/coach/auth/register",
+            "description": "POST /coach/auth/register"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "consultancy",
+      "item": [
+        {
+          "name": "GET /coach/consultancy/enrolled-users",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/coach/consultancy/enrolled-users",
+            "description": "GET /coach/consultancy/enrolled-users"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /coach/consultancy/transactions",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/coach/consultancy/transactions",
+            "description": "GET /coach/consultancy/transactions"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /coach/consultancy/transactions/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/coach/consultancy/transactions/:id",
+            "description": "GET /coach/consultancy/transactions/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /coach/consultancy/transactions/:id/invoice",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/coach/consultancy/transactions/:id/invoice",
+            "description": "GET /coach/consultancy/transactions/:id/invoice"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "heal-users",
+      "item": [
+        {
+          "name": "GET /coach/heal-users",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/coach/heal-users",
+            "description": "GET /coach/heal-users"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /coach/heal-users/:id/reassign",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/coach/heal-users/:id/reassign",
+            "description": "POST /coach/heal-users/:id/reassign"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /coach/heal-users/:id/water-tracking",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/coach/heal-users/:id/water-tracking",
+            "description": "GET /coach/heal-users/:id/water-tracking"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "specializations",
+      "item": [
+        {
+          "name": "GET /coach/specializations",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/coach/specializations",
+            "description": "GET /coach/specializations"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{coachToken}}",
+        "type": "string"
+      }
+    ]
+  }
+}

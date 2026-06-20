@@ -11,7 +11,8 @@
     "start": "node server.js",
     "seed:referrals": "node script/seedReferralCodes.js",
     "table:water-tracking": "node tables/createWaterTrackingTable.js",
-    "table:consultancy-transactions": "node tables/createConsultancyTransactionTable.js"
+    "table:consultancy-transactions": "node tables/createConsultancyTransactionTable.js",
+    "docs:api": "node scripts/buildApiCatalog.js"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1041.0",

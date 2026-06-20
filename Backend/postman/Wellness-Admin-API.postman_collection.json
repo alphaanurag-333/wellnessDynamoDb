@@ -1,0 +1,2223 @@
+{
+  "info": {
+    "_postman_id": "wellness-admin-api",
+    "name": "Admin API",
+    "description": "Wellness Dynamo — Admin API\n\nBase: `{{baseUrl}}` (default `http://localhost:5000/api`)\n\nImport `Wellness-API.postman_environment.json` for variables.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "app-config",
+      "item": [
+        {
+          "name": "GET /admin/app-config",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/app-config",
+            "description": "GET /admin/app-config"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /admin/app-config",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/app-config",
+            "description": "PATCH /admin/app-config"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /admin/app-config",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/app-config",
+            "description": "POST /admin/app-config"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "auth",
+      "item": [
+        {
+          "name": "POST /admin/auth/login",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/auth/login",
+            "description": "POST /admin/auth/login"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.accessToken) pm.environment.set('adminToken', json.accessToken);",
+                  "  if (json.refreshToken) pm.environment.set('refreshToken', json.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /admin/auth/me",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/auth/me",
+            "description": "GET /admin/auth/me"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /admin/auth/me",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/auth/me",
+            "description": "PATCH /admin/auth/me"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /admin/auth/me/password",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/auth/me/password",
+            "description": "PATCH /admin/auth/me/password"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /admin/auth/refresh-token",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/auth/refresh-token",
+            "description": "POST /admin/auth/refresh-token"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /admin/auth/register",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/auth/register",
+            "description": "POST /admin/auth/register"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "banners",
+      "item": [
+        {
+          "name": "GET /admin/banners",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/banners",
+            "description": "GET /admin/banners"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /admin/banners",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/banners",
+            "description": "POST /admin/banners"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /admin/banners/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/admin/banners/:id",
+            "description": "DELETE /admin/banners/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /admin/banners/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/banners/:id",
+            "description": "GET /admin/banners/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /admin/banners/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/banners/:id",
+            "description": "PATCH /admin/banners/:id"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "celebration-banners",
+      "item": [
+        {
+          "name": "GET /admin/celebration-banners",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/celebration-banners",
+            "description": "GET /admin/celebration-banners"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /admin/celebration-banners",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/celebration-banners",
+            "description": "POST /admin/celebration-banners"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /admin/celebration-banners/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/admin/celebration-banners/:id",
+            "description": "DELETE /admin/celebration-banners/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /admin/celebration-banners/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/celebration-banners/:id",
+            "description": "GET /admin/celebration-banners/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /admin/celebration-banners/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/celebration-banners/:id",
+            "description": "PATCH /admin/celebration-banners/:id"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "client-testimonials",
+      "item": [
+        {
+          "name": "GET /admin/client-testimonials",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/client-testimonials",
+            "description": "GET /admin/client-testimonials"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /admin/client-testimonials",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/client-testimonials",
+            "description": "POST /admin/client-testimonials"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /admin/client-testimonials/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/admin/client-testimonials/:id",
+            "description": "DELETE /admin/client-testimonials/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /admin/client-testimonials/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/client-testimonials/:id",
+            "description": "GET /admin/client-testimonials/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /admin/client-testimonials/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/client-testimonials/:id",
+            "description": "PATCH /admin/client-testimonials/:id"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "consultancy",
+      "item": [
+        {
+          "name": "GET /admin/consultancy/enrolled-users",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/consultancy/enrolled-users",
+            "description": "GET /admin/consultancy/enrolled-users"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /admin/consultancy/transactions",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/consultancy/transactions",
+            "description": "GET /admin/consultancy/transactions"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /admin/consultancy/transactions/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/consultancy/transactions/:id",
+            "description": "GET /admin/consultancy/transactions/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /admin/consultancy/transactions/:id/invoice",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/consultancy/transactions/:id/invoice",
+            "description": "GET /admin/consultancy/transactions/:id/invoice"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "coupons",
+      "item": [
+        {
+          "name": "GET /admin/coupons",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/coupons",
+            "description": "GET /admin/coupons"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /admin/coupons",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/coupons",
+            "description": "POST /admin/coupons"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /admin/coupons/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/admin/coupons/:id",
+            "description": "DELETE /admin/coupons/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /admin/coupons/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/coupons/:id",
+            "description": "GET /admin/coupons/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /admin/coupons/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/coupons/:id",
+            "description": "PATCH /admin/coupons/:id"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "faq",
+      "item": [
+        {
+          "name": "GET /admin/faq",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/faq",
+            "description": "GET /admin/faq"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /admin/faq",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/faq",
+            "description": "POST /admin/faq"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /admin/faq/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/admin/faq/:id",
+            "description": "DELETE /admin/faq/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /admin/faq/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/faq/:id",
+            "description": "GET /admin/faq/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /admin/faq/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/faq/:id",
+            "description": "PATCH /admin/faq/:id"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "health-concerns",
+      "item": [
+        {
+          "name": "GET /admin/health-concerns",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/health-concerns",
+            "description": "GET /admin/health-concerns"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /admin/health-concerns",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/health-concerns",
+            "description": "POST /admin/health-concerns"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /admin/health-concerns/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/admin/health-concerns/:id",
+            "description": "DELETE /admin/health-concerns/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /admin/health-concerns/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/health-concerns/:id",
+            "description": "GET /admin/health-concerns/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /admin/health-concerns/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/health-concerns/:id",
+            "description": "PATCH /admin/health-concerns/:id"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "health-disorders",
+      "item": [
+        {
+          "name": "GET /admin/health-disorders",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/health-disorders",
+            "description": "GET /admin/health-disorders"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /admin/health-disorders",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/health-disorders",
+            "description": "POST /admin/health-disorders"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /admin/health-disorders/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/admin/health-disorders/:id",
+            "description": "DELETE /admin/health-disorders/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /admin/health-disorders/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/health-disorders/:id",
+            "description": "GET /admin/health-disorders/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /admin/health-disorders/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/health-disorders/:id",
+            "description": "PATCH /admin/health-disorders/:id"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "health-recipes",
+      "item": [
+        {
+          "name": "GET /admin/health-recipes",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/health-recipes",
+            "description": "GET /admin/health-recipes"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /admin/health-recipes",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/health-recipes",
+            "description": "POST /admin/health-recipes"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /admin/health-recipes/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/admin/health-recipes/:id",
+            "description": "DELETE /admin/health-recipes/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /admin/health-recipes/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/health-recipes/:id",
+            "description": "GET /admin/health-recipes/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /admin/health-recipes/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/health-recipes/:id",
+            "description": "PATCH /admin/health-recipes/:id"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "health-tools",
+      "item": [
+        {
+          "name": "GET /admin/health-tools",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/health-tools",
+            "description": "GET /admin/health-tools"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /admin/health-tools",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/health-tools",
+            "description": "POST /admin/health-tools"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /admin/health-tools/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/admin/health-tools/:id",
+            "description": "DELETE /admin/health-tools/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /admin/health-tools/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/health-tools/:id",
+            "description": "GET /admin/health-tools/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /admin/health-tools/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/health-tools/:id",
+            "description": "PATCH /admin/health-tools/:id"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "misc / pages",
+      "item": [
+        {
+          "name": "GET /admin/misc/pages",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/misc/pages",
+            "description": "GET /admin/misc/pages"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /admin/misc/pages",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/misc/pages",
+            "description": "POST /admin/misc/pages"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /admin/misc/pages/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/admin/misc/pages/:id",
+            "description": "DELETE /admin/misc/pages/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /admin/misc/pages/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/misc/pages/:id",
+            "description": "GET /admin/misc/pages/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /admin/misc/pages/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/misc/pages/:id",
+            "description": "PATCH /admin/misc/pages/:id"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "notifications",
+      "item": [
+        {
+          "name": "GET /admin/notifications",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/notifications",
+            "description": "GET /admin/notifications"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /admin/notifications",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/notifications",
+            "description": "POST /admin/notifications"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /admin/notifications/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/admin/notifications/:id",
+            "description": "DELETE /admin/notifications/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /admin/notifications/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/notifications/:id",
+            "description": "GET /admin/notifications/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /admin/notifications/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/notifications/:id",
+            "description": "PATCH /admin/notifications/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /admin/notifications/:id/resend",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/notifications/:id/resend",
+            "description": "POST /admin/notifications/:id/resend"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "specializations",
+      "item": [
+        {
+          "name": "GET /admin/specializations",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/specializations",
+            "description": "GET /admin/specializations"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /admin/specializations",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/specializations",
+            "description": "POST /admin/specializations"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /admin/specializations/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/admin/specializations/:id",
+            "description": "DELETE /admin/specializations/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /admin/specializations/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/specializations/:id",
+            "description": "GET /admin/specializations/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /admin/specializations/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/specializations/:id",
+            "description": "PATCH /admin/specializations/:id"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "transformations",
+      "item": [
+        {
+          "name": "GET /admin/transformations",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/transformations",
+            "description": "GET /admin/transformations"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /admin/transformations",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/transformations",
+            "description": "POST /admin/transformations"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /admin/transformations/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/admin/transformations/:id",
+            "description": "DELETE /admin/transformations/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /admin/transformations/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/transformations/:id",
+            "description": "GET /admin/transformations/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /admin/transformations/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/transformations/:id",
+            "description": "PATCH /admin/transformations/:id"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "users",
+      "item": [
+        {
+          "name": "GET /admin/users",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/users",
+            "description": "GET /admin/users"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /admin/users",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/users",
+            "description": "POST /admin/users"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /admin/users/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/admin/users/:id",
+            "description": "DELETE /admin/users/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /admin/users/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/users/:id",
+            "description": "GET /admin/users/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /admin/users/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/users/:id",
+            "description": "PATCH /admin/users/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /admin/users/:id/assign-coach",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/users/:id/assign-coach",
+            "description": "POST /admin/users/:id/assign-coach"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /admin/users/:id/convert-to-heal",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/users/:id/convert-to-heal",
+            "description": "POST /admin/users/:id/convert-to-heal"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /admin/users/:id/reassign-coach",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/users/:id/reassign-coach",
+            "description": "POST /admin/users/:id/reassign-coach"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /admin/users/:id/water-tracking",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/users/:id/water-tracking",
+            "description": "GET /admin/users/:id/water-tracking"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "video-testimonials",
+      "item": [
+        {
+          "name": "GET /admin/video-testimonials",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/video-testimonials",
+            "description": "GET /admin/video-testimonials"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /admin/video-testimonials",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/video-testimonials",
+            "description": "POST /admin/video-testimonials"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /admin/video-testimonials/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/admin/video-testimonials/:id",
+            "description": "DELETE /admin/video-testimonials/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /admin/video-testimonials/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/video-testimonials/:id",
+            "description": "GET /admin/video-testimonials/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /admin/video-testimonials/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/video-testimonials/:id",
+            "description": "PATCH /admin/video-testimonials/:id"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "wellness-coaches",
+      "item": [
+        {
+          "name": "GET /admin/wellness-coaches",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/wellness-coaches",
+            "description": "GET /admin/wellness-coaches"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /admin/wellness-coaches",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/wellness-coaches",
+            "description": "POST /admin/wellness-coaches"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /admin/wellness-coaches/:coachId/assistants",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/wellness-coaches/:coachId/assistants",
+            "description": "GET /admin/wellness-coaches/:coachId/assistants"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /admin/wellness-coaches/:coachId/assistants",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/wellness-coaches/:coachId/assistants",
+            "description": "POST /admin/wellness-coaches/:coachId/assistants"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /admin/wellness-coaches/:coachId/assistants/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/admin/wellness-coaches/:coachId/assistants/:id",
+            "description": "DELETE /admin/wellness-coaches/:coachId/assistants/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /admin/wellness-coaches/:coachId/assistants/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/wellness-coaches/:coachId/assistants/:id",
+            "description": "GET /admin/wellness-coaches/:coachId/assistants/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /admin/wellness-coaches/:coachId/assistants/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/wellness-coaches/:coachId/assistants/:id",
+            "description": "PATCH /admin/wellness-coaches/:coachId/assistants/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /admin/wellness-coaches/:coachId/heal-users",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/wellness-coaches/:coachId/heal-users",
+            "description": "GET /admin/wellness-coaches/:coachId/heal-users"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /admin/wellness-coaches/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/admin/wellness-coaches/:id",
+            "description": "DELETE /admin/wellness-coaches/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /admin/wellness-coaches/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/wellness-coaches/:id",
+            "description": "GET /admin/wellness-coaches/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /admin/wellness-coaches/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/wellness-coaches/:id",
+            "description": "PATCH /admin/wellness-coaches/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /admin/wellness-coaches/assistants",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/wellness-coaches/assistants",
+            "description": "GET /admin/wellness-coaches/assistants"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "yoga",
+      "item": [
+        {
+          "name": "GET /admin/yoga",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/yoga",
+            "description": "GET /admin/yoga"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /admin/yoga",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/yoga",
+            "description": "POST /admin/yoga"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /admin/yoga/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/admin/yoga/:id",
+            "description": "DELETE /admin/yoga/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /admin/yoga/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/admin/yoga/:id",
+            "description": "GET /admin/yoga/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /admin/yoga/:id",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/yoga/:id",
+            "description": "PATCH /admin/yoga/:id"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{adminToken}}",
+        "type": "string"
+      }
+    ]
+  }
+}

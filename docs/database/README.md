@@ -20,9 +20,11 @@ Supplementary DynamoDB documentation for the Wellness application. All content i
 
 | Document | Location |
 |---|---|
-| User authentication flows | `Backend/docs/user_auth.md` |
-| Wellness coach setup | `Backend/docs/wellness-coaches.md` |
-| User API cURL examples | `Backend/docs/user_curl.md` |
+| API reference index | `Backend/docs/README.md` |
+| API quick start | `Backend/docs/api/QUICKSTART.md` |
+| Referral & assignment (domain) | `Backend/docs/domain/referral-assignment.md` |
+| Consultancy payment (domain) | `Backend/docs/domain/consultancy-payment.md` |
+| Postman collections | `Backend/postman/README.md` |
 
 ## Quick facts
 

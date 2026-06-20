@@ -1,0 +1,1291 @@
+{
+  "generatedAt": "2026-06-20T07:55:43.769Z",
+  "modules": {
+    "system": [
+      {
+        "method": "GET",
+        "path": "/health",
+        "group": "Health",
+        "mount": "/health",
+        "file": "routes/index.js"
+      }
+    ],
+    "admin": [
+      {
+        "method": "GET",
+        "path": "/admin/app-config",
+        "group": "app-config",
+        "mount": "/admin/app-config",
+        "file": "routes\\adminRoutes\\adminAppConfigRoutes.js"
+      },
+      {
+        "method": "PATCH",
+        "path": "/admin/app-config",
+        "group": "app-config",
+        "mount": "/admin/app-config",
+        "file": "routes\\adminRoutes\\adminAppConfigRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/admin/app-config",
+        "group": "app-config",
+        "mount": "/admin/app-config",
+        "file": "routes\\adminRoutes\\adminAppConfigRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/admin/auth/login",
+        "group": "auth",
+        "mount": "/admin/auth",
+        "file": "routes\\adminRoutes\\adminAuthRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/auth/me",
+        "group": "auth",
+        "mount": "/admin/auth",
+        "file": "routes\\adminRoutes\\adminAuthRoutes.js"
+      },
+      {
+        "method": "PATCH",
+        "path": "/admin/auth/me",
+        "group": "auth",
+        "mount": "/admin/auth",
+        "file": "routes\\adminRoutes\\adminAuthRoutes.js"
+      },
+      {
+        "method": "PATCH",
+        "path": "/admin/auth/me/password",
+        "group": "auth",
+        "mount": "/admin/auth",
+        "file": "routes\\adminRoutes\\adminAuthRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/admin/auth/refresh-token",
+        "group": "auth",
+        "mount": "/admin/auth",
+        "file": "routes\\adminRoutes\\adminAuthRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/admin/auth/register",
+        "group": "auth",
+        "mount": "/admin/auth",
+        "file": "routes\\adminRoutes\\adminAuthRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/banners",
+        "group": "banners",
+        "mount": "/admin/banners",
+        "file": "routes\\adminRoutes\\adminBannerRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/admin/banners",
+        "group": "banners",
+        "mount": "/admin/banners",
+        "file": "routes\\adminRoutes\\adminBannerRoutes.js"
+      },
+      {
+        "method": "DELETE",
+        "path": "/admin/banners/:id",
+        "group": "banners",
+        "mount": "/admin/banners",
+        "file": "routes\\adminRoutes\\adminBannerRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/banners/:id",
+        "group": "banners",
+        "mount": "/admin/banners",
+        "file": "routes\\adminRoutes\\adminBannerRoutes.js"
+      },
+      {
+        "method": "PATCH",
+        "path": "/admin/banners/:id",
+        "group": "banners",
+        "mount": "/admin/banners",
+        "file": "routes\\adminRoutes\\adminBannerRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/celebration-banners",
+        "group": "celebration-banners",
+        "mount": "/admin/celebration-banners",
+        "file": "routes\\adminRoutes\\adminCelebrationRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/admin/celebration-banners",
+        "group": "celebration-banners",
+        "mount": "/admin/celebration-banners",
+        "file": "routes\\adminRoutes\\adminCelebrationRoutes.js"
+      },
+      {
+        "method": "DELETE",
+        "path": "/admin/celebration-banners/:id",
+        "group": "celebration-banners",
+        "mount": "/admin/celebration-banners",
+        "file": "routes\\adminRoutes\\adminCelebrationRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/celebration-banners/:id",
+        "group": "celebration-banners",
+        "mount": "/admin/celebration-banners",
+        "file": "routes\\adminRoutes\\adminCelebrationRoutes.js"
+      },
+      {
+        "method": "PATCH",
+        "path": "/admin/celebration-banners/:id",
+        "group": "celebration-banners",
+        "mount": "/admin/celebration-banners",
+        "file": "routes\\adminRoutes\\adminCelebrationRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/client-testimonials",
+        "group": "client-testimonials",
+        "mount": "/admin/client-testimonials",
+        "file": "routes\\adminRoutes\\adminClientTestimonialsRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/admin/client-testimonials",
+        "group": "client-testimonials",
+        "mount": "/admin/client-testimonials",
+        "file": "routes\\adminRoutes\\adminClientTestimonialsRoutes.js"
+      },
+      {
+        "method": "DELETE",
+        "path": "/admin/client-testimonials/:id",
+        "group": "client-testimonials",
+        "mount": "/admin/client-testimonials",
+        "file": "routes\\adminRoutes\\adminClientTestimonialsRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/client-testimonials/:id",
+        "group": "client-testimonials",
+        "mount": "/admin/client-testimonials",
+        "file": "routes\\adminRoutes\\adminClientTestimonialsRoutes.js"
+      },
+      {
+        "method": "PATCH",
+        "path": "/admin/client-testimonials/:id",
+        "group": "client-testimonials",
+        "mount": "/admin/client-testimonials",
+        "file": "routes\\adminRoutes\\adminClientTestimonialsRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/consultancy/enrolled-users",
+        "group": "consultancy",
+        "mount": "/admin/consultancy",
+        "file": "routes\\adminRoutes\\adminConsultancyRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/consultancy/transactions",
+        "group": "consultancy",
+        "mount": "/admin/consultancy",
+        "file": "routes\\adminRoutes\\adminConsultancyRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/consultancy/transactions/:id",
+        "group": "consultancy",
+        "mount": "/admin/consultancy",
+        "file": "routes\\adminRoutes\\adminConsultancyRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/consultancy/transactions/:id/invoice",
+        "group": "consultancy",
+        "mount": "/admin/consultancy",
+        "file": "routes\\adminRoutes\\adminConsultancyRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/coupons",
+        "group": "coupons",
+        "mount": "/admin/coupons",
+        "file": "routes\\adminRoutes\\adminCouponRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/admin/coupons",
+        "group": "coupons",
+        "mount": "/admin/coupons",
+        "file": "routes\\adminRoutes\\adminCouponRoutes.js"
+      },
+      {
+        "method": "DELETE",
+        "path": "/admin/coupons/:id",
+        "group": "coupons",
+        "mount": "/admin/coupons",
+        "file": "routes\\adminRoutes\\adminCouponRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/coupons/:id",
+        "group": "coupons",
+        "mount": "/admin/coupons",
+        "file": "routes\\adminRoutes\\adminCouponRoutes.js"
+      },
+      {
+        "method": "PATCH",
+        "path": "/admin/coupons/:id",
+        "group": "coupons",
+        "mount": "/admin/coupons",
+        "file": "routes\\adminRoutes\\adminCouponRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/faq",
+        "group": "faq",
+        "mount": "/admin/faq",
+        "file": "routes\\adminRoutes\\adminFaqRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/admin/faq",
+        "group": "faq",
+        "mount": "/admin/faq",
+        "file": "routes\\adminRoutes\\adminFaqRoutes.js"
+      },
+      {
+        "method": "DELETE",
+        "path": "/admin/faq/:id",
+        "group": "faq",
+        "mount": "/admin/faq",
+        "file": "routes\\adminRoutes\\adminFaqRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/faq/:id",
+        "group": "faq",
+        "mount": "/admin/faq",
+        "file": "routes\\adminRoutes\\adminFaqRoutes.js"
+      },
+      {
+        "method": "PATCH",
+        "path": "/admin/faq/:id",
+        "group": "faq",
+        "mount": "/admin/faq",
+        "file": "routes\\adminRoutes\\adminFaqRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/health-concerns",
+        "group": "health-concerns",
+        "mount": "/admin/health-concerns",
+        "file": "routes\\adminRoutes\\adminHealthConcernRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/admin/health-concerns",
+        "group": "health-concerns",
+        "mount": "/admin/health-concerns",
+        "file": "routes\\adminRoutes\\adminHealthConcernRoutes.js"
+      },
+      {
+        "method": "DELETE",
+        "path": "/admin/health-concerns/:id",
+        "group": "health-concerns",
+        "mount": "/admin/health-concerns",
+        "file": "routes\\adminRoutes\\adminHealthConcernRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/health-concerns/:id",
+        "group": "health-concerns",
+        "mount": "/admin/health-concerns",
+        "file": "routes\\adminRoutes\\adminHealthConcernRoutes.js"
+      },
+      {
+        "method": "PATCH",
+        "path": "/admin/health-concerns/:id",
+        "group": "health-concerns",
+        "mount": "/admin/health-concerns",
+        "file": "routes\\adminRoutes\\adminHealthConcernRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/health-disorders",
+        "group": "health-disorders",
+        "mount": "/admin/health-disorders",
+        "file": "routes\\adminRoutes\\adminHealthDisorderRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/admin/health-disorders",
+        "group": "health-disorders",
+        "mount": "/admin/health-disorders",
+        "file": "routes\\adminRoutes\\adminHealthDisorderRoutes.js"
+      },
+      {
+        "method": "DELETE",
+        "path": "/admin/health-disorders/:id",
+        "group": "health-disorders",
+        "mount": "/admin/health-disorders",
+        "file": "routes\\adminRoutes\\adminHealthDisorderRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/health-disorders/:id",
+        "group": "health-disorders",
+        "mount": "/admin/health-disorders",
+        "file": "routes\\adminRoutes\\adminHealthDisorderRoutes.js"
+      },
+      {
+        "method": "PATCH",
+        "path": "/admin/health-disorders/:id",
+        "group": "health-disorders",
+        "mount": "/admin/health-disorders",
+        "file": "routes\\adminRoutes\\adminHealthDisorderRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/health-recipes",
+        "group": "health-recipes",
+        "mount": "/admin/health-recipes",
+        "file": "routes\\adminRoutes\\adminHealthRecipeRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/admin/health-recipes",
+        "group": "health-recipes",
+        "mount": "/admin/health-recipes",
+        "file": "routes\\adminRoutes\\adminHealthRecipeRoutes.js"
+      },
+      {
+        "method": "DELETE",
+        "path": "/admin/health-recipes/:id",
+        "group": "health-recipes",
+        "mount": "/admin/health-recipes",
+        "file": "routes\\adminRoutes\\adminHealthRecipeRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/health-recipes/:id",
+        "group": "health-recipes",
+        "mount": "/admin/health-recipes",
+        "file": "routes\\adminRoutes\\adminHealthRecipeRoutes.js"
+      },
+      {
+        "method": "PATCH",
+        "path": "/admin/health-recipes/:id",
+        "group": "health-recipes",
+        "mount": "/admin/health-recipes",
+        "file": "routes\\adminRoutes\\adminHealthRecipeRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/health-tools",
+        "group": "health-tools",
+        "mount": "/admin/health-tools",
+        "file": "routes\\adminRoutes\\adminHealthToolRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/admin/health-tools",
+        "group": "health-tools",
+        "mount": "/admin/health-tools",
+        "file": "routes\\adminRoutes\\adminHealthToolRoutes.js"
+      },
+      {
+        "method": "DELETE",
+        "path": "/admin/health-tools/:id",
+        "group": "health-tools",
+        "mount": "/admin/health-tools",
+        "file": "routes\\adminRoutes\\adminHealthToolRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/health-tools/:id",
+        "group": "health-tools",
+        "mount": "/admin/health-tools",
+        "file": "routes\\adminRoutes\\adminHealthToolRoutes.js"
+      },
+      {
+        "method": "PATCH",
+        "path": "/admin/health-tools/:id",
+        "group": "health-tools",
+        "mount": "/admin/health-tools",
+        "file": "routes\\adminRoutes\\adminHealthToolRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/misc/pages",
+        "group": "misc / pages",
+        "mount": "/admin/misc/pages",
+        "file": "routes\\adminRoutes\\adminStaticPageRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/admin/misc/pages",
+        "group": "misc / pages",
+        "mount": "/admin/misc/pages",
+        "file": "routes\\adminRoutes\\adminStaticPageRoutes.js"
+      },
+      {
+        "method": "DELETE",
+        "path": "/admin/misc/pages/:id",
+        "group": "misc / pages",
+        "mount": "/admin/misc/pages",
+        "file": "routes\\adminRoutes\\adminStaticPageRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/misc/pages/:id",
+        "group": "misc / pages",
+        "mount": "/admin/misc/pages",
+        "file": "routes\\adminRoutes\\adminStaticPageRoutes.js"
+      },
+      {
+        "method": "PATCH",
+        "path": "/admin/misc/pages/:id",
+        "group": "misc / pages",
+        "mount": "/admin/misc/pages",
+        "file": "routes\\adminRoutes\\adminStaticPageRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/notifications",
+        "group": "notifications",
+        "mount": "/admin/notifications",
+        "file": "routes\\adminRoutes\\adminNotificationRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/admin/notifications",
+        "group": "notifications",
+        "mount": "/admin/notifications",
+        "file": "routes\\adminRoutes\\adminNotificationRoutes.js"
+      },
+      {
+        "method": "DELETE",
+        "path": "/admin/notifications/:id",
+        "group": "notifications",
+        "mount": "/admin/notifications",
+        "file": "routes\\adminRoutes\\adminNotificationRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/notifications/:id",
+        "group": "notifications",
+        "mount": "/admin/notifications",
+        "file": "routes\\adminRoutes\\adminNotificationRoutes.js"
+      },
+      {
+        "method": "PATCH",
+        "path": "/admin/notifications/:id",
+        "group": "notifications",
+        "mount": "/admin/notifications",
+        "file": "routes\\adminRoutes\\adminNotificationRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/admin/notifications/:id/resend",
+        "group": "notifications",
+        "mount": "/admin/notifications",
+        "file": "routes\\adminRoutes\\adminNotificationRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/specializations",
+        "group": "specializations",
+        "mount": "/admin/specializations",
+        "file": "routes\\adminRoutes\\adminSpecializationRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/admin/specializations",
+        "group": "specializations",
+        "mount": "/admin/specializations",
+        "file": "routes\\adminRoutes\\adminSpecializationRoutes.js"
+      },
+      {
+        "method": "DELETE",
+        "path": "/admin/specializations/:id",
+        "group": "specializations",
+        "mount": "/admin/specializations",
+        "file": "routes\\adminRoutes\\adminSpecializationRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/specializations/:id",
+        "group": "specializations",
+        "mount": "/admin/specializations",
+        "file": "routes\\adminRoutes\\adminSpecializationRoutes.js"
+      },
+      {
+        "method": "PATCH",
+        "path": "/admin/specializations/:id",
+        "group": "specializations",
+        "mount": "/admin/specializations",
+        "file": "routes\\adminRoutes\\adminSpecializationRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/transformations",
+        "group": "transformations",
+        "mount": "/admin/transformations",
+        "file": "routes\\adminRoutes\\adminTransformationRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/admin/transformations",
+        "group": "transformations",
+        "mount": "/admin/transformations",
+        "file": "routes\\adminRoutes\\adminTransformationRoutes.js"
+      },
+      {
+        "method": "DELETE",
+        "path": "/admin/transformations/:id",
+        "group": "transformations",
+        "mount": "/admin/transformations",
+        "file": "routes\\adminRoutes\\adminTransformationRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/transformations/:id",
+        "group": "transformations",
+        "mount": "/admin/transformations",
+        "file": "routes\\adminRoutes\\adminTransformationRoutes.js"
+      },
+      {
+        "method": "PATCH",
+        "path": "/admin/transformations/:id",
+        "group": "transformations",
+        "mount": "/admin/transformations",
+        "file": "routes\\adminRoutes\\adminTransformationRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/users",
+        "group": "users",
+        "mount": "/admin/users",
+        "file": "routes\\adminRoutes\\adminUserRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/admin/users",
+        "group": "users",
+        "mount": "/admin/users",
+        "file": "routes\\adminRoutes\\adminUserRoutes.js"
+      },
+      {
+        "method": "DELETE",
+        "path": "/admin/users/:id",
+        "group": "users",
+        "mount": "/admin/users",
+        "file": "routes\\adminRoutes\\adminUserRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/users/:id",
+        "group": "users",
+        "mount": "/admin/users",
+        "file": "routes\\adminRoutes\\adminUserRoutes.js"
+      },
+      {
+        "method": "PATCH",
+        "path": "/admin/users/:id",
+        "group": "users",
+        "mount": "/admin/users",
+        "file": "routes\\adminRoutes\\adminUserRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/admin/users/:id/assign-coach",
+        "group": "users",
+        "mount": "/admin/users",
+        "file": "routes\\adminRoutes\\adminUserRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/admin/users/:id/convert-to-heal",
+        "group": "users",
+        "mount": "/admin/users",
+        "file": "routes\\adminRoutes\\adminUserRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/admin/users/:id/reassign-coach",
+        "group": "users",
+        "mount": "/admin/users",
+        "file": "routes\\adminRoutes\\adminUserRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/users/:id/water-tracking",
+        "group": "users",
+        "mount": "/admin/users",
+        "file": "routes\\adminRoutes\\adminUserRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/video-testimonials",
+        "group": "video-testimonials",
+        "mount": "/admin/video-testimonials",
+        "file": "routes\\adminRoutes\\adminVideoTestimonialsRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/admin/video-testimonials",
+        "group": "video-testimonials",
+        "mount": "/admin/video-testimonials",
+        "file": "routes\\adminRoutes\\adminVideoTestimonialsRoutes.js"
+      },
+      {
+        "method": "DELETE",
+        "path": "/admin/video-testimonials/:id",
+        "group": "video-testimonials",
+        "mount": "/admin/video-testimonials",
+        "file": "routes\\adminRoutes\\adminVideoTestimonialsRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/video-testimonials/:id",
+        "group": "video-testimonials",
+        "mount": "/admin/video-testimonials",
+        "file": "routes\\adminRoutes\\adminVideoTestimonialsRoutes.js"
+      },
+      {
+        "method": "PATCH",
+        "path": "/admin/video-testimonials/:id",
+        "group": "video-testimonials",
+        "mount": "/admin/video-testimonials",
+        "file": "routes\\adminRoutes\\adminVideoTestimonialsRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/wellness-coaches",
+        "group": "wellness-coaches",
+        "mount": "/admin/wellness-coaches",
+        "file": "routes\\adminRoutes\\adminWellnessCoachRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/admin/wellness-coaches",
+        "group": "wellness-coaches",
+        "mount": "/admin/wellness-coaches",
+        "file": "routes\\adminRoutes\\adminWellnessCoachRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/wellness-coaches/:coachId/assistants",
+        "group": "wellness-coaches",
+        "mount": "/admin/wellness-coaches",
+        "file": "routes\\adminRoutes\\adminWellnessCoachRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/admin/wellness-coaches/:coachId/assistants",
+        "group": "wellness-coaches",
+        "mount": "/admin/wellness-coaches",
+        "file": "routes\\adminRoutes\\adminWellnessCoachRoutes.js"
+      },
+      {
+        "method": "DELETE",
+        "path": "/admin/wellness-coaches/:coachId/assistants/:id",
+        "group": "wellness-coaches",
+        "mount": "/admin/wellness-coaches",
+        "file": "routes\\adminRoutes\\adminWellnessCoachRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/wellness-coaches/:coachId/assistants/:id",
+        "group": "wellness-coaches",
+        "mount": "/admin/wellness-coaches",
+        "file": "routes\\adminRoutes\\adminWellnessCoachRoutes.js"
+      },
+      {
+        "method": "PATCH",
+        "path": "/admin/wellness-coaches/:coachId/assistants/:id",
+        "group": "wellness-coaches",
+        "mount": "/admin/wellness-coaches",
+        "file": "routes\\adminRoutes\\adminWellnessCoachRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/wellness-coaches/:coachId/heal-users",
+        "group": "wellness-coaches",
+        "mount": "/admin/wellness-coaches",
+        "file": "routes\\adminRoutes\\adminWellnessCoachRoutes.js"
+      },
+      {
+        "method": "DELETE",
+        "path": "/admin/wellness-coaches/:id",
+        "group": "wellness-coaches",
+        "mount": "/admin/wellness-coaches",
+        "file": "routes\\adminRoutes\\adminWellnessCoachRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/wellness-coaches/:id",
+        "group": "wellness-coaches",
+        "mount": "/admin/wellness-coaches",
+        "file": "routes\\adminRoutes\\adminWellnessCoachRoutes.js"
+      },
+      {
+        "method": "PATCH",
+        "path": "/admin/wellness-coaches/:id",
+        "group": "wellness-coaches",
+        "mount": "/admin/wellness-coaches",
+        "file": "routes\\adminRoutes\\adminWellnessCoachRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/wellness-coaches/assistants",
+        "group": "wellness-coaches",
+        "mount": "/admin/wellness-coaches",
+        "file": "routes\\adminRoutes\\adminWellnessCoachRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/yoga",
+        "group": "yoga",
+        "mount": "/admin/yoga",
+        "file": "routes\\adminRoutes\\adminYogaRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/admin/yoga",
+        "group": "yoga",
+        "mount": "/admin/yoga",
+        "file": "routes\\adminRoutes\\adminYogaRoutes.js"
+      },
+      {
+        "method": "DELETE",
+        "path": "/admin/yoga/:id",
+        "group": "yoga",
+        "mount": "/admin/yoga",
+        "file": "routes\\adminRoutes\\adminYogaRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/yoga/:id",
+        "group": "yoga",
+        "mount": "/admin/yoga",
+        "file": "routes\\adminRoutes\\adminYogaRoutes.js"
+      },
+      {
+        "method": "PATCH",
+        "path": "/admin/yoga/:id",
+        "group": "yoga",
+        "mount": "/admin/yoga",
+        "file": "routes\\adminRoutes\\adminYogaRoutes.js"
+      }
+    ],
+    "coach": [
+      {
+        "method": "GET",
+        "path": "/coach/assistants",
+        "group": "assistants",
+        "mount": "/coach/assistants",
+        "file": "routes\\wellnessCoachRoutes\\coachAssistantRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/coach/assistants",
+        "group": "assistants",
+        "mount": "/coach/assistants",
+        "file": "routes\\wellnessCoachRoutes\\coachAssistantRoutes.js"
+      },
+      {
+        "method": "DELETE",
+        "path": "/coach/assistants/:id",
+        "group": "assistants",
+        "mount": "/coach/assistants",
+        "file": "routes\\wellnessCoachRoutes\\coachAssistantRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/coach/assistants/:id",
+        "group": "assistants",
+        "mount": "/coach/assistants",
+        "file": "routes\\wellnessCoachRoutes\\coachAssistantRoutes.js"
+      },
+      {
+        "method": "PATCH",
+        "path": "/coach/assistants/:id",
+        "group": "assistants",
+        "mount": "/coach/assistants",
+        "file": "routes\\wellnessCoachRoutes\\coachAssistantRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/coach/assistants/count",
+        "group": "assistants",
+        "mount": "/coach/assistants",
+        "file": "routes\\wellnessCoachRoutes\\coachAssistantRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/coach/auth/login",
+        "group": "auth",
+        "mount": "/coach/auth",
+        "file": "routes\\wellnessCoachRoutes\\coachAuthRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/coach/auth/me",
+        "group": "auth",
+        "mount": "/coach/auth",
+        "file": "routes\\wellnessCoachRoutes\\coachAuthRoutes.js"
+      },
+      {
+        "method": "PATCH",
+        "path": "/coach/auth/me",
+        "group": "auth",
+        "mount": "/coach/auth",
+        "file": "routes\\wellnessCoachRoutes\\coachAuthRoutes.js"
+      },
+      {
+        "method": "PATCH",
+        "path": "/coach/auth/me/password",
+        "group": "auth",
+        "mount": "/coach/auth",
+        "file": "routes\\wellnessCoachRoutes\\coachAuthRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/coach/auth/otp/send",
+        "group": "auth",
+        "mount": "/coach/auth",
+        "file": "routes\\wellnessCoachRoutes\\coachAuthRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/coach/auth/otp/verify",
+        "group": "auth",
+        "mount": "/coach/auth",
+        "file": "routes\\wellnessCoachRoutes\\coachAuthRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/coach/auth/refresh-token",
+        "group": "auth",
+        "mount": "/coach/auth",
+        "file": "routes\\wellnessCoachRoutes\\coachAuthRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/coach/auth/register",
+        "group": "auth",
+        "mount": "/coach/auth",
+        "file": "routes\\wellnessCoachRoutes\\coachAuthRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/coach/consultancy/enrolled-users",
+        "group": "consultancy",
+        "mount": "/coach/consultancy",
+        "file": "routes\\wellnessCoachRoutes\\coachConsultancyRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/coach/consultancy/transactions",
+        "group": "consultancy",
+        "mount": "/coach/consultancy",
+        "file": "routes\\wellnessCoachRoutes\\coachConsultancyRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/coach/consultancy/transactions/:id",
+        "group": "consultancy",
+        "mount": "/coach/consultancy",
+        "file": "routes\\wellnessCoachRoutes\\coachConsultancyRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/coach/consultancy/transactions/:id/invoice",
+        "group": "consultancy",
+        "mount": "/coach/consultancy",
+        "file": "routes\\wellnessCoachRoutes\\coachConsultancyRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/coach/heal-users",
+        "group": "heal-users",
+        "mount": "/coach/heal-users",
+        "file": "routes\\wellnessCoachRoutes\\coachHealUserRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/coach/heal-users/:id/reassign",
+        "group": "heal-users",
+        "mount": "/coach/heal-users",
+        "file": "routes\\wellnessCoachRoutes\\coachHealUserRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/coach/heal-users/:id/water-tracking",
+        "group": "heal-users",
+        "mount": "/coach/heal-users",
+        "file": "routes\\wellnessCoachRoutes\\coachHealUserRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/coach/specializations",
+        "group": "specializations",
+        "mount": "/coach/specializations",
+        "file": "routes\\wellnessCoachRoutes\\coachSpecializationRoutes.js"
+      }
+    ],
+    "assistant": [
+      {
+        "method": "POST",
+        "path": "/assistant/auth/login",
+        "group": "auth",
+        "mount": "/assistant/auth",
+        "file": "routes\\assistantWellnessCoachRoutes\\assistantAuthRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/assistant/auth/me",
+        "group": "auth",
+        "mount": "/assistant/auth",
+        "file": "routes\\assistantWellnessCoachRoutes\\assistantAuthRoutes.js"
+      },
+      {
+        "method": "PATCH",
+        "path": "/assistant/auth/me",
+        "group": "auth",
+        "mount": "/assistant/auth",
+        "file": "routes\\assistantWellnessCoachRoutes\\assistantAuthRoutes.js"
+      },
+      {
+        "method": "PATCH",
+        "path": "/assistant/auth/me/password",
+        "group": "auth",
+        "mount": "/assistant/auth",
+        "file": "routes\\assistantWellnessCoachRoutes\\assistantAuthRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/assistant/auth/otp/send",
+        "group": "auth",
+        "mount": "/assistant/auth",
+        "file": "routes\\assistantWellnessCoachRoutes\\assistantAuthRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/assistant/auth/otp/verify",
+        "group": "auth",
+        "mount": "/assistant/auth",
+        "file": "routes\\assistantWellnessCoachRoutes\\assistantAuthRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/assistant/auth/refresh-token",
+        "group": "auth",
+        "mount": "/assistant/auth",
+        "file": "routes\\assistantWellnessCoachRoutes\\assistantAuthRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/assistant/consultancy/enrolled-users",
+        "group": "consultancy",
+        "mount": "/assistant/consultancy",
+        "file": "routes\\assistantWellnessCoachRoutes\\assistantConsultancyRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/assistant/consultancy/transactions",
+        "group": "consultancy",
+        "mount": "/assistant/consultancy",
+        "file": "routes\\assistantWellnessCoachRoutes\\assistantConsultancyRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/assistant/consultancy/transactions/:id",
+        "group": "consultancy",
+        "mount": "/assistant/consultancy",
+        "file": "routes\\assistantWellnessCoachRoutes\\assistantConsultancyRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/assistant/consultancy/transactions/:id/invoice",
+        "group": "consultancy",
+        "mount": "/assistant/consultancy",
+        "file": "routes\\assistantWellnessCoachRoutes\\assistantConsultancyRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/assistant/heal-users",
+        "group": "heal-users",
+        "mount": "/assistant/heal-users",
+        "file": "routes\\assistantWellnessCoachRoutes\\assistantHealUserRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/assistant/heal-users/:id/water-tracking",
+        "group": "heal-users",
+        "mount": "/assistant/heal-users",
+        "file": "routes\\assistantWellnessCoachRoutes\\assistantHealUserRoutes.js"
+      }
+    ],
+    "user": [
+      {
+        "method": "POST",
+        "path": "/user/auth/delete",
+        "group": "auth",
+        "mount": "/user/auth",
+        "file": "routes\\userRoutes\\authRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/user/auth/delete/otp/send",
+        "group": "auth",
+        "mount": "/user/auth",
+        "file": "routes\\userRoutes\\authRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/user/auth/login",
+        "group": "auth",
+        "mount": "/user/auth",
+        "file": "routes\\userRoutes\\authRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/user/auth/login/password",
+        "group": "auth",
+        "mount": "/user/auth",
+        "file": "routes\\userRoutes\\authRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/user/auth/me",
+        "group": "auth",
+        "mount": "/user/auth",
+        "file": "routes\\userRoutes\\authRoutes.js"
+      },
+      {
+        "method": "PATCH",
+        "path": "/user/auth/me",
+        "group": "auth",
+        "mount": "/user/auth",
+        "file": "routes\\userRoutes\\authRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/user/auth/otp/send",
+        "group": "auth",
+        "mount": "/user/auth",
+        "file": "routes\\userRoutes\\authRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/user/auth/otp/verify",
+        "group": "auth",
+        "mount": "/user/auth",
+        "file": "routes\\userRoutes\\authRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/user/auth/refresh-token",
+        "group": "auth",
+        "mount": "/user/auth",
+        "file": "routes\\userRoutes\\authRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/user/auth/register",
+        "group": "auth",
+        "mount": "/user/auth",
+        "file": "routes\\userRoutes\\authRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/user/auth/register/otp/send",
+        "group": "auth",
+        "mount": "/user/auth",
+        "file": "routes\\userRoutes\\authRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/user/consultancy-payment/checkout-preview",
+        "group": "consultancy-payment",
+        "mount": "/user/consultancy-payment",
+        "file": "routes\\userRoutes\\consultancyPaymentRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/user/consultancy-payment/orders",
+        "group": "consultancy-payment",
+        "mount": "/user/consultancy-payment",
+        "file": "routes\\userRoutes\\consultancyPaymentRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/user/consultancy-payment/transactions",
+        "group": "consultancy-payment",
+        "mount": "/user/consultancy-payment",
+        "file": "routes\\userRoutes\\consultancyPaymentRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/user/consultancy-payment/transactions/:id",
+        "group": "consultancy-payment",
+        "mount": "/user/consultancy-payment",
+        "file": "routes\\userRoutes\\consultancyPaymentRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/user/consultancy-payment/transactions/:id/invoice",
+        "group": "consultancy-payment",
+        "mount": "/user/consultancy-payment",
+        "file": "routes\\userRoutes\\consultancyPaymentRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/user/consultancy-payment/verify",
+        "group": "consultancy-payment",
+        "mount": "/user/consultancy-payment",
+        "file": "routes\\userRoutes\\consultancyPaymentRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/user/water-tracking",
+        "group": "water-tracking",
+        "mount": "/user/water-tracking",
+        "file": "routes\\userRoutes\\waterTrackingRoutes.js"
+      },
+      {
+        "method": "PUT",
+        "path": "/user/water-tracking/day",
+        "group": "water-tracking",
+        "mount": "/user/water-tracking",
+        "file": "routes\\userRoutes\\waterTrackingRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/user/water-tracking/decrement",
+        "group": "water-tracking",
+        "mount": "/user/water-tracking",
+        "file": "routes\\userRoutes\\waterTrackingRoutes.js"
+      },
+      {
+        "method": "PATCH",
+        "path": "/user/water-tracking/goal",
+        "group": "water-tracking",
+        "mount": "/user/water-tracking",
+        "file": "routes\\userRoutes\\waterTrackingRoutes.js"
+      },
+      {
+        "method": "POST",
+        "path": "/user/water-tracking/increment",
+        "group": "water-tracking",
+        "mount": "/user/water-tracking",
+        "file": "routes\\userRoutes\\waterTrackingRoutes.js"
+      }
+    ],
+    "public": [
+      {
+        "method": "GET",
+        "path": "/public/misc/banners",
+        "group": "misc",
+        "mount": "/public/misc",
+        "file": "routes\\userRoutes\\miscRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/public/misc/celebration-banners",
+        "group": "misc",
+        "mount": "/public/misc",
+        "file": "routes\\userRoutes\\miscRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/public/misc/client-testimonials",
+        "group": "misc",
+        "mount": "/public/misc",
+        "file": "routes\\userRoutes\\miscRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/public/misc/faqs",
+        "group": "misc",
+        "mount": "/public/misc",
+        "file": "routes\\userRoutes\\miscRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/public/misc/health-concerns",
+        "group": "misc",
+        "mount": "/public/misc",
+        "file": "routes\\userRoutes\\miscRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/public/misc/health-disorders",
+        "group": "misc",
+        "mount": "/public/misc",
+        "file": "routes\\userRoutes\\miscRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/public/misc/health-recipes",
+        "group": "misc",
+        "mount": "/public/misc",
+        "file": "routes\\userRoutes\\miscRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/public/misc/health-tools",
+        "group": "misc",
+        "mount": "/public/misc",
+        "file": "routes\\userRoutes\\miscRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/public/misc/pages/:slug",
+        "group": "misc",
+        "mount": "/public/misc",
+        "file": "routes\\userRoutes\\miscRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/public/misc/transformations",
+        "group": "misc",
+        "mount": "/public/misc",
+        "file": "routes\\userRoutes\\miscRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/public/misc/video-testimonials",
+        "group": "misc",
+        "mount": "/public/misc",
+        "file": "routes\\userRoutes\\miscRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/public/misc/yoga",
+        "group": "misc",
+        "mount": "/public/misc",
+        "file": "routes\\userRoutes\\miscRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/public/app-config",
+        "group": "root",
+        "mount": "/public",
+        "file": "routes\\publicRoutes\\publicAppConfigRoutes.js"
+      },
+      {
+        "method": "GET",
+        "path": "/public/config",
+        "group": "root",
+        "mount": "/public",
+        "file": "routes\\publicRoutes\\publicAppConfigRoutes.js"
+      }
+    ]
+  }
+}

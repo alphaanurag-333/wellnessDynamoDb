@@ -1,0 +1,220 @@
+{
+  "info": {
+    "_postman_id": "wellness-public-api",
+    "name": "Wellness Dynamo — Public API",
+    "description": "Wellness Dynamo — Wellness Dynamo — Public API\n\nBase: `{{baseUrl}}` (default `http://localhost:5000/api`)\n\nImport `Wellness-API.postman_environment.json` for variables.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "misc",
+      "item": [
+        {
+          "name": "GET /public/misc/banners",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/public/misc/banners",
+            "description": "GET /public/misc/banners"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /public/misc/celebration-banners",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/public/misc/celebration-banners",
+            "description": "GET /public/misc/celebration-banners"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /public/misc/client-testimonials",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/public/misc/client-testimonials",
+            "description": "GET /public/misc/client-testimonials"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /public/misc/faqs",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/public/misc/faqs",
+            "description": "GET /public/misc/faqs"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /public/misc/health-concerns",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/public/misc/health-concerns",
+            "description": "GET /public/misc/health-concerns"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /public/misc/health-disorders",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/public/misc/health-disorders",
+            "description": "GET /public/misc/health-disorders"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /public/misc/health-recipes",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/public/misc/health-recipes",
+            "description": "GET /public/misc/health-recipes"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /public/misc/health-tools",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/public/misc/health-tools",
+            "description": "GET /public/misc/health-tools"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /public/misc/pages/:slug",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/public/misc/pages/:slug",
+            "description": "GET /public/misc/pages/:slug"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /public/misc/transformations",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/public/misc/transformations",
+            "description": "GET /public/misc/transformations"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /public/misc/video-testimonials",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/public/misc/video-testimonials",
+            "description": "GET /public/misc/video-testimonials"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /public/misc/yoga",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/public/misc/yoga",
+            "description": "GET /public/misc/yoga"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "root",
+      "item": [
+        {
+          "name": "GET /public/app-config",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/public/app-config",
+            "description": "GET /public/app-config"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /public/config",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/public/config",
+            "description": "GET /public/config"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health",
+            "description": "GET /health"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
