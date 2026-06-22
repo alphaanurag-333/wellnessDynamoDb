@@ -6,6 +6,7 @@ import { AdminMediaImage } from "../../admin/components/AdminMediaImage.jsx";
 import { selectAppDisplayName, selectPanelLogoUrl } from "../../store/appConfigSelectors.js";
 import { mediaUrl } from "../../media.js";
 import { logoutAssistant } from "../../store/authSlice.js";
+import { TrackingRefreshButton } from "../../components/TrackingRefreshButton.jsx";
 import defaultLogo from "../../assets/logo/defaultlogo.png";
 import { confirmAssistantLogout } from "../utils/confirmLogout.js";
 
@@ -14,6 +15,7 @@ export function AssistantHeader({
   isDesktop,
   mobileNavOpen,
   desktopSidebarCollapsed,
+  headerRefresh,
 }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -96,6 +98,14 @@ export function AssistantHeader({
         </div>
       </div>
       <div className="admin-header__spacer" />
+
+      {headerRefresh?.onRefresh ? (
+        <TrackingRefreshButton
+          className="admin-header__refresh"
+          onClick={headerRefresh.onRefresh}
+          disabled={headerRefresh.refreshing}
+        />
+      ) : null}
 
       <div className="admin-header__profile" ref={wrapRef}>
         <button

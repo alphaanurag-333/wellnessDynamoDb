@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 import { coachGetUserStepsTracking } from "../../api/coachStepsTracking.js";
@@ -6,6 +6,8 @@ import { logoutCoach } from "../../../store/authSlice.js";
 import { NotFoundPage } from "../../../admin/pages/NotFoundPage.jsx";
 import { CoachPageLoadingState } from "../../components/CoachPageLoader.jsx";
 import { StepsTrackingHistoryPanel } from "../../../components/StepsTrackingHistoryPanel.jsx";
+import { TRACKING_HISTORY_DEFAULT_DAYS } from "../../../components/trackingHistoryStats.js";
+import { useRegisterHeaderRefresh } from "../../../hooks/useRegisterHeaderRefresh.js";
 
 export function CoachUserStepsTrackingPage() {
   const { userId } = useParams();
@@ -18,10 +20,12 @@ export function CoachUserStepsTrackingPage() {
   const [history, setHistory] = useState([]);
   const [range, setRange] = useState(null);
   const [connections, setConnections] = useState(null);
-  const [days, setDays] = useState(30);
+  const [days, setDays] = useState(TRACKING_HISTORY_DEFAULT_DAYS);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
+  const handleRefresh = useCallback(() => setReloadKey((k) => k + 1), []);
 
   useEffect(() => {
     if (!coachToken || !userId) return;
@@ -56,7 +60,9 @@ export function CoachUserStepsTrackingPage() {
     return () => {
       cancelled = true;
     };
-  }, [coachToken, dispatch, userId, days]);
+  }, [coachToken, dispatch, userId, days, reloadKey]);
+
+  useRegisterHeaderRefresh({ onRefresh: handleRefresh, refreshing: loading });
 
   if (notFound) return <NotFoundPage />;
 

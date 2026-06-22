@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 import { adminGetUserWaterTracking } from "../../api/adminWaterTracking.js";
@@ -6,6 +6,8 @@ import { logout } from "../../../store/authSlice.js";
 import { NotFoundPage } from "../NotFoundPage.jsx";
 import { UserPageLoadingState } from "./UserPageLoader.jsx";
 import { WaterTrackingHistoryPanel } from "../../../components/WaterTrackingHistoryPanel.jsx";
+import { TRACKING_HISTORY_DEFAULT_DAYS } from "../../../components/trackingHistoryStats.js";
+import { useRegisterHeaderRefresh } from "../../../hooks/useRegisterHeaderRefresh.js";
 
 export function AdminUserWaterTrackingPage() {
   const { userId } = useParams();
@@ -17,10 +19,12 @@ export function AdminUserWaterTrackingPage() {
   const [settings, setSettings] = useState({});
   const [history, setHistory] = useState([]);
   const [range, setRange] = useState(null);
-  const [days, setDays] = useState(30);
+  const [days, setDays] = useState(TRACKING_HISTORY_DEFAULT_DAYS);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
+  const handleRefresh = useCallback(() => setReloadKey((k) => k + 1), []);
 
   useEffect(() => {
     if (!adminToken || !userId) return;
@@ -54,7 +58,9 @@ export function AdminUserWaterTrackingPage() {
     return () => {
       cancelled = true;
     };
-  }, [adminToken, dispatch, userId, days]);
+  }, [adminToken, dispatch, userId, days, reloadKey]);
+
+  useRegisterHeaderRefresh({ onRefresh: handleRefresh, refreshing: loading });
 
   if (notFound) return <NotFoundPage />;
 

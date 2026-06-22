@@ -20,7 +20,7 @@ exports.getUserWaterTrackingHistoryController = asyncHandler(async (req, res) =>
   const user = await getUserById(userId);
   if (!user) throw new AppError("User not found", 404);
 
-  const days = Math.min(Math.max(Number(req.query.days) || 30, 1), 366);
+  const days = Math.min(Math.max(Number(req.query.days) || 7, 1), 366);
   const fromDate = req.query.from || req.query.fromDate || req.query.startDate;
   const toDate = req.query.to || req.query.toDate || req.query.endDate;
 
@@ -56,7 +56,7 @@ exports.getCoachHealUserWaterTrackingController = asyncHandler(async (req, res) 
     throw new AppError("User is not under your coaching hierarchy", 403);
   }
 
-  const days = Math.min(Math.max(Number(req.query.days) || 30, 1), 366);
+  const days = Math.min(Math.max(Number(req.query.days) || 7, 1), 366);
   const fromDate = req.query.from || req.query.fromDate || req.query.startDate;
   const toDate = req.query.to || req.query.toDate || req.query.endDate;
 
@@ -94,7 +94,7 @@ exports.getAssistantHealUserWaterTrackingController = asyncHandler(async (req, r
     throw new AppError("User is not assigned to you", 403);
   }
 
-  const days = Math.min(Math.max(Number(req.query.days) || 30, 1), 366);
+  const days = Math.min(Math.max(Number(req.query.days) || 7, 1), 366);
   const fromDate = req.query.from || req.query.fromDate || req.query.startDate;
   const toDate = req.query.to || req.query.toDate || req.query.endDate;
 

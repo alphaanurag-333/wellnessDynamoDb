@@ -16,7 +16,7 @@ function toHistoryUser(user) {
 }
 
 async function fetchStepsHistory(userId, query) {
-  const days = Math.min(Math.max(Number(query.days) || 30, 1), 366);
+  const days = Math.min(Math.max(Number(query.days) || 7, 1), 366);
   const fromDate = query.from || query.fromDate || query.startDate;
   const toDate = query.to || query.toDate || query.endDate;
 

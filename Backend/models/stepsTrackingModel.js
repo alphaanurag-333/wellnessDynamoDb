@@ -457,11 +457,11 @@ async function getUserStepsSummary(userId, { date, days = 7 } = {}) {
   };
 }
 
-async function getUserStepsHistory(userId, { fromDate, toDate, days = 30 } = {}) {
+async function getUserStepsHistory(userId, { fromDate, toDate, days = 7 } = {}) {
   const end = isValidDateOnly(toDate) ? toDate : todayDateOnly();
   const start = isValidDateOnly(fromDate)
     ? fromDate
-    : addDaysDateOnly(end, -Math.max(1, Math.min(Number(days) || 30, 366)) + 1);
+    : addDaysDateOnly(end, -Math.max(1, Math.min(Number(days) || 7, 366)) + 1);
 
   if (!start || !isValidDateOnly(end) || start > end) {
     const err = new Error("Invalid date range");

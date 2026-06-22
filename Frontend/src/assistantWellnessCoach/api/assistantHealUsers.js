@@ -23,7 +23,7 @@ export async function assistantListHealUsers(_token, { page = 1, limit = 20, sea
   }
 }
 
-export async function assistantGetUserWaterTracking(token, userId, { days = 30, from, to } = {}) {
+export async function assistantGetUserWaterTracking(token, userId, { days = 7, from, to } = {}) {
   const q = new URLSearchParams();
   if (days != null) q.set("days", String(days));
   if (from) q.set("from", from);
@@ -43,7 +43,7 @@ export async function assistantGetUserWaterTracking(token, userId, { days = 30, 
   }
 }
 
-export async function assistantGetUserStepsTracking(token, userId, { days = 30, from, to } = {}) {
+export async function assistantGetUserStepsTracking(token, userId, { days = 7, from, to } = {}) {
   const q = new URLSearchParams();
   if (days != null) q.set("days", String(days));
   if (from) q.set("from", from);

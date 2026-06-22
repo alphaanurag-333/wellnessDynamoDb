@@ -30,6 +30,7 @@ export function AssistantWellnessCoachLayout() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [headerRefresh, setHeaderRefresh] = useState(null);
 
   const pageTitle = useMemo(() => titleFromPath(pathname), [pathname]);
 
@@ -98,14 +99,14 @@ export function AssistantWellnessCoachLayout() {
 
       <div className="admin-main">
         <AssistantHeader
-          title={pageTitle}
           onMenuClick={toggleSidebar}
           isDesktop={isDesktop}
           mobileNavOpen={sidebarOpen}
           desktopSidebarCollapsed={sidebarCollapsed}
+          headerRefresh={headerRefresh}
         />
         <main className="admin-content">
-          <Outlet />
+          <Outlet context={{ setHeaderRefresh }} />
         </main>
         <AssistantFooter />
       </div>

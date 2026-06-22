@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 import { assistantGetUserWaterTracking } from "../../api/assistantHealUsers.js";
 import { logoutAssistant } from "../../../store/authSlice.js";
 import { NotFoundPage } from "../../../admin/pages/NotFoundPage.jsx";
 import { WaterTrackingHistoryPanel } from "../../../components/WaterTrackingHistoryPanel.jsx";
+import { TRACKING_HISTORY_DEFAULT_DAYS } from "../../../components/trackingHistoryStats.js";
+import { useRegisterHeaderRefresh } from "../../../hooks/useRegisterHeaderRefresh.js";
 
 export function AssistantUserWaterTrackingPage() {
   const { userId } = useParams();
@@ -16,10 +18,12 @@ export function AssistantUserWaterTrackingPage() {
   const [settings, setSettings] = useState({});
   const [history, setHistory] = useState([]);
   const [range, setRange] = useState(null);
-  const [days, setDays] = useState(30);
+  const [days, setDays] = useState(TRACKING_HISTORY_DEFAULT_DAYS);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
+  const handleRefresh = useCallback(() => setReloadKey((k) => k + 1), []);
 
   useEffect(() => {
     if (!assistantToken || !userId) return;
@@ -53,7 +57,9 @@ export function AssistantUserWaterTrackingPage() {
     return () => {
       cancelled = true;
     };
-  }, [assistantToken, dispatch, userId, days]);
+  }, [assistantToken, dispatch, userId, days, reloadKey]);
+
+  useRegisterHeaderRefresh({ onRefresh: handleRefresh, refreshing: loading });
 
   if (notFound) return <NotFoundPage />;
 

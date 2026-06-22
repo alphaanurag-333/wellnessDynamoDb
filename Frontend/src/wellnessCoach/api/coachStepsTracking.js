@@ -4,7 +4,7 @@ function healUsersBase() {
   return "/coach/heal-users";
 }
 
-export async function coachGetUserStepsTracking(token, userId, { days = 30, from, to } = {}) {
+export async function coachGetUserStepsTracking(token, userId, { days = 7, from, to } = {}) {
   const q = new URLSearchParams();
   if (days != null) q.set("days", String(days));
   if (from) q.set("from", from);

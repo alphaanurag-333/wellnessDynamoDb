@@ -148,6 +148,7 @@ export function AdminLayout() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [headerRefresh, setHeaderRefresh] = useState(null);
 
   const pageTitle = useMemo(() => titleFromPath(pathname), [pathname]);
 
@@ -221,9 +222,10 @@ export function AdminLayout() {
           isDesktop={isDesktop}
           mobileNavOpen={sidebarOpen}
           desktopSidebarCollapsed={sidebarCollapsed}
+          headerRefresh={headerRefresh}
         />
         <main className="admin-content">
-          <Outlet />
+          <Outlet context={{ setHeaderRefresh }} />
         </main>
         <Footer />
       </div>

@@ -7,6 +7,7 @@ import { mediaUrl } from "../../media.js";
 import { logout } from "../../store/authSlice.js";
 import { confirmLogout } from "../utils/confirmLogout.js";
 import { NavIcon } from "./NavIcon.jsx";
+import { TrackingRefreshButton } from "../../components/TrackingRefreshButton.jsx";
 import defaultLogo from "../../assets/logo/defaultlogo.png";
 
 export function Header({
@@ -15,6 +16,7 @@ export function Header({
   isDesktop,
   mobileNavOpen,
   desktopSidebarCollapsed,
+  headerRefresh,
 }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -92,7 +94,14 @@ export function Header({
         </div>
       </div>
       <div className="admin-header__spacer" />
-      
+
+      {headerRefresh?.onRefresh ? (
+        <TrackingRefreshButton
+          className="admin-header__refresh"
+          onClick={headerRefresh.onRefresh}
+          disabled={headerRefresh.refreshing}
+        />
+      ) : null}
 
       <div className="admin-header__profile" ref={wrapRef}>
         <button

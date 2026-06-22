@@ -1,3 +1,8 @@
+import { useState } from "react";
+import { TrackingBarChart } from "./TrackingBarChart.jsx";
+import { TrackingHistoryViewToggle } from "./TrackingHistoryViewToggle.jsx";
+import { TRACKING_HISTORY_DEFAULT_DAYS } from "./trackingHistoryStats.js";
+
 function formatDateLabel(dateOnly) {
   if (!dateOnly) return "—";
   const d = new Date(`${dateOnly}T00:00:00.000Z`);
@@ -36,11 +41,17 @@ export function StepsTrackingHistoryPanel({
   connections,
   loading,
   error,
-  days,
+  days = TRACKING_HISTORY_DEFAULT_DAYS,
   onDaysChange,
   onBack,
 }) {
+  const [viewMode, setViewMode] = useState("both");
   const goalSteps = settings?.goalSteps ?? 0;
+  const chartRows = Array.isArray(history) ? history : [];
+  const tableRows = [...chartRows].reverse();
+
+  const showGraph = viewMode === "graph" || viewMode === "both";
+  const showTable = viewMode === "table" || viewMode === "both";
 
   return (
     <div className="user-page">
@@ -130,58 +141,80 @@ export function StepsTrackingHistoryPanel({
           </div>
 
           <div className="page-card">
-            <div className="page-card__head">
-              <h3 className="page-card__title">Daily activity</h3>
-              <p className="page-card__subtitle">Day-wise steps, distance, and progress toward goal.</p>
+            <div className="tracking-history-card__head">
+              <div className="tracking-history-card__head-text">
+                <h3 className="page-card__title">Daily activity</h3>
+                <p className="page-card__subtitle">Day-wise steps, distance, and progress toward goal.</p>
+              </div>
+              <TrackingHistoryViewToggle value={viewMode} onChange={setViewMode} />
             </div>
-            <div className="table-scroll">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Day</th>
-                    <th>Steps</th>
-                    <th>Goal</th>
-                    <th>Distance</th>
-                    <th>Calories</th>
-                    <th>Source</th>
-                    <th>Progress</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {history.length === 0 ? (
+
+            {showGraph ? (
+              <TrackingBarChart
+                rows={chartRows}
+                getValue={(row) => row.stepCount ?? 0}
+                getGoal={(row) => row.goalSteps ?? goalSteps}
+                formatValue={(n) => `${formatNumber(n)} steps`}
+                barClassName="tracking-chart__bar--steps"
+                valueLabel="Steps"
+                goalLabel="Daily goal"
+                unitLabel="steps in selected period"
+                emptyMessage="No steps tracking records in this range."
+              />
+            ) : null}
+
+            {showGraph && showTable ? <hr className="tracking-history-divider" /> : null}
+
+            {showTable ? (
+              <div className="table-scroll">
+                <table className="data-table">
+                  <thead>
                     <tr>
-                      <td colSpan={8}>No steps tracking records in this range.</td>
+                      <th>Date</th>
+                      <th>Day</th>
+                      <th>Steps</th>
+                      <th>Goal</th>
+                      <th>Distance</th>
+                      <th>Calories</th>
+                      <th>Source</th>
+                      <th>Progress</th>
                     </tr>
-                  ) : (
-                    [...history].reverse().map((row) => {
-                      const pct = progressPercent(row.stepCount, row.goalSteps);
-                      return (
-                        <tr key={row.date}>
-                          <td>{formatDateLabel(row.date)}</td>
-                          <td>{row.day || "—"}</td>
-                          <td>
-                            <strong>{formatNumber(row.stepCount ?? 0)}</strong>
-                          </td>
-                          <td>{formatNumber(row.goalSteps ?? "—")}</td>
-                          <td>{row.distanceKm != null ? `${row.distanceKm} km` : "—"}</td>
-                          <td>{row.caloriesKcal != null ? `${row.caloriesKcal} kcal` : "—"}</td>
-                          <td>{formatSource(row.source)}</td>
-                          <td>
-                            <div className="steps-progress-cell">
-                              <div className="steps-progress-bar" aria-hidden="true">
-                                <span className="steps-progress-bar__fill" style={{ width: `${pct}%` }} />
+                  </thead>
+                  <tbody>
+                    {tableRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={8}>No steps tracking records in this range.</td>
+                      </tr>
+                    ) : (
+                      tableRows.map((row) => {
+                        const pct = progressPercent(row.stepCount, row.goalSteps);
+                        return (
+                          <tr key={row.date}>
+                            <td>{formatDateLabel(row.date)}</td>
+                            <td>{row.day || "—"}</td>
+                            <td>
+                              <strong>{formatNumber(row.stepCount ?? 0)}</strong>
+                            </td>
+                            <td>{formatNumber(row.goalSteps ?? "—")}</td>
+                            <td>{row.distanceKm != null ? `${row.distanceKm} km` : "—"}</td>
+                            <td>{row.caloriesKcal != null ? `${row.caloriesKcal} kcal` : "—"}</td>
+                            <td>{formatSource(row.source)}</td>
+                            <td>
+                              <div className="steps-progress-cell">
+                                <div className="steps-progress-bar" aria-hidden="true">
+                                  <span className="steps-progress-bar__fill" style={{ width: `${pct}%` }} />
+                                </div>
+                                <span className="steps-progress-cell__label">{pct}%</span>
                               </div>
-                              <span className="steps-progress-cell__label">{pct}%</span>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
           </div>
         </>
       )}
@@ -196,6 +229,11 @@ export function StepsTrackingHistoryPanel({
         }
         .user-field--inline .user-field__label { margin: 0; white-space: nowrap; }
         .user-field--inline .user-field__input { min-width: 9rem; }
+        .tracking-history-divider {
+          border: 0;
+          border-top: 1px solid #e8eef5;
+          margin: 1.25rem 0;
+        }
         .steps-progress-cell {
           display: flex;
           align-items: center;

@@ -1,3 +1,8 @@
+import { useMemo, useState } from "react";
+import { TrackingBarChart } from "./TrackingBarChart.jsx";
+import { TrackingHistoryViewToggle } from "./TrackingHistoryViewToggle.jsx";
+import { formatFullCount, TRACKING_HISTORY_DEFAULT_DAYS } from "./trackingHistoryStats.js";
+
 function formatDateLabel(dateOnly) {
   if (!dateOnly) return "—";
   const d = new Date(`${dateOnly}T00:00:00.000Z`);
@@ -21,19 +26,33 @@ export function WaterTrackingHistoryPanel({
   range,
   loading,
   error,
-  days,
+  days = TRACKING_HISTORY_DEFAULT_DAYS,
   onDaysChange,
   onBack,
   backLabel = "Back",
 }) {
+  const [viewMode, setViewMode] = useState("both");
   const goalGlasses = settings?.goalGlasses ?? 0;
   const glassSizeMl = settings?.glassSizeMl ?? 250;
+  const chartRows = Array.isArray(history) ? history : [];
+  const tableRows = [...chartRows].reverse();
+  const totalMl = useMemo(
+    () =>
+      chartRows.reduce((sum, row) => {
+        const glasses = Number(row.glassCount) || 0;
+        return sum + (Number(row.totalMl) || glasses * glassSizeMl);
+      }, 0),
+    [chartRows, glassSizeMl]
+  );
+
+  const showGraph = viewMode === "graph" || viewMode === "both";
+  const showTable = viewMode === "table" || viewMode === "both";
 
   return (
     <div className="user-page">
       <div className="user-page__toolbar">
         {onBack ? (
-          <button type="button" className="user-back-btn" aria-label="Back" onClick={onBack}>
+          <button type="button" className="user-back-btn" aria-label={backLabel} onClick={onBack}>
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M15 18 9 12l6-6" />
             </svg>
@@ -99,58 +118,90 @@ export function WaterTrackingHistoryPanel({
                   </span>
                 </div>
               ) : null}
+              {chartRows.length > 0 ? (
+                <div className="user-detail-row">
+                  <span className="user-detail-row__label">Period total</span>
+                  <span className="user-detail-row__value">
+                    {chartRows.reduce((sum, row) => sum + (Number(row.glassCount) || 0), 0)} glasses (
+                    {formatFullCount(totalMl)} ml)
+                  </span>
+                </div>
+              ) : null}
             </div>
           </div>
 
           <div className="page-card">
-            <div className="page-card__head">
-              <h3 className="page-card__title">Daily intake</h3>
-              <p className="page-card__subtitle">Day-wise glass count and progress toward goal.</p>
+            <div className="tracking-history-card__head">
+              <div className="tracking-history-card__head-text">
+                <h3 className="page-card__title">Daily intake</h3>
+                <p className="page-card__subtitle">Day-wise glass count and progress toward goal.</p>
+              </div>
+              <TrackingHistoryViewToggle value={viewMode} onChange={setViewMode} />
             </div>
-            <div className="table-scroll">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Day</th>
-                    <th>Glasses</th>
-                    <th>Goal</th>
-                    <th>Total (ml)</th>
-                    <th>Progress</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {history.length === 0 ? (
+
+            {showGraph ? (
+              <TrackingBarChart
+                rows={chartRows}
+                getValue={(row) => row.glassCount ?? 0}
+                getGoal={(row) => row.goalGlasses ?? goalGlasses}
+                formatValue={(n) => `${n} glasses`}
+                barClassName="tracking-chart__bar--water"
+                valueLabel="Glasses"
+                goalLabel="Daily goal"
+                unitLabel="glasses in selected period"
+                totalHint={`${formatFullCount(totalMl)} ml · glasses in selected period`}
+                emptyMessage="No water tracking records in this range."
+              />
+            ) : null}
+
+            {showGraph && showTable ? <hr className="tracking-history-divider" /> : null}
+
+            {showTable ? (
+              <div className="table-scroll">
+                <table className="data-table">
+                  <thead>
                     <tr>
-                      <td colSpan={6}>No water tracking records in this range.</td>
+                      <th>Date</th>
+                      <th>Day</th>
+                      <th>Glasses</th>
+                      <th>Goal</th>
+                      <th>Total (ml)</th>
+                      <th>Progress</th>
                     </tr>
-                  ) : (
-                    [...history].reverse().map((row) => {
-                      const pct = progressPercent(row.glassCount, row.goalGlasses);
-                      return (
-                        <tr key={row.date}>
-                          <td>{formatDateLabel(row.date)}</td>
-                          <td>{row.day || "—"}</td>
-                          <td>
-                            <strong>{row.glassCount ?? 0}</strong>
-                          </td>
-                          <td>{row.goalGlasses ?? "—"}</td>
-                          <td>{row.totalMl ?? (row.glassCount || 0) * glassSizeMl} ml</td>
-                          <td>
-                            <div className="water-progress-cell">
-                              <div className="water-progress-bar" aria-hidden="true">
-                                <span className="water-progress-bar__fill" style={{ width: `${pct}%` }} />
+                  </thead>
+                  <tbody>
+                    {tableRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={6}>No water tracking records in this range.</td>
+                      </tr>
+                    ) : (
+                      tableRows.map((row) => {
+                        const pct = progressPercent(row.glassCount, row.goalGlasses);
+                        return (
+                          <tr key={row.date}>
+                            <td>{formatDateLabel(row.date)}</td>
+                            <td>{row.day || "—"}</td>
+                            <td>
+                              <strong>{row.glassCount ?? 0}</strong>
+                            </td>
+                            <td>{row.goalGlasses ?? "—"}</td>
+                            <td>{row.totalMl ?? (row.glassCount || 0) * glassSizeMl} ml</td>
+                            <td>
+                              <div className="water-progress-cell">
+                                <div className="water-progress-bar" aria-hidden="true">
+                                  <span className="water-progress-bar__fill" style={{ width: `${pct}%` }} />
+                                </div>
+                                <span className="water-progress-cell__label">{pct}%</span>
                               </div>
-                              <span className="water-progress-cell__label">{pct}%</span>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
           </div>
         </>
       )}
@@ -165,6 +216,11 @@ export function WaterTrackingHistoryPanel({
         }
         .user-field--inline .user-field__label { margin: 0; white-space: nowrap; }
         .user-field--inline .user-field__input { min-width: 9rem; }
+        .tracking-history-divider {
+          border: 0;
+          border-top: 1px solid #e8eef5;
+          margin: 1.25rem 0;
+        }
         .water-progress-cell {
           display: flex;
           align-items: center;
