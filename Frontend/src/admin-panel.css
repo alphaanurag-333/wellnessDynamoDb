@@ -4934,16 +4934,31 @@ a.icon-btn {
   }
 }
 
-/* Approval badge */
+.data-table__approval-col {
+  width: 1%;
+  white-space: nowrap;
+}
+
+/* Approval badge + actions (coach list) */
+.approval-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .approval-badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  padding: 2px 8px;
+  padding: 4px 10px;
   border-radius: 999px;
   border: 1px solid transparent;
+  line-height: 1.2;
 }
 .approval-badge--pending {
   background: #fef3c7;
@@ -4961,20 +4976,25 @@ a.icon-btn {
   border-color: #fca5a5;
 }
 
-/* Approval action buttons */
 .approval-actions {
-  display: flex;
-  gap: 4px;
-  margin-top: 4px;
-  flex-wrap: wrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
 }
+
 .btn--xs {
-  padding: 2px 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
   font-size: 0.72rem;
   font-weight: 600;
-  border-radius: 4px;
+  line-height: 1.2;
+  border-radius: 6px;
   border: none;
   cursor: pointer;
+  white-space: nowrap;
 }
 .btn--success {
   background: #16a34a;

@@ -1,0 +1,23 @@
+{
+  "tableName": "Banner",
+  "exportedAt": "2026-06-20T13:18:30.547Z",
+  "itemCount": 2,
+  "items": [
+    {
+      "createdAt": "2026-05-06T07:25:12.770Z",
+      "id": "8b85cd2f-5bf9-4776-9091-23eff26d618a",
+      "image": "banner/1779278854737-1e2a718d-bad8-4675-8678-02bf6046443d.jpg",
+      "updatedAt": "2026-05-20T12:07:34.836Z",
+      "status": "active",
+      "title": "Home Banner"
+    },
+    {
+      "createdAt": "2026-05-16T12:21:40.009Z",
+      "id": "b62eb70e-ec7f-40d6-a747-3cfda49707d9",
+      "image": "banner/1781782140869-71db7e6b-af99-4d1b-81a6-61ed1e773247.png",
+      "updatedAt": "2026-06-18T11:29:02.459Z",
+      "status": "active",
+      "title": "Main Banner"
+    }
+  ]
+}

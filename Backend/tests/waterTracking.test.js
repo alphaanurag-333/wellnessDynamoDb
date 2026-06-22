@@ -37,8 +37,9 @@ describe("dateOnly utils", () => {
 
 describe("waterTracking validation", () => {
   it("normalizes goal glasses", () => {
+    assert.equal(normalizeGoalGlasses(0), 0);
     assert.equal(normalizeGoalGlasses(17), 17);
-    assert.throws(() => normalizeGoalGlasses(0), /ValidationError/);
+    assert.throws(() => normalizeGoalGlasses(-1), /ValidationError/);
     assert.throws(() => normalizeGoalGlasses(100), /ValidationError/);
   });
 

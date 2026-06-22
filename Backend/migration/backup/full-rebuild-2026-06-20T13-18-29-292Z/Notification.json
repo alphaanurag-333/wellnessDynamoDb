@@ -1,0 +1,67 @@
+{
+  "tableName": "Notification",
+  "exportedAt": "2026-06-20T13:18:34.555Z",
+  "itemCount": 6,
+  "items": [
+    {
+      "image": "notification/1779278790445-3e55f5d6-68ee-43dd-a9ec-425cd4b57c3d.jpg",
+      "updatedAt": "2026-06-20T09:35:57.069Z",
+      "status": "active",
+      "createdAt": "2026-05-05T10:56:12.865Z",
+      "audienceType": "coaches",
+      "sentAt": "2026-06-20T09:35:57.069Z",
+      "message": "testing",
+      "id": "31e92587-3edc-4761-ae6d-077808282e19"
+    },
+    {
+      "image": "notification/1779358611849-4a0ea21c-24e0-4c57-b385-36fd09608d4d.jpg",
+      "updatedAt": "2026-05-22T05:24:50.309Z",
+      "status": "active",
+      "createdAt": "2026-05-21T10:16:52.270Z",
+      "audienceType": "users",
+      "message": "asfasdfasdf",
+      "sentAt": "2026-05-22T05:24:50.309Z",
+      "id": "964c41df-5a79-4642-88b4-57aea1537b1b"
+    },
+    {
+      "image": "notification/1779373363668-49f04531-b16a-492f-8c4d-65b8298e17a6.png",
+      "updatedAt": "2026-05-22T05:12:42.547Z",
+      "status": "active",
+      "createdAt": "2026-05-05T10:55:58.886Z",
+      "audienceType": "users",
+      "message": "testing",
+      "sentAt": "2026-05-22T05:12:42.546Z",
+      "id": "b7e5e6cc-5d44-42b8-a283-973409d0ed04"
+    },
+    {
+      "image": "notification/1779356344273-6ca25d3b-973a-4328-90e5-1a898e5ff713.jpg",
+      "updatedAt": "2026-06-09T11:08:06.101Z",
+      "status": "active",
+      "createdAt": "2026-05-21T09:39:04.643Z",
+      "audienceType": "users",
+      "sentAt": "2026-06-09T11:08:06.101Z",
+      "message": "gfdfgdfgfd",
+      "id": "015c48f2-3f9c-4714-8de3-a4e2e9f71d37"
+    },
+    {
+      "image": "notification/1779544460240-af00c8bc-5a3c-4fef-8c8d-472c9ba39981.jpg",
+      "updatedAt": "2026-06-09T11:07:30.252Z",
+      "status": "active",
+      "createdAt": "2026-05-21T09:39:18.308Z",
+      "message": "sfsadfasdfasdf",
+      "sentAt": "2026-06-09T11:07:30.252Z",
+      "audienceType": "users",
+      "id": "8745fea7-3bb5-4345-b8ec-6b073add0033"
+    },
+    {
+      "image": "notification/1779350713659-1045d070-27da-4f8a-b003-885e780a02ed.jpg",
+      "updatedAt": "2026-06-09T11:08:21.761Z",
+      "status": "active",
+      "createdAt": "2026-05-21T08:05:14.323Z",
+      "message": "test",
+      "sentAt": "2026-06-09T11:08:21.761Z",
+      "audienceType": "users",
+      "id": "bc8dc0a5-0d23-4719-92a1-198a5b6771b6"
+    }
+  ]
+}

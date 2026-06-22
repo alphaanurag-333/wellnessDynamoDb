@@ -1,0 +1,20 @@
+{
+  "tableName": "Admin",
+  "exportedAt": "2026-06-20T13:17:53.066Z",
+  "itemCount": 1,
+  "items": [
+    {
+      "password": "$2b$10$xWFXC13Ps/T94YLYcj5OueNpBqdQmzzZ1EMV/N1HXr5tOkPHfrG6S",
+      "updatedAt": "2026-06-15T07:05:34.464Z",
+      "status": "active",
+      "createdAt": "2026-05-05T08:29:36.276Z",
+      "resetPasswordToken": null,
+      "id": "e2f355ed-18aa-408d-accd-8ca066a10f31",
+      "email": "admin@gmail.com",
+      "phone": "9876543210",
+      "name": "Admin",
+      "profileImage": "admin/1780926954813-0ca2ab28-8105-495e-baa4-d07fc86f400c.png",
+      "resetPasswordExpire": null
+    }
+  ]
+}

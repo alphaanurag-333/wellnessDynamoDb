@@ -1,0 +1,79 @@
+{
+  "tableName": "AppConfig",
+  "exportedAt": "2026-06-20T13:18:29.775Z",
+  "itemCount": 1,
+  "items": [
+    {
+      "happy_clients": "8500",
+      "linkedin": "https://linkedin.com/company/wellness",
+      "app_email": "admin@wellness.com",
+      "tax_type": "inclusive",
+      "twitter": "https://x.com/wellness",
+      "instagram": "https://instagram.com/wellness",
+      "app_details": "This is long description for app",
+      "payment_gateways": [
+        {
+          "isActive": true,
+          "provider": "razorpay",
+          "credentials": {
+            "webhook_secret": "",
+            "key_secret": "",
+            "merchant_id": "",
+            "key_id": ""
+          }
+        },
+        {
+          "isActive": false,
+          "provider": "stripe",
+          "credentials": {
+            "webhook_secret": "",
+            "key_secret": "",
+            "merchant_id": "",
+            "key_id": ""
+          }
+        },
+        {
+          "isActive": false,
+          "provider": "paypal",
+          "credentials": {
+            "webhook_secret": "",
+            "key_secret": "",
+            "merchant_id": "",
+            "key_id": ""
+          }
+        },
+        {
+          "isActive": false,
+          "provider": "paytm",
+          "credentials": {
+            "webhook_secret": "",
+            "key_secret": "",
+            "merchant_id": "",
+            "key_id": ""
+          }
+        }
+      ],
+      "id": "app-config",
+      "latitude": "22.7196",
+      "favicon": "appconfig/1781947847850-235937bd-875e-45ff-84e3-4bb5dffee62b.png",
+      "facebook": "https://facebook.com/wellness",
+      "app_footer_text": "© 2026 Wellness. All rights reserved. || Powered By Alphawizz Technology.\r\n",
+      "app_mobile": "9876543210",
+      "app_version": "1.0",
+      "createdAt": "2026-05-05T10:03:06.840Z",
+      "consultancy_amount": "299.00",
+      "address": "Vijay nagar Indore\r\n",
+      "tax_value": "5",
+      "average_rating": "4.9",
+      "app_detail": "Best wellness platform",
+      "updatedAt": "2026-06-20T11:27:06.524Z",
+      "referral_discount": "200.00",
+      "app_name": "Wellness",
+      "longitude": "75.8577",
+      "admin_logo": "appconfig/1779355999539-7b63b5f9-f992-418d-a586-7a05a2548a92.png",
+      "success_rate": "85",
+      "user_logo": "appconfig/1779278085514-e0f5ce1c-63d8-4053-ab5e-b8c1ebd3e007.png",
+      "improved_user": "10000"
+    }
+  ]
+}

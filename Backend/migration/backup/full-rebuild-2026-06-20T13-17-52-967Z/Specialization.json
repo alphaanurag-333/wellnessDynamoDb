@@ -1,0 +1,34 @@
+{
+  "tableName": "Specialization",
+  "exportedAt": "2026-06-20T13:17:58.723Z",
+  "itemCount": 3,
+  "items": [
+    {
+      "updatedAt": "2026-05-19T07:20:34.533Z",
+      "titleKey": "weight loss",
+      "status": "active",
+      "createdAt": "2026-05-18T11:45:15.903Z",
+      "id": "cbf4bfb6-08cb-4df2-8522-cecd574eb5cc",
+      "description": "Weight loss",
+      "title": "Weight loss"
+    },
+    {
+      "updatedAt": "2026-06-18T12:50:12.318Z",
+      "titleKey": "general wellness",
+      "status": "active",
+      "createdAt": "2026-06-18T12:50:12.318Z",
+      "id": "1d7119c0-c675-42c8-aeb3-98428284efe9",
+      "description": "Default specialization for seeded wellness coaches.",
+      "title": "General Wellness"
+    },
+    {
+      "titleKey": "cardio",
+      "updatedAt": "2026-05-19T07:20:20.252Z",
+      "status": "active",
+      "createdAt": "2026-05-18T11:58:54.321Z",
+      "description": "Best cardio",
+      "id": "8829a693-a6ce-4028-9c87-645896d7956b",
+      "title": "Cardio"
+    }
+  ]
+}

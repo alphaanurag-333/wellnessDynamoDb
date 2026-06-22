@@ -7,6 +7,19 @@ const { queryPartition } = require("../utils/dynamoList");
 const TABLE = "ConsultancyTransaction";
 const PAYMENT_STATUSES = new Set(["pending", "paid", "failed", "refunded"]);
 
+/** GSI partition keys must be omitted when unset — DynamoDB rejects NULL index keys. */
+const SPARSE_GSI_ATTRIBUTES = new Set(["parentCoachId", "meetingAssigneeId"]);
+
+function omitSparseGsiAttributes(item) {
+  const next = { ...item };
+  for (const key of SPARSE_GSI_ATTRIBUTES) {
+    if (next[key] == null || next[key] === "") {
+      delete next[key];
+    }
+  }
+  return next;
+}
+
 function generateReferenceNumber() {
   const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, "");
   const suffix = randomBytes(3).toString("hex").toUpperCase();
@@ -65,15 +78,17 @@ async function createConsultancyTransaction(payload) {
     updatedAt: now,
   };
 
+  const storedItem = omitSparseGsiAttributes(item);
+
   await docClient.send(
     new PutCommand({
       TableName: TABLE,
-      Item: item,
+      Item: storedItem,
       ConditionExpression: "attribute_not_exists(id)",
     })
   );
 
-  return item;
+  return storedItem;
 }
 
 async function getConsultancyTransactionById(id) {
@@ -89,20 +104,41 @@ async function getConsultancyTransactionById(id) {
 async function updateConsultancyTransaction(id, updates) {
   const exprNames = {};
   const exprValues = { ":updatedAt": new Date().toISOString() };
-  let setExpr = "SET updatedAt = :updatedAt";
+  const removeKeys = [];
+  const setEntries = [];
 
   for (const [key, val] of Object.entries(updates)) {
     if (val === undefined) continue;
+    if (SPARSE_GSI_ATTRIBUTES.has(key) && (val == null || val === "")) {
+      removeKeys.push(key);
+      continue;
+    }
+    setEntries.push([key, val]);
+  }
+
+  let updateExpr = "SET updatedAt = :updatedAt";
+  for (const [key, val] of setEntries) {
     exprNames[`#${key}`] = key;
     exprValues[`:${key}`] = val;
-    setExpr += `, #${key} = :${key}`;
+    updateExpr += `, #${key} = :${key}`;
+  }
+
+  if (removeKeys.length) {
+    for (const key of removeKeys) {
+      exprNames[`#${key}`] = key;
+    }
+    updateExpr += ` REMOVE ${removeKeys.map((key) => `#${key}`).join(", ")}`;
+  }
+
+  if (setEntries.length === 0 && removeKeys.length === 0) {
+    throw new Error("No valid fields provided for update");
   }
 
   const { Attributes } = await docClient.send(
     new UpdateCommand({
       TableName: TABLE,
       Key: { id },
-      UpdateExpression: setExpr,
+      UpdateExpression: updateExpr,
       ExpressionAttributeNames: exprNames,
       ExpressionAttributeValues: exprValues,
       ConditionExpression: "attribute_exists(id)",

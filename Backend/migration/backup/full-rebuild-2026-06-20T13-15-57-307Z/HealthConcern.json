@@ -1,0 +1,52 @@
+{
+  "tableName": "HealthConcern",
+  "exportedAt": "2026-06-20T13:16:01.042Z",
+  "itemCount": 5,
+  "items": [
+    {
+      "icon": "health-concern/1779279188214-18106def-4d05-407b-926d-ce76ca79aecf.jpg",
+      "updatedAt": "2026-05-21T10:38:58.388Z",
+      "status": "active",
+      "createdAt": "2026-05-06T07:00:00.000Z",
+      "description": "Have a different health concern? Let us know your specific focus area.\nWe’ll try to personalize the experience based on your needs.",
+      "id": "hc-001",
+      "title": "Others (Please Specify)"
+    },
+    {
+      "icon": "health-concern/1779279182896-9e828f43-2c4f-477b-81e5-0a1bc25245bf.jpg",
+      "updatedAt": "2026-05-21T10:38:35.170Z",
+      "status": "active",
+      "createdAt": "2026-05-06T07:01:00.000Z",
+      "id": "hc-002",
+      "description": "Build healthier daily routines to support overall immune wellness.\nGet personalized wellness guidance focused on lifestyle and balance.",
+      "title": "Auto-Immune Disorder"
+    },
+    {
+      "icon": "health-concern/1779279170952-458baee4-269f-41cb-9d05-73a173ea7186.jpg",
+      "updatedAt": "2026-05-21T10:37:54.539Z",
+      "status": "active",
+      "createdAt": "2026-05-06T07:03:00.000Z",
+      "id": "hc-004",
+      "description": "Focus on hormonal health and lifestyle management for PCOD/PCOS.\nGet support for wellness, cycle balance, nutrition, and fitness goals.",
+      "title": "PCOD / PCOS"
+    },
+    {
+      "icon": "health-concern/1779279176305-c6ee42f6-f111-409c-a016-c34e12e359e8.jpg",
+      "updatedAt": "2026-05-21T10:38:15.248Z",
+      "status": "active",
+      "createdAt": "2026-05-06T07:02:00.000Z",
+      "id": "hc-003",
+      "description": "Improve digestion and support a healthier gut environment naturally.\nDiscover habits that may help with bloating, digestion, and overall wellness.",
+      "title": "Gut Health"
+    },
+    {
+      "icon": "health-concern/1779279165355-f70d3bee-ffae-4874-90e3-50eedd0eb001.jpg",
+      "updatedAt": "2026-05-21T10:37:33.497Z",
+      "status": "active",
+      "createdAt": "2026-05-06T07:04:00.000Z",
+      "description": "Support better hormonal balance and overall thyroid wellness.\nLearn habits that may help with energy, metabolism, and routine care.",
+      "id": "hc-005",
+      "title": "Thyroid Health"
+    }
+  ]
+}

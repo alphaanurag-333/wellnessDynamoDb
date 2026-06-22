@@ -15,6 +15,8 @@ const phoneIndexMigration = require("./migrations/03-admin-drop-phone-index");
 const mediaFieldsMigration = require("./migrations/04-media-field-camelcase");
 const userReferralMigration = require("./migrations/05-user-referral-assignment");
 const appConfigPaymentMethodsMigration = require("./migrations/06-appconfig-drop-payment-methods");
+const userParentCoachSparseMigration = require("./migrations/07-user-parent-coach-sparse-index");
+const consultancySparseMigration = require("./migrations/08-consultancy-transaction-sparse-index");
 
 const MIGRATIONS = [
   adminMigration,
@@ -23,6 +25,8 @@ const MIGRATIONS = [
   mediaFieldsMigration,
   userReferralMigration,
   appConfigPaymentMethodsMigration,
+  userParentCoachSparseMigration,
+  consultancySparseMigration,
 ];
 
 function parseOnlyArg() {
@@ -53,7 +57,9 @@ async function run() {
       migration.migrateAdminDropPhoneIndex ||
       migration.migrateMediaFieldCamelCase ||
       migration.migrateUserReferralAssignment ||
-      migration.migrateAppConfigDropPaymentMethods;
+      migration.migrateAppConfigDropPaymentMethods ||
+      migration.migrateUserParentCoachSparseIndex ||
+      migration.migrateConsultancyTransactionSparseIndex;
 
     console.log(`--- ${migration.id} ---`);
     await runner();

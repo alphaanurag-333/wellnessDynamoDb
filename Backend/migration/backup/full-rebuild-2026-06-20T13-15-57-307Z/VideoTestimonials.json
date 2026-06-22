@@ -1,0 +1,29 @@
+{
+  "tableName": "VideoTestimonials",
+  "exportedAt": "2026-06-20T13:16:05.614Z",
+  "itemCount": 2,
+  "items": [
+    {
+      "ytLink": "https://www.youtube.com/watch?v=kawDFQJStVo&list=RDkawDFQJStVo&start_radio=1",
+      "updatedAt": "2026-05-20T12:08:31.986Z",
+      "status": "active",
+      "createdAt": "2026-05-06T13:52:28.735Z",
+      "id": "9972380a-cb7c-4264-87bf-846d6a64ae9f",
+      "name": "safasdfsdf",
+      "video": "/uploads/video-testimonials/videoFile-1778075548730-285646771.mp4",
+      "type": "link",
+      "profileImage": "video-testimonials/1779278911693-16b5a6a7-3f19-4627-a94b-241a629059d0.jpg"
+    },
+    {
+      "ytLink": "",
+      "updatedAt": "2026-05-20T12:08:22.923Z",
+      "status": "active",
+      "createdAt": "2026-05-12T10:33:30.774Z",
+      "id": "02982ae1-9bf4-463b-92c2-dfe7cb147df8",
+      "name": "Testing",
+      "video": "video-testimonials/1779278902585-ebb3b97d-4a1b-40ce-97f9-c457ad023719.mp4",
+      "profileImage": "video-testimonials/1779278902345-e66bc44f-a35d-4e56-aa2e-944c25f50e8a.jpg",
+      "type": "video"
+    }
+  ]
+}

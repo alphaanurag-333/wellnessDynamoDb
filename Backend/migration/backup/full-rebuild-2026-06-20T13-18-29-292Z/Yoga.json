@@ -1,0 +1,31 @@
+{
+  "tableName": "Yoga",
+  "exportedAt": "2026-06-20T13:18:37.907Z",
+  "itemCount": 2,
+  "items": [
+    {
+      "ytLink": "",
+      "updatedAt": "2026-05-27T09:48:43.858Z",
+      "status": "active",
+      "createdAt": "2026-05-18T09:22:37.422Z",
+      "description": "asdfasdfasdf",
+      "thumbnail": "yoga/1779279078347-6eac2497-f8e6-4995-9a56-ef5abe2fcbd8.jpg",
+      "id": "7fe57aa7-ff54-4b52-9c02-9f98c48c5492",
+      "video": "yoga/1779279109664-d92fdb01-d5a0-4e15-b776-087dd32429b4.mp4",
+      "type": "video",
+      "title": "dfasdfsa"
+    },
+    {
+      "ytLink": "https://youtu.be/cxm0zdZDLeE?si=bsnL1wGeKoFIvnqA",
+      "updatedAt": "2026-06-09T10:57:18.199Z",
+      "status": "active",
+      "createdAt": "2026-05-21T12:12:48.766Z",
+      "id": "02a83e39-380b-4923-92f9-569d5f55f8a2",
+      "description": "test Yoga Description.",
+      "thumbnail": "yoga/1781002638119-4d6cc000-e15c-486c-b2d6-c8af0b3d8f12.webp",
+      "video": "",
+      "type": "ytlink",
+      "title": "Test Yoga"
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "tableName": "Faq",
+  "exportedAt": "2026-06-20T13:16:00.632Z",
+  "itemCount": 5,
+  "items": [
+    {
+      "question": "What is considered a healthy diet?",
+      "createdAt": "2026-05-16T12:33:00.000Z",
+      "id": "f1a2b3c4-1111-2222-3333-444455556004",
+      "updatedAt": "2026-05-16T12:33:00.000Z",
+      "answer": "A healthy diet includes fruits, vegetables, whole grains, proteins, and healthy fats.",
+      "status": "active"
+    },
+    {
+      "createdAt": "2026-05-16T12:31:00.000Z",
+      "question": "How much water should I drink daily?",
+      "id": "f1a2b3c4-1111-2222-3333-444455556002",
+      "updatedAt": "2026-05-16T12:31:00.000Z",
+      "status": "active",
+      "answer": "Adults should drink around 2 to 3 liters of water daily depending on activity level and climate."
+    },
+    {
+      "createdAt": "2026-05-16T12:30:00.000Z",
+      "question": "How can I improve my overall health?",
+      "id": "f1a2b3c4-1111-2222-3333-444455556001",
+      "updatedAt": "2026-05-16T12:30:00.000Z",
+      "status": "active",
+      "answer": "Drink plenty of water, eat a balanced diet, and exercise regularly to maintain good health."
+    },
+    {
+      "createdAt": "2026-05-16T12:34:00.000Z",
+      "question": "Why is regular exercise important?",
+      "id": "f1a2b3c4-1111-2222-3333-444455556005",
+      "updatedAt": "2026-05-19T06:02:12.646Z",
+      "status": "active",
+      "answer": "Exercise helps improve heart health, strengthen muscles, reduce stress, and maintain body weight."
+    },
+    {
+      "question": "What are the common symptoms of diabetes?",
+      "createdAt": "2026-05-16T12:32:00.000Z",
+      "id": "f1a2b3c4-1111-2222-3333-444455556003",
+      "updatedAt": "2026-05-16T12:32:00.000Z",
+      "status": "active",
+      "answer": "Common symptoms of diabetes include increased thirst, frequent urination, fatigue, and blurred vision."
+    }
+  ]
+}

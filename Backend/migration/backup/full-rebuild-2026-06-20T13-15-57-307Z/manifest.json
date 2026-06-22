@@ -1,0 +1,101 @@
+{
+  "exportedAt": "2026-06-20T13:15:57.308Z",
+  "tables": [
+    {
+      "tableName": "Admin",
+      "itemCount": 1
+    },
+    {
+      "tableName": "AppConfig",
+      "itemCount": 1
+    },
+    {
+      "tableName": "AssistantWellnessCoach",
+      "itemCount": 3
+    },
+    {
+      "tableName": "Banner",
+      "itemCount": 2
+    },
+    {
+      "tableName": "CelebrationBanners",
+      "itemCount": 4
+    },
+    {
+      "tableName": "ClientTestimonials",
+      "itemCount": 1
+    },
+    {
+      "tableName": "ConsultancyTransaction",
+      "itemCount": 6
+    },
+    {
+      "tableName": "Coupon",
+      "itemCount": 2
+    },
+    {
+      "tableName": "Faq",
+      "itemCount": 5
+    },
+    {
+      "tableName": "HealthConcern",
+      "itemCount": 5
+    },
+    {
+      "tableName": "HealthDisorder",
+      "itemCount": 5
+    },
+    {
+      "tableName": "HealthRecipe",
+      "itemCount": 2
+    },
+    {
+      "tableName": "HealthTool",
+      "itemCount": 6
+    },
+    {
+      "tableName": "Notification",
+      "itemCount": 6
+    },
+    {
+      "tableName": "ReferralCode",
+      "itemCount": 11
+    },
+    {
+      "tableName": "RegistrationOtp",
+      "itemCount": 6
+    },
+    {
+      "tableName": "Specialization",
+      "itemCount": 3
+    },
+    {
+      "tableName": "StaticPage",
+      "itemCount": 7
+    },
+    {
+      "tableName": "Transformation",
+      "itemCount": 2
+    },
+    {
+      "tableName": "User",
+      "itemCount": 7
+    },
+    {
+      "tableName": "VideoTestimonials",
+      "itemCount": 2
+    },
+    {
+      "tableName": "WaterTracking",
+      "itemCount": 2
+    },
+    {
+      "tableName": "WellnessCoach",
+      "itemCount": 3
+    },
+    {
+      "tableName": "Yoga",
+      "itemCount": 2
+    }
+  ]
+}

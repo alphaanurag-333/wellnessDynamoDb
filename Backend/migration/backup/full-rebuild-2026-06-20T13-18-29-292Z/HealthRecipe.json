@@ -1,0 +1,42 @@
+{
+  "tableName": "HealthRecipe",
+  "exportedAt": "2026-06-20T13:18:33.776Z",
+  "itemCount": 2,
+  "items": [
+    {
+      "ytLink": "",
+      "updatedAt": "2026-05-20T12:12:16.062Z",
+      "status": "active",
+      "createdAt": "2026-05-14T09:10:47.526Z",
+      "id": "e554563a-8786-4508-aab5-ab01c17ae01f",
+      "description": "Healthy Skin Care Diet Healthy Skin Care Diet Healthy Skin Care Diet Healthy Skin Care Diet Healthy Skin Care Diet Healthy Skin Care Diet Healthy Skin Care Diet Healthy Skin Care Diet Healthy Skin Care Diet Healthy Skin Care Diet Healthy Skin Care Diet",
+      "thumbnail": "health-recipe/1779279135047-7e640661-58bb-4a58-a0cd-2e7734d253db.jpg",
+      "videoSpecification": [
+        "No Carbs",
+        "dsafsdfasdf",
+        "sadfasdfsadf"
+      ],
+      "video": "health-recipe/1779279135237-744077a1-f3d4-4c23-8ecc-e4a5232f637f.mp4",
+      "healthConcernId": "hc-006",
+      "title": "Healthy Skin Care Diet",
+      "type": "video"
+    },
+    {
+      "ytLink": "",
+      "updatedAt": "2026-05-20T12:12:26.069Z",
+      "status": "active",
+      "createdAt": "2026-05-07T07:53:46.681Z",
+      "id": "c4cd5724-4c0d-4976-9f3c-5a1b7936f8d4",
+      "description": "Fruit salad is a versatile dish made of various, chopped fresh or canned fruits—such as berries, melons, citrus, and grapes—often mixed with a light dressing of fruit juice, syrup, or yogurt. It is commonly served as a refreshing snack, side dish, or dessert, frequently during warmer months",
+      "thumbnail": "health-recipe/1779279145063-b41bdc0f-c81c-4945-ad78-8f07f8a161dc.jpg",
+      "videoSpecification": [
+        "18G Protein",
+        "No Carbs"
+      ],
+      "video": "health-recipe/1779279145259-d011a70a-0382-43a8-92e7-7f0ac5dcc0ae.mp4",
+      "healthConcernId": "hc-006",
+      "type": "video",
+      "title": "Fruit Salat"
+    }
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "tableName": "HealthDisorder",
+  "exportedAt": "2026-06-20T13:16:01.441Z",
+  "itemCount": 5,
+  "items": [
+    {
+      "symptoms": [
+        "Joint pain",
+        "Swelling",
+        "Stiffness",
+        "Reduced movement"
+      ],
+      "updatedAt": "2026-05-16T13:34:44.030Z",
+      "status": "active",
+      "createdAt": "2026-05-16T10:40:00.000Z",
+      "description": "A condition where joints become painful and stiff.",
+      "id": "e5f6g7h8-5555-6666-7777-888899990000",
+      "type": "chronic",
+      "title": "Arthritis"
+    },
+    {
+      "symptoms": [
+        "Sadness",
+        "Low energy",
+        "Sleep problems",
+        "Loss of interest"
+      ],
+      "updatedAt": "2026-05-16T10:30:00.000Z",
+      "status": "active",
+      "createdAt": "2026-05-16T10:30:00.000Z",
+      "description": "A mental health disorder characterized by persistent sadness and low mood.",
+      "id": "d4e5f6g7-4444-5555-6666-777788889999",
+      "type": "mental",
+      "title": "Depression"
+    },
+    {
+      "symptoms": [
+        "Shortness of breath",
+        "Coughing",
+        "Chest tightness",
+        "Wheezing"
+      ],
+      "updatedAt": "2026-05-23T13:07:43.696Z",
+      "status": "active",
+      "createdAt": "2026-05-16T10:20:00.000Z",
+      "description": "A respiratory disorder that causes difficulty in breathing.",
+      "id": "c3d4e5f6-3333-4444-5555-666677778888",
+      "title": "Asthma",
+      "type": "chronic"
+    },
+    {
+      "symptoms": [
+        "Frequent urination",
+        "Increased thirst",
+        "Fatigue",
+        "Weight loss"
+      ],
+      "updatedAt": "2026-05-16T10:10:00.000Z",
+      "status": "active",
+      "createdAt": "2026-05-16T10:10:00.000Z",
+      "id": "b2c3d4e5-2222-3333-4444-555566667777",
+      "description": "A metabolic disorder causing high blood sugar levels over a long period.",
+      "title": "Diabetes",
+      "type": "chronic"
+    },
+    {
+      "symptoms": [
+        "Headache",
+        "Dizziness",
+        "Blurred vision",
+        "Chest pain"
+      ],
+      "updatedAt": "2026-05-16T10:00:00.000Z",
+      "status": "active",
+      "createdAt": "2026-05-16T10:00:00.000Z",
+      "description": "High blood pressure condition that may increase risk of heart disease and stroke.",
+      "id": "a1b2c3d4-1111-2222-3333-444455556666",
+      "title": "Hypertension",
+      "type": "chronic"
+    }
+  ]
+}

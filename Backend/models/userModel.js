@@ -20,6 +20,9 @@ const {
 
 const TABLE = "User";
 
+/** GSI partition keys must be omitted when unset — DynamoDB rejects NULL index keys. */
+const SPARSE_GSI_ATTRIBUTES = new Set(["parentCoachId"]);
+
 const USER_ALLOWED_STATUS = ["active", "inactive", "blocked"];
 const USER_ALLOWED_GENDERS = ["male", "female", "other", "boy", "girl", "guess"];
 const USER_ALLOWED_TIERS = ["seek", "heal"];
@@ -165,6 +168,16 @@ function sanitizeUpdateField(key, value) {
   return value;
 }
 
+function omitSparseGsiAttributes(item) {
+  const next = { ...item };
+  for (const key of SPARSE_GSI_ATTRIBUTES) {
+    if (next[key] == null || next[key] === "") {
+      delete next[key];
+    }
+  }
+  return next;
+}
+
 function buildUserItem(input, { id, now } = {}) {
   const phoneCountryCode = normalizeCountryCode(input.phoneCountryCode);
   const phone = normalizePhone(input.phone);
@@ -228,7 +241,7 @@ function buildUserItem(input, { id, now } = {}) {
 
 async function createUser(fields) {
   const now = new Date().toISOString();
-  const item = buildUserItem(fields, { now });
+  const item = omitSparseGsiAttributes(buildUserItem(fields, { now }));
 
   if (!item.name) throw new Error("name is required");
   if (!item.email) throw new Error("email is required");
@@ -340,17 +353,29 @@ async function updateUser(id, updates) {
   }
 
   const uniquePatch = [...new Set(patchKeys)];
+  const removeKeys = uniquePatch.filter(
+    (key) => SPARSE_GSI_ATTRIBUTES.has(key) && (merged[key] == null || merged[key] === "")
+  );
+  const setKeys = uniquePatch.filter((key) => !removeKeys.includes(key));
+
   const exprNames = {};
   const exprValues = { ":updatedAt": new Date().toISOString() };
-  let setExpr = "SET updatedAt = :updatedAt";
+  let updateExpr = "SET updatedAt = :updatedAt";
 
-  for (const key of uniquePatch) {
+  for (const key of setKeys) {
     exprNames[`#${key}`] = key;
     exprValues[`:${key}`] = merged[key];
-    setExpr += `, #${key} = :${key}`;
+    updateExpr += `, #${key} = :${key}`;
   }
 
-  if (uniquePatch.length === 0) {
+  if (removeKeys.length) {
+    for (const key of removeKeys) {
+      exprNames[`#${key}`] = key;
+    }
+    updateExpr += ` REMOVE ${removeKeys.map((key) => `#${key}`).join(", ")}`;
+  }
+
+  if (setKeys.length === 0 && removeKeys.length === 0) {
     throw new Error("No valid fields provided for update");
   }
 
@@ -358,7 +383,7 @@ async function updateUser(id, updates) {
     new UpdateCommand({
       TableName: TABLE,
       Key: { id },
-      UpdateExpression: setExpr,
+      UpdateExpression: updateExpr,
       ExpressionAttributeNames: exprNames,
       ExpressionAttributeValues: exprValues,
       ConditionExpression: "attribute_exists(id)",

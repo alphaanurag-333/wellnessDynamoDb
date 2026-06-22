@@ -1,0 +1,27 @@
+{
+  "tableName": "Coupon",
+  "exportedAt": "2026-06-20T13:17:55.622Z",
+  "itemCount": 2,
+  "items": [
+    {
+      "value": 100,
+      "updatedAt": "2026-05-19T14:30:24.300Z",
+      "couponCode": "WINTER-100",
+      "status": "active",
+      "discountType": "fixed",
+      "createdAt": "2026-05-18T14:01:06.962Z",
+      "id": "4e841284-7c5f-473b-b1a8-9cc16d980b36",
+      "title": "Winter Sale"
+    },
+    {
+      "value": 20,
+      "updatedAt": "2026-05-19T14:30:54.038Z",
+      "status": "active",
+      "couponCode": "SUMMER-20",
+      "discountType": "percentage",
+      "createdAt": "2026-05-16T13:19:28.547Z",
+      "id": "bb32be20-9902-4aa0-bd16-e9df3ddcc477",
+      "title": "Summer Sale"
+    }
+  ]
+}

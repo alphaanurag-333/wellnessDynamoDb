@@ -264,50 +264,50 @@ export function WellnessCoachList() {
                         <span className="settings-switch__knob" aria-hidden />
                       </button>
                     </td>
-                    <td>
-                      <span className={`approval-badge approval-badge--${approval}`}>{approval}</span>
-                      {approval === "pending" ? (
+                    <td className="data-table__approval-col">
+                      <div className="approval-cell">
+                        <span className={`approval-badge approval-badge--${approval}`}>{approval}</span>
                         <div className="approval-actions">
-                          <button
-                            type="button"
-                            className="btn btn--xs btn--success"
-                            disabled={approvingId === id}
-                            onClick={() => handleApprove(row, "approved")}
-                          >
-                            Approve
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn--xs btn--danger"
-                            disabled={approvingId === id}
-                            onClick={() => handleApprove(row, "rejected")}
-                          >
-                            Reject
-                          </button>
+                          {approval === "pending" ? (
+                            <>
+                              <button
+                                type="button"
+                                className="btn btn--xs btn--success"
+                                disabled={approvingId === id}
+                                onClick={() => handleApprove(row, "approved")}
+                              >
+                                Approve
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn--xs btn--danger"
+                                disabled={approvingId === id}
+                                onClick={() => handleApprove(row, "rejected")}
+                              >
+                                Reject
+                              </button>
+                            </>
+                          ) : approval === "rejected" ? (
+                            <button
+                              type="button"
+                              className="btn btn--xs btn--success"
+                              disabled={approvingId === id}
+                              onClick={() => handleApprove(row, "approved")}
+                            >
+                              Approve
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn btn--xs btn--danger"
+                              disabled={approvingId === id}
+                              onClick={() => handleApprove(row, "rejected")}
+                            >
+                              Revoke
+                            </button>
+                          )}
                         </div>
-                      ) : approval === "rejected" ? (
-                        <div className="approval-actions">
-                          <button
-                            type="button"
-                            className="btn btn--xs btn--success"
-                            disabled={approvingId === id}
-                            onClick={() => handleApprove(row, "approved")}
-                          >
-                            Approve
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="approval-actions">
-                          <button
-                            type="button"
-                            className="btn btn--xs btn--danger"
-                            disabled={approvingId === id}
-                            onClick={() => handleApprove(row, "rejected")}
-                          >
-                            Revoke
-                          </button>
-                        </div>
-                      )}
+                      </div>
                     </td>
                     <td>
                       <div className="row-actions">

@@ -12,9 +12,9 @@ const TABLE = "WaterTracking";
 const SETTINGS_KEY = "settings";
 const DAY_KEY_PREFIX = "day#";
 
-const DEFAULT_GOAL_GLASSES = 17;
+const DEFAULT_GOAL_GLASSES = 0;
 const DEFAULT_GLASS_SIZE_ML = 250;
-const MIN_GOAL_GLASSES = 1;
+const MIN_GOAL_GLASSES = 0;
 const MAX_GOAL_GLASSES = 99;
 
 function dayRecordKey(date) {
