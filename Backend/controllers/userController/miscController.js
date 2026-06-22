@@ -12,6 +12,11 @@ const { listHealthRecipes } = require("../../models/healthRecipeModel");
 const { listYoga } = require("../../models/yogaModel");
 const { listTransformations } = require("../../models/transformationModel");
 const { listCelebrationBanners } = require("../../models/celebrationBanners");
+const { listBirthdayPostsByPostDate } = require("../../models/birthdayPostModel");
+const { countCommentsForPost } = require("../../models/birthdayPostCommentModel");
+const { getUserById, toPublicUser } = require("../../models/userModel");
+const { todayInTimezone } = require("../../utils/birthdayTimezone");
+const { isValidDateOnly } = require("../../utils/dateOnly");
 const { resolveListMedia } = require("./userMiscMedia");
 
 function readPaging(query, defaultLimit = 50) {
@@ -215,6 +220,41 @@ exports.getActiveCelebrationBanners = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     celebrationBanners: data.celebrationBanners,
+    pagination: data.pagination,
+  });
+});
+
+exports.getActiveBirthdayPosts = asyncHandler(async (req, res) => {
+  const { page, limit } = readPaging(req.query, 20);
+  const postDate =
+    String(req.query.postDate || "").trim() || todayInTimezone().dateOnly;
+
+  if (!isValidDateOnly(postDate)) {
+    throw new AppError("postDate must be YYYY-MM-DD", 400);
+  }
+
+  const data = await listBirthdayPostsByPostDate({
+    postDate,
+    page,
+    limit,
+    status: "active",
+  });
+
+  const birthdayPosts = await Promise.all(
+    data.birthdayPosts.map(async (post) => {
+      const user = await getUserById(post.userId);
+      const commentCount = await countCommentsForPost(post.id);
+      return {
+        ...post,
+        user: user ? toPublicUser(user) : null,
+        commentCount,
+      };
+    })
+  );
+
+  return res.status(200).json({
+    status: true,
+    birthdayPosts,
     pagination: data.pagination,
   });
 });

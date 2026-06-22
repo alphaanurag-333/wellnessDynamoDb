@@ -18,11 +18,12 @@ const {
   sortByCreatedAtDesc,
 } = require("../utils/dynamoList");
 const { matchesAssignedClientTier } = require("./userAssignmentLogic");
+const { computeDobMonthDay, birthdayQueryMonthDays, userBirthdayMatchesDate } = require("../utils/dobMonthDay");
 
 const TABLE = "User";
 
 /** GSI partition keys must be omitted when unset — DynamoDB rejects NULL index keys. */
-const SPARSE_GSI_ATTRIBUTES = new Set(["parentCoachId"]);
+const SPARSE_GSI_ATTRIBUTES = new Set(["parentCoachId", "dobMonthDay"]);
 
 const USER_ALLOWED_STATUS = ["active", "inactive", "blocked"];
 const USER_ALLOWED_GENDERS = ["male", "female", "other", "boy", "girl", "guess"];
@@ -216,6 +217,7 @@ function buildUserItem(input, { id, now } = {}) {
     whatsappCountryCode,
     whatsappPhone,
     dob: normalizeDob(input.dob),
+    dobMonthDay: computeDobMonthDay(normalizeDob(input.dob)),
     gender: normalizeGender(input.gender),
     country: input.country != null ? String(input.country).trim() || null : null,
     state: input.state != null ? String(input.state).trim() || null : null,
@@ -357,12 +359,19 @@ async function updateUser(id, updates) {
     }
   }
 
+  if (updates.dob !== undefined) {
+    merged.dobMonthDay = computeDobMonthDay(merged.dob);
+  }
+
   const patchKeys = entries.map(([k]) => k);
   if (patchKeys.includes("phone") || patchKeys.includes("phoneCountryCode")) {
     patchKeys.push("phoneKey");
   }
   if (patchKeys.includes("whatsappSameAsMobile")) {
     patchKeys.push("whatsappCountryCode", "whatsappPhone");
+  }
+  if (patchKeys.includes("dob")) {
+    patchKeys.push("dobMonthDay");
   }
 
   const uniquePatch = [...new Set(patchKeys)];
@@ -538,6 +547,41 @@ async function listPendingAssignmentUsers({ page = 1, limit = 20, search, userTi
   });
 }
 
+async function listUsersWithBirthdayOnDate(dateOnly) {
+  const monthDays = birthdayQueryMonthDays(dateOnly);
+  if (monthDays.length === 0) return [];
+
+  const byId = new Map();
+
+  for (const monthDay of monthDays) {
+    let lastKey;
+
+    do {
+      const { Items, LastEvaluatedKey } = await docClient.send(
+        new QueryCommand({
+          TableName: TABLE,
+          IndexName: "DobMonthDayIndex",
+          KeyConditionExpression: "dobMonthDay = :dobMonthDay",
+          FilterExpression: "#status = :active",
+          ExpressionAttributeNames: { "#status": "status" },
+          ExpressionAttributeValues: {
+            ":dobMonthDay": monthDay,
+            ":active": "active",
+          },
+          ExclusiveStartKey: lastKey,
+        })
+      );
+
+      for (const item of Items || []) {
+        byId.set(item.id, withLegacyId(item));
+      }
+      lastKey = LastEvaluatedKey;
+    } while (lastKey);
+  }
+
+  return [...byId.values()].filter((user) => userBirthdayMatchesDate(user.dob, dateOnly));
+}
+
 async function listUsers({ page = 1, limit = 20, status, search, userTier, assignmentStatus } = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const normalizedTier = userTier ? normalizeUserTier(userTier, "") : "";
@@ -608,4 +652,5 @@ module.exports = {
   listUsersByAssignedCoachId,
   listPendingAssignmentUsers,
   listUsers,
+  listUsersWithBirthdayOnDate,
 };

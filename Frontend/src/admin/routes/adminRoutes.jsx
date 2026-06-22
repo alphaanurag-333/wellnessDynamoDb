@@ -50,6 +50,11 @@ import { CelebrationBannerList } from "../pages/celebrationBanner/CelebrationBan
 import { CelebrationBannerAdd } from "../pages/celebrationBanner/CelebrationBannerAdd.jsx";
 import { CelebrationBannerEdit } from "../pages/celebrationBanner/CelebrationBannerEdit.jsx";
 import { CelebrationBannerView } from "../pages/celebrationBanner/CelebrationBannerView.jsx";
+import { BirthdayNotificationList } from "../pages/birthdayNotification/BirthdayNotificationList.jsx";
+import { BirthdayNotificationView } from "../pages/birthdayNotification/BirthdayNotificationView.jsx";
+import { BirthdayPostList } from "../pages/birthdayPost/BirthdayPostList.jsx";
+import { BirthdayPostView } from "../pages/birthdayPost/BirthdayPostView.jsx";
+import { BirthdayPostEdit } from "../pages/birthdayPost/BirthdayPostEdit.jsx";
 import { ClientTestimonialList } from "../pages/clientTestimonial/ClientTestimonialList.jsx";
 import { ClientTestimonialAdd } from "../pages/clientTestimonial/ClientTestimonialAdd.jsx";
 import { ClientTestimonialEdit } from "../pages/clientTestimonial/ClientTestimonialEdit.jsx";
@@ -193,6 +198,15 @@ export const adminRouteTree = (
       <Route path="new" element={<CelebrationBannerAdd />} />
       <Route path=":celebrationId/edit" element={<CelebrationBannerEdit />} />
       <Route path=":celebrationId" element={<CelebrationBannerView />} />
+    </Route>
+    <Route path="birthday-notifications" element={<Outlet />}>
+      <Route index element={<BirthdayNotificationList />} />
+      <Route path=":notificationId" element={<BirthdayNotificationView />} />
+    </Route>
+    <Route path="birthday-posts" element={<Outlet />}>
+      <Route index element={<BirthdayPostList />} />
+      <Route path=":postId/edit" element={<BirthdayPostEdit />} />
+      <Route path=":postId" element={<BirthdayPostView />} />
     </Route>
     <Route path="client-testimonials" element={<Outlet />}>
       <Route index element={<ClientTestimonialList />} />

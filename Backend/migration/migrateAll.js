@@ -17,6 +17,8 @@ const userReferralMigration = require("./migrations/05-user-referral-assignment"
 const appConfigPaymentMethodsMigration = require("./migrations/06-appconfig-drop-payment-methods");
 const userParentCoachSparseMigration = require("./migrations/07-user-parent-coach-sparse-index");
 const consultancySparseMigration = require("./migrations/08-consultancy-transaction-sparse-index");
+const birthdayTablesMigration = require("./migrations/09-birthday-tables");
+const userDobMonthDayMigration = require("./migrations/10-user-dob-month-day-index");
 
 const MIGRATIONS = [
   adminMigration,
@@ -27,6 +29,8 @@ const MIGRATIONS = [
   appConfigPaymentMethodsMigration,
   userParentCoachSparseMigration,
   consultancySparseMigration,
+  birthdayTablesMigration,
+  userDobMonthDayMigration,
 ];
 
 function parseOnlyArg() {
@@ -59,7 +63,9 @@ async function run() {
       migration.migrateUserReferralAssignment ||
       migration.migrateAppConfigDropPaymentMethods ||
       migration.migrateUserParentCoachSparseIndex ||
-      migration.migrateConsultancyTransactionSparseIndex;
+      migration.migrateConsultancyTransactionSparseIndex ||
+      migration.migrateBirthdayTables ||
+      migration.migrateUserDobMonthDayIndex;
 
     console.log(`--- ${migration.id} ---`);
     await runner();
