@@ -121,7 +121,9 @@ export function CoachConsultancyEnrolledUsersList() {
               rows.map((row) => (
                 <tr key={row.user.id}>
                   <td>
-                    <div className="data-table__primary">{row.user.name || "—"}</div>
+                    <Link to={`/coach/consultancy/clients/${row.user.id}`} className="data-table__primary data-table__link">
+                      {row.user.name || "—"}
+                    </Link>
                     <div className="data-table__muted">{row.user.email || "—"}</div>
                   </td>
                   <td>{[row.user.phoneCountryCode, row.user.phone].filter(Boolean).join(" ") || "—"}</td>

@@ -11,6 +11,7 @@ import { MyAssistantEdit } from "../pages/myAssistants/MyAssistantEdit.jsx";
 import { MyAssistantView } from "../pages/myAssistants/MyAssistantView.jsx";
 import { CoachConsultancyTransactionList } from "../pages/consultancy/CoachConsultancyTransactionList.jsx";
 import { CoachConsultancyEnrolledUsersList } from "../pages/consultancy/CoachConsultancyEnrolledUsersList.jsx";
+import { CoachConsultancyClientPage } from "../pages/consultancy/CoachConsultancyClientPage.jsx";
 
 export const wellnessCoachRouteTree = (
   <Route path="/coach" element={<WellnessCoachLayout />}>
@@ -22,6 +23,7 @@ export const wellnessCoachRouteTree = (
     <Route path="my-heal-users/:userId/water-tracking" element={<CoachUserWaterTrackingPage />} />
     <Route path="consultancy/transactions" element={<CoachConsultancyTransactionList />} />
     <Route path="consultancy/enrolled-users" element={<CoachConsultancyEnrolledUsersList />} />
+    <Route path="consultancy/clients/:userId" element={<CoachConsultancyClientPage />} />
     <Route path="my-assistants/new" element={<MyAssistantAdd />} />
     <Route path="my-assistants/:assistantId" element={<MyAssistantView />} />
     <Route path="my-assistants/:assistantId/edit" element={<MyAssistantEdit />} />

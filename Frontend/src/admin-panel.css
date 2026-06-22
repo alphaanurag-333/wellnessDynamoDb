@@ -5227,6 +5227,11 @@ a.icon-btn {
   color: #166534;
 }
 
+.tier-badge--consultancy {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
 .tier-badge--pending {
   background: #fef3c7;
   color: #92400e;

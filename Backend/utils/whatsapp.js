@@ -94,8 +94,35 @@ async function sendConsultancyWhatsAppNotifications({ user, assignee, parentCoac
   return results;
 }
 
+async function sendCoachAssignmentNotifications({ user, assignee, assigneeType }) {
+  const results = { user: null, assignee: null };
+  const coachLabel =
+    assigneeType === "assistant_wellness_coach" ? "assistant wellness coach" : "wellness coach";
+
+  const userWa = resolveWhatsappNumber(user);
+  if (userWa) {
+    results.user = await sendWhatsAppText({
+      toPhoneCountryCode: userWa.phoneCountryCode,
+      toPhone: userWa.phone,
+      message: `You have been assigned to ${assignee?.name || `your ${coachLabel}`}. They will reach out to schedule your consultancy session.`,
+    });
+  }
+
+  const assigneeWa = resolveWhatsappNumber(assignee);
+  if (assigneeWa) {
+    results.assignee = await sendWhatsAppText({
+      toPhoneCountryCode: assigneeWa.phoneCountryCode,
+      toPhone: assigneeWa.phone,
+      message: `A new client has been assigned to you: ${user?.name || "User"} (${user?.email || user?.phone || "contact in portal"}).`,
+    });
+  }
+
+  return results;
+}
+
 module.exports = {
   formatE164,
   sendWhatsAppText,
   sendConsultancyWhatsAppNotifications,
+  sendCoachAssignmentNotifications,
 };

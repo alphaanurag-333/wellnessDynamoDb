@@ -25,15 +25,17 @@ const SPARSE_GSI_ATTRIBUTES = new Set(["parentCoachId"]);
 
 const USER_ALLOWED_STATUS = ["active", "inactive", "blocked"];
 const USER_ALLOWED_GENDERS = ["male", "female", "other", "boy", "girl", "guess"];
-const USER_ALLOWED_TIERS = ["seek", "heal"];
+const USER_ALLOWED_TIERS = ["seek", "consultancy_only", "heal"];
 const USER_ALLOWED_ASSIGNMENT_STATUSES = ["assigned", "pending_admin"];
 const USER_ALLOWED_ASSIGNED_COACH_TYPES = ["wellness_coach", "assistant_wellness_coach"];
+const USER_ALLOWED_ASSIGNMENT_SOURCES = ["referral", "admin_manual", "coach_reassign"];
 
 const STATUS = new Set(USER_ALLOWED_STATUS);
 const GENDERS = new Set(USER_ALLOWED_GENDERS);
 const TIERS = new Set(USER_ALLOWED_TIERS);
 const ASSIGNMENT_STATUSES = new Set(USER_ALLOWED_ASSIGNMENT_STATUSES);
 const ASSIGNED_COACH_TYPES = new Set(USER_ALLOWED_ASSIGNED_COACH_TYPES);
+const ASSIGNMENT_SOURCES = new Set(USER_ALLOWED_ASSIGNMENT_SOURCES);
 
 function normalizeEmail(email) {
   return String(email || "").toLowerCase().trim();
@@ -82,6 +84,12 @@ function normalizeAssignedCoachType(value) {
   if (value == null || value === "") return null;
   const next = String(value).toLowerCase().trim();
   return ASSIGNED_COACH_TYPES.has(next) ? next : null;
+}
+
+function normalizeAssignmentSource(value) {
+  if (value == null || value === "") return null;
+  const next = String(value).toLowerCase().trim();
+  return ASSIGNMENT_SOURCES.has(next) ? next : null;
 }
 
 function normalizeReferralCodeField(value) {
@@ -141,8 +149,9 @@ function sanitizeUpdateField(key, value) {
   if (key === "userTier") return normalizeUserTier(value);
   if (key === "assignmentStatus") return normalizeAssignmentStatus(value);
   if (key === "assignedCoachType") return normalizeAssignedCoachType(value);
+  if (key === "assignmentSource") return normalizeAssignmentSource(value);
   if (key === "referralCode" || key === "referredByCode") return normalizeReferralCodeField(value);
-  if (key === "convertedAt") return normalizeDob(value);
+  if (key === "convertedAt" || key === "assignedAt" || key === "consultancyPaidAt") return normalizeDob(value);
   if (
     [
       "name",
@@ -233,6 +242,9 @@ function buildUserItem(input, { id, now } = {}) {
     assignedCoachType: normalizeAssignedCoachType(input.assignedCoachType),
     parentCoachId: input.parentCoachId != null ? String(input.parentCoachId).trim() || null : null,
     assignmentStatus: normalizeAssignmentStatus(input.assignmentStatus),
+    assignmentSource: normalizeAssignmentSource(input.assignmentSource),
+    assignedAt: input.assignedAt ? normalizeDob(input.assignedAt) : null,
+    consultancyPaidAt: input.consultancyPaidAt ? normalizeDob(input.consultancyPaidAt) : null,
     convertedAt: input.convertedAt ? normalizeDob(input.convertedAt) : null,
     createdAt: now,
     updatedAt: now,
@@ -406,7 +418,7 @@ async function deleteUser(id) {
 
 async function listUsersByParentCoachId(
   parentCoachId,
-  { page = 1, limit = 20, search, userTier = "heal", scope = "all" } = {}
+  { page = 1, limit = 20, search, userTier = "client", scope = "all" } = {}
 ) {
   const coachId = String(parentCoachId || "").trim();
   if (!coachId) {
@@ -416,7 +428,7 @@ async function listUsersByParentCoachId(
   const safePage = Math.max(1, Number(page) || 1);
   const safeLimit = Math.min(200, Math.max(1, Number(limit) || 20));
   const normalizedSearch = String(search || "").trim().toLowerCase();
-  const normalizedTier = normalizeUserTier(userTier, "heal");
+  const normalizedTier = String(userTier || "client").toLowerCase().trim();
   const normalizedScope = String(scope || "all").toLowerCase().trim();
 
   const { Items = [] } = await docClient.send(
@@ -429,7 +441,12 @@ async function listUsersByParentCoachId(
     })
   );
 
-  let rows = Items.map(withLegacyId).filter((row) => normalizeUserTier(row.userTier) === normalizedTier);
+  let rows = Items.map(withLegacyId).filter((row) => {
+    const tier = normalizeUserTier(row.userTier);
+    if (normalizedTier === "client") return tier === "heal" || tier === "consultancy_only";
+    if (normalizedTier === "all") return true;
+    return tier === normalizeUserTier(normalizedTier, "");
+  });
 
   if (normalizedScope === "direct") {
     rows = rows.filter(
@@ -464,7 +481,7 @@ async function listUsersByParentCoachId(
 
 async function listUsersByAssignedCoachId(
   assignedCoachId,
-  { parentCoachId, page = 1, limit = 20, search, userTier = "heal" } = {}
+  { parentCoachId, page = 1, limit = 20, search, userTier = "client" } = {}
 ) {
   const assigneeId = String(assignedCoachId || "").trim();
   const ownerCoachId = String(parentCoachId || "").trim();
@@ -475,7 +492,7 @@ async function listUsersByAssignedCoachId(
   const safePage = Math.max(1, Number(page) || 1);
   const safeLimit = Math.min(200, Math.max(1, Number(limit) || 20));
   const normalizedSearch = String(search || "").trim().toLowerCase();
-  const normalizedTier = normalizeUserTier(userTier, "heal");
+  const normalizedTier = String(userTier || "client").toLowerCase().trim();
 
   const { Items = [] } = await docClient.send(
     new QueryCommand({
@@ -488,9 +505,12 @@ async function listUsersByAssignedCoachId(
   );
 
   let rows = Items.map(withLegacyId).filter((row) => {
-    if (normalizeUserTier(row.userTier) !== normalizedTier) return false;
+    const tier = normalizeUserTier(row.userTier);
     if (String(row.assignedCoachId || "") !== assigneeId) return false;
-    return normalizeAssignedCoachType(row.assignedCoachType) === "assistant_wellness_coach";
+    if (normalizeAssignedCoachType(row.assignedCoachType) !== "assistant_wellness_coach") return false;
+    if (normalizedTier === "client") return tier === "heal" || tier === "consultancy_only";
+    if (normalizedTier === "all") return true;
+    return tier === normalizeUserTier(normalizedTier, "");
   });
 
   if (normalizedSearch) {
@@ -510,6 +530,17 @@ async function listUsersByAssignedCoachId(
     users: rows.slice(start, start + safeLimit),
     pagination: { page: safePage, limit: safeLimit, total, pages },
   };
+}
+
+async function listPendingAssignmentUsers({ page = 1, limit = 20, search, userTier } = {}) {
+  return listUsers({
+    page,
+    limit,
+    search,
+    status: "active",
+    userTier: userTier || "consultancy_only",
+    assignmentStatus: "pending_admin",
+  });
 }
 
 async function listUsers({ page = 1, limit = 20, status, search, userTier, assignmentStatus } = {}) {
@@ -580,5 +611,6 @@ module.exports = {
   deleteUser,
   listUsersByParentCoachId,
   listUsersByAssignedCoachId,
+  listPendingAssignmentUsers,
   listUsers,
 };

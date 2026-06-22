@@ -65,6 +65,7 @@ import { UserList } from "../pages/user/UserList.jsx";
 import { ConsultancyTransactionList } from "../pages/consultancy/ConsultancyTransactionList.jsx";
 import { ConsultancyEnrolledUsersList } from "../pages/consultancy/ConsultancyEnrolledUsersList.jsx";
 import { UserView } from "../pages/user/UserView.jsx";
+import { PendingAssignmentList } from "../pages/user/PendingAssignmentList.jsx";
 import { AdminUserWaterTrackingPage } from "../pages/user/AdminUserWaterTrackingPage.jsx";
 import { WellnessCoachList } from "../pages/wellnessCoach/WellnessCoachList.jsx";
 import { WellnessCoachAdd } from "../pages/wellnessCoach/WellnessCoachAdd.jsx";
@@ -96,6 +97,7 @@ export const adminRouteTree = (
 
     <Route path="users" element={<Outlet />}>
       <Route index element={<UserList />} />
+      <Route path="pending-assignment" element={<PendingAssignmentList />} />
       <Route path="new" element={<UserAdd />} />
       <Route path=":userId/water-tracking" element={<AdminUserWaterTrackingPage />} />
       <Route path=":userId/edit" element={<UserEdit />} />

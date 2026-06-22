@@ -6,6 +6,8 @@ const { queryPartition } = require("../utils/dynamoList");
 
 const TABLE = "ConsultancyTransaction";
 const PAYMENT_STATUSES = new Set(["pending", "paid", "failed", "refunded"]);
+const PRODUCT_TYPES = new Set(["consultancy", "subscription"]);
+const CONSULTANCY_STATUSES = new Set(["scheduled", "completed", "follow_up_needed", "cancelled"]);
 
 /** GSI partition keys must be omitted when unset — DynamoDB rejects NULL index keys. */
 const SPARSE_GSI_ATTRIBUTES = new Set(["parentCoachId", "meetingAssigneeId"]);
@@ -31,6 +33,17 @@ function normalizePaymentStatus(value, fallback = "pending") {
   return PAYMENT_STATUSES.has(next) ? next : fallback;
 }
 
+function normalizeProductType(value, fallback = "consultancy") {
+  const next = String(value || fallback).toLowerCase().trim();
+  return PRODUCT_TYPES.has(next) ? next : fallback;
+}
+
+function normalizeConsultancyStatus(value) {
+  if (value == null || value === "") return null;
+  const next = String(value).toLowerCase().trim();
+  return CONSULTANCY_STATUSES.has(next) ? next : null;
+}
+
 function toPublicTransaction(item) {
   if (!item) return null;
   return {
@@ -45,6 +58,7 @@ async function createConsultancyTransaction(payload) {
     id: uuidv4(),
     referenceNumber: payload.referenceNumber || generateReferenceNumber(),
     userId: payload.userId,
+    productType: normalizeProductType(payload.productType, "consultancy"),
     paymentStatus: normalizePaymentStatus(payload.paymentStatus, "pending"),
     paymentProvider: payload.paymentProvider || null,
     paymentGatewayOrderId: payload.paymentGatewayOrderId || null,
@@ -72,6 +86,9 @@ async function createConsultancyTransaction(payload) {
     assigneeSnapshot: payload.assigneeSnapshot || null,
     healthConcernId: payload.healthConcernId || null,
     healthConcernSnapshot: payload.healthConcernSnapshot || null,
+    sessionScheduledAt: payload.sessionScheduledAt || null,
+    consultancyStatus: normalizeConsultancyStatus(payload.consultancyStatus),
+    consultancyNotes: payload.consultancyNotes || null,
     paidAt: payload.paidAt || null,
     failureReason: payload.failureReason || null,
     createdAt: now,
@@ -149,7 +166,55 @@ async function updateConsultancyTransaction(id, updates) {
   return Attributes;
 }
 
-async function listTransactionsByUserId(userId, { page = 1, limit = 20, paymentStatus } = {}) {
+async function markTransactionPaidIfPending(id, updates) {
+  const exprNames = { "#paymentStatus": "paymentStatus" };
+  const exprValues = {
+    ":pending": "pending",
+    ":paid": "paid",
+    ":updatedAt": new Date().toISOString(),
+  };
+  const setEntries = Object.entries(updates).filter(([, val]) => val !== undefined);
+
+  let updateExpr = "SET updatedAt = :updatedAt, #paymentStatus = :paid";
+  for (const [key, val] of setEntries) {
+    if (key === "paymentStatus") continue;
+    if (SPARSE_GSI_ATTRIBUTES.has(key) && (val == null || val === "")) continue;
+    exprNames[`#${key}`] = key;
+    exprValues[`:${key}`] = val;
+    updateExpr += `, #${key} = :${key}`;
+  }
+
+  try {
+    const { Attributes } = await docClient.send(
+      new UpdateCommand({
+        TableName: TABLE,
+        Key: { id },
+        UpdateExpression: updateExpr,
+        ConditionExpression: "#paymentStatus = :pending",
+        ExpressionAttributeNames: exprNames,
+        ExpressionAttributeValues: exprValues,
+        ReturnValues: "ALL_NEW",
+      })
+    );
+    return { item: Attributes, alreadyPaid: false };
+  } catch (err) {
+    if (err.name !== "ConditionalCheckFailedException") throw err;
+    const existing = await getConsultancyTransactionById(id);
+    if (existing && normalizePaymentStatus(existing.paymentStatus) === "paid") {
+      return { item: existing, alreadyPaid: true };
+    }
+    throw err;
+  }
+}
+
+async function getPendingConsultancyOrderForUser(userId) {
+  const result = await listTransactionsByUserId(userId, { page: 1, limit: 20, paymentStatus: "pending" });
+  return (
+    result.items.find((row) => normalizeProductType(row.productType) === "consultancy") || null
+  );
+}
+
+async function listTransactionsByUserId(userId, { page = 1, limit = 20, paymentStatus, productType } = {}) {
   const filterParts = [];
   const extraNames = {};
   const extraValues = { ":userId": userId };
@@ -158,6 +223,11 @@ async function listTransactionsByUserId(userId, { page = 1, limit = 20, paymentS
     filterParts.push("#paymentStatus = :paymentStatus");
     extraNames["#paymentStatus"] = "paymentStatus";
     extraValues[":paymentStatus"] = normalizePaymentStatus(paymentStatus);
+  }
+  if (productType) {
+    filterParts.push("#productType = :productType");
+    extraNames["#productType"] = "productType";
+    extraValues[":productType"] = normalizeProductType(productType);
   }
 
   return queryPartition({
@@ -288,6 +358,7 @@ async function listTransactionsForCoach(
       } else if (normalizedScope === "assistant") {
         if (String(item.meetingAssigneeType || "") !== "assistant_wellness_coach") continue;
       }
+      if (normalizeProductType(item.productType) !== "consultancy") continue;
       if (normalizedSearch) {
         const haystack = [
           item.referenceNumber,
@@ -370,6 +441,7 @@ async function listTransactionsForAssistant(
 
     for (const item of byAssignee.items) {
       if (!transactionVisibleToAssistant(item, id)) continue;
+      if (normalizeProductType(item.productType) !== "consultancy") continue;
       if (normalizedSearch) {
         const haystack = [
           item.referenceNumber,
@@ -421,7 +493,7 @@ function buildEnrolledUsersFromTransactions(transactions) {
         email: txn.userSnapshot?.email || null,
         phone: txn.userSnapshot?.phone || null,
         phoneCountryCode: txn.userSnapshot?.phoneCountryCode || null,
-        userTier: "heal",
+        userTier: txn.userSnapshot?.userTier || "consultancy_only",
       },
       latestTransaction: {
         id: txn.id,
@@ -446,11 +518,15 @@ function buildEnrolledUsersFromTransactions(transactions) {
 module.exports = {
   TABLE,
   PAYMENT_STATUSES,
+  PRODUCT_TYPES,
+  CONSULTANCY_STATUSES,
   generateReferenceNumber,
   toPublicTransaction,
   createConsultancyTransaction,
   getConsultancyTransactionById,
   updateConsultancyTransaction,
+  markTransactionPaidIfPending,
+  getPendingConsultancyOrderForUser,
   listTransactionsByUserId,
   listAllTransactions,
   listTransactionsForCoach,
@@ -458,4 +534,6 @@ module.exports = {
   transactionVisibleToCoach,
   transactionVisibleToAssistant,
   buildEnrolledUsersFromTransactions,
+  normalizeProductType,
+  normalizeConsultancyStatus,
 };

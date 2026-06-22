@@ -20,6 +20,25 @@ export async function adminConvertUserToHeal(token, userId, { referralCode } = {
   }
 }
 
+export async function adminListPendingAssignmentUsers(token, { page = 1, limit = 20, search, userTier } = {}) {
+  const q = new URLSearchParams();
+  q.set("page", String(page));
+  q.set("limit", String(limit));
+  if (search) q.set("search", search);
+  if (userTier) q.set("userTier", userTier);
+  try {
+    const { data: res } = await api.get(`${usersBase()}/pending-assignment?${q}`, {
+      headers: authHeader(token),
+    });
+    return {
+      users: (res.users ?? []).map(normalizeUser),
+      pagination: res.pagination ?? { page: 1, limit: 20, total: 0, pages: 1 },
+    };
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function adminAssignHealUserCoach(token, userId, payload) {
   try {
     const { data: res } = await api.post(`${usersBase()}/${encodeURIComponent(userId)}/assign-coach`, payload, {

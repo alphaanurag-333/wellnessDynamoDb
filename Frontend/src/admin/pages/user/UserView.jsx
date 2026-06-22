@@ -122,8 +122,10 @@ export function UserView() {
     : [user.whatsappCountryCode, user.whatsappPhone].filter(Boolean).join(" ") || "—";
 
   const tier = String(user.userTier || "seek").toLowerCase();
-  const isSeek = tier !== "heal";
-  const isPendingHeal = tier === "heal" && user.assignmentStatus === "pending_admin";
+  const isSeek = tier === "seek";
+  const isConsultancyOnly = tier === "consultancy_only";
+  const isPendingAssignment =
+    (tier === "heal" || tier === "consultancy_only") && user.assignmentStatus === "pending_admin";
 
   const openAssignModal = (mode) => {
     setAssignMode(mode);
@@ -148,12 +150,15 @@ export function UserView() {
               Convert to Heal
             </button>
           ) : null}
-          {isPendingHeal ? (
+          {isConsultancyOnly ? (
+            <span className="tier-badge tier-badge--consultancy">Consultancy paid</span>
+          ) : null}
+          {isPendingAssignment ? (
             <button type="button" className="btn btn--primary" onClick={() => openAssignModal("assign")}>
               Assign coach
             </button>
           ) : null}
-          {tier === "heal" && !isPendingHeal ? (
+          {tier === "heal" && !isPendingAssignment ? (
             <button type="button" className="btn btn--ghost" onClick={() => openAssignModal("reassign")}>
               Reassign coach
             </button>

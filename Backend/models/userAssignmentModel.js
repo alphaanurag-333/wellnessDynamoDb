@@ -10,6 +10,7 @@ const {
   resolveReassignmentPatch,
   assertHealUserAssignment,
   normalizeAssignedCoachType,
+  isPaidClientTier,
 } = require("./userAssignmentLogic");
 
 async function validateReassignmentTarget({ assignedCoachId, assignedCoachType, parentCoachId, actingCoachId }) {
@@ -51,7 +52,11 @@ async function validateReassignmentTarget({ assignedCoachId, assignedCoachType, 
  * Reassign a Heal user's coach. referredBy* fields remain immutable history.
  * Updates ReferralCode.ownerCoachId when the user has a referral code (for future peer referrals).
  */
-async function reassignHealUser(userId, { assignedCoachId, assignedCoachType, parentCoachId }, options = {}) {
+async function reassignHealUser(
+  userId,
+  { assignedCoachId, assignedCoachType, parentCoachId, assignmentSource = "admin_manual" },
+  options = {}
+) {
   const user = await getUserById(userId);
   if (!user) {
     const err = new Error("User not found");
@@ -59,8 +64,8 @@ async function reassignHealUser(userId, { assignedCoachId, assignedCoachType, pa
     throw err;
   }
 
-  if (normalizeUserTier(user.userTier) !== "heal") {
-    throw new Error("Only Heal users can be reassigned to a coach");
+  if (!isPaidClientTier(user.userTier)) {
+    throw new Error("Only consultancy or Heal clients can be reassigned to a coach");
   }
 
   await validateReassignmentTarget({
@@ -70,7 +75,12 @@ async function reassignHealUser(userId, { assignedCoachId, assignedCoachType, pa
     actingCoachId: options.actingCoachId || null,
   });
 
-  const patch = resolveReassignmentPatch({ assignedCoachId, assignedCoachType, parentCoachId });
+  const patch = resolveReassignmentPatch({
+    assignedCoachId,
+    assignedCoachType,
+    parentCoachId,
+    assignmentSource: options.actingCoachId ? "coach_reassign" : assignmentSource,
+  });
   const updated = await updateUser(userId, patch);
   assertHealUserAssignment(updated);
 
@@ -82,9 +92,12 @@ async function reassignHealUser(userId, { assignedCoachId, assignedCoachType, pa
 }
 
 /**
- * Admin assigns a pending-admin Heal user to a coach for the first time.
+ * Admin assigns a pending-admin client to a coach for the first time.
  */
-async function assignPendingHealUser(userId, { assignedCoachId, assignedCoachType, parentCoachId }) {
+async function assignPendingHealUser(
+  userId,
+  { assignedCoachId, assignedCoachType, parentCoachId, assignmentSource = "admin_manual" }
+) {
   const user = await getUserById(userId);
   if (!user) {
     const err = new Error("User not found");
@@ -92,15 +105,19 @@ async function assignPendingHealUser(userId, { assignedCoachId, assignedCoachTyp
     throw err;
   }
 
-  if (normalizeUserTier(user.userTier) !== "heal") {
-    throw new Error("Only Heal users can receive coach assignment");
+  if (!isPaidClientTier(user.userTier)) {
+    throw new Error("Only consultancy or Heal clients can receive coach assignment");
   }
 
   if (user.assignmentStatus !== "pending_admin") {
     throw new Error("User is not pending admin assignment; use reassignHealUser instead");
   }
 
-  return reassignHealUser(userId, { assignedCoachId, assignedCoachType, parentCoachId }, optionsFromAdmin());
+  return reassignHealUser(
+    userId,
+    { assignedCoachId, assignedCoachType, parentCoachId, assignmentSource },
+    optionsFromAdmin()
+  );
 }
 
 function optionsFromAdmin() {

@@ -47,17 +47,21 @@ export function CopyReferralCode({ code, label = "Referral code" }) {
 export function UserTierBadge({ tier, assignmentStatus }) {
   const normalizedTier = String(tier || "seek").toLowerCase();
   const isHeal = normalizedTier === "heal";
-  const pending = isHeal && assignmentStatus === "pending_admin";
+  const isConsultancyOnly = normalizedTier === "consultancy_only";
+  const pending = (isHeal || isConsultancyOnly) && assignmentStatus === "pending_admin";
 
   let className = "tier-badge tier-badge--seek";
   let label = "Seek";
 
-  if (isHeal && pending) {
+  if (pending) {
     className = "tier-badge tier-badge--pending";
-    label = "Heal · Pending";
+    label = isConsultancyOnly ? "Consultancy · Pending" : "Heal · Pending";
   } else if (isHeal) {
     className = "tier-badge tier-badge--heal";
-    label = "Heal";
+    label = "Seek to Heal";
+  } else if (isConsultancyOnly) {
+    className = "tier-badge tier-badge--consultancy";
+    label = "Consultancy only";
   }
 
   return <span className={className}>{label}</span>;

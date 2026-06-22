@@ -54,3 +54,24 @@ export async function coachDownloadConsultancyInvoice(transactionId, referenceNu
     normalizeApiError(error);
   }
 }
+
+export async function coachGetConsultancyClient(userId) {
+  try {
+    const { data: body } = await coachApi.get(`/coach/consultancy/clients/${encodeURIComponent(userId)}`);
+    return body.client;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function coachUpdateConsultancyClient(transactionId, payload) {
+  try {
+    const { data: body } = await coachApi.patch(
+      `/coach/consultancy/transactions/${encodeURIComponent(transactionId)}`,
+      payload
+    );
+    return body.transaction;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}

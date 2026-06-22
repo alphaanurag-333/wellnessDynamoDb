@@ -20,7 +20,7 @@ exports.listAssistantConsultancyTransactionsController = asyncHandler(async (req
   const assistantId = req.auth?.sub || req.user?.id;
   if (!assistantId) throw new AppError("Unauthorized", 401);
 
-  const { page = 1, limit = 20, paymentStatus = "all", search } = req.query;
+  const { page = 1, limit = 20, paymentStatus = "paid", search } = req.query;
   const data = await listTransactionsForAssistant(assistantId, {
     page,
     limit,

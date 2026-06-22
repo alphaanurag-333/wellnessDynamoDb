@@ -13,12 +13,14 @@ const {
   convertUserToHealController,
   assignHealUserController,
   reassignHealUserController,
+  listPendingAssignmentUsersController,
 } = require("../../controllers/adminController/userAssignmentController");
 const { getUserWaterTrackingHistoryController } = require("../../controllers/waterTrackingHistoryController");
 
 const router = express.Router();
 
 router.get("/", protectAdmin, listUsersController);
+router.get("/pending-assignment", protectAdmin, listPendingAssignmentUsersController);
 router.get("/:id/water-tracking", protectAdmin, getUserWaterTrackingHistoryController);
 router.get("/:id", protectAdmin, getUserByIdController);
 router.post("/", protectAdmin, optionalUserFile, createUserController);

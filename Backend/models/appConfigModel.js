@@ -55,6 +55,7 @@ async function createAppConfig() {
     tax_value:          "",
     referral_discount:  "",
     consultancy_amount: "",
+    subscription_amount: "",
 
     // Nested array with credentials object
     payment_gateways: [],   // default empty 

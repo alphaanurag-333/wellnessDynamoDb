@@ -1,10 +1,12 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
-const { getUserById, listUsersByParentCoachId, listUsersByAssignedCoachId, normalizeUserTier } = require("../../models/userModel");
+const { getUserById, listUsersByParentCoachId, listUsersByAssignedCoachId, listPendingAssignmentUsers, normalizeUserTier } = require("../../models/userModel");
 const { convertSeekToHeal } = require("../../models/userConversionModel");
 const { assignPendingHealUser, reassignHealUser } = require("../../models/userAssignmentModel");
 const { getWellnessCoachRecordById } = require("../../models/wellnessCoachModel");
 const { getAssistantWellnessCoachById } = require("../../models/assistantWellnessCoachModel");
+const { sendCoachAssignmentNotifications } = require("../../utils/whatsapp");
+
 const { enrichUser } = require("../userController/userProfileHelpers");
 
 function mapAssignmentError(err) {
@@ -44,7 +46,7 @@ exports.convertUserToHealController = asyncHandler(async (req, res) => {
   const referralCode = req.body?.referralCode ?? req.body?.referral_code ?? null;
   let user;
   try {
-    user = await convertSeekToHeal(req.params.id, { referralCode });
+    user = await convertSeekToHeal(req.params.id, { referralCode, allowFromSeek: true });
   } catch (err) {
     mapAssignmentError(err);
   }
@@ -71,9 +73,20 @@ exports.assignHealUserController = asyncHandler(async (req, res) => {
       assignedCoachId,
       assignedCoachType,
       parentCoachId,
+      assignmentSource: "admin_manual",
     });
   } catch (err) {
     mapAssignmentError(err);
+  }
+
+  try {
+    const assignee =
+      assignedCoachType === "assistant_wellness_coach"
+        ? await getAssistantWellnessCoachById(assignedCoachId)
+        : await getWellnessCoachRecordById(assignedCoachId);
+    await sendCoachAssignmentNotifications({ user, assignee, assigneeType: assignedCoachType });
+  } catch (err) {
+    console.error("[UserAssignment] assignment notification failed", err.message);
   }
 
   return res.status(200).json({
@@ -110,13 +123,26 @@ exports.reassignHealUserController = asyncHandler(async (req, res) => {
   });
 });
 
+exports.listPendingAssignmentUsersController = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 20, search, userTier } = req.query;
+  const data = await listPendingAssignmentUsers({ page, limit, search, userTier });
+  const users = await Promise.all(data.users.map((u) => enrichUser(u)));
+
+  return res.status(200).json({
+    status: true,
+    message: "Pending manual assignment users fetched",
+    users,
+    pagination: data.pagination,
+  });
+});
+
 exports.listHealUsersByCoachController = asyncHandler(async (req, res) => {
   const coachId = req.params.coachId || req.params.id;
   const coach = await getWellnessCoachRecordById(coachId);
   if (!coach) throw new AppError("Wellness coach not found", 404);
 
   const { page = 1, limit = 20, search } = req.query;
-  const data = await listUsersByParentCoachId(coachId, { page, limit, search, userTier: "heal" });
+  const data = await listUsersByParentCoachId(coachId, { page, limit, search, userTier: "client" });
   const users = await Promise.all(data.users.map((u) => enrichUser(u)));
 
   return res.status(200).json({
@@ -131,7 +157,7 @@ exports.listHealUsersForCoachPortalController = asyncHandler(async (req, res) =>
   if (!coachId) throw new AppError("Unauthorized", 401);
 
   const { page = 1, limit = 20, search, scope = "all" } = req.query;
-  const data = await listUsersByParentCoachId(coachId, { page, limit, search, userTier: "heal", scope });
+  const data = await listUsersByParentCoachId(coachId, { page, limit, search, userTier: "client", scope });
   const users = await Promise.all(data.users.map((u) => enrichUser(u)));
 
   return res.status(200).json({
@@ -158,7 +184,7 @@ exports.listHealUsersForAssistantPortalController = asyncHandler(async (req, res
     page,
     limit,
     search,
-    userTier: "heal",
+    userTier: "client",
   });
   const users = await Promise.all(data.users.map((u) => enrichUser(u)));
 
@@ -175,8 +201,8 @@ exports.reassignHealUserForCoachPortalController = asyncHandler(async (req, res)
 
   const current = await getUserById(req.params.id);
   if (!current) throw new AppError("User not found", 404);
-  if (normalizeUserTier(current.userTier) !== "heal") {
-    throw new AppError("Only Heal users can be reassigned", 400);
+  if (normalizeUserTier(current.userTier) !== "heal" && normalizeUserTier(current.userTier) !== "consultancy_only") {
+    throw new AppError("Only assigned clients can be reassigned", 400);
   }
   if (String(current.parentCoachId || "") !== String(actingCoachId)) {
     throw new AppError("User is not under your coaching hierarchy", 403);

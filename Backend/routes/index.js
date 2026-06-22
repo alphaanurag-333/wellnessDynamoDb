@@ -24,6 +24,7 @@ const miscRoutes = require("./userRoutes/miscRoutes");
 const userAuthRoutes = require("./userRoutes/authRoutes");
 const waterTrackingRoutes = require("./userRoutes/waterTrackingRoutes");
 const consultancyPaymentRoutes = require("./userRoutes/consultancyPaymentRoutes");
+const subscriptionPaymentRoutes = require("./userRoutes/subscriptionPaymentRoutes");
 const coachAuthRoutes = require("./wellnessCoachRoutes/coachAuthRoutes");
 const coachSpecializationRoutes = require("./wellnessCoachRoutes/coachSpecializationRoutes");
 const coachAssistantRoutes = require("./wellnessCoachRoutes/coachAssistantRoutes");
@@ -70,6 +71,7 @@ router.use("/admin/misc/pages", adminStaticPageRoutes);
 router.use("/user/auth", userAuthRoutes);
 router.use("/user/water-tracking", waterTrackingRoutes);
 router.use("/user/consultancy-payment", consultancyPaymentRoutes);
+router.use("/user/subscription-payment", subscriptionPaymentRoutes);
 router.use("/public", publicAppConfigRoutes);
 router.use("/public/misc", miscRoutes);
 

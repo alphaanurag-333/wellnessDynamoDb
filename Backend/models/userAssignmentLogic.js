@@ -1,6 +1,7 @@
-const USER_TIERS = new Set(["seek", "heal"]);
+const USER_TIERS = new Set(["seek", "consultancy_only", "heal"]);
 const ASSIGNMENT_STATUSES = new Set(["assigned", "pending_admin"]);
 const ASSIGNED_COACH_TYPES = new Set(["wellness_coach", "assistant_wellness_coach"]);
+const ASSIGNMENT_SOURCES = new Set(["referral", "admin_manual", "coach_reassign"]);
 const REFERRED_BY_ENTITY_TYPES = new Set(["wellness_coach", "assistant_wellness_coach", "user"]);
 
 function normalizeUserTier(value, fallback = "seek") {
@@ -25,6 +26,26 @@ function normalizeReferredByEntityType(value) {
   return REFERRED_BY_ENTITY_TYPES.has(next) ? next : null;
 }
 
+function normalizeAssignmentSource(value) {
+  if (value == null || value === "") return null;
+  const next = String(value).toLowerCase().trim();
+  return ASSIGNMENT_SOURCES.has(next) ? next : null;
+}
+
+function isHealTier(value) {
+  return normalizeUserTier(value) === "heal";
+}
+
+function isConsultancyOnlyTier(value) {
+  return normalizeUserTier(value) === "consultancy_only";
+}
+
+/** Users with a paid consultancy relationship (consultancy or full subscription). */
+function isPaidClientTier(value) {
+  const tier = normalizeUserTier(value);
+  return tier === "consultancy_only" || tier === "heal";
+}
+
 /**
  * Resolve assignment fields at Seek → Heal conversion time (write-time resolution).
  * @param {object|null} referralRecord - ReferralCode registry row
@@ -44,6 +65,7 @@ function resolveConversionAssignment(referralRecord, context, referralCodeInput)
       assignedCoachType: null,
       parentCoachId: null,
       assignmentStatus: "pending_admin",
+      assignmentSource: null,
     };
   }
 
@@ -77,6 +99,7 @@ function resolveConversionAssignment(referralRecord, context, referralCodeInput)
       assignedCoachType: "wellness_coach",
       parentCoachId: coach.id,
       assignmentStatus: "assigned",
+      assignmentSource: "referral",
     };
   }
 
@@ -109,6 +132,7 @@ function resolveConversionAssignment(referralRecord, context, referralCodeInput)
       assignedCoachType: "assistant_wellness_coach",
       parentCoachId,
       assignmentStatus: "assigned",
+      assignmentSource: "referral",
     };
   }
 
@@ -141,6 +165,7 @@ function resolveConversionAssignment(referralRecord, context, referralCodeInput)
       assignedCoachType: "wellness_coach",
       parentCoachId: owningCoachId,
       assignmentStatus: "assigned",
+      assignmentSource: "referral",
     };
   }
 
@@ -150,7 +175,7 @@ function resolveConversionAssignment(referralRecord, context, referralCodeInput)
 }
 
 /**
- * Validate Heal user assignment invariants.
+ * Validate coach assignment invariants for paid client tiers.
  * Seek users skip assignment validation.
  */
 function validateHealUserAssignment(user) {
@@ -160,20 +185,20 @@ function validateHealUserAssignment(user) {
   }
 
   const tier = normalizeUserTier(user.userTier, "seek");
-  if (tier !== "heal") {
+  if (!isPaidClientTier(tier)) {
     return { valid: true, errors: [] };
   }
 
   const assignmentStatus = normalizeAssignmentStatus(user.assignmentStatus, "");
 
   if (!ASSIGNMENT_STATUSES.has(assignmentStatus)) {
-    errors.push("Heal user must have assignmentStatus assigned or pending_admin");
+    errors.push("Paid client must have assignmentStatus assigned or pending_admin");
     return { valid: false, errors };
   }
 
   if (assignmentStatus === "pending_admin") {
     if (user.assignedCoachId || user.assignedCoachType || user.parentCoachId) {
-      errors.push("Pending-admin Heal user must not have coach assignment fields set");
+      errors.push("Pending-admin client must not have coach assignment fields set");
     }
     return { valid: errors.length === 0, errors };
   }
@@ -182,9 +207,9 @@ function validateHealUserAssignment(user) {
   const assignedCoachType = normalizeAssignedCoachType(user.assignedCoachType);
   const parentCoachId = String(user.parentCoachId || "").trim();
 
-  if (!assignedCoachId) errors.push("Assigned Heal user must have assignedCoachId");
-  if (!assignedCoachType) errors.push("Assigned Heal user must have assignedCoachType");
-  if (!parentCoachId) errors.push("Assigned Heal user must have parentCoachId");
+  if (!assignedCoachId) errors.push("Assigned client must have assignedCoachId");
+  if (!assignedCoachType) errors.push("Assigned client must have assignedCoachType");
+  if (!parentCoachId) errors.push("Assigned client must have parentCoachId");
 
   if (assignedCoachType === "wellness_coach" && assignedCoachId !== parentCoachId) {
     errors.push("Direct wellness coach assignment requires parentCoachId to match assignedCoachId");
@@ -206,7 +231,7 @@ function assertHealUserAssignment(user) {
 /**
  * Build assignment patch for admin/coach reassignment (referredBy* stays immutable).
  */
-function resolveReassignmentPatch({ assignedCoachId, assignedCoachType, parentCoachId }) {
+function resolveReassignmentPatch({ assignedCoachId, assignedCoachType, parentCoachId, assignmentSource = "admin_manual" }) {
   const normalizedCoachId = String(assignedCoachId || "").trim();
   const normalizedType = normalizeAssignedCoachType(assignedCoachType);
   const normalizedParentCoachId = String(parentCoachId || "").trim();
@@ -219,11 +244,16 @@ function resolveReassignmentPatch({ assignedCoachId, assignedCoachType, parentCo
     throw new Error("Direct wellness coach assignment requires parentCoachId to match assignedCoachId");
   }
 
+  const normalizedSource = normalizeAssignmentSource(assignmentSource) || "admin_manual";
+  const now = new Date().toISOString();
+
   return {
     assignedCoachId: normalizedCoachId,
     assignedCoachType: normalizedType,
     parentCoachId: normalizedParentCoachId,
     assignmentStatus: "assigned",
+    assignmentSource: normalizedSource,
+    assignedAt: now,
   };
 }
 
@@ -231,11 +261,16 @@ module.exports = {
   USER_TIERS,
   ASSIGNMENT_STATUSES,
   ASSIGNED_COACH_TYPES,
+  ASSIGNMENT_SOURCES,
   REFERRED_BY_ENTITY_TYPES,
   normalizeUserTier,
   normalizeAssignmentStatus,
   normalizeAssignedCoachType,
+  normalizeAssignmentSource,
   normalizeReferredByEntityType,
+  isHealTier,
+  isConsultancyOnlyTier,
+  isPaidClientTier,
   resolveConversionAssignment,
   validateHealUserAssignment,
   assertHealUserAssignment,

@@ -93,6 +93,7 @@ exports.createAppConfigController = asyncHandler(async (req, res) => {
     tax_value,
     referral_discount,
     consultancy_amount,
+    subscription_amount,
   } = req.body;
 
   if (!app_name || !app_email || !app_mobile) {
@@ -124,6 +125,7 @@ exports.createAppConfigController = asyncHandler(async (req, res) => {
     tax_value: tax_value ?? "",
     referral_discount: referral_discount ?? "",
     consultancy_amount: consultancy_amount ?? "",
+    subscription_amount: subscription_amount ?? "",
     payment_gateways: parseJSON(payment_gateways, config.payment_gateways),
     admin_logo: (await s3KeyFromUploadedFile(req, "admin_logo")) ?? "",
     user_logo: (await s3KeyFromUploadedFile(req, "user_logo")) ?? "",
@@ -170,6 +172,7 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
     "tax_value",
     "referral_discount",
     "consultancy_amount",
+    "subscription_amount",
     "app_footer_text",
   ];
 

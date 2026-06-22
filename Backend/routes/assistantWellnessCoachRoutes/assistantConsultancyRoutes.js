@@ -6,6 +6,10 @@ const {
   getAssistantConsultancyTransactionController,
   getAssistantConsultancyInvoiceController,
 } = require("../../controllers/assistantWellnessCoachController/consultancyTransactionController");
+const {
+  getCoachConsultancyClientController,
+  updateCoachConsultancyClientController,
+} = require("../../controllers/wellnessCoachController/consultancyTransactionController");
 
 const router = express.Router();
 
@@ -13,6 +17,8 @@ router.use(protectAssistantWellnessCoach);
 
 router.get("/transactions", listAssistantConsultancyTransactionsController);
 router.get("/enrolled-users", listAssistantConsultancyEnrolledUsersController);
+router.get("/clients/:userId", getCoachConsultancyClientController);
+router.patch("/transactions/:id", updateCoachConsultancyClientController);
 router.get("/transactions/:id/invoice", getAssistantConsultancyInvoiceController);
 router.get("/transactions/:id", getAssistantConsultancyTransactionController);
 

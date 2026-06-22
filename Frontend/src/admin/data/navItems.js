@@ -13,6 +13,7 @@ export const navItems = [
     children: [
       { to: "consultancy/transactions", label: "Transactions", icon: "receipt" },
       { to: "consultancy/enrolled-users", label: "Enrolled Users", icon: "user-check" },
+      { to: "users/pending-assignment", label: "Pending Assignment", icon: "user-plus" },
     ],
   },
   { to: "coaches", label: "Wellness Coaches", icon: "user" },

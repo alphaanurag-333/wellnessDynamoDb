@@ -2,8 +2,8 @@ const { getAppConfig } = require("../models/appConfigModel");
 const config = require("../config");
 const { getUserById, updateUser } = require("../models/userModel");
 const { getWellnessCoachRecordById } = require("../models/wellnessCoachModel");
-const { convertSeekToHeal } = require("../models/userConversionModel");
-const { normalizeUserTier } = require("../models/userAssignmentLogic");
+const { completeConsultancyEnrollment } = require("../models/userConversionModel");
+const { isConsultancyOnlyTier, isHealTier } = require("../models/userAssignmentLogic");
 const {
   buildCheckoutPreview,
   getActiveRazorpayGateway,
@@ -27,6 +27,8 @@ const {
   createConsultancyTransaction,
   getConsultancyTransactionById,
   updateConsultancyTransaction,
+  markTransactionPaidIfPending,
+  getPendingConsultancyOrderForUser,
   toPublicTransaction,
 } = require("../models/consultancyTransactionModel");
 const {
@@ -42,12 +44,56 @@ function mapPaymentError(err) {
   throw err;
 }
 
+function logPaymentFailure({ transactionId, userId, reason }) {
+  console.error("[ConsultancyPayment] payment failed", {
+    transactionId,
+    userId,
+    reason,
+    timestamp: new Date().toISOString(),
+  });
+}
+
 async function createConsultancyOrder(userId, { referralCode, paymentMethod = "upi", healthConcernId } = {}) {
   const user = await getUserById(userId);
   if (!user) {
     const err = new Error("User not found");
     err.name = "NotFoundError";
     throw err;
+  }
+
+  if (isConsultancyOnlyTier(user.userTier) || isHealTier(user.userTier)) {
+    const err = new Error("Consultancy payment has already been completed for this account");
+    err.name = "AlreadyEnrolledError";
+    throw err;
+  }
+
+  const existingPending = await getPendingConsultancyOrderForUser(userId);
+  if (existingPending) {
+    const appConfig = await getAppConfig();
+    const gateway = getActiveRazorpayGateway(appConfig);
+    const useMock = shouldUseMockPayments(gateway);
+    return {
+      transaction: toPublicTransaction(existingPending),
+      pricing: {
+        baseAmount: existingPending.baseAmount,
+        discountAmount: existingPending.discountAmount,
+        discountedBase: existingPending.discountedBase,
+        taxAmount: existingPending.taxAmount,
+        taxPercent: existingPending.taxPercent,
+        taxType: existingPending.taxType,
+        totalAmount: existingPending.totalAmount,
+        currency: existingPending.currency || "INR",
+      },
+      payment: {
+        provider: useMock ? "mock" : "razorpay",
+        orderId: existingPending.paymentGatewayOrderId,
+        amount: Math.round(Number(existingPending.totalAmount) * 100),
+        currency: existingPending.currency || "INR",
+        keyId: gateway?.keyId || null,
+        mockPayment: useMock,
+        reusedPendingOrder: true,
+      },
+    };
   }
 
   const healthConcern = await resolveHealthConcernForConsultancy(healthConcernId);
@@ -63,27 +109,15 @@ async function createConsultancyOrder(userId, { referralCode, paymentMethod = "u
   const gateway = getActiveRazorpayGateway(appConfig);
   const useMock = shouldUseMockPayments(gateway);
 
-  let assigneePreview = null;
-  try {
-    assigneePreview = await resolveMeetingAssignee(
-      preview.referralCodeValid ? preview.referralCode : null
-    );
-  } catch (err) {
-    mapPaymentError(err);
-  }
-
   const transaction = await createConsultancyTransaction({
     userId,
+    productType: "consultancy",
     paymentStatus: "pending",
     paymentProvider: useMock ? "mock" : "razorpay",
     paymentMethod,
     ...preview.pricing,
     referralCodeUsed: preview.referralCode,
     referralCodeValid: preview.referralCodeValid,
-    meetingAssigneeType: assigneePreview?.assigneeType || null,
-    meetingAssigneeId: assigneePreview?.assigneeId || null,
-    parentCoachId: assigneePreview?.parentCoachId || null,
-    visibleToCoachIds: assigneePreview?.visibleToCoachIds || [],
     userSnapshot: {
       id: user.id,
       name: user.name,
@@ -93,17 +127,11 @@ async function createConsultancyOrder(userId, { referralCode, paymentMethod = "u
       whatsappSameAsMobile: user.whatsappSameAsMobile,
       whatsappPhone: user.whatsappPhone,
       whatsappCountryCode: user.whatsappCountryCode,
+      userTier: user.userTier,
     },
-    assigneeSnapshot: assigneePreview?.assignee || null,
     healthConcernId: healthConcern.healthConcernId,
     healthConcernSnapshot: healthConcern.healthConcernSnapshot,
   });
-
-  try {
-    await updateUser(userId, { primaryHealthConcern: healthConcern.healthConcernId });
-  } catch (err) {
-    console.error("[ConsultancyPayment] update user health concern failed", err.message);
-  }
 
   let order;
   if (useMock) {
@@ -119,6 +147,7 @@ async function createConsultancyOrder(userId, { referralCode, paymentMethod = "u
       notes: {
         transactionId: transaction.id,
         userId,
+        productType: "consultancy",
       },
     });
   }
@@ -171,27 +200,36 @@ async function finalizePaidConsultancyTransaction(transaction, { paymentId, prov
 
   let assignee;
   try {
-    assignee = await resolveMeetingAssignee(transaction.referralCodeUsed);
+    assignee = await resolveMeetingAssignee(
+      transaction.referralCodeValid ? transaction.referralCodeUsed : null
+    );
   } catch (err) {
     assignee = {
       assigneeType: "admin",
       assigneeId: "admin",
-      assignee: transaction.assigneeSnapshot || { type: "admin", name: "Admin" },
+      assignee: { type: "admin", name: "Admin" },
       parentCoachId: null,
       visibleToCoachIds: [],
     };
   }
 
-  if (normalizeUserTier(user.userTier) !== "heal") {
-    try {
-      await convertSeekToHeal(user.id, {
-        referralCode: transaction.referralCodeUsed || null,
-      });
-    } catch (err) {
-      if (err?.name !== "AlreadyConvertedError") {
-        console.error("[ConsultancyPayment] convertSeekToHeal failed", err.message);
-      }
+  try {
+    await completeConsultancyEnrollment(user.id, {
+      referralCode: transaction.referralCodeUsed || null,
+    });
+  } catch (err) {
+    if (err?.name !== "AlreadyConvertedError") {
+      console.error("[ConsultancyPayment] completeConsultancyEnrollment failed", err.message);
+      throw err;
     }
+  }
+
+  try {
+    await updateUser(transaction.userId, {
+      primaryHealthConcern: transaction.healthConcernId,
+    });
+  } catch (err) {
+    console.error("[ConsultancyPayment] update user health concern failed", err.message);
   }
 
   let zoom = null;
@@ -208,6 +246,32 @@ async function finalizePaidConsultancyTransaction(transaction, { paymentId, prov
   let parentCoach = null;
   if (assignee.parentCoachId && assignee.assigneeType === "assistant_wellness_coach") {
     parentCoach = await getWellnessCoachRecordById(assignee.parentCoachId);
+  }
+
+  const paidAt = new Date().toISOString();
+  const paidPayload = {
+    paymentGatewayPaymentId: paymentId || null,
+    paymentProvider: provider,
+    paidAt,
+    meetingAssigneeType: assignee.assigneeType,
+    meetingAssigneeId: assignee.assigneeId,
+    parentCoachId: assignee.parentCoachId,
+    visibleToCoachIds: assignee.visibleToCoachIds,
+    assigneeSnapshot: assignee.assignee,
+    zoomMeetingId: zoom?.id || null,
+    zoomMeetingLink: zoom?.join_url || null,
+    userSnapshot: {
+      ...(transaction.userSnapshot || {}),
+      userTier: "consultancy_only",
+    },
+  };
+
+  const { item: paidRecord, alreadyPaid } = await markTransactionPaidIfPending(transaction.id, paidPayload);
+
+  if (alreadyPaid) {
+    const pub = toPublicTransaction(paidRecord);
+    if (pub.invoicePdfKey) pub.invoiceUrl = resolvePublicUrl(pub.invoicePdfKey);
+    return pub;
   }
 
   let whatsappDelivery = null;
@@ -231,10 +295,8 @@ async function finalizePaidConsultancyTransaction(transaction, { paymentId, prov
     const pdfBuffer = await generateConsultancyInvoicePdf({
       ...(await buildConsultancyInvoicePayload({
         ...transaction,
-        paidAt: new Date().toISOString(),
-        paymentProvider: provider,
-        assigneeSnapshot: assignee.assignee,
-        zoomMeetingLink: zoom?.join_url || null,
+        ...paidPayload,
+        paymentStatus: "paid",
       })),
     });
     invoicePdfKey = await uploadBufferToS3({
@@ -247,19 +309,7 @@ async function finalizePaidConsultancyTransaction(transaction, { paymentId, prov
     console.error("[ConsultancyPayment] Invoice PDF failed", err.message);
   }
 
-  const paidAt = new Date().toISOString();
   const updated = await updateConsultancyTransaction(transaction.id, {
-    paymentStatus: "paid",
-    paymentGatewayPaymentId: paymentId || null,
-    paymentProvider: provider,
-    paidAt,
-    meetingAssigneeType: assignee.assigneeType,
-    meetingAssigneeId: assignee.assigneeId,
-    parentCoachId: assignee.parentCoachId,
-    visibleToCoachIds: assignee.visibleToCoachIds,
-    assigneeSnapshot: assignee.assignee,
-    zoomMeetingId: zoom?.id || null,
-    zoomMeetingLink: zoom?.join_url || null,
     invoicePdfKey,
     whatsappDelivery,
   });
@@ -322,11 +372,14 @@ async function verifyConsultancyPayment(userId, {
   }
 
   if (!verified) {
+    const failureReason = "Payment verification failed";
+    logPaymentFailure({ transactionId: transaction.id, userId, reason: failureReason });
     await updateConsultancyTransaction(transaction.id, {
       paymentStatus: "failed",
-      failureReason: "Payment verification failed",
+      failureReason,
+      failedAt: new Date().toISOString(),
     });
-    const err = new Error("Payment verification failed");
+    const err = new Error(failureReason);
     err.name = "PaymentVerificationError";
     throw err;
   }

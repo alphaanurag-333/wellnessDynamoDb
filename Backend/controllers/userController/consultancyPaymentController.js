@@ -16,6 +16,7 @@ const {
 
 function mapCheckoutError(err) {
   if (err?.name === "InvalidReferralCodeError") throw new AppError(err.message, 400);
+  if (err?.name === "AlreadyEnrolledError") throw new AppError(err.message, 409);
   if (err?.name === "ValidationError") throw new AppError(err.message, 400);
   if (err?.name === "ConfigNotFoundError") throw new AppError(err.message, 500);
   if (err?.name === "PaymentGatewayError") throw new AppError(err.message, 502);
