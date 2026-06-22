@@ -41,3 +41,22 @@ Base path: `/api`
 | `PATCH` | `/user/water-tracking/goal` | `routes\userRoutes\waterTrackingRoutes.js` |
 | `POST` | `/user/water-tracking/increment` | `routes\userRoutes\waterTrackingRoutes.js` |
 
+## steps-tracking
+
+| Method | Path | Source |
+|--------|------|--------|
+| `GET` | `/user/steps-tracking` | `routes\userRoutes\stepsTrackingRoutes.js` |
+| `POST` | `/user/steps-tracking/sync` | `routes\userRoutes\stepsTrackingRoutes.js` |
+| `PATCH` | `/user/steps-tracking/goal` | `routes\userRoutes\stepsTrackingRoutes.js` |
+| `PUT` | `/user/steps-tracking/day` | `routes\userRoutes\stepsTrackingRoutes.js` |
+
+## Admin / coach / assistant — client steps history
+
+| Method | Path | Source |
+|--------|------|--------|
+| `GET` | `/admin/users/:id/steps-tracking` | `routes\adminRoutes\adminUserRoutes.js` |
+| `GET` | `/coach/heal-users/:id/steps-tracking` | `routes\wellnessCoachRoutes\coachHealUserRoutes.js` |
+| `GET` | `/assistant/heal-users/:id/steps-tracking` | `routes\assistantWellnessCoachRoutes\assistantHealUserRoutes.js` |
+
+See `docs/steps-tracking-native-formats.md` for Health Connect / HealthKit mapping.
+

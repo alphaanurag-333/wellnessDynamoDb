@@ -5,6 +5,7 @@ import { AssistantDashboardPage } from "../pages/DashboardPage.jsx";
 import { AssistantProfile } from "../pages/AssistantProfile.jsx";
 import { AssistantMyHealUsersList } from "../pages/myHealUsers/AssistantMyHealUsersList.jsx";
 import { AssistantUserWaterTrackingPage } from "../pages/myHealUsers/AssistantUserWaterTrackingPage.jsx";
+import { AssistantUserStepsTrackingPage } from "../pages/myHealUsers/AssistantUserStepsTrackingPage.jsx";
 import { AssistantConsultancyTransactionList } from "../pages/consultancy/AssistantConsultancyTransactionList.jsx";
 import { AssistantConsultancyEnrolledUsersList } from "../pages/consultancy/AssistantConsultancyEnrolledUsersList.jsx";
 
@@ -13,8 +14,9 @@ export const assistantWellnessCoachRouteTree = (
     <Route index element={<Navigate to="dashboard" replace />} />
     <Route path="dashboard" element={<AssistantDashboardPage />} />
     <Route path="profile" element={<AssistantProfile />} />
-    <Route path="my-heal-users" element={<AssistantMyHealUsersList />} />
-    <Route path="my-heal-users/:userId/water-tracking" element={<AssistantUserWaterTrackingPage />} />
+    <Route path="my-users" element={<AssistantMyHealUsersList />} />
+    <Route path="my-users/:userId/water-tracking" element={<AssistantUserWaterTrackingPage />} />
+    <Route path="my-users/:userId/steps-tracking" element={<AssistantUserStepsTrackingPage />} />
     <Route path="consultancy/transactions" element={<AssistantConsultancyTransactionList />} />
     <Route path="consultancy/enrolled-users" element={<AssistantConsultancyEnrolledUsersList />} />
     <Route path="*" element={<NotFoundPage />} />

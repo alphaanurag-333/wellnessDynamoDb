@@ -69,7 +69,7 @@ export function AssistantUserWaterTrackingPage() {
       error={error}
       days={days}
       onDaysChange={setDays}
-      onBack={() => navigate("/assistant/my-heal-users")}
+      onBack={() => navigate("/assistant/my-users")}
       backLabel="Back to clients"
     />
   );

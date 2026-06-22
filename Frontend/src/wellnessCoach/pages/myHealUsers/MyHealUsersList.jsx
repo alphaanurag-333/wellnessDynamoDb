@@ -122,9 +122,9 @@ export function MyHealUsersList() {
     <div className="page-card heal-users-page">
       <div className="page-card__head heal-users-page__head">
         <div className="heal-users-page__intro">
-          <h2 className="page-card__title">My Heal clients</h2>
+          <h2 className="page-card__title">My clients</h2>
           <p className="page-card__desc">
-            All Heal clients in your team — directly with you or assigned to your assistants.
+            Assigned clients in your team — Seek, consultancy, and Heal users with water and steps tracking.
           </p>
         </div>
         <div className="page-card__actions user-list-toolbar heal-users-page__toolbar">
@@ -171,7 +171,7 @@ export function MyHealUsersList() {
             ) : users.length === 0 ? (
               <tr>
                 <td colSpan={6}>
-                  <p className="table-placeholder">No Heal clients found for the current filters.</p>
+                  <p className="table-placeholder">No clients found for the current filters.</p>
                 </td>
               </tr>
             ) : (
@@ -194,6 +194,12 @@ export function MyHealUsersList() {
                         className="btn btn--ghost btn--sm"
                       >
                         Water history
+                      </Link>
+                      <Link
+                        to={`${u._id || u.id}/steps-tracking`}
+                        className="btn btn--ghost btn--sm"
+                      >
+                        Steps history
                       </Link>
                       <button type="button" className="btn btn--ghost btn--sm" onClick={() => handleReassign(u)}>
                         Reassign

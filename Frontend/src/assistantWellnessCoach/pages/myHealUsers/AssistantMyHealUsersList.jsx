@@ -65,7 +65,7 @@ export function AssistantMyHealUsersList() {
     <div className="page-card heal-users-page">
       <div className="page-card__head heal-users-page__head">
         <div className="heal-users-page__intro">
-          <h2 className="page-card__title">My Heal clients</h2>
+          <h2 className="page-card__title">My clients</h2>
           <p className="page-card__desc">Paid users assigned directly to you.</p>
         </div>
         <div className="page-card__actions user-list-toolbar heal-users-page__toolbar">
@@ -106,7 +106,7 @@ export function AssistantMyHealUsersList() {
             ) : users.length === 0 ? (
               <tr>
                 <td colSpan={4}>
-                  <p className="table-placeholder">No Heal clients assigned to you yet.</p>
+                  <p className="table-placeholder">No clients assigned to you yet.</p>
                 </td>
               </tr>
             ) : (
@@ -125,6 +125,12 @@ export function AssistantMyHealUsersList() {
                         className="btn btn--ghost btn--sm"
                       >
                         Water history
+                      </Link>
+                      <Link
+                        to={`${u._id || u.id}/steps-tracking`}
+                        className="btn btn--ghost btn--sm"
+                      >
+                        Steps history
                       </Link>
                     </div>
                   </td>

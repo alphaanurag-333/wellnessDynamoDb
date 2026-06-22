@@ -3,6 +3,17 @@ const { asyncHandler } = require("../utils/asyncHandler");
 const { getUserById } = require("../models/userModel");
 const { getUserWaterHistory } = require("../models/waterTrackingModel");
 const { enrichUser } = require("./userController/userProfileHelpers");
+const { normalizeUserTier } = require("../models/userAssignmentLogic");
+
+function toHistoryUser(user) {
+  return {
+    id: user.id,
+    _id: user.id,
+    name: user.name,
+    email: user.email,
+    userTier: normalizeUserTier(user.userTier),
+  };
+}
 
 exports.getUserWaterTrackingHistoryController = asyncHandler(async (req, res) => {
   const userId = req.params.id || req.params.userId;
@@ -28,12 +39,7 @@ exports.getUserWaterTrackingHistoryController = asyncHandler(async (req, res) =>
   return res.status(200).json({
     status: true,
     message: "Water tracking history fetched",
-    user: {
-      id: user.id,
-      _id: user.id,
-      name: user.name,
-      email: user.email,
-    },
+    user: toHistoryUser(user),
     data,
   });
 });
@@ -71,12 +77,7 @@ exports.getCoachHealUserWaterTrackingController = asyncHandler(async (req, res) 
   return res.status(200).json({
     status: true,
     message: "Water tracking history fetched",
-    user: {
-      id: enriched.id,
-      _id: enriched.id,
-      name: enriched.name,
-      email: enriched.email,
-    },
+    user: toHistoryUser(enriched),
     data,
   });
 });
@@ -114,12 +115,7 @@ exports.getAssistantHealUserWaterTrackingController = asyncHandler(async (req, r
   return res.status(200).json({
     status: true,
     message: "Water tracking history fetched",
-    user: {
-      id: enriched.id,
-      _id: enriched.id,
-      name: enriched.name,
-      email: enriched.email,
-    },
+    user: toHistoryUser(enriched),
     data,
   });
 });

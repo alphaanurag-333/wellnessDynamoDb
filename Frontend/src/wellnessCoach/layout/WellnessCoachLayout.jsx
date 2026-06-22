@@ -16,8 +16,9 @@ function titleFromPath(pathname) {
   if (/^\/coach\/my-assistants\/new\/?$/.test(p)) return "Add assistant";
   if (/^\/coach\/my-assistants\/[^/]+\/?$/.test(p)) return "Assistant details";
   if (/^\/coach\/my-assistants\/?$/.test(p)) return "Assistants (AWC)";
-  if (/^\/coach\/my-heal-users\/[^/]+\/water-tracking\/?$/.test(p)) return "Water tracking";
-  if (/^\/coach\/my-heal-users\/?$/.test(p)) return "Heal Clients";
+  if (/^\/coach\/my-users\/[^/]+\/water-tracking\/?$/.test(p)) return "Water tracking";
+  if (/^\/coach\/my-users\/[^/]+\/steps-tracking\/?$/.test(p)) return "Steps tracking";
+  if (/^\/coach\/my-users\/?$/.test(p)) return "My Clients";
   if (/^\/coach\/consultancy\/enrolled-users\/?$/.test(p)) return "Consultancy Enrolled Users";
   if (/^\/coach\/consultancy\/transactions\/?$/.test(p)) return "Consultancy Transactions";
   const segment = p.split("/").pop() || "dashboard";

@@ -169,6 +169,9 @@ export function UserView() {
           <Link to="water-tracking" className="btn btn--ghost user-page__edit-link">
             Water tracking
           </Link>
+          <Link to="steps-tracking" className="btn btn--ghost user-page__edit-link">
+            Steps tracking
+          </Link>
         </div>
       </div>
 

@@ -17,6 +17,7 @@ const {
   buildContainsFilter,
   sortByCreatedAtDesc,
 } = require("../utils/dynamoList");
+const { matchesAssignedClientTier } = require("./userAssignmentLogic");
 
 const TABLE = "User";
 
@@ -441,12 +442,9 @@ async function listUsersByParentCoachId(
     })
   );
 
-  let rows = Items.map(withLegacyId).filter((row) => {
-    const tier = normalizeUserTier(row.userTier);
-    if (normalizedTier === "client") return tier === "heal" || tier === "consultancy_only";
-    if (normalizedTier === "all") return true;
-    return tier === normalizeUserTier(normalizedTier, "");
-  });
+  let rows = Items.map(withLegacyId).filter((row) =>
+    matchesAssignedClientTier(row.userTier, normalizedTier)
+  );
 
   if (normalizedScope === "direct") {
     rows = rows.filter(
@@ -505,12 +503,9 @@ async function listUsersByAssignedCoachId(
   );
 
   let rows = Items.map(withLegacyId).filter((row) => {
-    const tier = normalizeUserTier(row.userTier);
     if (String(row.assignedCoachId || "") !== assigneeId) return false;
     if (normalizeAssignedCoachType(row.assignedCoachType) !== "assistant_wellness_coach") return false;
-    if (normalizedTier === "client") return tier === "heal" || tier === "consultancy_only";
-    if (normalizedTier === "all") return true;
-    return tier === normalizeUserTier(normalizedTier, "");
+    return matchesAssignedClientTier(row.userTier, normalizedTier);
   });
 
   if (normalizedSearch) {

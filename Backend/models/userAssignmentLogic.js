@@ -46,6 +46,20 @@ function isPaidClientTier(value) {
   return tier === "consultancy_only" || tier === "heal";
 }
 
+/** Seek, consultancy, and Heal users can use water/steps tracking in the mobile app. */
+function isWellnessTrackingTier(value) {
+  return USER_TIERS.has(normalizeUserTier(value));
+}
+
+/** Coach/assistant client lists: assigned users across all tracking-eligible tiers. */
+function matchesAssignedClientTier(value, filter = "client") {
+  const tier = normalizeUserTier(value);
+  const normalizedFilter = String(filter || "client").toLowerCase().trim();
+  if (normalizedFilter === "all") return true;
+  if (normalizedFilter === "client") return isWellnessTrackingTier(tier);
+  return tier === normalizeUserTier(normalizedFilter, "");
+}
+
 /**
  * Resolve assignment fields at Seek → Heal conversion time (write-time resolution).
  * @param {object|null} referralRecord - ReferralCode registry row
@@ -271,6 +285,8 @@ module.exports = {
   isHealTier,
   isConsultancyOnlyTier,
   isPaidClientTier,
+  isWellnessTrackingTier,
+  matchesAssignedClientTier,
   resolveConversionAssignment,
   validateHealUserAssignment,
   assertHealUserAssignment,

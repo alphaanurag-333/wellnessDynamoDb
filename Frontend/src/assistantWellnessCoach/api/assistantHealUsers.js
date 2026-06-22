@@ -42,3 +42,23 @@ export async function assistantGetUserWaterTracking(token, userId, { days = 30, 
     normalizeApiError(error);
   }
 }
+
+export async function assistantGetUserStepsTracking(token, userId, { days = 30, from, to } = {}) {
+  const q = new URLSearchParams();
+  if (days != null) q.set("days", String(days));
+  if (from) q.set("from", from);
+  if (to) q.set("to", to);
+  const suffix = q.toString() ? `?${q}` : "";
+  try {
+    const { data: body } = await assistantApi.get(
+      `/assistant/heal-users/${userId}/steps-tracking${suffix}`,
+      { headers: authHeader(token) }
+    );
+    return {
+      user: body.user ?? null,
+      data: body.data ?? { settings: {}, history: [], range: {}, connections: {} },
+    };
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}

@@ -258,7 +258,7 @@ export function WellnessCoachView() {
 
       <div className="page-card" style={{ marginTop: 24 }}>
         <div className="page-card__head">
-          <h3 className="page-card__title">Heal clients (direct + via assistants)</h3>
+          <h3 className="page-card__title">Assigned clients (direct + via assistants)</h3>
         </div>
         <div className="table-scroll">
           <table className="data-table">
@@ -276,7 +276,7 @@ export function WellnessCoachView() {
               ) : healUsers.length === 0 ? (
                 <tr>
                   <td colSpan={4}>
-                    <p className="table-placeholder">No Heal clients under this coach yet.</p>
+                    <p className="table-placeholder">No assigned clients under this coach yet.</p>
                   </td>
                 </tr>
               ) : (

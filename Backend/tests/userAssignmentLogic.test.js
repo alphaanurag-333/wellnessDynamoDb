@@ -4,6 +4,8 @@ const {
   resolveConversionAssignment,
   validateHealUserAssignment,
   resolveReassignmentPatch,
+  isWellnessTrackingTier,
+  matchesAssignedClientTier,
 } = require("../models/userAssignmentLogic");
 
 const COACH_ID = "coach-001";
@@ -233,5 +235,21 @@ describe("resolveReassignmentPatch", () => {
     assert.equal(patch.parentCoachId, COACH_ID);
     assert.equal(patch.assignmentStatus, "assigned");
     assert.equal(Object.hasOwn(patch, "referredByUserId"), false);
+  });
+});
+
+describe("wellness tracking tiers", () => {
+  it("treats seek, consultancy_only, and heal as tracking-eligible", () => {
+    assert.equal(isWellnessTrackingTier("seek"), true);
+    assert.equal(isWellnessTrackingTier("consultancy_only"), true);
+    assert.equal(isWellnessTrackingTier("heal"), true);
+  });
+
+  it("includes seek users in coach client list filter", () => {
+    assert.equal(matchesAssignedClientTier("seek", "client"), true);
+    assert.equal(matchesAssignedClientTier("consultancy_only", "client"), true);
+    assert.equal(matchesAssignedClientTier("heal", "client"), true);
+    assert.equal(matchesAssignedClientTier("heal", "seek"), false);
+    assert.equal(matchesAssignedClientTier("seek", "all"), true);
   });
 });
