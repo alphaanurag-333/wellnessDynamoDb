@@ -9,7 +9,7 @@ import { adminDeleteHealthRecipe, adminListHealthRecipes, adminUpdateHealthRecip
 import { logout } from "../../../store/authSlice.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { mediaUrl } from "../../../media.js";
-import { formatDate, LIST_LIMIT, LIST_SEARCH_MAX_LEN, truncate, useHealthConcerns } from "./HealthRecipeShared.js";
+import { formatDate, LIST_LIMIT, LIST_SEARCH_MAX_LEN, truncate, useHealthConcerns, buildConcernTitleMap, healthConcernLabel } from "./HealthRecipeShared.js";
 
 export function HealthRecipeList() {
   const dispatch = useDispatch();
@@ -26,7 +26,7 @@ export function HealthRecipeList() {
   const [listStatus, setListStatus] = useState("");
   const [listType, setListType] = useState("");
   const [listConcern, setListConcern] = useState("");
-  const concernMap = useMemo(() => Object.fromEntries(healthConcerns.map((x) => [x._id, x.title || ""])), [healthConcerns]);
+  const concernMap = useMemo(() => buildConcernTitleMap(healthConcerns), [healthConcerns]);
 
   const loadRows = useCallback(async () => {
     if (!adminToken) return;
@@ -138,8 +138,8 @@ export function HealthRecipeList() {
             <select className="user-field__input" value={listConcern} onChange={(e) => setListConcern(e.target.value)}>
               <option value="">All</option>
               {healthConcerns.map((c) => (
-                <option key={c._id} value={c._id}>
-                  {c.title || c._id}
+                <option key={c.id || c._id} value={c.id || c._id}>
+                  {c.title || c.id || c._id}
                 </option>
               ))}
             </select>
@@ -181,7 +181,7 @@ export function HealthRecipeList() {
                       )}
                     </td>
                     <td>{row.title || "—"}</td>
-                    <td className="data-table__muted">{concernMap[row.healthConcernId] || row.healthConcernId || "—"}</td>
+                    <td className="data-table__muted">{healthConcernLabel(row, concernMap)}</td>
                     <td className="data-table__muted">{row.type || "—"}</td>
                     <td className="data-table__muted">
                       {row.type === "ytlink" ? (

@@ -10,6 +10,7 @@ import { NavIcon } from "./NavIcon.jsx";
 import defaultLogo from "../../assets/logo/defaultlogo.png";
 
 const NAV_GROUP_PATTERNS = {
+  consultancy: /\/admin\/consultancy(\/|$)/,
   program: /\/admin\/(programs|coaches|awcs)(\/|$)/,
   wellness: /\/admin\/(nutrition-plans|support-tickets|camp-events|program-completions)(\/|$)/,
   content: /\/admin\/(banners|celebration-banners|notifications|faq|static-pages)(\/|$)/,
@@ -17,13 +18,24 @@ const NAV_GROUP_PATTERNS = {
   testimonials: /\/admin\/(transformations|client-testimonials|video-testimonials)(\/|$)/,
 };
 
+function normalizePath(pathname) {
+  return pathname.replace(/\/$/, "") || "/";
+}
+
 function pathInGroup(pathname, groupId) {
   return Boolean(NAV_GROUP_PATTERNS[groupId]?.test(pathname));
 }
 
 function childPathActive(pathname, segment) {
   const base = `/admin/${segment}`;
-  return pathname === base || pathname.startsWith(`${base}/`);
+  const p = normalizePath(pathname);
+  return p === base || p.startsWith(`${base}/`);
+}
+
+function isTopLevelNavActive(pathname, segment) {
+  const p = normalizePath(pathname);
+  const base = `/admin/${segment}`;
+  return p === base || p.startsWith(`${base}/`);
 }
 
 export function Sidebar({ id = "admin-sidebar", onNavigate, drawerOpen, desktopCollapsed }) {
@@ -127,9 +139,9 @@ export function Sidebar({ id = "admin-sidebar", onNavigate, drawerOpen, desktopC
                       key={child.to}
                       to={child.to}
                       title={child.label}
-                      className={({ isActive }) =>
+                      className={() =>
                         `admin-sidebar__link admin-sidebar__link--child${
-                          isActive ? " admin-sidebar__link--active" : ""
+                          childPathActive(location.pathname, child.to) ? " admin-sidebar__link--active" : ""
                         }`
                       }
                       onClick={onNavigate}
@@ -146,8 +158,10 @@ export function Sidebar({ id = "admin-sidebar", onNavigate, drawerOpen, desktopC
               key={item.to}
               to={item.to}
               title={item.label}
-              className={({ isActive }) =>
-                `admin-sidebar__link${isActive ? " admin-sidebar__link--active" : ""}`
+              className={() =>
+                `admin-sidebar__link${
+                  isTopLevelNavActive(location.pathname, item.to) ? " admin-sidebar__link--active" : ""
+                }`
               }
               onClick={onNavigate}
             >

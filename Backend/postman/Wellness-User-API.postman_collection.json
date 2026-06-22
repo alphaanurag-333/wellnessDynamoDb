@@ -483,6 +483,82 @@
       ]
     },
     {
+      "name": "Steps Tracking",
+      "description": "User step logs (`/api/user/steps-tracking`). All routes require Bearer token.\n\nAvailable to Seek, consultancy, and Heal users. Store `date` as `YYYY-MM-DD` in the user's local timezone.\n\nSee `docs/steps-tracking-native-formats.md` for Health Connect / HealthKit mapping.",
+      "item": [
+        {
+          "name": "Get Summary (today + history)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/steps-tracking?days=7&date={{todayDate}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "steps-tracking"],
+              "query": [
+                { "key": "days", "value": "7", "description": "1–90, default 7" },
+                { "key": "date", "value": "{{todayDate}}", "description": "Reference date YYYY-MM-DD (today)" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Sync (Health Connect)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"platform\": \"android\",\n  \"source\": \"health_connect\",\n  \"records\": [\n    {\n      \"date\": \"{{todayDate}}\",\n      \"platform\": \"android\",\n      \"source\": \"health_connect\",\n      \"stepCount\": 6000,\n      \"distanceMeters\": 4572,\n      \"caloriesKcal\": 240,\n      \"dataOrigin\": \"com.samsung.health\",\n      \"externalIds\": [\"a1b2c3d4-e5f6-7890-abcd-ef1234567890\"],\n      \"syncedAt\": \"2026-06-22T09:15:00.000Z\"\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/user/steps-tracking/sync"
+          },
+          "response": []
+        },
+        {
+          "name": "Sync (HealthKit)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"platform\": \"ios\",\n  \"source\": \"healthkit\",\n  \"records\": [\n    {\n      \"date\": \"{{todayDate}}\",\n      \"platform\": \"ios\",\n      \"source\": \"healthkit\",\n      \"stepCount\": 9012,\n      \"dataOrigin\": \"com.apple.Health\",\n      \"externalIds\": [\"e5f6g7h8-i9j0-1234-5678-90abcdef1234\"],\n      \"syncedAt\": \"2026-06-16T23:59:59.999Z\"\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/user/steps-tracking/sync"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Daily Goal",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"goalSteps\": 10000\n}"
+            },
+            "url": "{{baseUrl}}/user/steps-tracking/goal"
+          },
+          "response": []
+        },
+        {
+          "name": "Set Day Count (manual)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{todayDate}}\",\n  \"stepCount\": 8500\n}"
+            },
+            "url": "{{baseUrl}}/user/steps-tracking/day",
+            "description": "Set exact step count for a day (0–200000)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Consultancy Payment",
       "description": "Checkout, Razorpay/mock payment, and transaction history.",
       "item": [

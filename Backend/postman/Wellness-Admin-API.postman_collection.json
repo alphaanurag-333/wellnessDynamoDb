@@ -1793,6 +1793,29 @@
             "description": "GET /admin/users/:id/water-tracking"
           },
           "response": []
+        },
+        {
+          "name": "GET /admin/users/:id/steps-tracking",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/:id/steps-tracking?days=30",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "users", ":id", "steps-tracking"],
+              "query": [
+                { "key": "days", "value": "30" },
+                { "key": "from", "value": "", "disabled": true },
+                { "key": "to", "value": "", "disabled": true }
+              ],
+              "variable": [{ "key": "id", "value": "{{userId}}" }]
+            },
+            "description": "GET /admin/users/:id/steps-tracking — day-wise steps history for any user."
+          },
+          "response": []
         }
       ]
     },

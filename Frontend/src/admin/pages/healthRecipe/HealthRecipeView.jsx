@@ -7,7 +7,7 @@ import { logout } from "../../../store/authSlice.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { mediaUrl } from "../../../media.js";
 import { NotFoundPage } from "../NotFoundPage.jsx";
-import { formatDate, useHealthConcerns } from "./HealthRecipeShared.js";
+import { formatDate, useHealthConcerns, buildConcernTitleMap, healthConcernLabel } from "./HealthRecipeShared.js";
 
 function DetailRow({ label, value }) {
   return (
@@ -28,15 +28,7 @@ export function HealthRecipeView() {
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState("");
 
-  const concernMap = useMemo(() => {
-    const map = {};
-    for (const c of healthConcerns) {
-      const title = c.title || "";
-      if (c._id) map[c._id] = title;
-      if (c.id) map[c.id] = title;
-    }
-    return map;
-  }, [healthConcerns]);
+  const concernMap = useMemo(() => buildConcernTitleMap(healthConcerns), [healthConcerns]);
 
   useEffect(() => {
     if (!adminToken || !recipeId) return;
@@ -119,10 +111,7 @@ export function HealthRecipeView() {
         </div>
         <div className="user-view-grid">
           <DetailRow label="Title" value={recipe.title} />
-          <DetailRow
-            label="Health concern"
-            value={recipe.healthConcern?.title || concernMap[recipe.healthConcernId] || recipe.healthConcernId}
-          />
+          <DetailRow label="Health concern" value={healthConcernLabel(recipe, concernMap)} />
           <DetailRow label="Type" value={recipe.type === "video" ? "Video" : recipe.type === "ytlink" ? "YT Link" : recipe.type} />
           <DetailRow label="Status" value={recipe.status} />
           <DetailRow label="Created" value={formatDate(recipe.createdAt)} />

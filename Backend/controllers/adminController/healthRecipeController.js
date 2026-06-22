@@ -17,8 +17,39 @@ const {
   HEALTH_RECIPE_ALLOWED_TYPE,
 } = require("../../models/healthRecipeModel");
 const { parseVideoSpecificationFromBody } = require("../../utils/mediaFieldAliases");
+const { getHealthConcernById } = require("../../models/healthConcernModel");
 
 const S3_FOLDER = "health-recipe";
+
+async function attachHealthConcern(recipe) {
+  if (!recipe?.healthConcernId) return recipe;
+  const concern = await getHealthConcernById(recipe.healthConcernId);
+  return {
+    ...recipe,
+    healthConcern: concern
+      ? { id: concern.id || concern._id, title: concern.title || "" }
+      : null,
+  };
+}
+
+async function attachHealthConcerns(recipes) {
+  const ids = [...new Set(recipes.map((row) => String(row.healthConcernId || "").trim()).filter(Boolean))];
+  const titleById = new Map();
+
+  await Promise.all(
+    ids.map(async (id) => {
+      const concern = await getHealthConcernById(id);
+      if (concern) {
+        titleById.set(id, { id: concern.id || concern._id, title: concern.title || "" });
+      }
+    })
+  );
+
+  return recipes.map((recipe) => ({
+    ...recipe,
+    healthConcern: titleById.get(String(recipe.healthConcernId || "").trim()) || null,
+  }));
+}
 
 function resolveRecipeVideoField(body, uploadedVideo, type) {
   if (type === "ytlink") {
@@ -65,13 +96,14 @@ function parseVideoSpecification(value) {
 exports.listHealthRecipesController = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, status, type, healthConcernId, search } = req.query;
   const data = await listHealthRecipes({ page, limit, status, type, healthConcernId, search });
-  return res.status(200).json({ status: true, healthRecipes: data.healthRecipes, pagination: data.pagination });
+  const healthRecipes = await attachHealthConcerns(data.healthRecipes);
+  return res.status(200).json({ status: true, healthRecipes, pagination: data.pagination });
 });
 
 exports.getHealthRecipeByIdController = asyncHandler(async (req, res) => {
   const healthRecipe = await getHealthRecipeById(req.params.id);
   if (!healthRecipe) throw new AppError("Health recipe not found", 404);
-  return res.status(200).json({ status: true, healthRecipe });
+  return res.status(200).json({ status: true, healthRecipe: await attachHealthConcern(healthRecipe) });
 });
 
 exports.createHealthRecipeController = asyncHandler(async (req, res) => {

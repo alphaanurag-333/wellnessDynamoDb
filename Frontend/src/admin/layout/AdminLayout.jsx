@@ -15,6 +15,7 @@ function titleFromPath(pathname) {
   if (p.startsWith("/admin/consultancy")) {
     if (/^\/admin\/consultancy\/enrolled-users$/.test(p)) return "Enrolled Users";
     if (/^\/admin\/consultancy\/transactions$/.test(p)) return "Consultancy Transactions";
+    if (/^\/admin\/consultancy\/pending-assignment$/.test(p)) return "Pending Assignment";
     return "Consultancy Payments";
   }
 
@@ -23,7 +24,6 @@ function titleFromPath(pathname) {
     if (/^\/admin\/users\/[^/]+\/edit$/.test(p)) return "Edit User";
     if (/^\/admin\/users\/[^/]+\/water-tracking$/.test(p)) return "Water Tracking";
     if (/^\/admin\/users\/[^/]+\/steps-tracking$/.test(p)) return "Steps Tracking";
-    if (/^\/admin\/users\/pending-assignment$/.test(p)) return "Pending Assignment";
     if (/^\/admin\/users\/[^/]+$/.test(p)) return "User Details";
     return "User Management";
   }

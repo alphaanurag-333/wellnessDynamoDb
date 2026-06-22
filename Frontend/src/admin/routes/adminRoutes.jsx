@@ -95,10 +95,11 @@ export const adminRouteTree = (
 
     <Route path="consultancy/transactions" element={<ConsultancyTransactionList />} />
     <Route path="consultancy/enrolled-users" element={<ConsultancyEnrolledUsersList />} />
+    <Route path="consultancy/pending-assignment" element={<PendingAssignmentList />} />
 
     <Route path="users" element={<Outlet />}>
       <Route index element={<UserList />} />
-      <Route path="pending-assignment" element={<PendingAssignmentList />} />
+      <Route path="pending-assignment" element={<Navigate to="/admin/consultancy/pending-assignment" replace />} />
       <Route path="new" element={<UserAdd />} />
       <Route path=":userId/water-tracking" element={<AdminUserWaterTrackingPage />} />
       <Route path=":userId/steps-tracking" element={<AdminUserStepsTrackingPage />} />

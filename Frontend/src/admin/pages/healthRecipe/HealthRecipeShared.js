@@ -3,6 +3,12 @@ import Swal from "sweetalert2";
 import { adminListHealthConcerns } from "../../api/adminHealthConcerns.js";
 import { logout } from "../../../store/authSlice.js";
 
+import {
+  IMAGE_MAX_SIZE_BYTES,
+  VIDEO_MAX_SIZE_BYTES,
+  validateVideoFileSize,
+} from "../../../utils/mediaUploadValidation.js";
+
 export const TITLE_MIN_LEN = 2;
 export const TITLE_MAX_LEN = 50;
 export const DESCRIPTION_MIN_LEN = 5;
@@ -12,14 +18,24 @@ export const VIDEO_SPECS_MAX_LEN = 500;
 export const VIDEO_SPEC_ITEM_MAX_LEN = 100;
 export const MAX_VIDEO_SPEC_ROWS = 25;
 export const LIST_SEARCH_MAX_LEN = 50;
-export {
-  IMAGE_MAX_SIZE_BYTES,
-  VIDEO_MAX_SIZE_BYTES,
-  validateVideoFileSize,
-} from "../../../utils/mediaUploadValidation.js";
+export { IMAGE_MAX_SIZE_BYTES, VIDEO_MAX_SIZE_BYTES, validateVideoFileSize };
 export const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/jpg"]);
 export const ALLOWED_VIDEO_TYPES = new Set(["video/mp4", "video/webm", "video/ogg", "video/quicktime", "video/x-m4v"]);
 export const LIST_LIMIT = 10;
+
+export function buildConcernTitleMap(concerns) {
+  const map = {};
+  for (const concern of concerns) {
+    const title = concern.title || "";
+    const id = concern.id || concern._id;
+    if (id) map[id] = title;
+  }
+  return map;
+}
+
+export function healthConcernLabel(row, concernMap = {}) {
+  return row?.healthConcern?.title || concernMap[row?.healthConcernId] || row?.healthConcernId || "—";
+}
 
 export function emptyForm() {
   return {
@@ -142,7 +158,7 @@ export function useHealthConcerns(adminToken, dispatch) {
     let cancelled = false;
     (async () => {
       try {
-        const { healthConcerns: rowsData } = await adminListHealthConcerns(adminToken, { status: "active", limit: 200 });
+        const { healthConcerns: rowsData } = await adminListHealthConcerns(adminToken, { limit: 200 });
         if (!cancelled) setHealthConcerns(Array.isArray(rowsData) ? rowsData : []);
       } catch (e) {
         if (e?.status === 401) {

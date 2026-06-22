@@ -239,8 +239,8 @@ export function HealthRecipeForm({ mode = "create", initialRecipe = null }) {
           >
             <option value="">Select concern</option>
             {healthConcerns.map((c) => (
-              <option key={c._id} value={c._id}>
-                {c.title || c._id}
+              <option key={c.id || c._id} value={c.id || c._id}>
+                {c.title || c.id || c._id}
               </option>
             ))}
           </select>

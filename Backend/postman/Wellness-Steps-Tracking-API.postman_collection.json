@@ -1,0 +1,190 @@
+{
+  "info": {
+    "_postman_id": "wellness-steps-tracking-api",
+    "name": "Wellness Dynamo — Steps Tracking API",
+    "description": "Steps tracking endpoints for mobile users and portal roles.\n\nBase path: `/api`\n\n**Auth**\n- User (mobile): Bearer `{{accessToken}}` — available to Seek, consultancy, and Heal users.\n- Admin: Bearer `{{adminToken}}`\n- Coach: Bearer `{{coachToken}}`\n- Assistant: Bearer `{{assistantToken}}`\n\nImport `Wellness-API.postman_environment.json` and set `userId` for portal history routes.\n\n**Date format:** `YYYY-MM-DD` in the user's local timezone.\n\nSee `docs/steps-tracking-native-formats.md` for Health Connect / HealthKit field mapping.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000/api" },
+    { "key": "accessToken", "value": "" },
+    { "key": "adminToken", "value": "" },
+    { "key": "coachToken", "value": "" },
+    { "key": "assistantToken", "value": "" },
+    { "key": "userId", "value": "" },
+    { "key": "todayDate", "value": "2026-06-23" }
+  ],
+  "item": [
+    {
+      "name": "User (mobile)",
+      "description": "Authenticated user routes at `/api/user/steps-tracking`. Works for Seek (free), consultancy, and Heal tiers.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+      },
+      "item": [
+        {
+          "name": "GET Summary (today + history)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/steps-tracking?days=7&date={{todayDate}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "steps-tracking"],
+              "query": [
+                { "key": "days", "value": "7", "description": "1–90, default 7" },
+                { "key": "date", "value": "{{todayDate}}", "description": "Reference date YYYY-MM-DD" }
+              ]
+            },
+            "description": "Returns settings, today's log, recent history, and platform connections."
+          },
+          "response": []
+        },
+        {
+          "name": "POST Sync (Health Connect)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"platform\": \"android\",\n  \"source\": \"health_connect\",\n  \"records\": [\n    {\n      \"date\": \"{{todayDate}}\",\n      \"platform\": \"android\",\n      \"source\": \"health_connect\",\n      \"stepCount\": 6000,\n      \"distanceMeters\": 4572,\n      \"caloriesKcal\": 240,\n      \"dataOrigin\": \"com.samsung.health\",\n      \"externalIds\": [\"a1b2c3d4-e5f6-7890-abcd-ef1234567890\"],\n      \"syncedAt\": \"2026-06-22T09:15:00.000Z\"\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/user/steps-tracking/sync",
+            "description": "Bulk sync day records from Health Connect. Each record.platform and record.source must match the top-level values."
+          },
+          "response": []
+        },
+        {
+          "name": "POST Sync (HealthKit)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"platform\": \"ios\",\n  \"source\": \"healthkit\",\n  \"records\": [\n    {\n      \"date\": \"{{todayDate}}\",\n      \"platform\": \"ios\",\n      \"source\": \"healthkit\",\n      \"stepCount\": 9012,\n      \"dataOrigin\": \"com.apple.Health\",\n      \"externalIds\": [\"e5f6g7h8-i9j0-1234-5678-90abcdef1234\"],\n      \"syncedAt\": \"2026-06-16T23:59:59.999Z\"\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/user/steps-tracking/sync",
+            "description": "Bulk sync day records from Apple HealthKit."
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH Update Daily Goal",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"goalSteps\": 10000\n}"
+            },
+            "url": "{{baseUrl}}/user/steps-tracking/goal",
+            "description": "goalSteps must be an integer between 1000 and 50000."
+          },
+          "response": []
+        },
+        {
+          "name": "PUT Set Day Count (manual)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{todayDate}}\",\n  \"stepCount\": 8500\n}"
+            },
+            "url": "{{baseUrl}}/user/steps-tracking/day",
+            "description": "Set exact step count for a day (0–200000). Source is stored as manual."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "description": "Admin portal history for any user.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }]
+      },
+      "item": [
+        {
+          "name": "GET /admin/users/:id/steps-tracking",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/{{userId}}/steps-tracking?days=30",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "users", "{{userId}}", "steps-tracking"],
+              "query": [
+                { "key": "days", "value": "30", "description": "1–366, default 30" },
+                { "key": "from", "value": "", "description": "Optional YYYY-MM-DD start", "disabled": true },
+                { "key": "to", "value": "", "description": "Optional YYYY-MM-DD end", "disabled": true }
+              ]
+            },
+            "description": "Day-wise steps history, settings, and platform connections for a user."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Coach",
+      "description": "Coach portal history for users under the coach hierarchy.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [{ "key": "token", "value": "{{coachToken}}", "type": "string" }]
+      },
+      "item": [
+        {
+          "name": "GET /coach/heal-users/:id/steps-tracking",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/coach/heal-users/{{userId}}/steps-tracking?days=30",
+              "host": ["{{baseUrl}}"],
+              "path": ["coach", "heal-users", "{{userId}}", "steps-tracking"],
+              "query": [
+                { "key": "days", "value": "30" },
+                { "key": "from", "value": "", "disabled": true },
+                { "key": "to", "value": "", "disabled": true }
+              ]
+            },
+            "description": "Requires user.parentCoachId to match the authenticated coach. Includes Seek users when assigned."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Assistant",
+      "description": "Assistant coach portal history for directly assigned users.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [{ "key": "token", "value": "{{assistantToken}}", "type": "string" }]
+      },
+      "item": [
+        {
+          "name": "GET /assistant/heal-users/:id/steps-tracking",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assistant/heal-users/{{userId}}/steps-tracking?days=30",
+              "host": ["{{baseUrl}}"],
+              "path": ["assistant", "heal-users", "{{userId}}", "steps-tracking"],
+              "query": [
+                { "key": "days", "value": "30" },
+                { "key": "from", "value": "", "disabled": true },
+                { "key": "to", "value": "", "disabled": true }
+              ]
+            },
+            "description": "Requires user.assignedCoachId to match the authenticated assistant."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
