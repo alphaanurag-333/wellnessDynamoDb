@@ -41,7 +41,6 @@ export function BirthdayNotificationList() {
   const [total, setTotal] = useState(0);
   const [listStatus, setListStatus] = useState("");
   const [listDate, setListDate] = useState(() => localTodayDateOnly());
-  const autoJobRanRef = useRef(false);
   const jobInFlightRef = useRef(false);
 
   const loadRows = useCallback(async () => {
@@ -100,53 +99,34 @@ export function BirthdayNotificationList() {
     }
   };
 
-  const runJobForDate = useCallback(
-    async (dateOnly, { silent = false } = {}) => {
-      if (!adminToken || jobInFlightRef.current) return null;
-      jobInFlightRef.current = true;
-      setRunningJob(true);
-      try {
-        const result = await adminRunBirthdayJob(adminToken, { dateOnly });
-        if (!silent) {
-          await Swal.fire({
-            icon: "success",
-            title: "Job complete",
-            html: `
-              <p><strong>Date:</strong> ${result.dateOnly}</p>
-              <p><strong>Matched by dob:</strong> ${result.matchedUsers ?? 0}</p>
-              <p><strong>Sent:</strong> ${result.sent ?? 0} · <strong>Created:</strong> ${result.created ?? 0} · <strong>Skipped:</strong> ${result.skipped ?? 0}</p>
-            `,
-            timer: 2500,
-            showConfirmButton: true,
-          });
-        }
-        if (!listDate) setListDate(dateOnly);
-        await loadRows();
-        return result;
-      } catch (e) {
-        if (e?.status === 401) {
-          dispatch(logout());
-          return null;
-        }
-        if (!silent) {
-          await Swal.fire({ icon: "error", title: "Job failed", text: e.message });
-        }
-        return null;
-      } finally {
-        jobInFlightRef.current = false;
-        setRunningJob(false);
-      }
-    },
-    [adminToken, dispatch, listDate, loadRows]
-  );
-
-  const onRunJob = () => runJobForDate(listDate || localTodayDateOnly(), { silent: false });
-
-  useEffect(() => {
-    if (!adminToken || autoJobRanRef.current) return;
-    autoJobRanRef.current = true;
-    void runJobForDate(localTodayDateOnly(), { silent: true });
-  }, [adminToken, runJobForDate]);
+  const onRunJob = async () => {
+    if (!adminToken || jobInFlightRef.current) return;
+    const dateOnly = listDate || localTodayDateOnly();
+    jobInFlightRef.current = true;
+    setRunningJob(true);
+    try {
+      const result = await adminRunBirthdayJob(adminToken, { dateOnly });
+      await Swal.fire({
+        icon: "success",
+        title: "Job complete",
+        html: `
+          <p><strong>Date:</strong> ${result.dateOnly}</p>
+          <p><strong>Matched by dob:</strong> ${result.matchedUsers ?? 0}</p>
+          <p><strong>Sent:</strong> ${result.sent ?? 0} · <strong>Created:</strong> ${result.created ?? 0} · <strong>Skipped:</strong> ${result.skipped ?? 0}</p>
+        `,
+        timer: 2500,
+        showConfirmButton: true,
+      });
+      if (!listDate) setListDate(dateOnly);
+      await loadRows();
+    } catch (e) {
+      if (e?.status === 401) return dispatch(logout());
+      await Swal.fire({ icon: "error", title: "Job failed", text: e.message });
+    } finally {
+      jobInFlightRef.current = false;
+      setRunningJob(false);
+    }
+  };
 
   return (
     <div className="user-page">

@@ -27,6 +27,9 @@ async function start() {
   try {
     await connectDatabase();
 
+    const { startBirthdayJobCron } = require("./jobs/birthdayJobCron");
+    startBirthdayJobCron();
+
     app.listen(config.port, () => {
       console.log(`Server is running on port ${config.port}`);
     });

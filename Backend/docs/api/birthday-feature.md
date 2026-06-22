@@ -30,13 +30,25 @@ node migration/migrateAll.js --only=09-birthday-tables
 node migration/migrateAll.js --only=10-user-dob-month-day-index
 ```
 
-Schedule the daily job (cron example, midnight IST). Each run automatically creates notifications, sends FCM pushes, and creates birthday posts:
+Schedule the daily job at **12:05 AM** in `BIRTHDAY_JOB_TIMEZONE` (default `Asia/Kolkata`).
+
+When the API server is running in production, the job is scheduled automatically via `node-cron` (`Backend/jobs/birthdayJobCron.js`). Each run creates notifications, sends FCM pushes, and creates birthday posts.
+
+**Env (optional)**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `BIRTHDAY_JOB_TIMEZONE` | `Asia/Kolkata` | Calendar date used for “today” |
+| `BIRTHDAY_JOB_CRON_SCHEDULE` | `5 0 * * *` | Cron expression (12:05 AM) |
+| `BIRTHDAY_JOB_CRON_ENABLED` | `true` in production | Set `false` to disable in-process cron |
+
+**Manual / external cron** (if the server is not always on):
 
 ```bash
-0 0 * * * cd /path/to/Backend && node scripts/runBirthdayJob.js
+5 0 * * * cd /path/to/Backend && node scripts/runBirthdayJob.js
 ```
 
-Optional env: `BIRTHDAY_JOB_TIMEZONE=Asia/Kolkata`
+Use the same `BIRTHDAY_JOB_TIMEZONE` on the host, or rely on the script default.
 
 ---
 
@@ -516,8 +528,6 @@ curl -s -X DELETE "http://localhost:5000/api/admin/birthday-posts/POST_UUID/comm
    - Always ensures an active `BirthdayPost` is created (even when push fails).
 4. Push uses `sendPushToTokens` with the user's `fcm_id`. If no token is registered, status remains `failed` (`reason: no_token` in job `results`).
 5. Admin **Resend** (`POST .../resend`) can manually retry a single notification at any time.
-
-The admin Birthday Notifications page also runs this job silently on first load for today, then refreshes the list.
 
 ---
 

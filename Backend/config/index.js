@@ -49,4 +49,12 @@ module.exports = {
 
   whatsappPhoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || "",
   whatsappAccessToken: process.env.WHATSAPP_ACCESS_TOKEN || "",
+
+  birthdayJobTimezone: process.env.BIRTHDAY_JOB_TIMEZONE || "Asia/Kolkata",
+  // 12:05 AM daily — minute 5, hour 0
+  birthdayJobCronSchedule: process.env.BIRTHDAY_JOB_CRON_SCHEDULE || "5 0 * * *",
+  birthdayJobCronEnabled:
+    process.env.BIRTHDAY_JOB_CRON_ENABLED === "true" ||
+    (process.env.BIRTHDAY_JOB_CRON_ENABLED !== "false" &&
+      (process.env.NODE_ENV || "development") === "production"),
 };
