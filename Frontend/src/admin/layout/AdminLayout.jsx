@@ -81,6 +81,8 @@ function titleFromPath(pathname) {
     return "Video testimonials";
   }
 
+  if (p.startsWith("/admin/cofounder-message")) return "Cofounder message";
+
   if (p.startsWith("/admin/health-recipes")) {
     if (/^\/admin\/health-recipes\/new$/.test(p)) return "Add health recipe";
     if (/^\/admin\/health-recipes\/[^/]+\/edit$/.test(p)) return "Edit health recipe";

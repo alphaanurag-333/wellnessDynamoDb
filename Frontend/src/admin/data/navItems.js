@@ -40,7 +40,7 @@ export const navItems = [
   { to: "birthday-posts", label: "Birthday Posts", icon: "cake" },
   { to: "birthday-notifications", label: "Birthday Notifications", icon: "bell" },
   { to: "notifications", label: "Notifications", icon: "bell" },
-  { to: "coupons", label: "Coupons", icon: "percent" },
+  // { to: "coupons", label: "Coupons", icon: "percent" },
   { to: "faq", label: "FAQ", icon: "help" },
   { to: "static-pages", label: "Static Pages", icon: "file" },
 

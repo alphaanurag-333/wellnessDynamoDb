@@ -63,6 +63,7 @@ import { VideoTestimonialList } from "../pages/videoTestimonial/VideoTestimonial
 import { VideoTestimonialAdd } from "../pages/videoTestimonial/VideoTestimonialAdd.jsx";
 import { VideoTestimonialEdit } from "../pages/videoTestimonial/VideoTestimonialEdit.jsx";
 import { VideoTestimonialView } from "../pages/videoTestimonial/VideoTestimonialView.jsx";
+import { CofounderMessagePage } from "../pages/cofounderMessage/CofounderMessagePage.jsx";
 import {SectionPage} from "../pages/SectionPage.jsx";
 import { UserAdd } from "../pages/user/UserAdd.jsx";
 import { UserEdit } from "../pages/user/UserEdit.jsx";
@@ -220,6 +221,8 @@ export const adminRouteTree = (
       <Route path=":testimonialId/edit" element={<VideoTestimonialEdit />} />
       <Route path=":testimonialId" element={<VideoTestimonialView />} />
     </Route>
+
+    <Route path="cofounder-message" element={<CofounderMessagePage />} />
 
     <Route path="*" element={<NotFoundPage />} />
   </Route>

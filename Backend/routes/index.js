@@ -20,6 +20,7 @@ const adminBirthdayNotificationRoutes = require("./adminRoutes/adminBirthdayNoti
 const adminBirthdayPostRoutes = require("./adminRoutes/adminBirthdayPostRoutes");
 const adminClientTestimonialsRoutes = require("./adminRoutes/adminClientTestimonialsRoutes");
 const adminVideoTestimonialsRoutes = require("./adminRoutes/adminVideoTestimonialsRoutes");
+const adminCofounderMessageRoutes = require("./adminRoutes/adminCofounderMessageRoutes");
 const adminConsultancyRoutes = require("./adminRoutes/adminConsultancyRoutes");
 const publicAppConfigRoutes = require("./publicRoutes/publicAppConfigRoutes");
 const miscRoutes = require("./userRoutes/miscRoutes");
@@ -64,6 +65,7 @@ router.use("/admin/birthday-notifications", adminBirthdayNotificationRoutes);
 router.use("/admin/birthday-posts", adminBirthdayPostRoutes);
 router.use("/admin/client-testimonials", adminClientTestimonialsRoutes);
 router.use("/admin/video-testimonials", adminVideoTestimonialsRoutes);
+router.use("/admin/cofounder-message", adminCofounderMessageRoutes);
 router.use("/admin/consultancy", adminConsultancyRoutes);
 router.use("/admin/health-concerns", adminHealthConcernRoutes);
 router.use("/admin/health-disorders", adminHealthDisorderRoutes);

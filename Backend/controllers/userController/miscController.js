@@ -5,6 +5,7 @@ const { listFaqs } = require("../../models/faqModel");
 const { getPageBySlug, slugify } = require("../../models/staticPageModel");
 const { listClientTestimonials } = require("../../models/clientTestimonials");
 const { listVideoTestimonials } = require("../../models/videoTestimonials");
+const { getCofounderMessage } = require("../../models/cofounderMessageModel");
 const { listHealthConcerns } = require("../../models/healthConcernModel");
 const { listHealthDisorders } = require("../../models/healthDisorderModel");
 const { listHealthTools } = require("../../models/healthToolModel");
@@ -82,6 +83,18 @@ exports.getActiveVideoTestimonials = asyncHandler(async (req, res) => {
     status: true,
     videoTestimonials: data.videoTestimonials,
     pagination: data.pagination,
+  });
+});
+
+exports.getCofounderMessage = asyncHandler(async (req, res) => {
+  const record = await getCofounderMessage();
+  const cofounderMessage =
+    record && String(record.status || "active").toLowerCase() === "active" ? record : null;
+
+  return res.status(200).json({
+    status: true,
+    message: cofounderMessage ? "Cofounder message fetched" : "Cofounder message not available",
+    data: cofounderMessage,
   });
 });
 

@@ -18,6 +18,15 @@ export async function fetchVideoTestimonials(params = {}) {
   }
 }
 
+export async function fetchCofounderMessage() {
+  try {
+    const { data } = await api.get("/public/misc/cofounder-message");
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function fetchHealthRecipes(params = {}) {
   try {
     const { data } = await api.get("/public/misc/health-recipes", { params });

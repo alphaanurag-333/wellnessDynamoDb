@@ -5,6 +5,7 @@ const {
   getStaticPageBySlug,
   getActiveClientTestimonials,
   getActiveVideoTestimonials,
+  getCofounderMessage,
   getActiveHealthConcerns,
   getActiveHealthDisorders,
   getActiveHealthTools,
@@ -22,6 +23,7 @@ router.get("/faqs", getActiveFaqs);
 router.get("/pages/:slug", getStaticPageBySlug);
 router.get("/client-testimonials", getActiveClientTestimonials);
 router.get("/video-testimonials", getActiveVideoTestimonials);
+router.get("/cofounder-message", getCofounderMessage);
 router.get("/health-concerns", getActiveHealthConcerns);
 router.get("/health-disorders", getActiveHealthDisorders);
 router.get("/health-tools", getActiveHealthTools);
