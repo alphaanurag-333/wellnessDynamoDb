@@ -15,6 +15,7 @@ import BmiCalculator from "../components/BmiCalculator.jsx";
 import WellnessHero from "../components/WellnessHero.jsx";
 import Methodology from "../components/Methodology.jsx";
 import AboutSection from "../components/AboutUs.jsx";
+import FinalCTA from "../components/FinalCTA.jsx";
 
 export function HomePage() {
   const [testimonials, setTestimonials] = useState(null);
@@ -61,7 +62,8 @@ export function HomePage() {
       {/* <AppDownloadSection /> */}
       <CommunitySection />
       <BmiCalculator />
-      <ContactSection />
+      <FinalCTA/>
+      {/* <ContactSection /> */}
     </>
   );
 }

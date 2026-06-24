@@ -1410,7 +1410,7 @@
 
   /* ========== Backgrounds ========== */
 
-  --bg-body: #f9f4f0;
+  --bg-body: #fef4ed;
   --bg-section: #f5eeea;
   --bg-card: #ffffff;
   --bg-orange-section: #e7863a;
@@ -1525,7 +1525,7 @@
 
   /* Footer */
 
-  --footer-bg: #f7f1ed;
+  --footer-bg: #FEF4ED;
   --footer-title: #342b27;
   --footer-text: #7b7571;
 }
@@ -2264,7 +2264,7 @@ a:hover {
 
 .wellness-hero {
   width: 100%;
-  background: var(--bg-body);
+  background: #fef4ed;
   padding: 90px 0;
   overflow: hidden;
 }
@@ -2875,41 +2875,6 @@ a:hover {
   opacity: 1;
 }
 
-@media (max-width: 991px) {
-  .success-card {
-    padding: 30px;
-  }
-
-  .success-card__review {
-    font-size: 18px;
-  }
-}
-
-@media (max-width: 576px) {
-  .success-stories {
-    padding: 70px 0;
-  }
-
-  .success-stories__header h2 {
-    font-size: 40px;
-  }
-
-  .success-card {
-    flex-direction: column;
-    gap: 18px;
-    min-height: auto;
-  }
-
-  .success-card__avatar {
-    width: 72px;
-    height: 72px;
-  }
-
-  .success-card__review {
-    font-size: 16px;
-  }
-}
-
 /* --------BMI Calc------------ */
 
 .bmi-section {
@@ -3057,6 +3022,129 @@ a:hover {
   line-height: 28px;
   color: var(--text-body);
 }
+
+/* ------FinalCTA-------------- */
+
+.final-cta {
+  width: 100%;
+  padding: 70px 0;
+
+  position: relative;
+  overflow: hidden;
+
+  background: linear-gradient(
+    135deg,
+    var(--primary-500) 0%,
+    var(--primary-700) 100%
+  );
+}
+
+.final-cta__overlay {
+  position: absolute;
+  inset: 0;
+
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(0, 0, 0, 0.05) 100%
+  );
+}
+
+.final-cta__shape {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.final-cta__shape--top {
+  width: 240px;
+  height: 240px;
+
+  top: -120px;
+  right: -120px;
+}
+
+.final-cta__shape--bottom {
+  width: 180px;
+  height: 180px;
+
+  left: -90px;
+  bottom: -90px;
+}
+
+.final-cta .site-container {
+  position: relative;
+  z-index: 2;
+}
+
+.final-cta__content {
+  width: 100%;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  text-align: center;
+}
+
+.final-cta__title {
+  margin: 0;
+
+  color: var(--text-white);
+
+  font-size: 65px;
+  line-height: 0.95;
+  font-weight: var(--fw-bold);
+
+  max-width: 900px;
+}
+
+.final-cta__description {
+  margin-top: 34px;
+
+  width: 100%;
+  max-width: 700px;
+
+  color: rgba(255, 255, 255, 0.75);
+
+  font-size: 20px;
+  line-height: 1.7;
+  font-weight: var(--fw-regular);
+}
+
+.final-cta__button {
+  margin-top: 42px;
+
+  width: 380px;
+  height: 68px;
+
+  border: none;
+  border-radius: var(--radius-pill);
+
+  background: #007d1f;
+  color: var(--text-white);
+
+  font-size: 18px;
+  font-weight: var(--fw-bold);
+
+  cursor: pointer;
+
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+
+  transition: var(--transition);
+}
+
+.final-cta__button:hover {
+  transform: translateY(-3px);
+}
+
+.final-cta__button:active {
+  transform: translateY(0);
+}
+
+
+
 
 /* ---------Footer------------------- */
 
@@ -3382,6 +3470,25 @@ a:hover {
   .about-title {
     font-size: 56px;
   }
+  .success-card {
+    padding: 30px;
+  }
+
+  .success-card__review {
+    font-size: 18px;
+  }
+   .final-cta {
+    padding: 90px 0;
+  }
+
+  .final-cta__title {
+    font-size: 58px;
+  }
+
+  .final-cta__description {
+    font-size: 18px;
+    max-width: 600px;
+  }
 }
 
 @media (max-width: 767px) {
@@ -3505,6 +3612,40 @@ a:hover {
   .about-btn {
     width: 100%;
   }
+  .final-cta {
+    padding: 70px 0;
+  }
+
+  .final-cta__title {
+    font-size: 40px;
+    line-height: 1.1;
+  }
+
+  .final-cta__description {
+    margin-top: 24px;
+    font-size: 16px;
+  }
+
+  .final-cta__button {
+    width: 100%;
+    max-width: 340px;
+    height: 60px;
+    margin-top: 32px;
+  }
+
+  .final-cta__shape--top {
+    width: 180px;
+    height: 180px;
+    top: -90px;
+    right: -90px;
+  }
+
+  .final-cta__shape--bottom {
+    width: 140px;
+    height: 140px;
+    left: -70px;
+    bottom: -70px;
+  }
 }
 
 @media (max-width: 576px) {
@@ -3573,5 +3714,27 @@ a:hover {
   .print-btn {
     width: 100%;
     border-radius: 999px;
+  }
+  .success-stories {
+    padding: 70px 0;
+  }
+
+  .success-stories__header h2 {
+    font-size: 40px;
+  }
+
+  .success-card {
+    flex-direction: column;
+    gap: 18px;
+    min-height: auto;
+  }
+
+  .success-card__avatar {
+    width: 72px;
+    height: 72px;
+  }
+
+  .success-card__review {
+    font-size: 16px;
   }
 }
