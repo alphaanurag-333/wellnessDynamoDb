@@ -23,8 +23,8 @@ function FooterBrandText({ text }) {
   if (!lines.length) {
     return (
       <p className="site-footer__brand-text">
-        Personalized wellness coaching, community support, and programs designed for lasting health
-        transformation.
+        Personalized wellness coaching, community support, and programs designed
+        for lasting health transformation.
       </p>
     );
   }
@@ -39,76 +39,119 @@ function FooterBrandText({ text }) {
 export function SiteFooter() {
   const brandLogoUrl = useSelector(selectLoginBrandLogoUrl);
   const { appName, footerText, contact, social } = useSiteConfig();
+
   const logoSrc = brandLogoUrl || defaultLogo;
   const year = new Date().getFullYear();
-  const showBottomCopyright = !String(footerText || "").includes("©");
 
   return (
     <footer className="site-footer">
       <div className="site-container">
-        <div className="site-footer__grid">
-          <div>
-            <img className="site-footer__brand-logo" src={logoSrc} alt="" width={48} height={48} />
-            <p className="site-footer__brand-name">{appName}</p>
+        <div className="site-footer__top">
+          {/* Brand */}
+          <div className="site-footer__brand">
+            <img
+              src={logoSrc}
+              alt={appName}
+              className="site-footer__brand-logo"
+            />
+
+            <h3 className="site-footer__brand-name">{appName}</h3>
+
             <FooterBrandText text={footerText} />
-            {social.length > 0 ? (
-              <div className="site-footer__social" aria-label="Social media">
+
+            {social.length > 0 && (
+              <div className="site-footer__social">
                 {social.map((item) => {
                   const Icon = SOCIAL_ICONS[item.icon];
+
                   return (
                     <a
                       key={item.key}
                       href={item.href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      aria-label={item.label}
                     >
-                      {Icon ? <Icon size={18} /> : item.label}
+                      {Icon && <Icon />}
                     </a>
                   );
                 })}
               </div>
-            ) : null}
+            )}
           </div>
 
-          {FOOTER_NAV_GROUPS.map((group) => (
-            <div key={group.title}>
-              <p className="site-footer__group-title">{group.title}</p>
-              <ul className="site-footer__links">
-                {group.links.map((link) => (
-                  <li key={link.to}>
-                    <Link to={link.to}>{link.label}</Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          {/* Quick Links */}
+          <div className="site-footer__links-wrap">
+            <h4>QUICK LINKS</h4>
 
-          <div>
-            <p className="site-footer__group-title">Contact</p>
-            <ul className="site-footer__links">
-              {contact.email ? (
-                <li>
-                  <a href={`mailto:${contact.email}`}>{contact.email}</a>
-                </li>
-              ) : null}
-              {contact.phone ? (
-                <li>
-                  <a href={`tel:${contact.phone.replace(/\s/g, "")}`}>{contact.phone}</a>
-                </li>
-              ) : null}
-              {contact.address ? <li>{contact.address}</li> : null}
+            <ul>
+              <li>
+                <Link to="/">Home</Link>
+              </li>
+              <li>
+                <Link to="/about">About Us</Link>
+              </li>
+              <li>
+                <Link to="/solutions">Health Solutions</Link>
+              </li>
+              <li>
+                <Link to="/stories">Success Stories</Link>
+              </li>
+              <li>
+                <Link to="/resources">Clinical Resources</Link>
+              </li>
+              <li>
+                <Link to="/contact">Contact Us</Link>
+              </li>
             </ul>
+          </div>
+
+          {/* Contact */}
+          <div className="site-footer__contact">
+            <h4>CONTACT US</h4>
+
+            <div className="site-footer__contact-item">
+              <p>{contact.address}</p>
+            </div>
+
+            <div className="site-footer__contact-item">
+              <a href={`tel:${contact.phone}`}>{contact.phone}</a>
+            </div>
+
+            <div className="site-footer__contact-item">
+              <a href={`mailto:${contact.email}`}>{contact.email}</a>
+            </div>
+          </div>
+
+          {/* Newsletter */}
+          <div className="site-footer__newsletter">
+            <h4>STAY INFORMED</h4>
+
+            <p>
+              Join our mailing list for latest medical research updates and
+              wellness tips.
+            </p>
+
+            <input type="email" placeholder="Email Address" />
+
+            <button type="button">Subscribe Now</button>
           </div>
         </div>
 
-        {showBottomCopyright ? (
-          <div className="site-footer__bottom">
-            <p>
-              &copy; {year} {appName}. All rights reserved.
-            </p>
+        {/* Bottom */}
+
+        <div className="site-footer__bottom">
+          <p>
+            © {year} {appName}. All rights reserved.
+          </p>
+
+          <div className="site-footer__bottom-links">
+            <Link to="/privacy-policy">Privacy Policy</Link>
+
+            <Link to="/terms">Terms of Service</Link>
+
+            <Link to="/cookies">Cookie Settings</Link>
           </div>
-        ) : null}
+        </div>
       </div>
     </footer>
   );

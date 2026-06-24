@@ -7,6 +7,9 @@ import { FeaturedTestimonial } from "../components/FeaturedTestimonial.jsx";
 import { SiteHero } from "../components/SiteHero.jsx";
 import { ChallengeBanner, CommunitySection, StatsSection } from "../components/PromoSections.jsx";
 import { TestimonialsSection } from "../components/TestimonialsSection.jsx";
+import BmiCalculator from "../components/BmiCalculator.jsx";
+import WellnessHero from "../components/WellnessHero.jsx";
+import Methodology from "../components/Methodology.jsx";
 
 export function HomePage() {
   const [testimonials, setTestimonials] = useState(null);
@@ -34,7 +37,10 @@ export function HomePage() {
   return (
     <>
       <SiteHero />
+      <WellnessHero/>
       <StatsSection />
+      <Methodology/>
+
       <AboutSection />
       <ServicesSection />
       <FeaturedTestimonial testimonial={featured} />
@@ -50,6 +56,7 @@ export function HomePage() {
       <ChallengeBanner />
       <AppDownloadSection />
       <CommunitySection />
+      <BmiCalculator/>
       <ContactSection />
     </>
   );
