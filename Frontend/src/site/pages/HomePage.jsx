@@ -1,15 +1,20 @@
 import { useEffect, useState } from "react";
 import { fetchClientTestimonials } from "../api/publicMisc.js";
-import { AboutSection, ServicesSection } from "../components/InfoSections.jsx";
+import {  ServicesSection } from "../components/InfoSections.jsx";
 import { AppDownloadSection } from "../components/AppDownloadSection.jsx";
 import { ContactSection } from "../components/ContactSection.jsx";
 import { FeaturedTestimonial } from "../components/FeaturedTestimonial.jsx";
 import { SiteHero } from "../components/SiteHero.jsx";
-import { ChallengeBanner, CommunitySection, StatsSection } from "../components/PromoSections.jsx";
-import { TestimonialsSection } from "../components/TestimonialsSection.jsx";
+import {
+  ChallengeBanner,
+  CommunitySection,
+  StatsSection,
+} from "../components/PromoSections.jsx";
+import  TestimonialsSection  from "../components/TestimonialsSection.jsx";
 import BmiCalculator from "../components/BmiCalculator.jsx";
 import WellnessHero from "../components/WellnessHero.jsx";
 import Methodology from "../components/Methodology.jsx";
+import AboutSection from "../components/AboutUs.jsx";
 
 export function HomePage() {
   const [testimonials, setTestimonials] = useState(null);
@@ -37,13 +42,12 @@ export function HomePage() {
   return (
     <>
       <SiteHero />
-      <WellnessHero/>
+      <WellnessHero />
       <StatsSection />
-      <Methodology/>
-
       <AboutSection />
+      <Methodology />
       <ServicesSection />
-      <FeaturedTestimonial testimonial={featured} />
+      {/* <FeaturedTestimonial testimonial={featured} /> */}
       {testimonialsReady ? (
         <TestimonialsSection items={testimonials} />
       ) : (
@@ -53,10 +57,10 @@ export function HomePage() {
           </div>
         </section>
       )}
-      <ChallengeBanner />
-      <AppDownloadSection />
+      {/* <ChallengeBanner /> */}
+      {/* <AppDownloadSection /> */}
       <CommunitySection />
-      <BmiCalculator/>
+      <BmiCalculator />
       <ContactSection />
     </>
   );
