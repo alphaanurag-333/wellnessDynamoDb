@@ -13,7 +13,13 @@ import {
 } from "../../api/clientTestimonialsController.js";
 import { logout } from "../../../store/authSlice.js";
 import { mediaUrl } from "../../../media.js";
-import { LIST_LIMIT, sanitizeSingleLine, SEARCH_MAX_LEN } from "./ClientTestimonialShared.js";
+import {
+  DESCRIPTION_PREVIEW_LEN,
+  LIST_LIMIT,
+  sanitizeSingleLine,
+  SEARCH_MAX_LEN,
+  truncate,
+} from "./ClientTestimonialShared.js";
 
 export function ClientTestimonialList() {
   const dispatch = useDispatch();
@@ -160,7 +166,9 @@ export function ClientTestimonialList() {
                     </td>
                     <td>{row.name || "—"}</td>
                     <td className="data-table__muted">{row.rating ?? "—"}</td>
-                    <td>{row.description || "—"}</td>
+                    <td className="data-table__muted" title={row.description || ""}>
+                      {row.description ? truncate(row.description, DESCRIPTION_PREVIEW_LEN) : "—"}
+                    </td>
                     <td>
                       <button
                         type="button"

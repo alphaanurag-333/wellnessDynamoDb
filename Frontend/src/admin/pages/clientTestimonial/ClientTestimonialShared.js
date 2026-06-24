@@ -1,6 +1,7 @@
 export const LIST_LIMIT = 10;
 export const NAME_MAX_LEN = 35;
 export const DESCRIPTION_MAX_LEN = 500;
+export const DESCRIPTION_PREVIEW_LEN = 80;
 export const SEARCH_MAX_LEN = 50;
 export { IMAGE_MAX_SIZE_BYTES } from "../../../utils/mediaUploadValidation.js";
 
@@ -21,4 +22,10 @@ export function formatDateTime(value) {
   const t = new Date(value).getTime();
   if (Number.isNaN(t)) return "—";
   return new Date(value).toLocaleString();
+}
+
+export function truncate(str, max) {
+  const s = String(str ?? "");
+  if (s.length <= max) return s;
+  return `${s.slice(0, max)}…`;
 }
