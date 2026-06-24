@@ -53,19 +53,22 @@ export function emptyForm() {
 export function sanitizeVideoSpecItem(value) {
   return String(value ?? "")
     .replace(/\s+/g, " ")
-    .trim()
     .slice(0, VIDEO_SPEC_ITEM_MAX_LEN);
 }
 
 /** Map API array to editable rows (always at least one row). */
 export function videoSpecsFromApi(specs) {
-  const rows = Array.isArray(specs) ? specs.map((x) => sanitizeVideoSpecItem(x)).filter(Boolean) : [];
+  const rows = Array.isArray(specs)
+    ? specs.map((x) => sanitizeVideoSpecItem(x).trim()).filter(Boolean)
+    : [];
   return rows.length ? rows : [""];
 }
 
 /** Non-empty trimmed strings for API payload. */
 export function videoSpecsToPayload(rows) {
-  return (Array.isArray(rows) ? rows : []).map((x) => sanitizeVideoSpecItem(x)).filter(Boolean);
+  return (Array.isArray(rows) ? rows : [])
+    .map((x) => sanitizeVideoSpecItem(x).trim())
+    .filter(Boolean);
 }
 
 export function sanitizeTitle(value) {

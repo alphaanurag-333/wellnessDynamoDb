@@ -1,10 +1,12 @@
+import { IMAGE_MAX_SIZE_BYTES } from "../../../utils/mediaUploadValidation.js";
+
 export const TITLE_MIN_LEN = 2;
 export const TITLE_MAX_LEN = 50;
 export const DESCRIPTION_MIN_LEN = 5;
 export const DESCRIPTION_MAX_LEN = 500;
 export const LIST_SEARCH_MAX_LEN = 50;
 export const LIST_LIMIT = 10;
-export { IMAGE_MAX_SIZE_BYTES } from "../../../utils/mediaUploadValidation.js";
+export { IMAGE_MAX_SIZE_BYTES };
 export const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/jpg"]);
 
 export function emptyForm() {

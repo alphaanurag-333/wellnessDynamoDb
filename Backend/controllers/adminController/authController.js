@@ -155,6 +155,10 @@ exports.changeAdminPassword = asyncHandler(async (req, res) => {
     throw new AppError("New password must be at least 8 characters", 400);
   }
 
+  if (String(newPassword).length > 15) {
+    throw new AppError("New password cannot exceed 15 characters", 400);
+  }
+
   const isCurrentPasswordValid = await comparePassword(currentPassword, admin.password);
   if (!isCurrentPasswordValid) {
     throw new AppError("Current password is incorrect", 401);

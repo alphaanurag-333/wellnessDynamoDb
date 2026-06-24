@@ -80,7 +80,7 @@ export function BirthdayPostView() {
         <div className="user-page__toolbar-text">
           <h2 className="user-page__title">Birthday post details</h2>
         </div>
-        <Link to="edit" className="btn btn--accent user-page__edit-link">
+        <Link to="edit" className="btn btn--primary user-page__edit-link">
           Edit post
         </Link>
       </div>

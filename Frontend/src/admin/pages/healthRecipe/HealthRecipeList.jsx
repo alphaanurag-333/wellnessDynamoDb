@@ -9,7 +9,7 @@ import { adminDeleteHealthRecipe, adminListHealthRecipes, adminUpdateHealthRecip
 import { logout } from "../../../store/authSlice.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { mediaUrl } from "../../../media.js";
-import { formatDate, LIST_LIMIT, LIST_SEARCH_MAX_LEN, truncate, useHealthConcerns, buildConcernTitleMap, healthConcernLabel } from "./HealthRecipeShared.js";
+import { formatDate, LIST_LIMIT, LIST_SEARCH_MAX_LEN, useHealthConcerns, buildConcernTitleMap, healthConcernLabel } from "./HealthRecipeShared.js";
 
 export function HealthRecipeList() {
   const dispatch = useDispatch();
@@ -183,11 +183,11 @@ export function HealthRecipeList() {
                     <td>{row.title || "—"}</td>
                     <td className="data-table__muted">{healthConcernLabel(row, concernMap)}</td>
                     <td className="data-table__muted">{row.type || "—"}</td>
-                    <td className="data-table__muted">
+                    <td>
                       {row.type === "ytlink" ? (
                         row.ytLink ? (
                           <a href={row.ytLink} target="_blank" rel="noreferrer" title={row.ytLink}>
-                            {truncate(row.ytLink, 20)}
+                            Open link
                           </a>
                         ) : (
                           "—"

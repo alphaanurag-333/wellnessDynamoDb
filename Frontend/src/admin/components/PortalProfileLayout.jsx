@@ -124,20 +124,42 @@ export function ProfileField({ label, required, children, fullWidth = false }) {
   );
 }
 
-export function ProfilePasswordField({ label, value, onChange, visible, onToggleVisible, autoComplete, hint }) {
+export function ProfilePasswordField({
+  label,
+  value,
+  onChange,
+  visible,
+  onToggleVisible,
+  autoComplete,
+  hint,
+  error,
+  required = true,
+  minLength,
+  maxLength,
+  onBlur,
+}) {
+  const hintId = hint ? `${label.replace(/\s+/g, "-").toLowerCase()}-hint` : undefined;
+  const errorId = error ? `${label.replace(/\s+/g, "-").toLowerCase()}-error` : undefined;
+
   return (
-    <label className="user-field user-field--password">
+    <label className={`user-field user-field--password${error ? " user-field--invalid" : ""}`}>
       <span className="user-field__label">
         {label}
-        <span className="required-dot"> *</span>
+        {required ? <span className="required-dot"> *</span> : null}
       </span>
-      <div className="profile-password-wrap">
+      <div className={`profile-password-wrap${error ? " profile-password-wrap--error" : ""}`}>
         <input
           className="profile-password-wrap__input"
           type={visible ? "text" : "password"}
           value={value}
           onChange={onChange}
+          onBlur={onBlur}
           autoComplete={autoComplete}
+          required={required}
+          minLength={minLength}
+          maxLength={maxLength}
+          aria-invalid={error ? "true" : undefined}
+          aria-describedby={error ? errorId : hintId}
         />
         <button
           type="button"
@@ -161,7 +183,15 @@ export function ProfilePasswordField({ label, value, onChange, visible, onToggle
           </svg>
         </button>
       </div>
-      {hint ? <span className="user-field__hint">{hint}</span> : null}
+      {error ? (
+        <span id={errorId} className="user-field__error" role="alert">
+          {error}
+        </span>
+      ) : hint ? (
+        <span id={hintId} className="user-field__hint">
+          {hint}
+        </span>
+      ) : null}
     </label>
   );
 }

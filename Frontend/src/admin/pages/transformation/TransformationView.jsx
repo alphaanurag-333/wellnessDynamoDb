@@ -90,7 +90,7 @@ export function TransformationView() {
         <div className="user-page__toolbar-text">
           <h2 className="user-page__title">Transformation details</h2>
         </div>
-        <Link to="edit" className="btn btn--accent user-page__edit-link">
+        <Link to="edit" className="btn btn--primary user-page__edit-link">
           Edit transformation
         </Link>
       </div>

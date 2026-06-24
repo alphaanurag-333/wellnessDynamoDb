@@ -227,8 +227,13 @@ export function CofounderMessagePage() {
               </select>
             </label>
             <label className="user-field col-12">
-              <span className="user-field__label">
-                Cofounder message <span className="required-dot">*</span>
+              <span className="user-field__label" style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                <span>
+                  Cofounder message <span className="required-dot">*</span>
+                </span>
+                <small>
+                  {form.message.length}/{MESSAGE_MAX_LEN}
+                </small>
               </span>
               <textarea
                 className="user-field__input"

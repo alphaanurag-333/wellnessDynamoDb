@@ -36,7 +36,13 @@ export function NotificationList() {
   const [total, setTotal] = useState(0);
   const [listAudience, setListAudience] = useState("");
   const [listSearch, setListSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [listStatus, setListStatus] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(listSearch.trim()), 400);
+    return () => clearTimeout(t);
+  }, [listSearch]);
 
   const loadRows = useCallback(async () => {
     if (!adminToken) return;
@@ -47,7 +53,7 @@ export function NotificationList() {
         limit: LIST_LIMIT,
         ...(listAudience ? { audienceType: listAudience } : {}),
         ...(listStatus ? { status: listStatus } : {}),
-        ...(listSearch.trim() ? { search: listSearch.trim() } : {}),
+        ...(debouncedSearch ? { search: debouncedSearch } : {}),
       });
       setRows(notifications);
       setPages(pagination?.pages ?? 1);
@@ -58,7 +64,7 @@ export function NotificationList() {
     } finally {
       setLoading(false);
     }
-  }, [adminToken, dispatch, listAudience, listSearch, listStatus, page]);
+  }, [adminToken, debouncedSearch, dispatch, listAudience, listStatus, page]);
 
   useEffect(() => {
     loadRows();
@@ -66,7 +72,7 @@ export function NotificationList() {
 
   useEffect(() => {
     setPage(1);
-  }, [listAudience, listSearch, listStatus]);
+  }, [debouncedSearch, listAudience, listStatus]);
 
   const onDelete = async (row) => {
     const { isConfirmed } = await Swal.fire({

@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { adminGetCelebrationBannerById } from "../../api/celebrationController.js";
 import { logout } from "../../../store/authSlice.js";
-import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
+import { AdminDetailBannerImage } from "../../components/AdminDetailBannerImage.jsx";
 import { NotFoundPage } from "../NotFoundPage.jsx";
 import { formatDateTime, typeLabel } from "./CelebrationBannerShared.js";
 
@@ -90,15 +90,13 @@ export function CelebrationBannerView() {
         <div className="user-page__toolbar-text">
           <h2 className="user-page__title">Celebration banner details</h2>
         </div>
-        <Link to="edit" className="btn btn--accent user-page__edit-link">
+        <Link to="edit" className="btn btn--primary user-page__edit-link">
           Edit banner
         </Link>
       </div>
 
       <div className="page-card user-view-card">
-        <div style={{ marginBottom: 16 }}>
-          <AdminMediaImage path={banner.image} width={320} height={200} radius={8} alt={banner.title || ""} style={{ width: "100%", maxHeight: 250 }} />
-        </div>
+        <AdminDetailBannerImage path={banner.image} alt={banner.title || "Celebration banner"} />
         <div className="user-view-grid">
           <DetailRow label="Title" value={banner.title} />
           <DetailRow label="Type" value={typeLabel(banner.type)} />

@@ -17,7 +17,7 @@ import { logout } from "../../../store/authSlice.js";
 import {
   PERSON_NAME_MAX_LEN,
   blockPersonNameDigitKeyDown,
-  blockPhoneNonDigitKeyDown,
+  blockIndianMobileFirstDigitKeyDown,
   sanitizeEmailInput,
   sanitizePersonName,
   sanitizePhoneDigits,
@@ -25,6 +25,7 @@ import {
   validatePersonName,
   validatePhoneDigits,
   EMAIL_MAX_LEN,
+  INDIAN_MOBILE_INPUT_PATTERN,
 } from "../../../utils/personFieldValidation.js";
 import { validateImageFileSize } from "../../../utils/mediaUploadValidation.js";
 
@@ -423,7 +424,7 @@ export function UserProfileForm({
     setValues((prev) => ({ ...prev, whatsappPhone: sanitizePhoneDigits(e.target.value) }));
   };
 
-  const handlePhoneKeyDown = blockPhoneNonDigitKeyDown;
+  const handlePhoneKeyDown = blockIndianMobileFirstDigitKeyDown;
 
   const handleNameKeyDown = blockPersonNameDigitKeyDown;
 
@@ -683,14 +684,14 @@ export function UserProfileForm({
               placeholder="9876543210"
               autoComplete="tel-national"
               inputMode="numeric"
-              pattern="[0-9]{10}"
+              pattern={INDIAN_MOBILE_INPUT_PATTERN}
               aria-label="Mobile number without country code"
               maxLength={10}
               minLength={10}
               required
             />
           </div>
-          <div className="form-text">10-digit number without country code.</div>
+          <div className="form-text">10-digit Indian mobile (must start with 6, 7, 8, or 9).</div>
         </div>
 
         <div className="col-12 col-md-6 min-w-0">
@@ -726,7 +727,7 @@ export function UserProfileForm({
               placeholder="9876543210"
               required={!waSynced}
               inputMode="numeric"
-              pattern={!waSynced ? "[0-9]{10}" : undefined}
+              pattern={!waSynced ? INDIAN_MOBILE_INPUT_PATTERN : undefined}
               aria-label="WhatsApp number without country code"
               minLength={!waSynced ? 10 : undefined}
               maxLength={10}

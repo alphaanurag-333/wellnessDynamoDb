@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from "react-redux";
 import Swal from "sweetalert2";
 import { adminGetNotificationById, adminResendNotification } from "../../api/notificationController.js";
 import { logout } from "../../../store/authSlice.js";
-import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
+import { AdminDetailBannerImage } from "../../components/AdminDetailBannerImage.jsx";
 import { NotFoundPage } from "../NotFoundPage.jsx";
 import { audienceLabel, formatDateTime } from "./NotificationShared.js";
 
@@ -128,7 +128,7 @@ export function NotificationView() {
         <div className="user-page__toolbar-text">
           <h2 className="user-page__title">Notification details</h2>
         </div>
-        <div className="user-page__toolbar-actions" style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
+        <div className="user-page__toolbar-actions">
           {notification.status === "active" ? (
             <button
               type="button"
@@ -139,16 +139,14 @@ export function NotificationView() {
               {resending ? "Resending…" : "Resend"}
             </button>
           ) : null}
-          <Link to="edit" className="btn btn--accent user-page__edit-link">
+          <Link to="edit" className="btn btn--accent">
             Edit notification
           </Link>
         </div>
       </div>
 
       <div className="page-card user-view-card">
-        <div style={{ marginBottom: 16 }}>
-          <AdminMediaImage path={notification.image} width={320} height={200} radius={8} alt="Notification" style={{ width: "100%", maxHeight: 250 }} />
-        </div>
+        <AdminDetailBannerImage path={notification.image} alt="Notification" />
         <div className="user-view-grid">
           <DetailRow label="Audience" value={audienceLabel(notification.audienceType)} />
           <DetailRow label="Status" value={notification.status} />

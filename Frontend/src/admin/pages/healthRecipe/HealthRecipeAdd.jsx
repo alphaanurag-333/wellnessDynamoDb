@@ -395,6 +395,7 @@ export function HealthRecipeForm({ mode = "create", initialRecipe = null }) {
             type="file"
             accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp"
             className="user-field__input"
+            required={!editBaselineThumbnail && !thumbnailFile}
             onChange={(e) => {
               const file = e.target.files?.[0] || null;
               if (file) {

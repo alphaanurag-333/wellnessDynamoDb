@@ -64,7 +64,11 @@ function resendResultMessage(push) {
 }
 
 exports.listNotificationsController = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, status, audienceType, search } = req.query;
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 10;
+  const status = req.query.status ? String(req.query.status).trim() : undefined;
+  const audienceType = req.query.audienceType ? String(req.query.audienceType).trim() : undefined;
+  const search = req.query.search ? String(req.query.search).trim() : undefined;
   const data = await listNotifications({ page, limit, status, audienceType, search });
   return res.status(200).json({
     status: true,

@@ -20,17 +20,20 @@ export function emptyForm() {
 export function sanitizeSymptomItem(value) {
   return String(value ?? "")
     .replace(/\s+/g, " ")
-    .trim()
     .slice(0, SYMPTOM_ITEM_MAX_LEN);
 }
 
 export function symptomsFromApi(list) {
-  const rows = Array.isArray(list) ? list.map((x) => sanitizeSymptomItem(x)).filter(Boolean) : [];
+  const rows = Array.isArray(list)
+    ? list.map((x) => sanitizeSymptomItem(x).trim()).filter(Boolean)
+    : [];
   return rows.length ? rows : [""];
 }
 
 export function symptomsToPayload(rows) {
-  return (Array.isArray(rows) ? rows : []).map((x) => sanitizeSymptomItem(x)).filter(Boolean);
+  return (Array.isArray(rows) ? rows : [])
+    .map((x) => sanitizeSymptomItem(x).trim())
+    .filter(Boolean);
 }
 
 export function sanitizeTitle(value) {

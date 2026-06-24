@@ -10,7 +10,10 @@ const {
 } = require("../../models/faqModel");
 
 exports.listFaqsController = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 200, status, search } = req.query;
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 200;
+  const status = req.query.status ? String(req.query.status).trim() : undefined;
+  const search = req.query.search ? String(req.query.search).trim() : undefined;
 
   const data = await listFaqs({ page, limit, status, search });
 

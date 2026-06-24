@@ -1,3 +1,5 @@
+import { IMAGE_MAX_SIZE_BYTES } from "../../../utils/mediaUploadValidation.js";
+
 export const ACHIEVEMENTS_MIN_LEN = 2;
 export const ACHIEVEMENTS_MAX_LEN = 500;
 export const DESCRIPTION_MIN_LEN = 5;
@@ -7,7 +9,7 @@ export const TIME_TAKEN_MAX = 120;
 export const TIME_TAKEN_MAX_LEN = 3;
 export const LIST_SEARCH_MAX_LEN = 50;
 export const USER_ID_FILTER_MAX_LEN = 32;
-export { IMAGE_MAX_SIZE_BYTES } from "../../../utils/mediaUploadValidation.js";
+export { IMAGE_MAX_SIZE_BYTES };
 export const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/jpg"]);
 export const LIST_LIMIT = 10;
 

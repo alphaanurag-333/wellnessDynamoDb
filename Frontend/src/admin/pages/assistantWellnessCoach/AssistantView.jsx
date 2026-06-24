@@ -94,15 +94,17 @@ export function AssistantView() {
             <path d="M15 18 9 12l6-6" />
           </svg>
         </button>
-        <div className="user-page__toolbar-main">
+        <div className="user-page__toolbar-text">
           <h2 className="user-page__title">{assistant.name}</h2>
           <span className={`status-pill status-pill--${assistant.status === "active" ? "active" : "inactive"}`}>
             {assistant.status}
           </span>
         </div>
-        <Link to={`/admin/coaches/${coachId}/assistants/${aid}/edit`} className="btn btn--primary">
-          Edit
-        </Link>
+        <div className="user-page__toolbar-actions">
+          <Link to={`/admin/coaches/${coachId}/assistants/${aid}/edit`} className="btn btn--primary">
+            Edit
+          </Link>
+        </div>
       </div>
 
       <div className="user-page__card user-detail-grid">

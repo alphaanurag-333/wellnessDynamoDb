@@ -27,7 +27,13 @@ export function FaqList() {
   const [pages, setPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [listSearch, setListSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [listStatus, setListStatus] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(listSearch.trim()), 400);
+    return () => clearTimeout(t);
+  }, [listSearch]);
 
   const loadRows = useCallback(async () => {
     if (!adminToken) return;
@@ -36,7 +42,7 @@ export function FaqList() {
       const { faqs, pagination } = await adminListFaqs(adminToken, {
         page,
         limit: LIST_LIMIT,
-        ...(listSearch.trim() ? { search: listSearch.trim() } : {}),
+        ...(debouncedSearch ? { search: debouncedSearch } : {}),
         ...(listStatus ? { status: listStatus } : {}),
       });
       setRows(faqs);
@@ -48,7 +54,7 @@ export function FaqList() {
     } finally {
       setLoading(false);
     }
-  }, [adminToken, dispatch, listSearch, listStatus, page]);
+  }, [adminToken, debouncedSearch, dispatch, listStatus, page]);
 
   useEffect(() => {
     loadRows();
@@ -56,7 +62,7 @@ export function FaqList() {
 
   useEffect(() => {
     setPage(1);
-  }, [listSearch, listStatus]);
+  }, [debouncedSearch, listStatus]);
 
   const onDelete = async (row) => {
     const faqId = getFaqId(row);

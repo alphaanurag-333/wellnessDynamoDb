@@ -4,6 +4,9 @@ export const EMAIL_MAX_LEN = 50;
 
 export const PERSON_NAME_ALLOWED_PATTERN = /^[\p{L}][\p{L}\s'.\-]*$/u;
 export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** Indian mobile: 10 digits, first digit 6–9. */
+export const INDIAN_MOBILE_PATTERN = /^[6-9]\d{9}$/;
+export const INDIAN_MOBILE_INPUT_PATTERN = "[6-9][0-9]{9}";
 
 /** Letters (any script), spaces, apostrophe, hyphen, period — strips digits and other symbols. */
 export function sanitizePersonName(raw, maxLen = PERSON_NAME_MAX_LEN) {
@@ -57,6 +60,12 @@ export function validatePhoneDigits(phone, { label = "Mobile number" } = {}) {
   if (trimmed.length !== PHONE_NATIONAL_LEN) {
     return `${label} must be exactly ${PHONE_NATIONAL_LEN} digits.`;
   }
+  if (/^(\d)\1{9}$/.test(trimmed)) {
+    return `${label} is not valid.`;
+  }
+  if (!INDIAN_MOBILE_PATTERN.test(trimmed)) {
+    return `${label} must start with 6, 7, 8, or 9.`;
+  }
   return "";
 }
 
@@ -81,4 +90,19 @@ export function blockPersonNameDigitKeyDown(e) {
 export function blockPhoneNonDigitKeyDown(e) {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.key.length === 1 && !/\d/.test(e.key)) e.preventDefault();
+}
+
+/** Block 0–5 as the first digit of an Indian mobile number. */
+export function blockIndianMobileFirstDigitKeyDown(e) {
+  blockPhoneNonDigitKeyDown(e);
+  if (e.defaultPrevented) return;
+  if (e.key.length !== 1 || !/\d/.test(e.key)) return;
+  const el = e.currentTarget;
+  const val = el.value ?? "";
+  const start = el.selectionStart ?? 0;
+  const end = el.selectionEnd ?? 0;
+  const atFirstDigit = start === 0 && (val.length === 0 || (start === 0 && end === val.length));
+  if (atFirstDigit && !/[6-9]/.test(e.key)) {
+    e.preventDefault();
+  }
 }

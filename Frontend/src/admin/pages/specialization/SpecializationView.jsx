@@ -89,7 +89,7 @@ export function SpecializationView() {
         <div className="user-page__toolbar-text">
           <h2 className="user-page__title">Specialization details</h2>
         </div>
-        <Link to="edit" className="btn btn--accent user-page__edit-link">
+        <Link to="edit" className="btn btn--primary user-page__edit-link">
           Edit specialization
         </Link>
       </div>

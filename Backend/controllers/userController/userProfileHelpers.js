@@ -1,4 +1,5 @@
 const AppError = require("../../utils/AppError");
+const { assertValidIndianMobile } = require("../../utils/phoneValidation");
 const { isOtpExpired } = require("../../utils/otp");
 const {
   uploadFileFromRequest,
@@ -87,6 +88,7 @@ function parseUserFields(body, { requirePassword = false } = {}) {
   if (!name) throw new AppError("name is required", 400);
   if (!email) throw new AppError("email is required", 400);
   if (!phone) throw new AppError("phone is required", 400);
+  assertValidIndianMobile(phone, { field: "phone" });
   if (requirePassword && !password) throw new AppError("password is required", 400);
 
   if (status && !USER_ALLOWED_STATUS.includes(status)) {
@@ -116,7 +118,10 @@ function parseUserFields(body, { requirePassword = false } = {}) {
   };
 
   if (whatsappCountryCode !== undefined) fields.whatsappCountryCode = whatsappCountryCode;
-  if (whatsappPhone !== undefined) fields.whatsappPhone = whatsappPhone;
+  if (whatsappPhone !== undefined) {
+    fields.whatsappPhone = whatsappPhone;
+    if (whatsappPhone) assertValidIndianMobile(whatsappPhone, { field: "whatsappPhone" });
+  }
 
   return { fields, password };
 }
@@ -199,6 +204,7 @@ async function buildUserUpdatesFromBody(body, current, { allowStatus = true, req
   if (body.phone !== undefined) {
     const phone = normalizePhone(body.phone);
     if (!phone) throw new AppError("phone cannot be empty", 400);
+    assertValidIndianMobile(phone, { field: "phone" });
     const cc =
       body.phoneCountryCode !== undefined
         ? normalizeCountryCode(body.phoneCountryCode)
@@ -217,7 +223,9 @@ async function buildUserUpdatesFromBody(body, current, { allowStatus = true, req
     updates.whatsappCountryCode = normalizeCountryCode(body.whatsappCountryCode);
   }
   if (body.whatsappPhone !== undefined) {
-    updates.whatsappPhone = normalizePhone(body.whatsappPhone) || null;
+    const waPhone = normalizePhone(body.whatsappPhone) || null;
+    if (waPhone) assertValidIndianMobile(waPhone, { field: "whatsappPhone" });
+    updates.whatsappPhone = waPhone;
   }
   if (body.dob !== undefined) updates.dob = normalizeDob(body.dob);
   if (body.gender !== undefined) {

@@ -10,9 +10,10 @@ const { docClient } = require("../config/db");
 const { normalizeMediaField, resolvePublicUrl } = require("../utils/s3");
 const {
   listByPartitionKey,
-  buildContainsFilter,
   appendFilter,
   sortBySentAtDesc,
+  paginateItems,
+  filterItemsBySearch,
   DEFAULT_STATUS_PARTITIONS,
 } = require("../utils/dynamoList");
 
@@ -118,10 +119,11 @@ async function deleteNotification(id) {
 async function listNotifications({ page = 1, limit = 10, status, audienceType, search } = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const normalizedAudience = audienceType ? normalizeAudienceType(audienceType, "") : "";
-  const searchFilter = buildContainsFilter(["message"], search);
-  let filterExpression = searchFilter.filterExpression;
-  const exprNames = { ...searchFilter.exprNames };
-  const exprValues = { ...searchFilter.exprValues };
+  const searchTerm = String(search || "").trim();
+  const searching = Boolean(searchTerm);
+  let filterExpression;
+  const exprNames = {};
+  const exprValues = {};
 
   const useAudienceIndex = Boolean(normalizedAudience);
   const indexName = useAudienceIndex ? "AudienceSentAtIndex" : "StatusSentAtIndex";
@@ -136,7 +138,7 @@ async function listNotifications({ page = 1, limit = 10, status, audienceType, s
     filterExpression = appendFilter(filterExpression, "#status = :status");
   }
 
-  const { items, pagination } = await listByPartitionKey({
+  const result = await listByPartitionKey({
     tableName: TABLE,
     indexName,
     partitionKeyName,
@@ -146,15 +148,30 @@ async function listNotifications({ page = 1, limit = 10, status, audienceType, s
     exprNames,
     exprValues,
     scanIndexForward: false,
-    page,
-    limit,
-    maxLimit: 200,
+    page: searching ? 1 : page,
+    limit: searching ? Number.MAX_SAFE_INTEGER : limit,
+    maxLimit: searching ? Number.MAX_SAFE_INTEGER : 200,
     sortFn: sortBySentAtDesc,
   });
 
+  if (!searching) {
+    return {
+      notifications: result.items.map((row) => toPublicNotification(row)),
+      pagination: result.pagination,
+    };
+  }
+
+  const filtered = filterItemsBySearch(result.items, {
+    search: searchTerm,
+    searchFn: (item, term) =>
+      String(item.message || "").toLowerCase().includes(term) ||
+      String(item.audienceType || "").toLowerCase().includes(term),
+  });
+  const paged = paginateItems(filtered, page, limit, 200);
+
   return {
-    notifications: items.map((row) => toPublicNotification(row)),
-    pagination,
+    notifications: paged.items.map((row) => toPublicNotification(row)),
+    pagination: paged.pagination,
   };
 }
 

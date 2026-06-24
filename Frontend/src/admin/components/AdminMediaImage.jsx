@@ -32,6 +32,8 @@ export function AdminMediaImage({
   className = "",
   style = {},
   hideUntilSrc = false,
+  objectFit,
+  responsive = false,
 }) {
   const resolvedSrc = useMemo(() => resolveMediaImageSrc(path, directSrc), [path, directSrc]);
   const isMissing = !path && !directSrc;
@@ -64,23 +66,34 @@ export function AdminMediaImage({
 
   const w = width ?? 44;
   const h = height ?? 44;
+  const fit = objectFit ?? (useFallback ? "contain" : "cover");
+  const imgStyle = responsive
+    ? {
+        width: "100%",
+        height: "auto",
+        maxHeight: h,
+        objectFit: fit,
+        borderRadius: radius,
+        ...style,
+      }
+    : {
+        width: w,
+        height: h,
+        objectFit: fit,
+        borderRadius: radius,
+        ...style,
+      };
 
   return (
     <img
       src={imgSrc}
       alt={alt}
-      width={w}
-      height={h}
+      width={responsive ? undefined : w}
+      height={responsive ? undefined : h}
       loading="lazy"
       decoding="async"
-      className={`admin-media-thumb${useFallback ? " admin-media-thumb--fallback" : ""}${className ? ` ${className}` : ""}`}
-      style={{
-        width: w,
-        height: h,
-        objectFit: useFallback ? "contain" : "cover",
-        borderRadius: radius,
-        ...style,
-      }}
+      className={`admin-media-thumb${useFallback ? " admin-media-thumb--fallback" : ""}${responsive ? " admin-media-thumb--responsive" : ""}${className ? ` ${className}` : ""}`}
+      style={imgStyle}
       onError={onError}
     />
   );

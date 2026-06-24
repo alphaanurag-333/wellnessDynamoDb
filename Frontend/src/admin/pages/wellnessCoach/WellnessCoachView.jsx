@@ -203,7 +203,7 @@ export function WellnessCoachView() {
             <path d="M15 18 9 12l6-6" />
           </svg>
         </button>
-        <div className="user-page__toolbar-main">
+        <div className="user-page__toolbar-text">
           <h2 className="user-page__title">{coach.name}</h2>
           <span className={`status-pill status-pill--${coach.status === "active" ? "active" : "inactive"}`}>
             {coach.status}
@@ -212,7 +212,7 @@ export function WellnessCoachView() {
             {coach.approvalStatus || "approved"}
           </span>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div className="user-page__toolbar-actions">
           {(coach.approvalStatus === "pending" || coach.approvalStatus === "rejected") && (
             <button
               type="button"

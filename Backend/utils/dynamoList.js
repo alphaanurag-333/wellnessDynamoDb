@@ -143,41 +143,85 @@ async function listByPartitionKey({
   limit = 20,
   maxLimit = 200,
   sortFn,
+  search,
+  searchFields,
+  searchFn,
 }) {
+  const searchTerm = String(search || "").trim();
+  const useMemorySearch =
+    Boolean(searchTerm) &&
+    (typeof searchFn === "function" || (Array.isArray(searchFields) && searchFields.length > 0));
+  const queryPage = useMemorySearch ? 1 : page;
+  const queryLimit = useMemorySearch ? Number.MAX_SAFE_INTEGER : limit;
+  const queryMaxLimit = useMemorySearch ? Number.MAX_SAFE_INTEGER : maxLimit;
+  const queryFilter = useMemorySearch ? undefined : filterExpression;
+
+  let result;
   if (partitionKeyValue) {
-    const result = await queryPartition({
+    result = await queryPartition({
       tableName,
       indexName,
       partitionKeyName,
       partitionKeyValue,
-      filterExpression,
+      filterExpression: queryFilter,
       exprNames,
       exprValues,
       scanIndexForward,
-      page,
-      limit,
-      maxLimit,
+      page: queryPage,
+      limit: queryLimit,
+      maxLimit: queryMaxLimit,
     });
 
     if (typeof sortFn === "function") {
       result.items.sort(sortFn);
     }
+  } else {
+    result = await mergePartitionResults(
+      statusPartitions.map((value) => ({
+        tableName,
+        indexName,
+        partitionKeyName,
+        partitionKeyValue: value,
+        filterExpression: queryFilter,
+        exprNames,
+        exprValues,
+        scanIndexForward,
+      })),
+      { page: queryPage, limit: queryLimit, maxLimit: queryMaxLimit, sortFn }
+    );
+  }
 
+  if (!useMemorySearch) {
     return result;
   }
 
-  return mergePartitionResults(
-    statusPartitions.map((value) => ({
-      tableName,
-      indexName,
-      partitionKeyName,
-      partitionKeyValue: value,
-      filterExpression,
-      exprNames,
-      exprValues,
-      scanIndexForward,
-    })),
-    { page, limit, maxLimit, sortFn }
+  const filtered = filterItemsBySearch(result.items, { search: searchTerm, searchFields, searchFn });
+  return paginateItems(filtered, page, limit, maxLimit);
+}
+
+function paginateItems(items, page, limit, maxLimit = 200) {
+  const { safePage, safeLimit, skip } = normalizePageLimit(page, limit, maxLimit);
+  const total = items.length;
+  return {
+    items: items.slice(skip, skip + safeLimit),
+    pagination: {
+      page: safePage,
+      limit: safeLimit,
+      total,
+      pages: Math.max(1, Math.ceil(total / safeLimit)),
+    },
+  };
+}
+
+function filterItemsBySearch(items, { search, searchFields, searchFn }) {
+  const term = String(search || "").trim().toLowerCase();
+  if (!term) return items;
+  if (typeof searchFn === "function") {
+    return items.filter((item) => searchFn(item, term));
+  }
+  if (!Array.isArray(searchFields) || searchFields.length === 0) return items;
+  return items.filter((item) =>
+    searchFields.some((field) => String(item[field] || "").toLowerCase().includes(term))
   );
 }
 
@@ -212,7 +256,7 @@ async function listByScan({
 }
 
 function buildContainsFilter(fields, search, names = {}, values = {}) {
-  const normalizedSearch = String(search || "").trim().toLowerCase();
+  const normalizedSearch = String(search || "").trim();
   if (!normalizedSearch) {
     return { filterExpression: null, exprNames: names, exprValues: values };
   }
@@ -254,6 +298,8 @@ module.exports = {
   DEFAULT_STATUS_PARTITIONS,
   normalizePageLimit,
   paginateDynamo,
+  paginateItems,
+  filterItemsBySearch,
   queryPartition,
   listByPartitionKey,
   listByScan,

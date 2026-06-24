@@ -9,8 +9,9 @@ const { v4: uuidv4 } = require("uuid");
 const { docClient } = require("../config/db");
 const {
   listByPartitionKey,
-  buildContainsFilter,
   sortByCreatedAtDesc,
+  paginateItems,
+  filterItemsBySearch,
 } = require("../utils/dynamoList");
 
 const TABLE = "Faq";
@@ -90,22 +91,30 @@ async function deleteFaq(id) {
 
 async function listFaqs({ page = 1, limit = 20, status, search } = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
-  const searchFilter = buildContainsFilter(["question", "answer"], search);
-  const { items, pagination } = await listByPartitionKey({
+  const searchTerm = String(search || "").trim();
+  const searching = Boolean(searchTerm);
+
+  const result = await listByPartitionKey({
     tableName: TABLE,
     indexName: "StatusIndex",
     partitionKeyValue: normalizedStatus || undefined,
-    filterExpression: searchFilter.filterExpression,
-    exprNames: searchFilter.exprNames,
-    exprValues: searchFilter.exprValues,
     scanIndexForward: false,
-    page,
-    limit,
-    maxLimit: 200,
+    page: searching ? 1 : page,
+    limit: searching ? Number.MAX_SAFE_INTEGER : limit,
+    maxLimit: searching ? Number.MAX_SAFE_INTEGER : 200,
     sortFn: sortByCreatedAtDesc,
   });
 
-  return { faqs: items, pagination };
+  if (!searching) {
+    return { faqs: result.items, pagination: result.pagination };
+  }
+
+  const filtered = filterItemsBySearch(result.items, {
+    search: searchTerm,
+    searchFields: ["question", "answer"],
+  });
+  const paged = paginateItems(filtered, page, limit, 200);
+  return { faqs: paged.items, pagination: paged.pagination };
 }
 
 module.exports = {

@@ -163,13 +163,13 @@ export function UserView() {
               Reassign coach
             </button>
           ) : null}
-          <Link to="edit" className="btn btn--accent user-page__edit-link">
+          <Link to="edit" className="btn btn--accent">
             Edit user
           </Link>
-          <Link to="water-tracking" className="btn btn--ghost user-page__edit-link">
+          <Link to="water-tracking" className="btn btn--ghost">
             Water tracking
           </Link>
-          <Link to="steps-tracking" className="btn btn--ghost user-page__edit-link">
+          <Link to="steps-tracking" className="btn btn--ghost">
             Steps tracking
           </Link>
         </div>

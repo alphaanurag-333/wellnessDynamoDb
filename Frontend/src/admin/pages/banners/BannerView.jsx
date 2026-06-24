@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { adminGetBannerById } from "../../api/bannerController.js";
 import { logout } from "../../../store/authSlice.js";
-import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
+import { AdminDetailBannerImage } from "../../components/AdminDetailBannerImage.jsx";
 import { NotFoundPage } from "../NotFoundPage.jsx";
 import { formatDate } from "./BannerShared.js";
 
@@ -90,22 +90,13 @@ export function BannerView() {
         <div className="user-page__toolbar-text">
           <h2 className="user-page__title">Banner details</h2>
         </div>
-        <Link to="edit" className="btn btn--accent user-page__edit-link">
+        <Link to="edit" className="btn btn--primary user-page__edit-link">
           Edit banner
         </Link>
       </div>
 
       <div className="page-card user-view-card">
-        <div style={{ marginBottom: 16 }}>
-          <AdminMediaImage
-            path={banner.image}
-            width={320}
-            height={200}
-            radius={8}
-            alt={banner.title || "Banner"}
-            style={{ width: "100%", maxHeight: 250, height: "auto" }}
-          />
-        </div>
+        <AdminDetailBannerImage path={banner.image} alt={banner.title || "Banner"} />
         <div className="user-view-grid">
           <DetailRow label="Title" value={banner.title} />
           <DetailRow label="Status" value={banner.status} />

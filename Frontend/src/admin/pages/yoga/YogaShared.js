@@ -1,14 +1,16 @@
+import {
+  IMAGE_MAX_SIZE_BYTES,
+  VIDEO_MAX_SIZE_BYTES,
+  validateVideoFileSize,
+} from "../../../utils/mediaUploadValidation.js";
+
 export const TITLE_MIN_LEN = 2;
 export const TITLE_MAX_LEN = 50;
 export const DESCRIPTION_MIN_LEN = 5;
 export const DESCRIPTION_MAX_LEN = 500;
 export const YT_LINK_MAX_LEN = 500;
 export const LIST_SEARCH_MAX_LEN = 50;
-export {
-  IMAGE_MAX_SIZE_BYTES,
-  VIDEO_MAX_SIZE_BYTES,
-  validateVideoFileSize,
-} from "../../../utils/mediaUploadValidation.js";
+export { IMAGE_MAX_SIZE_BYTES, VIDEO_MAX_SIZE_BYTES, validateVideoFileSize };
 export const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/jpg"]);
 export const ALLOWED_VIDEO_TYPES = new Set(["video/mp4", "video/webm", "video/ogg", "video/quicktime", "video/x-m4v"]);
 export const LIST_LIMIT = 10;

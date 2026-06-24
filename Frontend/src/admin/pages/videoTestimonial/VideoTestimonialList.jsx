@@ -167,7 +167,7 @@ export function VideoTestimonialList() {
                       {row.type === "video" && row.video ? (
                         <video src={mediaUrl(row.video)} controls style={{ width: 180, maxWidth: "100%", borderRadius: 6 }} />
                       ) : row.type === "link" && row.ytLink ? (
-                        <a href={row.ytLink} target="_blank" rel="noreferrer">
+                        <a href={row.ytLink} target="_blank" rel="noreferrer" title={row.ytLink}>
                           Open link
                         </a>
                       ) : (

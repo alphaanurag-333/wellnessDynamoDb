@@ -21,6 +21,14 @@ import {
   validatePhoneDigits,
 } from "../../utils/personFieldValidation.js";
 import { validateImageFileSize } from "../../utils/mediaUploadValidation.js";
+import {
+  PROFILE_PASSWORD_MIN_LEN,
+  PROFILE_PASSWORD_MAX_LEN,
+  validateConfirmPassword,
+  validateCurrentPassword,
+  validateNewPassword,
+  validateProfilePasswordFields,
+} from "../../utils/profilePasswordValidation.js";
 
 const PROFILE_TABS = [
   { id: "personal", label: "Personal Details" },
@@ -40,6 +48,11 @@ export function AdminProfile() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPw, setShowPw] = useState({ cur: false, next: false, conf: false });
+  const [passwordErrors, setPasswordErrors] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
 
   const fileInputRef = useRef(null);
   const [photoLoading, setPhotoLoading] = useState(false);
@@ -108,6 +121,10 @@ export function AdminProfile() {
     setPhone(sanitizePhoneDigits(e.target.value));
   };
 
+  const clearPasswordError = (field) => {
+    setPasswordErrors((prev) => (prev[field] ? { ...prev, [field]: "" } : prev));
+  };
+
   const handleSave = async () => {
     if (tab === "personal") {
       const trimmedName = name.trim();
@@ -135,18 +152,14 @@ export function AdminProfile() {
       return;
     }
     if (tab === "password") {
-      if (!currentPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
-        await Swal.fire({ icon: "error", title: "Validation error", text: "Fill in current password, new password, and confirmation." });
-        return;
-      }
-      if (newPassword !== confirmPassword) {
-        await Swal.fire({ icon: "error", title: "Validation error", text: "New password and confirmation do not match." });
-        return;
-      }
-      if (newPassword.length < 8) {
-        await Swal.fire({ icon: "error", title: "Validation error", text: "New password must be at least 8 characters." });
-        return;
-      }
+      const { errors, valid } = validateProfilePasswordFields({
+        currentPassword,
+        newPassword,
+        confirmPassword,
+      });
+      setPasswordErrors(errors);
+      if (!valid) return;
+
       setLoading(true);
       try {
         const data = await adminChangePassword(adminToken, {
@@ -157,6 +170,7 @@ export function AdminProfile() {
         setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
+        setPasswordErrors({ currentPassword: "", newPassword: "", confirmPassword: "" });
       } catch (e) {
         await Swal.fire({ icon: "error", title: "Password change failed", text: e.message || "Password change failed" });
       } finally {
@@ -231,6 +245,9 @@ export function AdminProfile() {
               className={`admin-profile-tabs__btn${tab === t.id ? " admin-profile-tabs__btn--active" : ""}`}
               onClick={() => {
                 setTab(t.id);
+                if (t.id !== "password") {
+                  setPasswordErrors({ currentPassword: "", newPassword: "", confirmPassword: "" });
+                }
               }}
             >
               {t.label}
@@ -279,32 +296,71 @@ export function AdminProfile() {
           <div className="admin-profile-panel">
             <div className="profile-password-form">
               <p className="profile-password-form__intro">
-                Update your password regularly. Use at least 8 characters and avoid reusing passwords from other sites.
+                Update your password regularly. Use {PROFILE_PASSWORD_MIN_LEN}–{PROFILE_PASSWORD_MAX_LEN} characters and avoid reusing passwords from other sites.
               </p>
               <ProfilePasswordField
                 label="Current Password"
                 value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
+                onChange={(e) => {
+                  setCurrentPassword(e.target.value);
+                  clearPasswordError("currentPassword");
+                }}
+                onBlur={(e) =>
+                  setPasswordErrors((prev) => ({
+                    ...prev,
+                    currentPassword: validateCurrentPassword(e.target.value),
+                  }))
+                }
                 visible={showPw.cur}
                 onToggleVisible={() => setShowPw((s) => ({ ...s, cur: !s.cur }))}
                 autoComplete="current-password"
+                error={passwordErrors.currentPassword}
               />
               <ProfilePasswordField
                 label="New Password"
                 value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
+                onChange={(e) => {
+                  setNewPassword(e.target.value);
+                  clearPasswordError("newPassword");
+                  if (passwordErrors.confirmPassword && e.target.value === confirmPassword) {
+                    clearPasswordError("confirmPassword");
+                  }
+                }}
+                onBlur={(e) =>
+                  setPasswordErrors((prev) => ({
+                    ...prev,
+                    newPassword: validateNewPassword(e.target.value, currentPassword),
+                    confirmPassword: confirmPassword
+                      ? validateConfirmPassword(confirmPassword, e.target.value)
+                      : prev.confirmPassword,
+                  }))
+                }
                 visible={showPw.next}
                 onToggleVisible={() => setShowPw((s) => ({ ...s, next: !s.next }))}
                 autoComplete="new-password"
-                hint="Must be at least 8 characters."
+                hint={`Must be ${PROFILE_PASSWORD_MIN_LEN}–${PROFILE_PASSWORD_MAX_LEN} characters.`}
+                minLength={PROFILE_PASSWORD_MIN_LEN}
+                maxLength={PROFILE_PASSWORD_MAX_LEN}
+                error={passwordErrors.newPassword}
               />
               <ProfilePasswordField
                 label="Confirm Password"
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  clearPasswordError("confirmPassword");
+                }}
+                onBlur={(e) =>
+                  setPasswordErrors((prev) => ({
+                    ...prev,
+                    confirmPassword: validateConfirmPassword(e.target.value, newPassword),
+                  }))
+                }
                 visible={showPw.conf}
                 onToggleVisible={() => setShowPw((s) => ({ ...s, conf: !s.conf }))}
                 autoComplete="new-password"
+                maxLength={PROFILE_PASSWORD_MAX_LEN}
+                error={passwordErrors.confirmPassword}
               />
             </div>
           </div>
