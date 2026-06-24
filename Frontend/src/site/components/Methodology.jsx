@@ -22,7 +22,7 @@ const methodologyData = [
     image: programImg,
     title: "Personalized Program",
     description:
-      "Every individual is unique, and so are their health needs. Our personalized program combines expert guidance, ongoing support, and motivation to help you build healthier habits and achieve your wellness goals."
+      "Every individual is unique, and so are their health needs. Our personalized program combines expert guidance, ongoing support, and motivation to help you build healthier habits and achieve your wellness goals.",
   },
 ];
 
@@ -30,19 +30,18 @@ export default function Methodology() {
   return (
     <section className="methodology">
       <div className="site-container">
-
         <div className="methodology__header">
-          <h2>Our Methodology</h2>
+          <h2>How we work with Clients</h2>
           <p>
-            A structured approach designed to provide clarity and results from
-            day one.
+            We specialize in uncovering the intricate connections between diet,
+            lifestyle and overall health. Through personalized consultations and
+            root cause analysis.
           </p>
         </div>
 
         <div className="methodology__cards">
           {methodologyData.map((item) => (
             <div className="methodology-card" key={item.id}>
-
               <div className="methodology-card__image">
                 <img src={item.image} alt={item.title} />
               </div>
@@ -52,15 +51,11 @@ export default function Methodology() {
 
                 <p>{item.description}</p>
 
-                <button>
-                  Book a free consultation
-                </button>
+                <button>Book a free consultation</button>
               </div>
-
             </div>
           ))}
         </div>
-
       </div>
     </section>
   );
