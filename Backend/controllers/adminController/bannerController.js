@@ -30,6 +30,7 @@ exports.getBannerByIdController = asyncHandler(async (req, res) => {
 
 exports.createBannerController = asyncHandler(async (req, res) => {
   const title = String(req.body.title || "").trim();
+  const description = String(req.body.description || "").trim();
   const status = String(req.body.status || "active").trim().toLowerCase();
 
   const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
@@ -37,12 +38,13 @@ exports.createBannerController = asyncHandler(async (req, res) => {
     uploadedKey ?? parseMediaKeyFromBody(req.body.image, "image");
 
   if (!title) throw new AppError("title is required", 400);
+  if (!description) throw new AppError("description is required", 400);
   if (!image) throw new AppError("image is required", 400);
   if (!["active", "inactive"].includes(status)) {
     throw new AppError("status must be active or inactive", 400);
   }
 
-  const banner = await createBanner({ title, image, status });
+  const banner = await createBanner({ title, description, image, status });
   return res.status(201).json({ status: true, message: "Banner created successfully", banner });
 });
 
@@ -55,6 +57,11 @@ exports.updateBannerController = asyncHandler(async (req, res) => {
     const title = String(req.body.title || "").trim();
     if (!title) throw new AppError("title cannot be empty", 400);
     updates.title = title;
+  }
+  if (req.body.description !== undefined) {
+    const description = String(req.body.description || "").trim();
+    if (!description) throw new AppError("description cannot be empty", 400);
+    updates.description = description;
   }
   if (req.body.status !== undefined) {
     const status = String(req.body.status || "").trim().toLowerCase();

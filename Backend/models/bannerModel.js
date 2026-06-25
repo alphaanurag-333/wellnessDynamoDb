@@ -40,11 +40,12 @@ function toPublicBanner(banner) {
   return item;
 }
 
-async function createBanner({ title, image, status = "active" }) {
+async function createBanner({ title, description, image, status = "active" }) {
   const now = new Date().toISOString();
   const item = {
     id: uuidv4(),
     title: String(title || "").trim(),
+    description: String(description || "").trim(),
     image: normalizeImageField(image),
     status: normalizeStatus(status),
     createdAt: now,
@@ -110,7 +111,7 @@ async function deleteBanner(id) {
 
 async function listBanners({ page = 1, limit = 10, status, search } = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
-  const searchFilter = buildContainsFilter(["title"], search);
+  const searchFilter = buildContainsFilter(["title", "description"], search);
   const { items, pagination } = await listByPartitionKey({
     tableName: TABLE,
     indexName: "StatusCreatedAtIndex",

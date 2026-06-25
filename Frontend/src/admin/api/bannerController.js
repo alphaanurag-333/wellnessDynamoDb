@@ -34,6 +34,7 @@ export async function adminCreateBanner(token, fields, file) {
   if (file instanceof File) {
     const fd = new FormData();
     fd.append("title", String(fields.title ?? "").trim());
+    fd.append("description", String(fields.description ?? "").trim());
     fd.append("status", String(fields.status || "active"));
     fd.append("file", file);
     try {
@@ -49,6 +50,7 @@ export async function adminCreateBanner(token, fields, file) {
       bannersBase(),
       {
         title: String(fields.title ?? "").trim(),
+        description: String(fields.description ?? "").trim(),
         image: String(fields.image ?? "").trim(),
         status: String(fields.status || "active"),
       },
@@ -64,6 +66,7 @@ export async function adminUpdateBanner(token, id, fields, file) {
   if (file instanceof File) {
     const fd = new FormData();
     if (fields.title !== undefined) fd.append("title", String(fields.title).trim());
+    if (fields.description !== undefined) fd.append("description", String(fields.description).trim());
     if (fields.status !== undefined) fd.append("status", String(fields.status));
     fd.append("file", file);
     try {
@@ -76,6 +79,7 @@ export async function adminUpdateBanner(token, id, fields, file) {
 
   const payload = {};
   if (fields.title !== undefined) payload.title = String(fields.title).trim();
+  if (fields.description !== undefined) payload.description = String(fields.description).trim();
   if (fields.status !== undefined) payload.status = String(fields.status);
   if (fields.image !== undefined) payload.image = String(fields.image).trim();
 

@@ -99,6 +99,10 @@ export function BannerView() {
         <AdminDetailBannerImage path={banner.image} alt={banner.title || "Banner"} />
         <div className="user-view-grid">
           <DetailRow label="Title" value={banner.title} />
+          <div className="user-detail-row user-detail-row--stack">
+            <span className="user-detail-row__label">Description</span>
+            <div style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>{banner.description || "—"}</div>
+          </div>
           <DetailRow label="Status" value={banner.status} />
           <DetailRow label="Created" value={formatDate(banner.createdAt)} />
           <DetailRow label="Updated" value={formatDate(banner.updatedAt)} />

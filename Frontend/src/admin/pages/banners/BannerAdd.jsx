@@ -9,8 +9,11 @@ import { mediaUrl } from "../../../media.js";
 import {
   IMAGE_MAX_SIZE_BYTES,
   TITLE_MAX_LEN,
+  DESCRIPTION_MIN_LEN,
+  DESCRIPTION_MAX_LEN,
   emptyForm,
   sanitizeTitleInput,
+  sanitizeDescriptionInput,
   validateBannerForm,
 } from "./BannerShared.js";
 
@@ -23,7 +26,7 @@ export function BannerForm({ mode = "create", initialBanner = null }) {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(() => {
     if (!initialBanner) return emptyForm();
-    return { title: initialBanner.title || "", status: initialBanner.status || "active" };
+    return { title: initialBanner.title || "", description: initialBanner.description || "", status: initialBanner.status || "active" };
   });
   const editId = isEditMode && initialBanner ? initialBanner._id || initialBanner.id || "" : "";
   const editBaselineImage = isEditMode && initialBanner ? initialBanner.image || "" : "";
@@ -54,7 +57,11 @@ export function BannerForm({ mode = "create", initialBanner = null }) {
       return;
     }
 
-    const payload = { title: form.title.trim(), status: form.status || "active" };
+    const payload = {
+      title: form.title.trim(),
+      description: form.description.trim(),
+      status: form.status || "active",
+    };
     setSaving(true);
     try {
       if (editId) {
@@ -92,6 +99,23 @@ export function BannerForm({ mode = "create", initialBanner = null }) {
             maxLength={TITLE_MAX_LEN}
             required
           />
+        </label>
+        <label className="user-field col-12">
+          <span className="user-field__label">
+            Description <span className="required-dot">*</span>
+          </span>
+          <textarea
+            className="user-field__input"
+            rows={4}
+            value={form.description}
+            minLength={DESCRIPTION_MIN_LEN}
+            maxLength={DESCRIPTION_MAX_LEN}
+            onChange={(e) => setForm((p) => ({ ...p, description: sanitizeDescriptionInput(e.target.value) }))}
+            required
+          />
+          <small className="data-table__muted">
+            {form.description.trim().length}/{DESCRIPTION_MAX_LEN} (min {DESCRIPTION_MIN_LEN})
+          </small>
         </label>
         <label className="user-field col-12 col-md-6">
           <span className="user-field__label">Status</span>

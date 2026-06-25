@@ -8,7 +8,7 @@ import { MdEditSquare } from "react-icons/md";
 import { AiFillDelete, AiOutlineEye } from "react-icons/ai";
 import { adminDeleteBanner, adminListBanners, adminUpdateBanner } from "../../api/bannerController.js";
 import { logout } from "../../../store/authSlice.js";
-import { formatDate, LIST_LIMIT } from "./BannerShared.js";
+import { formatDate, LIST_LIMIT, truncate, DESCRIPTION_PREVIEW_LEN } from "./BannerShared.js";
 
 export function BannerList() {
   const dispatch = useDispatch();
@@ -105,12 +105,12 @@ export function BannerList() {
         </div>
         <div className="row g-2" style={{ marginBottom: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
           <label className="user-field" style={{ flex: "1 1 200px", marginBottom: 0 }}>
-            <span className="user-field__label">Search title</span>
+            <span className="user-field__label">Search title or description</span>
             <input
               className="user-field__input"
               value={listSearch}
               onChange={(e) => setListSearch(e.target.value)}
-              placeholder="Filter by title…"
+              placeholder="Filter by title or description…"
             />
           </label>
           <label className="user-field" style={{ flex: "0 1 160px", marginBottom: 0 }}>
@@ -129,6 +129,7 @@ export function BannerList() {
                 <th>S No.</th>
                 <th>Image</th>
                 <th>Title</th>
+                <th>Description</th>
                 <th>Created</th>
                 <th>Status</th>
                 <th className="data-table__actions-col">Actions</th>
@@ -136,10 +137,10 @@ export function BannerList() {
             </thead>
             <tbody>
               {loading ? (
-                <AdminTableLoaderRow colSpan={6} label="Loading banners..." />
+                <AdminTableLoaderRow colSpan={7} label="Loading banners..." />
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={6}>No banners found.</td>
+                  <td colSpan={7}>No banners found.</td>
                 </tr>
               ) : (
                 rows.map((row, idx) => (
@@ -149,6 +150,9 @@ export function BannerList() {
                       <AdminMediaImage path={row.image} width={56} height={42} radius={6} alt="" />
                     </td>
                     <td>{row.title || "—"}</td>
+                    <td className="data-table__muted" title={row.description || ""}>
+                      {truncate(row.description, DESCRIPTION_PREVIEW_LEN)}
+                    </td>
                     <td className="data-table__muted">{formatDate(row.createdAt)}</td>
                     <td>
                       <button
