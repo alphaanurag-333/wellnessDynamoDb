@@ -19,7 +19,7 @@ const {
 
 const TABLE = "Notification";
 const STATUS = new Set(["active", "inactive"]);
-const AUDIENCE_TYPES = new Set(["users", "coaches"]);
+const AUDIENCE_TYPES = new Set(["users"]);
 
 function normalizeStatus(value, fallback = "active") {
   const next = String(value || fallback).trim().toLowerCase();
@@ -29,6 +29,10 @@ function normalizeStatus(value, fallback = "active") {
 function normalizeAudienceType(value, fallback = "users") {
   const next = String(value || fallback).trim().toLowerCase();
   return AUDIENCE_TYPES.has(next) ? next : fallback;
+}
+
+function isSupportedAudience(value) {
+  return AUDIENCE_TYPES.has(String(value || "").trim().toLowerCase());
 }
 
 function withLegacyId(item) {
@@ -74,7 +78,8 @@ async function getNotificationRecordById(id) {
 
 async function getNotificationById(id) {
   const item = await getNotificationRecordById(id);
-  return item ? toPublicNotification(item) : null;
+  if (!item || !isSupportedAudience(item.audienceType)) return null;
+  return toPublicNotification(item);
 }
 
 async function updateNotification(id, updates) {
@@ -119,6 +124,12 @@ async function deleteNotification(id) {
 async function listNotifications({ page = 1, limit = 10, status, audienceType, search } = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const normalizedAudience = audienceType ? normalizeAudienceType(audienceType, "") : "";
+  if (audienceType && !normalizedAudience) {
+    return {
+      notifications: [],
+      pagination: { page: Math.max(1, Number(page) || 1), limit, total: 0, pages: 1 },
+    };
+  }
   const searchTerm = String(search || "").trim();
   const searching = Boolean(searchTerm);
   let filterExpression;
@@ -136,6 +147,12 @@ async function listNotifications({ page = 1, limit = 10, status, audienceType, s
     exprNames["#status"] = "status";
     exprValues[":status"] = normalizedStatus;
     filterExpression = appendFilter(filterExpression, "#status = :status");
+  }
+
+  if (!useAudienceIndex) {
+    exprNames["#audienceType"] = "audienceType";
+    exprValues[":usersOnly"] = "users";
+    filterExpression = appendFilter(filterExpression, "#audienceType = :usersOnly");
   }
 
   const result = await listByPartitionKey({
@@ -163,9 +180,7 @@ async function listNotifications({ page = 1, limit = 10, status, audienceType, s
 
   const filtered = filterItemsBySearch(result.items, {
     search: searchTerm,
-    searchFn: (item, term) =>
-      String(item.message || "").toLowerCase().includes(term) ||
-      String(item.audienceType || "").toLowerCase().includes(term),
+    searchFn: (item, term) => String(item.message || "").toLowerCase().includes(term),
   });
   const paged = paginateItems(filtered, page, limit, 200);
 
@@ -184,4 +199,5 @@ module.exports = {
   listNotifications,
   normalizeStatus,
   normalizeAudienceType,
+  isSupportedAudience,
 };

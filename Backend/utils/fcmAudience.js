@@ -4,7 +4,6 @@ const { readFcmToken } = require("./parseFcmId");
 
 const AUDIENCE_TABLES = {
   users: ["User"],
-  coaches: ["WellnessCoach", "AssistantWellnessCoach"],
 };
 
 async function queryActiveFcmTokens(tableName) {

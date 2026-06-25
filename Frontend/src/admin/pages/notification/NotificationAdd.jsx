@@ -10,14 +10,10 @@ import { mediaUrl } from "../../../media.js";
 import {
   IMAGE_MAX_SIZE_BYTES,
   MESSAGE_MAX_LEN,
-  SEND_AUDIENCE_OPTIONS,
-  audienceLabel,
+  NOTIFICATION_AUDIENCE,
   emptyForm,
-  pillBarStyle,
-  pillButtonStyle,
   sanitizeMessageInput,
 } from "./NotificationShared.js";
-import { audienceIcon } from "./NotificationIcons.jsx";
 
 export function NotificationForm({ mode = "create", initialNotification = null }) {
   const isEditMode = mode === "edit";
@@ -25,12 +21,11 @@ export function NotificationForm({ mode = "create", initialNotification = null }
   const navigate = useNavigate();
   const adminToken = useSelector((s) => s.auth.adminToken);
 
-  const [sendAudience, setSendAudience] = useState(() => initialNotification?.audienceType || "users");
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(() => {
-    if (!initialNotification) return emptyForm("users");
+    if (!initialNotification) return emptyForm();
     return {
-      audienceType: initialNotification.audienceType || "users",
+      audienceType: NOTIFICATION_AUDIENCE,
       message: initialNotification.message || "",
       status: initialNotification.status || "active",
     };
@@ -44,7 +39,7 @@ export function NotificationForm({ mode = "create", initialNotification = null }
   const fileInputRef = useRef(null);
 
   const resetForm = () => {
-    setForm(emptyForm(sendAudience));
+    setForm(emptyForm());
     setImageFile(null);
     setImagePreview("");
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -61,7 +56,7 @@ export function NotificationForm({ mode = "create", initialNotification = null }
     }
 
     const payload = {
-      audienceType: form.audienceType,
+      audienceType: NOTIFICATION_AUDIENCE,
       message,
       status: form.status || "active",
     };
@@ -85,91 +80,73 @@ export function NotificationForm({ mode = "create", initialNotification = null }
   };
 
   return (
-    <div style={{ display: "grid", gap: 12 }}>
-      <div style={{ ...pillBarStyle, gridTemplateColumns: `repeat(${SEND_AUDIENCE_OPTIONS.length}, minmax(0, 1fr))` }}>
-        {SEND_AUDIENCE_OPTIONS.map((item) => (
-          <button
-            key={item.value}
-            type="button"
-            onClick={() => {
-              setSendAudience(item.value);
-              setForm((p) => ({ ...p, audienceType: item.value }));
+    <form onSubmit={onSubmit}>
+      <div className="row g-3">
+        <label className="user-field col-12">
+          <span className="user-field__label">
+            Notification message <span className="required-dot">*</span>
+          </span>
+          <textarea
+            className="user-field__input"
+            rows={3}
+            value={form.message}
+            maxLength={MESSAGE_MAX_LEN}
+            onChange={(e) => setForm((p) => ({ ...p, message: sanitizeMessageInput(e.target.value) }))}
+            placeholder="Enter your message for users..."
+            required
+          />
+          <small className="data-table__muted">
+            {form.message.length}/{MESSAGE_MAX_LEN}
+          </small>
+        </label>
+        <label className="user-field col-12 col-md-6">
+          <span className="user-field__label">Status</span>
+          <select className="user-field__input" value={form.status} onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </label>
+        <label className="user-field col-12 col-md-6">
+          <span className="user-field__label">Image (up to 5 MB, optional)</span>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="user-field__input"
+            onChange={(e) => {
+              const file = e.target.files?.[0] || null;
+              if (file && file.size > IMAGE_MAX_SIZE_BYTES) {
+                setImageFile(null);
+                setImagePreview(editBaselineImage ? mediaUrl(editBaselineImage) : "");
+                e.target.value = "";
+                void Swal.fire({ icon: "error", title: "Validation error", text: "Image size must be 5 MB or less." });
+                return;
+              }
+              setImageFile(file);
+              setImagePreview(file ? URL.createObjectURL(file) : editBaselineImage ? mediaUrl(editBaselineImage) : "");
             }}
-            style={pillButtonStyle(sendAudience === item.value)}
-          >
-            {audienceIcon(item.value)}
-            {item.label}
-          </button>
-        ))}
+          />
+        </label>
       </div>
-      <form onSubmit={onSubmit}>
-        <div className="row g-3">
-          <label className="user-field col-12">
-            <span className="user-field__label">
-              Notification message <span className="required-dot">*</span>
-            </span>
-            <textarea
-              className="user-field__input"
-              rows={3}
-              value={form.message}
-              maxLength={MESSAGE_MAX_LEN}
-              onChange={(e) => setForm((p) => ({ ...p, message: sanitizeMessageInput(e.target.value) }))}
-              placeholder={`Enter your message for ${audienceLabel(sendAudience).toLowerCase()}...`}
-              required
-            />
-            <small className="data-table__muted">
-              {form.message.length}/{MESSAGE_MAX_LEN}
-            </small>
-          </label>
-          <label className="user-field col-12 col-md-6">
-            <span className="user-field__label">Status</span>
-            <select className="user-field__input" value={form.status} onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-          </label>
-          <label className="user-field col-12 col-md-6">
-            <span className="user-field__label">Image (up to 5 MB, optional)</span>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="user-field__input"
-              onChange={(e) => {
-                const file = e.target.files?.[0] || null;
-                if (file && file.size > IMAGE_MAX_SIZE_BYTES) {
-                  setImageFile(null);
-                  setImagePreview(editBaselineImage ? mediaUrl(editBaselineImage) : "");
-                  e.target.value = "";
-                  void Swal.fire({ icon: "error", title: "Validation error", text: "Image size must be 5 MB or less." });
-                  return;
-                }
-                setImageFile(file);
-                setImagePreview(file ? URL.createObjectURL(file) : editBaselineImage ? mediaUrl(editBaselineImage) : "");
-              }}
-            />
-          </label>
-        </div>
-        <div style={{ marginTop: 6 }}>
-          <AdminMediaImage path={editBaselineImage} src={imagePreview || undefined} width={100} height={60} radius={8} alt="Preview" />
-        </div>
-        <div className="user-form__actions">
-          {isEditMode ? (
-            <button type="button" className="btn btn--ghost" onClick={() => navigate("/admin/notifications")}>
-              Cancel edit
-            </button>
-          ) : (
-            <button type="button" className="btn btn--ghost" onClick={resetForm}>
-              Reset
-            </button>
-          )}
-          <button type="submit" className="btn btn--primary" disabled={saving}>
-            <IoSendOutline size={16} />
-            {saving ? "Saving…" : editId ? `Update for ${audienceLabel(sendAudience)}` : `Save for ${audienceLabel(sendAudience)}`}
+      <div style={{ marginTop: 6 }}>
+        <AdminMediaImage path={editBaselineImage} src={imagePreview || undefined} width={100} height={60} radius={8} alt="Preview" />
+      </div>
+      <div className="user-form__actions">
+        {isEditMode ? (
+          <button type="button" className="btn btn--ghost" onClick={() => navigate("/admin/notifications")}>
+            Cancel edit
           </button>
-        </div>
-      </form>
-    </div>
+        ) : (
+          <button type="button" className="btn btn--ghost" onClick={resetForm}>
+            Reset
+          </button>
+        )}
+        <button type="submit" className="btn btn--primary" disabled={saving}>
+          <IoSendOutline size={16} />
+          {saving ? "Saving…" : editId ? "Update notification" : "Save notification"}
+        </button>
+      </div>
+    </form>
   );
 }
 

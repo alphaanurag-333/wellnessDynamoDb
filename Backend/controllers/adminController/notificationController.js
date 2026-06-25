@@ -14,6 +14,7 @@ const {
   listNotifications,
   normalizeStatus,
   normalizeAudienceType,
+  isSupportedAudience,
 } = require("../../models/notificationModel");
 const { collectFcmTokensForAudience } = require("../../utils/fcmAudience");
 const { sendPushToTokens } = require("../../utils/pushNotification");
@@ -95,8 +96,8 @@ exports.createNotificationController = asyncHandler(async (req, res) => {
   if (!audienceType) {
     throw new AppError("audienceType is required", 400);
   }
-  if (!["users", "coaches"].includes(audienceType)) {
-    throw new AppError("audienceType must be users or coaches", 400);
+  if (audienceType !== "users") {
+    throw new AppError("audienceType must be users", 400);
   }
   if (!message) {
     throw new AppError("message is required", 400);
@@ -122,7 +123,7 @@ exports.createNotificationController = asyncHandler(async (req, res) => {
 
 exports.updateNotificationController = asyncHandler(async (req, res) => {
   const current = await getNotificationRecordById(req.params.id);
-  if (!current) {
+  if (!current || !isSupportedAudience(current.audienceType)) {
     throw new AppError("Notification not found", 404);
   }
 
@@ -130,8 +131,8 @@ exports.updateNotificationController = asyncHandler(async (req, res) => {
 
   if (req.body.audienceType !== undefined) {
     const audienceType = normalizeAudienceType(req.body.audienceType, "");
-    if (!["users", "coaches"].includes(audienceType)) {
-      throw new AppError("audienceType must be users or coaches", 400);
+    if (audienceType !== "users") {
+      throw new AppError("audienceType must be users", 400);
     }
     updates.audienceType = audienceType;
   }

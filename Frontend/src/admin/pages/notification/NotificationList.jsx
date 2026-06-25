@@ -13,15 +13,7 @@ import {
   adminUpdateNotification,
 } from "../../api/notificationController.js";
 import { logout } from "../../../store/authSlice.js";
-import {
-  LIST_AUDIENCE_OPTIONS,
-  LIST_LIMIT,
-  audienceLabel,
-  formatDateTime,
-  pillBarStyle,
-  pillButtonStyle,
-} from "./NotificationShared.js";
-import { audienceIcon } from "./NotificationIcons.jsx";
+import { LIST_LIMIT, formatDateTime } from "./NotificationShared.js";
 
 export function NotificationList() {
   const dispatch = useDispatch();
@@ -34,7 +26,6 @@ export function NotificationList() {
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [total, setTotal] = useState(0);
-  const [listAudience, setListAudience] = useState("");
   const [listSearch, setListSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [listStatus, setListStatus] = useState("");
@@ -51,7 +42,6 @@ export function NotificationList() {
       const { notifications, pagination } = await adminListNotifications(adminToken, {
         page,
         limit: LIST_LIMIT,
-        ...(listAudience ? { audienceType: listAudience } : {}),
         ...(listStatus ? { status: listStatus } : {}),
         ...(debouncedSearch ? { search: debouncedSearch } : {}),
       });
@@ -64,7 +54,7 @@ export function NotificationList() {
     } finally {
       setLoading(false);
     }
-  }, [adminToken, debouncedSearch, dispatch, listAudience, listStatus, page]);
+  }, [adminToken, debouncedSearch, dispatch, listStatus, page]);
 
   useEffect(() => {
     loadRows();
@@ -72,7 +62,7 @@ export function NotificationList() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, listAudience, listStatus]);
+  }, [debouncedSearch, listStatus]);
 
   const onDelete = async (row) => {
     const { isConfirmed } = await Swal.fire({
@@ -143,25 +133,6 @@ export function NotificationList() {
             Add notification
           </button>
         </div>
-        <div
-          style={{
-            ...pillBarStyle,
-            gridTemplateColumns: `repeat(${LIST_AUDIENCE_OPTIONS.length}, minmax(0, 1fr))`,
-            marginBottom: 10,
-          }}
-        >
-          {LIST_AUDIENCE_OPTIONS.map((item) => (
-            <button
-              key={item.value || "all"}
-              type="button"
-              onClick={() => setListAudience(item.value)}
-              style={pillButtonStyle(listAudience === item.value)}
-            >
-              {audienceIcon(item.value)}
-              {item.label}
-            </button>
-          ))}
-        </div>
         <div className="row g-2" style={{ marginBottom: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
           <label className="user-field" style={{ flex: "1 1 200px", marginBottom: 0 }}>
             <span className="user-field__label">Search</span>
@@ -169,7 +140,7 @@ export function NotificationList() {
               className="user-field__input"
               value={listSearch}
               onChange={(e) => setListSearch(e.target.value)}
-              placeholder="Message or audience…"
+              placeholder="Message..."
             />
           </label>
           <label className="user-field" style={{ flex: "0 1 160px", marginBottom: 0 }}>
@@ -187,7 +158,6 @@ export function NotificationList() {
               <tr>
                 <th>S No.</th>
                 <th>Image</th>
-                <th>Audience</th>
                 <th>Message</th>
                 <th>Sent</th>
                 <th>Status</th>
@@ -196,10 +166,10 @@ export function NotificationList() {
             </thead>
             <tbody>
               {loading ? (
-                <AdminTableLoaderRow colSpan={7} label="Loading notifications..." />
+                <AdminTableLoaderRow colSpan={6} label="Loading notifications..." />
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={7}>No notifications found.</td>
+                  <td colSpan={6}>No notifications found.</td>
                 </tr>
               ) : (
                 rows.map((row, idx) => (
@@ -208,7 +178,6 @@ export function NotificationList() {
                     <td>
                       <AdminMediaImage path={row.image} width={56} height={42} radius={6} alt="" />
                     </td>
-                    <td className="data-table__muted">{audienceLabel(row.audienceType)}</td>
                     <td>{row.message || "—"}</td>
                     <td className="data-table__muted">{formatDateTime(row.sentAt)}</td>
                     <td>

@@ -7,7 +7,7 @@ import { adminGetNotificationById, adminResendNotification } from "../../api/not
 import { logout } from "../../../store/authSlice.js";
 import { AdminDetailBannerImage } from "../../components/AdminDetailBannerImage.jsx";
 import { NotFoundPage } from "../NotFoundPage.jsx";
-import { audienceLabel, formatDateTime } from "./NotificationShared.js";
+import { formatDateTime } from "./NotificationShared.js";
 
 function DetailRow({ label, value }) {
   return (
@@ -94,7 +94,7 @@ export function NotificationView() {
     const { isConfirmed } = await Swal.fire({
       icon: "question",
       title: "Resend notification?",
-      text: `Send again to all ${notification.audienceType === "coaches" ? "coaches" : "users"} with a registered device.`,
+      text: "Send again to all users with a registered device.",
       showCancelButton: true,
       confirmButtonText: "Resend",
     });
@@ -148,7 +148,6 @@ export function NotificationView() {
       <div className="page-card user-view-card">
         <AdminDetailBannerImage path={notification.image} alt="Notification" />
         <div className="user-view-grid">
-          <DetailRow label="Audience" value={audienceLabel(notification.audienceType)} />
           <DetailRow label="Status" value={notification.status} />
           <DetailRow label="Sent" value={formatDateTime(notification.sentAt)} />
           <DetailRow label="Created" value={formatDateTime(notification.createdAt)} />
