@@ -10,6 +10,7 @@ const { docClient } = require("../config/db");
 const {
   listByPartitionKey,
   buildContainsFilter,
+  filterItemsBySearch,
   sortByCreatedAtDesc,
   paginateDynamo,
 } = require("../utils/dynamoList");
@@ -246,11 +247,14 @@ async function listBirthdayNotifications({
     allItems.push(...items);
   }
 
-  const sorted = [...allItems].sort((a, b) => {
-    const dateCmp = String(b.notificationDate || "").localeCompare(String(a.notificationDate || ""));
-    if (dateCmp !== 0) return dateCmp;
-    return sortByCreatedAtDesc(a, b);
-  });
+  const sorted = filterItemsBySearch(
+    [...allItems].sort((a, b) => {
+      const dateCmp = String(b.notificationDate || "").localeCompare(String(a.notificationDate || ""));
+      if (dateCmp !== 0) return dateCmp;
+      return sortByCreatedAtDesc(a, b);
+    }),
+    { search: searchFilter.search, searchFields: searchFilter.searchFields }
+  );
   const total = sorted.length;
   const safeLimit = Math.max(1, Math.min(Number(limit) || 10, 200));
   const safePage = Math.max(1, Number(page) || 1);

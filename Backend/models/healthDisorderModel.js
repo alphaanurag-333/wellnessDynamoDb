@@ -138,6 +138,8 @@ async function listHealthDisorders({ page = 1, limit = 10, status, type, search 
     filterExpression,
     exprNames,
     exprValues,
+    search: searchFilter.search,
+    searchFields: searchFilter.searchFields,
     scanIndexForward: false,
     page,
     limit,

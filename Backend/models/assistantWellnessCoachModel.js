@@ -402,6 +402,8 @@ async function listAssistantWellnessCoaches({ page = 1, limit = 20, status, sear
     filterExpression: searchFilter.filterExpression,
     exprNames: searchFilter.exprNames,
     exprValues: searchFilter.exprValues,
+    search: searchFilter.search,
+    searchFields: searchFilter.searchFields,
     scanIndexForward: false,
     page,
     limit,

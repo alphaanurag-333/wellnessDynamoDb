@@ -199,6 +199,8 @@ async function listHealthRecipes({ page = 1, limit = 10, status, type, healthCon
     filterExpression,
     exprNames,
     exprValues,
+    search: searchFilter.search,
+    searchFields: searchFilter.searchFields,
     scanIndexForward: false,
     page,
     limit,

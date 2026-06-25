@@ -168,6 +168,8 @@ async function listVideoTestimonials({ page = 1, limit = 10, type, status, searc
     filterExpression,
     exprNames,
     exprValues,
+    search: searchFilter.search,
+    searchFields: searchFilter.searchFields,
     scanIndexForward: false,
     page,
     limit,

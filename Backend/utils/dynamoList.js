@@ -258,21 +258,16 @@ async function listByScan({
 function buildContainsFilter(fields, search, names = {}, values = {}) {
   const normalizedSearch = String(search || "").trim();
   if (!normalizedSearch) {
-    return { filterExpression: null, exprNames: names, exprValues: values };
+    return { filterExpression: null, exprNames: names, exprValues: values, search: null, searchFields: null };
   }
 
-  const parts = fields.map((field) => {
-    const nameKey = `#${field}`;
-    names[nameKey] = field;
-    return `contains(${nameKey}, :search)`;
-  });
-
-  values[":search"] = normalizedSearch;
-
+  // DynamoDB contains() is case-sensitive; defer to in-memory filter in listByPartitionKey.
   return {
-    filterExpression: `(${parts.join(" OR ")})`,
+    filterExpression: null,
     exprNames: names,
     exprValues: values,
+    search: normalizedSearch,
+    searchFields: fields,
   };
 }
 

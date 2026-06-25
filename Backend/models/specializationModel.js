@@ -179,6 +179,8 @@ async function listSpecializations({ page = 1, limit = 20, status, search } = {}
     filterExpression: searchFilter.filterExpression,
     exprNames: searchFilter.exprNames,
     exprValues: searchFilter.exprValues,
+    search: searchFilter.search,
+    searchFields: searchFilter.searchFields,
     scanIndexForward: false,
     page,
     limit,

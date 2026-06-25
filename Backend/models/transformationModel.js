@@ -161,6 +161,8 @@ async function listTransformations({ page = 1, limit = 10, status, search, userI
     filterExpression,
     exprNames,
     exprValues,
+    search: searchFilter.search,
+    searchFields: searchFilter.searchFields,
     scanIndexForward: false,
     page,
     limit,

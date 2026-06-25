@@ -161,6 +161,8 @@ function sanitizeUpdateField(key, value) {
       filterExpression,
       exprNames,
       exprValues,
+      search: searchFilter.search,
+      searchFields: searchFilter.searchFields,
       scanIndexForward: false,
       page,
       limit,
