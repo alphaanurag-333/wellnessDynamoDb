@@ -1525,7 +1525,7 @@
 
   /* Footer */
 
-  --footer-bg: #FEF4ED;
+  --footer-bg: #fef4ed;
   --footer-title: #342b27;
   --footer-text: #7b7571;
 }
@@ -2914,6 +2914,7 @@ a:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
 }
 
 .bmi-left {
@@ -3142,9 +3143,6 @@ a:hover {
 .final-cta__button:active {
   transform: translateY(0);
 }
-
-
-
 
 /* ---------Footer------------------- */
 
@@ -3375,6 +3373,364 @@ a:hover {
   color: var(--primary);
 }
 
+/* -------------ContactUS------------ */
+
+.contact-section {
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-body);
+
+  padding: 0;
+}
+
+/* =============================
+   Heading
+============================= */
+.contact-hero {
+  width: 100%;
+  height: 430px;
+  padding: 70px 0;
+  background-image: url("../site/images/contact-bg.png");
+  display: flex;
+  align-items: center;
+
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+
+  position: relative;
+}
+
+.contact-hero-content {
+  width: 48%;
+  margin-left: 8%;
+}
+
+.contact-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  height: 28px;
+  padding: 0 14px;
+
+  background: var(--primary-light);
+
+  color: var(--primary);
+
+  border-radius: var(--radius-pill);
+
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+
+  letter-spacing: 1px;
+
+  margin-bottom: 18px;
+}
+
+.contact-title {
+  margin: 0;
+
+  color: var(--text-heading);
+
+  font-size: 66px;
+  line-height: 1.02;
+
+  font-weight: var(--fw-bold);
+
+  letter-spacing: -1.5px;
+}
+
+.contact-title span {
+  display: block;
+  color: var(--primary);
+}
+
+.contact-description {
+  width: 500px;
+
+  margin-top: 24px;
+
+  color: var(--text-body);
+
+  font-size: 18px;
+
+  line-height: 31px;
+}
+
+/* =============================
+   Form Card
+============================= */
+
+.contact-card {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+  margin-top: 70px;
+  margin-bottom: 100px;
+  background: var(--bg-card);
+
+  border-radius: 34px;
+
+  padding: 40px;
+
+  box-shadow: var(--shadow-lg);
+
+  position: relative;
+  z-index: 5;
+}
+
+.contact-card form {
+  width: 100%;
+}
+
+/* =============================
+   Flex Rows
+============================= */
+
+.contact-row {
+  width: 100%;
+
+  display: flex;
+  justify-content: space-between;
+
+  margin-bottom: 28px;
+}
+
+.contact-field {
+  width: 48.5%;
+}
+
+.contact-full {
+  width: 100%;
+  margin-bottom: 28px;
+}
+
+/* =============================
+   Labels
+============================= */
+
+.contact-field label {
+  display: block;
+
+  margin-bottom: 12px;
+
+  color: var(--text-heading);
+
+  font-size: 15px;
+  font-weight: var(--fw-semibold);
+}
+
+/* =============================
+   Inputs
+============================= */
+
+.contact-field input,
+.contact-field select {
+  width: 100%;
+  height: 42px;
+
+  border: 1px solid var(--border-color);
+
+  background: #fcfaf8;
+
+  border-radius: 8px;
+
+  padding: 0 22px;
+
+  font-size: 16px;
+  color: var(--text-heading);
+
+  transition: var(--transition);
+
+  outline: none;
+}
+
+.contact-field input::placeholder,
+.contact-field textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.contact-field input:focus,
+.contact-field select:focus,
+.contact-field textarea:focus {
+  border-color: var(--primary);
+
+  box-shadow: 0 0 0 4px rgba(231, 134, 58, 0.1);
+}
+
+/* =============================
+   Select
+============================= */
+
+.contact-field select {
+  appearance: none;
+  cursor: pointer;
+
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--primary) 50%),
+    linear-gradient(135deg, var(--primary) 50%, transparent 50%);
+
+  background-position:
+    calc(100% - 24px) 17px,
+    calc(100% - 18px) 17px;
+
+  background-size: 6px 6px;
+
+  background-repeat: no-repeat;
+}
+
+/* =============================
+   Textarea
+============================= */
+
+.contact-field textarea {
+  width: 100%;
+
+  /* height: 180px; */
+
+  /* resize: none; */
+
+  border: 1px solid var(--border-color);
+
+  background: #fcfaf8;
+
+  border-radius: 18px;
+
+  padding: 20px 22px;
+
+  font-size: 16px;
+  color: var(--text-heading);
+
+  outline: none;
+
+  transition: var(--transition);
+
+  font-family: inherit;
+  line-height: 28px;
+}
+
+/* ======================================
+   FORM FOOTER
+====================================== */
+
+.contact-footer {
+  width: 100%;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  margin-top: 12px;
+}
+
+.contact-footer button {
+  width: 100%;
+  max-width: 320px;
+  height: 42px;
+
+  border: none;
+  outline: none;
+
+  border-radius: var(--radius-pill);
+
+  background: var(--primary);
+  color: var(--text-white);
+
+  font-size: 16px;
+  font-weight: var(--fw-semibold);
+
+  cursor: pointer;
+
+  transition: var(--transition);
+
+  box-shadow: 0 18px 40px rgba(231, 134, 58, 0.28);
+}
+
+.contact-footer button:hover {
+  background: var(--primary-hover);
+  transform: translateY(-3px);
+  box-shadow: 0 24px 48px rgba(231, 134, 58, 0.35);
+}
+
+.contact-footer button:active {
+  transform: translateY(0);
+}
+
+.contact-footer p {
+  margin: 22px 0 0;
+
+  max-width: 620px;
+
+  text-align: center;
+
+  color: var(--text-muted);
+
+  font-size: 14px;
+  line-height: 24px;
+}
+
+/* ======================================
+   INPUT HOVER
+====================================== */
+
+.contact-field input:hover,
+.contact-field select:hover,
+.contact-field textarea:hover {
+  border-color: rgba(231, 134, 58, 0.45);
+}
+
+/* ======================================
+   CARD ANIMATION
+====================================== */
+
+.contact-card {
+  animation: contactFade 0.8s ease;
+}
+
+@keyframes contactFade {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ======================================
+   DECORATIVE SHAPES
+====================================== */
+
+.contact-shape-one::before,
+.contact-shape-two::before {
+  content: "";
+
+  position: absolute;
+
+  inset: 18px;
+
+  border-radius: 50%;
+
+  border: 6px solid rgba(255, 255, 255, 0.25);
+}
+
+.contact-shape-one::after,
+.contact-shape-two::after {
+  content: "";
+
+  position: absolute;
+
+  inset: 42px;
+
+  border-radius: 50%;
+
+  border: 2px solid rgba(255, 255, 255, 0.18);
+}
+
 /* =========================
    RESPONSIVE
 ========================= */
@@ -3477,7 +3833,7 @@ a:hover {
   .success-card__review {
     font-size: 18px;
   }
-   .final-cta {
+  .final-cta {
     padding: 90px 0;
   }
 
@@ -3488,6 +3844,57 @@ a:hover {
   .final-cta__description {
     font-size: 18px;
     max-width: 600px;
+  }
+
+  .contact-section {
+    padding: 0;
+  }
+
+  .contact-card {
+    padding: 40px;
+    border-radius: 28px;
+    margin-bottom: 50px;
+  }
+
+  .contact-row {
+    gap: 20px;
+  }
+
+  .contact-field {
+    width: 50%;
+  }
+
+  .contact-shape-one {
+    width: 360px;
+    height: 360px;
+    top: -160px;
+    right: -140px;
+  }
+
+  .contact-shape-two {
+    width: 220px;
+    height: 220px;
+    top: -80px;
+    right: 40px;
+  }
+  .contact-hero {
+    height: 360px;
+    padding: 50px 0;
+    background-position: 68% center;
+  }
+
+  .contact-hero-content {
+    width: 60%;
+  }
+
+  .contact-title {
+    font-size: 52px;
+  }
+
+  .contact-description {
+    width: 100%;
+    font-size: 17px;
+    line-height: 29px;
   }
 }
 
@@ -3646,6 +4053,87 @@ a:hover {
     left: -70px;
     bottom: -70px;
   }
+
+  .contact-section {
+    padding: 0;
+  }
+
+  .contact-card {
+    padding: 28px 22px;
+    border-radius: 24px;
+    margin-bottom: 60px;
+  }
+
+  .contact-row {
+    flex-direction: column;
+    margin-bottom: 0;
+    gap: 0;
+  }
+
+  .contact-field {
+    width: 100%;
+    margin-bottom: 22px;
+  }
+
+  .contact-full {
+    margin-bottom: 22px;
+  }
+
+  .contact-field input,
+  .contact-field select {
+    height: 56px;
+    font-size: 15px;
+    padding: 0 18px;
+  }
+
+  .contact-field textarea {
+    height: 160px;
+    padding: 18px;
+    font-size: 15px;
+    line-height: 26px;
+  }
+
+  .contact-footer button {
+    width: 100%;
+    max-width: 100%;
+    height: 58px;
+    font-size: 16px;
+  }
+
+  .contact-footer p {
+    font-size: 13px;
+    line-height: 22px;
+    margin-top: 18px;
+  }
+
+  .contact-hero {
+    height: 300px;
+    padding: 50px 0;
+    background-position: right center;
+  }
+
+  .contact-hero-content {
+    width: 100%;
+  }
+
+  .contact-title {
+    font-size: 40px;
+    line-height: 1.08;
+  }
+
+  .contact-description {
+    width: 100%;
+    font-size: 15px;
+    line-height: 26px;
+    margin-top: 18px;
+  }
+
+  .contact-tag {
+    font-size: 10px;
+    height: 26px;
+    padding: 0 12px;
+    margin-bottom: 14px;
+  }
 }
 
 @media (max-width: 576px) {
@@ -3664,6 +4152,14 @@ a:hover {
 
   .mobile-nav {
     padding: 15px;
+  }
+
+  .methodology-card__content button {
+    bottom: 0;
+  }
+
+  .bmi-section {
+    padding: 80px 15px;
   }
   .bmi-header h2 {
     font-size: 38px;
@@ -3736,5 +4232,27 @@ a:hover {
 
   .success-card__review {
     font-size: 16px;
+  }
+ 
+  .contact-card {
+    width: fit-content;
+    margin: 50px 15px;
+    padding: 22px 18px;
+    /* margin-bottom: 50px; */
+  }
+
+  .contact-field label {
+    font-size: 14px;
+  }
+
+  .contact-field input,
+  .contact-field select,
+  .contact-field textarea {
+    font-size: 14px;
+  }
+
+  .contact-footer button {
+    height: 54px;
+    font-size: 15px;
   }
 }
