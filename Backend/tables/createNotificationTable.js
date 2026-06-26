@@ -12,6 +12,7 @@ async function createNotificationTable() {
       { AttributeName: "status", AttributeType: "S" },
       { AttributeName: "sentAt", AttributeType: "S" },
       { AttributeName: "audienceType", AttributeType: "S" },
+      { AttributeName: "userId", AttributeType: "S" },
     ],
     GlobalSecondaryIndexes: [
       {
@@ -26,6 +27,14 @@ async function createNotificationTable() {
         IndexName: "AudienceSentAtIndex",
         KeySchema: [
           { AttributeName: "audienceType", KeyType: "HASH" },
+          { AttributeName: "sentAt", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+      {
+        IndexName: "UserSentAtIndex",
+        KeySchema: [
+          { AttributeName: "userId", KeyType: "HASH" },
           { AttributeName: "sentAt", KeyType: "RANGE" },
         ],
         Projection: { ProjectionType: "ALL" },

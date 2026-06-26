@@ -42,6 +42,9 @@ async function deliverNotificationPush(notification) {
       notificationId: notification.id || notification._id || "",
       audienceType: notification.audienceType,
       type: "admin_notification",
+      kind: notification.kind || "admin_broadcast",
+      referenceId: notification.referenceId || "",
+      referenceType: notification.referenceType || "",
     },
   });
 }
@@ -106,7 +109,13 @@ exports.createNotificationController = asyncHandler(async (req, res) => {
     throw new AppError("message cannot exceed 1000 characters", 400);
   }
 
-  const notification = await createNotification({ audienceType, message, image, status });
+  const notification = await createNotification({
+    audienceType,
+    message,
+    image,
+    status,
+    kind: "admin_broadcast",
+  });
 
   const push =
     status === "active"

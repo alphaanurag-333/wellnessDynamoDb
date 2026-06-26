@@ -10,6 +10,8 @@ const {
   deliverBirthdayPush,
   runBirthdayJob,
 } = require("../../services/birthdayJobService");
+const { findBirthdayPostByUserAndDate } = require("../../models/birthdayPostModel");
+const { ensureBirthdayReminderInbox } = require("../../services/notificationDispatchService");
 
 function resendResultMessage(push) {
   if (push.reason === "no_token") return "User has no FCM token registered";
@@ -86,6 +88,18 @@ exports.resendBirthdayNotificationController = asyncHandler(async (req, res) => 
     status: pushStatus,
     sentAt,
   });
+
+  const post = await findBirthdayPostByUserAndDate(
+    notification.userId,
+    notification.notificationDate
+  );
+  if (post) {
+    await ensureBirthdayReminderInbox({
+      recipientUserId: notification.userId,
+      message: updated.message,
+      postId: post.id || post._id,
+    });
+  }
 
   return res.status(200).json({
     status: true,

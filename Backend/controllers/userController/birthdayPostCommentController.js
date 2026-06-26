@@ -10,6 +10,8 @@ const {
   deleteBirthdayPostComment,
   getBirthdayPostCommentRecordById,
 } = require("../../models/birthdayPostCommentModel");
+const { getUserById } = require("../../models/userModel");
+const { dispatchBirthdayWishNotification } = require("../../services/notificationDispatchService");
 
 function readPaging(query, defaultLimit = 50) {
   const page = Math.max(1, Number(query.page) || 1);
@@ -42,7 +44,7 @@ exports.listBirthdayPostCommentsController = asyncHandler(async (req, res) => {
 });
 
 exports.createBirthdayPostCommentController = asyncHandler(async (req, res) => {
-  await assertActivePost(req.params.postId);
+  const post = await assertActivePost(req.params.postId);
 
   const comment = String(req.body.comment || "").trim();
   if (!comment) {
@@ -52,11 +54,23 @@ exports.createBirthdayPostCommentController = asyncHandler(async (req, res) => {
     throw new AppError("comment cannot exceed 2000 characters", 400);
   }
 
+  const commenterUserId = req.user.id;
   const created = await createBirthdayPostComment({
     birthdayPostId: req.params.postId,
-    commenterUserId: req.user.id,
+    commenterUserId,
     comment,
   });
+
+  if (post.userId && post.userId !== commenterUserId) {
+    const commenter = await getUserById(commenterUserId);
+    const commenterName = commenter?.name || "Someone";
+    dispatchBirthdayWishNotification({
+      recipientUserId: post.userId,
+      actorUserId: commenterUserId,
+      postId: req.params.postId,
+      message: `${commenterName} wished you on your birthday`,
+    }).catch((err) => console.error("Birthday wish notification failed:", err?.message || err));
+  }
 
   return res.status(201).json({
     status: true,

@@ -13,6 +13,7 @@ const {
   deleteHealthTool,
   listHealthTools,
 } = require("../../models/healthToolModel");
+const { dispatchBroadcastNotification } = require("../../services/notificationDispatchService");
 
 const S3_FOLDER = "health-tool";
 
@@ -41,6 +42,18 @@ exports.createHealthToolController = asyncHandler(async (req, res) => {
   if (!["active", "inactive"].includes(status)) throw new AppError("status must be active or inactive", 400);
 
   const healthTool = await createHealthTool({ title, description, icon, status });
+
+  if (status === "active") {
+    dispatchBroadcastNotification({
+      kind: "health_tool",
+      message: `New health tool: ${title}`,
+      image: icon,
+      title,
+      referenceId: healthTool.id || healthTool._id,
+      referenceType: "health_tool",
+    }).catch((err) => console.error("Health tool notification failed:", err?.message || err));
+  }
+
   return res.status(201).json({ status: true, message: "Health tool created successfully", healthTool });
 });
 

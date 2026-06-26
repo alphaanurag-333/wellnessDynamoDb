@@ -38,8 +38,10 @@
     { "key": "todayDate", "value": "2026-06-23" },
     { "key": "primaryHealthConcernId", "value": "" },
     { "key": "fcmId", "value": "sample-fcm-device-token" },
+    { "key": "notificationId", "value": "" },
     { "key": "transactionId", "value": "" },
-    { "key": "razorpayOrderId", "value": "" }
+    { "key": "razorpayOrderId", "value": "" },
+    { "key": "notificationId", "value": "" }
   ],
   "item": [
     {
@@ -635,6 +637,66 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/user/consultancy-payment/transactions/{{transactionId}}"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "description": "User in-app notification inbox (`/api/user/notifications`). All routes require Bearer token.\n\nSupports admin broadcasts, new health content, and birthday wishes. Use `unread=true` to filter unread only.",
+      "item": [
+        {
+          "name": "List Notifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/notifications?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "notifications"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "unread", "value": "false", "description": "Set to true for unread only", "disabled": true }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Unread Count",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/user/notifications/unread-count"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Notification by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/user/notifications/{{notificationId}}"
+          },
+          "response": []
+        },
+        {
+          "name": "Mark Notification Read",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/user/notifications/{{notificationId}}/read"
+          },
+          "response": []
+        },
+        {
+          "name": "Mark All Read",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/user/notifications/read-all"
           },
           "response": []
         }

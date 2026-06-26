@@ -12,6 +12,7 @@ const {
   findBirthdayPostByUserAndDate,
   createBirthdayPost,
 } = require("../models/birthdayPostModel");
+const { ensureBirthdayReminderInbox } = require("./notificationDispatchService");
 
 const PUSH_TITLE = "IR Wellness";
 const DEFAULT_MESSAGE = "Happy Birthday! Wishing you a wonderful day from IR Wellness.";
@@ -48,6 +49,22 @@ async function ensureBirthdayPost(user, dateOnly, notificationId) {
   return post;
 }
 
+async function syncBirthdayReminderInbox(user, birthdayNotification, post) {
+  try {
+    await ensureBirthdayReminderInbox({
+      recipientUserId: user.id || user._id,
+      message: birthdayNotification.message,
+      postId: post.id || post._id,
+    });
+  } catch (err) {
+    console.error(
+      "Birthday inbox sync failed:",
+      user.id || user._id,
+      err?.message || err
+    );
+  }
+}
+
 async function sendBirthdayNotificationPush(user, notification) {
   let pushStatus = "failed";
   let sentAt = null;
@@ -78,6 +95,7 @@ async function processBirthdayUser(user, dateOnly) {
 
   if (existingNotification?.status === "sent") {
     const post = await ensureBirthdayPost(user, dateOnly, existingNotification.id);
+    await syncBirthdayReminderInbox(user, existingNotification, post);
     return {
       userId,
       userName: user.name || null,
@@ -106,6 +124,7 @@ async function processBirthdayUser(user, dateOnly) {
     notification
   );
   const post = await ensureBirthdayPost(user, dateOnly, updated.id);
+  await syncBirthdayReminderInbox(user, updated, post);
 
   return {
     userId,

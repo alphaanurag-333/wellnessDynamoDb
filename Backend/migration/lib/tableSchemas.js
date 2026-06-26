@@ -355,6 +355,7 @@ const TABLE_DEFINITIONS = [
       { AttributeName: "status", AttributeType: "S" },
       { AttributeName: "sentAt", AttributeType: "S" },
       { AttributeName: "audienceType", AttributeType: "S" },
+      { AttributeName: "userId", AttributeType: "S" },
     ],
     GlobalSecondaryIndexes: [
       {
@@ -373,6 +374,26 @@ const TABLE_DEFINITIONS = [
         ],
         Projection: { ProjectionType: "ALL" },
       },
+      {
+        IndexName: "UserSentAtIndex",
+        KeySchema: [
+          { AttributeName: "userId", KeyType: "HASH" },
+          { AttributeName: "sentAt", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+    ],
+    ...PAY_PER_REQUEST,
+  },
+  {
+    TableName: "UserNotificationRead",
+    KeySchema: [
+      { AttributeName: "userId", KeyType: "HASH" },
+      { AttributeName: "notificationId", KeyType: "RANGE" },
+    ],
+    AttributeDefinitions: [
+      { AttributeName: "userId", AttributeType: "S" },
+      { AttributeName: "notificationId", AttributeType: "S" },
     ],
     ...PAY_PER_REQUEST,
   },

@@ -20,6 +20,7 @@ const consultancySparseMigration = require("./migrations/08-consultancy-transact
 const birthdayTablesMigration = require("./migrations/09-birthday-tables");
 const userDobMonthDayMigration = require("./migrations/10-user-dob-month-day-index");
 const cofounderMessageMigration = require("./migrations/11-cofounder-message-table");
+const userInboxNotificationsMigration = require("./migrations/13-user-inbox-notifications");
 
 const MIGRATIONS = [
   adminMigration,
@@ -33,6 +34,7 @@ const MIGRATIONS = [
   birthdayTablesMigration,
   userDobMonthDayMigration,
   cofounderMessageMigration,
+  userInboxNotificationsMigration,
 ];
 
 function parseOnlyArg() {
@@ -68,7 +70,8 @@ async function run() {
       migration.migrateConsultancyTransactionSparseIndex ||
       migration.migrateBirthdayTables ||
       migration.migrateUserDobMonthDayIndex ||
-      migration.migrateCofounderMessageTable;
+      migration.migrateCofounderMessageTable ||
+      migration.migrateUserInboxNotifications;
 
     console.log(`--- ${migration.id} ---`);
     await runner();

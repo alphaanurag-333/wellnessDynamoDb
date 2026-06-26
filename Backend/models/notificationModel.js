@@ -3,6 +3,7 @@ const {
   GetCommand,
   UpdateCommand,
   DeleteCommand,
+  QueryCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require("uuid");
 
@@ -16,10 +17,20 @@ const {
   filterItemsBySearch,
   DEFAULT_STATUS_PARTITIONS,
 } = require("../utils/dynamoList");
+const { getReadMapForUser } = require("./userNotificationReadModel");
 
 const TABLE = "Notification";
 const STATUS = new Set(["active", "inactive"]);
 const AUDIENCE_TYPES = new Set(["users"]);
+const KIND = new Set([
+  "admin_broadcast",
+  "health_tool",
+  "recipe",
+  "yoga",
+  "birthday_wish",
+  "birthday_reminder",
+]);
+const BROADCAST_KINDS = new Set(["admin_broadcast", "health_tool", "recipe", "yoga"]);
 
 function normalizeStatus(value, fallback = "active") {
   const next = String(value || fallback).trim().toLowerCase();
@@ -31,8 +42,25 @@ function normalizeAudienceType(value, fallback = "users") {
   return AUDIENCE_TYPES.has(next) ? next : fallback;
 }
 
+function normalizeKind(value, fallback = "admin_broadcast") {
+  const next = String(value || fallback).trim().toLowerCase();
+  return KIND.has(next) ? next : fallback;
+}
+
 function isSupportedAudience(value) {
   return AUDIENCE_TYPES.has(String(value || "").trim().toLowerCase());
+}
+
+function isBroadcastNotification(item) {
+  if (!item) return false;
+  const kind = normalizeKind(item.kind, "admin_broadcast");
+  return BROADCAST_KINDS.has(kind) && isSupportedAudience(item.audienceType);
+}
+
+function isNotificationVisibleToUser(item, userId) {
+  if (!item || normalizeStatus(item.status) !== "active") return false;
+  if (isBroadcastNotification(item)) return true;
+  return String(item.userId || "").trim() === String(userId || "").trim();
 }
 
 function withLegacyId(item) {
@@ -47,10 +75,44 @@ function toPublicNotification(item) {
   return row;
 }
 
-async function createNotification({ audienceType, message, image = "", status = "active" }) {
+function toUserInboxNotification(item, readMap) {
+  const row = toPublicNotification(item);
+  if (!row) return null;
+  const readAt = readMap?.get(row.id) || null;
+  return {
+    id: row.id,
+    _id: row._id,
+    kind: normalizeKind(row.kind, "admin_broadcast"),
+    message: row.message,
+    title: row.title || null,
+    image: row.image || null,
+    referenceId: row.referenceId || null,
+    referenceType: row.referenceType || null,
+    actorUserId: row.actorUserId || null,
+    sentAt: row.sentAt,
+    createdAt: row.createdAt,
+    isRead: Boolean(readAt),
+    readAt,
+  };
+}
+
+async function createNotification({
+  audienceType,
+  message,
+  image = "",
+  status = "active",
+  kind = "admin_broadcast",
+  userId = null,
+  referenceId = null,
+  referenceType = null,
+  actorUserId = null,
+  title = null,
+}) {
   const now = new Date().toISOString();
+  const normalizedKind = normalizeKind(kind);
   const item = {
     id: uuidv4(),
+    kind: normalizedKind,
     audienceType: normalizeAudienceType(audienceType),
     message: String(message || "").trim(),
     image: image ? normalizeMediaField(image, "image") : "",
@@ -60,11 +122,60 @@ async function createNotification({ audienceType, message, image = "", status = 
     updatedAt: now,
   };
 
-  await docClient.send(new PutCommand({
-    TableName: TABLE,
-    Item: item,
-    ConditionExpression: "attribute_not_exists(id)",
-  }));
+  if (title) item.title = String(title).trim();
+  if (referenceId) item.referenceId = String(referenceId).trim();
+  if (referenceType) item.referenceType = String(referenceType).trim();
+  if (actorUserId) item.actorUserId = String(actorUserId).trim();
+
+  await docClient.send(
+    new PutCommand({
+      TableName: TABLE,
+      Item: item,
+      ConditionExpression: "attribute_not_exists(id)",
+    })
+  );
+
+  return toPublicNotification(item);
+}
+
+async function createTargetedNotification({
+  userId,
+  kind,
+  message,
+  referenceId = null,
+  referenceType = null,
+  actorUserId = null,
+  title = null,
+  image = "",
+}) {
+  const uid = String(userId || "").trim();
+  if (!uid) throw new Error("userId is required");
+
+  const now = new Date().toISOString();
+  const item = {
+    id: uuidv4(),
+    kind: normalizeKind(kind),
+    userId: uid,
+    message: String(message || "").trim(),
+    image: image ? normalizeMediaField(image, "image") : "",
+    status: "active",
+    sentAt: now,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  if (title) item.title = String(title).trim();
+  if (referenceId) item.referenceId = String(referenceId).trim();
+  if (referenceType) item.referenceType = String(referenceType).trim();
+  if (actorUserId) item.actorUserId = String(actorUserId).trim();
+
+  await docClient.send(
+    new PutCommand({
+      TableName: TABLE,
+      Item: item,
+      ConditionExpression: "attribute_not_exists(id)",
+    })
+  );
 
   return toPublicNotification(item);
 }
@@ -78,7 +189,9 @@ async function getNotificationRecordById(id) {
 
 async function getNotificationById(id) {
   const item = await getNotificationRecordById(id);
-  if (!item || !isSupportedAudience(item.audienceType)) return null;
+  if (!item) return null;
+  if (item.userId) return toPublicNotification(item);
+  if (!isSupportedAudience(item.audienceType)) return null;
   return toPublicNotification(item);
 }
 
@@ -100,25 +213,29 @@ async function updateNotification(id, updates) {
     setExpr += `, ${n} = ${v}`;
   }
 
-  const { Attributes } = await docClient.send(new UpdateCommand({
-    TableName: TABLE,
-    Key: { id },
-    UpdateExpression: setExpr,
-    ExpressionAttributeNames: exprNames,
-    ExpressionAttributeValues: exprValues,
-    ConditionExpression: "attribute_exists(id)",
-    ReturnValues: "ALL_NEW",
-  }));
+  const { Attributes } = await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE,
+      Key: { id },
+      UpdateExpression: setExpr,
+      ExpressionAttributeNames: exprNames,
+      ExpressionAttributeValues: exprValues,
+      ConditionExpression: "attribute_exists(id)",
+      ReturnValues: "ALL_NEW",
+    })
+  );
 
   return toPublicNotification(Attributes || null);
 }
 
 async function deleteNotification(id) {
-  await docClient.send(new DeleteCommand({
-    TableName: TABLE,
-    Key: { id },
-    ConditionExpression: "attribute_exists(id)",
-  }));
+  await docClient.send(
+    new DeleteCommand({
+      TableName: TABLE,
+      Key: { id },
+      ConditionExpression: "attribute_exists(id)",
+    })
+  );
 }
 
 async function listNotifications({ page = 1, limit = 10, status, audienceType, search } = {}) {
@@ -190,14 +307,169 @@ async function listNotifications({ page = 1, limit = 10, status, audienceType, s
   };
 }
 
+async function queryAllBroadcastNotifications() {
+  const items = [];
+  let lastKey;
+
+  do {
+    const { Items, LastEvaluatedKey } = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE,
+        IndexName: "AudienceSentAtIndex",
+        KeyConditionExpression: "#audienceType = :audienceType",
+        FilterExpression: "#status = :status",
+        ExpressionAttributeNames: {
+          "#audienceType": "audienceType",
+          "#status": "status",
+        },
+        ExpressionAttributeValues: {
+          ":audienceType": "users",
+          ":status": "active",
+        },
+        ScanIndexForward: false,
+        ExclusiveStartKey: lastKey,
+      })
+    );
+
+    for (const item of Items || []) {
+      if (isBroadcastNotification(item)) items.push(item);
+    }
+    lastKey = LastEvaluatedKey;
+  } while (lastKey);
+
+  return items;
+}
+
+async function queryTargetedNotificationsForUser(userId) {
+  const uid = String(userId || "").trim();
+  if (!uid) return [];
+
+  const items = [];
+  let lastKey;
+
+  do {
+    const { Items, LastEvaluatedKey } = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE,
+        IndexName: "UserSentAtIndex",
+        KeyConditionExpression: "#userId = :userId",
+        FilterExpression: "#status = :status",
+        ExpressionAttributeNames: {
+          "#userId": "userId",
+          "#status": "status",
+        },
+        ExpressionAttributeValues: {
+          ":userId": uid,
+          ":status": "active",
+        },
+        ScanIndexForward: false,
+        ExclusiveStartKey: lastKey,
+      })
+    );
+
+    items.push(...(Items || []));
+    lastKey = LastEvaluatedKey;
+  } while (lastKey);
+
+  return items;
+}
+
+async function findTargetedNotificationForUser(userId, { kind, referenceId }) {
+  const uid = String(userId || "").trim();
+  const refId = String(referenceId || "").trim();
+  const normalizedKind = normalizeKind(kind, "");
+  if (!uid || !refId || !normalizedKind) return null;
+
+  const items = await queryTargetedNotificationsForUser(uid);
+  return (
+    items.find(
+      (item) =>
+        normalizeKind(item.kind) === normalizedKind &&
+        String(item.referenceId || "").trim() === refId
+    ) || null
+  );
+}
+
+async function listApplicableNotificationsForUser(userId) {
+  const [broadcast, targeted] = await Promise.all([
+    queryAllBroadcastNotifications(),
+    queryTargetedNotificationsForUser(userId),
+  ]);
+
+  const merged = [...broadcast, ...targeted];
+  merged.sort(sortBySentAtDesc);
+  return merged;
+}
+
+async function listNotificationsForUser(userId, { page = 1, limit = 20, unreadOnly = false } = {}) {
+  const safePage = Math.max(1, Number(page) || 1);
+  const safeLimit = Math.min(200, Math.max(1, Number(limit) || 20));
+
+  let items = await listApplicableNotificationsForUser(userId);
+  const readMap = await getReadMapForUser(
+    userId,
+    items.map((item) => item.id)
+  );
+
+  if (unreadOnly) {
+    items = items.filter((item) => !readMap.has(item.id));
+  }
+
+  const total = items.length;
+  const skip = (safePage - 1) * safeLimit;
+  const pageItems = items.slice(skip, skip + safeLimit);
+
+  return {
+    notifications: pageItems
+      .map((item) => toUserInboxNotification(item, readMap))
+      .filter(Boolean),
+    pagination: {
+      page: safePage,
+      limit: safeLimit,
+      total,
+      pages: Math.max(1, Math.ceil(total / safeLimit)),
+    },
+  };
+}
+
+async function countUnreadNotificationsForUser(userId) {
+  const items = await listApplicableNotificationsForUser(userId);
+  const readMap = await getReadMapForUser(
+    userId,
+    items.map((item) => item.id)
+  );
+  return items.filter((item) => !readMap.has(item.id)).length;
+}
+
+async function getNotificationForUser(userId, notificationId) {
+  const item = await getNotificationRecordById(notificationId);
+  if (!isNotificationVisibleToUser(item, userId)) return null;
+
+  const readMap = await getReadMapForUser(userId, [notificationId]);
+  return toUserInboxNotification(item, readMap);
+}
+
+async function listNotificationIdsForUser(userId) {
+  const items = await listApplicableNotificationsForUser(userId);
+  return items.map((item) => item.id);
+}
+
 module.exports = {
   createNotification,
+  createTargetedNotification,
   getNotificationById,
   getNotificationRecordById,
+  getNotificationForUser,
   updateNotification,
   deleteNotification,
   listNotifications,
+  listNotificationsForUser,
+  listNotificationIdsForUser,
+  countUnreadNotificationsForUser,
+  findTargetedNotificationForUser,
   normalizeStatus,
   normalizeAudienceType,
+  normalizeKind,
   isSupportedAudience,
+  isNotificationVisibleToUser,
 };

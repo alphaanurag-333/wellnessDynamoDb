@@ -16,6 +16,7 @@ const {
   YOGA_ALLOWED_STATUS,
   YOGA_ALLOWED_TYPE,
 } = require("../../models/yogaModel");
+const { dispatchBroadcastNotification } = require("../../services/notificationDispatchService");
 
 const S3_FOLDER = "yoga";
 
@@ -73,6 +74,18 @@ exports.createYogaController = asyncHandler(async (req, res) => {
   if (type === "video" && !video) throw new AppError("video is required when type is video", 400);
 
   const yoga = await createYoga({ title, description, thumbnail, type, ytLink, video, status });
+
+  if (status === "active") {
+    dispatchBroadcastNotification({
+      kind: "yoga",
+      message: `New yoga session: ${title}`,
+      image: thumbnail,
+      title,
+      referenceId: yoga.id || yoga._id,
+      referenceType: "yoga",
+    }).catch((err) => console.error("Yoga notification failed:", err?.message || err));
+  }
+
   return res.status(201).json({ status: true, message: "Yoga created successfully", yoga });
 });
 

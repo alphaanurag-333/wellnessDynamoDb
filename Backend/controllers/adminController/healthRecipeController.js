@@ -18,6 +18,7 @@ const {
 } = require("../../models/healthRecipeModel");
 const { parseVideoSpecificationFromBody } = require("../../utils/mediaFieldAliases");
 const { getHealthConcernById } = require("../../models/healthConcernModel");
+const { dispatchBroadcastNotification } = require("../../services/notificationDispatchService");
 
 const S3_FOLDER = "health-recipe";
 
@@ -139,6 +140,17 @@ exports.createHealthRecipeController = asyncHandler(async (req, res) => {
     videoSpecification: videoSpecification || [],
     status,
   });
+
+  if (status === "active") {
+    dispatchBroadcastNotification({
+      kind: "recipe",
+      message: `New recipe: ${title}`,
+      image: thumbnail,
+      title,
+      referenceId: healthRecipe.id || healthRecipe._id,
+      referenceType: "recipe",
+    }).catch((err) => console.error("Recipe notification failed:", err?.message || err));
+  }
 
   return res.status(201).json({ status: true, message: "Health recipe created successfully", healthRecipe });
 });
