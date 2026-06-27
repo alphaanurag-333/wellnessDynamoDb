@@ -36,7 +36,7 @@ export const navItems = [
   },
   { to: "transformations", label: "Transformations", icon: "trending-up" },
   { to: "banners", label: "Banner Management", icon: "layout" },
-  { to: "celebration-banners", label: "Celebration Banners", icon: "sparkles" },
+  // { to: "celebration-banners", label: "Celebration Banners", icon: "sparkles" },
   { to: "birthday-posts", label: "Birthday Posts", icon: "cake" },
   { to: "birthday-notifications", label: "Birthday Notifications", icon: "bell" },
   { to: "notifications", label: "Notifications", icon: "bell" },

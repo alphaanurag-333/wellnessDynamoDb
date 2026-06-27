@@ -9,7 +9,7 @@ import { adminDeleteYoga, adminListYoga, adminUpdateYoga } from "../../api/admin
 import { logout } from "../../../store/authSlice.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { mediaUrl } from "../../../media.js";
-import { formatDate, LIST_LIMIT, LIST_SEARCH_MAX_LEN, truncate } from "./YogaShared.js";
+import { formatDate, LIST_LIMIT, LIST_SEARCH_MAX_LEN } from "./YogaShared.js";
 
 export function YogaList() {
   const dispatch = useDispatch();
@@ -169,7 +169,7 @@ export function YogaList() {
                       {row.type === "ytlink" ? (
                         row.ytLink ? (
                           <a href={row.ytLink} target="_blank" rel="noreferrer" title={row.ytLink}>
-                            {truncate(row.ytLink, 20)}
+                            Open link
                           </a>
                         ) : (
                           "—"
