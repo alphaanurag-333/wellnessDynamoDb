@@ -94,6 +94,9 @@ exports.createAppConfigController = asyncHandler(async (req, res) => {
     referral_discount,
     consultancy_amount,
     subscription_amount,
+    energy_exchange_monthly_amount,
+    fy_start_month,
+    energy_exchange_default_fy_discounts,
   } = req.body;
 
   if (!app_name || !app_email || !app_mobile) {
@@ -126,6 +129,12 @@ exports.createAppConfigController = asyncHandler(async (req, res) => {
     referral_discount: referral_discount ?? "",
     consultancy_amount: consultancy_amount ?? "",
     subscription_amount: subscription_amount ?? "",
+    energy_exchange_monthly_amount: energy_exchange_monthly_amount ?? "",
+    fy_start_month: fy_start_month != null && String(fy_start_month) !== "" ? String(fy_start_month) : "4",
+    energy_exchange_default_fy_discounts: parseJSON(
+      energy_exchange_default_fy_discounts,
+      config.energy_exchange_default_fy_discounts
+    ),
     payment_gateways: parseJSON(payment_gateways, config.payment_gateways),
     admin_logo: (await s3KeyFromUploadedFile(req, "admin_logo")) ?? "",
     user_logo: (await s3KeyFromUploadedFile(req, "user_logo")) ?? "",
@@ -173,6 +182,8 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
     "referral_discount",
     "consultancy_amount",
     "subscription_amount",
+    "energy_exchange_monthly_amount",
+    "fy_start_month",
     "app_footer_text",
   ];
 
@@ -190,6 +201,13 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
 
   if (req.body.payment_gateways !== undefined) {
     updates.payment_gateways = parseJSON(req.body.payment_gateways, config.payment_gateways);
+  }
+
+  if (req.body.energy_exchange_default_fy_discounts !== undefined) {
+    updates.energy_exchange_default_fy_discounts = parseJSON(
+      req.body.energy_exchange_default_fy_discounts,
+      config.energy_exchange_default_fy_discounts
+    );
   }
 
   await applyLogoUploads(req, config, updates);

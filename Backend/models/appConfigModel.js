@@ -56,6 +56,9 @@ async function createAppConfig() {
     referral_discount:  "",
     consultancy_amount: "",
     subscription_amount: "",
+    energy_exchange_monthly_amount: "",
+    fy_start_month: "4",
+    energy_exchange_default_fy_discounts: { "1": 0, "2": 0, "3": 5, "4": 10 },
 
     // Nested array with credentials object
     payment_gateways: [],   // default empty 

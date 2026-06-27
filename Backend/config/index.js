@@ -57,4 +57,14 @@ module.exports = {
     process.env.BIRTHDAY_JOB_CRON_ENABLED === "true" ||
     (process.env.BIRTHDAY_JOB_CRON_ENABLED !== "false" &&
       (process.env.NODE_ENV || "development") === "production"),
+
+  energyExchangeFyCronTimezone:
+    process.env.ENERGY_EXCHANGE_FY_CRON_TIMEZONE || "Asia/Kolkata",
+  // 12:05 AM IST daily
+  energyExchangeFyCronSchedule:
+    process.env.ENERGY_EXCHANGE_FY_CRON_SCHEDULE || "5 0 * * *",
+  energyExchangeFyCronEnabled:
+    process.env.ENERGY_EXCHANGE_FY_CRON_ENABLED === "true" ||
+    (process.env.ENERGY_EXCHANGE_FY_CRON_ENABLED !== "false" &&
+      (process.env.NODE_ENV || "development") === "production"),
 };

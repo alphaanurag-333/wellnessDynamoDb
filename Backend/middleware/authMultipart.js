@@ -23,6 +23,8 @@ const assistantWellnessCoachUpload = memorySingle("file");
 const healthConcernUpload = memorySingle("file");
 const healthToolUpload = memorySingle("file");
 const userUpload = memorySingle("file");
+const weightPicUpload = memorySingle("weight_pic");
+const profileImageUpload = memorySingle("file");
 
 const appConfigUpload = memoryFields([
   { name: "admin_logo", maxCount: 1 },
@@ -62,6 +64,8 @@ exports.uploadAppConfigFiles = optionalMultipart(appConfigUpload);
 exports.optionalWellnessCoachFile = optionalMultipart(wellnessCoachUpload);
 exports.optionalAssistantWellnessCoachFile = optionalMultipart(assistantWellnessCoachUpload);
 exports.optionalUserFile = optionalMultipart(userUpload);
+exports.optionalWeightPicFile = optionalMultipart(weightPicUpload);
+exports.optionalProfileImageFile = optionalMultipart(profileImageUpload);
 exports.optionalBannerFile = optionalMultipart(bannerUpload);
 exports.optionalCelebrationFile = optionalMultipart(celebrationUpload);
 exports.optionalNotificationFile = optionalMultipart(notificationUpload);

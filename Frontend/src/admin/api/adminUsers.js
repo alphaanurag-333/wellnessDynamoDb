@@ -177,6 +177,18 @@ export async function adminGetUser(token, id) {
   }
 }
 
+export async function adminGetUserEnergyExchange(token, id) {
+  try {
+    const { data: body } = await api.get(
+      `${usersBase()}/${encodeURIComponent(id)}/energy-exchange`,
+      { headers: authHeader(token) }
+    );
+    return body.data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function adminCreateUser(token, fields, file) {
   const body = buildCreateUserPayload(fields);
   if (file instanceof File) {

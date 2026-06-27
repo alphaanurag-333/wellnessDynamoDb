@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { adminGetUser } from "../../api/adminUsers.js";
+import { adminGetUser, adminGetUserEnergyExchange } from "../../api/adminUsers.js";
 import { logout } from "../../../store/authSlice.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { NotFoundPage } from "../NotFoundPage.jsx";
@@ -214,6 +214,8 @@ export function UserView() {
         </div>
       </div>
 
+      <UserEnergyExchangeSection userId={userId} adminToken={adminToken} dispatch={dispatch} />
+
       <ConvertToHealModal
         user={user}
         open={showConvertModal}
@@ -227,6 +229,113 @@ export function UserView() {
         onClose={() => setShowAssignModal(false)}
         onSuccess={setUser}
       />
+    </div>
+  );
+}
+
+function UserEnergyExchangeSection({ userId, adminToken, dispatch }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!adminToken || !userId) return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const res = await adminGetUserEnergyExchange(adminToken, userId);
+        if (!cancelled) setData(res);
+      } catch (e) {
+        if (cancelled) return;
+        if (e?.status === 401) {
+          dispatch(logout());
+          return;
+        }
+        setError(e.message || "Failed to load energy exchange data");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [adminToken, dispatch, userId]);
+
+  if (loading) return <div className="page-card">Loading Energy Exchange…</div>;
+  if (error) return <div className="page-card">{error}</div>;
+  if (!data) return null;
+
+  const u = data.user || {};
+  const programs = data.programs || [];
+  const subs = data.subscriptions || [];
+
+  return (
+    <div className="page-card" style={{ marginTop: "1rem" }}>
+      <h3 className="page-card__title">Energy Exchange</h3>
+      <div className="user-view-grid">
+        <DetailRow label="Enabled" value={u.energyExchangeEnabled ? "Yes" : "No"} />
+        <DetailRow label="Paid onboarding" value={u.paidOnboardingCompleted ? "Completed" : (u.paidOnboardingStep || "pending")} />
+        <DetailRow label="Heal paid at" value={u.healPaidAt ? formatDate(u.healPaidAt) : "—"} />
+        <DetailRow label="Dietary preference" value={u.dietaryPreference || "—"} />
+        <DetailRow label="Wellness journey" value={(u.wellnessJourneyFor || []).join(", ") || "—"} />
+        <DetailRow label="Address" value={[u.addressLine1, u.addressLine2, u.pincode].filter(Boolean).join(", ") || "—"} />
+      </div>
+
+      <h4 className="form-card__title" style={{ marginTop: "1rem" }}>Programs</h4>
+      {programs.length === 0 ? (
+        <p className="table-placeholder">No programs configured.</p>
+      ) : (
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Monthly</th>
+              <th>Enabled</th>
+              <th>FY Discounts</th>
+            </tr>
+          </thead>
+          <tbody>
+            {programs.map((p) => (
+              <tr key={p.id}>
+                <td>{p.title}</td>
+                <td>₹{p.monthlyAmount}</td>
+                <td>{p.enabled ? "Yes" : "No"}</td>
+                <td>{JSON.stringify(p.fyDiscounts)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      <h4 className="form-card__title" style={{ marginTop: "1rem" }}>Subscriptions</h4>
+      {subs.length === 0 ? (
+        <p className="table-placeholder">No subscriptions yet.</p>
+      ) : (
+        <table className="table">
+          <thead>
+            <tr>
+              <th>FY</th>
+              <th>Status</th>
+              <th>Starts</th>
+              <th>Ends</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {subs.map((s) => (
+              <tr key={s.id}>
+                <td>FY {s.fyStartYear}</td>
+                <td>{s.status}</td>
+                <td>{s.startsAt ? s.startsAt.slice(0, 10) : "—"}</td>
+                <td>{s.endsAt ? s.endsAt.slice(0, 10) : "—"}</td>
+                <td>₹{s.totalAmount}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }

@@ -3,10 +3,12 @@ const { v4: uuidv4 } = require("uuid");
 const { PutCommand, GetCommand, UpdateCommand, QueryCommand } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../config/db");
 const { queryPartition } = require("../utils/dynamoList");
+const { listUsersByParentCoachId } = require("./userModel");
+const { normalizeAssignedCoachType } = require("./userAssignmentLogic");
 
 const TABLE = "ConsultancyTransaction";
 const PAYMENT_STATUSES = new Set(["pending", "paid", "failed", "refunded"]);
-const PRODUCT_TYPES = new Set(["consultancy", "subscription"]);
+const PRODUCT_TYPES = new Set(["consultancy", "subscription", "energy_exchange"]);
 const CONSULTANCY_STATUSES = new Set(["scheduled", "completed", "follow_up_needed", "cancelled"]);
 
 /** GSI partition keys must be omitted when unset — DynamoDB rejects NULL index keys. */
@@ -89,6 +91,10 @@ async function createConsultancyTransaction(payload) {
     sessionScheduledAt: payload.sessionScheduledAt || null,
     consultancyStatus: normalizeConsultancyStatus(payload.consultancyStatus),
     consultancyNotes: payload.consultancyNotes || null,
+    fyStartYear: payload.fyStartYear != null ? Number(payload.fyStartYear) || null : null,
+    fyStartMonth: payload.fyStartMonth != null ? Number(payload.fyStartMonth) || null : null,
+    fyStartsAt: payload.fyStartsAt || null,
+    fyEndsAt: payload.fyEndsAt || null,
     paidAt: payload.paidAt || null,
     failureReason: payload.failureReason || null,
     createdAt: now,
@@ -485,34 +491,103 @@ function buildEnrolledUsersFromTransactions(transactions) {
   }
 
   return [...latestPaidByUser.entries()]
-    .map(([userId, txn]) => ({
-      user: {
-        id: userId,
-        _id: userId,
-        name: txn.userSnapshot?.name || null,
-        email: txn.userSnapshot?.email || null,
-        phone: txn.userSnapshot?.phone || null,
-        phoneCountryCode: txn.userSnapshot?.phoneCountryCode || null,
-        userTier: txn.userSnapshot?.userTier || "consultancy_only",
-      },
-      latestTransaction: {
-        id: txn.id,
-        referenceNumber: txn.referenceNumber,
-        paymentStatus: txn.paymentStatus,
-        totalAmount: txn.totalAmount,
-        referralCodeUsed: txn.referralCodeUsed,
-        healthConcernId: txn.healthConcernId || null,
-        healthConcernSnapshot: txn.healthConcernSnapshot || null,
-        paidAt: txn.paidAt,
-        meetingAssigneeType: txn.meetingAssigneeType,
-        meetingAssigneeId: txn.meetingAssigneeId,
-        assigneeSnapshot: txn.assigneeSnapshot || null,
-      },
-      enrollmentStatus: "enrolled",
-    }))
+    .map(([userId, txn]) => enrolledUserRowFromTransaction(userId, txn))
     .sort((a, b) =>
       String(b.latestTransaction?.paidAt || "").localeCompare(String(a.latestTransaction?.paidAt || ""))
     );
+}
+
+function enrolledUserRowFromTransaction(userId, txn, userOverrides = {}) {
+  return {
+    user: {
+      id: userId,
+      _id: userId,
+      name: userOverrides.name ?? txn.userSnapshot?.name ?? null,
+      email: userOverrides.email ?? txn.userSnapshot?.email ?? null,
+      phone: userOverrides.phone ?? txn.userSnapshot?.phone ?? null,
+      phoneCountryCode: userOverrides.phoneCountryCode ?? txn.userSnapshot?.phoneCountryCode ?? null,
+      userTier: userOverrides.userTier ?? txn.userSnapshot?.userTier ?? "consultancy_only",
+    },
+    latestTransaction: {
+      id: txn.id,
+      referenceNumber: txn.referenceNumber,
+      paymentStatus: txn.paymentStatus,
+      totalAmount: txn.totalAmount,
+      referralCodeUsed: txn.referralCodeUsed,
+      healthConcernId: txn.healthConcernId || null,
+      healthConcernSnapshot: txn.healthConcernSnapshot || null,
+      paidAt: txn.paidAt,
+      meetingAssigneeType: txn.meetingAssigneeType,
+      meetingAssigneeId: txn.meetingAssigneeId,
+      assigneeSnapshot: txn.assigneeSnapshot || null,
+    },
+    enrollmentStatus: "enrolled",
+  };
+}
+
+/**
+ * Include consultancy clients assigned to the coach on the user record when their paid
+ * transaction was created before admin assignment (no parentCoachId on the txn yet).
+ */
+async function supplementEnrolledUsersFromAssignedClients(coachId, enrolled, { search, scope = "all" } = {}) {
+  const id = String(coachId || "").trim();
+  if (!id) return enrolled;
+
+  const normalizedScope = String(scope || "all").toLowerCase();
+  const normalizedSearch = String(search || "").trim().toLowerCase();
+  const seenIds = new Set(enrolled.map((row) => row.user.id));
+
+  const { users } = await listUsersByParentCoachId(id, {
+    page: 1,
+    limit: 500,
+    userTier: "consultancy_only",
+  });
+
+  const extras = [];
+  for (const user of users) {
+    if (seenIds.has(user.id)) continue;
+    if (user.assignmentStatus !== "assigned") continue;
+
+    if (normalizedScope === "direct") {
+      if (String(user.assignedCoachId || "") !== id) continue;
+      if (normalizeAssignedCoachType(user.assignedCoachType) !== "wellness_coach") continue;
+    } else if (normalizedScope === "assistant") {
+      if (normalizeAssignedCoachType(user.assignedCoachType) !== "assistant_wellness_coach") continue;
+    }
+
+    const { items } = await listTransactionsByUserId(user.id, {
+      page: 1,
+      limit: 1,
+      paymentStatus: "paid",
+      productType: "consultancy",
+    });
+    const txn = items[0];
+    if (!txn) continue;
+
+    if (normalizedSearch) {
+      const haystack = [user.name, user.email, user.phone, txn.referenceNumber]
+        .map((v) => String(v || "").toLowerCase())
+        .join(" ");
+      if (!haystack.includes(normalizedSearch)) continue;
+    }
+
+    extras.push(
+      enrolledUserRowFromTransaction(user.id, txn, {
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        phoneCountryCode: user.phoneCountryCode,
+        userTier: user.userTier,
+      })
+    );
+    seenIds.add(user.id);
+  }
+
+  if (!extras.length) return enrolled;
+
+  return [...enrolled, ...extras].sort((a, b) =>
+    String(b.latestTransaction?.paidAt || "").localeCompare(String(a.latestTransaction?.paidAt || ""))
+  );
 }
 
 module.exports = {
@@ -534,6 +609,7 @@ module.exports = {
   transactionVisibleToCoach,
   transactionVisibleToAssistant,
   buildEnrolledUsersFromTransactions,
+  supplementEnrolledUsersFromAssignedClients,
   normalizeProductType,
   normalizeConsultancyStatus,
 };
