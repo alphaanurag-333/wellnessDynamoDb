@@ -172,28 +172,6 @@ const TABLE_DEFINITIONS = [
     ...PAY_PER_REQUEST,
   },
   {
-    TableName: "CelebrationBanners",
-    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
-    AttributeDefinitions: [
-      { AttributeName: "id", AttributeType: "S" },
-      { AttributeName: "type", AttributeType: "S" },
-      { AttributeName: "status", AttributeType: "S" },
-      { AttributeName: "createdAt", AttributeType: "S" },
-    ],
-    GlobalSecondaryIndexes: [
-      {
-        IndexName: "TypeCreatedAtIndex",
-        KeySchema: [
-          { AttributeName: "type", KeyType: "HASH" },
-          { AttributeName: "createdAt", KeyType: "RANGE" },
-        ],
-        Projection: { ProjectionType: "ALL" },
-      },
-      statusCreatedAtIndex(),
-    ],
-    ...PAY_PER_REQUEST,
-  },
-  {
     TableName: "ClientTestimonials",
     KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
     AttributeDefinitions: [

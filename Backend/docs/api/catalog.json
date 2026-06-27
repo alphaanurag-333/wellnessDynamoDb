@@ -111,41 +111,6 @@
       },
       {
         "method": "GET",
-        "path": "/admin/celebration-banners",
-        "group": "celebration-banners",
-        "mount": "/admin/celebration-banners",
-        "file": "routes\\adminRoutes\\adminCelebrationRoutes.js"
-      },
-      {
-        "method": "POST",
-        "path": "/admin/celebration-banners",
-        "group": "celebration-banners",
-        "mount": "/admin/celebration-banners",
-        "file": "routes\\adminRoutes\\adminCelebrationRoutes.js"
-      },
-      {
-        "method": "DELETE",
-        "path": "/admin/celebration-banners/:id",
-        "group": "celebration-banners",
-        "mount": "/admin/celebration-banners",
-        "file": "routes\\adminRoutes\\adminCelebrationRoutes.js"
-      },
-      {
-        "method": "GET",
-        "path": "/admin/celebration-banners/:id",
-        "group": "celebration-banners",
-        "mount": "/admin/celebration-banners",
-        "file": "routes\\adminRoutes\\adminCelebrationRoutes.js"
-      },
-      {
-        "method": "PATCH",
-        "path": "/admin/celebration-banners/:id",
-        "group": "celebration-banners",
-        "mount": "/admin/celebration-banners",
-        "file": "routes\\adminRoutes\\adminCelebrationRoutes.js"
-      },
-      {
-        "method": "GET",
         "path": "/admin/client-testimonials",
         "group": "client-testimonials",
         "mount": "/admin/client-testimonials",
@@ -1191,13 +1156,6 @@
       {
         "method": "GET",
         "path": "/public/misc/banners",
-        "group": "misc",
-        "mount": "/public/misc",
-        "file": "routes\\userRoutes\\miscRoutes.js"
-      },
-      {
-        "method": "GET",
-        "path": "/public/misc/celebration-banners",
         "group": "misc",
         "mount": "/public/misc",
         "file": "routes\\userRoutes\\miscRoutes.js"

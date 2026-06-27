@@ -9,7 +9,6 @@ Base path: `/api`
 | Method | Path | Source |
 |--------|------|--------|
 | `GET` | `/public/misc/banners` | `routes\userRoutes\miscRoutes.js` |
-| `GET` | `/public/misc/celebration-banners` | `routes\userRoutes\miscRoutes.js` |
 | `GET` | `/public/misc/client-testimonials` | `routes\userRoutes\miscRoutes.js` |
 | `GET` | `/public/misc/faqs` | `routes\userRoutes\miscRoutes.js` |
 | `GET` | `/public/misc/health-concerns` | `routes\userRoutes\miscRoutes.js` |

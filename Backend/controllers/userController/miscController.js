@@ -12,7 +12,6 @@ const { listHealthTools } = require("../../models/healthToolModel");
 const { listHealthRecipes } = require("../../models/healthRecipeModel");
 const { listYoga } = require("../../models/yogaModel");
 const { listTransformations } = require("../../models/transformationModel");
-const { listCelebrationBanners } = require("../../models/celebrationBanners");
 const { listBirthdayPostsByPostDate } = require("../../models/birthdayPostModel");
 const { countCommentsForPost } = require("../../models/birthdayPostCommentModel");
 const { getUserById, toPublicUser } = require("../../models/userModel");
@@ -212,27 +211,6 @@ exports.getActiveTransformations = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     transformations: data.transformations,
-    pagination: data.pagination,
-  });
-});
-
-exports.getActiveCelebrationBanners = asyncHandler(async (req, res) => {
-  const { page, limit } = readPaging(req.query);
-  const type = String(req.query.type || "").trim().toLowerCase() || undefined;
-  const data = resolveListMedia(
-    await listCelebrationBanners({
-      page,
-      limit,
-      status: "active",
-      type,
-      search: readSearch(req.query),
-    }),
-    "celebrationBanners",
-    ["image"]
-  );
-  return res.status(200).json({
-    status: true,
-    celebrationBanners: data.celebrationBanners,
     pagination: data.pagination,
   });
 });

@@ -12,7 +12,6 @@ const {
   getActiveHealthRecipes,
   getActiveYoga,
   getActiveTransformations,
-  getActiveCelebrationBanners,
   getActiveBirthdayPosts,
 } = require("../../controllers/userController/miscController");
 
@@ -30,7 +29,6 @@ router.get("/health-tools", getActiveHealthTools);
 router.get("/health-recipes", getActiveHealthRecipes);
 router.get("/yoga", getActiveYoga);
 router.get("/transformations", getActiveTransformations);
-router.get("/celebration-banners", getActiveCelebrationBanners);
 router.get("/birthday-posts", getActiveBirthdayPosts);
 
 module.exports = router;

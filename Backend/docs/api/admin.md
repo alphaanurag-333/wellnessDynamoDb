@@ -33,16 +33,6 @@ Base path: `/api`
 | `GET` | `/admin/banners/:id` | `routes\adminRoutes\adminBannerRoutes.js` |
 | `PATCH` | `/admin/banners/:id` | `routes\adminRoutes\adminBannerRoutes.js` |
 
-## celebration-banners
-
-| Method | Path | Source |
-|--------|------|--------|
-| `GET` | `/admin/celebration-banners` | `routes\adminRoutes\adminCelebrationRoutes.js` |
-| `POST` | `/admin/celebration-banners` | `routes\adminRoutes\adminCelebrationRoutes.js` |
-| `DELETE` | `/admin/celebration-banners/:id` | `routes\adminRoutes\adminCelebrationRoutes.js` |
-| `GET` | `/admin/celebration-banners/:id` | `routes\adminRoutes\adminCelebrationRoutes.js` |
-| `PATCH` | `/admin/celebration-banners/:id` | `routes\adminRoutes\adminCelebrationRoutes.js` |
-
 ## client-testimonials
 
 | Method | Path | Source |

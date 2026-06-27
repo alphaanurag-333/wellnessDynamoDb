@@ -46,10 +46,6 @@ import { TransformationList } from "../pages/transformation/TransformationList.j
 import { TransformationAdd } from "../pages/transformation/TransformationAdd.jsx";
 import { TransformationEdit } from "../pages/transformation/TransformationEdit.jsx";
 import { TransformationView } from "../pages/transformation/TransformationView.jsx";
-import { CelebrationBannerList } from "../pages/celebrationBanner/CelebrationBannerList.jsx";
-import { CelebrationBannerAdd } from "../pages/celebrationBanner/CelebrationBannerAdd.jsx";
-import { CelebrationBannerEdit } from "../pages/celebrationBanner/CelebrationBannerEdit.jsx";
-import { CelebrationBannerView } from "../pages/celebrationBanner/CelebrationBannerView.jsx";
 import { BirthdayNotificationList } from "../pages/birthdayNotification/BirthdayNotificationList.jsx";
 import { BirthdayNotificationView } from "../pages/birthdayNotification/BirthdayNotificationView.jsx";
 import { BirthdayPostList } from "../pages/birthdayPost/BirthdayPostList.jsx";
@@ -193,12 +189,6 @@ export const adminRouteTree = (
       <Route path="new" element={<NotificationAdd />} />
       <Route path=":notificationId/edit" element={<NotificationEdit />} />
       <Route path=":notificationId" element={<NotificationView />} />
-    </Route>
-    <Route path="celebration-banners" element={<Outlet />}>
-      <Route index element={<CelebrationBannerList />} />
-      <Route path="new" element={<CelebrationBannerAdd />} />
-      <Route path=":celebrationId/edit" element={<CelebrationBannerEdit />} />
-      <Route path=":celebrationId" element={<CelebrationBannerView />} />
     </Route>
     <Route path="birthday-notifications" element={<Outlet />}>
       <Route index element={<BirthdayNotificationList />} />

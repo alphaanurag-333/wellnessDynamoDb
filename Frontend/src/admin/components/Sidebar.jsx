@@ -13,7 +13,7 @@ const NAV_GROUP_PATTERNS = {
   consultancy: /\/admin\/consultancy(\/|$)/,
   program: /\/admin\/(programs|coaches|awcs)(\/|$)/,
   wellness: /\/admin\/(nutrition-plans|support-tickets|camp-events|program-completions)(\/|$)/,
-  content: /\/admin\/(banners|celebration-banners|notifications|faq|static-pages)(\/|$)/,
+  content: /\/admin\/(banners|notifications|faq|static-pages)(\/|$)/,
   health: /\/admin\/(health-concerns|health-tools|health-recipes|health-disorders|yoga)(\/|$)/,
   testimonials: /\/admin\/(transformations|client-testimonials|video-testimonials)(\/|$)/,
 };

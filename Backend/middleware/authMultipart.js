@@ -15,7 +15,6 @@ const memorySingle = (field) => createMemoryUploader().single(field);
 
 const adminUpload = memorySingle("file");
 const bannerUpload = memorySingle("file");
-const celebrationUpload = memorySingle("file");
 const notificationUpload = memorySingle("file");
 const clientTestimonialsUpload = memorySingle("file");
 const wellnessCoachUpload = memorySingle("file");
@@ -67,7 +66,6 @@ exports.optionalUserFile = optionalMultipart(userUpload);
 exports.optionalWeightPicFile = optionalMultipart(weightPicUpload);
 exports.optionalProfileImageFile = optionalMultipart(profileImageUpload);
 exports.optionalBannerFile = optionalMultipart(bannerUpload);
-exports.optionalCelebrationFile = optionalMultipart(celebrationUpload);
 exports.optionalNotificationFile = optionalMultipart(notificationUpload);
 exports.optionalClientTestimonialsFile = optionalMultipart(clientTestimonialsUpload);
 exports.optionalVideoTestimonialsFiles = optionalMultipart(videoTestimonialsUpload);

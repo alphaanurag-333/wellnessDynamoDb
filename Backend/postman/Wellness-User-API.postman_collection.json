@@ -775,11 +775,6 @@
               "response": []
             },
             {
-              "name": "Celebration Banners",
-              "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/public/misc/celebration-banners" },
-              "response": []
-            },
-            {
               "name": "Static Page by Slug",
               "request": {
                 "method": "GET",

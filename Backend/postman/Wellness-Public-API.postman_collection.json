@@ -23,19 +23,6 @@
           "response": []
         },
         {
-          "name": "GET /public/misc/celebration-banners",
-          "request": {
-            "auth": {
-              "type": "noauth"
-            },
-            "method": "GET",
-            "header": [],
-            "url": "{{baseUrl}}/public/misc/celebration-banners",
-            "description": "GET /public/misc/celebration-banners"
-          },
-          "response": []
-        },
-        {
           "name": "GET /public/misc/client-testimonials",
           "request": {
             "auth": {
