@@ -11,6 +11,7 @@ Module-wise API collections for the Wellness backend. All collections use the sh
    - `Wellness-Coach-API.postman_collection.json`
    - `Wellness-Assistant-API.postman_collection.json`
    - `Wellness-Public-API.postman_collection.json`
+   - `Wellness-Energy-Exchange-API.postman_collection.json`
 3. Import environment: `Wellness-API.postman_environment.json`
 4. Select **Wellness API — Local** environment
 

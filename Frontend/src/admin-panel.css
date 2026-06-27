@@ -5685,6 +5685,128 @@ a.icon-btn {
 }
 
 /* -------------------------------------------------------------------------- */
+/*  Consultancy client detail — forms & detail grid                            */
+/* -------------------------------------------------------------------------- */
+
+.user-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px 24px;
+}
+
+.form-card {
+  margin-top: 1.5rem;
+  padding: 1.25rem 1.5rem;
+  background: var(--admin-surface);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: var(--admin-radius);
+  box-shadow: var(--admin-shadow);
+}
+
+section.form-card {
+  display: block;
+}
+
+.form-card__title {
+  margin: 0 0 1rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--admin-text);
+}
+
+section.form-card > form,
+form.form-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.form-field > span:first-child,
+.form-field > legend {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--admin-text);
+}
+
+fieldset.form-field {
+  margin: 0;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 10px;
+  padding: 0.875rem 1rem;
+}
+
+fieldset.form-field legend {
+  padding: 0 0.35rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--admin-muted);
+}
+
+.form-field input:not([type="file"]),
+.form-field select {
+  width: 100%;
+  box-sizing: border-box;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: #f3f4f6;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 0.95rem;
+  color: var(--admin-text);
+  outline: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.form-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 96px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: #f3f4f6;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 0.95rem;
+  color: var(--admin-text);
+  outline: none;
+  resize: vertical;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.form-field input:not([type="file"]):focus,
+.form-field select:focus,
+.form-field textarea:focus {
+  border-color: rgba(26, 54, 104, 0.4);
+  background: #fff;
+}
+
+.form-hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--admin-muted);
+  line-height: 1.45;
+}
+
+.consultancy-client-page .page-card__head {
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.consultancy-client-page .page-card__actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* -------------------------------------------------------------------------- */
 /*  Water / steps tracking — graph + table views                               */
 /* -------------------------------------------------------------------------- */
 

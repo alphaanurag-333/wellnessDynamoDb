@@ -45,11 +45,17 @@ const SCALAR_KEYS = [
   "tax_value",
   "referral_discount",
   "consultancy_amount",
+  "subscription_amount",
+  "energy_exchange_monthly_amount",
+  "fy_start_month",
 ];
+
+const DEFAULT_FY_DISCOUNTS = { 1: 0, 2: 0, 3: 5, 4: 10 };
 
 const SETTINGS_TABS = [
   { id: "general", label: "App config" },
   { id: "pricing", label: "Pricing" },
+  { id: "energy-exchange", label: "Energy Exchange" },
   { id: "branding", label: "Media" },
   { id: "location", label: "Location" },
   { id: "social", label: "Social" },
@@ -382,6 +388,7 @@ export function BusinessSetting() {
     Object.fromEntries(SCALAR_KEYS.map((k) => [k, ""])),
   );
   const [paymentGateways, setPaymentGateways] = useState(() => normalizeGateways([]));
+  const [energyExchangeFyDiscounts, setEnergyExchangeFyDiscounts] = useState(() => ({ ...DEFAULT_FY_DISCOUNTS }));
 
   const [adminLogoFile, setAdminLogoFile] = useState(null);
   const [userLogoFile, setUserLogoFile] = useState(null);
@@ -430,6 +437,10 @@ export function BusinessSetting() {
     next.success_rate = sanitizePercentInput(next.success_rate);
     setScalars(next);
     setPaymentGateways(normalizeGateways(doc.payment_gateways));
+    setEnergyExchangeFyDiscounts({
+      ...DEFAULT_FY_DISCOUNTS,
+      ...(doc.energy_exchange_default_fy_discounts || {}),
+    });
     const a = doc.admin_logo ? mediaUrl(doc.admin_logo) : "";
     const u = doc.user_logo ? mediaUrl(doc.user_logo) : "";
     const f = doc.favicon ? mediaUrl(doc.favicon) : "";
@@ -486,6 +497,10 @@ export function BusinessSetting() {
       fd.append(k, scalars[k] ?? "");
     }
     fd.append("payment_gateways", JSON.stringify(gatewaysForApi(paymentGateways)));
+    fd.append(
+      "energy_exchange_default_fy_discounts",
+      JSON.stringify(energyExchangeFyDiscounts)
+    );
     if (adminLogoFile) fd.append("admin_logo", adminLogoFile);
     if (userLogoFile) fd.append("user_logo", userLogoFile);
     if (faviconFile) fd.append("favicon", faviconFile);
@@ -913,6 +928,90 @@ export function BusinessSetting() {
                         {charCount(scalars.referral_discount, LIMITS.amountField)}
                       </span>
                     </div>
+                  </div>
+                </>
+              )}
+
+              {t.id === "energy-exchange" && (
+                <>
+                  <p className="settings-panel-hint">
+                    Defaults coaches inherit when creating a per-user Energy Exchange program.
+                    Coaches can override the monthly amount and discounts per user.
+                  </p>
+                  <div className="user-form__grid">
+                    <div className="user-field">
+                      <span className="user-field__label">Monthly amount (INR)</span>
+                      <input
+                        className="user-field__input"
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={scalars.energy_exchange_monthly_amount}
+                        onChange={(e) =>
+                          setScalars((s) => ({
+                            ...s,
+                            energy_exchange_monthly_amount: e.target.value,
+                          }))
+                        }
+                        placeholder="200"
+                      />
+                    </div>
+                    <div className="user-field">
+                      <span className="user-field__label">Subscription amount (legacy)</span>
+                      <input
+                        className="user-field__input"
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={scalars.subscription_amount}
+                        onChange={(e) =>
+                          setScalars((s) => ({
+                            ...s,
+                            subscription_amount: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="user-field">
+                      <span className="user-field__label">FY start month (1-12)</span>
+                      <input
+                        className="user-field__input"
+                        type="number"
+                        min={1}
+                        max={12}
+                        value={scalars.fy_start_month}
+                        onChange={(e) =>
+                          setScalars((s) => ({
+                            ...s,
+                            fy_start_month: e.target.value,
+                          }))
+                        }
+                        placeholder="4"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="user-form__grid" style={{ marginTop: "1rem" }}>
+                    {[1, 2, 3, 4].map((offset) => (
+                      <div key={offset} className="user-field">
+                        <span className="user-field__label">
+                          FY {offset === 1 ? "current" : `+${offset - 1}`} default discount (%)
+                        </span>
+                        <input
+                          className="user-field__input"
+                          type="number"
+                          min={0}
+                          max={100}
+                          value={energyExchangeFyDiscounts[offset] ?? 0}
+                          onChange={(e) =>
+                            setEnergyExchangeFyDiscounts((d) => ({
+                              ...d,
+                              [offset]: Number(e.target.value) || 0,
+                            }))
+                          }
+                        />
+                      </div>
+                    ))}
                   </div>
                 </>
               )}

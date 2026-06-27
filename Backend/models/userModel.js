@@ -31,6 +31,20 @@ const USER_ALLOWED_TIERS = ["seek", "consultancy_only", "heal"];
 const USER_ALLOWED_ASSIGNMENT_STATUSES = ["assigned", "pending_admin"];
 const USER_ALLOWED_ASSIGNED_COACH_TYPES = ["wellness_coach", "assistant_wellness_coach"];
 const USER_ALLOWED_ASSIGNMENT_SOURCES = ["referral", "admin_manual", "coach_reassign"];
+const USER_ALLOWED_DIETARY_PREFERENCES = [
+  "vegetarian",
+  "eggetarian",
+  "vegan",
+  "non_vegetarian",
+  "jain",
+];
+const USER_ALLOWED_PAID_ONBOARDING_STEPS = [
+  "register",
+  "profile",
+  "body",
+  "medical",
+  "done",
+];
 
 const STATUS = new Set(USER_ALLOWED_STATUS);
 const GENDERS = new Set(USER_ALLOWED_GENDERS);
@@ -38,6 +52,38 @@ const TIERS = new Set(USER_ALLOWED_TIERS);
 const ASSIGNMENT_STATUSES = new Set(USER_ALLOWED_ASSIGNMENT_STATUSES);
 const ASSIGNED_COACH_TYPES = new Set(USER_ALLOWED_ASSIGNED_COACH_TYPES);
 const ASSIGNMENT_SOURCES = new Set(USER_ALLOWED_ASSIGNMENT_SOURCES);
+const DIETARY_PREFERENCES = new Set(USER_ALLOWED_DIETARY_PREFERENCES);
+const PAID_ONBOARDING_STEPS = new Set(USER_ALLOWED_PAID_ONBOARDING_STEPS);
+
+function normalizeDietaryPreference(value) {
+  if (value == null || value === "") return null;
+  const next = String(value).toLowerCase().trim();
+  return DIETARY_PREFERENCES.has(next) ? next : null;
+}
+
+function normalizePaidOnboardingStep(value) {
+  if (value == null || value === "") return null;
+  const next = String(value).toLowerCase().trim();
+  return PAID_ONBOARDING_STEPS.has(next) ? next : null;
+}
+
+function normalizeWellnessJourneyFor(value) {
+  if (value == null) return null;
+  let raw = value;
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      raw = parsed;
+    } catch {
+      raw = raw.split(",");
+    }
+  }
+  if (!Array.isArray(raw)) return null;
+  const out = raw
+    .map((v) => String(v || "").trim())
+    .filter((v) => v.length > 0);
+  return out.length ? out : null;
+}
 
 function normalizeEmail(email) {
   return String(email || "").toLowerCase().trim();
@@ -154,6 +200,11 @@ function sanitizeUpdateField(key, value) {
   if (key === "assignmentSource") return normalizeAssignmentSource(value);
   if (key === "referralCode" || key === "referredByCode") return normalizeReferralCodeField(value);
   if (key === "convertedAt" || key === "assignedAt" || key === "consultancyPaidAt") return normalizeDob(value);
+  if (key === "healPaidAt") return normalizeDob(value);
+  if (key === "paidOnboardingCompleted" || key === "energyExchangeEnabled") return Boolean(value);
+  if (key === "paidOnboardingStep") return normalizePaidOnboardingStep(value);
+  if (key === "dietaryPreference") return normalizeDietaryPreference(value);
+  if (key === "wellnessJourneyFor") return normalizeWellnessJourneyFor(value);
   if (
     [
       "name",
@@ -171,6 +222,9 @@ function sanitizeUpdateField(key, value) {
       "referredByUserId",
       "referredByEntityType",
       "referredByEntityId",
+      "addressLine1",
+      "addressLine2",
+      "pincode",
     ].includes(key)
   ) {
     const s = value == null ? "" : String(value).trim();
@@ -249,6 +303,15 @@ function buildUserItem(input, { id, now } = {}) {
     assignedAt: input.assignedAt ? normalizeDob(input.assignedAt) : null,
     consultancyPaidAt: input.consultancyPaidAt ? normalizeDob(input.consultancyPaidAt) : null,
     convertedAt: input.convertedAt ? normalizeDob(input.convertedAt) : null,
+    paidOnboardingCompleted: Boolean(input.paidOnboardingCompleted),
+    paidOnboardingStep: normalizePaidOnboardingStep(input.paidOnboardingStep),
+    energyExchangeEnabled: Boolean(input.energyExchangeEnabled),
+    addressLine1: input.addressLine1 != null ? String(input.addressLine1).trim() || null : null,
+    addressLine2: input.addressLine2 != null ? String(input.addressLine2).trim() || null : null,
+    pincode: input.pincode != null ? String(input.pincode).trim() || null : null,
+    dietaryPreference: normalizeDietaryPreference(input.dietaryPreference),
+    wellnessJourneyFor: normalizeWellnessJourneyFor(input.wellnessJourneyFor),
+    healPaidAt: input.healPaidAt ? normalizeDob(input.healPaidAt) : null,
     createdAt: now,
     updatedAt: now,
   };
@@ -632,6 +695,8 @@ module.exports = {
   USER_ALLOWED_TIERS,
   USER_ALLOWED_ASSIGNMENT_STATUSES,
   USER_ALLOWED_ASSIGNED_COACH_TYPES,
+  USER_ALLOWED_DIETARY_PREFERENCES,
+  USER_ALLOWED_PAID_ONBOARDING_STEPS,
   normalizeEmail,
   normalizePhone,
   normalizeCountryCode,
@@ -641,6 +706,9 @@ module.exports = {
   normalizeUserTier,
   normalizeAssignmentStatus,
   normalizeAssignedCoachType,
+  normalizeDietaryPreference,
+  normalizePaidOnboardingStep,
+  normalizeWellnessJourneyFor,
   normalizeDob,
   buildUserItem,
   toPublicUser,

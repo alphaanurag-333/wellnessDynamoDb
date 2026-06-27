@@ -5,6 +5,15 @@ import {
   coachGetConsultancyClient,
   coachUpdateConsultancyClient,
 } from "../../api/coachConsultancy.js";
+import {
+  coachListEnergyExchangePrograms,
+  coachCreateEnergyExchangeProgram,
+  coachUpdateEnergyExchangeProgram,
+  coachEnableEnergyExchangeProgram,
+  coachDisableEnergyExchangeProgram,
+  coachPreviewEnergyExchangeProgram,
+  coachGetEnergyExchangeForUser,
+} from "../../api/coachEnergyExchange.js";
 import { logoutCoach } from "../../../store/authSlice.js";
 import { UserTierBadge } from "../../../components/ReferralAssignmentShared.jsx";
 import {
@@ -76,7 +85,7 @@ export function CoachConsultancyClientPage() {
   const { user, latestConsultancyTransaction: txn, subscriptionActive } = client;
 
   return (
-    <div className="page-card">
+    <div className="page-card consultancy-client-page">
       <div className="page-card__head">
         <div>
           <Link to="/coach/consultancy/enrolled-users" className="btn btn--ghost btn--sm">
@@ -170,6 +179,372 @@ export function CoachConsultancyClientPage() {
       ) : (
         <p className="table-placeholder">No paid consultancy transaction on file.</p>
       )}
+
+      <EnergyExchangeSection userId={user.id || user._id || userId} />
     </div>
+  );
+}
+
+const DEFAULT_FY_DISCOUNTS = { 1: 0, 2: 0, 3: 5, 4: 10 };
+
+function formatTimeBasedDiscountWindow(window) {
+  if (!window) return "—";
+  const fmt = (iso) => {
+    if (!iso) return null;
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
+  };
+  const start = fmt(window.startsAt);
+  const end = fmt(window.endsAt);
+  if (start && end) return `${start} – ${end}`;
+  if (start) return `From ${start}`;
+  if (end) return `Until ${end}`;
+  return "No end date";
+}
+
+function EnergyExchangeSection({ userId }) {
+  const dispatch = useDispatch();
+  const [programs, setPrograms] = useState([]);
+  const [subscriptions, setSubscriptions] = useState([]);
+  const [activeProgramId, setActiveProgramId] = useState(null);
+  const [form, setForm] = useState({
+    title: "Personalized Program designed by IRW",
+    programType: "Goal based / Lifetime Membership",
+    description: "",
+    monthlyAmount: "",
+    currency: "INR",
+    enabled: false,
+    fyDiscounts: { ...DEFAULT_FY_DISCOUNTS },
+    timeBasedDiscount: { percentage: "", startsAt: "", endsAt: "", note: "" },
+  });
+  const [preview, setPreview] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const loadAll = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await coachGetEnergyExchangeForUser(userId);
+      const list = data?.programs || [];
+      setPrograms(list);
+      setSubscriptions(data?.subscriptions || []);
+      if (list.length > 0) {
+        const p = list[0];
+        setActiveProgramId(p.id);
+        setForm({
+          title: p.title || "",
+          programType: p.programType || "",
+          description: p.description || "",
+          monthlyAmount: p.monthlyAmount ?? "",
+          currency: p.currency || "INR",
+          enabled: Boolean(p.enabled),
+          fyDiscounts: { ...DEFAULT_FY_DISCOUNTS, ...(p.fyDiscounts || {}) },
+          timeBasedDiscount: {
+            percentage: p.timeBasedDiscount?.percentage ?? "",
+            startsAt: p.timeBasedDiscount?.startsAt ? p.timeBasedDiscount.startsAt.slice(0, 16) : "",
+            endsAt: p.timeBasedDiscount?.endsAt ? p.timeBasedDiscount.endsAt.slice(0, 16) : "",
+            note: p.timeBasedDiscount?.note || "",
+          },
+        });
+      } else {
+        setActiveProgramId(null);
+      }
+    } catch (e) {
+      if (e?.status === 401) dispatch(logoutCoach());
+    } finally {
+      setLoading(false);
+    }
+  }, [dispatch, userId]);
+
+  useEffect(() => {
+    loadAll();
+  }, [loadAll]);
+
+  const handleFyDiscountChange = (key, value) => {
+    setForm((f) => ({
+      ...f,
+      fyDiscounts: { ...f.fyDiscounts, [key]: Number(value) || 0 },
+    }));
+  };
+
+  const buildPayload = () => ({
+    userId,
+    title: form.title,
+    programType: form.programType,
+    description: form.description,
+    monthlyAmount: form.monthlyAmount === "" ? 0 : Number(form.monthlyAmount),
+    currency: form.currency,
+    enabled: Boolean(form.enabled),
+    fyDiscounts: form.fyDiscounts,
+    timeBasedDiscount:
+      form.timeBasedDiscount.percentage
+        ? {
+            percentage: Number(form.timeBasedDiscount.percentage),
+            startsAt: form.timeBasedDiscount.startsAt
+              ? new Date(form.timeBasedDiscount.startsAt).toISOString()
+              : null,
+            endsAt: form.timeBasedDiscount.endsAt
+              ? new Date(form.timeBasedDiscount.endsAt).toISOString()
+              : null,
+            note: form.timeBasedDiscount.note,
+          }
+        : null,
+  });
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      let program;
+      if (activeProgramId) {
+        program = await coachUpdateEnergyExchangeProgram(activeProgramId, buildPayload());
+      } else {
+        program = await coachCreateEnergyExchangeProgram(buildPayload());
+        setActiveProgramId(program.id);
+      }
+      setPrograms((list) => {
+        const others = list.filter((p) => p.id !== program.id);
+        return [program, ...others];
+      });
+    } catch (err) {
+      if (err?.status === 401) dispatch(logoutCoach());
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleEnabled = async () => {
+    if (!activeProgramId) return;
+    const next = !form.enabled;
+    try {
+      const fn = next ? coachEnableEnergyExchangeProgram : coachDisableEnergyExchangeProgram;
+      const program = await fn(activeProgramId);
+      setForm((f) => ({ ...f, enabled: Boolean(program.enabled) }));
+    } catch (err) {
+      if (err?.status === 401) dispatch(logoutCoach());
+    }
+  };
+
+  const handlePreview = async () => {
+    if (!activeProgramId) return;
+    try {
+      const data = await coachPreviewEnergyExchangeProgram(activeProgramId);
+      setPreview(data);
+    } catch (err) {
+      if (err?.status === 401) dispatch(logoutCoach());
+    }
+  };
+
+  if (loading) return <div className="form-card" style={{ marginTop: "1.5rem" }}>Loading Energy Exchange…</div>;
+
+  return (
+    <section className="form-card" style={{ marginTop: "1.5rem" }}>
+      <h3 className="form-card__title">Energy Exchange Program</h3>
+      <p className="page-card__desc" style={{ marginBottom: "1rem" }}>
+        Configure the FY-based plan cards the user will see in their app.
+      </p>
+
+      <form onSubmit={handleSave}>
+        <label className="form-field">
+          <span>Title</span>
+          <input
+            value={form.title}
+            onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+            placeholder="Personalized Program designed by IRW"
+          />
+        </label>
+        <label className="form-field">
+          <span>Program type</span>
+          <input
+            value={form.programType}
+            onChange={(e) => setForm((f) => ({ ...f, programType: e.target.value }))}
+            placeholder="Goal based / Lifetime Membership"
+          />
+        </label>
+        <label className="form-field">
+          <span>Description</span>
+          <textarea
+            rows={3}
+            value={form.description}
+            onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+          />
+        </label>
+        <label className="form-field">
+          <span>Monthly amount ({form.currency})</span>
+          <input
+            type="number"
+            min="0"
+            value={form.monthlyAmount}
+            onChange={(e) => setForm((f) => ({ ...f, monthlyAmount: e.target.value }))}
+          />
+        </label>
+
+        <div className="form-field">
+          <span>FY-tier discounts (%)</span>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: ".5rem" }}>
+            {[1, 2, 3, 4].map((offset) => (
+              <label key={offset} style={{ display: "flex", flexDirection: "column", gap: ".25rem" }}>
+                <small>FY {offset === 1 ? "current" : `+${offset - 1}`}</small>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={form.fyDiscounts[offset] ?? 0}
+                  onChange={(e) => handleFyDiscountChange(offset, e.target.value)}
+                />
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <fieldset className="form-field">
+          <legend>Time-based discount (optional)</legend>
+          <p className="page-card__desc" style={{ marginBottom: ".75rem" }}>
+            Applies only to the <strong>Current FY</strong> plan card while the offer is active.
+            Future FY cards use FY-tier discounts only.
+          </p>
+          <label className="form-field">
+            <span>Percentage</span>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              value={form.timeBasedDiscount.percentage}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  timeBasedDiscount: { ...f.timeBasedDiscount, percentage: e.target.value },
+                }))
+              }
+            />
+          </label>
+          <label className="form-field">
+            <span>Starts at</span>
+            <input
+              type="datetime-local"
+              value={form.timeBasedDiscount.startsAt}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  timeBasedDiscount: { ...f.timeBasedDiscount, startsAt: e.target.value },
+                }))
+              }
+            />
+          </label>
+          <label className="form-field">
+            <span>Ends at</span>
+            <input
+              type="datetime-local"
+              value={form.timeBasedDiscount.endsAt}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  timeBasedDiscount: { ...f.timeBasedDiscount, endsAt: e.target.value },
+                }))
+              }
+            />
+          </label>
+          <label className="form-field">
+            <span>Note</span>
+            <input
+              value={form.timeBasedDiscount.note}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  timeBasedDiscount: { ...f.timeBasedDiscount, note: e.target.value },
+                }))
+              }
+            />
+          </label>
+        </fieldset>
+
+        <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
+          <button type="submit" className="btn btn--accent" disabled={saving}>
+            {saving ? "Saving…" : activeProgramId ? "Save program" : "Create program"}
+          </button>
+          {activeProgramId ? (
+            <button type="button" className="btn btn--ghost" onClick={handleToggleEnabled}>
+              {form.enabled ? "Disable for user" : "Enable for user"}
+            </button>
+          ) : null}
+          {activeProgramId ? (
+            <button type="button" className="btn btn--ghost" onClick={handlePreview}>
+              Preview plans
+            </button>
+          ) : null}
+        </div>
+      </form>
+
+      {preview?.plans?.length ? (
+        <div style={{ marginTop: "1.5rem" }}>
+          <h4 className="form-card__title">Preview (FY plan cards)</h4>
+          <div className="table-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>FY</th>
+                <th>Months</th>
+                <th>Base</th>
+                <th>FY-tier %</th>
+                <th>Time-based %</th>
+                <th>Offer valid</th>
+                <th>Total %</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {preview.plans.map((p) => (
+                <tr key={p.fyStartYear}>
+                  <td>
+                    {p.label} (FY {p.fyStartYear})
+                  </td>
+                  <td>{p.monthsCovered}</td>
+                  <td>₹{p.baseAmount}</td>
+                  <td>{p.fyTierDiscountPercent || 0}%</td>
+                  <td>{p.timeBasedDiscountPercent || 0}%</td>
+                  <td>{formatTimeBasedDiscountWindow(p.timeBasedDiscountWindow)}</td>
+                  <td>{p.effectiveDiscountPercent}%</td>
+                  <td>₹{p.totalAmount}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          </div>
+        </div>
+      ) : null}
+
+      <div style={{ marginTop: "1.5rem" }}>
+        <h4 className="form-card__title">Subscription history</h4>
+        {subscriptions.length === 0 ? (
+          <p className="table-placeholder">No subscriptions yet.</p>
+        ) : (
+          <div className="table-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>FY</th>
+                <th>Status</th>
+                <th>Starts</th>
+                <th>Ends</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {subscriptions.map((s) => (
+                <tr key={s.id}>
+                  <td>FY {s.fyStartYear}</td>
+                  <td>{s.status}</td>
+                  <td>{s.startsAt ? s.startsAt.slice(0, 10) : "—"}</td>
+                  <td>{s.endsAt ? s.endsAt.slice(0, 10) : "—"}</td>
+                  <td>₹{s.totalAmount}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          </div>
+        )}
+      </div>
+    </section>
   );
 }

@@ -34,6 +34,9 @@ const {
 const {
   resolveHealthConcernForConsultancy,
 } = require("./consultancyHealthConcern");
+const {
+  resolveConsultancyPurchaseEligibility,
+} = require("./consultancyEligibilityService");
 
 function mapPaymentError(err) {
   if (err?.name === "InvalidReferralCodeError") {
@@ -53,7 +56,7 @@ function logPaymentFailure({ transactionId, userId, reason }) {
   });
 }
 
-async function createConsultancyOrder(userId, { referralCode, paymentMethod = "upi", healthConcernId } = {}) {
+async function createConsultancyOrder(userId, { referralCode, paymentMethod = "upi", healthConcernId, fyStartYear } = {}) {
   const user = await getUserById(userId);
   if (!user) {
     const err = new Error("User not found");
@@ -61,9 +64,28 @@ async function createConsultancyOrder(userId, { referralCode, paymentMethod = "u
     throw err;
   }
 
-  if (isConsultancyOnlyTier(user.userTier) || isHealTier(user.userTier)) {
-    const err = new Error("Consultancy payment has already been completed for this account");
+  if (isHealTier(user.userTier)) {
+    const err = new Error("Consultancy is not available after Energy Exchange membership");
     err.name = "AlreadyEnrolledError";
+    throw err;
+  }
+
+  const eligibility = await resolveConsultancyPurchaseEligibility(user);
+  if (!eligibility.canPurchase || !eligibility.purchasableFy) {
+    const err = new Error(
+      isConsultancyOnlyTier(user.userTier)
+        ? "No consultancy plan is available to purchase right now"
+        : "Consultancy payment has already been completed for this account"
+    );
+    err.name = "AlreadyEnrolledError";
+    throw err;
+  }
+
+  const targetFy = eligibility.purchasableFy;
+  const requestedFy = fyStartYear != null && fyStartYear !== "" ? Number(fyStartYear) : null;
+  if (requestedFy != null && Number.isFinite(requestedFy) && requestedFy !== targetFy.fyStartYear) {
+    const err = new Error("Selected financial year is not available for purchase");
+    err.name = "ValidationError";
     throw err;
   }
 
@@ -96,7 +118,9 @@ async function createConsultancyOrder(userId, { referralCode, paymentMethod = "u
     };
   }
 
-  const healthConcern = await resolveHealthConcernForConsultancy(healthConcernId);
+  const healthConcern = await resolveHealthConcernForConsultancy(
+    healthConcernId || user.primaryHealthConcern
+  );
 
   const preview = await buildCheckoutPreview({ referralCode });
   if (preview.pricing.totalAmount <= 0) {
@@ -131,6 +155,10 @@ async function createConsultancyOrder(userId, { referralCode, paymentMethod = "u
     },
     healthConcernId: healthConcern.healthConcernId,
     healthConcernSnapshot: healthConcern.healthConcernSnapshot,
+    fyStartYear: targetFy.fyStartYear,
+    fyStartMonth: targetFy.fyStartMonth,
+    fyStartsAt: targetFy.startsAt,
+    fyEndsAt: targetFy.endsAt,
   });
 
   let order;
@@ -390,8 +418,20 @@ async function verifyConsultancyPayment(userId, {
   });
 }
 
-async function previewCheckout({ referralCode } = {}) {
-  return buildCheckoutPreview({ referralCode });
+async function previewCheckout({ referralCode, userId } = {}) {
+  const preview = await buildCheckoutPreview({ referralCode });
+  if (!userId) {
+    return preview;
+  }
+  const user = await getUserById(userId);
+  if (!user) {
+    return preview;
+  }
+  const eligibility = await resolveConsultancyPurchaseEligibility(user);
+  return {
+    ...preview,
+    eligibility,
+  };
 }
 
 module.exports = {

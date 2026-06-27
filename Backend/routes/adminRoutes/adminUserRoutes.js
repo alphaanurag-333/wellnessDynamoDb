@@ -17,6 +17,9 @@ const {
 } = require("../../controllers/adminController/userAssignmentController");
 const { getUserWaterTrackingHistoryController } = require("../../controllers/waterTrackingHistoryController");
 const { getUserStepsTrackingHistoryController } = require("../../controllers/stepsTrackingHistoryController");
+const {
+  getUserEnergyExchangeAdminController,
+} = require("../../controllers/adminController/userEnergyExchangeController");
 
 const router = express.Router();
 
@@ -24,6 +27,7 @@ router.get("/", protectAdmin, listUsersController);
 router.get("/pending-assignment", protectAdmin, listPendingAssignmentUsersController);
 router.get("/:id/water-tracking", protectAdmin, getUserWaterTrackingHistoryController);
 router.get("/:id/steps-tracking", protectAdmin, getUserStepsTrackingHistoryController);
+router.get("/:id/energy-exchange", protectAdmin, getUserEnergyExchangeAdminController);
 router.get("/:id", protectAdmin, getUserByIdController);
 router.post("/", protectAdmin, optionalUserFile, createUserController);
 router.post("/:id/convert-to-heal", protectAdmin, convertUserToHealController);

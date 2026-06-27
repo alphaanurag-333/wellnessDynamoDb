@@ -30,9 +30,10 @@ function enrichTransactionPublic(item) {
 }
 
 exports.getCheckoutPreviewController = asyncHandler(async (req, res) => {
+  const userId = req.auth?.sub || req.user?.id;
   const referralCode = req.query.referralCode ?? req.query.referral_code ?? null;
   try {
-    const data = await previewCheckout({ referralCode });
+    const data = await previewCheckout({ referralCode, userId });
     return res.status(200).json({
       status: true,
       message: "Checkout preview fetched",
@@ -48,10 +49,16 @@ exports.createConsultancyOrderController = asyncHandler(async (req, res) => {
   const referralCode = req.body?.referralCode ?? req.body?.referral_code ?? null;
   const paymentMethod = req.body?.paymentMethod ?? req.body?.payment_method ?? "upi";
   const healthConcernId = parseHealthConcernIdFromBody(req.body);
+  const fyStartYear = req.body?.fyStartYear ?? req.body?.fy_start_year ?? null;
 
   let result;
   try {
-    result = await createConsultancyOrder(userId, { referralCode, paymentMethod, healthConcernId });
+    result = await createConsultancyOrder(userId, {
+      referralCode,
+      paymentMethod,
+      healthConcernId,
+      fyStartYear,
+    });
   } catch (err) {
     mapCheckoutError(err);
   }

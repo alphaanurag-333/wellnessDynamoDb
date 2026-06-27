@@ -1,0 +1,254 @@
+{
+  "info": {
+    "_postman_id": "wellness-energy-exchange-api",
+    "name": "Wellness Energy Exchange API",
+    "description": "Energy Exchange + Paid Onboarding endpoints (coach + user + admin).\n\nBase: `{{baseUrl}}`\n\nUse `Wellness-API.postman_environment.json` for shared tokens.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "coach / energy-exchange",
+      "item": [
+        {
+          "name": "GET /coach/energy-exchange/programs?userId=:userId",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{coachToken}}" }] },
+            "header": [],
+            "url": "{{baseUrl}}/coach/energy-exchange/programs?userId={{userId}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /coach/energy-exchange/programs",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{coachToken}}" }] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"title\": \"Personalized Program designed by IRW\",\n  \"programType\": \"Goal based / Lifetime Membership\",\n  \"description\": \"\",\n  \"monthlyAmount\": 200,\n  \"currency\": \"INR\",\n  \"enabled\": true,\n  \"fyDiscounts\": { \"1\": 0, \"2\": 0, \"3\": 5, \"4\": 10 },\n  \"timeBasedDiscount\": null\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/coach/energy-exchange/programs"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /coach/energy-exchange/programs/:id",
+          "request": {
+            "method": "PATCH",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{coachToken}}" }] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"monthlyAmount\": 200,\n  \"fyDiscounts\": { \"1\": 0, \"2\": 5, \"3\": 5, \"4\": 10 }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/coach/energy-exchange/programs/:id"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /coach/energy-exchange/programs/:id/enable",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{coachToken}}" }] },
+            "header": [],
+            "url": "{{baseUrl}}/coach/energy-exchange/programs/:id/enable"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /coach/energy-exchange/programs/:id/disable",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{coachToken}}" }] },
+            "header": [],
+            "url": "{{baseUrl}}/coach/energy-exchange/programs/:id/disable"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /coach/energy-exchange/programs/:id/preview",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{coachToken}}" }] },
+            "header": [],
+            "url": "{{baseUrl}}/coach/energy-exchange/programs/:id/preview"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /coach/energy-exchange/heal-users/:userId",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{coachToken}}" }] },
+            "header": [],
+            "url": "{{baseUrl}}/coach/energy-exchange/heal-users/{{userId}}"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "user / energy-exchange",
+      "item": [
+        {
+          "name": "GET /user/energy-exchange/program",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}" }] },
+            "header": [],
+            "url": "{{baseUrl}}/user/energy-exchange/program"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /user/energy-exchange/plans",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}" }] },
+            "header": [],
+            "url": "{{baseUrl}}/user/energy-exchange/plans"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /user/energy-exchange/preview",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}" }] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fyStartYears\": [2026]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/user/energy-exchange/preview"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /user/energy-exchange/order",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}" }] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fyStartYears\": [2026, 2027],\n  \"paymentMethod\": \"upi\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/user/energy-exchange/order"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /user/energy-exchange/verify",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}" }] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transactionId\": \"{{transactionId}}\",\n  \"razorpay_order_id\": \"order_mock_test\",\n  \"razorpay_payment_id\": \"pay_mock_test\",\n  \"razorpay_signature\": \"\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/user/energy-exchange/verify"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /user/energy-exchange/subscriptions",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}" }] },
+            "header": [],
+            "url": "{{baseUrl}}/user/energy-exchange/subscriptions"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "user / paid-onboarding",
+      "item": [
+        {
+          "name": "GET /user/paid-onboarding/state",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}" }] },
+            "header": [],
+            "url": "{{baseUrl}}/user/paid-onboarding/state"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /user/paid-onboarding/profile",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}" }] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane Doe\",\n  \"email\": \"jane@example.com\",\n  \"phone\": \"9999999999\",\n  \"addressLine1\": \"1 Test St\",\n  \"city\": \"Mumbai\",\n  \"state\": \"MH\",\n  \"country\": \"IN\",\n  \"pincode\": \"400001\",\n  \"dietaryPreference\": \"vegetarian\",\n  \"wellnessJourneyFor\": [\"Fat Loss\"]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/user/paid-onboarding/profile"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /user/paid-onboarding/body-measurements (multipart)",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}" }] },
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "heightCm", "value": "170", "type": "text" },
+                { "key": "weightKg", "value": "65", "type": "text" },
+                { "key": "activityLevel", "value": "moderately_active", "type": "text" },
+                { "key": "weight_pic", "type": "file" }
+              ]
+            },
+            "url": "{{baseUrl}}/user/paid-onboarding/body-measurements"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /user/paid-onboarding/medical-conditions",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}" }] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hasConditions\": false,\n  \"onMedication\": false,\n  \"pastSurgery\": false,\n  \"hasRestrictions\": false\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/user/paid-onboarding/medical-conditions"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "admin / users",
+      "item": [
+        {
+          "name": "GET /admin/users/:id/energy-exchange",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}" }] },
+            "header": [],
+            "url": "{{baseUrl}}/admin/users/:id/energy-exchange"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

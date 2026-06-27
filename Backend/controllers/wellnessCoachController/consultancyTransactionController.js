@@ -8,6 +8,7 @@ const {
   transactionVisibleToCoach,
   transactionVisibleToAssistant,
   buildEnrolledUsersFromTransactions,
+  supplementEnrolledUsersFromAssignedClients,
   toPublicTransaction,
   updateConsultancyTransaction,
   normalizeConsultancyStatus,
@@ -63,6 +64,7 @@ exports.listCoachConsultancyEnrolledUsersController = asyncHandler(async (req, r
   });
 
   let enrolled = buildEnrolledUsersFromTransactions(data.transactions);
+  enrolled = await supplementEnrolledUsersFromAssignedClients(coachId, enrolled, { search, scope });
   const normalizedSearch = String(search || "").trim().toLowerCase();
   if (normalizedSearch) {
     enrolled = enrolled.filter((row) => {

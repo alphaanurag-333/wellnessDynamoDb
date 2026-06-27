@@ -12,6 +12,7 @@ const {
   normalizeAssignedCoachType,
   isPaidClientTier,
 } = require("./userAssignmentLogic");
+const { syncConsultancyAssigneeForUser } = require("../services/consultancyAssigneeSyncService");
 
 async function validateReassignmentTarget({ assignedCoachId, assignedCoachType, parentCoachId, actingCoachId }) {
   const coachId = String(assignedCoachId || "").trim();
@@ -86,6 +87,16 @@ async function reassignHealUser(
 
   if (updated.referralCode && patch.parentCoachId) {
     await updateReferralCodeOwnerCoachId(updated.referralCode, patch.parentCoachId);
+  }
+
+  try {
+    await syncConsultancyAssigneeForUser(userId, {
+      assignedCoachId: patch.assignedCoachId,
+      assignedCoachType: patch.assignedCoachType,
+      parentCoachId: patch.parentCoachId,
+    });
+  } catch (err) {
+    console.error("[UserAssignment] consultancy assignee sync failed", err.message);
   }
 
   return updated;
