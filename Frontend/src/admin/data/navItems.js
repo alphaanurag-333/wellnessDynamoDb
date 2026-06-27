@@ -21,7 +21,7 @@ export const navItems = [
   { to: "specializations", label: "Specializations", icon: "award" },
 
   { to: "health-concerns", label: "Health Concerns", icon: "heart" },
-  { to: "health-tools", label: "Health Tools", icon: "stethoscope" },
+  // { to: "health-tools", label: "Health Tools", icon: "stethoscope" },
   { to: "health-recipes", label: "Health Recipes", icon: "utensils" },
   { to: "health-disorders", label: "Health Disorders", icon: "activity" },
   { to: "yoga", label: "Yoga", icon: "yoga" },

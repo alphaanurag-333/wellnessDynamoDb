@@ -48,7 +48,7 @@ function sendAuthResponse(res, statusCode, user, message = "Authentication succe
 
 function assertUserCanLogin(user) {
   if (!user) {
-    throw new AppError("User Not Registered", 401);
+    throw new AppError("Whatsapp Number Not Found", 401);
   }
   if (user.status === "blocked") {
     throw new AppError("Account is blocked", 403);
