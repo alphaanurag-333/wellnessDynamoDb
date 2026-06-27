@@ -12,6 +12,8 @@ const { listHealthTools } = require("../../models/healthToolModel");
 const { listHealthRecipes } = require("../../models/healthRecipeModel");
 const { listYoga } = require("../../models/yogaModel");
 const { listTransformations } = require("../../models/transformationModel");
+const { listWellnessCoaches } = require("../../models/wellnessCoachModel");
+const { getSpecializationById } = require("../../models/specializationModel");
 const { listBirthdayPostsByPostDate } = require("../../models/birthdayPostModel");
 const { countCommentsForPost } = require("../../models/birthdayPostCommentModel");
 const { getUserById, toPublicUser } = require("../../models/userModel");
@@ -211,6 +213,47 @@ exports.getActiveTransformations = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     transformations: data.transformations,
+    pagination: data.pagination,
+  });
+});
+
+exports.getActiveWellnessCoaches = asyncHandler(async (req, res) => {
+  const { page, limit } = readPaging(req.query);
+  const data = await listWellnessCoaches({
+    page,
+    limit,
+    status: "active",
+    approvalStatus: "approved",
+    search: readSearch(req.query),
+  });
+
+  const specCache = new Map();
+  const wellnessCoaches = await Promise.all(
+    data.wellnessCoaches.map(async (coach) => {
+      if (!coach.specializationId) {
+        return { ...coach, specialization: null, specializationTitle: null };
+      }
+      if (!specCache.has(coach.specializationId)) {
+        const spec = await getSpecializationById(coach.specializationId);
+        specCache.set(
+          coach.specializationId,
+          spec
+            ? { id: spec.id, title: spec.title, description: spec.description ?? null }
+            : null
+        );
+      }
+      const specialization = specCache.get(coach.specializationId);
+      return {
+        ...coach,
+        specialization,
+        specializationTitle: specialization?.title ?? null,
+      };
+    })
+  );
+
+  return res.status(200).json({
+    status: true,
+    wellnessCoaches,
     pagination: data.pagination,
   });
 });

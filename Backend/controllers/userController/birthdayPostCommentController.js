@@ -68,7 +68,8 @@ exports.createBirthdayPostCommentController = asyncHandler(async (req, res) => {
       recipientUserId: post.userId,
       actorUserId: commenterUserId,
       postId: req.params.postId,
-      message: `${commenterName} wished you on your birthday`,
+      message: `${commenterName} commented on your birthday post: "${comment}"`,
+      comment,
     }).catch((err) => console.error("Birthday wish notification failed:", err?.message || err));
   }
 

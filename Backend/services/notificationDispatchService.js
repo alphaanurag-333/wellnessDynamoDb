@@ -29,6 +29,7 @@ function buildPushData(notification) {
     referenceId: notification.referenceId || "",
     referenceType: notification.referenceType || "",
     actorUserId: notification.actorUserId || "",
+    comment: notification.comment || "",
     audienceType: notification.audienceType || "",
   };
 }
@@ -102,6 +103,7 @@ async function dispatchBirthdayWishNotification({
   actorUserId,
   postId,
   message,
+  comment = null,
 }) {
   const notification = await createTargetedNotification({
     userId: recipientUserId,
@@ -111,6 +113,7 @@ async function dispatchBirthdayWishNotification({
     referenceType: "birthday_post",
     actorUserId,
     title: "Birthday wish",
+    comment,
   });
 
   runPushSafely(deliverTargetedPush(recipientUserId, notification));

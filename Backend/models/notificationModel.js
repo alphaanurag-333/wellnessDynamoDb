@@ -89,6 +89,7 @@ function toUserInboxNotification(item, readMap) {
     referenceId: row.referenceId || null,
     referenceType: row.referenceType || null,
     actorUserId: row.actorUserId || null,
+    comment: row.comment || null,
     sentAt: row.sentAt,
     createdAt: row.createdAt,
     isRead: Boolean(readAt),
@@ -147,6 +148,7 @@ async function createTargetedNotification({
   actorUserId = null,
   title = null,
   image = "",
+  comment = null,
 }) {
   const uid = String(userId || "").trim();
   if (!uid) throw new Error("userId is required");
@@ -168,6 +170,7 @@ async function createTargetedNotification({
   if (referenceId) item.referenceId = String(referenceId).trim();
   if (referenceType) item.referenceType = String(referenceType).trim();
   if (actorUserId) item.actorUserId = String(actorUserId).trim();
+  if (comment) item.comment = String(comment).trim();
 
   await docClient.send(
     new PutCommand({

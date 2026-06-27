@@ -21,7 +21,7 @@ const {
 } = require("./referralCodeModel");
 const {
   listByPartitionKey,
-  buildContainsFilter,
+  appendFilter,
   sortByCreatedAtDesc,
 } = require("../utils/dynamoList");
 
@@ -252,21 +252,43 @@ async function deleteWellnessCoach(id) {
   );
 }
 
-async function listWellnessCoaches({ page = 1, limit = 20, status, search } = {}) {
+async function listWellnessCoaches({ page = 1, limit = 20, status, approvalStatus, search } = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
-  const searchFilter = buildContainsFilter(
-    ["name", "email", "phone", "specializationId"],
-    search
-  );
+  const normalizedApproval = approvalStatus ? normalizeApprovalStatus(approvalStatus, "") : "";
+  const searchFields = ["name", "email", "phone", "specializationId"];
+  const searchTerm = String(search || "").trim();
+
+  let filterExpression = null;
+  const exprNames = {};
+  const exprValues = {};
+  if (normalizedApproval) {
+    exprNames["#approvalStatus"] = "approvalStatus";
+    exprValues[":approvalStatus"] = normalizedApproval;
+    filterExpression = appendFilter(filterExpression, "#approvalStatus = :approvalStatus");
+  }
+
+  // When a search term is present, listByPartitionKey drops the DynamoDB
+  // FilterExpression and filters in memory, so fold the approval check into searchFn.
+  const searchFn = searchTerm
+    ? (item, term) => {
+        if (normalizedApproval && normalizeApprovalStatus(item.approvalStatus, "") !== normalizedApproval) {
+          return false;
+        }
+        return searchFields.some((field) =>
+          String(item[field] || "").toLowerCase().includes(term)
+        );
+      }
+    : undefined;
+
   const { items, pagination } = await listByPartitionKey({
     tableName: TABLE,
     indexName: "StatusCreatedAtIndex",
     partitionKeyValue: normalizedStatus || undefined,
-    filterExpression: searchFilter.filterExpression,
-    exprNames: searchFilter.exprNames,
-    exprValues: searchFilter.exprValues,
-    search: searchFilter.search,
-    searchFields: searchFilter.searchFields,
+    filterExpression,
+    exprNames,
+    exprValues,
+    search: searchTerm || null,
+    searchFn,
     scanIndexForward: false,
     page,
     limit,
