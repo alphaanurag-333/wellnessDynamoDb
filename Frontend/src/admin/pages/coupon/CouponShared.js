@@ -1,4 +1,4 @@
-export const TITLE_MAX_LEN = 50;
+export const TITLE_MAX_LEN = 35;
 export const COUPON_CODE_MAX_LEN = 32;
 export const LIST_SEARCH_MAX_LEN = 50;
 export const LIST_LIMIT = 10;
@@ -19,7 +19,10 @@ export function emptyForm() {
 }
 
 export function sanitizeTitleInput(value) {
-  return String(value ?? "").replace(/\s+/g, " ").slice(0, TITLE_MAX_LEN);
+  return String(value ?? "")
+    .replace(/[^\p{L}\s]/gu, "")
+    .replace(/\s+/g, " ")
+    .slice(0, TITLE_MAX_LEN);
 }
 
 export function sanitizeCouponCodeInput(value) {

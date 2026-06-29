@@ -1,9 +1,9 @@
 import { IMAGE_MAX_SIZE_BYTES } from "../../../utils/mediaUploadValidation.js";
 
 export const ACHIEVEMENTS_MIN_LEN = 2;
-export const ACHIEVEMENTS_MAX_LEN = 500;
+export const ACHIEVEMENTS_MAX_LEN = 255;
 export const DESCRIPTION_MIN_LEN = 5;
-export const DESCRIPTION_MAX_LEN = 500;
+export const DESCRIPTION_MAX_LEN = 255;
 export const TIME_TAKEN_MIN = 1;
 export const TIME_TAKEN_MAX = 120;
 export const TIME_TAKEN_MAX_LEN = 3;
@@ -36,6 +36,10 @@ export function sanitizeDescription(value) {
     .replace(/\r\n/g, "\n")
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
+    .replace(/https?:\/\/\S+/gi, "")
+    .replace(/www\.\S+/gi, "")
+    .replace(/\b[\w-]+\.(?:com|net|org|in|io|co|info|biz|gov|edu|app|dev|me|us|uk|xyz)\b\S*/gi, "")
+    .replace(/[^\p{L}\p{N}\s.,!?'"():;\-]/gu, "")
     .slice(0, DESCRIPTION_MAX_LEN);
 }
 

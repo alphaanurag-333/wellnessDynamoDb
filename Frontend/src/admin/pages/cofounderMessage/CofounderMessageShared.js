@@ -1,6 +1,6 @@
 export const LIST_LIMIT = 10;
 export const TYPE_OPTIONS = ["link", "video"];
-export const NAME_MAX_LEN = 100;
+export const NAME_MAX_LEN = 35;
 export const MESSAGE_MAX_LEN = 255;
 export const YTLINK_MAX_LEN = 500;
 export const SEARCH_MAX_LEN = 120;

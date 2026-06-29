@@ -1,7 +1,7 @@
 export const TITLE_MIN_LEN = 2;
-export const TITLE_MAX_LEN = 50;
+export const TITLE_MAX_LEN = 35;
 export const DESCRIPTION_MIN_LEN = 5;
-export const DESCRIPTION_MAX_LEN = 500;
+export const DESCRIPTION_MAX_LEN = 255;
 export const SYMPTOM_ITEM_MAX_LEN = 200;
 export const MAX_SYMPTOM_ROWS = 30;
 export const LIST_SEARCH_MAX_LEN = 50;
@@ -37,7 +37,10 @@ export function symptomsToPayload(rows) {
 }
 
 export function sanitizeTitle(value) {
-  return String(value ?? "").replace(/\s+/g, " ").slice(0, TITLE_MAX_LEN);
+  return String(value ?? "")
+    .replace(/[^\p{L}\s]/gu, "")
+    .replace(/\s+/g, " ")
+    .slice(0, TITLE_MAX_LEN);
 }
 
 export function sanitizeDescription(value) {
@@ -45,6 +48,10 @@ export function sanitizeDescription(value) {
     .replace(/\r\n/g, "\n")
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
+    .replace(/https?:\/\/\S+/gi, "")
+    .replace(/www\.\S+/gi, "")
+    .replace(/\b[\w-]+\.(?:com|net|org|in|io|co|info|biz|gov|edu|app|dev|me|us|uk|xyz)\b\S*/gi, "")
+    .replace(/[^\p{L}\p{N}\s.,!?'"():;\-]/gu, "")
     .slice(0, DESCRIPTION_MAX_LEN);
 }
 

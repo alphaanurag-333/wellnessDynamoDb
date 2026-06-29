@@ -1,6 +1,6 @@
 export const LIST_LIMIT = 10;
 export const NAME_MAX_LEN = 35;
-export const DESCRIPTION_MAX_LEN = 500;
+export const DESCRIPTION_MAX_LEN = 255;
 export const DESCRIPTION_PREVIEW_LEN = 80;
 export const SEARCH_MAX_LEN = 50;
 export { IMAGE_MAX_SIZE_BYTES } from "../../../utils/mediaUploadValidation.js";
@@ -14,7 +14,13 @@ export function sanitizeSingleLine(value, maxLen) {
 }
 
 export function sanitizeMultiLine(value, maxLen) {
-  return String(value ?? "").replace(/\s+/g, " ").slice(0, maxLen);
+  return String(value ?? "")
+    .replace(/\s+/g, " ")
+    .replace(/https?:\/\/\S+/gi, "")
+    .replace(/www\.\S+/gi, "")
+    .replace(/\b[\w-]+\.(?:com|net|org|in|io|co|info|biz|gov|edu|app|dev|me|us|uk|xyz)\b\S*/gi, "")
+    .replace(/[^\p{L}\p{N}\s.,!?'"():;\-]/gu, "")
+    .slice(0, maxLen);
 }
 
 export function formatDateTime(value) {

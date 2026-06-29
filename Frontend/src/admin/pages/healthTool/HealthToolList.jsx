@@ -12,7 +12,7 @@ import {
   adminUpdateHealthTool,
 } from "../../api/adminHealthTools.js";
 import { logout } from "../../../store/authSlice.js";
-import { formatDate, LIST_LIMIT, LIST_SEARCH_MAX_LEN, truncate } from "./HealthToolShared.js";
+import { formatDate, LIST_LIMIT, LIST_SEARCH_MAX_LEN, truncate, DESCRIPTION_PREVIEW_LEN } from "./HealthToolShared.js";
 
 export function HealthToolList() {
   const dispatch = useDispatch();
@@ -159,7 +159,7 @@ export function HealthToolList() {
                     </td>
                     <td>{row.title || "—"}</td>
                     <td className="data-table__muted" title={row.description || ""}>
-                      {truncate(row.description, 80)}
+                      {truncate(row.description, DESCRIPTION_PREVIEW_LEN)}
                     </td>
                     <td className="data-table__muted">{formatDate(row.createdAt)}</td>
                     <td>
