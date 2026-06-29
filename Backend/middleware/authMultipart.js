@@ -77,3 +77,6 @@ exports.optionalYogaFile = optionalMultipart(yogaUpload);
 exports.optionalTransformationFiles = optionalMultipart(transformationUploads);
 const dietPlanUpload = memorySingle("file");
 exports.optionalDietPlanFile = optionalMultipart(dietPlanUpload);
+
+const mealPhotoUpload = memorySingle("photo");
+exports.optionalMealPhotoFile = optionalMultipart(mealPhotoUpload);
