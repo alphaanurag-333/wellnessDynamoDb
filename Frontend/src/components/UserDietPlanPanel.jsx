@@ -161,14 +161,16 @@ export function UserDietPlanPanel({
   if (loading && PageLoader) return <PageLoader label="Loading diet plans…" />;
 
   return (
-    <div className="page-card diet-plan-page">
-      <div className="page-card__head">
-        <div>
-          <Link to={backTo} className="user-back-link">
-            ← Back to clients
-          </Link>
-          <h2 className="page-card__title">Diet Plan</h2>
-          <p className="page-card__desc">Upload and manage PDF diet plans for this client.</p>
+    <div className="user-page">
+      <div className="user-page__toolbar">
+        <Link to={backTo} className="user-back-btn" aria-label="Back to clients">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M15 18 9 12l6-6" />
+          </svg>
+        </Link>
+        <div className="user-page__toolbar-text">
+          <h2 className="user-page__title">Diet Plan</h2>
+          <p className="user-page__subtitle">Upload and manage PDF diet plans for this client.</p>
         </div>
       </div>
 
@@ -178,6 +180,7 @@ export function UserDietPlanPanel({
         </p>
       ) : null}
 
+      <div className="page-card diet-plan-page">
       {!readOnly ? (
         <form className="form-card diet-plan-upload" onSubmit={handleUpload}>
           <h3 className="form-card__title">Upload new diet plan</h3>
@@ -255,6 +258,7 @@ export function UserDietPlanPanel({
           </div>
         )}
       </section>
+      </div>
     </div>
   );
 }

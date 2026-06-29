@@ -110,13 +110,14 @@ function ReminderFormModal({ open, initial, saving, onClose, onSubmit }) {
             </div>
           </div>
 
-          <label className="user-field user-field--checkbox">
+          <label className="user-field user-field--checkbox-row">
             <input
               type="checkbox"
+              className="reminder-form__checkbox"
               checked={form.isActive}
               onChange={(e) => setForm((prev) => ({ ...prev, isActive: e.target.checked }))}
             />
-            <span>Active</span>
+            <span className="user-field__label--row">Active</span>
           </label>
 
           <div className="modal-card__actions">
@@ -271,18 +272,20 @@ export function UserRemindersPanel({
   }
 
   return (
-    <div className="page-card reminder-page">
-      <div className="page-card__head reminder-page__head">
-        <div className="reminder-page__intro">
-          {backTo ? (
-            <Link to={backTo} className="text-link reminder-page__back">
-              ← {backLabel}
-            </Link>
-          ) : null}
-          <h2 className="page-card__title">{title}</h2>
-          <p className="page-card__desc">{subtitle}</p>
+    <div className="user-page">
+      <div className="user-page__toolbar">
+        {backTo ? (
+          <Link to={backTo} className="user-back-btn" aria-label={backLabel}>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M15 18 9 12l6-6" />
+            </svg>
+          </Link>
+        ) : null}
+        <div className="user-page__toolbar-text">
+          <h2 className="user-page__title">{title}</h2>
+          <p className="user-page__subtitle">{subtitle}</p>
         </div>
-        <div className="page-card__actions">
+        <div className="user-page__toolbar-actions">
           <button type="button" className="btn btn--primary" onClick={openCreate}>
             Add reminder
           </button>
@@ -295,6 +298,7 @@ export function UserRemindersPanel({
         </p>
       ) : null}
 
+      <div className="page-card reminder-page">
       <div className="reminder-list">
         {sortedReminders.length === 0 ? (
           <p className="table-placeholder">No reminders yet. Create one for this client.</p>
@@ -338,6 +342,7 @@ export function UserRemindersPanel({
             );
           })
         )}
+      </div>
       </div>
 
       <ReminderFormModal

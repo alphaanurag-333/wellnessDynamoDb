@@ -6240,6 +6240,13 @@ fieldset.form-field legend {
   flex-wrap: wrap;
 }
 
+.reminder-form__checkbox {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
 .reminder-day-picker__day {
   width: 36px;
   height: 36px;

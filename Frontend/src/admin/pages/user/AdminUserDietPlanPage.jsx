@@ -6,6 +6,7 @@ import { adminDeleteDietPlan, adminListUserDietPlans } from "../../api/adminDiet
 import { logout } from "../../../store/authSlice.js";
 import { NotFoundPage } from "../NotFoundPage.jsx";
 import { UserPageLoadingState } from "./UserPageLoader.jsx";
+import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 
 function formatPlanDate(iso) {
   if (!iso) return "—";
@@ -130,26 +131,16 @@ export function AdminUserDietPlanPage() {
 
   return (
     <div className="user-page">
-      <div className="user-page__toolbar">
-        <button type="button" className="user-back-btn" aria-label="Back" onClick={() => navigate(-1)}>
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M15 18 9 12l6-6" />
-          </svg>
-        </button>
-        <div className="user-page__toolbar-text">
-          <h2 className="user-page__title">Diet plans</h2>
-          {user ? (
-            <p className="page-card__desc">
-              {user.name} · {user.email}
-            </p>
-          ) : null}
-        </div>
-        <div className="user-page__toolbar-actions">
+      <AdminPageHeader
+        title="Diet plans"
+        subtitle={user ? `${user.name} · ${user.email}` : "Manage this user's diet plans."}
+        onBack={() => navigate(-1)}
+        actions={
           <Link to={`/admin/users/${userId}`} className="btn btn--ghost">
             User details
           </Link>
-        </div>
-      </div>
+        }
+      />
 
       {error ? (
         <p className="user-list-error" role="alert">
