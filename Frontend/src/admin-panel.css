@@ -6134,3 +6134,121 @@ fieldset.form-field legend {
     grid-template-columns: 1fr;
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/*  Reminders                                                                  */
+/* -------------------------------------------------------------------------- */
+
+.reminder-page__back {
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.reminder-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.reminder-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: var(--admin-radius);
+  background: var(--admin-surface);
+}
+
+.reminder-card--inactive {
+  opacity: 0.72;
+}
+
+.reminder-card__title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.reminder-card__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.reminder-card__meta {
+  margin: 6px 0 0;
+  color: var(--admin-muted, #64748b);
+  font-size: 0.92rem;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.reminder-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.reminder-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  margin-right: 4px;
+}
+
+.reminder-day-picker {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.reminder-day-picker__day {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.reminder-day-picker__day--active {
+  background: var(--admin-primary, #0f766e);
+  border-color: var(--admin-primary, #0f766e);
+  color: #fff;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.badge--success {
+  background: rgba(22, 163, 74, 0.12);
+  color: #15803d;
+}
+
+.modal-card--wide {
+  width: min(520px, 92vw);
+}
+
+@media (max-width: 720px) {
+  .reminder-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
