@@ -75,3 +75,5 @@ exports.optionalHealthToolFile = optionalMultipart(healthToolUpload);
 exports.optionalHealthRecipeFile = optionalMultipart(healthRecipeUpload);
 exports.optionalYogaFile = optionalMultipart(yogaUpload);
 exports.optionalTransformationFiles = optionalMultipart(transformationUploads);
+const dietPlanUpload = memorySingle("file");
+exports.optionalDietPlanFile = optionalMultipart(dietPlanUpload);
