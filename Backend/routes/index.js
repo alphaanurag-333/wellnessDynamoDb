@@ -32,14 +32,17 @@ const consultancyPaymentRoutes = require("./userRoutes/consultancyPaymentRoutes"
 const subscriptionPaymentRoutes = require("./userRoutes/subscriptionPaymentRoutes");
 const energyExchangeRoutes = require("./userRoutes/energyExchangeRoutes");
 const paidOnboardingRoutes = require("./userRoutes/paidOnboardingRoutes");
+const userReminderRoutes = require("./userRoutes/reminderRoutes");
 const coachAuthRoutes = require("./wellnessCoachRoutes/coachAuthRoutes");
 const coachSpecializationRoutes = require("./wellnessCoachRoutes/coachSpecializationRoutes");
 const coachAssistantRoutes = require("./wellnessCoachRoutes/coachAssistantRoutes");
 const coachHealUserRoutes = require("./wellnessCoachRoutes/coachHealUserRoutes");
+const coachReminderRoutes = require("./wellnessCoachRoutes/coachReminderRoutes");
 const coachConsultancyRoutes = require("./wellnessCoachRoutes/coachConsultancyRoutes");
 const coachEnergyExchangeRoutes = require("./wellnessCoachRoutes/coachEnergyExchangeRoutes");
 const assistantAuthRoutes = require("./assistantWellnessCoachRoutes/assistantAuthRoutes");
 const assistantHealUserRoutes = require("./assistantWellnessCoachRoutes/assistantHealUserRoutes");
+const assistantReminderRoutes = require("./assistantWellnessCoachRoutes/assistantReminderRoutes");
 const assistantConsultancyRoutes = require("./assistantWellnessCoachRoutes/assistantConsultancyRoutes");
 
 const router = express.Router();
@@ -52,10 +55,12 @@ router.use("/admin/auth", adminAuthRoutes);
 router.use("/coach/auth", coachAuthRoutes);
 router.use("/coach/specializations", coachSpecializationRoutes);
 router.use("/coach/assistants", coachAssistantRoutes);
+router.use("/coach/heal-users", coachReminderRoutes);
 router.use("/coach/heal-users", coachHealUserRoutes);
 router.use("/coach/consultancy", coachConsultancyRoutes);
 router.use("/coach/energy-exchange", coachEnergyExchangeRoutes);
 router.use("/assistant/auth", assistantAuthRoutes);
+router.use("/assistant/heal-users", assistantReminderRoutes);
 router.use("/assistant/heal-users", assistantHealUserRoutes);
 router.use("/assistant/consultancy", assistantConsultancyRoutes);
 router.use("/admin/app-config", adminAppConfigRoutes);
@@ -88,6 +93,7 @@ router.use("/user/consultancy-payment", consultancyPaymentRoutes);
 router.use("/user/subscription-payment", subscriptionPaymentRoutes);
 router.use("/user/energy-exchange", energyExchangeRoutes);
 router.use("/user/paid-onboarding", paidOnboardingRoutes);
+router.use("/user/reminders", userReminderRoutes);
 router.use("/public", publicAppConfigRoutes);
 router.use("/public/misc", miscRoutes);
 

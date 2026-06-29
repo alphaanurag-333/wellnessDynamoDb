@@ -201,6 +201,12 @@ export function MyHealUsersList() {
                       >
                         Steps history
                       </Link>
+                      <Link
+                        to={`${u._id || u.id}/reminders`}
+                        className="btn btn--ghost btn--sm"
+                      >
+                        Reminders
+                      </Link>
                       <button type="button" className="btn btn--ghost btn--sm" onClick={() => handleReassign(u)}>
                         Reassign
                       </button>
