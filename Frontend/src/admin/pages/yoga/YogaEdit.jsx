@@ -6,6 +6,7 @@ import Swal from "sweetalert2";
 import { adminGetYogaById } from "../../api/adminYoga.js";
 import { logout } from "../../../store/authSlice.js";
 import { NotFoundPage } from "../NotFoundPage.jsx";
+import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { YogaForm } from "./YogaAdd.jsx";
 
 export function YogaEdit() {
@@ -58,13 +59,8 @@ export function YogaEdit() {
 
   return (
     <div className="user-page">
+      <AdminPageHeader title="Edit yoga" subtitle="Update this yoga entry." backTo="/admin/yoga" />
       <div className="page-card">
-        <div className="page-card__head">
-          <h2 className="page-card__title">Edit yoga</h2>
-          <button type="button" className="btn btn--ghost" onClick={() => navigate("/admin/yoga")}>
-            Back to list
-          </button>
-        </div>
         {loading ? (
           <div className="static-cms-loading">
             <AdminPageLoader label="Loading yoga..." />

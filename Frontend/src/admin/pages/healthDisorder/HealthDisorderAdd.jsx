@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { adminCreateHealthDisorder, adminUpdateHealthDisorder } from "../../api/adminHealthDisorders.js";
 import { logout } from "../../../store/authSlice.js";
+import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import {
   DESCRIPTION_MAX_LEN,
   DESCRIPTION_MIN_LEN,
@@ -203,17 +204,14 @@ export function HealthDisorderForm({ mode = "create", initialDisorder = null }) 
 }
 
 export function HealthDisorderAdd() {
-  const navigate = useNavigate();
-
   return (
     <div className="user-page">
+      <AdminPageHeader
+        title="Create health disorder"
+        subtitle="Add a new health disorder to your catalog."
+        backTo="/admin/health-disorders"
+      />
       <div className="page-card">
-        <div className="page-card__head">
-          <h2 className="page-card__title">Create health disorder</h2>
-          <button type="button" className="btn btn--ghost" onClick={() => navigate("/admin/health-disorders")}>
-            Back to list
-          </button>
-        </div>
         <HealthDisorderForm mode="create" />
       </div>
     </div>

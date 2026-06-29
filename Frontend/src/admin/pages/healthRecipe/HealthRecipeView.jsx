@@ -7,6 +7,7 @@ import { logout } from "../../../store/authSlice.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { mediaUrl } from "../../../media.js";
 import { NotFoundPage } from "../NotFoundPage.jsx";
+import { AdminPageHeader, AdminStatusBadge } from "../../components/AdminCrud.jsx";
 import { formatDate, useHealthConcerns, buildConcernTitleMap, healthConcernLabel } from "./HealthRecipeShared.js";
 
 function DetailRow({ label, value }) {
@@ -91,19 +92,16 @@ export function HealthRecipeView() {
 
   return (
     <div className="user-page">
-      <div className="user-page__toolbar">
-        <button type="button" className="user-back-btn" aria-label="Back" onClick={() => navigate(-1)}>
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M15 18 9 12l6-6" />
-          </svg>
-        </button>
-        <div className="user-page__toolbar-text">
-          <h2 className="user-page__title">Health recipe details</h2>
-        </div>
-        <Link to="edit" className="btn btn--primary user-page__edit-link">
-          Edit recipe
-        </Link>
-      </div>
+      <AdminPageHeader
+        title="Health recipe details"
+        subtitle="View this health recipe's details."
+        onBack={() => navigate(-1)}
+        actions={
+          <Link to="edit" className="btn btn--primary user-page__edit-link">
+            Edit recipe
+          </Link>
+        }
+      />
 
       <div className="page-card user-view-card">
         <div style={{ marginBottom: 16 }}>
@@ -113,7 +111,12 @@ export function HealthRecipeView() {
           <DetailRow label="Title" value={recipe.title} />
           <DetailRow label="Health concern" value={healthConcernLabel(recipe, concernMap)} />
           <DetailRow label="Type" value={recipe.type === "video" ? "Video" : recipe.type === "ytlink" ? "YT Link" : recipe.type} />
-          <DetailRow label="Status" value={recipe.status} />
+          <div className="user-detail-row">
+            <span className="user-detail-row__label">Status</span>
+            <span className="user-detail-row__value">
+              <AdminStatusBadge status={recipe.status} />
+            </span>
+          </div>
           <DetailRow label="Created" value={formatDate(recipe.createdAt)} />
         </div>
         <div style={{ marginTop: 16 }}>

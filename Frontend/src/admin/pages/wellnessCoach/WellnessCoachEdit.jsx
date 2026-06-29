@@ -5,6 +5,7 @@ import Swal from "sweetalert2";
 import { adminGetWellnessCoach } from "../../api/adminWellnessCoaches.js";
 import { logout } from "../../../store/authSlice.js";
 import { NotFoundPage } from "../NotFoundPage.jsx";
+import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { WellnessCoachForm } from "./WellnessCoachForm.jsx";
 import { WellnessCoachPageLoadingState } from "./WellnessCoachPageLoader.jsx";
 
@@ -70,16 +71,11 @@ export function WellnessCoachEdit() {
 
   return (
     <div className="user-page">
-      <div className="user-page__toolbar">
-        <button type="button" className="user-back-btn" aria-label="Back" onClick={() => navigate(-1)}>
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M15 18 9 12l6-6" />
-          </svg>
-        </button>
-        <div>
-          <h2 className="user-page__title">Edit wellness coach</h2>
-        </div>
-      </div>
+      <AdminPageHeader
+        title="Edit wellness coach"
+        subtitle="Update this coach's profile and details."
+        onBack={() => navigate(-1)}
+      />
       <div className="user-page__card">
         <WellnessCoachForm
           key={coach.id}

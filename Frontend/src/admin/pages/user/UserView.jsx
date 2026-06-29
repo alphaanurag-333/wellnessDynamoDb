@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { adminGetUser, adminGetUserEnergyExchange } from "../../api/adminUsers.js";
 import { logout } from "../../../store/authSlice.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
+import { AdminPageHeader, AdminStatusBadge } from "../../components/AdminCrud.jsx";
 import { NotFoundPage } from "../NotFoundPage.jsx";
 import { UserPageLoadingState } from "./UserPageLoader.jsx";
 import {
@@ -134,46 +135,43 @@ export function UserView() {
 
   return (
     <div className="user-page">
-      <div className="user-page__toolbar">
-        <button type="button" className="user-back-btn" aria-label="Back" onClick={() => navigate(-1)}>
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M15 18 9 12l6-6" />
-          </svg>
-        </button>
-        <div className="user-page__toolbar-text">
-          <h2 className="user-page__title">User details</h2>
-          <UserTierBadge tier={user.userTier} assignmentStatus={user.assignmentStatus} />
-        </div>
-        <div className="user-page__toolbar-actions">
-          {isSeek ? (
-            <button type="button" className="btn btn--accent" onClick={() => setShowConvertModal(true)}>
-              Convert to Heal
-            </button>
-          ) : null}
-          {isConsultancyOnly ? (
-            <span className="tier-badge tier-badge--consultancy">Consultancy paid</span>
-          ) : null}
-          {isPendingAssignment ? (
-            <button type="button" className="btn btn--primary" onClick={() => openAssignModal("assign")}>
-              Assign coach
-            </button>
-          ) : null}
-          {tier === "heal" && !isPendingAssignment ? (
-            <button type="button" className="btn btn--ghost" onClick={() => openAssignModal("reassign")}>
-              Reassign coach
-            </button>
-          ) : null}
-          <Link to="edit" className="btn btn--accent">
-            Edit user
-          </Link>
-          <Link to="water-tracking" className="btn btn--ghost">
-            Water tracking
-          </Link>
-          <Link to="steps-tracking" className="btn btn--ghost">
-            Steps tracking
-          </Link>
-        </div>
-      </div>
+      <AdminPageHeader
+        title="User details"
+        subtitle="View this user's profile, tier, and activity."
+        onBack={() => navigate(-1)}
+        actions={
+          <>
+            <UserTierBadge tier={user.userTier} assignmentStatus={user.assignmentStatus} />
+            {isSeek ? (
+              <button type="button" className="btn btn--accent" onClick={() => setShowConvertModal(true)}>
+                Convert to Heal
+              </button>
+            ) : null}
+            {isConsultancyOnly ? (
+              <span className="tier-badge tier-badge--consultancy">Consultancy paid</span>
+            ) : null}
+            {isPendingAssignment ? (
+              <button type="button" className="btn btn--primary" onClick={() => openAssignModal("assign")}>
+                Assign coach
+              </button>
+            ) : null}
+            {tier === "heal" && !isPendingAssignment ? (
+              <button type="button" className="btn btn--ghost" onClick={() => openAssignModal("reassign")}>
+                Reassign coach
+              </button>
+            ) : null}
+            <Link to="edit" className="btn btn--accent">
+              Edit user
+            </Link>
+            <Link to="water-tracking" className="btn btn--ghost">
+              Water tracking
+            </Link>
+            <Link to="steps-tracking" className="btn btn--ghost">
+              Steps tracking
+            </Link>
+          </>
+        }
+      />
 
       <div className="page-card user-view-card">
         <div className="user-view-head">
@@ -196,7 +194,12 @@ export function UserView() {
               label="Terms accepted at"
               value={user.termsAcceptedAt ? formatDate(user.termsAcceptedAt) : "—"}
             />
-            <DetailRow label="Status" value={user.status} />
+            <div className="user-detail-row">
+              <span className="user-detail-row__label">Status</span>
+              <span className="user-detail-row__value">
+                <AdminStatusBadge status={user.status} />
+              </span>
+            </div>
             <DetailRow label="User tier" value={tier === "heal" ? "Heal (paid)" : "Seek (free)"} />
             {tier === "heal" ? (
               <>
@@ -283,7 +286,7 @@ function UserEnergyExchangeSection({ userId, adminToken, dispatch }) {
         <DetailRow label="Address" value={[u.addressLine1, u.addressLine2, u.pincode].filter(Boolean).join(", ") || "—"} />
       </div>
 
-      <h4 className="form-card__title" style={{ marginTop: "1rem" }}>Programs</h4>
+      <h4 className="user-view-section-title">Programs</h4>
       {programs.length === 0 ? (
         <p className="table-placeholder">No programs configured.</p>
       ) : (
@@ -309,7 +312,7 @@ function UserEnergyExchangeSection({ userId, adminToken, dispatch }) {
         </table>
       )}
 
-      <h4 className="form-card__title" style={{ marginTop: "1rem" }}>Subscriptions</h4>
+      <h4 className="user-view-section-title">Subscriptions</h4>
       {subs.length === 0 ? (
         <p className="table-placeholder">No subscriptions yet.</p>
       ) : (

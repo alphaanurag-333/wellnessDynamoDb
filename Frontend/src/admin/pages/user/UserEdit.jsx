@@ -5,6 +5,7 @@ import Swal from "sweetalert2";
 import { adminGetUser } from "../../api/adminUsers.js";
 import { logout } from "../../../store/authSlice.js";
 import { NotFoundPage } from "../NotFoundPage.jsx";
+import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { UserProfileForm } from "./UserAdd.jsx";
 import { UserPageLoadingState } from "./UserPageLoader.jsx";
 
@@ -80,16 +81,11 @@ export function UserEdit() {
 
   return (
     <div className="user-page">
-      <div className="user-page__toolbar">
-        <button type="button" className="user-back-btn" aria-label="Back" onClick={() => navigate(-1)}>
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M15 18 9 12l6-6" />
-          </svg>
-        </button>
-        <div>
-          <h2 className="user-page__title">Edit user</h2>
-        </div>
-      </div>
+      <AdminPageHeader
+        title="Edit user"
+        subtitle="Update this user's profile and account details."
+        onBack={() => navigate(-1)}
+      />
 
       <div className="user-page__card">
         <UserProfileForm

@@ -6,6 +6,7 @@ import Swal from "sweetalert2";
 import { MdEditSquare } from "react-icons/md";
 import { AiFillDelete, AiOutlineEye } from "react-icons/ai";
 import { adminDeleteFaq, adminListFaqs, adminUpdateFaq } from "../../api/faqController.js";
+import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import {
   ANSWER_PREVIEW_LEN,
@@ -107,18 +108,28 @@ export function FaqList() {
   };
 
   const pageInfo = useMemo(() => `Page ${page} of ${pages} · ${total} FAQs`, [page, pages, total]);
+  const subtitle = listCountSubtitle(loading, total, "FAQ", "FAQs");
+  const hasFilters = Boolean(listSearch.trim() || listStatus);
+
+  const clearFilters = () => {
+    setListSearch("");
+    setListStatus("");
+  };
 
   return (
     <div className="user-page">
       <div className="page-card">
-        <div className="page-card__head">
-          <h2 className="page-card__title">FAQs</h2>
-          <button type="button" className="btn btn--primary" onClick={() => navigate("/admin/faq/new")}>
-            Add FAQ
-          </button>
-        </div>
-        <div className="row g-2" style={{ marginBottom: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
-          <label className="user-field" style={{ flex: "1 1 200px", marginBottom: 0 }}>
+        <AdminListHeader
+          title="FAQs"
+          subtitle={subtitle}
+          actions={
+            <button type="button" className="btn btn--primary" onClick={() => navigate("/admin/faq/new")}>
+              Add FAQ
+            </button>
+          }
+        />
+        <div className="admin-crud-filters">
+          <label className="user-field admin-crud-filters__search">
             <span className="user-field__label">Search</span>
             <input
               className="user-field__input"
@@ -128,7 +139,7 @@ export function FaqList() {
               placeholder="Question or answer…"
             />
           </label>
-          <label className="user-field" style={{ flex: "0 1 160px", marginBottom: 0 }}>
+          <label className="user-field admin-crud-filters__select">
             <span className="user-field__label">Status</span>
             <select className="user-field__input" value={listStatus} onChange={(e) => setListStatus(e.target.value)}>
               <option value="">All</option>
@@ -136,6 +147,11 @@ export function FaqList() {
               <option value="inactive">Inactive</option>
             </select>
           </label>
+          {hasFilters ? (
+            <button type="button" className="btn btn--ghost" onClick={clearFilters}>
+              Clear filters
+            </button>
+          ) : null}
         </div>
         <div className="table-scroll">
           <table className="data-table">
@@ -159,21 +175,28 @@ export function FaqList() {
                 rows.map((row, idx) => (
                   <tr key={getFaqId(row) || idx}>
                     <td className="data-table__muted">{(page - 1) * LIST_LIMIT + idx + 1}</td>
-                    <td title={row.question || ""}>{truncateText(row.question, QUESTION_PREVIEW_LEN)}</td>
-                    <td title={row.answer || ""}>{truncateText(row.answer, ANSWER_PREVIEW_LEN)}</td>
+                    <td className="admin-cell-strong" title={row.question || ""}>
+                      {truncateText(row.question, QUESTION_PREVIEW_LEN)}
+                    </td>
+                    <td className="admin-cell-muted" title={row.answer || ""}>
+                      {truncateText(row.answer, ANSWER_PREVIEW_LEN)}
+                    </td>
                     <td>
-                      <button
-                        type="button"
-                        className={`settings-switch${row.status === "active" ? " settings-switch--on" : ""}`}
-                        role="switch"
-                        aria-checked={row.status === "active"}
-                        aria-label={`Toggle status for FAQ ${idx + 1}`}
-                        onClick={() => onToggleStatus(row)}
-                        disabled={togglingId === getFaqId(row)}
-                        title={row.status === "active" ? "Deactivate FAQ" : "Activate FAQ"}
-                      >
-                        <span className="settings-switch__knob" aria-hidden />
-                      </button>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <button
+                          type="button"
+                          className={`settings-switch${row.status === "active" ? " settings-switch--on" : ""}`}
+                          role="switch"
+                          aria-checked={row.status === "active"}
+                          aria-label={`Toggle status for FAQ ${idx + 1}`}
+                          onClick={() => onToggleStatus(row)}
+                          disabled={togglingId === getFaqId(row)}
+                          title={row.status === "active" ? "Deactivate FAQ" : "Activate FAQ"}
+                        >
+                          <span className="settings-switch__knob" aria-hidden />
+                        </button>
+                        <AdminStatusBadge status={row.status} />
+                      </div>
                     </td>
                     <td>
                       <div className="row-actions">

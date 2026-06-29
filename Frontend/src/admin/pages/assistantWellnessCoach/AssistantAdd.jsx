@@ -6,6 +6,7 @@ import { adminGetWellnessCoach } from "../../api/adminWellnessCoaches.js";
 import { logout } from "../../../store/authSlice.js";
 import { NotFoundPage } from "../NotFoundPage.jsx";
 import { WellnessCoachPageLoadingState } from "../wellnessCoach/WellnessCoachPageLoader.jsx";
+import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { AssistantForm } from "./AssistantForm.jsx";
 
 export function AssistantAdd() {
@@ -47,22 +48,11 @@ export function AssistantAdd() {
 
   return (
     <div className="user-page">
-      <div className="user-page__toolbar">
-        <button
-          type="button"
-          className="user-back-btn"
-          aria-label="Back"
-          onClick={() => navigate(`/admin/coaches/${coachId}`)}
-        >
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M15 18 9 12l6-6" />
-          </svg>
-        </button>
-        <div>
-          <h2 className="user-page__title">Add assistant</h2>
-          <p className="text-body-secondary small mb-0">Coach: {coachName}</p>
-        </div>
-      </div>
+      <AdminPageHeader
+        title="Add assistant"
+        subtitle={coachName ? `Coach: ${coachName}` : "Create a new assistant coach."}
+        onBack={() => navigate(`/admin/coaches/${coachId}`)}
+      />
       <div className="user-page__card">
         <AssistantForm
           coachId={coachId}

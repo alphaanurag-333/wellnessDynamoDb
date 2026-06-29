@@ -6,6 +6,7 @@ import Swal from "sweetalert2";
 import { adminGetHealthToolById } from "../../api/adminHealthTools.js";
 import { logout } from "../../../store/authSlice.js";
 import { NotFoundPage } from "../NotFoundPage.jsx";
+import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { HealthToolForm } from "./HealthToolAdd.jsx";
 
 export function HealthToolEdit() {
@@ -58,13 +59,8 @@ export function HealthToolEdit() {
 
   return (
     <div className="user-page">
+      <AdminPageHeader title="Edit health tool" subtitle="Update this health tool's details." backTo="/admin/health-tools" />
       <div className="page-card">
-        <div className="page-card__head">
-          <h2 className="page-card__title">Edit health tool</h2>
-          <button type="button" className="btn btn--ghost" onClick={() => navigate("/admin/health-tools")}>
-            Back to list
-          </button>
-        </div>
         {loading ? (
           <div className="static-cms-loading">
             <AdminPageLoader label="Loading health tool..." />

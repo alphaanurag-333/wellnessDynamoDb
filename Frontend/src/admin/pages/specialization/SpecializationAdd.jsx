@@ -7,6 +7,7 @@ import {
   adminUpdateSpecialization,
 } from "../../api/adminSpecializations.js";
 import { logout } from "../../../store/authSlice.js";
+import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import {
   DESCRIPTION_MAX_LEN,
   TITLE_MAX_LEN,
@@ -141,17 +142,14 @@ export function SpecializationForm({ mode = "create", initialSpecialization = nu
 }
 
 export function SpecializationAdd() {
-  const navigate = useNavigate();
-
   return (
     <div className="user-page">
+      <AdminPageHeader
+        title="Create specialization"
+        subtitle="Add a new specialization to your catalog."
+        backTo="/admin/specializations"
+      />
       <div className="page-card">
-        <div className="page-card__head">
-          <h2 className="page-card__title">Create specialization</h2>
-          <button type="button" className="btn btn--ghost" onClick={() => navigate("/admin/specializations")}>
-            Back to list
-          </button>
-        </div>
         <SpecializationForm mode="create" />
       </div>
     </div>

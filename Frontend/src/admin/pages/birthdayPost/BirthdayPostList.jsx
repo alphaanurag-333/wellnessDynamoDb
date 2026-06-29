@@ -6,6 +6,7 @@ import Swal from "sweetalert2";
 import { MdEditSquare } from "react-icons/md";
 import { AiOutlineEye } from "react-icons/ai";
 import { adminListBirthdayPosts } from "../../api/birthdayPostController.js";
+import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import {
   LIST_LIMIT,
@@ -63,12 +64,12 @@ export function BirthdayPostList() {
     [page, pages, total]
   );
 
+  const subtitle = listCountSubtitle(loading, total, "birthday post", "birthday posts");
+
   return (
     <div className="user-page">
       <div className="page-card">
-        <div className="page-card__head">
-          <h2 className="page-card__title">Birthday posts</h2>
-        </div>
+        <AdminListHeader title="Birthday posts" subtitle={subtitle} />
 
         <div
           style={{
@@ -89,8 +90,8 @@ export function BirthdayPostList() {
           ))}
         </div>
 
-        <div className="row g-2" style={{ marginBottom: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
-          <label className="user-field" style={{ flex: "0 1 200px", marginBottom: 0 }}>
+        <div className="admin-crud-filters">
+          <label className="user-field admin-crud-filters__select">
             <span className="user-field__label">Post date</span>
             <input
               type="date"
@@ -126,7 +127,9 @@ export function BirthdayPostList() {
                     <td className="data-table__muted">{(page - 1) * LIST_LIMIT + idx + 1}</td>
                     <td>{row.user?.name || row.userId}</td>
                     <td className="data-table__muted">{row.postDate}</td>
-                    <td>{row.status}</td>
+                    <td>
+                      <AdminStatusBadge status={row.status} />
+                    </td>
                     <td className="data-table__muted">{row.commentCount ?? 0}</td>
                     <td>
                       <div className="row-actions">

@@ -7,6 +7,7 @@ import {
   adminCreateClientTestimonial,
   adminUpdateClientTestimonial,
 } from "../../api/clientTestimonialsController.js";
+import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { mediaUrl } from "../../../media.js";
 import {
@@ -204,17 +205,14 @@ export function ClientTestimonialForm({ mode = "create", initialTestimonial = nu
 }
 
 export function ClientTestimonialAdd() {
-  const navigate = useNavigate();
-
   return (
     <div className="user-page">
+      <AdminPageHeader
+        title="Create client testimonial"
+        subtitle="Add a new client testimonial."
+        backTo="/admin/client-testimonials"
+      />
       <div className="page-card">
-        <div className="page-card__head">
-          <h2 className="page-card__title">Create client testimonial</h2>
-          <button type="button" className="btn btn--ghost" onClick={() => navigate("/admin/client-testimonials")}>
-            Back to list
-          </button>
-        </div>
         <ClientTestimonialForm mode="create" />
       </div>
     </div>

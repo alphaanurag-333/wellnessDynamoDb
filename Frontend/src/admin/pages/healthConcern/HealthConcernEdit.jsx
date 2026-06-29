@@ -6,6 +6,7 @@ import Swal from "sweetalert2";
 import { adminGetHealthConcernById } from "../../api/adminHealthConcerns.js";
 import { logout } from "../../../store/authSlice.js";
 import { NotFoundPage } from "../NotFoundPage.jsx";
+import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { HealthConcernForm } from "./HealthConcernAdd.jsx";
 
 export function HealthConcernEdit() {
@@ -58,13 +59,8 @@ export function HealthConcernEdit() {
 
   return (
     <div className="user-page">
+      <AdminPageHeader title="Edit health concern" subtitle="Update this health concern's details." backTo="/admin/health-concerns" />
       <div className="page-card">
-        <div className="page-card__head">
-          <h2 className="page-card__title">Edit health concern</h2>
-          <button type="button" className="btn btn--ghost" onClick={() => navigate("/admin/health-concerns")}>
-            Back to list
-          </button>
-        </div>
         {loading ? (
           <div className="static-cms-loading">
             <AdminPageLoader label="Loading health concern..." />

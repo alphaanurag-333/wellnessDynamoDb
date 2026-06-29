@@ -12,6 +12,7 @@ import {
 import { UserSubmitLoader } from "./UserPageLoader.jsx";
 import { adminListHealthConcerns } from "../../api/adminHealthConcerns.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
+import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { mediaUrl } from "../../../media.js";
 import { logout } from "../../../store/authSlice.js";
 import {
@@ -937,41 +938,26 @@ export function UserAdd() {
   const navigate = useNavigate();
 
   return (
-    <div className="container-fluid py-4 px-3 px-lg-4">
-      <div className="d-flex flex-wrap align-items-start gap-3 mb-4">
-        <button
-          type="button"
-          className="btn btn-outline-secondary btn-sm rounded-circle p-2 lh-1 mt-1"
-          aria-label="Back"
-          title="Back"
-          onClick={() => navigate(-1)}
-        >
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-            <path d="M15 18 9 12l6-6" />
-          </svg>
-        </button>
-        <div>
-          <h1 className="h3 fw-semibold mb-1">Add user</h1>
-          <p className="text-body-secondary mb-0">Create a profile; the user will log in with OTP on the app.</p>
-        </div>
-      </div>
-
-      <div className="card shadow-sm border-0">
-        <div className="card-body p-4 p-lg-5">
-          <UserProfileForm
-            mode="create"
-            submitLabel="Create user"
-            onCancel={() => navigate(-1)}
-            onSuccess={async () => {
-              await Swal.fire({
-                icon: "success",
-                title: "User created",
-                timer: 1500,
-              });
-              navigate(-1);
-            }}
-          />
-        </div>
+    <div className="user-page">
+      <AdminPageHeader
+        title="Add user"
+        subtitle="Create a profile; the user will log in with OTP on the app."
+        onBack={() => navigate(-1)}
+      />
+      <div className="user-page__card">
+        <UserProfileForm
+          mode="create"
+          submitLabel="Create user"
+          onCancel={() => navigate(-1)}
+          onSuccess={async () => {
+            await Swal.fire({
+              icon: "success",
+              title: "User created",
+              timer: 1500,
+            });
+            navigate(-1);
+          }}
+        />
       </div>
     </div>
   );

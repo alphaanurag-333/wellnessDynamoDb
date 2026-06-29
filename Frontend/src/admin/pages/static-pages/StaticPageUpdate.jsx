@@ -7,6 +7,7 @@ import { CKEditor } from "@ckeditor/ckeditor5-react";
 import { Bold, ClassicEditor, Essentials, Heading, Italic, Link as LinkPlugin, List, Paragraph, Undo } from "ckeditor5";
 import "ckeditor5/ckeditor5.css";
 import { getPageById, updatePage } from "../../api/adminMisc.js";
+import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 function stripHtml(value) {
   return String(value ?? "")
@@ -111,10 +112,12 @@ export function StaticPageUpdate() {
 
   return (
     <div className="user-page">
+      <AdminPageHeader
+        title="Update Static Page"
+        subtitle="Edit this page's title, status, and content."
+        backTo="/admin/static-pages"
+      />
       <div className="page-card">
-        <div className="page-card__head">
-          <h2 className="page-card__title">Update Static Page</h2>
-        </div>
         <form onSubmit={onSave}>
           <div className="row g-3">
             <label className="user-field col-12 col-md-6">

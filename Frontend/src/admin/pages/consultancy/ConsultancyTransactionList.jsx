@@ -5,6 +5,7 @@ import Swal from "sweetalert2";
 import { adminDownloadConsultancyInvoice, adminListConsultancyTransactions } from "../../api/adminConsultancy.js";
 import { logout } from "../../../store/authSlice.js";
 import { UserTableLoaderRow } from "../user/UserPageLoader.jsx";
+import { AdminListHeader } from "../../components/AdminCrud.jsx";
 import { healthConcernLabel } from "../../../components/consultancy/ConsultancyPortalShared.jsx";
 
 function formatMoney(value) {
@@ -102,14 +103,11 @@ export function ConsultancyTransactionList() {
 
   return (
     <div className="page-card">
-      <div className="page-card__head consultancy-page__head">
-        <div className="consultancy-page__intro">
-          <h2 className="page-card__title">Consultancy transactions</h2>
-          <p className="page-card__desc">
-            All payments across coaches, assistants, and admin-assigned meetings.
-          </p>
-        </div>
-        <div className="page-card__actions user-list-toolbar consultancy-page__toolbar">
+      <AdminListHeader
+        title="Consultancy transactions"
+        subtitle="All payments across coaches, assistants, and admin-assigned meetings."
+        actions={
+          <>
           <div className="user-list-filters consultancy-page__filters">
             <div className="search-field consultancy-page__search">
               <SearchIcon />
@@ -145,8 +143,9 @@ export function ConsultancyTransactionList() {
           <Link to="/admin/consultancy/enrolled-users" className="btn btn--accent">
             Enrolled users
           </Link>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <div className="table-scroll">
         <table className="data-table">

@@ -7,6 +7,7 @@ import {
   adminCreateVideoTestimonial,
   adminUpdateVideoTestimonial,
 } from "../../api/videoTestimonialsController.js";
+import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { mediaUrl } from "../../../media.js";
 import {
@@ -388,17 +389,14 @@ export function VideoTestimonialForm({ mode = "create", initialTestimonial = nul
 }
 
 export function VideoTestimonialAdd() {
-  const navigate = useNavigate();
-
   return (
     <div className="user-page">
+      <AdminPageHeader
+        title="Create video testimonial"
+        subtitle="Add a new video testimonial."
+        backTo="/admin/video-testimonials"
+      />
       <div className="page-card">
-        <div className="page-card__head">
-          <h2 className="page-card__title">Create video testimonial</h2>
-          <button type="button" className="btn btn--ghost" onClick={() => navigate("/admin/video-testimonials")}>
-            Back to list
-          </button>
-        </div>
         <VideoTestimonialForm mode="create" />
       </div>
     </div>

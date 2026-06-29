@@ -7,6 +7,7 @@ import { IoSendOutline } from "react-icons/io5";
 import { adminGetBirthdayPostById, adminUpdateBirthdayPost } from "../../api/birthdayPostController.js";
 import { logout } from "../../../store/authSlice.js";
 import { NotFoundPage } from "../NotFoundPage.jsx";
+import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { MESSAGE_MAX_LEN } from "./BirthdayPostShared.js";
 
 function BirthdayPostForm({ post }) {
@@ -154,13 +155,12 @@ export function BirthdayPostEdit() {
 
   return (
     <div className="user-page">
+      <AdminPageHeader
+        title="Edit birthday post"
+        subtitle="Update this birthday post's message and status."
+        backTo="/admin/birthday-posts"
+      />
       <div className="page-card">
-        <div className="page-card__head">
-          <h2 className="page-card__title">Edit birthday post</h2>
-          <button type="button" className="btn btn--ghost" onClick={() => navigate("/admin/birthday-posts")}>
-            Back to list
-          </button>
-        </div>
         {loading ? (
           <div className="static-cms-loading">
             <AdminPageLoader label="Loading birthday post..." />

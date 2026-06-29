@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { adminCreateHealthTool, adminUpdateHealthTool } from "../../api/adminHealthTools.js";
 import { logout } from "../../../store/authSlice.js";
+import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { mediaUrl } from "../../../media.js";
 import {
   DESCRIPTION_MAX_LEN,
@@ -188,17 +189,14 @@ export function HealthToolForm({ mode = "create", initialTool = null }) {
 }
 
 export function HealthToolAdd() {
-  const navigate = useNavigate();
-
   return (
     <div className="user-page">
+      <AdminPageHeader
+        title="Create health tool"
+        subtitle="Add a new health tool to your catalog."
+        backTo="/admin/health-tools"
+      />
       <div className="page-card">
-        <div className="page-card__head">
-          <h2 className="page-card__title">Create health tool</h2>
-          <button type="button" className="btn btn--ghost" onClick={() => navigate("/admin/health-tools")}>
-            Back to list
-          </button>
-        </div>
         <HealthToolForm mode="create" />
       </div>
     </div>

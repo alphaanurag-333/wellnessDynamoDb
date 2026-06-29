@@ -6,6 +6,7 @@ import { adminGetCoachAssistant } from "../../api/adminWellnessCoaches.js";
 import { logout } from "../../../store/authSlice.js";
 import { NotFoundPage } from "../NotFoundPage.jsx";
 import { WellnessCoachPageLoadingState } from "../wellnessCoach/WellnessCoachPageLoader.jsx";
+import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { AssistantForm } from "./AssistantForm.jsx";
 import { resolveAssistantId } from "./AssistantShared.js";
 
@@ -69,21 +70,11 @@ export function AssistantEdit() {
 
   return (
     <div className="user-page">
-      <div className="user-page__toolbar">
-        <button
-          type="button"
-          className="user-back-btn"
-          aria-label="Back"
-          onClick={() => navigate(`/admin/coaches/${coachId}/assistants/${aid}`)}
-        >
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M15 18 9 12l6-6" />
-          </svg>
-        </button>
-        <div>
-          <h2 className="user-page__title">Edit assistant</h2>
-        </div>
-      </div>
+      <AdminPageHeader
+        title="Edit assistant"
+        subtitle="Update this assistant coach's details."
+        onBack={() => navigate(`/admin/coaches/${coachId}/assistants/${aid}`)}
+      />
       <div className="user-page__card">
         <AssistantForm
           key={aid}

@@ -8,6 +8,7 @@ import { AiFillDelete, AiOutlineEye } from "react-icons/ai";
 import { adminDeleteHealthRecipe, adminListHealthRecipes, adminUpdateHealthRecipe } from "../../api/adminHealthRecipes.js";
 import { logout } from "../../../store/authSlice.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
+import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
 import { mediaUrl } from "../../../media.js";
 import { formatDate, LIST_LIMIT, LIST_SEARCH_MAX_LEN, useHealthConcerns, buildConcernTitleMap, healthConcernLabel } from "./HealthRecipeShared.js";
 
@@ -96,18 +97,30 @@ export function HealthRecipeList() {
   };
 
   const pageInfo = useMemo(() => `Page ${page} of ${pages} · ${total} items`, [page, pages, total]);
+  const subtitle = listCountSubtitle(loading, total, "health recipe", "health recipes");
+  const hasFilters = Boolean(listSearch.trim() || listStatus || listType || listConcern);
+
+  const clearFilters = () => {
+    setListSearch("");
+    setListStatus("");
+    setListType("");
+    setListConcern("");
+  };
 
   return (
     <div className="user-page">
       <div className="page-card">
-        <div className="page-card__head">
-          <h2 className="page-card__title">Health recipes</h2>
-          <button type="button" className="btn btn--primary" onClick={() => navigate("/admin/health-recipes/new")}>
-            Add health recipe
-          </button>
-        </div>
-        <div className="row g-2" style={{ marginBottom: 16, flexWrap: "wrap" }}>
-          <label className="user-field" style={{ flex: "1 1 220px", marginBottom: 0 }}>
+        <AdminListHeader
+          title="Health recipes"
+          subtitle={subtitle}
+          actions={
+            <button type="button" className="btn btn--primary" onClick={() => navigate("/admin/health-recipes/new")}>
+              Add health recipe
+            </button>
+          }
+        />
+        <div className="admin-crud-filters">
+          <label className="user-field admin-crud-filters__search">
             <span className="user-field__label">Search</span>
             <input
               className="user-field__input"
@@ -117,7 +130,7 @@ export function HealthRecipeList() {
               maxLength={LIST_SEARCH_MAX_LEN}
             />
           </label>
-          <label className="user-field" style={{ flex: "0 1 160px", marginBottom: 0 }}>
+          <label className="user-field admin-crud-filters__select">
             <span className="user-field__label">Status</span>
             <select className="user-field__input" value={listStatus} onChange={(e) => setListStatus(e.target.value)}>
               <option value="">All</option>
@@ -125,7 +138,7 @@ export function HealthRecipeList() {
               <option value="inactive">Inactive</option>
             </select>
           </label>
-          <label className="user-field" style={{ flex: "0 1 160px", marginBottom: 0 }}>
+          <label className="user-field admin-crud-filters__select">
             <span className="user-field__label">Type</span>
             <select className="user-field__input" value={listType} onChange={(e) => setListType(e.target.value)}>
               <option value="">All</option>
@@ -133,7 +146,7 @@ export function HealthRecipeList() {
               <option value="video">Video</option>
             </select>
           </label>
-          <label className="user-field" style={{ flex: "1 1 220px", marginBottom: 0 }}>
+          <label className="user-field admin-crud-filters__select">
             <span className="user-field__label">Health concern</span>
             <select className="user-field__input" value={listConcern} onChange={(e) => setListConcern(e.target.value)}>
               <option value="">All</option>
@@ -144,6 +157,11 @@ export function HealthRecipeList() {
               ))}
             </select>
           </label>
+          {hasFilters ? (
+            <button type="button" className="btn btn--ghost" onClick={clearFilters}>
+              Clear filters
+            </button>
+          ) : null}
         </div>
         <div className="table-scroll">
           <table className="data-table">
@@ -216,18 +234,21 @@ export function HealthRecipeList() {
                     <td className="data-table__muted">{Array.isArray(row.videoSpecification) ? row.videoSpecification.length : 0}</td>
                     <td className="data-table__muted">{formatDate(row.createdAt)}</td>
                     <td>
-                      <button
-                        type="button"
-                        className={`settings-switch${row.status === "active" ? " settings-switch--on" : ""}`}
-                        role="switch"
-                        aria-checked={row.status === "active"}
-                        aria-label={`Toggle status for ${row.title}`}
-                        onClick={() => onToggleStatus(row)}
-                        disabled={togglingId === row._id}
-                        title={row.status === "active" ? "Deactivate" : "Activate"}
-                      >
-                        <span className="settings-switch__knob" aria-hidden />
-                      </button>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <button
+                          type="button"
+                          className={`settings-switch${row.status === "active" ? " settings-switch--on" : ""}`}
+                          role="switch"
+                          aria-checked={row.status === "active"}
+                          aria-label={`Toggle status for ${row.title}`}
+                          onClick={() => onToggleStatus(row)}
+                          disabled={togglingId === row._id}
+                          title={row.status === "active" ? "Deactivate" : "Activate"}
+                        >
+                          <span className="settings-switch__knob" aria-hidden />
+                        </button>
+                        <AdminStatusBadge status={row.status} />
+                      </div>
                     </td>
                     <td>
                       <div className="row-actions">

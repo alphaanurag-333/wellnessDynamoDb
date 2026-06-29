@@ -6,6 +6,7 @@ import Swal from "sweetalert2";
 import { adminGetVideoTestimonialById } from "../../api/videoTestimonialsController.js";
 import { logout } from "../../../store/authSlice.js";
 import { NotFoundPage } from "../NotFoundPage.jsx";
+import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { VideoTestimonialForm } from "./VideoTestimonialAdd.jsx";
 
 export function VideoTestimonialEdit() {
@@ -58,13 +59,12 @@ export function VideoTestimonialEdit() {
 
   return (
     <div className="user-page">
+      <AdminPageHeader
+        title="Edit video testimonial"
+        subtitle="Update this video testimonial."
+        backTo="/admin/video-testimonials"
+      />
       <div className="page-card">
-        <div className="page-card__head">
-          <h2 className="page-card__title">Edit video testimonial</h2>
-          <button type="button" className="btn btn--ghost" onClick={() => navigate("/admin/video-testimonials")}>
-            Back to list
-          </button>
-        </div>
         {loading ? (
           <div className="static-cms-loading">
             <AdminPageLoader label="Loading testimonial..." />

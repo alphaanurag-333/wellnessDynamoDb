@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { adminCreateBanner, adminUpdateBanner } from "../../api/bannerController.js";
+import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { mediaUrl } from "../../../media.js";
 import {
@@ -172,17 +173,14 @@ export function BannerForm({ mode = "create", initialBanner = null }) {
 }
 
 export function BannerAdd() {
-  const navigate = useNavigate();
-
   return (
     <div className="user-page">
+      <AdminPageHeader
+        title="Create banner"
+        subtitle="Add a new banner for the site."
+        backTo="/admin/banners"
+      />
       <div className="page-card">
-        <div className="page-card__head">
-          <h2 className="page-card__title">Create banner</h2>
-          <button type="button" className="btn btn--ghost" onClick={() => navigate("/admin/banners")}>
-            Back to list
-          </button>
-        </div>
         <BannerForm mode="create" />
       </div>
     </div>

@@ -9,6 +9,7 @@ import { adminDeleteUser, adminListUsers, adminUpdateUser, resolveUserId } from 
 import { UserTableLoaderRow } from "./UserPageLoader.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
+import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
 import { UserTierBadge } from "../../../components/ReferralAssignmentShared.jsx";
 
 function formatJoined(iso) {
@@ -170,11 +171,11 @@ export function UserList() {
 
   return (
     <div className="page-card">
-      <div className="page-card__head">
-        <div>
-          <h2 className="page-card__title">User management</h2>
-        </div>
-        <div className="page-card__actions user-list-toolbar">
+      <AdminListHeader
+        title="User management"
+        subtitle={listCountSubtitle(loading, total, "user", "users")}
+        actions={
+          <>
           <form className="user-list-filters" onSubmit={onSearchSubmit}>
             <div className="search-field">
               <span className="search-field__icon" aria-hidden="true">
@@ -229,8 +230,9 @@ export function UserList() {
           <Link to="new" className="btn btn--accent">
             + Add user
           </Link>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {loadError ? (
         <p className="user-list-error" role="alert">
@@ -295,18 +297,21 @@ export function UserList() {
                     </td>
                     <td className="data-table__muted">{formatJoined(u.createdAt)}</td>
                     <td>
-                      <button
-                        type="button"
-                        className={`settings-switch${u.status === "active" ? " settings-switch--on" : ""}`}
-                        role="switch"
-                        aria-checked={u.status === "active"}
-                        aria-label={`Toggle status for ${u.name || u.email}`}
-                        onClick={() => handleToggleStatus(u)}
-                        disabled={togglingUserId === uid}
-                        title={u.status === "active" ? "Deactivate user" : "Activate user"}
-                      >
-                        <span className="settings-switch__knob" aria-hidden />
-                      </button>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <button
+                          type="button"
+                          className={`settings-switch${u.status === "active" ? " settings-switch--on" : ""}`}
+                          role="switch"
+                          aria-checked={u.status === "active"}
+                          aria-label={`Toggle status for ${u.name || u.email}`}
+                          onClick={() => handleToggleStatus(u)}
+                          disabled={togglingUserId === uid}
+                          title={u.status === "active" ? "Deactivate user" : "Activate user"}
+                        >
+                          <span className="settings-switch__knob" aria-hidden />
+                        </button>
+                        <AdminStatusBadge status={u.status} />
+                      </div>
                     </td>
                     <td>
                       <div className="row-actions">

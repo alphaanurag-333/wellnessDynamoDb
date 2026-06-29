@@ -10,6 +10,7 @@ import {
 } from "../../api/adminWellnessCoaches.js";
 import { logout } from "../../../store/authSlice.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
+import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
 import { LIST_LIMIT, formatPhone, resolveAssistantId } from "./AssistantShared.js";
 import { WellnessCoachTableLoaderRow } from "../wellnessCoach/WellnessCoachPageLoader.jsx";
 
@@ -89,11 +90,10 @@ export function AssistantList() {
 
   return (
     <div className="page-card">
-      <div className="page-card__head">
-        <div>
-          <h2 className="page-card__title">Assistant wellness coaches (AWC)</h2>
-        </div>
-        <div className="page-card__actions user-list-toolbar flex-wrap">
+      <AdminListHeader
+        title="Assistant wellness coaches (AWC)"
+        subtitle={listCountSubtitle(loading, total, "assistant", "assistants")}
+        actions={
           <form
             className="user-list-filters"
             onSubmit={(e) => {
@@ -133,8 +133,8 @@ export function AssistantList() {
               <option value="inactive">Inactive</option>
             </select>
           </form>
-        </div>
-      </div>
+        }
+      />
 
       {loadError ? (
         <p className="user-list-error" role="alert">
@@ -192,7 +192,9 @@ export function AssistantList() {
                     </td>
                     <td className="data-table__muted">{formatPhone(row)}</td>
                     <td>{row.designation || "—"}</td>
-                    <td>{row.status}</td>
+                    <td>
+                      <AdminStatusBadge status={row.status} />
+                    </td>
                     <td>
                       {cid ? (
                         <Link

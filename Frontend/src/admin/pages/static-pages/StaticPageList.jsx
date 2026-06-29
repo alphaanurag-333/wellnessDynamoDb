@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { MdEditSquare } from "react-icons/md";
 import { listPages } from "../../api/adminMisc.js";
+import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 
 export function StaticPageList() {
@@ -39,9 +40,10 @@ export function StaticPageList() {
   return (
     <div className="user-page">
       <div className="page-card">
-        <div className="page-card__head">
-          <h2 className="page-card__title">Static Pages</h2>
-        </div>
+        <AdminListHeader
+          title="Static Pages"
+          subtitle={listCountSubtitle(loading, rows.length, "page", "pages")}
+        />
         <div className="table-scroll">
           <table className="data-table">
             <thead>
@@ -67,7 +69,7 @@ export function StaticPageList() {
                     <td className="data-table__muted">{idx + 1}</td>
                     <td>{row.title || "—"}</td>
                     <td>{row.slug || "—"}</td>
-                    <td>{row.status || "—"}</td>
+                    <td>{row.status ? <AdminStatusBadge status={row.status} /> : "—"}</td>
                     <td className="data-table__muted">{row.updatedAt ? new Date(row.updatedAt).toLocaleString() : "—"}</td>
                     <td>
                       <div className="row-actions">

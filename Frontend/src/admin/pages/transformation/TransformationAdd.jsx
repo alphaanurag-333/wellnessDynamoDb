@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { adminCreateTransformation, adminUpdateTransformation } from "../../api/adminTransformations.js";
+import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { mediaUrl } from "../../../media.js";
@@ -302,17 +303,14 @@ export function TransformationForm({ mode = "create", initialTransformation = nu
 }
 
 export function TransformationAdd() {
-  const navigate = useNavigate();
-
   return (
     <div className="user-page">
+      <AdminPageHeader
+        title="Create transformation"
+        subtitle="Add a new before-and-after transformation."
+        backTo="/admin/transformations"
+      />
       <div className="page-card">
-        <div className="page-card__head">
-          <h2 className="page-card__title">Create transformation</h2>
-          <button type="button" className="btn btn--ghost" onClick={() => navigate("/admin/transformations")}>
-            Back to list
-          </button>
-        </div>
         <TransformationForm mode="create" />
       </div>
     </div>

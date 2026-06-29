@@ -11,6 +11,7 @@ import {
   adminUpdateSpecialization,
 } from "../../api/adminSpecializations.js";
 import { logout } from "../../../store/authSlice.js";
+import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
 import {
   DESCRIPTION_PREVIEW_LEN,
   LIST_LIMIT,
@@ -112,18 +113,28 @@ export function SpecializationList() {
     () => `Page ${page} of ${pages} · ${total} specializations`,
     [page, pages, total]
   );
+  const subtitle = listCountSubtitle(loading, total, "specialization", "specializations");
+  const hasFilters = Boolean(listSearch.trim() || listStatus);
+
+  const clearFilters = () => {
+    setListSearch("");
+    setListStatus("");
+  };
 
   return (
     <div className="user-page">
       <div className="page-card">
-        <div className="page-card__head">
-          <h2 className="page-card__title">Specializations</h2>
-          <button type="button" className="btn btn--primary" onClick={() => navigate("/admin/specializations/new")}>
-            Add specialization
-          </button>
-        </div>
-        <div className="row g-2" style={{ marginBottom: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
-          <label className="user-field" style={{ flex: "1 1 200px", marginBottom: 0 }}>
+        <AdminListHeader
+          title="Specializations"
+          subtitle={subtitle}
+          actions={
+            <button type="button" className="btn btn--primary" onClick={() => navigate("/admin/specializations/new")}>
+              Add specialization
+            </button>
+          }
+        />
+        <div className="admin-crud-filters">
+          <label className="user-field admin-crud-filters__search">
             <span className="user-field__label">Search</span>
             <input
               className="user-field__input"
@@ -133,7 +144,7 @@ export function SpecializationList() {
               placeholder="Title or description…"
             />
           </label>
-          <label className="user-field" style={{ flex: "0 1 160px", marginBottom: 0 }}>
+          <label className="user-field admin-crud-filters__select">
             <span className="user-field__label">Status</span>
             <select className="user-field__input" value={listStatus} onChange={(e) => setListStatus(e.target.value)}>
               <option value="">All</option>
@@ -141,6 +152,11 @@ export function SpecializationList() {
               <option value="inactive">Inactive</option>
             </select>
           </label>
+          {hasFilters ? (
+            <button type="button" className="btn btn--ghost" onClick={clearFilters}>
+              Clear filters
+            </button>
+          ) : null}
         </div>
         <div className="table-scroll">
           <table className="data-table">
@@ -171,18 +187,21 @@ export function SpecializationList() {
                         {truncateText(row.description, DESCRIPTION_PREVIEW_LEN)}
                       </td>
                       <td>
-                        <button
-                          type="button"
-                          className={`settings-switch${row.status === "active" ? " settings-switch--on" : ""}`}
-                          role="switch"
-                          aria-checked={row.status === "active"}
-                          aria-label={`Toggle status for ${row.title || "specialization"}`}
-                          onClick={() => onToggleStatus(row)}
-                          disabled={togglingId === id}
-                          title={row.status === "active" ? "Deactivate" : "Activate"}
-                        >
-                          <span className="settings-switch__knob" aria-hidden />
-                        </button>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <button
+                            type="button"
+                            className={`settings-switch${row.status === "active" ? " settings-switch--on" : ""}`}
+                            role="switch"
+                            aria-checked={row.status === "active"}
+                            aria-label={`Toggle status for ${row.title || "specialization"}`}
+                            onClick={() => onToggleStatus(row)}
+                            disabled={togglingId === id}
+                            title={row.status === "active" ? "Deactivate" : "Activate"}
+                          >
+                            <span className="settings-switch__knob" aria-hidden />
+                          </button>
+                          <AdminStatusBadge status={row.status} />
+                        </div>
                       </td>
                       <td>
                         <div className="row-actions">

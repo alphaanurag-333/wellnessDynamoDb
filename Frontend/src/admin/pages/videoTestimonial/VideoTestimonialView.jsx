@@ -7,6 +7,7 @@ import { logout } from "../../../store/authSlice.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { mediaUrl } from "../../../media.js";
 import { NotFoundPage } from "../NotFoundPage.jsx";
+import { AdminPageHeader, AdminStatusBadge } from "../../components/AdminCrud.jsx";
 import { formatDateTime } from "./VideoTestimonialShared.js";
 
 function DetailRow({ label, value }) {
@@ -82,19 +83,16 @@ export function VideoTestimonialView() {
 
   return (
     <div className="user-page">
-      <div className="user-page__toolbar">
-        <button type="button" className="user-back-btn" aria-label="Back" onClick={() => navigate(-1)}>
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M15 18 9 12l6-6" />
-          </svg>
-        </button>
-        <div className="user-page__toolbar-text">
-          <h2 className="user-page__title">Video testimonial details</h2>
-        </div>
-        <Link to="edit" className="btn btn--primary user-page__edit-link">
-          Edit testimonial
-        </Link>
-      </div>
+      <AdminPageHeader
+        title="Video testimonial details"
+        subtitle="View this video testimonial."
+        onBack={() => navigate(-1)}
+        actions={
+          <Link to="edit" className="btn btn--primary user-page__edit-link">
+            Edit testimonial
+          </Link>
+        }
+      />
 
       <div className="page-card user-view-card">
         <div style={{ marginBottom: 16 }}>
@@ -103,7 +101,12 @@ export function VideoTestimonialView() {
         <div className="user-view-grid">
           <DetailRow label="Name" value={row.name} />
           <DetailRow label="Type" value={row.type} />
-          <DetailRow label="Status" value={row.status} />
+          <div className="user-detail-row">
+            <span className="user-detail-row__label">Status</span>
+            <span className="user-detail-row__value">
+              <AdminStatusBadge status={row.status} />
+            </span>
+          </div>
           <DetailRow label="Created" value={formatDateTime(row.createdAt)} />
           <DetailRow label="Updated" value={formatDateTime(row.updatedAt)} />
         </div>

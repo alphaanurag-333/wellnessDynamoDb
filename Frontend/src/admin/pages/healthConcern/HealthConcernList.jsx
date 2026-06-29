@@ -12,6 +12,7 @@ import {
   adminUpdateHealthConcern,
 } from "../../api/adminHealthConcerns.js";
 import { logout } from "../../../store/authSlice.js";
+import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
 import { formatDate, LIST_LIMIT, LIST_SEARCH_MAX_LEN, truncate, DESCRIPTION_PREVIEW_LEN } from "./HealthConcernShared.js";
 
 export function HealthConcernList() {
@@ -97,18 +98,28 @@ export function HealthConcernList() {
   };
 
   const pageInfo = useMemo(() => `Page ${page} of ${pages} · ${total} items`, [page, pages, total]);
+  const subtitle = listCountSubtitle(loading, total, "health concern", "health concerns");
+  const hasFilters = Boolean(listSearch.trim() || listStatus);
+
+  const clearFilters = () => {
+    setListSearch("");
+    setListStatus("");
+  };
 
   return (
     <div className="user-page">
       <div className="page-card">
-        <div className="page-card__head">
-          <h2 className="page-card__title">Health concerns</h2>
-          <button type="button" className="btn btn--primary" onClick={() => navigate("/admin/health-concerns/new")}>
-            Add health concern
-          </button>
-        </div>
-        <div className="row g-2" style={{ marginBottom: 16, flexWrap: "wrap" }}>
-          <label className="user-field" style={{ flex: "1 1 200px", marginBottom: 0 }}>
+        <AdminListHeader
+          title="Health concerns"
+          subtitle={subtitle}
+          actions={
+            <button type="button" className="btn btn--primary" onClick={() => navigate("/admin/health-concerns/new")}>
+              Add health concern
+            </button>
+          }
+        />
+        <div className="admin-crud-filters">
+          <label className="user-field admin-crud-filters__search">
             <span className="user-field__label">Search</span>
             <input
               className="user-field__input"
@@ -121,7 +132,7 @@ export function HealthConcernList() {
               {listSearch.length}/{LIST_SEARCH_MAX_LEN}
             </small>
           </label>
-          <label className="user-field" style={{ flex: "0 1 160px", marginBottom: 0 }}>
+          <label className="user-field admin-crud-filters__select">
             <span className="user-field__label">Status</span>
             <select className="user-field__input" value={listStatus} onChange={(e) => setListStatus(e.target.value)}>
               <option value="">All</option>
@@ -129,6 +140,11 @@ export function HealthConcernList() {
               <option value="inactive">Inactive</option>
             </select>
           </label>
+          {hasFilters ? (
+            <button type="button" className="btn btn--ghost" onClick={clearFilters}>
+              Clear filters
+            </button>
+          ) : null}
         </div>
         <div className="table-scroll">
           <table className="data-table">
@@ -163,18 +179,21 @@ export function HealthConcernList() {
                     </td>
                     <td className="data-table__muted">{formatDate(row.createdAt)}</td>
                     <td>
-                      <button
-                        type="button"
-                        className={`settings-switch${row.status === "active" ? " settings-switch--on" : ""}`}
-                        role="switch"
-                        aria-checked={row.status === "active"}
-                        aria-label={`Toggle status for ${row.title}`}
-                        onClick={() => onToggleStatus(row)}
-                        disabled={togglingId === row._id}
-                        title={row.status === "active" ? "Deactivate" : "Activate"}
-                      >
-                        <span className="settings-switch__knob" aria-hidden />
-                      </button>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <button
+                          type="button"
+                          className={`settings-switch${row.status === "active" ? " settings-switch--on" : ""}`}
+                          role="switch"
+                          aria-checked={row.status === "active"}
+                          aria-label={`Toggle status for ${row.title}`}
+                          onClick={() => onToggleStatus(row)}
+                          disabled={togglingId === row._id}
+                          title={row.status === "active" ? "Deactivate" : "Activate"}
+                        >
+                          <span className="settings-switch__knob" aria-hidden />
+                        </button>
+                        <AdminStatusBadge status={row.status} />
+                      </div>
                     </td>
                     <td>
                       <div className="row-actions">

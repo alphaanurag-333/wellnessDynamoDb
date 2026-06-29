@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
+import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { WellnessCoachForm } from "./WellnessCoachForm.jsx";
 
 export function WellnessCoachAdd() {
@@ -7,16 +8,11 @@ export function WellnessCoachAdd() {
 
   return (
     <div className="user-page">
-      <div className="user-page__toolbar">
-        <button type="button" className="user-back-btn" aria-label="Back" onClick={() => navigate(-1)}>
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M15 18 9 12l6-6" />
-          </svg>
-        </button>
-        <div>
-          <h2 className="user-page__title">Add wellness coach</h2>
-        </div>
-      </div>
+      <AdminPageHeader
+        title="Add wellness coach"
+        subtitle="Create a new wellness coach profile."
+        onBack={() => navigate(-1)}
+      />
       <div className="user-page__card">
         <WellnessCoachForm
           mode="create"

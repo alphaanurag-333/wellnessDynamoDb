@@ -6,6 +6,7 @@ import { adminGetBannerById } from "../../api/bannerController.js";
 import { logout } from "../../../store/authSlice.js";
 import { AdminDetailBannerImage } from "../../components/AdminDetailBannerImage.jsx";
 import { NotFoundPage } from "../NotFoundPage.jsx";
+import { AdminPageHeader, AdminStatusBadge } from "../../components/AdminCrud.jsx";
 import { formatDate } from "./BannerShared.js";
 
 function DetailRow({ label, value }) {
@@ -81,19 +82,16 @@ export function BannerView() {
 
   return (
     <div className="user-page">
-      <div className="user-page__toolbar">
-        <button type="button" className="user-back-btn" aria-label="Back" onClick={() => navigate(-1)}>
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M15 18 9 12l6-6" />
-          </svg>
-        </button>
-        <div className="user-page__toolbar-text">
-          <h2 className="user-page__title">Banner details</h2>
-        </div>
-        <Link to="edit" className="btn btn--primary user-page__edit-link">
-          Edit banner
-        </Link>
-      </div>
+      <AdminPageHeader
+        title="Banner details"
+        subtitle="View this banner."
+        onBack={() => navigate(-1)}
+        actions={
+          <Link to="edit" className="btn btn--primary user-page__edit-link">
+            Edit banner
+          </Link>
+        }
+      />
 
       <div className="page-card user-view-card">
         <AdminDetailBannerImage path={banner.image} alt={banner.title || "Banner"} />
@@ -103,7 +101,12 @@ export function BannerView() {
             <span className="user-detail-row__label">Description</span>
             <div style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>{banner.description || "—"}</div>
           </div>
-          <DetailRow label="Status" value={banner.status} />
+          <div className="user-detail-row">
+            <span className="user-detail-row__label">Status</span>
+            <span className="user-detail-row__value">
+              <AdminStatusBadge status={banner.status} />
+            </span>
+          </div>
           <DetailRow label="Created" value={formatDate(banner.createdAt)} />
           <DetailRow label="Updated" value={formatDate(banner.updatedAt)} />
         </div>

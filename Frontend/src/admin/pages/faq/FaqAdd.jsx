@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { adminCreateFaq, adminUpdateFaq } from "../../api/faqController.js";
+import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import {
   ANSWER_MAX_LEN,
@@ -70,8 +71,8 @@ export function FaqForm({ mode = "create", initialFaq = null }) {
   return (
     <form onSubmit={onSubmit}>
       <div className="row g-3">
-        <label className="user-field col-12">
-          <span className="user-field__label" style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+        <label className="user-field col-12 col-md-8">
+          <span className="user-field__label admin-field-hint">
             <span>
               Question <span className="required-dot">*</span>
             </span>
@@ -84,18 +85,20 @@ export function FaqForm({ mode = "create", initialFaq = null }) {
             value={form.question}
             onChange={(e) => setForm((p) => ({ ...p, question: sanitizeQuestionInput(e.target.value) }))}
             maxLength={QUESTION_MAX_LEN}
+            placeholder="e.g. How do I reset my password?"
             required
           />
         </label>
-        <label className="user-field col-12 col-md-6">
+        <label className="user-field col-12 col-md-4">
           <span className="user-field__label">Status</span>
           <select className="user-field__input" value={form.status} onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}>
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
           </select>
+          <small className="data-table__muted">Only active FAQs are shown to users.</small>
         </label>
         <label className="user-field col-12">
-          <span className="user-field__label" style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+          <span className="user-field__label admin-field-hint">
             <span>
               Answer <span className="required-dot">*</span>
             </span>
@@ -105,10 +108,11 @@ export function FaqForm({ mode = "create", initialFaq = null }) {
           </span>
           <textarea
             className="user-field__input"
-            rows={4}
+            rows={6}
             value={form.answer}
             onChange={(e) => setForm((p) => ({ ...p, answer: sanitizeAnswerInput(e.target.value) }))}
             maxLength={ANSWER_MAX_LEN}
+            placeholder="Write a clear, helpful answer…"
             required
           />
         </label>
@@ -132,17 +136,14 @@ export function FaqForm({ mode = "create", initialFaq = null }) {
 }
 
 export function FaqAdd() {
-  const navigate = useNavigate();
-
   return (
     <div className="user-page">
+      <AdminPageHeader
+        title="Create FAQ"
+        subtitle="Add a new question and answer for your help center."
+        backTo="/admin/faq"
+      />
       <div className="page-card">
-        <div className="page-card__head">
-          <h2 className="page-card__title">Create FAQ</h2>
-          <button type="button" className="btn btn--ghost" onClick={() => navigate("/admin/faq")}>
-            Back to list
-          </button>
-        </div>
         <FaqForm mode="create" />
       </div>
     </div>

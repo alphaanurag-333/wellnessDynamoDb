@@ -9,6 +9,7 @@ import {
 } from "../../api/birthdayNotificationController.js";
 import { logout } from "../../../store/authSlice.js";
 import { NotFoundPage } from "../NotFoundPage.jsx";
+import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { formatDateTime, statusLabel } from "./BirthdayNotificationShared.js";
 
 function DetailRow({ label, value }) {
@@ -77,21 +78,16 @@ export function BirthdayNotificationView() {
 
   return (
     <div className="user-page">
-      <div className="user-page__toolbar">
-        <button type="button" className="user-back-btn" onClick={() => navigate(-1)}>
-          ←
-        </button>
-        <h2 className="user-page__title">Birthday notification</h2>
-        <button
-          type="button"
-          className="btn btn--primary"
-          style={{ marginLeft: "auto" }}
-          onClick={onResend}
-          disabled={resending}
-        >
-          {resending ? "Resending…" : "Resend"}
-        </button>
-      </div>
+      <AdminPageHeader
+        title="Birthday notification"
+        subtitle="View this birthday notification's delivery details."
+        onBack={() => navigate(-1)}
+        actions={
+          <button type="button" className="btn btn--primary" onClick={onResend} disabled={resending}>
+            {resending ? "Resending…" : "Resend"}
+          </button>
+        }
+      />
       <div className="page-card user-view-card">
         <div className="user-view-grid">
           <DetailRow label="User" value={user?.name || notification.userId} />

@@ -10,6 +10,7 @@ import {
   adminListTransformations,
   adminUpdateTransformation,
 } from "../../api/adminTransformations.js";
+import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import {
@@ -103,18 +104,28 @@ export function TransformationList() {
   };
 
   const pageInfo = useMemo(() => `Page ${page} of ${pages} · ${total} items`, [page, pages, total]);
+  const subtitle = listCountSubtitle(loading, total, "transformation", "transformations");
+  const hasFilters = Boolean(listSearch.trim() || listStatus);
+
+  const clearFilters = () => {
+    setListSearch("");
+    setListStatus("");
+  };
 
   return (
     <div className="user-page">
       <div className="page-card">
-        <div className="page-card__head">
-          <h2 className="page-card__title">Transformations</h2>
-          <button type="button" className="btn btn--primary" onClick={() => navigate("/admin/transformations/new")}>
-            Add transformation
-          </button>
-        </div>
-        <div className="row g-2" style={{ marginBottom: 16, flexWrap: "wrap" }}>
-          <label className="user-field" style={{ flex: "1 1 200px", marginBottom: 0 }}>
+        <AdminListHeader
+          title="Transformations"
+          subtitle={subtitle}
+          actions={
+            <button type="button" className="btn btn--primary" onClick={() => navigate("/admin/transformations/new")}>
+              Add transformation
+            </button>
+          }
+        />
+        <div className="admin-crud-filters">
+          <label className="user-field admin-crud-filters__search">
             <span className="user-field__label">Search</span>
             <input
               className="user-field__input"
@@ -125,7 +136,7 @@ export function TransformationList() {
             />
             <small className="data-table__muted">{listSearch.length}/{LIST_SEARCH_MAX_LEN}</small>
           </label>
-          <label className="user-field" style={{ flex: "0 1 160px", marginBottom: 0 }}>
+          <label className="user-field admin-crud-filters__select">
             <span className="user-field__label">Status</span>
             <select className="user-field__input" value={listStatus} onChange={(e) => setListStatus(e.target.value)}>
               <option value="">All</option>
@@ -133,6 +144,11 @@ export function TransformationList() {
               <option value="inactive">Inactive</option>
             </select>
           </label>
+          {hasFilters ? (
+            <button type="button" className="btn btn--ghost" onClick={clearFilters}>
+              Clear filters
+            </button>
+          ) : null}
         </div>
         <div className="table-scroll">
           <table className="data-table">
@@ -173,18 +189,21 @@ export function TransformationList() {
                     <td className="data-table__muted">{userLabel(row)}</td>
                     <td className="data-table__muted">{formatDate(row.createdAt)}</td>
                     <td>
-                      <button
-                        type="button"
-                        className={`settings-switch${row.status === "active" ? " settings-switch--on" : ""}`}
-                        role="switch"
-                        aria-checked={row.status === "active"}
-                        aria-label="Toggle status"
-                        onClick={() => onToggleStatus(row)}
-                        disabled={togglingId === row._id}
-                        title={row.status === "active" ? "Deactivate" : "Activate"}
-                      >
-                        <span className="settings-switch__knob" aria-hidden />
-                      </button>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <button
+                          type="button"
+                          className={`settings-switch${row.status === "active" ? " settings-switch--on" : ""}`}
+                          role="switch"
+                          aria-checked={row.status === "active"}
+                          aria-label="Toggle status"
+                          onClick={() => onToggleStatus(row)}
+                          disabled={togglingId === row._id}
+                          title={row.status === "active" ? "Deactivate" : "Activate"}
+                        >
+                          <span className="settings-switch__knob" aria-hidden />
+                        </button>
+                        <AdminStatusBadge status={row.status} />
+                      </div>
                     </td>
                     <td>
                       <div className="row-actions">

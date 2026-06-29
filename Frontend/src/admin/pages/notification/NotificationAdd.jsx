@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { IoSendOutline } from "react-icons/io5";
 import { adminCreateNotification, adminUpdateNotification } from "../../api/notificationController.js";
+import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { mediaUrl } from "../../../media.js";
 import {
@@ -151,17 +152,14 @@ export function NotificationForm({ mode = "create", initialNotification = null }
 }
 
 export function NotificationAdd() {
-  const navigate = useNavigate();
-
   return (
     <div className="user-page">
+      <AdminPageHeader
+        title="Create notification"
+        subtitle="Send a new push notification to your users."
+        backTo="/admin/notifications"
+      />
       <div className="page-card">
-        <div className="page-card__head">
-          <h2 className="page-card__title">Create notification</h2>
-          <button type="button" className="btn btn--ghost" onClick={() => navigate("/admin/notifications")}>
-            Back to list
-          </button>
-        </div>
         <NotificationForm mode="create" />
       </div>
     </div>

@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { adminCreateCoupon, adminUpdateCoupon } from "../../api/adminCoupons.js";
+import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import {
   TITLE_MAX_LEN,
@@ -162,17 +163,10 @@ export function CouponForm({ mode = "create", initialCoupon = null }) {
 }
 
 export function CouponAdd() {
-  const navigate = useNavigate();
-
   return (
     <div className="user-page">
+      <AdminPageHeader title="Create coupon" subtitle="Add a new discount coupon." backTo="/admin/coupons" />
       <div className="page-card">
-        <div className="page-card__head">
-          <h2 className="page-card__title">Create coupon</h2>
-          <button type="button" className="btn btn--ghost" onClick={() => navigate("/admin/coupons")}>
-            Back to list
-          </button>
-        </div>
         <CouponForm mode="create" />
       </div>
     </div>

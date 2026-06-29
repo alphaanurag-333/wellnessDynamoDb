@@ -10,6 +10,7 @@ import {
 } from "../../api/birthdayPostController.js";
 import { logout } from "../../../store/authSlice.js";
 import { NotFoundPage } from "../NotFoundPage.jsx";
+import { AdminPageHeader, AdminStatusBadge } from "../../components/AdminCrud.jsx";
 import { formatDateTime } from "./BirthdayPostShared.js";
 
 function DetailRow({ label, value }) {
@@ -71,25 +72,27 @@ export function BirthdayPostView() {
 
   return (
     <div className="user-page">
-      <div className="user-page__toolbar">
-        <button type="button" className="user-back-btn" aria-label="Back" onClick={() => navigate(-1)}>
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M15 18 9 12l6-6" />
-          </svg>
-        </button>
-        <div className="user-page__toolbar-text">
-          <h2 className="user-page__title">Birthday post details</h2>
-        </div>
-        <Link to="edit" className="btn btn--primary user-page__edit-link">
-          Edit post
-        </Link>
-      </div>
+      <AdminPageHeader
+        title="Birthday post details"
+        subtitle="View this birthday post and its comments."
+        onBack={() => navigate(-1)}
+        actions={
+          <Link to="edit" className="btn btn--primary user-page__edit-link">
+            Edit post
+          </Link>
+        }
+      />
 
       <div className="page-card user-view-card">
         <div className="user-view-grid">
           <DetailRow label="User" value={post.user?.name || post.userId} />
           <DetailRow label="Post date" value={post.postDate} />
-          <DetailRow label="Status" value={post.status} />
+          <div className="user-detail-row">
+            <span className="user-detail-row__label">Status</span>
+            <span className="user-detail-row__value">
+              <AdminStatusBadge status={post.status} />
+            </span>
+          </div>
           <DetailRow label="Comments" value={post.commentCount ?? 0} />
           <DetailRow label="Created" value={formatDateTime(post.createdAt)} />
           <DetailRow label="Updated" value={formatDateTime(post.updatedAt)} />

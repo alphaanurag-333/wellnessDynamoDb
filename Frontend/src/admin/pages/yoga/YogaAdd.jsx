@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { adminCreateYoga, adminUpdateYoga } from "../../api/adminYoga.js";
+import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { mediaUrl } from "../../../media.js";
@@ -339,17 +340,14 @@ export function YogaForm({ mode = "create", initialYoga = null }) {
 }
 
 export function YogaAdd() {
-  const navigate = useNavigate();
-
   return (
     <div className="user-page">
+      <AdminPageHeader
+        title="Create yoga"
+        subtitle="Add a new yoga video or YouTube link."
+        backTo="/admin/yoga"
+      />
       <div className="page-card">
-        <div className="page-card__head">
-          <h2 className="page-card__title">Create yoga</h2>
-          <button type="button" className="btn btn--ghost" onClick={() => navigate("/admin/yoga")}>
-            Back to list
-          </button>
-        </div>
         <YogaForm mode="create" />
       </div>
     </div>

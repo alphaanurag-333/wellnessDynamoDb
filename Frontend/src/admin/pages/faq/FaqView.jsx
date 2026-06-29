@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { adminGetFaqById } from "../../api/faqController.js";
 import { logout } from "../../../store/authSlice.js";
 import { NotFoundPage } from "../NotFoundPage.jsx";
+import { AdminPageHeader, AdminStatusBadge } from "../../components/AdminCrud.jsx";
 import { formatDate } from "./FaqShared.js";
 
 function DetailRow({ label, value }) {
@@ -80,36 +81,38 @@ export function FaqView() {
 
   return (
     <div className="user-page">
-      <div className="user-page__toolbar">
-        <button type="button" className="user-back-btn" aria-label="Back" onClick={() => navigate(-1)}>
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M15 18 9 12l6-6" />
-          </svg>
-        </button>
-        <div className="user-page__toolbar-text">
-          <h2 className="user-page__title">FAQ details</h2>
-        </div>
-        <Link to="edit" className="btn btn--primary user-page__edit-link">
-          Edit FAQ
-        </Link>
-      </div>
+      <AdminPageHeader
+        title="FAQ details"
+        subtitle="View this question and answer."
+        onBack={() => navigate(-1)}
+        actions={
+          <Link to="edit" className="btn btn--primary user-page__edit-link">
+            Edit FAQ
+          </Link>
+        }
+      />
 
       <div className="page-card user-view-card">
-        <div className="user-view-grid">
-          <DetailRow label="Status" value={faq.status} />
-          <DetailRow label="Created" value={formatDate(faq.createdAt)} />
-          <DetailRow label="Updated" value={formatDate(faq.updatedAt)} />
+        <div className="admin-detail-block">
+          <span className="admin-detail-block__label">Question</span>
+          <h3 className="admin-detail-block__title">{faq.question || "—"}</h3>
         </div>
-        <div style={{ marginTop: 16 }}>
-          <strong>Question</strong>
-          <div style={{ marginTop: 6, overflowWrap: "anywhere", wordBreak: "break-word", whiteSpace: "pre-wrap" }}>
-            {faq.question || "—"}
-          </div>
+
+        <div className="admin-detail-block">
+          <span className="admin-detail-block__label">Answer</span>
+          <div className="admin-detail-block__body">{faq.answer || "—"}</div>
         </div>
-        <div style={{ marginTop: 16 }}>
-          <strong>Answer</strong>
-          <div style={{ marginTop: 6, overflowWrap: "anywhere", wordBreak: "break-word", whiteSpace: "pre-wrap" }}>
-            {faq.answer || "—"}
+
+        <div className="admin-detail-block">
+          <div className="user-view-grid">
+            <div className="user-detail-row">
+              <span className="user-detail-row__label">Status</span>
+              <span className="user-detail-row__value">
+                <AdminStatusBadge status={faq.status} />
+              </span>
+            </div>
+            <DetailRow label="Created" value={formatDate(faq.createdAt)} />
+            <DetailRow label="Updated" value={formatDate(faq.updatedAt)} />
           </div>
         </div>
       </div>

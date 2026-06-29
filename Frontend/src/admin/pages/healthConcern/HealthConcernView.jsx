@@ -6,6 +6,7 @@ import { adminGetHealthConcernById } from "../../api/adminHealthConcerns.js";
 import { logout } from "../../../store/authSlice.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { NotFoundPage } from "../NotFoundPage.jsx";
+import { AdminPageHeader, AdminStatusBadge } from "../../components/AdminCrud.jsx";
 import { formatDate } from "./HealthConcernShared.js";
 
 function DetailRow({ label, value }) {
@@ -81,19 +82,16 @@ export function HealthConcernView() {
 
   return (
     <div className="user-page">
-      <div className="user-page__toolbar">
-        <button type="button" className="user-back-btn" aria-label="Back" onClick={() => navigate(-1)}>
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M15 18 9 12l6-6" />
-          </svg>
-        </button>
-        <div className="user-page__toolbar-text">
-          <h2 className="user-page__title">Health concern details</h2>
-        </div>
-        <Link to="edit" className="btn btn--primary user-page__edit-link">
-          Edit concern
-        </Link>
-      </div>
+      <AdminPageHeader
+        title="Health concern details"
+        subtitle="View this health concern's details."
+        onBack={() => navigate(-1)}
+        actions={
+          <Link to="edit" className="btn btn--primary user-page__edit-link">
+            Edit concern
+          </Link>
+        }
+      />
 
       <div className="page-card user-view-card">
         <div style={{ marginBottom: 16 }}>
@@ -101,7 +99,12 @@ export function HealthConcernView() {
         </div>
         <div className="user-view-grid">
           <DetailRow label="Title" value={concern.title} />
-          <DetailRow label="Status" value={concern.status} />
+          <div className="user-detail-row">
+            <span className="user-detail-row__label">Status</span>
+            <span className="user-detail-row__value">
+              <AdminStatusBadge status={concern.status} />
+            </span>
+          </div>
           <DetailRow label="Created" value={formatDate(concern.createdAt)} />
           <DetailRow label="Updated" value={formatDate(concern.updatedAt)} />
         </div>

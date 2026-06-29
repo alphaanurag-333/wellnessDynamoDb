@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { adminGetCoachAssistant, adminGetWellnessCoach } from "../../api/adminWellnessCoaches.js";
 import { logout } from "../../../store/authSlice.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
+import { AdminPageHeader, AdminStatusBadge } from "../../components/AdminCrud.jsx";
 import { NotFoundPage } from "../NotFoundPage.jsx";
 import { WellnessCoachPageLoadingState } from "../wellnessCoach/WellnessCoachPageLoader.jsx";
 import { formatDate, formatPhone, resolveAssistantId } from "./AssistantShared.js";
@@ -83,42 +84,33 @@ export function AssistantView() {
 
   return (
     <div className="user-page">
-      <div className="user-page__toolbar">
-        <button
-          type="button"
-          className="user-back-btn"
-          aria-label="Back"
-          onClick={() => navigate(`/admin/coaches/${coachId}`)}
-        >
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M15 18 9 12l6-6" />
-          </svg>
-        </button>
-        <div className="user-page__toolbar-text">
-          <h2 className="user-page__title">{assistant.name}</h2>
-          <span className={`status-pill status-pill--${assistant.status === "active" ? "active" : "inactive"}`}>
-            {assistant.status}
-          </span>
-        </div>
-        <div className="user-page__toolbar-actions">
-          <Link to={`/admin/coaches/${coachId}/assistants/${aid}/edit`} className="btn btn--primary">
-            Edit
-          </Link>
-        </div>
-      </div>
+      <AdminPageHeader
+        title={assistant.name}
+        onBack={() => navigate(`/admin/coaches/${coachId}`)}
+        actions={
+          <>
+            <AdminStatusBadge status={assistant.status} />
+            <Link to={`/admin/coaches/${coachId}/assistants/${aid}/edit`} className="btn btn--primary">
+              Edit
+            </Link>
+          </>
+        }
+      />
 
-      <div className="user-page__card user-detail-grid">
-        <div className="user-detail-profile">
-          <AdminMediaImage path={assistant.profileImage} round width={96} height={96} alt={assistant.name} />
-        </div>
-        <div className="user-detail-fields">
-          <DetailRow label="Wellness coach" value={coachName || coachId} />
-          <DetailRow label="Email" value={assistant.email} />
-          <DetailRow label="Mobile" value={formatPhone(assistant)} />
-          <DetailRow label="Designation" value={assistant.designation} />
-          <CopyReferralCode code={assistant.referralCode} label="Referral code" />
-          <DetailRow label="Created" value={formatDate(assistant.createdAt)} />
-          <DetailRow label="Updated" value={formatDate(assistant.updatedAt)} />
+      <div className="page-card user-view-card">
+        <div className="user-view-head">
+          <div className="user-view-avatar-wrap">
+            <AdminMediaImage path={assistant.profileImage} round width={96} height={96} alt={assistant.name} />
+          </div>
+          <div className="user-view-grid">
+            <DetailRow label="Wellness coach" value={coachName || coachId} />
+            <DetailRow label="Email" value={assistant.email} />
+            <DetailRow label="Mobile" value={formatPhone(assistant)} />
+            <DetailRow label="Designation" value={assistant.designation} />
+            <CopyReferralCode code={assistant.referralCode} label="Referral code" />
+            <DetailRow label="Created" value={formatDate(assistant.createdAt)} />
+            <DetailRow label="Updated" value={formatDate(assistant.updatedAt)} />
+          </div>
         </div>
       </div>
     </div>

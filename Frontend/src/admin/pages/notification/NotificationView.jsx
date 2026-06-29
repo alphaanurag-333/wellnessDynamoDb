@@ -7,6 +7,7 @@ import { adminGetNotificationById, adminResendNotification } from "../../api/not
 import { logout } from "../../../store/authSlice.js";
 import { AdminDetailBannerImage } from "../../components/AdminDetailBannerImage.jsx";
 import { NotFoundPage } from "../NotFoundPage.jsx";
+import { AdminPageHeader, AdminStatusBadge } from "../../components/AdminCrud.jsx";
 import { formatDateTime } from "./NotificationShared.js";
 
 function DetailRow({ label, value }) {
@@ -119,36 +120,33 @@ export function NotificationView() {
 
   return (
     <div className="user-page">
-      <div className="user-page__toolbar">
-        <button type="button" className="user-back-btn" aria-label="Back" onClick={() => navigate(-1)}>
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M15 18 9 12l6-6" />
-          </svg>
-        </button>
-        <div className="user-page__toolbar-text">
-          <h2 className="user-page__title">Notification details</h2>
-        </div>
-        <div className="user-page__toolbar-actions">
-          {notification.status === "active" ? (
-            <button
-              type="button"
-              className="btn btn--primary"
-              onClick={onResend}
-              disabled={resending}
-            >
-              {resending ? "Resending…" : "Resend"}
-            </button>
-          ) : null}
-          <Link to="edit" className="btn btn--accent">
-            Edit notification
-          </Link>
-        </div>
-      </div>
+      <AdminPageHeader
+        title="Notification details"
+        subtitle="View this notification's content and delivery."
+        onBack={() => navigate(-1)}
+        actions={
+          <>
+            {notification.status === "active" ? (
+              <button type="button" className="btn btn--primary" onClick={onResend} disabled={resending}>
+                {resending ? "Resending…" : "Resend"}
+              </button>
+            ) : null}
+            <Link to="edit" className="btn btn--accent">
+              Edit notification
+            </Link>
+          </>
+        }
+      />
 
       <div className="page-card user-view-card">
         <AdminDetailBannerImage path={notification.image} alt="Notification" />
         <div className="user-view-grid">
-          <DetailRow label="Status" value={notification.status} />
+          <div className="user-detail-row">
+            <span className="user-detail-row__label">Status</span>
+            <span className="user-detail-row__value">
+              <AdminStatusBadge status={notification.status} />
+            </span>
+          </div>
           <DetailRow label="Sent" value={formatDateTime(notification.sentAt)} />
           <DetailRow label="Created" value={formatDateTime(notification.createdAt)} />
           <DetailRow label="Updated" value={formatDateTime(notification.updatedAt)} />

@@ -11,6 +11,7 @@ import {
   adminListVideoTestimonials,
   adminUpdateVideoTestimonial,
 } from "../../api/videoTestimonialsController.js";
+import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { mediaUrl } from "../../../media.js";
 import { LIST_LIMIT, SEARCH_MAX_LEN } from "./VideoTestimonialShared.js";
@@ -96,18 +97,29 @@ export function VideoTestimonialList() {
   };
 
   const pageInfo = useMemo(() => `Page ${page} of ${pages} · ${total} testimonials`, [page, pages, total]);
+  const subtitle = listCountSubtitle(loading, total, "video testimonial", "video testimonials");
+  const hasFilters = Boolean(listSearch.trim() || listStatus || listType);
+
+  const clearFilters = () => {
+    setListSearch("");
+    setListType("");
+    setListStatus("");
+  };
 
   return (
     <div className="user-page">
       <div className="page-card">
-        <div className="page-card__head">
-          <h2 className="page-card__title">Video testimonials</h2>
-          <button type="button" className="btn btn--primary" onClick={() => navigate("/admin/video-testimonials/new")}>
-            Add video testimonial
-          </button>
-        </div>
-        <div className="row g-2" style={{ marginBottom: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
-          <label className="user-field" style={{ flex: "1 1 240px", marginBottom: 0 }}>
+        <AdminListHeader
+          title="Video testimonials"
+          subtitle={subtitle}
+          actions={
+            <button type="button" className="btn btn--primary" onClick={() => navigate("/admin/video-testimonials/new")}>
+              Add video testimonial
+            </button>
+          }
+        />
+        <div className="admin-crud-filters">
+          <label className="user-field admin-crud-filters__search">
             <span className="user-field__label">Search</span>
             <input
               className="user-field__input"
@@ -117,7 +129,7 @@ export function VideoTestimonialList() {
               placeholder="Name..."
             />
           </label>
-          <label className="user-field" style={{ flex: "0 1 160px", marginBottom: 0 }}>
+          <label className="user-field admin-crud-filters__select">
             <span className="user-field__label">Type</span>
             <select className="user-field__input" value={listType} onChange={(e) => setListType(e.target.value)}>
               <option value="">All</option>
@@ -125,7 +137,7 @@ export function VideoTestimonialList() {
               <option value="video">Video</option>
             </select>
           </label>
-          <label className="user-field" style={{ flex: "0 1 160px", marginBottom: 0 }}>
+          <label className="user-field admin-crud-filters__select">
             <span className="user-field__label">Status</span>
             <select className="user-field__input" value={listStatus} onChange={(e) => setListStatus(e.target.value)}>
               <option value="">All</option>
@@ -133,6 +145,11 @@ export function VideoTestimonialList() {
               <option value="inactive">Inactive</option>
             </select>
           </label>
+          {hasFilters ? (
+            <button type="button" className="btn btn--ghost" onClick={clearFilters}>
+              Clear filters
+            </button>
+          ) : null}
         </div>
         <div className="table-scroll">
           <table className="data-table">
@@ -175,17 +192,20 @@ export function VideoTestimonialList() {
                       )}
                     </td>
                     <td>
-                      <button
-                        type="button"
-                        className={`settings-switch${row.status === "active" ? " settings-switch--on" : ""}`}
-                        role="switch"
-                        aria-checked={row.status === "active"}
-                        aria-label={`Toggle status for testimonial ${idx + 1}`}
-                        onClick={() => onToggleStatus(row)}
-                        disabled={togglingId === row._id}
-                      >
-                        <span className="settings-switch__knob" aria-hidden />
-                      </button>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <button
+                          type="button"
+                          className={`settings-switch${row.status === "active" ? " settings-switch--on" : ""}`}
+                          role="switch"
+                          aria-checked={row.status === "active"}
+                          aria-label={`Toggle status for testimonial ${idx + 1}`}
+                          onClick={() => onToggleStatus(row)}
+                          disabled={togglingId === row._id}
+                        >
+                          <span className="settings-switch__knob" aria-hidden />
+                        </button>
+                        <AdminStatusBadge status={row.status} />
+                      </div>
                     </td>
                     <td>
                       <div className="row-actions">

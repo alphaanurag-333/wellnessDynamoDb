@@ -6,6 +6,7 @@ import Swal from "sweetalert2";
 import { adminGetTransformationById } from "../../api/adminTransformations.js";
 import { logout } from "../../../store/authSlice.js";
 import { NotFoundPage } from "../NotFoundPage.jsx";
+import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { TransformationForm } from "./TransformationAdd.jsx";
 
 export function TransformationEdit() {
@@ -58,13 +59,12 @@ export function TransformationEdit() {
 
   return (
     <div className="user-page">
+      <AdminPageHeader
+        title="Edit transformation"
+        subtitle="Update this transformation record."
+        backTo="/admin/transformations"
+      />
       <div className="page-card">
-        <div className="page-card__head">
-          <h2 className="page-card__title">Edit transformation</h2>
-          <button type="button" className="btn btn--ghost" onClick={() => navigate("/admin/transformations")}>
-            Back to list
-          </button>
-        </div>
         {loading ? (
           <div className="static-cms-loading">
             <AdminPageLoader label="Loading transformation..." />

@@ -5,6 +5,7 @@ import Swal from "sweetalert2";
 import { adminCreateHealthRecipe, adminUpdateHealthRecipe } from "../../api/adminHealthRecipes.js";
 import { logout } from "../../../store/authSlice.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
+import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { mediaUrl } from "../../../media.js";
 import {
   ALLOWED_IMAGE_TYPES,
@@ -446,17 +447,14 @@ export function HealthRecipeForm({ mode = "create", initialRecipe = null }) {
 }
 
 export function HealthRecipeAdd() {
-  const navigate = useNavigate();
-
   return (
     <div className="user-page">
+      <AdminPageHeader
+        title="Create health recipe"
+        subtitle="Add a new health recipe to your catalog."
+        backTo="/admin/health-recipes"
+      />
       <div className="page-card">
-        <div className="page-card__head">
-          <h2 className="page-card__title">Create health recipe</h2>
-          <button type="button" className="btn btn--ghost" onClick={() => navigate("/admin/health-recipes")}>
-            Back to list
-          </button>
-        </div>
         <HealthRecipeForm mode="create" />
       </div>
     </div>

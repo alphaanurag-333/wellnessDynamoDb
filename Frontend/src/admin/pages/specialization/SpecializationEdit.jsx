@@ -6,6 +6,7 @@ import Swal from "sweetalert2";
 import { adminGetSpecializationById } from "../../api/adminSpecializations.js";
 import { logout } from "../../../store/authSlice.js";
 import { NotFoundPage } from "../NotFoundPage.jsx";
+import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { SpecializationForm } from "./SpecializationAdd.jsx";
 import { getSpecializationId } from "./SpecializationShared.js";
 
@@ -63,13 +64,8 @@ export function SpecializationEdit() {
 
   return (
     <div className="user-page">
+      <AdminPageHeader title="Edit specialization" subtitle="Update this specialization's details." backTo="/admin/specializations" />
       <div className="page-card">
-        <div className="page-card__head">
-          <h2 className="page-card__title">Edit specialization</h2>
-          <button type="button" className="btn btn--ghost" onClick={() => navigate("/admin/specializations")}>
-            Back to list
-          </button>
-        </div>
         {loading ? (
           <div className="static-cms-loading">
             <AdminPageLoader label="Loading specialization..." />

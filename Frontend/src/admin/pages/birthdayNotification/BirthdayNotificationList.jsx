@@ -10,6 +10,7 @@ import {
   adminResendBirthdayNotification,
   adminRunBirthdayJob,
 } from "../../api/birthdayNotificationController.js";
+import { AdminListHeader, listCountSubtitle } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import {
   LIST_LIMIT,
@@ -128,15 +129,20 @@ export function BirthdayNotificationList() {
     }
   };
 
+  const subtitle = listCountSubtitle(loading, total, "birthday notification", "birthday notifications");
+
   return (
     <div className="user-page">
       <div className="page-card">
-        <div className="page-card__head">
-          <h2 className="page-card__title">Birthday notifications</h2>
-          <button type="button" className="btn btn--primary" onClick={onRunJob} disabled={runningJob}>
-            {runningJob ? "Running…" : "Run job"}
-          </button>
-        </div>
+        <AdminListHeader
+          title="Birthday notifications"
+          subtitle={subtitle}
+          actions={
+            <button type="button" className="btn btn--primary" onClick={onRunJob} disabled={runningJob}>
+              {runningJob ? "Running…" : "Run job"}
+            </button>
+          }
+        />
 
         <div
           style={{
@@ -157,8 +163,8 @@ export function BirthdayNotificationList() {
           ))}
         </div>
 
-        <div className="row g-2" style={{ marginBottom: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
-          <label className="user-field" style={{ flex: "0 1 200px", marginBottom: 0 }}>
+        <div className="admin-crud-filters">
+          <label className="user-field admin-crud-filters__select">
             <span className="user-field__label">Notification date</span>
             <input
               type="date"

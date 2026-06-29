@@ -1335,12 +1335,15 @@ a.btn:hover {
 }
 
 .table-placeholder {
-  border: 1px dashed var(--admin-border);
+  margin: 4px 0;
+  border: 1px solid var(--admin-border);
   border-radius: 10px;
   padding: 18px 16px;
   color: var(--admin-muted);
   font-size: 0.9rem;
   line-height: 1.5;
+  background: var(--admin-surface-muted);
+  text-align: center;
 }
 
 .section-page {
@@ -2784,6 +2787,11 @@ a.btn:hover {
 
 .user-view-avatar-wrap {
   flex-shrink: 0;
+  padding: 10px;
+  border: 1px solid var(--admin-border-soft);
+  border-radius: 16px;
+  background: var(--admin-surface-muted);
+  line-height: 0;
 }
 
 .user-view-avatar {
@@ -2806,8 +2814,8 @@ a.btn:hover {
 
 .user-view-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 16px 24px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
   flex: 1;
   min-width: 0;
 }
@@ -2816,6 +2824,18 @@ a.btn:hover {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+/* Field "tiles" inside view-page detail grids — gives every admin
+   view page a clean, structured, scannable layout. */
+.user-view-grid > .user-detail-row,
+.user-view-grid > .referral-code-block {
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--admin-border-soft);
+  border-radius: 10px;
+  background: var(--admin-surface-muted);
+  margin: 0;
 }
 
 .user-detail-row__label {
@@ -2830,6 +2850,17 @@ a.btn:hover {
   font-size: 0.9375rem;
   font-weight: 600;
   word-break: break-word;
+  line-height: 1.4;
+}
+
+/* Sub-section heading inside a view card (e.g. Programs / Subscriptions). */
+.user-view-section-title {
+  margin: 1.75rem 0 0.85rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid var(--admin-border-soft);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--admin-text, #1f2937);
 }
 
 .user-view-note {
@@ -6239,6 +6270,132 @@ fieldset.form-field legend {
 .badge--success {
   background: rgba(22, 163, 74, 0.12);
   color: #15803d;
+}
+
+.badge--muted {
+  background: rgba(107, 114, 128, 0.14);
+  color: #4b5563;
+}
+
+.badge--danger {
+  background: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Common CRUD layout (lists, forms, detail views)                            */
+/* -------------------------------------------------------------------------- */
+
+/* List header: title + subtitle on the left, actions on the right. */
+.admin-crud-head {
+  align-items: flex-start;
+}
+
+.admin-crud-head__text {
+  min-width: 0;
+}
+
+.admin-crud-head__text .user-page__subtitle {
+  margin-top: 2px;
+}
+
+.admin-crud-head__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Back-button header for add / edit / detail pages. */
+.admin-page-header {
+  margin-bottom: 16px;
+}
+
+/* Filters bar shared by list pages. */
+.admin-crud-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.admin-crud-filters .user-field {
+  margin-bottom: 0;
+}
+
+.admin-crud-filters__search {
+  flex: 1 1 240px;
+}
+
+.admin-crud-filters__select {
+  flex: 0 1 170px;
+}
+
+/* Label row that puts a hint/counter on the right of a field label. */
+.admin-field-hint {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-field-hint small {
+  color: var(--admin-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Stacked detail blocks used on view pages. */
+.admin-detail-block {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--admin-border);
+}
+
+.admin-detail-block:first-of-type {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.admin-detail-block__label {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--admin-muted);
+  margin-bottom: 8px;
+}
+
+.admin-detail-block__title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.admin-detail-block__body {
+  font-size: 0.95rem;
+  line-height: 1.65;
+  color: var(--admin-text, #1f2937);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+/* Emphasised / muted table cells reused across list tables. */
+.admin-cell-strong {
+  font-weight: 600;
+  color: var(--admin-text, #111827);
+}
+
+.admin-cell-muted {
+  color: var(--admin-muted);
+  max-width: 420px;
 }
 
 .modal-card--wide {

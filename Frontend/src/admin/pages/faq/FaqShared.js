@@ -1,8 +1,8 @@
-export const QUESTION_MAX_LEN = 160;
-export const ANSWER_MAX_LEN = 2000;
+export const QUESTION_MAX_LEN = 100;
+export const ANSWER_MAX_LEN = 255;
 export const QUESTION_PREVIEW_LEN = 50;
 export const ANSWER_PREVIEW_LEN = 80;
-export const LIST_SEARCH_MAX_LEN = 120;
+export const LIST_SEARCH_MAX_LEN = 50;
 export const LIST_LIMIT = 10;
 
 export function emptyForm() {

@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { adminListEnrolledUsers } from "../../api/adminConsultancy.js";
 import { logout } from "../../../store/authSlice.js";
 import { UserTableLoaderRow } from "../user/UserPageLoader.jsx";
+import { AdminListHeader } from "../../components/AdminCrud.jsx";
 import { formatAssignedCoachLabel } from "../../../components/ReferralAssignmentShared.jsx";
 import { healthConcernLabel } from "../../../components/consultancy/ConsultancyPortalShared.jsx";
 
@@ -66,34 +67,34 @@ export function ConsultancyEnrolledUsersList() {
 
   return (
     <div className="page-card">
-      <div className="page-card__head consultancy-page__head">
-        <div className="consultancy-page__intro">
-          <h2 className="page-card__title">Enrolled users</h2>
-          <p className="page-card__desc">Heal users with consultancy payment and assignment details.</p>
-        </div>
-        <div className="page-card__actions user-list-toolbar consultancy-page__toolbar">
-          <div className="user-list-filters consultancy-page__filters">
-            <div className="search-field consultancy-page__search">
-              <span className="search-field__icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="11" cy="11" r="8" />
-                  <path d="m21 21-4.3-4.3" />
-                </svg>
-              </span>
-              <input
-                type="search"
-                placeholder="Search name, email, phone…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                aria-label="Search enrolled users"
-              />
+      <AdminListHeader
+        title="Enrolled users"
+        subtitle="Heal users with consultancy payment and assignment details."
+        actions={
+          <>
+            <div className="user-list-filters consultancy-page__filters">
+              <div className="search-field consultancy-page__search">
+                <span className="search-field__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="m21 21-4.3-4.3" />
+                  </svg>
+                </span>
+                <input
+                  type="search"
+                  placeholder="Search name, email, phone…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  aria-label="Search enrolled users"
+                />
+              </div>
             </div>
-          </div>
-          <Link to="/admin/consultancy/transactions" className="btn btn--accent">
-            Transactions
-          </Link>
-        </div>
-      </div>
+            <Link to="/admin/consultancy/transactions" className="btn btn--accent">
+              Transactions
+            </Link>
+          </>
+        }
+      />
 
       <div className="table-scroll">
         <table className="data-table">

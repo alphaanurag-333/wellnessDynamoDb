@@ -6,6 +6,7 @@ import Swal from "sweetalert2";
 import { adminGetCouponById } from "../../api/adminCoupons.js";
 import { logout } from "../../../store/authSlice.js";
 import { NotFoundPage } from "../NotFoundPage.jsx";
+import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { CouponForm } from "./CouponAdd.jsx";
 import { getCouponId } from "./CouponShared.js";
 
@@ -59,13 +60,8 @@ export function CouponEdit() {
 
   return (
     <div className="user-page">
+      <AdminPageHeader title="Edit coupon" subtitle="Update this coupon's details." backTo="/admin/coupons" />
       <div className="page-card">
-        <div className="page-card__head">
-          <h2 className="page-card__title">Edit coupon</h2>
-          <button type="button" className="btn btn--ghost" onClick={() => navigate("/admin/coupons")}>
-            Back to list
-          </button>
-        </div>
         {loading ? (
           <div className="static-cms-loading">
             <AdminPageLoader label="Loading coupon..." />

@@ -239,20 +239,22 @@ export function WellnessCoachView() {
         </div>
       </div>
 
-      <div className="user-page__card user-detail-grid">
-        <div className="user-detail-profile">
-          <AdminMediaImage path={coach.profileImage} round width={96} height={96} alt={coach.name} />
-        </div>
-        <div className="user-detail-fields">
-          <DetailRow label="Email" value={coach.email} />
-          <DetailRow label="Mobile" value={formatPhone(coach)} />
-          <DetailRow label="Specialization" value={coach.specializationTitle} />
-          <DetailRow label="Location" value={[coach.city, coach.state, coach.country].filter(Boolean).join(", ")} />
-          <DetailRow label="Bio" value={coach.bio} />
-          <CopyReferralCode code={coach.referralCode} label="Referral code" />
-          <DetailRow label="Approval Status" value={coach.approvalStatus || "approved"} />
-          <DetailRow label="Created" value={formatDate(coach.createdAt)} />
-          <DetailRow label="Updated" value={formatDate(coach.updatedAt)} />
+      <div className="page-card user-view-card">
+        <div className="user-view-head">
+          <div className="user-view-avatar-wrap">
+            <AdminMediaImage path={coach.profileImage} round width={96} height={96} alt={coach.name} />
+          </div>
+          <div className="user-view-grid">
+            <DetailRow label="Email" value={coach.email} />
+            <DetailRow label="Mobile" value={formatPhone(coach)} />
+            <DetailRow label="Specialization" value={coach.specializationTitle} />
+            <DetailRow label="Location" value={[coach.city, coach.state, coach.country].filter(Boolean).join(", ")} />
+            <DetailRow label="Bio" value={coach.bio} />
+            <CopyReferralCode code={coach.referralCode} label="Referral code" />
+            <DetailRow label="Approval Status" value={coach.approvalStatus || "approved"} />
+            <DetailRow label="Created" value={formatDate(coach.createdAt)} />
+            <DetailRow label="Updated" value={formatDate(coach.updatedAt)} />
+          </div>
         </div>
       </div>
 

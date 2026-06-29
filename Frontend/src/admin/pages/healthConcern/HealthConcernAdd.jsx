@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { adminCreateHealthConcern, adminUpdateHealthConcern } from "../../api/adminHealthConcerns.js";
 import { logout } from "../../../store/authSlice.js";
+import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { mediaUrl } from "../../../media.js";
 import {
   ALLOWED_IMAGE_TYPES,
@@ -188,17 +189,14 @@ export function HealthConcernForm({ mode = "create", initialConcern = null }) {
 }
 
 export function HealthConcernAdd() {
-  const navigate = useNavigate();
-
   return (
     <div className="user-page">
+      <AdminPageHeader
+        title="Create health concern"
+        subtitle="Add a new health concern to your catalog."
+        backTo="/admin/health-concerns"
+      />
       <div className="page-card">
-        <div className="page-card__head">
-          <h2 className="page-card__title">Create health concern</h2>
-          <button type="button" className="btn btn--ghost" onClick={() => navigate("/admin/health-concerns")}>
-            Back to list
-          </button>
-        </div>
         <HealthConcernForm mode="create" />
       </div>
     </div>

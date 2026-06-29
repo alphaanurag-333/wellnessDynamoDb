@@ -8,6 +8,7 @@ import {
   adminGetCofounderMessage,
   adminUpdateCofounderMessage,
 } from "../../api/cofounderMessageController.js";
+import { AdminListHeader } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { mediaUrl } from "../../../media.js";
 import {
@@ -192,14 +193,14 @@ export function CofounderMessagePage() {
   return (
     <div className="user-page">
       <div className="page-card">
-        <div className="page-card__head">
-          <h2 className="page-card__title">Cofounder message</h2>
-        </div>
-        <p className="form-hint" style={{ marginBottom: 16 }}>
-          {exists
-            ? "Update the single cofounder message shown in the app."
-            : "Create the cofounder message once. After that, only updates are allowed."}
-        </p>
+        <AdminListHeader
+          title="Cofounder message"
+          subtitle={
+            exists
+              ? "Update the single cofounder message shown in the app."
+              : "Create the cofounder message once. After that, only updates are allowed."
+          }
+        />
 
         <form onSubmit={onSubmit}>
           <div className="row g-3">
