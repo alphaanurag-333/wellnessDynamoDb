@@ -207,6 +207,12 @@ export function MyHealUsersList() {
                       >
                         Reminders
                       </Link>
+                      <Link
+                        to={`${u._id || u.id}/diet-plan`}
+                        className="btn btn--ghost btn--sm"
+                      >
+                        Diet plan
+                      </Link>
                       <button type="button" className="btn btn--ghost btn--sm" onClick={() => handleReassign(u)}>
                         Reassign
                       </button>

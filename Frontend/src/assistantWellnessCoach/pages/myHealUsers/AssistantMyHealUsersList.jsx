@@ -138,6 +138,12 @@ export function AssistantMyHealUsersList() {
                       >
                         Reminders
                       </Link>
+                      <Link
+                        to={`${u._id || u.id}/diet-plan`}
+                        className="btn btn--ghost btn--sm"
+                      >
+                        Diet plan
+                      </Link>
                     </div>
                   </td>
                 </tr>

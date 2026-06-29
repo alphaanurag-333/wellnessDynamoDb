@@ -6409,3 +6409,89 @@ fieldset.form-field legend {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/*  Diet plans                                                                 */
+/* -------------------------------------------------------------------------- */
+
+.diet-plan-page .diet-plan-upload {
+  margin-bottom: 1.5rem;
+}
+
+.diet-plan-section {
+  margin-top: 1.25rem;
+}
+
+.diet-plan-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.diet-plan-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 18px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: var(--admin-radius);
+  background: var(--admin-surface);
+}
+
+.diet-plan-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: rgba(234, 88, 12, 0.12);
+  color: #ea580c;
+  flex-shrink: 0;
+}
+
+.diet-plan-card__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.diet-plan-card__title {
+  font-weight: 600;
+  color: var(--admin-text);
+}
+
+.diet-plan-card__date {
+  font-size: 0.85rem;
+  color: var(--admin-muted);
+  margin-top: 2px;
+}
+
+.diet-plan-card__note {
+  font-size: 0.85rem;
+  color: var(--admin-muted);
+  margin-top: 6px;
+}
+
+.diet-plan-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.user-back-link {
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 720px) {
+  .diet-plan-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .diet-plan-card__actions {
+    width: 100%;
+  }
+}
+
