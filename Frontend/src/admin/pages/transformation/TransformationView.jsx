@@ -104,10 +104,11 @@ export function TransformationView() {
             <AdminMediaImage
               path={transformation.oldImage}
               width={240}
-              height={200}
+              height={220}
               radius={8}
               alt="Before"
-              style={{ width: "100%", maxHeight: 200 }}
+              objectFit="contain"
+              style={{ width: "100%", height: 220, background: "#f1f3f5" }}
             />
           </div>
           <div className="col-6 col-md-6">
@@ -117,10 +118,11 @@ export function TransformationView() {
             <AdminMediaImage
               path={transformation.newImage}
               width={240}
-              height={200}
+              height={220}
               radius={8}
               alt="After"
-              style={{ width: "100%", maxHeight: 200 }}
+              objectFit="contain"
+              style={{ width: "100%", height: 220, background: "#f1f3f5" }}
             />
           </div>
         </div>

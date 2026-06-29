@@ -175,7 +175,7 @@ export function TransformationForm({ mode = "create", initialTransformation = nu
             <option value="inactive">Inactive</option>
           </select>
         </label>
-        <label className="user-field col-12 col-md-4">
+        {/* <label className="user-field col-12 col-md-4">
           <span className="user-field__label">User ID (optional)</span>
           <input
             className="user-field__input"
@@ -184,7 +184,7 @@ export function TransformationForm({ mode = "create", initialTransformation = nu
             placeholder="Link to a user record"
             autoComplete="off"
           />
-        </label>
+        </label> */}
         <label className="user-field col-12">
           <span className="user-field__label">
             Achievements <span className="required-dot">*</span>
@@ -256,10 +256,11 @@ export function TransformationForm({ mode = "create", initialTransformation = nu
                 path={editBaselineOld}
                 src={oldPreview || undefined}
                 width={280}
-                height={140}
+                height={180}
                 radius={8}
                 alt="Before"
-                style={{ width: "100%", maxHeight: 140 }}
+                objectFit="contain"
+                style={{ width: "100%", height: 180, background: "#f1f3f5" }}
               />
             </div>
           ) : null}
@@ -272,10 +273,11 @@ export function TransformationForm({ mode = "create", initialTransformation = nu
                 path={editBaselineNew}
                 src={newPreview || undefined}
                 width={280}
-                height={140}
+                height={180}
                 radius={8}
                 alt="After"
-                style={{ width: "100%", maxHeight: 140 }}
+                objectFit="contain"
+                style={{ width: "100%", height: 180, background: "#f1f3f5" }}
               />
             </div>
           ) : null}
