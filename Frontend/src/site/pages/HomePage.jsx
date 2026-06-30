@@ -14,7 +14,7 @@ import  TestimonialsSection  from "../components/TestimonialsSection.jsx";
 import BmiCalculator from "../components/BmiCalculator.jsx";
 import WellnessHero from "../components/WellnessHero.jsx";
 import Methodology from "../components/Methodology.jsx";
-import AboutSection from "../components/AboutUs.jsx";
+import About from "../components/About.jsx";
 import FinalCTA from "../components/FinalCTA.jsx";
 
 export function HomePage() {
@@ -45,7 +45,7 @@ export function HomePage() {
       <SiteHero />
       <WellnessHero />
       <StatsSection />
-      <AboutSection />
+      <About />
       <Methodology />
       <ServicesSection />
       {/* <FeaturedTestimonial testimonial={featured} /> */}
