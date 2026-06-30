@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { IoChevronDown, IoClose, IoMenu } from "react-icons/io5";
 import defaultLogo from "../../assets/logo/defaultlogo.png";
@@ -26,6 +26,7 @@ export function SiteHeader() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const loginRef = useRef(null);
 
   useEffect(() => {
@@ -58,9 +59,16 @@ export function SiteHeader() {
     };
   }, [loginOpen]);
 
-  const handleNavClick = () => setMobileOpen(false);
+  const healthRoutes = [
+    "/weight-management",
+    "/gut-health",
+    "/diabetes-care",
+    "/thyroid-care",
+  ];
 
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const isHealthActive = healthRoutes.includes(location.pathname);
+
+  const handleNavClick = () => setMobileOpen(false);
 
   return (
     // <header >
@@ -236,33 +244,49 @@ export function SiteHeader() {
       >
         <div className="site-container">
           <div className="site-header__inner">
+            {/* Logo */}
             <Link
               className="site-header__brand"
               to="/"
               aria-label={`${appDisplayName} home`}
-            />
-            <img
-              className="site-header__logo"
-              src={logoSrc}
-              alt=""
-              width={44}
-              height={44}
-            />
-            <span className="site-header__name">{appDisplayName}</span>
+            >
+              <img
+                className="site-header__logo"
+                src={logoSrc}
+                alt=""
+                width={44}
+                height={44}
+              />
+              <span className="site-header__name">{appDisplayName}</span>
+            </Link>
 
+            {/* Navigation */}
             <nav className="site-header__nav">
-              <Link to="/" className="site-header__link active">
+              <NavLink
+                to="/"
+                end
+                className={({ isActive }) =>
+                  `site-header__link ${isActive ? "active" : ""}`
+                }
+              >
                 Home
-              </Link>
+              </NavLink>
 
-              <Link to="/about-us" className="site-header__link">
+              <NavLink
+                to="/about-us"
+                className={({ isActive }) =>
+                  `site-header__link ${isActive ? "active" : ""}`
+                }
+              >
                 About Us
-              </Link>
+              </NavLink>
 
               <div className="site-header__dropdown">
                 <button
                   type="button"
-                  className="site-header__link site-header__dropdown-btn"
+                  className={`site-header__link site-header__dropdown-btn ${
+                    isHealthActive ? "active" : ""
+                  }`}
                 >
                   Health Solutions
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
@@ -276,33 +300,70 @@ export function SiteHeader() {
                 </button>
 
                 <div className="site-header__dropdown-menu">
-                  <Link to="/weight-management">Weight Management</Link>
+                  <NavLink
+                    to="/weight-management"
+                    className={({ isActive }) => (isActive ? "active" : "")}
+                  >
+                    Weight Management
+                  </NavLink>
 
-                  <Link to="/gut-health">Gut Health</Link>
+                  <NavLink
+                    to="/gut-health"
+                    className={({ isActive }) => (isActive ? "active" : "")}
+                  >
+                    Gut Health
+                  </NavLink>
 
-                  <Link to="/diabetes-care">Diabetes Care</Link>
+                  <NavLink
+                    to="/diabetes-care"
+                    className={({ isActive }) => (isActive ? "active" : "")}
+                  >
+                    Diabetes Care
+                  </NavLink>
 
-                  <Link to="/thyroid-care">Thyroid Care</Link>
+                  <NavLink
+                    to="/thyroid-care"
+                    className={({ isActive }) => (isActive ? "active" : "")}
+                  >
+                    Thyroid Care
+                  </NavLink>
                 </div>
               </div>
 
-              <Link to="/success-stories" className="site-header__link">
+              <NavLink
+                to="/success-stories"
+                className={({ isActive }) =>
+                  `site-header__link ${isActive ? "active" : ""}`
+                }
+              >
                 Success Stories
-              </Link>
+              </NavLink>
 
-              <Link to="/resources" className="site-header__link">
+              <NavLink
+                to="/resources"
+                className={({ isActive }) =>
+                  `site-header__link ${isActive ? "active" : ""}`
+                }
+              >
                 Resources
-              </Link>
+              </NavLink>
 
-              <Link to="/contact-us" className="site-header__link">
+              <NavLink
+                to="/contact-us"
+                className={({ isActive }) =>
+                  `site-header__link ${isActive ? "active" : ""}`
+                }
+              >
                 Contact Us
-              </Link>
+              </NavLink>
             </nav>
 
+            {/* CTA */}
             <Link to="/consultation" className="site-header__cta">
               Book a free consultation
             </Link>
 
+            {/* Mobile Button */}
             <button
               className="mobile-menu-btn"
               onClick={() => setMobileMenuOpen(true)}
@@ -323,6 +384,13 @@ export function SiteHeader() {
       ></div>
 
       <div
+        className={`mobile-overlay ${
+          mobileMenuOpen ? "mobile-overlay--show" : ""
+        }`}
+        onClick={() => setMobileMenuOpen(false)}
+      ></div>
+
+      <div
         className={`mobile-sidebar ${
           mobileMenuOpen ? "mobile-sidebar--open" : ""
         }`}
@@ -334,32 +402,93 @@ export function SiteHeader() {
         </div>
 
         <nav className="mobile-nav">
-          <Link to="/">Home</Link>
+          <NavLink
+            to="/"
+            end
+            className={({ isActive }) => (isActive ? "active" : "")}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            Home
+          </NavLink>
 
-          <Link to="/about-us">About Us</Link>
+          <NavLink
+            to="/about-us"
+            className={({ isActive }) => (isActive ? "active" : "")}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            About Us
+          </NavLink>
 
-          <details>
-            <summary>Health Solutions</summary>
+          <details open={isHealthActive}>
+            <summary className={isHealthActive ? "active" : ""}>
+              Health Solutions
+            </summary>
 
             <div className="mobile-submenu">
-              <Link to="/weight-management">Weight Management</Link>
+              <NavLink
+                to="/weight-management"
+                className={({ isActive }) => (isActive ? "active" : "")}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Weight Management
+              </NavLink>
 
-              <Link to="/gut-health">Gut Health</Link>
+              <NavLink
+                to="/gut-health"
+                className={({ isActive }) => (isActive ? "active" : "")}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Gut Health
+              </NavLink>
 
-              <Link to="/diabetes-care">Diabetes Care</Link>
+              <NavLink
+                to="/diabetes-care"
+                className={({ isActive }) => (isActive ? "active" : "")}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Diabetes Care
+              </NavLink>
 
-              <Link to="/thyroid-care">Thyroid Care</Link>
+              <NavLink
+                to="/thyroid-care"
+                className={({ isActive }) => (isActive ? "active" : "")}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Thyroid Care
+              </NavLink>
             </div>
           </details>
 
-          <Link to="/success-stories">Success Stories</Link>
+          <NavLink
+            to="/success-stories"
+            className={({ isActive }) => (isActive ? "active" : "")}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            Success Stories
+          </NavLink>
 
-          <Link to="/resources">Resources</Link>
+          <NavLink
+            to="/resources"
+            className={({ isActive }) => (isActive ? "active" : "")}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            Resources
+          </NavLink>
 
-          <Link to="/contact-us">Contact Us</Link>
+          <NavLink
+            to="/contact-us"
+            className={({ isActive }) => (isActive ? "active" : "")}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            Contact Us
+          </NavLink>
         </nav>
 
-        <Link to="/consultation" className="mobile-cta">
+        <Link
+          to="/consultation"
+          className="mobile-cta"
+          onClick={() => setMobileMenuOpen(false)}
+        >
           Book a free consultation
         </Link>
       </div>
