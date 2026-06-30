@@ -21,6 +21,8 @@ const wellnessCoachUpload = memorySingle("file");
 const assistantWellnessCoachUpload = memorySingle("file");
 const healthConcernUpload = memorySingle("file");
 const healthToolUpload = memorySingle("file");
+const supplementUpload = memorySingle("file");
+const mentalWellbeingUpload = memorySingle("file");
 const userUpload = memorySingle("file");
 const weightPicUpload = memorySingle("weight_pic");
 const profileImageUpload = memorySingle("file");
@@ -53,6 +55,11 @@ const yogaUpload = memoryFields([
   { name: "file", maxCount: 1 },
 ]);
 
+const physicalExerciseUpload = memoryFields([
+  { name: "videoFile", maxCount: 1 },
+  { name: "file", maxCount: 1 },
+]);
+
 const transformationUploads = memoryFields([
   { name: "oldImage", maxCount: 1 },
   { name: "newImage", maxCount: 1 },
@@ -72,8 +79,11 @@ exports.optionalVideoTestimonialsFiles = optionalMultipart(videoTestimonialsUplo
 exports.optionalCofounderMessageFiles = optionalMultipart(cofounderMessageUpload);
 exports.optionalHealthConcernFile = optionalMultipart(healthConcernUpload);
 exports.optionalHealthToolFile = optionalMultipart(healthToolUpload);
+exports.optionalSupplementFile = optionalMultipart(supplementUpload);
+exports.optionalMentalWellbeingFile = optionalMultipart(mentalWellbeingUpload);
 exports.optionalHealthRecipeFile = optionalMultipart(healthRecipeUpload);
 exports.optionalYogaFile = optionalMultipart(yogaUpload);
+exports.optionalPhysicalExerciseFile = optionalMultipart(physicalExerciseUpload);
 exports.optionalTransformationFiles = optionalMultipart(transformationUploads);
 const dietPlanUpload = memorySingle("file");
 exports.optionalDietPlanFile = optionalMultipart(dietPlanUpload);
