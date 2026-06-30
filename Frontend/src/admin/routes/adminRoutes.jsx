@@ -42,6 +42,22 @@ import { YogaList } from "../pages/yoga/YogaList.jsx";
 import { YogaAdd } from "../pages/yoga/YogaAdd.jsx";
 import { YogaEdit } from "../pages/yoga/YogaEdit.jsx";
 import { YogaView } from "../pages/yoga/YogaView.jsx";
+import { PhysicalExerciseList } from "../pages/physicalExercise/PhysicalExerciseList.jsx";
+import { PhysicalExerciseAdd } from "../pages/physicalExercise/PhysicalExerciseAdd.jsx";
+import { PhysicalExerciseEdit } from "../pages/physicalExercise/PhysicalExerciseEdit.jsx";
+import { PhysicalExerciseView } from "../pages/physicalExercise/PhysicalExerciseView.jsx";
+import { SupplementList } from "../pages/supplement/SupplementList.jsx";
+import { SupplementAdd } from "../pages/supplement/SupplementAdd.jsx";
+import { SupplementEdit } from "../pages/supplement/SupplementEdit.jsx";
+import { SupplementView } from "../pages/supplement/SupplementView.jsx";
+import { MedicalConditionQuestionList } from "../pages/medicalConditionQuestion/MedicalConditionQuestionList.jsx";
+import { MedicalConditionQuestionAdd } from "../pages/medicalConditionQuestion/MedicalConditionQuestionAdd.jsx";
+import { MedicalConditionQuestionEdit } from "../pages/medicalConditionQuestion/MedicalConditionQuestionEdit.jsx";
+import { MedicalConditionQuestionView } from "../pages/medicalConditionQuestion/MedicalConditionQuestionView.jsx";
+import { MentalWellbeingList } from "../pages/mentalWellbeing/MentalWellbeingList.jsx";
+import { MentalWellbeingAdd } from "../pages/mentalWellbeing/MentalWellbeingAdd.jsx";
+import { MentalWellbeingEdit } from "../pages/mentalWellbeing/MentalWellbeingEdit.jsx";
+import { MentalWellbeingView } from "../pages/mentalWellbeing/MentalWellbeingView.jsx";
 import { TransformationList } from "../pages/transformation/TransformationList.jsx";
 import { TransformationAdd } from "../pages/transformation/TransformationAdd.jsx";
 import { TransformationEdit } from "../pages/transformation/TransformationEdit.jsx";
@@ -169,6 +185,30 @@ export const adminRouteTree = (
       <Route path="new" element={<YogaAdd />} />
       <Route path=":yogaId/edit" element={<YogaEdit />} />
       <Route path=":yogaId" element={<YogaView />} />
+    </Route>
+    <Route path="physical-exercises" element={<Outlet />}>
+      <Route index element={<PhysicalExerciseList />} />
+      <Route path="new" element={<PhysicalExerciseAdd />} />
+      <Route path=":exerciseId/edit" element={<PhysicalExerciseEdit />} />
+      <Route path=":exerciseId" element={<PhysicalExerciseView />} />
+    </Route>
+    <Route path="supplements" element={<Outlet />}>
+      <Route index element={<SupplementList />} />
+      <Route path="new" element={<SupplementAdd />} />
+      <Route path=":supplementId/edit" element={<SupplementEdit />} />
+      <Route path=":supplementId" element={<SupplementView />} />
+    </Route>
+    <Route path="medical-condition-questions" element={<Outlet />}>
+      <Route index element={<MedicalConditionQuestionList />} />
+      <Route path="new" element={<MedicalConditionQuestionAdd />} />
+      <Route path=":questionId/edit" element={<MedicalConditionQuestionEdit />} />
+      <Route path=":questionId" element={<MedicalConditionQuestionView />} />
+    </Route>
+    <Route path="mental-wellbeing" element={<Outlet />}>
+      <Route index element={<MentalWellbeingList />} />
+      <Route path="new" element={<MentalWellbeingAdd />} />
+      <Route path=":itemId/edit" element={<MentalWellbeingEdit />} />
+      <Route path=":itemId" element={<MentalWellbeingView />} />
     </Route>
     <Route path="transformations" element={<Outlet />}>
       <Route index element={<TransformationList />} />

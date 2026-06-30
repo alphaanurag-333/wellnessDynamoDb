@@ -14,7 +14,7 @@ const NAV_GROUP_PATTERNS = {
   program: /\/admin\/(programs|coaches|awcs)(\/|$)/,
   wellness: /\/admin\/(nutrition-plans|support-tickets|camp-events|program-completions)(\/|$)/,
   content: /\/admin\/(banners|notifications|faq|static-pages)(\/|$)/,
-  health: /\/admin\/(health-concerns|health-tools|health-recipes|health-disorders|yoga)(\/|$)/,
+  health: /\/admin\/(health-concerns|health-tools|health-recipes|health-disorders|yoga|physical-exercises)(\/|$)/,
   testimonials: /\/admin\/(transformations|client-testimonials|video-testimonials)(\/|$)/,
 };
 

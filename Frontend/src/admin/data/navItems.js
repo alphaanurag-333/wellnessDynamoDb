@@ -25,6 +25,10 @@ export const navItems = [
   { to: "health-recipes", label: "Health Recipes", icon: "utensils" },
   { to: "health-disorders", label: "Health Disorders", icon: "activity" },
   { to: "yoga", label: "Yoga", icon: "yoga" },
+  { to: "physical-exercises", label: "Physical Exercise", icon: "activity" },
+  { to: "supplements", label: "Supplements", icon: "box" },
+  { to: "medical-condition-questions", label: "Medical Conditions", icon: "clipboard-list" },
+  { to: "mental-wellbeing", label: "Mental Wellbeing", icon: "sparkles" },
   {
     id: "testimonials",
     label: "Testimonials & Media",
@@ -42,7 +46,6 @@ export const navItems = [
   // { to: "coupons", label: "Coupons", icon: "percent" },
   { to: "faq", label: "FAQ", icon: "help" },
   { to: "static-pages", label: "Static Pages", icon: "file" },
-
   { to: "settings", label: "App Settings", icon: "gear" },
   { to: "profile", label: "Admin Profile", icon: "profile" },
 ];
