@@ -174,6 +174,11 @@ export function UserView() {
                 Diet plan
               </Link>
             ) : null}
+            {tier === "heal" ? (
+              <Link to="meal-tracking" className="btn btn--ghost">
+                Meal tracking
+              </Link>
+            ) : null}
           </>
         }
       />
