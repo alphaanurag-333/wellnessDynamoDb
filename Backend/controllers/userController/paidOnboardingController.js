@@ -18,13 +18,77 @@ const {
   toPublicBodyMeasurement,
 } = require("../../models/userBodyMeasurementModel");
 const {
-  createMedicalCondition,
+  createMedicalConditionAnswers,
   getLatestMedicalConditionForUser,
   toPublicMedicalCondition,
 } = require("../../models/userMedicalConditionModel");
+const {
+  listActiveMedicalConditionQuestions,
+} = require("../../models/medicalConditionQuestionModel");
 
 function authedUserId(req) {
   return req.auth?.sub || req.user?.id;
+}
+
+function parseBoolStrict(value) {
+  if (typeof value === "boolean") return value;
+  if (value === undefined || value === null || value === "") return null;
+  const s = String(value).trim().toLowerCase();
+  if (["true", "1", "yes", "y"].includes(s)) return true;
+  if (["false", "0", "no", "n"].includes(s)) return false;
+  return null;
+}
+
+/**
+ * Validate & normalize a single submitted answer against its question's answerType.
+ * Returns the answer object to persist, or throws an AppError on invalid input.
+ */
+function normalizeAnswerForQuestion(question, raw) {
+  const answerType = question.answerType;
+  const base = {
+    questionId: question.id,
+    question: question.question,
+    answerType,
+  };
+
+  if (answerType === "yes_no" || answerType === "yes_no_text") {
+    const answer = parseBoolStrict(raw?.answer ?? raw?.value);
+    if (answer === null) {
+      throw new AppError(`A yes/no answer is required for: "${question.question}"`, 400);
+    }
+    base.answer = answer;
+    if (answerType === "yes_no_text") {
+      const details = String(raw?.details ?? raw?.text ?? "").trim();
+      if (answer && !details) {
+        throw new AppError(`Please provide details for: "${question.question}"`, 400);
+      }
+      base.details = details || null;
+    }
+    return base;
+  }
+
+  if (answerType === "text") {
+    const text = String(raw?.text ?? raw?.answer ?? raw?.value ?? "").trim();
+    if (!text) {
+      throw new AppError(`An answer is required for: "${question.question}"`, 400);
+    }
+    base.text = text;
+    return base;
+  }
+
+  if (answerType === "date") {
+    const date = String(raw?.date ?? raw?.answer ?? raw?.value ?? "").trim();
+    if (!date) {
+      throw new AppError(`A date is required for: "${question.question}"`, 400);
+    }
+    if (Number.isNaN(new Date(date).getTime())) {
+      throw new AppError(`Invalid date provided for: "${question.question}"`, 400);
+    }
+    base.date = date;
+    return base;
+  }
+
+  throw new AppError(`Unsupported answer type for: "${question.question}"`, 400);
 }
 
 exports.getStateController = asyncHandler(async (req, res) => {
@@ -146,21 +210,41 @@ exports.submitBodyMeasurementsController = asyncHandler(async (req, res) => {
   });
 });
 
+exports.getMedicalQuestionsController = asyncHandler(async (req, res) => {
+  const questions = await listActiveMedicalConditionQuestions();
+
+  return res.status(200).json({
+    status: true,
+    message: "Medical condition questions fetched",
+    data: { questions },
+  });
+});
+
 exports.submitMedicalConditionsController = asyncHandler(async (req, res) => {
   const userId = authedUserId(req);
   const body = req.body || {};
 
-  const condition = await createMedicalCondition({
+  const questions = await listActiveMedicalConditionQuestions();
+
+  // Index submitted answers by question id (accept questionId / question_id / id).
+  const submitted = Array.isArray(body.answers) ? body.answers : [];
+  const answersByQuestionId = new Map();
+  for (const entry of submitted) {
+    const qid = String(entry?.questionId ?? entry?.question_id ?? entry?.id ?? "").trim();
+    if (qid) answersByQuestionId.set(qid, entry);
+  }
+
+  const normalizedAnswers = questions.map((question) => {
+    const raw = answersByQuestionId.get(question.id);
+    if (raw === undefined) {
+      throw new AppError(`Missing answer for: "${question.question}"`, 400);
+    }
+    return normalizeAnswerForQuestion(question, raw);
+  });
+
+  const condition = await createMedicalConditionAnswers({
     userId,
-    hasConditions: body.hasConditions ?? body.has_conditions,
-    conditionsDetails: body.conditionsDetails ?? body.conditions_details,
-    conditionSince: body.conditionSince ?? body.condition_since,
-    onMedication: body.onMedication ?? body.on_medication,
-    medicationDetails: body.medicationDetails ?? body.medication_details,
-    pastSurgery: body.pastSurgery ?? body.past_surgery,
-    surgeryDetails: body.surgeryDetails ?? body.surgery_details,
-    hasRestrictions: body.hasRestrictions ?? body.has_restrictions,
-    restrictionsDetails: body.restrictionsDetails ?? body.restrictions_details,
+    answers: normalizedAnswers,
   });
 
   const updated = await updateUser(userId, {

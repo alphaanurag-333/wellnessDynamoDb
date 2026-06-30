@@ -8,6 +8,7 @@ const {
   getStateController,
   submitProfileController,
   submitBodyMeasurementsController,
+  getMedicalQuestionsController,
   submitMedicalConditionsController,
 } = require("../../controllers/userController/paidOnboardingController");
 
@@ -28,6 +29,7 @@ router.post(
   optionalWeightPicFile,
   submitBodyMeasurementsController
 );
+router.get("/medical-questions", getMedicalQuestionsController);
 router.post(
   "/medical-conditions",
   requirePaidOnboardingPending,

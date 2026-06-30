@@ -108,6 +108,26 @@ async function deleteMedicalConditionQuestion(id) {
   }));
 }
 
+/** Active questions for the onboarding flow, oldest first for a stable order. */
+async function listActiveMedicalConditionQuestions() {
+  const { items } = await listByPartitionKey({
+    tableName: TABLE,
+    indexName: "StatusCreatedAtIndex",
+    partitionKeyValue: "active",
+    scanIndexForward: true,
+    page: 1,
+    limit: 500,
+    maxLimit: 500,
+    sortFn: (a, b) => String(a.createdAt || "").localeCompare(String(b.createdAt || "")),
+  });
+  return items.map((q) => ({
+    id: q.id,
+    _id: q.id,
+    question: q.question,
+    answerType: normalizeAnswerType(q.answerType),
+  }));
+}
+
 async function listMedicalConditionQuestions({ page = 1, limit = 10, status, search } = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const searchFilter = buildContainsFilter(["question"], search);
@@ -144,4 +164,5 @@ module.exports = {
   updateMedicalConditionQuestion,
   deleteMedicalConditionQuestion,
   listMedicalConditionQuestions,
+  listActiveMedicalConditionQuestions,
 };

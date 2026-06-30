@@ -44,6 +44,30 @@ async function createMedicalCondition(input) {
   return item;
 }
 
+/**
+ * Store dynamic answers (one entry per medical-condition question) for a user.
+ * Each answer is { questionId, question, answerType, ...typeSpecificFields }.
+ */
+async function createMedicalConditionAnswers({ userId, answers }) {
+  const now = new Date().toISOString();
+  const item = {
+    id: uuidv4(),
+    userId: String(userId || "").trim(),
+    answers: Array.isArray(answers) ? answers : [],
+    createdAt: now,
+    updatedAt: now,
+  };
+  if (!item.userId) throw new Error("userId is required");
+  await docClient.send(
+    new PutCommand({
+      TableName: TABLE,
+      Item: item,
+      ConditionExpression: "attribute_not_exists(id)",
+    })
+  );
+  return item;
+}
+
 async function getMedicalConditionById(id) {
   if (!id) return null;
   const { Item } = await docClient.send(
@@ -78,6 +102,7 @@ module.exports = {
   TABLE,
   buildMedicalConditionItem,
   createMedicalCondition,
+  createMedicalConditionAnswers,
   getMedicalConditionById,
   listMedicalConditionsByUser,
   getLatestMedicalConditionForUser,
