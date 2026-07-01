@@ -11,6 +11,7 @@ import { UserDietPlan } from "../pages/myHealUsers/UserDietPlan.jsx";
 import { UserTestRecommendations } from "../pages/myHealUsers/UserTestRecommendations.jsx";
 import { UserPhysicalExercises } from "../pages/myHealUsers/UserPhysicalExercises.jsx";
 import { CoachUserMealTrackingPage } from "../pages/myHealUsers/CoachUserMealTrackingPage.jsx";
+import { UserLaunchAssessment } from "../pages/myHealUsers/UserLaunchAssessment.jsx";
 import { MyAssistantList } from "../pages/myAssistants/MyAssistantList.jsx";
 import { MyAssistantAdd } from "../pages/myAssistants/MyAssistantAdd.jsx";
 import { MyAssistantEdit } from "../pages/myAssistants/MyAssistantEdit.jsx";
@@ -33,6 +34,7 @@ export const wellnessCoachRouteTree = (
     <Route path="my-users/:userId/test-recommendations" element={<UserTestRecommendations />} />
     <Route path="my-users/:userId/physical-exercises" element={<UserPhysicalExercises />} />
     <Route path="my-users/:userId/meal-tracking" element={<CoachUserMealTrackingPage />} />
+    <Route path="my-users/:userId/launch-assessment" element={<UserLaunchAssessment />} />
     <Route path="consultancy/transactions" element={<CoachConsultancyTransactionList />} />
     <Route path="consultancy/enrolled-users" element={<CoachConsultancyEnrolledUsersList />} />
     <Route path="consultancy/clients/:userId" element={<CoachConsultancyClientPage />} />

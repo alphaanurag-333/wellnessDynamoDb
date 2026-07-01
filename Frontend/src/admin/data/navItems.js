@@ -1,7 +1,7 @@
 /**
  * Central navigation config: path segments under /admin/*
  * Items with `children` render as collapsible groups; leaf entries use `to` relative to /admin.
- * Order mirrors adminRoutes.jsx: core → users → program → wellness → content → health → testimonials → settings.
+ * Order mirrors adminRoutes.jsx: core → users → program → wellness → health → LAUNCH → catalogs → content → settings.
  */
 export const navItems = [
   { to: "dashboard", label: "Dashboard", icon: "grid" },
@@ -28,6 +28,15 @@ export const navItems = [
   { to: "physical-exercises", label: "Physical Exercise", icon: "activity" },
   { to: "supplements", label: "Supplements", icon: "box" },
   { to: "medical-condition-questions", label: "Medical Conditions", icon: "clipboard-list" },
+  {
+    id: "launchAssessment",
+    label: "LAUNCH Assessment",
+    icon: "zap",
+    children: [
+      { to: "launch-questions", label: "Questions", icon: "clipboard-list" },
+      { to: "launch-focus-areas", label: "Area to Focus", icon: "list" },
+    ],
+  },
   { to: "test-catalog", label: "Test Catalog", icon: "activity" },
   { to: "diet-plan-catalog", label: "Diet Plan Catalog", icon: "utensils" },
   { to: "mental-wellbeing", label: "Mental Wellbeing", icon: "sparkles" },

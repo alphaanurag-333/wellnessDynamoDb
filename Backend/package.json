@@ -13,7 +13,9 @@
     "seed:medical-questions": "node scripts/seedMedicalConditionQuestions.js",
     "seed:wellness-content": "node scripts/seedWellnessContent.js",
     "seed:test-catalog": "node scripts/seedTestCatalog.js",
-    "seed:diet-plan-catalog": "node scripts/seedDietPlanCatalog.js"
+    "seed:diet-plan-catalog": "node scripts/seedDietPlanCatalog.js",
+    "seed:launch-questions": "node scripts/seedLaunchQuestions.js",
+    "seed:launch-focus-areas": "node scripts/seedLaunchFocusAreas.js"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1041.0",

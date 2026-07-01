@@ -1,0 +1,53 @@
+export const CATEGORY_MIN_LEN = 2;
+export const CATEGORY_MAX_LEN = 120;
+export const QUESTION_MIN_LEN = 3;
+export const QUESTION_MAX_LEN = 500;
+export const QUESTION_PREVIEW_LEN = 80;
+export const LIST_SEARCH_MAX_LEN = 50;
+export const LIST_LIMIT = 10;
+
+export function emptyForm() {
+  return {
+    category: "",
+    question: "",
+    sortOrder: 0,
+    status: "active",
+  };
+}
+
+export function sanitizeText(value, maxLen) {
+  return String(value ?? "")
+    .replace(/\s+/g, " ")
+    .slice(0, maxLen);
+}
+
+export function truncate(str, max) {
+  const s = String(str ?? "");
+  if (s.length <= max) return s;
+  return `${s.slice(0, max)}…`;
+}
+
+export function formatDate(value) {
+  if (!value) return "—";
+  const t = new Date(value).getTime();
+  if (Number.isNaN(t)) return "—";
+  return new Date(value).toLocaleString();
+}
+
+export function validateForm(form) {
+  const category = form.category.trim();
+  const question = form.question.trim();
+  const status = String(form.status || "").trim();
+  const sortOrder = Number(form.sortOrder);
+
+  if (!category) return "Category is required.";
+  if (category.length < CATEGORY_MIN_LEN) return `Category must be at least ${CATEGORY_MIN_LEN} characters.`;
+  if (category.length > CATEGORY_MAX_LEN) return `Category cannot exceed ${CATEGORY_MAX_LEN} characters.`;
+  if (!question) return "Question is required.";
+  if (question.length < QUESTION_MIN_LEN) return `Question must be at least ${QUESTION_MIN_LEN} characters.`;
+  if (question.length > QUESTION_MAX_LEN) return `Question cannot exceed ${QUESTION_MAX_LEN} characters.`;
+  if (!Number.isFinite(sortOrder) || sortOrder < 0) return "Sort order must be 0 or greater.";
+  if (status !== "active" && status !== "inactive") return "Status must be active or inactive.";
+
+  return "";
+}

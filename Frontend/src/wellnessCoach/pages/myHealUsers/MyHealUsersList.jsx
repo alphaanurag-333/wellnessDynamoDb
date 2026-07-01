@@ -231,6 +231,15 @@ export function MyHealUsersList() {
                       >
                         Meal tracking
                       </Link>
+                      <Link
+                        to={`${u._id || u.id}/launch-assessment`}
+                        className="btn btn--ghost btn--sm"
+                        title={String(u.userTier || "").toLowerCase() !== "heal" ? "Heal tier only" : undefined}
+                        style={String(u.userTier || "").toLowerCase() !== "heal" ? { opacity: 0.45, pointerEvents: "none" } : undefined}
+                        aria-disabled={String(u.userTier || "").toLowerCase() !== "heal"}
+                      >
+                        LAUNCH assessment
+                      </Link>
                       <button type="button" className="btn btn--ghost btn--sm" onClick={() => handleReassign(u)}>
                         Reassign
                       </button>

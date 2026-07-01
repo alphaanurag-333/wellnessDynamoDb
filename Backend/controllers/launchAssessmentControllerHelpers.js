@@ -1,0 +1,271 @@
+const AppError = require("../utils/AppError");
+const { asyncHandler } = require("../utils/asyncHandler");
+const { listActiveLaunchQuestions } = require("../models/launchQuestionModel");
+const { listActiveLaunchFocusAreas } = require("../models/launchFocusAreaModel");
+const {
+  createUserLaunchAssessment,
+  getUserLaunchAssessmentById,
+  getUserLaunchAssessmentByUserAndDate,
+  listUserLaunchAssessmentsByUserId,
+  updateUserLaunchAssessment,
+  deleteUserLaunchAssessment,
+  SCORE_MIN,
+  SCORE_MAX,
+} = require("../models/userLaunchAssessmentModel");
+const {
+  readUserIdParam,
+  loadTargetUser,
+  assertCoachCanAccessUser,
+  assertAssistantCanAccessUser,
+  assertHealTierUser,
+  handleValidationError,
+  resolveCoachIdForUser,
+} = require("./dietPlanControllerHelpers");
+
+function handleLaunchValidationError(err) {
+  if (err?.name === "ValidationError") throw new AppError(err.message, 400);
+  if (err?.name === "ConflictError") throw new AppError(err.message, 409);
+  if (err?.name === "NotFoundError") throw new AppError(err.message, 404);
+  handleValidationError(err);
+}
+
+function parseTotalScore(body) {
+  if (body?.totalScore === undefined || body?.totalScore === null || body?.totalScore === "") {
+    throw new AppError("totalScore is required", 400);
+  }
+  return body.totalScore;
+}
+
+function parseFocusAreaIds(body) {
+  if (body?.focusAreaIds === undefined) return undefined;
+  if (!Array.isArray(body.focusAreaIds)) {
+    throw new AppError("focusAreaIds must be an array", 400);
+  }
+  return body.focusAreaIds;
+}
+
+function buildQuestionsCsv(user, userId, questions) {
+  const escapeCsv = (value) => {
+    const s = String(value ?? "");
+    if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+    return s;
+  };
+
+  const lines = [];
+  lines.push("LAUNCH Assessment Questions");
+  lines.push(`Client,${escapeCsv(user.name || "")}`);
+  lines.push(`Email,${escapeCsv(user.email || "")}`);
+  lines.push("");
+  lines.push("Ser,Category,Question,Reply,Score");
+  questions.forEach((q, index) => {
+    lines.push([index + 1, escapeCsv(q.category), escapeCsv(q.question), "", ""].join(","));
+  });
+
+  const filename = `launch-questions-${user.name || userId}.csv`;
+  return { content: lines.join("\r\n"), filename };
+}
+
+async function assertCoachHealUserAccess(req) {
+  const actingCoachId = req.auth?.sub;
+  if (!actingCoachId) throw new AppError("Unauthorized", 401);
+
+  const userId = readUserIdParam(req);
+  const user = await loadTargetUser(userId);
+  await assertCoachCanAccessUser(user, actingCoachId);
+  assertHealTierUser(user);
+
+  return { actingId: actingCoachId, userId, user };
+}
+
+async function assertAssistantHealUserAccess(req) {
+  const actingAssistantId = req.auth?.sub;
+  if (!actingAssistantId) throw new AppError("Unauthorized", 401);
+
+  const userId = readUserIdParam(req);
+  const user = await loadTargetUser(userId);
+  await assertAssistantCanAccessUser(user, actingAssistantId);
+  assertHealTierUser(user);
+
+  return { actingId: actingAssistantId, userId, user };
+}
+
+function createLaunchAssessmentPortalHandlers({ assertHealUserAccess, createdByRole }) {
+  return {
+    listFocusAreasController: asyncHandler(async (req, res) => {
+      await assertHealUserAccess(req);
+      const focusAreas = await listActiveLaunchFocusAreas();
+      return res.status(200).json({
+        status: true,
+        message: "Areas to focus fetched successfully",
+        focusAreas,
+      });
+    }),
+
+    listQuestionsController: asyncHandler(async (req, res) => {
+      await assertHealUserAccess(req);
+      const questions = await listActiveLaunchQuestions();
+      return res.status(200).json({
+        status: true,
+        message: "LAUNCH questions fetched successfully",
+        questions,
+      });
+    }),
+
+    listAssessmentsController: asyncHandler(async (req, res) => {
+      const { userId } = await assertHealUserAccess(req);
+      const assessments = await listUserLaunchAssessmentsByUserId(userId);
+      return res.status(200).json({
+        status: true,
+        message: "LAUNCH assessments fetched successfully",
+        assessments,
+        history: assessments.map((row) => ({
+          assessmentDate: row.assessmentDate,
+          totalScore: row.totalScore,
+          id: row.id,
+        })),
+      });
+    }),
+
+    getAssessmentByDateController: asyncHandler(async (req, res) => {
+      const { userId } = await assertHealUserAccess(req);
+      const assessmentDate = String(req.query.date || "").trim();
+      if (!assessmentDate) throw new AppError("date query parameter is required", 400);
+
+      let assessment;
+      try {
+        assessment = await getUserLaunchAssessmentByUserAndDate(userId, assessmentDate);
+      } catch (err) {
+        handleLaunchValidationError(err);
+      }
+
+      return res.status(200).json({
+        status: true,
+        message: assessment ? "LAUNCH assessment fetched successfully" : "No assessment for this date",
+        assessment,
+        scoreRange: { min: SCORE_MIN, max: SCORE_MAX },
+      });
+    }),
+
+    createAssessmentController: asyncHandler(async (req, res) => {
+      const { actingId, userId, user } = await assertHealUserAccess(req);
+      const assessmentDate = String(req.body.assessmentDate || "").trim();
+      if (!assessmentDate) throw new AppError("assessmentDate is required", 400);
+
+      let assessment;
+      try {
+        assessment = await createUserLaunchAssessment({
+          userId,
+          coachId: resolveCoachIdForUser(user),
+          assessmentDate,
+          totalScore: parseTotalScore(req.body),
+          focusAreaIds: parseFocusAreaIds(req.body) ?? [],
+          createdByRole,
+          createdById: actingId,
+        });
+      } catch (err) {
+        if (err instanceof AppError) throw err;
+        handleLaunchValidationError(err);
+      }
+
+      return res.status(201).json({
+        status: true,
+        message: "LAUNCH score saved successfully",
+        assessment,
+      });
+    }),
+
+    updateAssessmentController: asyncHandler(async (req, res) => {
+      const { userId } = await assertHealUserAccess(req);
+      const assessmentId = String(req.params.assessmentId || "").trim();
+      if (!assessmentId) throw new AppError("assessmentId is required", 400);
+
+      const current = await getUserLaunchAssessmentById(assessmentId);
+      if (!current || String(current.userId) !== String(userId)) {
+        throw new AppError("LAUNCH assessment not found", 404);
+      }
+
+      const updates = {};
+      if (req.body.assessmentDate !== undefined) {
+        updates.assessmentDate = String(req.body.assessmentDate || "").trim();
+      }
+      if (req.body.totalScore !== undefined) {
+        updates.totalScore = parseTotalScore(req.body);
+      }
+      const focusAreaIds = parseFocusAreaIds(req.body);
+      if (focusAreaIds !== undefined) {
+        updates.focusAreaIds = focusAreaIds;
+      }
+
+      if (Object.keys(updates).length === 0) {
+        throw new AppError("At least one field is required for update", 400);
+      }
+
+      let assessment;
+      try {
+        assessment = await updateUserLaunchAssessment(assessmentId, updates);
+      } catch (err) {
+        if (err instanceof AppError) throw err;
+        handleLaunchValidationError(err);
+      }
+
+      return res.status(200).json({
+        status: true,
+        message: "LAUNCH score updated successfully",
+        assessment,
+      });
+    }),
+
+    deleteAssessmentController: asyncHandler(async (req, res) => {
+      const { userId } = await assertHealUserAccess(req);
+      const assessmentId = String(req.params.assessmentId || "").trim();
+      if (!assessmentId) throw new AppError("assessmentId is required", 400);
+
+      const current = await getUserLaunchAssessmentById(assessmentId);
+      if (!current || String(current.userId) !== String(userId)) {
+        throw new AppError("LAUNCH assessment not found", 404);
+      }
+
+      try {
+        await deleteUserLaunchAssessment(assessmentId);
+      } catch (err) {
+        handleLaunchValidationError(err);
+      }
+
+      return res.status(200).json({
+        status: true,
+        message: "LAUNCH assessment deleted successfully",
+      });
+    }),
+
+    exportQuestionsController: asyncHandler(async (req, res) => {
+      const { userId, user } = await assertHealUserAccess(req);
+      const questions = await listActiveLaunchQuestions();
+      const { content, filename } = buildQuestionsCsv(user, userId, questions);
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${filename.replace(/[^\w.-]+/g, "_")}"`
+      );
+      return res.status(200).send(content);
+    }),
+  };
+}
+
+const coachHandlers = createLaunchAssessmentPortalHandlers({
+  assertHealUserAccess: assertCoachHealUserAccess,
+  createdByRole: "wellness_coach",
+});
+
+const assistantHandlers = createLaunchAssessmentPortalHandlers({
+  assertHealUserAccess: assertAssistantHealUserAccess,
+  createdByRole: "assistant_wellness_coach",
+});
+
+module.exports = {
+  handleLaunchValidationError,
+  parseTotalScore,
+  parseFocusAreaIds,
+  createLaunchAssessmentPortalHandlers,
+  coachHandlers,
+  assistantHandlers,
+};

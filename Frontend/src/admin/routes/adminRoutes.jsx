@@ -54,6 +54,14 @@ import { MedicalConditionQuestionList } from "../pages/medicalConditionQuestion/
 import { MedicalConditionQuestionAdd } from "../pages/medicalConditionQuestion/MedicalConditionQuestionAdd.jsx";
 import { MedicalConditionQuestionEdit } from "../pages/medicalConditionQuestion/MedicalConditionQuestionEdit.jsx";
 import { MedicalConditionQuestionView } from "../pages/medicalConditionQuestion/MedicalConditionQuestionView.jsx";
+import { LaunchQuestionList } from "../pages/launchQuestion/LaunchQuestionList.jsx";
+import { LaunchQuestionAdd } from "../pages/launchQuestion/LaunchQuestionAdd.jsx";
+import { LaunchQuestionEdit } from "../pages/launchQuestion/LaunchQuestionEdit.jsx";
+import { LaunchQuestionView } from "../pages/launchQuestion/LaunchQuestionView.jsx";
+import { LaunchFocusAreaList } from "../pages/launchFocusArea/LaunchFocusAreaList.jsx";
+import { LaunchFocusAreaAdd } from "../pages/launchFocusArea/LaunchFocusAreaAdd.jsx";
+import { LaunchFocusAreaEdit } from "../pages/launchFocusArea/LaunchFocusAreaEdit.jsx";
+import { LaunchFocusAreaView } from "../pages/launchFocusArea/LaunchFocusAreaView.jsx";
 import { TestCatalogList } from "../pages/testCatalog/TestCatalogList.jsx";
 import { TestCatalogAdd } from "../pages/testCatalog/TestCatalogAdd.jsx";
 import { TestCatalogEdit } from "../pages/testCatalog/TestCatalogEdit.jsx";
@@ -209,6 +217,18 @@ export const adminRouteTree = (
       <Route path="new" element={<MedicalConditionQuestionAdd />} />
       <Route path=":questionId/edit" element={<MedicalConditionQuestionEdit />} />
       <Route path=":questionId" element={<MedicalConditionQuestionView />} />
+    </Route>
+    <Route path="launch-questions" element={<Outlet />}>
+      <Route index element={<LaunchQuestionList />} />
+      <Route path="new" element={<LaunchQuestionAdd />} />
+      <Route path=":questionId/edit" element={<LaunchQuestionEdit />} />
+      <Route path=":questionId" element={<LaunchQuestionView />} />
+    </Route>
+    <Route path="launch-focus-areas" element={<Outlet />}>
+      <Route index element={<LaunchFocusAreaList />} />
+      <Route path="new" element={<LaunchFocusAreaAdd />} />
+      <Route path=":focusAreaId/edit" element={<LaunchFocusAreaEdit />} />
+      <Route path=":focusAreaId" element={<LaunchFocusAreaView />} />
     </Route>
     <Route path="test-catalog" element={<Outlet />}>
       <Route index element={<TestCatalogList />} />
