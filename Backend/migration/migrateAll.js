@@ -23,6 +23,7 @@ const cofounderMessageMigration = require("./migrations/11-cofounder-message-tab
 const userInboxNotificationsMigration = require("./migrations/13-user-inbox-notifications");
 const energyExchangeOnboardingMigration = require("./migrations/14-energy-exchange-and-onboarding");
 const internalParametersMigration = require("./migrations/15-internal-parameters");
+const dietPlanCatalogMigration = require("./migrations/16-diet-plan-catalog");
 
 const MIGRATIONS = [
   adminMigration,
@@ -39,6 +40,7 @@ const MIGRATIONS = [
   userInboxNotificationsMigration,
   energyExchangeOnboardingMigration,
   internalParametersMigration,
+  dietPlanCatalogMigration,
 ];
 
 function parseOnlyArg() {
@@ -77,7 +79,8 @@ async function run() {
       migration.migrateCofounderMessageTable ||
       migration.migrateUserInboxNotifications ||
       migration.migrateEnergyExchangeAndOnboarding ||
-      migration.migrateInternalParameters;
+      migration.migrateInternalParameters ||
+      migration.migrateDietPlanCatalog;
 
     console.log(`--- ${migration.id} ---`);
     await runner();

@@ -17,6 +17,7 @@ const { getSpecializationById } = require("../../models/specializationModel");
 const { listBirthdayPostsByPostDate } = require("../../models/birthdayPostModel");
 const { countCommentsForPost } = require("../../models/birthdayPostCommentModel");
 const { listActiveTestCatalog } = require("../../models/testCatalogModel");
+const { listActiveDietPlanCatalog } = require("../../models/dietPlanCatalogModel");
 const { getUserById, toPublicUser } = require("../../models/userModel");
 const { todayInTimezone } = require("../../utils/birthdayTimezone");
 const { isValidDateOnly } = require("../../utils/dateOnly");
@@ -307,5 +308,28 @@ exports.getActiveTestCatalog = asyncHandler(async (req, res) => {
     status: true,
     tests,
     grouped,
+  });
+});
+
+exports.getActiveDietPlanCatalog = asyncHandler(async (req, res) => {
+  const plans = await listActiveDietPlanCatalog();
+  const groupedByType = plans.reduce((acc, plan) => {
+    const type = plan.type || "GENERAL";
+    if (!acc[type]) acc[type] = [];
+    acc[type].push(plan);
+    return acc;
+  }, {});
+  const groupedByCategory = plans.reduce((acc, plan) => {
+    const category = plan.category || "Other";
+    if (!acc[category]) acc[category] = [];
+    acc[category].push(plan);
+    return acc;
+  }, {});
+
+  return res.status(200).json({
+    status: true,
+    plans,
+    groupedByType,
+    groupedByCategory,
   });
 });

@@ -1,19 +1,19 @@
 import { useDispatch, useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
 import { NotFoundPage } from "../../../admin/pages/NotFoundPage.jsx";
-import { UserDietPlanPanel } from "../../../components/UserDietPlanPanel.jsx";
+import { UserDietPlanCatalogPanel } from "../../../components/UserDietPlanCatalogPanel.jsx";
 import { CoachPageLoadingState } from "../../../wellnessCoach/components/CoachPageLoader.jsx";
 import { logoutAssistant } from "../../../store/authSlice.js";
 import {
-  assistantDeleteDietPlan,
-  assistantListUserDietPlans,
-  assistantUploadDietPlan,
-} from "../../api/assistantDietPlans.js";
+  assistantCreateDietPlanAssignment,
+  assistantDeleteDietPlanAssignment,
+  assistantListUserDietPlanAssignments,
+} from "../../api/assistantDietPlanAssignments.js";
 
-const dietPlanApi = {
-  list: assistantListUserDietPlans,
-  upload: assistantUploadDietPlan,
-  remove: assistantDeleteDietPlan,
+const dietPlanAssignmentApi = {
+  list: assistantListUserDietPlanAssignments,
+  create: assistantCreateDietPlanAssignment,
+  remove: assistantDeleteDietPlanAssignment,
 };
 
 export function AssistantUserDietPlan() {
@@ -22,10 +22,10 @@ export function AssistantUserDietPlan() {
   const assistantToken = useSelector((s) => s.auth.assistantToken);
 
   return (
-    <UserDietPlanPanel
+    <UserDietPlanCatalogPanel
       token={assistantToken}
       userId={userId}
-      api={dietPlanApi}
+      api={dietPlanAssignmentApi}
       backTo="/assistant/my-users"
       PageLoader={CoachPageLoadingState}
       NotFoundPage={NotFoundPage}

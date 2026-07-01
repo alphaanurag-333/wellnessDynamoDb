@@ -58,6 +58,10 @@ import { TestCatalogList } from "../pages/testCatalog/TestCatalogList.jsx";
 import { TestCatalogAdd } from "../pages/testCatalog/TestCatalogAdd.jsx";
 import { TestCatalogEdit } from "../pages/testCatalog/TestCatalogEdit.jsx";
 import { TestCatalogView } from "../pages/testCatalog/TestCatalogView.jsx";
+import { DietPlanCatalogList } from "../pages/dietPlanCatalog/DietPlanCatalogList.jsx";
+import { DietPlanCatalogAdd } from "../pages/dietPlanCatalog/DietPlanCatalogAdd.jsx";
+import { DietPlanCatalogEdit } from "../pages/dietPlanCatalog/DietPlanCatalogEdit.jsx";
+import { DietPlanCatalogView } from "../pages/dietPlanCatalog/DietPlanCatalogView.jsx";
 import { MentalWellbeingList } from "../pages/mentalWellbeing/MentalWellbeingList.jsx";
 import { MentalWellbeingAdd } from "../pages/mentalWellbeing/MentalWellbeingAdd.jsx";
 import { MentalWellbeingEdit } from "../pages/mentalWellbeing/MentalWellbeingEdit.jsx";
@@ -213,6 +217,12 @@ export const adminRouteTree = (
       <Route path="new" element={<TestCatalogAdd />} />
       <Route path=":testId/edit" element={<TestCatalogEdit />} />
       <Route path=":testId" element={<TestCatalogView />} />
+    </Route>
+    <Route path="diet-plan-catalog" element={<Outlet />}>
+      <Route index element={<DietPlanCatalogList />} />
+      <Route path="new" element={<DietPlanCatalogAdd />} />
+      <Route path=":planId/edit" element={<DietPlanCatalogEdit />} />
+      <Route path=":planId" element={<DietPlanCatalogView />} />
     </Route>
     <Route path="mental-wellbeing" element={<Outlet />}>
       <Route index element={<MentalWellbeingList />} />

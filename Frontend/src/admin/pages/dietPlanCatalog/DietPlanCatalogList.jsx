@@ -6,15 +6,21 @@ import Swal from "sweetalert2";
 import { MdEditSquare } from "react-icons/md";
 import { AiFillDelete, AiOutlineEye } from "react-icons/ai";
 import {
-  adminDeleteTestCatalog,
-  adminListTestCatalog,
-  adminUpdateTestCatalog,
-} from "../../api/adminTestCatalog.js";
+  adminDeleteDietPlanCatalog,
+  adminListDietPlanCatalog,
+  adminUpdateDietPlanCatalog,
+} from "../../api/adminDietPlanCatalog.js";
 import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
-import { formatDate, LIST_LIMIT, LIST_SEARCH_MAX_LEN, typeLabel } from "./TestCatalogShared.js";
+import {
+  formatDate,
+  LIST_LIMIT,
+  LIST_SEARCH_MAX_LEN,
+  TYPE_OPTIONS,
+  typeLabel,
+} from "./DietPlanCatalogShared.js";
 
-export function TestCatalogList() {
+export function DietPlanCatalogList() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const adminToken = useSelector((s) => s.auth.adminToken);
@@ -26,27 +32,29 @@ export function TestCatalogList() {
   const [total, setTotal] = useState(0);
   const [listSearch, setListSearch] = useState("");
   const [listStatus, setListStatus] = useState("");
+  const [listType, setListType] = useState("");
 
   const loadRows = useCallback(async () => {
     if (!adminToken) return;
     setLoading(true);
     try {
-      const { tests, pagination } = await adminListTestCatalog(adminToken, {
+      const { plans, pagination } = await adminListDietPlanCatalog(adminToken, {
         page,
         limit: LIST_LIMIT,
         ...(listSearch.trim() ? { search: listSearch.trim() } : {}),
         ...(listStatus ? { status: listStatus } : {}),
+        ...(listType ? { type: listType } : {}),
       });
-      setRows(tests);
+      setRows(plans);
       setPages(pagination?.pages ?? 1);
       setTotal(pagination?.total ?? 0);
     } catch (e) {
       if (e?.status === 401) return dispatch(logout());
-      await Swal.fire({ icon: "error", title: "Load failed", text: e.message || "Failed to load tests." });
+      await Swal.fire({ icon: "error", title: "Load failed", text: e.message || "Failed to load diet plans." });
     } finally {
       setLoading(false);
     }
-  }, [adminToken, dispatch, listSearch, listStatus, page]);
+  }, [adminToken, dispatch, listSearch, listStatus, listType, page]);
 
   useEffect(() => {
     loadRows();
@@ -54,12 +62,12 @@ export function TestCatalogList() {
 
   useEffect(() => {
     setPage(1);
-  }, [listSearch, listStatus]);
+  }, [listSearch, listStatus, listType]);
 
   const onDelete = async (row) => {
     const { isConfirmed } = await Swal.fire({
       icon: "warning",
-      title: "Delete test?",
+      title: "Delete diet plan?",
       text: `This will delete "${row.name}".`,
       showCancelButton: true,
       confirmButtonColor: "#dc2626",
@@ -67,7 +75,7 @@ export function TestCatalogList() {
     });
     if (!isConfirmed || !adminToken) return;
     try {
-      await adminDeleteTestCatalog(adminToken, row._id || row.id);
+      await adminDeleteDietPlanCatalog(adminToken, row._id || row.id);
       await Swal.fire({ icon: "success", title: "Deleted", timer: 1500 });
       await loadRows();
     } catch (e) {
@@ -81,7 +89,7 @@ export function TestCatalogList() {
     const nextStatus = row.status === "active" ? "inactive" : "active";
     setTogglingId(row._id || row.id);
     try {
-      await adminUpdateTestCatalog(adminToken, row._id || row.id, { status: nextStatus });
+      await adminUpdateDietPlanCatalog(adminToken, row._id || row.id, { status: nextStatus });
       await Swal.fire({ icon: "success", title: nextStatus === "active" ? "Activated" : "Deactivated", timer: 1500 });
       await loadRows();
     } catch (e) {
@@ -93,23 +101,24 @@ export function TestCatalogList() {
   };
 
   const pageInfo = useMemo(() => `Page ${page} of ${pages} · ${total} items`, [page, pages, total]);
-  const subtitle = listCountSubtitle(loading, total, "test", "tests");
-  const hasFilters = Boolean(listSearch.trim() || listStatus);
+  const subtitle = listCountSubtitle(loading, total, "diet plan", "diet plans");
+  const hasFilters = Boolean(listSearch.trim() || listStatus || listType);
 
   const clearFilters = () => {
     setListSearch("");
     setListStatus("");
+    setListType("");
   };
 
   return (
     <div className="user-page">
       <div className="page-card">
         <AdminListHeader
-          title="Test Catalog"
+          title="Diet Plan Catalog"
           subtitle={subtitle}
           actions={
-            <button type="button" className="btn btn--primary" onClick={() => navigate("/admin/test-catalog/new")}>
-              Add test
+            <button type="button" className="btn btn--primary" onClick={() => navigate("/admin/diet-plan-catalog/new")}>
+              Add diet plan
             </button>
           }
         />
@@ -120,9 +129,20 @@ export function TestCatalogList() {
               className="user-field__input"
               value={listSearch}
               onChange={(e) => setListSearch(e.target.value.slice(0, LIST_SEARCH_MAX_LEN))}
-              placeholder="Name, test ID, category..."
+              placeholder="Name, plan ID, category..."
               maxLength={LIST_SEARCH_MAX_LEN}
             />
+          </label>
+          <label className="user-field admin-crud-filters__select">
+            <span className="user-field__label">Type</span>
+            <select className="user-field__input" value={listType} onChange={(e) => setListType(e.target.value)}>
+              <option value="">All</option>
+              {TYPE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="user-field admin-crud-filters__select">
             <span className="user-field__label">Status</span>
@@ -144,10 +164,10 @@ export function TestCatalogList() {
               <tr>
                 <th>S No.</th>
                 <th>Name</th>
-                <th>Test ID</th>
+                <th>Plan ID</th>
                 <th>Type</th>
                 <th>Category</th>
-                <th>Parameters</th>
+                <th>Meals</th>
                 <th>Created</th>
                 <th>Status</th>
                 <th className="data-table__actions-col">Actions</th>
@@ -155,20 +175,20 @@ export function TestCatalogList() {
             </thead>
             <tbody>
               {loading ? (
-                <AdminTableLoaderRow colSpan={9} label="Loading tests..." />
+                <AdminTableLoaderRow colSpan={9} label="Loading diet plans..." />
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={9}>No tests found.</td>
+                  <td colSpan={9}>No diet plans found.</td>
                 </tr>
               ) : (
                 rows.map((row, idx) => (
                   <tr key={row._id || row.id}>
                     <td className="data-table__muted">{(page - 1) * LIST_LIMIT + idx + 1}</td>
                     <td>{row.name || "—"}</td>
-                    <td className="data-table__muted">{row.testId || "—"}</td>
+                    <td className="data-table__muted">{row.planId || "—"}</td>
                     <td className="data-table__muted">{typeLabel(row.type)}</td>
                     <td>{row.category || "—"}</td>
-                    <td className="data-table__muted">{Array.isArray(row.parameters) ? row.parameters.length : 0}</td>
+                    <td className="data-table__muted">{Array.isArray(row.meals) ? row.meals.length : 0}</td>
                     <td className="data-table__muted">{formatDate(row.createdAt)}</td>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -189,14 +209,14 @@ export function TestCatalogList() {
                     </td>
                     <td>
                       <div className="row-actions">
-                        <Link to={`/admin/test-catalog/${row._id || row.id}`} className="icon-btn icon-btn--view" title="View">
+                        <Link to={`/admin/diet-plan-catalog/${row._id || row.id}`} className="icon-btn icon-btn--view" title="View">
                           <AiOutlineEye size={18} />
                         </Link>
                         <button
                           type="button"
                           className="icon-btn icon-btn--edit"
                           title="Edit"
-                          onClick={() => navigate(`/admin/test-catalog/${row._id || row.id}/edit`)}
+                          onClick={() => navigate(`/admin/diet-plan-catalog/${row._id || row.id}/edit`)}
                         >
                           <MdEditSquare size={18} />
                         </button>

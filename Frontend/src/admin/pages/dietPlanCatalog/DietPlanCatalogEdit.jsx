@@ -3,35 +3,35 @@ import { AdminPageLoader } from "../../components/AdminLoader.jsx";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 import Swal from "sweetalert2";
-import { adminGetTestCatalogById } from "../../api/adminTestCatalog.js";
+import { adminGetDietPlanCatalogById } from "../../api/adminDietPlanCatalog.js";
 import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { NotFoundPage } from "../NotFoundPage.jsx";
-import { TestCatalogForm } from "./TestCatalogAdd.jsx";
+import { DietPlanForm } from "./DietPlanCatalogAdd.jsx";
 
-export function TestCatalogEdit() {
-  const { testId } = useParams();
+export function DietPlanCatalogEdit() {
+  const { planId } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const adminToken = useSelector((s) => s.auth.adminToken);
-  const [test, setTest] = useState(null);
+  const [plan, setPlan] = useState(null);
   const [notFound, setNotFound] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!adminToken || !testId) return;
+    if (!adminToken || !planId) return;
     let cancelled = false;
     setLoading(true);
     setNotFound(false);
     (async () => {
       try {
-        const row = await adminGetTestCatalogById(adminToken, testId);
+        const row = await adminGetDietPlanCatalogById(adminToken, planId);
         if (cancelled) return;
         if (!row) {
           setNotFound(true);
           return;
         }
-        setTest(row);
+        setPlan(row);
       } catch (e) {
         if (cancelled) return;
         if (e?.status === 401) {
@@ -42,8 +42,8 @@ export function TestCatalogEdit() {
           setNotFound(true);
           return;
         }
-        await Swal.fire({ icon: "error", title: "Load failed", text: e.message || "Failed to load test." });
-        navigate("/admin/test-catalog");
+        await Swal.fire({ icon: "error", title: "Load failed", text: e.message || "Failed to load diet plan." });
+        navigate("/admin/diet-plan-catalog");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -51,7 +51,7 @@ export function TestCatalogEdit() {
     return () => {
       cancelled = true;
     };
-  }, [adminToken, dispatch, navigate, testId]);
+  }, [adminToken, dispatch, navigate, planId]);
 
   if (notFound) {
     return <NotFoundPage />;
@@ -59,14 +59,18 @@ export function TestCatalogEdit() {
 
   return (
     <div className="user-page">
-      <AdminPageHeader title="Edit test catalog entry" subtitle="Update this test and its parameters." backTo="/admin/test-catalog" />
+      <AdminPageHeader
+        title="Edit diet plan catalog entry"
+        subtitle="Update this diet plan and its meals."
+        backTo="/admin/diet-plan-catalog"
+      />
       <div className="page-card">
         {loading ? (
           <div className="static-cms-loading">
-            <AdminPageLoader label="Loading test..." />
+            <AdminPageLoader label="Loading diet plan..." />
           </div>
-        ) : test ? (
-          <TestCatalogForm mode="edit" initialTest={test} key={test._id || testId} />
+        ) : plan ? (
+          <DietPlanForm mode="edit" initialPlan={plan} key={plan._id || planId} />
         ) : null}
       </div>
     </div>

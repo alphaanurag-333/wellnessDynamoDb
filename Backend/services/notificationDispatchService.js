@@ -22,6 +22,7 @@ const FCM_TYPE_BY_KIND = {
   birthday_reminder: "birthday_notification",
   internal_parameters_recommendation: "internal_parameters_notification",
   internal_parameters_upload: "internal_parameters_upload_notification",
+  diet_plan_assignment: "diet_plan_assignment_notification",
 };
 
 function buildPushData(notification) {
@@ -173,6 +174,27 @@ async function dispatchInternalParametersRecommendationNotification({
   return notification;
 }
 
+async function dispatchDietPlanAssignmentNotification({
+  userId,
+  assignmentId,
+  coachName,
+}) {
+  const name = String(coachName || "Your coach").trim() || "Your coach";
+  const message = `${name} has assigned a new diet plan for you.`;
+
+  const notification = await createTargetedNotification({
+    userId,
+    kind: "diet_plan_assignment",
+    message,
+    referenceId: assignmentId,
+    referenceType: "coach_assigned_diet_plan",
+    title: "New diet plan assigned",
+  });
+
+  runPushSafely(deliverTargetedPush(userId, notification));
+  return notification;
+}
+
 async function collectCoachFcmTokensForUser(user) {
   const tokens = [];
   const parentCoachId = String(user?.parentCoachId || "").trim();
@@ -227,6 +249,7 @@ module.exports = {
   dispatchBirthdayWishNotification,
   ensureBirthdayReminderInbox,
   dispatchInternalParametersRecommendationNotification,
+  dispatchDietPlanAssignmentNotification,
   dispatchLabReportUploadCoachNotification,
   dispatchLabReportUploadCoachNotificationAsync,
   deliverBroadcastPush,

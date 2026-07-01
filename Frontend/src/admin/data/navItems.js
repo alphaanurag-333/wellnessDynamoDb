@@ -29,6 +29,7 @@ export const navItems = [
   { to: "supplements", label: "Supplements", icon: "box" },
   { to: "medical-condition-questions", label: "Medical Conditions", icon: "clipboard-list" },
   { to: "test-catalog", label: "Test Catalog", icon: "activity" },
+  { to: "diet-plan-catalog", label: "Diet Plan Catalog", icon: "utensils" },
   { to: "mental-wellbeing", label: "Mental Wellbeing", icon: "sparkles" },
   {
     id: "testimonials",

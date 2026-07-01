@@ -1,19 +1,19 @@
 import { useDispatch, useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
 import { NotFoundPage } from "../../../admin/pages/NotFoundPage.jsx";
-import { UserDietPlanPanel } from "../../../components/UserDietPlanPanel.jsx";
+import { UserDietPlanCatalogPanel } from "../../../components/UserDietPlanCatalogPanel.jsx";
 import { CoachPageLoadingState } from "../../components/CoachPageLoader.jsx";
 import { logoutCoach } from "../../../store/authSlice.js";
 import {
-  coachDeleteDietPlan,
-  coachListUserDietPlans,
-  coachUploadDietPlan,
-} from "../../api/coachDietPlans.js";
+  coachCreateDietPlanAssignment,
+  coachDeleteDietPlanAssignment,
+  coachListUserDietPlanAssignments,
+} from "../../api/coachDietPlanAssignments.js";
 
-const dietPlanApi = {
-  list: coachListUserDietPlans,
-  upload: coachUploadDietPlan,
-  remove: coachDeleteDietPlan,
+const dietPlanAssignmentApi = {
+  list: coachListUserDietPlanAssignments,
+  create: coachCreateDietPlanAssignment,
+  remove: coachDeleteDietPlanAssignment,
 };
 
 export function UserDietPlan() {
@@ -22,10 +22,10 @@ export function UserDietPlan() {
   const coachToken = useSelector((s) => s.auth.coachToken);
 
   return (
-    <UserDietPlanPanel
+    <UserDietPlanCatalogPanel
       token={coachToken}
       userId={userId}
-      api={dietPlanApi}
+      api={dietPlanAssignmentApi}
       backTo="/coach/my-users"
       PageLoader={CoachPageLoadingState}
       NotFoundPage={NotFoundPage}
