@@ -10,47 +10,91 @@ function formatAssignedDate(iso) {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+function exerciseTypeLabel(type) {
+  return type === "video" ? "Video" : "YouTube";
+}
+
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="3">
+      <path d="M5 12l5 5L19 7" />
+    </svg>
+  );
+}
+
+function ExercisePickerCard({ exercise, selected, onToggle }) {
+  const id = exercise.id || exercise._id;
+
+  return (
+    <button
+      type="button"
+      className={`catalog-picker__card${selected ? " catalog-picker__card--selected" : ""}`}
+      onClick={() => onToggle(id)}
+      aria-pressed={selected}
+    >
+      <div className="catalog-picker__card-head">
+        <span className="catalog-picker__card-name">{exercise.title}</span>
+        <span className="catalog-picker__card-check" aria-hidden="true">
+          {selected ? <CheckIcon /> : null}
+        </span>
+      </div>
+      <div className="catalog-picker__card-meta">
+        <span className="catalog-picker__badge catalog-picker__badge--type">
+          {exerciseTypeLabel(exercise.type)}
+        </span>
+      </div>
+      {exercise.description ? <p className="catalog-picker__card-desc">{exercise.description}</p> : null}
+    </button>
+  );
+}
+
 function AssignmentCard({ assignment, onRemove, removing, canRemove }) {
   const assignmentId = assignment.id || assignment._id;
   const exercise = assignment.exercise || {};
   const link = exercise.link;
 
   return (
-    <div className="diet-plan-card">
-      <div className="diet-plan-card__icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M6.5 6.5h11v11h-11z" />
-          <path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4" />
-        </svg>
-      </div>
-      <div className="diet-plan-card__body">
-        <div className="diet-plan-card__title">{exercise.title || "Exercise"}</div>
-        <div className="diet-plan-card__date">
-          {exercise.type === "video" ? "Video" : "YouTube link"}
-          {assignment.createdAt ? ` · Assigned ${formatAssignedDate(assignment.createdAt)}` : ""}
+    <article className="assignment-card">
+      <div className="assignment-card__header">
+        <div className="assignment-card__header-main">
+          <div className="diet-plan-card__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M6.5 6.5h11v11h-11z" />
+              <path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4" />
+            </svg>
+          </div>
+          <div>
+            <div className="diet-plan-card__title">{exercise.title || "Exercise"}</div>
+            <div className="diet-plan-card__date">
+              {exerciseTypeLabel(exercise.type)}
+              {assignment.createdAt ? ` · Assigned ${formatAssignedDate(assignment.createdAt)}` : ""}
+            </div>
+          </div>
         </div>
-        {exercise.description ? (
-          <div className="diet-plan-card__note">{exercise.description}</div>
-        ) : null}
+        <div className="assignment-card__header-actions">
+          {link ? (
+            <a href={link} target="_blank" rel="noopener noreferrer" className="btn btn--ghost btn--sm">
+              Open
+            </a>
+          ) : null}
+          {canRemove ? (
+            <button
+              type="button"
+              className="btn btn--ghost btn--sm text-danger"
+              onClick={() => onRemove(assignment)}
+              disabled={removing}
+            >
+              Remove
+            </button>
+          ) : null}
+        </div>
       </div>
-      <div className="diet-plan-card__actions">
-        {link ? (
-          <a href={link} target="_blank" rel="noopener noreferrer" className="btn btn--ghost btn--sm">
-            Open
-          </a>
-        ) : null}
-        {canRemove ? (
-          <button
-            type="button"
-            className="btn btn--ghost btn--sm text-danger"
-            onClick={() => onRemove(assignment)}
-            disabled={removing}
-          >
-            Remove
-          </button>
-        ) : null}
-      </div>
-    </div>
+      {exercise.description ? (
+        <div className="assignment-card__body">
+          <div className="assignment-card__note">{exercise.description}</div>
+        </div>
+      ) : null}
+    </article>
   );
 }
 
@@ -72,6 +116,8 @@ export function UserPhysicalExercisesPanel({
   const [assigning, setAssigning] = useState(false);
   const [removingId, setRemovingId] = useState("");
   const [selectedExerciseIds, setSelectedExerciseIds] = useState([]);
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
 
   const assignedExerciseIds = useMemo(
     () => new Set(assignments.map((row) => row.exerciseId || row.exercise?.id || row.exercise?._id).filter(Boolean)),
@@ -82,6 +128,24 @@ export function UserPhysicalExercisesPanel({
     () => catalogExercises.filter((ex) => !assignedExerciseIds.has(ex.id || ex._id)),
     [catalogExercises, assignedExerciseIds]
   );
+
+  const filteredExercises = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    let exercises = availableCatalog;
+
+    if (typeFilter) {
+      exercises = exercises.filter((ex) => ex.type === typeFilter);
+    }
+
+    if (q) {
+      exercises = exercises.filter((ex) => {
+        const haystack = [ex.title, ex.description, exerciseTypeLabel(ex.type)].filter(Boolean).join(" ").toLowerCase();
+        return haystack.includes(q);
+      });
+    }
+
+    return [...exercises].sort((a, b) => String(a.title || "").localeCompare(String(b.title || "")));
+  }, [availableCatalog, search, typeFilter]);
 
   const loadData = useCallback(async () => {
     if (!token || !userId) return;
@@ -120,6 +184,8 @@ export function UserPhysicalExercisesPanel({
     );
   };
 
+  const clearSelection = () => setSelectedExerciseIds([]);
+
   const handleAssign = async (e) => {
     e.preventDefault();
     if (!token || !userId) return;
@@ -133,7 +199,6 @@ export function UserPhysicalExercisesPanel({
       const result = await api.assign(token, userId, { exerciseIds: selectedExerciseIds });
       const createdCount = result?.assignments?.length ?? 0;
       const skippedDuplicate = result?.skippedDuplicate?.length ?? 0;
-      const skippedInvalid = result?.skippedInvalid?.length ?? 0;
 
       if (createdCount === 0) {
         await Swal.fire({
@@ -154,6 +219,7 @@ export function UserPhysicalExercisesPanel({
       }
 
       setSelectedExerciseIds([]);
+      setSearch("");
       await loadData();
     } catch (err) {
       if (err?.status === 401) onUnauthorized?.();
@@ -164,7 +230,6 @@ export function UserPhysicalExercisesPanel({
   };
 
   const handleRemove = async (assignment) => {
-    const assignmentId = assignment.id || assignment._id;
     const title = assignment.exercise?.title || "this exercise";
     const confirm = await Swal.fire({
       icon: "warning",
@@ -175,6 +240,7 @@ export function UserPhysicalExercisesPanel({
     });
     if (!confirm.isConfirmed) return;
 
+    const assignmentId = assignment.id || assignment._id;
     setRemovingId(assignmentId);
     try {
       await api.remove(token, userId, assignmentId);
@@ -215,37 +281,77 @@ export function UserPhysicalExercisesPanel({
         {!readOnly ? (
           <form className="form-card diet-plan-upload" onSubmit={handleAssign}>
             <h3 className="form-card__title">Assign from catalog</h3>
-            {availableCatalog.length === 0 ? (
-              <p className="table-placeholder">
-                {catalogExercises.length === 0
-                  ? "No active exercises in catalog. Ask admin to add exercises."
-                  : "All catalog exercises are already assigned to this client."}
-              </p>
-            ) : (
-              <div className="checkbox-list">
-                {availableCatalog.map((exercise) => {
-                  const id = exercise.id || exercise._id;
-                  return (
-                    <label key={id} className="checkbox-list__item">
-                      <input
-                        type="checkbox"
-                        checked={selectedExerciseIds.includes(id)}
-                        onChange={() => toggleExercise(id)}
-                      />
-                      <span>
-                        {exercise.title}
-                        <small className="data-table__muted">
-                          {" "}
-                          ({exercise.type === "video" ? "Video" : "YouTube"})
-                        </small>
-                      </span>
-                    </label>
-                  );
-                })}
-              </div>
-            )}
 
-            <div className="form-card__actions">
+            <div className="form-section">
+              <div className="form-section__header">
+                <span className="user-field__label" style={{ marginBottom: 0 }}>
+                  Select exercises <span className="required-dot">*</span>
+                </span>
+              </div>
+
+              <div className="catalog-picker__toolbar">
+                <label className="user-field">
+                  <span className="user-field__label">Search</span>
+                  <input
+                    className="user-field__input"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Exercise name or description…"
+                  />
+                </label>
+                <label className="user-field">
+                  <span className="user-field__label">Type</span>
+                  <select className="user-field__input" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+                    <option value="">All types</option>
+                    <option value="ytlink">YouTube</option>
+                    <option value="video">Video</option>
+                  </select>
+                </label>
+                <div className="catalog-picker__summary">
+                  <span>
+                    {selectedExerciseIds.length} selected · {filteredExercises.length} available
+                  </span>
+                  {selectedExerciseIds.length > 0 ? (
+                    <button type="button" className="btn btn--ghost btn--sm" onClick={clearSelection}>
+                      Clear
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+
+              {filteredExercises.length === 0 ? (
+                <p className="table-placeholder">
+                  {catalogExercises.length === 0
+                    ? "No active exercises in catalog. Ask admin to add exercises."
+                    : availableCatalog.length === 0
+                      ? "All catalog exercises are already assigned to this client."
+                      : "No matching exercises. Try another search or filter."}
+                </p>
+              ) : (
+                <div className="catalog-picker">
+                  <div className="catalog-picker__grid">
+                    {filteredExercises.map((exercise) => {
+                      const id = exercise.id || exercise._id;
+                      return (
+                        <ExercisePickerCard
+                          key={id}
+                          exercise={exercise}
+                          selected={selectedExerciseIds.includes(id)}
+                          onToggle={toggleExercise}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="diet-assign-form__actions">
+              <span className="diet-assign-form__hint">
+                {selectedExerciseIds.length
+                  ? `${selectedExerciseIds.length} exercise(s) will be assigned to this client.`
+                  : "Select one or more exercises to assign."}
+              </span>
               <button
                 type="submit"
                 className="btn btn--primary"

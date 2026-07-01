@@ -10,49 +10,106 @@ function formatReportDate(iso) {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-function RecommendationCard({ recommendation, onDelete, deleting, canDelete }) {
-  const recId = recommendation.id || recommendation._id;
-  const pdfUrl = recommendation.pdfUrl;
-  const testNames = (recommendation.tests || []).map((t) => t.name).join(", ");
+function testTypeLabel(type) {
+  const value = String(type || "").toUpperCase();
+  if (value === "PROFILE") return "Profile";
+  if (value === "SINGLE") return "Single";
+  return type || "Test";
+}
+
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="3">
+      <path d="M5 12l5 5L19 7" />
+    </svg>
+  );
+}
+
+function TestPickerCard({ test, selected, onToggle }) {
+  const id = test.id || test._id;
 
   return (
-    <div className="diet-plan-card">
-      <div className="diet-plan-card__icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-          <polyline points="14 2 14 8 20 8" />
-        </svg>
+    <button
+      type="button"
+      className={`catalog-picker__card${selected ? " catalog-picker__card--selected" : ""}`}
+      onClick={() => onToggle(id)}
+      aria-pressed={selected}
+    >
+      <div className="catalog-picker__card-head">
+        <span className="catalog-picker__card-name">{test.name}</span>
+        <span className="catalog-picker__card-check" aria-hidden="true">
+          {selected ? <CheckIcon /> : null}
+        </span>
       </div>
-      <div className="diet-plan-card__body">
-        <div className="diet-plan-card__title">Report date: {formatReportDate(recommendation.reportDate)}</div>
-        <div className="diet-plan-card__date">{testNames || "Recommended tests"}</div>
-        <div className="diet-plan-card__note">
-          {(recommendation.tests || []).length} test(s) selected
+      <div className="catalog-picker__card-meta">
+        <span className="catalog-picker__badge catalog-picker__badge--type">{testTypeLabel(test.type)}</span>
+        {test.category ? <span className="catalog-picker__badge">{test.category}</span> : null}
+      </div>
+    </button>
+  );
+}
+
+function RecommendationCard({ recommendation, onDelete, deleting, canDelete }) {
+  const pdfUrl = recommendation.pdfUrl;
+  const tests = recommendation.tests || [];
+
+  return (
+    <article className="assignment-card">
+      <div className="assignment-card__header">
+        <div className="assignment-card__header-main">
+          <div className="diet-plan-card__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+            </svg>
+          </div>
+          <div>
+            <div className="diet-plan-card__title">Report date: {formatReportDate(recommendation.reportDate)}</div>
+            <div className="diet-plan-card__date">
+              {tests.length} test{tests.length === 1 ? "" : "s"} selected
+            </div>
+          </div>
+        </div>
+        <div className="assignment-card__header-actions">
+          {pdfUrl ? (
+            <>
+              <a href={pdfUrl} target="_blank" rel="noopener noreferrer" className="btn btn--ghost btn--sm">
+                View
+              </a>
+              <a href={pdfUrl} download className="btn btn--primary btn--sm">
+                Download
+              </a>
+            </>
+          ) : null}
+          {canDelete ? (
+            <button
+              type="button"
+              className="btn btn--ghost btn--sm text-danger"
+              onClick={() => onDelete(recommendation)}
+              disabled={deleting}
+            >
+              Delete
+            </button>
+          ) : null}
         </div>
       </div>
-      <div className="diet-plan-card__actions">
-        {pdfUrl ? (
-          <>
-            <a href={pdfUrl} target="_blank" rel="noopener noreferrer" className="btn btn--ghost btn--sm">
-              View
-            </a>
-            <a href={pdfUrl} download className="btn btn--primary btn--sm">
-              Download
-            </a>
-          </>
-        ) : null}
-        {canDelete ? (
-          <button
-            type="button"
-            className="btn btn--ghost btn--sm text-danger"
-            onClick={() => onDelete(recommendation)}
-            disabled={deleting}
-          >
-            Delete
-          </button>
-        ) : null}
+      <div className="assignment-card__body">
+        {tests.length > 0 ? (
+          <div className="plan-chip-list">
+            {tests.map((test) => (
+              <div key={test.id || test._id || test.name} className="plan-chip">
+                <span className="plan-chip__name">{test.name}</span>
+                <span className="plan-chip__meta">{testTypeLabel(test.type)}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="table-placeholder" style={{ margin: 0 }}>
+            No test details available.
+          </p>
+        )}
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -60,35 +117,41 @@ function LabReportCard({ report }) {
   const fileUrl = report.fileUrl;
 
   return (
-    <div className="diet-plan-card">
-      <div className="diet-plan-card__icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-          <polyline points="14 2 14 8 20 8" />
-        </svg>
+    <article className="assignment-card">
+      <div className="assignment-card__header">
+        <div className="assignment-card__header-main">
+          <div className="diet-plan-card__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+            </svg>
+          </div>
+          <div>
+            <div className="diet-plan-card__title">Report date: {formatReportDate(report.reportDate)}</div>
+            <div className="diet-plan-card__date">Uploaded by client</div>
+          </div>
+        </div>
+        <div className="assignment-card__header-actions">
+          {fileUrl ? (
+            <>
+              <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="btn btn--ghost btn--sm">
+                View
+              </a>
+              <a href={fileUrl} download className="btn btn--primary btn--sm">
+                Download
+              </a>
+            </>
+          ) : (
+            <span className="data-table__muted">No file</span>
+          )}
+        </div>
       </div>
-      <div className="diet-plan-card__body">
-        <div className="diet-plan-card__title">Report date: {formatReportDate(report.reportDate)}</div>
-        <div className="diet-plan-card__date">Uploaded by client</div>
-        {report.createdAt ? (
+      {report.createdAt ? (
+        <div className="assignment-card__body">
           <div className="diet-plan-card__note">Submitted {formatReportDate(report.createdAt)}</div>
-        ) : null}
-      </div>
-      <div className="diet-plan-card__actions">
-        {fileUrl ? (
-          <>
-            <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="btn btn--ghost btn--sm">
-              View
-            </a>
-            <a href={fileUrl} download className="btn btn--primary btn--sm">
-              Download
-            </a>
-          </>
-        ) : (
-          <span className="data-table__muted">No file</span>
-        )}
-      </div>
-    </div>
+        </div>
+      ) : null}
+    </article>
   );
 }
 
@@ -114,6 +177,8 @@ export function UserTestRecommendationsPanel({
   const [deletingId, setDeletingId] = useState("");
   const [reportDate, setReportDate] = useState("");
   const [selectedTestIds, setSelectedTestIds] = useState([]);
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
 
   const loadData = useCallback(async () => {
     if (!token || !userId) return;
@@ -157,11 +222,38 @@ export function UserTestRecommendationsPanel({
     return fromTests.sort();
   }, [catalogGrouped, catalogTests]);
 
+  const filteredCategories = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const activeCategory = categoryFilter.trim();
+
+    return categories
+      .filter((category) => !activeCategory || category === activeCategory)
+      .map((category) => {
+        const tests = catalogGrouped[category] || catalogTests.filter((t) => t.category === category);
+        const filteredTests = q
+          ? tests.filter((test) => {
+              const haystack = [test.name, test.type, test.category].filter(Boolean).join(" ").toLowerCase();
+              return haystack.includes(q);
+            })
+          : tests;
+
+        return { category, tests: [...filteredTests].sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""))) };
+      })
+      .filter((group) => group.tests.length > 0);
+  }, [catalogGrouped, catalogTests, categories, categoryFilter, search]);
+
+  const visibleTestCount = useMemo(
+    () => filteredCategories.reduce((sum, group) => sum + group.tests.length, 0),
+    [filteredCategories]
+  );
+
   const toggleTest = (testId) => {
     setSelectedTestIds((prev) =>
       prev.includes(testId) ? prev.filter((id) => id !== testId) : [...prev, testId]
     );
   };
+
+  const clearSelection = () => setSelectedTestIds([]);
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -181,6 +273,7 @@ export function UserTestRecommendationsPanel({
       await Swal.fire({ icon: "success", title: "Recommendation created", timer: 1500, showConfirmButton: false });
       setReportDate("");
       setSelectedTestIds([]);
+      setSearch("");
       await loadData();
     } catch (err) {
       if (err?.status === 401) onUnauthorized?.();
@@ -241,9 +334,12 @@ export function UserTestRecommendationsPanel({
         {!readOnly ? (
           <form className="form-card diet-plan-upload" onSubmit={handleCreate}>
             <h3 className="form-card__title">Create new recommendation</h3>
-            <div className="form-grid">
-              <label className="user-field">
-                <span className="user-field__label">Report date</span>
+
+            <div className="row g-3">
+              <label className="user-field col-12 col-md-4">
+                <span className="user-field__label">
+                  Report date <span className="required-dot">*</span>
+                </span>
                 <input
                   className="user-field__input"
                   type="date"
@@ -254,44 +350,89 @@ export function UserTestRecommendationsPanel({
               </label>
             </div>
 
-            <div className="form-section" style={{ marginTop: 16 }}>
-              <span className="user-field__label">Select tests from catalog</span>
+            <div className="form-section" style={{ marginTop: 20 }}>
+              <div className="form-section__header">
+                <span className="user-field__label" style={{ marginBottom: 0 }}>
+                  Select tests from catalog <span className="required-dot">*</span>
+                </span>
+              </div>
+
+              <div className="catalog-picker__toolbar">
+                <label className="user-field">
+                  <span className="user-field__label">Search</span>
+                  <input
+                    className="user-field__input"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Test name…"
+                  />
+                </label>
+                <label className="user-field">
+                  <span className="user-field__label">Category</span>
+                  <select
+                    className="user-field__input"
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                  >
+                    <option value="">All categories</option>
+                    {categories.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="catalog-picker__summary">
+                  <span>
+                    {selectedTestIds.length} selected · {visibleTestCount} shown
+                  </span>
+                  {selectedTestIds.length > 0 ? (
+                    <button type="button" className="btn btn--ghost btn--sm" onClick={clearSelection}>
+                      Clear
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+
               {categories.length === 0 ? (
                 <p className="table-placeholder">No active tests in catalog. Ask admin to add tests.</p>
+              ) : filteredCategories.length === 0 ? (
+                <p className="table-placeholder">No matching tests. Try another search or category.</p>
               ) : (
-                categories.map((category) => {
-                  const tests = catalogGrouped[category] || catalogTests.filter((t) => t.category === category);
-                  return (
-                    <div key={category} style={{ marginTop: 12 }}>
-                      <div className="form-card__title" style={{ fontSize: "0.95rem" }}>
-                        {category}
-                      </div>
-                      <div className="checkbox-list">
+                filteredCategories.map(({ category, tests }) => (
+                  <div key={category} className="catalog-picker__group">
+                    <div className="catalog-picker__group-title">{category}</div>
+                    <div className="catalog-picker">
+                      <div className="catalog-picker__grid">
                         {tests.map((test) => {
                           const id = test.id || test._id;
                           return (
-                            <label key={id} className="checkbox-list__item">
-                              <input
-                                type="checkbox"
-                                checked={selectedTestIds.includes(id)}
-                                onChange={() => toggleTest(id)}
-                              />
-                              <span>
-                                {test.name}
-                                <small className="data-table__muted"> ({test.type})</small>
-                              </span>
-                            </label>
+                            <TestPickerCard
+                              key={id}
+                              test={test}
+                              selected={selectedTestIds.includes(id)}
+                              onToggle={toggleTest}
+                            />
                           );
                         })}
                       </div>
                     </div>
-                  );
-                })
+                  </div>
+                ))
               )}
             </div>
 
-            <div className="form-card__actions">
-              <button type="submit" className="btn btn--primary" disabled={creating || !selectedTestIds.length}>
+            <div className="diet-assign-form__actions">
+              <span className="diet-assign-form__hint">
+                {selectedTestIds.length
+                  ? `${selectedTestIds.length} test(s) will be included in the PDF recommendation.`
+                  : "Select one or more tests and a report date to create a recommendation."}
+              </span>
+              <button
+                type="submit"
+                className="btn btn--primary"
+                disabled={creating || !selectedTestIds.length || !reportDate}
+              >
                 {creating ? "Creating…" : "Create recommendation"}
               </button>
             </div>
