@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { assistantListHealUsers } from "../../api/assistantHealUsers.js";
 import { logoutAssistant } from "../../../store/authSlice.js";
 import { CoachTableLoaderRow } from "../../../wellnessCoach/components/CoachPageLoader.jsx";
 import { UserTierBadge } from "../../../components/ReferralAssignmentShared.jsx";
+import { ClientListRowStats } from "../../../components/ClientListRowStats.jsx";
 
 function formatDate(iso) {
   if (!iso) return "—";
@@ -99,7 +99,7 @@ export function AssistantMyHealUsersList() {
               <th>Phone</th>
               <th>Tier</th>
               <th>Joined</th>
-              <th className="data-table__actions-col">Actions</th>
+              <th>Programs</th>
             </tr>
           </thead>
           <tbody>
@@ -124,59 +124,7 @@ export function AssistantMyHealUsersList() {
                   </td>
                   <td>{formatDate(u.convertedAt || u.createdAt)}</td>
                   <td>
-                    <div className="row-actions row-actions--text">
-                      <Link
-                        to={`${u._id || u.id}/water-tracking`}
-                        className="btn btn--ghost btn--sm"
-                      >
-                        Water history
-                      </Link>
-                      <Link
-                        to={`${u._id || u.id}/steps-tracking`}
-                        className="btn btn--ghost btn--sm"
-                      >
-                        Steps history
-                      </Link>
-                      <Link
-                        to={`${u._id || u.id}/reminders`}
-                        className="btn btn--ghost btn--sm"
-                      >
-                        Reminders
-                      </Link>
-                      <Link
-                        to={`${u._id || u.id}/diet-plan`}
-                        className="btn btn--ghost btn--sm"
-                      >
-                        Diet plan
-                      </Link>
-                      <Link
-                        to={`${u._id || u.id}/test-recommendations`}
-                        className="btn btn--ghost btn--sm"
-                      >
-                        Internal parameters
-                      </Link>
-                      <Link
-                        to={`${u._id || u.id}/physical-exercises`}
-                        className="btn btn--ghost btn--sm"
-                      >
-                        Physical exercises
-                      </Link>
-                      <Link
-                        to={`${u._id || u.id}/meal-tracking`}
-                        className="btn btn--ghost btn--sm"
-                      >
-                        Meal tracking
-                      </Link>
-                      <Link
-                        to={`${u._id || u.id}/prakruti-assessment`}
-                        className="btn btn--ghost btn--sm"
-                        title={String(u.userTier || "").toLowerCase() !== "heal" ? "Heal tier only" : undefined}
-                        style={String(u.userTier || "").toLowerCase() !== "heal" ? { opacity: 0.45, pointerEvents: "none" } : undefined}
-                        aria-disabled={String(u.userTier || "").toLowerCase() !== "heal"}
-                      >
-                        Prakruti assessment
-                      </Link>
-                    </div>
+                    <ClientListRowStats user={u} viewPath={`${u._id || u.id}`} />
                   </td>
                 </tr>
               ))

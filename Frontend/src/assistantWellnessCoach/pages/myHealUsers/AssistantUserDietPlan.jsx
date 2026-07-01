@@ -16,7 +16,7 @@ const dietPlanAssignmentApi = {
   remove: assistantDeleteDietPlanAssignment,
 };
 
-export function AssistantUserDietPlan() {
+export function AssistantUserDietPlan({ embedded = false }) {
   const dispatch = useDispatch();
   const { userId } = useParams();
   const assistantToken = useSelector((s) => s.auth.assistantToken);
@@ -26,7 +26,7 @@ export function AssistantUserDietPlan() {
       token={assistantToken}
       userId={userId}
       api={dietPlanAssignmentApi}
-      backTo="/assistant/my-users"
+      backTo={embedded ? null : "/assistant/my-users"}
       PageLoader={CoachPageLoadingState}
       NotFoundPage={NotFoundPage}
       onUnauthorized={() => dispatch(logoutAssistant())}

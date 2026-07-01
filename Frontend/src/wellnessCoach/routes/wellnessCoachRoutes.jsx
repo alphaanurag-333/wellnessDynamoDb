@@ -4,15 +4,8 @@ import { WellnessCoachLayout } from "../layout/WellnessCoachLayout.jsx";
 import { CoachDashboardPage } from "../pages/DashboardPage.jsx";
 import { CoachProfile } from "../pages/CoachProfile.jsx";
 import { MyHealUsersList } from "../pages/myHealUsers/MyHealUsersList.jsx";
-import { CoachUserWaterTrackingPage } from "../pages/myHealUsers/CoachUserWaterTrackingPage.jsx";
-import { CoachUserStepsTrackingPage } from "../pages/myHealUsers/CoachUserStepsTrackingPage.jsx";
-import { UserReminders } from "../pages/userReminders/UserReminders.jsx";
-import { UserDietPlan } from "../pages/myHealUsers/UserDietPlan.jsx";
-import { UserTestRecommendations } from "../pages/myHealUsers/UserTestRecommendations.jsx";
-import { UserPhysicalExercises } from "../pages/myHealUsers/UserPhysicalExercises.jsx";
-import { CoachUserMealTrackingPage } from "../pages/myHealUsers/CoachUserMealTrackingPage.jsx";
-import { UserLaunchAssessment } from "../pages/myHealUsers/UserLaunchAssessment.jsx";
-import { UserPrakrutiAssessment } from "../pages/myHealUsers/UserPrakrutiAssessment.jsx";
+import { UserClientHub } from "../pages/myHealUsers/UserClientHub.jsx";
+import { ClientHubLegacyRedirect } from "../../components/ClientHubLegacyRedirect.jsx";
 import { MyAssistantList } from "../pages/myAssistants/MyAssistantList.jsx";
 import { MyAssistantAdd } from "../pages/myAssistants/MyAssistantAdd.jsx";
 import { MyAssistantEdit } from "../pages/myAssistants/MyAssistantEdit.jsx";
@@ -28,15 +21,16 @@ export const wellnessCoachRouteTree = (
     <Route path="profile" element={<CoachProfile />} />
     <Route path="my-assistants" element={<MyAssistantList />} />
     <Route path="my-users" element={<MyHealUsersList />} />
-    <Route path="my-users/:userId/water-tracking" element={<CoachUserWaterTrackingPage />} />
-    <Route path="my-users/:userId/steps-tracking" element={<CoachUserStepsTrackingPage />} />
-    <Route path="my-users/:userId/reminders" element={<UserReminders />} />
-    <Route path="my-users/:userId/diet-plan" element={<UserDietPlan />} />
-    <Route path="my-users/:userId/test-recommendations" element={<UserTestRecommendations />} />
-    <Route path="my-users/:userId/physical-exercises" element={<UserPhysicalExercises />} />
-    <Route path="my-users/:userId/meal-tracking" element={<CoachUserMealTrackingPage />} />
-    <Route path="my-users/:userId/launch-assessment" element={<UserLaunchAssessment />} />
-    <Route path="my-users/:userId/prakruti-assessment" element={<UserPrakrutiAssessment />} />
+    <Route path="my-users/:userId" element={<UserClientHub />} />
+    <Route path="my-users/:userId/water-tracking" element={<ClientHubLegacyRedirect segment="water-tracking" basePath="/coach" />} />
+    <Route path="my-users/:userId/steps-tracking" element={<ClientHubLegacyRedirect segment="steps-tracking" basePath="/coach" />} />
+    <Route path="my-users/:userId/reminders" element={<ClientHubLegacyRedirect segment="reminders" basePath="/coach" />} />
+    <Route path="my-users/:userId/diet-plan" element={<ClientHubLegacyRedirect segment="diet-plan" basePath="/coach" />} />
+    <Route path="my-users/:userId/test-recommendations" element={<ClientHubLegacyRedirect segment="test-recommendations" basePath="/coach" />} />
+    <Route path="my-users/:userId/physical-exercises" element={<ClientHubLegacyRedirect segment="physical-exercises" basePath="/coach" />} />
+    <Route path="my-users/:userId/meal-tracking" element={<ClientHubLegacyRedirect segment="meal-tracking" basePath="/coach" />} />
+    <Route path="my-users/:userId/launch-assessment" element={<ClientHubLegacyRedirect segment="launch-assessment" basePath="/coach" />} />
+    <Route path="my-users/:userId/prakruti-assessment" element={<ClientHubLegacyRedirect segment="prakruti-assessment" basePath="/coach" />} />
     <Route path="consultancy/transactions" element={<CoachConsultancyTransactionList />} />
     <Route path="consultancy/enrolled-users" element={<CoachConsultancyEnrolledUsersList />} />
     <Route path="consultancy/clients/:userId" element={<CoachConsultancyClientPage />} />

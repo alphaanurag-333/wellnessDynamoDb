@@ -85,6 +85,7 @@ export function LaunchAssessmentPanel({
   userId,
   api,
   backTo = "/coach/my-users",
+  embedded = false,
   PageLoader,
   NotFoundPage,
   onUnauthorized,
@@ -291,7 +292,8 @@ export function LaunchAssessmentPanel({
   if (loading && PageLoader) return <PageLoader label="Loading LAUNCH assessment…" />;
 
   return (
-    <div className="page-card launch-assessment-page">
+    <div className={`page-card launch-assessment-page${embedded ? " launch-assessment-page--embedded" : ""}`}>
+      {!embedded ? (
       <div className="launch-assessment-page__toolbar">
         <Link to={backTo} className="btn btn--ghost btn--sm launch-assessment-page__back">
           ← Back to clients
@@ -305,13 +307,27 @@ export function LaunchAssessmentPanel({
           {exporting ? "Exporting…" : "Download questions (Excel)"}
         </button>
       </div>
+      ) : null}
 
+      {!embedded ? (
       <div className="launch-assessment-page__intro">
         <h2 className="page-card__title">LAUNCH Assessment</h2>
         <p className="page-card__desc">
           Conduct the assessment manually using the question sheet. Log only the final lifestyle score here, date-wise.
         </p>
       </div>
+      ) : (
+      <div className="launch-assessment-page__toolbar launch-assessment-page__toolbar--embedded">
+        <button
+          type="button"
+          className="btn btn--ghost btn--sm"
+          onClick={onExportQuestions}
+          disabled={exporting || questionTotal === 0}
+        >
+          {exporting ? "Exporting…" : "Download questions (Excel)"}
+        </button>
+      </div>
+      )}
 
       <div className="launch-assessment-page__dashboard">
         <div className="launch-assessment-page__gauge-col">

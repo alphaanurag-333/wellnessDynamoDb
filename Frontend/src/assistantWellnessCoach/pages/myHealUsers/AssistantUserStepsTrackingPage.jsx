@@ -8,7 +8,7 @@ import { StepsTrackingHistoryPanel } from "../../../components/StepsTrackingHist
 import { TRACKING_HISTORY_DEFAULT_DAYS } from "../../../components/trackingHistoryStats.js";
 import { useRegisterHeaderRefresh } from "../../../hooks/useRegisterHeaderRefresh.js";
 
-export function AssistantUserStepsTrackingPage() {
+export function AssistantUserStepsTrackingPage({ embedded = false }) {
   const { userId } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -78,7 +78,7 @@ export function AssistantUserStepsTrackingPage() {
       error={error}
       days={days}
       onDaysChange={setDays}
-      onBack={() => navigate("/assistant/my-users")}
+      onBack={embedded ? undefined : () => navigate("/assistant/my-users")}
     />
   );
 }

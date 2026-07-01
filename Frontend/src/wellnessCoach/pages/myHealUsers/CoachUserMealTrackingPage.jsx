@@ -18,7 +18,7 @@ const mealTrackingApi = {
   remove: coachDeleteMealLog,
 };
 
-export function CoachUserMealTrackingPage() {
+export function CoachUserMealTrackingPage({ embedded = false }) {
   const dispatch = useDispatch();
   const { userId } = useParams();
   const coachToken = useSelector((s) => s.auth.coachToken);
@@ -28,7 +28,7 @@ export function CoachUserMealTrackingPage() {
       token={coachToken}
       userId={userId}
       api={mealTrackingApi}
-      backTo="/coach/my-users"
+      backTo={embedded ? null : "/coach/my-users"}
       PageLoader={CoachPageLoadingState}
       NotFoundPage={NotFoundPage}
       onUnauthorized={() => dispatch(logoutCoach())}

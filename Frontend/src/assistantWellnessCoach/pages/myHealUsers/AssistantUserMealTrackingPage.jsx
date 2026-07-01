@@ -18,7 +18,7 @@ const mealTrackingApi = {
   remove: assistantDeleteMealLog,
 };
 
-export function AssistantUserMealTrackingPage() {
+export function AssistantUserMealTrackingPage({ embedded = false }) {
   const dispatch = useDispatch();
   const { userId } = useParams();
   const assistantToken = useSelector((s) => s.auth.assistantToken);
@@ -28,7 +28,7 @@ export function AssistantUserMealTrackingPage() {
       token={assistantToken}
       userId={userId}
       api={mealTrackingApi}
-      backTo="/assistant/my-users"
+      backTo={embedded ? null : "/assistant/my-users"}
       PageLoader={CoachPageLoadingState}
       NotFoundPage={NotFoundPage}
       onUnauthorized={() => dispatch(logoutAssistant())}

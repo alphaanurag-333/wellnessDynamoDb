@@ -9,7 +9,7 @@ import { StepsTrackingHistoryPanel } from "../../../components/StepsTrackingHist
 import { TRACKING_HISTORY_DEFAULT_DAYS } from "../../../components/trackingHistoryStats.js";
 import { useRegisterHeaderRefresh } from "../../../hooks/useRegisterHeaderRefresh.js";
 
-export function CoachUserStepsTrackingPage() {
+export function CoachUserStepsTrackingPage({ embedded = false }) {
   const { userId } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -83,7 +83,7 @@ export function CoachUserStepsTrackingPage() {
       error={error}
       days={days}
       onDaysChange={setDays}
-      onBack={() => navigate("/coach/my-users")}
+      onBack={embedded ? undefined : () => navigate("/coach/my-users")}
       backLabel="Back to clients"
     />
   );

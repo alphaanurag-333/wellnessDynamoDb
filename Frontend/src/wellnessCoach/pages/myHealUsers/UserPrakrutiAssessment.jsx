@@ -20,7 +20,7 @@ const prakrutiApi = {
   downloadExport: coachDownloadPrakrutiQuestionsExport,
 };
 
-export function UserPrakrutiAssessment() {
+export function UserPrakrutiAssessment({ embedded = false }) {
   const dispatch = useDispatch();
   const { userId } = useParams();
   const coachToken = useSelector((s) => s.auth.coachToken);
@@ -30,7 +30,8 @@ export function UserPrakrutiAssessment() {
       token={coachToken}
       userId={userId}
       api={prakrutiApi}
-      backTo="/coach/my-users"
+      backTo={embedded ? null : "/coach/my-users"}
+      embedded={embedded}
       PageLoader={CoachPageLoadingState}
       NotFoundPage={NotFoundPage}
       onUnauthorized={() => dispatch(logoutCoach())}

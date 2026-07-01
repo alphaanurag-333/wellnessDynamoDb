@@ -16,7 +16,7 @@ const physicalExerciseApi = {
   remove: coachRemovePhysicalExercise,
 };
 
-export function UserPhysicalExercises() {
+export function UserPhysicalExercises({ embedded = false }) {
   const dispatch = useDispatch();
   const { userId } = useParams();
   const coachToken = useSelector((s) => s.auth.coachToken);
@@ -26,7 +26,7 @@ export function UserPhysicalExercises() {
       token={coachToken}
       userId={userId}
       api={physicalExerciseApi}
-      backTo="/coach/my-users"
+      backTo={embedded ? null : "/coach/my-users"}
       PageLoader={CoachPageLoadingState}
       NotFoundPage={NotFoundPage}
       onUnauthorized={() => dispatch(logoutCoach())}

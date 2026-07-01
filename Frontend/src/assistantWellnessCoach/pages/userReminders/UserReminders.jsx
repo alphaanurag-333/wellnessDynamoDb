@@ -20,7 +20,7 @@ const reminderApi = {
   remove: assistantDeleteUserReminder,
 };
 
-export function UserReminders() {
+export function UserReminders({ embedded = false }) {
   const dispatch = useDispatch();
   const { userId } = useParams();
   const assistantToken = useSelector((s) => s.auth.assistantToken);
@@ -30,7 +30,7 @@ export function UserReminders() {
       token={assistantToken}
       userId={userId}
       api={reminderApi}
-      backTo="/assistant/my-users"
+      backTo={embedded ? null : "/assistant/my-users"}
       PageLoader={CoachPageLoadingState}
       NotFoundPage={NotFoundPage}
       onUnauthorized={() => dispatch(logoutAssistant())}

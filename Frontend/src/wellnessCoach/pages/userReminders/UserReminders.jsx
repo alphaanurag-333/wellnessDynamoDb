@@ -20,7 +20,7 @@ const reminderApi = {
   remove: coachDeleteUserReminder,
 };
 
-export function UserReminders() {
+export function UserReminders({ embedded = false }) {
   const dispatch = useDispatch();
   const { userId } = useParams();
   const coachToken = useSelector((s) => s.auth.coachToken);
@@ -30,7 +30,7 @@ export function UserReminders() {
       token={coachToken}
       userId={userId}
       api={reminderApi}
-      backTo="/coach/my-users"
+      backTo={embedded ? null : "/coach/my-users"}
       PageLoader={CoachPageLoadingState}
       NotFoundPage={NotFoundPage}
       onUnauthorized={() => dispatch(logoutCoach())}

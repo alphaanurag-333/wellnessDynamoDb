@@ -24,7 +24,7 @@ const launchApi = {
   downloadExport: assistantDownloadLaunchQuestionsExport,
 };
 
-export function AssistantUserLaunchAssessment() {
+export function AssistantUserLaunchAssessment({ embedded = false }) {
   const dispatch = useDispatch();
   const { userId } = useParams();
   const assistantToken = useSelector((s) => s.auth.assistantToken);
@@ -34,7 +34,8 @@ export function AssistantUserLaunchAssessment() {
       token={assistantToken}
       userId={userId}
       api={launchApi}
-      backTo="/assistant/my-users"
+      backTo={embedded ? null : "/assistant/my-users"}
+      embedded={embedded}
       PageLoader={CoachPageLoadingState}
       NotFoundPage={NotFoundPage}
       onUnauthorized={() => dispatch(logoutAssistant())}

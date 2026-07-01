@@ -16,7 +16,7 @@ const physicalExerciseApi = {
   remove: assistantRemovePhysicalExercise,
 };
 
-export function AssistantUserPhysicalExercises() {
+export function AssistantUserPhysicalExercises({ embedded = false }) {
   const dispatch = useDispatch();
   const { userId } = useParams();
   const assistantToken = useSelector((s) => s.auth.assistantToken);
@@ -26,7 +26,7 @@ export function AssistantUserPhysicalExercises() {
       token={assistantToken}
       userId={userId}
       api={physicalExerciseApi}
-      backTo="/assistant/my-users"
+      backTo={embedded ? null : "/assistant/my-users"}
       PageLoader={CoachPageLoadingState}
       NotFoundPage={NotFoundPage}
       onUnauthorized={() => dispatch(logoutAssistant())}

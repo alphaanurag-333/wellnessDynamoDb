@@ -16,7 +16,7 @@ const dietPlanAssignmentApi = {
   remove: coachDeleteDietPlanAssignment,
 };
 
-export function UserDietPlan() {
+export function UserDietPlan({ embedded = false }) {
   const dispatch = useDispatch();
   const { userId } = useParams();
   const coachToken = useSelector((s) => s.auth.coachToken);
@@ -26,7 +26,7 @@ export function UserDietPlan() {
       token={coachToken}
       userId={userId}
       api={dietPlanAssignmentApi}
-      backTo="/coach/my-users"
+      backTo={embedded ? null : "/coach/my-users"}
       PageLoader={CoachPageLoadingState}
       NotFoundPage={NotFoundPage}
       onUnauthorized={() => dispatch(logoutCoach())}

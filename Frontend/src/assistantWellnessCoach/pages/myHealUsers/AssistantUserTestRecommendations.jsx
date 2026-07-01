@@ -18,7 +18,7 @@ const testRecommendationApi = {
   listLabReports: assistantListUserLabReports,
 };
 
-export function AssistantUserTestRecommendations() {
+export function AssistantUserTestRecommendations({ embedded = false }) {
   const dispatch = useDispatch();
   const { userId } = useParams();
   const assistantToken = useSelector((s) => s.auth.assistantToken);
@@ -28,7 +28,7 @@ export function AssistantUserTestRecommendations() {
       token={assistantToken}
       userId={userId}
       api={testRecommendationApi}
-      backTo="/assistant/my-users"
+      backTo={embedded ? null : "/assistant/my-users"}
       PageLoader={CoachPageLoadingState}
       NotFoundPage={NotFoundPage}
       onUnauthorized={() => dispatch(logoutAssistant())}

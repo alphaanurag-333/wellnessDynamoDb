@@ -20,7 +20,7 @@ const prakrutiApi = {
   downloadExport: assistantDownloadPrakrutiQuestionsExport,
 };
 
-export function AssistantUserPrakrutiAssessment() {
+export function AssistantUserPrakrutiAssessment({ embedded = false }) {
   const dispatch = useDispatch();
   const { userId } = useParams();
   const assistantToken = useSelector((s) => s.auth.assistantToken);
@@ -30,7 +30,8 @@ export function AssistantUserPrakrutiAssessment() {
       token={assistantToken}
       userId={userId}
       api={prakrutiApi}
-      backTo="/assistant/my-users"
+      backTo={embedded ? null : "/assistant/my-users"}
+      embedded={embedded}
       PageLoader={CoachPageLoadingState}
       NotFoundPage={NotFoundPage}
       onUnauthorized={() => dispatch(logoutAssistant())}

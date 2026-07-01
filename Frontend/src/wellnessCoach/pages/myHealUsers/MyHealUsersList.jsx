@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import Swal from "sweetalert2";
 import { useDispatch, useSelector } from "react-redux";
 import { coachListAssistants } from "../../api/coachAssistants.js";
@@ -10,6 +9,7 @@ import {
   formatAssignedCoachLabel,
   UserTierBadge,
 } from "../../../components/ReferralAssignmentShared.jsx";
+import { ClientListRowStats } from "../../../components/ClientListRowStats.jsx";
 
 function formatDate(iso) {
   if (!iso) return "—";
@@ -162,7 +162,7 @@ export function MyHealUsersList() {
               <th>Tier</th>
               <th>Assigned to</th>
               <th>Joined</th>
-              <th className="data-table__actions-col">Actions</th>
+              <th>Programs</th>
             </tr>
           </thead>
           <tbody>
@@ -188,71 +188,11 @@ export function MyHealUsersList() {
                   <td>{formatAssignedCoachLabel(u)}</td>
                   <td>{formatDate(u.convertedAt || u.createdAt)}</td>
                   <td>
-                    <div className="row-actions row-actions--text">
-                      <Link
-                        to={`${u._id || u.id}/water-tracking`}
-                        className="btn btn--ghost btn--sm"
-                      >
-                        Water history
-                      </Link>
-                      <Link
-                        to={`${u._id || u.id}/steps-tracking`}
-                        className="btn btn--ghost btn--sm"
-                      >
-                        Steps history
-                      </Link>
-                      <Link
-                        to={`${u._id || u.id}/reminders`}
-                        className="btn btn--ghost btn--sm"
-                      >
-                        Reminders
-                      </Link>
-                      <Link
-                        to={`${u._id || u.id}/diet-plan`}
-                        className="btn btn--ghost btn--sm"
-                      >
-                        Diet plan
-                      </Link>
-                      <Link
-                        to={`${u._id || u.id}/test-recommendations`}
-                        className="btn btn--ghost btn--sm"
-                      >
-                        Internal parameters
-                      </Link>
-                      <Link
-                        to={`${u._id || u.id}/physical-exercises`}
-                        className="btn btn--ghost btn--sm"
-                      >
-                        Physical exercises
-                      </Link>
-                      <Link
-                        to={`${u._id || u.id}/meal-tracking`}
-                        className="btn btn--ghost btn--sm"
-                      >
-                        Meal tracking
-                      </Link>
-                      <Link
-                        to={`${u._id || u.id}/launch-assessment`}
-                        className="btn btn--ghost btn--sm"
-                        title={String(u.userTier || "").toLowerCase() !== "heal" ? "Heal tier only" : undefined}
-                        style={String(u.userTier || "").toLowerCase() !== "heal" ? { opacity: 0.45, pointerEvents: "none" } : undefined}
-                        aria-disabled={String(u.userTier || "").toLowerCase() !== "heal"}
-                      >
-                        LAUNCH assessment
-                      </Link>
-                      <Link
-                        to={`${u._id || u.id}/prakruti-assessment`}
-                        className="btn btn--ghost btn--sm"
-                        title={String(u.userTier || "").toLowerCase() !== "heal" ? "Heal tier only" : undefined}
-                        style={String(u.userTier || "").toLowerCase() !== "heal" ? { opacity: 0.45, pointerEvents: "none" } : undefined}
-                        aria-disabled={String(u.userTier || "").toLowerCase() !== "heal"}
-                      >
-                        Prakruti assessment
-                      </Link>
-                      <button type="button" className="btn btn--ghost btn--sm" onClick={() => handleReassign(u)}>
-                        Reassign
-                      </button>
-                    </div>
+                    <ClientListRowStats
+                      user={u}
+                      viewPath={`${u._id || u.id}`}
+                      onReassign={handleReassign}
+                    />
                   </td>
                 </tr>
               ))

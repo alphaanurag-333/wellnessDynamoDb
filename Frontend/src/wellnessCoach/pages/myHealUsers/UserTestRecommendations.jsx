@@ -18,7 +18,7 @@ const testRecommendationApi = {
   listLabReports: coachListUserLabReports,
 };
 
-export function UserTestRecommendations() {
+export function UserTestRecommendations({ embedded = false }) {
   const dispatch = useDispatch();
   const { userId } = useParams();
   const coachToken = useSelector((s) => s.auth.coachToken);
@@ -28,7 +28,7 @@ export function UserTestRecommendations() {
       token={coachToken}
       userId={userId}
       api={testRecommendationApi}
-      backTo="/coach/my-users"
+      backTo={embedded ? null : "/coach/my-users"}
       PageLoader={CoachPageLoadingState}
       NotFoundPage={NotFoundPage}
       onUnauthorized={() => dispatch(logoutCoach())}

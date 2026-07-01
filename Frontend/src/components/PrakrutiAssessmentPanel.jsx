@@ -59,6 +59,7 @@ export function PrakrutiAssessmentPanel({
   userId,
   api,
   backTo = "/coach/my-users",
+  embedded = false,
   PageLoader,
   NotFoundPage,
   onUnauthorized,
@@ -267,7 +268,8 @@ export function PrakrutiAssessmentPanel({
   if (loading && PageLoader) return <PageLoader label="Loading Prakruti assessment…" />;
 
   return (
-    <div className="page-card launch-assessment-page prakruti-assessment-page">
+    <div className={`page-card launch-assessment-page prakruti-assessment-page${embedded ? " prakruti-assessment-page--embedded" : ""}`}>
+      {!embedded ? (
       <div className="launch-assessment-page__toolbar">
         <Link to={backTo} className="btn btn--ghost btn--sm launch-assessment-page__back">
           ← Back to clients
@@ -276,13 +278,22 @@ export function PrakrutiAssessmentPanel({
           {exporting ? "Exporting…" : "Download questions (Excel)"}
         </button>
       </div>
+      ) : (
+      <div className="launch-assessment-page__toolbar launch-assessment-page__toolbar--embedded">
+        <button type="button" className="btn btn--ghost btn--sm" onClick={onExportQuestions} disabled={exporting || questionTotal === 0}>
+          {exporting ? "Exporting…" : "Download questions (Excel)"}
+        </button>
+      </div>
+      )}
 
+      {!embedded ? (
       <div className="launch-assessment-page__intro">
         <h2 className="page-card__title">Prakruti Assessment</h2>
         <p className="page-card__desc">
           Conduct the assessment using the question sheet, then set the client&apos;s Prakruti type and select things to avoid from the admin catalog.
         </p>
       </div>
+      ) : null}
 
       <div className="prakruti-assessment-page__body">
         <div className="prakruti-assessment-page__main">

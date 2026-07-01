@@ -8,7 +8,7 @@ import { WaterTrackingHistoryPanel } from "../../../components/WaterTrackingHist
 import { TRACKING_HISTORY_DEFAULT_DAYS } from "../../../components/trackingHistoryStats.js";
 import { useRegisterHeaderRefresh } from "../../../hooks/useRegisterHeaderRefresh.js";
 
-export function AssistantUserWaterTrackingPage() {
+export function AssistantUserWaterTrackingPage({ embedded = false }) {
   const { userId } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -75,7 +75,7 @@ export function AssistantUserWaterTrackingPage() {
       error={error}
       days={days}
       onDaysChange={setDays}
-      onBack={() => navigate("/assistant/my-users")}
+      onBack={embedded ? undefined : () => navigate("/assistant/my-users")}
       backLabel="Back to clients"
     />
   );

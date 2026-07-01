@@ -313,11 +313,13 @@ export function UserTestRecommendationsPanel({
   return (
     <div className="user-page">
       <div className="user-page__toolbar">
+        {backTo ? (
         <Link to={backTo} className="user-back-btn" aria-label="Back to clients">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M15 18 9 12l6-6" />
           </svg>
         </Link>
+        ) : null}
         <div className="user-page__toolbar-text">
           <h2 className="user-page__title">Internal Parameters</h2>
           <p className="user-page__subtitle">Recommend blood tests and generate a downloadable PDF list.</p>
