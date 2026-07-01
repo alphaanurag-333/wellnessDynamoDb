@@ -10,7 +10,10 @@ import { UserReminders } from "../pages/userReminders/UserReminders.jsx";
 import { AssistantUserDietPlan } from "../pages/myHealUsers/AssistantUserDietPlan.jsx";
 import { AssistantUserTestRecommendations } from "../pages/myHealUsers/AssistantUserTestRecommendations.jsx";
 import { AssistantUserPhysicalExercises } from "../pages/myHealUsers/AssistantUserPhysicalExercises.jsx";
+import { AssistantUserSupplementRecommendations } from "../pages/myHealUsers/AssistantUserSupplementRecommendations.jsx";
+import { AssistantUserSupplementDosage } from "../pages/myHealUsers/AssistantUserSupplementDosage.jsx";
 import { AssistantUserMealTrackingPage } from "../pages/myHealUsers/AssistantUserMealTrackingPage.jsx";
+import { AssistantMealApprovalsPage } from "../pages/mealReview/AssistantMealApprovalsPage.jsx";
 import { AssistantConsultancyTransactionList } from "../pages/consultancy/AssistantConsultancyTransactionList.jsx";
 import { AssistantConsultancyEnrolledUsersList } from "../pages/consultancy/AssistantConsultancyEnrolledUsersList.jsx";
 
@@ -26,7 +29,10 @@ export const assistantWellnessCoachRouteTree = (
     <Route path="my-users/:userId/diet-plan" element={<AssistantUserDietPlan />} />
     <Route path="my-users/:userId/test-recommendations" element={<AssistantUserTestRecommendations />} />
     <Route path="my-users/:userId/physical-exercises" element={<AssistantUserPhysicalExercises />} />
+    <Route path="my-users/:userId/supplement-recommendations" element={<AssistantUserSupplementRecommendations />} />
+    <Route path="my-users/:userId/supplement-dosage" element={<AssistantUserSupplementDosage />} />
     <Route path="my-users/:userId/meal-tracking" element={<AssistantUserMealTrackingPage />} />
+    <Route path="meal-approvals" element={<AssistantMealApprovalsPage />} />
     <Route path="consultancy/transactions" element={<AssistantConsultancyTransactionList />} />
     <Route path="consultancy/enrolled-users" element={<AssistantConsultancyEnrolledUsersList />} />
     <Route path="*" element={<NotFoundPage />} />

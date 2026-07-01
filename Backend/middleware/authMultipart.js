@@ -94,6 +94,8 @@ exports.optionalTransformationFiles = optionalMultipart(transformationUploads);
 exports.optionalProgressPhotoFiles = optionalMultipart(progressPhotoUploads);
 const dietPlanUpload = memorySingle("file");
 exports.optionalDietPlanFile = optionalMultipart(dietPlanUpload);
+const supplementBillUpload = memorySingle("file");
+exports.optionalSupplementBillFile = optionalMultipart(supplementBillUpload);
 
 const mealPhotoUpload = memorySingle("photo");
 exports.optionalMealPhotoFile = optionalMultipart(mealPhotoUpload);

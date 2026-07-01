@@ -33,6 +33,36 @@ const LOGGED_BY_ROLES = new Set([
   "user",
 ]);
 
+const VALID_STATUSES = new Set(["pending_review", "approved", "rejected"]);
+
+const REVIEWED_BY_ROLES = new Set([
+  "wellness_coach",
+  "assistant_wellness_coach",
+]);
+
+function normalizeStatus(value, fallback = "approved") {
+  const next = String(value || fallback).trim().toLowerCase();
+  return VALID_STATUSES.has(next) ? next : fallback;
+}
+
+function normalizeReviewedByRole(value) {
+  if (!value) return null;
+  const next = String(value).trim().toLowerCase();
+  return REVIEWED_BY_ROLES.has(next) ? next : null;
+}
+
+function normalizeRejectionReason(value) {
+  if (value === undefined || value === null) return null;
+  const r = String(value).trim();
+  if (!r) return null;
+  if (r.length > 500) {
+    const err = new Error("rejectionReason cannot exceed 500 characters");
+    err.name = "ValidationError";
+    throw err;
+  }
+  return r;
+}
+
 function normalizeCategory(value) {
   const cat = String(value || "meal").trim().toLowerCase();
   if (!VALID_CATEGORIES.has(cat)) {
@@ -158,6 +188,13 @@ function toMealLogPublic(item) {
     loggedByRole: item.loggedByRole ?? "wellness_coach",
     loggedById: item.loggedById ?? null,
     coachId: item.coachId ?? null,
+    status: normalizeStatus(item.status, "approved"),
+    assignedCoachId: item.assignedCoachId ?? null,
+    assignedCoachType: item.assignedCoachType ?? null,
+    reviewedAt: item.reviewedAt ?? null,
+    reviewedByRole: item.reviewedByRole ?? null,
+    reviewedById: item.reviewedById ?? null,
+    rejectionReason: item.rejectionReason ?? null,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
   };
@@ -179,11 +216,21 @@ async function createMealLog({
   caloriesKcal,
   loggedByRole,
   loggedById,
+  status,
+  assignedCoachId,
+  assignedCoachType,
 }) {
   const uid = String(userId || "").trim();
   if (!uid) throw new Error("userId is required");
 
   const logDate = isValidDateOnly(date) ? date : todayDateOnly();
+  const role = normalizeLoggedByRole(loggedByRole);
+  const resolvedStatus =
+    status !== undefined
+      ? normalizeStatus(status)
+      : role === "user"
+        ? "pending_review"
+        : "approved";
 
   const now = new Date().toISOString();
   const item = {
@@ -200,9 +247,18 @@ async function createMealLog({
     fatsGm: normalizeMacro(fatsGm, "fatsGm"),
     carbsGm: normalizeMacro(carbsGm, "carbsGm"),
     caloriesKcal: normalizeMacro(caloriesKcal, "caloriesKcal"),
-    loggedByRole: normalizeLoggedByRole(loggedByRole),
+    loggedByRole: role,
     loggedById: String(loggedById || "").trim() || null,
     coachId: coachId ? String(coachId).trim() : null,
+    status: resolvedStatus,
+    assignedCoachId: assignedCoachId ? String(assignedCoachId).trim() : null,
+    assignedCoachType: assignedCoachType
+      ? String(assignedCoachType).trim().toLowerCase()
+      : null,
+    reviewedAt: null,
+    reviewedByRole: null,
+    reviewedById: null,
+    rejectionReason: null,
     createdAt: now,
     updatedAt: now,
   };
@@ -276,6 +332,24 @@ async function updateMealLog(id, updates) {
   }
   if (updates.caloriesKcal !== undefined) {
     addField("caloriesKcal", normalizeMacro(updates.caloriesKcal, "caloriesKcal"));
+  }
+  if (updates.status !== undefined) {
+    addField("status", normalizeStatus(updates.status));
+  }
+  if (updates.reviewedAt !== undefined) {
+    addField("reviewedAt", updates.reviewedAt || null);
+  }
+  if (updates.reviewedByRole !== undefined) {
+    addField("reviewedByRole", normalizeReviewedByRole(updates.reviewedByRole));
+  }
+  if (updates.reviewedById !== undefined) {
+    addField(
+      "reviewedById",
+      updates.reviewedById ? String(updates.reviewedById).trim() : null
+    );
+  }
+  if (updates.rejectionReason !== undefined) {
+    addField("rejectionReason", normalizeRejectionReason(updates.rejectionReason));
   }
 
   const { Attributes } = await docClient.send(
@@ -372,9 +446,94 @@ async function queryMealLogsByUserId(userId) {
   return items;
 }
 
+async function reviewMealLog(
+  id,
+  {
+    status,
+    proteinGm,
+    fatsGm,
+    carbsGm,
+    caloriesKcal,
+    rejectionReason,
+    reviewedByRole,
+    reviewedById,
+  }
+) {
+  const nextStatus = normalizeStatus(status);
+  if (nextStatus === "pending_review") {
+    const err = new Error("status must be approved or rejected");
+    err.name = "ValidationError";
+    throw err;
+  }
+
+  const now = new Date().toISOString();
+  const updates = {
+    status: nextStatus,
+    reviewedAt: now,
+    reviewedByRole: normalizeReviewedByRole(reviewedByRole),
+    reviewedById: String(reviewedById || "").trim() || null,
+    rejectionReason:
+      nextStatus === "rejected"
+        ? normalizeRejectionReason(rejectionReason)
+        : null,
+  };
+
+  if (proteinGm !== undefined) {
+    updates.proteinGm = normalizeMacro(proteinGm, "proteinGm");
+  }
+  if (fatsGm !== undefined) {
+    updates.fatsGm = normalizeMacro(fatsGm, "fatsGm");
+  }
+  if (carbsGm !== undefined) {
+    updates.carbsGm = normalizeMacro(carbsGm, "carbsGm");
+  }
+  if (caloriesKcal !== undefined) {
+    updates.caloriesKcal = normalizeMacro(caloriesKcal, "caloriesKcal");
+  }
+
+  return updateMealLog(id, updates);
+}
+
+async function queryMealLogsByCoachId(coachId, { status } = {}) {
+  const cid = String(coachId || "").trim();
+  if (!cid) return [];
+
+  const items = [];
+  let lastKey;
+  const normalizedStatus = status ? normalizeStatus(status, "") : "";
+
+  do {
+    const params = {
+      TableName: TABLE,
+      IndexName: "CoachCreatedAtIndex",
+      KeyConditionExpression: "coachId = :coachId",
+      ExpressionAttributeValues: { ":coachId": cid },
+      ScanIndexForward: false,
+      ExclusiveStartKey: lastKey,
+    };
+
+    if (normalizedStatus) {
+      params.FilterExpression = "#status = :status";
+      params.ExpressionAttributeNames = { "#status": "status" };
+      params.ExpressionAttributeValues[":status"] = normalizedStatus;
+    }
+
+    const { Items = [], LastEvaluatedKey } = await docClient.send(
+      new QueryCommand(params)
+    );
+    items.push(...Items);
+    lastKey = LastEvaluatedKey;
+  } while (lastKey);
+
+  return items;
+}
+
 function computeDailyMacroSummary(mealLogs, rangeDates) {
   const byDate = new Map();
   for (const log of mealLogs) {
+    const logStatus = normalizeStatus(log.status, "approved");
+    if (logStatus !== "approved") continue;
+
     const d = log.date;
     if (!d) continue;
     if (!byDate.has(d)) {
@@ -413,7 +572,10 @@ async function getUserMealSummary(userId, { date, days = 7 } = {}) {
 
   const rawLogs = await queryMealLogsByUserAndDateRange(userId, startDate, endDate);
   const logs = rawLogs.map(toMealLogPublic).filter(Boolean);
-  const macroSummary = computeDailyMacroSummary(rawLogs, rangeDates);
+  const approvedLogs = rawLogs.filter(
+    (log) => normalizeStatus(log.status, "approved") === "approved"
+  );
+  const macroSummary = computeDailyMacroSummary(approvedLogs, rangeDates);
 
   return {
     logs,
@@ -425,20 +587,24 @@ async function getUserMealSummary(userId, { date, days = 7 } = {}) {
 module.exports = {
   TABLE,
   VALID_CATEGORIES,
+  VALID_STATUSES,
   normalizeCategory,
   normalizeMealType,
   normalizeEntryTime,
   normalizeDescription,
   normalizeMacro,
   normalizeItems,
+  normalizeStatus,
   toMealLogPublic,
   createMealLog,
   getMealLogById,
   getMealLogRecordById,
   updateMealLog,
+  reviewMealLog,
   deleteMealLog,
   queryMealLogsByUserId,
   queryMealLogsByUserAndDateRange,
+  queryMealLogsByCoachId,
   computeDailyMacroSummary,
   getUserMealSummary,
 };

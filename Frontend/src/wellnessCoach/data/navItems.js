@@ -1,6 +1,7 @@
 export const coachNavItems = [
   { to: "dashboard", label: "Dashboard", icon: "grid" },
   { to: "my-users", label: "My Clients", icon: "clipboard-list" },
+  { to: "meal-approvals", label: "Meal Approvals", icon: "clipboard-list" },
   { to: "consultancy/transactions", label: "Consultancy Payments", icon: "wallet" },
   { to: "consultancy/enrolled-users", label: "Consultancy Users", icon: "user-check" },
   { to: "my-assistants", label: "Assistants (AWC)", icon: "user-plus" },

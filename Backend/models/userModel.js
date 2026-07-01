@@ -38,6 +38,7 @@ const USER_ALLOWED_DIETARY_PREFERENCES = [
   "non_vegetarian",
   "jain",
 ];
+const USER_ALLOWED_MEAL_TRACKING_MODES = ["macro", "detailed_macro"];
 const {
   USER_ALLOWED_PAID_ONBOARDING_STEPS,
   normalizePaidOnboardingStep,
@@ -53,10 +54,16 @@ const ASSIGNMENT_STATUSES = new Set(USER_ALLOWED_ASSIGNMENT_STATUSES);
 const ASSIGNED_COACH_TYPES = new Set(USER_ALLOWED_ASSIGNED_COACH_TYPES);
 const ASSIGNMENT_SOURCES = new Set(USER_ALLOWED_ASSIGNMENT_SOURCES);
 const DIETARY_PREFERENCES = new Set(USER_ALLOWED_DIETARY_PREFERENCES);
+const MEAL_TRACKING_MODES = new Set(USER_ALLOWED_MEAL_TRACKING_MODES);
 function normalizeDietaryPreference(value) {
   if (value == null || value === "") return null;
   const next = String(value).toLowerCase().trim();
   return DIETARY_PREFERENCES.has(next) ? next : null;
+}
+
+function normalizeMealTrackingMode(value, fallback = "macro") {
+  const next = String(value || fallback).toLowerCase().trim();
+  return MEAL_TRACKING_MODES.has(next) ? next : fallback;
 }
 
 function normalizeWellnessJourneyFor(value) {
@@ -197,6 +204,7 @@ function sanitizeUpdateField(key, value) {
   if (key === "paidOnboardingStep") return normalizePaidOnboardingStep(value);
   if (key === "paidOnboardingStepStatus") return normalizePaidOnboardingStepStatus(value);
   if (key === "dietaryPreference") return normalizeDietaryPreference(value);
+  if (key === "mealTrackingMode") return normalizeMealTrackingMode(value);
   if (key === "wellnessJourneyFor") return normalizeWellnessJourneyFor(value);
   if (
     [
@@ -308,6 +316,7 @@ function buildUserItem(input, { id, now } = {}) {
     addressLine2: input.addressLine2 != null ? String(input.addressLine2).trim() || null : null,
     pincode: input.pincode != null ? String(input.pincode).trim() || null : null,
     dietaryPreference: normalizeDietaryPreference(input.dietaryPreference),
+    mealTrackingMode: normalizeMealTrackingMode(input.mealTrackingMode),
     wellnessJourneyFor: normalizeWellnessJourneyFor(input.wellnessJourneyFor),
     healPaidAt: input.healPaidAt ? normalizeDob(input.healPaidAt) : null,
     createdAt: now,
@@ -705,6 +714,7 @@ module.exports = {
   normalizeAssignmentStatus,
   normalizeAssignedCoachType,
   normalizeDietaryPreference,
+  normalizeMealTrackingMode,
   normalizePaidOnboardingStep,
   defaultPaidOnboardingStepStatus,
   normalizePaidOnboardingStepStatus,

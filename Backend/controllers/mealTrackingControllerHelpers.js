@@ -11,6 +11,34 @@ const {
 
 const S3_FOLDER = "meal-tracking";
 
+/** Placeholder macros until AI photo-scanning is integrated. */
+const DUMMY_MACROS = {
+  proteinGm: 20,
+  fatsGm: 10,
+  carbsGm: 30,
+  caloriesKcal: 250,
+};
+
+function resolveAssignedCoachForUser(user) {
+  const assignedCoachType = String(user?.assignedCoachType || "").trim().toLowerCase();
+  const assignedCoachId = String(user?.assignedCoachId || "").trim();
+  const parentCoachId = String(user?.parentCoachId || "").trim();
+
+  if (assignedCoachType === "assistant_wellness_coach" && assignedCoachId) {
+    return {
+      assignedCoachId,
+      assignedCoachType: "assistant_wellness_coach",
+      coachId: parentCoachId || assignedCoachId,
+    };
+  }
+
+  return {
+    assignedCoachId: parentCoachId || assignedCoachId || null,
+    assignedCoachType: "wellness_coach",
+    coachId: parentCoachId || assignedCoachId || null,
+  };
+}
+
 function readLogIdParam(req) {
   return String(req.params.logId || req.params.id || "").trim();
 }
@@ -83,4 +111,6 @@ module.exports = {
   handleValidationError,
   uploadMealPhoto,
   resolveCoachIdForUser,
+  DUMMY_MACROS,
+  resolveAssignedCoachForUser,
 };

@@ -18,6 +18,7 @@ export async function assistantGetUserMealTracking(token, userId, { date, days }
       logs: body.logs ?? [],
       macroSummary: body.macroSummary ?? [],
       range: body.range ?? null,
+      mealTrackingMode: body.mealTrackingMode ?? "macro",
     };
   } catch (error) {
     normalizeApiError(error);
@@ -96,6 +97,22 @@ export async function assistantDeleteMealLog(token, userId, logId) {
       headers: authHeader(token),
     });
     return { status: true };
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function assistantUpdateMealTrackingMode(token, userId, mealTrackingMode) {
+  try {
+    const { data: body } = await assistantApi.patch(
+      `/assistant/heal-users/${userId}/meal-tracking-mode`,
+      { mealTrackingMode },
+      { headers: authHeader(token) }
+    );
+    return {
+      mealTrackingMode: body.mealTrackingMode ?? mealTrackingMode,
+      user: body.user ?? null,
+    };
   } catch (error) {
     normalizeApiError(error);
   }

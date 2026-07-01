@@ -157,6 +157,18 @@ export function AssistantMyHealUsersList() {
                         Physical exercises
                       </Link>
                       <Link
+                        to={`${u._id || u.id}/supplement-recommendations`}
+                        className="btn btn--ghost btn--sm"
+                      >
+                        Supplements
+                      </Link>
+                      <Link
+                        to={`${u._id || u.id}/supplement-dosage`}
+                        className="btn btn--ghost btn--sm"
+                      >
+                        Dosage
+                      </Link>
+                      <Link
                         to={`${u._id || u.id}/meal-tracking`}
                         className="btn btn--ghost btn--sm"
                       >
