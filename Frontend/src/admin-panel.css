@@ -6502,6 +6502,33 @@ fieldset.form-field legend {
   }
 }
 
+.checkbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.checkbox-list__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.checkbox-list__item input {
+  margin-top: 0.2rem;
+}
+
+.form-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
 /* ════════════════════════════════════════
    Meal Tracking  —  Macro Insights
    ════════════════════════════════════════ */

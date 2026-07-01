@@ -54,6 +54,10 @@ import { MedicalConditionQuestionList } from "../pages/medicalConditionQuestion/
 import { MedicalConditionQuestionAdd } from "../pages/medicalConditionQuestion/MedicalConditionQuestionAdd.jsx";
 import { MedicalConditionQuestionEdit } from "../pages/medicalConditionQuestion/MedicalConditionQuestionEdit.jsx";
 import { MedicalConditionQuestionView } from "../pages/medicalConditionQuestion/MedicalConditionQuestionView.jsx";
+import { TestCatalogList } from "../pages/testCatalog/TestCatalogList.jsx";
+import { TestCatalogAdd } from "../pages/testCatalog/TestCatalogAdd.jsx";
+import { TestCatalogEdit } from "../pages/testCatalog/TestCatalogEdit.jsx";
+import { TestCatalogView } from "../pages/testCatalog/TestCatalogView.jsx";
 import { MentalWellbeingList } from "../pages/mentalWellbeing/MentalWellbeingList.jsx";
 import { MentalWellbeingAdd } from "../pages/mentalWellbeing/MentalWellbeingAdd.jsx";
 import { MentalWellbeingEdit } from "../pages/mentalWellbeing/MentalWellbeingEdit.jsx";
@@ -203,6 +207,12 @@ export const adminRouteTree = (
       <Route path="new" element={<MedicalConditionQuestionAdd />} />
       <Route path=":questionId/edit" element={<MedicalConditionQuestionEdit />} />
       <Route path=":questionId" element={<MedicalConditionQuestionView />} />
+    </Route>
+    <Route path="test-catalog" element={<Outlet />}>
+      <Route index element={<TestCatalogList />} />
+      <Route path="new" element={<TestCatalogAdd />} />
+      <Route path=":testId/edit" element={<TestCatalogEdit />} />
+      <Route path=":testId" element={<TestCatalogView />} />
     </Route>
     <Route path="mental-wellbeing" element={<Outlet />}>
       <Route index element={<MentalWellbeingList />} />

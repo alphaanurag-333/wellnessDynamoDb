@@ -22,6 +22,7 @@ const userDobMonthDayMigration = require("./migrations/10-user-dob-month-day-ind
 const cofounderMessageMigration = require("./migrations/11-cofounder-message-table");
 const userInboxNotificationsMigration = require("./migrations/13-user-inbox-notifications");
 const energyExchangeOnboardingMigration = require("./migrations/14-energy-exchange-and-onboarding");
+const internalParametersMigration = require("./migrations/15-internal-parameters");
 
 const MIGRATIONS = [
   adminMigration,
@@ -37,6 +38,7 @@ const MIGRATIONS = [
   cofounderMessageMigration,
   userInboxNotificationsMigration,
   energyExchangeOnboardingMigration,
+  internalParametersMigration,
 ];
 
 function parseOnlyArg() {
@@ -74,7 +76,8 @@ async function run() {
       migration.migrateUserDobMonthDayIndex ||
       migration.migrateCofounderMessageTable ||
       migration.migrateUserInboxNotifications ||
-      migration.migrateEnergyExchangeAndOnboarding;
+      migration.migrateEnergyExchangeAndOnboarding ||
+      migration.migrateInternalParameters;
 
     console.log(`--- ${migration.id} ---`);
     await runner();

@@ -8,6 +8,7 @@ import { CoachUserWaterTrackingPage } from "../pages/myHealUsers/CoachUserWaterT
 import { CoachUserStepsTrackingPage } from "../pages/myHealUsers/CoachUserStepsTrackingPage.jsx";
 import { UserReminders } from "../pages/userReminders/UserReminders.jsx";
 import { UserDietPlan } from "../pages/myHealUsers/UserDietPlan.jsx";
+import { UserTestRecommendations } from "../pages/myHealUsers/UserTestRecommendations.jsx";
 import { CoachUserMealTrackingPage } from "../pages/myHealUsers/CoachUserMealTrackingPage.jsx";
 import { MyAssistantList } from "../pages/myAssistants/MyAssistantList.jsx";
 import { MyAssistantAdd } from "../pages/myAssistants/MyAssistantAdd.jsx";
@@ -28,6 +29,7 @@ export const wellnessCoachRouteTree = (
     <Route path="my-users/:userId/steps-tracking" element={<CoachUserStepsTrackingPage />} />
     <Route path="my-users/:userId/reminders" element={<UserReminders />} />
     <Route path="my-users/:userId/diet-plan" element={<UserDietPlan />} />
+    <Route path="my-users/:userId/test-recommendations" element={<UserTestRecommendations />} />
     <Route path="my-users/:userId/meal-tracking" element={<CoachUserMealTrackingPage />} />
     <Route path="consultancy/transactions" element={<CoachConsultancyTransactionList />} />
     <Route path="consultancy/enrolled-users" element={<CoachConsultancyEnrolledUsersList />} />

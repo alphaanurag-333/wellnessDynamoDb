@@ -59,6 +59,13 @@ async function createAppConfig() {
     energy_exchange_monthly_amount: "",
     fy_start_month: "4",
     energy_exchange_default_fy_discounts: { "1": 0, "2": 0, "3": 5, "4": 10 },
+    energy_exchange_fy_discount_ranges: {
+      "1": { min: 0, max: 100 },
+      "2": { min: 0, max: 100 },
+      "3": { min: 0, max: 100 },
+      "4": { min: 0, max: 100 },
+    },
+    energy_exchange_time_based_discount_range: { min: 0, max: 100 },
 
     // Nested array with credentials object
     payment_gateways: [],   // default empty 

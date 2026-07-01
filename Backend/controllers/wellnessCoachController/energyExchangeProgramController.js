@@ -11,6 +11,10 @@ const {
 const { getAppConfig } = require("../../models/appConfigModel");
 const { buildFyPlansForProgram } = require("../../services/energyExchangePricingService");
 const {
+  validateCoachEnergyExchangeDiscounts,
+  toPublicDiscountLimits,
+} = require("../../utils/energyExchangeDiscountLimits");
+const {
   listSubscriptionsByUserId,
   toPublicSubscription,
 } = require("../../models/energyExchangeSubscriptionModel");
@@ -40,6 +44,17 @@ function parseDiscountsBody(body) {
 
 function parseTimeBasedBody(body) {
   return body?.timeBasedDiscount ?? body?.time_based_discount;
+}
+
+async function assertCoachDiscountsAllowed(body, appConfig) {
+  const err = validateCoachEnergyExchangeDiscounts(
+    {
+      fyDiscounts: parseDiscountsBody(body),
+      timeBasedDiscount: parseTimeBasedBody(body),
+    },
+    appConfig
+  );
+  if (err) throw new AppError(err, 400);
 }
 
 exports.listProgramsForUserController = asyncHandler(async (req, res) => {
@@ -74,6 +89,8 @@ exports.createProgramController = asyncHandler(async (req, res) => {
   const appConfig = await getAppConfig();
   const defaultMonthly = Number(appConfig?.energy_exchange_monthly_amount) || 0;
   const defaultDiscounts = appConfig?.energy_exchange_default_fy_discounts || {};
+
+  await assertCoachDiscountsAllowed(body, appConfig);
 
   const program = await createProgram({
     userId,
@@ -137,6 +154,11 @@ exports.updateProgramController = asyncHandler(async (req, res) => {
 
   if (!Object.keys(updates).length) {
     throw new AppError("No valid fields to update", 400);
+  }
+
+  if (parseDiscountsBody(body) !== undefined || parseTimeBasedBody(body) !== undefined) {
+    const appConfig = await getAppConfig();
+    await assertCoachDiscountsAllowed(body, appConfig);
   }
 
   const updated = await updateProgram(program.id, updates);
@@ -207,10 +229,12 @@ exports.getEnergyExchangeForUserController = asyncHandler(async (req, res) => {
   ]);
 
   const myPrograms = programsResult.items.filter((p) => String(p.coachId) === String(coachId));
+  const appConfig = await getAppConfig();
 
   return res.status(200).json({
     status: true,
     message: "Energy Exchange detail fetched",
+    discountLimits: toPublicDiscountLimits(appConfig),
     user: {
       id: user.id,
       _id: user.id,

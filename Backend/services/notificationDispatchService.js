@@ -1,4 +1,6 @@
 const { getUserById } = require("../models/userModel");
+const { getWellnessCoachById } = require("../models/wellnessCoachModel");
+const { getAssistantWellnessCoachById } = require("../models/assistantWellnessCoachModel");
 const {
   createNotification,
   createTargetedNotification,
@@ -18,6 +20,8 @@ const FCM_TYPE_BY_KIND = {
   yoga: "yoga_notification",
   birthday_wish: "birthday_wish_notification",
   birthday_reminder: "birthday_notification",
+  internal_parameters_recommendation: "internal_parameters_notification",
+  internal_parameters_upload: "internal_parameters_upload_notification",
 };
 
 function buildPushData(notification) {
@@ -148,10 +152,83 @@ async function ensureBirthdayReminderInbox({
   });
 }
 
+async function dispatchInternalParametersRecommendationNotification({
+  userId,
+  recommendationId,
+  coachName,
+}) {
+  const name = String(coachName || "Your coach").trim() || "Your coach";
+  const message = `${name} has shared new internal parameter test recommendations.`;
+
+  const notification = await createTargetedNotification({
+    userId,
+    kind: "internal_parameters_recommendation",
+    message,
+    referenceId: recommendationId,
+    referenceType: "coach_recommended_test",
+    title: "New test recommendations",
+  });
+
+  runPushSafely(deliverTargetedPush(userId, notification));
+  return notification;
+}
+
+async function collectCoachFcmTokensForUser(user) {
+  const tokens = [];
+  const parentCoachId = String(user?.parentCoachId || "").trim();
+  const assignedCoachId = String(user?.assignedCoachId || "").trim();
+  const assignedCoachType = String(user?.assignedCoachType || "").trim().toLowerCase();
+
+  if (parentCoachId) {
+    const coach = await getWellnessCoachById(parentCoachId);
+    const token = readFcmToken(coach);
+    if (token) tokens.push(token);
+  }
+
+  if (assignedCoachType === "assistant_wellness_coach" && assignedCoachId) {
+    const assistant = await getAssistantWellnessCoachById(assignedCoachId);
+    const token = readFcmToken(assistant);
+    if (token) tokens.push(token);
+  }
+
+  return [...new Set(tokens)];
+}
+
+async function dispatchLabReportUploadCoachNotification({ user, reportId }) {
+  const tokens = await collectCoachFcmTokensForUser(user);
+  if (tokens.length === 0) {
+    return { successCount: 0, failureCount: 0, skipped: true, reason: "no_tokens" };
+  }
+
+  const userName = String(user?.name || "A user").trim() || "A user";
+  const message = `${userName} uploaded a new lab report.`;
+
+  const result = await sendPushToTokens(tokens, {
+    title: "Lab report uploaded",
+    body: message,
+    data: {
+      type: FCM_TYPE_BY_KIND.internal_parameters_upload,
+      kind: "internal_parameters_upload",
+      referenceId: String(reportId || ""),
+      referenceType: "user_lab_report",
+      userId: String(user?.id || user?._id || ""),
+    },
+  });
+
+  return result;
+}
+
+function dispatchLabReportUploadCoachNotificationAsync(payload) {
+  runPushSafely(dispatchLabReportUploadCoachNotification(payload));
+}
+
 module.exports = {
   dispatchBroadcastNotification,
   dispatchBirthdayWishNotification,
   ensureBirthdayReminderInbox,
+  dispatchInternalParametersRecommendationNotification,
+  dispatchLabReportUploadCoachNotification,
+  dispatchLabReportUploadCoachNotificationAsync,
   deliverBroadcastPush,
   deliverTargetedPush,
   FCM_TYPE_BY_KIND,

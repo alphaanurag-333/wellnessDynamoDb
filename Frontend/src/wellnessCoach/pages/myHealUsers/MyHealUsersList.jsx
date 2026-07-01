@@ -214,6 +214,12 @@ export function MyHealUsersList() {
                         Diet plan
                       </Link>
                       <Link
+                        to={`${u._id || u.id}/test-recommendations`}
+                        className="btn btn--ghost btn--sm"
+                      >
+                        Internal parameters
+                      </Link>
+                      <Link
                         to={`${u._id || u.id}/meal-tracking`}
                         className="btn btn--ghost btn--sm"
                       >

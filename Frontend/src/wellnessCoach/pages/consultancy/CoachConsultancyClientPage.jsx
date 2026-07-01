@@ -186,6 +186,15 @@ export function CoachConsultancyClientPage() {
 }
 
 const DEFAULT_FY_DISCOUNTS = { 1: 0, 2: 0, 3: 5, 4: 10 };
+const DEFAULT_DISCOUNT_LIMITS = {
+  fyDiscountRanges: Object.fromEntries([1, 2, 3, 4].map((offset) => [offset, { min: 0, max: 100 }])),
+  timeBasedDiscountRange: { min: 0, max: 100 },
+};
+
+function clampDiscount(value, range) {
+  const num = Number(value) || 0;
+  return Math.max(range.min, Math.min(range.max, num));
+}
 
 function formatTimeBasedDiscountWindow(window) {
   if (!window) return "—";
@@ -207,6 +216,7 @@ function EnergyExchangeSection({ userId }) {
   const dispatch = useDispatch();
   const [programs, setPrograms] = useState([]);
   const [subscriptions, setSubscriptions] = useState([]);
+  const [discountLimits, setDiscountLimits] = useState(DEFAULT_DISCOUNT_LIMITS);
   const [activeProgramId, setActiveProgramId] = useState(null);
   const [form, setForm] = useState({
     title: "Personalized Program designed by IRW",
@@ -221,6 +231,7 @@ function EnergyExchangeSection({ userId }) {
   const [preview, setPreview] = useState(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [formError, setFormError] = useState("");
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -229,6 +240,18 @@ function EnergyExchangeSection({ userId }) {
       const list = data?.programs || [];
       setPrograms(list);
       setSubscriptions(data?.subscriptions || []);
+      if (data?.discountLimits) {
+        setDiscountLimits({
+          fyDiscountRanges: {
+            ...DEFAULT_DISCOUNT_LIMITS.fyDiscountRanges,
+            ...(data.discountLimits.fyDiscountRanges || {}),
+          },
+          timeBasedDiscountRange: {
+            ...DEFAULT_DISCOUNT_LIMITS.timeBasedDiscountRange,
+            ...(data.discountLimits.timeBasedDiscountRange || {}),
+          },
+        });
+      }
       if (list.length > 0) {
         const p = list[0];
         setActiveProgramId(p.id);
@@ -262,9 +285,25 @@ function EnergyExchangeSection({ userId }) {
   }, [loadAll]);
 
   const handleFyDiscountChange = (key, value) => {
+    const range = discountLimits.fyDiscountRanges[key] || { min: 0, max: 100 };
     setForm((f) => ({
       ...f,
-      fyDiscounts: { ...f.fyDiscounts, [key]: Number(value) || 0 },
+      fyDiscounts: {
+        ...f.fyDiscounts,
+        [key]: clampDiscount(value, range),
+      },
+    }));
+  };
+
+  const handleTimeBasedPercentChange = (value) => {
+    const range = discountLimits.timeBasedDiscountRange || { min: 0, max: 100 };
+    const trimmed = String(value).trim();
+    setForm((f) => ({
+      ...f,
+      timeBasedDiscount: {
+        ...f.timeBasedDiscount,
+        percentage: trimmed === "" ? "" : clampDiscount(trimmed, range),
+      },
     }));
   };
 
@@ -295,6 +334,7 @@ function EnergyExchangeSection({ userId }) {
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
+    setFormError("");
     try {
       let program;
       if (activeProgramId) {
@@ -309,6 +349,7 @@ function EnergyExchangeSection({ userId }) {
       });
     } catch (err) {
       if (err?.status === 401) dispatch(logoutCoach());
+      else setFormError(err?.message || "Failed to save Energy Exchange program.");
     } finally {
       setSaving(false);
     }
@@ -382,19 +423,27 @@ function EnergyExchangeSection({ userId }) {
 
         <div className="form-field">
           <span>FY-tier discounts (%)</span>
+          <p className="form-hint" style={{ marginBottom: ".5rem" }}>
+            Allowed ranges are set by admin for each FY tier.
+          </p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: ".5rem" }}>
-            {[1, 2, 3, 4].map((offset) => (
+            {[1, 2, 3, 4].map((offset) => {
+              const range = discountLimits.fyDiscountRanges[offset] || { min: 0, max: 100 };
+              return (
               <label key={offset} style={{ display: "flex", flexDirection: "column", gap: ".25rem" }}>
-                <small>FY {offset === 1 ? "current" : `+${offset - 1}`}</small>
+                <small>
+                  FY {offset === 1 ? "current" : `+${offset - 1}`} ({range.min}–{range.max}%)
+                </small>
                 <input
                   type="number"
-                  min="0"
-                  max="100"
+                  min={range.min}
+                  max={range.max}
                   value={form.fyDiscounts[offset] ?? 0}
                   onChange={(e) => handleFyDiscountChange(offset, e.target.value)}
                 />
               </label>
-            ))}
+            );
+            })}
           </div>
         </div>
 
@@ -405,18 +454,16 @@ function EnergyExchangeSection({ userId }) {
             Future FY cards use FY-tier discounts only.
           </p>
           <label className="form-field">
-            <span>Percentage</span>
+            <span>
+              Percentage (
+              {discountLimits.timeBasedDiscountRange.min}–{discountLimits.timeBasedDiscountRange.max}%)
+            </span>
             <input
               type="number"
-              min="0"
-              max="100"
+              min={discountLimits.timeBasedDiscountRange.min}
+              max={discountLimits.timeBasedDiscountRange.max}
               value={form.timeBasedDiscount.percentage}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  timeBasedDiscount: { ...f.timeBasedDiscount, percentage: e.target.value },
-                }))
-              }
+              onChange={(e) => handleTimeBasedPercentChange(e.target.value)}
             />
           </label>
           <label className="form-field">
@@ -459,6 +506,7 @@ function EnergyExchangeSection({ userId }) {
           </label>
         </fieldset>
 
+        {formError ? <p className="form-hint" style={{ color: "var(--admin-danger, #b91c1c)" }}>{formError}</p> : null}
         <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
           <button type="submit" className="btn btn--accent" disabled={saving}>
             {saving ? "Saving…" : activeProgramId ? "Save program" : "Create program"}

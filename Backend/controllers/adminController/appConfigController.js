@@ -14,6 +14,10 @@ const {
 const S3_FOLDER = "appconfig";
 const LOGO_FIELDS = ["admin_logo", "user_logo", "favicon"];
 const ALLOWED_TAX_TYPES = new Set(["inclusive", "exclusive"]);
+const {
+  normalizeFyDiscountRanges,
+  normalizeDiscountRange,
+} = require("../../utils/energyExchangeDiscountLimits");
 
 function normalizeInclusiveExclusiveType(value, fieldName = "type") {
   const normalized = String(value ?? "").trim().toLowerCase();
@@ -97,6 +101,8 @@ exports.createAppConfigController = asyncHandler(async (req, res) => {
     energy_exchange_monthly_amount,
     fy_start_month,
     energy_exchange_default_fy_discounts,
+    energy_exchange_fy_discount_ranges,
+    energy_exchange_time_based_discount_range,
   } = req.body;
 
   if (!app_name || !app_email || !app_mobile) {
@@ -134,6 +140,15 @@ exports.createAppConfigController = asyncHandler(async (req, res) => {
     energy_exchange_default_fy_discounts: parseJSON(
       energy_exchange_default_fy_discounts,
       config.energy_exchange_default_fy_discounts
+    ),
+    energy_exchange_fy_discount_ranges: normalizeFyDiscountRanges(
+      parseJSON(energy_exchange_fy_discount_ranges, config.energy_exchange_fy_discount_ranges)
+    ),
+    energy_exchange_time_based_discount_range: normalizeDiscountRange(
+      parseJSON(
+        energy_exchange_time_based_discount_range,
+        config.energy_exchange_time_based_discount_range
+      )
     ),
     payment_gateways: parseJSON(payment_gateways, config.payment_gateways),
     admin_logo: (await s3KeyFromUploadedFile(req, "admin_logo")) ?? "",
@@ -208,6 +223,20 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
       req.body.energy_exchange_default_fy_discounts,
       config.energy_exchange_default_fy_discounts
     );
+  }
+
+  if (req.body.energy_exchange_fy_discount_ranges !== undefined) {
+    const parsed = parseJSON(req.body.energy_exchange_fy_discount_ranges, null);
+    if (parsed != null) {
+      updates.energy_exchange_fy_discount_ranges = normalizeFyDiscountRanges(parsed);
+    }
+  }
+
+  if (req.body.energy_exchange_time_based_discount_range !== undefined) {
+    const parsed = parseJSON(req.body.energy_exchange_time_based_discount_range, null);
+    if (parsed != null) {
+      updates.energy_exchange_time_based_discount_range = normalizeDiscountRange(parsed);
+    }
   }
 
   await applyLogoUploads(req, config, updates);
