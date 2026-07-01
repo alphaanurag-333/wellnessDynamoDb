@@ -256,58 +256,69 @@ export function UserSupplementRecommendationsPanel({
   if (loading) return <PageLoader />;
   if (notFound) return <NotFoundPage />;
 
+  const embedded = !backTo;
+
   return (
-    <div className="page-card">
-      <div className="page-card__header">
-        <div>
-          <Link to={backTo} className="btn btn--ghost btn--sm mb-2">
-            ← Back to clients
-          </Link>
-          <h1 className="page-card__title">Supplement Recommendations</h1>
-          <p className="page-card__subtitle">
+    <div className={embedded ? "client-hub-embedded-panel" : "page-card"}>
+      {embedded ? (
+        <div className="client-hub-embedded-panel__header">
+          <h2 className="client-hub-embedded-panel__title">Supplement Recommendations</h2>
+          <p className="client-hub-embedded-panel__subtitle">
             Recommend supplements from the admin catalog and choose how the client can proceed.
           </p>
         </div>
-      </div>
+      ) : (
+        <div className="page-card__header">
+          <div>
+            <Link to={backTo} className="btn btn--ghost btn--sm mb-2">
+              ← Back to clients
+            </Link>
+            <h1 className="page-card__title">Supplement Recommendations</h1>
+            <p className="page-card__subtitle">
+              Recommend supplements from the admin catalog and choose how the client can proceed.
+            </p>
+          </div>
+        </div>
+      )}
 
       {error ? <div className="alert alert-danger">{error}</div> : null}
 
       {!readOnly ? (
-        <form className="form-card mb-4" onSubmit={handleCreate}>
+        <form className={`form-card mb-4${embedded ? " form-card--embedded" : ""}`} onSubmit={handleCreate}>
           <h2 className="form-card__title">New recommendation</h2>
 
-          <div className="row g-3 mb-3">
-            <div className="col-md-6">
-              <label className="user-field__label">Delivery option for client</label>
-              <div className="d-flex flex-column gap-2">
-                <label className="d-flex align-items-center gap-2">
-                  <input
-                    type="radio"
-                    name="deliveryOption"
-                    value="coach_delivery"
-                    checked={deliveryOption === "coach_delivery"}
-                    onChange={() => setDeliveryOption("coach_delivery")}
-                  />
-                  Request delivery from coach
-                </label>
-                <label className="d-flex align-items-center gap-2">
-                  <input
-                    type="radio"
-                    name="deliveryOption"
-                    value="self_billing"
-                    checked={deliveryOption === "self_billing"}
-                    onChange={() => setDeliveryOption("self_billing")}
-                  />
-                  Self billing (upload bill PDF)
-                </label>
-              </div>
+          <div className="supplement-delivery-options">
+            <div className="supplement-delivery-options__main">
+              <span className="user-field__label">Delivery option for client</span>
+              <div className="supplement-delivery-options__choices">
+              <label className={`supplement-delivery-options__choice${deliveryOption === "coach_delivery" ? " supplement-delivery-options__choice--active" : ""}`}>
+                <input
+                  type="radio"
+                  name="deliveryOption"
+                  value="coach_delivery"
+                  checked={deliveryOption === "coach_delivery"}
+                  onChange={() => setDeliveryOption("coach_delivery")}
+                />
+                Request delivery from coach
+              </label>
+              <label className={`supplement-delivery-options__choice${deliveryOption === "self_billing" ? " supplement-delivery-options__choice--active" : ""}`}>
+                <input
+                  type="radio"
+                  name="deliveryOption"
+                  value="self_billing"
+                  checked={deliveryOption === "self_billing"}
+                  onChange={() => setDeliveryOption("self_billing")}
+                />
+                Self billing (upload bill PDF)
+              </label>
             </div>
-            <div className="col-md-6 d-flex align-items-end justify-content-md-end">
-              <div className="fw-bold">Billing preview: {formatRupee(billingTotal)}</div>
+            </div>
+            <div className="supplement-delivery-options__preview">
+              Billing preview: <strong>{formatRupee(billingTotal)}</strong>
             </div>
           </div>
 
-          <div className="mb-3">
+          <div className="catalog-picker__toolbar">
             <input
               type="search"
               className="form-control"
@@ -317,8 +328,9 @@ export function UserSupplementRecommendationsPanel({
             />
           </div>
 
-          <div className="catalog-picker mb-3">
-            {filteredCatalog.map((supplement) => {
+          <div className="catalog-picker">
+            <div className="catalog-picker__grid">
+              {filteredCatalog.map((supplement) => {
               const id = supplement.id || supplement._id;
               const isSelected = Boolean(selected[id]);
               return (
@@ -328,7 +340,7 @@ export function UserSupplementRecommendationsPanel({
                 >
                   <button
                     type="button"
-                    className="catalog-picker__card-head w-100 border-0 bg-transparent text-start"
+                    className="catalog-picker__card-head"
                     onClick={() => toggleSelect(id)}
                   >
                     <span className="catalog-picker__card-name">{supplement.name}</span>
@@ -351,6 +363,10 @@ export function UserSupplementRecommendationsPanel({
                 </div>
               );
             })}
+            </div>
+            {filteredCatalog.length === 0 ? (
+              <p className="catalog-picker__empty">No supplements match your search.</p>
+            ) : null}
           </div>
 
           <button type="submit" className="btn btn--primary" disabled={saving}>

@@ -77,10 +77,18 @@ export function ClientHubPage({
 
   return (
     <div className="page-card client-hub-page">
-      <div className="client-hub-page__header">
-        <Link to={listPath} className="btn btn--ghost btn--sm client-hub-page__back">
+      <div className="client-hub-page__topbar">
+        <Link to={listPath} className="btn btn--ghost btn--sm">
           ← Back to clients
         </Link>
+        {showReassign && onReassign ? (
+          <button type="button" className="btn btn--ghost btn--sm" onClick={() => onReassign(user)}>
+            Reassign
+          </button>
+        ) : null}
+      </div>
+
+      <div className="client-hub-page__header">
         <div className="client-hub-page__profile">
           <div className="client-hub-page__profile-main">
             <h2 className="client-hub-page__name">{user?.name || "Client"}</h2>
@@ -95,11 +103,6 @@ export function ClientHubPage({
             <span className="client-hub-page__joined">Joined {formatDate(user?.convertedAt || user?.createdAt)}</span>
           </div>
         </div>
-        {showReassign && onReassign ? (
-          <button type="button" className="btn btn--ghost btn--sm" onClick={() => onReassign(user)}>
-            Reassign
-          </button>
-        ) : null}
       </div>
 
       <div className="client-hub-tabs" role="tablist" aria-label="Client programs">

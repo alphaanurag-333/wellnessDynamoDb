@@ -234,24 +234,35 @@ export function UserSupplementDosagePanel({
   if (loading) return <PageLoader />;
   if (notFound) return <NotFoundPage />;
 
+  const embedded = !backTo;
+
   return (
-    <div className="page-card">
-      <div className="page-card__header">
-        <div>
-          <Link to={backTo} className="btn btn--ghost btn--sm mb-2">
-            ← Back to clients
-          </Link>
-          <h1 className="page-card__title">Supplement Dosage</h1>
-          <p className="page-card__subtitle">
+    <div className={embedded ? "client-hub-embedded-panel" : "page-card"}>
+      {embedded ? (
+        <div className="client-hub-embedded-panel__header">
+          <h2 className="client-hub-embedded-panel__title">Supplement Dosage</h2>
+          <p className="client-hub-embedded-panel__subtitle">
             Create a per-period dosage schedule. Duration is calculated from pack size and daily total.
           </p>
         </div>
-      </div>
+      ) : (
+        <div className="page-card__header">
+          <div>
+            <Link to={backTo} className="btn btn--ghost btn--sm mb-2">
+              ← Back to clients
+            </Link>
+            <h1 className="page-card__title">Supplement Dosage</h1>
+            <p className="page-card__subtitle">
+              Create a per-period dosage schedule. Duration is calculated from pack size and daily total.
+            </p>
+          </div>
+        </div>
+      )}
 
       {error ? <div className="alert alert-danger">{error}</div> : null}
 
       {!readOnly ? (
-        <form className="form-card mb-4" onSubmit={handleCreate}>
+        <form className={`form-card mb-4${embedded ? " form-card--embedded" : ""}`} onSubmit={handleCreate}>
           <h2 className="form-card__title">New dosage schedule</h2>
 
           <div className="row g-3 mb-3">
