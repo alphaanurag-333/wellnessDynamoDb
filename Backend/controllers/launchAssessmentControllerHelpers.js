@@ -1,7 +1,7 @@
 const AppError = require("../utils/AppError");
 const { asyncHandler } = require("../utils/asyncHandler");
-const { listActiveLaunchQuestions } = require("../models/launchQuestionModel");
-const { listActiveLaunchFocusAreas } = require("../models/launchFocusAreaModel");
+const { listLaunchQuestions, listActiveLaunchQuestions } = require("../models/launchQuestionModel");
+const { listLaunchFocusAreas } = require("../models/launchFocusAreaModel");
 const {
   createUserLaunchAssessment,
   getUserLaunchAssessmentById,
@@ -42,6 +42,13 @@ function parseFocusAreaIds(body) {
     throw new AppError("focusAreaIds must be an array", 400);
   }
   return body.focusAreaIds;
+}
+
+function parseListQuery(req, { defaultLimit = 10, maxLimit = 50 } = {}) {
+  const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(maxLimit, Math.max(1, Number.parseInt(req.query.limit, 10) || defaultLimit));
+  const search = String(req.query.search || "").trim() || undefined;
+  return { page, limit, search };
 }
 
 function buildQuestionsCsv(user, userId, questions) {
@@ -93,21 +100,25 @@ function createLaunchAssessmentPortalHandlers({ assertHealUserAccess, createdByR
   return {
     listFocusAreasController: asyncHandler(async (req, res) => {
       await assertHealUserAccess(req);
-      const focusAreas = await listActiveLaunchFocusAreas();
+      const { page, limit, search } = parseListQuery(req, { defaultLimit: 8, maxLimit: 50 });
+      const data = await listLaunchFocusAreas({ page, limit, status: "active", search });
       return res.status(200).json({
         status: true,
         message: "Areas to focus fetched successfully",
-        focusAreas,
+        focusAreas: data.focusAreas,
+        pagination: data.pagination,
       });
     }),
 
     listQuestionsController: asyncHandler(async (req, res) => {
       await assertHealUserAccess(req);
-      const questions = await listActiveLaunchQuestions();
+      const { page, limit, search } = parseListQuery(req, { defaultLimit: 10, maxLimit: 50 });
+      const data = await listLaunchQuestions({ page, limit, status: "active", search });
       return res.status(200).json({
         status: true,
         message: "LAUNCH questions fetched successfully",
-        questions,
+        questions: data.questions,
+        pagination: data.pagination,
       });
     }),
 

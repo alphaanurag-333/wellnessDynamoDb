@@ -5,22 +5,32 @@ function userBase(userId) {
   return `/coach/heal-users/${encodeURIComponent(userId)}/launch-assessment`;
 }
 
-export async function coachListLaunchFocusAreas(token, userId) {
+export async function coachListLaunchFocusAreas(token, userId, { page = 1, limit = 8, search } = {}) {
   try {
-    const { data: body } = await coachApi.get(`${userBase(userId)}/focus-areas`, { headers: authHeader(token) });
+    const q = new URLSearchParams({ page: String(page), limit: String(limit) });
+    if (search && String(search).trim()) q.set("search", String(search).trim());
+    const { data: body } = await coachApi.get(`${userBase(userId)}/focus-areas?${q}`, {
+      headers: authHeader(token),
+    });
     return {
       focusAreas: Array.isArray(body.focusAreas) ? body.focusAreas : [],
+      pagination: body.pagination ?? { page, limit, total: 0, pages: 1 },
     };
   } catch (error) {
     normalizeApiError(error);
   }
 }
 
-export async function coachListLaunchQuestions(token, userId) {
+export async function coachListLaunchQuestions(token, userId, { page = 1, limit = 10, search } = {}) {
   try {
-    const { data: body } = await coachApi.get(`${userBase(userId)}/questions`, { headers: authHeader(token) });
+    const q = new URLSearchParams({ page: String(page), limit: String(limit) });
+    if (search && String(search).trim()) q.set("search", String(search).trim());
+    const { data: body } = await coachApi.get(`${userBase(userId)}/questions?${q}`, {
+      headers: authHeader(token),
+    });
     return {
       questions: Array.isArray(body.questions) ? body.questions : [],
+      pagination: body.pagination ?? { page, limit, total: 0, pages: 1 },
     };
   } catch (error) {
     normalizeApiError(error);

@@ -119,8 +119,8 @@ export function UserView() {
 
   const phoneDisplay = [user.phoneCountryCode, user.phone].filter(Boolean).join(" ") || "—";
   const waDisplay = user.whatsappSameAsMobile
-    ? `Same as mobile (${phoneDisplay})`
-    : [user.whatsappCountryCode, user.whatsappPhone].filter(Boolean).join(" ") || "—";
+    ?  phoneDisplay
+    : [user.whatsappCountryCode, user.whatsappPhone].filter(Boolean).join(" ") || phoneDisplay;
 
   const tier = String(user.userTier || "seek").toLowerCase();
   const isSeek = tier === "seek";
