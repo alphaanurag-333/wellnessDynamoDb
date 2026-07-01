@@ -65,6 +65,12 @@ const transformationUploads = memoryFields([
   { name: "newImage", maxCount: 1 },
 ]);
 
+const progressPhotoUploads = memoryFields([
+  { name: "front_pic", maxCount: 1 },
+  { name: "right_pic", maxCount: 1 },
+  { name: "left_pic", maxCount: 1 },
+]);
+
 exports.optionalAdminFile = optionalMultipart(adminUpload);
 exports.uploadAppConfigFiles = optionalMultipart(appConfigUpload);
 exports.optionalWellnessCoachFile = optionalMultipart(wellnessCoachUpload);
@@ -85,6 +91,7 @@ exports.optionalHealthRecipeFile = optionalMultipart(healthRecipeUpload);
 exports.optionalYogaFile = optionalMultipart(yogaUpload);
 exports.optionalPhysicalExerciseFile = optionalMultipart(physicalExerciseUpload);
 exports.optionalTransformationFiles = optionalMultipart(transformationUploads);
+exports.optionalProgressPhotoFiles = optionalMultipart(progressPhotoUploads);
 const dietPlanUpload = memorySingle("file");
 exports.optionalDietPlanFile = optionalMultipart(dietPlanUpload);
 

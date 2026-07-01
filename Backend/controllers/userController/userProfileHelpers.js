@@ -1,6 +1,6 @@
 const AppError = require("../../utils/AppError");
 const { assertValidIndianMobile } = require("../../utils/phoneValidation");
-const { isOtpExpired } = require("../../utils/otp");
+const { generateOtp, getOtpExpiryDate, isOtpExpired, deliverOtp } = require("../../utils/otp");
 const {
   uploadFileFromRequest,
   deleteStoredMedia,
@@ -19,6 +19,7 @@ const {
   normalizeEmail,
   normalizePhone,
   normalizeCountryCode,
+  buildPhoneKey,
   normalizeStatus,
   normalizeGender,
   normalizeDob,
@@ -201,20 +202,11 @@ async function buildUserUpdatesFromBody(body, current, { allowStatus = true, req
     await assertUniqueEmail(email, current.id);
     updates.email = email;
   }
-  if (body.phone !== undefined) {
-    const phone = normalizePhone(body.phone);
-    if (!phone) throw new AppError("phone cannot be empty", 400);
-    assertValidIndianMobile(phone, { field: "phone" });
-    const cc =
-      body.phoneCountryCode !== undefined
-        ? normalizeCountryCode(body.phoneCountryCode)
-        : current.phoneCountryCode;
-    await assertUniquePhone(cc, phone, current.id);
-    updates.phone = phone;
-    if (body.phoneCountryCode !== undefined) updates.phoneCountryCode = cc;
-  } else if (body.phoneCountryCode !== undefined) {
-    updates.phoneCountryCode = normalizeCountryCode(body.phoneCountryCode);
-    await assertUniquePhone(updates.phoneCountryCode, current.phone, current.id);
+  if (body.phone !== undefined || body.phoneCountryCode !== undefined) {
+    throw new AppError(
+      "Phone number changes require OTP verification. Use /user/auth/profile/phone/otp/send and /verify.",
+      400
+    );
   }
 
   const whatsappSame = parseBool(body.whatsappSameAsMobile);
@@ -294,7 +286,6 @@ async function resolveUserByPhoneInput(phone, phoneCountryCode) {
   return user;
 }
 
-/** Delete account after OTP sent via sendDeleteAccountOtp (phone + country code + otp). */
 async function deleteUserAccountByPhoneOtp({ phone, phoneCountryCode, otp }) {
   const user = await resolveUserByPhoneInput(phone, phoneCountryCode);
   const code = String(otp ?? "").trim();
@@ -324,6 +315,70 @@ async function deleteUserAccountByPhoneOtp({ phone, phoneCountryCode, otp }) {
   }
 }
 
+async function sendProfilePhoneChangeOtp(user, { phone, phoneCountryCode }) {
+  const normalizedPhone = normalizePhone(phone);
+  if (!normalizedPhone) throw new AppError("phone is required", 400);
+  assertValidIndianMobile(normalizedPhone, { field: "phone" });
+  const cc = normalizeCountryCode(phoneCountryCode || user.phoneCountryCode);
+  await assertUniquePhone(cc, normalizedPhone, user.id);
+
+  const otp = generateOtp();
+  const otpExpire = getOtpExpiryDate();
+
+  await updateUser(user.id, {
+    otp,
+    otpExpire,
+    pendingPhone: normalizedPhone,
+    pendingPhoneCountryCode: cc,
+  });
+
+  await deliverOtp({
+    phone: normalizedPhone,
+    phoneCountryCode: cc,
+    otp,
+  });
+
+  return { otp, otpExpire };
+}
+
+async function verifyProfilePhoneChangeOtp(user, { phone, phoneCountryCode, otp }) {
+  const normalizedPhone = normalizePhone(phone);
+  if (!normalizedPhone) throw new AppError("phone is required", 400);
+  const cc = normalizeCountryCode(phoneCountryCode || user.phoneCountryCode);
+  const code = String(otp ?? "").trim();
+  if (!code) throw new AppError("otp is required", 400);
+
+  if (!user.otp || !user.otpExpire) {
+    throw new AppError("No OTP requested. Send phone-change OTP first.", 400);
+  }
+  if (isOtpExpired(user.otpExpire)) {
+    throw new AppError("OTP has expired. Request a new code.", 400);
+  }
+  if (String(user.otp) !== code) {
+    throw new AppError("Invalid OTP", 401);
+  }
+  if (
+    normalizePhone(user.pendingPhone) !== normalizedPhone ||
+    normalizeCountryCode(user.pendingPhoneCountryCode) !== cc
+  ) {
+    throw new AppError("Phone number does not match the pending verification request", 400);
+  }
+
+  await assertUniquePhone(cc, normalizedPhone, user.id);
+
+  const updated = await updateUser(user.id, {
+    phone: normalizedPhone,
+    phoneCountryCode: cc,
+    phoneKey: buildPhoneKey(cc, normalizedPhone),
+    otp: null,
+    otpExpire: null,
+    pendingPhone: null,
+    pendingPhoneCountryCode: null,
+  });
+
+  return updated;
+}
+
 module.exports = {
   parseUserFields,
   parseFcmIdFromBody,
@@ -335,4 +390,6 @@ module.exports = {
   parseProfileImageFromBody,
   resolveUserByPhoneInput,
   deleteUserAccountByPhoneOtp,
+  sendProfilePhoneChangeOtp,
+  verifyProfilePhoneChangeOtp,
 };

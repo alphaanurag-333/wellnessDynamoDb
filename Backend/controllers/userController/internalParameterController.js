@@ -11,7 +11,11 @@ const {
   deleteUserLabReport,
   normalizeReportDate,
 } = require("../../models/userLabReportModel");
-const { getUserById } = require("../../models/userModel");
+const { getUserById, updateUser, normalizePaidOnboardingStepStatus } = require("../../models/userModel");
+const {
+  markStepDone,
+  computePaidOnboardingCompleted,
+} = require("../../utils/paidOnboardingHelpers");
 const {
   dispatchLabReportUploadCoachNotificationAsync,
 } = require("../../services/notificationDispatchService");
@@ -95,6 +99,13 @@ exports.createUserLabReportController = asyncHandler(async (req, res) => {
     dispatchLabReportUploadCoachNotificationAsync({
       user,
       reportId: report?.id,
+    });
+
+    const currentStatus = normalizePaidOnboardingStepStatus(user.paidOnboardingStepStatus);
+    const nextStatus = markStepDone(currentStatus, "internalParameter");
+    await updateUser(userId, {
+      paidOnboardingStepStatus: nextStatus,
+      paidOnboardingCompleted: computePaidOnboardingCompleted(nextStatus),
     });
   }
 

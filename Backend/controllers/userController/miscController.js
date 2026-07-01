@@ -17,6 +17,7 @@ const { getSpecializationById } = require("../../models/specializationModel");
 const { listBirthdayPostsByPostDate } = require("../../models/birthdayPostModel");
 const { countCommentsForPost } = require("../../models/birthdayPostCommentModel");
 const { listActiveTestCatalog } = require("../../models/testCatalogModel");
+const { listActivePhysicalExercises } = require("../../models/physicalExerciseModel");
 const { getUserById, toPublicUser } = require("../../models/userModel");
 const { todayInTimezone } = require("../../utils/birthdayTimezone");
 const { isValidDateOnly } = require("../../utils/dateOnly");
@@ -307,5 +308,14 @@ exports.getActiveTestCatalog = asyncHandler(async (req, res) => {
     status: true,
     tests,
     grouped,
+  });
+});
+
+exports.getActivePhysicalExercises = asyncHandler(async (req, res) => {
+  const physicalExercises = await listActivePhysicalExercises();
+
+  return res.status(200).json({
+    status: true,
+    physicalExercises,
   });
 });

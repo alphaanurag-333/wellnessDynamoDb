@@ -151,6 +151,12 @@ export function AssistantMyHealUsersList() {
                         Internal parameters
                       </Link>
                       <Link
+                        to={`${u._id || u.id}/physical-exercises`}
+                        className="btn btn--ghost btn--sm"
+                      >
+                        Physical exercises
+                      </Link>
+                      <Link
                         to={`${u._id || u.id}/meal-tracking`}
                         className="btn btn--ghost btn--sm"
                       >

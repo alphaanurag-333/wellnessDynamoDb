@@ -29,6 +29,8 @@ const {
   assertUniquePhone,
   buildUserUpdatesFromBody,
   deleteUserAccountByPhoneOtp,
+  sendProfilePhoneChangeOtp: sendProfilePhoneChangeOtpHelper,
+  verifyProfilePhoneChangeOtp: verifyProfilePhoneChangeOtpHelper,
 } = require("./userProfileHelpers");
 const { uploadFileFromRequest } = require("../../utils/s3");
 
@@ -408,6 +410,48 @@ exports.deleteUserByPhoneOtp = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     message: "Account deleted successfully",
+  });
+});
+
+/** POST /user/auth/profile/phone/otp/send — OTP to new phone before profile phone change */
+exports.sendProfilePhoneChangeOtp = asyncHandler(async (req, res) => {
+  const userId = req.auth?.sub || req.user?.id;
+  const user = await getUserById(userId);
+  if (!user) throw new AppError("User not found", 404);
+
+  const { otp } = await sendProfilePhoneChangeOtpHelper(user, {
+    phone: req.body.phone,
+    phoneCountryCode: req.body.phoneCountryCode,
+  });
+
+  const payload = {
+    status: true,
+    message: "Phone change OTP sent successfully",
+  };
+
+  if (config.exposeOtpInResponse && config.nodeEnv !== "production") {
+    payload.debugOtp = otp;
+  }
+
+  return res.status(200).json(payload);
+});
+
+/** POST /user/auth/profile/phone/otp/verify — confirm phone change with OTP */
+exports.verifyProfilePhoneChangeOtp = asyncHandler(async (req, res) => {
+  const userId = req.auth?.sub || req.user?.id;
+  const user = await getUserById(userId);
+  if (!user) throw new AppError("User not found", 404);
+
+  const updated = await verifyProfilePhoneChangeOtpHelper(user, {
+    phone: req.body.phone,
+    phoneCountryCode: req.body.phoneCountryCode,
+    otp: req.body.otp,
+  });
+
+  return res.status(200).json({
+    status: true,
+    message: "Phone number updated successfully",
+    user: await enrichUser(updated),
   });
 });
 

@@ -31,6 +31,8 @@ const KIND = new Set([
   "birthday_reminder",
   "internal_parameters_recommendation",
   "internal_parameters_upload",
+  "coach_reminder",
+  "physical_exercise_assigned",
 ]);
 const BROADCAST_KINDS = new Set(["admin_broadcast", "health_tool", "recipe", "yoga"]);
 

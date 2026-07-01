@@ -6,6 +6,7 @@ const {
   updateUser,
   normalizeDietaryPreference,
   normalizeWellnessJourneyFor,
+  normalizePaidOnboardingStepStatus,
   USER_ALLOWED_DIETARY_PREFERENCES,
 } = require("../../models/userModel");
 const {
@@ -25,6 +26,17 @@ const {
 const {
   listActiveMedicalConditionQuestions,
 } = require("../../models/medicalConditionQuestionModel");
+const {
+  markStepDone,
+  markStepSkipped,
+  wizardStepAfterSkip,
+  wizardStepAfterBodyComplete,
+  wizardStepAfterMedicalComplete,
+  computePaidOnboardingCompleted,
+  getNextIncompleteStep,
+  countCompletedSteps,
+  SKIPPABLE_ONBOARDING_STATUS_KEYS,
+} = require("../../utils/paidOnboardingHelpers");
 
 function authedUserId(req) {
   return req.auth?.sub || req.user?.id;
@@ -39,10 +51,6 @@ function parseBoolStrict(value) {
   return null;
 }
 
-/**
- * Validate & normalize a single submitted answer against its question's answerType.
- * Returns the answer object to persist, or throws an AppError on invalid input.
- */
 function normalizeAnswerForQuestion(question, raw) {
   const answerType = question.answerType;
   const base = {
@@ -91,6 +99,26 @@ function normalizeAnswerForQuestion(question, raw) {
   throw new AppError(`Unsupported answer type for: "${question.question}"`, 400);
 }
 
+function buildStatePayload(user, bodyMeasurement, medicalCondition) {
+  const stepStatus = normalizePaidOnboardingStepStatus(user.paidOnboardingStepStatus);
+  return {
+    paidOnboardingCompleted: Boolean(user.paidOnboardingCompleted),
+    paidOnboardingStep:
+      user.paidOnboardingStep || (user.paidOnboardingCompleted ? "done" : "register"),
+    paidOnboardingStepStatus: stepStatus,
+    completedStepsCount: countCompletedSteps(stepStatus),
+    totalStepsCount: 7,
+    nextIncompleteStep: getNextIncompleteStep(stepStatus),
+    energyExchangeEnabled: Boolean(user.energyExchangeEnabled),
+    healPaidAt: user.healPaidAt || null,
+    prefill: {
+      user: null,
+      bodyMeasurement: toPublicBodyMeasurement(bodyMeasurement),
+      medicalCondition: toPublicMedicalCondition(medicalCondition),
+    },
+  };
+}
+
 exports.getStateController = asyncHandler(async (req, res) => {
   const userId = authedUserId(req);
   const user = await getUserById(userId);
@@ -102,21 +130,13 @@ exports.getStateController = asyncHandler(async (req, res) => {
   ]);
 
   const enriched = await enrichUser(user);
+  const data = buildStatePayload(user, bodyMeasurement, medicalCondition);
+  data.prefill.user = enriched;
 
   return res.status(200).json({
     status: true,
     message: "Paid onboarding state fetched",
-    data: {
-      paidOnboardingCompleted: Boolean(user.paidOnboardingCompleted),
-      paidOnboardingStep: user.paidOnboardingStep || (user.paidOnboardingCompleted ? "done" : "register"),
-      energyExchangeEnabled: Boolean(user.energyExchangeEnabled),
-      healPaidAt: user.healPaidAt || null,
-      prefill: {
-        user: enriched,
-        bodyMeasurement: toPublicBodyMeasurement(bodyMeasurement),
-        medicalCondition: toPublicMedicalCondition(medicalCondition),
-      },
-    },
+    data,
   });
 });
 
@@ -158,10 +178,16 @@ exports.submitProfileController = asyncHandler(async (req, res) => {
     );
   }
 
+  const currentStatus = normalizePaidOnboardingStepStatus(user.paidOnboardingStepStatus);
+  let nextStatus = markStepDone(currentStatus, "personalDetails");
+  nextStatus = markStepDone(nextStatus, "profileSetup");
+
   const updates = {
     ...standardUpdates,
     ...extraUpdates,
     paidOnboardingStep: "body",
+    paidOnboardingStepStatus: nextStatus,
+    paidOnboardingCompleted: computePaidOnboardingCompleted(nextStatus),
   };
 
   const updated = await updateUser(userId, updates);
@@ -171,15 +197,19 @@ exports.submitProfileController = asyncHandler(async (req, res) => {
     message: "Profile saved. Continue with body measurements.",
     data: {
       user: await enrichUser(updated),
-      paidOnboardingStep: "body",
+      paidOnboardingStep: updated.paidOnboardingStep,
+      paidOnboardingStepStatus: updated.paidOnboardingStepStatus,
+      paidOnboardingCompleted: Boolean(updated.paidOnboardingCompleted),
     },
   });
 });
 
 exports.submitBodyMeasurementsController = asyncHandler(async (req, res) => {
   const userId = authedUserId(req);
-  const body = req.body || {};
+  const user = req.currentUser || (await getUserById(userId));
+  if (!user) throw new AppError("User not found", 404);
 
+  const body = req.body || {};
   const weightPicKey = await uploadFileFromRequest(req, "users/body-measurements");
 
   const measurement = await createBodyMeasurement({
@@ -198,35 +228,49 @@ exports.submitBodyMeasurementsController = asyncHandler(async (req, res) => {
     activityLevel: body.activityLevel ?? body.activity_level,
   });
 
-  await updateUser(userId, { paidOnboardingStep: "medical" });
+  const currentStatus = normalizePaidOnboardingStepStatus(user.paidOnboardingStepStatus);
+  const nextStatus = markStepDone(currentStatus, "bodyMeasurement");
+  const nextWizardStep = wizardStepAfterBodyComplete(user.paidOnboardingStep);
+
+  const updated = await updateUser(userId, {
+    paidOnboardingStepStatus: nextStatus,
+    paidOnboardingStep: nextWizardStep,
+    paidOnboardingCompleted: computePaidOnboardingCompleted(nextStatus),
+  });
 
   return res.status(201).json({
     status: true,
-    message: "Body measurements saved. Continue with medical conditions.",
+    message: "Body measurements saved. Continue with your 180 view.",
     data: {
       bodyMeasurement: toPublicBodyMeasurement(measurement),
-      paidOnboardingStep: "medical",
+      paidOnboardingStep: updated.paidOnboardingStep,
+      paidOnboardingStepStatus: updated.paidOnboardingStepStatus,
+      paidOnboardingCompleted: Boolean(updated.paidOnboardingCompleted),
     },
   });
 });
 
 exports.getMedicalQuestionsController = asyncHandler(async (req, res) => {
   const questions = await listActiveMedicalConditionQuestions();
+  const userId = authedUserId(req);
+  const latest = userId ? await getLatestMedicalConditionForUser(userId) : null;
+  const answers = latest?.answers || [];
 
   return res.status(200).json({
     status: true,
     message: "Medical condition questions fetched",
-    data: { questions },
+    data: { questions, answers },
   });
 });
 
 exports.submitMedicalConditionsController = asyncHandler(async (req, res) => {
   const userId = authedUserId(req);
-  const body = req.body || {};
+  const user = req.currentUser || (await getUserById(userId));
+  if (!user) throw new AppError("User not found", 404);
 
+  const body = req.body || {};
   const questions = await listActiveMedicalConditionQuestions();
 
-  // Index submitted answers by question id (accept questionId / question_id / id).
   const submitted = Array.isArray(body.answers) ? body.answers : [];
   const answersByQuestionId = new Map();
   for (const entry of submitted) {
@@ -247,18 +291,83 @@ exports.submitMedicalConditionsController = asyncHandler(async (req, res) => {
     answers: normalizedAnswers,
   });
 
+  const currentStatus = normalizePaidOnboardingStepStatus(user.paidOnboardingStepStatus);
+  const nextStatus = markStepDone(currentStatus, "medicalConditions");
+  const nextWizardStep = wizardStepAfterMedicalComplete(user.paidOnboardingStep);
+
   const updated = await updateUser(userId, {
-    paidOnboardingCompleted: true,
-    paidOnboardingStep: "done",
+    paidOnboardingStepStatus: nextStatus,
+    paidOnboardingStep: nextWizardStep,
+    paidOnboardingCompleted: computePaidOnboardingCompleted(nextStatus),
   });
 
   return res.status(201).json({
     status: true,
-    message: "Paid onboarding completed",
+    message: "Medical conditions saved",
     data: {
       medicalCondition: toPublicMedicalCondition(condition),
-      paidOnboardingCompleted: true,
-      paidOnboardingStep: "done",
+      paidOnboardingCompleted: Boolean(updated.paidOnboardingCompleted),
+      paidOnboardingStep: updated.paidOnboardingStep,
+      paidOnboardingStepStatus: updated.paidOnboardingStepStatus,
+      user: await enrichUser(updated),
+    },
+  });
+});
+
+exports.skipOnboardingStepController = asyncHandler(async (req, res) => {
+  const userId = authedUserId(req);
+  const user = req.currentUser || (await getUserById(userId));
+  if (!user) throw new AppError("User not found", 404);
+
+  const step = String(req.body?.step || "").trim();
+  if (!SKIPPABLE_ONBOARDING_STATUS_KEYS.has(step)) {
+    throw new AppError(
+      `step must be one of: ${[...SKIPPABLE_ONBOARDING_STATUS_KEYS].join(", ")}`,
+      400
+    );
+  }
+
+  const currentStatus = normalizePaidOnboardingStepStatus(user.paidOnboardingStepStatus);
+  const nextStatus = markStepSkipped(currentStatus, step);
+  const nextWizardStep = wizardStepAfterSkip(user.paidOnboardingStep, step);
+
+  const updated = await updateUser(userId, {
+    paidOnboardingStepStatus: nextStatus,
+    paidOnboardingStep: nextWizardStep,
+    paidOnboardingCompleted: computePaidOnboardingCompleted(nextStatus),
+  });
+
+  return res.status(200).json({
+    status: true,
+    message: "Onboarding step skipped",
+    data: {
+      paidOnboardingStep: updated.paidOnboardingStep,
+      paidOnboardingStepStatus: updated.paidOnboardingStepStatus,
+      paidOnboardingCompleted: Boolean(updated.paidOnboardingCompleted),
+      nextIncompleteStep: getNextIncompleteStep(updated.paidOnboardingStepStatus),
+    },
+  });
+});
+
+exports.completeLaunchController = asyncHandler(async (req, res) => {
+  const userId = authedUserId(req);
+  const user = req.currentUser || (await getUserById(userId));
+  if (!user) throw new AppError("User not found", 404);
+
+  const currentStatus = normalizePaidOnboardingStepStatus(user.paidOnboardingStepStatus);
+  const nextStatus = markStepDone(currentStatus, "launch");
+
+  const updated = await updateUser(userId, {
+    paidOnboardingStepStatus: nextStatus,
+    paidOnboardingCompleted: computePaidOnboardingCompleted(nextStatus),
+  });
+
+  return res.status(200).json({
+    status: true,
+    message: "Launch step completed",
+    data: {
+      paidOnboardingStepStatus: updated.paidOnboardingStepStatus,
+      paidOnboardingCompleted: Boolean(updated.paidOnboardingCompleted),
       user: await enrichUser(updated),
     },
   });
