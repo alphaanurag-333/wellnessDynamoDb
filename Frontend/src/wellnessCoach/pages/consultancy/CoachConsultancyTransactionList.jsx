@@ -82,9 +82,9 @@ export function CoachConsultancyTransactionList() {
       <div className="page-card__head consultancy-page__head">
         <div className="consultancy-page__intro">
           <h2 className="page-card__title">Consultancy transactions</h2>
-          <p className="page-card__desc">
+          {/* <p className="page-card__desc">
             Payment history for clients in your team — direct, assistant-assigned, or via your referral codes.
-          </p>
+          </p> */}
         </div>
         <div className="page-card__actions user-list-toolbar consultancy-page__toolbar">
           <div className="user-list-filters consultancy-page__filters">

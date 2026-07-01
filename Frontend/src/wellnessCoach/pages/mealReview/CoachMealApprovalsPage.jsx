@@ -197,7 +197,7 @@ export function CoachMealApprovalsPage() {
         </Link>
         <div className="user-page__toolbar-text">
           <h2 className="user-page__title">Pending Meal Approvals</h2>
-          <p className="user-page__subtitle">Review client meal logs and edit macros before approving.</p>
+          {/* <p className="user-page__subtitle">Review client meal logs and edit macros before approving.</p> */}
         </div>
       </div>
 

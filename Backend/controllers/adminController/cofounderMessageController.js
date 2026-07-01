@@ -19,7 +19,7 @@ const {
 const ALLOWED_TYPE = ["link", "video"];
 const ALLOWED_STATUS = ["active", "inactive"];
 const S3_FOLDER = "cofounder-messages";
-const MESSAGE_MAX_LEN = 500;
+const MESSAGE_MAX_LEN = 5000;
 
 function buildCreateUpdates(req) {
   const name = String(req.body.name || "").trim();

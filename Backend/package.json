@@ -16,7 +16,10 @@
     "seed:diet-plan-catalog": "node scripts/seedDietPlanCatalog.js",
     "seed:launch-questions": "node scripts/seedLaunchQuestions.js",
     "seed:launch-focus-areas": "node scripts/seedLaunchFocusAreas.js",
-    "seed:prakruti-assessment": "node scripts/seedPrakrutiAssessment.js"
+    "seed:prakruti-assessment": "node scripts/seedPrakrutiAssessment.js",
+    "migrate": "node migration/migrateAll.js",
+    "migrate:meal-tracking-review": "node migration/migrateAll.js --only=17-meal-tracking-review",
+    "migrate:meal-tracking-index": "node scripts/ensureMealTrackingCoachIndex.js"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1041.0",

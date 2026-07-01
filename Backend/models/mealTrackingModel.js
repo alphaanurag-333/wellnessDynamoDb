@@ -520,7 +520,21 @@ async function queryMealLogsByCoachId(coachId, { status } = {}) {
 
     const { Items = [], LastEvaluatedKey } = await docClient.send(
       new QueryCommand(params)
-    );
+    ).catch((err) => {
+      if (
+        err?.name === "ValidationException" &&
+        String(err.message || "").includes("CoachCreatedAtIndex")
+      ) {
+        const migrationError = new Error(
+          "MealTracking.CoachCreatedAtIndex is missing. Run: npm run migrate:meal-tracking-index (from Backend/)"
+        );
+        migrationError.code = "MEAL_TRACKING_INDEX_MISSING";
+        migrationError.statusCode = 503;
+        migrationError.status = false;
+        throw migrationError;
+      }
+      throw err;
+    });
     items.push(...Items);
     lastKey = LastEvaluatedKey;
   } while (lastKey);

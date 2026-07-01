@@ -123,9 +123,9 @@ export function MyHealUsersList() {
       <div className="page-card__head heal-users-page__head">
         <div className="heal-users-page__intro">
           <h2 className="page-card__title">My clients</h2>
-          <p className="page-card__desc">
+          {/* <p className="page-card__desc">
             Assigned clients in your team — Seek, consultancy, and Heal users with water and steps tracking.
-          </p>
+          </p> */}
         </div>
         <div className="page-card__actions user-list-toolbar heal-users-page__toolbar">
           <div className="user-list-filters heal-users-page__filters">

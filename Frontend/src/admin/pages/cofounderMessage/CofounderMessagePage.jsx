@@ -195,11 +195,11 @@ export function CofounderMessagePage() {
       <div className="page-card">
         <AdminListHeader
           title="Cofounder message"
-          subtitle={
-            exists
-              ? "Update the single cofounder message shown in the app."
-              : "Create the cofounder message once. After that, only updates are allowed."
-          }
+          // subtitle={
+          //   exists
+          //     ? "Update the single cofounder message shown in the app."
+          //     : "Create the cofounder message once. After that, only updates are allowed."
+          // }
         />
 
         <form onSubmit={onSubmit}>

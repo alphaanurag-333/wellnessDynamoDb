@@ -62,9 +62,9 @@ export function CoachConsultancyEnrolledUsersList() {
       <div className="page-card__head consultancy-page__head">
         <div className="consultancy-page__intro">
           <h2 className="page-card__title">Consultancy enrolled users</h2>
-          <p className="page-card__desc">
+          {/* <p className="page-card__desc">
             Clients who completed consultancy payment and are linked to you or your assistants.
-          </p>
+          </p> */}
         </div>
         <div className="page-card__actions user-list-toolbar consultancy-page__toolbar">
           <div className="user-list-filters consultancy-page__filters">
