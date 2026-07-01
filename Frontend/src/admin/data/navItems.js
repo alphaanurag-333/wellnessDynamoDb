@@ -28,6 +28,7 @@ export const navItems = [
   { to: "physical-exercises", label: "Physical Exercise", icon: "activity" },
   { to: "supplements", label: "Supplements", icon: "box" },
   { to: "medical-condition-questions", label: "Medical Conditions", icon: "clipboard-list" },
+  { to: "test-catalog", label: "Test Catalog", icon: "activity" },
   { to: "mental-wellbeing", label: "Mental Wellbeing", icon: "sparkles" },
   {
     id: "testimonials",

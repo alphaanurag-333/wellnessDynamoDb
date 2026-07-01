@@ -51,6 +51,36 @@ const SCALAR_KEYS = [
 ];
 
 const DEFAULT_FY_DISCOUNTS = { 1: 0, 2: 0, 3: 5, 4: 10 };
+const DEFAULT_FY_DISCOUNT_RANGE = { min: 0, max: 100 };
+const FY_OFFSETS = ["1", "2", "3", "4"];
+
+function defaultFyDiscountRanges() {
+  return Object.fromEntries(FY_OFFSETS.map((offset) => [offset, { ...DEFAULT_FY_DISCOUNT_RANGE }]));
+}
+
+function parsePercentInput(value, fallback) {
+  if (value === "" || value == null) return fallback;
+  const num = Number(value);
+  return Number.isFinite(num) ? num : fallback;
+}
+
+function applyFyDiscountRangesFromDoc(docRanges) {
+  const nextRanges = defaultFyDiscountRanges();
+  const savedRanges = docRanges || {};
+  for (const offset of FY_OFFSETS) {
+    const saved = savedRanges[offset];
+    if (saved && typeof saved === "object") {
+      const min = parsePercentInput(saved.min, 0);
+      const max = parsePercentInput(saved.max, 100);
+      nextRanges[offset] = { min: Math.min(min, max), max: Math.max(min, max) };
+    }
+  }
+  return nextRanges;
+}
+
+function fyOffsetLabel(offset) {
+  return offset === "1" ? "current" : `+${Number(offset) - 1}`;
+}
 
 const SETTINGS_TABS = [
   { id: "general", label: "App config" },
@@ -195,7 +225,13 @@ function isValidHttpUrl(value) {
   }
 }
 
-function validateSettingsForm({ scalars, paymentGateways, brandingFiles = {} }) {
+function validateSettingsForm({
+  scalars,
+  paymentGateways,
+  brandingFiles = {},
+  energyExchangeFyDiscountRanges = {},
+  energyExchangeTimeBasedDiscountRange = DEFAULT_FY_DISCOUNT_RANGE,
+}) {
   const appVersion = (scalars.app_version || "").trim();
   const improvedUser = (scalars.improved_user || "").trim();
   const happyClients = (scalars.happy_clients || "").trim();
@@ -311,6 +347,36 @@ function validateSettingsForm({ scalars, paymentGateways, brandingFiles = {} }) 
   //   }
   // }
 
+  for (const offset of FY_OFFSETS) {
+    const range = energyExchangeFyDiscountRanges[offset] || DEFAULT_FY_DISCOUNT_RANGE;
+    const min = Number(range.min);
+    const max = Number(range.max);
+    if (!Number.isFinite(min) || !Number.isFinite(max)) {
+      return {
+        tab: "energy-exchange",
+        text: `FY ${fyOffsetLabel(offset)} discount range must use valid numbers.`,
+      };
+    }
+    if (min < 0 || max > 100 || min > max) {
+      return {
+        tab: "energy-exchange",
+        text: `FY ${fyOffsetLabel(offset)} discount range must be between 0–100% with min ≤ max.`,
+      };
+    }
+  }
+
+  const timeMin = Number(energyExchangeTimeBasedDiscountRange.min);
+  const timeMax = Number(energyExchangeTimeBasedDiscountRange.max);
+  if (!Number.isFinite(timeMin) || !Number.isFinite(timeMax)) {
+    return { tab: "energy-exchange", text: "Time-based discount range must use valid numbers." };
+  }
+  if (timeMin < 0 || timeMax > 100 || timeMin > timeMax) {
+    return {
+      tab: "energy-exchange",
+      text: "Time-based discount range must be between 0–100% with min ≤ max.",
+    };
+  }
+
   return null;
 }
 
@@ -389,6 +455,10 @@ export function BusinessSetting() {
   );
   const [paymentGateways, setPaymentGateways] = useState(() => normalizeGateways([]));
   const [energyExchangeFyDiscounts, setEnergyExchangeFyDiscounts] = useState(() => ({ ...DEFAULT_FY_DISCOUNTS }));
+  const [energyExchangeFyDiscountRanges, setEnergyExchangeFyDiscountRanges] = useState(defaultFyDiscountRanges);
+  const [energyExchangeTimeBasedDiscountRange, setEnergyExchangeTimeBasedDiscountRange] = useState(() => ({
+    ...DEFAULT_FY_DISCOUNT_RANGE,
+  }));
 
   const [adminLogoFile, setAdminLogoFile] = useState(null);
   const [userLogoFile, setUserLogoFile] = useState(null);
@@ -409,6 +479,8 @@ export function BusinessSetting() {
       setHasDoc(false);
       setScalars(Object.fromEntries(SCALAR_KEYS.map((k) => [k, ""])));
       setPaymentGateways(normalizeGateways([]));
+      setEnergyExchangeFyDiscountRanges(defaultFyDiscountRanges());
+      setEnergyExchangeTimeBasedDiscountRange({ ...DEFAULT_FY_DISCOUNT_RANGE });
       setAdminLogoPreview("");
       setUserLogoPreview("");
       setFaviconPreview("");
@@ -440,6 +512,12 @@ export function BusinessSetting() {
     setEnergyExchangeFyDiscounts({
       ...DEFAULT_FY_DISCOUNTS,
       ...(doc.energy_exchange_default_fy_discounts || {}),
+    });
+    setEnergyExchangeFyDiscountRanges(applyFyDiscountRangesFromDoc(doc.energy_exchange_fy_discount_ranges));
+    const savedTimeRange = doc.energy_exchange_time_based_discount_range || {};
+    setEnergyExchangeTimeBasedDiscountRange({
+      min: parsePercentInput(savedTimeRange.min, 0),
+      max: parsePercentInput(savedTimeRange.max, 100),
     });
     const a = doc.admin_logo ? mediaUrl(doc.admin_logo) : "";
     const u = doc.user_logo ? mediaUrl(doc.user_logo) : "";
@@ -501,6 +579,14 @@ export function BusinessSetting() {
       "energy_exchange_default_fy_discounts",
       JSON.stringify(energyExchangeFyDiscounts)
     );
+    fd.append(
+      "energy_exchange_fy_discount_ranges",
+      JSON.stringify(energyExchangeFyDiscountRanges)
+    );
+    fd.append(
+      "energy_exchange_time_based_discount_range",
+      JSON.stringify(energyExchangeTimeBasedDiscountRange)
+    );
     if (adminLogoFile) fd.append("admin_logo", adminLogoFile);
     if (userLogoFile) fd.append("user_logo", userLogoFile);
     if (faviconFile) fd.append("favicon", faviconFile);
@@ -525,6 +611,8 @@ export function BusinessSetting() {
       scalars,
       paymentGateways,
       brandingFiles: { adminLogoFile, userLogoFile, faviconFile },
+      energyExchangeFyDiscountRanges,
+      energyExchangeTimeBasedDiscountRange,
     });
     if (validationError) {
       setTab(validationError.tab);
@@ -534,11 +622,15 @@ export function BusinessSetting() {
     setSaving(true);
     try {
       const fd = buildFormData();
-      await patchAppConfig(adminToken, fd);
+      const result = await patchAppConfig(adminToken, fd);
       await Swal.fire({ icon: "success", title: "Settings saved", timer: 1500 });
       dispatch(fetchAppConfig(adminToken));
-      const refreshed = await getAppConfig(adminToken);
-      applyConfig(refreshed.data);
+      if (result?.data) {
+        applyConfig(result.data);
+      } else {
+        const refreshed = await getAppConfig(adminToken);
+        applyConfig(refreshed.data);
+      }
       setAdminLogoFile(null);
       setUserLogoFile(null);
       setFaviconFile(null);
@@ -936,7 +1028,8 @@ export function BusinessSetting() {
                 <>
                   <p className="settings-panel-hint">
                     Defaults coaches inherit when creating a per-user Energy Exchange program.
-                    Coaches can override the monthly amount and discounts per user.
+                    Coaches can override the monthly amount and discounts per user, but only within the
+                    min/max ranges you set below.
                   </p>
                   <div className="user-form__grid">
                     <div className="user-field">
@@ -1012,6 +1105,102 @@ export function BusinessSetting() {
                         />
                       </div>
                     ))}
+                  </div>
+
+                  <h4 className="form-card__title" style={{ marginTop: "1.5rem" }}>
+                    Coach discount limits (%)
+                  </h4>
+                  <p className="settings-panel-hint">
+                    Coaches may only set FY-tier and time-based discounts within these ranges.
+                  </p>
+                  <div className="table-scroll" style={{ marginTop: "0.75rem" }}>
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>FY tier</th>
+                          <th>Min %</th>
+                          <th>Max %</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {FY_OFFSETS.map((offset) => (
+                          <tr key={offset}>
+                            <td>FY {fyOffsetLabel(offset)}</td>
+                            <td>
+                              <input
+                                className="user-field__input"
+                                type="number"
+                                min={0}
+                                max={100}
+                                value={energyExchangeFyDiscountRanges[offset]?.min ?? 0}
+                                onChange={(e) =>
+                                  setEnergyExchangeFyDiscountRanges((ranges) => ({
+                                    ...ranges,
+                                    [offset]: {
+                                      ...(ranges[offset] || DEFAULT_FY_DISCOUNT_RANGE),
+                                      min: parsePercentInput(e.target.value, 0),
+                                    },
+                                  }))
+                                }
+                              />
+                            </td>
+                            <td>
+                              <input
+                                className="user-field__input"
+                                type="number"
+                                min={0}
+                                max={100}
+                                value={energyExchangeFyDiscountRanges[offset]?.max ?? 100}
+                                onChange={(e) =>
+                                  setEnergyExchangeFyDiscountRanges((ranges) => ({
+                                    ...ranges,
+                                    [offset]: {
+                                      ...(ranges[offset] || DEFAULT_FY_DISCOUNT_RANGE),
+                                      max: parsePercentInput(e.target.value, 100),
+                                    },
+                                  }))
+                                }
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="user-form__grid" style={{ marginTop: "1rem" }}>
+                    <div className="user-field">
+                      <span className="user-field__label">Time-based discount min (%)</span>
+                      <input
+                        className="user-field__input"
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={energyExchangeTimeBasedDiscountRange.min}
+                        onChange={(e) =>
+                          setEnergyExchangeTimeBasedDiscountRange((range) => ({
+                            ...range,
+                            min: parsePercentInput(e.target.value, 0),
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="user-field">
+                      <span className="user-field__label">Time-based discount max (%)</span>
+                      <input
+                        className="user-field__input"
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={energyExchangeTimeBasedDiscountRange.max}
+                        onChange={(e) =>
+                          setEnergyExchangeTimeBasedDiscountRange((range) => ({
+                            ...range,
+                            max: parsePercentInput(e.target.value, 100),
+                          }))
+                        }
+                      />
+                    </div>
                   </div>
                 </>
               )}

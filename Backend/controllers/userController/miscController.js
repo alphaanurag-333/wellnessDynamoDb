@@ -16,6 +16,7 @@ const { listWellnessCoaches } = require("../../models/wellnessCoachModel");
 const { getSpecializationById } = require("../../models/specializationModel");
 const { listBirthdayPostsByPostDate } = require("../../models/birthdayPostModel");
 const { countCommentsForPost } = require("../../models/birthdayPostCommentModel");
+const { listActiveTestCatalog } = require("../../models/testCatalogModel");
 const { getUserById, toPublicUser } = require("../../models/userModel");
 const { todayInTimezone } = require("../../utils/birthdayTimezone");
 const { isValidDateOnly } = require("../../utils/dateOnly");
@@ -290,5 +291,21 @@ exports.getActiveBirthdayPosts = asyncHandler(async (req, res) => {
     status: true,
     birthdayPosts,
     pagination: data.pagination,
+  });
+});
+
+exports.getActiveTestCatalog = asyncHandler(async (req, res) => {
+  const tests = await listActiveTestCatalog();
+  const grouped = tests.reduce((acc, test) => {
+    const category = test.category || "Other";
+    if (!acc[category]) acc[category] = [];
+    acc[category].push(test);
+    return acc;
+  }, {});
+
+  return res.status(200).json({
+    status: true,
+    tests,
+    grouped,
   });
 });
