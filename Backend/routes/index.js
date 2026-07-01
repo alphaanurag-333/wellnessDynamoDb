@@ -43,6 +43,7 @@ const userReminderRoutes = require("./userRoutes/reminderRoutes");
 const userMealTrackingRoutes = require("./userRoutes/mealTrackingRoutes");
 const internalParameterRoutes = require("./userRoutes/internalParameterRoutes");
 const dietPlanCatalogRoutes = require("./userRoutes/dietPlanCatalogRoutes");
+const physicalExerciseRoutes = require("./userRoutes/physicalExerciseRoutes");
 const coachAuthRoutes = require("./wellnessCoachRoutes/coachAuthRoutes");
 const coachSpecializationRoutes = require("./wellnessCoachRoutes/coachSpecializationRoutes");
 const coachAssistantRoutes = require("./wellnessCoachRoutes/coachAssistantRoutes");
@@ -50,6 +51,7 @@ const coachHealUserRoutes = require("./wellnessCoachRoutes/coachHealUserRoutes")
 const coachReminderRoutes = require("./wellnessCoachRoutes/coachReminderRoutes");
 const coachTestRecommendationRoutes = require("./wellnessCoachRoutes/coachTestRecommendationRoutes");
 const coachDietPlanCatalogRoutes = require("./wellnessCoachRoutes/coachDietPlanCatalogRoutes");
+const coachPhysicalExerciseRoutes = require("./wellnessCoachRoutes/coachPhysicalExerciseRoutes");
 const coachMealTrackingRoutes = require("./wellnessCoachRoutes/coachMealTrackingRoutes");
 const coachConsultancyRoutes = require("./wellnessCoachRoutes/coachConsultancyRoutes");
 const coachEnergyExchangeRoutes = require("./wellnessCoachRoutes/coachEnergyExchangeRoutes");
@@ -58,6 +60,7 @@ const assistantHealUserRoutes = require("./assistantWellnessCoachRoutes/assistan
 const assistantReminderRoutes = require("./assistantWellnessCoachRoutes/assistantReminderRoutes");
 const assistantTestRecommendationRoutes = require("./assistantWellnessCoachRoutes/assistantTestRecommendationRoutes");
 const assistantDietPlanCatalogRoutes = require("./assistantWellnessCoachRoutes/assistantDietPlanCatalogRoutes");
+const assistantPhysicalExerciseRoutes = require("./assistantWellnessCoachRoutes/assistantPhysicalExerciseRoutes");
 const assistantMealTrackingRoutes = require("./assistantWellnessCoachRoutes/assistantMealTrackingRoutes");
 const assistantConsultancyRoutes = require("./assistantWellnessCoachRoutes/assistantConsultancyRoutes");
 
@@ -74,6 +77,7 @@ router.use("/coach/assistants", coachAssistantRoutes);
 router.use("/coach/heal-users", coachReminderRoutes);
 router.use("/coach/heal-users", coachTestRecommendationRoutes);
 router.use("/coach/heal-users", coachDietPlanCatalogRoutes);
+router.use("/coach/heal-users", coachPhysicalExerciseRoutes);
 router.use("/coach/heal-users", coachMealTrackingRoutes);
 router.use("/coach/heal-users", coachHealUserRoutes);
 router.use("/coach/consultancy", coachConsultancyRoutes);
@@ -82,6 +86,7 @@ router.use("/assistant/auth", assistantAuthRoutes);
 router.use("/assistant/heal-users", assistantReminderRoutes);
 router.use("/assistant/heal-users", assistantTestRecommendationRoutes);
 router.use("/assistant/heal-users", assistantDietPlanCatalogRoutes);
+router.use("/assistant/heal-users", assistantPhysicalExerciseRoutes);
 router.use("/assistant/heal-users", assistantMealTrackingRoutes);
 router.use("/assistant/heal-users", assistantHealUserRoutes);
 router.use("/assistant/consultancy", assistantConsultancyRoutes);
@@ -126,6 +131,7 @@ router.use("/user/reminders", userReminderRoutes);
 router.use("/user/meal-tracking", userMealTrackingRoutes);
 router.use("/user/internal-parameters", internalParameterRoutes);
 router.use("/user/diet-plans", dietPlanCatalogRoutes);
+router.use("/user/physical-exercises", physicalExerciseRoutes);
 router.use("/public", publicAppConfigRoutes);
 router.use("/public/misc", miscRoutes);
 

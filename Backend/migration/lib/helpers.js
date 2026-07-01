@@ -1,5 +1,10 @@
+const fs = require("fs");
+const path = require("path");
 const { CreateTableCommand, DescribeTableCommand } = require("@aws-sdk/client-dynamodb");
-const { client } = require("../../config/db");
+const { ScanCommand } = require("@aws-sdk/lib-dynamodb");
+const { client, docClient } = require("../../config/db");
+
+const BACKUP_DIR = path.join(__dirname, "..", "backup");
 
 async function tableExists(tableName) {
   try {
@@ -20,7 +25,47 @@ async function createAllTables(definitions) {
   }
 }
 
+async function scanTable(tableName) {
+  const items = [];
+  let lastKey;
+
+  do {
+    const { Items, LastEvaluatedKey } = await docClient.send(
+      new ScanCommand({
+        TableName: tableName,
+        ExclusiveStartKey: lastKey,
+      })
+    );
+    if (Items?.length) items.push(...Items);
+    lastKey = LastEvaluatedKey;
+  } while (lastKey);
+
+  return items;
+}
+
+async function backupTable(tableName) {
+  const items = await scanTable(tableName);
+  const exportedAt = new Date().toISOString();
+  const safeStamp = exportedAt.replace(/[:.]/g, "-");
+  const fileName = `${tableName}-${safeStamp}.json`;
+
+  fs.mkdirSync(BACKUP_DIR, { recursive: true });
+  const filePath = path.join(BACKUP_DIR, fileName);
+  const payload = {
+    tableName,
+    exportedAt,
+    itemCount: items.length,
+    items,
+  };
+
+  fs.writeFileSync(filePath, JSON.stringify(payload, null, 2), "utf8");
+  console.log(`  [${tableName}] backup written to migration/backup/${fileName}`);
+  return filePath;
+}
+
 module.exports = {
-  tableExists,
+  backupTable,
   createAllTables,
+  scanTable,
+  tableExists,
 };

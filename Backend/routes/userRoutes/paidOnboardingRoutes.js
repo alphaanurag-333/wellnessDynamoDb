@@ -2,15 +2,26 @@ const express = require("express");
 const { protectUser } = require("../../middleware/auth");
 const {
   requirePaidOnboardingPending,
+  requireHealTier,
 } = require("../../middleware/tierGuards");
-const { optionalUserFile, optionalWeightPicFile } = require("../../middleware/authMultipart");
+const {
+  optionalUserFile,
+  optionalWeightPicFile,
+  optionalProgressPhotoFiles,
+} = require("../../middleware/authMultipart");
 const {
   getStateController,
   submitProfileController,
   submitBodyMeasurementsController,
   getMedicalQuestionsController,
   submitMedicalConditionsController,
+  skipOnboardingStepController,
+  completeLaunchController,
 } = require("../../controllers/userController/paidOnboardingController");
+const {
+  createProgressPhotoController,
+  listProgressPhotosController,
+} = require("../../controllers/userController/progressPhotoController");
 
 const router = express.Router();
 
@@ -25,15 +36,24 @@ router.post(
 );
 router.post(
   "/body-measurements",
-  requirePaidOnboardingPending,
+  requireHealTier,
   optionalWeightPicFile,
   submitBodyMeasurementsController
 );
+router.post(
+  "/progress-photos",
+  requireHealTier,
+  optionalProgressPhotoFiles,
+  createProgressPhotoController
+);
+router.get("/progress-photos", requireHealTier, listProgressPhotosController);
 router.get("/medical-questions", getMedicalQuestionsController);
 router.post(
   "/medical-conditions",
-  requirePaidOnboardingPending,
+  requireHealTier,
   submitMedicalConditionsController
 );
+router.post("/skip-step", requireHealTier, skipOnboardingStepController);
+router.post("/launch/complete", requireHealTier, completeLaunchController);
 
 module.exports = router;

@@ -23,6 +23,8 @@ const FCM_TYPE_BY_KIND = {
   internal_parameters_recommendation: "internal_parameters_notification",
   internal_parameters_upload: "internal_parameters_upload_notification",
   diet_plan_assignment: "diet_plan_assignment_notification",
+  coach_reminder: "reminder_notification",
+  physical_exercise_assigned: "physical_exercise_notification",
 };
 
 function buildPushData(notification) {
@@ -195,6 +197,31 @@ async function dispatchDietPlanAssignmentNotification({
   return notification;
 }
 
+async function dispatchCoachReminderNotification({
+  userId,
+  reminderId,
+  coachName,
+  reminderName,
+  actorUserId = null,
+}) {
+  const name = String(coachName || "Your coach").trim() || "Your coach";
+  const label = String(reminderName || "Reminder").trim() || "Reminder";
+  const message = `${name} added a reminder for you: ${label}.`;
+
+  const notification = await createTargetedNotification({
+    userId,
+    kind: "coach_reminder",
+    message,
+    referenceId: reminderId,
+    referenceType: "reminder",
+    actorUserId,
+    title: "New reminder from your coach",
+  });
+
+  runPushSafely(deliverTargetedPush(userId, notification));
+  return notification;
+}
+
 async function collectCoachFcmTokensForUser(user) {
   const tokens = [];
   const parentCoachId = String(user?.parentCoachId || "").trim();
@@ -214,6 +241,30 @@ async function collectCoachFcmTokensForUser(user) {
   }
 
   return [...new Set(tokens)];
+}
+
+async function dispatchPhysicalExerciseAssignedNotification({
+  userId,
+  coachName,
+  count = 1,
+}) {
+  const name = String(coachName || "Your coach").trim() || "Your coach";
+  const n = Number(count) || 1;
+  const message =
+    n === 1
+      ? `${name} assigned a new physical exercise for you.`
+      : `${name} assigned ${n} new physical exercises for you.`;
+
+  const notification = await createTargetedNotification({
+    userId,
+    kind: "physical_exercise_assigned",
+    message,
+    referenceType: "assigned_physical_exercise",
+    title: "New physical exercises",
+  });
+
+  runPushSafely(deliverTargetedPush(userId, notification));
+  return notification;
 }
 
 async function dispatchLabReportUploadCoachNotification({ user, reportId }) {
@@ -250,6 +301,8 @@ module.exports = {
   ensureBirthdayReminderInbox,
   dispatchInternalParametersRecommendationNotification,
   dispatchDietPlanAssignmentNotification,
+  dispatchCoachReminderNotification,
+  dispatchPhysicalExerciseAssignedNotification,
   dispatchLabReportUploadCoachNotification,
   dispatchLabReportUploadCoachNotificationAsync,
   deliverBroadcastPush,

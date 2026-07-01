@@ -1,47 +1,44 @@
 /**
- * Run all schema migrations for high-severity audit fixes.
+ * Run schema migrations present in migration/migrations/.
  *
  * Usage (from Backend/):
  *   node migration/migrateAll.js
- *   node migration/migrateAll.js --only=02-testimonials-status-gsi
+ *   node migration/migrateAll.js --only=16-progress-photos-and-onboarding-steps
  *
  * Backups are written to migration/backup/
  */
 require("dotenv").config();
 
-const adminMigration = require("./migrations/01-admin-single-key");
-const testimonialsMigration = require("./migrations/02-testimonials-status-gsi");
-const phoneIndexMigration = require("./migrations/03-admin-drop-phone-index");
-const mediaFieldsMigration = require("./migrations/04-media-field-camelcase");
-const userReferralMigration = require("./migrations/05-user-referral-assignment");
-const appConfigPaymentMethodsMigration = require("./migrations/06-appconfig-drop-payment-methods");
-const userParentCoachSparseMigration = require("./migrations/07-user-parent-coach-sparse-index");
-const consultancySparseMigration = require("./migrations/08-consultancy-transaction-sparse-index");
-const birthdayTablesMigration = require("./migrations/09-birthday-tables");
-const userDobMonthDayMigration = require("./migrations/10-user-dob-month-day-index");
-const cofounderMessageMigration = require("./migrations/11-cofounder-message-table");
-const userInboxNotificationsMigration = require("./migrations/13-user-inbox-notifications");
-const energyExchangeOnboardingMigration = require("./migrations/14-energy-exchange-and-onboarding");
-const internalParametersMigration = require("./migrations/15-internal-parameters");
-const dietPlanCatalogMigration = require("./migrations/16-diet-plan-catalog");
+const fs = require("fs");
+const path = require("path");
 
-const MIGRATIONS = [
-  adminMigration,
-  testimonialsMigration,
-  phoneIndexMigration,
-  mediaFieldsMigration,
-  userReferralMigration,
-  appConfigPaymentMethodsMigration,
-  userParentCoachSparseMigration,
-  consultancySparseMigration,
-  birthdayTablesMigration,
-  userDobMonthDayMigration,
-  cofounderMessageMigration,
-  userInboxNotificationsMigration,
-  energyExchangeOnboardingMigration,
-  internalParametersMigration,
-  dietPlanCatalogMigration,
-];
+const MIGRATIONS_DIR = path.join(__dirname, "migrations");
+
+function loadMigrations() {
+  const files = fs
+    .readdirSync(MIGRATIONS_DIR)
+    .filter((name) => name.endsWith(".js"))
+    .sort();
+
+  return files.map((name) => {
+    const migration = require(path.join(MIGRATIONS_DIR, name));
+    if (!migration?.id) {
+      throw new Error(`Migration ${name} must export an id`);
+    }
+    return migration;
+  });
+}
+
+function getRunner(migration) {
+  const runnerKey = Object.keys(migration).find(
+    (key) => key.startsWith("migrate") && typeof migration[key] === "function"
+  );
+  if (!runnerKey) {
+    throw new Error(`Migration ${migration.id} has no migrate* runner export`);
+  }
+  return migration[runnerKey];
+}
+
 
 function parseOnlyArg() {
   const only = process.argv.find((a) => a.startsWith("--only="));
@@ -51,12 +48,16 @@ function parseOnlyArg() {
 
 async function run() {
   const only = parseOnlyArg();
+  const migrations = loadMigrations();
   const selected = only
-    ? MIGRATIONS.filter((m) => m.id === only || m.id.endsWith(only))
-    : MIGRATIONS;
+    ? migrations.filter((m) => m.id === only || m.id.endsWith(only))
+    : migrations;
 
   if (selected.length === 0) {
     console.error(`No migration matched --only=${only}`);
+    console.error(
+      `Available: ${migrations.map((m) => m.id).join(", ") || "(none)"}`
+    );
     process.exitCode = 1;
     return;
   }
@@ -65,23 +66,7 @@ async function run() {
   console.log(`Running ${selected.length} migration(s)...\n`);
 
   for (const migration of selected) {
-    const runner =
-      migration.migrateAdminSingleKey ||
-      migration.migrateTestimonialsStatusGsi ||
-      migration.migrateAdminDropPhoneIndex ||
-      migration.migrateMediaFieldCamelCase ||
-      migration.migrateUserReferralAssignment ||
-      migration.migrateAppConfigDropPaymentMethods ||
-      migration.migrateUserParentCoachSparseIndex ||
-      migration.migrateConsultancyTransactionSparseIndex ||
-      migration.migrateBirthdayTables ||
-      migration.migrateUserDobMonthDayIndex ||
-      migration.migrateCofounderMessageTable ||
-      migration.migrateUserInboxNotifications ||
-      migration.migrateEnergyExchangeAndOnboarding ||
-      migration.migrateInternalParameters ||
-      migration.migrateDietPlanCatalog;
-
+    const runner = getRunner(migration);
     console.log(`--- ${migration.id} ---`);
     await runner();
     console.log("");

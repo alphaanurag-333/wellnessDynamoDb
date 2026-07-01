@@ -38,13 +38,13 @@ const USER_ALLOWED_DIETARY_PREFERENCES = [
   "non_vegetarian",
   "jain",
 ];
-const USER_ALLOWED_PAID_ONBOARDING_STEPS = [
-  "register",
-  "profile",
-  "body",
-  "medical",
-  "done",
-];
+const {
+  USER_ALLOWED_PAID_ONBOARDING_STEPS,
+  normalizePaidOnboardingStep,
+  defaultPaidOnboardingStepStatus,
+  normalizePaidOnboardingStepStatus,
+  computePaidOnboardingCompleted,
+} = require("../utils/paidOnboardingHelpers");
 
 const STATUS = new Set(USER_ALLOWED_STATUS);
 const GENDERS = new Set(USER_ALLOWED_GENDERS);
@@ -53,18 +53,10 @@ const ASSIGNMENT_STATUSES = new Set(USER_ALLOWED_ASSIGNMENT_STATUSES);
 const ASSIGNED_COACH_TYPES = new Set(USER_ALLOWED_ASSIGNED_COACH_TYPES);
 const ASSIGNMENT_SOURCES = new Set(USER_ALLOWED_ASSIGNMENT_SOURCES);
 const DIETARY_PREFERENCES = new Set(USER_ALLOWED_DIETARY_PREFERENCES);
-const PAID_ONBOARDING_STEPS = new Set(USER_ALLOWED_PAID_ONBOARDING_STEPS);
-
 function normalizeDietaryPreference(value) {
   if (value == null || value === "") return null;
   const next = String(value).toLowerCase().trim();
   return DIETARY_PREFERENCES.has(next) ? next : null;
-}
-
-function normalizePaidOnboardingStep(value) {
-  if (value == null || value === "") return null;
-  const next = String(value).toLowerCase().trim();
-  return PAID_ONBOARDING_STEPS.has(next) ? next : null;
 }
 
 function normalizeWellnessJourneyFor(value) {
@@ -203,6 +195,7 @@ function sanitizeUpdateField(key, value) {
   if (key === "healPaidAt") return normalizeDob(value);
   if (key === "paidOnboardingCompleted" || key === "energyExchangeEnabled") return Boolean(value);
   if (key === "paidOnboardingStep") return normalizePaidOnboardingStep(value);
+  if (key === "paidOnboardingStepStatus") return normalizePaidOnboardingStepStatus(value);
   if (key === "dietaryPreference") return normalizeDietaryPreference(value);
   if (key === "wellnessJourneyFor") return normalizeWellnessJourneyFor(value);
   if (
@@ -225,6 +218,8 @@ function sanitizeUpdateField(key, value) {
       "addressLine1",
       "addressLine2",
       "pincode",
+      "pendingPhone",
+      "pendingPhoneCountryCode",
     ].includes(key)
   ) {
     const s = value == null ? "" : String(value).trim();
@@ -305,6 +300,9 @@ function buildUserItem(input, { id, now } = {}) {
     convertedAt: input.convertedAt ? normalizeDob(input.convertedAt) : null,
     paidOnboardingCompleted: Boolean(input.paidOnboardingCompleted),
     paidOnboardingStep: normalizePaidOnboardingStep(input.paidOnboardingStep),
+    paidOnboardingStepStatus: normalizePaidOnboardingStepStatus(
+      input.paidOnboardingStepStatus
+    ),
     energyExchangeEnabled: Boolean(input.energyExchangeEnabled),
     addressLine1: input.addressLine1 != null ? String(input.addressLine1).trim() || null : null,
     addressLine2: input.addressLine2 != null ? String(input.addressLine2).trim() || null : null,
@@ -708,6 +706,9 @@ module.exports = {
   normalizeAssignedCoachType,
   normalizeDietaryPreference,
   normalizePaidOnboardingStep,
+  defaultPaidOnboardingStepStatus,
+  normalizePaidOnboardingStepStatus,
+  computePaidOnboardingCompleted,
   normalizeWellnessJourneyFor,
   normalizeDob,
   buildUserItem,

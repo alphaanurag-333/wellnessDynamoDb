@@ -14,6 +14,8 @@ const {
   updateUserProfile,
   sendDeleteAccountOtp,
   deleteUserByPhoneOtp,
+  sendProfilePhoneChangeOtp,
+  verifyProfilePhoneChangeOtp,
 } = require("../../controllers/userController/authController");
 
 const router = express.Router();
@@ -30,5 +32,7 @@ router.post("/delete", deleteUserByPhoneOtp);
 
 router.get("/me", protectUser, getUserProfile);
 router.patch("/me", protectUser, optionalUserFile, updateUserProfile);
+router.post("/profile/phone/otp/send", protectUser, sendProfilePhoneChangeOtp);
+router.post("/profile/phone/otp/verify", protectUser, verifyProfilePhoneChangeOtp);
 
 module.exports = router;

@@ -166,6 +166,20 @@ async function listPhysicalExercises({ page = 1, limit = 10, status, type, searc
   };
 }
 
+async function listActivePhysicalExercises() {
+  const { items } = await listByPartitionKey({
+    tableName: TABLE,
+    indexName: "StatusCreatedAtIndex",
+    partitionKeyValue: "active",
+    scanIndexForward: false,
+    page: 1,
+    limit: 500,
+    maxLimit: 500,
+    sortFn: sortByCreatedAtDesc,
+  });
+  return items.map((row) => toPublicPhysicalExercise(row)).filter(Boolean);
+}
+
 module.exports = {
   PHYSICAL_EXERCISE_ALLOWED_STATUS,
   PHYSICAL_EXERCISE_ALLOWED_TYPE,
@@ -177,4 +191,5 @@ module.exports = {
   updatePhysicalExercise,
   deletePhysicalExercise,
   listPhysicalExercises,
+  listActivePhysicalExercises,
 };

@@ -16,6 +16,7 @@ const {
   getActiveBirthdayPosts,
   getActiveTestCatalog,
   getActiveDietPlanCatalog,
+  getActivePhysicalExercises,
 } = require("../../controllers/userController/miscController");
 
 const router = express.Router();
@@ -36,5 +37,6 @@ router.get("/wellness-coaches", getActiveWellnessCoaches);
 router.get("/birthday-posts", getActiveBirthdayPosts);
 router.get("/test-catalog", getActiveTestCatalog);
 router.get("/diet-plan-catalog", getActiveDietPlanCatalog);
+router.get("/physical-exercises", getActivePhysicalExercises);
 
 module.exports = router;

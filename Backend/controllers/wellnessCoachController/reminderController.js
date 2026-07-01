@@ -7,6 +7,10 @@ const {
   listRemindersByUserId,
   toggleReminderActive,
 } = require("../../models/reminderModel");
+const { getWellnessCoachById } = require("../../models/wellnessCoachModel");
+const {
+  dispatchCoachReminderNotification,
+} = require("../../services/notificationDispatchService");
 const {
   readUserIdParam,
   readReminderIdParam,
@@ -55,6 +59,17 @@ exports.createCoachUserReminderController = asyncHandler(async (req, res) => {
   } catch (err) {
     handleValidationError(err);
   }
+
+  const coach = await getWellnessCoachById(actingCoachId);
+  dispatchCoachReminderNotification({
+    userId,
+    reminderId: reminder?.id,
+    coachName: coach?.name,
+    reminderName: reminder?.name,
+    actorUserId: actingCoachId,
+  }).catch((err) => {
+    console.error("Coach reminder notification failed:", err?.message || err);
+  });
 
   return res.status(201).json({
     status: true,
