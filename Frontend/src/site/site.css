@@ -1623,7 +1623,7 @@ a:hover {
   position: absolute;
   left: 0;
   bottom: -10px;
-  width: 42px;
+  width: 100%;
   height: 2px;
   background: var(--primary);
   border-radius: 10px;
