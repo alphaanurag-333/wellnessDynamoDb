@@ -7848,3 +7848,198 @@ fieldset.form-field legend {
   .launch-assessment-page__save-btn { width: 100%; }
 }
 
+.prakruti-assessment-page__form-card {
+  margin-top: 0;
+  padding: 1.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.prakruti-assessment-page__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
+  gap: 1.25rem;
+  align-items: start;
+  margin-top: 1.25rem;
+}
+
+.prakruti-assessment-page__main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.prakruti-assessment-page__form-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem 1.25rem;
+}
+
+.prakruti-assessment-page__type-field {
+  flex: 1 1 220px;
+  max-width: 320px;
+  margin: 0;
+}
+
+.prakruti-assessment-page__form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.prakruti-assessment-page__save-btn {
+  width: auto;
+  min-width: 120px;
+  flex-shrink: 0;
+}
+
+.prakruti-assessment-page__tabs-panel {
+  margin-top: 0;
+}
+
+.prakruti-assessment-page__tab-panel {
+  background: #f8fbff;
+}
+
+.prakruti-assessment-page__list-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  margin: 0.75rem 0 1rem;
+}
+
+.prakruti-assessment-page__list-search {
+  flex: 1 1 260px;
+  min-width: 220px;
+  margin: 0;
+}
+
+.prakruti-assessment-page__list-summary {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.prakruti-things-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.prakruti-things-list__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  line-height: 1.45;
+}
+
+.prakruti-things-list__item--checked {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.prakruti-things-list__item input {
+  margin-top: 0.2rem;
+  flex-shrink: 0;
+}
+
+.prakruti-things-list__item span {
+  flex: 1;
+  min-width: 0;
+}
+
+.prakruti-result-preview {
+  position: sticky;
+  top: 1rem;
+  width: 100%;
+  padding: 1.25rem;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.prakruti-result-preview__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  margin-bottom: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.prakruti-result-preview__type {
+  color: #16a34a;
+  font-weight: 800;
+}
+
+.prakruti-result-preview__section {
+  margin-top: 0.75rem;
+  padding: 0.9rem 1rem;
+  border-radius: 12px;
+  background: #f1f5f9;
+}
+
+.prakruti-result-preview__section h4 {
+  margin: 0 0 0.6rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.prakruti-result-preview__section ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: #475569;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.prakruti-result-preview__section li + li {
+  margin-top: 0.45rem;
+}
+
+.prakruti-result-preview__hint {
+  list-style: none;
+  margin-left: -1.1rem;
+  color: #64748b;
+  font-style: italic;
+}
+
+@media (max-width: 960px) {
+  .prakruti-assessment-page__body {
+    grid-template-columns: 1fr;
+  }
+
+  .prakruti-result-preview {
+    position: static;
+    order: -1;
+  }
+
+  .prakruti-assessment-page__type-field {
+    max-width: none;
+  }
+
+  .prakruti-assessment-page__save-btn {
+    width: 100%;
+  }
+}
+

@@ -97,6 +97,27 @@ function titleFromPath(pathname) {
     return "Area to Focus";
   }
 
+  if (p.startsWith("/admin/prakruti-questions")) {
+    if (/^\/admin\/prakruti-questions\/new$/.test(p)) return "Add Prakruti question";
+    if (/^\/admin\/prakruti-questions\/[^/]+\/edit$/.test(p)) return "Edit Prakruti question";
+    if (/^\/admin\/prakruti-questions\/[^/]+$/.test(p)) return "Prakruti question details";
+    return "Prakruti questions";
+  }
+
+  if (p.startsWith("/admin/prakruti-things-to-avoid")) {
+    if (/^\/admin\/prakruti-things-to-avoid\/new$/.test(p)) return "Add thing to avoid";
+    if (/^\/admin\/prakruti-things-to-avoid\/[^/]+\/edit$/.test(p)) return "Edit thing to avoid";
+    if (/^\/admin\/prakruti-things-to-avoid\/[^/]+$/.test(p)) return "Thing to avoid details";
+    return "Things to avoid";
+  }
+
+  if (p.startsWith("/admin/prakruti-recommendations")) {
+    if (/^\/admin\/prakruti-recommendations\/new$/.test(p)) return "Add recommendation";
+    if (/^\/admin\/prakruti-recommendations\/[^/]+\/edit$/.test(p)) return "Edit recommendation";
+    if (/^\/admin\/prakruti-recommendations\/[^/]+$/.test(p)) return "Recommendation details";
+    return "Prakruti recommendations";
+  }
+
   if (p.startsWith("/admin/health-recipes")) {
     if (/^\/admin\/health-recipes\/new$/.test(p)) return "Add health recipe";
     if (/^\/admin\/health-recipes\/[^/]+\/edit$/.test(p)) return "Edit health recipe";

@@ -168,13 +168,13 @@ export function AssistantMyHealUsersList() {
                         Meal tracking
                       </Link>
                       <Link
-                        to={`${u._id || u.id}/launch-assessment`}
+                        to={`${u._id || u.id}/prakruti-assessment`}
                         className="btn btn--ghost btn--sm"
                         title={String(u.userTier || "").toLowerCase() !== "heal" ? "Heal tier only" : undefined}
                         style={String(u.userTier || "").toLowerCase() !== "heal" ? { opacity: 0.45, pointerEvents: "none" } : undefined}
                         aria-disabled={String(u.userTier || "").toLowerCase() !== "heal"}
                       >
-                        LAUNCH assessment
+                        Prakruti assessment
                       </Link>
                     </div>
                   </td>

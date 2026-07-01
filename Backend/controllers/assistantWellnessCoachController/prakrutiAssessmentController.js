@@ -1,0 +1,7 @@
+const { assistantHandlers } = require("../prakrutiAssessmentControllerHelpers");
+
+exports.listAssistantUserPrakrutiThingsToAvoidController = assistantHandlers.listThingsToAvoidController;
+exports.listAssistantUserPrakrutiQuestionsController = assistantHandlers.listQuestionsController;
+exports.getAssistantUserPrakrutiAssessmentController = assistantHandlers.getAssessmentController;
+exports.saveAssistantUserPrakrutiAssessmentController = assistantHandlers.saveAssessmentController;
+exports.exportAssistantUserPrakrutiQuestionsController = assistantHandlers.exportQuestionsController;

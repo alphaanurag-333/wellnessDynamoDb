@@ -37,6 +37,16 @@ export const navItems = [
       { to: "launch-focus-areas", label: "Area to Focus", icon: "list" },
     ],
   },
+  {
+    id: "prakrutiAssessment",
+    label: "Prakruti Assessment",
+    icon: "leaf",
+    children: [
+      { to: "prakruti-questions", label: "Questions", icon: "clipboard-list" },
+      { to: "prakruti-things-to-avoid", label: "Things to Avoid", icon: "list" },
+      { to: "prakruti-recommendations", label: "Recommendations", icon: "sparkles" },
+    ],
+  },
   { to: "test-catalog", label: "Test Catalog", icon: "activity" },
   { to: "diet-plan-catalog", label: "Diet Plan Catalog", icon: "utensils" },
   { to: "mental-wellbeing", label: "Mental Wellbeing", icon: "sparkles" },

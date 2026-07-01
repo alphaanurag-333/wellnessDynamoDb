@@ -62,6 +62,18 @@ import { LaunchFocusAreaList } from "../pages/launchFocusArea/LaunchFocusAreaLis
 import { LaunchFocusAreaAdd } from "../pages/launchFocusArea/LaunchFocusAreaAdd.jsx";
 import { LaunchFocusAreaEdit } from "../pages/launchFocusArea/LaunchFocusAreaEdit.jsx";
 import { LaunchFocusAreaView } from "../pages/launchFocusArea/LaunchFocusAreaView.jsx";
+import { PrakrutiQuestionList } from "../pages/prakrutiQuestion/PrakrutiQuestionList.jsx";
+import { PrakrutiQuestionAdd } from "../pages/prakrutiQuestion/PrakrutiQuestionAdd.jsx";
+import { PrakrutiQuestionEdit } from "../pages/prakrutiQuestion/PrakrutiQuestionEdit.jsx";
+import { PrakrutiQuestionView } from "../pages/prakrutiQuestion/PrakrutiQuestionView.jsx";
+import { PrakrutiThingToAvoidList } from "../pages/prakrutiThingToAvoid/PrakrutiThingToAvoidList.jsx";
+import { PrakrutiThingToAvoidAdd } from "../pages/prakrutiThingToAvoid/PrakrutiThingToAvoidAdd.jsx";
+import { PrakrutiThingToAvoidEdit } from "../pages/prakrutiThingToAvoid/PrakrutiThingToAvoidEdit.jsx";
+import { PrakrutiThingToAvoidView } from "../pages/prakrutiThingToAvoid/PrakrutiThingToAvoidView.jsx";
+import { PrakrutiRecommendationList } from "../pages/prakrutiRecommendation/PrakrutiRecommendationList.jsx";
+import { PrakrutiRecommendationAdd } from "../pages/prakrutiRecommendation/PrakrutiRecommendationAdd.jsx";
+import { PrakrutiRecommendationEdit } from "../pages/prakrutiRecommendation/PrakrutiRecommendationEdit.jsx";
+import { PrakrutiRecommendationView } from "../pages/prakrutiRecommendation/PrakrutiRecommendationView.jsx";
 import { TestCatalogList } from "../pages/testCatalog/TestCatalogList.jsx";
 import { TestCatalogAdd } from "../pages/testCatalog/TestCatalogAdd.jsx";
 import { TestCatalogEdit } from "../pages/testCatalog/TestCatalogEdit.jsx";
@@ -229,6 +241,24 @@ export const adminRouteTree = (
       <Route path="new" element={<LaunchFocusAreaAdd />} />
       <Route path=":focusAreaId/edit" element={<LaunchFocusAreaEdit />} />
       <Route path=":focusAreaId" element={<LaunchFocusAreaView />} />
+    </Route>
+    <Route path="prakruti-questions" element={<Outlet />}>
+      <Route index element={<PrakrutiQuestionList />} />
+      <Route path="new" element={<PrakrutiQuestionAdd />} />
+      <Route path=":questionId/edit" element={<PrakrutiQuestionEdit />} />
+      <Route path=":questionId" element={<PrakrutiQuestionView />} />
+    </Route>
+    <Route path="prakruti-things-to-avoid" element={<Outlet />}>
+      <Route index element={<PrakrutiThingToAvoidList />} />
+      <Route path="new" element={<PrakrutiThingToAvoidAdd />} />
+      <Route path=":itemId/edit" element={<PrakrutiThingToAvoidEdit />} />
+      <Route path=":itemId" element={<PrakrutiThingToAvoidView />} />
+    </Route>
+    <Route path="prakruti-recommendations" element={<Outlet />}>
+      <Route index element={<PrakrutiRecommendationList />} />
+      <Route path="new" element={<PrakrutiRecommendationAdd />} />
+      <Route path=":itemId/edit" element={<PrakrutiRecommendationEdit />} />
+      <Route path=":itemId" element={<PrakrutiRecommendationView />} />
     </Route>
     <Route path="test-catalog" element={<Outlet />}>
       <Route index element={<TestCatalogList />} />

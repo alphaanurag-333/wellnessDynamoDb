@@ -15,7 +15,8 @@
     "seed:test-catalog": "node scripts/seedTestCatalog.js",
     "seed:diet-plan-catalog": "node scripts/seedDietPlanCatalog.js",
     "seed:launch-questions": "node scripts/seedLaunchQuestions.js",
-    "seed:launch-focus-areas": "node scripts/seedLaunchFocusAreas.js"
+    "seed:launch-focus-areas": "node scripts/seedLaunchFocusAreas.js",
+    "seed:prakruti-assessment": "node scripts/seedPrakrutiAssessment.js"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1041.0",

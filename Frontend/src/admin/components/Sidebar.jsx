@@ -16,6 +16,7 @@ const NAV_GROUP_PATTERNS = {
   content: /\/admin\/(banners|notifications|faq|static-pages)(\/|$)/,
   health: /\/admin\/(health-concerns|health-tools|health-recipes|health-disorders|yoga|physical-exercises)(\/|$)/,
   launchAssessment: /\/admin\/(launch-questions|launch-focus-areas)(\/|$)/,
+  prakrutiAssessment: /\/admin\/(prakruti-questions|prakruti-things-to-avoid|prakruti-recommendations)(\/|$)/,
   testimonials: /\/admin\/(transformations|client-testimonials|video-testimonials)(\/|$)/,
 };
 
