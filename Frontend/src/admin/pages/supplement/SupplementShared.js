@@ -1,9 +1,9 @@
 import { IMAGE_MAX_SIZE_BYTES } from "../../../utils/mediaUploadValidation.js";
 
 export const NAME_MIN_LEN = 2;
-export const NAME_MAX_LEN = 60;
+export const NAME_MAX_LEN = 35;
 export const DESCRIPTION_MIN_LEN = 5;
-export const DESCRIPTION_MAX_LEN = 1000;
+export const DESCRIPTION_MAX_LEN =255;
 export const UNIT_MAX_LEN = 20;
 export const DESCRIPTION_PREVIEW_LEN = 80;
 export const LIST_SEARCH_MAX_LEN = 50;

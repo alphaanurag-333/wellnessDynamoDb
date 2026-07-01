@@ -1,6 +1,6 @@
 export const QUESTION_MIN_LEN = 3;
-export const QUESTION_MAX_LEN = 300;
-export const QUESTION_PREVIEW_LEN = 100;
+export const QUESTION_MAX_LEN = 200;
+export const QUESTION_PREVIEW_LEN = 80;
 export const LIST_SEARCH_MAX_LEN = 50;
 export const LIST_LIMIT = 10;
 

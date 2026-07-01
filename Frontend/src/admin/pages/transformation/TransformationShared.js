@@ -1,7 +1,7 @@
 import { IMAGE_MAX_SIZE_BYTES } from "../../../utils/mediaUploadValidation.js";
 
 export const ACHIEVEMENTS_MIN_LEN = 2;
-export const ACHIEVEMENTS_MAX_LEN = 255;
+export const ACHIEVEMENTS_MAX_LEN = 35;
 export const DESCRIPTION_MIN_LEN = 5;
 export const DESCRIPTION_MAX_LEN = 255;
 export const TIME_TAKEN_MIN = 1;

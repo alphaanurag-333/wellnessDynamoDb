@@ -1,8 +1,8 @@
 import { VIDEO_MAX_SIZE_BYTES, validateVideoFileSize } from "../../../utils/mediaUploadValidation.js";
 
 export const TITLE_MIN_LEN = 2;
-export const TITLE_MAX_LEN = 100;
-export const YT_LINK_MAX_LEN = 500;
+export const TITLE_MAX_LEN = 35;
+export const YT_LINK_MAX_LEN = 200;
 export const LIST_SEARCH_MAX_LEN = 50;
 export const LIST_LIMIT = 10;
 export { VIDEO_MAX_SIZE_BYTES, validateVideoFileSize };
