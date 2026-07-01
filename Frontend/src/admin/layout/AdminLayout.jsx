@@ -83,6 +83,20 @@ function titleFromPath(pathname) {
 
   if (p.startsWith("/admin/cofounder-message")) return "Cofounder message";
 
+  if (p.startsWith("/admin/launch-questions")) {
+    if (/^\/admin\/launch-questions\/new$/.test(p)) return "Add LAUNCH question";
+    if (/^\/admin\/launch-questions\/[^/]+\/edit$/.test(p)) return "Edit LAUNCH question";
+    if (/^\/admin\/launch-questions\/[^/]+$/.test(p)) return "LAUNCH question details";
+    return "LAUNCH Questions";
+  }
+
+  if (p.startsWith("/admin/launch-focus-areas")) {
+    if (/^\/admin\/launch-focus-areas\/new$/.test(p)) return "Add area to focus";
+    if (/^\/admin\/launch-focus-areas\/[^/]+\/edit$/.test(p)) return "Edit area to focus";
+    if (/^\/admin\/launch-focus-areas\/[^/]+$/.test(p)) return "Area to focus details";
+    return "Area to Focus";
+  }
+
   if (p.startsWith("/admin/health-recipes")) {
     if (/^\/admin\/health-recipes\/new$/.test(p)) return "Add health recipe";
     if (/^\/admin\/health-recipes\/[^/]+\/edit$/.test(p)) return "Edit health recipe";

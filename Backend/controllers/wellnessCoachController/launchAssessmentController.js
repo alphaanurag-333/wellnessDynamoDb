@@ -1,0 +1,10 @@
+const { coachHandlers } = require("../launchAssessmentControllerHelpers");
+
+exports.listCoachUserLaunchFocusAreasController = coachHandlers.listFocusAreasController;
+exports.listCoachUserLaunchQuestionsController = coachHandlers.listQuestionsController;
+exports.listCoachUserLaunchAssessmentsController = coachHandlers.listAssessmentsController;
+exports.getCoachUserLaunchAssessmentByDateController = coachHandlers.getAssessmentByDateController;
+exports.createCoachUserLaunchAssessmentController = coachHandlers.createAssessmentController;
+exports.updateCoachUserLaunchAssessmentController = coachHandlers.updateAssessmentController;
+exports.deleteCoachUserLaunchAssessmentController = coachHandlers.deleteAssessmentController;
+exports.exportCoachUserLaunchQuestionsController = coachHandlers.exportQuestionsController;

@@ -7533,6 +7533,7 @@ fieldset.form-field legend {
   .mt-log-card__macro-val { font-size: 0.82rem; }
 }
 
+<<<<<<< HEAD
 .mt-mode-card {
   margin-bottom: 1rem;
 }
@@ -7726,5 +7727,146 @@ fieldset.form-field legend {
 .mt-review-macros .user-field__input {
   width: 100%;
   box-sizing: border-box;
+=======
+/* LAUNCH assessment */
+.launch-assessment-page__back { margin-bottom: 0.5rem; }
+.launch-assessment-page__actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.launch-assessment-page__overview {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) 1fr;
+  gap: 1.5rem;
+  margin: 1.25rem 0;
+}
+.launch-assessment-page__section-title { margin: 0 0 0.75rem; font-size: 1rem; }
+.launch-assessment-page__score-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin: 1.25rem 0;
+  padding: 1rem;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+.launch-assessment-page__questions { margin-top: 1.5rem; }
+.launch-assessment-page__focus-areas {
+  margin: 1.25rem 0;
+  padding: 1rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  background: #f8fbff;
+}
+.launch-focus-area-list {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+.launch-focus-area-list__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+}
+.launch-focus-area-list__item--checked {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+.launch-focus-area-list__item input { margin-top: 0.2rem; flex-shrink: 0; }
+.launch-assessment-page__score-field { min-width: 220px; }
+.launch-assessment-page__field-error {
+  display: block;
+  margin-top: 0.35rem;
+  color: #dc2626;
+  font-size: 0.82rem;
+}
+.user-field__input--invalid {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.15);
+}
+.launch-assessment-page__date-hint { color: var(--muted, #64748b); font-size: 0.9rem; padding-bottom: 0.5rem; }
+.launch-assessment-page__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.25rem;
+  flex-wrap: wrap;
+}
+.launch-assessment-page__total { font-size: 1.05rem; }
+.launch-assessment-table__category-row td {
+  background: #fff7ed;
+  font-size: 0.95rem;
+}
+.launch-gauge { text-align: center; }
+.launch-gauge__score-box {
+  color: #fff;
+  border-radius: 16px;
+  padding: 1.25rem 1rem;
+  margin-bottom: 0.75rem;
+}
+.launch-gauge__score-value { display: block; font-size: 2.5rem; font-weight: 700; line-height: 1; }
+.launch-gauge__score-label { font-size: 0.85rem; opacity: 0.95; }
+.launch-gauge__track {
+  position: relative;
+  height: 14px;
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 0.5rem 0;
+}
+.launch-gauge__zones { display: flex; height: 100%; }
+.launch-gauge__zones span { flex: 1; }
+.launch-gauge__needle {
+  position: absolute;
+  top: -4px;
+  width: 3px;
+  height: 22px;
+  background: #111827;
+  transform: translateX(-50%);
+  border-radius: 2px;
+}
+.launch-gauge__zone-label { margin: 0.35rem 0 0; font-weight: 600; }
+.launch-history-chart__plot {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  min-height: 180px;
+  padding: 0.5rem 0;
+  overflow-x: auto;
+}
+.launch-history-chart__column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 52px;
+  flex: 0 0 auto;
+}
+.launch-history-chart__value { font-size: 0.8rem; font-weight: 700; margin-bottom: 0.25rem; }
+.launch-history-chart__bar-wrap {
+  width: 36px;
+  height: 120px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.launch-history-chart__bar {
+  width: 100%;
+  border-radius: 8px 8px 4px 4px;
+  min-height: 8px;
+}
+.launch-history-chart__label {
+  margin-top: 0.35rem;
+  font-size: 0.68rem;
+  color: var(--muted, #64748b);
+  text-align: center;
+  white-space: nowrap;
+}
+@media (max-width: 768px) {
+  .launch-assessment-page__overview { grid-template-columns: 1fr; }
+>>>>>>> 5f74c8a2667b37ecb1d2a3db05a03805a932c2cc
 }
 

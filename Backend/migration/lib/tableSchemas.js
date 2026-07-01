@@ -871,6 +871,7 @@ const TABLE_DEFINITIONS = [
     ...PAY_PER_REQUEST,
   },
   {
+<<<<<<< HEAD
     TableName: "CoachRecommendedSupplement",
     KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
     AttributeDefinitions: [
@@ -893,6 +894,32 @@ const TABLE_DEFINITIONS = [
         KeySchema: [
           { AttributeName: "coachId", KeyType: "HASH" },
           { AttributeName: "createdAt", KeyType: "RANGE" },
+=======
+    TableName: "LaunchQuestion",
+    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
+    AttributeDefinitions: [
+      { AttributeName: "id", AttributeType: "S" },
+      { AttributeName: "status", AttributeType: "S" },
+      { AttributeName: "createdAt", AttributeType: "S" },
+    ],
+    GlobalSecondaryIndexes: [statusCreatedAtIndex()],
+    ...PAY_PER_REQUEST,
+  },
+  {
+    TableName: "UserLaunchAssessment",
+    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
+    AttributeDefinitions: [
+      { AttributeName: "id", AttributeType: "S" },
+      { AttributeName: "userId", AttributeType: "S" },
+      { AttributeName: "assessmentDate", AttributeType: "S" },
+    ],
+    GlobalSecondaryIndexes: [
+      {
+        IndexName: "UserAssessmentDateIndex",
+        KeySchema: [
+          { AttributeName: "userId", KeyType: "HASH" },
+          { AttributeName: "assessmentDate", KeyType: "RANGE" },
+>>>>>>> 5f74c8a2667b37ecb1d2a3db05a03805a932c2cc
         ],
         Projection: { ProjectionType: "ALL" },
       },
@@ -900,6 +927,7 @@ const TABLE_DEFINITIONS = [
     ...PAY_PER_REQUEST,
   },
   {
+<<<<<<< HEAD
     TableName: "UserSupplementDosage",
     KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
     AttributeDefinitions: [
@@ -955,6 +983,16 @@ const TABLE_DEFINITIONS = [
         Projection: { ProjectionType: "ALL" },
       },
     ],
+=======
+    TableName: "LaunchFocusArea",
+    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
+    AttributeDefinitions: [
+      { AttributeName: "id", AttributeType: "S" },
+      { AttributeName: "status", AttributeType: "S" },
+      { AttributeName: "createdAt", AttributeType: "S" },
+    ],
+    GlobalSecondaryIndexes: [statusCreatedAtIndex()],
+>>>>>>> 5f74c8a2667b37ecb1d2a3db05a03805a932c2cc
     ...PAY_PER_REQUEST,
   },
 ];

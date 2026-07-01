@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { assistantListHealUsers } from "../../api/assistantHealUsers.js";
 import { logoutAssistant } from "../../../store/authSlice.js";
 import { CoachTableLoaderRow } from "../../../wellnessCoach/components/CoachPageLoader.jsx";
+import { UserTierBadge } from "../../../components/ReferralAssignmentShared.jsx";
 
 function formatDate(iso) {
   if (!iso) return "—";
@@ -66,7 +67,7 @@ export function AssistantMyHealUsersList() {
       <div className="page-card__head heal-users-page__head">
         <div className="heal-users-page__intro">
           <h2 className="page-card__title">My clients</h2>
-          <p className="page-card__desc">Paid users assigned directly to you.</p>
+          <p className="page-card__desc">Heal clients assigned directly to you — track LAUNCH scores, diet, and more.</p>
         </div>
         <div className="page-card__actions user-list-toolbar heal-users-page__toolbar">
           <div className="user-list-filters heal-users-page__filters">
@@ -96,16 +97,17 @@ export function AssistantMyHealUsersList() {
             <tr>
               <th>Client</th>
               <th>Phone</th>
+              <th>Tier</th>
               <th>Joined</th>
               <th className="data-table__actions-col">Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <CoachTableLoaderRow colSpan={4} label="Loading clients…" />
+              <CoachTableLoaderRow colSpan={5} label="Loading clients…" />
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={4}>
+                <td colSpan={5}>
                   <p className="table-placeholder">No clients assigned to you yet.</p>
                 </td>
               </tr>
@@ -117,6 +119,9 @@ export function AssistantMyHealUsersList() {
                     <div className="data-table__muted">{u.email}</div>
                   </td>
                   <td>{[u.phoneCountryCode, u.phone].filter(Boolean).join(" ") || "—"}</td>
+                  <td>
+                    <UserTierBadge tier={u.userTier} assignmentStatus={u.assignmentStatus} />
+                  </td>
                   <td>{formatDate(u.convertedAt || u.createdAt)}</td>
                   <td>
                     <div className="row-actions row-actions--text">
@@ -173,6 +178,15 @@ export function AssistantMyHealUsersList() {
                         className="btn btn--ghost btn--sm"
                       >
                         Meal tracking
+                      </Link>
+                      <Link
+                        to={`${u._id || u.id}/launch-assessment`}
+                        className="btn btn--ghost btn--sm"
+                        title={String(u.userTier || "").toLowerCase() !== "heal" ? "Heal tier only" : undefined}
+                        style={String(u.userTier || "").toLowerCase() !== "heal" ? { opacity: 0.45, pointerEvents: "none" } : undefined}
+                        aria-disabled={String(u.userTier || "").toLowerCase() !== "heal"}
+                      >
+                        LAUNCH assessment
                       </Link>
                     </div>
                   </td>

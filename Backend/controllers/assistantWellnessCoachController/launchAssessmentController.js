@@ -1,0 +1,10 @@
+const { assistantHandlers } = require("../launchAssessmentControllerHelpers");
+
+exports.listAssistantUserLaunchFocusAreasController = assistantHandlers.listFocusAreasController;
+exports.listAssistantUserLaunchQuestionsController = assistantHandlers.listQuestionsController;
+exports.listAssistantUserLaunchAssessmentsController = assistantHandlers.listAssessmentsController;
+exports.getAssistantUserLaunchAssessmentByDateController = assistantHandlers.getAssessmentByDateController;
+exports.createAssistantUserLaunchAssessmentController = assistantHandlers.createAssessmentController;
+exports.updateAssistantUserLaunchAssessmentController = assistantHandlers.updateAssessmentController;
+exports.deleteAssistantUserLaunchAssessmentController = assistantHandlers.deleteAssessmentController;
+exports.exportAssistantUserLaunchQuestionsController = assistantHandlers.exportQuestionsController;

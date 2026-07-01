@@ -15,6 +15,8 @@ const adminYogaRoutes = require("./adminRoutes/adminYogaRoutes");
 const adminPhysicalExerciseRoutes = require("./adminRoutes/adminPhysicalExerciseRoutes");
 const adminSupplementRoutes = require("./adminRoutes/adminSupplementRoutes");
 const adminMedicalConditionQuestionRoutes = require("./adminRoutes/adminMedicalConditionQuestionRoutes");
+const adminLaunchQuestionRoutes = require("./adminRoutes/adminLaunchQuestionRoutes");
+const adminLaunchFocusAreaRoutes = require("./adminRoutes/adminLaunchFocusAreaRoutes");
 const adminTestCatalogRoutes = require("./adminRoutes/adminTestCatalogRoutes");
 const adminDietPlanCatalogRoutes = require("./adminRoutes/adminDietPlanCatalogRoutes");
 const adminMentalWellbeingRoutes = require("./adminRoutes/adminMentalWellbeingRoutes");
@@ -44,8 +46,12 @@ const userMealTrackingRoutes = require("./userRoutes/mealTrackingRoutes");
 const internalParameterRoutes = require("./userRoutes/internalParameterRoutes");
 const dietPlanCatalogRoutes = require("./userRoutes/dietPlanCatalogRoutes");
 const physicalExerciseRoutes = require("./userRoutes/physicalExerciseRoutes");
+<<<<<<< HEAD
 const supplementRecommendationRoutes = require("./userRoutes/supplementRecommendationRoutes");
 const supplementDosageRoutes = require("./userRoutes/supplementDosageRoutes");
+=======
+const launchAssessmentRoutes = require("./userRoutes/launchAssessmentRoutes");
+>>>>>>> 5f74c8a2667b37ecb1d2a3db05a03805a932c2cc
 const coachAuthRoutes = require("./wellnessCoachRoutes/coachAuthRoutes");
 const coachSpecializationRoutes = require("./wellnessCoachRoutes/coachSpecializationRoutes");
 const coachAssistantRoutes = require("./wellnessCoachRoutes/coachAssistantRoutes");
@@ -57,7 +63,12 @@ const coachPhysicalExerciseRoutes = require("./wellnessCoachRoutes/coachPhysical
 const coachSupplementRecommendationRoutes = require("./wellnessCoachRoutes/coachSupplementRecommendationRoutes");
 const coachSupplementDosageRoutes = require("./wellnessCoachRoutes/coachSupplementDosageRoutes");
 const coachMealTrackingRoutes = require("./wellnessCoachRoutes/coachMealTrackingRoutes");
+<<<<<<< HEAD
 const coachMealReviewRoutes = require("./wellnessCoachRoutes/coachMealReviewRoutes");
+=======
+const coachLaunchAssessmentRoutes = require("./wellnessCoachRoutes/coachLaunchAssessmentRoutes");
+const assistantLaunchAssessmentRoutes = require("./assistantWellnessCoachRoutes/assistantLaunchAssessmentRoutes");
+>>>>>>> 5f74c8a2667b37ecb1d2a3db05a03805a932c2cc
 const coachConsultancyRoutes = require("./wellnessCoachRoutes/coachConsultancyRoutes");
 const coachEnergyExchangeRoutes = require("./wellnessCoachRoutes/coachEnergyExchangeRoutes");
 const assistantAuthRoutes = require("./assistantWellnessCoachRoutes/assistantAuthRoutes");
@@ -89,7 +100,11 @@ router.use("/coach/heal-users", coachPhysicalExerciseRoutes);
 router.use("/coach/heal-users", coachSupplementRecommendationRoutes);
 router.use("/coach/heal-users", coachSupplementDosageRoutes);
 router.use("/coach/heal-users", coachMealTrackingRoutes);
+<<<<<<< HEAD
 router.use("/coach/meal-tracking", coachMealReviewRoutes);
+=======
+router.use("/coach/heal-users", coachLaunchAssessmentRoutes);
+>>>>>>> 5f74c8a2667b37ecb1d2a3db05a03805a932c2cc
 router.use("/coach/heal-users", coachHealUserRoutes);
 router.use("/coach/consultancy", coachConsultancyRoutes);
 router.use("/coach/energy-exchange", coachEnergyExchangeRoutes);
@@ -101,7 +116,11 @@ router.use("/assistant/heal-users", assistantPhysicalExerciseRoutes);
 router.use("/assistant/heal-users", assistantSupplementRecommendationRoutes);
 router.use("/assistant/heal-users", assistantSupplementDosageRoutes);
 router.use("/assistant/heal-users", assistantMealTrackingRoutes);
+<<<<<<< HEAD
 router.use("/assistant/meal-tracking", assistantMealReviewRoutes);
+=======
+router.use("/assistant/heal-users", assistantLaunchAssessmentRoutes);
+>>>>>>> 5f74c8a2667b37ecb1d2a3db05a03805a932c2cc
 router.use("/assistant/heal-users", assistantHealUserRoutes);
 router.use("/assistant/consultancy", assistantConsultancyRoutes);
 router.use("/admin/app-config", adminAppConfigRoutes);
@@ -125,6 +144,8 @@ router.use("/admin/yoga", adminYogaRoutes);
 router.use("/admin/physical-exercises", adminPhysicalExerciseRoutes);
 router.use("/admin/supplements", adminSupplementRoutes);
 router.use("/admin/medical-condition-questions", adminMedicalConditionQuestionRoutes);
+router.use("/admin/launch-questions", adminLaunchQuestionRoutes);
+router.use("/admin/launch-focus-areas", adminLaunchFocusAreaRoutes);
 router.use("/admin/test-catalog", adminTestCatalogRoutes);
 router.use("/admin/diet-plan-catalog", adminDietPlanCatalogRoutes);
 router.use("/admin/mental-wellbeing", adminMentalWellbeingRoutes);
@@ -146,8 +167,12 @@ router.use("/user/meal-tracking", userMealTrackingRoutes);
 router.use("/user/internal-parameters", internalParameterRoutes);
 router.use("/user/diet-plans", dietPlanCatalogRoutes);
 router.use("/user/physical-exercises", physicalExerciseRoutes);
+<<<<<<< HEAD
 router.use("/user/supplements", supplementRecommendationRoutes);
 router.use("/user/supplements", supplementDosageRoutes);
+=======
+router.use("/user/launch-assessment", launchAssessmentRoutes);
+>>>>>>> 5f74c8a2667b37ecb1d2a3db05a03805a932c2cc
 router.use("/public", publicAppConfigRoutes);
 router.use("/public/misc", miscRoutes);
 

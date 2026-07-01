@@ -13,7 +13,11 @@ import { AssistantUserPhysicalExercises } from "../pages/myHealUsers/AssistantUs
 import { AssistantUserSupplementRecommendations } from "../pages/myHealUsers/AssistantUserSupplementRecommendations.jsx";
 import { AssistantUserSupplementDosage } from "../pages/myHealUsers/AssistantUserSupplementDosage.jsx";
 import { AssistantUserMealTrackingPage } from "../pages/myHealUsers/AssistantUserMealTrackingPage.jsx";
+<<<<<<< HEAD
 import { AssistantMealApprovalsPage } from "../pages/mealReview/AssistantMealApprovalsPage.jsx";
+=======
+import { AssistantUserLaunchAssessment } from "../pages/myHealUsers/AssistantUserLaunchAssessment.jsx";
+>>>>>>> 5f74c8a2667b37ecb1d2a3db05a03805a932c2cc
 import { AssistantConsultancyTransactionList } from "../pages/consultancy/AssistantConsultancyTransactionList.jsx";
 import { AssistantConsultancyEnrolledUsersList } from "../pages/consultancy/AssistantConsultancyEnrolledUsersList.jsx";
 
@@ -32,7 +36,11 @@ export const assistantWellnessCoachRouteTree = (
     <Route path="my-users/:userId/supplement-recommendations" element={<AssistantUserSupplementRecommendations />} />
     <Route path="my-users/:userId/supplement-dosage" element={<AssistantUserSupplementDosage />} />
     <Route path="my-users/:userId/meal-tracking" element={<AssistantUserMealTrackingPage />} />
+<<<<<<< HEAD
     <Route path="meal-approvals" element={<AssistantMealApprovalsPage />} />
+=======
+    <Route path="my-users/:userId/launch-assessment" element={<AssistantUserLaunchAssessment />} />
+>>>>>>> 5f74c8a2667b37ecb1d2a3db05a03805a932c2cc
     <Route path="consultancy/transactions" element={<AssistantConsultancyTransactionList />} />
     <Route path="consultancy/enrolled-users" element={<AssistantConsultancyEnrolledUsersList />} />
     <Route path="*" element={<NotFoundPage />} />
