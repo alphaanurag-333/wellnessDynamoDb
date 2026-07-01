@@ -19,6 +19,8 @@ const {
   resolveCoachIdForUser,
 } = require("../mealTrackingControllerHelpers");
 const { isValidDateOnly } = require("../../utils/dateOnly");
+const { updateUser, toPublicUser } = require("../../models/userModel");
+const { normalizeMealTrackingMode } = require("../../models/userModel");
 
 exports.listAssistantUserMealTrackingController = asyncHandler(async (req, res) => {
   const actingAssistantId = req.auth?.sub;
@@ -42,6 +44,7 @@ exports.listAssistantUserMealTrackingController = asyncHandler(async (req, res) 
     logs: summary.logs,
     macroSummary: summary.macroSummary,
     range: summary.range,
+    mealTrackingMode: user.mealTrackingMode || "macro",
   });
 });
 
@@ -66,6 +69,8 @@ exports.createAssistantUserMealLogController = asyncHandler(async (req, res) => 
       ...(photoKey !== undefined ? { photoKey } : {}),
       loggedByRole: "assistant_wellness_coach",
       loggedById: actingAssistantId,
+      assignedCoachId: actingAssistantId,
+      assignedCoachType: "assistant_wellness_coach",
     });
   } catch (err) {
     handleValidationError(err);
@@ -141,5 +146,25 @@ exports.deleteAssistantUserMealLogController = asyncHandler(async (req, res) => 
   return res.status(200).json({
     status: true,
     message: "Meal log deleted successfully",
+  });
+});
+
+exports.updateAssistantUserMealTrackingModeController = asyncHandler(async (req, res) => {
+  const actingAssistantId = req.auth?.sub;
+  if (!actingAssistantId) throw new AppError("Unauthorized", 401);
+
+  const userId = readUserIdParam(req);
+  const user = await loadTargetUser(userId);
+  await assertAssistantCanAccessUser(user, actingAssistantId);
+  assertHealTierUser(user);
+
+  const mode = normalizeMealTrackingMode(req.body?.mealTrackingMode);
+  const updated = await updateUser(userId, { mealTrackingMode: mode });
+
+  return res.status(200).json({
+    status: true,
+    message: "Meal tracking mode updated successfully",
+    user: toPublicUser(updated),
+    mealTrackingMode: mode,
   });
 });

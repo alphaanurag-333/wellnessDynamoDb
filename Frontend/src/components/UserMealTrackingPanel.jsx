@@ -14,6 +14,26 @@ const CATEGORIES = [
   { key: "protein", label: "Protein" },
 ];
 
+const STATUS_FILTERS = [
+  { key: "all", label: "All statuses" },
+  { key: "pending_review", label: "Pending review" },
+  { key: "approved", label: "Approved" },
+  { key: "rejected", label: "Rejected" },
+];
+
+function normalizeLogStatus(status) {
+  const next = String(status || "approved").trim().toLowerCase();
+  if (next === "pending_review" || next === "rejected") return next;
+  return "approved";
+}
+
+function statusLabel(status) {
+  const normalized = normalizeLogStatus(status);
+  if (normalized === "pending_review") return "Pending review";
+  if (normalized === "rejected") return "Rejected";
+  return "Approved";
+}
+
 const CATEGORY_COLORS = {
   functional_juice: "#10b981",
   salad: "#22c55e",
@@ -158,7 +178,7 @@ function CategoryBadge({ category }) {
 }
 
 /* ── Meal log form ── */
-function MealLogForm({ onSubmit, submitting, initialData = null, onCancel }) {
+function MealLogForm({ onSubmit, submitting, initialData = null, onCancel, showFoodItems = false }) {
   const [date, setDate] = useState(initialData?.date || todayLocal());
   const [entryTime, setEntryTime] = useState(initialData?.entryTime || nowTime());
   const [category, setCategory] = useState(initialData?.category || "meal");
@@ -192,9 +212,13 @@ function MealLogForm({ onSubmit, submitting, initialData = null, onCancel }) {
         onSubmit({
           date, entryTime: entryTime || undefined, category, mealType,
           description: description.trim() || undefined,
-          items: items.filter((i) => i.name.trim()).map((i) => ({
-            name: i.name.trim(), quantityGm: parseFloat(i.quantityGm) || 0,
-          })),
+          ...(showFoodItems
+            ? {
+                items: items.filter((i) => i.name.trim()).map((i) => ({
+                  name: i.name.trim(), quantityGm: parseFloat(i.quantityGm) || 0,
+                })),
+              }
+            : {}),
           proteinGm: parseFloat(proteinGm) || 0,
           fatsGm: parseFloat(fatsGm) || 0,
           carbsGm: parseFloat(carbsGm) || 0,
@@ -238,32 +262,33 @@ function MealLogForm({ onSubmit, submitting, initialData = null, onCancel }) {
             placeholder="What did you eat?" />
         </label>
 
-        {/* Items */}
-        <div className="mt-items-section">
-          <div className="mt-items-section__header">
-            <span className="mt-items-section__label">Food Items</span>
-            <button type="button" className="btn btn--ghost btn--sm"
-              onClick={() => setItems((p) => [...p, { ...DEFAULT_ITEM }])}>
-              + Add item
-            </button>
+        {showFoodItems ? (
+          <div className="mt-items-section">
+            <div className="mt-items-section__header">
+              <span className="mt-items-section__label">Food Items</span>
+              <button type="button" className="btn btn--ghost btn--sm"
+                onClick={() => setItems((p) => [...p, { ...DEFAULT_ITEM }])}>
+                + Add item
+              </button>
+            </div>
+            <div className="mt-items-list">
+              {items.map((item, idx) => (
+                <div className="mt-items-row" key={idx}>
+                  <input className="user-field__input mt-items-name" placeholder="Item name (e.g. Rice)"
+                    value={item.name} onChange={(e) => setItems((p) => p.map((it, i) => i === idx ? { ...it, name: e.target.value } : it))}
+                    maxLength={100} />
+                  <input className="user-field__input mt-items-qty" placeholder="Qty (gm)" type="number"
+                    min={0} step={0.1} value={item.quantityGm}
+                    onChange={(e) => setItems((p) => p.map((it, i) => i === idx ? { ...it, quantityGm: e.target.value } : it))} />
+                  {items.length > 1 && (
+                    <button type="button" className="mt-items-remove"
+                      onClick={() => setItems((p) => p.filter((_, i) => i !== idx))}>✕</button>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="mt-items-list">
-            {items.map((item, idx) => (
-              <div className="mt-items-row" key={idx}>
-                <input className="user-field__input mt-items-name" placeholder="Item name (e.g. Rice)"
-                  value={item.name} onChange={(e) => setItems((p) => p.map((it, i) => i === idx ? { ...it, name: e.target.value } : it))}
-                  maxLength={100} />
-                <input className="user-field__input mt-items-qty" placeholder="Qty (gm)" type="number"
-                  min={0} step={0.1} value={item.quantityGm}
-                  onChange={(e) => setItems((p) => p.map((it, i) => i === idx ? { ...it, quantityGm: e.target.value } : it))} />
-                {items.length > 1 && (
-                  <button type="button" className="mt-items-remove"
-                    onClick={() => setItems((p) => p.filter((_, i) => i !== idx))}>✕</button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
+        ) : null}
 
         {/* Macros */}
         <div className="mt-macros-section">
@@ -302,10 +327,51 @@ function MealLogForm({ onSubmit, submitting, initialData = null, onCancel }) {
 }
 
 /* ── Meal log card ── */
-function MealLogCard({ log, onDelete, onEdit, deleting, readOnly }) {
-  const logId = log.id || log._id;
+function MealLogCard({
+  log,
+  onDelete,
+  onEdit,
+  onReview,
+  deleting,
+  reviewing,
+  readOnly,
+  canReview = false,
+  showFoodItems = false,
+}) {
+  const status = normalizeLogStatus(log.status);
+  const isPending = status === "pending_review";
+  const [proteinGm, setProteinGm] = useState(String(log.proteinGm ?? 0));
+  const [fatsGm, setFatsGm] = useState(String(log.fatsGm ?? 0));
+  const [carbsGm, setCarbsGm] = useState(String(log.carbsGm ?? 0));
+  const [caloriesKcal, setCaloriesKcal] = useState(String(log.caloriesKcal ?? 0));
+  const [rejectionReason, setRejectionReason] = useState("");
+
+  const reviewPayload = {
+    proteinGm: parseFloat(proteinGm) || 0,
+    fatsGm: parseFloat(fatsGm) || 0,
+    carbsGm: parseFloat(carbsGm) || 0,
+    caloriesKcal: parseFloat(caloriesKcal) || 0,
+  };
+
   return (
-    <div className="mt-log-card">
+    <div className={`mt-log-card mt-log-card--${status}`}>
+      <div className="mt-log-card__status-strip">
+        <span className={`mt-status-badge mt-status-badge--${status}`}>
+          {statusLabel(status)}
+        </span>
+        {isPending ? (
+          <span className="mt-log-card__status-hint">Awaiting your review</span>
+        ) : status === "approved" ? (
+          <span className="mt-log-card__status-hint mt-log-card__status-hint--approved">
+            Counts in macro charts
+          </span>
+        ) : (
+          <span className="mt-log-card__status-hint mt-log-card__status-hint--rejected">
+            Not counted in charts
+          </span>
+        )}
+      </div>
+
       <div className="mt-log-card__top">
         <div className="mt-log-card__badges">
           <CategoryBadge category={log.category} />
@@ -319,7 +385,7 @@ function MealLogCard({ log, onDelete, onEdit, deleting, readOnly }) {
 
       {log.description && <p className="mt-log-card__desc">{log.description}</p>}
 
-      {log.items?.length > 0 && (
+      {showFoodItems && log.items?.length > 0 && (
         <div className="mt-log-card__items">
           {log.items.map((it, i) => (
             <span key={i} className="mt-item-chip">
@@ -329,24 +395,59 @@ function MealLogCard({ log, onDelete, onEdit, deleting, readOnly }) {
         </div>
       )}
 
-      <div className="mt-log-card__macros">
-        <div className="mt-log-card__macro" style={{ "--mc": "#f97316" }}>
-          <span className="mt-log-card__macro-val">{log.proteinGm}g</span>
-          <span className="mt-log-card__macro-lbl">Protein</span>
+      {isPending && canReview && !readOnly ? (
+        <div className="mt-review-macros">
+          <span className="mt-items-section__label">Review macros before approving</span>
+          <div className="mt-macros-inputs">
+            {[
+              { label: "Protein (g)", val: proteinGm, set: setProteinGm, color: "#f97316" },
+              { label: "Fats (g)", val: fatsGm, set: setFatsGm, color: "#a855f7" },
+              { label: "Carbs (g)", val: carbsGm, set: setCarbsGm, color: "#3b82f6" },
+              { label: "Calories (kcal)", val: caloriesKcal, set: setCaloriesKcal, color: "#eab308" },
+            ].map(({ label, val, set, color }) => (
+              <label key={label} className="mt-macro-input">
+                <span className="mt-macro-input__label" style={{ color }}>{label}</span>
+                <input
+                  className="user-field__input"
+                  type="number"
+                  min={0}
+                  step={0.1}
+                  value={val}
+                  onChange={(e) => set(e.target.value)}
+                />
+              </label>
+            ))}
+          </div>
+          <label className="mt-form-field mt-form-field--full">
+            <span className="mt-form-field__label">Rejection reason (optional)</span>
+            <input
+              className="user-field__input"
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              placeholder="Only used when rejecting"
+            />
+          </label>
         </div>
-        <div className="mt-log-card__macro" style={{ "--mc": "#a855f7" }}>
-          <span className="mt-log-card__macro-val">{log.fatsGm}g</span>
-          <span className="mt-log-card__macro-lbl">Fats</span>
+      ) : (
+        <div className="mt-log-card__macros">
+          <div className="mt-log-card__macro" style={{ "--mc": "#f97316" }}>
+            <span className="mt-log-card__macro-val">{log.proteinGm}g</span>
+            <span className="mt-log-card__macro-lbl">Protein</span>
+          </div>
+          <div className="mt-log-card__macro" style={{ "--mc": "#a855f7" }}>
+            <span className="mt-log-card__macro-val">{log.fatsGm}g</span>
+            <span className="mt-log-card__macro-lbl">Fats</span>
+          </div>
+          <div className="mt-log-card__macro" style={{ "--mc": "#3b82f6" }}>
+            <span className="mt-log-card__macro-val">{log.carbsGm}g</span>
+            <span className="mt-log-card__macro-lbl">Carbs</span>
+          </div>
+          <div className="mt-log-card__macro mt-log-card__macro--cal" style={{ "--mc": "#eab308" }}>
+            <span className="mt-log-card__macro-val">{log.caloriesKcal}</span>
+            <span className="mt-log-card__macro-lbl">kcal</span>
+          </div>
         </div>
-        <div className="mt-log-card__macro" style={{ "--mc": "#3b82f6" }}>
-          <span className="mt-log-card__macro-val">{log.carbsGm}g</span>
-          <span className="mt-log-card__macro-lbl">Carbs</span>
-        </div>
-        <div className="mt-log-card__macro mt-log-card__macro--cal" style={{ "--mc": "#eab308" }}>
-          <span className="mt-log-card__macro-val">{log.caloriesKcal}</span>
-          <span className="mt-log-card__macro-lbl">kcal</span>
-        </div>
-      </div>
+      )}
 
       <div className="mt-log-card__footer">
         {log.photoUrl && (
@@ -356,9 +457,43 @@ function MealLogCard({ log, onDelete, onEdit, deleting, readOnly }) {
         )}
         {!readOnly && (
           <div className="mt-log-card__actions">
-            <button type="button" className="btn btn--ghost btn--sm" onClick={() => onEdit(log)}>Edit</button>
-            <button type="button" className="btn btn--ghost btn--sm text-danger"
-              onClick={() => onDelete(log)} disabled={deleting}>
+            {isPending && canReview && onReview ? (
+              <>
+                <button
+                  type="button"
+                  className="btn btn--primary btn--sm"
+                  disabled={reviewing}
+                  onClick={() => onReview(log, { status: "approved", ...reviewPayload })}
+                >
+                  {reviewing ? "Approving…" : "Approve"}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn--ghost btn--sm text-danger"
+                  disabled={reviewing}
+                  onClick={() =>
+                    onReview(log, {
+                      status: "rejected",
+                      ...reviewPayload,
+                      rejectionReason: rejectionReason.trim() || undefined,
+                    })
+                  }
+                >
+                  Reject
+                </button>
+              </>
+            ) : null}
+            {!isPending ? (
+              <button type="button" className="btn btn--ghost btn--sm" onClick={() => onEdit(log)}>
+                Edit
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="btn btn--ghost btn--sm text-danger"
+              onClick={() => onDelete(log)}
+              disabled={deleting}
+            >
               Delete
             </button>
           </div>
@@ -376,13 +511,17 @@ export function UserMealTrackingPanel({
   const [logs, setLogs] = useState([]);
   const [macroSummary, setMacroSummary] = useState([]);
   const [range, setRange] = useState(null);
+  const [mealTrackingMode, setMealTrackingMode] = useState("macro");
+  const [modeSaving, setModeSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
+  const [activeStatus, setActiveStatus] = useState("all");
   const [days, setDays] = useState(7);
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState("");
+  const [reviewingId, setReviewingId] = useState("");
   const [editingLog, setEditingLog] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [page, setPage] = useState(1);
@@ -395,6 +534,7 @@ export function UserMealTrackingPanel({
       setLogs(result.logs ?? []);
       setMacroSummary(result.macroSummary ?? []);
       setRange(result.range ?? null);
+      setMealTrackingMode(result.mealTrackingMode ?? "macro");
       setPage(1);
     } catch (e) {
       if (e?.status === 401) { onUnauthorized?.(); return; }
@@ -406,6 +546,26 @@ export function UserMealTrackingPanel({
   }, [api, onUnauthorized, token, userId, days]);
 
   useEffect(() => { load(); }, [load]);
+
+  const handleModeChange = async (nextMode) => {
+    if (!api.updateMode || readOnly || nextMode === mealTrackingMode) return;
+    setModeSaving(true);
+    try {
+      const result = await api.updateMode(token, userId, nextMode);
+      setMealTrackingMode(result.mealTrackingMode ?? nextMode);
+      await Swal.fire({
+        icon: "success",
+        title: "Tracking mode updated",
+        timer: 1200,
+        showConfirmButton: false,
+      });
+    } catch (e) {
+      if (e?.status === 401) onUnauthorized?.();
+      else await Swal.fire({ icon: "error", title: "Update failed", text: e.message });
+    } finally {
+      setModeSaving(false);
+    }
+  };
 
   const handleCreate = async (payload) => {
     setSubmitting(true);
@@ -439,6 +599,40 @@ export function UserMealTrackingPanel({
     }
   };
 
+  const handleReview = async (log, payload) => {
+    if (!api.review) return;
+    const logId = log.id || log._id;
+    const isApprove = payload.status === "approved";
+    const confirm = await Swal.fire({
+      icon: "question",
+      title: isApprove ? "Approve this meal log?" : "Reject this meal log?",
+      text: isApprove
+        ? "These macros will count toward the client's charts."
+        : "This meal will not count toward macro charts.",
+      showCancelButton: true,
+      confirmButtonText: isApprove ? "Approve" : "Reject",
+      confirmButtonColor: isApprove ? "#16a34a" : "#dc2626",
+    });
+    if (!confirm.isConfirmed) return;
+
+    setReviewingId(logId);
+    try {
+      await api.review(token, logId, payload);
+      await Swal.fire({
+        icon: "success",
+        title: isApprove ? "Meal approved" : "Meal rejected",
+        timer: 1300,
+        showConfirmButton: false,
+      });
+      await load();
+    } catch (e) {
+      if (e?.status === 401) onUnauthorized?.();
+      else await Swal.fire({ icon: "error", title: "Review failed", text: e.message });
+    } finally {
+      setReviewingId("");
+    }
+  };
+
   const handleDelete = async (log) => {
     const logId = log.id || log._id;
     const confirm = await Swal.fire({
@@ -459,9 +653,15 @@ export function UserMealTrackingPanel({
     }
   };
 
-  const filteredLogs = activeCategory === "all"
-    ? logs
-    : logs.filter((l) => l.category === activeCategory);
+  const pendingCount = logs.filter((l) => normalizeLogStatus(l.status) === "pending_review").length;
+  const isDetailedMode = mealTrackingMode === "detailed_macro";
+
+  const filteredLogs = logs.filter((log) => {
+    const categoryMatch = activeCategory === "all" || log.category === activeCategory;
+    const statusMatch =
+      activeStatus === "all" || normalizeLogStatus(log.status) === activeStatus;
+    return categoryMatch && statusMatch;
+  });
 
   const pagedLogs = filteredLogs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -511,13 +711,54 @@ export function UserMealTrackingPanel({
 
       {error && <p className="user-list-error">{error}</p>}
 
+      {!readOnly && api.updateMode ? (
+        <div className="page-card mt-mode-card">
+          <div className="mt-mode-card__header">
+            <div>
+              <h3 className="form-card__title">Client meal tracking mode</h3>
+              <p className="page-card__desc">
+                Choose which meal logging screen this client sees in the mobile app.
+              </p>
+            </div>
+            <div className="mt-mode-toggle">
+              <button
+                type="button"
+                className={`mt-mode-toggle__btn${mealTrackingMode === "macro" ? " mt-mode-toggle__btn--active" : ""}`}
+                disabled={modeSaving}
+                onClick={() => handleModeChange("macro")}
+              >
+                Macro
+              </button>
+              <button
+                type="button"
+                className={`mt-mode-toggle__btn${mealTrackingMode === "detailed_macro" ? " mt-mode-toggle__btn--active" : ""}`}
+                disabled={modeSaving}
+                onClick={() => handleModeChange("detailed_macro")}
+              >
+                Detailed Macro
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {/* Forms */}
       {!readOnly && showForm && (
-        <MealLogForm onSubmit={handleCreate} submitting={submitting} onCancel={() => setShowForm(false)} />
+        <MealLogForm
+          onSubmit={handleCreate}
+          submitting={submitting}
+          onCancel={() => setShowForm(false)}
+          showFoodItems={isDetailedMode}
+        />
       )}
       {!readOnly && editingLog && (
-        <MealLogForm initialData={editingLog} onSubmit={handleUpdate} submitting={submitting}
-          onCancel={() => setEditingLog(null)} />
+        <MealLogForm
+          initialData={editingLog}
+          onSubmit={handleUpdate}
+          submitting={submitting}
+          onCancel={() => setEditingLog(null)}
+          showFoodItems={isDetailedMode}
+        />
       )}
 
       {/* Summary cards */}
@@ -540,7 +781,49 @@ export function UserMealTrackingPanel({
 
       {/* Category tabs + log list */}
       <div className="page-card">
-        <div className="mt-toolbar">
+        {pendingCount > 0 && !readOnly && api.review ? (
+          <div className="mt-pending-banner">
+            <div>
+              <strong>{pendingCount} meal log{pendingCount === 1 ? "" : "s"} awaiting review</strong>
+              <p>Pending meals do not count in macro charts until you approve them.</p>
+            </div>
+            <button
+              type="button"
+              className="btn btn--primary btn--sm"
+              onClick={() => {
+                setActiveStatus("pending_review");
+                setPage(1);
+              }}
+            >
+              Show pending
+            </button>
+          </div>
+        ) : null}
+
+        <div className="mt-toolbar mt-toolbar--stacked">
+          <div className="mt-status-tabs">
+            {STATUS_FILTERS.map((filter) => {
+              const count =
+                filter.key === "all"
+                  ? logs.length
+                  : logs.filter((l) => normalizeLogStatus(l.status) === filter.key).length;
+              return (
+                <button
+                  key={filter.key}
+                  type="button"
+                  className={`mt-status-tab mt-status-tab--${filter.key}${activeStatus === filter.key ? " mt-status-tab--active" : ""}`}
+                  onClick={() => {
+                    setActiveStatus(filter.key);
+                    setPage(1);
+                  }}
+                >
+                  {filter.label}
+                  <span className="mt-status-tab__count">{count}</span>
+                </button>
+              );
+            })}
+          </div>
+
           <div className="mt-category-tabs">
             {CATEGORIES.map((cat) => (
               <button
@@ -564,9 +847,9 @@ export function UserMealTrackingPanel({
 
         {!loading && filteredLogs.length === 0 && (
           <p className="table-placeholder">
-            {activeCategory === "all"
-              ? "No meal logs in this period."
-              : `No ${CATEGORIES.find((c) => c.key === activeCategory)?.label} logs in this period.`}
+            {activeStatus !== "all" || activeCategory !== "all"
+              ? "No meal logs match the selected filters."
+              : "No meal logs in this period."}
           </p>
         )}
 
@@ -577,8 +860,12 @@ export function UserMealTrackingPanel({
               log={log}
               onDelete={handleDelete}
               onEdit={(l) => { setEditingLog(l); setShowForm(false); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+              onReview={api.review ? handleReview : undefined}
               deleting={deletingId === (log.id || log._id)}
+              reviewing={reviewingId === (log.id || log._id)}
               readOnly={readOnly}
+              canReview={Boolean(api.review)}
+              showFoodItems={isDetailedMode}
             />
           ))}
         </div>

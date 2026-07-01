@@ -13,7 +13,12 @@ const {
   parseMealLogBody,
   uploadMealPhoto,
   handleValidationError,
+  DUMMY_MACROS,
+  resolveAssignedCoachForUser,
 } = require("../mealTrackingControllerHelpers");
+const {
+  dispatchMealLoggedCoachNotificationAsync,
+} = require("../../services/notificationDispatchService");
 
 function readLogIdParam(req) {
   return String(req.params.logId || req.params.id || "").trim();
@@ -71,20 +76,30 @@ exports.createUserMealLogController = asyncHandler(async (req, res) => {
 
   const photoKey = await uploadMealPhoto(req);
   const payload = parseMealLogBody(req.body);
+  const coachAssignment = resolveAssignedCoachForUser(req.currentUser);
 
   let mealLog;
   try {
     mealLog = await createMealLog({
       userId,
-      coachId: req.currentUser?.parentCoachId || null,
+      coachId: coachAssignment.coachId,
       ...payload,
+      ...DUMMY_MACROS,
       ...(photoKey !== undefined ? { photoKey } : {}),
       loggedByRole: "user",
       loggedById: userId,
+      status: "pending_review",
+      assignedCoachId: coachAssignment.assignedCoachId,
+      assignedCoachType: coachAssignment.assignedCoachType,
     });
   } catch (err) {
     handleValidationError(err);
   }
+
+  dispatchMealLoggedCoachNotificationAsync({
+    user: req.currentUser,
+    mealLogId: mealLog.id,
+  });
 
   return res.status(201).json({
     status: true,

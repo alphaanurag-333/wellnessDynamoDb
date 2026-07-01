@@ -10,6 +10,8 @@ import { AssistantUserDietPlan } from "./AssistantUserDietPlan.jsx";
 import { AssistantUserTestRecommendations } from "./AssistantUserTestRecommendations.jsx";
 import { AssistantUserPhysicalExercises } from "./AssistantUserPhysicalExercises.jsx";
 import { AssistantUserMealTrackingPage } from "./AssistantUserMealTrackingPage.jsx";
+import { AssistantUserSupplementRecommendations } from "./AssistantUserSupplementRecommendations.jsx";
+import { AssistantUserSupplementDosage } from "./AssistantUserSupplementDosage.jsx";
 import { AssistantUserLaunchAssessment } from "./AssistantUserLaunchAssessment.jsx";
 import { AssistantUserPrakrutiAssessment } from "./AssistantUserPrakrutiAssessment.jsx";
 
@@ -27,6 +29,10 @@ function renderAssistantTab(tab, embedded) {
       return <AssistantUserTestRecommendations embedded={embedded} />;
     case "physical-exercises":
       return <AssistantUserPhysicalExercises embedded={embedded} />;
+    case "supplement-recommendations":
+      return <AssistantUserSupplementRecommendations embedded={embedded} />;
+    case "supplement-dosage":
+      return <AssistantUserSupplementDosage embedded={embedded} />;
     case "meal-tracking":
       return <AssistantUserMealTrackingPage embedded={embedded} />;
     case "launch-assessment":

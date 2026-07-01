@@ -6,6 +6,7 @@ const {
   createAssistantUserMealLogController,
   updateAssistantUserMealLogController,
   deleteAssistantUserMealLogController,
+  updateAssistantUserMealTrackingModeController,
 } = require("../../controllers/assistantWellnessCoachController/mealTrackingController");
 
 const router = express.Router({ mergeParams: true });
@@ -27,6 +28,11 @@ router.delete(
   "/:userId/meal-tracking/:logId",
   protectAssistantWellnessCoach,
   deleteAssistantUserMealLogController
+);
+router.patch(
+  "/:userId/meal-tracking-mode",
+  protectAssistantWellnessCoach,
+  updateAssistantUserMealTrackingModeController
 );
 
 module.exports = router;

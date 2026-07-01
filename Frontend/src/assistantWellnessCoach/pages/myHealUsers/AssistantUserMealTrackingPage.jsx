@@ -9,13 +9,17 @@ import {
   assistantCreateMealLog,
   assistantUpdateMealLog,
   assistantDeleteMealLog,
+  assistantUpdateMealTrackingMode,
 } from "../../api/assistantMealTracking.js";
+import { assistantReviewMealLog } from "../../api/assistantMealReview.js";
 
 const mealTrackingApi = {
   list: assistantGetUserMealTracking,
   create: assistantCreateMealLog,
   update: assistantUpdateMealLog,
   remove: assistantDeleteMealLog,
+  updateMode: assistantUpdateMealTrackingMode,
+  review: (token, logId, payload) => assistantReviewMealLog(token, logId, payload),
 };
 
 export function AssistantUserMealTrackingPage({ embedded = false }) {

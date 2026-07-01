@@ -128,6 +128,40 @@ async function deleteSupplement(id) {
   }));
 }
 
+async function listActiveSupplements() {
+  const { items } = await listByPartitionKey({
+    tableName: TABLE,
+    indexName: "StatusCreatedAtIndex",
+    partitionKeyValue: "active",
+    scanIndexForward: false,
+    page: 1,
+    limit: 500,
+    maxLimit: 500,
+    sortFn: sortByCreatedAtDesc,
+  });
+  return items.map((row) => toPublicSupplement(row)).filter(Boolean);
+}
+
+async function getActiveSupplementsByIds(ids) {
+  const uniqueIds = [...new Set((ids || []).map((id) => String(id || "").trim()).filter(Boolean))];
+  if (uniqueIds.length === 0) return [];
+  const supplements = await Promise.all(uniqueIds.map((id) => getSupplementById(id)));
+  return supplements.filter(
+    (row) => row && String(row.status || "").toLowerCase() === "active"
+  );
+}
+
+function snapshotSupplement(supplement) {
+  if (!supplement) return null;
+  return {
+    supplementId: String(supplement.id || supplement._id || "").trim(),
+    name: String(supplement.name || "").trim(),
+    unit: String(supplement.unit || "").trim(),
+    packSize: normalizeNumber(supplement.packSize),
+    price: normalizeNumber(supplement.price),
+  };
+}
+
 async function listSupplements({ page = 1, limit = 10, status, search } = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const searchFilter = buildContainsFilter(["name", "description"], search);
@@ -163,4 +197,7 @@ module.exports = {
   updateSupplement,
   deleteSupplement,
   listSupplements,
+  listActiveSupplements,
+  getActiveSupplementsByIds,
+  snapshotSupplement,
 };

@@ -33,6 +33,7 @@ const KIND = new Set([
   "internal_parameters_upload",
   "coach_reminder",
   "physical_exercise_assigned",
+  "meal_log_reviewed",
 ]);
 const BROADCAST_KINDS = new Set(["admin_broadcast", "health_tool", "recipe", "yoga"]);
 

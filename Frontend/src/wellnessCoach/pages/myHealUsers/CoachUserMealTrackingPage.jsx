@@ -9,13 +9,17 @@ import {
   coachCreateMealLog,
   coachUpdateMealLog,
   coachDeleteMealLog,
+  coachUpdateMealTrackingMode,
 } from "../../api/coachMealTracking.js";
+import { coachReviewMealLog } from "../../api/coachMealReview.js";
 
 const mealTrackingApi = {
   list: coachGetUserMealTracking,
   create: coachCreateMealLog,
   update: coachUpdateMealLog,
   remove: coachDeleteMealLog,
+  updateMode: coachUpdateMealTrackingMode,
+  review: (token, logId, payload) => coachReviewMealLog(token, logId, payload),
 };
 
 export function CoachUserMealTrackingPage({ embedded = false }) {

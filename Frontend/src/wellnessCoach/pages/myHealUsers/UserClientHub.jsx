@@ -13,6 +13,8 @@ import { UserDietPlan } from "./UserDietPlan.jsx";
 import { UserTestRecommendations } from "./UserTestRecommendations.jsx";
 import { UserPhysicalExercises } from "./UserPhysicalExercises.jsx";
 import { CoachUserMealTrackingPage } from "./CoachUserMealTrackingPage.jsx";
+import { UserSupplementRecommendations } from "./UserSupplementRecommendations.jsx";
+import { UserSupplementDosage } from "./UserSupplementDosage.jsx";
 import { UserLaunchAssessment } from "./UserLaunchAssessment.jsx";
 import { UserPrakrutiAssessment } from "./UserPrakrutiAssessment.jsx";
 
@@ -30,6 +32,10 @@ function renderCoachTab(tab, embedded) {
       return <UserTestRecommendations embedded={embedded} />;
     case "physical-exercises":
       return <UserPhysicalExercises embedded={embedded} />;
+    case "supplement-recommendations":
+      return <UserSupplementRecommendations embedded={embedded} />;
+    case "supplement-dosage":
+      return <UserSupplementDosage embedded={embedded} />;
     case "meal-tracking":
       return <CoachUserMealTrackingPage embedded={embedded} />;
     case "launch-assessment":

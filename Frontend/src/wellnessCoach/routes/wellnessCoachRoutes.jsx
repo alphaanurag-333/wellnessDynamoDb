@@ -6,6 +6,7 @@ import { CoachProfile } from "../pages/CoachProfile.jsx";
 import { MyHealUsersList } from "../pages/myHealUsers/MyHealUsersList.jsx";
 import { UserClientHub } from "../pages/myHealUsers/UserClientHub.jsx";
 import { ClientHubLegacyRedirect } from "../../components/ClientHubLegacyRedirect.jsx";
+import { CoachMealApprovalsPage } from "../pages/mealReview/CoachMealApprovalsPage.jsx";
 import { MyAssistantList } from "../pages/myAssistants/MyAssistantList.jsx";
 import { MyAssistantAdd } from "../pages/myAssistants/MyAssistantAdd.jsx";
 import { MyAssistantEdit } from "../pages/myAssistants/MyAssistantEdit.jsx";
@@ -28,9 +29,12 @@ export const wellnessCoachRouteTree = (
     <Route path="my-users/:userId/diet-plan" element={<ClientHubLegacyRedirect segment="diet-plan" basePath="/coach" />} />
     <Route path="my-users/:userId/test-recommendations" element={<ClientHubLegacyRedirect segment="test-recommendations" basePath="/coach" />} />
     <Route path="my-users/:userId/physical-exercises" element={<ClientHubLegacyRedirect segment="physical-exercises" basePath="/coach" />} />
+    <Route path="my-users/:userId/supplement-recommendations" element={<ClientHubLegacyRedirect segment="supplement-recommendations" basePath="/coach" />} />
+    <Route path="my-users/:userId/supplement-dosage" element={<ClientHubLegacyRedirect segment="supplement-dosage" basePath="/coach" />} />
     <Route path="my-users/:userId/meal-tracking" element={<ClientHubLegacyRedirect segment="meal-tracking" basePath="/coach" />} />
     <Route path="my-users/:userId/launch-assessment" element={<ClientHubLegacyRedirect segment="launch-assessment" basePath="/coach" />} />
     <Route path="my-users/:userId/prakruti-assessment" element={<ClientHubLegacyRedirect segment="prakruti-assessment" basePath="/coach" />} />
+    <Route path="meal-approvals" element={<CoachMealApprovalsPage />} />
     <Route path="consultancy/transactions" element={<CoachConsultancyTransactionList />} />
     <Route path="consultancy/enrolled-users" element={<CoachConsultancyEnrolledUsersList />} />
     <Route path="consultancy/clients/:userId" element={<CoachConsultancyClientPage />} />

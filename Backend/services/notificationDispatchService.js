@@ -25,6 +25,12 @@ const FCM_TYPE_BY_KIND = {
   diet_plan_assignment: "diet_plan_assignment_notification",
   coach_reminder: "reminder_notification",
   physical_exercise_assigned: "physical_exercise_notification",
+  supplement_recommended: "supplement_recommendation_notification",
+  supplement_dosage_assigned: "supplement_dosage_notification",
+  supplement_delivery_requested: "supplement_delivery_requested_notification",
+  supplement_bill_uploaded: "supplement_bill_uploaded_notification",
+  meal_log_submitted: "meal_log_submitted_notification",
+  meal_log_reviewed: "meal_log_reviewed_notification",
 };
 
 function buildPushData(notification) {
@@ -295,6 +301,154 @@ function dispatchLabReportUploadCoachNotificationAsync(payload) {
   runPushSafely(dispatchLabReportUploadCoachNotification(payload));
 }
 
+async function dispatchMealLoggedCoachNotification({ user, mealLogId }) {
+  const tokens = await collectCoachFcmTokensForUser(user);
+  if (tokens.length === 0) {
+    return { successCount: 0, failureCount: 0, skipped: true, reason: "no_tokens" };
+  }
+
+  const userName = String(user?.name || "A client").trim() || "A client";
+  const message = `${userName} logged a new meal for review.`;
+
+  return sendPushToTokens(tokens, {
+    title: "New meal log",
+    body: message,
+    data: {
+      type: FCM_TYPE_BY_KIND.meal_log_submitted,
+      kind: "meal_log_submitted",
+      referenceId: String(mealLogId || ""),
+      referenceType: "meal_tracking",
+      userId: String(user?.id || user?._id || ""),
+    },
+  });
+}
+
+function dispatchMealLoggedCoachNotificationAsync(payload) {
+  runPushSafely(dispatchMealLoggedCoachNotification(payload));
+}
+
+async function dispatchSupplementRecommendedNotification({
+  userId,
+  coachName,
+  recommendationId,
+}) {
+  const name = String(coachName || "Your coach").trim() || "Your coach";
+  const message = `${name} shared new supplement recommendations for you.`;
+
+  const notification = await createTargetedNotification({
+    userId,
+    kind: "supplement_recommended",
+    message,
+    referenceId: recommendationId ? String(recommendationId) : null,
+    referenceType: "coach_recommended_supplement",
+    title: "New supplement recommendations",
+  });
+
+  runPushSafely(deliverTargetedPush(userId, notification));
+  return notification;
+}
+
+async function dispatchSupplementDosageAssignedNotification({
+  userId,
+  coachName,
+  dosageId,
+  supplementName,
+}) {
+  const name = String(coachName || "Your coach").trim() || "Your coach";
+  const supplement = String(supplementName || "a supplement").trim() || "a supplement";
+  const message = `${name} set a dosage schedule for ${supplement}.`;
+
+  const notification = await createTargetedNotification({
+    userId,
+    kind: "supplement_dosage_assigned",
+    message,
+    referenceId: dosageId ? String(dosageId) : null,
+    referenceType: "user_supplement_dosage",
+    title: "New supplement dosage",
+  });
+
+  runPushSafely(deliverTargetedPush(userId, notification));
+  return notification;
+}
+
+async function dispatchSupplementDeliveryRequestedCoachNotification({ user, recommendationId }) {
+  const tokens = await collectCoachFcmTokensForUser(user);
+  if (tokens.length === 0) {
+    return { successCount: 0, failureCount: 0, skipped: true, reason: "no_tokens" };
+  }
+
+  const userName = String(user?.name || "A user").trim() || "A user";
+  const message = `${userName} requested supplement delivery.`;
+
+  return sendPushToTokens(tokens, {
+    title: "Supplement delivery requested",
+    body: message,
+    data: {
+      type: FCM_TYPE_BY_KIND.supplement_delivery_requested,
+      kind: "supplement_delivery_requested",
+      referenceId: String(recommendationId || ""),
+      referenceType: "coach_recommended_supplement",
+      userId: String(user?.id || user?._id || ""),
+    },
+  });
+}
+
+function dispatchSupplementDeliveryRequestedCoachNotificationAsync(payload) {
+  runPushSafely(dispatchSupplementDeliveryRequestedCoachNotification(payload));
+}
+
+async function dispatchSupplementBillUploadedCoachNotification({ user, recommendationId }) {
+  const tokens = await collectCoachFcmTokensForUser(user);
+  if (tokens.length === 0) {
+    return { successCount: 0, failureCount: 0, skipped: true, reason: "no_tokens" };
+  }
+
+  const userName = String(user?.name || "A user").trim() || "A user";
+  const message = `${userName} uploaded a supplement bill.`;
+
+  return sendPushToTokens(tokens, {
+    title: "Supplement bill uploaded",
+    body: message,
+    data: {
+      type: FCM_TYPE_BY_KIND.supplement_bill_uploaded,
+      kind: "supplement_bill_uploaded",
+      referenceId: String(recommendationId || ""),
+      referenceType: "coach_recommended_supplement",
+      userId: String(user?.id || user?._id || ""),
+    },
+  });
+}
+
+function dispatchSupplementBillUploadedCoachNotificationAsync(payload) {
+  runPushSafely(dispatchSupplementBillUploadedCoachNotification(payload));
+}
+
+async function dispatchMealLogReviewedNotification({
+  userId,
+  status,
+  coachName,
+  mealLogId,
+}) {
+  const name = String(coachName || "Your coach").trim() || "Your coach";
+  const nextStatus = String(status || "").trim().toLowerCase();
+  const approved = nextStatus === "approved";
+  const message = approved
+    ? `${name} approved your meal log.`
+    : `${name} rejected your meal log.`;
+
+  const notification = await createTargetedNotification({
+    userId,
+    kind: "meal_log_reviewed",
+    message,
+    referenceId: mealLogId ? String(mealLogId) : null,
+    referenceType: "meal_tracking",
+    title: approved ? "Meal log approved" : "Meal log rejected",
+  });
+
+  runPushSafely(deliverTargetedPush(userId, notification));
+  return notification;
+}
+
 module.exports = {
   dispatchBroadcastNotification,
   dispatchBirthdayWishNotification,
@@ -303,8 +457,17 @@ module.exports = {
   dispatchDietPlanAssignmentNotification,
   dispatchCoachReminderNotification,
   dispatchPhysicalExerciseAssignedNotification,
+  dispatchSupplementRecommendedNotification,
+  dispatchSupplementDosageAssignedNotification,
+  dispatchSupplementDeliveryRequestedCoachNotification,
+  dispatchSupplementDeliveryRequestedCoachNotificationAsync,
+  dispatchSupplementBillUploadedCoachNotification,
+  dispatchSupplementBillUploadedCoachNotificationAsync,
   dispatchLabReportUploadCoachNotification,
   dispatchLabReportUploadCoachNotificationAsync,
+  dispatchMealLoggedCoachNotification,
+  dispatchMealLoggedCoachNotificationAsync,
+  dispatchMealLogReviewedNotification,
   deliverBroadcastPush,
   deliverTargetedPush,
   FCM_TYPE_BY_KIND,
