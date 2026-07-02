@@ -16,12 +16,22 @@ const { listWellnessCoaches } = require("../../models/wellnessCoachModel");
 const { getSpecializationById } = require("../../models/specializationModel");
 const { listBirthdayPostsByPostDate } = require("../../models/birthdayPostModel");
 const { countCommentsForPost } = require("../../models/birthdayPostCommentModel");
-const { listActiveTestCatalog } = require("../../models/testCatalogModel");
+const { listActiveTestCatalog, listActiveTestCatalogPaginated } = require("../../models/testCatalogModel");
 const { listActiveDietPlanCatalog } = require("../../models/dietPlanCatalogModel");
-const { listActiveWellnessPrescriptionCatalog } = require("../../models/wellnessPrescriptionCatalogModel");
-const { listActivePhysicalExercises } = require("../../models/physicalExerciseModel");
-const { listActiveMentalWellbeing } = require("../../models/mentalWellbeingModel");
+const {
+  listActiveWellnessPrescriptionCatalog,
+  listActiveWellnessPrescriptionCatalogPaginated,
+} = require("../../models/wellnessPrescriptionCatalogModel");
+const {
+  listActivePhysicalExercises,
+  listActivePhysicalExercisesPaginated,
+} = require("../../models/physicalExerciseModel");
+const {
+  listActiveMentalWellbeing,
+  listActiveMentalWellbeingPaginated,
+} = require("../../models/mentalWellbeingModel");
 const { listActiveSupplements } = require("../../models/supplementModel");
+const { readCatalogPagination, wantsCatalogPagination } = require("../../utils/catalogPagination");
 const { getUserById, toPublicUser } = require("../../models/userModel");
 const { todayInTimezone } = require("../../utils/birthdayTimezone");
 const { isValidDateOnly } = require("../../utils/dateOnly");
@@ -300,6 +310,21 @@ exports.getActiveBirthdayPosts = asyncHandler(async (req, res) => {
 });
 
 exports.getActiveTestCatalog = asyncHandler(async (req, res) => {
+  if (wantsCatalogPagination(req)) {
+    const { page, limit } = readCatalogPagination(req);
+    const data = await listActiveTestCatalogPaginated({
+      page,
+      limit,
+      search: req.query.search,
+      category: req.query.category,
+    });
+    return res.status(200).json({
+      status: true,
+      tests: data.tests,
+      pagination: data.pagination,
+    });
+  }
+
   const tests = await listActiveTestCatalog();
   const grouped = tests.reduce((acc, test) => {
     const category = test.category || "Other";
@@ -339,6 +364,21 @@ exports.getActiveDietPlanCatalog = asyncHandler(async (req, res) => {
 });
 
 exports.getActiveWellnessPrescriptionCatalog = asyncHandler(async (req, res) => {
+  if (wantsCatalogPagination(req)) {
+    const { page, limit } = readCatalogPagination(req);
+    const data = await listActiveWellnessPrescriptionCatalogPaginated({
+      page,
+      limit,
+      search: req.query.search,
+      category: req.query.category,
+    });
+    return res.status(200).json({
+      status: true,
+      prescriptions: data.prescriptions,
+      pagination: data.pagination,
+    });
+  }
+
   const prescriptions = await listActiveWellnessPrescriptionCatalog();
   const groupedByCategory = prescriptions.reduce((acc, prescription) => {
     const category = prescription.category || "Other";
@@ -355,6 +395,21 @@ exports.getActiveWellnessPrescriptionCatalog = asyncHandler(async (req, res) => 
 });
 
 exports.getActivePhysicalExercises = asyncHandler(async (req, res) => {
+  if (wantsCatalogPagination(req)) {
+    const { page, limit } = readCatalogPagination(req);
+    const data = await listActivePhysicalExercisesPaginated({
+      page,
+      limit,
+      search: req.query.search,
+      type: req.query.type,
+    });
+    return res.status(200).json({
+      status: true,
+      physicalExercises: data.physicalExercises,
+      pagination: data.pagination,
+    });
+  }
+
   const physicalExercises = await listActivePhysicalExercises();
 
   return res.status(200).json({
@@ -364,6 +419,21 @@ exports.getActivePhysicalExercises = asyncHandler(async (req, res) => {
 });
 
 exports.getActiveMentalWellbeing = asyncHandler(async (req, res) => {
+  if (wantsCatalogPagination(req)) {
+    const { page, limit } = readCatalogPagination(req);
+    const data = await listActiveMentalWellbeingPaginated({
+      page,
+      limit,
+      search: req.query.search,
+      type: req.query.type,
+    });
+    return res.status(200).json({
+      status: true,
+      mentalWellbeing: data.items,
+      pagination: data.pagination,
+    });
+  }
+
   const mentalWellbeing = await listActiveMentalWellbeing();
 
   return res.status(200).json({

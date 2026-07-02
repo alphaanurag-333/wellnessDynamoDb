@@ -180,6 +180,41 @@ async function listActivePhysicalExercises() {
   return items.map((row) => toPublicPhysicalExercise(row)).filter(Boolean);
 }
 
+async function listActivePhysicalExercisesPaginated({ page = 1, limit = 12, search, type } = {}) {
+  const normalizedType = type ? String(type).toLowerCase().trim() : "";
+  const searchFilter = buildContainsFilter(["title", "description"], search);
+  let filterExpression = searchFilter.filterExpression;
+  const exprNames = { ...searchFilter.exprNames };
+  const exprValues = { ...searchFilter.exprValues };
+
+  if (normalizedType && TYPE.has(normalizedType)) {
+    exprNames["#type"] = "type";
+    exprValues[":type"] = normalizedType;
+    filterExpression = appendFilter(filterExpression, "#type = :type");
+  }
+
+  const { items, pagination } = await listByPartitionKey({
+    tableName: TABLE,
+    indexName: "StatusCreatedAtIndex",
+    partitionKeyValue: "active",
+    filterExpression,
+    exprNames,
+    exprValues,
+    search: searchFilter.search,
+    searchFields: searchFilter.searchFields,
+    scanIndexForward: false,
+    page,
+    limit,
+    maxLimit: 50,
+    sortFn: sortByCreatedAtDesc,
+  });
+
+  return {
+    physicalExercises: items.map((row) => toPublicPhysicalExercise(row)).filter(Boolean),
+    pagination,
+  };
+}
+
 module.exports = {
   PHYSICAL_EXERCISE_ALLOWED_STATUS,
   PHYSICAL_EXERCISE_ALLOWED_TYPE,
@@ -192,4 +227,5 @@ module.exports = {
   deletePhysicalExercise,
   listPhysicalExercises,
   listActivePhysicalExercises,
+  listActivePhysicalExercisesPaginated,
 };

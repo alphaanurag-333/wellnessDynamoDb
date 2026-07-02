@@ -235,6 +235,55 @@ async function listActiveWellnessPrescriptionCatalog() {
   return items.map((row) => toWellnessPrescriptionCatalogPublic(row)).filter(Boolean);
 }
 
+async function listActiveWellnessPrescriptionCatalogPaginated({
+  page = 1,
+  limit = 12,
+  search,
+  category,
+} = {}) {
+  const searchFilter = buildContainsFilter(
+    ["title", "prescriptionId", "category"],
+    search
+  );
+  let filterExpression = searchFilter.filterExpression;
+  const exprNames = { ...searchFilter.exprNames };
+  const exprValues = { ...searchFilter.exprValues };
+
+  if (category) {
+    const catKey = "#category";
+    exprNames[catKey] = "category";
+    exprValues[":category"] = String(category).trim();
+    filterExpression = filterExpression
+      ? `${filterExpression} AND ${catKey} = :category`
+      : `${catKey} = :category`;
+  }
+
+  const { items, pagination } = await listByPartitionKey({
+    tableName: TABLE,
+    indexName: "StatusCreatedAtIndex",
+    partitionKeyValue: "active",
+    filterExpression,
+    exprNames,
+    exprValues,
+    search: searchFilter.search,
+    searchFields: searchFilter.searchFields,
+    scanIndexForward: true,
+    page,
+    limit,
+    maxLimit: 50,
+    sortFn: (a, b) => {
+      const seqDiff = normalizeSequence(a.sequence) - normalizeSequence(b.sequence);
+      if (seqDiff !== 0) return seqDiff;
+      return String(a.title || "").localeCompare(String(b.title || ""));
+    },
+  });
+
+  return {
+    prescriptions: items.map((row) => toWellnessPrescriptionCatalogPublic(row)).filter(Boolean),
+    pagination,
+  };
+}
+
 async function listWellnessPrescriptionCatalog({
   page = 1,
   limit = 10,
@@ -365,6 +414,7 @@ module.exports = {
   getWellnessPrescriptionCatalogByPrescriptionId,
   getActiveWellnessPrescriptionCatalogByIds,
   listActiveWellnessPrescriptionCatalog,
+  listActiveWellnessPrescriptionCatalogPaginated,
   listWellnessPrescriptionCatalog,
   updateWellnessPrescriptionCatalog,
   deleteWellnessPrescriptionCatalog,

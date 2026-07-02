@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import Swal from "sweetalert2";
+import { CatalogPickerPagination } from "./CatalogPickerPagination.jsx";
+import { CATALOG_PAGE_SIZE, emptyCatalogPagination } from "./catalogPickerConstants.js";
 import { fetchActivePhysicalExerciseCatalog } from "../wellnessCoach/api/coachPhysicalExerciseCatalog.js";
 
 function formatAssignedDate(iso) {
@@ -109,13 +111,16 @@ export function UserPhysicalExercisesPanel({
   readOnly = false,
 }) {
   const [catalogExercises, setCatalogExercises] = useState([]);
+  const [catalogPage, setCatalogPage] = useState(1);
+  const [catalogPagination, setCatalogPagination] = useState(() => emptyCatalogPagination());
+  const [catalogLoading, setCatalogLoading] = useState(false);
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState("");
   const [assigning, setAssigning] = useState(false);
   const [removingId, setRemovingId] = useState("");
-  const [selectedExerciseIds, setSelectedExerciseIds] = useState([]);
+  const [selectedExercisesById, setSelectedExercisesById] = useState(() => new Map());
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
 
@@ -124,40 +129,21 @@ export function UserPhysicalExercisesPanel({
     [assignments]
   );
 
-  const availableCatalog = useMemo(
-    () => catalogExercises.filter((ex) => !assignedExerciseIds.has(ex.id || ex._id)),
-    [catalogExercises, assignedExerciseIds]
-  );
-
   const filteredExercises = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    let exercises = availableCatalog;
+    return catalogExercises.filter((ex) => !assignedExerciseIds.has(ex.id || ex._id));
+  }, [assignedExerciseIds, catalogExercises]);
 
-    if (typeFilter) {
-      exercises = exercises.filter((ex) => ex.type === typeFilter);
-    }
+  const selectedExerciseIds = useMemo(() => [...selectedExercisesById.keys()], [selectedExercisesById]);
 
-    if (q) {
-      exercises = exercises.filter((ex) => {
-        const haystack = [ex.title, ex.description, exerciseTypeLabel(ex.type)].filter(Boolean).join(" ").toLowerCase();
-        return haystack.includes(q);
-      });
-    }
+  const selectedExercises = useMemo(() => [...selectedExercisesById.values()], [selectedExercisesById]);
 
-    return [...exercises].sort((a, b) => String(a.title || "").localeCompare(String(b.title || "")));
-  }, [availableCatalog, search, typeFilter]);
-
-  const loadData = useCallback(async () => {
+  const loadAssignments = useCallback(async () => {
     if (!token || !userId) return;
     setError("");
     setNotFound(false);
     setLoading(true);
     try {
-      const [catalog, assigned] = await Promise.all([
-        fetchActivePhysicalExerciseCatalog(),
-        api.list(token, userId),
-      ]);
-      setCatalogExercises(catalog.physicalExercises ?? []);
+      const assigned = await api.list(token, userId);
       setAssignments(assigned.assignments ?? []);
     } catch (e) {
       if (e?.status === 401) {
@@ -174,17 +160,49 @@ export function UserPhysicalExercisesPanel({
     }
   }, [api, onUnauthorized, token, userId]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  const loadCatalog = useCallback(async () => {
+    setCatalogLoading(true);
+    try {
+      const catalog = await fetchActivePhysicalExerciseCatalog({
+        page: catalogPage,
+        limit: CATALOG_PAGE_SIZE,
+        search,
+        type: typeFilter,
+      });
+      setCatalogExercises(catalog.physicalExercises ?? []);
+      setCatalogPagination(catalog.pagination ?? emptyCatalogPagination(catalogPage));
+    } catch (e) {
+      setCatalogExercises([]);
+      setCatalogPagination(emptyCatalogPagination(catalogPage));
+      setError((prev) => prev || e.message || "Failed to load exercise catalog.");
+    } finally {
+      setCatalogLoading(false);
+    }
+  }, [catalogPage, search, typeFilter]);
 
-  const toggleExercise = (exerciseId) => {
-    setSelectedExerciseIds((prev) =>
-      prev.includes(exerciseId) ? prev.filter((id) => id !== exerciseId) : [...prev, exerciseId]
-    );
+  useEffect(() => {
+    loadAssignments();
+  }, [loadAssignments]);
+
+  useEffect(() => {
+    loadCatalog();
+  }, [loadCatalog]);
+
+  useEffect(() => {
+    setCatalogPage(1);
+  }, [search, typeFilter]);
+
+  const toggleExercise = (exercise) => {
+    const exerciseId = exercise.id || exercise._id;
+    setSelectedExercisesById((prev) => {
+      const next = new Map(prev);
+      if (next.has(exerciseId)) next.delete(exerciseId);
+      else next.set(exerciseId, exercise);
+      return next;
+    });
   };
 
-  const clearSelection = () => setSelectedExerciseIds([]);
+  const clearSelection = () => setSelectedExercisesById(new Map());
 
   const handleAssign = async (e) => {
     e.preventDefault();
@@ -218,9 +236,10 @@ export function UserPhysicalExercisesPanel({
         });
       }
 
-      setSelectedExerciseIds([]);
+      setSelectedExercisesById(new Map());
       setSearch("");
-      await loadData();
+      setCatalogPage(1);
+      await Promise.all([loadAssignments(), loadCatalog()]);
     } catch (err) {
       if (err?.status === 401) onUnauthorized?.();
       else await Swal.fire({ icon: "error", title: "Assign failed", text: err.message || "Could not assign exercises." });
@@ -245,7 +264,7 @@ export function UserPhysicalExercisesPanel({
     try {
       await api.remove(token, userId, assignmentId);
       await Swal.fire({ icon: "success", title: "Removed", timer: 1200, showConfirmButton: false });
-      await loadData();
+      await loadAssignments();
     } catch (err) {
       if (err?.status === 401) onUnauthorized?.();
       else await Swal.fire({ icon: "error", title: "Remove failed", text: err.message || "Could not remove exercise." });
@@ -257,21 +276,30 @@ export function UserPhysicalExercisesPanel({
   if (notFound && NotFoundPage) return <NotFoundPage />;
   if (loading && PageLoader) return <PageLoader label="Loading physical exercises…" />;
 
+  const embedded = !backTo;
+
   return (
-    <div className="user-page">
-      <div className="user-page__toolbar">
-        {backTo ? (
-        <Link to={backTo} className="user-back-btn" aria-label="Back to clients">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M15 18 9 12l6-6" />
-          </svg>
-        </Link>
-        ) : null}
-        <div className="user-page__toolbar-text">
-          <h2 className="user-page__title">Physical Exercises</h2>
-          <p className="user-page__subtitle">Assign exercises from the admin catalog to this client.</p>
+    <div className={embedded ? "client-hub-embedded-panel client-hub-module-panel" : "user-page"}>
+      {embedded ? (
+        <div className="client-hub-embedded-panel__header">
+          <h2 className="client-hub-embedded-panel__title">Physical Exercises</h2>
+          <p className="client-hub-embedded-panel__subtitle">
+            Assign workout videos from the catalog to this client&apos;s exercise list.
+          </p>
         </div>
-      </div>
+      ) : (
+        <div className="user-page__toolbar">
+          <Link to={backTo} className="user-back-btn" aria-label="Back to clients">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M15 18 9 12l6-6" />
+            </svg>
+          </Link>
+          <div className="user-page__toolbar-text">
+            <h2 className="user-page__title">Physical Exercises</h2>
+            <p className="user-page__subtitle">Assign exercises from the admin catalog to this client.</p>
+          </div>
+        </div>
+      )}
 
       {error ? (
         <p className="user-list-error" role="alert">
@@ -279,9 +307,12 @@ export function UserPhysicalExercisesPanel({
         </p>
       ) : null}
 
-      <div className="page-card diet-plan-page">
+      <div className={embedded ? "client-hub-module-panel__content" : "page-card diet-plan-page"}>
         {!readOnly ? (
-          <form className="form-card diet-plan-upload" onSubmit={handleAssign}>
+          <form
+            className={`form-card diet-plan-upload${embedded ? " form-card--embedded" : ""}`}
+            onSubmit={handleAssign}
+          >
             <h3 className="form-card__title">Assign from catalog</h3>
 
             <div className="form-section">
@@ -311,7 +342,7 @@ export function UserPhysicalExercisesPanel({
                 </label>
                 <div className="catalog-picker__summary">
                   <span>
-                    {selectedExerciseIds.length} selected · {filteredExercises.length} available
+                    {selectedExerciseIds.length} selected · {catalogPagination.total || 0} total
                   </span>
                   {selectedExerciseIds.length > 0 ? (
                     <button type="button" className="btn btn--ghost btn--sm" onClick={clearSelection}>
@@ -321,31 +352,54 @@ export function UserPhysicalExercisesPanel({
                 </div>
               </div>
 
-              {filteredExercises.length === 0 ? (
+              {filteredExercises.length === 0 && !catalogLoading ? (
                 <p className="table-placeholder">
-                  {catalogExercises.length === 0
+                  {catalogPagination.total === 0
                     ? "No active exercises in catalog. Ask admin to add exercises."
-                    : availableCatalog.length === 0
-                      ? "All catalog exercises are already assigned to this client."
+                    : assignments.length > 0
+                      ? "All exercises on this page are already assigned, or none match your filters."
                       : "No matching exercises. Try another search or filter."}
                 </p>
               ) : (
-                <div className="catalog-picker">
-                  <div className="catalog-picker__grid">
-                    {filteredExercises.map((exercise) => {
-                      const id = exercise.id || exercise._id;
-                      return (
-                        <ExercisePickerCard
-                          key={id}
-                          exercise={exercise}
-                          selected={selectedExerciseIds.includes(id)}
-                          onToggle={toggleExercise}
-                        />
-                      );
-                    })}
+                <>
+                  <div className="catalog-picker">
+                    <div className={`catalog-picker__grid${catalogLoading ? " catalog-picker__grid--loading" : ""}`}>
+                      {filteredExercises.map((exercise) => {
+                        const id = exercise.id || exercise._id;
+                        return (
+                          <ExercisePickerCard
+                            key={id}
+                            exercise={exercise}
+                            selected={selectedExerciseIds.includes(id)}
+                            onToggle={() => toggleExercise(exercise)}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <CatalogPickerPagination
+                    page={catalogPagination.page || catalogPage}
+                    pages={catalogPagination.pages || 1}
+                    total={catalogPagination.total || 0}
+                    loading={catalogLoading}
+                    onPageChange={setCatalogPage}
+                  />
+                </>
+              )}
+
+              {selectedExercises.length > 0 ? (
+                <div className="client-hub-module-panel__selection">
+                  <span className="client-hub-module-panel__selection-label">Selected exercises</span>
+                  <div className="plan-chip-list">
+                    {selectedExercises.map((exercise) => (
+                      <div key={exercise.id || exercise._id} className="plan-chip">
+                        <span className="plan-chip__name">{exercise.title}</span>
+                        <span className="plan-chip__meta">{exerciseTypeLabel(exercise.type)}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              )}
+              ) : null}
             </div>
 
             <div className="diet-assign-form__actions">
@@ -365,8 +419,8 @@ export function UserPhysicalExercisesPanel({
           </form>
         ) : null}
 
-        <section className="diet-plan-section">
-          <h3 className="form-card__title">Assigned exercises</h3>
+        <section className="diet-plan-section client-hub-module-panel__section">
+          <h3 className="form-card__title">Assigned exercises ({assignments.length})</h3>
           {assignments.length === 0 ? (
             <p className="table-placeholder">No exercises assigned yet.</p>
           ) : (

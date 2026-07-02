@@ -248,6 +248,47 @@ async function listActiveTestCatalog() {
   return items.map((row) => toTestCatalogPublic(row)).filter(Boolean);
 }
 
+async function listActiveTestCatalogPaginated({ page = 1, limit = 12, search, category } = {}) {
+  const searchFilter = buildContainsFilter(["name", "testId", "category"], search);
+  let filterExpression = searchFilter.filterExpression;
+  const exprNames = { ...searchFilter.exprNames };
+  const exprValues = { ...searchFilter.exprValues };
+
+  if (category) {
+    const catKey = "#category";
+    exprNames[catKey] = "category";
+    exprValues[":category"] = String(category).trim();
+    filterExpression = filterExpression
+      ? `${filterExpression} AND ${catKey} = :category`
+      : `${catKey} = :category`;
+  }
+
+  const { items, pagination } = await listByPartitionKey({
+    tableName: TABLE,
+    indexName: "StatusCreatedAtIndex",
+    partitionKeyValue: "active",
+    filterExpression,
+    exprNames,
+    exprValues,
+    search: searchFilter.search,
+    searchFields: searchFilter.searchFields,
+    scanIndexForward: true,
+    page,
+    limit,
+    maxLimit: 50,
+    sortFn: (a, b) => {
+      const seqDiff = normalizeSequence(a.sequence) - normalizeSequence(b.sequence);
+      if (seqDiff !== 0) return seqDiff;
+      return String(a.name || "").localeCompare(String(b.name || ""));
+    },
+  });
+
+  return {
+    tests: items.map((row) => toTestCatalogPublic(row)).filter(Boolean),
+    pagination,
+  };
+}
+
 async function listTestCatalog({ page = 1, limit = 10, status, search, category } = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const searchFilter = buildContainsFilter(["name", "testId", "category"], search);
@@ -370,6 +411,7 @@ module.exports = {
   getTestCatalogByTestId,
   getActiveTestCatalogByIds,
   listActiveTestCatalog,
+  listActiveTestCatalogPaginated,
   listTestCatalog,
   updateTestCatalog,
   deleteTestCatalog,

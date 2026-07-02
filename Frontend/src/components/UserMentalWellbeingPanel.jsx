@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import Swal from "sweetalert2";
+import { AiOutlineEye } from "react-icons/ai";
+import { CatalogPickerPagination } from "./CatalogPickerPagination.jsx";
+import { CATALOG_PAGE_SIZE, emptyCatalogPagination } from "./catalogPickerConstants.js";
 import { fetchActiveMentalWellbeingCatalog } from "../wellnessCoach/api/coachMentalWellbeingCatalog.js";
 
 function formatAssignedDate(iso) {
@@ -23,6 +26,89 @@ function resolveItemLink(item) {
   return item.file || "";
 }
 
+function youtubeEmbedUrl(url) {
+  if (!url) return "";
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname.includes("youtube.com")) {
+      const videoId = parsed.searchParams.get("v");
+      if (videoId) return `https://www.youtube.com/embed/${videoId}`;
+    }
+    if (parsed.hostname === "youtu.be") {
+      const videoId = parsed.pathname.replace(/^\//, "");
+      if (videoId) return `https://www.youtube.com/embed/${videoId}`;
+    }
+  } catch {
+    return "";
+  }
+  return "";
+}
+
+function MentalWellbeingPreviewModal({ item, onClose }) {
+  useEffect(() => {
+    if (!item) return undefined;
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose, item]);
+
+  if (!item) return null;
+
+  const link = resolveItemLink(item);
+  const embedUrl = item.type === "ytlink" ? youtubeEmbedUrl(item.ytLink || link) : "";
+
+  return (
+    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="mental-wellbeing-preview-title" onClick={onClose}>
+      <div className="modal-card modal-card--wide" onClick={(e) => e.stopPropagation()}>
+        <h3 className="modal-card__title" id="mental-wellbeing-preview-title">
+          {item.title}
+        </h3>
+        <p className="modal-card__subtitle">{itemTypeLabel(item.type)}</p>
+
+        <div className="mental-wellbeing-preview__media">
+          {item.type === "ytlink" && embedUrl ? (
+            <iframe
+              title={item.title}
+              src={embedUrl}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              className="mental-wellbeing-preview__embed"
+            />
+          ) : item.type === "video" && item.file ? (
+            <video
+              src={item.file}
+              controls
+              playsInline
+              preload="metadata"
+              className="mental-wellbeing-preview__video"
+            />
+          ) : item.type === "audio" && item.file ? (
+            <audio src={item.file} controls preload="metadata" className="mental-wellbeing-preview__audio" />
+          ) : (
+            <p className="table-placeholder">No preview available for this content.</p>
+          )}
+        </div>
+
+        {link ? (
+          <p className="mental-wellbeing-preview__link">
+            <a href={link} target="_blank" rel="noopener noreferrer" className="btn btn--ghost btn--sm">
+              Open content
+            </a>
+          </p>
+        ) : null}
+
+        <div className="modal-card__actions">
+          <button type="button" className="btn btn--primary" onClick={onClose}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CheckIcon() {
   return (
     <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="3">
@@ -31,14 +117,21 @@ function CheckIcon() {
   );
 }
 
-function ItemPickerCard({ item, selected, onToggle }) {
-  const id = item.id || item._id;
+function ItemPickerCard({ item, selected, onToggle, onViewContent }) {
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onToggle(item);
+    }
+  };
 
   return (
-    <button
-      type="button"
-      className={`catalog-picker__card${selected ? " catalog-picker__card--selected" : ""}`}
-      onClick={() => onToggle(id)}
+    <div
+      role="button"
+      tabIndex={0}
+      className={`catalog-picker__card catalog-picker__card--mental-wellbeing${selected ? " catalog-picker__card--selected" : ""}`}
+      onClick={() => onToggle(item)}
+      onKeyDown={handleKeyDown}
       aria-pressed={selected}
     >
       <div className="catalog-picker__card-head">
@@ -48,11 +141,23 @@ function ItemPickerCard({ item, selected, onToggle }) {
         </span>
       </div>
       <div className="catalog-picker__card-meta">
-        <span className="catalog-picker__badge catalog-picker__badge--type">
+        <span className="catalog-picker__badge catalog-picker__badge--type catalog-picker__badge--with-action">
           {itemTypeLabel(item.type)}
+          <button
+            type="button"
+            className="catalog-picker__view-points"
+            title="View content"
+            aria-label={`View content for ${item.title}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onViewContent(item);
+            }}
+          >
+            <AiOutlineEye size={15} aria-hidden="true" />
+          </button>
         </span>
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -112,15 +217,19 @@ export function UserMentalWellbeingPanel({
   readOnly = false,
 }) {
   const [catalogItems, setCatalogItems] = useState([]);
+  const [catalogPage, setCatalogPage] = useState(1);
+  const [catalogPagination, setCatalogPagination] = useState(() => emptyCatalogPagination());
+  const [catalogLoading, setCatalogLoading] = useState(false);
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState("");
   const [assigning, setAssigning] = useState(false);
   const [removingId, setRemovingId] = useState("");
-  const [selectedItemIds, setSelectedItemIds] = useState([]);
+  const [selectedItemsById, setSelectedItemsById] = useState(() => new Map());
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
+  const [previewItem, setPreviewItem] = useState(null);
 
   const assignedItemIds = useMemo(
     () =>
@@ -132,40 +241,21 @@ export function UserMentalWellbeingPanel({
     [assignments]
   );
 
-  const availableCatalog = useMemo(
-    () => catalogItems.filter((item) => !assignedItemIds.has(item.id || item._id)),
-    [catalogItems, assignedItemIds]
-  );
-
   const filteredItems = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    let items = availableCatalog;
+    return catalogItems.filter((item) => !assignedItemIds.has(item.id || item._id));
+  }, [assignedItemIds, catalogItems]);
 
-    if (typeFilter) {
-      items = items.filter((item) => item.type === typeFilter);
-    }
+  const selectedItemIds = useMemo(() => [...selectedItemsById.keys()], [selectedItemsById]);
 
-    if (q) {
-      items = items.filter((item) => {
-        const haystack = [item.title, itemTypeLabel(item.type)].filter(Boolean).join(" ").toLowerCase();
-        return haystack.includes(q);
-      });
-    }
+  const selectedItems = useMemo(() => [...selectedItemsById.values()], [selectedItemsById]);
 
-    return [...items].sort((a, b) => String(a.title || "").localeCompare(String(b.title || "")));
-  }, [availableCatalog, search, typeFilter]);
-
-  const loadData = useCallback(async () => {
+  const loadAssignments = useCallback(async () => {
     if (!token || !userId) return;
     setError("");
     setNotFound(false);
     setLoading(true);
     try {
-      const [catalog, assigned] = await Promise.all([
-        fetchActiveMentalWellbeingCatalog(),
-        api.list(token, userId),
-      ]);
-      setCatalogItems(catalog.mentalWellbeing ?? []);
+      const assigned = await api.list(token, userId);
       setAssignments(assigned.assignments ?? []);
     } catch (e) {
       if (e?.status === 401) {
@@ -182,17 +272,49 @@ export function UserMentalWellbeingPanel({
     }
   }, [api, onUnauthorized, token, userId]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  const loadCatalog = useCallback(async () => {
+    setCatalogLoading(true);
+    try {
+      const catalog = await fetchActiveMentalWellbeingCatalog({
+        page: catalogPage,
+        limit: CATALOG_PAGE_SIZE,
+        search,
+        type: typeFilter,
+      });
+      setCatalogItems(catalog.mentalWellbeing ?? []);
+      setCatalogPagination(catalog.pagination ?? emptyCatalogPagination(catalogPage));
+    } catch (e) {
+      setCatalogItems([]);
+      setCatalogPagination(emptyCatalogPagination(catalogPage));
+      setError((prev) => prev || e.message || "Failed to load mental wellbeing catalog.");
+    } finally {
+      setCatalogLoading(false);
+    }
+  }, [catalogPage, search, typeFilter]);
 
-  const toggleItem = (itemId) => {
-    setSelectedItemIds((prev) =>
-      prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId]
-    );
+  useEffect(() => {
+    loadAssignments();
+  }, [loadAssignments]);
+
+  useEffect(() => {
+    loadCatalog();
+  }, [loadCatalog]);
+
+  useEffect(() => {
+    setCatalogPage(1);
+  }, [search, typeFilter]);
+
+  const toggleItem = (item) => {
+    const itemId = item.id || item._id;
+    setSelectedItemsById((prev) => {
+      const next = new Map(prev);
+      if (next.has(itemId)) next.delete(itemId);
+      else next.set(itemId, item);
+      return next;
+    });
   };
 
-  const clearSelection = () => setSelectedItemIds([]);
+  const clearSelection = () => setSelectedItemsById(new Map());
 
   const handleAssign = async (e) => {
     e.preventDefault();
@@ -226,9 +348,10 @@ export function UserMentalWellbeingPanel({
         });
       }
 
-      setSelectedItemIds([]);
+      setSelectedItemsById(new Map());
       setSearch("");
-      await loadData();
+      setCatalogPage(1);
+      await Promise.all([loadAssignments(), loadCatalog()]);
     } catch (err) {
       if (err?.status === 401) onUnauthorized?.();
       else await Swal.fire({ icon: "error", title: "Assign failed", text: err.message || "Could not assign content." });
@@ -253,7 +376,7 @@ export function UserMentalWellbeingPanel({
     try {
       await api.remove(token, userId, assignmentId);
       await Swal.fire({ icon: "success", title: "Removed", timer: 1200, showConfirmButton: false });
-      await loadData();
+      await loadAssignments();
     } catch (err) {
       if (err?.status === 401) onUnauthorized?.();
       else await Swal.fire({ icon: "error", title: "Remove failed", text: err.message || "Could not remove item." });
@@ -265,21 +388,30 @@ export function UserMentalWellbeingPanel({
   if (notFound && NotFoundPage) return <NotFoundPage />;
   if (loading && PageLoader) return <PageLoader label="Loading mental wellbeing…" />;
 
+  const embedded = !backTo;
+
   return (
-    <div className="user-page">
-      <div className="user-page__toolbar">
-        {backTo ? (
+    <div className={embedded ? "client-hub-embedded-panel client-hub-module-panel" : "user-page"}>
+      {embedded ? (
+        <div className="client-hub-embedded-panel__header">
+          <h2 className="client-hub-embedded-panel__title">Mental Wellbeing</h2>
+          <p className="client-hub-embedded-panel__subtitle">
+            Assign meditation, audio, and video content from the catalog to this client.
+          </p>
+        </div>
+      ) : (
+        <div className="user-page__toolbar">
           <Link to={backTo} className="user-back-btn" aria-label="Back to clients">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M15 18 9 12l6-6" />
             </svg>
           </Link>
-        ) : null}
-        <div className="user-page__toolbar-text">
-          <h2 className="user-page__title">Mental Wellbeing</h2>
-          <p className="user-page__subtitle">Assign videos and audios from the admin catalog to this client.</p>
+          <div className="user-page__toolbar-text">
+            <h2 className="user-page__title">Mental Wellbeing</h2>
+            <p className="user-page__subtitle">Assign videos and audios from the admin catalog to this client.</p>
+          </div>
         </div>
-      </div>
+      )}
 
       {error ? (
         <p className="user-list-error" role="alert">
@@ -287,9 +419,12 @@ export function UserMentalWellbeingPanel({
         </p>
       ) : null}
 
-      <div className="page-card diet-plan-page">
+      <div className={embedded ? "client-hub-module-panel__content" : "page-card diet-plan-page"}>
         {!readOnly ? (
-          <form className="form-card diet-plan-upload" onSubmit={handleAssign}>
+          <form
+            className={`form-card diet-plan-upload${embedded ? " form-card--embedded" : ""}`}
+            onSubmit={handleAssign}
+          >
             <h3 className="form-card__title">Assign from catalog</h3>
 
             <div className="form-section">
@@ -306,7 +441,7 @@ export function UserMentalWellbeingPanel({
                     className="user-field__input"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Title…"
+                    placeholder="Title, type…"
                   />
                 </label>
                 <label className="user-field">
@@ -320,7 +455,7 @@ export function UserMentalWellbeingPanel({
                 </label>
                 <div className="catalog-picker__summary">
                   <span>
-                    {selectedItemIds.length} selected · {filteredItems.length} available
+                    {selectedItemIds.length} selected · {catalogPagination.total || 0} total
                   </span>
                   {selectedItemIds.length > 0 ? (
                     <button type="button" className="btn btn--ghost btn--sm" onClick={clearSelection}>
@@ -330,31 +465,53 @@ export function UserMentalWellbeingPanel({
                 </div>
               </div>
 
-              {filteredItems.length === 0 ? (
+              {filteredItems.length === 0 && !catalogLoading ? (
                 <p className="table-placeholder">
-                  {catalogItems.length === 0
+                  {catalogPagination.total === 0
                     ? "No active content in catalog. Ask admin to add mental wellbeing items."
-                    : availableCatalog.length === 0
-                      ? "All catalog items are already assigned to this client."
-                      : "No matching items. Try another search or filter."}
+                    : "No matching items on this page. Try another search or filter."}
                 </p>
               ) : (
-                <div className="catalog-picker">
-                  <div className="catalog-picker__grid">
-                    {filteredItems.map((item) => {
-                      const id = item.id || item._id;
-                      return (
-                        <ItemPickerCard
-                          key={id}
-                          item={item}
-                          selected={selectedItemIds.includes(id)}
-                          onToggle={toggleItem}
-                        />
-                      );
-                    })}
+                <>
+                  <div className="catalog-picker">
+                    <div className={`catalog-picker__grid${catalogLoading ? " catalog-picker__grid--loading" : ""}`}>
+                      {filteredItems.map((item) => {
+                        const id = item.id || item._id;
+                        return (
+                          <ItemPickerCard
+                            key={id}
+                            item={item}
+                            selected={selectedItemIds.includes(id)}
+                            onToggle={toggleItem}
+                            onViewContent={setPreviewItem}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <CatalogPickerPagination
+                    page={catalogPagination.page || catalogPage}
+                    pages={catalogPagination.pages || 1}
+                    total={catalogPagination.total || 0}
+                    loading={catalogLoading}
+                    onPageChange={setCatalogPage}
+                  />
+                </>
+              )}
+
+              {selectedItems.length > 0 ? (
+                <div className="client-hub-module-panel__selection">
+                  <span className="client-hub-module-panel__selection-label">Selected content</span>
+                  <div className="plan-chip-list">
+                    {selectedItems.map((item) => (
+                      <div key={item.id || item._id} className="plan-chip">
+                        <span className="plan-chip__name">{item.title}</span>
+                        <span className="plan-chip__meta">{itemTypeLabel(item.type)}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              )}
+              ) : null}
             </div>
 
             <div className="diet-assign-form__actions">
@@ -374,8 +531,8 @@ export function UserMentalWellbeingPanel({
           </form>
         ) : null}
 
-        <section className="diet-plan-section">
-          <h3 className="form-card__title">Assigned content</h3>
+        <section className="diet-plan-section client-hub-module-panel__section">
+          <h3 className="form-card__title">Assigned content ({assignments.length})</h3>
           {assignments.length === 0 ? (
             <p className="table-placeholder">No mental wellbeing content assigned yet.</p>
           ) : (
@@ -393,6 +550,8 @@ export function UserMentalWellbeingPanel({
           )}
         </section>
       </div>
+
+      <MentalWellbeingPreviewModal item={previewItem} onClose={() => setPreviewItem(null)} />
     </div>
   );
 }

@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import Swal from "sweetalert2";
 import { AiOutlineEye } from "react-icons/ai";
-import { fetchActiveWellnessPrescriptionCatalog } from "../wellnessCoach/api/coachWellnessPrescriptionCatalog.js";
+import { fetchActiveWellnessPrescriptionCatalog, fetchActiveWellnessPrescriptionCatalogMeta } from "../wellnessCoach/api/coachWellnessPrescriptionCatalog.js";
+import { CatalogPickerPagination } from "./CatalogPickerPagination.jsx";
+import { CATALOG_PAGE_SIZE, emptyCatalogPagination } from "./catalogPickerConstants.js";
 
 function formatAssignmentDate(iso) {
   if (!iso) return "—";
@@ -132,7 +134,7 @@ function PrescriptionPickerCard({ prescription, selected, onToggle, onViewPoints
   const handleKeyDown = (e) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
-      onToggle(id);
+      onToggle(prescription);
     }
   };
 
@@ -141,7 +143,7 @@ function PrescriptionPickerCard({ prescription, selected, onToggle, onViewPoints
       role="button"
       tabIndex={0}
       className={`catalog-picker__card catalog-picker__card--prescription${selected ? " catalog-picker__card--selected" : ""}`}
-      onClick={() => onToggle(id)}
+      onClick={() => onToggle(prescription)}
       onKeyDown={handleKeyDown}
       aria-pressed={selected}
     >
@@ -185,8 +187,11 @@ export function UserWellnessPrescriptionPanel({
   onUnauthorized,
   readOnly = false,
 }) {
-  const [catalogGrouped, setCatalogGrouped] = useState({});
   const [catalogPrescriptions, setCatalogPrescriptions] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [catalogPage, setCatalogPage] = useState(1);
+  const [catalogPagination, setCatalogPagination] = useState(() => emptyCatalogPagination());
+  const [catalogLoading, setCatalogLoading] = useState(false);
   const [recommended, setRecommended] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -195,24 +200,19 @@ export function UserWellnessPrescriptionPanel({
   const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState("");
   const [date, setDate] = useState("");
-  const [selectedPrescriptionIds, setSelectedPrescriptionIds] = useState([]);
+  const [selectedPrescriptionsById, setSelectedPrescriptionsById] = useState(() => new Map());
   const [customPoints, setCustomPoints] = useState([""]);
   const [categoryFilter, setCategoryFilter] = useState("");
   const [search, setSearch] = useState("");
   const [previewPrescription, setPreviewPrescription] = useState(null);
 
-  const loadData = useCallback(async () => {
+  const loadAssignments = useCallback(async () => {
     if (!token || !userId) return;
     setError("");
     setNotFound(false);
     setLoading(true);
     try {
-      const [catalog, assignments] = await Promise.all([
-        fetchActiveWellnessPrescriptionCatalog(),
-        api.list(token, userId),
-      ]);
-      setCatalogGrouped(catalog.groupedByCategory ?? {});
-      setCatalogPrescriptions(catalog.prescriptions ?? []);
+      const assignments = await api.list(token, userId);
       setRecommended(assignments.recommended ?? null);
       setHistory(assignments.history ?? []);
     } catch (e) {
@@ -230,42 +230,64 @@ export function UserWellnessPrescriptionPanel({
     }
   }, [api, onUnauthorized, token, userId]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  const categories = useMemo(() => {
-    const keys = Object.keys(catalogGrouped);
-    if (keys.length) return keys.sort();
-    return [...new Set(catalogPrescriptions.map((p) => p.category).filter(Boolean))].sort();
-  }, [catalogGrouped, catalogPrescriptions]);
-
-  const filteredPrescriptions = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    let prescriptions = categoryFilter
-      ? catalogGrouped[categoryFilter] || catalogPrescriptions.filter((p) => p.category === categoryFilter)
-      : catalogPrescriptions;
-
-    if (q) {
-      prescriptions = prescriptions.filter((prescription) => {
-        const haystack = [prescription.title, prescription.category, prescription.prescriptionId]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        return haystack.includes(q);
-      });
+  const loadCatalogMeta = useCallback(async () => {
+    try {
+      const meta = await fetchActiveWellnessPrescriptionCatalogMeta();
+      setCategories(meta.categories ?? []);
+    } catch {
+      setCategories([]);
     }
+  }, []);
 
-    return [...prescriptions].sort((a, b) => String(a.title || "").localeCompare(String(b.title || "")));
-  }, [catalogGrouped, catalogPrescriptions, categoryFilter, search]);
+  const loadCatalog = useCallback(async () => {
+    setCatalogLoading(true);
+    try {
+      const catalog = await fetchActiveWellnessPrescriptionCatalog({
+        page: catalogPage,
+        limit: CATALOG_PAGE_SIZE,
+        search,
+        category: categoryFilter,
+      });
+      setCatalogPrescriptions(catalog.prescriptions ?? []);
+      setCatalogPagination(catalog.pagination ?? emptyCatalogPagination(catalogPage));
+    } catch (e) {
+      setCatalogPrescriptions([]);
+      setCatalogPagination(emptyCatalogPagination(catalogPage));
+      setError((prev) => prev || e.message || "Failed to load prescription catalog.");
+    } finally {
+      setCatalogLoading(false);
+    }
+  }, [catalogPage, categoryFilter, search]);
 
-  const togglePrescription = (prescriptionId) => {
-    setSelectedPrescriptionIds((prev) =>
-      prev.includes(prescriptionId) ? prev.filter((id) => id !== prescriptionId) : [...prev, prescriptionId]
-    );
+  useEffect(() => {
+    loadAssignments();
+    loadCatalogMeta();
+  }, [loadAssignments, loadCatalogMeta]);
+
+  useEffect(() => {
+    loadCatalog();
+  }, [loadCatalog]);
+
+  useEffect(() => {
+    setCatalogPage(1);
+  }, [search, categoryFilter]);
+
+  const selectedPrescriptionIds = useMemo(
+    () => [...selectedPrescriptionsById.keys()],
+    [selectedPrescriptionsById]
+  );
+
+  const togglePrescription = (prescription) => {
+    const prescriptionId = prescription.id || prescription._id;
+    setSelectedPrescriptionsById((prev) => {
+      const next = new Map(prev);
+      if (next.has(prescriptionId)) next.delete(prescriptionId);
+      else next.set(prescriptionId, prescription);
+      return next;
+    });
   };
 
-  const clearSelection = () => setSelectedPrescriptionIds([]);
+  const clearSelection = () => setSelectedPrescriptionsById(new Map());
 
   const updateCustomPoint = (index, value) => {
     setCustomPoints((prev) => prev.map((row, i) => (i === index ? value : row)));
@@ -303,10 +325,11 @@ export function UserWellnessPrescriptionPanel({
       });
       await Swal.fire({ icon: "success", title: "Wellness prescription assigned", timer: 1500, showConfirmButton: false });
       setDate("");
-      setSelectedPrescriptionIds([]);
+      setSelectedPrescriptionsById(new Map());
       setCustomPoints([""]);
       setSearch("");
-      await loadData();
+      setCatalogPage(1);
+      await Promise.all([loadAssignments(), loadCatalog()]);
     } catch (err) {
       if (err?.status === 401) onUnauthorized?.();
       else await Swal.fire({ icon: "error", title: "Assign failed", text: err.message || "Could not assign prescription." });
@@ -330,7 +353,7 @@ export function UserWellnessPrescriptionPanel({
     try {
       await api.remove(token, userId, assignmentId);
       await Swal.fire({ icon: "success", title: "Deleted", timer: 1200, showConfirmButton: false });
-      await loadData();
+      await loadAssignments();
     } catch (err) {
       if (err?.status === 401) onUnauthorized?.();
       else await Swal.fire({ icon: "error", title: "Delete failed", text: err.message || "Could not delete." });
@@ -414,7 +437,7 @@ export function UserWellnessPrescriptionPanel({
                 </label>
                 <div className="catalog-picker__summary">
                   <span>
-                    {selectedPrescriptionIds.length} selected · {filteredPrescriptions.length} shown
+                    {selectedPrescriptionIds.length} selected · {catalogPagination.total || 0} total
                   </span>
                   {selectedPrescriptionIds.length > 0 ? (
                     <button type="button" className="btn btn--ghost btn--sm" onClick={clearSelection}>
@@ -424,25 +447,34 @@ export function UserWellnessPrescriptionPanel({
                 </div>
               </div>
 
-              {filteredPrescriptions.length === 0 ? (
+              {catalogPrescriptions.length === 0 && !catalogLoading ? (
                 <p className="table-placeholder">No matching prescriptions. Try another filter or ask admin to add templates.</p>
               ) : (
-                <div className="catalog-picker">
-                  <div className="catalog-picker__grid">
-                    {filteredPrescriptions.map((prescription) => {
-                      const id = prescription.id || prescription._id;
-                      return (
-                        <PrescriptionPickerCard
-                          key={id}
-                          prescription={prescription}
-                          selected={selectedPrescriptionIds.includes(id)}
-                          onToggle={togglePrescription}
-                          onViewPoints={setPreviewPrescription}
-                        />
-                      );
-                    })}
+                <>
+                  <div className="catalog-picker">
+                    <div className={`catalog-picker__grid${catalogLoading ? " catalog-picker__grid--loading" : ""}`}>
+                      {catalogPrescriptions.map((prescription) => {
+                        const id = prescription.id || prescription._id;
+                        return (
+                          <PrescriptionPickerCard
+                            key={id}
+                            prescription={prescription}
+                            selected={selectedPrescriptionIds.includes(id)}
+                            onToggle={togglePrescription}
+                            onViewPoints={setPreviewPrescription}
+                          />
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                  <CatalogPickerPagination
+                    page={catalogPagination.page || catalogPage}
+                    pages={catalogPagination.pages || 1}
+                    total={catalogPagination.total || 0}
+                    loading={catalogLoading}
+                    onPageChange={setCatalogPage}
+                  />
+                </>
               )}
             </div>
 

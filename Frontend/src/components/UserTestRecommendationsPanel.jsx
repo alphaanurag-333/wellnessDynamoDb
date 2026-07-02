@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import Swal from "sweetalert2";
-import { fetchActiveTestCatalog } from "../wellnessCoach/api/coachTestCatalog.js";
+import { CatalogPickerPagination } from "./CatalogPickerPagination.jsx";
+import { CATALOG_PAGE_SIZE, emptyCatalogPagination } from "./catalogPickerConstants.js";
+import {
+  fetchActiveTestCatalog,
+  fetchActiveTestCatalogMeta,
+} from "../wellnessCoach/api/coachTestCatalog.js";
 
 function formatReportDate(iso) {
   if (!iso) return "—";
@@ -74,7 +79,7 @@ function RecommendationCard({ recommendation, onDelete, deleting, canDelete }) {
           {pdfUrl ? (
             <>
               <a href={pdfUrl} target="_blank" rel="noopener noreferrer" className="btn btn--ghost btn--sm">
-                View
+                View PDF
               </a>
               <a href={pdfUrl} download className="btn btn--primary btn--sm">
                 Download
@@ -135,7 +140,7 @@ function LabReportCard({ report }) {
           {fileUrl ? (
             <>
               <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="btn btn--ghost btn--sm">
-                View
+                View PDF
               </a>
               <a href={fileUrl} download className="btn btn--primary btn--sm">
                 Download
@@ -165,8 +170,11 @@ export function UserTestRecommendationsPanel({
   onUnauthorized,
   readOnly = false,
 }) {
-  const [catalogGrouped, setCatalogGrouped] = useState({});
   const [catalogTests, setCatalogTests] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [catalogPage, setCatalogPage] = useState(1);
+  const [catalogPagination, setCatalogPagination] = useState(() => emptyCatalogPagination());
+  const [catalogLoading, setCatalogLoading] = useState(false);
   const [recommended, setRecommended] = useState(null);
   const [history, setHistory] = useState([]);
   const [labReports, setLabReports] = useState([]);
@@ -176,23 +184,20 @@ export function UserTestRecommendationsPanel({
   const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState("");
   const [reportDate, setReportDate] = useState("");
-  const [selectedTestIds, setSelectedTestIds] = useState([]);
+  const [selectedTestsById, setSelectedTestsById] = useState(() => new Map());
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
 
-  const loadData = useCallback(async () => {
+  const loadAssignments = useCallback(async () => {
     if (!token || !userId) return;
     setError("");
     setNotFound(false);
     setLoading(true);
     try {
-      const [catalog, recs, reportsResult] = await Promise.all([
-        fetchActiveTestCatalog(),
+      const [recs, reportsResult] = await Promise.all([
         api.list(token, userId),
         api.listLabReports ? api.listLabReports(token, userId) : Promise.resolve({ reports: [] }),
       ]);
-      setCatalogGrouped(catalog.grouped ?? {});
-      setCatalogTests(catalog.tests ?? []);
       setRecommended(recs.recommended ?? null);
       setHistory(recs.history ?? []);
       setLabReports(reportsResult?.reports ?? []);
@@ -211,49 +216,63 @@ export function UserTestRecommendationsPanel({
     }
   }, [api, onUnauthorized, token, userId]);
 
+  const loadCatalogMeta = useCallback(async () => {
+    try {
+      const meta = await fetchActiveTestCatalogMeta();
+      setCategories(meta.categories ?? []);
+    } catch {
+      setCategories([]);
+    }
+  }, []);
+
+  const loadCatalog = useCallback(async () => {
+    setCatalogLoading(true);
+    try {
+      const catalog = await fetchActiveTestCatalog({
+        page: catalogPage,
+        limit: CATALOG_PAGE_SIZE,
+        search,
+        category: categoryFilter,
+      });
+      setCatalogTests(catalog.tests ?? []);
+      setCatalogPagination(catalog.pagination ?? emptyCatalogPagination(catalogPage));
+    } catch (e) {
+      setCatalogTests([]);
+      setCatalogPagination(emptyCatalogPagination(catalogPage));
+      setError((prev) => prev || e.message || "Failed to load test catalog.");
+    } finally {
+      setCatalogLoading(false);
+    }
+  }, [catalogPage, categoryFilter, search]);
+
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    loadAssignments();
+    loadCatalogMeta();
+  }, [loadAssignments, loadCatalogMeta]);
 
-  const categories = useMemo(() => {
-    const keys = Object.keys(catalogGrouped);
-    if (keys.length) return keys.sort();
-    const fromTests = [...new Set(catalogTests.map((t) => t.category).filter(Boolean))];
-    return fromTests.sort();
-  }, [catalogGrouped, catalogTests]);
+  useEffect(() => {
+    loadCatalog();
+  }, [loadCatalog]);
 
-  const filteredCategories = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    const activeCategory = categoryFilter.trim();
+  useEffect(() => {
+    setCatalogPage(1);
+  }, [search, categoryFilter]);
 
-    return categories
-      .filter((category) => !activeCategory || category === activeCategory)
-      .map((category) => {
-        const tests = catalogGrouped[category] || catalogTests.filter((t) => t.category === category);
-        const filteredTests = q
-          ? tests.filter((test) => {
-              const haystack = [test.name, test.type, test.category].filter(Boolean).join(" ").toLowerCase();
-              return haystack.includes(q);
-            })
-          : tests;
+  const selectedTestIds = useMemo(() => [...selectedTestsById.keys()], [selectedTestsById]);
 
-        return { category, tests: [...filteredTests].sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""))) };
-      })
-      .filter((group) => group.tests.length > 0);
-  }, [catalogGrouped, catalogTests, categories, categoryFilter, search]);
+  const selectedTests = useMemo(() => [...selectedTestsById.values()], [selectedTestsById]);
 
-  const visibleTestCount = useMemo(
-    () => filteredCategories.reduce((sum, group) => sum + group.tests.length, 0),
-    [filteredCategories]
-  );
-
-  const toggleTest = (testId) => {
-    setSelectedTestIds((prev) =>
-      prev.includes(testId) ? prev.filter((id) => id !== testId) : [...prev, testId]
-    );
+  const toggleTest = (test) => {
+    const testId = test.id || test._id;
+    setSelectedTestsById((prev) => {
+      const next = new Map(prev);
+      if (next.has(testId)) next.delete(testId);
+      else next.set(testId, test);
+      return next;
+    });
   };
 
-  const clearSelection = () => setSelectedTestIds([]);
+  const clearSelection = () => setSelectedTestsById(new Map());
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -272,9 +291,10 @@ export function UserTestRecommendationsPanel({
       await api.create(token, userId, { reportDate, testIds: selectedTestIds });
       await Swal.fire({ icon: "success", title: "Recommendation created", timer: 1500, showConfirmButton: false });
       setReportDate("");
-      setSelectedTestIds([]);
+      setSelectedTestsById(new Map());
       setSearch("");
-      await loadData();
+      setCatalogPage(1);
+      await Promise.all([loadAssignments(), loadCatalog()]);
     } catch (err) {
       if (err?.status === 401) onUnauthorized?.();
       else await Swal.fire({ icon: "error", title: "Create failed", text: err.message || "Could not create recommendation." });
@@ -298,7 +318,7 @@ export function UserTestRecommendationsPanel({
     try {
       await api.remove(token, userId, recId);
       await Swal.fire({ icon: "success", title: "Deleted", timer: 1200, showConfirmButton: false });
-      await loadData();
+      await loadAssignments();
     } catch (err) {
       if (err?.status === 401) onUnauthorized?.();
       else await Swal.fire({ icon: "error", title: "Delete failed", text: err.message || "Could not delete." });
@@ -308,23 +328,32 @@ export function UserTestRecommendationsPanel({
   };
 
   if (notFound && NotFoundPage) return <NotFoundPage />;
-  if (loading && PageLoader) return <PageLoader label="Loading test recommendations…" />;
+  if (loading && PageLoader) return <PageLoader label="Loading internal parameters…" />;
+
+  const embedded = !backTo;
 
   return (
-    <div className="user-page">
-      <div className="user-page__toolbar">
-        {backTo ? (
-        <Link to={backTo} className="user-back-btn" aria-label="Back to clients">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M15 18 9 12l6-6" />
-          </svg>
-        </Link>
-        ) : null}
-        <div className="user-page__toolbar-text">
-          <h2 className="user-page__title">Internal Parameters</h2>
-          <p className="user-page__subtitle">Recommend blood tests and generate a downloadable PDF list.</p>
+    <div className={embedded ? "client-hub-embedded-panel client-hub-module-panel" : "user-page"}>
+      {embedded ? (
+        <div className="client-hub-embedded-panel__header">
+          <h2 className="client-hub-embedded-panel__title">Internal Parameters</h2>
+          <p className="client-hub-embedded-panel__subtitle">
+            Recommend blood tests from the catalog and generate a downloadable PDF for this client.
+          </p>
         </div>
-      </div>
+      ) : (
+        <div className="user-page__toolbar">
+          <Link to={backTo} className="user-back-btn" aria-label="Back to clients">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M15 18 9 12l6-6" />
+            </svg>
+          </Link>
+          <div className="user-page__toolbar-text">
+            <h2 className="user-page__title">Internal Parameters</h2>
+            <p className="user-page__subtitle">Recommend blood tests and generate a downloadable PDF list.</p>
+          </div>
+        </div>
+      )}
 
       {error ? (
         <p className="user-list-error" role="alert">
@@ -332,12 +361,15 @@ export function UserTestRecommendationsPanel({
         </p>
       ) : null}
 
-      <div className="page-card diet-plan-page">
+      <div className={embedded ? "client-hub-module-panel__content" : "page-card diet-plan-page"}>
         {!readOnly ? (
-          <form className="form-card diet-plan-upload" onSubmit={handleCreate}>
+          <form
+            className={`form-card diet-plan-upload${embedded ? " form-card--embedded" : ""}`}
+            onSubmit={handleCreate}
+          >
             <h3 className="form-card__title">Create new recommendation</h3>
 
-            <div className="row g-3">
+            <div className="row g-3" style={{ marginTop: 16 }}>
               <label className="user-field col-12 col-md-4">
                 <span className="user-field__label">
                   Report date <span className="required-dot">*</span>
@@ -366,7 +398,7 @@ export function UserTestRecommendationsPanel({
                     className="user-field__input"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Test name…"
+                    placeholder="Test name, category…"
                   />
                 </label>
                 <label className="user-field">
@@ -386,7 +418,7 @@ export function UserTestRecommendationsPanel({
                 </label>
                 <div className="catalog-picker__summary">
                   <span>
-                    {selectedTestIds.length} selected · {visibleTestCount} shown
+                    {selectedTestIds.length} selected · {catalogPagination.total || catalogTests.length} total
                   </span>
                   {selectedTestIds.length > 0 ? (
                     <button type="button" className="btn btn--ghost btn--sm" onClick={clearSelection}>
@@ -396,32 +428,55 @@ export function UserTestRecommendationsPanel({
                 </div>
               </div>
 
-              {categories.length === 0 ? (
-                <p className="table-placeholder">No active tests in catalog. Ask admin to add tests.</p>
-              ) : filteredCategories.length === 0 ? (
-                <p className="table-placeholder">No matching tests. Try another search or category.</p>
+              {catalogTests.length === 0 && !catalogLoading ? (
+                <p className="table-placeholder">
+                  {categories.length === 0
+                    ? "No active tests in catalog. Ask admin to add tests."
+                    : "No matching tests. Try another search or category."}
+                </p>
               ) : (
-                filteredCategories.map(({ category, tests }) => (
-                  <div key={category} className="catalog-picker__group">
-                    <div className="catalog-picker__group-title">{category}</div>
-                    <div className="catalog-picker">
-                      <div className="catalog-picker__grid">
-                        {tests.map((test) => {
-                          const id = test.id || test._id;
-                          return (
-                            <TestPickerCard
-                              key={id}
-                              test={test}
-                              selected={selectedTestIds.includes(id)}
-                              onToggle={toggleTest}
-                            />
-                          );
-                        })}
-                      </div>
+                <>
+                  <div className="catalog-picker">
+                    <div className={`catalog-picker__grid${catalogLoading ? " catalog-picker__grid--loading" : ""}`}>
+                      {catalogTests.map((test) => {
+                        const id = test.id || test._id;
+                        return (
+                          <TestPickerCard
+                            key={id}
+                            test={test}
+                            selected={selectedTestIds.includes(id)}
+                            onToggle={() => toggleTest(test)}
+                          />
+                        );
+                      })}
                     </div>
                   </div>
-                ))
+                  <CatalogPickerPagination
+                    page={catalogPagination.page || catalogPage}
+                    pages={catalogPagination.pages || 1}
+                    total={catalogPagination.total || 0}
+                    loading={catalogLoading}
+                    onPageChange={setCatalogPage}
+                  />
+                </>
               )}
+
+              {selectedTests.length > 0 ? (
+                <div className="client-hub-module-panel__selection">
+                  <span className="client-hub-module-panel__selection-label">Selected tests</span>
+                  <div className="plan-chip-list">
+                    {selectedTests.map((test) => (
+                      <div key={test.id || test._id} className="plan-chip">
+                        <span className="plan-chip__name">{test.name}</span>
+                        <span className="plan-chip__meta">
+                          {testTypeLabel(test.type)}
+                          {test.category ? ` · ${test.category}` : ""}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
 
             <div className="diet-assign-form__actions">
@@ -441,7 +496,7 @@ export function UserTestRecommendationsPanel({
           </form>
         ) : null}
 
-        <section className="diet-plan-section">
+        <section className="diet-plan-section client-hub-module-panel__section">
           <h3 className="form-card__title">Current recommendation</h3>
           {recommended ? (
             <RecommendationCard
@@ -455,8 +510,8 @@ export function UserTestRecommendationsPanel({
           )}
         </section>
 
-        <section className="diet-plan-section">
-          <h3 className="form-card__title">History</h3>
+        <section className="diet-plan-section client-hub-module-panel__section">
+          <h3 className="form-card__title">History ({history.length})</h3>
           {history.length === 0 ? (
             <p className="table-placeholder">No previous recommendations.</p>
           ) : (
@@ -474,8 +529,8 @@ export function UserTestRecommendationsPanel({
           )}
         </section>
 
-        <section className="diet-plan-section">
-          <h3 className="form-card__title">User uploaded reports</h3>
+        <section className="diet-plan-section client-hub-module-panel__section">
+          <h3 className="form-card__title">User uploaded reports ({labReports.length})</h3>
           {labReports.length === 0 ? (
             <p className="table-placeholder">No reports uploaded by the client yet.</p>
           ) : (

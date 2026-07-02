@@ -180,6 +180,41 @@ async function listActiveMentalWellbeing() {
   return items.map((row) => toPublicMentalWellbeing(row)).filter(Boolean);
 }
 
+async function listActiveMentalWellbeingPaginated({ page = 1, limit = 12, search, type } = {}) {
+  const normalizedType = type ? String(type).toLowerCase().trim() : "";
+  const searchFilter = buildContainsFilter(["title"], search);
+  let filterExpression = searchFilter.filterExpression;
+  const exprNames = { ...searchFilter.exprNames };
+  const exprValues = { ...searchFilter.exprValues };
+
+  if (normalizedType && TYPE.has(normalizedType)) {
+    exprNames["#type"] = "type";
+    exprValues[":type"] = normalizedType;
+    filterExpression = appendFilter(filterExpression, "#type = :type");
+  }
+
+  const { items, pagination } = await listByPartitionKey({
+    tableName: TABLE,
+    indexName: "StatusCreatedAtIndex",
+    partitionKeyValue: "active",
+    filterExpression,
+    exprNames,
+    exprValues,
+    search: searchFilter.search,
+    searchFields: searchFilter.searchFields,
+    scanIndexForward: false,
+    page,
+    limit,
+    maxLimit: 50,
+    sortFn: sortByCreatedAtDesc,
+  });
+
+  return {
+    items: items.map((row) => toPublicMentalWellbeing(row)).filter(Boolean),
+    pagination,
+  };
+}
+
 module.exports = {
   MENTAL_WELLBEING_ALLOWED_STATUS,
   MENTAL_WELLBEING_ALLOWED_TYPE,
@@ -192,4 +227,5 @@ module.exports = {
   deleteMentalWellbeing,
   listMentalWellbeing,
   listActiveMentalWellbeing,
+  listActiveMentalWellbeingPaginated,
 };

@@ -8312,6 +8312,123 @@ fieldset.form-field legend {
   background: #f8fafc;
 }
 
+.internal-parameters-panel__content,
+.client-hub-module-panel__content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.internal-parameters-panel__section,
+.client-hub-module-panel__section {
+  margin-top: 0;
+  padding: 1rem 1.1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.internal-parameters-panel__section .form-card__title,
+.client-hub-module-panel__section .form-card__title {
+  margin: 0 0 0.85rem;
+  font-size: 1rem;
+}
+
+.internal-parameters-panel__selection,
+.client-hub-module-panel__selection {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.internal-parameters-panel__selection-label,
+.client-hub-module-panel__selection-label {
+  display: block;
+  margin-bottom: 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.client-hub-embedded-panel .catalog-picker__grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+}
+
+@media (max-width: 720px) {
+  .client-hub-embedded-panel .catalog-picker__summary {
+    margin-left: 0;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .client-hub-embedded-panel .diet-assign-form__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .client-hub-embedded-panel .diet-assign-form__actions .btn--primary {
+    width: 100%;
+  }
+}
+
+.catalog-picker-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.catalog-picker-pagination__info {
+  font-size: 0.88rem;
+  color: #64748b;
+}
+
+.catalog-picker-pagination__btns {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.catalog-picker__grid--loading {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.mental-wellbeing-preview__media {
+  margin: 0.75rem 0 1rem;
+}
+
+.mental-wellbeing-preview__embed {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  border-radius: 10px;
+  background: #0f172a;
+}
+
+.mental-wellbeing-preview__video {
+  width: 100%;
+  max-height: 320px;
+  border-radius: 10px;
+  display: block;
+  background: #0f172a;
+}
+
+.mental-wellbeing-preview__audio {
+  width: 100%;
+  display: block;
+}
+
+.mental-wellbeing-preview__link {
+  margin: 0 0 0.75rem;
+}
+
 .supplement-delivery-options {
   display: flex;
   flex-wrap: wrap;
