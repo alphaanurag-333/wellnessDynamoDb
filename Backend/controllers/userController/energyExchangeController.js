@@ -17,6 +17,7 @@ const {
 
 function mapCheckoutError(err) {
   if (err?.name === "ConsultancyRequiredError") throw new AppError(err.message, 403);
+  if (err?.name === "ProgramRequiredError") throw new AppError(err.message, 403);
   if (err?.name === "AlreadyConvertedError") throw new AppError(err.message, 409);
   if (err?.name === "ValidationError") throw new AppError(err.message, 400);
   if (err?.name === "ForbiddenError") throw new AppError(err.message, 403);
@@ -43,6 +44,7 @@ function parseFyStartYears(body) {
 
 exports.getProgramForUserController = asyncHandler(async (req, res) => {
   const userId = req.auth?.sub || req.user?.id;
+  const user = await getUserById(userId);
   const program = await getEnabledProgramForUser(userId);
   if (!program) {
     return res.status(200).json({
@@ -50,6 +52,7 @@ exports.getProgramForUserController = asyncHandler(async (req, res) => {
       message: "No Energy Exchange program available",
       enabled: false,
       program: null,
+      programPurchased: Boolean(user?.programPurchased),
     });
   }
   return res.status(200).json({
@@ -57,11 +60,13 @@ exports.getProgramForUserController = asyncHandler(async (req, res) => {
     message: "Energy Exchange program fetched",
     enabled: Boolean(program.enabled),
     program: toPublicProgram(program),
+    programPurchased: Boolean(user?.programPurchased),
   });
 });
 
 exports.listPlansController = asyncHandler(async (req, res) => {
   const userId = req.auth?.sub || req.user?.id;
+  const user = await getUserById(userId);
   const { plans, currentFy, fyStartMonth, program } = await buildFyPlansForUser(userId);
   if (!program) {
     return res.status(200).json({
@@ -71,6 +76,7 @@ exports.listPlansController = asyncHandler(async (req, res) => {
       enabled: false,
       currentFy: null,
       fyStartMonth,
+      programPurchased: Boolean(user?.programPurchased),
     });
   }
   return res.status(200).json({
@@ -81,6 +87,7 @@ exports.listPlansController = asyncHandler(async (req, res) => {
     plans,
     currentFy,
     fyStartMonth,
+    programPurchased: Boolean(user?.programPurchased),
   });
 });
 

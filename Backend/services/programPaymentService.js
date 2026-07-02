@@ -1,10 +1,8 @@
 const config = require("../config");
-const { getAppConfig } = require("../models/appConfigModel");
 const { getUserById, updateUser } = require("../models/userModel");
-const { convertSeekToHeal } = require("../models/userConversionModel");
-const { isConsultancyOnlyTier, isHealTier } = require("../models/userAssignmentLogic");
+const { isConsultancyOnlyTier } = require("../models/userAssignmentLogic");
 const { getActiveRazorpayGateway } = require("./consultancyPricingService");
-const { previewCheckout } = require("./energyExchangePricingService");
+const { previewProgramCheckout } = require("./programPricingService");
 const {
   createConsultancyTransaction,
   getConsultancyTransactionById,
@@ -13,11 +11,10 @@ const {
   toPublicTransaction,
 } = require("../models/consultancyTransactionModel");
 const {
-  createSubscription,
-  listSubscriptionsByTransactionId,
-  updateSubscription,
-  toPublicSubscription,
-} = require("../models/energyExchangeSubscriptionModel");
+  getPurchasableProgramForUser,
+  updateUserProgram,
+  getUserProgramById,
+} = require("../models/userProgramModel");
 const {
   createRazorpayOrder,
   verifyRazorpayPaymentSignature,
@@ -25,27 +22,19 @@ const {
   verifyMockPayment,
   shouldUseMockPayments,
 } = require("../utils/paymentGateway");
+const { getAppConfig } = require("../models/appConfigModel");
 
 function logPaymentFailure({ transactionId, userId, reason }) {
-  console.error("[EnergyExchangePayment] payment failed", {
+  console.error("[ProgramPayment] payment failed", {
     transactionId,
     userId,
-    productType: "energy_exchange",
+    productType: "program",
     reason,
     timestamp: new Date().toISOString(),
   });
 }
 
-async function previewEnergyExchangeCheckout(userId, { fyStartYears } = {}) {
-  if (!Array.isArray(fyStartYears) || fyStartYears.length === 0) {
-    const err = new Error("fyStartYears must be a non-empty array");
-    err.name = "ValidationError";
-    throw err;
-  }
-  return previewCheckout(userId, fyStartYears);
-}
-
-async function createEnergyExchangeOrder(userId, { fyStartYears, paymentMethod = "upi" } = {}) {
+async function createProgramOrder(userId, { paymentMethod = "upi" } = {}) {
   const user = await getUserById(userId);
   if (!user) {
     const err = new Error("User not found");
@@ -53,28 +42,29 @@ async function createEnergyExchangeOrder(userId, { fyStartYears, paymentMethod =
     throw err;
   }
 
-  if (isHealTier(user.userTier)) {
-    const err = new Error("Energy Exchange purchase requires a non-heal account");
-    err.name = "AlreadyConvertedError";
-    throw err;
-  }
-
   if (!isConsultancyOnlyTier(user.userTier)) {
-    const err = new Error("Complete consultancy payment before purchasing Energy Exchange");
+    const err = new Error("Complete consultancy payment before purchasing a Wellness Program");
     err.name = "ConsultancyRequiredError";
     throw err;
   }
 
-  if (!user.programPurchased) {
-    const err = new Error("Complete your Wellness Program purchase before Energy Exchange");
-    err.name = "ProgramRequiredError";
+  if (user.programPurchased) {
+    const err = new Error("Wellness Program already purchased");
+    err.name = "AlreadyPurchasedError";
     throw err;
   }
 
-  const preview = await previewEnergyExchangeCheckout(userId, { fyStartYears });
+  const preview = await previewProgramCheckout(userId);
   if (preview.pricing.totalAmount <= 0) {
     const err = new Error("Invalid payable amount");
     err.name = "ValidationError";
+    throw err;
+  }
+
+  const program = await getPurchasableProgramForUser(userId);
+  if (!program) {
+    const err = new Error("No purchasable Wellness Program available");
+    err.name = "NotFoundError";
     throw err;
   }
 
@@ -84,7 +74,7 @@ async function createEnergyExchangeOrder(userId, { fyStartYears, paymentMethod =
 
   const transaction = await createConsultancyTransaction({
     userId,
-    productType: "energy_exchange",
+    productType: "program",
     paymentStatus: "pending",
     paymentProvider: useMock ? "mock" : "razorpay",
     paymentMethod,
@@ -106,32 +96,11 @@ async function createEnergyExchangeOrder(userId, { fyStartYears, paymentMethod =
       phone: user.phone,
       phoneCountryCode: user.phoneCountryCode,
       userTier: user.userTier,
+      programId: program.id,
+      programTitle: program.title,
+      programType: program.programType,
     },
   });
-
-  for (const plan of preview.plans) {
-    await createSubscription({
-      userId,
-      programId: plan.programId,
-      transactionId: transaction.id,
-      fyStartYear: plan.fyStartYear,
-      monthsCovered: plan.monthsCovered,
-      monthlyRate: plan.monthlyAmount,
-      discountPercent: plan.effectiveDiscountPercent,
-      fyTierDiscountPercent: plan.fyTierDiscountPercent,
-      timeBasedDiscountPercent: plan.timeBasedDiscountPercent,
-      baseAmount: plan.baseAmount,
-      discountAmount: plan.discountAmount,
-      taxAmount: plan.taxAmount,
-      taxPercent: plan.taxPercent,
-      taxType: plan.taxType,
-      totalAmount: plan.totalAmount,
-      currency: plan.currency,
-      startsAt: plan.startsAt,
-      endsAt: plan.endsAt,
-      status: "pending",
-    });
-  }
 
   let order;
   if (useMock) {
@@ -147,8 +116,8 @@ async function createEnergyExchangeOrder(userId, { fyStartYears, paymentMethod =
       notes: {
         transactionId: transaction.id,
         userId,
-        productType: "energy_exchange",
-        fyStartYears: fyStartYears.join(","),
+        productType: "program",
+        programId: program.id,
       },
     });
   }
@@ -158,14 +127,14 @@ async function createEnergyExchangeOrder(userId, { fyStartYears, paymentMethod =
   });
 
   if (useMock && config.autoConfirmMockPayments) {
-    const paidTransaction = await finalizePaidEnergyExchangeTransaction(updated, {
-      paymentId: `pay_mock_ee_${Date.now()}`,
+    const paidTransaction = await finalizePaidProgramTransaction(updated, {
+      paymentId: `pay_mock_program_${Date.now()}`,
       provider: "mock",
     });
     return {
       transaction: paidTransaction,
       pricing: preview.pricing,
-      plans: preview.plans,
+      program: preview.program,
       payment: {
         provider: "mock",
         orderId: order.id,
@@ -181,7 +150,7 @@ async function createEnergyExchangeOrder(userId, { fyStartYears, paymentMethod =
   return {
     transaction: toPublicTransaction(updated),
     pricing: preview.pricing,
-    plans: preview.plans,
+    program: preview.program,
     payment: {
       provider: useMock ? "mock" : "razorpay",
       orderId: order.id,
@@ -193,38 +162,7 @@ async function createEnergyExchangeOrder(userId, { fyStartYears, paymentMethod =
   };
 }
 
-/**
- * After payment is verified, promote subscriptions: earliest by fyStartYear becomes "active",
- * remaining become "queued". Time windows are re-computed for safety so the activation runs
- * from the actual current moment.
- */
-async function _activateSubscriptionsForTransaction(transactionId) {
-  const subs = await listSubscriptionsByTransactionId(transactionId);
-  if (!subs.length) return [];
-
-  const sorted = [...subs].sort((a, b) => Number(a.fyStartYear) - Number(b.fyStartYear));
-  const now = new Date().toISOString();
-
-  const promoted = [];
-  for (let i = 0; i < sorted.length; i += 1) {
-    const sub = sorted[i];
-    if (i === 0) {
-      const updated = await updateSubscription(sub.id, {
-        status: "active",
-        activatedAt: now,
-      });
-      promoted.push(updated);
-    } else {
-      const updated = await updateSubscription(sub.id, {
-        status: "queued",
-      });
-      promoted.push(updated);
-    }
-  }
-  return promoted;
-}
-
-async function finalizePaidEnergyExchangeTransaction(transaction, { paymentId, provider }) {
+async function finalizePaidProgramTransaction(transaction, { paymentId, provider }) {
   const user = await getUserById(transaction.userId);
   if (!user) {
     const err = new Error("User not found");
@@ -239,7 +177,7 @@ async function finalizePaidEnergyExchangeTransaction(transaction, { paymentId, p
     paidAt,
     userSnapshot: {
       ...(transaction.userSnapshot || {}),
-      userTier: "heal",
+      programPurchased: true,
     },
   });
 
@@ -247,28 +185,31 @@ async function finalizePaidEnergyExchangeTransaction(transaction, { paymentId, p
     return toPublicTransaction(paidRecord);
   }
 
-  await _activateSubscriptionsForTransaction(transaction.id);
+  const programId =
+    transaction.userSnapshot?.programId ||
+    user.assignedProgramId ||
+    (await getPurchasableProgramForUser(user.id))?.id;
 
-  try {
-    await convertSeekToHeal(user.id);
-  } catch (err) {
-    if (err?.name !== "AlreadyConvertedError") {
-      console.error("[EnergyExchangePayment] convertSeekToHeal failed", err.message);
-      throw err;
-    }
+  if (programId) {
+    await updateUserProgram(programId, {
+      status: "purchased",
+      purchasedAt: paidAt,
+      transactionId: transaction.id,
+      enabled: true,
+    });
   }
 
   await updateUser(user.id, {
-    paidOnboardingCompleted: false,
-    paidOnboardingStep: "register",
-    healPaidAt: paidAt,
+    programPurchased: true,
+    programPurchasedAt: paidAt,
+    assignedProgramId: programId || user.assignedProgramId || null,
   });
 
   const fresh = await getConsultancyTransactionById(transaction.id);
   return toPublicTransaction(fresh);
 }
 
-async function verifyEnergyExchangePayment(userId, {
+async function verifyProgramPayment(userId, {
   transactionId,
   razorpay_order_id,
   razorpay_payment_id,
@@ -285,8 +226,8 @@ async function verifyEnergyExchangePayment(userId, {
     err.name = "ForbiddenError";
     throw err;
   }
-  if (String(transaction.productType || "").toLowerCase() !== "energy_exchange") {
-    const err = new Error("Not an energy exchange transaction");
+  if (String(transaction.productType || "").toLowerCase() !== "program") {
+    const err = new Error("Not a program transaction");
     err.name = "ValidationError";
     throw err;
   }
@@ -303,7 +244,7 @@ async function verifyEnergyExchangePayment(userId, {
 
   if (useMock) {
     verified = verifyMockPayment({ orderId: razorpay_order_id || transaction.paymentGatewayOrderId });
-    paymentId = paymentId || `pay_mock_ee_${Date.now()}`;
+    paymentId = paymentId || `pay_mock_program_${Date.now()}`;
   } else {
     if (!gateway) {
       const err = new Error("Payment gateway is not configured");
@@ -311,7 +252,9 @@ async function verifyEnergyExchangePayment(userId, {
       throw err;
     }
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-      const err = new Error("razorpay_order_id, razorpay_payment_id and razorpay_signature are required");
+      const err = new Error(
+        "razorpay_order_id, razorpay_payment_id and razorpay_signature are required"
+      );
       err.name = "ValidationError";
       throw err;
     }
@@ -336,22 +279,15 @@ async function verifyEnergyExchangePayment(userId, {
     throw err;
   }
 
-  return finalizePaidEnergyExchangeTransaction(transaction, {
+  return finalizePaidProgramTransaction(transaction, {
     paymentId,
     provider: useMock ? "mock" : "razorpay",
   });
 }
 
-async function listSubscriptionsForUserPublic(userId) {
-  const { listSubscriptionsByUserId } = require("../models/energyExchangeSubscriptionModel");
-  const result = await listSubscriptionsByUserId(userId, { page: 1, limit: 200 });
-  return result.items.map(toPublicSubscription);
-}
-
 module.exports = {
-  previewEnergyExchangeCheckout,
-  createEnergyExchangeOrder,
-  verifyEnergyExchangePayment,
-  finalizePaidEnergyExchangeTransaction,
-  listSubscriptionsForUserPublic,
+  previewProgramCheckout,
+  createProgramOrder,
+  verifyProgramPayment,
+  finalizePaidProgramTransaction,
 };

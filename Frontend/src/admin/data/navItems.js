@@ -16,6 +16,21 @@ export const navItems = [
       { to: "consultancy/pending-assignment", label: "Pending Assignment", icon: "user-plus" },
     ],
   },
+  {
+    id: "energy-exchange",
+    label: "Energy Exchange",
+    icon: "zap",
+    children: [{ to: "energy-exchange/transactions", label: "Transactions", icon: "receipt" }],
+  },
+  {
+    id: "wellness-program",
+    label: "Wellness Programs",
+    icon: "briefcase",
+    children: [
+      { to: "programs", label: "Catalog", icon: "list" },
+      { to: "programs/transactions", label: "Transactions", icon: "receipt" },
+    ],
+  },
   { to: "coaches", label: "Wellness Coaches", icon: "user" },
   { to: "awcs", label: "Assistant Coaches", icon: "user-plus" },
   { to: "specializations", label: "Specializations", icon: "award" },

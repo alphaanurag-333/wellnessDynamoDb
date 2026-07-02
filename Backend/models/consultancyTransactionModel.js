@@ -8,7 +8,7 @@ const { normalizeAssignedCoachType } = require("./userAssignmentLogic");
 
 const TABLE = "ConsultancyTransaction";
 const PAYMENT_STATUSES = new Set(["pending", "paid", "failed", "refunded"]);
-const PRODUCT_TYPES = new Set(["consultancy", "subscription", "energy_exchange"]);
+const PRODUCT_TYPES = new Set(["consultancy", "subscription", "energy_exchange", "program"]);
 const CONSULTANCY_STATUSES = new Set(["scheduled", "completed", "follow_up_needed", "cancelled"]);
 
 /** GSI partition keys must be omitted when unset — DynamoDB rejects NULL index keys. */
@@ -253,6 +253,7 @@ async function listAllTransactions({
   page = 1,
   limit = 20,
   paymentStatus,
+  productType,
   referralCode,
   coachId,
   fromDate,
@@ -264,6 +265,11 @@ async function listAllTransactions({
   const extraNames = {};
   const extraValues = {};
 
+  if (productType) {
+    filterParts.push("#productType = :productType");
+    extraNames["#productType"] = "productType";
+    extraValues[":productType"] = normalizeProductType(productType);
+  }
   if (referralCode) {
     filterParts.push("referralCodeUsed = :referralCodeUsed");
     extraValues[":referralCodeUsed"] = String(referralCode).trim().toUpperCase();
@@ -322,6 +328,35 @@ async function listAllTransactions({
   return {
     transactions: paged.items.map(toPublicTransaction),
     pagination: paged.pagination,
+  };
+}
+
+async function listAllTransactionsAcrossStatuses(options = {}) {
+  const status = options.paymentStatus;
+  if (status && status !== "all") {
+    return listAllTransactions(options);
+  }
+
+  const statuses = ["paid", "pending", "failed", "refunded"];
+  const merged = new Map();
+  for (const paymentStatus of statuses) {
+    const chunk = await listAllTransactions({ ...options, paymentStatus, page: 1, limit: 500 });
+    for (const row of chunk.transactions) merged.set(row.id, row);
+  }
+
+  const all = [...merged.values()].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  const safeLimit = Math.min(Math.max(Number(options.limit) || 20, 1), 100);
+  const safePage = Math.max(Number(options.page) || 1, 1);
+  const skip = (safePage - 1) * safeLimit;
+
+  return {
+    transactions: all.slice(skip, skip + safeLimit),
+    pagination: {
+      page: safePage,
+      limit: safeLimit,
+      total: all.length,
+      pages: Math.max(1, Math.ceil(all.length / safeLimit)),
+    },
   };
 }
 
@@ -620,6 +655,7 @@ module.exports = {
   getPendingConsultancyOrderForUser,
   listTransactionsByUserId,
   listAllTransactions,
+  listAllTransactionsAcrossStatuses,
   listTransactionsForCoach,
   listTransactionsForAssistant,
   transactionVisibleToCoach,

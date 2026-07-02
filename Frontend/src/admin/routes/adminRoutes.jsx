@@ -113,6 +113,11 @@ import { UserAdd } from "../pages/user/UserAdd.jsx";
 import { UserEdit } from "../pages/user/UserEdit.jsx";
 import { UserList } from "../pages/user/UserList.jsx";
 import { ConsultancyTransactionList } from "../pages/consultancy/ConsultancyTransactionList.jsx";
+import { EnergyExchangeTransactionList } from "../pages/energyExchange/EnergyExchangeTransactionList.jsx";
+import { ProgramCatalogList } from "../pages/program/ProgramCatalogList.jsx";
+import { ProgramCatalogAdd } from "../pages/program/ProgramCatalogAdd.jsx";
+import { ProgramCatalogEdit } from "../pages/program/ProgramCatalogEdit.jsx";
+import { ProgramTransactionList } from "../pages/program/ProgramTransactionList.jsx";
 import { ConsultancyEnrolledUsersList } from "../pages/consultancy/ConsultancyEnrolledUsersList.jsx";
 import { UserView } from "../pages/user/UserView.jsx";
 import { PendingAssignmentList } from "../pages/user/PendingAssignmentList.jsx";
@@ -145,6 +150,8 @@ export const adminRouteTree = (
     </Route>
 
     <Route path="consultancy/transactions" element={<ConsultancyTransactionList />} />
+    <Route path="energy-exchange/transactions" element={<EnergyExchangeTransactionList />} />
+    <Route path="programs/transactions" element={<ProgramTransactionList />} />
     <Route path="consultancy/enrolled-users" element={<ConsultancyEnrolledUsersList />} />
     <Route path="consultancy/pending-assignment" element={<PendingAssignmentList />} />
 
@@ -158,7 +165,11 @@ export const adminRouteTree = (
       <Route path=":userId/edit" element={<UserEdit />} />
       <Route path=":userId" element={<UserView />} />
     </Route>
-    <Route path="programs" element={<SectionPage title="Programs" />} />
+    <Route path="programs" element={<Outlet />}>
+      <Route index element={<ProgramCatalogList />} />
+      <Route path="new" element={<ProgramCatalogAdd />} />
+      <Route path=":programId/edit" element={<ProgramCatalogEdit />} />
+    </Route>
     <Route path="coaches" element={<Outlet />}>
       <Route index element={<WellnessCoachList />} />
       <Route path="new" element={<WellnessCoachAdd />} />

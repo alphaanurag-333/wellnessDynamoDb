@@ -6,6 +6,13 @@ import {
   coachUpdateConsultancyClient,
 } from "../../api/coachConsultancy.js";
 import {
+  coachGetProgramForClient,
+  coachAssignProgram,
+  coachUpdateProgramAssignment,
+  coachEnableProgramAssignment,
+  coachDisableProgramAssignment,
+} from "../../api/coachProgram.js";
+import {
   coachListEnergyExchangePrograms,
   coachCreateEnergyExchangeProgram,
   coachUpdateEnergyExchangeProgram,
@@ -180,8 +187,199 @@ export function CoachConsultancyClientPage() {
         <p className="table-placeholder">No paid consultancy transaction on file.</p>
       )}
 
+      <ProgramSection userId={user.id || user._id || userId} userPurchased={Boolean(user.programPurchased)} />
       <EnergyExchangeSection userId={user.id || user._id || userId} />
     </div>
+  );
+}
+
+function programTypeCoachLabel(value) {
+  const v = String(value || "").toLowerCase();
+  if (v === "lifetime") return "Lifetime Membership";
+  if (v === "goal_based") return "Goal Based";
+  return value || "—";
+}
+
+function ProgramSection({ userId, userPurchased }) {
+  const dispatch = useDispatch();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [catalog, setCatalog] = useState([]);
+  const [assignment, setAssignment] = useState(null);
+  const [selectedCatalogId, setSelectedCatalogId] = useState("");
+  const [clientUser, setClientUser] = useState(null);
+  const [error, setError] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await coachGetProgramForClient(userId);
+      setCatalog(data?.catalogPrograms || []);
+      setClientUser(data?.user || null);
+      const programs = data?.programs || [];
+      const active =
+        programs.find((p) => p.status === "assigned") ||
+        programs.find((p) => p.status === "purchased") ||
+        programs[0] ||
+        null;
+      setAssignment(active);
+      setSelectedCatalogId(active?.catalogProgramId || "");
+    } catch (e) {
+      if (e?.status === 401) dispatch(logoutCoach());
+    } finally {
+      setLoading(false);
+    }
+  }, [dispatch, userId]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const purchased = userPurchased || clientUser?.programPurchased || assignment?.status === "purchased";
+  const selectedCatalog = catalog.find((c) => (c.id || c._id) === selectedCatalogId);
+
+  const handleAssign = async (e) => {
+    e.preventDefault();
+    if (!selectedCatalogId) {
+      setError("Select a program from the catalog.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      if (assignment?.id && assignment.status === "assigned") {
+        await coachUpdateProgramAssignment(assignment.id, { catalogProgramId: selectedCatalogId });
+      } else if (!purchased) {
+        await coachAssignProgram({ userId, catalogProgramId: selectedCatalogId });
+      }
+      await load();
+    } catch (err) {
+      if (err?.status === 401) dispatch(logoutCoach());
+      setError(err?.message || "Could not assign program.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleEnabled = async () => {
+    if (!assignment?.id || purchased) return;
+    setSaving(true);
+    setError("");
+    try {
+      if (assignment.enabled) {
+        await coachDisableProgramAssignment(assignment.id);
+      } else {
+        await coachEnableProgramAssignment(assignment.id);
+      }
+      await load();
+    } catch (err) {
+      if (err?.status === 401) dispatch(logoutCoach());
+      setError(err?.message || "Could not update enablement.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <section className="form-card" style={{ marginTop: "1.5rem" }}>
+        <h3 className="form-card__title">Wellness Program (one-time)</h3>
+        <p className="table-placeholder">Loading program assignment…</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="form-card" style={{ marginTop: "1.5rem" }}>
+      <h3 className="form-card__title">Wellness Program (one-time)</h3>
+      <p className="page-card__desc" style={{ marginBottom: "1rem" }}>
+        Assign a catalog program for the client to purchase before Energy Exchange unlocks.
+      </p>
+
+      {purchased ? (
+        <div className="user-detail-grid">
+          <div className="user-detail-row">
+            <span className="user-detail-row__label">Status</span>
+            <span className="user-detail-row__value tier-badge tier-badge--heal">Purchased</span>
+          </div>
+          <div className="user-detail-row">
+            <span className="user-detail-row__label">Program</span>
+            <span className="user-detail-row__value">{assignment?.title || "—"}</span>
+          </div>
+          <div className="user-detail-row">
+            <span className="user-detail-row__label">Type</span>
+            <span className="user-detail-row__value">{programTypeCoachLabel(assignment?.programType)}</span>
+          </div>
+          <div className="user-detail-row">
+            <span className="user-detail-row__label">Amount</span>
+            <span className="user-detail-row__value">₹{assignment?.price ?? "—"}</span>
+          </div>
+          <div className="user-detail-row">
+            <span className="user-detail-row__label">Purchased at</span>
+            <span className="user-detail-row__value">
+              {formatJoined(assignment?.purchasedAt || clientUser?.programPurchasedAt)}
+            </span>
+          </div>
+        </div>
+      ) : (
+        <form onSubmit={handleAssign}>
+          <label className="form-field">
+            <span>Select program from catalog</span>
+            <select
+              value={selectedCatalogId}
+              onChange={(e) => setSelectedCatalogId(e.target.value)}
+              disabled={catalog.length === 0}
+            >
+              <option value="">— Choose program —</option>
+              {catalog.map((row) => (
+                <option key={row.id || row._id} value={row.id || row._id}>
+                  {row.title} · ₹{row.price} · {programTypeCoachLabel(row.programType)}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {selectedCatalog ? (
+            <div className="user-detail-grid" style={{ marginBottom: "1rem" }}>
+              <div className="user-detail-row">
+                <span className="user-detail-row__label">Price</span>
+                <span className="user-detail-row__value">₹{selectedCatalog.price}</span>
+              </div>
+              <div className="user-detail-row">
+                <span className="user-detail-row__label">Type</span>
+                <span className="user-detail-row__value">{programTypeCoachLabel(selectedCatalog.programType)}</span>
+              </div>
+              {selectedCatalog.description ? (
+                <div className="user-detail-row">
+                  <span className="user-detail-row__label">Description</span>
+                  <span className="user-detail-row__value">{selectedCatalog.description}</span>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {assignment ? (
+            <p className="form-hint">
+              Current assignment: <strong>{assignment.title}</strong> ·{" "}
+              {assignment.enabled ? "Enabled for user" : "Not enabled yet"}
+            </p>
+          ) : null}
+
+          {error ? <p className="form-hint" style={{ color: "var(--admin-danger, #b91c1c)" }}>{error}</p> : null}
+
+          <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
+            <button type="submit" className="btn btn--accent" disabled={saving || !selectedCatalogId}>
+              {saving ? "Saving…" : assignment ? "Update assignment" : "Assign program"}
+            </button>
+            {assignment?.id ? (
+              <button type="button" className="btn btn--ghost" onClick={handleToggleEnabled} disabled={saving}>
+                {assignment.enabled ? "Disable for user" : "Enable for user"}
+              </button>
+            ) : null}
+          </div>
+        </form>
+      )}
+    </section>
   );
 }
 

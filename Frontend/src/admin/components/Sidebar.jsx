@@ -11,7 +11,8 @@ import defaultLogo from "../../assets/logo/defaultlogo.png";
 
 const NAV_GROUP_PATTERNS = {
   consultancy: /\/admin\/consultancy(\/|$)/,
-  program: /\/admin\/(programs|coaches|awcs)(\/|$)/,
+  program: /\/admin\/(coaches|awcs)(\/|$)/,
+  "wellness-program": /\/admin\/programs(\/|$)/,
   wellness: /\/admin\/(nutrition-plans|support-tickets|camp-events|program-completions)(\/|$)/,
   content: /\/admin\/(banners|notifications|faq|static-pages)(\/|$)/,
   health: /\/admin\/(health-concerns|health-tools|health-recipes|health-disorders|yoga|physical-exercises)(\/|$)/,

@@ -1,5 +1,7 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
+const { getUserById, updateUser } = require("../../models/userModel");
+const { buildLaunchStepCompletionUpdates } = require("../../utils/paidOnboardingHelpers");
 const {
   listUserLaunchAssessmentsByUserId,
   getUserLaunchAssessmentByUserAndDate,
@@ -50,6 +52,15 @@ function readUserId(req) {
 exports.getMyLaunchScoresController = asyncHandler(async (req, res) => {
   const userId = readUserId(req);
   const assessments = await listUserLaunchAssessmentsByUserId(userId);
+
+  if (assessments.length) {
+    const user = await getUserById(userId);
+    if (user) {
+      const updates = buildLaunchStepCompletionUpdates(user.paidOnboardingStepStatus);
+      if (updates) await updateUser(userId, updates);
+    }
+  }
+
   const sorted = [...assessments].sort((a, b) =>
     String(b.assessmentDate || "").localeCompare(String(a.assessmentDate || ""))
   );

@@ -155,6 +155,17 @@ function mergeStepStatusUpdate(currentStatus, patch) {
   return next;
 }
 
+/** Mark the launch onboarding step complete when a LAUNCH score exists. */
+function buildLaunchStepCompletionUpdates(stepStatus) {
+  const status = normalizePaidOnboardingStepStatus(stepStatus);
+  if (status.launch === "done") return null;
+  const nextStatus = markStepDone(status, "launch");
+  return {
+    paidOnboardingStepStatus: nextStatus,
+    paidOnboardingCompleted: computePaidOnboardingCompleted(nextStatus),
+  };
+}
+
 module.exports = {
   USER_ALLOWED_PAID_ONBOARDING_STEPS,
   PAID_ONBOARDING_STATUS_KEYS,
@@ -173,4 +184,5 @@ module.exports = {
   wizardStepAfterMedicalComplete,
   mergeStepStatusUpdate,
   advanceWizardStep,
+  buildLaunchStepCompletionUpdates,
 };

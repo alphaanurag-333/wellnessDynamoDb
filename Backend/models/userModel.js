@@ -204,7 +204,15 @@ function sanitizeUpdateField(key, value) {
   if (key === "referralCode" || key === "referredByCode") return normalizeReferralCodeField(value);
   if (key === "convertedAt" || key === "assignedAt" || key === "consultancyPaidAt") return normalizeDob(value);
   if (key === "healPaidAt") return normalizeDob(value);
-  if (key === "paidOnboardingCompleted" || key === "energyExchangeEnabled") return Boolean(value);
+  if (
+    key === "paidOnboardingCompleted" ||
+    key === "energyExchangeEnabled" ||
+    key === "programEnabled" ||
+    key === "programPurchased"
+  ) {
+    return Boolean(value);
+  }
+  if (key === "programPurchasedAt") return normalizeDob(value);
   if (key === "paidOnboardingStep") return normalizePaidOnboardingStep(value);
   if (key === "paidOnboardingStepStatus") return normalizePaidOnboardingStepStatus(value);
   if (key === "dietaryPreference") return normalizeDietaryPreference(value);
@@ -225,6 +233,7 @@ function sanitizeUpdateField(key, value) {
       "resetPasswordToken",
       "assignedCoachId",
       "parentCoachId",
+      "assignedProgramId",
       "referredByUserId",
       "referredByEntityType",
       "referredByEntityId",
@@ -317,6 +326,10 @@ function buildUserItem(input, { id, now } = {}) {
       input.paidOnboardingStepStatus
     ),
     energyExchangeEnabled: Boolean(input.energyExchangeEnabled),
+    assignedProgramId: input.assignedProgramId != null ? String(input.assignedProgramId).trim() || null : null,
+    programEnabled: Boolean(input.programEnabled),
+    programPurchased: Boolean(input.programPurchased),
+    programPurchasedAt: input.programPurchasedAt ? normalizeDob(input.programPurchasedAt) : null,
     addressLine1: input.addressLine1 != null ? String(input.addressLine1).trim() || null : null,
     addressLine2: input.addressLine2 != null ? String(input.addressLine2).trim() || null : null,
     pincode: input.pincode != null ? String(input.pincode).trim() || null : null,
