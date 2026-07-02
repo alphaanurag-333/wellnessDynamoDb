@@ -36,7 +36,11 @@ const {
   getNextIncompleteStep,
   countCompletedSteps,
   SKIPPABLE_ONBOARDING_STATUS_KEYS,
+  buildLaunchStepCompletionUpdates,
 } = require("../../utils/paidOnboardingHelpers");
+const {
+  listUserLaunchAssessmentsByUserId,
+} = require("../../models/userLaunchAssessmentModel");
 
 function authedUserId(req) {
   return req.auth?.sub || req.user?.id;
@@ -99,6 +103,16 @@ function normalizeAnswerForQuestion(question, raw) {
   throw new AppError(`Unsupported answer type for: "${question.question}"`, 400);
 }
 
+async function syncLaunchOnboardingIfScored(user) {
+  const updates = buildLaunchStepCompletionUpdates(user.paidOnboardingStepStatus);
+  if (!updates) return user;
+
+  const assessments = await listUserLaunchAssessmentsByUserId(user.id);
+  if (!assessments.length) return user;
+
+  return updateUser(user.id, updates);
+}
+
 function buildStatePayload(user, bodyMeasurement, medicalCondition) {
   const stepStatus = normalizePaidOnboardingStepStatus(user.paidOnboardingStepStatus);
   return {
@@ -121,8 +135,10 @@ function buildStatePayload(user, bodyMeasurement, medicalCondition) {
 
 exports.getStateController = asyncHandler(async (req, res) => {
   const userId = authedUserId(req);
-  const user = await getUserById(userId);
+  let user = await getUserById(userId);
   if (!user) throw new AppError("User not found", 404);
+
+  user = await syncLaunchOnboardingIfScored(user);
 
   const [bodyMeasurement, medicalCondition] = await Promise.all([
     getLatestBodyMeasurementForUser(userId),

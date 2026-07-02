@@ -6,7 +6,8 @@ const { listUsers } = require("../../models/userModel");
 const { enrichUser } = require("../userController/userProfileHelpers");
 const {
   getConsultancyTransactionById,
-  listAllTransactions,
+  listAllTransactionsAcrossStatuses,
+  normalizeProductType,
   toPublicTransaction,
 } = require("../../models/consultancyTransactionModel");
 const { queryPartition } = require("../../utils/dynamoList");
@@ -16,35 +17,6 @@ function enrichTransactionPublic(item) {
   const pub = toPublicTransaction(item);
   if (pub?.invoicePdfKey) pub.invoiceUrl = resolvePublicUrl(pub.invoicePdfKey);
   return pub;
-}
-
-async function listTransactionsAcrossStatuses(options) {
-  const status = options.paymentStatus;
-  if (status && status !== "all") {
-    return listAllTransactions(options);
-  }
-
-  const statuses = ["paid", "pending", "failed", "refunded"];
-  const merged = new Map();
-  for (const paymentStatus of statuses) {
-    const chunk = await listAllTransactions({ ...options, paymentStatus, page: 1, limit: 500 });
-    for (const row of chunk.transactions) merged.set(row.id, row);
-  }
-
-  const all = [...merged.values()].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
-  const safeLimit = Math.min(Math.max(Number(options.limit) || 20, 1), 100);
-  const safePage = Math.max(Number(options.page) || 1, 1);
-  const skip = (safePage - 1) * safeLimit;
-
-  return {
-    transactions: all.slice(skip, skip + safeLimit),
-    pagination: {
-      page: safePage,
-      limit: safeLimit,
-      total: all.length,
-      pages: Math.max(1, Math.ceil(all.length / safeLimit)),
-    },
-  };
 }
 
 exports.listAdminConsultancyTransactionsController = asyncHandler(async (req, res) => {
@@ -59,10 +31,11 @@ exports.listAdminConsultancyTransactionsController = asyncHandler(async (req, re
     search,
   } = req.query;
 
-  const data = await listTransactionsAcrossStatuses({
+  const data = await listAllTransactionsAcrossStatuses({
     page,
     limit,
     paymentStatus,
+    productType: "consultancy",
     referralCode,
     coachId,
     fromDate: from,
@@ -81,6 +54,9 @@ exports.listAdminConsultancyTransactionsController = asyncHandler(async (req, re
 exports.getAdminConsultancyTransactionController = asyncHandler(async (req, res) => {
   const transaction = await getConsultancyTransactionById(req.params.id);
   if (!transaction) throw new AppError("Transaction not found", 404);
+  if (normalizeProductType(transaction.productType) !== "consultancy") {
+    throw new AppError("Not a consultancy transaction", 404);
+  }
 
   return res.status(200).json({
     status: true,
@@ -92,6 +68,9 @@ exports.getAdminConsultancyTransactionController = asyncHandler(async (req, res)
 exports.getAdminConsultancyInvoiceController = asyncHandler(async (req, res) => {
   const transaction = await getConsultancyTransactionById(req.params.id);
   if (!transaction) throw new AppError("Transaction not found", 404);
+  if (normalizeProductType(transaction.productType) !== "consultancy") {
+    throw new AppError("Not a consultancy transaction", 404);
+  }
   if (String(transaction.paymentStatus || "").toLowerCase() !== "paid") {
     throw new AppError("Invoice not available", 404);
   }
@@ -107,6 +86,9 @@ exports.listAdminEnrolledUsersController = asyncHandler(async (req, res) => {
     indexName: "PaymentStatusCreatedAtIndex",
     partitionKeyName: "paymentStatus",
     partitionKeyValue: "paid",
+    filterExpression: "#productType = :productType",
+    exprNames: { "#productType": "productType" },
+    exprValues: { ":productType": "consultancy" },
     page: 1,
     limit: 1000,
   });

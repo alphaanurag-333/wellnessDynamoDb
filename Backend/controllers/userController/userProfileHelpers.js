@@ -203,10 +203,21 @@ async function buildUserUpdatesFromBody(body, current, { allowStatus = true, req
     updates.email = email;
   }
   if (body.phone !== undefined || body.phoneCountryCode !== undefined) {
-    throw new AppError(
-      "Phone number changes require OTP verification. Use /user/auth/profile/phone/otp/send and /verify.",
-      400
-    );
+    const nextPhone =
+      body.phone !== undefined ? normalizePhone(body.phone) : normalizePhone(current.phone);
+    const nextCc =
+      body.phoneCountryCode !== undefined
+        ? normalizeCountryCode(body.phoneCountryCode)
+        : normalizeCountryCode(current.phoneCountryCode);
+    const currentPhone = normalizePhone(current.phone);
+    const currentCc = normalizeCountryCode(current.phoneCountryCode);
+
+    if (nextPhone !== currentPhone || nextCc !== currentCc) {
+      throw new AppError(
+        "Phone number changes require OTP verification. Use /user/auth/profile/phone/otp/send and /verify.",
+        400
+      );
+    }
   }
 
   const whatsappSame = parseBool(body.whatsappSameAsMobile);
