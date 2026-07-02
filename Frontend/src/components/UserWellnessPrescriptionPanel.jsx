@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import Swal from "sweetalert2";
+import { AiOutlineEye } from "react-icons/ai";
 import { fetchActiveWellnessPrescriptionCatalog } from "../wellnessCoach/api/coachWellnessPrescriptionCatalog.js";
 
 function formatAssignmentDate(iso) {
@@ -82,15 +83,66 @@ function AssignmentCard({ assignment, onDelete, deleting, canDelete }) {
   );
 }
 
-function PrescriptionPickerCard({ prescription, selected, onToggle }) {
-  const id = prescription.id || prescription._id;
-  const pointCount = Array.isArray(prescription.points) ? prescription.points.length : 0;
+function PrescriptionPointsModal({ prescription, onClose }) {
+  useEffect(() => {
+    if (!prescription) return undefined;
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose, prescription]);
+
+  if (!prescription) return null;
+
+  const points = Array.isArray(prescription.points) ? prescription.points : [];
 
   return (
-    <button
-      type="button"
-      className={`catalog-picker__card${selected ? " catalog-picker__card--selected" : ""}`}
+    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="prescription-points-title" onClick={onClose}>
+      <div className="modal-card modal-card--wide" onClick={(e) => e.stopPropagation()}>
+        <h3 className="modal-card__title" id="prescription-points-title">
+          {prescription.title}
+        </h3>
+        {prescription.category ? <p className="modal-card__subtitle">{prescription.category}</p> : null}
+        <p className="data-table__muted" style={{ margin: "0 0 12px" }}>
+          {points.length} recommendation point{points.length === 1 ? "" : "s"}
+        </p>
+        <ul className="wellness-prescription-points-list">
+          {points.length === 0 ? (
+            <li className="data-table__muted">No points.</li>
+          ) : (
+            points.map((point, index) => <li key={index}>{point}</li>)
+          )}
+        </ul>
+        <div className="modal-card__actions">
+          <button type="button" className="btn btn--primary" onClick={onClose}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PrescriptionPickerCard({ prescription, selected, onToggle, onViewPoints }) {
+  const id = prescription.id || prescription._id;
+  const points = Array.isArray(prescription.points) ? prescription.points : [];
+  const pointCount = points.length;
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onToggle(id);
+    }
+  };
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      className={`catalog-picker__card catalog-picker__card--prescription${selected ? " catalog-picker__card--selected" : ""}`}
       onClick={() => onToggle(id)}
+      onKeyDown={handleKeyDown}
       aria-pressed={selected}
     >
       <div className="catalog-picker__card-head">
@@ -101,9 +153,25 @@ function PrescriptionPickerCard({ prescription, selected, onToggle }) {
       </div>
       <div className="catalog-picker__card-meta">
         {prescription.category ? <span className="catalog-picker__badge">{prescription.category}</span> : null}
-        {pointCount > 0 ? <span className="catalog-picker__badge">{pointCount} points</span> : null}
+        {pointCount > 0 ? (
+          <span className="catalog-picker__badge catalog-picker__badge--with-action">
+            {pointCount} point{pointCount === 1 ? "" : "s"}
+            <button
+              type="button"
+              className="catalog-picker__view-points"
+              title="View recommendation points"
+              aria-label={`View ${pointCount} recommendation points for ${prescription.title}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewPoints(prescription);
+              }}
+            >
+              <AiOutlineEye size={15} aria-hidden="true" />
+            </button>
+          </span>
+        ) : null}
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -131,6 +199,7 @@ export function UserWellnessPrescriptionPanel({
   const [customPoints, setCustomPoints] = useState([""]);
   const [categoryFilter, setCategoryFilter] = useState("");
   const [search, setSearch] = useState("");
+  const [previewPrescription, setPreviewPrescription] = useState(null);
 
   const loadData = useCallback(async () => {
     if (!token || !userId) return;
@@ -368,6 +437,7 @@ export function UserWellnessPrescriptionPanel({
                           prescription={prescription}
                           selected={selectedPrescriptionIds.includes(id)}
                           onToggle={togglePrescription}
+                          onViewPoints={setPreviewPrescription}
                         />
                       );
                     })}
@@ -453,6 +523,8 @@ export function UserWellnessPrescriptionPanel({
           )}
         </section>
       </div>
+
+      <PrescriptionPointsModal prescription={previewPrescription} onClose={() => setPreviewPrescription(null)} />
     </div>
   );
 }

@@ -6662,6 +6662,52 @@ fieldset.form-field legend {
   overflow: hidden;
 }
 
+.catalog-picker__card--prescription {
+  min-height: 120px;
+}
+
+.catalog-picker__badge--with-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.catalog-picker__view-points {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  color: var(--admin-brand-green, #1b7f5c);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.catalog-picker__view-points:hover {
+  color: #145a42;
+}
+
+.catalog-picker__view-points:focus-visible {
+  outline: 2px solid rgba(27, 127, 92, 0.45);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.wellness-prescription-points-list {
+  margin: 12px 0 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wellness-prescription-points-list li {
+  line-height: 1.5;
+  color: var(--admin-text);
+}
+
 .assignment-card {
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: var(--admin-radius);

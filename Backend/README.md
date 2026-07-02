@@ -14,7 +14,8 @@ Node.js / Express API for the Wellness platform. Data store: AWS DynamoDB.
 cd Backend
 npm install
 cp .env.example .env   # configure AWS, JWT, etc.
-npm start              # or: npx nodemon server.js
+npm start              # production
+npm run dev            # or: npx nodemon server.js (auto-reload)
 ```
 
 Health check: `GET http://localhost:5000/api/health`

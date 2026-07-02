@@ -109,16 +109,14 @@ export function WellnessPrescriptionCatalogView() {
         </div>
 
         <h3 className="form-card__title" style={{ marginTop: 24 }}>
-          Points ({Array.isArray(prescription.points) ? prescription.points.length : 0})
+          Recommendation points ({Array.isArray(prescription.points) ? prescription.points.length : 0})
         </h3>
-        <ul style={{ marginTop: 12, paddingLeft: 20 }}>
+        <ul className="wellness-prescription-points-list">
           {(prescription.points || []).length === 0 ? (
             <li className="data-table__muted">No points.</li>
           ) : (
             (prescription.points || []).map((point, idx) => (
-              <li key={idx} style={{ marginBottom: 8 }}>
-                {point}
-              </li>
+              <li key={idx}>{point}</li>
             ))
           )}
         </ul>
