@@ -46,6 +46,10 @@ const {
   normalizePaidOnboardingStepStatus,
   computePaidOnboardingCompleted,
 } = require("../utils/paidOnboardingHelpers");
+const {
+  defaultHealthProgressFeatures,
+  normalizeHealthProgressFeatures,
+} = require("../utils/healthProgressHelpers");
 
 const STATUS = new Set(USER_ALLOWED_STATUS);
 const GENDERS = new Set(USER_ALLOWED_GENDERS);
@@ -205,6 +209,7 @@ function sanitizeUpdateField(key, value) {
   if (key === "paidOnboardingStepStatus") return normalizePaidOnboardingStepStatus(value);
   if (key === "dietaryPreference") return normalizeDietaryPreference(value);
   if (key === "mealTrackingMode") return normalizeMealTrackingMode(value);
+  if (key === "healthProgressFeatures") return normalizeHealthProgressFeatures(value);
   if (key === "wellnessJourneyFor") return normalizeWellnessJourneyFor(value);
   if (
     [
@@ -317,6 +322,10 @@ function buildUserItem(input, { id, now } = {}) {
     pincode: input.pincode != null ? String(input.pincode).trim() || null : null,
     dietaryPreference: normalizeDietaryPreference(input.dietaryPreference),
     mealTrackingMode: normalizeMealTrackingMode(input.mealTrackingMode),
+    healthProgressFeatures: normalizeHealthProgressFeatures(
+      input.healthProgressFeatures,
+      defaultHealthProgressFeatures()
+    ),
     wellnessJourneyFor: normalizeWellnessJourneyFor(input.wellnessJourneyFor),
     healPaidAt: input.healPaidAt ? normalizeDob(input.healPaidAt) : null,
     createdAt: now,
@@ -715,6 +724,8 @@ module.exports = {
   normalizeAssignedCoachType,
   normalizeDietaryPreference,
   normalizeMealTrackingMode,
+  normalizeHealthProgressFeatures,
+  defaultHealthProgressFeatures,
   normalizePaidOnboardingStep,
   defaultPaidOnboardingStepStatus,
   normalizePaidOnboardingStepStatus,

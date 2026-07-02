@@ -8450,6 +8450,61 @@ fieldset.form-field legend {
   color: #fff;
 }
 
+.hp-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.hp-feature-toggle {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.hp-feature-toggle--active {
+  border-color: #f97316;
+  background: #fff7ed;
+}
+
+.hp-feature-toggle:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.hp-condition-group {
+  margin-top: 1rem;
+}
+
+.hp-condition-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem;
+}
+
+.hp-condition-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 0.5rem;
+  background: #fff;
+}
+
+.hp-condition-image {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-top: 0.35rem;
+}
+
 .mt-pending-grid {
   display: grid;
   gap: 1rem;

@@ -7,13 +7,16 @@ import { AssistantUserWaterTrackingPage } from "./AssistantUserWaterTrackingPage
 import { AssistantUserStepsTrackingPage } from "./AssistantUserStepsTrackingPage.jsx";
 import { UserReminders } from "../userReminders/UserReminders.jsx";
 import { AssistantUserDietPlan } from "./AssistantUserDietPlan.jsx";
+import { AssistantUserWellnessPrescriptions } from "./AssistantUserWellnessPrescriptions.jsx";
 import { AssistantUserTestRecommendations } from "./AssistantUserTestRecommendations.jsx";
 import { AssistantUserPhysicalExercises } from "./AssistantUserPhysicalExercises.jsx";
+import { AssistantUserMentalWellbeing } from "./AssistantUserMentalWellbeing.jsx";
 import { AssistantUserMealTrackingPage } from "./AssistantUserMealTrackingPage.jsx";
 import { AssistantUserSupplementRecommendations } from "./AssistantUserSupplementRecommendations.jsx";
 import { AssistantUserSupplementDosage } from "./AssistantUserSupplementDosage.jsx";
 import { AssistantUserLaunchAssessment } from "./AssistantUserLaunchAssessment.jsx";
 import { AssistantUserPrakrutiAssessment } from "./AssistantUserPrakrutiAssessment.jsx";
+import { AssistantUserHealthProgress } from "./AssistantUserHealthProgress.jsx";
 
 function renderAssistantTab(tab, embedded) {
   switch (tab) {
@@ -25,10 +28,14 @@ function renderAssistantTab(tab, embedded) {
       return <UserReminders embedded={embedded} />;
     case "diet-plan":
       return <AssistantUserDietPlan embedded={embedded} />;
+    case "wellness-prescriptions":
+      return <AssistantUserWellnessPrescriptions embedded={embedded} />;
     case "internal-parameters":
       return <AssistantUserTestRecommendations embedded={embedded} />;
     case "physical-exercises":
       return <AssistantUserPhysicalExercises embedded={embedded} />;
+    case "mental-wellbeing":
+      return <AssistantUserMentalWellbeing embedded={embedded} />;
     case "supplement-recommendations":
       return <AssistantUserSupplementRecommendations embedded={embedded} />;
     case "supplement-dosage":
@@ -39,6 +46,8 @@ function renderAssistantTab(tab, embedded) {
       return <AssistantUserLaunchAssessment embedded={embedded} />;
     case "prakruti-assessment":
       return <AssistantUserPrakrutiAssessment embedded={embedded} />;
+    case "health-progress":
+      return <AssistantUserHealthProgress embedded={embedded} />;
     default:
       return null;
   }

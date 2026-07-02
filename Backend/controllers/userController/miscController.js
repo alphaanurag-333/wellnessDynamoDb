@@ -18,7 +18,9 @@ const { listBirthdayPostsByPostDate } = require("../../models/birthdayPostModel"
 const { countCommentsForPost } = require("../../models/birthdayPostCommentModel");
 const { listActiveTestCatalog } = require("../../models/testCatalogModel");
 const { listActiveDietPlanCatalog } = require("../../models/dietPlanCatalogModel");
+const { listActiveWellnessPrescriptionCatalog } = require("../../models/wellnessPrescriptionCatalogModel");
 const { listActivePhysicalExercises } = require("../../models/physicalExerciseModel");
+const { listActiveMentalWellbeing } = require("../../models/mentalWellbeingModel");
 const { listActiveSupplements } = require("../../models/supplementModel");
 const { getUserById, toPublicUser } = require("../../models/userModel");
 const { todayInTimezone } = require("../../utils/birthdayTimezone");
@@ -336,12 +338,37 @@ exports.getActiveDietPlanCatalog = asyncHandler(async (req, res) => {
   });
 });
 
+exports.getActiveWellnessPrescriptionCatalog = asyncHandler(async (req, res) => {
+  const prescriptions = await listActiveWellnessPrescriptionCatalog();
+  const groupedByCategory = prescriptions.reduce((acc, prescription) => {
+    const category = prescription.category || "Other";
+    if (!acc[category]) acc[category] = [];
+    acc[category].push(prescription);
+    return acc;
+  }, {});
+
+  return res.status(200).json({
+    status: true,
+    prescriptions,
+    groupedByCategory,
+  });
+});
+
 exports.getActivePhysicalExercises = asyncHandler(async (req, res) => {
   const physicalExercises = await listActivePhysicalExercises();
 
   return res.status(200).json({
     status: true,
     physicalExercises,
+  });
+});
+
+exports.getActiveMentalWellbeing = asyncHandler(async (req, res) => {
+  const mentalWellbeing = await listActiveMentalWellbeing();
+
+  return res.status(200).json({
+    status: true,
+    mentalWellbeing,
   });
 });
 

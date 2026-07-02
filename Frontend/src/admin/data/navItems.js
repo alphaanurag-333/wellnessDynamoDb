@@ -49,6 +49,7 @@ export const navItems = [
   },
   { to: "test-catalog", label: "Test Catalog", icon: "activity" },
   { to: "diet-plan-catalog", label: "Diet Plan Catalog", icon: "utensils" },
+  { to: "wellness-prescriptions", label: "Wellness Prescriptions", icon: "clipboard-list" },
   { to: "mental-wellbeing", label: "Mental Wellbeing", icon: "sparkles" },
   {
     id: "testimonials",

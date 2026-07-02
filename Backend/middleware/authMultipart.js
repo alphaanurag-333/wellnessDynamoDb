@@ -99,3 +99,21 @@ exports.optionalSupplementBillFile = optionalMultipart(supplementBillUpload);
 
 const mealPhotoUpload = memorySingle("photo");
 exports.optionalMealPhotoFile = optionalMultipart(mealPhotoUpload);
+
+const healthProgressWeightPicUpload = memorySingle("weight_pic");
+const healthProgressGlucosePicUpload = memorySingle("glucose_pic");
+const healthProgressBpPicUpload = memorySingle("bp_pic");
+const healthProgressConditionPicUpload = memorySingle("condition_pic");
+
+exports.optionalHealthProgressWeightPicFile = optionalMultipart(
+  healthProgressWeightPicUpload
+);
+exports.optionalHealthProgressGlucosePicFile = optionalMultipart(
+  healthProgressGlucosePicUpload
+);
+exports.optionalHealthProgressBpFile = optionalMultipart(
+  healthProgressBpPicUpload
+);
+exports.optionalHealthProgressConditionPicFile = optionalMultipart(
+  healthProgressConditionPicUpload
+);

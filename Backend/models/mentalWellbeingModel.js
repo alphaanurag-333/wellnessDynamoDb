@@ -166,6 +166,20 @@ async function listMentalWellbeing({ page = 1, limit = 10, status, type, search 
   };
 }
 
+async function listActiveMentalWellbeing() {
+  const { items } = await listByPartitionKey({
+    tableName: TABLE,
+    indexName: "StatusCreatedAtIndex",
+    partitionKeyValue: "active",
+    scanIndexForward: false,
+    page: 1,
+    limit: 500,
+    maxLimit: 500,
+    sortFn: sortByCreatedAtDesc,
+  });
+  return items.map((row) => toPublicMentalWellbeing(row)).filter(Boolean);
+}
+
 module.exports = {
   MENTAL_WELLBEING_ALLOWED_STATUS,
   MENTAL_WELLBEING_ALLOWED_TYPE,
@@ -177,4 +191,5 @@ module.exports = {
   updateMentalWellbeing,
   deleteMentalWellbeing,
   listMentalWellbeing,
+  listActiveMentalWellbeing,
 };

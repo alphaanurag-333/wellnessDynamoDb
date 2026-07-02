@@ -27,8 +27,10 @@ export const wellnessCoachRouteTree = (
     <Route path="my-users/:userId/steps-tracking" element={<ClientHubLegacyRedirect segment="steps-tracking" basePath="/coach" />} />
     <Route path="my-users/:userId/reminders" element={<ClientHubLegacyRedirect segment="reminders" basePath="/coach" />} />
     <Route path="my-users/:userId/diet-plan" element={<ClientHubLegacyRedirect segment="diet-plan" basePath="/coach" />} />
+    <Route path="my-users/:userId/wellness-prescriptions" element={<ClientHubLegacyRedirect segment="wellness-prescriptions" basePath="/coach" />} />
     <Route path="my-users/:userId/test-recommendations" element={<ClientHubLegacyRedirect segment="test-recommendations" basePath="/coach" />} />
     <Route path="my-users/:userId/physical-exercises" element={<ClientHubLegacyRedirect segment="physical-exercises" basePath="/coach" />} />
+    <Route path="my-users/:userId/mental-wellbeing" element={<ClientHubLegacyRedirect segment="mental-wellbeing" basePath="/coach" />} />
     <Route path="my-users/:userId/supplement-recommendations" element={<ClientHubLegacyRedirect segment="supplement-recommendations" basePath="/coach" />} />
     <Route path="my-users/:userId/supplement-dosage" element={<ClientHubLegacyRedirect segment="supplement-dosage" basePath="/coach" />} />
     <Route path="my-users/:userId/meal-tracking" element={<ClientHubLegacyRedirect segment="meal-tracking" basePath="/coach" />} />

@@ -16,7 +16,9 @@ const {
   getActiveBirthdayPosts,
   getActiveTestCatalog,
   getActiveDietPlanCatalog,
+  getActiveWellnessPrescriptionCatalog,
   getActivePhysicalExercises,
+  getActiveMentalWellbeing,
   getActiveSupplements,
 } = require("../../controllers/userController/miscController");
 
@@ -38,7 +40,9 @@ router.get("/wellness-coaches", getActiveWellnessCoaches);
 router.get("/birthday-posts", getActiveBirthdayPosts);
 router.get("/test-catalog", getActiveTestCatalog);
 router.get("/diet-plan-catalog", getActiveDietPlanCatalog);
+router.get("/wellness-prescription-catalog", getActiveWellnessPrescriptionCatalog);
 router.get("/physical-exercises", getActivePhysicalExercises);
+router.get("/mental-wellbeing", getActiveMentalWellbeing);
 router.get("/supplements", getActiveSupplements);
 
 module.exports = router;

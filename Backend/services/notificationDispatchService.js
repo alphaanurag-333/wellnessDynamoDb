@@ -25,6 +25,7 @@ const FCM_TYPE_BY_KIND = {
   diet_plan_assignment: "diet_plan_assignment_notification",
   coach_reminder: "reminder_notification",
   physical_exercise_assigned: "physical_exercise_notification",
+  mental_wellbeing_assigned: "mental_wellbeing_notification",
   supplement_recommended: "supplement_recommendation_notification",
   supplement_dosage_assigned: "supplement_dosage_notification",
   supplement_delivery_requested: "supplement_delivery_requested_notification",
@@ -203,6 +204,27 @@ async function dispatchDietPlanAssignmentNotification({
   return notification;
 }
 
+async function dispatchWellnessPrescriptionAssignedNotification({
+  userId,
+  assignmentId,
+  coachName,
+}) {
+  const name = String(coachName || "Your coach").trim() || "Your coach";
+  const message = `${name} has shared new wellness prescriptions for you.`;
+
+  const notification = await createTargetedNotification({
+    userId,
+    kind: "wellness_prescription_assignment",
+    message,
+    referenceId: assignmentId,
+    referenceType: "coach_assigned_wellness_prescription",
+    title: "New wellness prescriptions",
+  });
+
+  runPushSafely(deliverTargetedPush(userId, notification));
+  return notification;
+}
+
 async function dispatchCoachReminderNotification({
   userId,
   reminderId,
@@ -267,6 +289,30 @@ async function dispatchPhysicalExerciseAssignedNotification({
     message,
     referenceType: "assigned_physical_exercise",
     title: "New physical exercises",
+  });
+
+  runPushSafely(deliverTargetedPush(userId, notification));
+  return notification;
+}
+
+async function dispatchMentalWellbeingAssignedNotification({
+  userId,
+  coachName,
+  count = 1,
+}) {
+  const name = String(coachName || "Your coach").trim() || "Your coach";
+  const n = Number(count) || 1;
+  const message =
+    n === 1
+      ? `${name} assigned new mental wellbeing content for you.`
+      : `${name} assigned ${n} new mental wellbeing items for you.`;
+
+  const notification = await createTargetedNotification({
+    userId,
+    kind: "mental_wellbeing_assigned",
+    message,
+    referenceType: "assigned_mental_wellbeing",
+    title: "New mental wellbeing content",
   });
 
   runPushSafely(deliverTargetedPush(userId, notification));
@@ -455,8 +501,10 @@ module.exports = {
   ensureBirthdayReminderInbox,
   dispatchInternalParametersRecommendationNotification,
   dispatchDietPlanAssignmentNotification,
+  dispatchWellnessPrescriptionAssignedNotification,
   dispatchCoachReminderNotification,
   dispatchPhysicalExerciseAssignedNotification,
+  dispatchMentalWellbeingAssignedNotification,
   dispatchSupplementRecommendedNotification,
   dispatchSupplementDosageAssignedNotification,
   dispatchSupplementDeliveryRequestedCoachNotification,

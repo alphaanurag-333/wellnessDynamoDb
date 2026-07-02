@@ -82,6 +82,10 @@ import { DietPlanCatalogList } from "../pages/dietPlanCatalog/DietPlanCatalogLis
 import { DietPlanCatalogAdd } from "../pages/dietPlanCatalog/DietPlanCatalogAdd.jsx";
 import { DietPlanCatalogEdit } from "../pages/dietPlanCatalog/DietPlanCatalogEdit.jsx";
 import { DietPlanCatalogView } from "../pages/dietPlanCatalog/DietPlanCatalogView.jsx";
+import { WellnessPrescriptionCatalogList } from "../pages/wellnessPrescriptionCatalog/WellnessPrescriptionCatalogList.jsx";
+import { WellnessPrescriptionCatalogAdd } from "../pages/wellnessPrescriptionCatalog/WellnessPrescriptionCatalogAdd.jsx";
+import { WellnessPrescriptionCatalogEdit } from "../pages/wellnessPrescriptionCatalog/WellnessPrescriptionCatalogEdit.jsx";
+import { WellnessPrescriptionCatalogView } from "../pages/wellnessPrescriptionCatalog/WellnessPrescriptionCatalogView.jsx";
 import { MentalWellbeingList } from "../pages/mentalWellbeing/MentalWellbeingList.jsx";
 import { MentalWellbeingAdd } from "../pages/mentalWellbeing/MentalWellbeingAdd.jsx";
 import { MentalWellbeingEdit } from "../pages/mentalWellbeing/MentalWellbeingEdit.jsx";
@@ -271,6 +275,12 @@ export const adminRouteTree = (
       <Route path="new" element={<DietPlanCatalogAdd />} />
       <Route path=":planId/edit" element={<DietPlanCatalogEdit />} />
       <Route path=":planId" element={<DietPlanCatalogView />} />
+    </Route>
+    <Route path="wellness-prescriptions" element={<Outlet />}>
+      <Route index element={<WellnessPrescriptionCatalogList />} />
+      <Route path="new" element={<WellnessPrescriptionCatalogAdd />} />
+      <Route path=":prescriptionId/edit" element={<WellnessPrescriptionCatalogEdit />} />
+      <Route path=":prescriptionId" element={<WellnessPrescriptionCatalogView />} />
     </Route>
     <Route path="mental-wellbeing" element={<Outlet />}>
       <Route index element={<MentalWellbeingList />} />

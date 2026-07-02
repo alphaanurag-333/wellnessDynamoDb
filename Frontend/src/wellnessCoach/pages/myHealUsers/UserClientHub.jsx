@@ -10,13 +10,16 @@ import { CoachUserWaterTrackingPage } from "./CoachUserWaterTrackingPage.jsx";
 import { CoachUserStepsTrackingPage } from "./CoachUserStepsTrackingPage.jsx";
 import { UserReminders } from "../userReminders/UserReminders.jsx";
 import { UserDietPlan } from "./UserDietPlan.jsx";
+import { UserWellnessPrescriptions } from "./UserWellnessPrescriptions.jsx";
 import { UserTestRecommendations } from "./UserTestRecommendations.jsx";
 import { UserPhysicalExercises } from "./UserPhysicalExercises.jsx";
+import { UserMentalWellbeing } from "./UserMentalWellbeing.jsx";
 import { CoachUserMealTrackingPage } from "./CoachUserMealTrackingPage.jsx";
 import { UserSupplementRecommendations } from "./UserSupplementRecommendations.jsx";
 import { UserSupplementDosage } from "./UserSupplementDosage.jsx";
 import { UserLaunchAssessment } from "./UserLaunchAssessment.jsx";
 import { UserPrakrutiAssessment } from "./UserPrakrutiAssessment.jsx";
+import { UserHealthProgress } from "./UserHealthProgress.jsx";
 
 function renderCoachTab(tab, embedded) {
   switch (tab) {
@@ -28,10 +31,14 @@ function renderCoachTab(tab, embedded) {
       return <UserReminders embedded={embedded} />;
     case "diet-plan":
       return <UserDietPlan embedded={embedded} />;
+    case "wellness-prescriptions":
+      return <UserWellnessPrescriptions embedded={embedded} />;
     case "internal-parameters":
       return <UserTestRecommendations embedded={embedded} />;
     case "physical-exercises":
       return <UserPhysicalExercises embedded={embedded} />;
+    case "mental-wellbeing":
+      return <UserMentalWellbeing embedded={embedded} />;
     case "supplement-recommendations":
       return <UserSupplementRecommendations embedded={embedded} />;
     case "supplement-dosage":
@@ -42,6 +49,8 @@ function renderCoachTab(tab, embedded) {
       return <UserLaunchAssessment embedded={embedded} />;
     case "prakruti-assessment":
       return <UserPrakrutiAssessment embedded={embedded} />;
+    case "health-progress":
+      return <UserHealthProgress embedded={embedded} />;
     default:
       return null;
   }
