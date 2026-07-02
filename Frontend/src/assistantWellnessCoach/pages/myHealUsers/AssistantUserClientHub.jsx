@@ -17,6 +17,7 @@ import { AssistantUserSupplementDosage } from "./AssistantUserSupplementDosage.j
 import { AssistantUserLaunchAssessment } from "./AssistantUserLaunchAssessment.jsx";
 import { AssistantUserPrakrutiAssessment } from "./AssistantUserPrakrutiAssessment.jsx";
 import { AssistantUserHealthProgress } from "./AssistantUserHealthProgress.jsx";
+import { AssistantUserDailyReflection } from "./AssistantUserDailyReflection.jsx";
 
 function renderAssistantTab(tab, embedded) {
   switch (tab) {
@@ -48,6 +49,8 @@ function renderAssistantTab(tab, embedded) {
       return <AssistantUserPrakrutiAssessment embedded={embedded} />;
     case "health-progress":
       return <AssistantUserHealthProgress embedded={embedded} />;
+    case "daily-reflection":
+      return <AssistantUserDailyReflection embedded={embedded} />;
     default:
       return null;
   }
