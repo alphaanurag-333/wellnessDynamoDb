@@ -83,7 +83,7 @@ export function AdminUserStepsTrackingPage() {
       error={error}
       days={days}
       onDaysChange={setDays}
-      onBack={() => navigate(`/admin/users/${userId}`)}
+      onBack={() => navigate(-1)}
     />
   );
 }

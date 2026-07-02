@@ -10,7 +10,7 @@ import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { PrakrutiThingToAvoidForm } from "./PrakrutiThingToAvoidAdd.jsx";
 
 export function PrakrutiThingToAvoidEdit() {
-  const { thingToAvoidId } = useParams();
+  const { itemId } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const adminToken = useSelector((s) => s.auth.adminToken);
@@ -19,11 +19,11 @@ export function PrakrutiThingToAvoidEdit() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!adminToken || !thingToAvoidId) return;
+    if (!adminToken || !itemId) return;
     let cancelled = false;
     (async () => {
       try {
-        const row = await adminGetPrakrutiThingToAvoidById(adminToken, thingToAvoidId);
+        const row = await adminGetPrakrutiThingToAvoidById(adminToken, itemId);
         if (cancelled) return;
         if (!row) {
           setNotFound(true);
@@ -43,7 +43,7 @@ export function PrakrutiThingToAvoidEdit() {
     return () => {
       cancelled = true;
     };
-  }, [adminToken, dispatch, thingToAvoidId, navigate]);
+  }, [adminToken, dispatch, itemId, navigate]);
 
   if (notFound) return <NotFoundPage />;
 
@@ -54,7 +54,7 @@ export function PrakrutiThingToAvoidEdit() {
         {loading ? (
           <AdminPageLoader label="Loading…" />
         ) : item ? (
-          <PrakrutiThingToAvoidForm mode="edit" initialItem={item} key={item._id || thingToAvoidId} />
+          <PrakrutiThingToAvoidForm mode="edit" initialItem={item} key={item._id || itemId} />
         ) : null}
       </div>
     </div>

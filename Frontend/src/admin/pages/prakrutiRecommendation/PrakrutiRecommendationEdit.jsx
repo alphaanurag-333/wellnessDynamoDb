@@ -10,7 +10,7 @@ import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { PrakrutiRecommendationForm } from "./PrakrutiRecommendationAdd.jsx";
 
 export function PrakrutiRecommendationEdit() {
-  const { recommendationId } = useParams();
+  const { itemId } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const adminToken = useSelector((s) => s.auth.adminToken);
@@ -19,11 +19,11 @@ export function PrakrutiRecommendationEdit() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!adminToken || !recommendationId) return;
+    if (!adminToken || !itemId) return;
     let cancelled = false;
     (async () => {
       try {
-        const row = await adminGetPrakrutiRecommendationById(adminToken, recommendationId);
+        const row = await adminGetPrakrutiRecommendationById(adminToken, itemId);
         if (cancelled) return;
         if (!row) {
           setNotFound(true);
@@ -43,7 +43,7 @@ export function PrakrutiRecommendationEdit() {
     return () => {
       cancelled = true;
     };
-  }, [adminToken, dispatch, recommendationId, navigate]);
+  }, [adminToken, dispatch, itemId, navigate]);
 
   if (notFound) return <NotFoundPage />;
 
@@ -54,7 +54,7 @@ export function PrakrutiRecommendationEdit() {
         {loading ? (
           <AdminPageLoader label="Loading…" />
         ) : item ? (
-          <PrakrutiRecommendationForm mode="edit" initialItem={item} key={item._id || recommendationId} />
+          <PrakrutiRecommendationForm mode="edit" initialItem={item} key={item._id || itemId} />
         ) : null}
       </div>
     </div>

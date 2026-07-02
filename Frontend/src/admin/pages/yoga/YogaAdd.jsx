@@ -10,14 +10,11 @@ import { mediaUrl } from "../../../media.js";
 import {
   ALLOWED_IMAGE_TYPES,
   ALLOWED_VIDEO_TYPES,
-  DESCRIPTION_MAX_LEN,
-  DESCRIPTION_MIN_LEN,
   IMAGE_MAX_SIZE_BYTES,
   TITLE_MAX_LEN,
   TITLE_MIN_LEN,
   YT_LINK_MAX_LEN,
   emptyForm,
-  sanitizeDescription,
   sanitizeTitle,
   validateForm,
   validateVideoFileSize,
@@ -34,7 +31,6 @@ export function YogaForm({ mode = "create", initialYoga = null }) {
     if (!initialYoga) return emptyForm();
     return {
       title: initialYoga.title || "",
-      description: initialYoga.description || "",
       type: initialYoga.type || "ytlink",
       ytLink: initialYoga.ytLink || "",
       video: initialYoga.video || "",
@@ -115,7 +111,6 @@ export function YogaForm({ mode = "create", initialYoga = null }) {
     }
     const payload = {
       title: form.title.trim(),
-      description: form.description.trim(),
       type: form.type || "ytlink",
       ytLink: form.type === "ytlink" ? form.ytLink.trim() : "",
       video: form.type === "video" ? form.video.trim() : "",
@@ -177,23 +172,6 @@ export function YogaForm({ mode = "create", initialYoga = null }) {
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
           </select>
-        </label>
-        <label className="user-field col-12">
-          <span className="user-field__label">
-            Description <span className="required-dot">*</span>
-          </span>
-          <textarea
-            className="user-field__input"
-            rows={4}
-            value={form.description}
-            minLength={DESCRIPTION_MIN_LEN}
-            maxLength={DESCRIPTION_MAX_LEN}
-            onChange={(e) => setForm((p) => ({ ...p, description: sanitizeDescription(e.target.value) }))}
-            required
-          />
-          <small className="data-table__muted">
-            {form.description.trim().length}/{DESCRIPTION_MAX_LEN} (min {DESCRIPTION_MIN_LEN})
-          </small>
         </label>
         {form.type === "ytlink" ? (
           <label className="user-field col-12">

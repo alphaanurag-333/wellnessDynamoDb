@@ -131,10 +131,9 @@ export function TransformationList() {
               className="user-field__input"
               value={listSearch}
               onChange={(e) => setListSearch(e.target.value.slice(0, LIST_SEARCH_MAX_LEN))}
-              placeholder="Achievements or description…"
+              placeholder="Achievements or description..."
               maxLength={LIST_SEARCH_MAX_LEN}
             />
-            <small className="data-table__muted">{listSearch.length}/{LIST_SEARCH_MAX_LEN}</small>
           </label>
           <label className="user-field admin-crud-filters__select">
             <span className="user-field__label">Status</span>

@@ -19,7 +19,7 @@ function DetailRow({ label, value }) {
 }
 
 export function PrakrutiRecommendationView() {
-  const { recommendationId } = useParams();
+  const { itemId } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const adminToken = useSelector((s) => s.auth.adminToken);
@@ -27,11 +27,11 @@ export function PrakrutiRecommendationView() {
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    if (!adminToken || !recommendationId) return;
+    if (!adminToken || !itemId) return;
     let cancelled = false;
     (async () => {
       try {
-        const row = await adminGetPrakrutiRecommendationById(adminToken, recommendationId);
+        const row = await adminGetPrakrutiRecommendationById(adminToken, itemId);
         if (cancelled) return;
         if (!row) setNotFound(true);
         else setItem(row);
@@ -44,7 +44,7 @@ export function PrakrutiRecommendationView() {
     return () => {
       cancelled = true;
     };
-  }, [adminToken, dispatch, recommendationId]);
+  }, [adminToken, dispatch, itemId]);
 
   if (notFound) return <NotFoundPage />;
   if (!item) return <AdminPageLoadingState label="Loading…" />;

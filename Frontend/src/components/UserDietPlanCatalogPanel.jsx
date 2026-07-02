@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import Swal from "sweetalert2";
+import { AiOutlineEye } from "react-icons/ai";
 import { fetchActiveDietPlanCatalog } from "../wellnessCoach/api/coachDietPlanCatalog.js";
-import { typeLabel } from "../admin/pages/dietPlanCatalog/DietPlanCatalogShared.js";
+import { slotLabel, typeLabel } from "../admin/pages/dietPlanCatalog/DietPlanCatalogShared.js";
 
 function formatStartDate(iso) {
   if (!iso) return "—";
@@ -92,15 +93,88 @@ function AssignmentCard({ assignment, onDelete, deleting, canDelete }) {
   );
 }
 
-function PlanPickerCard({ plan, selected, onToggle }) {
-  const id = plan.id || plan._id;
-  const mealCount = Array.isArray(plan.meals) ? plan.meals.length : 0;
+function DietPlanPreviewModal({ plan, onClose }) {
+  useEffect(() => {
+    if (!plan) return undefined;
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose, plan]);
+
+  if (!plan) return null;
+
+  const meals = Array.isArray(plan.meals) ? [...plan.meals].sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0)) : [];
 
   return (
-    <button
-      type="button"
-      className={`catalog-picker__card${selected ? " catalog-picker__card--selected" : ""}`}
-      onClick={() => onToggle(id)}
+    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="diet-plan-preview-title" onClick={onClose}>
+      <div className="modal-card modal-card--wide" onClick={(e) => e.stopPropagation()}>
+        <h3 className="modal-card__title" id="diet-plan-preview-title">
+          {plan.name}
+        </h3>
+        <p className="modal-card__subtitle">
+          {[typeLabel(plan.type), plan.category].filter(Boolean).join(" · ")}
+        </p>
+        {plan.description ? <p className="diet-plan-preview__description">{plan.description}</p> : null}
+
+        <h4 className="diet-plan-preview__meals-title">
+          Meals ({meals.length})
+        </h4>
+        {meals.length === 0 ? (
+          <p className="table-placeholder">No meals in this plan.</p>
+        ) : (
+          <div className="table-scroll diet-plan-preview__table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Meal</th>
+                  <th>Slot</th>
+                  <th>Foods</th>
+                  <th>Calories</th>
+                </tr>
+              </thead>
+              <tbody>
+                {meals.map((meal, index) => (
+                  <tr key={meal.mealId || `${meal.title}-${index}`}>
+                    <td>{meal.title || "—"}</td>
+                    <td>{slotLabel(meal.slot)}</td>
+                    <td>{meal.foods || "—"}</td>
+                    <td>{meal.calories != null ? meal.calories : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <div className="modal-card__actions">
+          <button type="button" className="btn btn--primary" onClick={onClose}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PlanPickerCard({ plan, selected, onToggle, onViewPlan }) {
+  const mealCount = Array.isArray(plan.meals) ? plan.meals.length : 0;
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onToggle(plan);
+    }
+  };
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      className={`catalog-picker__card catalog-picker__card--diet-plan${selected ? " catalog-picker__card--selected" : ""}`}
+      onClick={() => onToggle(plan)}
+      onKeyDown={handleKeyDown}
       aria-pressed={selected}
     >
       <div className="catalog-picker__card-head">
@@ -112,10 +186,41 @@ function PlanPickerCard({ plan, selected, onToggle }) {
       <div className="catalog-picker__card-meta">
         <span className="catalog-picker__badge catalog-picker__badge--type">{typeLabel(plan.type)}</span>
         {plan.category ? <span className="catalog-picker__badge">{plan.category}</span> : null}
-        {mealCount > 0 ? <span className="catalog-picker__badge">{mealCount} meals</span> : null}
+        {mealCount > 0 ? (
+          <span className="catalog-picker__badge catalog-picker__badge--with-action">
+            {mealCount} meal{mealCount === 1 ? "" : "s"}
+            <button
+              type="button"
+              className="catalog-picker__view-points"
+              title="View plan details"
+              aria-label={`View details for ${plan.name}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewPlan(plan);
+              }}
+            >
+              <AiOutlineEye size={15} aria-hidden="true" />
+            </button>
+          </span>
+        ) : (
+          <span className="catalog-picker__badge catalog-picker__badge--with-action">
+            Details
+            <button
+              type="button"
+              className="catalog-picker__view-points"
+              title="View plan details"
+              aria-label={`View details for ${plan.name}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewPlan(plan);
+              }}
+            >
+              <AiOutlineEye size={15} aria-hidden="true" />
+            </button>
+          </span>
+        )}
       </div>
-      {plan.description ? <p className="catalog-picker__card-desc">{plan.description}</p> : null}
-    </button>
+    </div>
   );
 }
 
@@ -143,6 +248,7 @@ export function UserDietPlanCatalogPanel({
   const [selectedPlanIds, setSelectedPlanIds] = useState([]);
   const [typeFilter, setTypeFilter] = useState("");
   const [search, setSearch] = useState("");
+  const [previewPlan, setPreviewPlan] = useState(null);
 
   const loadData = useCallback(async () => {
     if (!token || !userId) return;
@@ -206,7 +312,8 @@ export function UserDietPlanCatalogPanel({
     });
   }, [catalogGrouped, catalogPlans, search, typeFilter]);
 
-  const togglePlan = (planId) => {
+  const togglePlan = (plan) => {
+    const planId = plan.id || plan._id;
     setSelectedPlanIds((prev) =>
       prev.includes(planId) ? prev.filter((id) => id !== planId) : [...prev, planId]
     );
@@ -379,6 +486,7 @@ export function UserDietPlanCatalogPanel({
                           plan={plan}
                           selected={selectedPlanIds.includes(id)}
                           onToggle={togglePlan}
+                          onViewPlan={setPreviewPlan}
                         />
                       );
                     })}
@@ -433,6 +541,8 @@ export function UserDietPlanCatalogPanel({
           )}
         </section>
       </div>
+
+      <DietPlanPreviewModal plan={previewPlan} onClose={() => setPreviewPlan(null)} />
     </div>
   );
 }

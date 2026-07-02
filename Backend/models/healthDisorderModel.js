@@ -120,7 +120,7 @@ async function deleteHealthDisorder(id) {
 async function listHealthDisorders({ page = 1, limit = 10, status, type, search } = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const normalizedType = type ? String(type).toLowerCase().trim() : "";
-  const searchFilter = buildContainsFilter(["title", "description"], search);
+  const searchFilter = buildContainsFilter(["title", "description", "symptoms"], search);
   let filterExpression = searchFilter.filterExpression;
   const exprNames = { ...searchFilter.exprNames };
   const exprValues = { ...searchFilter.exprValues };

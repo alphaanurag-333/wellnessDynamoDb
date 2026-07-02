@@ -38,7 +38,6 @@ export async function adminCreateYoga(token, fields, file) {
   if (thumbnailFile || videoFile) {
     const fd = new FormData();
     fd.append("title", String(fields.title ?? "").trim());
-    fd.append("description", String(fields.description ?? "").trim());
     fd.append("type", String(fields.type || "ytlink"));
     fd.append("ytLink", String(fields.ytLink ?? fields.ytlink ?? "").trim());
     fd.append("video", String(fields.video ?? "").trim());
@@ -58,7 +57,6 @@ export async function adminCreateYoga(token, fields, file) {
       base(),
       {
         title: String(fields.title ?? "").trim(),
-        description: String(fields.description ?? "").trim(),
         thumbnail: String(fields.thumbnail ?? "").trim(),
         type: String(fields.type || "ytlink"),
         ytLink: String(fields.ytLink ?? fields.ytlink ?? "").trim(),
@@ -80,7 +78,6 @@ export async function adminUpdateYoga(token, id, fields, file) {
   if (thumbnailFile || videoFile) {
     const fd = new FormData();
     if (fields.title !== undefined) fd.append("title", String(fields.title).trim());
-    if (fields.description !== undefined) fd.append("description", String(fields.description).trim());
     if (fields.type !== undefined) fd.append("type", String(fields.type));
     if (fields.ytLink !== undefined) fd.append("ytLink", String(fields.ytLink).trim());
     if (fields.ytlink !== undefined) fd.append("ytLink", String(fields.ytlink).trim());
@@ -98,7 +95,6 @@ export async function adminUpdateYoga(token, id, fields, file) {
 
   const payload = {};
   if (fields.title !== undefined) payload.title = String(fields.title).trim();
-  if (fields.description !== undefined) payload.description = String(fields.description).trim();
   if (fields.thumbnail !== undefined) payload.thumbnail = String(fields.thumbnail).trim();
   if (fields.type !== undefined) payload.type = String(fields.type);
   if (fields.ytLink !== undefined) payload.ytLink = String(fields.ytLink).trim();

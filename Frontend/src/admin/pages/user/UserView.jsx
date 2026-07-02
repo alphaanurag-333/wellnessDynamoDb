@@ -138,7 +138,7 @@ export function UserView() {
       <AdminPageHeader
         title="User details"
         subtitle="View this user's profile, tier, and activity."
-        onBack={() => navigate(-1)}
+        backTo="/admin/users"
         actions={
           <>
             <UserTierBadge tier={user.userTier} assignmentStatus={user.assignmentStatus} />

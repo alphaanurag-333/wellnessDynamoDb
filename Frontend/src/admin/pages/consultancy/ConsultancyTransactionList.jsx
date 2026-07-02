@@ -8,6 +8,9 @@ import { UserTableLoaderRow } from "../user/UserPageLoader.jsx";
 import { AdminListHeader } from "../../components/AdminCrud.jsx";
 import { healthConcernLabel } from "../../../components/consultancy/ConsultancyPortalShared.jsx";
 
+const LIST_SEARCH_MAX_LEN = 50;
+const REFERRAL_CODE_MAX_LEN = 20;
+
 function formatMoney(value) {
   const n = Number(value);
   if (!Number.isFinite(n)) return "—";
@@ -23,17 +26,6 @@ function formatDate(iso) {
 function PaymentStatusPill({ status }) {
   const value = String(status || "").toLowerCase();
   return <span className={`payment-status-pill payment-status-pill--${value || "pending"}`}>{value || "—"}</span>;
-}
-
-function SearchIcon() {
-  return (
-    <span className="search-field__icon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
-        <circle cx="11" cy="11" r="8" />
-        <path d="m21 21-4.3-4.3" />
-      </svg>
-    </span>
-  );
 }
 
 export function ConsultancyTransactionList() {
@@ -86,6 +78,14 @@ export function ConsultancyTransactionList() {
     [pagination.page, pagination.pages, pagination.total]
   );
 
+  const hasFilters = Boolean(search.trim() || paymentStatus !== "all" || referralCode.trim());
+
+  const clearFilters = () => {
+    setSearch("");
+    setPaymentStatus("all");
+    setReferralCode("");
+  };
+
   const handleInvoiceDownload = async (row) => {
     setDownloadingId(row.id);
     try {
@@ -107,45 +107,58 @@ export function ConsultancyTransactionList() {
         title="Consultancy transactions"
         subtitle="All payments across coaches, assistants, and admin-assigned meetings."
         actions={
-          <>
-          <div className="user-list-filters consultancy-page__filters">
-            <div className="search-field consultancy-page__search">
-              <SearchIcon />
-              <input
-                type="search"
-                placeholder="Search reference, name, email…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                aria-label="Search transactions"
-              />
-            </div>
-            <select
-              className="user-list-status-select"
-              value={paymentStatus}
-              onChange={(e) => setPaymentStatus(e.target.value)}
-              aria-label="Filter by payment status"
-            >
-              <option value="all">All statuses</option>
-              <option value="paid">Paid</option>
-              <option value="pending">Pending</option>
-              <option value="failed">Failed</option>
-              <option value="refunded">Refunded</option>
-            </select>
-            <input
-              className="consultancy-page__referral-input"
-              type="text"
-              placeholder="Referral code"
-              value={referralCode}
-              onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
-              aria-label="Filter by referral code"
-            />
-          </div>
           <Link to="/admin/consultancy/enrolled-users" className="btn btn--accent">
             Enrolled users
           </Link>
-          </>
         }
       />
+
+      <div className="admin-crud-filters">
+        <label className="user-field admin-crud-filters__search">
+          <span className="user-field__label">Search</span>
+          <input
+            className="user-field__input"
+            type="search"
+            placeholder="Reference, name, or email..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value.slice(0, LIST_SEARCH_MAX_LEN))}
+            maxLength={LIST_SEARCH_MAX_LEN}
+            aria-label="Search transactions"
+          />
+        </label>
+        <label className="user-field admin-crud-filters__select">
+          <span className="user-field__label">Status</span>
+          <select
+            className="user-field__input"
+            value={paymentStatus}
+            onChange={(e) => setPaymentStatus(e.target.value)}
+            aria-label="Filter by payment status"
+          >
+            <option value="all">All statuses</option>
+            <option value="paid">Paid</option>
+            <option value="pending">Pending</option>
+            <option value="failed">Failed</option>
+            <option value="refunded">Refunded</option>
+          </select>
+        </label>
+        <label className="user-field admin-crud-filters__select">
+          <span className="user-field__label">Referral code</span>
+          <input
+            className="user-field__input consultancy-page__referral-input"
+            type="text"
+            placeholder="e.g. NDBTK8HU"
+            value={referralCode}
+            onChange={(e) => setReferralCode(e.target.value.toUpperCase().slice(0, REFERRAL_CODE_MAX_LEN))}
+            maxLength={REFERRAL_CODE_MAX_LEN}
+            aria-label="Filter by referral code"
+          />
+        </label>
+        {hasFilters ? (
+          <button type="button" className="btn btn--ghost" onClick={clearFilters}>
+            Clear filters
+          </button>
+        ) : null}
+      </div>
 
       <div className="table-scroll">
         <table className="data-table">

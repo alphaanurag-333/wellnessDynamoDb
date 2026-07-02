@@ -56,7 +56,6 @@ exports.getYogaByIdController = asyncHandler(async (req, res) => {
 
 exports.createYogaController = asyncHandler(async (req, res) => {
   const title = String(req.body.title || "").trim();
-  const description = String(req.body.description || "").trim();
   const { thumbnail: uploadedThumb, video: uploadedVideo } = await uploadYogaMedia(req);
   const thumbnail = uploadedThumb ?? parseMediaKeyFromBody(req.body.thumbnail, "thumbnail");
   const rawType = String(req.body.type || "ytlink").trim().toLowerCase();
@@ -66,14 +65,13 @@ exports.createYogaController = asyncHandler(async (req, res) => {
   const status = String(req.body.status || "active").trim().toLowerCase();
 
   if (!title) throw new AppError("title is required", 400);
-  if (!description) throw new AppError("description is required", 400);
   if (!thumbnail) throw new AppError("thumbnail is required", 400);
   if (!YOGA_ALLOWED_TYPE.includes(rawType)) throw new AppError("type must be ytlink or video", 400);
   if (!YOGA_ALLOWED_STATUS.includes(status)) throw new AppError("status must be active or inactive", 400);
   if (type === "ytlink" && !ytLink) throw new AppError("ytLink is required when type is ytlink", 400);
   if (type === "video" && !video) throw new AppError("video is required when type is video", 400);
 
-  const yoga = await createYoga({ title, description, thumbnail, type, ytLink, video, status });
+  const yoga = await createYoga({ title, thumbnail, type, ytLink, video, status });
 
   if (status === "active") {
     dispatchBroadcastNotification({
@@ -98,11 +96,6 @@ exports.updateYogaController = asyncHandler(async (req, res) => {
     const title = String(req.body.title || "").trim();
     if (!title) throw new AppError("title cannot be empty", 400);
     updates.title = title;
-  }
-  if (req.body.description !== undefined) {
-    const description = String(req.body.description || "").trim();
-    if (!description) throw new AppError("description cannot be empty", 400);
-    updates.description = description;
   }
   if (req.body.status !== undefined) {
     const status = String(req.body.status || "").trim().toLowerCase();

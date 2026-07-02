@@ -44,7 +44,7 @@
   --admin-z-sidebar: 40;
   --admin-z-backdrop: 30;
 
-  --admin-gradient-cta: linear-gradient(90deg, var(--admin-brand-saffron-light), var(--admin-brand-saffron-deep));
+  --admin-gradient-cta: linear-gradient(90deg, var(--admin-brand-saffron), var(--admin-brand-saffron-deep));
   --admin-gradient-primary: linear-gradient(90deg, var(--admin-brand-green-bright), var(--admin-brand-green));
   --admin-gradient-stat-saffron: linear-gradient(135deg, #ffd4c2, var(--admin-brand-saffron));
   --admin-gradient-stat-warm: linear-gradient(135deg, var(--admin-brand-saffron), var(--admin-brand-saffron-deep));
@@ -135,6 +135,10 @@ a:hover {
   text-align: center;
   background: var(--admin-surface);
   box-sizing: border-box;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
 }
 
 .admin-backdrop {
@@ -1274,6 +1278,22 @@ a.admin-header__dropdown-item {
   text-decoration: none;
   color: var(--admin-text);
   vertical-align: middle;
+  --bs-btn-box-shadow: none;
+  --bs-btn-focus-box-shadow: none;
+  --bs-btn-focus-shadow-rgb: 44, 79, 120;
+  box-shadow: none;
+}
+
+.btn:focus,
+.btn:focus-visible,
+.btn:active:focus,
+.btn:active:focus-visible,
+.btn-check:focus-visible + .btn {
+  outline: none;
+}
+
+.btn:focus-visible {
+  box-shadow: 0 0 0 3px rgba(44, 79, 120, 0.2);
 }
 
 a.btn:hover {
@@ -1820,13 +1840,13 @@ a.btn:hover {
   color: var(--admin-brand-blue);
   text-shadow: none;
   background: var(--admin-gradient-cta);
-  box-shadow: 0 4px 16px rgba(232, 136, 79, 0.32);
+  box-shadow: 0 4px 14px rgba(30, 58, 95, 0.16);
   transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
 }
 
 .auth-submit:hover:not(:disabled) {
   filter: brightness(1.03);
-  box-shadow: 0 6px 20px rgba(232, 136, 79, 0.42);
+  box-shadow: 0 6px 18px rgba(30, 58, 95, 0.2);
   transform: translateY(-1px);
 }
 
@@ -1998,7 +2018,7 @@ a.btn:hover {
   font-size: 0.9375rem;
   width: auto;
   min-width: 220px;
-  box-shadow: 0 4px 16px rgba(232, 136, 79, 0.32);
+  box-shadow: 0 4px 14px rgba(30, 58, 95, 0.16);
 }
 
 .auth-form--register .auth-submit {
@@ -2213,6 +2233,7 @@ a.btn:hover {
 
   .admin-content {
     padding: 22px 26px 32px;
+    padding-bottom: 84px;
   }
 
   .admin-footer {
@@ -2381,20 +2402,34 @@ a.btn:hover {
   height: var(--admin-btn-h);
   min-height: var(--admin-btn-h);
   padding: 0 18px;
-  border: 1px solid transparent;
+  border: none;
   border-radius: 10px;
   background: var(--admin-gradient-cta);
+  background-clip: padding-box;
   color: #ffffff;
   font-weight: 700;
   line-height: 1;
-  box-shadow: 0 4px 16px rgba(212, 105, 42, 0.32);
+  box-shadow: none;
 }
 
 .btn--accent:hover,
 .btn--primary:hover,
 .admin-shell .btn.btn-primary:hover:not(:disabled) {
   filter: brightness(1.05);
-  box-shadow: 0 6px 20px rgba(212, 105, 42, 0.38);
+  box-shadow: 0 4px 12px rgba(30, 58, 95, 0.14);
+  color: #ffffff;
+}
+
+.btn--accent:focus,
+.btn--accent:focus-visible,
+.btn--primary:focus,
+.btn--primary:focus-visible,
+.admin-shell .btn.btn-primary:focus,
+.admin-shell .btn.btn-primary:focus-visible {
+  outline: none;
+  background: var(--admin-gradient-cta);
+  border: none;
+  box-shadow: 0 0 0 3px rgba(44, 79, 120, 0.24);
   color: #ffffff;
 }
 
@@ -4386,12 +4421,12 @@ a.icon-btn {
   cursor: pointer;
   color: #fff;
   background: var(--admin-gradient-cta);
-  box-shadow: 0 4px 16px rgba(212, 105, 42, 0.32);
+  box-shadow: 0 4px 14px rgba(30, 58, 95, 0.16);
 }
 
 .btn--save-profile:hover:not(:disabled) {
   filter: brightness(1.05);
-  box-shadow: 0 6px 20px rgba(212, 105, 42, 0.38);
+  box-shadow: 0 6px 18px rgba(30, 58, 95, 0.2);
 }
 
 .btn--save-profile:disabled {
@@ -5060,12 +5095,12 @@ a.icon-btn {
   cursor: pointer;
   color: #fff;
   background: var(--admin-gradient-cta);
-  box-shadow: 0 4px 16px rgba(212, 105, 42, 0.32);
+  box-shadow: 0 4px 14px rgba(30, 58, 95, 0.16);
 }
 
 .btn--settings-save:hover:not(:disabled) {
   filter: brightness(1.05);
-  box-shadow: 0 6px 20px rgba(212, 105, 42, 0.38);
+  box-shadow: 0 6px 18px rgba(30, 58, 95, 0.2);
 }
 
 .btn--settings-save:disabled {
@@ -5593,24 +5628,9 @@ a.icon-btn {
 }
 
 .consultancy-page__referral-input {
-  height: 40px;
-  min-width: 150px;
-  max-width: 200px;
-  padding: 0 12px;
-  border-radius: 10px;
-  border: 1px solid var(--admin-border);
-  background: var(--admin-surface);
-  font: inherit;
-  font-weight: 600;
-  color: var(--admin-text);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-}
-
-.consultancy-page__referral-input:focus {
-  outline: none;
-  border-color: var(--admin-brand-blue-soft);
-  box-shadow: 0 0 0 3px rgba(44, 79, 120, 0.15);
+  font-weight: 600;
 }
 
 .payment-status-pill {
@@ -6333,6 +6353,7 @@ fieldset.form-field legend {
 
 .admin-crud-filters__search {
   flex: 1 1 240px;
+  max-width: min(100%, 360px);
 }
 
 .admin-crud-filters__select {
@@ -8427,6 +8448,68 @@ fieldset.form-field legend {
 
 .mental-wellbeing-preview__link {
   margin: 0 0 0.75rem;
+}
+
+.diet-plan-preview__description {
+  margin: 0 0 1rem;
+  color: #475569;
+  line-height: 1.5;
+  font-size: 0.92rem;
+}
+
+.diet-plan-preview__meals-title {
+  margin: 0 0 0.65rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.diet-plan-preview__table-wrap {
+  margin-bottom: 0.75rem;
+  max-height: 320px;
+}
+
+.supplement-dosage-preview {
+  margin-top: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.supplement-dosage-preview__label {
+  display: block;
+  margin-bottom: 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.supplement-dosage-preview__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem 1rem;
+}
+
+.supplement-dosage-preview__grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.supplement-dosage-periods {
+  margin-top: 0.75rem;
+}
+
+.supplement-dosage-periods__qty {
+  max-width: 88px;
+}
+
+.supplement-dosage-periods .data-table td,
+.supplement-dosage-periods .data-table th {
+  vertical-align: middle;
 }
 
 .supplement-delivery-options {

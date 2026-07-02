@@ -49,7 +49,7 @@ function sanitizeUpdateField(key, value) {
     if (value == null || String(value).trim() === "") return "";
     return normalizeMediaField(value, key);
   }
-  if (["title", "description", "ytLink"].includes(key)) {
+  if (["title", "ytLink"].includes(key)) {
     return String(value || "").trim();
   }
   return value;
@@ -57,7 +57,6 @@ function sanitizeUpdateField(key, value) {
 
 async function createYoga({
   title,
-  description,
   thumbnail,
   type = "ytlink",
   ytLink = "",
@@ -68,7 +67,6 @@ async function createYoga({
   const item = {
     id: uuidv4(),
     title: String(title || "").trim(),
-    description: String(description || "").trim(),
     thumbnail: normalizeMediaField(thumbnail, "thumbnail"),
     type: normalizeType(type),
     ytLink: String(ytLink || "").trim(),
@@ -138,7 +136,7 @@ async function deleteYoga(id) {
 async function listYoga({ page = 1, limit = 10, status, type, search } = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const normalizedType = type ? String(type).toLowerCase().trim() : "";
-  const searchFilter = buildContainsFilter(["title", "description"], search);
+  const searchFilter = buildContainsFilter(["title"], search);
   let filterExpression = searchFilter.filterExpression;
   const exprNames = { ...searchFilter.exprNames };
   const exprValues = { ...searchFilter.exprValues };

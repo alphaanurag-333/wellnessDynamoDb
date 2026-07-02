@@ -6,8 +6,6 @@ import {
 
 export const TITLE_MIN_LEN = 2;
 export const TITLE_MAX_LEN = 35;
-export const DESCRIPTION_MIN_LEN = 5;
-export const DESCRIPTION_MAX_LEN = 255;
 export const YT_LINK_MAX_LEN = 500;
 export const LIST_SEARCH_MAX_LEN = 50;
 export { IMAGE_MAX_SIZE_BYTES, VIDEO_MAX_SIZE_BYTES, validateVideoFileSize };
@@ -18,7 +16,6 @@ export const LIST_LIMIT = 10;
 export function emptyForm() {
   return {
     title: "",
-    description: "",
     type: "ytlink",
     ytLink: "",
     video: "",
@@ -31,18 +28,6 @@ export function sanitizeTitle(value) {
     .replace(/[^\p{L}\s]/gu, "")
     .replace(/\s+/g, " ")
     .slice(0, TITLE_MAX_LEN);
-}
-
-export function sanitizeDescription(value) {
-  return String(value ?? "")
-    .replace(/\r\n/g, "\n")
-    .replace(/[ \t]+\n/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .replace(/https?:\/\/\S+/gi, "")
-    .replace(/www\.\S+/gi, "")
-    .replace(/\b[\w-]+\.(?:com|net|org|in|io|co|info|biz|gov|edu|app|dev|me|us|uk|xyz)\b\S*/gi, "")
-    .replace(/[^\p{L}\p{N}\s.,!?'"():;\-]/gu, "")
-    .slice(0, DESCRIPTION_MAX_LEN);
 }
 
 export function truncate(str, max) {
@@ -60,7 +45,6 @@ export function formatDate(value) {
 
 export function validateForm(form, { editId, thumbnailFile, hasExistingThumbnail, videoFile, hasExistingVideo }) {
   const title = form.title.trim();
-  const description = form.description.trim();
   const type = String(form.type || "").trim();
   const ytLink = form.ytLink.trim();
   const video = form.video.trim();
@@ -69,9 +53,6 @@ export function validateForm(form, { editId, thumbnailFile, hasExistingThumbnail
   if (!title) return "Title is required.";
   if (title.length < TITLE_MIN_LEN) return `Title must be at least ${TITLE_MIN_LEN} characters.`;
   if (title.length > TITLE_MAX_LEN) return `Title cannot exceed ${TITLE_MAX_LEN} characters.`;
-  if (!description) return "Description is required.";
-  if (description.length < DESCRIPTION_MIN_LEN) return `Description must be at least ${DESCRIPTION_MIN_LEN} characters.`;
-  if (description.length > DESCRIPTION_MAX_LEN) return `Description cannot exceed ${DESCRIPTION_MAX_LEN} characters.`;
   if (type !== "ytlink" && type !== "video") return "Type must be ytlink or video.";
   if (type === "ytlink" && !ytLink) return "YT link is required when type is ytlink.";
   if (type === "video" && !videoFile && !video && !hasExistingVideo) return "Video file is required when type is video.";

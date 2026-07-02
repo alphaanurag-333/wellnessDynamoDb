@@ -2,7 +2,7 @@ const { randomBytes } = require("crypto");
 const { v4: uuidv4 } = require("uuid");
 const { PutCommand, GetCommand, UpdateCommand, QueryCommand } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../config/db");
-const { queryPartition } = require("../utils/dynamoList");
+const { queryPartition, paginateItems } = require("../utils/dynamoList");
 const { listUsersByParentCoachId } = require("./userModel");
 const { normalizeAssignedCoachType } = require("./userAssignmentLogic");
 
@@ -282,14 +282,10 @@ async function listAllTransactions({
     filterParts.push("createdAt <= :toDate");
     extraValues[":toDate"] = `${String(toDate)}T23:59:59.999Z`;
   }
-  if (search) {
-    filterParts.push(
-      "(contains(userSnapshot.#name, :search) OR contains(userSnapshot.#email, :search) OR contains(referenceNumber, :search))"
-    );
-    extraNames["#name"] = "name";
-    extraNames["#email"] = "email";
-    extraValues[":search"] = String(search).trim();
-  }
+
+  const searchTerm = String(search || "").trim();
+  const hasSearch = Boolean(searchTerm);
+  const normalizedSearch = searchTerm.toLowerCase();
 
   const result = await queryPartition({
     tableName: TABLE,
@@ -299,13 +295,33 @@ async function listAllTransactions({
     filterExpression: filterParts.length ? filterParts.join(" AND ") : undefined,
     exprNames: extraNames,
     exprValues: extraValues,
-    page,
-    limit,
+    page: hasSearch ? 1 : page,
+    limit: hasSearch ? Number.MAX_SAFE_INTEGER : limit,
+    maxLimit: hasSearch ? Number.MAX_SAFE_INTEGER : 200,
   });
 
+  if (!hasSearch) {
+    return {
+      transactions: result.items.map(toPublicTransaction),
+      pagination: result.pagination,
+    };
+  }
+
+  const filtered = result.items.filter((row) => {
+    const haystack = [
+      row.userSnapshot?.name,
+      row.userSnapshot?.email,
+      row.referenceNumber,
+    ]
+      .map((value) => String(value || "").toLowerCase())
+      .join(" ");
+    return haystack.includes(normalizedSearch);
+  });
+  const paged = paginateItems(filtered, page, limit, 200);
+
   return {
-    transactions: result.items.map(toPublicTransaction),
-    pagination: result.pagination,
+    transactions: paged.items.map(toPublicTransaction),
+    pagination: paged.pagination,
   };
 }
 

@@ -18,7 +18,7 @@ function DetailRow({ label, value }) {
 }
 
 export function PrakrutiThingToAvoidView() {
-  const { thingToAvoidId } = useParams();
+  const { itemId } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const adminToken = useSelector((s) => s.auth.adminToken);
@@ -26,11 +26,11 @@ export function PrakrutiThingToAvoidView() {
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    if (!adminToken || !thingToAvoidId) return;
+    if (!adminToken || !itemId) return;
     let cancelled = false;
     (async () => {
       try {
-        const row = await adminGetPrakrutiThingToAvoidById(adminToken, thingToAvoidId);
+        const row = await adminGetPrakrutiThingToAvoidById(adminToken, itemId);
         if (cancelled) return;
         if (!row) setNotFound(true);
         else setItem(row);
@@ -43,7 +43,7 @@ export function PrakrutiThingToAvoidView() {
     return () => {
       cancelled = true;
     };
-  }, [adminToken, dispatch, thingToAvoidId]);
+  }, [adminToken, dispatch, itemId]);
 
   if (notFound) return <NotFoundPage />;
   if (!item) return <AdminPageLoadingState label="Loading…" />;

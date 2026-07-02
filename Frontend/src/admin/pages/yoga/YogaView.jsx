@@ -140,10 +140,6 @@ export function YogaView() {
             <div style={{ marginTop: 6 }}>—</div>
           )}
         </div>
-        <div style={{ marginTop: 16 }}>
-          <strong>Description</strong>
-          <div style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>{yoga.description || "—"}</div>
-        </div>
       </div>
     </div>
   );

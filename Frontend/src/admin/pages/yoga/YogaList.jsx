@@ -121,7 +121,7 @@ export function YogaList() {
               className="user-field__input"
               value={listSearch}
               onChange={(e) => setListSearch(e.target.value.slice(0, LIST_SEARCH_MAX_LEN))}
-              placeholder="Title or description..."
+              placeholder="Title..."
               maxLength={LIST_SEARCH_MAX_LEN}
             />
           </label>

@@ -195,7 +195,12 @@ async function listByPartitionKey({
     return result;
   }
 
-  const filtered = filterItemsBySearch(result.items, { search: searchTerm, searchFields, searchFn });
+  let items = result.items;
+  if (filterExpression) {
+    items = applyExprFilterInMemory(items, filterExpression, exprNames, exprValues);
+  }
+
+  const filtered = filterItemsBySearch(items, { search: searchTerm, searchFields, searchFn });
   return paginateItems(filtered, page, limit, maxLimit);
 }
 
@@ -213,6 +218,51 @@ function paginateItems(items, page, limit, maxLimit = 200) {
   };
 }
 
+function fieldMatchesTerm(item, field, term) {
+  const value = item[field];
+  if (Array.isArray(value)) {
+    return value.some((entry) => String(entry || "").toLowerCase().includes(term));
+  }
+  return String(value || "").toLowerCase().includes(term);
+}
+
+function resolveExprField(exprNames, token) {
+  return exprNames[token] || token.replace(/^#/, "");
+}
+
+function resolveExprValue(exprValues, token) {
+  return exprValues[token];
+}
+
+function matchesExprClause(item, clause, exprNames, exprValues) {
+  const trimmed = String(clause || "").trim();
+  if (!trimmed) return true;
+
+  const eqMatch = trimmed.match(/^(#\w+)\s*=\s*(:\w+)$/);
+  if (eqMatch) {
+    const field = resolveExprField(exprNames, eqMatch[1]);
+    const value = resolveExprValue(exprValues, eqMatch[2]);
+    return String(item[field] ?? "").toLowerCase() === String(value ?? "").toLowerCase();
+  }
+
+  const containsMatch = trimmed.match(/^contains\((#\w+),\s*(:\w+)\)$/);
+  if (containsMatch) {
+    const field = resolveExprField(exprNames, containsMatch[1]);
+    const value = resolveExprValue(exprValues, containsMatch[2]);
+    return String(item[field] || "").toLowerCase().includes(String(value || "").toLowerCase());
+  }
+
+  return true;
+}
+
+function applyExprFilterInMemory(items, filterExpression, exprNames = {}, exprValues = {}) {
+  if (!filterExpression) return items;
+  const clauses = String(filterExpression).split(/\s+AND\s+/i);
+  return items.filter((item) =>
+    clauses.every((clause) => matchesExprClause(item, clause, exprNames, exprValues))
+  );
+}
+
 function filterItemsBySearch(items, { search, searchFields, searchFn }) {
   const term = String(search || "").trim().toLowerCase();
   if (!term) return items;
@@ -221,7 +271,7 @@ function filterItemsBySearch(items, { search, searchFields, searchFn }) {
   }
   if (!Array.isArray(searchFields) || searchFields.length === 0) return items;
   return items.filter((item) =>
-    searchFields.some((field) => String(item[field] || "").toLowerCase().includes(term))
+    searchFields.some((field) => fieldMatchesTerm(item, field, term))
   );
 }
 
@@ -294,6 +344,8 @@ module.exports = {
   normalizePageLimit,
   paginateDynamo,
   paginateItems,
+  fieldMatchesTerm,
+  applyExprFilterInMemory,
   filterItemsBySearch,
   queryPartition,
   listByPartitionKey,

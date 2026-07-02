@@ -80,7 +80,7 @@ export function AdminUserWaterTrackingPage() {
       error={error}
       days={days}
       onDaysChange={setDays}
-      onBack={() => navigate(`/admin/users/${userId}`)}
+      onBack={() => navigate(-1)}
       backLabel="Back to user"
     />
   );

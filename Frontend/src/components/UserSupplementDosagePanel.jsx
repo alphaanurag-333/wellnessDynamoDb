@@ -4,22 +4,26 @@ import Swal from "sweetalert2";
 import { fetchActiveSupplementCatalog } from "../wellnessCoach/api/coachSupplementCatalog.js";
 
 const PERIOD_ROWS = [
-  { key: "morning", label: "Morning (6am - 12pm)" },
-  { key: "afternoon", label: "Afternoon (12pm - 5pm)" },
-  { key: "evening", label: "Evening/Night (5pm - 12pm)" },
+  { key: "morning", label: "Morning (6am – 12pm)" },
+  { key: "afternoon", label: "Afternoon (12pm – 5pm)" },
+  { key: "evening", label: "Evening/Night (5pm – 12am)" },
 ];
 
 function formatDate(iso) {
   if (!iso) return "—";
   const d = new Date(`${iso}T00:00:00`);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 function addDays(isoDate, days) {
   const d = new Date(`${isoDate}T00:00:00.000Z`);
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
+}
+
+function periodLabel(period) {
+  return PERIOD_ROWS.find((row) => row.key === period)?.label || period;
 }
 
 function defaultPeriodState() {
@@ -32,38 +36,59 @@ function defaultPeriodState() {
 
 function DosageCard({ dosage, onStop, stopping, canStop }) {
   const id = dosage.id || dosage._id;
+  const isActive = dosage.status === "active";
+
   return (
     <article className="assignment-card">
       <div className="assignment-card__header">
         <div className="assignment-card__header-main">
+          <div className="diet-plan-card__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z" />
+              <path d="m8.5 8.5 7 7" />
+            </svg>
+          </div>
           <div>
             <div className="diet-plan-card__title">{dosage.name}</div>
             <div className="diet-plan-card__date">
               {formatDate(dosage.startDate)} – {formatDate(dosage.endDate)} · {dosage.totalPerDay}{" "}
-              {dosage.unit}/day · {dosage.durationDays} days · {dosage.progressPercent ?? 0}%
-              complete
+              {dosage.unit}/day · {dosage.durationDays} days · {dosage.progressPercent ?? 0}% complete
             </div>
           </div>
         </div>
-        {canStop && dosage.status === "active" ? (
-          <button
-            type="button"
-            className="btn btn--ghost btn--sm text-danger"
-            onClick={() => onStop(dosage)}
-            disabled={stopping}
-          >
-            Stop
-          </button>
-        ) : null}
+        <div className="assignment-card__header-actions">
+          <span className={`catalog-picker__badge${isActive ? "" : " catalog-picker__badge--type"}`}>
+            {isActive ? "Active" : "Stopped"}
+          </span>
+          {canStop && isActive ? (
+            <button
+              type="button"
+              className="btn btn--ghost btn--sm text-danger"
+              onClick={() => onStop(dosage)}
+              disabled={stopping}
+            >
+              Stop
+            </button>
+          ) : null}
+        </div>
       </div>
       <div className="assignment-card__body">
-        <ul className="mb-0">
-          {(dosage.periods || []).map((row) => (
-            <li key={`${id}-${row.period}`}>
-              {row.period}: {row.quantity} {dosage.unit} ({row.mealRelation} meal)
-            </li>
-          ))}
-        </ul>
+        {(dosage.periods || []).length > 0 ? (
+          <div className="plan-chip-list">
+            {(dosage.periods || []).map((row) => (
+              <div key={`${id}-${row.period}`} className="plan-chip">
+                <span className="plan-chip__name">{periodLabel(row.period)}</span>
+                <span className="plan-chip__meta">
+                  {row.quantity} {dosage.unit} · {row.mealRelation === "before" ? "Before meal" : "After meal"}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="table-placeholder" style={{ margin: 0 }}>
+            No period details.
+          </p>
+        )}
       </div>
     </article>
   );
@@ -152,6 +177,9 @@ export function UserSupplementDosagePanel({
     return addDays(startDate, durationDays - 1);
   }, [durationDays, startDate]);
 
+  const activeDosages = useMemo(() => dosages.filter((d) => d.status === "active"), [dosages]);
+  const pastDosages = useMemo(() => dosages.filter((d) => d.status !== "active"), [dosages]);
+
   const updatePeriod = (key, patch) => {
     setPeriods((prev) => ({
       ...prev,
@@ -231,13 +259,13 @@ export function UserSupplementDosagePanel({
     }
   };
 
-  if (loading) return <PageLoader />;
-  if (notFound) return <NotFoundPage />;
+  if (notFound && NotFoundPage) return <NotFoundPage />;
+  if (loading && PageLoader) return <PageLoader label="Loading supplement dosage…" />;
 
   const embedded = !backTo;
 
   return (
-    <div className={embedded ? "client-hub-embedded-panel" : "page-card"}>
+    <div className={embedded ? "client-hub-embedded-panel client-hub-module-panel" : "user-page"}>
       {embedded ? (
         <div className="client-hub-embedded-panel__header">
           <h2 className="client-hub-embedded-panel__title">Supplement Dosage</h2>
@@ -246,134 +274,210 @@ export function UserSupplementDosagePanel({
           </p>
         </div>
       ) : (
-        <div className="page-card__header">
-          <div>
-            <Link to={backTo} className="btn btn--ghost btn--sm mb-2">
-              ← Back to clients
-            </Link>
-            <h1 className="page-card__title">Supplement Dosage</h1>
-            <p className="page-card__subtitle">
+        <div className="user-page__toolbar">
+          <Link to={backTo} className="user-back-btn" aria-label="Back to clients">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M15 18 9 12l6-6" />
+            </svg>
+          </Link>
+          <div className="user-page__toolbar-text">
+            <h2 className="user-page__title">Supplement Dosage</h2>
+            <p className="user-page__subtitle">
               Create a per-period dosage schedule. Duration is calculated from pack size and daily total.
             </p>
           </div>
         </div>
       )}
 
-      {error ? <div className="alert alert-danger">{error}</div> : null}
-
-      {!readOnly ? (
-        <form className={`form-card mb-4${embedded ? " form-card--embedded" : ""}`} onSubmit={handleCreate}>
-          <h2 className="form-card__title">New dosage schedule</h2>
-
-          <div className="row g-3 mb-3">
-            <div className="col-md-6">
-              <label className="user-field__label">Supplement</label>
-              <select
-                className="form-select"
-                value={supplementId}
-                onChange={(e) => setSupplementId(e.target.value)}
-              >
-                <option value="">Select supplement</option>
-                {catalog.map((row) => {
-                  const id = row.id || row._id;
-                  return (
-                    <option key={id} value={id}>
-                      {row.name} ({row.packSize} {row.unit})
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-            <div className="col-md-6">
-              <label className="user-field__label">Start date</label>
-              <input
-                type="date"
-                className="form-control"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="table-responsive mb-3">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Period</th>
-                  <th>Enabled</th>
-                  <th>Quantity</th>
-                  <th>Meal timing</th>
-                </tr>
-              </thead>
-              <tbody>
-                {PERIOD_ROWS.map((row) => (
-                  <tr key={row.key}>
-                    <td>{row.label}</td>
-                    <td>
-                      <input
-                        type="checkbox"
-                        checked={periods[row.key].enabled}
-                        onChange={(e) => updatePeriod(row.key, { enabled: e.target.checked })}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="number"
-                        min={1}
-                        className="form-control"
-                        disabled={!periods[row.key].enabled}
-                        value={periods[row.key].quantity}
-                        onChange={(e) =>
-                          updatePeriod(row.key, { quantity: Math.max(1, Number(e.target.value) || 1) })
-                        }
-                      />
-                    </td>
-                    <td>
-                      <select
-                        className="form-select"
-                        disabled={!periods[row.key].enabled}
-                        value={periods[row.key].mealRelation}
-                        onChange={(e) => updatePeriod(row.key, { mealRelation: e.target.value })}
-                      >
-                        <option value="before">Before meal</option>
-                        <option value="after">After meal</option>
-                      </select>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="mb-3">
-            <strong>Preview:</strong>{" "}
-            {selectedSupplement
-              ? `${totalPerDay} ${selectedSupplement.unit}/day · ${durationDays || 0} days · ${formatDate(startDate)} – ${formatDate(endDate)}`
-              : "Select a supplement to preview duration"}
-          </div>
-
-          <button type="submit" className="btn btn--primary" disabled={saving}>
-            {saving ? "Saving..." : "Create dosage schedule"}
-          </button>
-        </form>
+      {error ? (
+        <p className="user-list-error" role="alert">
+          {error}
+        </p>
       ) : null}
 
-      <h2 className="form-card__title">Active & past schedules</h2>
-      {dosages.length === 0 ? (
-        <p className="text-muted">No dosage schedules yet.</p>
-      ) : (
-        <div className="d-flex flex-column gap-3">
-          {dosages.map((dosage) => (
-            <DosageCard
-              key={dosage.id || dosage._id}
-              dosage={dosage}
-              onStop={handleStop}
-              stopping={stoppingId === (dosage.id || dosage._id)}
-              canStop={!readOnly}
-            />
-          ))}
-        </div>
-      )}
+      <div className={embedded ? "client-hub-module-panel__content" : "page-card diet-plan-page"}>
+        {!readOnly ? (
+          <form
+            className={`form-card diet-plan-upload${embedded ? " form-card--embedded" : ""}`}
+            onSubmit={handleCreate}
+          >
+            <h3 className="form-card__title">New dosage schedule</h3>
+
+            <div className="row g-3" style={{ marginTop: 16 }}>
+              <label className="user-field col-12 col-md-6">
+                <span className="user-field__label">
+                  Supplement <span className="required-dot">*</span>
+                </span>
+                <select
+                  className="user-field__input"
+                  value={supplementId}
+                  onChange={(e) => setSupplementId(e.target.value)}
+                >
+                  <option value="">Select supplement</option>
+                  {catalog.map((row) => {
+                    const id = row.id || row._id;
+                    return (
+                      <option key={id} value={id}>
+                        {row.name} ({row.packSize} {row.unit})
+                      </option>
+                    );
+                  })}
+                </select>
+              </label>
+              <label className="user-field col-12 col-md-6">
+                <span className="user-field__label">
+                  Start date <span className="required-dot">*</span>
+                </span>
+                <input
+                  type="date"
+                  className="user-field__input"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  required
+                />
+              </label>
+            </div>
+
+            <div className="form-section" style={{ marginTop: 20 }}>
+              <div className="form-section__header">
+                <span className="user-field__label" style={{ marginBottom: 0 }}>
+                  Daily periods <span className="required-dot">*</span>
+                </span>
+              </div>
+
+              <div className="table-scroll supplement-dosage-periods">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Period</th>
+                      <th>Enabled</th>
+                      <th>Quantity</th>
+                      <th>Meal timing</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {PERIOD_ROWS.map((row) => (
+                      <tr key={row.key}>
+                        <td>{row.label}</td>
+                        <td>
+                          <input
+                            type="checkbox"
+                            checked={periods[row.key].enabled}
+                            onChange={(e) => updatePeriod(row.key, { enabled: e.target.checked })}
+                            aria-label={`Enable ${row.label}`}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            min={1}
+                            className="user-field__input supplement-dosage-periods__qty"
+                            disabled={!periods[row.key].enabled}
+                            value={periods[row.key].quantity}
+                            onChange={(e) =>
+                              updatePeriod(row.key, { quantity: Math.max(1, Number(e.target.value) || 1) })
+                            }
+                          />
+                        </td>
+                        <td>
+                          <select
+                            className="user-field__input"
+                            disabled={!periods[row.key].enabled}
+                            value={periods[row.key].mealRelation}
+                            onChange={(e) => updatePeriod(row.key, { mealRelation: e.target.value })}
+                          >
+                            <option value="before">Before meal</option>
+                            <option value="after">After meal</option>
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="supplement-dosage-preview">
+              <span className="supplement-dosage-preview__label">Schedule preview</span>
+              {selectedSupplement ? (
+                <div className="supplement-dosage-preview__grid">
+                  <div>
+                    <span className="data-table__muted">Daily total</span>
+                    <strong>
+                      {totalPerDay} {selectedSupplement.unit}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="data-table__muted">Duration</span>
+                    <strong>{durationDays || 0} days</strong>
+                  </div>
+                  <div>
+                    <span className="data-table__muted">End date</span>
+                    <strong>{endDate ? formatDate(endDate) : "—"}</strong>
+                  </div>
+                </div>
+              ) : (
+                <p className="table-placeholder" style={{ margin: 0 }}>
+                  Select a supplement and enable at least one period to preview duration.
+                </p>
+              )}
+            </div>
+
+            <div className="diet-assign-form__actions">
+              <span className="diet-assign-form__hint">
+                {enabledPeriods.length
+                  ? `${enabledPeriods.length} period(s) enabled for this schedule.`
+                  : "Enable one or more periods to create a schedule."}
+              </span>
+              <button
+                type="submit"
+                className="btn btn--primary"
+                disabled={saving || !supplementId || !enabledPeriods.length}
+              >
+                {saving ? "Creating…" : "Create dosage schedule"}
+              </button>
+            </div>
+          </form>
+        ) : null}
+
+        <section className="diet-plan-section client-hub-module-panel__section">
+          <h3 className="form-card__title">Active schedules ({activeDosages.length})</h3>
+          {activeDosages.length === 0 ? (
+            <p className="table-placeholder">No active dosage schedules.</p>
+          ) : (
+            <div className="diet-plan-list">
+              {activeDosages.map((dosage) => (
+                <DosageCard
+                  key={dosage.id || dosage._id}
+                  dosage={dosage}
+                  onStop={handleStop}
+                  stopping={stoppingId === (dosage.id || dosage._id)}
+                  canStop={!readOnly}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="diet-plan-section client-hub-module-panel__section">
+          <h3 className="form-card__title">Past schedules ({pastDosages.length})</h3>
+          {pastDosages.length === 0 ? (
+            <p className="table-placeholder">No past dosage schedules.</p>
+          ) : (
+            <div className="diet-plan-list">
+              {pastDosages.map((dosage) => (
+                <DosageCard
+                  key={dosage.id || dosage._id}
+                  dosage={dosage}
+                  onStop={handleStop}
+                  stopping={stoppingId === (dosage.id || dosage._id)}
+                  canStop={!readOnly}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 }
