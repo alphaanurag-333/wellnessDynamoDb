@@ -12,7 +12,6 @@ const { normalizeMediaField, resolveMediaFields } = require("../utils/s3");
 const {
   listByPartitionKey,
   buildContainsFilter,
-  appendFilter,
   sortByCreatedAtDesc,
 } = require("../utils/dynamoList");
 
@@ -41,10 +40,11 @@ function normalizeImageField(value, fieldName) {
   return normalizeMediaField(value, fieldName);
 }
 
-async function createTransformation({ timeTaken, achievements, oldImage, newImage, description, status = "active", userId = null }) {
+async function createTransformation({ name, timeTaken, achievements, oldImage, newImage, description, status = "active" }) {
   const now = new Date().toISOString();
   const item = {
     id: uuidv4(),
+    name: String(name || "").trim(),
     timeTaken: Number(timeTaken),
     achievements: String(achievements || "").trim(),
     oldImage: normalizeImageField(oldImage, "oldImage"),
@@ -54,11 +54,6 @@ async function createTransformation({ timeTaken, achievements, oldImage, newImag
     createdAt: now,
     updatedAt: now,
   };
-
-  const normalizedUserId = userId ? String(userId).trim() : "";
-  if (normalizedUserId) {
-    item.userId = normalizedUserId;
-  }
 
   await docClient.send(new PutCommand({
     TableName: TABLE,
@@ -89,15 +84,9 @@ async function updateTransformation(id, updates) {
 
   const exprNames = {};
   const exprValues = { ":updatedAt": new Date().toISOString() };
-  const removeFields = [];
   let setExpr = "SET updatedAt = :updatedAt";
 
   for (const [key, value] of entries) {
-    if (key === "userId" && (value === null || String(value).trim() === "")) {
-      exprNames["#userId"] = "userId";
-      removeFields.push("#userId");
-      continue;
-    }
     const n = `#${key}`;
     const v = `:${key}`;
     exprNames[n] = key;
@@ -109,9 +98,6 @@ async function updateTransformation(id, updates) {
   }
 
   const updateParts = [setExpr];
-  if (removeFields.length > 0) {
-    updateParts.push(`REMOVE ${removeFields.join(", ")}`);
-  }
 
   const { Attributes } = await docClient.send(new UpdateCommand({
     TableName: TABLE,
@@ -134,24 +120,16 @@ async function deleteTransformation(id) {
   }));
 }
 
-async function listTransformations({ page = 1, limit = 10, status, search, userId } = {}) {
+async function listTransformations({ page = 1, limit = 10, status, search } = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
-  const normalizedUserId = String(userId || "").trim();
-  const searchFilter = buildContainsFilter(["achievements", "description"], search);
-  let filterExpression = searchFilter.filterExpression;
+  const searchFilter = buildContainsFilter(["name", "achievements", "description"], search);
+  const filterExpression = searchFilter.filterExpression;
   const exprNames = { ...searchFilter.exprNames };
   const exprValues = { ...searchFilter.exprValues };
 
-  const useUserIndex = Boolean(normalizedUserId);
-  const indexName = useUserIndex ? "UserIdCreatedAtIndex" : "StatusCreatedAtIndex";
-  const partitionKeyName = useUserIndex ? "userId" : "status";
-  const partitionKeyValue = useUserIndex ? normalizedUserId : normalizedStatus || undefined;
-
-  if (normalizedStatus && partitionKeyName !== "status") {
-    exprNames["#status"] = "status";
-    exprValues[":status"] = normalizedStatus;
-    filterExpression = appendFilter(filterExpression, "#status = :status");
-  }
+  const indexName = "StatusCreatedAtIndex";
+  const partitionKeyName = "status";
+  const partitionKeyValue = normalizedStatus || undefined;
 
   const { items, pagination } = await listByPartitionKey({
     tableName: TABLE,

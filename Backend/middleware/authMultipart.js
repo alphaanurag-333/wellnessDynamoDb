@@ -97,7 +97,10 @@ exports.optionalDietPlanFile = optionalMultipart(dietPlanUpload);
 const supplementBillUpload = memorySingle("file");
 exports.optionalSupplementBillFile = optionalMultipart(supplementBillUpload);
 
+const realPeopleTestimonialUpload = memorySingle("file");
 const mealPhotoUpload = memorySingle("photo");
+
+exports.optionalRealPeopleTestimonialFile = optionalMultipart(realPeopleTestimonialUpload);
 exports.optionalMealPhotoFile = optionalMultipart(mealPhotoUpload);
 
 const healthProgressWeightPicUpload = memorySingle("weight_pic");

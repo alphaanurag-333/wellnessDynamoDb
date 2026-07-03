@@ -30,8 +30,8 @@ function normalizeTimeTaken(value) {
 }
 
 exports.listTransformationsController = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, status, search, userId } = req.query;
-  const data = await listTransformations({ page, limit, status, search, userId });
+  const { page = 1, limit = 10, status, search } = req.query;
+  const data = await listTransformations({ page, limit, status, search });
   return res.status(200).json({
     status: true,
     transformations: data.transformations,
@@ -48,29 +48,30 @@ exports.getTransformationByIdController = asyncHandler(async (req, res) => {
 });
 
 exports.createTransformationController = asyncHandler(async (req, res) => {
+  const name = String(req.body.name || "").trim();
   const timeTaken = normalizeTimeTaken(req.body.timeTaken);
   const achievements = String(req.body.achievements || "").trim();
   const description = String(req.body.description || "").trim();
   const status = String(req.body.status || "active").trim().toLowerCase();
-  const userId = String(req.body.userId || "").trim();
   const uploadedOld = await uploadMulterField(req, "oldImage", S3_FOLDER);
   const uploadedNew = await uploadMulterField(req, "newImage", S3_FOLDER);
   const oldImage = uploadedOld ?? parseMediaKeyFromBody(req.body.oldImage, "oldImage");
   const newImage = uploadedNew ?? parseMediaKeyFromBody(req.body.newImage, "newImage");
 
+  if (!name) throw new AppError("name is required", 400);
   if (!achievements) throw new AppError("achievements is required", 400);
   if (!description) throw new AppError("description is required", 400);
   if (!oldImage || !newImage) throw new AppError("oldImage and newImage are required", 400);
   if (!["active", "inactive"].includes(status)) throw new AppError("status must be active or inactive", 400);
 
   const transformation = await createTransformation({
+    name,
     timeTaken,
     achievements,
     oldImage,
     newImage,
     description,
     status,
-    userId: userId || undefined,
   });
 
   return res.status(201).json({
@@ -108,9 +109,10 @@ exports.updateTransformationController = asyncHandler(async (req, res) => {
     updates.status = status;
   }
 
-  if (req.body.userId !== undefined) {
-    const userId = String(req.body.userId || "").trim();
-    updates.userId = userId || "";
+  if (req.body.name !== undefined) {
+    const name = String(req.body.name || "").trim();
+    if (!name) throw new AppError("name cannot be empty", 400);
+    updates.name = name;
   }
 
   if (req.body.oldImage !== undefined) {

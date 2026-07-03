@@ -4,6 +4,7 @@ const { listBanners } = require("../../models/bannerModel");
 const { listFaqs } = require("../../models/faqModel");
 const { getPageBySlug, slugify } = require("../../models/staticPageModel");
 const { listClientTestimonials } = require("../../models/clientTestimonials");
+const { listRealPeopleTestimonials } = require("../../models/realPeopleTestimonialModel");
 const { listVideoTestimonials } = require("../../models/videoTestimonials");
 const { getCofounderMessage } = require("../../models/cofounderMessageModel");
 const { listHealthConcerns } = require("../../models/healthConcernModel");
@@ -85,6 +86,25 @@ exports.getActiveClientTestimonials = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     clientTestimonials: data.clientTestimonials,
+    pagination: data.pagination,
+  });
+});
+
+exports.getActiveRealPeopleTestimonials = asyncHandler(async (req, res) => {
+  const { page, limit } = readPaging(req.query);
+  const data = resolveListMedia(
+    await listRealPeopleTestimonials({
+      page,
+      limit,
+      status: "active",
+      publicOnly: true,
+    }),
+    "realPeopleTestimonials",
+    ["userAvatar"]
+  );
+  return res.status(200).json({
+    status: true,
+    realPeopleTestimonials: data.realPeopleTestimonials,
     pagination: data.pagination,
   });
 });
