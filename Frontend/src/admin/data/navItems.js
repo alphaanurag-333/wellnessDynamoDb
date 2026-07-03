@@ -72,6 +72,7 @@ export const navItems = [
     icon: "message-circle",
     children: [
       { to: "client-testimonials", label: "Client Testimonials", icon: "quote" },
+      { to: "real-people-testimonials", label: "Real People Testimonials", icon: "quote" },
       { to: "video-testimonials", label: "Video Testimonials", icon: "video" },
     ],
   },

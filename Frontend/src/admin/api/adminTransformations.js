@@ -4,13 +4,12 @@ function base() {
   return "/admin/transformations";
 }
 
-export async function adminListTransformations(token, { page = 1, limit = 50, status, search, userId } = {}) {
+export async function adminListTransformations(token, { page = 1, limit = 50, status, search } = {}) {
   const q = new URLSearchParams();
   q.set("page", String(page));
   q.set("limit", String(limit));
   if (status) q.set("status", status);
   if (search && String(search).trim()) q.set("search", String(search).trim());
-  if (userId && String(userId).trim()) q.set("userId", String(userId).trim());
   try {
     const { data: body } = await api.get(`${base()}?${q}`, { headers: authHeader(token) });
     return {
@@ -34,12 +33,11 @@ export async function adminGetTransformationById(token, id) {
 export async function adminCreateTransformation(token, fields, oldFile, newFile) {
   if (oldFile instanceof File && newFile instanceof File) {
     const fd = new FormData();
+    fd.append("name", String(fields.name ?? "").trim());
     fd.append("timeTaken", String(fields.timeTaken ?? ""));
     fd.append("achievements", String(fields.achievements ?? "").trim());
     fd.append("description", String(fields.description ?? "").trim());
     fd.append("status", String(fields.status || "active"));
-    const uid = String(fields.userId ?? "").trim();
-    if (uid) fd.append("userId", uid);
     fd.append("oldImage", oldFile);
     fd.append("newImage", newFile);
     try {
@@ -53,13 +51,13 @@ export async function adminCreateTransformation(token, fields, oldFile, newFile)
     const { data: body } = await api.post(
       base(),
       {
+        name: String(fields.name ?? "").trim(),
         timeTaken: Number(fields.timeTaken),
         achievements: String(fields.achievements ?? "").trim(),
         description: String(fields.description ?? "").trim(),
         oldImage: String(fields.oldImage ?? "").trim(),
         newImage: String(fields.newImage ?? "").trim(),
         status: String(fields.status || "active"),
-        ...(String(fields.userId ?? "").trim() ? { userId: String(fields.userId).trim() } : {}),
       },
       { headers: authHeader(token) }
     );
@@ -73,13 +71,11 @@ export async function adminUpdateTransformation(token, id, fields, oldFile, newF
   const hasFile = oldFile instanceof File || newFile instanceof File;
   if (hasFile) {
     const fd = new FormData();
+    if (fields.name !== undefined) fd.append("name", String(fields.name).trim());
     if (fields.timeTaken !== undefined) fd.append("timeTaken", String(fields.timeTaken));
     if (fields.achievements !== undefined) fd.append("achievements", String(fields.achievements).trim());
     if (fields.description !== undefined) fd.append("description", String(fields.description).trim());
     if (fields.status !== undefined) fd.append("status", String(fields.status));
-    if (fields.userId !== undefined) {
-      fd.append("userId", fields.userId ? String(fields.userId).trim() : "");
-    }
     if (oldFile instanceof File) fd.append("oldImage", oldFile);
     if (newFile instanceof File) fd.append("newImage", newFile);
     try {
@@ -90,15 +86,13 @@ export async function adminUpdateTransformation(token, id, fields, oldFile, newF
     }
   }
   const payload = {};
+  if (fields.name !== undefined) payload.name = String(fields.name).trim();
   if (fields.timeTaken !== undefined) payload.timeTaken = Number(fields.timeTaken);
   if (fields.achievements !== undefined) payload.achievements = String(fields.achievements).trim();
   if (fields.description !== undefined) payload.description = String(fields.description).trim();
   if (fields.oldImage !== undefined) payload.oldImage = String(fields.oldImage).trim();
   if (fields.newImage !== undefined) payload.newImage = String(fields.newImage).trim();
   if (fields.status !== undefined) payload.status = String(fields.status);
-  if (fields.userId !== undefined) {
-    payload.userId = fields.userId ? String(fields.userId).trim() : "";
-  }
   try {
     const { data: body } = await api.patch(`${base()}/${encodeURIComponent(id)}`, payload, { headers: authHeader(token) });
     return body.transformation;

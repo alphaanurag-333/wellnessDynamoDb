@@ -1,5 +1,7 @@
 import { IMAGE_MAX_SIZE_BYTES } from "../../../utils/mediaUploadValidation.js";
 
+export const NAME_MIN_LEN = 2;
+export const NAME_MAX_LEN = 35;
 export const ACHIEVEMENTS_MIN_LEN = 2;
 export const ACHIEVEMENTS_MAX_LEN = 35;
 export const DESCRIPTION_MIN_LEN = 5;
@@ -8,19 +10,24 @@ export const TIME_TAKEN_MIN = 1;
 export const TIME_TAKEN_MAX = 120;
 export const TIME_TAKEN_MAX_LEN = 3;
 export const LIST_SEARCH_MAX_LEN = 50;
-export const USER_ID_FILTER_MAX_LEN = 32;
 export { IMAGE_MAX_SIZE_BYTES };
 export const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/jpg"]);
 export const LIST_LIMIT = 10;
 
 export function emptyForm() {
   return {
+    name: "",
     timeTaken: "",
     achievements: "",
     description: "",
     status: "active",
-    userId: "",
   };
+}
+
+export function sanitizeName(value) {
+  return String(value ?? "")
+    .replace(/\s+/g, " ")
+    .slice(0, NAME_MAX_LEN);
 }
 
 export function sanitizeAchievements(value) {
@@ -79,24 +86,16 @@ export function formatDate(value) {
   return new Date(value).toLocaleString();
 }
 
-export function userLabel(row) {
-  const u = row?.userId;
-  if (!u) return "—";
-  if (typeof u === "object") {
-    return u.name || u.email || u.phone || "—";
-  }
-  return String(u);
-}
-
-export function userIdFromRow(row) {
-  const u = row?.userId;
-  if (!u) return "";
-  if (typeof u === "object" && u._id) return String(u._id);
-  if (typeof u === "object" && u.id) return String(u.id);
-  return String(u);
-}
-
 export function validateForm(form, { editId, oldFile, newFile, hasExistingImages }) {
+  const name = form.name.trim();
+  if (!name) return "Name is required.";
+  if (name.length < NAME_MIN_LEN) {
+    return `Name must be at least ${NAME_MIN_LEN} characters.`;
+  }
+  if (name.length > NAME_MAX_LEN) {
+    return `Name cannot exceed ${NAME_MAX_LEN} characters.`;
+  }
+
   const timeTakenErr = validateTimeTakenMonths(form.timeTaken);
   if (timeTakenErr) return timeTakenErr;
 
@@ -122,11 +121,6 @@ export function validateForm(form, { editId, oldFile, newFile, hasExistingImages
 
   if (status !== "active" && status !== "inactive") {
     return "Status must be active or inactive.";
-  }
-
-  const uid = form.userId.trim();
-  if (uid && !/^[a-f\d]{24}$/i.test(uid)) {
-    return "User ID must be a valid 24-character hex ObjectId or left empty.";
   }
 
   if (!editId) {

@@ -7,7 +7,7 @@ import { logout } from "../../../store/authSlice.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { NotFoundPage } from "../NotFoundPage.jsx";
 import { AdminPageHeader, AdminStatusBadge } from "../../components/AdminCrud.jsx";
-import { formatDate, userLabel } from "./TransformationShared.js";
+import { formatDate } from "./TransformationShared.js";
 
 function DetailRow({ label, value }) {
   return (
@@ -132,7 +132,7 @@ export function TransformationView() {
               <AdminStatusBadge status={transformation.status} />
             </span>
           </div>
-          <DetailRow label="User" value={userLabel(transformation)} />
+          <DetailRow label="Name" value={transformation.name} />
           <DetailRow label="Created" value={formatDate(transformation.createdAt)} />
           <DetailRow label="Updated" value={formatDate(transformation.updatedAt)} />
         </div>
@@ -144,11 +144,6 @@ export function TransformationView() {
           <strong>Description</strong>
           <div style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>{transformation.description || "—"}</div>
         </div>
-        {transformation.userId && typeof transformation.userId === "object" && transformation.userId.email ? (
-          <p className="data-table__muted" style={{ marginTop: 12 }}>
-            User email: {transformation.userId.email}
-          </p>
-        ) : null}
       </div>
     </div>
   );

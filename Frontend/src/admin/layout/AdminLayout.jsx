@@ -74,6 +74,13 @@ function titleFromPath(pathname) {
     return "Client testimonials";
   }
 
+  if (p.startsWith("/admin/real-people-testimonials")) {
+    if (/^\/admin\/real-people-testimonials\/new$/.test(p)) return "Add real people testimonial";
+    if (/^\/admin\/real-people-testimonials\/[^/]+\/edit$/.test(p)) return "Edit real people testimonial";
+    if (/^\/admin\/real-people-testimonials\/[^/]+$/.test(p)) return "Real people testimonial details";
+    return "Real people testimonials";
+  }
+
   if (p.startsWith("/admin/video-testimonials")) {
     if (/^\/admin\/video-testimonials\/new$/.test(p)) return "Add video testimonial";
     if (/^\/admin\/video-testimonials\/[^/]+\/edit$/.test(p)) return "Edit video testimonial";

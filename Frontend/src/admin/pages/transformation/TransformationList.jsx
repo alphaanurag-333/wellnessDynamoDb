@@ -18,7 +18,6 @@ import {
   LIST_LIMIT,
   LIST_SEARCH_MAX_LEN,
   truncate,
-  userLabel,
 } from "./TransformationShared.js";
 
 export function TransformationList() {
@@ -131,7 +130,7 @@ export function TransformationList() {
               className="user-field__input"
               value={listSearch}
               onChange={(e) => setListSearch(e.target.value.slice(0, LIST_SEARCH_MAX_LEN))}
-              placeholder="Achievements or description..."
+              placeholder="Name, achievements, or description..."
               maxLength={LIST_SEARCH_MAX_LEN}
             />
           </label>
@@ -158,7 +157,7 @@ export function TransformationList() {
                 <th>After</th>
                 <th>Achievements</th>
                 <th>Time</th>
-                <th>User</th>
+                <th>Name</th>
                 <th>Created</th>
                 <th>Status</th>
                 <th className="data-table__actions-col">Actions</th>
@@ -185,7 +184,7 @@ export function TransformationList() {
                       {truncate(row.achievements, 60)}
                     </td>
                     <td>{row.timeTaken != null ? row.timeTaken : "—"}</td>
-                    <td className="data-table__muted">{userLabel(row)}</td>
+                    <td className="data-table__muted">{row.name || "—"}</td>
                     <td className="data-table__muted">{formatDate(row.createdAt)}</td>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

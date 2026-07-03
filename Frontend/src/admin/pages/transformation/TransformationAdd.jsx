@@ -9,6 +9,8 @@ import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { mediaUrl } from "../../../media.js";
 import { blockPhoneNonDigitKeyDown } from "../../../utils/personFieldValidation.js";
 import {
+  NAME_MAX_LEN,
+  NAME_MIN_LEN,
   ACHIEVEMENTS_MAX_LEN,
   ACHIEVEMENTS_MIN_LEN,
   ALLOWED_IMAGE_TYPES,
@@ -21,8 +23,8 @@ import {
   emptyForm,
   sanitizeAchievements,
   sanitizeDescription,
+  sanitizeName,
   sanitizeTimeTakenMonths,
-  userIdFromRow,
   validateForm,
 } from "./TransformationShared.js";
 
@@ -36,13 +38,13 @@ export function TransformationForm({ mode = "create", initialTransformation = nu
   const [form, setForm] = useState(() => {
     if (!initialTransformation) return emptyForm();
     return {
+      name: initialTransformation.name || "",
       timeTaken: sanitizeTimeTakenMonths(
         initialTransformation.timeTaken != null ? String(initialTransformation.timeTaken) : ""
       ),
       achievements: initialTransformation.achievements || "",
       description: initialTransformation.description || "",
       status: initialTransformation.status || "active",
-      userId: userIdFromRow(initialTransformation),
     };
   });
   const editId = isEditMode && initialTransformation ? initialTransformation._id || initialTransformation.id || "" : "";
@@ -115,11 +117,11 @@ export function TransformationForm({ mode = "create", initialTransformation = nu
     }
 
     const payload = {
+      name: form.name.trim(),
       timeTaken: Number(form.timeTaken),
       achievements: form.achievements.trim(),
       description: form.description.trim(),
       status: form.status || "active",
-      userId: form.userId.trim(),
     };
 
     setSaving(true);
@@ -176,16 +178,23 @@ export function TransformationForm({ mode = "create", initialTransformation = nu
             <option value="inactive">Inactive</option>
           </select>
         </label>
-        {/* <label className="user-field col-12 col-md-4">
-          <span className="user-field__label">User ID (optional)</span>
+        <label className="user-field col-12 col-md-4">
+          <span className="user-field__label">
+            Name <span className="required-dot">*</span>
+          </span>
           <input
             className="user-field__input"
-            value={form.userId}
-            onChange={(e) => setForm((p) => ({ ...p, userId: e.target.value.trim() }))}
-            placeholder="Link to a user record"
-            autoComplete="off"
+            value={form.name}
+            minLength={NAME_MIN_LEN}
+            maxLength={NAME_MAX_LEN}
+            onChange={(e) => setForm((p) => ({ ...p, name: sanitizeName(e.target.value) }))}
+            placeholder="Person's name"
+            required
           />
-        </label> */}
+          <small className="data-table__muted">
+            {form.name.trim().length}/{NAME_MAX_LEN} (min {NAME_MIN_LEN})
+          </small>
+        </label>
         <label className="user-field col-12">
           <span className="user-field__label">
             Achievements <span className="required-dot">*</span>

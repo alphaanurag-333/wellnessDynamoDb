@@ -94,6 +94,10 @@ import { TransformationList } from "../pages/transformation/TransformationList.j
 import { TransformationAdd } from "../pages/transformation/TransformationAdd.jsx";
 import { TransformationEdit } from "../pages/transformation/TransformationEdit.jsx";
 import { TransformationView } from "../pages/transformation/TransformationView.jsx";
+import { RealPeopleTestimonialList } from "../pages/realPeopleTestimonial/RealPeopleTestimonialList.jsx";
+import { RealPeopleTestimonialAdd } from "../pages/realPeopleTestimonial/RealPeopleTestimonialAdd.jsx";
+import { RealPeopleTestimonialEdit } from "../pages/realPeopleTestimonial/RealPeopleTestimonialEdit.jsx";
+import { RealPeopleTestimonialView } from "../pages/realPeopleTestimonial/RealPeopleTestimonialView.jsx";
 import { BirthdayNotificationList } from "../pages/birthdayNotification/BirthdayNotificationList.jsx";
 import { BirthdayNotificationView } from "../pages/birthdayNotification/BirthdayNotificationView.jsx";
 import { BirthdayPostList } from "../pages/birthdayPost/BirthdayPostList.jsx";
@@ -337,6 +341,12 @@ export const adminRouteTree = (
       <Route path="new" element={<ClientTestimonialAdd />} />
       <Route path=":testimonialId/edit" element={<ClientTestimonialEdit />} />
       <Route path=":testimonialId" element={<ClientTestimonialView />} />
+    </Route>
+    <Route path="real-people-testimonials" element={<Outlet />}>
+      <Route index element={<RealPeopleTestimonialList />} />
+      <Route path="new" element={<RealPeopleTestimonialAdd />} />
+      <Route path=":testimonialId/edit" element={<RealPeopleTestimonialEdit />} />
+      <Route path=":testimonialId" element={<RealPeopleTestimonialView />} />
     </Route>
     <Route path="video-testimonials" element={<Outlet />}>
       <Route index element={<VideoTestimonialList />} />
