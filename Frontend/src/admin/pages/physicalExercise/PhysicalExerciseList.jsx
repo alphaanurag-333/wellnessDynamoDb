@@ -10,7 +10,7 @@ import {
   adminListPhysicalExercises,
   adminUpdatePhysicalExercise,
 } from "../../api/adminPhysicalExercise.js";
-import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
+import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { formatDate, truncate, LIST_LIMIT, LIST_SEARCH_MAX_LEN } from "./PhysicalExerciseShared.js";
 
@@ -174,7 +174,7 @@ export function PhysicalExerciseList() {
                 rows.map((row, idx) => (
                   <tr key={row._id}>
                     <td className="data-table__muted">{(page - 1) * LIST_LIMIT + idx + 1}</td>
-                    <td>{row.title || "—"}</td>
+                    <td><TableCellText value={row.title} /></td>
                     <td className="data-table__muted">{truncate(row.description, 60) || "—"}</td>
                     <td className="data-table__muted">{row.type === "video" ? "Video" : row.type === "ytlink" ? "YT Link" : row.type || "—"}</td>
                     <td>

@@ -11,7 +11,7 @@ import {
   adminUpdateHealthDisorder,
 } from "../../api/adminHealthDisorders.js";
 import { logout } from "../../../store/authSlice.js";
-import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
+import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { formatDate, LIST_LIMIT, LIST_SEARCH_MAX_LEN, truncate } from "./HealthDisorderShared.js";
 
 export function HealthDisorderList() {
@@ -173,7 +173,7 @@ export function HealthDisorderList() {
                 rows.map((row, idx) => (
                   <tr key={row._id}>
                     <td className="data-table__muted">{(page - 1) * LIST_LIMIT + idx + 1}</td>
-                    <td>{row.title || "—"}</td>
+                    <td><TableCellText value={row.title} /></td>
                     <td className="data-table__muted">{row.type === "chronic" ? "Chronic" : row.type === "acute" ? "Acute" : row.type || "—"}</td>
                     <td className="data-table__muted">
                       {Array.isArray(row.symptoms) && row.symptoms.length

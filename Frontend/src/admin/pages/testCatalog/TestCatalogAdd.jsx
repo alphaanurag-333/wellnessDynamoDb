@@ -92,6 +92,9 @@ function ParametersEditor({ parameters, onChange, testType }) {
               }}
               required
             />
+            <small className="data-table__muted">
+              {String(row.name || "").trim().length}/{PARAM_NAME_MAX_LEN}
+            </small>
           </label>
           <label className="user-field col-12 col-md-2">
             <span className="user-field__label">Param ID</span>
@@ -102,6 +105,9 @@ function ParametersEditor({ parameters, onChange, testType }) {
               onChange={(e) => updateRow(index, { paramId: slugify(e.target.value) })}
               placeholder="auto-generated"
             />
+            <small className="data-table__muted">
+              {String(row.paramId || slugify(row.name)).length}/{TEST_ID_MAX_LEN}
+            </small>
           </label>
           <label className="user-field col-12 col-md-2">
             <span className="user-field__label">Unit</span>
@@ -112,6 +118,9 @@ function ParametersEditor({ parameters, onChange, testType }) {
               onChange={(e) => updateRow(index, { unit: sanitizeText(e.target.value, UNIT_MAX_LEN) })}
               placeholder="mg/dL"
             />
+            <small className="data-table__muted">
+              {String(row.unit || "").trim().length}/{UNIT_MAX_LEN}
+            </small>
           </label>
           <label className="user-field col-12 col-md-3">
             <span className="user-field__label">Reference range</span>
@@ -122,6 +131,9 @@ function ParametersEditor({ parameters, onChange, testType }) {
               onChange={(e) => updateRow(index, { refRange: sanitizeText(e.target.value, REF_RANGE_MAX_LEN) })}
               placeholder="0.8–1.8"
             />
+            <small className="data-table__muted">
+              {String(row.refRange || "").trim().length}/{REF_RANGE_MAX_LEN}
+            </small>
           </label>
           <div className="col-12 col-md-2 d-flex align-items-end">
             <button

@@ -10,7 +10,7 @@ import {
   adminListMedicalConditionQuestions,
   adminUpdateMedicalConditionQuestion,
 } from "../../api/adminMedicalConditionQuestions.js";
-import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
+import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { answerTypeLabel, formatDate, truncate, QUESTION_PREVIEW_LEN, LIST_LIMIT, LIST_SEARCH_MAX_LEN } from "./MedicalConditionQuestionShared.js";
 
@@ -161,7 +161,7 @@ export function MedicalConditionQuestionList() {
                 rows.map((row, idx) => (
                   <tr key={row._id}>
                     <td className="data-table__muted">{(page - 1) * LIST_LIMIT + idx + 1}</td>
-                    <td>{truncate(row.question, QUESTION_PREVIEW_LEN) || "—"}</td>
+                    <td><TableCellText value={row.question} max={QUESTION_PREVIEW_LEN} /></td>
                     <td className="data-table__muted">{answerTypeLabel(row.answerType)}</td>
                     <td className="data-table__muted">{formatDate(row.createdAt)}</td>
                     <td>

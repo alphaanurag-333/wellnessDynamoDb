@@ -11,7 +11,7 @@ import {
   adminListVideoTestimonials,
   adminUpdateVideoTestimonial,
 } from "../../api/videoTestimonialsController.js";
-import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
+import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { mediaUrl } from "../../../media.js";
 import { LIST_LIMIT, SEARCH_MAX_LEN } from "./VideoTestimonialShared.js";
@@ -178,7 +178,7 @@ export function VideoTestimonialList() {
                     <td>
                       <AdminMediaImage path={row.profileImage} round width={46} height={46} alt={row.name || "Profile"} />
                     </td>
-                    <td>{row.name || "—"}</td>
+                    <td><TableCellText value={row.name} /></td>
                     <td className="data-table__muted">{row.type || "—"}</td>
                     <td>
                       {row.type === "video" && row.video ? (

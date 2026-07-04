@@ -60,3 +60,16 @@ Base path: `/api`
 
 See `docs/steps-tracking-native-formats.md` for Health Connect / HealthKit mapping.
 
+## monthly-champions
+
+Full guide: [monthly-champions-feature.md](./monthly-champions-feature.md)
+
+| Method | Path | Source |
+|--------|------|--------|
+| `GET` | `/user/monthly-champions` | `routes/userRoutes/monthlyChampionRoutes.js` |
+| `GET` | `/user/monthly-champions/mine` | `routes/userRoutes/monthlyChampionRoutes.js` |
+| `GET` | `/user/monthly-champions/:id` | `routes/userRoutes/monthlyChampionRoutes.js` |
+| `GET` | `/user/monthly-champions/:postId/comments` | `routes/userRoutes/monthlyChampionRoutes.js` |
+| `POST` | `/user/monthly-champions/:postId/comments` | `routes/userRoutes/monthlyChampionRoutes.js` |
+| `DELETE` | `/user/monthly-champions/:postId/comments/:id` | `routes/userRoutes/monthlyChampionRoutes.js` |
+

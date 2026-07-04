@@ -10,7 +10,7 @@ import {
   adminListTransformations,
   adminUpdateTransformation,
 } from "../../api/adminTransformations.js";
-import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
+import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import {
@@ -181,7 +181,7 @@ export function TransformationList() {
                       <AdminMediaImage path={row.newImage} width={44} height={44} radius={8} alt="After" />
                     </td>
                     <td className="data-table__muted" title={row.achievements || ""}>
-                      {truncate(row.achievements, 60)}
+                      <TableCellText value={row.achievements} max={60} />
                     </td>
                     <td>{row.timeTaken != null ? row.timeTaken : "—"}</td>
                     <td className="data-table__muted">{row.name || "—"}</td>

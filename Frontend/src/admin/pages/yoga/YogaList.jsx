@@ -6,7 +6,7 @@ import Swal from "sweetalert2";
 import { MdEditSquare } from "react-icons/md";
 import { AiFillDelete, AiOutlineEye } from "react-icons/ai";
 import { adminDeleteYoga, adminListYoga, adminUpdateYoga } from "../../api/adminYoga.js";
-import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
+import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { mediaUrl } from "../../../media.js";
@@ -180,7 +180,7 @@ export function YogaList() {
                         "—"
                       )}
                     </td>
-                    <td>{row.title || "—"}</td>
+                    <td><TableCellText value={row.title} /></td>
                     <td className="data-table__muted">{row.type || "—"}</td>
                     <td className="data-table__muted">
                       {row.type === "ytlink" ? (

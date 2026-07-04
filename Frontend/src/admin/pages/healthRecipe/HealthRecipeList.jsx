@@ -8,7 +8,7 @@ import { AiFillDelete, AiOutlineEye } from "react-icons/ai";
 import { adminDeleteHealthRecipe, adminListHealthRecipes, adminUpdateHealthRecipe } from "../../api/adminHealthRecipes.js";
 import { logout } from "../../../store/authSlice.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
-import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
+import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { mediaUrl } from "../../../media.js";
 import { formatDate, LIST_LIMIT, LIST_SEARCH_MAX_LEN, useHealthConcerns, buildConcernTitleMap, healthConcernLabel } from "./HealthRecipeShared.js";
 
@@ -198,7 +198,7 @@ export function HealthRecipeList() {
                         "—"
                       )}
                     </td>
-                    <td>{row.title || "—"}</td>
+                    <td><TableCellText value={row.title} /></td>
                     <td className="data-table__muted">{healthConcernLabel(row, concernMap)}</td>
                     <td className="data-table__muted">{row.type || "—"}</td>
                     <td>

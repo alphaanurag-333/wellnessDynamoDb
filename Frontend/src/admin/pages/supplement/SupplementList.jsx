@@ -10,7 +10,7 @@ import {
   adminListSupplements,
   adminUpdateSupplement,
 } from "../../api/adminSupplements.js";
-import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
+import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { formatDate, formatPrice, LIST_LIMIT, LIST_SEARCH_MAX_LEN } from "./SupplementShared.js";
@@ -171,7 +171,7 @@ export function SupplementList() {
                         "—"
                       )}
                     </td>
-                    <td>{row.name || "—"}</td>
+                    <td><TableCellText value={row.name} /></td>
                     <td className="data-table__muted">
                       {row.packSize != null ? `${row.packSize} ${row.unit || ""}`.trim() : "—"}
                     </td>

@@ -10,7 +10,7 @@ import {
   adminListDietPlanCatalog,
   adminUpdateDietPlanCatalog,
 } from "../../api/adminDietPlanCatalog.js";
-import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
+import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import {
   formatDate,
@@ -184,10 +184,10 @@ export function DietPlanCatalogList() {
                 rows.map((row, idx) => (
                   <tr key={row._id || row.id}>
                     <td className="data-table__muted">{(page - 1) * LIST_LIMIT + idx + 1}</td>
-                    <td>{row.name || "—"}</td>
-                    <td className="data-table__muted">{row.planId || "—"}</td>
-                    <td className="data-table__muted">{typeLabel(row.type)}</td>
-                    <td>{row.category || "—"}</td>
+                    <td><TableCellText value={row.name} /></td>
+                    <td className="data-table__muted"><TableCellText value={row.planId} /></td>
+                    <td className="data-table__muted"><TableCellText value={typeLabel(row.type)} max={32} /></td>
+                    <td><TableCellText value={row.category} /></td>
                     <td className="data-table__muted">{Array.isArray(row.meals) ? row.meals.length : 0}</td>
                     <td className="data-table__muted">{formatDate(row.createdAt)}</td>
                     <td>

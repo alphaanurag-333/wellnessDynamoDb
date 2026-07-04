@@ -10,7 +10,7 @@ import {
   adminListWellnessPrescriptionCatalog,
   adminUpdateWellnessPrescriptionCatalog,
 } from "../../api/adminWellnessPrescriptionCatalog.js";
-import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
+import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { formatDate, LIST_LIMIT, LIST_SEARCH_MAX_LEN } from "./WellnessPrescriptionCatalogShared.js";
 
@@ -163,9 +163,9 @@ export function WellnessPrescriptionCatalogList() {
                 rows.map((row, idx) => (
                   <tr key={row._id || row.id}>
                     <td className="data-table__muted">{(page - 1) * LIST_LIMIT + idx + 1}</td>
-                    <td>{row.title || "—"}</td>
-                    <td className="data-table__muted">{row.prescriptionId || "—"}</td>
-                    <td>{row.category || "—"}</td>
+                    <td><TableCellText value={row.title} /></td>
+                    <td className="data-table__muted"><TableCellText value={row.prescriptionId} /></td>
+                    <td><TableCellText value={row.category} /></td>
                     <td className="data-table__muted">{Array.isArray(row.points) ? row.points.length : 0}</td>
                     <td className="data-table__muted">{formatDate(row.createdAt)}</td>
                     <td>

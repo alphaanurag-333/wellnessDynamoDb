@@ -2466,9 +2466,33 @@ a.btn:hover {
   flex: 1;
   min-width: 0;
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 10px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.user-page__title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 100%;
+}
+
+.user-page__subtitle {
+  margin: 0;
+  color: var(--admin-muted);
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 100%;
+  line-height: 1.45;
+}
+
+.admin-page-header.user-page__toolbar {
+  align-items: flex-start;
 }
 
 .user-page__toolbar > .user-page__edit-link {
@@ -2943,9 +2967,10 @@ a.btn:hover {
 
 .user-view-card .data-table td,
 .user-view-card .data-table th {
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
 }
 
 /* Sub-section heading inside a view card (e.g. Programs / Subscriptions). */
@@ -3238,6 +3263,9 @@ a.btn:hover {
   resize: vertical;
   background: #fff;
   color: var(--admin-text);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: pre-wrap;
 }
 
 .user-field textarea:focus,
@@ -3389,8 +3417,10 @@ a.btn:hover {
 
 .table-scroll {
   width: 100%;
+  max-width: 100%;
   overflow-x: auto;
   margin: 0 -2px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .product-variant-card {
@@ -3693,6 +3723,27 @@ a.btn:hover {
   font-size: 0.92rem;
 }
 
+/* Short columns shrink to content; long text columns absorb remaining width. */
+.data-table__col--shrink,
+.data-table thead th:first-child,
+.data-table tbody td:first-child,
+.data-table__actions-col,
+.data-table__approval-col {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.data-table thead th:first-child,
+.data-table tbody td:first-child {
+  padding-left: 10px;
+  padding-right: 10px;
+  text-align: center;
+}
+
+.data-table tbody td:first-child.data-table__muted {
+  font-variant-numeric: tabular-nums;
+}
+
 .data-table thead th {
   text-align: left;
   padding: 12px 14px;
@@ -3710,6 +3761,29 @@ a.btn:hover {
   padding: 14px;
   border-bottom: 1px solid var(--admin-border);
   vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.data-table__cell-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.data-table tbody td.data-table__actions-col,
+.data-table tbody td:has(.row-actions),
+.data-table tbody td:has(.settings-switch),
+.data-table tbody td:has(.badge),
+.data-table tbody td:has(.icon-btn),
+.data-table tbody td:has(.btn:not(.data-table__cell-text)) {
+  width: 1%;
+  max-width: none;
+  overflow: visible;
+  white-space: nowrap;
 }
 
 .data-table tbody tr:hover {
@@ -3742,6 +3816,18 @@ a.btn:hover {
 
 .data-table--compact tbody td {
   padding: 12px 14px;
+}
+
+@media (max-width: 767.98px) {
+  .table-scroll .data-table {
+    min-width: 36rem;
+  }
+
+  .table-scroll .data-table thead th,
+  .table-scroll .data-table tbody td {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
 }
 
 @media (max-width: 1199px) {

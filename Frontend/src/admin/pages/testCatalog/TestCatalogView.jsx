@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import Swal from "sweetalert2";
 import { adminGetTestCatalogById } from "../../api/adminTestCatalog.js";
-import { AdminPageHeader, AdminStatusBadge } from "../../components/AdminCrud.jsx";
+import { AdminPageHeader, AdminStatusBadge, TableCellText } from "../../components/AdminCrud.jsx";
 import { AdminPageLoadingState } from "../../components/AdminLoader.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { NotFoundPage } from "../NotFoundPage.jsx";
@@ -84,7 +84,7 @@ export function TestCatalogView() {
     <div className="user-page">
       <AdminPageHeader
         title="Test catalog details"
-        subtitle={test.name}
+        subtitle="View this test and its parameters."
         onBack={() => navigate(-1)}
         actions={
           <Link to="edit" className="btn btn--primary user-page__edit-link">
@@ -132,10 +132,10 @@ export function TestCatalogView() {
                 (test.parameters || []).map((p, idx) => (
                   <tr key={p.paramId || p.name || idx}>
                     <td className="data-table__muted">{idx + 1}</td>
-                    <td>{p.name || "—"}</td>
-                    <td className="data-table__muted">{p.paramId || "—"}</td>
-                    <td>{p.unit || "—"}</td>
-                    <td>{p.refRange || "—"}</td>
+                    <td><TableCellText value={p.name} /></td>
+                    <td className="data-table__muted"><TableCellText value={p.paramId} /></td>
+                    <td><TableCellText value={p.unit} max={32} /></td>
+                    <td><TableCellText value={p.refRange} /></td>
                   </tr>
                 ))
               )}

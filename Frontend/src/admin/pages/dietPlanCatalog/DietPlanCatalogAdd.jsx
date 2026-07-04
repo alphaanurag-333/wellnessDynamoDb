@@ -87,6 +87,9 @@ function MealsEditor({ meals, onChange }) {
               }}
               required
             />
+            <small className="data-table__muted">
+              {String(row.title || "").trim().length}/{MEAL_TITLE_MAX_LEN}
+            </small>
           </label>
           <label className="user-field col-12 col-md-2">
             <span className="user-field__label">Meal ID</span>
@@ -137,6 +140,9 @@ function MealsEditor({ meals, onChange }) {
               onChange={(e) => updateRow(index, { foods: e.target.value.slice(0, MEAL_FOODS_MAX_LEN) })}
               placeholder="List foods or ingredients"
             />
+            <small className="data-table__muted">
+              {String(row.foods || "").length}/{MEAL_FOODS_MAX_LEN}
+            </small>
           </label>
           <label className="user-field col-12 col-md-4">
             <span className="user-field__label">Notes</span>
@@ -148,6 +154,9 @@ function MealsEditor({ meals, onChange }) {
               onChange={(e) => updateRow(index, { notes: e.target.value.slice(0, MEAL_NOTES_MAX_LEN) })}
               placeholder="Optional notes"
             />
+            <small className="data-table__muted">
+              {String(row.notes || "").length}/{MEAL_NOTES_MAX_LEN}
+            </small>
           </label>
           <div className="col-12 col-md-2 d-flex align-items-end">
             <button type="button" className="btn btn--ghost btn--sm" onClick={() => removeRow(index)}>

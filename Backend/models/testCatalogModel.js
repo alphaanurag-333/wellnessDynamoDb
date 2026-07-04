@@ -18,6 +18,15 @@ const ALLOWED_STATUS = ["active", "inactive"];
 const ALLOWED_TYPES = ["PROFILE", "SINGLE"];
 const STATUS = new Set(ALLOWED_STATUS);
 const TYPES = new Set(ALLOWED_TYPES);
+const NAME_MIN_LEN = 2;
+const NAME_MAX_LEN = 200;
+const CATEGORY_MIN_LEN = 2;
+const CATEGORY_MAX_LEN = 100;
+const TEST_ID_MAX_LEN = 80;
+const PARAM_NAME_MAX_LEN = 100;
+const UNIT_MAX_LEN = 40;
+const REF_RANGE_MAX_LEN = 120;
+const MAX_PARAMETERS = 50;
 
 function withLegacyId(item) {
   if (!item) return null;
@@ -49,8 +58,8 @@ function normalizeTestId(value) {
     err.name = "ValidationError";
     throw err;
   }
-  if (testId.length > 80) {
-    const err = new Error("testId cannot exceed 80 characters");
+  if (testId.length > TEST_ID_MAX_LEN) {
+    const err = new Error(`testId cannot exceed ${TEST_ID_MAX_LEN} characters`);
     err.name = "ValidationError";
     throw err;
   }
@@ -64,8 +73,13 @@ function normalizeName(value) {
     err.name = "ValidationError";
     throw err;
   }
-  if (name.length > 200) {
-    const err = new Error("name cannot exceed 200 characters");
+  if (name.length < NAME_MIN_LEN) {
+    const err = new Error(`name must be at least ${NAME_MIN_LEN} characters`);
+    err.name = "ValidationError";
+    throw err;
+  }
+  if (name.length > NAME_MAX_LEN) {
+    const err = new Error(`name cannot exceed ${NAME_MAX_LEN} characters`);
     err.name = "ValidationError";
     throw err;
   }
@@ -79,8 +93,13 @@ function normalizeCategory(value) {
     err.name = "ValidationError";
     throw err;
   }
-  if (category.length > 100) {
-    const err = new Error("category cannot exceed 100 characters");
+  if (category.length < CATEGORY_MIN_LEN) {
+    const err = new Error(`category must be at least ${CATEGORY_MIN_LEN} characters`);
+    err.name = "ValidationError";
+    throw err;
+  }
+  if (category.length > CATEGORY_MAX_LEN) {
+    const err = new Error(`category cannot exceed ${CATEGORY_MAX_LEN} characters`);
     err.name = "ValidationError";
     throw err;
   }
@@ -92,13 +111,30 @@ function normalizeSequence(value, fallback = 0) {
   return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : fallback;
 }
 
-function normalizeParameters(parameters) {
+function normalizeParameters(parameters, { type = "SINGLE" } = {}) {
   if (!Array.isArray(parameters) || parameters.length === 0) {
     const err = new Error("At least one parameter is required");
     err.name = "ValidationError";
     throw err;
   }
+  if (parameters.length > MAX_PARAMETERS) {
+    const err = new Error(`A test cannot have more than ${MAX_PARAMETERS} parameters`);
+    err.name = "ValidationError";
+    throw err;
+  }
+  const normalizedType = normalizeType(type);
+  if (normalizedType === "SINGLE" && parameters.length !== 1) {
+    const err = new Error("Single-parameter tests must have exactly one parameter");
+    err.name = "ValidationError";
+    throw err;
+  }
+  if (normalizedType === "PROFILE" && parameters.length < 2) {
+    const err = new Error("Profile tests must have at least two parameters");
+    err.name = "ValidationError";
+    throw err;
+  }
 
+  const seenParamIds = new Set();
   return parameters.map((param, index) => {
     const name = String(param?.name || "").trim();
     if (!name) {
@@ -106,9 +142,30 @@ function normalizeParameters(parameters) {
       err.name = "ValidationError";
       throw err;
     }
+    if (name.length > PARAM_NAME_MAX_LEN) {
+      const err = new Error(`Parameter ${index + 1}: name cannot exceed ${PARAM_NAME_MAX_LEN} characters`);
+      err.name = "ValidationError";
+      throw err;
+    }
     const paramId = normalizeTestId(param?.paramId || name);
+    if (seenParamIds.has(paramId)) {
+      const err = new Error(`Parameter ${index + 1}: duplicate param ID "${paramId}"`);
+      err.name = "ValidationError";
+      throw err;
+    }
+    seenParamIds.add(paramId);
     const unit = String(param?.unit || "").trim();
     const refRange = String(param?.refRange || "").trim();
+    if (unit.length > UNIT_MAX_LEN) {
+      const err = new Error(`Parameter ${index + 1}: unit cannot exceed ${UNIT_MAX_LEN} characters`);
+      err.name = "ValidationError";
+      throw err;
+    }
+    if (refRange.length > REF_RANGE_MAX_LEN) {
+      const err = new Error(`Parameter ${index + 1}: reference range cannot exceed ${REF_RANGE_MAX_LEN} characters`);
+      err.name = "ValidationError";
+      throw err;
+    }
     return {
       paramId,
       name,
@@ -191,7 +248,7 @@ async function createTestCatalog({
     type: normalizeType(type),
     category: normalizeCategory(category),
     status: normalizeStatus(status),
-    parameters: normalizeParameters(parameters),
+    parameters: normalizeParameters(parameters, { type: normalizeType(type) }),
     sequence: normalizeSequence(sequence),
     createdBy: String(createdBy || "").trim() || null,
     createdAt: now,
@@ -329,6 +386,13 @@ async function listTestCatalog({ page = 1, limit = 10, status, search, category 
 
 async function updateTestCatalog(id, updates) {
   const blockedFields = new Set(["id", "_id", "createdAt", "createdBy"]);
+  const existing = await getTestCatalogRecordById(id);
+  if (!existing) {
+    const err = new Error("Test catalog entry not found");
+    err.name = "ValidationError";
+    throw err;
+  }
+
   const entries = [];
 
   for (const [key, value] of Object.entries(updates || {})) {
@@ -338,7 +402,11 @@ async function updateTestCatalog(id, updates) {
     else if (key === "name") entries.push([key, normalizeName(value)]);
     else if (key === "category") entries.push([key, normalizeCategory(value)]);
     else if (key === "sequence") entries.push([key, normalizeSequence(value)]);
-    else if (key === "parameters") entries.push([key, normalizeParameters(value)]);
+    else if (key === "parameters") {
+      const nextType =
+        updates.type !== undefined ? normalizeType(updates.type) : normalizeType(existing.type);
+      entries.push([key, normalizeParameters(value, { type: nextType })]);
+    }
     else if (key === "testId") entries.push([key, normalizeTestId(value)]);
     else entries.push([key, value]);
   }

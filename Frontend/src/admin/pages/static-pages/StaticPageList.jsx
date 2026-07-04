@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { MdEditSquare } from "react-icons/md";
 import { listPages } from "../../api/adminMisc.js";
-import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
+import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 
 export function StaticPageList() {
@@ -67,8 +67,8 @@ export function StaticPageList() {
                 rows.map((row, idx) => (
                   <tr key={row._id}>
                     <td className="data-table__muted">{idx + 1}</td>
-                    <td>{row.title || "—"}</td>
-                    <td>{row.slug || "—"}</td>
+                    <td><TableCellText value={row.title} /></td>
+                    <td><TableCellText value={row.slug} /></td>
                     <td>{row.status ? <AdminStatusBadge status={row.status} /> : "—"}</td>
                     <td className="data-table__muted">{row.updatedAt ? new Date(row.updatedAt).toLocaleString() : "—"}</td>
                     <td>

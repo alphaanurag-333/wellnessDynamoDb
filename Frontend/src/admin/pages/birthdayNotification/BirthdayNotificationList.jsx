@@ -10,7 +10,7 @@ import {
   adminResendBirthdayNotification,
   adminRunBirthdayJob,
 } from "../../api/birthdayNotificationController.js";
-import { AdminListHeader, listCountSubtitle } from "../../components/AdminCrud.jsx";
+import { AdminListHeader, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import {
   LIST_LIMIT,
@@ -198,7 +198,7 @@ export function BirthdayNotificationList() {
                 rows.map((row, idx) => (
                   <tr key={row._id}>
                     <td className="data-table__muted">{(page - 1) * LIST_LIMIT + idx + 1}</td>
-                    <td>{row.user?.name || row.userId}</td>
+                    <td><TableCellText value={row.user?.name || row.userId} /></td>
                     <td className="data-table__muted">{row.notificationDate}</td>
                     <td>{statusLabel(row.status)}</td>
                     <td className="data-table__muted">{formatDateTime(row.sentAt)}</td>

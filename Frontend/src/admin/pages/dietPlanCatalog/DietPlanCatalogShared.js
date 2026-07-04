@@ -99,6 +99,7 @@ export function validateForm(form) {
   if (name.length > NAME_MAX_LEN) return `Plan name cannot exceed ${NAME_MAX_LEN} characters.`;
   if (!category) return "Category is required.";
   if (category.length < CATEGORY_MIN_LEN) return `Category must be at least ${CATEGORY_MIN_LEN} characters.`;
+  if (category.length > CATEGORY_MAX_LEN) return `Category cannot exceed ${CATEGORY_MAX_LEN} characters.`;
   if (!planId) return "Plan ID is required.";
   if (planId.length > PLAN_ID_MAX_LEN) return `Plan ID cannot exceed ${PLAN_ID_MAX_LEN} characters.`;
   if (!TYPE_OPTIONS.some((o) => o.value === type)) return "Invalid diet type.";
@@ -114,9 +115,23 @@ export function validateForm(form) {
     const title = String(m.title || "").trim();
     const mealId = slugify(m.mealId || title);
     if (!title) return `Meal ${i + 1}: title is required.`;
+    if (title.length > MEAL_TITLE_MAX_LEN) {
+      return `Meal ${i + 1}: title cannot exceed ${MEAL_TITLE_MAX_LEN} characters.`;
+    }
     if (!mealId) return `Meal ${i + 1}: meal ID is required.`;
+    if (mealId.length > PLAN_ID_MAX_LEN) {
+      return `Meal ${i + 1}: meal ID cannot exceed ${PLAN_ID_MAX_LEN} characters.`;
+    }
     if (seenMealIds.has(mealId)) return `Meal ${i + 1}: duplicate meal ID "${mealId}".`;
     seenMealIds.add(mealId);
+    const foods = String(m.foods || "").trim();
+    const notes = String(m.notes || "").trim();
+    if (foods.length > MEAL_FOODS_MAX_LEN) {
+      return `Meal ${i + 1}: foods cannot exceed ${MEAL_FOODS_MAX_LEN} characters.`;
+    }
+    if (notes.length > MEAL_NOTES_MAX_LEN) {
+      return `Meal ${i + 1}: notes cannot exceed ${MEAL_NOTES_MAX_LEN} characters.`;
+    }
     const calories = String(m.calories ?? "").trim();
     if (calories && (!/^\d+$/.test(calories) || Number(calories) < 0)) {
       return `Meal ${i + 1}: calories must be a non-negative number.`;

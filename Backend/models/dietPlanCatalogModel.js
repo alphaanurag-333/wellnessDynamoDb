@@ -28,6 +28,16 @@ const ALLOWED_SLOTS = ["breakfast", "lunch", "dinner", "snack"];
 const STATUS = new Set(ALLOWED_STATUS);
 const TYPES = new Set(ALLOWED_TYPES);
 const SLOTS = new Set(ALLOWED_SLOTS);
+const NAME_MIN_LEN = 2;
+const NAME_MAX_LEN = 200;
+const CATEGORY_MIN_LEN = 2;
+const CATEGORY_MAX_LEN = 100;
+const PLAN_ID_MAX_LEN = 80;
+const DESCRIPTION_MAX_LEN = 2000;
+const MEAL_TITLE_MAX_LEN = 120;
+const MEAL_FOODS_MAX_LEN = 500;
+const MEAL_NOTES_MAX_LEN = 300;
+const MAX_MEALS = 50;
 
 function withLegacyId(item) {
   if (!item) return null;
@@ -59,8 +69,8 @@ function normalizePlanId(value) {
     err.name = "ValidationError";
     throw err;
   }
-  if (planId.length > 80) {
-    const err = new Error("planId cannot exceed 80 characters");
+  if (planId.length > PLAN_ID_MAX_LEN) {
+    const err = new Error(`planId cannot exceed ${PLAN_ID_MAX_LEN} characters`);
     err.name = "ValidationError";
     throw err;
   }
@@ -74,8 +84,13 @@ function normalizeName(value) {
     err.name = "ValidationError";
     throw err;
   }
-  if (name.length > 200) {
-    const err = new Error("name cannot exceed 200 characters");
+  if (name.length < NAME_MIN_LEN) {
+    const err = new Error(`name must be at least ${NAME_MIN_LEN} characters`);
+    err.name = "ValidationError";
+    throw err;
+  }
+  if (name.length > NAME_MAX_LEN) {
+    const err = new Error(`name cannot exceed ${NAME_MAX_LEN} characters`);
     err.name = "ValidationError";
     throw err;
   }
@@ -89,8 +104,13 @@ function normalizeCategory(value) {
     err.name = "ValidationError";
     throw err;
   }
-  if (category.length > 100) {
-    const err = new Error("category cannot exceed 100 characters");
+  if (category.length < CATEGORY_MIN_LEN) {
+    const err = new Error(`category must be at least ${CATEGORY_MIN_LEN} characters`);
+    err.name = "ValidationError";
+    throw err;
+  }
+  if (category.length > CATEGORY_MAX_LEN) {
+    const err = new Error(`category cannot exceed ${CATEGORY_MAX_LEN} characters`);
     err.name = "ValidationError";
     throw err;
   }
@@ -100,8 +120,8 @@ function normalizeCategory(value) {
 function normalizeDescription(value) {
   if (value === undefined || value === null) return "";
   const description = String(value).trim();
-  if (description.length > 2000) {
-    const err = new Error("description cannot exceed 2000 characters");
+  if (description.length > DESCRIPTION_MAX_LEN) {
+    const err = new Error(`description cannot exceed ${DESCRIPTION_MAX_LEN} characters`);
     err.name = "ValidationError";
     throw err;
   }
@@ -119,7 +139,13 @@ function normalizeMeals(meals) {
     err.name = "ValidationError";
     throw err;
   }
+  if (meals.length > MAX_MEALS) {
+    const err = new Error(`A diet plan cannot have more than ${MAX_MEALS} meals`);
+    err.name = "ValidationError";
+    throw err;
+  }
 
+  const seenMealIds = new Set();
   return meals.map((meal, index) => {
     const title = String(meal?.title || "").trim();
     if (!title) {
@@ -127,7 +153,18 @@ function normalizeMeals(meals) {
       err.name = "ValidationError";
       throw err;
     }
+    if (title.length > MEAL_TITLE_MAX_LEN) {
+      const err = new Error(`Meal ${index + 1}: title cannot exceed ${MEAL_TITLE_MAX_LEN} characters`);
+      err.name = "ValidationError";
+      throw err;
+    }
     const mealId = normalizePlanId(meal?.mealId || title);
+    if (seenMealIds.has(mealId)) {
+      const err = new Error(`Meal ${index + 1}: duplicate meal ID "${mealId}"`);
+      err.name = "ValidationError";
+      throw err;
+    }
+    seenMealIds.add(mealId);
     const slot = String(meal?.slot || "breakfast").toLowerCase().trim();
     if (!SLOTS.has(slot)) {
       const err = new Error(`Meal ${index + 1}: slot must be breakfast, lunch, dinner, or snack`);
@@ -137,6 +174,16 @@ function normalizeMeals(meals) {
     const day = String(meal?.day || "all").trim() || "all";
     const foods = String(meal?.foods || "").trim();
     const notes = String(meal?.notes || "").trim();
+    if (foods.length > MEAL_FOODS_MAX_LEN) {
+      const err = new Error(`Meal ${index + 1}: foods cannot exceed ${MEAL_FOODS_MAX_LEN} characters`);
+      err.name = "ValidationError";
+      throw err;
+    }
+    if (notes.length > MEAL_NOTES_MAX_LEN) {
+      const err = new Error(`Meal ${index + 1}: notes cannot exceed ${MEAL_NOTES_MAX_LEN} characters`);
+      err.name = "ValidationError";
+      throw err;
+    }
     const caloriesRaw = meal?.calories;
     const calories =
       caloriesRaw === undefined || caloriesRaw === null || caloriesRaw === ""

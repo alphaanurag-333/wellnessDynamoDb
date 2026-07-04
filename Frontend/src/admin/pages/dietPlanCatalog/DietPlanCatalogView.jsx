@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import Swal from "sweetalert2";
 import { adminGetDietPlanCatalogById } from "../../api/adminDietPlanCatalog.js";
-import { AdminPageHeader, AdminStatusBadge } from "../../components/AdminCrud.jsx";
+import { AdminPageHeader, AdminStatusBadge, TableCellText } from "../../components/AdminCrud.jsx";
 import { AdminPageLoadingState } from "../../components/AdminLoader.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { NotFoundPage } from "../NotFoundPage.jsx";
@@ -84,7 +84,7 @@ export function DietPlanCatalogView() {
     <div className="user-page">
       <AdminPageHeader
         title="Diet plan catalog details"
-        subtitle={plan.name}
+        subtitle="View this diet plan and its meals."
         onBack={() => navigate(-1)}
         actions={
           <Link to="edit" className="btn btn--primary user-page__edit-link">
@@ -146,13 +146,13 @@ export function DietPlanCatalogView() {
                 (plan.meals || []).map((m, idx) => (
                   <tr key={m.mealId || m.title || idx}>
                     <td className="data-table__muted">{idx + 1}</td>
-                    <td>{m.title || "—"}</td>
+                    <td><TableCellText value={m.title} /></td>
                     <td className="data-table__muted">{m.mealId || "—"}</td>
                     <td>{m.day || "—"}</td>
                     <td>{slotLabel(m.slot)}</td>
-                    <td>{m.foods || "—"}</td>
+                    <td><TableCellText value={m.foods} max={64} /></td>
                     <td className="data-table__muted">{m.calories != null ? m.calories : "—"}</td>
-                    <td>{m.notes || "—"}</td>
+                    <td><TableCellText value={m.notes} max={64} /></td>
                   </tr>
                 ))
               )}

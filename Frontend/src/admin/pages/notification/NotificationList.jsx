@@ -12,7 +12,7 @@ import {
   adminResendNotification,
   adminUpdateNotification,
 } from "../../api/notificationController.js";
-import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
+import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { LIST_LIMIT, formatDateTime } from "./NotificationShared.js";
 
@@ -194,7 +194,7 @@ export function NotificationList() {
                     <td>
                       <AdminMediaImage path={row.image} width={56} height={42} radius={6} alt="" />
                     </td>
-                    <td>{row.message || "—"}</td>
+                    <td><TableCellText value={row.message} max={64} /></td>
                     <td className="data-table__muted">{formatDateTime(row.sentAt)}</td>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

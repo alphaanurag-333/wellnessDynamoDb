@@ -10,7 +10,7 @@ import {
   adminListLaunchQuestions,
   adminUpdateLaunchQuestion,
 } from "../../api/adminLaunchQuestions.js";
-import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
+import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { useDebouncedSearch } from "../../../hooks/useDebouncedSearch.js";
 import {
@@ -169,8 +169,8 @@ export function LaunchQuestionList() {
                 rows.map((row) => (
                   <tr key={row._id}>
                     <td className="data-table__muted">{row.sortOrder ?? 0}</td>
-                    <td>{truncate(row.category, 40) || "—"}</td>
-                    <td>{truncate(row.question, QUESTION_PREVIEW_LEN) || "—"}</td>
+                    <td><TableCellText value={row.category} max={40} /></td>
+                    <td><TableCellText value={row.question} max={QUESTION_PREVIEW_LEN} /></td>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <button

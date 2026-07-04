@@ -10,7 +10,7 @@ import {
   adminListProgramCatalog,
   adminUpdateProgramCatalog,
 } from "../../api/adminProgramCatalog.js";
-import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
+import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import {
   formatDate,
@@ -171,7 +171,7 @@ export function ProgramCatalogList() {
                   return (
                     <tr key={row._id || row.id}>
                       <td className="data-table__muted">{(page - 1) * LIST_LIMIT + idx + 1}</td>
-                      <td>{row.title || "—"}</td>
+                      <td><TableCellText value={row.title} /></td>
                       <td className="data-table__muted">{programTypeLabel(row.programType)}</td>
                       <td>{formatMoney(row.price, row.currency)}</td>
                       <td className="data-table__muted">{formatDate(row.createdAt)}</td>

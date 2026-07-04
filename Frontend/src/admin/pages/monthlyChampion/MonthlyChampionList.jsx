@@ -9,7 +9,7 @@ import {
   adminListMonthlyChampions,
   adminRunMonthlyChampionJob,
 } from "../../api/monthlyChampions.js";
-import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
+import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import {
   LIST_LIMIT,
@@ -174,7 +174,7 @@ export function MonthlyChampionList() {
                 rows.map((row, idx) => (
                   <tr key={row._id}>
                     <td className="data-table__muted">{(page - 1) * LIST_LIMIT + idx + 1}</td>
-                    <td>{row.user?.name || row.userId}</td>
+                    <td><TableCellText value={row.user?.name || row.userId} /></td>
                     <td className="data-table__muted">{row.monthYear}</td>
                     <td>{rankBadge(row.rank)}</td>
                     <td className="data-table__muted">{row.averageScore}%</td>

@@ -10,7 +10,7 @@ import {
   adminListMentalWellbeing,
   adminUpdateMentalWellbeing,
 } from "../../api/adminMentalWellbeing.js";
-import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
+import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { formatDate, typeLabel, LIST_LIMIT, LIST_SEARCH_MAX_LEN } from "./MentalWellbeingShared.js";
 
@@ -174,7 +174,7 @@ export function MentalWellbeingList() {
                 rows.map((row, idx) => (
                   <tr key={row._id}>
                     <td className="data-table__muted">{(page - 1) * LIST_LIMIT + idx + 1}</td>
-                    <td>{row.title || "—"}</td>
+                    <td><TableCellText value={row.title} /></td>
                     <td className="data-table__muted">{typeLabel(row.type)}</td>
                     <td>
                       {row.type === "ytlink" ? (

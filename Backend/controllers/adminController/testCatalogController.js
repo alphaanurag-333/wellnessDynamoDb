@@ -49,7 +49,7 @@ exports.createTestCatalogController = asyncHandler(async (req, res) => {
 
   let parameters;
   try {
-    parameters = normalizeParameters(req.body.parameters);
+    parameters = normalizeParameters(req.body.parameters, { type });
   } catch (err) {
     if (err?.name === "ValidationError") throw new AppError(err.message, 400);
     throw err;

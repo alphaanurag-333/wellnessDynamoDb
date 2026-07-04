@@ -74,3 +74,27 @@ export function listCountSubtitle(loading, total, singular, plural) {
   const count = Number(total) || 0;
   return count === 1 ? `1 ${singular}` : `${count} ${plural}`;
 }
+
+export const DEFAULT_TABLE_CELL_MAX = 48;
+
+/**
+ * Truncate long table text with an ellipsis. Returns display text and optional title for hover.
+ */
+export function truncateCellText(value, max = DEFAULT_TABLE_CELL_MAX) {
+  const s = String(value ?? "").trim();
+  if (!s) return { text: "—", title: undefined };
+  if (s.length <= max) return { text: s, title: undefined };
+  return { text: `${s.slice(0, max)}…`, title: s };
+}
+
+/**
+ * Consistent table cell text — slices long values and shows full text on hover.
+ */
+export function TableCellText({ value, max = DEFAULT_TABLE_CELL_MAX, className = "" }) {
+  const { text, title } = truncateCellText(value, max);
+  return (
+    <span className={["data-table__cell-text", className].filter(Boolean).join(" ")} title={title}>
+      {text}
+    </span>
+  );
+}

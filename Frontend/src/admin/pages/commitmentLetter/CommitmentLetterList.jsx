@@ -9,7 +9,7 @@ import {
   adminListCommitmentLetters,
   adminReviewCommitmentLetter,
 } from "../../api/commitmentLetters.js";
-import { AdminListHeader, listCountSubtitle } from "../../components/AdminCrud.jsx";
+import { AdminListHeader, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import {
   approvalBadgeClass,
@@ -170,8 +170,8 @@ export function CommitmentLetterList() {
                         alt={row.userName || "Profile"}
                       />
                     </td>
-                    <td>{row.userName || "—"}</td>
-                    <td className="data-table__muted">{row.userEmail || row.user?.email || "—"}</td>
+                    <td><TableCellText value={row.userName} /></td>
+                    <td className="data-table__muted"><TableCellText value={row.userEmail || row.user?.email} /></td>
                     <td>
                       <span className={approvalBadgeClass(row.approvalStatus)}>{approvalLabel(row.approvalStatus)}</span>
                       {row.approvalStatus === "rejected" && row.rejectionReason ? (

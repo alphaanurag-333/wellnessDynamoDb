@@ -10,7 +10,7 @@ import {
 } from "../../api/adminWellnessCoaches.js";
 import { logout } from "../../../store/authSlice.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
-import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
+import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { LIST_LIMIT, formatPhone, resolveAssistantId } from "./AssistantShared.js";
 import { WellnessCoachTableLoaderRow } from "../wellnessCoach/WellnessCoachPageLoader.jsx";
 
@@ -191,7 +191,7 @@ export function AssistantList() {
                       )}
                     </td>
                     <td className="data-table__muted">{formatPhone(row)}</td>
-                    <td>{row.designation || "—"}</td>
+                    <td><TableCellText value={row.designation} /></td>
                     <td>
                       <AdminStatusBadge status={row.status} />
                     </td>

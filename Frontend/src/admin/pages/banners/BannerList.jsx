@@ -7,7 +7,7 @@ import Swal from "sweetalert2";
 import { MdEditSquare } from "react-icons/md";
 import { AiFillDelete, AiOutlineEye } from "react-icons/ai";
 import { adminDeleteBanner, adminListBanners, adminUpdateBanner } from "../../api/bannerController.js";
-import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
+import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { formatDate, LIST_LIMIT, truncate, DESCRIPTION_PREVIEW_LEN } from "./BannerShared.js";
 
@@ -165,9 +165,9 @@ export function BannerList() {
                     <td>
                       <AdminMediaImage path={row.image} width={56} height={42} radius={6} alt="" />
                     </td>
-                    <td>{row.title || "—"}</td>
+                    <td><TableCellText value={row.title} /></td>
                     <td className="data-table__muted" title={row.description || ""}>
-                      {truncate(row.description, DESCRIPTION_PREVIEW_LEN)}
+                      <TableCellText value={row.description} max={DESCRIPTION_PREVIEW_LEN} />
                     </td>
                     <td className="data-table__muted">{formatDate(row.createdAt)}</td>
                     <td>

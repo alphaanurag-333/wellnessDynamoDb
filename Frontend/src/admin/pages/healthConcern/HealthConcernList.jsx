@@ -12,7 +12,7 @@ import {
   adminUpdateHealthConcern,
 } from "../../api/adminHealthConcerns.js";
 import { logout } from "../../../store/authSlice.js";
-import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
+import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { formatDate, LIST_LIMIT, LIST_SEARCH_MAX_LEN, truncate, DESCRIPTION_PREVIEW_LEN } from "./HealthConcernShared.js";
 
 export function HealthConcernList() {
@@ -170,9 +170,9 @@ export function HealthConcernList() {
                     <td>
                       {row.icon ? <AdminMediaImage path={row.icon} width={44} height={44} radius={8} alt="" /> : "—"}
                     </td>
-                    <td>{row.title || "—"}</td>
+                    <td><TableCellText value={row.title} /></td>
                     <td className="data-table__muted" title={row.description || ""}>
-                      {truncate(row.description, DESCRIPTION_PREVIEW_LEN)}
+                      <TableCellText value={row.description} max={DESCRIPTION_PREVIEW_LEN} />
                     </td>
                     <td className="data-table__muted">{formatDate(row.createdAt)}</td>
                     <td>

@@ -10,7 +10,7 @@ import {
   adminListLaunchFocusAreas,
   adminUpdateLaunchFocusArea,
 } from "../../api/adminLaunchFocusAreas.js";
-import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
+import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { useDebouncedSearch } from "../../../hooks/useDebouncedSearch.js";
 import { formatDate, truncate, TITLE_PREVIEW_LEN, LIST_LIMIT, LIST_SEARCH_MAX_LEN } from "./LaunchFocusAreaShared.js";
@@ -152,7 +152,7 @@ export function LaunchFocusAreaList() {
                 rows.map((row) => (
                   <tr key={row._id}>
                     <td className="data-table__muted">{row.sortOrder ?? 0}</td>
-                    <td>{truncate(row.title, TITLE_PREVIEW_LEN)}</td>
+                    <td><TableCellText value={row.title} max={TITLE_PREVIEW_LEN} /></td>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <button

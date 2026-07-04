@@ -10,7 +10,7 @@ import {
   adminListPrakrutiRecommendations,
   adminUpdatePrakrutiRecommendation,
 } from "../../api/adminPrakrutiRecommendations.js";
-import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
+import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { useDebouncedSearch } from "../../../hooks/useDebouncedSearch.js";
 import { PRAKRUTI_TYPES, prakrutiTypeLabel } from "../../../components/prakrutiShared.js";
@@ -180,7 +180,7 @@ export function PrakrutiRecommendationList() {
                   <tr key={row._id}>
                     <td className="data-table__muted">{row.sortOrder ?? 0}</td>
                     <td>{prakrutiTypeLabel(row.prakrutiType)}</td>
-                    <td>{truncate(row.title, TITLE_PREVIEW_LEN)}</td>
+                    <td><TableCellText value={row.title} max={TITLE_PREVIEW_LEN} /></td>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <button

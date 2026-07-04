@@ -11,7 +11,7 @@ import {
   adminListClientTestimonials,
   adminUpdateClientTestimonial,
 } from "../../api/clientTestimonialsController.js";
-import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
+import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { mediaUrl } from "../../../media.js";
 import {
@@ -180,10 +180,10 @@ export function ClientTestimonialList() {
                         alt={row.name || "Profile"}
                       />
                     </td>
-                    <td>{row.name || "—"}</td>
+                    <td><TableCellText value={row.name} /></td>
                     <td className="data-table__muted">{row.rating ?? "—"}</td>
                     <td className="data-table__muted" title={row.description || ""}>
-                      {row.description ? truncate(row.description, DESCRIPTION_PREVIEW_LEN) : "—"}
+                      <TableCellText value={row.description} max={DESCRIPTION_PREVIEW_LEN} />
                     </td>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

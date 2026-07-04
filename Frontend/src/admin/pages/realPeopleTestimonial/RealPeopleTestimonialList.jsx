@@ -12,7 +12,7 @@ import {
   adminReviewRealPeopleTestimonial,
   adminUpdateRealPeopleTestimonial,
 } from "../../api/realPeopleTestimonials.js";
-import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
+import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import {
   REVIEW_PREVIEW_LEN,
@@ -219,10 +219,10 @@ export function RealPeopleTestimonialList() {
                         alt={row.userName || "Profile"}
                       />
                     </td>
-                    <td>{row.userName || "—"}</td>
+                    <td><TableCellText value={row.userName} /></td>
                     <td className="data-table__muted">{healthConcernLabel(row)}</td>
                     <td className="data-table__muted" title={reviewText(row) !== "—" ? reviewText(row) : undefined}>
-                      {reviewText(row) !== "—" ? truncate(reviewText(row), REVIEW_PREVIEW_LEN) : "—"}
+                      <TableCellText value={reviewText(row) !== "—" ? reviewText(row) : ""} max={REVIEW_PREVIEW_LEN} />
                     </td>
                     <td>{starsValue(row)}</td>
                     <td><span className={approvalBadgeClass(row.approvalStatus)}>{approvalLabel(row.approvalStatus)}</span></td>
