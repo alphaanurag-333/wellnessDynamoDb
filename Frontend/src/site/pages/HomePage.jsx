@@ -11,6 +11,8 @@ import Methodology from "../components/Methodology.jsx";
 import About from "../components/About.jsx";
 import FinalCTA from "../components/FinalCTA.jsx";
 import ChampionSlider from "../components/ChampionSlider.jsx";
+import BirthdaySlider from "../components/BirthDaySlider.jsx";
+import RealHealingSlider from "../components/RealHealing.jsx";
 
 export function HomePage() {
   return (
@@ -18,8 +20,10 @@ export function HomePage() {
       <SiteHero />
       <ChampionSlider />
       <WellnessHero />
+      <BirthdaySlider />
       <StatsSection />
       <About />
+      <RealHealingSlider />
       <Methodology />
       <ServicesSection />
       <TestimonialsSection />
