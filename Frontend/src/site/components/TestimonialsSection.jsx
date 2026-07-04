@@ -214,7 +214,7 @@ export default function TestimonialsSection() {
       <div className="site-container">
 
         <div className="success-stories__header">
-          <h2>Success Stories</h2>
+          <h2>Client Reviews</h2>
         </div>
 
         <Swiper
