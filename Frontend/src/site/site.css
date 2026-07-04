@@ -5098,7 +5098,7 @@ BMI SECTION
 .bmi-section {
   width: 100%;
   padding: 90px 0px;
-  background: #ffffff;
+  background: var(--bg-body);
 }
 
 .bmi-section .container {
@@ -5154,6 +5154,7 @@ INFO CARD
   background: #edf2fb;
   border-radius: var(--radius-md);
   padding: 24px;
+  border: 1px solid rgba(45, 108, 223, 0.12);
 }
 
 .info-title {
@@ -5185,6 +5186,7 @@ INFO CARD
 .result-row span {
   color: var(--text-body);
   font-size: 14px;
+  font-weight: var(--fw-medium);
 }
 
 .result-row strong {
@@ -5215,7 +5217,7 @@ RIGHT CARD
 FORM ROW
 =================================================*/
 
-.form-row {
+.bmi-section .form-row {
   width: 100%;
 
   display: flex;
@@ -5226,21 +5228,34 @@ FORM ROW
   margin-bottom: 28px;
 }
 
-.form-group {
+.bmi-section .form-group {
   width: 50%;
-  position: relative;
+  min-width: 0;
 }
 
-.form-group label {
+.bmi-section .form-group label {
   display: block;
 
   margin-bottom: 12px;
 
   color: var(--text-heading);
 
-  font-size: 13px;
+  font-size: 14px;
 
-  font-weight: var(--fw-medium);
+  font-weight: var(--fw-semibold);
+}
+
+.bmi-section .field-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.bmi-section .field-header label {
+  margin-bottom: 0;
+  white-space: nowrap;
 }
 
 /*=================================================
@@ -5269,11 +5284,11 @@ INPUT
   transition: var(--transition);
 }
 
-.form-group input:focus {
+.bmi-section .form-group input:focus {
   box-shadow: inset 0px 0px 0px 2px var(--primary);
 }
 
-.form-group input::placeholder {
+.bmi-section .form-group input::placeholder {
   color: var(--text-muted);
 }
 
@@ -5281,12 +5296,12 @@ INPUT
 GENDER BUTTONS
 =================================================*/
 
-.gender-buttons {
+.bmi-section .gender-buttons {
   display: flex;
   gap: 10px;
 }
 
-.gender-buttons button {
+.bmi-section .gender-buttons button {
   width: 50%;
 
   height: 54px;
@@ -5308,12 +5323,12 @@ GENDER BUTTONS
   transition: var(--transition);
 }
 
-.gender-buttons button.active {
+.bmi-section .gender-buttons button.active {
   background: var(--primary);
   color: var(--text-white);
 }
 
-.gender-buttons button:hover {
+.bmi-section .gender-buttons button:hover {
   background: var(--primary-100);
 }
 
@@ -5321,51 +5336,47 @@ GENDER BUTTONS
 UNIT SWITCH
 =================================================*/
 
-.unit-switch {
-  position: absolute;
-  right: 0px;
-  padding: 6px;
-  top: -14px;
-  display: flex;
+.bmi-section .unit-switch {
+  position: static;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
   background: #eceef3;
   border-radius: 100px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: none;
   overflow: hidden;
 }
 
-.unit-switch button {
-  width: 42px;
-
-  height: 24px;
-
+.bmi-section .unit-switch button {
+  min-width: 44px;
+  height: 28px;
+  padding: 0 10px;
   border: none;
-
   background: transparent;
-
   cursor: pointer;
-
-  font-size: 13px;
-
+  font-size: 12px;
+  font-weight: var(--fw-semibold);
   color: var(--text-body);
-
   transition: var(--transition);
+  border-radius: 100px;
 }
 
-.unit-switch button.active {
+.bmi-section .unit-switch button.active {
   background: var(--primary);
   color: var(--text-white);
-  border-radius: 100px;
 }
 
 /*=================================================
 INPUT + UNIT
 =================================================*/
 
-.input-unit {
+.bmi-section .input-unit {
   position: relative;
 }
 
-.input-unit span {
+.bmi-section .input-unit span {
   position: absolute;
 
   right: 16px;
@@ -5383,7 +5394,7 @@ INPUT + UNIT
 FEET / INCH
 =================================================*/
 
-.height-feet {
+.bmi-section .height-feet {
   width: 100%;
 
   display: flex;
@@ -5391,7 +5402,7 @@ FEET / INCH
   gap: 12px;
 }
 
-.height-feet input {
+.bmi-section .height-feet input {
   width: 50%;
 }
 
@@ -5399,7 +5410,7 @@ FEET / INCH
 BUTTON ROW
 =================================================*/
 
-.button-row {
+.bmi-section .button-row {
   width: 100%;
 
   display: flex;
@@ -5411,9 +5422,9 @@ BUTTON ROW
   margin-bottom: 30px;
 }
 
-.calculate-btn {
-  width: 78%;
-  margin: 0 auto;
+.bmi-section .calculate-btn {
+  width: 100%;
+  margin: 0;
   height: 58px;
 
   border: none;
@@ -5435,7 +5446,7 @@ BUTTON ROW
   box-shadow: 0px 12px 28px rgba(231, 134, 58, 0.25);
 }
 
-.calculate-btn:hover {
+.bmi-section .calculate-btn:hover {
   background: var(--primary-hover);
 
   transform: translateY(-2px);
@@ -5643,10 +5654,10 @@ HOVER EFFECTS
 BUTTON ANIMATION
 ==========================================*/
 
-.calculate-btn:active,
-.print-btn:active,
-.gender-buttons button:active,
-.unit-switch button:active {
+.bmi-section .calculate-btn:active,
+.bmi-section .print-btn:active,
+.bmi-section .gender-buttons button:active,
+.bmi-section .unit-switch button:active {
   transform: scale(0.97);
 }
 
@@ -7180,47 +7191,49 @@ PRINT
    FORM GRID
 ============================ */
 
-.bmr-form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 25px;
+.bmr-section .bmr-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
 }
 
-.form-group {
-  width: calc(50% - 13px);
+.bmr-section .form-group {
+  width: 100%;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }
 
-.form-group label {
-  font-size: var(--fs-xl);
-  color: #2d6cdf;
-  font-weight: var(--fw-semibold);
-  margin-bottom: 14px;
+.bmr-section .form-group--full {
+  grid-column: 1 / -1;
 }
 
-/* ============================
-   INPUT
-============================ */
+.bmr-section .form-group label {
+  font-size: 14px;
+  color: var(--text-heading);
+  font-weight: var(--fw-semibold);
+  margin-bottom: 10px;
+}
 
-.form-group input {
+.bmr-section .form-group input {
   width: 100%;
-  height: 65px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
+  height: 54px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-light);
   background: #fff;
   outline: none;
-  padding: 0 20px;
-  font-size: 22px;
+  padding: 0 16px;
+  font-size: 16px;
   color: var(--text-heading);
   transition: var(--transition);
 }
 
-.form-group input:focus {
+.bmr-section .form-group input:focus {
   border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary);
 }
 
-.form-group input::placeholder {
+.bmr-section .form-group input::placeholder {
   color: var(--text-muted);
 }
 
@@ -7228,14 +7241,14 @@ PRINT
    GENDER
 ============================ */
 
-.gender-wrapper {
+.bmr-section .gender-wrapper {
   display: flex;
-  gap: 25px;
+  gap: 16px;
 }
 
-.gender-card {
-  width: 95px;
-  height: 95px;
+.bmr-section .gender-card {
+  width: 72px;
+  height: 72px;
   border-radius: 50%;
   overflow: hidden;
   cursor: pointer;
@@ -7245,87 +7258,90 @@ PRINT
   box-shadow: var(--shadow-sm);
 }
 
-.gender-card img {
+.bmr-section .gender-card img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.gender-card.active {
+.bmr-section .gender-card.active {
   border-color: var(--primary);
-  transform: scale(1.05);
 }
 
-.gender-card:hover {
-  transform: scale(1.05);
+.bmr-section .gender-card:hover {
+  border-color: var(--primary-300);
 }
 
 /* ============================
    HEIGHT / WEIGHT
 ============================ */
 
-.unit-input {
+.bmr-section .unit-input {
   display: flex;
-  align-items: center;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  align-items: stretch;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
   overflow: hidden;
   background: #fff;
 }
 
-.unit-input input {
+.bmr-section .unit-input input {
   flex: 1;
+  min-width: 0;
   border: none;
-  height: 65px;
+  height: 54px;
   border-radius: 0;
+  box-shadow: none;
 }
 
-.unit-switch {
-  display: flex;
-  padding: 8px;
-  gap: 8px;
-  background: var(--primary-light);
+.bmr-section .unit-input .unit-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  background: #eceef3;
+  flex-shrink: 0;
 }
 
-.unit-switch button {
-  width: 58px;
-  height: 48px;
+.bmr-section .unit-input .unit-switch button {
+  min-width: 44px;
+  height: 32px;
+  padding: 0 10px;
   border: none;
   background: transparent;
-  border-radius: var(--radius-xs);
+  border-radius: 100px;
   cursor: pointer;
-  color: var(--dark-light);
+  color: var(--text-body);
+  font-size: 12px;
   font-weight: var(--fw-semibold);
   transition: var(--transition);
 }
 
-.unit-switch button.active {
-  background: #fff;
-  color: var(--primary);
-  box-shadow: var(--shadow-sm);
+.bmr-section .unit-input .unit-switch button.active {
+  background: var(--primary);
+  color: var(--text-white);
+  box-shadow: none;
 }
 
-/* ============================
-   BUTTON
-============================ */
-
-.calculate-btn {
+.bmr-section .calculate-btn {
   width: 100%;
-  margin-top: 10px;
+  margin-top: 4px;
   border: none;
-  height: 78px;
-  border-radius: var(--radius-lg);
+  height: 56px;
+  border-radius: 100px;
   cursor: pointer;
-  font-size: 34px;
-  font-weight: var(--fw-bold);
-  color: #294b9a;
-  background: linear-gradient(90deg, #ff9a73 0%, #fff 50%, #73f173 100%);
+  font-size: 16px;
+  font-weight: var(--fw-semibold);
+  color: var(--text-white);
+  background: var(--primary);
   transition: var(--transition);
+  box-shadow: 0px 12px 28px rgba(231, 134, 58, 0.25);
 }
 
-.calculate-btn:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-lg);
+.bmr-section .calculate-btn:hover {
+  background: var(--primary-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 /* =====================================
@@ -7471,12 +7487,12 @@ PRINT
     box-shadow: var(--shadow-lg);
 }
 
-.calculate-btn:active {
-    transform: scale(.98);
+.bmr-section .calculate-btn:active {
+  transform: scale(0.98);
 }
 
-.gender-card:active {
-    transform: scale(.95);
+.bmr-section .gender-card:active {
+  transform: scale(0.98);
 }
 
 /* =====================================
@@ -9293,15 +9309,23 @@ input[type="number"] {
     font-size: 13px;
   }
 
-  .gender-buttons button,
-  .form-group input {
+  .bmi-section .form-row {
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .bmi-section .form-group {
+    width: 100%;
+  }
+
+  .bmi-section .gender-buttons button,
+  .bmi-section .form-group input {
     height: 50px;
   }
 
-  .calculate-btn,
-  .print-btn {
+  .bmi-section .calculate-btn,
+  .bmi-section .print-btn {
     height: 54px;
-
     font-size: 15px;
   }
 
@@ -9576,36 +9600,40 @@ input[type="number"] {
     padding: 50px 0;
   }
 
+  .bmr-section .bmr-form {
+    grid-template-columns: 1fr;
+  }
+
   .bmr-left h2 {
     font-size: 30px;
   }
 
-  .form-group label {
-    font-size: 20px;
+  .bmr-section .form-group label {
+    font-size: 14px;
   }
 
-  .form-group input {
-    height: 58px;
-    font-size: 18px;
+  .bmr-section .form-group input {
+    height: 50px;
+    font-size: 16px;
   }
 
-  .unit-input input {
-    height: 58px;
+  .bmr-section .unit-input input {
+    height: 50px;
   }
 
-  .gender-card {
-    width: 80px;
-    height: 80px;
+  .bmr-section .gender-card {
+    width: 64px;
+    height: 64px;
   }
 
-  .unit-switch button {
-    width: 50px;
-    height: 42px;
+  .bmr-section .unit-input .unit-switch button {
+    min-width: 40px;
+    height: 28px;
   }
 
-  .calculate-btn {
-    font-size: 22px;
-    height: 60px;
+  .bmr-section .calculate-btn {
+    font-size: 15px;
+    height: 54px;
   }
      .bmr-right {
         padding: 20px;

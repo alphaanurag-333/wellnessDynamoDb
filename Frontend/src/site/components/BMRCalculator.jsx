@@ -156,12 +156,10 @@ export default function BMRCalculator() {
 
               {/* Height */}
 
-              <div className="form-group">
-
+              <div className="form-group form-group--full">
                 <label>Height</label>
 
                 <div className="unit-input">
-
                   <input
                     type="number"
                     placeholder="Height"
@@ -170,8 +168,8 @@ export default function BMRCalculator() {
                   />
 
                   <div className="unit-switch">
-
                     <button
+                      type="button"
                       className={heightUnit === "cm" ? "active" : ""}
                       onClick={() => setHeightUnit("cm")}
                     >
@@ -179,26 +177,20 @@ export default function BMRCalculator() {
                     </button>
 
                     <button
+                      type="button"
                       className={heightUnit === "ft" ? "active" : ""}
                       onClick={() => setHeightUnit("ft")}
                     >
                       ft
                     </button>
-
                   </div>
-
                 </div>
-
               </div>
 
-              {/* Weight */}
-
-              <div className="form-group">
-
+              <div className="form-group form-group--full">
                 <label>Weight</label>
 
                 <div className="unit-input">
-
                   <input
                     type="number"
                     placeholder="Weight"
@@ -207,8 +199,8 @@ export default function BMRCalculator() {
                   />
 
                   <div className="unit-switch">
-
                     <button
+                      type="button"
                       className={weightUnit === "kg" ? "active" : ""}
                       onClick={() => setWeightUnit("kg")}
                     >
@@ -216,19 +208,18 @@ export default function BMRCalculator() {
                     </button>
 
                     <button
+                      type="button"
                       className={weightUnit === "lbs" ? "active" : ""}
                       onClick={() => setWeightUnit("lbs")}
                     >
                       lbs
                     </button>
-
                   </div>
-
                 </div>
-
               </div>
 
               <button
+                type="button"
                 className="calculate-btn"
                 onClick={calculateBMR}
               >

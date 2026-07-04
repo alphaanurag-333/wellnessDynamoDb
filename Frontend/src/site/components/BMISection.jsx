@@ -208,6 +208,7 @@ const BMISection = () => {
 
                 <div className="gender-buttons">
                   <button
+                    type="button"
                     className={gender === "male" ? "active" : ""}
                     onClick={() => setGender("male")}
                   >
@@ -215,6 +216,7 @@ const BMISection = () => {
                   </button>
 
                   <button
+                    type="button"
                     className={gender === "female" ? "active" : ""}
                     onClick={() => setGender("female")}
                   >
@@ -228,22 +230,26 @@ const BMISection = () => {
 
             <div className="form-row">
               <div className="form-group">
-                <label>Height</label>
+                <div className="field-header">
+                  <label>Height</label>
 
-                <div className="unit-switch">
-                  <button
-                    className={heightUnit === "cm" ? "active" : ""}
-                    onClick={() => changeHeightUnit("cm")}
-                  >
-                    cm
-                  </button>
+                  <div className="unit-switch">
+                    <button
+                      type="button"
+                      className={heightUnit === "cm" ? "active" : ""}
+                      onClick={() => changeHeightUnit("cm")}
+                    >
+                      cm
+                    </button>
 
-                  <button
-                    className={heightUnit === "ft" ? "active" : ""}
-                    onClick={() => changeHeightUnit("ft")}
-                  >
-                    ft/in
-                  </button>
+                    <button
+                      type="button"
+                      className={heightUnit === "ft" ? "active" : ""}
+                      onClick={() => changeHeightUnit("ft")}
+                    >
+                      ft/in
+                    </button>
+                  </div>
                 </div>
 
                 {heightUnit === "cm" ? (
@@ -273,22 +279,26 @@ const BMISection = () => {
               </div>
 
               <div className="form-group">
-                <label>Weight</label>
+                <div className="field-header">
+                  <label>Weight</label>
 
-                <div className="unit-switch">
-                  <button
-                    className={weightUnit === "kg" ? "active" : ""}
-                    onClick={() => changeWeightUnit("kg")}
-                  >
-                    kg
-                  </button>
+                  <div className="unit-switch">
+                    <button
+                      type="button"
+                      className={weightUnit === "kg" ? "active" : ""}
+                      onClick={() => changeWeightUnit("kg")}
+                    >
+                      kg
+                    </button>
 
-                  <button
-                    className={weightUnit === "lb" ? "active" : ""}
-                    onClick={() => changeWeightUnit("lb")}
-                  >
-                    lb
-                  </button>
+                    <button
+                      type="button"
+                      className={weightUnit === "lb" ? "active" : ""}
+                      onClick={() => changeWeightUnit("lb")}
+                    >
+                      lb
+                    </button>
+                  </div>
                 </div>
 
                 {weightUnit === "kg" ? (
@@ -316,7 +326,7 @@ const BMISection = () => {
             {/* BUTTONS */}
 
             <div className="button-row">
-              <button className="calculate-btn" onClick={calculateBMI}>
+              <button type="button" className="calculate-btn" onClick={calculateBMI}>
                 Calculate BMI
               </button>
 
