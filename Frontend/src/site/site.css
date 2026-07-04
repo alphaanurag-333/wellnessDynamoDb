@@ -4,6 +4,7 @@
 
 @import url("https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&display=swap');
 
 .site-shell {
   --site-navy: var(--admin-brand-blue);
@@ -6544,6 +6545,19 @@ PRINT
     overflow: hidden;
     border-radius: 25px;
 }
+.champion-card.birthday-card {
+    width: 100%;
+ 
+    background-image: url("../site/images/birthday-card-bg.png");
+    background-size: cover;
+    border-radius: var(--radius-md);
+    padding:25px 20px;
+    border: 1px solid var(--border-light);
+    /* box-shadow: var(--shadow-sm); */
+    position: relative;
+    overflow: hidden;
+    border-radius: 25px;
+}
 
 /* decorative circles */
 
@@ -6569,19 +6583,35 @@ PRINT
     border-radius:50%;
 } */
 
-.champion-title{
+.champion-title , .birthday-title{
     text-align:center;
     color:var(--primary);
     font-size:22px;
     font-weight:var(--fw-bold);
     margin-bottom:16px;
 }
+.birthday-title{
+  color:#683F7C;
+  font-size: 34px;
+    font-family: "Caveat", cursive;
+    font-weight: 700;
+    margin-bottom: 0;
+    text-align: left;
+}
 
-.champion-user{
+.champion-user, .birthday-user{
     display:flex;
     align-items:center;
     justify-content:space-between;
     gap:15px;
+}
+.birthday-user{
+
+  gap:40px;
+}
+
+.birthday-user{
+  color:#683F7C;
 }
 
 .champion-avatar{
@@ -6599,11 +6629,14 @@ PRINT
     object-fit:cover;
 }
 
-.champion-info{
+.champion-info , .birthday-info{
     flex:1;
     text-align: center;
 }
 
+.birthday-info{
+  text-align: left;
+}
 .champion-info h4{
     margin:0;
     color:var(--primary);
@@ -6615,6 +6648,24 @@ PRINT
     margin-top:6px;
     font-size:14px;
     color:var(--text-body);
+    margin-bottom: 0;
+}
+
+
+
+
+.birthday-info h4{
+    margin:0;
+    color:#683F7C;
+    font-size:18px;
+    font-weight:600;
+}
+
+.birthday-info p{
+    margin-top:6px;
+    font-size:13px;
+    color:#683F7C;
+    font-weight: 700;
     margin-bottom: 0;
 }
 
@@ -6680,6 +6731,122 @@ PRINT
 .champion-section .swiper-slide .champion-card{
     height:100%;
 }
+
+/* ------------healing Slider----------------- */
+
+
+.real-healing-section {
+    width: 100%;
+    padding: 60px 0;
+}
+.healing-title{
+  margin: 0;
+    color:#0F172A;
+    font-size: 48px;
+    font-weight: var(--fw-semibold);
+    line-height: 1.1;
+    margin-bottom: 55px;
+}
+.real-healing-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    height: 100%;
+    transition: var(--transition);
+}
+
+.real-healing-card:hover {
+    transform: translateY(-6px);
+    box-shadow: var(--shadow-md);
+}
+
+.real-healing-top {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.real-healing-stars {
+    color: var(--primary);
+    font-size: 18px;
+    letter-spacing: 2px;
+}
+
+.real-healing-tag {
+    background: var(--primary-light);
+    color: var(--primary);
+    padding: 6px 14px;
+    border-radius: var(--radius-pill);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-semibold);
+}
+
+.real-healing-review {
+    color: var(--text-body);
+    font-size: var(--fs-base);
+    line-height: 1.9;
+    font-style: italic;
+    flex: 1;
+}
+
+.real-healing-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+}
+
+.real-healing-profile {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.real-healing-profile img {
+    width: 55px;
+    height: 55px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--primary-light);
+}
+
+.real-healing-profile h4 {
+    margin: 0;
+    font-size: var(--fs-md);
+    color: var(--text-heading);
+    font-weight: var(--fw-bold);
+}
+
+.real-healing-profile span {
+    color: var(--text-muted);
+    font-size: var(--fs-sm);
+}
+
+.real-healing-bottom a {
+    color: var(--primary);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-semibold);
+    text-decoration: underline;
+    white-space: nowrap;
+}
+
+.real-healing-section .swiper-slide {
+    display: flex;
+    height: auto;
+}
+
+.real-healing-section .swiper-slide .real-healing-card {
+    width: 100%;
+}
+
+
+
 
 
 
@@ -7399,13 +7566,17 @@ PRINT
   .card-image {
     height: 220px;
   }
-    .champion-user{
+    .champion-user , .birthday-user{
         flex-wrap:wrap;
     }
 
     .champion-right{
         width:100%;
         margin-left:83px;
+    }
+       .real-healing-bottom {
+        flex-direction: column;
+        align-items: flex-start;
     }
 }
 
@@ -8075,7 +8246,7 @@ PRINT
     left: 8px;
     font-size: 0.62rem;
   }
-    .champion-title{
+    .champion-title , .birthday-title{
         font-size:20px;
     }
 
@@ -8619,4 +8790,17 @@ PRINT
     font-size: 14px;
     line-height: 1.7;
   }
+
+      .real-healing-card {
+        padding: 20px;
+    }
+
+    .real-healing-review {
+        font-size: 14px;
+    }
+
+    .real-healing-profile img {
+        width: 50px;
+        height: 50px;
+    }
 }
