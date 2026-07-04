@@ -35,6 +35,9 @@ async function start() {
     } = require("./jobs/energyExchangeFyPromotionCron");
     startEnergyExchangeFyPromotionCron();
 
+    const { startMonthlyChampionCron } = require("./jobs/monthlyChampionCron");
+    startMonthlyChampionCron();
+
     app.listen(config.port, () => {
       console.log(`Server is running on port ${config.port}`);
     });

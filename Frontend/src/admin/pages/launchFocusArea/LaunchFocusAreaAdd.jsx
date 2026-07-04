@@ -5,7 +5,16 @@ import Swal from "sweetalert2";
 import { adminCreateLaunchFocusArea, adminUpdateLaunchFocusArea } from "../../api/adminLaunchFocusAreas.js";
 import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
-import { TITLE_MAX_LEN, TITLE_MIN_LEN, emptyForm, sanitizeTitle, validateForm } from "./LaunchFocusAreaShared.js";
+import {
+  SORT_ORDER_MAX,
+  SORT_ORDER_MIN,
+  TITLE_MAX_LEN,
+  TITLE_MIN_LEN,
+  emptyForm,
+  sanitizeSortOrder,
+  sanitizeTitle,
+  validateForm,
+} from "./LaunchFocusAreaShared.js";
 
 export function LaunchFocusAreaForm({ mode = "create", initialItem = null }) {
   const isEditMode = mode === "edit";
@@ -80,9 +89,11 @@ export function LaunchFocusAreaForm({ mode = "create", initialItem = null }) {
           <input
             className="user-field__input"
             type="number"
-            min={0}
+            min={SORT_ORDER_MIN}
+            max={SORT_ORDER_MAX}
+            step={1}
             value={form.sortOrder}
-            onChange={(e) => setForm((p) => ({ ...p, sortOrder: e.target.value }))}
+            onChange={(e) => setForm((p) => ({ ...p, sortOrder: sanitizeSortOrder(e.target.value) }))}
           />
         </label>
         <label className="user-field col-12 col-md-4">

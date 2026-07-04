@@ -227,6 +227,26 @@ async function upsertDayLog(userId, date, payload) {
   return formatDayLog(item);
 }
 
+function monthDateRange(monthYear) {
+  const match = /^(\d{4})-(\d{2})$/.exec(String(monthYear || "").trim());
+  if (!match) return null;
+  const [, yearStr, monthStr] = match;
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  if (!Number.isInteger(month) || month < 1 || month > 12) return null;
+
+  const startDate = `${yearStr}-${monthStr}-01`;
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const endDate = `${yearStr}-${monthStr}-${String(lastDay).padStart(2, "0")}`;
+  return { startDate, endDate };
+}
+
+async function listDayLogsForMonth(userId, monthYear) {
+  const range = monthDateRange(monthYear);
+  if (!range) return [];
+  return listDayLogsBetween(userId, range.startDate, range.endDate);
+}
+
 async function listDayLogsBetween(userId, startDate, endDate) {
   if (!isValidDateOnly(startDate) || !isValidDateOnly(endDate) || startDate > endDate) {
     return [];
@@ -264,6 +284,8 @@ module.exports = {
   getDayLog,
   upsertDayLog,
   listDayLogsBetween,
+  listDayLogsForMonth,
+  monthDateRange,
   formatDayLog,
   formatSettings,
 };

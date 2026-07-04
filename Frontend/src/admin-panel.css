@@ -1118,6 +1118,8 @@ a.admin-header__dropdown-item {
   box-shadow: var(--admin-shadow-sm);
   border: 1px solid var(--admin-border-soft);
   padding: 18px 18px 20px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .page-card__head {
@@ -2449,6 +2451,8 @@ a.btn:hover {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .user-page__toolbar {
@@ -2853,12 +2857,20 @@ a.btn:hover {
   gap: 14px;
   flex: 1;
   min-width: 0;
+  max-width: 100%;
+}
+
+.user-view-card {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .user-detail-row {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* Field "tiles" inside view-page detail grids — gives every admin
@@ -2871,6 +2883,7 @@ a.btn:hover {
   border-radius: 10px;
   background: var(--admin-surface-muted);
   margin: 0;
+  min-width: 0;
 }
 
 .user-detail-row__label {
@@ -2879,13 +2892,60 @@ a.btn:hover {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--admin-muted);
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .user-detail-row__value {
   font-size: 0.9375rem;
   font-weight: 600;
+  overflow-wrap: anywhere;
   word-break: break-word;
   line-height: 1.4;
+  max-width: 100%;
+}
+
+/* Free-form sections below detail grids on view pages. */
+.user-view-card > :not(.user-view-grid):not(.user-view-head) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.user-view-card > :not(.user-view-grid):not(.user-view-head) div,
+.user-view-card > :not(.user-view-grid):not(.user-view-head) p,
+.user-view-card > :not(.user-view-grid):not(.user-view-head) li,
+.user-view-card > :not(.user-view-grid):not(.user-view-head) ol,
+.user-view-card > :not(.user-view-grid):not(.user-view-head) ul {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 100%;
+}
+
+.admin-view-section {
+  margin-top: 16px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.admin-view-section__label {
+  display: block;
+  font-weight: 700;
+}
+
+.admin-view-text {
+  margin-top: 6px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.65;
+  max-width: 100%;
+}
+
+.user-view-card .data-table td,
+.user-view-card .data-table th {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 280px;
 }
 
 /* Sub-section heading inside a view card (e.g. Programs / Subscriptions). */
@@ -6404,6 +6464,7 @@ fieldset.form-field legend {
   letter-spacing: -0.01em;
   overflow-wrap: anywhere;
   word-break: break-word;
+  max-width: 100%;
 }
 
 .admin-detail-block__body {
@@ -6413,6 +6474,7 @@ fieldset.form-field legend {
   overflow-wrap: anywhere;
   word-break: break-word;
   white-space: pre-wrap;
+  max-width: 100%;
 }
 
 /* Emphasised / muted table cells reused across list tables. */
@@ -8667,6 +8729,25 @@ fieldset.form-field legend {
   margin-bottom: 1rem;
 }
 
+.drs-graph {
+  margin-top: 12px;
+}
+
+.drs-graph__tooltip {
+  background: #ffffff;
+  border: 1px solid #d6e2ef;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  color: #1d3557;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.12);
+}
+
+.drs-graph__tooltip strong {
+  display: block;
+  margin-bottom: 2px;
+}
+
 .mt-mode-card__header {
   display: flex;
   align-items: flex-start;
@@ -8772,6 +8853,9 @@ fieldset.form-field legend {
 .mt-pending-card__desc {
   margin: 0;
   color: #6b7280;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 100%;
 }
 
 .mt-pending-card__badge {

@@ -10,8 +10,18 @@ const {
   PRAKRUTI_QUESTION_ALLOWED_STATUS,
 } = require("../../models/prakrutiQuestionModel");
 
-const CATEGORY_MAX_LEN = 120;
+const CATEGORY_MAX_LEN = 35;
 const QUESTION_MAX_LEN = 500;
+const SORT_ORDER_MIN = 0;
+const SORT_ORDER_MAX = 100000;
+
+function validateSortOrder(value) {
+  if (value === undefined || value === null || value === "") return;
+  const n = Number(value);
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n < SORT_ORDER_MIN || n > SORT_ORDER_MAX) {
+    throw new AppError(`sortOrder must be a whole number between ${SORT_ORDER_MIN} and ${SORT_ORDER_MAX}`, 400);
+  }
+}
 
 exports.listPrakrutiQuestionsController = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, status, search, category } = req.query;
@@ -42,6 +52,7 @@ exports.createPrakrutiQuestionController = asyncHandler(async (req, res) => {
   if (!PRAKRUTI_QUESTION_ALLOWED_STATUS.includes(status)) {
     throw new AppError("status must be active or inactive", 400);
   }
+  validateSortOrder(sortOrder);
 
   const created = await createPrakrutiQuestion({ category, question, sortOrder, status });
 
@@ -73,7 +84,10 @@ exports.updatePrakrutiQuestionController = asyncHandler(async (req, res) => {
     }
     updates.question = question;
   }
-  if (req.body.sortOrder !== undefined) updates.sortOrder = req.body.sortOrder;
+  if (req.body.sortOrder !== undefined) {
+    validateSortOrder(req.body.sortOrder);
+    updates.sortOrder = req.body.sortOrder;
+  }
   if (req.body.status !== undefined) {
     const status = String(req.body.status || "").trim().toLowerCase();
     if (!PRAKRUTI_QUESTION_ALLOWED_STATUS.includes(status)) {

@@ -4,6 +4,25 @@ function settingsBase(userId) {
   return `/coach/heal-users/${userId}/daily-reflection-settings`;
 }
 
+function historyBase(userId) {
+  return `/coach/heal-users/${userId}/daily-reflection/history`;
+}
+
+export async function coachGetDailyReflectionHistory(token, userId, month) {
+  try {
+    const { data: body } = await coachApi.get(historyBase(userId), {
+      headers: authHeader(token),
+      params: month ? { month } : undefined,
+    });
+    return {
+      month: body.month ?? month,
+      history: Array.isArray(body.history) ? body.history : [],
+    };
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function coachGetDailyReflectionSettings(token, userId) {
   try {
     const { data: body } = await coachApi.get(settingsBase(userId), {

@@ -9,7 +9,10 @@ import {
   CATEGORY_MAX_LEN,
   QUESTION_MAX_LEN,
   QUESTION_MIN_LEN,
+  SORT_ORDER_MAX,
+  SORT_ORDER_MIN,
   emptyForm,
+  sanitizeSortOrder,
   sanitizeText,
   validateForm,
 } from "./PrakrutiQuestionShared.js";
@@ -87,9 +90,11 @@ export function PrakrutiQuestionForm({ mode = "create", initialQuestion = null }
           <input
             className="user-field__input"
             type="number"
-            min={0}
+            min={SORT_ORDER_MIN}
+            max={SORT_ORDER_MAX}
+            step={1}
             value={form.sortOrder}
-            onChange={(e) => setForm((p) => ({ ...p, sortOrder: e.target.value }))}
+            onChange={(e) => setForm((p) => ({ ...p, sortOrder: sanitizeSortOrder(e.target.value) }))}
           />
         </label>
         <label className="user-field col-12 col-md-4">

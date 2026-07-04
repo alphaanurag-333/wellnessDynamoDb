@@ -4,6 +4,7 @@ export const coachNavItems = [
   { to: "meal-approvals", label: "Meal Approvals", icon: "clipboard-list" },
   { to: "real-people-testimonials", label: "Testimonials", icon: "message-circle" },
   { to: "commitment-letters", label: "Commitment Letters", icon: "file" },
+  { to: "monthly-champions", label: "Monthly Champions", icon: "award" },
   { to: "consultancy/transactions", label: "Consultancy Payments", icon: "wallet" },
   { to: "consultancy/enrolled-users", label: "Consultancy Users", icon: "user-check" },
   { to: "my-assistants", label: "Assistants (AWC)", icon: "user-plus" },

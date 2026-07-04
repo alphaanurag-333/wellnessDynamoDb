@@ -10,7 +10,17 @@ const {
   getSettings,
   upsertSettings,
   listCatalogWithSettings,
+  listDayLogsForMonth,
 } = require("../../models/dailyReflectionModel");
+const { todayDateOnly } = require("../../utils/dateOnly");
+
+function resolveTargetMonth(query) {
+  const candidate = String(query?.month || "").trim() || todayDateOnly().slice(0, 7);
+  if (!/^\d{4}-\d{2}$/.test(candidate)) {
+    throw new AppError("month must be YYYY-MM", 400);
+  }
+  return candidate;
+}
 
 async function coachContext(req) {
   const actingCoachId = req.auth?.sub;
@@ -37,6 +47,24 @@ exports.getCoachUserDailyReflectionSettingsController = asyncHandler(async (req,
     activities: listCatalogWithSettings(settings),
     storedSettings: settings.activities,
     updatedAt: settings.updatedAt,
+  });
+});
+
+exports.getCoachUserDailyReflectionHistoryController = asyncHandler(async (req, res) => {
+  const { userId } = await coachContext(req);
+  const month = resolveTargetMonth(req.query);
+  const logs = await listDayLogsForMonth(userId, month);
+
+  const history = logs
+    .filter((row) => row.submittedAt)
+    .map((row) => ({ date: row.date, score: row.score }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  return res.status(200).json({
+    status: true,
+    message: "Daily reflection history fetched",
+    month,
+    history,
   });
 });
 

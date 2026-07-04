@@ -3,6 +3,7 @@ const { protectWellnessCoach } = require("../../middleware/auth");
 const {
   getCoachUserDailyReflectionSettingsController,
   updateCoachUserDailyReflectionSettingsController,
+  getCoachUserDailyReflectionHistoryController,
 } = require("../../controllers/wellnessCoachController/dailyReflectionController");
 
 const router = express.Router({ mergeParams: true });
@@ -16,6 +17,11 @@ router.patch(
   "/:userId/daily-reflection-settings",
   protectWellnessCoach,
   updateCoachUserDailyReflectionSettingsController
+);
+router.get(
+  "/:userId/daily-reflection/history",
+  protectWellnessCoach,
+  getCoachUserDailyReflectionHistoryController
 );
 
 module.exports = router;

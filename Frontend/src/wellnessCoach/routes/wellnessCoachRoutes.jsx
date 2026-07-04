@@ -8,6 +8,7 @@ import { UserClientHub } from "../pages/myHealUsers/UserClientHub.jsx";
 import { ClientHubLegacyRedirect } from "../../components/ClientHubLegacyRedirect.jsx";
 import { CoachRealPeopleTestimonialsPage } from "../pages/realPeopleTestimonial/CoachRealPeopleTestimonialsPage.jsx";
 import { CoachCommitmentLettersPage } from "../pages/commitmentLetter/CoachCommitmentLettersPage.jsx";
+import { CoachMonthlyChampionsPage } from "../pages/monthlyChampion/CoachMonthlyChampionsPage.jsx";
 import { CoachMealApprovalsPage } from "../pages/mealReview/CoachMealApprovalsPage.jsx";
 import { MyAssistantList } from "../pages/myAssistants/MyAssistantList.jsx";
 import { MyAssistantAdd } from "../pages/myAssistants/MyAssistantAdd.jsx";
@@ -42,6 +43,7 @@ export const wellnessCoachRouteTree = (
     <Route path="meal-approvals" element={<CoachMealApprovalsPage />} />
     <Route path="real-people-testimonials" element={<CoachRealPeopleTestimonialsPage />} />
     <Route path="commitment-letters" element={<CoachCommitmentLettersPage />} />
+    <Route path="monthly-champions" element={<CoachMonthlyChampionsPage />} />
     <Route path="consultancy/transactions" element={<CoachConsultancyTransactionList />} />
     <Route path="consultancy/enrolled-users" element={<CoachConsultancyEnrolledUsersList />} />
     <Route path="consultancy/clients/:userId" element={<CoachConsultancyClientPage />} />

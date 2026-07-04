@@ -83,6 +83,12 @@ function titleFromPath(pathname) {
 
   if (p.startsWith("/admin/commitment-letters")) return "Commitment letters";
 
+  if (p.startsWith("/admin/monthly-champions")) {
+    if (/^\/admin\/monthly-champions\/[^/]+\/edit$/.test(p)) return "Edit monthly champion";
+    if (/^\/admin\/monthly-champions\/[^/]+$/.test(p)) return "Monthly champion details";
+    return "Monthly champions";
+  }
+
   if (p.startsWith("/admin/video-testimonials")) {
     if (/^\/admin\/video-testimonials\/new$/.test(p)) return "Add video testimonial";
     if (/^\/admin\/video-testimonials\/[^/]+\/edit$/.test(p)) return "Edit video testimonial";

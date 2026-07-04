@@ -16,6 +16,8 @@ const {
 const TABLE = "LaunchFocusArea";
 const LAUNCH_FOCUS_AREA_ALLOWED_STATUS = ["active", "inactive"];
 const STATUS = new Set(LAUNCH_FOCUS_AREA_ALLOWED_STATUS);
+const SORT_ORDER_MIN = 0;
+const SORT_ORDER_MAX = 100000;
 
 function normalizeStatus(value, fallback = "active") {
   const next = String(value || fallback).toLowerCase().trim();
@@ -24,7 +26,8 @@ function normalizeStatus(value, fallback = "active") {
 
 function normalizeSortOrder(value, fallback = 0) {
   const n = Number(value);
-  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : fallback;
+  if (!Number.isFinite(n) || n < SORT_ORDER_MIN) return fallback;
+  return Math.min(Math.floor(n), SORT_ORDER_MAX);
 }
 
 function withLegacyId(item) {

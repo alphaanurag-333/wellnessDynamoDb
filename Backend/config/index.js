@@ -67,4 +67,12 @@ module.exports = {
     process.env.ENERGY_EXCHANGE_FY_CRON_ENABLED === "true" ||
     (process.env.ENERGY_EXCHANGE_FY_CRON_ENABLED !== "false" &&
       (process.env.NODE_ENV || "development") === "production"),
+
+  monthlyChampionCronTimezone: process.env.MONTHLY_CHAMPION_CRON_TIMEZONE || "Asia/Kolkata",
+  // 12:10 AM on the 1st of every month — evaluates the month that just ended
+  monthlyChampionCronSchedule: process.env.MONTHLY_CHAMPION_CRON_SCHEDULE || "10 0 1 * *",
+  monthlyChampionCronEnabled:
+    process.env.MONTHLY_CHAMPION_CRON_ENABLED === "true" ||
+    (process.env.MONTHLY_CHAMPION_CRON_ENABLED !== "false" &&
+      (process.env.NODE_ENV || "development") === "production"),
 };

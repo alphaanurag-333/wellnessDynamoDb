@@ -81,6 +81,7 @@ export const navItems = [
   { to: "banners", label: "Banner Management", icon: "layout" },
   { to: "birthday-posts", label: "Birthday Posts", icon: "cake" },
   { to: "birthday-notifications", label: "Birthday Notifications", icon: "bell" },
+  { to: "monthly-champions", label: "Monthly Champions", icon: "award" },
   { to: "notifications", label: "Notifications", icon: "bell" },
   // { to: "coupons", label: "Coupons", icon: "percent" },
   { to: "faq", label: "FAQ", icon: "help" },

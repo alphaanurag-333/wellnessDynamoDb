@@ -24,7 +24,10 @@
     "migrate:meal-tracking-index": "node scripts/ensureMealTrackingCoachIndex.js",
     "migrate:real-people-testimonial-health-concern": "node --use-system-ca scripts/ensureRealPeopleTestimonialHealthConcernIndex.js",
     "table:commitment-letters": "node --use-system-ca tables/createUserCommitmentLetterTable.js",
-    "migrate:commitment-letter": "node migration/migrateAll.js --only=24-user-commitment-letter"
+    "migrate:commitment-letter": "node migration/migrateAll.js --only=24-user-commitment-letter",
+    "table:monthly-champions": "node --use-system-ca tables/createMonthlyChampionPostTable.js && node --use-system-ca tables/createMonthlyChampionPostCommentTable.js",
+    "migrate:monthly-champions": "node migration/migrateAll.js --only=25-monthly-champions",
+    "job:monthly-champions:run": "node --use-system-ca scripts/runMonthlyChampionJob.js"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1041.0",

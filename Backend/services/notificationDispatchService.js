@@ -32,6 +32,8 @@ const FCM_TYPE_BY_KIND = {
   supplement_bill_uploaded: "supplement_bill_uploaded_notification",
   meal_log_submitted: "meal_log_submitted_notification",
   meal_log_reviewed: "meal_log_reviewed_notification",
+  monthly_champion: "monthly_champion_notification",
+  monthly_champion_comment: "monthly_champion_comment_notification",
 };
 
 function buildPushData(notification) {
@@ -160,6 +162,51 @@ async function ensureBirthdayReminderInbox({
     referenceType: "birthday_post",
     title: "Happy Birthday!",
   });
+}
+
+async function dispatchMonthlyChampionNotification({
+  userId,
+  rank,
+  monthLabel,
+  averageScore,
+  postId,
+}) {
+  const rankLabel = Number(rank) === 1 ? "#1" : Number(rank) === 2 ? "#2" : "#3";
+  const message = `Congratulations! You ranked ${rankLabel} Champion for ${monthLabel} with an average daily reflection score of ${averageScore}%.`;
+
+  const notification = await createTargetedNotification({
+    userId,
+    kind: "monthly_champion",
+    message,
+    referenceId: postId,
+    referenceType: "monthly_champion_post",
+    title: "🏆 Monthly Champion!",
+  });
+
+  runPushSafely(deliverTargetedPush(userId, notification));
+  return notification;
+}
+
+async function dispatchMonthlyChampionCommentNotification({
+  recipientUserId,
+  actorUserId,
+  postId,
+  message,
+  comment = null,
+}) {
+  const notification = await createTargetedNotification({
+    userId: recipientUserId,
+    kind: "monthly_champion_comment",
+    message,
+    referenceId: postId,
+    referenceType: "monthly_champion_post",
+    actorUserId,
+    title: "New comment on your Champion post",
+    comment,
+  });
+
+  runPushSafely(deliverTargetedPush(recipientUserId, notification));
+  return notification;
 }
 
 async function dispatchInternalParametersRecommendationNotification({
@@ -499,6 +546,8 @@ module.exports = {
   dispatchBroadcastNotification,
   dispatchBirthdayWishNotification,
   ensureBirthdayReminderInbox,
+  dispatchMonthlyChampionNotification,
+  dispatchMonthlyChampionCommentNotification,
   dispatchInternalParametersRecommendationNotification,
   dispatchDietPlanAssignmentNotification,
   dispatchWellnessPrescriptionAssignedNotification,

@@ -11,6 +11,16 @@ const {
 } = require("../../models/prakrutiThingToAvoidModel");
 
 const TITLE_MAX_LEN = 300;
+const SORT_ORDER_MIN = 0;
+const SORT_ORDER_MAX = 100000;
+
+function validateSortOrder(value) {
+  if (value === undefined || value === null || value === "") return;
+  const n = Number(value);
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n < SORT_ORDER_MIN || n > SORT_ORDER_MAX) {
+    throw new AppError(`sortOrder must be a whole number between ${SORT_ORDER_MIN} and ${SORT_ORDER_MAX}`, 400);
+  }
+}
 
 exports.listPrakrutiThingsToAvoidController = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, status, search } = req.query;
@@ -33,6 +43,7 @@ exports.createPrakrutiThingToAvoidController = asyncHandler(async (req, res) => 
   if (!PRAKRUTI_THING_TO_AVOID_ALLOWED_STATUS.includes(status)) {
     throw new AppError("status must be active or inactive", 400);
   }
+  validateSortOrder(req.body.sortOrder);
 
   const thingToAvoid = await createPrakrutiThingToAvoid({
     title,
@@ -58,7 +69,10 @@ exports.updatePrakrutiThingToAvoidController = asyncHandler(async (req, res) => 
     if (title.length > TITLE_MAX_LEN) throw new AppError(`title cannot exceed ${TITLE_MAX_LEN} characters`, 400);
     updates.title = title;
   }
-  if (req.body.sortOrder !== undefined) updates.sortOrder = req.body.sortOrder;
+  if (req.body.sortOrder !== undefined) {
+    validateSortOrder(req.body.sortOrder);
+    updates.sortOrder = req.body.sortOrder;
+  }
   if (req.body.status !== undefined) {
     const status = String(req.body.status || "").trim().toLowerCase();
     if (!PRAKRUTI_THING_TO_AVOID_ALLOWED_STATUS.includes(status)) {

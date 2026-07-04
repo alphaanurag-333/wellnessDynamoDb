@@ -6,6 +6,7 @@ const {
   getDayLog,
   upsertDayLog,
   listDayLogsBetween,
+  listDayLogsForMonth,
   listEnabledActivities,
 } = require("../../models/dailyReflectionModel");
 const { listAssignedMentalWellbeingByUserId } = require("../../models/assignedMentalWellbeingModel");
@@ -16,6 +17,14 @@ function resolveTargetDate(query, body) {
   const candidate = body?.date ?? query?.date ?? todayDateOnly();
   if (!isValidDateOnly(candidate)) {
     throw new AppError("date must be YYYY-MM-DD", 400);
+  }
+  return candidate;
+}
+
+function resolveTargetMonth(query) {
+  const candidate = String(query?.month || "").trim() || todayDateOnly().slice(0, 7);
+  if (!/^\d{4}-\d{2}$/.test(candidate)) {
+    throw new AppError("month must be YYYY-MM", 400);
   }
   return candidate;
 }
@@ -124,6 +133,26 @@ exports.recordPluggedHeadphonesController = asyncHandler(async (req, res) => {
     status: true,
     message: "Headphone preference recorded",
     dayLog,
+  });
+});
+
+exports.getMyDailyReflectionHistoryController = asyncHandler(async (req, res) => {
+  const userId = req.auth?.sub || req.user?.id;
+  if (!userId) throw new AppError("Unauthorized", 401);
+
+  const month = resolveTargetMonth(req.query);
+  const logs = await listDayLogsForMonth(userId, month);
+
+  const history = logs
+    .filter((row) => row.submittedAt)
+    .map((row) => ({ date: row.date, score: row.score }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  return res.status(200).json({
+    status: true,
+    message: "Daily reflection history fetched",
+    month,
+    history,
   });
 });
 

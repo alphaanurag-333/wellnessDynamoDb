@@ -95,6 +95,9 @@ import { TransformationAdd } from "../pages/transformation/TransformationAdd.jsx
 import { TransformationEdit } from "../pages/transformation/TransformationEdit.jsx";
 import { TransformationView } from "../pages/transformation/TransformationView.jsx";
 import { CommitmentLetterList } from "../pages/commitmentLetter/CommitmentLetterList.jsx";
+import { MonthlyChampionList } from "../pages/monthlyChampion/MonthlyChampionList.jsx";
+import { MonthlyChampionView } from "../pages/monthlyChampion/MonthlyChampionView.jsx";
+import { MonthlyChampionEdit } from "../pages/monthlyChampion/MonthlyChampionEdit.jsx";
 import { RealPeopleTestimonialList } from "../pages/realPeopleTestimonial/RealPeopleTestimonialList.jsx";
 import { RealPeopleTestimonialAdd } from "../pages/realPeopleTestimonial/RealPeopleTestimonialAdd.jsx";
 import { RealPeopleTestimonialEdit } from "../pages/realPeopleTestimonial/RealPeopleTestimonialEdit.jsx";
@@ -350,6 +353,11 @@ export const adminRouteTree = (
       <Route path=":testimonialId" element={<RealPeopleTestimonialView />} />
     </Route>
     <Route path="commitment-letters" element={<CommitmentLetterList />} />
+    <Route path="monthly-champions" element={<Outlet />}>
+      <Route index element={<MonthlyChampionList />} />
+      <Route path=":postId/edit" element={<MonthlyChampionEdit />} />
+      <Route path=":postId" element={<MonthlyChampionView />} />
+    </Route>
     <Route path="video-testimonials" element={<Outlet />}>
       <Route index element={<VideoTestimonialList />} />
       <Route path="new" element={<VideoTestimonialAdd />} />

@@ -34,6 +34,8 @@ const KIND = new Set([
   "coach_reminder",
   "physical_exercise_assigned",
   "meal_log_reviewed",
+  "monthly_champion",
+  "monthly_champion_comment",
 ]);
 const BROADCAST_KINDS = new Set(["admin_broadcast", "health_tool", "recipe", "yoga"]);
 
