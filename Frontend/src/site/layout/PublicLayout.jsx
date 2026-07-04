@@ -22,9 +22,7 @@ export function PublicLayout() {
       const timer = window.setTimeout(() => scrollToSection(sectionId), 50);
       return () => window.clearTimeout(timer);
     }
-    if (pathname === "/") {
-      window.scrollTo({ top: 0, behavior: "auto" });
-    }
+    window.scrollTo({ top: 0, behavior: "auto" });
   }, [pathname]);
 
   return (

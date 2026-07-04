@@ -1,54 +1,134 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
 import { FaPlay } from "react-icons/fa";
 
 import "swiper/css";
 
+import { DEFAULT_IMAGE_SRC, handleMediaImageError, mediaUrl } from "../../media.js";
+import { fetchVideoTestimonials } from "../api/publicMisc.js";
 
-const videos = [
-  {
-    id: 1,
-    image:
-      "https://images.unsplash.com/photo-1500648767791-00dcc994a43f?w=700",
-    youtube: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-  },
-  {
-    id: 2,
-    image:
-      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=700",
-    youtube: "https://www.youtube.com/embed/ysz5S6PUM-U",
-  },
-  {
-    id: 3,
-    image:
-      "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=700",
-    youtube: "https://www.youtube.com/embed/tgbNymZ7vqY",
-  },
-  {
-    id: 4,
-    image:
-      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=700",
-    youtube: "https://www.youtube.com/embed/ScMzIvxBSi4",
-  },
-];
+function youtubeEmbedUrl(url) {
+  const raw = String(url || "").trim();
+  if (!raw) return "";
+
+  if (raw.includes("/embed/")) {
+    try {
+      const parsed = new URL(raw);
+      const parts = parsed.pathname.split("/").filter(Boolean);
+      const embedIndex = parts.indexOf("embed");
+      if (embedIndex >= 0 && parts[embedIndex + 1]) {
+        return `https://www.youtube.com/embed/${parts[embedIndex + 1]}`;
+      }
+    } catch {
+      return raw;
+    }
+    return raw;
+  }
+
+  try {
+    const parsed = new URL(raw);
+    if (parsed.hostname.includes("youtube.com")) {
+      const videoId = parsed.searchParams.get("v");
+      if (videoId) return `https://www.youtube.com/embed/${videoId}`;
+    }
+    if (parsed.hostname === "youtu.be") {
+      const videoId = parsed.pathname.replace(/^\//, "");
+      if (videoId) return `https://www.youtube.com/embed/${videoId}`;
+    }
+  } catch {
+    return "";
+  }
+
+  return "";
+}
+
+function mapVideoTestimonial(row) {
+  if (!row) return null;
+
+  const id = row.id || row._id;
+  const type = row.type === "video" ? "video" : "link";
+  const name = String(row.name || "").trim() || "Video testimonial";
+  const image = row.profileImage ? mediaUrl(row.profileImage) : DEFAULT_IMAGE_SRC;
+
+  let playUrl = "";
+  if (type === "video" && row.video) {
+    playUrl = mediaUrl(row.video);
+  } else if (type === "link" && row.ytLink) {
+    playUrl = youtubeEmbedUrl(row.ytLink);
+  }
+
+  if (!id || !playUrl) return null;
+
+  return { id, name, type, image, playUrl };
+}
 
 export default function VideoTestimonials() {
-  const [video, setVideo] = useState("");
+  const [items, setItems] = useState(null);
+  const [activeItem, setActiveItem] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const data = await fetchVideoTestimonials({ page: 1, limit: 24 });
+        if (cancelled) return;
+        const rows = Array.isArray(data?.videoTestimonials) ? data.videoTestimonials : [];
+        setItems(rows.map(mapVideoTestimonial).filter(Boolean));
+      } catch {
+        if (!cancelled) setItems([]);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!activeItem) return undefined;
+
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") setActiveItem(null);
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [activeItem]);
+
+  if (items === null) {
+    return (
+      <section className="video-slider-section container" aria-busy="true" aria-label="Loading video testimonials">
+        <h2 className="voice-title">Voice of Healing : Unfiltered</h2>
+        <p className="site-testimonials__loading">Loading video testimonials…</p>
+      </section>
+    );
+  }
+
+  if (items.length === 0) {
+    return null;
+  }
+
+  const enableLoop = items.length > 3;
 
   return (
     <>
-      <section className="video-slider-section container">
-           <h2 className="voice-title">Voice of Healing : Unfiltered</h2>
+      <section className="video-slider-section container" aria-label="Video testimonials">
+        <h2 className="voice-title">Voice of Healing : Unfiltered</h2>
         <Swiper
           modules={[Autoplay]}
-          slidesPerView={4}
+          slidesPerView={3}
           spaceBetween={25}
-          loop={true}
-          autoplay={{
-            delay: 3000,
-            disableOnInteraction: false,
-          }}
+          loop={enableLoop}
+          autoplay={
+            enableLoop
+              ? {
+                  delay: 3000,
+                  disableOnInteraction: false,
+                }
+              : false
+          }
           breakpoints={{
             0: {
               slidesPerView: 1,
@@ -61,45 +141,50 @@ export default function VideoTestimonials() {
             },
           }}
         >
-          {videos.map((item) => (
+          {items.map((item) => (
             <SwiperSlide key={item.id}>
-              <div
+              <button
+                type="button"
                 className="video-card"
-                onClick={() => setVideo(item.youtube)}
+                onClick={() => setActiveItem(item)}
+                aria-label={`Play video testimonial from ${item.name}`}
               >
-                <img src={item.image} alt="" />
+                <img
+                  src={item.image || DEFAULT_IMAGE_SRC}
+                  alt={item.name}
+                  loading="lazy"
+                  onError={handleMediaImageError}
+                />
 
-                <div className="play-btn">
+                <span className="play-btn" aria-hidden>
                   <FaPlay />
-                </div>
-              </div>
+                </span>
+              </button>
             </SwiperSlide>
           ))}
         </Swiper>
       </section>
 
-      {video && (
-        <div className="video-modal" onClick={() => setVideo("")}>
-          <div
-            className="video-modal-content"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              className="close-btn"
-              onClick={() => setVideo("")}
-            >
+      {activeItem ? (
+        <div className="video-modal" onClick={() => setActiveItem(null)} role="dialog" aria-modal="true">
+          <div className="video-modal-content" onClick={(e) => e.stopPropagation()}>
+            <button type="button" className="close-btn" onClick={() => setActiveItem(null)} aria-label="Close video">
               ×
             </button>
 
-            <iframe
-              src={`${video}?autoplay=1`}
-              title="youtube"
-              allow="autoplay; encrypted-media"
-              allowFullScreen
-            ></iframe>
+            {activeItem.type === "video" ? (
+              <video src={activeItem.playUrl} controls autoPlay playsInline className="video-modal-player" />
+            ) : (
+              <iframe
+                src={`${activeItem.playUrl}?autoplay=1`}
+                title={activeItem.name}
+                allow="autoplay; encrypted-media; picture-in-picture"
+                allowFullScreen
+              />
+            )}
           </div>
         </div>
-      )}
+      ) : null}
     </>
   );
 }

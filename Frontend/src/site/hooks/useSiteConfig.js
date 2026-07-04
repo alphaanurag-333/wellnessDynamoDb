@@ -62,6 +62,45 @@ const SOCIAL_FIELDS = [
   { key: "linkedin", label: "LinkedIn", icon: "linkedin" },
 ];
 
+const DEFAULT_FOOTER_TAGLINE =
+  "Personalized wellness coaching, community support, and programs designed for lasting health transformation.";
+
+function parseAppFooterText(text) {
+  const raw = str(text);
+  if (!raw) {
+    return { brandLine: "", copyright: "", credit: "" };
+  }
+
+  const segments = raw
+    .split(/\|\|/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (segments.length > 1) {
+    const copyright = segments.find((part) => /©|copyright/i.test(part)) || "";
+    const credit = segments.find((part) => /powered by/i.test(part)) || "";
+    const brandLine = segments.find(
+      (part) => part !== copyright && part !== credit && !/©|copyright|powered by/i.test(part)
+    );
+
+    return {
+      brandLine: brandLine || "",
+      copyright,
+      credit,
+    };
+  }
+
+  if (/©|copyright/i.test(raw)) {
+    return { brandLine: "", copyright: raw, credit: "" };
+  }
+
+  if (/powered by/i.test(raw)) {
+    return { brandLine: "", copyright: "", credit: raw };
+  }
+
+  return { brandLine: raw, copyright: "", credit: "" };
+}
+
 export function useSiteConfig() {
   const config = useSelector(selectAppConfigData);
   const appName = useSelector(selectAppDisplayName);
@@ -156,11 +195,15 @@ export function useSiteConfig() {
       href: str(config?.[key]),
     })).filter((item) => item.href);
 
-    const footerBrandText = footerText || shortDetail || longDetail;
+    const footerMeta = parseAppFooterText(footerText);
+    const footerBrandText =
+      pick(footerMeta.brandLine, config?.app_detail, config?.app_details) || DEFAULT_FOOTER_TAGLINE;
 
     return {
       appName,
       footerText: footerBrandText,
+      footerCopyright: footerMeta.copyright,
+      footerCredit: footerMeta.credit,
       mobileApp,
       hero,
       about,

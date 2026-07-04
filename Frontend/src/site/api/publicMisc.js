@@ -89,3 +89,12 @@ export async function submitContactInquiry(payload) {
     normalizeApiError(error);
   }
 }
+
+export async function fetchStaticPageBySlug(slug) {
+  try {
+    const { data } = await api.get(`/public/misc/pages/${encodeURIComponent(slug)}`);
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}

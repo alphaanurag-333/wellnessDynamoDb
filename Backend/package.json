@@ -14,6 +14,8 @@
     "seed:medical-questions": "node scripts/seedMedicalConditionQuestions.js",
     "seed:wellness-content": "node scripts/seedWellnessContent.js",
     "seed:test-catalog": "node scripts/seedTestCatalog.js",
+    "seed:video-testimonials": "node --use-system-ca scripts/seedVideoTestimonials.js",
+    "seed:static-pages": "node --use-system-ca scripts/seedStaticPages.js",
     "seed:diet-plan-catalog": "node scripts/seedDietPlanCatalog.js",
     "seed:wellness-prescriptions": "node --use-system-ca scripts/seedWellnessPrescriptionCatalog.js",
     "seed:launch-questions": "node scripts/seedLaunchQuestions.js",
