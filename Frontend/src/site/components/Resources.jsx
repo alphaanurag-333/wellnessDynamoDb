@@ -2,6 +2,7 @@ import React from "react";
 import { Plus } from "lucide-react";
 import BMISection from "./BMISection";
 import HydrationGuide from "./HydrationGuide";
+import BMRCalculator from "./BMRCalculator";
 
 const ResourcesSection = () => {
   return (
@@ -37,7 +38,8 @@ const ResourcesSection = () => {
       </div>
 
       <BMISection />
-      <HydrationGuide />
+      {/* <HydrationGuide /> */}
+      <BMRCalculator />
       <section className="final-cta">
         <div className="final-cta__overlay"></div>
 
