@@ -13,6 +13,7 @@ import pcosImg from "../images/pcod.png";
 import thyroidImg from "../images/thyroid.png";
 import gutImg from "../images/gut-health.png";
 import FinalCTA from "./FinalCTA";
+import VideoTestimonials from "./VideoTestimonials";
 
 const CATEGORY_ITEMS = [
   { id: "diabetes", title: "Diabetes Reversal", image: diabetesImg },
@@ -170,6 +171,9 @@ const SuccessStories = () => {
         </div>
       </div>
 
+     <div className="video-testimonial">
+       <VideoTestimonials />
+     </div>
       <section className="transformation">
         <div className="container">
           <div className="transformation-heading">
