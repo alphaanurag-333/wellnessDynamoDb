@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from "react";
 
-
 import maleImg from "../../site/images/male.png";
 import femaleImg from "../../site/images/female.png";
 
@@ -97,27 +96,56 @@ export default function BMRCalculator() {
 
   return (
     <section className="bmr-section">
-
       <div className="container">
-
         <div className="bmr-wrapper">
-
           {/* LEFT */}
+          <div className="bmr-right">
+            <h5>Your Daily Baseline</h5>
 
+            <div className="bmr-circle">
+              <div className="circle">
+                <h2>{bmr || "--"}</h2>
+
+                <span>KCAL / DAY</span>
+              </div>
+            </div>
+
+            <div className="activity-table">
+              <div className="activity-header">
+                <span>Activity Levels</span>
+
+                <span>TDEE</span>
+              </div>
+
+              {tdee.map((item, index) => (
+                <div className="activity-row" key={index}>
+                  <div className="activity-name">
+                    <span className="dot"></span>
+
+                    {item.name}
+                  </div>
+
+                  <strong>{item.value || "--"}</strong>
+                </div>
+              ))}
+            </div>
+
+            <p className="activity-note">
+              TDEE - Total Daily Energy Expenditure
+            </p>
+          </div>
+
+          {/* RIGHT */}
           <div className="bmr-left">
-
             <h2>BMR Calculator</h2>
 
             <div className="bmr-form">
-
               {/* Gender */}
 
               <div className="form-group">
-
                 <label>Gender</label>
 
                 <div className="gender-wrapper">
-
                   <div
                     className={`gender-card ${
                       gender === "male" ? "active" : ""
@@ -135,15 +163,12 @@ export default function BMRCalculator() {
                   >
                     <img src={femaleImg} alt="" />
                   </div>
-
                 </div>
-
               </div>
 
               {/* Age */}
 
               <div className="form-group">
-
                 <label>Age</label>
 
                 <input
@@ -151,7 +176,6 @@ export default function BMRCalculator() {
                   value={age}
                   onChange={(e) => setAge(e.target.value)}
                 />
-
               </div>
 
               {/* Height */}
@@ -225,72 +249,10 @@ export default function BMRCalculator() {
               >
                 Calculate BMR
               </button>
-
             </div>
-
           </div>
-
-          {/* RIGHT */}
-
-          <div className="bmr-right">
-
-            <h5>Your Daily Baseline</h5>
-
-            <div className="bmr-circle">
-
-              <div className="circle">
-
-                <h2>{bmr || "--"}</h2>
-
-                <span>KCAL / DAY</span>
-
-              </div>
-
-            </div>
-
-            <div className="activity-table">
-
-              <div className="activity-header">
-
-                <span>Activity Levels</span>
-
-                <span>TDEE</span>
-
-              </div>
-
-              {tdee.map((item, index) => (
-
-                <div
-                  className="activity-row"
-                  key={index}
-                >
-
-                  <div className="activity-name">
-
-                    <span className="dot"></span>
-
-                    {item.name}
-
-                  </div>
-
-                  <strong>{item.value || "--"}</strong>
-
-                </div>
-
-              ))}
-
-            </div>
-
-            <p className="activity-note">
-              TDEE - Total Daily Energy Expenditure
-            </p>
-
-          </div>
-
         </div>
-
       </div>
-
     </section>
   );
 }
