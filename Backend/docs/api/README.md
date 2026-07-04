@@ -30,4 +30,5 @@ node scripts/buildApiCatalog.js
 - [Referral & assignment](../domain/referral-assignment.md)
 - [Consultancy payment flow](../domain/consultancy-payment.md)
 - [Birthday notifications & posts](./birthday-feature.md)
+- [Daily reflection score](./daily-reflection-feature.md)
 - [Monthly champions](./monthly-champions-feature.md)

@@ -12,6 +12,11 @@ const {
 const { listAssignedMentalWellbeingByUserId } = require("../../models/assignedMentalWellbeingModel");
 const { buildDailyReflectionSnapshot } = require("../../services/dailyReflectionScoreService");
 const { computeDailyReflectionScore } = require("../../services/dailyReflectionScoreService");
+const {
+  buildScorePresentation,
+  buildDailyReflectionAnalytics,
+  isValidAnalyticsRange,
+} = require("../../services/dailyReflectionScorePresentation");
 
 function resolveTargetDate(query, body) {
   const candidate = body?.date ?? query?.date ?? todayDateOnly();
@@ -166,10 +171,11 @@ exports.getMyDailyReflectionScoreController = asyncHandler(async (req, res) => {
     return res.status(200).json({
       status: true,
       message: "Daily reflection score fetched",
-      score: {
+      score: buildScorePresentation(todayLog.score, {
         date: todayLog.date,
-        score: todayLog.score,
-      },
+        isToday: true,
+        submittedToday: true,
+      }),
     });
   }
 
@@ -184,10 +190,37 @@ exports.getMyDailyReflectionScoreController = asyncHandler(async (req, res) => {
     status: true,
     message: "Daily reflection score fetched",
     score: latest
-      ? {
+      ? buildScorePresentation(latest.score, {
           date: latest.date,
-          score: latest.score,
-        }
+          isToday: latest.date === today,
+          submittedToday: false,
+        })
       : null,
+  });
+});
+
+exports.getMyDailyReflectionAnalyticsController = asyncHandler(async (req, res) => {
+  const userId = req.auth?.sub || req.user?.id;
+  if (!userId) throw new AppError("Unauthorized", 401);
+
+  const range = String(req.query?.range || "last-6-months").trim().toLowerCase();
+  if (!isValidAnalyticsRange(range)) {
+    throw new AppError("range must be one of: last-6-months, last-4-weeks, month-to-date", 400);
+  }
+
+  let month;
+  if (range === "month-to-date") {
+    month = String(req.query?.month || "").trim() || todayDateOnly().slice(0, 7);
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      throw new AppError("month must be YYYY-MM", 400);
+    }
+  }
+
+  const analytics = await buildDailyReflectionAnalytics(userId, range, { month });
+
+  return res.status(200).json({
+    status: true,
+    message: "Daily reflection analytics fetched",
+    ...analytics,
   });
 });

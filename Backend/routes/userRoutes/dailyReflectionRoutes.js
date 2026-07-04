@@ -6,6 +6,7 @@ const {
   submitMyDailyReflectionController,
   getMyDailyReflectionScoreController,
   getMyDailyReflectionHistoryController,
+  getMyDailyReflectionAnalyticsController,
   recordPluggedHeadphonesController,
 } = require("../../controllers/userController/dailyReflectionController");
 
@@ -16,6 +17,7 @@ router.use(protectUser, requireHealTier);
 router.get("/", getMyDailyReflectionController);
 router.post("/", submitMyDailyReflectionController);
 router.get("/score", getMyDailyReflectionScoreController);
+router.get("/analytics", getMyDailyReflectionAnalyticsController);
 router.get("/history", getMyDailyReflectionHistoryController);
 router.patch("/plugged-headphones", recordPluggedHeadphonesController);
 
