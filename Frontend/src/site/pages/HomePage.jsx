@@ -10,11 +10,13 @@ import WellnessHero from "../components/WellnessHero.jsx";
 import Methodology from "../components/Methodology.jsx";
 import About from "../components/About.jsx";
 import FinalCTA from "../components/FinalCTA.jsx";
+import ChampionSlider from "../components/ChampionSlider.jsx";
 
 export function HomePage() {
   return (
     <>
       <SiteHero />
+      <ChampionSlider />
       <WellnessHero />
       <StatsSection />
       <About />
