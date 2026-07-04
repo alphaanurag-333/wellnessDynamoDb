@@ -7,6 +7,7 @@ import { AssistantMyHealUsersList } from "../pages/myHealUsers/AssistantMyHealUs
 import { AssistantUserClientHub } from "../pages/myHealUsers/AssistantUserClientHub.jsx";
 import { ClientHubLegacyRedirect } from "../../components/ClientHubLegacyRedirect.jsx";
 import { AssistantRealPeopleTestimonialsPage } from "../pages/realPeopleTestimonial/AssistantRealPeopleTestimonialsPage.jsx";
+import { AssistantCommitmentLettersPage } from "../pages/commitmentLetter/AssistantCommitmentLettersPage.jsx";
 import { AssistantMealApprovalsPage } from "../pages/mealReview/AssistantMealApprovalsPage.jsx";
 import { AssistantConsultancyTransactionList } from "../pages/consultancy/AssistantConsultancyTransactionList.jsx";
 import { AssistantConsultancyEnrolledUsersList } from "../pages/consultancy/AssistantConsultancyEnrolledUsersList.jsx";
@@ -34,6 +35,7 @@ export const assistantWellnessCoachRouteTree = (
     <Route path="my-users/:userId/prakruti-assessment" element={<ClientHubLegacyRedirect segment="prakruti-assessment" basePath="/assistant" />} />
     <Route path="meal-approvals" element={<AssistantMealApprovalsPage />} />
     <Route path="real-people-testimonials" element={<AssistantRealPeopleTestimonialsPage />} />
+    <Route path="commitment-letters" element={<AssistantCommitmentLettersPage />} />
     <Route path="consultancy/transactions" element={<AssistantConsultancyTransactionList />} />
     <Route path="consultancy/enrolled-users" element={<AssistantConsultancyEnrolledUsersList />} />
     <Route path="*" element={<NotFoundPage />} />

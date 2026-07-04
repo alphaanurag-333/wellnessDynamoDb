@@ -23,7 +23,8 @@
     "migrate:meal-tracking-review": "node migration/migrateAll.js --only=17-meal-tracking-review",
     "migrate:meal-tracking-index": "node scripts/ensureMealTrackingCoachIndex.js",
     "migrate:real-people-testimonial-health-concern": "node --use-system-ca scripts/ensureRealPeopleTestimonialHealthConcernIndex.js",
-    "table:real-people-testimonials": "node --use-system-ca tables/createRealPeopleTestimonialTable.js"
+    "table:commitment-letters": "node --use-system-ca tables/createUserCommitmentLetterTable.js",
+    "migrate:commitment-letter": "node migration/migrateAll.js --only=24-user-commitment-letter"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1041.0",

@@ -31,6 +31,7 @@ const appConfigUpload = memoryFields([
   { name: "admin_logo", maxCount: 1 },
   { name: "user_logo", maxCount: 1 },
   { name: "favicon", maxCount: 1 },
+  { name: "commitment_letter_template", maxCount: 1 },
 ]);
 
 const videoTestimonialsUpload = memoryFields([

@@ -32,6 +32,7 @@ function toPublicClientAppConfig(doc) {
     referral_discount: config.referral_discount ?? "",
     consultancy_amount: config.consultancy_amount ?? "",
     favicon: config.favicon ?? "",
+    commitment_letter_template: config.commitment_letter_template ?? "",
     address: config.address ?? "",
     latitude: config.latitude ?? "",
     longitude: config.longitude ?? "",

@@ -81,6 +81,8 @@ function titleFromPath(pathname) {
     return "Real people testimonials";
   }
 
+  if (p.startsWith("/admin/commitment-letters")) return "Commitment letters";
+
   if (p.startsWith("/admin/video-testimonials")) {
     if (/^\/admin\/video-testimonials\/new$/.test(p)) return "Add video testimonial";
     if (/^\/admin\/video-testimonials\/[^/]+\/edit$/.test(p)) return "Edit video testimonial";

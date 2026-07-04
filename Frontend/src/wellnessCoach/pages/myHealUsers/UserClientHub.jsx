@@ -21,6 +21,7 @@ import { UserLaunchAssessment } from "./UserLaunchAssessment.jsx";
 import { UserPrakrutiAssessment } from "./UserPrakrutiAssessment.jsx";
 import { UserHealthProgress } from "./UserHealthProgress.jsx";
 import { UserDailyReflection } from "./UserDailyReflection.jsx";
+import { UserCommitmentLetter } from "./UserCommitmentLetter.jsx";
 
 function renderCoachTab(tab, embedded) {
   switch (tab) {
@@ -34,6 +35,8 @@ function renderCoachTab(tab, embedded) {
       return <UserDietPlan embedded={embedded} />;
     case "wellness-prescriptions":
       return <UserWellnessPrescriptions embedded={embedded} />;
+    case "commitment-letter":
+      return <UserCommitmentLetter embedded={embedded} />;
     case "internal-parameters":
       return <UserTestRecommendations embedded={embedded} />;
     case "physical-exercises":

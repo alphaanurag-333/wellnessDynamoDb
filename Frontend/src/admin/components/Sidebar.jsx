@@ -11,6 +11,7 @@ import defaultLogo from "../../assets/logo/defaultlogo.png";
 
 const NAV_GROUP_PATTERNS = {
   consultancy: /\/admin\/consultancy(\/|$)/,
+  "energy-exchange": /\/admin\/energy-exchange(\/|$)/,
   program: /\/admin\/(coaches|awcs)(\/|$)/,
   "wellness-program": /\/admin\/programs(\/|$)/,
   wellness: /\/admin\/(nutrition-plans|support-tickets|camp-events|program-completions)(\/|$)/,
@@ -18,7 +19,8 @@ const NAV_GROUP_PATTERNS = {
   health: /\/admin\/(health-concerns|health-tools|health-recipes|health-disorders|yoga|physical-exercises)(\/|$)/,
   launchAssessment: /\/admin\/(launch-questions|launch-focus-areas)(\/|$)/,
   prakrutiAssessment: /\/admin\/(prakruti-questions|prakruti-things-to-avoid|prakruti-recommendations)(\/|$)/,
-  testimonials: /\/admin\/(transformations|client-testimonials|video-testimonials)(\/|$)/,
+  testimonials:
+    /\/admin\/(transformations|client-testimonials|real-people-testimonials|commitment-letters|video-testimonials)(\/|$)/,
 };
 
 function normalizePath(pathname) {
@@ -29,10 +31,20 @@ function pathInGroup(pathname, groupId) {
   return Boolean(NAV_GROUP_PATTERNS[groupId]?.test(pathname));
 }
 
-function childPathActive(pathname, segment) {
+function childPathActive(pathname, segment, siblings = []) {
   const base = `/admin/${segment}`;
   const p = normalizePath(pathname);
-  return p === base || p.startsWith(`${base}/`);
+  const matchesThis = p === base || p.startsWith(`${base}/`);
+  if (!matchesThis) return false;
+
+  const bestMatch = siblings
+    .filter((child) => {
+      const childBase = `/admin/${child.to}`;
+      return p === childBase || p.startsWith(`${childBase}/`);
+    })
+    .sort((a, b) => b.to.length - a.to.length)[0];
+
+  return bestMatch?.to === segment;
 }
 
 function isTopLevelNavActive(pathname, segment) {
@@ -116,7 +128,7 @@ export function Sidebar({ id = "admin-sidebar", onNavigate, drawerOpen, desktopC
               <button
                 type="button"
                 className={`admin-sidebar__link admin-sidebar__group-btn${
-                  item.children.some((c) => childPathActive(location.pathname, c.to))
+                  item.children.some((c) => childPathActive(location.pathname, c.to, item.children))
                     ? " admin-sidebar__group-btn--ancestor"
                     : ""
                 }`}
@@ -144,7 +156,9 @@ export function Sidebar({ id = "admin-sidebar", onNavigate, drawerOpen, desktopC
                       title={child.label}
                       className={() =>
                         `admin-sidebar__link admin-sidebar__link--child${
-                          childPathActive(location.pathname, child.to) ? " admin-sidebar__link--active" : ""
+                          childPathActive(location.pathname, child.to, item.children)
+                            ? " admin-sidebar__link--active"
+                            : ""
                         }`
                       }
                       onClick={onNavigate}

@@ -94,6 +94,7 @@ import { TransformationList } from "../pages/transformation/TransformationList.j
 import { TransformationAdd } from "../pages/transformation/TransformationAdd.jsx";
 import { TransformationEdit } from "../pages/transformation/TransformationEdit.jsx";
 import { TransformationView } from "../pages/transformation/TransformationView.jsx";
+import { CommitmentLetterList } from "../pages/commitmentLetter/CommitmentLetterList.jsx";
 import { RealPeopleTestimonialList } from "../pages/realPeopleTestimonial/RealPeopleTestimonialList.jsx";
 import { RealPeopleTestimonialAdd } from "../pages/realPeopleTestimonial/RealPeopleTestimonialAdd.jsx";
 import { RealPeopleTestimonialEdit } from "../pages/realPeopleTestimonial/RealPeopleTestimonialEdit.jsx";
@@ -348,6 +349,7 @@ export const adminRouteTree = (
       <Route path=":testimonialId/edit" element={<RealPeopleTestimonialEdit />} />
       <Route path=":testimonialId" element={<RealPeopleTestimonialView />} />
     </Route>
+    <Route path="commitment-letters" element={<CommitmentLetterList />} />
     <Route path="video-testimonials" element={<Outlet />}>
       <Route index element={<VideoTestimonialList />} />
       <Route path="new" element={<VideoTestimonialAdd />} />

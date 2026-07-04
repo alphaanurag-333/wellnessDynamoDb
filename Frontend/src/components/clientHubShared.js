@@ -11,6 +11,7 @@ export const CLIENT_HUB_HEAL_EXTRA_TABS = [
   { id: "reminders", label: "Reminders" },
   { id: "diet-plan", label: "Diet plan" },
   { id: "wellness-prescriptions", label: "Wellness prescriptions" },
+  { id: "commitment-letter", label: "Commitment letter" },
   { id: "internal-parameters", label: "Internal parameters" },
   { id: "physical-exercises", label: "Physical exercises" },
   { id: "mental-wellbeing", label: "Mental wellbeing" },

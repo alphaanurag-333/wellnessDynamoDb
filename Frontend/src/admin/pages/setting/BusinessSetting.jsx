@@ -87,6 +87,7 @@ const SETTINGS_TABS = [
   { id: "pricing", label: "Pricing" },
   { id: "energy-exchange", label: "Energy Exchange" },
   { id: "branding", label: "Media" },
+  { id: "commitment-letter", label: "Commitment letter" },
   { id: "location", label: "Location" },
   { id: "social", label: "Social" },
   // { id: "content", label: "Content" },
@@ -463,10 +464,11 @@ export function BusinessSetting() {
   const [adminLogoFile, setAdminLogoFile] = useState(null);
   const [userLogoFile, setUserLogoFile] = useState(null);
   const [faviconFile, setFaviconFile] = useState(null);
+  const [commitmentTemplateFile, setCommitmentTemplateFile] = useState(null);
   const [adminLogoPreview, setAdminLogoPreview] = useState("");
   const [userLogoPreview, setUserLogoPreview] = useState("");
   const [faviconPreview, setFaviconPreview] = useState("");
-  const [serverMedia, setServerMedia] = useState({ admin: "", user: "", fav: "" });
+  const [serverMedia, setServerMedia] = useState({ admin: "", user: "", fav: "", commitmentTemplate: "" });
   const lat = Number.parseFloat((scalars.latitude || "").trim());
   const lng = Number.parseFloat((scalars.longitude || "").trim());
   const hasValidCoords = Number.isFinite(lat) && Number.isFinite(lng);
@@ -484,7 +486,7 @@ export function BusinessSetting() {
       setAdminLogoPreview("");
       setUserLogoPreview("");
       setFaviconPreview("");
-      setServerMedia({ admin: "", user: "", fav: "" });
+      setServerMedia({ admin: "", user: "", fav: "", commitmentTemplate: "" });
       return;
     }
     setHasDoc(true);
@@ -522,7 +524,8 @@ export function BusinessSetting() {
     const a = doc.admin_logo ? mediaUrl(doc.admin_logo) : "";
     const u = doc.user_logo ? mediaUrl(doc.user_logo) : "";
     const f = doc.favicon ? mediaUrl(doc.favicon) : "";
-    setServerMedia({ admin: a, user: u, fav: f });
+    const cl = doc.commitment_letter_template ? mediaUrl(doc.commitment_letter_template) : "";
+    setServerMedia({ admin: a, user: u, fav: f, commitmentTemplate: cl });
     setAdminLogoPreview(a);
     setUserLogoPreview(u);
     setFaviconPreview(f);
@@ -590,6 +593,7 @@ export function BusinessSetting() {
     if (adminLogoFile) fd.append("admin_logo", adminLogoFile);
     if (userLogoFile) fd.append("user_logo", userLogoFile);
     if (faviconFile) fd.append("favicon", faviconFile);
+    if (commitmentTemplateFile) fd.append("commitment_letter_template", commitmentTemplateFile);
     return fd;
   };
 
@@ -634,6 +638,7 @@ export function BusinessSetting() {
       setAdminLogoFile(null);
       setUserLogoFile(null);
       setFaviconFile(null);
+      setCommitmentTemplateFile(null);
     } catch (err) {
       if (err?.status === 401) {
         dispatch(logout());
@@ -1276,6 +1281,52 @@ export function BusinessSetting() {
                       <div className="settings-media-card__preview settings-media-card__preview--favicon">
                         {faviconPreview ? <img src={faviconPreview} alt="Favicon preview" onError={handleMediaImageError} /> : null}
                       </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {t.id === "commitment-letter" && (
+                <>
+                  <p className="settings-panel-hint">
+                    Upload the blank commitment letter form (PDF only). Users download this template, fill it, and submit it back for approval.
+                  </p>
+                  <div className="settings-media-grid">
+                    <div className="settings-media-card">
+                      <label className="settings-media-card__label" htmlFor={`${baseId}-commitment-template`}>
+                        Commitment letter template (PDF)
+                        <span className="settings-media-card__hint">Max 10 MB · PDF only</span>
+                      </label>
+                      <input
+                        id={`${baseId}-commitment-template`}
+                        type="file"
+                        accept="application/pdf,.pdf"
+                        className="settings-media-card__input user-field__input"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null;
+                          if (file && file.type !== "application/pdf") {
+                            Swal.fire({ icon: "error", title: "Invalid file", text: "Only PDF files are allowed." });
+                            e.target.value = "";
+                            return;
+                          }
+                          setCommitmentTemplateFile(file);
+                        }}
+                      />
+                      {serverMedia.commitmentTemplate ? (
+                        <a
+                          href={serverMedia.commitmentTemplate}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn--ghost btn--sm"
+                          style={{ marginTop: 8 }}
+                        >
+                          View current template
+                        </a>
+                      ) : (
+                        <p className="settings-media-card__hint" style={{ marginTop: 8 }}>
+                          No template uploaded yet.
+                        </p>
+                      )}
                     </div>
                   </div>
                 </>

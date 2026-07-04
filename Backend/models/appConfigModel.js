@@ -3,7 +3,7 @@ const { docClient } = require("../config/db");
 const { v4: uuidv4 } = require("uuid");
 const { normalizeStoredMedia, resolvePublicUrl } = require("../utils/s3");
 
-const MEDIA_FIELDS = ["admin_logo", "user_logo", "favicon"];
+const MEDIA_FIELDS = ["admin_logo", "user_logo", "favicon", "commitment_letter_template"];
 
 function normalizeMediaField(value) {
   if (value == null || String(value).trim() === "") return "";
@@ -38,6 +38,7 @@ async function createAppConfig() {
     admin_logo:     "",
     user_logo:      "",
     favicon:        "",
+    commitment_letter_template: "",
     address:        "",
     latitude:       "",
     longitude:      "",

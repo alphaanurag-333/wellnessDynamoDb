@@ -13,6 +13,7 @@ const {
 
 const S3_FOLDER = "appconfig";
 const LOGO_FIELDS = ["admin_logo", "user_logo", "favicon"];
+const TEMPLATE_FIELDS = ["commitment_letter_template"];
 const ALLOWED_TAX_TYPES = new Set(["inclusive", "exclusive"]);
 const {
   normalizeFyDiscountRanges,
@@ -46,13 +47,27 @@ async function s3KeyFromUploadedFile(req, field) {
   return uploadMulterFile(file, S3_FOLDER);
 }
 
-async function applyLogoUploads(req, config, updates) {
-  for (const field of LOGO_FIELDS) {
+async function applyMediaUploads(req, config, updates, fields) {
+  for (const field of fields) {
     const uploadedKey = await s3KeyFromUploadedFile(req, field);
     if (!uploadedKey) continue;
+    if (field === "commitment_letter_template") {
+      const file = req.files?.[field]?.[0];
+      if (file?.mimetype && file.mimetype !== "application/pdf") {
+        throw new AppError("commitment_letter_template must be a PDF file", 400);
+      }
+    }
     if (config?.[field]) await deleteStoredMedia(config[field]);
     updates[field] = uploadedKey;
   }
+}
+
+async function applyLogoUploads(req, config, updates) {
+  await applyMediaUploads(req, config, updates, LOGO_FIELDS);
+}
+
+async function applyTemplateUploads(req, config, updates) {
+  await applyMediaUploads(req, config, updates, TEMPLATE_FIELDS);
 }
 
 exports.getAppConfigController = asyncHandler(async (_req, res) => {
@@ -154,6 +169,8 @@ exports.createAppConfigController = asyncHandler(async (req, res) => {
     admin_logo: (await s3KeyFromUploadedFile(req, "admin_logo")) ?? "",
     user_logo: (await s3KeyFromUploadedFile(req, "user_logo")) ?? "",
     favicon: (await s3KeyFromUploadedFile(req, "favicon")) ?? "",
+    commitment_letter_template:
+      (await s3KeyFromUploadedFile(req, "commitment_letter_template")) ?? "",
   };
 
   const created = await updateAppConfig(updates);
@@ -240,6 +257,7 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
   }
 
   await applyLogoUploads(req, config, updates);
+  await applyTemplateUploads(req, config, updates);
 
   if (Object.keys(updates).length === 0) {
     throw new AppError("At least one field is required for update", 400);

@@ -262,7 +262,7 @@ a:hover {
 
 .admin-sidebar__link--active:hover {
   text-decoration: none;
-  background:linear-gradient(100deg, #f9932c -6%, #ffffff 61%, #0f7f06 99%);
+  background: linear-gradient(100deg, #f9932c -6%, #ffffff 61%, #0f7f06 99%);
 }
 
 .admin-sidebar__group {
