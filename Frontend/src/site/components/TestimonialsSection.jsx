@@ -73,10 +73,10 @@ export default function TestimonialsSection({ items: itemsProp }) {
 
   if (items === null) {
     return (
-      <section className="success-stories" aria-busy="true" aria-label="Loading success stories">
+      <section className="success-stories" aria-busy="true" aria-label="Loading client reviews">
         <div className="site-container">
           <div className="success-stories__header">
-            <h2>Success Stories</h2>
+            <h2>Client Reviews</h2>
           </div>
           <p className="site-testimonials__loading">Loading reviews…</p>
         </div>
@@ -91,7 +91,7 @@ export default function TestimonialsSection({ items: itemsProp }) {
   const enableLoop = items.length > 1;
 
   return (
-    <section className="success-stories">
+    <section className="success-stories" aria-label="Client reviews">
       <div className="site-container">
         <div className="success-stories__header">
           <h2>Client Reviews</h2>
@@ -100,7 +100,7 @@ export default function TestimonialsSection({ items: itemsProp }) {
         <Swiper
           modules={[Pagination, Autoplay]}
           slidesPerView={2}
-          spaceBetween={24}
+          spaceBetween={28}
           loop={enableLoop}
           autoplay={
             enableLoop
@@ -116,37 +116,42 @@ export default function TestimonialsSection({ items: itemsProp }) {
           breakpoints={{
             0: {
               slidesPerView: 1,
+              spaceBetween: 18,
             },
             768: {
               slidesPerView: 2,
+              spaceBetween: 24,
             },
             1200: {
               slidesPerView: 2,
+              spaceBetween: 28,
             },
           }}
           className="successStoriesSwiper"
         >
           {items.map((item) => (
             <SwiperSlide key={item.id}>
-              <div className="success-card">
-                <div className="success-card__avatar">
-                  <img
-                    src={item.image || DEFAULT_IMAGE_SRC}
-                    alt={item.name}
-                    onError={handleMediaImageError}
-                  />
-                </div>
-
-                <div className="success-card__content">
+              <article className="success-card">
+                <div className="success-card__top">
+                  <div className="success-card__avatar">
+                    <img
+                      src={item.image || DEFAULT_IMAGE_SRC}
+                      alt={item.name}
+                      loading="lazy"
+                      onError={handleMediaImageError}
+                    />
+                  </div>
                   <TestimonialStars rating={item.rating} />
-
-                  <p className="success-card__review">&ldquo;{item.review}&rdquo;</p>
-
-                  <p className="success-card__author">
-                    <span>— {item.name}</span>
-                  </p>
                 </div>
-              </div>
+
+                <blockquote className="success-card__review">
+                  <p>&ldquo;{item.review}&rdquo;</p>
+                </blockquote>
+
+                <p className="success-card__author">
+                  <span>— {item.name}</span>
+                </p>
+              </article>
             </SwiperSlide>
           ))}
         </Swiper>

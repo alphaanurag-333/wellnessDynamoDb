@@ -2780,47 +2780,67 @@ a:hover {
 
 .success-stories {
   width: 100%;
-  padding: 70px 0;
+  padding: clamp(56px, 8vw, 88px) 0;
   background: var(--bg-body);
 }
 
 .success-stories__header {
   text-align: center;
-  margin-bottom: 60px;
+  margin-bottom: clamp(36px, 5vw, 52px);
 }
 
 .success-stories__header h2 {
   margin: 0;
   font-weight: var(--fw-bold);
   color: var(--primary);
-  font-size: 48px;
+  font-size: clamp(2rem, 4vw, 3rem);
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.site-testimonials__loading {
+  margin: 0;
+  text-align: center;
+  color: var(--text-muted, #64748b);
+  font-size: 1rem;
 }
 
 .successStoriesSwiper {
-  padding-bottom: 60px;
+  padding-bottom: 52px;
 }
-.successStoriesSwiper .swiper-backface-hidden .swiper-slide {
-  margin-bottom: 45px;
+
+.successStoriesSwiper .swiper-slide {
+  display: flex;
+  height: auto;
 }
 
 .success-card {
   width: 100%;
-  min-height: 310px;
+  min-height: 100%;
+  height: 100%;
 
   background: var(--primary-100);
-  border-radius: 32px;
+  border: 1px solid rgba(231, 134, 58, 0.12);
+  border-radius: 28px;
+  box-shadow: 0 14px 36px rgba(231, 134, 58, 0.08);
 
-  padding: 40px;
+  padding: clamp(24px, 3vw, 36px);
 
   display: flex;
-  align-items: flex-start;
-  gap: 28px;
-  margin-bottom: 48px;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.success-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
 
 .success-card__avatar {
-  width: 90px;
-  height: 90px;
+  width: clamp(68px, 8vw, 84px);
+  height: clamp(68px, 8vw, 84px);
   flex-shrink: 0;
 }
 
@@ -2830,37 +2850,41 @@ a:hover {
   object-fit: cover;
   border-radius: 50%;
   display: block;
-}
-
-.success-card__content {
-  flex: 1;
+  border: 3px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
 }
 
 .success-card__stars {
-  display: flex;
-  gap: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-left: auto;
 
   color: #008228;
-  font-size: 22px;
-
-  margin-bottom: 18px;
+  font-size: clamp(1.1rem, 2vw, 1.35rem);
 }
 
 .success-card__review {
   margin: 0;
+  flex: 1;
+}
 
-  font-size: 20px;
-  line-height: 1.7;
+.success-card__review p {
+  margin: 0;
+  font-size: clamp(1rem, 1.6vw, 1.15rem);
+  line-height: 1.75;
   color: var(--text-heading);
 }
 
 .success-card__author {
-  margin-top: 26px;
+  margin: 0;
+  margin-top: auto;
+  padding-top: 4px;
 
-  font-size: 16px;
-  line-height: 1.6;
-
-  color: var(--text-heading);
+  font-size: 0.98rem;
+  line-height: 1.5;
   font-weight: var(--fw-semibold);
 }
 
@@ -2869,18 +2893,21 @@ a:hover {
 }
 
 .successStoriesSwiper .swiper-pagination {
-  margin-top: 45px !important;
+  position: static;
+  margin-top: 8px !important;
 }
 
 .successStoriesSwiper .swiper-pagination-bullet {
-  width: 10px;
-  height: 10px;
+  width: 9px;
+  height: 9px;
   background: var(--primary);
-  opacity: 0.25;
+  opacity: 0.28;
+  transition: transform 0.2s ease, opacity 0.2s ease;
 }
 
 .successStoriesSwiper .swiper-pagination-bullet-active {
   opacity: 1;
+  transform: scale(1.15);
 }
 
 /* --------BMI Calc------------ */
@@ -6972,12 +6999,9 @@ PRINT
   .about-title {
     font-size: 56px;
   }
-  .success-card {
-    padding: 30px;
-  }
 
-  .success-card__review {
-    font-size: 18px;
+  .success-card {
+    padding: 28px;
   }
   .final-cta {
     padding: 90px 0;
@@ -8168,26 +8192,32 @@ PRINT
     border-radius: 999px;
   }
   .success-stories {
-    padding: 70px 0;
+    padding: 56px 0;
+  }
+
+  .success-stories__header {
+    margin-bottom: 32px;
   }
 
   .success-stories__header h2 {
-    font-size: 40px;
+    font-size: 2rem;
   }
 
   .success-card {
-    flex-direction: column;
-    gap: 18px;
-    min-height: auto;
+    gap: 16px;
+    border-radius: 22px;
   }
 
-  .success-card__avatar {
-    width: 72px;
-    height: 72px;
+  .success-card__top {
+    align-items: flex-start;
   }
 
-  .success-card__review {
-    font-size: 16px;
+  .success-card__stars {
+    padding-top: 4px;
+  }
+
+  .success-card__review p {
+    font-size: 1rem;
   }
 
   .contact-card {
