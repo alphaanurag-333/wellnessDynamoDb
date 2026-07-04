@@ -3425,8 +3425,9 @@ a:hover {
 ============================= */
 .contact-hero {
   width: 100%;
-  height: 430px;
-  padding: 70px 0;
+  min-height: 220px;
+  height: auto;
+  padding: 40px 0 72px;
   background-image: url("../site/images/contact-bg.png");
   display: flex;
   align-items: center;
@@ -3448,8 +3449,8 @@ a:hover {
   align-items: center;
   justify-content: center;
 
-  height: 28px;
-  padding: 0 14px;
+  height: 26px;
+  padding: 0 12px;
 
   background: var(--primary-light);
 
@@ -3457,12 +3458,12 @@ a:hover {
 
   border-radius: var(--radius-pill);
 
-  font-size: 11px;
+  font-size: 10px;
   font-weight: var(--fw-bold);
 
   letter-spacing: 1px;
 
-  margin-bottom: 18px;
+  margin-bottom: 10px;
 }
 
 .contact-title {
@@ -3470,12 +3471,12 @@ a:hover {
 
   color: var(--text-heading);
 
-  font-size: 66px;
-  line-height: 1.02;
+  font-size: 48px;
+  line-height: 1.05;
 
   font-weight: var(--fw-bold);
 
-  letter-spacing: -1.5px;
+  letter-spacing: -1px;
 }
 
 .contact-title span {
@@ -3484,15 +3485,15 @@ a:hover {
 }
 
 .contact-description {
-  width: 500px;
+  max-width: 460px;
 
-  margin-top: 24px;
+  margin-top: 12px;
 
   color: var(--text-body);
 
-  font-size: 18px;
+  font-size: 16px;
 
-  line-height: 31px;
+  line-height: 1.55;
 }
 
 /* =============================
@@ -3500,16 +3501,14 @@ a:hover {
 ============================= */
 
 .contact-card {
-  width: 100%;
-  max-width: 980px;
-  margin: 0 auto;
-  margin-top: 70px;
-  margin-bottom: 100px;
+  width: calc(100% - 32px);
+  max-width: 920px;
+  margin: -48px auto 48px;
   background: var(--bg-card);
 
-  border-radius: 34px;
+  border-radius: 24px;
 
-  padding: 40px;
+  padding: 24px 28px 20px;
 
   box-shadow: var(--shadow-lg);
 
@@ -3519,6 +3518,29 @@ a:hover {
 
 .contact-card form {
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.contact-form-feedback {
+  margin-bottom: 0;
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.contact-form-feedback--success {
+  background: rgba(34, 197, 94, 0.12);
+  color: #166534;
+  border: 1px solid rgba(34, 197, 94, 0.25);
+}
+
+.contact-form-feedback--error {
+  background: rgba(239, 68, 68, 0.1);
+  color: #b91c1c;
+  border: 1px solid rgba(239, 68, 68, 0.22);
 }
 
 /* =============================
@@ -3530,17 +3552,23 @@ a:hover {
 
   display: flex;
   justify-content: space-between;
+  gap: 16px;
 
-  margin-bottom: 28px;
+  margin-bottom: 0;
+}
+
+.contact-row--split {
+  align-items: flex-start;
 }
 
 .contact-field {
   width: 48.5%;
+  min-width: 0;
 }
 
 .contact-full {
   width: 100%;
-  margin-bottom: 28px;
+  margin-bottom: 0;
 }
 
 /* =============================
@@ -3548,24 +3576,102 @@ a:hover {
 ============================= */
 
 .contact-field label {
-  display: block;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
 
-  margin-bottom: 12px;
+  margin-bottom: 6px;
 
   color: var(--text-heading);
 
-  font-size: 15px;
+  font-size: 14px;
   font-weight: var(--fw-semibold);
 }
 
-/* =============================
-   Inputs
-============================= */
+.contact-field-limit {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.contact-field-hint,
+.contact-field-meta {
+  margin: 3px 0 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+
+.contact-field-error {
+  margin: 3px 0 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #b91c1c;
+}
+
+.contact-field--invalid input,
+.contact-field--invalid select,
+.contact-field--invalid textarea,
+.contact-field--invalid .contact-phone-country,
+.contact-field--invalid .contact-phone-input {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
+
+.contact-row--single {
+  margin-bottom: 0;
+}
+
+.contact-row--single .contact-field {
+  width: 100%;
+}
+
+.contact-phone-row {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+}
+
+.contact-phone-country {
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+  border: 1px solid var(--border-color);
+  background-color: #fcfaf8;
+  border-radius: 8px;
+  padding: 0 24px 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-heading);
+  appearance: none;
+  cursor: pointer;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--primary) 50%),
+    linear-gradient(135deg, var(--primary) 50%, transparent 50%);
+  background-position:
+    calc(100% - 12px) 17px,
+    calc(100% - 7px) 17px;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+}
+
+.contact-phone-input {
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
 
 .contact-field input,
-.contact-field select {
+.contact-field select:not(.contact-phone-country) {
   width: 100%;
-  height: 42px;
+  height: 40px;
 
   border: 1px solid var(--border-color);
 
@@ -3573,14 +3679,18 @@ a:hover {
 
   border-radius: 8px;
 
-  padding: 0 22px;
+  padding: 0 14px;
 
-  font-size: 16px;
+  font-size: 15px;
   color: var(--text-heading);
 
   transition: var(--transition);
 
   outline: none;
+}
+
+.contact-field .contact-phone-row input {
+  padding: 0 12px;
 }
 
 .contact-field input::placeholder,
@@ -3590,7 +3700,9 @@ a:hover {
 
 .contact-field input:focus,
 .contact-field select:focus,
-.contact-field textarea:focus {
+.contact-field textarea:focus,
+.contact-phone-country:focus,
+.contact-phone-input:focus {
   border-color: var(--primary);
 
   box-shadow: 0 0 0 4px rgba(231, 134, 58, 0.1);
@@ -3600,7 +3712,7 @@ a:hover {
    Select
 ============================= */
 
-.contact-field select {
+.contact-field select:not(.contact-phone-country) {
   appearance: none;
   cursor: pointer;
 
@@ -3623,20 +3735,20 @@ a:hover {
 
 .contact-field textarea {
   width: 100%;
-
-  /* height: 180px; */
-
-  /* resize: none; */
+  min-height: 88px;
+  height: 88px;
+  max-height: 140px;
+  resize: vertical;
 
   border: 1px solid var(--border-color);
 
   background: #fcfaf8;
 
-  border-radius: 18px;
+  border-radius: 12px;
 
-  padding: 20px 22px;
+  padding: 12px 14px;
 
-  font-size: 16px;
+  font-size: 15px;
   color: var(--text-heading);
 
   outline: none;
@@ -3644,7 +3756,7 @@ a:hover {
   transition: var(--transition);
 
   font-family: inherit;
-  line-height: 28px;
+  line-height: 1.45;
 }
 
 /* ======================================
@@ -3658,13 +3770,13 @@ a:hover {
   flex-direction: column;
   align-items: center;
 
-  margin-top: 12px;
+  margin-top: 2px;
 }
 
 .contact-footer button {
   width: 100%;
-  max-width: 320px;
-  height: 42px;
+  max-width: 300px;
+  height: 44px;
 
   border: none;
   outline: none;
@@ -3674,14 +3786,14 @@ a:hover {
   background: var(--primary);
   color: var(--text-white);
 
-  font-size: 16px;
+  font-size: 15px;
   font-weight: var(--fw-semibold);
 
   cursor: pointer;
 
   transition: var(--transition);
 
-  box-shadow: 0 18px 40px rgba(231, 134, 58, 0.28);
+  box-shadow: 0 12px 28px rgba(231, 134, 58, 0.24);
 }
 
 .contact-footer button:hover {
@@ -3695,16 +3807,16 @@ a:hover {
 }
 
 .contact-footer p {
-  margin: 22px 0 0;
+  margin: 10px 0 0;
 
-  max-width: 620px;
+  max-width: 560px;
 
   text-align: center;
 
   color: var(--text-muted);
 
-  font-size: 14px;
-  line-height: 24px;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 /* ======================================
@@ -6773,9 +6885,27 @@ PRINT
 }
 
 .real-healing-stars {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
     color: var(--primary);
     font-size: 18px;
-    letter-spacing: 2px;
+}
+
+.real-healing-stars svg {
+    width: 18px;
+    height: 18px;
+}
+
+.real-healing-section__loading {
+    margin: 0;
+    color: var(--text-body);
+    font-size: 1rem;
+}
+
+.realHealingSwiper .swiper-slide {
+    display: flex;
+    height: auto;
 }
 
 .real-healing-tag {
@@ -7178,17 +7308,26 @@ PRINT
   }
 
   .contact-card {
-    padding: 40px;
-    border-radius: 28px;
-    margin-bottom: 50px;
+    width: calc(100% - 24px);
+    padding: 22px 20px 18px;
+    border-radius: 22px;
+    margin: -36px auto 40px;
+  }
+
+  .contact-card form {
+    gap: 12px;
   }
 
   .contact-row {
-    gap: 20px;
+    gap: 12px;
   }
 
-  .contact-field {
-    width: 50%;
+  .contact-row--split {
+    flex-direction: column;
+  }
+
+  .contact-row--split .contact-field {
+    width: 100%;
   }
 
   .contact-shape-one {
@@ -7205,8 +7344,8 @@ PRINT
     right: 40px;
   }
   .contact-hero {
-    height: 360px;
-    padding: 50px 0;
+    min-height: 180px;
+    padding: 32px 0 64px;
     background-position: 68% center;
   }
 
@@ -7215,13 +7354,13 @@ PRINT
   }
 
   .contact-title {
-    font-size: 52px;
+    font-size: 40px;
   }
 
   .contact-description {
     width: 100%;
-    font-size: 17px;
-    line-height: 29px;
+    font-size: 15px;
+    line-height: 1.5;
   }
 
   .about-wellness {
@@ -7741,9 +7880,14 @@ PRINT
   }
 
   .contact-card {
-    padding: 28px 22px;
-    border-radius: 24px;
-    margin-bottom: 60px;
+    width: calc(100% - 20px);
+    padding: 18px 16px 16px;
+    border-radius: 20px;
+    margin: -28px auto 32px;
+  }
+
+  .contact-card form {
+    gap: 10px;
   }
 
   .contact-row {
@@ -7752,45 +7896,65 @@ PRINT
     gap: 0;
   }
 
+  .contact-row--split .contact-field {
+    width: 100%;
+  }
+
   .contact-field {
     width: 100%;
-    margin-bottom: 22px;
+    margin-bottom: 0;
   }
 
   .contact-full {
-    margin-bottom: 22px;
+    margin-bottom: 0;
   }
 
   .contact-field input,
-  .contact-field select {
-    height: 56px;
+  .contact-field select:not(.contact-phone-country) {
+    height: 46px;
     font-size: 15px;
-    padding: 0 18px;
+    padding: 0 14px;
+  }
+
+  .contact-phone-row {
+    grid-template-columns: 5.25rem minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .contact-phone-country {
+    height: 46px;
+    font-size: 14px;
+    padding-right: 22px;
+  }
+
+  .contact-phone-input {
+    height: 46px;
   }
 
   .contact-field textarea {
-    height: 160px;
-    padding: 18px;
+    min-height: 80px;
+    height: 80px;
+    padding: 12px 14px;
     font-size: 15px;
-    line-height: 26px;
+    line-height: 1.45;
   }
 
   .contact-footer button {
     width: 100%;
     max-width: 100%;
-    height: 58px;
-    font-size: 16px;
+    height: 48px;
+    font-size: 15px;
   }
 
   .contact-footer p {
-    font-size: 13px;
-    line-height: 22px;
-    margin-top: 18px;
+    font-size: 11px;
+    line-height: 1.4;
+    margin-top: 8px;
   }
 
   .contact-hero {
-    height: 300px;
-    padding: 50px 0;
+    min-height: 160px;
+    padding: 28px 0 56px;
     background-position: right center;
   }
 
@@ -7799,22 +7963,22 @@ PRINT
   }
 
   .contact-title {
-    font-size: 40px;
+    font-size: 34px;
     line-height: 1.08;
   }
 
   .contact-description {
     width: 100%;
-    font-size: 15px;
-    line-height: 26px;
-    margin-top: 18px;
+    font-size: 14px;
+    line-height: 1.5;
+    margin-top: 10px;
   }
 
   .contact-tag {
     font-size: 10px;
-    height: 26px;
-    padding: 0 12px;
-    margin-bottom: 14px;
+    height: 24px;
+    padding: 0 10px;
+    margin-bottom: 8px;
   }
   .about-wellness {
     padding: 60px 0;
@@ -8365,10 +8529,9 @@ PRINT
   }
 
   .contact-card {
-    width: fit-content;
-    margin: 50px 15px;
-    padding: 22px 18px;
-    /* margin-bottom: 50px; */
+    width: calc(100% - 16px);
+    margin: -24px auto 28px;
+    padding: 16px 14px 14px;
   }
 
   .contact-field label {

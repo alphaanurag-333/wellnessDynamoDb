@@ -15,12 +15,14 @@ const {
   getActiveTransformations,
   getActiveWellnessCoaches,
   getActiveBirthdayPosts,
+  getActiveMonthlyChampions,
   getActiveTestCatalog,
   getActiveDietPlanCatalog,
   getActiveWellnessPrescriptionCatalog,
   getActivePhysicalExercises,
   getActiveMentalWellbeing,
   getActiveSupplements,
+  submitContactInquiry,
 } = require("../../controllers/userController/miscController");
 
 const router = express.Router();
@@ -40,11 +42,13 @@ router.get("/yoga", getActiveYoga);
 router.get("/transformations", getActiveTransformations);
 router.get("/wellness-coaches", getActiveWellnessCoaches);
 router.get("/birthday-posts", getActiveBirthdayPosts);
+router.get("/monthly-champions", getActiveMonthlyChampions);
 router.get("/test-catalog", getActiveTestCatalog);
 router.get("/diet-plan-catalog", getActiveDietPlanCatalog);
 router.get("/wellness-prescription-catalog", getActiveWellnessPrescriptionCatalog);
 router.get("/physical-exercises", getActivePhysicalExercises);
 router.get("/mental-wellbeing", getActiveMentalWellbeing);
 router.get("/supplements", getActiveSupplements);
+router.post("/contact-inquiries", submitContactInquiry);
 
 module.exports = router;

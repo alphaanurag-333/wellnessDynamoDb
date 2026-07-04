@@ -16,7 +16,6 @@ const { listTransformations } = require("../../models/transformationModel");
 const { listWellnessCoaches } = require("../../models/wellnessCoachModel");
 const { getSpecializationById } = require("../../models/specializationModel");
 const { listBirthdayPostsByPostDate } = require("../../models/birthdayPostModel");
-const { countCommentsForPost } = require("../../models/birthdayPostCommentModel");
 const { listActiveTestCatalog, listActiveTestCatalogPaginated } = require("../../models/testCatalogModel");
 const { listActiveDietPlanCatalog } = require("../../models/dietPlanCatalogModel");
 const {
@@ -32,11 +31,18 @@ const {
   listActiveMentalWellbeingPaginated,
 } = require("../../models/mentalWellbeingModel");
 const { listActiveSupplements } = require("../../models/supplementModel");
+const {
+  listMonthlyChampionPostsByMonth,
+  findLatestMonthWithChampions,
+  normalizeMonthYear,
+} = require("../../models/monthlyChampionPostModel");
 const { readCatalogPagination, wantsCatalogPagination } = require("../../utils/catalogPagination");
-const { getUserById, toPublicUser } = require("../../models/userModel");
+const { getUserById } = require("../../models/userModel");
 const { todayInTimezone } = require("../../utils/birthdayTimezone");
 const { isValidDateOnly } = require("../../utils/dateOnly");
+const { createContactInquiry } = require("../../models/contactInquiryModel");
 const { resolveListMedia } = require("./userMiscMedia");
+const { resolvePublicUrl } = require("../../utils/s3");
 
 function readPaging(query, defaultLimit = 50) {
   const page = Math.max(1, Number(query.page) || 1);
@@ -47,6 +53,41 @@ function readPaging(query, defaultLimit = 50) {
 function readSearch(query) {
   const s = String(query.search || "").trim();
   return s || undefined;
+}
+
+/** Minimal user fields safe for unauthenticated public site responses. */
+function toPublicSiteUser(user) {
+  if (!user) return null;
+
+  const createdYear = user.createdAt ? new Date(user.createdAt).getFullYear() : null;
+  const profileImage = user.profileImage ? resolvePublicUrl(user.profileImage) : null;
+
+  return {
+    name: String(user.name || "Member").trim() || "Member",
+    profileImage,
+    ...(Number.isFinite(createdYear) ? { memberSinceYear: createdYear } : {}),
+  };
+}
+
+function toPublicSiteBirthdayPost(post, user) {
+  return {
+    id: post.id,
+    message: post.message || "",
+    postDate: post.postDate,
+    user: toPublicSiteUser(user),
+  };
+}
+
+function toPublicSiteMonthlyChampion(post, user) {
+  return {
+    id: post.id,
+    monthYear: post.monthYear,
+    rank: post.rank,
+    averageScore: post.averageScore,
+    daysSubmitted: post.daysSubmitted,
+    message: post.message || "",
+    user: toPublicSiteUser(user),
+  };
 }
 
 exports.getActiveBanners = asyncHandler(async (req, res) => {
@@ -315,12 +356,7 @@ exports.getActiveBirthdayPosts = asyncHandler(async (req, res) => {
   const birthdayPosts = await Promise.all(
     data.birthdayPosts.map(async (post) => {
       const user = await getUserById(post.userId);
-      const commentCount = await countCommentsForPost(post.id);
-      return {
-        ...post,
-        user: user ? toPublicUser(user) : null,
-        commentCount,
-      };
+      return toPublicSiteBirthdayPost(post, user);
     })
   );
 
@@ -328,6 +364,40 @@ exports.getActiveBirthdayPosts = asyncHandler(async (req, res) => {
     status: true,
     birthdayPosts,
     pagination: data.pagination,
+  });
+});
+
+exports.getActiveMonthlyChampions = asyncHandler(async (req, res) => {
+  let monthYear = normalizeMonthYear(req.query.monthYear);
+  if (!monthYear) {
+    monthYear = await findLatestMonthWithChampions();
+  }
+  if (!monthYear) {
+    return res.status(200).json({
+      status: true,
+      monthYear: null,
+      monthlyChampions: [],
+    });
+  }
+
+  const { monthlyChampionPosts } = await listMonthlyChampionPostsByMonth({
+    monthYear,
+    page: 1,
+    limit: 50,
+    status: "active",
+  });
+
+  const monthlyChampions = await Promise.all(
+    monthlyChampionPosts.map(async (post) => {
+      const user = await getUserById(post.userId);
+      return toPublicSiteMonthlyChampion(post, user);
+    })
+  );
+
+  return res.status(200).json({
+    status: true,
+    monthYear,
+    monthlyChampions,
   });
 });
 
@@ -471,4 +541,20 @@ exports.getActiveSupplements = asyncHandler(async (req, res) => {
     status: true,
     supplements,
   });
+});
+
+exports.submitContactInquiry = asyncHandler(async (req, res) => {
+  try {
+    const inquiry = await createContactInquiry(req.body);
+    return res.status(201).json({
+      status: true,
+      message: "Thank you for reaching out. Our team will get back to you soon.",
+      inquiryId: inquiry.id,
+    });
+  } catch (err) {
+    if (err?.code === "VALIDATION_ERROR" || err?.code === "INVALID_INQUIRY_TYPE") {
+      throw new AppError(err.message, 400);
+    }
+    throw err;
+  }
 });

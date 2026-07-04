@@ -116,6 +116,8 @@ import { VideoTestimonialAdd } from "../pages/videoTestimonial/VideoTestimonialA
 import { VideoTestimonialEdit } from "../pages/videoTestimonial/VideoTestimonialEdit.jsx";
 import { VideoTestimonialView } from "../pages/videoTestimonial/VideoTestimonialView.jsx";
 import { CofounderMessagePage } from "../pages/cofounderMessage/CofounderMessagePage.jsx";
+import { ContactInquiryList } from "../pages/contactInquiry/ContactInquiryList.jsx";
+import { ContactInquiryView } from "../pages/contactInquiry/ContactInquiryView.jsx";
 import {SectionPage} from "../pages/SectionPage.jsx";
 import { UserAdd } from "../pages/user/UserAdd.jsx";
 import { UserEdit } from "../pages/user/UserEdit.jsx";
@@ -324,6 +326,10 @@ export const adminRouteTree = (
       <Route path="new" element={<FaqAdd />} />
       <Route path=":faqId/edit" element={<FaqEdit />} />
       <Route path=":faqId" element={<FaqView />} />
+    </Route>
+    <Route path="contact-inquiries" element={<Outlet />}>
+      <Route index element={<ContactInquiryList />} />
+      <Route path=":inquiryId" element={<ContactInquiryView />} />
     </Route>
     <Route path="notifications" element={<Outlet />}>
       <Route index element={<NotificationList />} />

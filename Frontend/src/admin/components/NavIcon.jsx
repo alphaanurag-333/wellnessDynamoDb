@@ -238,6 +238,13 @@ export function NavIcon({ name }) {
           <line x1="12" y1="16.5" x2="12.01" y2="16.5" />
         </Icon>
       );
+    case "mail":
+      return (
+        <Icon>
+          <rect x="2" y="4" width="20" height="16" rx="2" />
+          <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+        </Icon>
+      );
     case "heart":
       return (
         <Icon>

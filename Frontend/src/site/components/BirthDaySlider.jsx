@@ -1,64 +1,75 @@
-import React from "react";
+import { useEffect, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
-
 import "swiper/css";
+import { DEFAULT_IMAGE_SRC, handleMediaImageError, mediaUrl } from "../../media.js";
+import { fetchBirthdayPosts } from "../api/publicMisc.js";
 
-const champions = [
-  {
-    id: 1,
-    name: "Sarah J.",
-    wishes:
-      "Wishing you a day filled with happiness,laughter & beautiful moments",
-    avatar:
-      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300",
-  },
-  {
-    id: 2,
-    name: "Emma",
-    wishes:
-      "Wishing you a day filled with happiness,laughter & beautiful moments",
-    avatar:
-      "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=300",
-  },
-  {
-    id: 3,
-    name: "Sophia",
-    wishes:
-      "Wishing you a day filled with happiness,laughter & beautiful moments",
-    avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=300",
-  },
-  {
-    id: 4,
-    name: "Olivia",
-    wishes:
-      "Wishing you a day filled with happiness,aughter & beautiful moments",
-    avatar:
-      "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=300",
-  },
-  {
-    id: 5,
-    name: "Jessica",
-    wishes:
-      "Wishing you a day filled with happiness,laughter & beautiful moments",
-    avatar:
-      "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=300",
-  },
-];
+const DEFAULT_WISH =
+  "Wishing you a day filled with happiness, laughter & beautiful moments";
+
+function mapBirthdayPost(row) {
+  if (!row) return null;
+
+  const id = row.id || row._id;
+  const name = String(row.user?.name || row.userName || "").trim();
+  const message = String(row.message || "").trim();
+  const profileImage = row.user?.profileImage || row.profileImage || "";
+
+  if (!id || !name) return null;
+
+  return {
+    id,
+    name,
+    wishes: message || DEFAULT_WISH,
+    avatar: profileImage ? mediaUrl(profileImage) : DEFAULT_IMAGE_SRC,
+  };
+}
 
 export default function BirthdaySlider() {
+  const [items, setItems] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const data = await fetchBirthdayPosts({ page: 1, limit: 24 });
+        if (cancelled) return;
+        const rows = Array.isArray(data?.birthdayPosts) ? data.birthdayPosts : [];
+        setItems(rows.map(mapBirthdayPost).filter(Boolean));
+      } catch {
+        if (!cancelled) setItems([]);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (items === null || items.length === 0) {
+    return null;
+  }
+
+  const enableLoop = items.length > 1;
+
   return (
-    <section className="champion-section">
+    <section className="champion-section" aria-label="Birthday wishes">
       <Swiper
         className="container"
         modules={[Autoplay]}
         spaceBetween={24}
         slidesPerView={3}
-        loop={true}
-        autoplay={{
-          delay: 2500,
-          disableOnInteraction: false,
-        }}
+        loop={enableLoop}
+        autoplay={
+          enableLoop
+            ? {
+                delay: 2500,
+                disableOnInteraction: false,
+              }
+            : false
+        }
         breakpoints={{
           0: {
             slidesPerView: 1,
@@ -71,27 +82,26 @@ export default function BirthdaySlider() {
           },
         }}
       >
-        {champions.map((item) => (
+        {items.map((item) => (
           <SwiperSlide key={item.id}>
-            <div className="champion-card birthday-card">
+            <article className="champion-card birthday-card">
               <div className="birthday-user">
                 <div className="champion-avatar">
-                  <img src={item.avatar} alt="" />
+                  <img
+                    src={item.avatar || DEFAULT_IMAGE_SRC}
+                    alt={item.name}
+                    loading="lazy"
+                    onError={handleMediaImageError}
+                  />
                 </div>
 
                 <div className="birthday-info">
                   <div className="birthday-title">Happy Birthday !</div>
-
                   <h4>{item.name}</h4>
                   <p>{item.wishes}</p>
                 </div>
-
-                {/* <div className="champion-right">
-                  <span>💬 The community supp...</span>
-                  <span>💬 The community supp...</span>
-                </div> */}
               </div>
-            </div>
+            </article>
           </SwiperSlide>
         ))}
       </Swiper>

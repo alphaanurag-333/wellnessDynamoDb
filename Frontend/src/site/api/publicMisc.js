@@ -62,3 +62,30 @@ export async function fetchTransformations(params = {}) {
     normalizeApiError(error);
   }
 }
+
+export async function fetchBirthdayPosts(params = {}) {
+  try {
+    const { data } = await api.get("/public/misc/birthday-posts", { params });
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function fetchMonthlyChampions(params = {}) {
+  try {
+    const { data } = await api.get("/public/misc/monthly-champions", { params });
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function submitContactInquiry(payload) {
+  try {
+    const { data } = await api.post("/public/misc/contact-inquiries", payload);
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}

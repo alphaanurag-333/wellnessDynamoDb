@@ -175,6 +175,11 @@ function titleFromPath(pathname) {
     return "FAQ";
   }
 
+  if (p.startsWith("/admin/contact-inquiries")) {
+    if (/^\/admin\/contact-inquiries\/[^/]+$/.test(p)) return "Contact inquiry";
+    return "Contact Inquiries";
+  }
+
   if (p.startsWith("/admin/static-pages")) {
     if (/^\/admin\/static-pages\/[^/]+\/edit\/?$/.test(p)) return "Edit static page";
     return "Static Pages";

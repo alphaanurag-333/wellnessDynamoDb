@@ -85,6 +85,7 @@ export const navItems = [
   { to: "notifications", label: "Notifications", icon: "bell" },
   // { to: "coupons", label: "Coupons", icon: "percent" },
   { to: "faq", label: "FAQ", icon: "help" },
+  { to: "contact-inquiries", label: "Contact Inquiries", icon: "mail" },
   { to: "static-pages", label: "Static Pages", icon: "file" },
   { to: "settings", label: "App Settings", icon: "gear" },
   { to: "profile", label: "Admin Profile", icon: "profile" },

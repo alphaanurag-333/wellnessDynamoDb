@@ -27,6 +27,8 @@
     "migrate:commitment-letter": "node migration/migrateAll.js --only=24-user-commitment-letter",
     "table:monthly-champions": "node --use-system-ca tables/createMonthlyChampionPostTable.js && node --use-system-ca tables/createMonthlyChampionPostCommentTable.js",
     "migrate:monthly-champions": "node migration/migrateAll.js --only=25-monthly-champions",
+    "table:contact-inquiries": "node --use-system-ca tables/createContactInquiryTable.js",
+    "migrate:contact-inquiries": "node --use-system-ca migration/migrateAll.js --only=26-contact-inquiries",
     "job:monthly-champions:run": "node --use-system-ca scripts/runMonthlyChampionJob.js"
   },
   "dependencies": {

@@ -6445,6 +6445,11 @@ fieldset.form-field legend {
   color: #15803d;
 }
 
+.badge--warning {
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+}
+
 .badge--muted {
   background: rgba(107, 114, 128, 0.14);
   color: #4b5563;
@@ -6572,6 +6577,61 @@ fieldset.form-field legend {
 .admin-cell-muted {
   color: var(--admin-muted);
   max-width: 420px;
+}
+
+/* Contact inquiry list */
+.contact-inquiry-page .contact-inquiry-filters {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(160px, 200px) auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.contact-inquiry-page .contact-inquiry-filters .admin-crud-filters__search {
+  max-width: none;
+}
+
+.contact-inquiry-page .contact-inquiry-table {
+  min-width: 44rem;
+}
+
+.contact-inquiry-page .contact-inquiry-table__message {
+  max-width: 16rem;
+}
+
+.contact-inquiry-page .contact-inquiry-table__date {
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.contact-inquiry-page .contact-inquiry-name-link,
+.contact-inquiry-page .contact-inquiry-email-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.contact-inquiry-page .contact-inquiry-name-link:hover,
+.contact-inquiry-page .contact-inquiry-email-link:hover {
+  color: var(--admin-primary, #1e3a5f);
+  text-decoration: underline;
+}
+
+.contact-inquiry-page .contact-inquiry-email-link {
+  color: var(--admin-link, #0f766e);
+}
+
+@media (max-width: 767.98px) {
+  .contact-inquiry-page .contact-inquiry-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .contact-inquiry-page .contact-inquiry-status-pills {
+    max-width: none;
+  }
+
+  .contact-inquiry-page .contact-inquiry-table {
+    min-width: 36rem;
+  }
 }
 
 .modal-card--wide {
