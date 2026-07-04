@@ -14,6 +14,7 @@ async function createRealPeopleTestimonialTable() {
       { AttributeName: "approvalStatus", AttributeType: "S" },
       { AttributeName: "managedByCoachId", AttributeType: "S" },
       { AttributeName: "userId", AttributeType: "S" },
+      { AttributeName: "healthConcernId", AttributeType: "S" },
     ],
     GlobalSecondaryIndexes: [
       {
@@ -44,6 +45,14 @@ async function createRealPeopleTestimonialTable() {
         IndexName: "UserIdCreatedAtIndex",
         KeySchema: [
           { AttributeName: "userId", KeyType: "HASH" },
+          { AttributeName: "createdAt", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+      {
+        IndexName: "HealthConcernCreatedAtIndex",
+        KeySchema: [
+          { AttributeName: "healthConcernId", KeyType: "HASH" },
           { AttributeName: "createdAt", KeyType: "RANGE" },
         ],
         Projection: { ProjectionType: "ALL" },

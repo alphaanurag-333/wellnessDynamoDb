@@ -4,8 +4,9 @@ function base() {
   return "/user/real-people-testimonials";
 }
 
-export async function userListRealPeopleTestimonials(token, { page = 1, limit = 20 } = {}) {
+export async function userListRealPeopleTestimonials(token, { page = 1, limit = 20, healthConcernId } = {}) {
   const q = new URLSearchParams({ page: String(page), limit: String(limit) });
+  if (healthConcernId) q.set("healthConcernId", String(healthConcernId));
   try {
     const { data } = await api.get(`${base()}?${q}`, { headers: authHeader(token) });
     return {

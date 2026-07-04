@@ -10,6 +10,7 @@ const {
   listRealPeopleTestimonials,
 } = require("../../models/realPeopleTestimonialModel");
 const { resolveAssignedCoachForUser } = require("../mealTrackingControllerHelpers");
+const { resolveListMedia } = require("./userMiscMedia");
 const {
   readIdParam,
   validateReview,
@@ -21,12 +22,19 @@ exports.listUserRealPeopleTestimonialsController = asyncHandler(async (req, res)
   const userId = req.auth?.sub;
   if (!userId) throw new AppError("Unauthorized", 401);
 
-  const { page = 1, limit = 20 } = req.query;
-  const data = await listRealPeopleTestimonials({
-    page,
-    limit,
-    userId,
-  });
+  const { page = 1, limit = 20, healthConcernId } = req.query;
+  const normalizedHealthConcernId = String(healthConcernId || "").trim() || undefined;
+  const data = resolveListMedia(
+    await listRealPeopleTestimonials({
+      page,
+      limit,
+      status: "active",
+      publicOnly: true,
+      healthConcernId: normalizedHealthConcernId,
+    }),
+    "realPeopleTestimonials",
+    ["userAvatar"]
+  );
 
   return res.status(200).json({
     status: true,
@@ -40,7 +48,14 @@ exports.getUserRealPeopleTestimonialByIdController = asyncHandler(async (req, re
   if (!userId) throw new AppError("Unauthorized", 401);
 
   const testimonial = await getRealPeopleTestimonialById(readIdParam(req));
-  if (!testimonial || readTestimonialUserId(testimonial) !== String(userId)) {
+  if (!testimonial) throw new AppError("Testimonial not found", 404);
+
+  const isOwner = readTestimonialUserId(testimonial) === String(userId);
+  const isPublic =
+    String(testimonial.status || "").toLowerCase() === "active" &&
+    String(testimonial.approvalStatus || "").toLowerCase() === "approved";
+
+  if (!isOwner && !isPublic) {
     throw new AppError("Testimonial not found", 404);
   }
 

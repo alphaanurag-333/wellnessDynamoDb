@@ -19,13 +19,14 @@ const {
 } = require("../realPeopleTestimonialControllerHelpers");
 
 exports.listRealPeopleTestimonialsController = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, status, approvalStatus, search } = req.query;
+  const { page = 1, limit = 10, status, approvalStatus, search, healthConcernId } = req.query;
   const data = await listRealPeopleTestimonials({
     page,
     limit,
     status,
     approvalStatus,
     search,
+    healthConcernId: String(healthConcernId || "").trim() || undefined,
   });
   return res.status(200).json({
     status: true,

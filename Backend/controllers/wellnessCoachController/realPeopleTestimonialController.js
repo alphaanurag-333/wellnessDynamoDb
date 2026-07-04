@@ -20,13 +20,14 @@ exports.listCoachRealPeopleTestimonialsController = asyncHandler(async (req, res
   const coachId = req.auth?.sub;
   if (!coachId) throw new AppError("Unauthorized", 401);
 
-  const { page = 1, limit = 20, status, approvalStatus, search } = req.query;
+  const { page = 1, limit = 20, status, approvalStatus, search, healthConcernId } = req.query;
   const data = await listRealPeopleTestimonials({
     page,
     limit,
     status,
     approvalStatus,
     search,
+    healthConcernId: String(healthConcernId || "").trim() || undefined,
     managedByCoachId: coachId,
   });
 

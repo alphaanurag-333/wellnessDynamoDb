@@ -23,13 +23,14 @@ exports.listAssistantRealPeopleTestimonialsController = asyncHandler(async (req,
   const parentCoachId = String(req.user?.wellnessCoachId || "").trim();
   if (!parentCoachId) throw new AppError("Assistant coach hierarchy not found", 403);
 
-  const { page = 1, limit = 20, status, approvalStatus, search } = req.query;
+  const { page = 1, limit = 20, status, approvalStatus, search, healthConcernId } = req.query;
   const data = await listRealPeopleTestimonials({
     page,
     limit,
     status,
     approvalStatus,
     search,
+    healthConcernId: String(healthConcernId || "").trim() || undefined,
     managedByCoachId: parentCoachId,
   });
 

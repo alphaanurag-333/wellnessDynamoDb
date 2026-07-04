@@ -7,11 +7,12 @@ function memberSinceYearFromUser(user) {
   return Number.isFinite(year) ? year : null;
 }
 
-async function buildUserContext(userId) {
+async function buildUserContext(userId, storedHealthConcernId) {
   const user = await getUserById(userId);
   if (!user) return null;
 
-  const concernId = String(user.primaryHealthConcern || "").trim();
+  const concernId =
+    String(storedHealthConcernId || user.primaryHealthConcern || "").trim();
   const concern = concernId ? await getHealthConcernById(concernId) : null;
   const publicUser = toPublicUser(user);
 
@@ -20,6 +21,7 @@ async function buildUserContext(userId) {
     userAvatar: publicUser?.profileImage || null,
     profileImage: publicUser?.profileImage || null,
     memberSinceYear: memberSinceYearFromUser(user),
+    healthConcernId: concern?.id || null,
     healthConcernTitle: concern?.title || null,
     heading: concern?.title || null,
     healthConcern: concern ? { id: concern.id, title: concern.title } : null,
@@ -57,7 +59,7 @@ async function enrichRealPeopleTestimonial(row) {
   const userId = base.userId;
   if (!userId) return base;
 
-  const ctx = await buildUserContext(userId);
+  const ctx = await buildUserContext(userId, base.healthConcernId);
   return ctx ? { ...base, ...ctx } : base;
 }
 
@@ -71,10 +73,11 @@ async function enrichRealPeopleTestimonials(rows) {
 
     const userId = base.userId;
     if (userId) {
-      if (!userCache.has(userId)) {
-        userCache.set(userId, await buildUserContext(userId));
+      const cacheKey = `${userId}:${base.healthConcernId || ""}`;
+      if (!userCache.has(cacheKey)) {
+        userCache.set(cacheKey, await buildUserContext(userId, base.healthConcernId));
       }
-      const ctx = userCache.get(userId);
+      const ctx = userCache.get(cacheKey);
       if (ctx) Object.assign(base, ctx);
     }
     enriched.push(base);

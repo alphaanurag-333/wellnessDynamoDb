@@ -92,12 +92,14 @@ exports.getActiveClientTestimonials = asyncHandler(async (req, res) => {
 
 exports.getActiveRealPeopleTestimonials = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
+  const healthConcernId = String(req.query.healthConcernId || "").trim() || undefined;
   const data = resolveListMedia(
     await listRealPeopleTestimonials({
       page,
       limit,
       status: "active",
       publicOnly: true,
+      healthConcernId,
     }),
     "realPeopleTestimonials",
     ["userAvatar"]

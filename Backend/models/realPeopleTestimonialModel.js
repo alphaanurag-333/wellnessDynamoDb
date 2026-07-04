@@ -6,11 +6,13 @@ const {
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require("uuid");
 const { docClient } = require("../config/db");
+const { getUserById } = require("./userModel");
 const {
   listByPartitionKey,
   buildContainsFilter,
   appendFilter,
   sortByCreatedAtDesc,
+  paginateItems,
 } = require("../utils/dynamoList");
 const {
   enrichRealPeopleTestimonial,
@@ -64,11 +66,24 @@ function sanitizeUserId(value) {
   return userId;
 }
 
+function sanitizeHealthConcernId(value) {
+  const id = String(value || "").trim();
+  return id || null;
+}
+
+async function resolveHealthConcernId(userId, healthConcernId) {
+  const explicit = sanitizeHealthConcernId(healthConcernId);
+  if (explicit) return explicit;
+  const user = await getUserById(userId);
+  return sanitizeHealthConcernId(user?.primaryHealthConcern);
+}
+
 function sanitizeCreateInput(input = {}) {
   return {
     userId: sanitizeUserId(input.userId),
     review: sanitizeReview(input.review ?? input.content),
     stars: sanitizeStars(input.stars ?? input.rating),
+    healthConcernId: sanitizeHealthConcernId(input.healthConcernId),
     status: normalizeStatus(input.status, "inactive"),
     approvalStatus: normalizeApprovalStatus(input.approvalStatus, "pending"),
     submittedByRole: SUBMITTED_BY_ROLES.has(String(input.submittedByRole || "").trim())
@@ -86,6 +101,7 @@ function sanitizeCreateInput(input = {}) {
 
 async function createRealPeopleTestimonial(input) {
   const data = sanitizeCreateInput(input);
+  data.healthConcernId = await resolveHealthConcernId(data.userId, data.healthConcernId);
   const now = new Date().toISOString();
   const item = {
     id: uuidv4(),
@@ -94,6 +110,7 @@ async function createRealPeopleTestimonial(input) {
     updatedAt: now,
   };
 
+  if (!item.healthConcernId) delete item.healthConcernId;
   if (!item.managedByCoachId) delete item.managedByCoachId;
   if (!item.assignedCoachType) delete item.assignedCoachType;
   if (!item.assignedCoachId) delete item.assignedCoachId;
@@ -143,6 +160,7 @@ async function updateRealPeopleTestimonial(id, updates) {
     if (key === "rejectionReason") next = String(value).trim();
     if (key === "status") next = normalizeStatus(value);
     if (key === "approvalStatus") next = normalizeApprovalStatus(value);
+    if (key === "healthConcernId") next = sanitizeHealthConcernId(value);
 
     const field = key === "content" ? "review" : key === "rating" ? "stars" : key;
     exprNames[`#${field}`] = field;
@@ -161,7 +179,16 @@ async function updateRealPeopleTestimonial(id, updates) {
       ReturnValues: "ALL_NEW",
     })
   );
-  return enrichRealPeopleTestimonial(Attributes || null);
+
+  const updated = Attributes || null;
+  if (updated && !updated.healthConcernId && updates?.userId !== undefined) {
+    const healthConcernId = await resolveHealthConcernId(updated.userId);
+    if (healthConcernId) {
+      return updateRealPeopleTestimonial(id, { healthConcernId });
+    }
+  }
+
+  return enrichRealPeopleTestimonial(updated);
 }
 
 async function deleteRealPeopleTestimonial(id) {
@@ -174,6 +201,16 @@ async function deleteRealPeopleTestimonial(id) {
   );
 }
 
+function matchesHealthConcern(row, healthConcernId) {
+  const target = String(healthConcernId || "").trim();
+  if (!target) return true;
+  return [
+    row?.healthConcernId,
+    row?.healthConcern?.id,
+    row?.user?.primaryHealthConcern?.id,
+  ].some((value) => String(value || "").trim() === target);
+}
+
 async function listRealPeopleTestimonials({
   page = 1,
   limit = 10,
@@ -182,13 +219,21 @@ async function listRealPeopleTestimonials({
   search,
   managedByCoachId,
   userId,
+  healthConcernId,
   publicOnly = false,
 } = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const normalizedApproval = approvalStatus ? normalizeApprovalStatus(approvalStatus, "") : "";
   const normalizedCoachId = String(managedByCoachId || "").trim();
   const normalizedUserId = String(userId || "").trim();
+  const normalizedHealthConcernId = String(healthConcernId || "").trim();
   const searchFilter = buildContainsFilter(["review"], search);
+  const useHealthConcernFilter = Boolean(normalizedHealthConcernId);
+  const queryPage = useHealthConcernFilter || searchFilter.search ? 1 : page;
+  const queryLimit =
+    useHealthConcernFilter || searchFilter.search ? Number.MAX_SAFE_INTEGER : limit;
+  const queryMaxLimit =
+    useHealthConcernFilter || searchFilter.search ? Number.MAX_SAFE_INTEGER : 200;
 
   let indexName = "StatusCreatedAtIndex";
   let partitionKeyName = "status";
@@ -224,6 +269,12 @@ async function listRealPeopleTestimonials({
     filterExpression = appendFilter(filterExpression, "#approvalStatus = :approvalStatus");
   }
 
+  if (normalizedCoachId && partitionKeyName !== "managedByCoachId") {
+    exprNames["#managedByCoachId"] = "managedByCoachId";
+    exprValues[":managedByCoachId"] = normalizedCoachId;
+    filterExpression = appendFilter(filterExpression, "#managedByCoachId = :managedByCoachId");
+  }
+
   if (publicOnly) {
     exprNames["#approvalStatus"] = "approvalStatus";
     exprValues[":approvalStatus"] = "approved";
@@ -241,14 +292,27 @@ async function listRealPeopleTestimonials({
     search: searchFilter.search,
     searchFields: searchFilter.searchFields,
     scanIndexForward: false,
-    page,
-    limit,
-    maxLimit: 200,
+    page: queryPage,
+    limit: queryLimit,
+    maxLimit: queryMaxLimit,
     sortFn: sortByCreatedAtDesc,
   });
 
+  let realPeopleTestimonials = await enrichRealPeopleTestimonials(items);
+
+  if (useHealthConcernFilter) {
+    realPeopleTestimonials = realPeopleTestimonials.filter((row) =>
+      matchesHealthConcern(row, normalizedHealthConcernId)
+    );
+    const paged = paginateItems(realPeopleTestimonials, page, limit, 200);
+    return {
+      realPeopleTestimonials: paged.items,
+      pagination: paged.pagination,
+    };
+  }
+
   return {
-    realPeopleTestimonials: await enrichRealPeopleTestimonials(items),
+    realPeopleTestimonials,
     pagination,
   };
 }
