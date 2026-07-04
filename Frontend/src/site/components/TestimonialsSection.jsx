@@ -1,60 +1,98 @@
-import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { IoStar, IoStarHalf, IoStarOutline } from "react-icons/io5";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Pagination, Autoplay } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/pagination";
-import { useMediaQuery } from "../../hooks/useMediaQuery.js";
-import { DEFAULT_IMAGE_SRC, handleMediaImageError } from "../../media.js";
+import { DEFAULT_IMAGE_SRC, handleMediaImageError, mediaUrl } from "../../media.js";
 import { fetchClientTestimonials } from "../api/publicMisc.js";
-import { SITE_SECTION_PATHS } from "../data/siteSections.js";
-import { useSiteConfig } from "../hooks/useSiteConfig.js";
-import { SiteCard } from "./SiteCard.jsx";
-import client1 from "../images/client1.jpg";
-import client2 from "../images/client2.jpg";
 
+function TestimonialStars({ rating }) {
+  const value = Math.min(5, Math.max(0, Number(rating) || 0));
+  const full = Math.floor(value);
+  const hasHalf = value - full >= 0.25 && value - full < 0.75;
+  const roundHigh = value - full >= 0.75;
+  const stars = [];
 
-export default function TestimonialsSection() {
-  const testimonials = [
-    {
-      id: 1,
-      image: client1,
-      name: "Sarah Jenkins",
-      role: "Transformation Program Member",
-      review:
-        "After years of chronic fatigue, the team here finally found the root cause. I have my life back.",
-    },
-    {
-      id: 2,
-      image: client2,
-      name: "Michael Chen",
-      role: "Executive Health Client",
-      review:
-        "The most professional health facility I've ever visited. The data-driven approach is second to none.",
-    },
-    {
-      id: 3,
-      image: client1,
-      name: "Emma Watson",
-      role: "Wellness Client",
-      review:
-        "The personalized approach completely changed how I think about my health and wellbeing.",
-    },
-    {
-      id: 4,
-      image: client2,
-      name: "David Smith",
-      role: "Program Member",
-      review:
-        "Everything was tailored to me. The results exceeded my expectations.",
-    },
-  ];
+  for (let i = 0; i < full + (roundHigh ? 1 : 0); i += 1) {
+    stars.push(<IoStar key={`f-${i}`} aria-hidden />);
+  }
+  if (hasHalf && !roundHigh) {
+    stars.push(<IoStarHalf key="half" aria-hidden />);
+  }
+  const empty = 5 - stars.length;
+  for (let i = 0; i < empty; i += 1) {
+    stars.push(<IoStarOutline key={`e-${i}`} aria-hidden />);
+  }
+
+  return <div className="success-card__stars">{stars}</div>;
+}
+
+function mapTestimonial(row) {
+  if (!row) return null;
+  const id = row.id || row._id;
+  const name = String(row.name || "").trim();
+  const review = String(row.description || "").trim();
+  if (!id || !name || !review) return null;
+
+  return {
+    id,
+    name,
+    review,
+    rating: row.rating,
+    image: row.profileImage ? mediaUrl(row.profileImage) : DEFAULT_IMAGE_SRC,
+  };
+}
+
+export default function TestimonialsSection({ items: itemsProp }) {
+  const [items, setItems] = useState(() => (Array.isArray(itemsProp) ? itemsProp.map(mapTestimonial).filter(Boolean) : null));
+
+  useEffect(() => {
+    if (Array.isArray(itemsProp)) {
+      setItems(itemsProp.map(mapTestimonial).filter(Boolean));
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const data = await fetchClientTestimonials({ page: 1, limit: 12 });
+        if (cancelled) return;
+        const rows = Array.isArray(data?.clientTestimonials) ? data.clientTestimonials : [];
+        setItems(rows.map(mapTestimonial).filter(Boolean));
+      } catch {
+        if (!cancelled) setItems([]);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [itemsProp]);
+
+  if (items === null) {
+    return (
+      <section className="success-stories" aria-busy="true" aria-label="Loading success stories">
+        <div className="site-container">
+          <div className="success-stories__header">
+            <h2>Success Stories</h2>
+          </div>
+          <p className="site-testimonials__loading">Loading reviews…</p>
+        </div>
+      </section>
+    );
+  }
+
+  if (items.length === 0) {
+    return null;
+  }
+
+  const enableLoop = items.length > 1;
 
   return (
     <section className="success-stories">
       <div className="site-container">
-
         <div className="success-stories__header">
           <h2>Success Stories</h2>
         </div>
@@ -63,11 +101,15 @@ export default function TestimonialsSection() {
           modules={[Pagination, Autoplay]}
           slidesPerView={2}
           spaceBetween={24}
-          loop={true}
-          autoplay={{
-            delay: 5000,
-            disableOnInteraction: false,
-          }}
+          loop={enableLoop}
+          autoplay={
+            enableLoop
+              ? {
+                  delay: 5000,
+                  disableOnInteraction: false,
+                }
+              : false
+          }
           pagination={{
             clickable: true,
           }}
@@ -84,39 +126,30 @@ export default function TestimonialsSection() {
           }}
           className="successStoriesSwiper"
         >
-          {testimonials.map((item) => (
+          {items.map((item) => (
             <SwiperSlide key={item.id}>
               <div className="success-card">
-
                 <div className="success-card__avatar">
-                  <img src={item.image} alt={item.name} />
+                  <img
+                    src={item.image || DEFAULT_IMAGE_SRC}
+                    alt={item.name}
+                    onError={handleMediaImageError}
+                  />
                 </div>
 
                 <div className="success-card__content">
+                  <TestimonialStars rating={item.rating} />
 
-                  <div className="success-card__stars">
-                    <IoStar />
-                    <IoStar />
-                    <IoStar />
-                    <IoStar />
-                    <IoStar />
-                  </div>
-
-                  <p className="success-card__review">
-                    "{item.review}"
-                  </p>
+                  <p className="success-card__review">&ldquo;{item.review}&rdquo;</p>
 
                   <p className="success-card__author">
-                    <span>— {item.name}</span>, {item.role}
+                    <span>— {item.name}</span>
                   </p>
-
                 </div>
-
               </div>
             </SwiperSlide>
           ))}
         </Swiper>
-
       </div>
     </section>
   );

@@ -1,6 +1,8 @@
-import React, { useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation } from "swiper/modules";
+import { DEFAULT_IMAGE_SRC, handleMediaImageError, mediaUrl } from "../../media.js";
+import { fetchCofounderMessage } from "../api/publicMisc.js";
 
 import "swiper/css";
 import "swiper/css/navigation";
@@ -41,6 +43,41 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+
+const FALLBACK_COFOUNDER = {
+  name: "Ms. Banita Acharya",
+  designation: "Co-Founder & CEO",
+  message: `India Has Been A Hub Of Healing & Wellness Since Vedic Times With Richness Of Indian Traditional Wellness Techniques. However, Since The Last 2 To 3 Decades, Lifestyle Diseases/Disorders Including Obesity Have Grown Manifolds.
+
+We Rank 3rd Globally In Obesity; Have A Large Population Of Diabetes And Are Rapidly Marching Towards Becoming The Capital. We Register Second Highest In Terms Of Deaths Cancer & Heart Disease Are Rapidly Growing In Urban India.
+
+Despite Medical Science Having Evolved So Much, We Are Just Managing The Disease Or The Condition. There Is Something Missing !
+
+According to me, whatever I have researched.. The primary reasons are lifestyle and hormonal imbalances which lead to such diseases/disorders.. Hence if we correct these, we can improve the disease management and can even reverse them.
+
+India Redefining Wellness is a Holistic Wellness Platform with its unique approach towards your wellbeing by redefining your health. It operates with a blend of our age-old rich Indian philosophy and modern age research & science.
+
+At IRW, we specialize in personalized holistic solutions aimed at addressing a wide range of health concerns, including personalized holistic fat loss, lifestyle disorders reversal like Diabetes, Hypo & Hyper Thyroid, PCOD/PCOS, Gut Health, and other Autoimmune Disorders.
+
+We believe our client’s health is our responsibility.
+
+We develop an understanding of the client’s current lifestyle & uncover the current health conditions through deep root cause analysis. Our approach towards addressing them includes personalized hand holding with consistent & persistent monitoring of all Health pillars like Food & Nutrition, Sleep & Rest, physical exercise & Emotional Health. This cumulative approach yield the desired improvements including the reversal of lifestyle disorders.
+
+Our core principle is to educate and empower our clients with right knowledge and practices so that they can take charge of their health to live a medicine free life.
+
+Our expertise is in extending personalized guidance and hand holding to each of our clients with regular reviews until they achieve their health goal. We understand everybody is unique and they need special attention.
+
+We are currently working on a Project to inspire & educate 10 Lakhs families within the next 2 years and help them live a Healthy & Medicine Free Life. We are also working passionately towards creating a Team of 500 in-house Wellness Coaches and helping them build their identity in the society through Wellness Consultations.
+
+I wish you all the very best ! Come & join us in our mission… Let’s make this world a better place to live !`,
+};
+
+function messageParagraphs(text) {
+  return String(text || "")
+    .split(/\n\s*\n/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
 
 const AboutUsSection = () => {
   const items = [
@@ -147,8 +184,35 @@ const AboutUsSection = () => {
   ];
 
   const [expanded, setExpanded] = useState(false);
+  const [cofounderMessage, setCofounderMessage] = useState(null);
   const prevRef = useRef(null);
   const nextRef = useRef(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const response = await fetchCofounderMessage();
+        if (!cancelled && response?.data) {
+          setCofounderMessage(response.data);
+        }
+      } catch {
+        /* keep fallback content */
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const leadershipName = cofounderMessage?.name?.trim() || FALLBACK_COFOUNDER.name;
+  const leadershipMessage = cofounderMessage?.message?.trim() || FALLBACK_COFOUNDER.message;
+  const leadershipImage = cofounderMessage?.profileImage
+    ? mediaUrl(cofounderMessage.profileImage)
+    : founderImg;
+  const leadershipParagraphs = messageParagraphs(leadershipMessage);
 
   const marqueeItems = [...items, ...items, ...items, ...items];
 
@@ -202,7 +266,11 @@ const AboutUsSection = () => {
           <div className="leadership__card">
             {/* Left Image */}
             <div className="leadership__image">
-              <img src={founderImg} alt="Founder" />
+              <img
+                src={leadershipImage || DEFAULT_IMAGE_SRC}
+                alt={leadershipName}
+                onError={handleMediaImageError}
+              />
             </div>
 
             {/* Right Content */}
@@ -212,93 +280,19 @@ const AboutUsSection = () => {
               <h2 className="leadership__title">Co-Founder's Message</h2>
 
               <div className="leadership__author">
-                <h4>Ms. Banita Acharya</h4>
-                <span>Co-Founder & CEO</span>
+                <h4>{leadershipName}</h4>
+                <span>{FALLBACK_COFOUNDER.designation}</span>
               </div>
 
-              <p
+              <div
                 className={`leadership__description ${
                   expanded ? "expanded" : ""
                 }`}
               >
-                <p>
-                  India Has Been A Hub Of Healing & Wellness Since Vedic Times
-                  With Richness Of Indian Traditional Wellness Techniques.
-                  However, Since The Last 2 To 3 Decades, Lifestyle
-                  Diseases/Disorders Including Obesity Have Grown Manifolds.
-                </p>
-                <br />
-                <p>
-                  We Rank 3rd Globally In Obesity; Have A Large Population Of
-                  Diabetes And Are Rapidly Marching Towards Becoming The
-                  Capital. We Register Second Highest In Terms Of Deaths Cancer
-                  & Heart Disease Are Rapidly Growing In Urban India.
-                </p>
-                <br />
-                <p>
-                  {" "}
-                  Despite Medical Science Having Evolved So Much, We Are Just
-                  Managing The Disease Or The Condition. There Is Something
-                  Missing !
-                </p>
-                <br />
-                <p>
-                  According to me, whatever I have researched.. The primary
-                  reasons are lifestyle and hormonal imbalances which lead to
-                  such diseases/disorders.. Hence if we correct these, we can
-                  improve the disease management and can even reverse them.
-                </p>
-                <p>
-                  India Redefining Wellness is a Holistic Wellness Platform with
-                  its unique approach towards your wellbeing by redefining your
-                  health. It operates with a blend of our age-old rich Indian
-                  philosophy and modern age research & science.
-                </p>
-                <br />
-                <p>
-                  At IRW, we specialize in personalized holistic solutions aimed
-                  at addressing a wide range of health concerns, including
-                  personalized holistic fat loss, lifestyle disorders reversal
-                  like Diabetes, Hypo & Hyper Thyroid, PCOD/PCOS, Gut Health,
-                  and other Autoimmune Disorders.
-                </p>
-                <p>We believe our client’s health is our responsibility.</p>
-                <br />
-                <p>
-                  We develop an understanding of the client’s current lifestyle
-                  & uncover the current health conditions through deep root
-                  cause analysis. Our approach towards addressing them includes
-                  personalized hand holding with consistent & persistent
-                  monitoring of all Health pillars like Food & Nutrition, Sleep
-                  & Rest, physical exercise & Emotional Health. This cumulative
-                  approach yield the desired improvements including the reversal
-                  of lifestyle disorders.
-                </p>
-                <br />
-                <p>
-                  Our core principle is to educate and empower our clients with
-                  right knowledge and practices so that they can take charge of
-                  their health to live a medicine free life.
-                </p>
-                <br />
-                <p>
-                  Our expertise is in extending personalized guidance and hand
-                  holding to each of our clients with regular reviews until they
-                  achieve their health goal. We understand everybody is unique
-                  and they need special attention.
-                </p>
-                <br />
-                <p>
-                  We are currently working on a Project to inspire & educate 10
-                  Lakhs families within the next 2 years and help them live a
-                  Healthy & Medicine Free Life. We are also working passionately
-                  towards creating a Team of 500 in-house Wellness Coaches and
-                  helping them build their identity in the society through
-                  Wellness Consultations.
-                </p>
-                <br />I wish you all the very best ! Come & join us in our
-                mission… Let’s make this world a better place to live !
-              </p>
+                {leadershipParagraphs.map((paragraph, index) => (
+                  <p key={index}>{paragraph}</p>
+                ))}
+              </div>
 
               <button
                 className="leadership__link"
@@ -316,44 +310,6 @@ const AboutUsSection = () => {
           </div>
         </div>
       </section>
-
-      <section className="leadership" style={{ paddingTop: "0" }}>
-        <div className="site-container">
-          <div className="leadership__card">
-            {/* Left Image */}
-            <div className="leadership__content">
-              {/* <span className="leadership__badge">A NOTE FROM LEADERSHIP</span> */}
-
-              <h2 className="leadership__title">Meet our Managing Director</h2>
-
-              <div className=" director__title">
-                <h4>Ms. Dipti Patil</h4>
-                <span>Managing Director</span>
-              </div>
-
-              <p className="director__description">
-                An IT Professional & a GenZ leader decided to pursue her passion
-                over traditional Corporate Life.
-                <br />
-                <br />
-                She started her Enterprenurial journey at the age of 20. She is
-                a Certified Wellness Coach & oversees the overall operations and
-                business strategy.
-                <br />
-                <br />
-                Optimal performance of an organization needs a Holistic approach
-                for managing internal health.
-              </p>
-            </div>
-
-            {/* Right Content */}
-            <div className="leadership__image">
-              <img src={founderImg} alt="Founder" />
-            </div>
-          </div>
-        </div>
-      </section>
-
       <section className="pillars">
         <div className="site-container">
           {/* Heading */}
