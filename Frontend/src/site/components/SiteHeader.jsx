@@ -116,7 +116,7 @@ export function SiteHeader() {
                 About Us
               </NavLink>
 
-              <div className="site-header__dropdown">
+              {/* <div className="site-header__dropdown">
                 <button
                   type="button"
                   className={`site-header__link site-header__dropdown-btn ${
@@ -163,7 +163,7 @@ export function SiteHeader() {
                     Thyroid Care
                   </NavLink>
                 </div>
-              </div>
+              </div> */}
 
               <NavLink
                 to="/success-stories"
@@ -194,7 +194,7 @@ export function SiteHeader() {
             </nav>
 
             {/* CTA */}
-            <Link to="/consultation" className="site-header__cta">
+            <Link to="#" className="site-header__cta">
               Book a free consultation
             </Link>
 

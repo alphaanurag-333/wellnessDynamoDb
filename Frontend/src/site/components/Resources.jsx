@@ -3,6 +3,8 @@ import { Plus } from "lucide-react";
 import BMISection from "./BMISection";
 import HydrationGuide from "./HydrationGuide";
 import BMRCalculator from "./BMRCalculator";
+import BodyFatCalculator from "./BodyFatCalculator";
+import VisceralFatCalculator from "./VisceralFatCalculator";
 
 const ResourcesSection = () => {
   return (
@@ -40,6 +42,8 @@ const ResourcesSection = () => {
       <BMISection />
       {/* <HydrationGuide /> */}
       <BMRCalculator />
+      <BodyFatCalculator />
+      <VisceralFatCalculator /> 
       <section className="final-cta">
         <div className="final-cta__overlay"></div>
 
