@@ -4,7 +4,11 @@ import { assistantListHealUsers } from "../../api/assistantHealUsers.js";
 import { logoutAssistant } from "../../../store/authSlice.js";
 import { CoachTableLoaderRow } from "../../../wellnessCoach/components/CoachPageLoader.jsx";
 import { UserTierBadge } from "../../../components/ReferralAssignmentShared.jsx";
-import { ClientListRowStats } from "../../../components/ClientListRowStats.jsx";
+import {
+  ClientListRowActions,
+  ClientListRowPrograms,
+  ClientTableUserCell,
+} from "../../../components/ClientListRowStats.jsx";
 
 function formatDate(iso) {
   if (!iso) return "—";
@@ -99,15 +103,16 @@ export function AssistantMyHealUsersList() {
               <th>Phone</th>
               <th>Tier</th>
               <th>Joined</th>
-              <th>Programs</th>
+              <th>Modules</th>
+              <th className="data-table__actions-col">Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <CoachTableLoaderRow colSpan={5} label="Loading clients…" />
+              <CoachTableLoaderRow colSpan={6} label="Loading clients…" />
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={5}>
+                <td colSpan={6}>
                   <p className="table-placeholder">No clients assigned to you yet.</p>
                 </td>
               </tr>
@@ -115,16 +120,22 @@ export function AssistantMyHealUsersList() {
               users.map((u) => (
                 <tr key={u._id || u.id}>
                   <td>
-                    <div className="data-table__primary">{u.name || "—"}</div>
-                    <div className="data-table__muted">{u.email}</div>
+                    <ClientTableUserCell user={u} />
                   </td>
-                  <td>{[u.phoneCountryCode, u.phone].filter(Boolean).join(" ") || "—"}</td>
+                  <td>
+                    <div className="user-cell__muted">
+                      {[u.phoneCountryCode, u.phone].filter(Boolean).join(" ") || "—"}
+                    </div>
+                  </td>
                   <td>
                     <UserTierBadge tier={u.userTier} assignmentStatus={u.assignmentStatus} />
                   </td>
-                  <td>{formatDate(u.convertedAt || u.createdAt)}</td>
+                  <td className="data-table__muted">{formatDate(u.convertedAt || u.createdAt)}</td>
                   <td>
-                    <ClientListRowStats user={u} viewPath={`${u._id || u.id}`} />
+                    <ClientListRowPrograms user={u} />
+                  </td>
+                  <td className="data-table__actions-col">
+                    <ClientListRowActions user={u} viewPath={`${u._id || u.id}`} />
                   </td>
                 </tr>
               ))

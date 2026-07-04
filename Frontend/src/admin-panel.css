@@ -5860,11 +5860,6 @@ a.icon-btn {
   max-width: 360px;
 }
 
-.heal-users-page .data-table__actions-col {
-  width: auto;
-  min-width: 220px;
-}
-
 @media (max-width: 900px) {
   .heal-users-page__toolbar {
     width: 100%;
@@ -8356,9 +8351,40 @@ fieldset.form-field legend {
   font-style: italic;
 }
 
-.heal-users-page .data-table__actions-col,
-.heal-users-page .client-list-row-stats {
-  min-width: 200px;
+.heal-users-page .data-table__actions-col {
+  width: 1%;
+  white-space: nowrap;
+  min-width: 96px;
+}
+
+.heal-users-page .data-table tbody td {
+  vertical-align: middle;
+}
+
+.heal-users-page .data-table tbody td.data-table__actions-col {
+  text-align: right;
+}
+
+.client-list-programs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  min-width: 0;
+}
+
+.client-list-programs__count {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #334155;
+  white-space: nowrap;
+}
+
+.client-list-programs__tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
 }
 
 .client-list-row-stats {
@@ -8366,51 +8392,6 @@ fieldset.form-field legend {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-}
-
-.client-list-row-stats__info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  min-width: 0;
-}
-
-.client-list-row-stats__count {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: #334155;
-}
-
-.client-list-row-stats__tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-}
-
-.client-list-row-stats__tag {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
-  color: #475569;
-  font-size: 0.72rem;
-  font-weight: 600;
-  line-height: 1.3;
-}
-
-.client-list-row-stats__tag--heal {
-  background: #ecfdf5;
-  border-color: #bbf7d0;
-  color: #15803d;
-}
-
-.client-list-row-stats__actions {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  flex-shrink: 0;
 }
 
 .client-hub-page__topbar {
@@ -8424,12 +8405,41 @@ fieldset.form-field legend {
 .client-hub-page__header {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 1.25rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+}
+
+.client-hub-page__identity {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  min-width: 0;
+  flex: 1 1 280px;
+}
+
+.client-hub-page__avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
+  color: #1d4ed8;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
+.client-hub-page__profile-main {
+  min-width: 0;
 }
 
 .client-hub-page__back {
@@ -8447,68 +8457,150 @@ fieldset.form-field legend {
 
 .client-hub-page__name {
   margin: 0;
-  font-size: 1.35rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: #0f172a;
 }
 
 .client-hub-page__meta {
-  margin: 0.25rem 0 0;
+  margin: 0.2rem 0 0;
   color: #64748b;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
+  line-height: 1.45;
 }
 
 .client-hub-page__profile-badges {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 0.5rem;
+  gap: 0.45rem;
+  flex-shrink: 0;
 }
 
 .client-hub-page__joined {
   color: #64748b;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
 }
 
-.client-hub-tabs {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 0.35rem 0.5rem;
-  padding-bottom: 0.75rem;
-  margin-bottom: 1rem;
-  border-bottom: 1px solid #e2e8f0;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
+.client-hub-layout {
+  display: grid;
+  grid-template-columns: minmax(210px, 240px) minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: start;
 }
 
-.client-hub-tabs__btn {
-  flex-shrink: 0;
-  padding: 0.55rem 0.9rem;
+.client-hub-layout__main {
+  min-width: 0;
+}
+
+.client-hub-nav {
+  position: sticky;
+  top: 1rem;
+  padding: 0.85rem;
   border: 1px solid #e2e8f0;
-  border-radius: 999px;
+  border-radius: 14px;
   background: #fff;
+}
+
+.client-hub-nav__mobile-jump {
+  display: none;
+  margin: 0;
+}
+
+.client-hub-nav__groups {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.client-hub-nav__group-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  padding: 0 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.client-hub-nav__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.client-hub-nav__btn {
+  display: block;
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
   color: #475569;
   font: inherit;
   font-size: 0.84rem;
   font-weight: 600;
+  line-height: 1.3;
+  text-align: left;
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-.client-hub-tabs__btn:hover {
-  border-color: #93c5fd;
-  color: #2563eb;
+.client-hub-nav__btn:hover {
+  background: #f8fafc;
+  color: #1e293b;
 }
 
-.client-hub-tabs__btn--active {
+.client-hub-nav__btn--active {
   background: #eff6ff;
-  border-color: #3b82f6;
+  border-color: #bfdbfe;
   color: #1d4ed8;
+  box-shadow: inset 3px 0 0 #3b82f6;
+  padding-left: calc(0.65rem - 3px);
 }
 
 .client-hub-page__panel {
   min-width: 0;
+  padding: 1rem 1.1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.client-hub-page__panel .client-hub-embedded-panel__header {
+  margin-bottom: 0.85rem;
+}
+
+@media (max-width: 960px) {
+  .client-hub-layout {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
+
+  .client-hub-nav {
+    position: static;
+    padding: 0.75rem;
+  }
+
+  .client-hub-nav__mobile-jump {
+    display: block;
+  }
+
+  .client-hub-nav__groups {
+    display: none;
+  }
+
+  .client-hub-page__panel {
+    padding: 0.85rem;
+  }
+
+  .client-hub-page__identity {
+    align-items: flex-start;
+  }
 }
 
 .client-hub-embedded-panel {
@@ -8682,17 +8774,16 @@ fieldset.form-field legend {
   padding: 0.9rem 1rem;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
-  background: #fff;
+  background: #f8fafc;
 }
 
 .supplement-dosage-preview__label {
   display: block;
   margin-bottom: 0.65rem;
-  font-size: 0.78rem;
+  font-size: 0.85rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #64748b;
+  letter-spacing: 0.02em;
+  color: #334155;
 }
 
 .supplement-dosage-preview__grid {
@@ -8707,17 +8798,164 @@ fieldset.form-field legend {
   gap: 0.2rem;
 }
 
+.supplement-dosage-preview__empty {
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1e40af;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
 .supplement-dosage-periods {
   margin-top: 0.75rem;
 }
 
+.supplement-dosage-periods .data-table thead th:first-child,
+.supplement-dosage-periods .data-table tbody td:first-child {
+  width: auto;
+  min-width: 12rem;
+  white-space: normal;
+  text-align: left;
+}
+
+.supplement-dosage-periods .data-table tbody td:nth-child(2) {
+  text-align: center;
+}
+
+.supplement-dosage-periods__input {
+  width: auto;
+  min-width: 0;
+}
+
 .supplement-dosage-periods__qty {
-  max-width: 88px;
+  width: 4.5rem;
+  text-align: center;
+}
+
+.supplement-dosage-periods__meal {
+  width: 9.25rem;
+  max-width: 100%;
 }
 
 .supplement-dosage-periods .data-table td,
 .supplement-dosage-periods .data-table th {
   vertical-align: middle;
+}
+
+.supplement-dosage-form__footer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.supplement-dosage-form__hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--admin-muted);
+  line-height: 1.45;
+}
+
+.supplement-dosage-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: var(--admin-radius);
+  background: var(--admin-surface);
+}
+
+.supplement-dosage-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: rgba(234, 88, 12, 0.12);
+  color: #ea580c;
+  flex-shrink: 0;
+}
+
+.supplement-dosage-card__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.supplement-dosage-card__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+
+.supplement-dosage-card__title {
+  font-weight: 600;
+  color: var(--admin-text);
+}
+
+.supplement-dosage-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.supplement-dosage-card__meta {
+  margin-top: 4px;
+  font-size: 0.85rem;
+  color: var(--admin-muted);
+  line-height: 1.45;
+}
+
+.supplement-dosage-card__periods {
+  margin-top: 10px;
+}
+
+.plan-chip--compact {
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.supplement-dosage-empty {
+  margin: 0;
+  padding: 0.65rem 0.85rem;
+  border: 1px dashed #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: var(--admin-muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.supplement-dosage-empty--inline {
+  margin-top: 8px;
+  padding: 0.45rem 0.65rem;
+  font-size: 0.82rem;
+}
+
+@media (max-width: 720px) {
+  .supplement-dosage-card {
+    flex-direction: column;
+  }
+
+  .supplement-dosage-card__actions {
+    width: 100%;
+  }
+
+  .supplement-dosage-periods__meal {
+    width: 100%;
+  }
 }
 
 .supplement-delivery-options {

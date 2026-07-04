@@ -4,12 +4,26 @@ import Swal from "sweetalert2";
 import { UserTierBadge, formatAssignedCoachLabel } from "./ReferralAssignmentShared.jsx";
 import { CoachPageLoadingState } from "../wellnessCoach/components/CoachPageLoader.jsx";
 import { NotFoundPage } from "../admin/pages/NotFoundPage.jsx";
-import { getClientHubTabs, resolveClientHubTab } from "./clientHubShared.js";
+import {
+  getClientHubTabGroups,
+  resolveClientHubTab,
+} from "./clientHubShared.js";
 
 function formatDate(iso) {
   if (!iso) return "—";
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString(undefined, { dateStyle: "medium" });
+}
+
+function getInitials(name) {
+  if (!name) return "?";
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
 }
 
 export function ClientHubPage({
@@ -26,7 +40,7 @@ export function ClientHubPage({
   const [notFound, setNotFound] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
-  const tabs = useMemo(() => getClientHubTabs(user?.userTier), [user?.userTier]);
+  const tabGroups = useMemo(() => getClientHubTabGroups(user?.userTier), [user?.userTier]);
   const activeTab = resolveClientHubTab(searchParams.get("tab"), user?.userTier);
 
   const setActiveTab = useCallback(
@@ -75,6 +89,9 @@ export function ClientHubPage({
   if (notFound) return <NotFoundPage />;
   if (loading && !user) return <CoachPageLoadingState label="Loading client…" />;
 
+  const phoneLine = [user?.phoneCountryCode, user?.phone].filter(Boolean).join(" ") || "—";
+  const coachLine = user ? formatAssignedCoachLabel(user) : "";
+
   return (
     <div className="page-card client-hub-page">
       <div className="client-hub-page__topbar">
@@ -89,49 +106,85 @@ export function ClientHubPage({
       </div>
 
       <div className="client-hub-page__header">
-        <div className="client-hub-page__profile">
+        <div className="client-hub-page__identity">
+          <div className="client-hub-page__avatar" aria-hidden="true">
+            {getInitials(user?.name)}
+          </div>
           <div className="client-hub-page__profile-main">
             <h2 className="client-hub-page__name">{user?.name || "Client"}</h2>
             <p className="client-hub-page__meta">{user?.email || "—"}</p>
             <p className="client-hub-page__meta">
-              {[user?.phoneCountryCode, user?.phone].filter(Boolean).join(" ") || "—"}
-              {user ? ` · ${formatAssignedCoachLabel(user)}` : ""}
+              {phoneLine}
+              {coachLine ? ` · ${coachLine}` : ""}
             </p>
           </div>
-          <div className="client-hub-page__profile-badges">
-            <UserTierBadge tier={user?.userTier} assignmentStatus={user?.assignmentStatus} />
-            <span className="client-hub-page__joined">Joined {formatDate(user?.convertedAt || user?.createdAt)}</span>
-          </div>
+        </div>
+        <div className="client-hub-page__profile-badges">
+          <UserTierBadge tier={user?.userTier} assignmentStatus={user?.assignmentStatus} />
+          <span className="client-hub-page__joined">Joined {formatDate(user?.convertedAt || user?.createdAt)}</span>
         </div>
       </div>
 
-      <div className="client-hub-tabs" role="tablist" aria-label="Client programs">
-        {tabs.map((tab) => {
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              role="tab"
-              aria-selected={isActive}
-              aria-controls={`client-hub-panel-${tab.id}`}
-              id={`client-hub-tab-${tab.id}`}
-              className={`client-hub-tabs__btn${isActive ? " client-hub-tabs__btn--active" : ""}`}
-              onClick={() => setActiveTab(tab.id)}
+      <div className="client-hub-layout">
+        <aside className="client-hub-nav" aria-label="Client programs">
+          <label className="client-hub-nav__mobile-jump user-field">
+            <span className="user-field__label">Program section</span>
+            <select
+              className="user-field__input"
+              value={activeTab}
+              onChange={(e) => setActiveTab(e.target.value)}
             >
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
+              {tabGroups.map((group) => (
+                <optgroup key={group.id} label={group.label}>
+                  {group.tabs.map((tab) => (
+                    <option key={tab.id} value={tab.id}>
+                      {tab.label}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </label>
 
-      <div
-        id={`client-hub-panel-${activeTab}`}
-        role="tabpanel"
-        aria-labelledby={`client-hub-tab-${activeTab}`}
-        className="client-hub-page__panel"
-      >
-        {renderTab(activeTab, { embedded: true, user, onUserUpdated: () => setReloadKey((k) => k + 1) })}
+          <div className="client-hub-nav__groups">
+            {tabGroups.map((group) => (
+              <div key={group.id} className="client-hub-nav__group">
+                <span className="client-hub-nav__group-label">{group.label}</span>
+                <ul className="client-hub-nav__list" role="tablist" aria-label={group.label}>
+                  {group.tabs.map((tab) => {
+                    const isActive = activeTab === tab.id;
+                    return (
+                      <li key={tab.id}>
+                        <button
+                          type="button"
+                          role="tab"
+                          aria-selected={isActive}
+                          aria-controls={`client-hub-panel-${tab.id}`}
+                          id={`client-hub-tab-${tab.id}`}
+                          className={`client-hub-nav__btn${isActive ? " client-hub-nav__btn--active" : ""}`}
+                          onClick={() => setActiveTab(tab.id)}
+                        >
+                          {tab.shortLabel || tab.label}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </aside>
+
+        <div className="client-hub-layout__main">
+          <div
+            id={`client-hub-panel-${activeTab}`}
+            role="tabpanel"
+            aria-labelledby={`client-hub-tab-${activeTab}`}
+            className="client-hub-page__panel"
+          >
+            {renderTab(activeTab, { embedded: true, user, onUserUpdated: () => setReloadKey((k) => k + 1) })}
+          </div>
+        </div>
       </div>
     </div>
   );

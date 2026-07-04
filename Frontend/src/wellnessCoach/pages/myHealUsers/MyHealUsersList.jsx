@@ -9,7 +9,11 @@ import {
   formatAssignedCoachLabel,
   UserTierBadge,
 } from "../../../components/ReferralAssignmentShared.jsx";
-import { ClientListRowStats } from "../../../components/ClientListRowStats.jsx";
+import {
+  ClientListRowActions,
+  ClientListRowPrograms,
+  ClientTableUserCell,
+} from "../../../components/ClientListRowStats.jsx";
 
 function formatDate(iso) {
   if (!iso) return "—";
@@ -162,15 +166,16 @@ export function MyHealUsersList() {
               <th>Tier</th>
               <th>Assigned to</th>
               <th>Joined</th>
-              <th>Programs</th>
+              <th>Modules</th>
+              <th className="data-table__actions-col">Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <CoachTableLoaderRow colSpan={6} label="Loading clients…" />
+              <CoachTableLoaderRow colSpan={7} label="Loading clients…" />
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={6}>
+                <td colSpan={7}>
                   <p className="table-placeholder">No clients found for the current filters.</p>
                 </td>
               </tr>
@@ -178,17 +183,23 @@ export function MyHealUsersList() {
               users.map((u) => (
                 <tr key={u._id || u.id}>
                   <td>
-                    <div className="data-table__primary">{u.name || "—"}</div>
-                    <div className="data-table__muted">{u.email}</div>
+                    <ClientTableUserCell user={u} />
                   </td>
-                  <td>{[u.phoneCountryCode, u.phone].filter(Boolean).join(" ") || "—"}</td>
+                  <td>
+                    <div className="user-cell__muted">
+                      {[u.phoneCountryCode, u.phone].filter(Boolean).join(" ") || "—"}
+                    </div>
+                  </td>
                   <td>
                     <UserTierBadge tier={u.userTier} assignmentStatus={u.assignmentStatus} />
                   </td>
                   <td>{formatAssignedCoachLabel(u)}</td>
-                  <td>{formatDate(u.convertedAt || u.createdAt)}</td>
+                  <td className="data-table__muted">{formatDate(u.convertedAt || u.createdAt)}</td>
                   <td>
-                    <ClientListRowStats
+                    <ClientListRowPrograms user={u} />
+                  </td>
+                  <td className="data-table__actions-col">
+                    <ClientListRowActions
                       user={u}
                       viewPath={`${u._id || u.id}`}
                       onReassign={handleReassign}

@@ -39,44 +39,40 @@ function DosageCard({ dosage, onStop, stopping, canStop }) {
   const isActive = dosage.status === "active";
 
   return (
-    <article className="assignment-card">
-      <div className="assignment-card__header">
-        <div className="assignment-card__header-main">
-          <div className="diet-plan-card__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z" />
-              <path d="m8.5 8.5 7 7" />
-            </svg>
-          </div>
-          <div>
-            <div className="diet-plan-card__title">{dosage.name}</div>
-            <div className="diet-plan-card__date">
-              {formatDate(dosage.startDate)} – {formatDate(dosage.endDate)} · {dosage.totalPerDay}{" "}
-              {dosage.unit}/day · {dosage.durationDays} days · {dosage.progressPercent ?? 0}% complete
-            </div>
-          </div>
-        </div>
-        <div className="assignment-card__header-actions">
-          <span className={`catalog-picker__badge${isActive ? "" : " catalog-picker__badge--type"}`}>
-            {isActive ? "Active" : "Stopped"}
-          </span>
-          {canStop && isActive ? (
-            <button
-              type="button"
-              className="btn btn--ghost btn--sm text-danger"
-              onClick={() => onStop(dosage)}
-              disabled={stopping}
-            >
-              Stop
-            </button>
-          ) : null}
-        </div>
+    <article className="supplement-dosage-card">
+      <div className="supplement-dosage-card__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z" />
+          <path d="m8.5 8.5 7 7" />
+        </svg>
       </div>
-      <div className="assignment-card__body">
+      <div className="supplement-dosage-card__content">
+        <div className="supplement-dosage-card__top">
+          <div className="supplement-dosage-card__title">{dosage.name}</div>
+          <div className="supplement-dosage-card__actions">
+            <span className={`catalog-picker__badge${isActive ? "" : " catalog-picker__badge--type"}`}>
+              {isActive ? "Active" : "Stopped"}
+            </span>
+            {canStop && isActive ? (
+              <button
+                type="button"
+                className="btn btn--ghost btn--sm text-danger"
+                onClick={() => onStop(dosage)}
+                disabled={stopping}
+              >
+                Stop
+              </button>
+            ) : null}
+          </div>
+        </div>
+        <div className="supplement-dosage-card__meta">
+          {formatDate(dosage.startDate)} – {formatDate(dosage.endDate)} · {dosage.totalPerDay}{" "}
+          {dosage.unit}/day · {dosage.durationDays} days · {dosage.progressPercent ?? 0}% complete
+        </div>
         {(dosage.periods || []).length > 0 ? (
-          <div className="plan-chip-list">
+          <div className="plan-chip-list supplement-dosage-card__periods">
             {(dosage.periods || []).map((row) => (
-              <div key={`${id}-${row.period}`} className="plan-chip">
+              <div key={`${id}-${row.period}`} className="plan-chip plan-chip--compact">
                 <span className="plan-chip__name">{periodLabel(row.period)}</span>
                 <span className="plan-chip__meta">
                   {row.quantity} {dosage.unit} · {row.mealRelation === "before" ? "Before meal" : "After meal"}
@@ -85,9 +81,7 @@ function DosageCard({ dosage, onStop, stopping, canStop }) {
             ))}
           </div>
         ) : (
-          <p className="table-placeholder" style={{ margin: 0 }}>
-            No period details.
-          </p>
+          <p className="supplement-dosage-empty supplement-dosage-empty--inline">No period details.</p>
         )}
       </div>
     </article>
@@ -349,17 +343,17 @@ export function UserSupplementDosagePanel({
                 <table className="data-table">
                   <thead>
                     <tr>
-                      <th>Period</th>
-                      <th>Enabled</th>
-                      <th>Quantity</th>
-                      <th>Meal timing</th>
+                      <th className="supplement-dosage-periods__col-period">Period</th>
+                      <th className="data-table__col--shrink">Enabled</th>
+                      <th className="data-table__col--shrink">Quantity</th>
+                      <th className="data-table__col--shrink">Meal timing</th>
                     </tr>
                   </thead>
                   <tbody>
                     {PERIOD_ROWS.map((row) => (
                       <tr key={row.key}>
-                        <td>{row.label}</td>
-                        <td>
+                        <td className="supplement-dosage-periods__col-period">{row.label}</td>
+                        <td className="supplement-dosage-periods__col-enabled">
                           <input
                             type="checkbox"
                             checked={periods[row.key].enabled}
@@ -371,7 +365,7 @@ export function UserSupplementDosagePanel({
                           <input
                             type="number"
                             min={1}
-                            className="user-field__input supplement-dosage-periods__qty"
+                            className="user-field__input supplement-dosage-periods__input supplement-dosage-periods__qty"
                             disabled={!periods[row.key].enabled}
                             value={periods[row.key].quantity}
                             onChange={(e) =>
@@ -381,7 +375,7 @@ export function UserSupplementDosagePanel({
                         </td>
                         <td>
                           <select
-                            className="user-field__input"
+                            className="user-field__input supplement-dosage-periods__input supplement-dosage-periods__meal"
                             disabled={!periods[row.key].enabled}
                             value={periods[row.key].mealRelation}
                             onChange={(e) => updatePeriod(row.key, { mealRelation: e.target.value })}
@@ -417,18 +411,18 @@ export function UserSupplementDosagePanel({
                   </div>
                 </div>
               ) : (
-                <p className="table-placeholder" style={{ margin: 0 }}>
+                <p className="supplement-dosage-preview__empty">
                   Select a supplement and enable at least one period to preview duration.
                 </p>
               )}
             </div>
 
-            <div className="diet-assign-form__actions">
-              <span className="diet-assign-form__hint">
+            <div className="supplement-dosage-form__footer">
+              <p className="supplement-dosage-form__hint">
                 {enabledPeriods.length
                   ? `${enabledPeriods.length} period(s) enabled for this schedule.`
                   : "Enable one or more periods to create a schedule."}
-              </span>
+              </p>
               <button
                 type="submit"
                 className="btn btn--primary"
@@ -443,7 +437,7 @@ export function UserSupplementDosagePanel({
         <section className="diet-plan-section client-hub-module-panel__section">
           <h3 className="form-card__title">Active schedules ({activeDosages.length})</h3>
           {activeDosages.length === 0 ? (
-            <p className="table-placeholder">No active dosage schedules.</p>
+            <p className="supplement-dosage-empty">No active dosage schedules.</p>
           ) : (
             <div className="diet-plan-list">
               {activeDosages.map((dosage) => (
@@ -462,7 +456,7 @@ export function UserSupplementDosagePanel({
         <section className="diet-plan-section client-hub-module-panel__section">
           <h3 className="form-card__title">Past schedules ({pastDosages.length})</h3>
           {pastDosages.length === 0 ? (
-            <p className="table-placeholder">No past dosage schedules.</p>
+            <p className="supplement-dosage-empty">No past dosage schedules.</p>
           ) : (
             <div className="diet-plan-list">
               {pastDosages.map((dosage) => (
