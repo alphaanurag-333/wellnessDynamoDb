@@ -72,6 +72,15 @@ export async function fetchTransformations(params = {}) {
   }
 }
 
+export async function fetchHealthConcerns(params = {}) {
+  try {
+    const { data } = await api.get("/public/misc/health-concerns", { params });
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function fetchBirthdayPosts(params = {}) {
   try {
     const { data } = await api.get("/public/misc/birthday-posts", { params });

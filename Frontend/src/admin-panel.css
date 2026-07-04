@@ -8979,7 +8979,8 @@ fieldset.form-field legend {
 }
 
 .mt-pending-grid {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 1rem;
 }
 
@@ -8993,6 +8994,11 @@ fieldset.form-field legend {
 
 .mt-pending-card__title {
   margin: 0 0 0.25rem;
+  font-family: var(--admin-font);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--admin-text);
+  line-height: 1.35;
 }
 
 .mt-pending-card__meta,
@@ -9141,5 +9147,99 @@ fieldset.form-field legend {
 .mt-review-macros .user-field__input {
   width: 100%;
   box-sizing: border-box;
+}
+
+/* Meal approvals — coach / assistant portal */
+.meal-approvals-count {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  color: #c2410c;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.mt-pending-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem;
+  border-radius: var(--admin-radius);
+  background: var(--admin-surface-muted);
+  border: 1px solid var(--admin-border-soft);
+  box-shadow: none;
+}
+
+.mt-pending-card__intro {
+  min-width: 0;
+}
+
+.mt-pending-card__title {
+  font-family: var(--admin-font);
+}
+
+.mt-pending-card__review {
+  margin-top: 0.25rem;
+}
+
+.mt-pending-card .mt-macros-inputs--compact {
+  grid-template-columns: repeat(4, minmax(96px, 1fr));
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 560px;
+}
+
+.mt-pending-card .mt-macro-input .user-field__input {
+  height: 42px;
+  padding: 0 0.75rem;
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.mt-pending-card .mt-macro-input__label {
+  font-size: 0.68rem;
+  color: var(--admin-muted);
+}
+
+.mt-pending-card .mt-form-field--full {
+  max-width: 100%;
+  margin-top: 0.15rem;
+}
+
+.mt-pending-card .mt-pending-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.65rem;
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(253, 186, 116, 0.45);
+  flex-wrap: wrap;
+}
+
+.mt-pending-card .mt-pending-card__actions .btn {
+  min-width: 108px;
+}
+
+@media (max-width: 720px) {
+  .mt-pending-card .mt-macros-inputs--compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-width: 100%;
+  }
+
+  .mt-pending-card .mt-pending-card__actions {
+    justify-content: stretch;
+  }
+
+  .mt-pending-card .mt-pending-card__actions .btn {
+    flex: 1;
+    min-width: 0;
+  }
 }
 
