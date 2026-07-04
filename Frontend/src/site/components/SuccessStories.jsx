@@ -1,92 +1,143 @@
-import React, { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation } from "swiper/modules";
-
 import "swiper/css";
 import "swiper/css/navigation";
-
-import { ChevronLeft, ChevronRight, Star } from "lucide-react";
-
+import { ChevronLeft, ChevronRight, Clock3 } from "lucide-react";
+import { DEFAULT_IMAGE_SRC, handleMediaImageError, mediaUrl } from "../../media.js";
+import { fetchTransformations } from "../api/publicMisc.js";
 import successImg from "../images/about-one.png";
 import diabetesImg from "../images/diabetes.png";
 import fatLossImg from "../images/fat-loss.png";
 import pcosImg from "../images/pcod.png";
 import thyroidImg from "../images/thyroid.png";
-import gutImg from "../images/gut-health.png"; // Replace with your image
-import TransformOne from "../images/transformation-1.png";
-import TransformTwo from "../images/transformation-2.png";
-import TransformThree from "../images/transformation-3.png";
-import TransformFour from "../images/transformation-4.png";
+import gutImg from "../images/gut-health.png";
 import FinalCTA from "./FinalCTA";
+
+const CATEGORY_ITEMS = [
+  { id: "diabetes", title: "Diabetes Reversal", image: diabetesImg },
+  { id: "fat-loss", title: "Fat Loss", image: fatLossImg },
+  { id: "pcos", title: "PCOD-PCOS", image: pcosImg },
+  { id: "thyroid", title: "Thyroid Care", image: thyroidImg },
+  { id: "gut", title: "Gut Health", image: gutImg },
+];
+
+function parseTags(achievements, timeTaken) {
+  const tags = String(achievements || "")
+    .split(/[,|\n]+/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .slice(0, 3);
+
+  const months = Number(timeTaken);
+  if (Number.isFinite(months) && months > 0) {
+    tags.push(`${months} ${months === 1 ? "Month" : "Months"}`);
+  }
+
+  return tags;
+}
+
+function mapTransformation(row) {
+  if (!row) return null;
+
+  const id = row.id || row._id;
+  const name = String(row.name || "").trim();
+  const description = String(row.description || "").trim();
+  const oldImage = row.oldImage ? mediaUrl(row.oldImage) : "";
+  const newImage = row.newImage ? mediaUrl(row.newImage) : "";
+
+  if (!id || !name || !description || !oldImage || !newImage) return null;
+
+  return {
+    id,
+    name,
+    description,
+    oldImage,
+    newImage,
+    tags: parseTags(row.achievements, row.timeTaken),
+    timeTaken: row.timeTaken,
+  };
+}
+
+function TransformationStoryCard({ item }) {
+  return (
+    <article className="transformation-story-card">
+      <div className="transformation-story-card__compare">
+        <figure className="transformation-story-card__photo">
+          <span className="transformation-story-card__label">Before</span>
+          <img
+            src={item.oldImage}
+            alt={`${item.name} before transformation`}
+            loading="lazy"
+            onError={handleMediaImageError}
+          />
+        </figure>
+        <figure className="transformation-story-card__photo transformation-story-card__photo--after">
+          <span className="transformation-story-card__label transformation-story-card__label--after">After</span>
+          <img
+            src={item.newImage}
+            alt={`${item.name} after transformation`}
+            loading="lazy"
+            onError={handleMediaImageError}
+          />
+        </figure>
+      </div>
+
+      {item.tags.length > 0 ? (
+        <div className="transformation-story-card__tags">
+          {item.tags.map((tag, index) => (
+            <span key={`${item.id}-${tag}`} className={`transformation-story-card__tag tag-${index % 4}`}>
+              {tag}
+            </span>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="transformation-story-card__body">
+        <h3>{item.name}</h3>
+        <p>{item.description}</p>
+        {item.timeTaken ? (
+          <div className="transformation-story-card__meta">
+            <Clock3 size={16} aria-hidden />
+            <span>{item.timeTaken} {Number(item.timeTaken) === 1 ? "month" : "months"} journey</span>
+          </div>
+        ) : null}
+      </div>
+    </article>
+  );
+}
 
 const SuccessStories = () => {
   const prevRef = useRef(null);
   const nextRef = useRef(null);
-  const categories = [
-    {
-      id: 1,
-      title: "Diabetes Reversal",
-      image: diabetesImg,
-    },
-    {
-      id: 2,
-      title: "Fat Loss",
-      image: fatLossImg,
-    },
-    {
-      id: 3,
-      title: "PCOD-PCOS",
-      image: pcosImg,
-    },
-    {
-      id: 4,
-      title: "Thyroid Care",
-      image: thyroidImg,
-    },
-    {
-      id: 5,
-      title: "Gut Health",
-      image: gutImg,
-    },
-  ];
+  const [transformations, setTransformations] = useState(null);
 
-  const transformationData = [
-    {
-      id: 1,
-      image: TransformOne,
-      name: "David Miller",
-      description:
-        "Clinical Sanctuary helped me reverse my Type 2 diabetes. I am now completely off medications and my doctor is amazed.",
-      tags: ["Diabetes Reversal", "Medication Free", "HbA1c 5.6%"],
-    },
+  useEffect(() => {
+    let cancelled = false;
 
-    {
-      id: 2,
-      image: TransformTwo,
-      name: "Anita Sharma",
-      description:
-        "The gut-health focus for my PCOS was the missing piece. My skin cleared up and I finally feel like myself again.",
-      tags: ["PCOS Care", "Cycles Restored", "Hormonal Balance"],
-    },
+    (async () => {
+      try {
+        const data = await fetchTransformations({ page: 1, limit: 24 });
+        if (cancelled) return;
+        const rows = Array.isArray(data?.transformations) ? data.transformations : [];
+        setTransformations(rows.map(mapTransformation).filter(Boolean));
+      } catch {
+        if (!cancelled) setTransformations([]);
+      }
+    })();
 
-    {
-      id: 3,
-      image: TransformThree,
-      name: "Mark Thompson",
-      description:
-        "After years of struggling with IBS, the clinical nutrition program finally solved my digestive issues.",
-      tags: ["Gut Health", "IBS Recovery", "Digestion"],
-    },
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-    {
-      id: 4,
-      image:TransformFour,
-      name: "Sarah Wilson",
-      description:
-        "I lost weight naturally while improving my energy and overall health with the personalized nutrition plan.",
-      tags: ["Weight Loss", "Healthy Lifestyle", "Energy Boost"],
-    },
-  ];
+  const heroImage =
+    transformations?.[0]?.newImage ||
+    transformations?.[0]?.oldImage ||
+    successImg;
+
+  const transformationsLoading = transformations === null;
+  const hasTransformations = Boolean(transformations?.length);
 
   return (
     <section className="success-story">
@@ -109,7 +160,11 @@ const SuccessStories = () => {
 
           <div className="success-image">
             <div className="image-card">
-              <img src={successImg} alt="Success Story" />
+              <img
+                src={heroImage || DEFAULT_IMAGE_SRC}
+                alt="Transformation success story"
+                onError={handleMediaImageError}
+              />
             </div>
           </div>
         </div>
@@ -119,7 +174,6 @@ const SuccessStories = () => {
         <div className="container">
           <div className="transformation-heading">
             <h2>Transformation Categories</h2>
-
             <p>
               Explore clinical results across specialized health concerns and
               medical conditions.
@@ -127,12 +181,11 @@ const SuccessStories = () => {
           </div>
 
           <div className="transformation-list">
-            {categories.map((item) => (
-              <div className="transformation-card" key={item.id}>
+            {CATEGORY_ITEMS.map((item) => (
+              <div className="transformation-category-card" key={item.id}>
                 <div className="transformation-image">
-                  <img src={item.image} alt={item.title} />
+                  <img src={item.image} alt={item.title} loading="lazy" />
                 </div>
-
                 <h4>{item.title}</h4>
               </div>
             ))}
@@ -140,110 +193,81 @@ const SuccessStories = () => {
         </div>
       </section>
 
-      <section className="transformation-section">
+      <section className="transformation-section" aria-label="Real transformations">
         <div className="container">
-          {/* Header */}
-
           <div className="transformation-header">
             <div className="header-left">
               <h2>Real Transformations</h2>
-
-              <p>Swipe to see clinical results from our community</p>
+              <p>Swipe to see before-and-after results from our community</p>
             </div>
 
-            <div className="slider-navigation">
-              <button ref={prevRef} className="slider-btn">
-                <ChevronLeft size={20} />
-              </button>
-
-              <button ref={nextRef} className="slider-btn">
-                <ChevronRight size={20} />
-              </button>
-            </div>
+            {hasTransformations ? (
+              <div className="slider-navigation">
+                <button ref={prevRef} type="button" className="slider-btn" aria-label="Previous transformation">
+                  <ChevronLeft size={20} />
+                </button>
+                <button ref={nextRef} type="button" className="slider-btn" aria-label="Next transformation">
+                  <ChevronRight size={20} />
+                </button>
+              </div>
+            ) : null}
           </div>
 
-          <Swiper
-            modules={[Navigation]}
-            slidesPerView={3}
-            spaceBetween={30}
-            speed={700}
-            navigation={{
-              prevEl: prevRef.current,
-              nextEl: nextRef.current,
-            }}
-            onSwiper={(swiper) => {
-              setTimeout(() => {
-                swiper.params.navigation.prevEl = prevRef.current;
-                swiper.params.navigation.nextEl = nextRef.current;
-
-                swiper.navigation.destroy();
-                swiper.navigation.init();
-                swiper.navigation.update();
-              });
-            }}
-            breakpoints={{
-              0: {
-                slidesPerView: 1.1,
-                spaceBetween: 18,
-              },
-              576: {
-                slidesPerView: 1.5,
-                spaceBetween: 20,
-              },
-              768: {
-                slidesPerView: 2.1,
-                spaceBetween: 22,
-              },
-              992: {
-                slidesPerView: 3,
-                spaceBetween: 30,
-              },
-            }}
-          >
-            {transformationData.map((item) => (
-              <SwiperSlide key={item.id}>
-                <div className="transformation-card">
-                  {/* Image */}
-
-                  <div className="card-image">
-                    <img src={item.image} alt={item.name} />
-                  </div>
-
-                  {/* Tags */}
-
-                  <div className="card-tags">
-                    {item.tags.map((tag, index) => (
-                      <span key={index} className={`tag tag-${index}`}>
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-
-                  {/* Content */}
-
-                  <div className="card-content">
-                    <h3>{item.name}</h3>
-
-                    <p>{item.description}</p>
-
-                    <div className="card-rating">
-                      {[...Array(5)].map((_, index) => (
-                        <Star
-                          key={index}
-                          size={15}
-                          fill="#F59E0B"
-                          color="#F59E0B"
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </SwiperSlide>
-            ))}
-          </Swiper>
+          {transformationsLoading ? (
+            <p className="transformation-section__loading">Loading transformations…</p>
+          ) : hasTransformations ? (
+            <Swiper
+              modules={[Navigation]}
+              slidesPerView={3}
+              spaceBetween={28}
+              speed={700}
+              navigation={{
+                prevEl: prevRef.current,
+                nextEl: nextRef.current,
+              }}
+              onSwiper={(swiper) => {
+                setTimeout(() => {
+                  swiper.params.navigation.prevEl = prevRef.current;
+                  swiper.params.navigation.nextEl = nextRef.current;
+                  swiper.navigation.destroy();
+                  swiper.navigation.init();
+                  swiper.navigation.update();
+                });
+              }}
+              breakpoints={{
+                0: {
+                  slidesPerView: 1.05,
+                  spaceBetween: 16,
+                },
+                576: {
+                  slidesPerView: 1.35,
+                  spaceBetween: 18,
+                },
+                768: {
+                  slidesPerView: 2.05,
+                  spaceBetween: 22,
+                },
+                992: {
+                  slidesPerView: 3,
+                  spaceBetween: 28,
+                },
+              }}
+              className="transformationStoriesSwiper"
+            >
+              {transformations.map((item) => (
+                <SwiperSlide key={item.id}>
+                  <TransformationStoryCard item={item} />
+                </SwiperSlide>
+              ))}
+            </Swiper>
+          ) : (
+            <p className="transformation-section__empty">
+              Transformation stories will appear here once they are published in the admin panel.
+            </p>
+          )}
         </div>
       </section>
-      <FinalCTA/>
+      <FinalCTA />
     </section>
   );
 };

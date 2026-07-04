@@ -53,3 +53,12 @@ export async function fetchActiveBanners(params = {}) {
     normalizeApiError(error);
   }
 }
+
+export async function fetchTransformations(params = {}) {
+  try {
+    const { data } = await api.get("/public/misc/transformations", { params });
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
