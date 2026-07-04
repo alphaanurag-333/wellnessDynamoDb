@@ -18,6 +18,7 @@ import TransformTwo from "../images/transformation-2.png";
 import TransformThree from "../images/transformation-3.png";
 import TransformFour from "../images/transformation-4.png";
 import FinalCTA from "./FinalCTA";
+import VideoTestimonials from "./VideoTestimonials";
 
 const SuccessStories = () => {
   const prevRef = useRef(null);
@@ -115,6 +116,9 @@ const SuccessStories = () => {
         </div>
       </div>
 
+     <div className="video-testimonial">
+       <VideoTestimonials />
+     </div>
       <section className="transformation">
         <div className="container">
           <div className="transformation-heading">

@@ -91,14 +91,14 @@ export function SiteFooter() {
                 <Link to="/about">About Us</Link>
               </li>
               <li>
-                <Link to="/solutions">Health Solutions</Link>
+                <Link to="/solutions">Privacy Policy</Link>
               </li>
               <li>
-                <Link to="/stories">Success Stories</Link>
+                <Link to="/stories">Terms of Service</Link>
               </li>
-              <li>
+              {/* <li>
                 <Link to="/resources">Clinical Resources</Link>
-              </li>
+              </li> */}
               <li>
                 <Link to="/contact">Contact Us</Link>
               </li>
