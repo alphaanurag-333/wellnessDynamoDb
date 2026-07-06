@@ -641,6 +641,62 @@ async function supplementEnrolledUsersFromAssignedClients(coachId, enrolled, { s
   );
 }
 
+async function sumPaidTransactionTotals() {
+  let totalAmount = 0;
+  let currency = "INR";
+  let lastKey;
+
+  do {
+    const { Items, LastEvaluatedKey } = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE,
+        IndexName: "PaymentStatusCreatedAtIndex",
+        KeyConditionExpression: "#paymentStatus = :paymentStatus",
+        ExpressionAttributeNames: { "#paymentStatus": "paymentStatus" },
+        ExpressionAttributeValues: { ":paymentStatus": "paid" },
+        ProjectionExpression: "totalAmount, currency",
+        ExclusiveStartKey: lastKey,
+      })
+    );
+
+    for (const item of Items || []) {
+      totalAmount += Number(item.totalAmount) || 0;
+      if (item.currency) currency = String(item.currency).toUpperCase();
+    }
+
+    lastKey = LastEvaluatedKey;
+  } while (lastKey);
+
+  return {
+    totalAmount: Math.round((totalAmount + Number.EPSILON) * 100) / 100,
+    currency,
+  };
+}
+
+async function listPaidTransactionsForAnalytics() {
+  const rows = [];
+  let lastKey;
+
+  do {
+    const { Items, LastEvaluatedKey } = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE,
+        IndexName: "PaymentStatusCreatedAtIndex",
+        KeyConditionExpression: "#paymentStatus = :paymentStatus",
+        ExpressionAttributeNames: { "#paymentStatus": "paymentStatus" },
+        ExpressionAttributeValues: { ":paymentStatus": "paid" },
+        ProjectionExpression: "totalAmount, currency, productType, createdAt, paidAt",
+        ExclusiveStartKey: lastKey,
+      })
+    );
+
+    rows.push(...(Items || []));
+    lastKey = LastEvaluatedKey;
+  } while (lastKey);
+
+  return rows;
+}
+
 module.exports = {
   TABLE,
   PAYMENT_STATUSES,
@@ -664,4 +720,6 @@ module.exports = {
   supplementEnrolledUsersFromAssignedClients,
   normalizeProductType,
   normalizeConsultancyStatus,
+  sumPaidTransactionTotals,
+  listPaidTransactionsForAnalytics,
 };

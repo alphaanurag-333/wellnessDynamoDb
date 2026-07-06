@@ -1,5 +1,6 @@
 const express = require("express");
 const adminAuthRoutes = require("./adminRoutes/adminAuthRoutes");
+const adminDashboardRoutes = require("./adminRoutes/adminDashboardRoutes");
 const adminAppConfigRoutes = require("./adminRoutes/adminAppConfigRoutes");
 const adminFaqRoutes = require("./adminRoutes/adminFaqRoutes");
 const adminCouponRoutes = require("./adminRoutes/adminCouponRoutes");
@@ -122,6 +123,7 @@ router.get("/health", (req, res) => {
 });
 
 router.use("/admin/auth", adminAuthRoutes);
+router.use("/admin/dashboard", adminDashboardRoutes);
 router.use("/coach/auth", coachAuthRoutes);
 router.use("/coach/specializations", coachSpecializationRoutes);
 router.use("/coach/assistants", coachAssistantRoutes);

@@ -1,13 +1,10 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-
-const stats = [
-  { label: "Total Users", value: "12,482", tone: "blue" },
-  { label: "Active Programs", value: "84", tone: "green" },
-  { label: "Coaches (WC) Active", value: "142", tone: "purple" },
-  { label: "AWC's Active", value: "38", tone: "indigo" },
-  { label: "Pending Approvals", value: "18", tone: "amber" },
-  { label: "Revenue & Payouts", value: "$84,290", tone: "teal" },
-];
+import { useDispatch, useSelector } from "react-redux";
+import { AdminDashboardCharts } from "../components/AdminDashboardCharts.jsx";
+import { DashboardChartsSkeleton, DashboardStatsSkeleton } from "../components/AdminDashboardSkeleton.jsx";
+import { adminGetDashboardStatistics } from "../api/adminDashboard.js";
+import { logout } from "../../store/authSlice.js";
 
 const shortcuts = [
   { title: "User Management", desc: "Manage all platform users", icon: "users", to: "/admin/users" },
@@ -16,6 +13,103 @@ const shortcuts = [
   { title: "Contact Queries", desc: "View and respond to inquiries", icon: "mail", to: "/admin/contact-inquiries" },
   { title: "Application Settings", desc: "Configure app settings", icon: "settings", to: "/admin/settings" },
 ];
+
+const STAT_CARDS = [
+  {
+    key: "totalUsers",
+    label: "Total Users",
+    tone: "blue",
+    icon: (
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    ),
+  },
+  {
+    key: "activePrograms",
+    label: "Active Programs",
+    tone: "green",
+    icon: (
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+      </svg>
+    ),
+  },
+  {
+    key: "activeWellnessCoaches",
+    label: "Coaches (WC) Active",
+    tone: "purple",
+    icon: (
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <circle cx="12" cy="8" r="4" />
+        <path d="M5 20a7 7 0 0 1 14 0" />
+      </svg>
+    ),
+  },
+  {
+    key: "activeAssistants",
+    label: "AWC's Active",
+    tone: "indigo",
+    icon: (
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <circle cx="9" cy="7" r="4" />
+        <path d="M2 21a7 7 0 0 1 14 0" />
+        <path d="M19 8v6" />
+        <path d="M16 11h6" />
+      </svg>
+    ),
+  },
+  {
+    key: "pendingApprovals",
+    label: "Pending Approvals",
+    tone: "amber",
+    icon: (
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 6v6l4 2" />
+      </svg>
+    ),
+  },
+  {
+    key: "revenueAndPayouts",
+    label: "Revenue & Payouts",
+    tone: "teal",
+    format: "revenue",
+    icon: (
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <rect x="2" y="5" width="20" height="14" rx="2" />
+        <path d="M2 10h20" />
+        <path d="M6 15h2" />
+      </svg>
+    ),
+  },
+];
+
+function formatCount(value) {
+  if (value == null || Number.isNaN(Number(value))) return "—";
+  return new Intl.NumberFormat().format(Number(value));
+}
+
+function formatRevenue(amount, currency = "INR") {
+  if (amount == null || Number.isNaN(Number(amount))) return "—";
+  if (currency === "INR") {
+    return `Rs. ${new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(Number(amount))}`;
+  }
+  return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(Number(amount));
+}
+
+function formatStatValue(card, statistics) {
+  if (!statistics) return "—";
+  const raw = statistics[card.key];
+  if (card.format === "revenue") {
+    return formatRevenue(raw, statistics.currency);
+  }
+  return formatCount(raw);
+}
 
 function ShortcutIcon({ type }) {
   if (type === "users") {
@@ -84,38 +178,114 @@ function ShortcutCard({ to, title, desc, icon }) {
   );
 }
 
-export function DashboardPage() {
+function DashboardStatCard({ label, value, tone, icon }) {
   return (
-    <div className="page-stack">
-      <section className="dashboard-intro" aria-label="Dashboard heading">
-        <h1 className="dashboard-intro__title">Dashboard</h1>
-        <p className="dashboard-intro__subtitle">Welcome back! Here&apos;s a quick overview of your platform.</p>
+    <article className={`stat-card stat-card--dashboard stat-card--${tone}`}>
+      <div className="stat-card__body">
+        <div className="stat-card__label">{label}</div>
+        <div className="stat-card__value">{value}</div>
+      </div>
+      <div className="stat-card__icon" aria-hidden="true">
+        {icon}
+      </div>
+    </article>
+  );
+}
+
+export function DashboardPage() {
+  const dispatch = useDispatch();
+  const adminToken = useSelector((s) => s.auth.adminToken);
+  const [statistics, setStatistics] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+
+  const loadStatistics = useCallback(async () => {
+    if (!adminToken) {
+      setLoading(false);
+      return;
+    }
+    setLoadError("");
+    setLoading(true);
+    try {
+      const stats = await adminGetDashboardStatistics(adminToken);
+      setStatistics(stats);
+    } catch (e) {
+      if (e?.status === 401) dispatch(logout());
+      else setLoadError(e.message || "Failed to load dashboard statistics.");
+    } finally {
+      setLoading(false);
+    }
+  }, [adminToken, dispatch]);
+
+  useEffect(() => {
+    loadStatistics();
+  }, [loadStatistics]);
+
+  const statValues = useMemo(
+    () =>
+      STAT_CARDS.map((card) => ({
+        ...card,
+        value: formatStatValue(card, statistics),
+      })),
+    [statistics]
+  );
+
+  return (
+    <div className="page-stack admin-dashboard">
+      <section className="dashboard-intro admin-dashboard__intro" aria-label="Dashboard heading">
+        <div>
+          <h1 className="dashboard-intro__title">Dashboard</h1>
+          <p className="dashboard-intro__subtitle">Welcome back! Here&apos;s a quick overview of your platform.</p>
+        </div>
+        <button type="button" className="btn btn--ghost admin-dashboard__refresh" onClick={loadStatistics} disabled={loading}>
+          {loading ? "Refreshing…" : "Refresh"}
+        </button>
       </section>
 
-      <section className="dashboard-section-head" aria-label="Quick insights heading">
+      {loadError ? (
+        <p className="user-list-error" role="alert">
+          {loadError}{" "}
+          <button type="button" className="btn btn--ghost btn--sm" onClick={loadStatistics}>
+            Retry
+          </button>
+        </p>
+      ) : null}
+
+      <section className="admin-dashboard__section" aria-label="Quick insights" aria-busy={loading}>
         <h2 className="dashboard-section-head__title">Quick Insights</h2>
+        <div className="stat-grid stat-grid--dashboard admin-dashboard__stats">
+          {loading ? (
+            <DashboardStatsSkeleton />
+          ) : (
+            statValues.map((card) => (
+              <DashboardStatCard
+                key={card.key}
+                label={card.label}
+                value={card.value}
+                tone={card.tone}
+                icon={card.icon}
+              />
+            ))
+          )}
+        </div>
       </section>
 
-      <section className="stat-grid stat-grid--dashboard" aria-label="Quick insights">
-        {stats.map((s) => (
-          <article key={s.label} className={`stat-card stat-card--dashboard stat-card--${s.tone}`}>
-            <div className="stat-card__icon" aria-hidden="true" />
-            <div className="stat-card__meta">
-              <div className="stat-card__label">{s.label}</div>
-              <div className="stat-card__value">{s.value}</div>
-            </div>
-          </article>
-        ))}
+      <section className="admin-dashboard__section" aria-label="Analytics charts" aria-busy={loading}>
+        <h2 className="dashboard-section-head__title">Analytics</h2>
+        {loading ? (
+          <DashboardChartsSkeleton />
+        ) : (
+          <AdminDashboardCharts charts={statistics?.charts} currency={statistics?.currency} />
+        )}
       </section>
 
-      <section className="dashboard-section-head" aria-label="Quick shortcuts heading">
+      <section className="admin-dashboard__section" aria-label="Quick shortcuts">
         <h2 className="dashboard-section-head__title">Quick Shortcuts</h2>
-      </section>
-
-      <section className="shortcut-grid shortcut-grid--dashboard" aria-label="Quick shortcuts">
-        {shortcuts.map((item) => (
-          <ShortcutCard key={item.to} to={item.to} title={item.title} desc={item.desc} icon={item.icon} />
-        ))}
+        <div className="shortcut-grid shortcut-grid--dashboard">
+          {shortcuts.map((item) => (
+            <ShortcutCard key={item.to} to={item.to} title={item.title} desc={item.desc} icon={item.icon} />
+          ))}
+        </div>
       </section>
     </div>
   );
