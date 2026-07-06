@@ -4198,6 +4198,34 @@ a.btn:hover {
   font-size: 0.875rem;
 }
 
+.data-table__primary {
+  font-weight: 600;
+  color: var(--admin-text);
+  line-height: 1.35;
+}
+
+a.data-table__link,
+.data-table__link {
+  display: inline-block;
+  font-weight: 600;
+  color: var(--admin-brand-blue-soft);
+  text-decoration: none;
+  border-radius: 6px;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+a.data-table__link:hover,
+.data-table__link:hover {
+  color: var(--admin-brand-blue);
+  text-decoration: underline;
+}
+
+a.data-table__link:focus-visible,
+.data-table__link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(44, 79, 120, 0.2);
+}
+
 .data-table--compact tbody td {
   padding: 12px 14px;
 }
@@ -6157,6 +6185,12 @@ a.icon-btn {
   max-width: 360px;
 }
 
+.consultancy-page__cta {
+  flex-shrink: 0;
+  white-space: nowrap;
+  align-self: center;
+}
+
 .consultancy-page__referral-input {
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -6212,6 +6246,11 @@ a.icon-btn {
 
   .consultancy-page__search {
     max-width: none;
+  }
+
+  .consultancy-page__cta {
+    width: 100%;
+    justify-content: center;
   }
 }
 
@@ -6376,10 +6415,79 @@ fieldset.form-field legend {
   gap: 1rem;
 }
 
-.consultancy-client-page .page-card__actions {
+.consultancy-client-page__intro {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.consultancy-client-page__back {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 0.65rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--admin-muted);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.consultancy-client-page__back:hover {
+  color: var(--admin-text);
+}
+
+.consultancy-client-page__badges {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.5rem;
+}
+
+.consultancy-client-page__overview {
+  margin-top: 0.25rem;
+}
+
+.consultancy-client-page__payment {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.65rem;
+}
+
+.consultancy-client-page__ref {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--admin-muted);
+}
+
+.consultancy-client-page__session-desc {
+  margin: -0.35rem 0 0.25rem;
+}
+
+.consultancy-client-page__form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.consultancy-client-page__form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-top: 0.25rem;
+}
+
+.consultancy-client-page__form-actions .btn {
+  width: auto;
+  align-self: flex-start;
+}
+
+@media (max-width: 640px) {
+  .consultancy-client-page__form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .consultancy-client-page__badges {
+    justify-content: flex-start;
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -9421,6 +9529,32 @@ fieldset.form-field legend {
 .catalog-picker__grid .catalog-picker__card-meta {
   color: #64748b;
   font-size: 0.82rem;
+}
+
+.catalog-picker__card-qty {
+  margin-top: 0.35rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.catalog-picker__card-qty-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--admin-muted);
+}
+
+.catalog-picker__card-qty-input {
+  width: 100%;
+  max-width: 120px;
+}
+
+.catalog-picker__card--supplement:focus-visible {
+  outline: 2px solid var(--admin-brand-green, #1b7f5c);
+  outline-offset: 2px;
 }
 
 .client-hub-page__panel .page-card,

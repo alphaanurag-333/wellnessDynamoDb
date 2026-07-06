@@ -141,7 +141,7 @@ export function UserView() {
         backTo="/admin/users"
         actions={
           <>
-            <UserTierBadge tier={user.userTier} assignmentStatus={user.assignmentStatus} />
+            {/* <UserTierBadge tier={user.userTier} assignmentStatus={user.assignmentStatus} /> */}
             {isSeek ? (
               <button type="button" className="btn btn--accent" onClick={() => setShowConvertModal(true)}>
                 Convert to Heal
@@ -186,8 +186,8 @@ export function UserView() {
           <div className="user-view-grid">
             <DetailRow label="Full name" value={user.name} />
             <DetailRow label="Email ID" value={user.email} />
-            <DetailRow label="Phone" value={phoneDisplay} />
-            <DetailRow label="WhatsApp" value={waDisplay} />
+            <DetailRow label="Mobile Number" value={phoneDisplay} />
+            <DetailRow label="WhatsApp Number" value={waDisplay} />
             <DetailRow label="Date of birth" value={dobLabel} />
             <DetailRow label="Gender" value={user.gender} />
             <DetailRow label="Country" value={user.country} />
