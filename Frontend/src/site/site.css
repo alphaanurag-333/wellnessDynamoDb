@@ -7885,7 +7885,7 @@ CATEGORY
   display: block;
   margin-top: 12px;
   color: var(--primary);
-  font-size: 25px;
+  font-size: 18px;
   font-weight: var(--fw-bold);
 }
 
@@ -8310,7 +8310,7 @@ RESULT CIRCLE
   transform: scale(1.05);
 }
 
-.result-circle span {
+/* .result-circle span {
   width: 100%;
   height: 100%;
   background: #fff;
@@ -8322,7 +8322,7 @@ RESULT CIRCLE
   font-weight: var(--fw-bold);
   color: var(--primary);
   border: 6px solid var(--primary-100);
-}
+} */
 
 /*====================================
 STATUS
@@ -8809,9 +8809,6 @@ SCROLLBAR
     height: 105px;
   }
 
-  .result-circle span {
-    font-size: 22px;
-  }
 
   .calculate-btn {
     font-size: 24px;
@@ -9505,7 +9502,7 @@ SCROLLBAR
   }
 
   .classification span {
-    font-size: 26px;
+    font-size: 18px;
   }
 
   .info-item {
@@ -10938,7 +10935,7 @@ SCROLLBAR
   }
 
   .classification span {
-    font-size: 20px;
+    font-size: 18px;
   }
   .bodyfat-section {
     padding: 45px 0;
@@ -11087,10 +11084,6 @@ SCROLLBAR
     height: 120px;
   }
 
-  .result-circle span {
-    font-size: 22px;
-    border-width: 5px;
-  }
 
   .result-card h4 {
     font-size: 16px;
