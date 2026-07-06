@@ -126,7 +126,7 @@ export default function VisceralFatCalculator() {
     if (level < 1) level = 1;
 
     if (level > 30) level = 30;
-
+    
     setVisceralFat(level);
 
     const percent = (
@@ -425,6 +425,69 @@ export default function VisceralFatCalculator() {
 
             </div>
 
+              {/* SUMMARY */}
+
+            <div className="summary-card">
+
+              <div className="summary-item">
+
+                <strong>
+                  Gender
+                </strong>
+
+                <span>
+                  {gender.charAt(0).toUpperCase() +
+                    gender.slice(1)}
+                </span>
+
+              </div>
+
+              <div className="summary-item">
+
+                <strong>
+                  Age
+                </strong>
+
+                <span>
+                  {age} Years
+                </span>
+
+              </div>
+
+              <div className="summary-item">
+
+                <strong>
+                  Height
+                </strong>
+
+                <span>
+
+                  {height
+                    ? `${height} ${heightUnit}`
+                    : "--"}
+
+                </span>
+
+              </div>
+
+              <div className="summary-item">
+
+                <strong>
+                  Waist
+                </strong>
+
+                <span>
+
+                  {waist
+                    ? `${waist} ${waistUnit}`
+                    : "--"}
+
+                </span>
+
+              </div>
+
+            </div>
+
            </div>
 
           </div>
@@ -526,68 +589,7 @@ export default function VisceralFatCalculator() {
 
             </div>
 
-            {/* SUMMARY */}
-
-            <div className="summary-card">
-
-              <div className="summary-item">
-
-                <strong>
-                  Gender
-                </strong>
-
-                <span>
-                  {gender.charAt(0).toUpperCase() +
-                    gender.slice(1)}
-                </span>
-
-              </div>
-
-              <div className="summary-item">
-
-                <strong>
-                  Age
-                </strong>
-
-                <span>
-                  {age} Years
-                </span>
-
-              </div>
-
-              <div className="summary-item">
-
-                <strong>
-                  Height
-                </strong>
-
-                <span>
-
-                  {height
-                    ? `${height} ${heightUnit}`
-                    : "--"}
-
-                </span>
-
-              </div>
-
-              <div className="summary-item">
-
-                <strong>
-                  Waist
-                </strong>
-
-                <span>
-
-                  {waist
-                    ? `${waist} ${waistUnit}`
-                    : "--"}
-
-                </span>
-
-              </div>
-
-            </div>
+          
 
             {/* FOOTER */}
 

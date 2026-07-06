@@ -71,8 +71,6 @@ export function SiteHeader() {
   const handleNavClick = () => setMobileOpen(false);
 
   return (
-   
-
     <>
       <header
         className={`site-header${scrolled ? " site-header--scrolled" : ""}`}
@@ -231,7 +229,20 @@ export function SiteHeader() {
         }`}
       >
         <div className="mobile-sidebar__header">
-          <img src="/images/logo.png" alt="" />
+          <Link
+            className="site-header__brand"
+            to="/"
+            aria-label={`${appDisplayName} home`}
+          >
+            <img
+              className="site-header__logo"
+              src={logoSrc}
+              alt=""
+              width={44}
+              height={44}
+            />
+            <span className="site-header__name">{appDisplayName}</span>
+          </Link>
 
           <button onClick={() => setMobileMenuOpen(false)}>✕</button>
         </div>
@@ -254,7 +265,7 @@ export function SiteHeader() {
             About Us
           </NavLink>
 
-          <details open={isHealthActive}>
+          {/* <details open={isHealthActive}>
             <summary className={isHealthActive ? "active" : ""}>
               Health Solutions
             </summary>
@@ -292,7 +303,7 @@ export function SiteHeader() {
                 Thyroid Care
               </NavLink>
             </div>
-          </details>
+          </details> */}
 
           <NavLink
             to="/success-stories"
@@ -320,7 +331,7 @@ export function SiteHeader() {
         </nav>
 
         <Link
-          to="/consultation"
+          to="#"
           className="mobile-cta"
           onClick={() => setMobileMenuOpen(false)}
         >
