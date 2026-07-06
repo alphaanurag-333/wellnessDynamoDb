@@ -10,7 +10,7 @@ import { adminDeleteBanner, adminListBanners, adminUpdateBanner } from "../../ap
 import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { useDebouncedSearch } from "../../../hooks/useDebouncedSearch.js";
-import { formatDate, LIST_LIMIT, truncate, DESCRIPTION_PREVIEW_LEN } from "./BannerShared.js";
+import { formatDate, LIST_LIMIT, truncate, DESCRIPTION_PREVIEW_LEN, LIST_SEARCH_MAX_LEN } from "./BannerShared.js";
 
 export function BannerList() {
   const dispatch = useDispatch();
