@@ -3136,7 +3136,7 @@ a:hover {
   line-height: 0.95;
   font-weight: var(--fw-bold);
 
-  max-width: 900px;
+  max-width: 961px;
 }
 
 .final-cta__description {
@@ -3236,7 +3236,7 @@ a:hover {
   font-size: 15px;
   line-height: 1.75;
   margin: 0 0 10px;
-  max-width: 36rem;
+  max-width: 390px;
 }
 
 .site-footer__brand-text:last-of-type {
@@ -5265,7 +5265,7 @@ INPUT
 .bmi-form .form-group input {
   width: 100%;
 
-  height: 54px;
+  height: 45px;
 
   border: none;
 
@@ -5304,7 +5304,7 @@ GENDER BUTTONS
 .bmi-section .gender-buttons button {
   width: 50%;
 
-  height: 54px;
+  height: 45px;
 
   border: none;
 
@@ -5829,7 +5829,7 @@ INPUT
 .hydration-form .form-group select {
   width: 100%;
 
-  height: 56px;
+  height: 45px;
 
   border: none;
 
@@ -5874,7 +5874,7 @@ SELECT
 .form-group select {
   width: 100%;
 
-  height: 56px;
+  height: 45px;
 
   border: none;
 
@@ -7222,7 +7222,7 @@ PRINT
 
 .bmr-section .form-group input {
   width: 100%;
-  height: 54px;
+  height: 45px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-light);
   background: #fff;
@@ -7295,7 +7295,7 @@ PRINT
   flex: 1;
   min-width: 0;
   border: none;
-  height: 54px;
+  height: 45px;
   /* border-radius: 0; */
   box-shadow: none;
   border: 1px solid var(--border-light);
@@ -7547,6 +7547,9 @@ LAYOUT
 
 .bodyfat-left {
   flex: 1;
+  background: var(--bg-card);
+  padding: 25px;
+  border-radius: var(--radius-lg);
 }
 
 .bodyfat-right {
@@ -7603,9 +7606,9 @@ INPUT
 
 .form-group input {
   width: 100%;
-  height: 58px;
+  height: 45px;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   padding: 0 18px;
   outline: none;
   background: white;
@@ -7726,11 +7729,14 @@ BUTTON
   box-shadow: var(--shadow-lg);
 }
 
-.visceral-results{
+.visceral-results {
   background: var(--bg-card);
   margin-top: 24px;
   padding: 25px;
-  border-radius: var(--radius-lg)
+  border-radius: var(--radius-lg);
+}
+.visceral-results h5 {
+  margin-bottom: 22px;
 }
 
 /*=====================================
@@ -7846,7 +7852,7 @@ REFERENCE TABLE
 
 .reference-row div {
   flex: 1;
-  padding: 10px;
+  padding: 9px;
   text-align: center;
   color: var(--text-body);
   border-right: 1px solid var(--border-light);
@@ -8073,7 +8079,7 @@ VISERAL FAT SECTION
 .visceral-section {
   width: 100%;
   padding: 80px 0;
-  background: var(--bg-body);
+  background: var(--bg-card);
 }
 
 .visceral-section .container {
@@ -8096,6 +8102,9 @@ LAYOUT
 
 .visceral-left {
   flex: 1;
+  background: #fef4ed;
+  padding: 25px;
+  border-radius: var(--radius-lg);
 }
 
 .visceral-right {
@@ -8165,9 +8174,9 @@ INPUT
 
 .form-group input {
   width: 100%;
-  height: 58px;
+  height: 45px;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   padding: 0 18px;
   background: #fff;
   outline: none;
@@ -8322,7 +8331,7 @@ STATUS
 .visceral-status {
   background: var(--primary-light);
   border-radius: var(--radius-md);
-  padding: 22px;
+  padding: 15px;
   margin-bottom: 30px;
   text-align: center;
 }
@@ -8337,7 +8346,7 @@ STATUS
 .visceral-status span {
   display: block;
   margin-top: 12px;
-  font-size: 30px;
+  font-size: 25px;
   font-weight: var(--fw-bold);
   color: var(--primary);
 }
@@ -8383,7 +8392,7 @@ RISK TABLE
 .risk-header div,
 .risk-row div {
   flex: 1;
-  padding: 15px;
+  padding: 9px;
   text-align: center;
   border-right: 1px solid var(--border-light);
   border-top: 1px solid var(--border-light);
@@ -8419,7 +8428,7 @@ CUT OFF TABLE
 .cutoff-header div,
 .cutoff-row div {
   flex: 1;
-  padding: 15px;
+  padding: 9px;
   text-align: center;
   border-right: 1px solid var(--border-light);
   border-top: 1px solid var(--border-light);
@@ -8453,7 +8462,7 @@ SUMMARY CARD
   width: calc(50% - 8px);
   background: var(--primary-light);
   border-radius: var(--radius-sm);
-  padding: 18px;
+  padding: 15px;
   transition: var(--transition);
 }
 
@@ -8820,7 +8829,7 @@ SCROLLBAR
 
 @media (max-width: 992px) {
   .bmr-wrapper {
-    flex-direction: column;
+    flex-direction: column-reverse;
   }
 
   .bmr-left,
@@ -10531,7 +10540,7 @@ SCROLLBAR
 
   .bmi-section .gender-buttons button,
   .bmi-section .form-group input {
-    height: 50px;
+    height: 45px;
   }
 
   .bmi-section .calculate-btn,
@@ -10562,7 +10571,7 @@ SCROLLBAR
 
   .form-group input,
   .form-group select {
-    height: 52px;
+    height: 42px;
 
     font-size: 14px;
   }
@@ -10824,12 +10833,12 @@ SCROLLBAR
   }
 
   .bmr-section .form-group input {
-    height: 50px;
+    height: 42px;
     font-size: 16px;
   }
 
   .bmr-section .unit-input input {
-    height: 50px;
+    height: 45px;
   }
 
   .bmr-section .gender-card {
@@ -10958,7 +10967,7 @@ SCROLLBAR
   }
 
   .form-group input {
-    height: 52px;
+    height: 42px;
     font-size: 15px;
   }
 
@@ -11002,7 +11011,7 @@ SCROLLBAR
 
   .reference-header div,
   .reference-row div {
-    padding: 12px;
+    padding: 9px;
     font-size: 13px;
   }
 
@@ -11060,12 +11069,12 @@ SCROLLBAR
   }
 
   .form-group input {
-    height: 52px;
+    height: 42px;
     font-size: 15px;
   }
 
   .unit-input input {
-    height: 52px;
+    height: 42px;
   }
 
   .calculate-btn {
@@ -11091,7 +11100,7 @@ SCROLLBAR
   .risk-row div,
   .cutoff-header div,
   .cutoff-row div {
-    padding: 12px 8px;
+    padding: 9px 8px;
     font-size: 13px;
   }
 
@@ -11108,7 +11117,7 @@ SCROLLBAR
   }
 
   .visceral-status {
-    padding: 18px;
+    padding: 15px;
   }
 
   .visceral-status h4 {
