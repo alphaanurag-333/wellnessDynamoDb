@@ -14,6 +14,7 @@ import {
 } from "../../api/realPeopleTestimonials.js";
 import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
+import { useDebouncedSearch } from "../../../hooks/useDebouncedSearch.js";
 import {
   REVIEW_PREVIEW_LEN,
   LIST_LIMIT,
@@ -34,7 +35,9 @@ export function RealPeopleTestimonialList() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [togglingId, setTogglingId] = useState("");
-  const [listSearch, setListSearch] = useState("");
+  const { searchInput: listSearch, debouncedSearch, onSearchChange, setSearchInput } = useDebouncedSearch("", {
+    maxLength: SEARCH_MAX_LEN,
+  });
   const [listStatus, setListStatus] = useState("");
   const [listApproval, setListApproval] = useState("");
   const [page, setPage] = useState(1);
@@ -50,7 +53,7 @@ export function RealPeopleTestimonialList() {
         limit: LIST_LIMIT,
         ...(listStatus ? { status: listStatus } : {}),
         ...(listApproval ? { approvalStatus: listApproval } : {}),
-        ...(listSearch.trim() ? { search: listSearch.trim() } : {}),
+        ...(debouncedSearch ? { search: debouncedSearch } : {}),
       });
       setRows(realPeopleTestimonials);
       setPages(pagination?.pages ?? 1);
@@ -61,7 +64,7 @@ export function RealPeopleTestimonialList() {
     } finally {
       setLoading(false);
     }
-  }, [adminToken, dispatch, listApproval, listSearch, listStatus, page]);
+  }, [adminToken, dispatch, listApproval, debouncedSearch, listStatus, page]);
 
   useEffect(() => {
     loadRows();
@@ -69,7 +72,7 @@ export function RealPeopleTestimonialList() {
 
   useEffect(() => {
     setPage(1);
-  }, [listSearch, listStatus, listApproval]);
+  }, [debouncedSearch, listStatus, listApproval]);
 
   const onDelete = async (row) => {
     const { isConfirmed } = await Swal.fire({
@@ -158,7 +161,7 @@ export function RealPeopleTestimonialList() {
             <input
               className="user-field__input"
               value={listSearch}
-              onChange={(e) => setListSearch(e.target.value.slice(0, SEARCH_MAX_LEN))}
+              onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Review text…"
               maxLength={SEARCH_MAX_LEN}
             />
@@ -181,7 +184,7 @@ export function RealPeopleTestimonialList() {
             </select>
           </label>
           {hasFilters ? (
-            <button type="button" className="btn btn--ghost" onClick={() => { setListSearch(""); setListStatus(""); setListApproval(""); }}>
+            <button type="button" className="btn btn--ghost" onClick={() => { setSearchInput(""); setListStatus(""); setListApproval(""); }}>
               Clear filters
             </button>
           ) : null}

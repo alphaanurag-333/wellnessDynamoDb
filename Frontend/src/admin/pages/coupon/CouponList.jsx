@@ -8,6 +8,7 @@ import { AiFillDelete, AiOutlineEye } from "react-icons/ai";
 import { adminDeleteCoupon, adminListCoupons, adminUpdateCoupon } from "../../api/adminCoupons.js";
 import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
+import { useDebouncedSearch } from "../../../hooks/useDebouncedSearch.js";
 import {
   LIST_LIMIT,
   LIST_SEARCH_MAX_LEN,
@@ -29,7 +30,9 @@ export function CouponList() {
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [total, setTotal] = useState(0);
-  const [listSearch, setListSearch] = useState("");
+  const { searchInput: listSearch, debouncedSearch, onSearchChange, setSearchInput } = useDebouncedSearch("", {
+    maxLength: LIST_SEARCH_MAX_LEN,
+  });
   const [listStatus, setListStatus] = useState("");
 
   const loadRows = useCallback(async () => {
@@ -39,7 +42,7 @@ export function CouponList() {
       const { coupons, pagination } = await adminListCoupons(adminToken, {
         page,
         limit: LIST_LIMIT,
-        ...(listSearch.trim() ? { search: listSearch.trim() } : {}),
+        ...(debouncedSearch ? { search: debouncedSearch } : {}),
         ...(listStatus ? { status: listStatus } : {}),
       });
       setRows(coupons);
@@ -51,7 +54,7 @@ export function CouponList() {
     } finally {
       setLoading(false);
     }
-  }, [adminToken, dispatch, listSearch, listStatus, page]);
+  }, [adminToken, dispatch, debouncedSearch, listStatus, page]);
 
   useEffect(() => {
     loadRows();
@@ -59,7 +62,7 @@ export function CouponList() {
 
   useEffect(() => {
     setPage(1);
-  }, [listSearch, listStatus]);
+  }, [debouncedSearch, listStatus]);
 
   const onDelete = async (row) => {
     const couponId = getCouponId(row);
@@ -108,7 +111,7 @@ export function CouponList() {
   const hasFilters = Boolean(listSearch.trim() || listStatus);
 
   const clearFilters = () => {
-    setListSearch("");
+    setSearchInput("");
     setListStatus("");
   };
 
@@ -131,7 +134,7 @@ export function CouponList() {
               className="user-field__input"
               value={listSearch}
               maxLength={LIST_SEARCH_MAX_LEN}
-              onChange={(e) => setListSearch(e.target.value.slice(0, LIST_SEARCH_MAX_LEN))}
+              onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Title, code, or discount type…"
             />
           </label>

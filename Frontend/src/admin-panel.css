@@ -815,6 +815,16 @@ a.admin-header__dropdown-item {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.shortcut-grid--dashboard {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (min-width: 1200px) {
+  .shortcut-grid--dashboard {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
 .shortcut-card {
   background: var(--admin-surface);
   border-radius: 14px;
@@ -858,6 +868,10 @@ a.admin-header__dropdown-item {
 .shortcut-card__arrow {
   color: #c0c8d6;
   display: inline-flex;
+}
+
+.shortcut-card:hover .shortcut-card__arrow {
+  color: var(--admin-loader-color);
 }
 
 .shortcut-card__arrow svg {

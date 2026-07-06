@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 const stats = [
   { label: "Total Users", value: "12,482", tone: "blue" },
   { label: "Active Programs", value: "84", tone: "green" },
@@ -8,12 +10,11 @@ const stats = [
 ];
 
 const shortcuts = [
-  { title: "User Management", desc: "Manage all platform users", icon: "users" },
-  { title: "WC Management", desc: "Manage wellness coaches", icon: "coach" },
-  { title: "Role & Permissions", desc: "Access control", icon: "shield" },
-  { title: "Pricing Control", desc: "Manage programs & offers", icon: "settings" },
-  { title: "Payment Mgmt", desc: "Transactions & payouts", icon: "wallet" },
-  { title: "Video Meetings", desc: "Scheduled sessions", icon: "video" },
+  { title: "User Management", desc: "Manage all platform users", icon: "users", to: "/admin/users" },
+  { title: "WC Management", desc: "Manage wellness coaches", icon: "coach", to: "/admin/coaches" },
+  { title: "AWC Management", desc: "Manage assistant coaches", icon: "assistant", to: "/admin/awcs" },
+  { title: "Contact Queries", desc: "View and respond to inquiries", icon: "mail", to: "/admin/contact-inquiries" },
+  { title: "Application Settings", desc: "Configure app settings", icon: "settings", to: "/admin/settings" },
 ];
 
 function ShortcutIcon({ type }) {
@@ -32,15 +33,24 @@ function ShortcutIcon({ type }) {
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
         <circle cx="12" cy="8" r="3" />
         <path d="M5 20a7 7 0 0 1 14 0" />
-        <path d="M19 7h4M21 5v4" />
       </svg>
     );
   }
-  if (type === "shield") {
+  if (type === "assistant") {
     return (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
-        <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" />
-        <path d="M9.5 12.5l1.8 1.8 3.2-3.2" />
+        <circle cx="9" cy="7" r="3" />
+        <path d="M2 21a7 7 0 0 1 14 0" />
+        <path d="M19 8v6" />
+        <path d="M16 11h6" />
+      </svg>
+    );
+  }
+  if (type === "mail") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+        <rect x="2" y="4" width="20" height="16" rx="2" />
+        <path d="m22 6-10 7L2 6" />
       </svg>
     );
   }
@@ -52,20 +62,25 @@ function ShortcutIcon({ type }) {
       </svg>
     );
   }
-  if (type === "wallet") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
-        <rect x="3" y="6" width="18" height="12" rx="2" />
-        <path d="M3 10h18" />
-        <circle cx="16.5" cy="14" r="1" />
-      </svg>
-    );
-  }
+  return null;
+}
+
+function ShortcutCard({ to, title, desc, icon }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
-      <rect x="3" y="6" width="15" height="12" rx="2" />
-      <path d="M18 10l3-2v8l-3-2z" />
-    </svg>
+    <Link to={to} className="shortcut-card">
+      <div className="shortcut-card__head">
+        <span className="shortcut-card__icon">
+          <ShortcutIcon type={icon} />
+        </span>
+        <span className="shortcut-card__arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="m9 18 6-6-6-6" />
+          </svg>
+        </span>
+      </div>
+      <h3 className="shortcut-card__title">{title}</h3>
+      <p className="shortcut-card__desc">{desc}</p>
+    </Link>
   );
 }
 
@@ -97,23 +112,9 @@ export function DashboardPage() {
         <h2 className="dashboard-section-head__title">Quick Shortcuts</h2>
       </section>
 
-      <section className="shortcut-grid" aria-label="Quick shortcuts">
+      <section className="shortcut-grid shortcut-grid--dashboard" aria-label="Quick shortcuts">
         {shortcuts.map((item) => (
-          <article key={item.title} className="shortcut-card">
-            <div className="shortcut-card__head">
-              <span className="shortcut-card__icon">
-                <ShortcutIcon type={item.icon} />
-              </span>
-              <span className="shortcut-card__arrow" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M5 12h14" />
-                  <path d="m13 5 7 7-7 7" />
-                </svg>
-              </span>
-            </div>
-            <h3 className="shortcut-card__title">{item.title}</h3>
-            <p className="shortcut-card__desc">{item.desc}</p>
-          </article>
+          <ShortcutCard key={item.to} to={item.to} title={item.title} desc={item.desc} icon={item.icon} />
         ))}
       </section>
     </div>
