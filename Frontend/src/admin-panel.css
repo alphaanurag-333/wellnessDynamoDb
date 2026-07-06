@@ -1120,6 +1120,7 @@ a.admin-header__dropdown-item {
   padding: 18px 18px 20px;
   min-width: 0;
   max-width: 100%;
+  margin-bottom: 68px;
 }
 
 .page-card__head {
@@ -7115,6 +7116,8 @@ fieldset.form-field legend {
   grid-template-columns: repeat(4, 1fr);
   gap: 1.25rem;
   margin-top: 0.75rem;
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 
 /* ── Single bar chart ── */
@@ -8365,6 +8368,11 @@ fieldset.form-field legend {
   text-align: right;
 }
 
+.consultancy-users-table.data-table tbody td a{
+  font-weight: 600;
+  text-decoration: underline !important;
+}
+
 .client-list-programs {
   display: flex;
   flex-wrap: wrap;
@@ -9046,6 +9054,7 @@ fieldset.form-field legend {
   padding: 0;
   margin: 0;
   background: transparent;
+  margin-bottom: 16px;
 }
 
 .launch-assessment-page--embedded,
@@ -9382,9 +9391,20 @@ fieldset.form-field legend {
   min-width: 0;
 }
 
-.mt-review-macros .user-field__input {
+.mt-review-macros .user-field__input , .mt-form-field .user-field__input , .mt-macro-input .user-field__input {
   width: 100%;
   box-sizing: border-box;
+    height: 44px;
+  border-radius: 10px;
+  border: 1px solid #dedede;
+  background: #f3f4f6;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 0.95rem;
+  color: var(--admin-text);
+  outline: none;
+  
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
 
 /* Meal approvals — coach / assistant portal */
@@ -9457,7 +9477,7 @@ fieldset.form-field legend {
   gap: 0.65rem;
   margin-top: 0.85rem;
   padding-top: 0.85rem;
-  border-top: 1px solid rgba(253, 186, 116, 0.45);
+  /* border-top: 1px solid rgba(253, 186, 116, 0.45); */
   flex-wrap: wrap;
 }
 
@@ -9481,3 +9501,14 @@ fieldset.form-field legend {
   }
 }
 
+@media (max-width: 576px) {
+.user-view-card .user-view-head{
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.75rem;
+}
+.user-view-avatar-wrap{
+  border:none;
+  background:transparent;
+}
+}

@@ -81,7 +81,7 @@ export function AssistantConsultancyEnrolledUsersList() {
       </div>
 
       <div className="table-scroll">
-        <table className="data-table">
+        <table className="data-table consultancy-users-table">
           <thead>
             <tr>
               <th>User</th>
