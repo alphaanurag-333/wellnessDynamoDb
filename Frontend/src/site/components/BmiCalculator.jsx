@@ -1,125 +1,111 @@
-import { useState, useMemo } from "react";
-// import "./BmiCalculator.css";
+import { useMemo, useState } from "react";
+
+function getBmiCategory(value) {
+  if (value < 18.5) return { label: "Underweight", color: "#60a5fa" };
+  if (value < 25) return { label: "Healthy Weight", color: "#22c55e" };
+  if (value < 30) return { label: "Overweight", color: "#f59e0b" };
+  return { label: "Obese", color: "#ef4444" };
+}
+
+function computeBmi(heightCm, weightKg) {
+  const h = Number(heightCm) / 100;
+  const w = Number(weightKg);
+  if (!h || !w || h <= 0 || w <= 0) return null;
+  return Number((w / (h * h)).toFixed(1));
+}
 
 export default function BmiCalculator() {
   const [age, setAge] = useState(25);
   const [gender, setGender] = useState("Male");
   const [height, setHeight] = useState(175);
   const [weight, setWeight] = useState(70);
-
-  const bmi = useMemo(() => {
-    const h = height / 100;
-    return (weight / (h * h)).toFixed(1);
-  }, [height, weight]);
+  const [result, setResult] = useState(() => computeBmi(175, 70));
 
   const bmiData = useMemo(() => {
-    const value = Number(bmi);
+    if (result == null) return { label: "Enter values", color: "#94a3b8" };
+    return getBmiCategory(result);
+  }, [result]);
 
-    if (value < 18.5)
-      return {
-        label: "Underweight",
-        color: "#f4b740",
-      };
+  const needleRotation = useMemo(() => {
+    if (result == null) return -90;
+    return Math.min(Math.max((result / 40) * 180 - 90, -90), 90);
+  }, [result]);
 
-    if (value < 25)
-      return {
-        label: "Healthy Weight",
-        color: "#6ac36a",
-      };
-
-    if (value < 30)
-      return {
-        label: "Overweight",
-        color: "#e7863a",
-      };
-
-    return {
-      label: "Obese",
-      color: "#e74c3c",
-    };
-  }, [bmi]);
-
-  const needleRotation = Math.min(
-    Math.max(((Number(bmi) / 40) * 180) - 90, -90),
-    90
-  );
+  const handleCalculate = (e) => {
+    e.preventDefault();
+    setResult(computeBmi(height, weight));
+  };
 
   return (
-    <section className="bmi-section">
-      <div className="bmi-card">
-
-        <div className="bmi-header">
+    <section className="bmi-calc-section">
+      <div className="bmi-calc-card">
+        <div className="bmi-calc-header">
           <h2>Body Mass Index Calculator</h2>
-          <p>
-            Assess your weight relative to your height for a baseline
-            wellness metric.
-          </p>
+          <p>Assess your weight relative to your height for a baseline wellness metric.</p>
         </div>
 
-        <div className="bmi-body">
-
-          <div className="bmi-left">
-
-            <div className="bmi-row">
-
-              <div className="bmi-field">
-                <label>AGE</label>
+        <div className="bmi-calc-body">
+          <form className="bmi-calc-form" onSubmit={handleCalculate}>
+            <div className="bmi-calc-form__row">
+              <label className="bmi-calc-field">
+                <span className="bmi-calc-field__label">Age</span>
                 <input
                   type="number"
+                  min={1}
+                  max={120}
                   value={age}
                   onChange={(e) => setAge(e.target.value)}
+                  placeholder="Years"
                 />
-              </div>
+              </label>
 
-              <div className="bmi-field">
-                <label>GENDER</label>
-                <select
-                  value={gender}
-                  onChange={(e) => setGender(e.target.value)}
-                >
+              <label className="bmi-calc-field">
+                <span className="bmi-calc-field__label">Gender</span>
+                <select value={gender} onChange={(e) => setGender(e.target.value)}>
                   <option>Male</option>
                   <option>Female</option>
+                  <option>Other</option>
                 </select>
-              </div>
-
+              </label>
             </div>
 
-            <div className="bmi-field full">
-              <label>HEIGHT</label>
-
-              <div className="bmi-input-unit">
+            <label className="bmi-calc-field">
+              <span className="bmi-calc-field__label">Height</span>
+              <div className="bmi-calc-field__unit">
                 <input
                   type="number"
+                  min={50}
+                  max={300}
                   value={height}
                   onChange={(e) => setHeight(e.target.value)}
+                  placeholder="175"
                 />
                 <span>cm</span>
               </div>
-            </div>
+            </label>
 
-            <div className="bmi-field full">
-              <label>WEIGHT</label>
-
-              <div className="bmi-input-unit">
+            <label className="bmi-calc-field">
+              <span className="bmi-calc-field__label">Weight</span>
+              <div className="bmi-calc-field__unit">
                 <input
                   type="number"
+                  min={10}
+                  max={500}
                   value={weight}
                   onChange={(e) => setWeight(e.target.value)}
+                  placeholder="70"
                 />
                 <span>kg</span>
               </div>
-            </div>
+            </label>
 
-            <button className="bmi-btn">
+            <button type="submit" className="bmi-calc-btn">
               Calculate Result
             </button>
+          </form>
 
-          </div>
-
-          <div className="bmi-right">
-
-            <div className="bmi-gauge">
-
+          <div className="bmi-calc-result">
+            <div className="bmi-calc-gauge" aria-hidden="true">
               <svg viewBox="0 0 200 120">
                 <path
                   d="M20 100 A80 80 0 0 1 180 100"
@@ -127,7 +113,6 @@ export default function BmiCalculator() {
                   stroke="#f3dfd1"
                   strokeWidth="20"
                 />
-
                 <path
                   d="M20 100 A80 80 0 0 1 180 100"
                   fill="none"
@@ -135,59 +120,30 @@ export default function BmiCalculator() {
                   strokeWidth="20"
                   strokeDasharray="180 300"
                 />
-
                 <g
                   style={{
                     transform: `rotate(${needleRotation}deg)`,
                     transformOrigin: "100px 100px",
-                    transition: "0.5s ease",
+                    transition: "transform 0.45s ease",
                   }}
                 >
-                  <line
-                    x1="100"
-                    y1="100"
-                    x2="108"
-                    y2="25"
-                    stroke="#2e221c"
-                    strokeWidth="4"
-                  />
-
-                  <circle
-                    cx="100"
-                    cy="100"
-                    r="8"
-                    fill="#2e221c"
-                  />
+                  <line x1="100" y1="100" x2="108" y2="25" stroke="#2e221c" strokeWidth="4" />
+                  <circle cx="100" cy="100" r="8" fill="#2e221c" />
                 </g>
               </svg>
-
             </div>
 
-            <div className="bmi-result">
-              {bmi}
-            </div>
+            <div className="bmi-calc-score">{result ?? "—"}</div>
 
-            <div
-              className="bmi-badge"
-              style={{
-                background: bmiData.color,
-              }}
-            >
+            <span className="bmi-calc-badge" style={{ background: bmiData.color }}>
               {bmiData.label}
-            </div>
+            </span>
 
-            <p className="bmi-note">
-              This is a screening tool.
-              <br />
-              Always consult a clinician for
-              <br />
-              full health assessment.
+            <p className="bmi-calc-note">
+              This is a screening tool. Always consult a clinician for full health assessment.
             </p>
-
           </div>
-
         </div>
-
       </div>
     </section>
   );

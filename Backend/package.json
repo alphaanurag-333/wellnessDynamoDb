@@ -17,6 +17,7 @@
     "seed:video-testimonials": "node --use-system-ca scripts/seedVideoTestimonials.js",
     "seed:static-pages": "node --use-system-ca scripts/seedStaticPages.js",
     "seed:specializations": "node --use-system-ca scripts/seedSpecializations.js",
+                       "seed:programs": "node --use-system-ca scripts/seedProgramCatalog.js",
     "delete:static-pages": "node --use-system-ca scripts/deleteStaticPages.js",
     "seed:diet-plan-catalog": "node scripts/seedDietPlanCatalog.js",
     "seed:wellness-prescriptions": "node --use-system-ca scripts/seedWellnessPrescriptionCatalog.js",
