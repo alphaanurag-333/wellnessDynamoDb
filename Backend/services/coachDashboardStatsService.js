@@ -57,7 +57,7 @@ function toDashboardClient(user) {
     phone: pub.phone,
     phoneCountryCode: pub.phoneCountryCode,
     profileImage: pub.profileImage,
-    userTier: pub.userTier,
+    userTier: pub.userTier,            
     createdAt: pub.createdAt,
   };
 }
