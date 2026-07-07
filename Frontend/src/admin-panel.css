@@ -10499,3 +10499,54 @@ fieldset.form-field legend {
     text-align: center;
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/*  Portal real people testimonials (coach / assistant)                        */
+/* -------------------------------------------------------------------------- */
+
+.portal-testimonials-page__intro {
+  margin: 0 0 0.25rem;
+}
+
+.portal-testimonials-page__tabs {
+  margin: 0.75rem 0 1rem;
+}
+
+.portal-testimonials-table-wrap {
+  margin-top: 0.25rem;
+}
+
+.portal-testimonials-table .portal-testimonials-table__status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.portal-testimonials-table__actions {
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.portal-testimonials-table__delete {
+  color: #dc2626;
+}
+
+.portal-testimonials-table__delete:hover {
+  color: #b91c1c;
+  background: #fef2f2;
+}
+
+.portal-testimonials-page__pagination {
+  margin-top: 1rem;
+}
+
+@media (max-width: 1100px) {
+  .portal-testimonials-table-wrap {
+    overflow-x: auto;
+  }
+
+  .portal-testimonials-table {
+    min-width: 56rem;
+  }
+}

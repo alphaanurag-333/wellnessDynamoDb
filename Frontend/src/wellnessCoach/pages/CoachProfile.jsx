@@ -20,6 +20,7 @@ import {
   sanitizeBio,
   validateBio,
 } from "../../admin/pages/wellnessCoach/WellnessCoachShared.js";
+import { CopyReferralCode } from "../../components/ReferralAssignmentShared.jsx";
 import {
   blockPersonNameDigitKeyDown,
   blockPhoneNonDigitKeyDown,
