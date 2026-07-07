@@ -67,6 +67,7 @@ const prakrutiAssessmentRoutes = require("./userRoutes/prakrutiAssessmentRoutes"
 const healthProgressRoutes = require("./userRoutes/healthProgressRoutes");
 const metabolicMetricsRoutes = require("./userRoutes/metabolicMetricsRoutes");
 const dailyReflectionRoutes = require("./userRoutes/dailyReflectionRoutes");
+const coachInsightRoutes = require("./userRoutes/coachInsightRoutes");
 const supplementRecommendationRoutes = require("./userRoutes/supplementRecommendationRoutes");
 const supplementDosageRoutes = require("./userRoutes/supplementDosageRoutes");
 const wellnessPrescriptionRoutes = require("./userRoutes/wellnessPrescriptionRoutes");
@@ -93,6 +94,7 @@ const coachRealPeopleTestimonialRoutes = require("./wellnessCoachRoutes/coachRea
 const coachCommitmentLetterRoutes = require("./wellnessCoachRoutes/coachCommitmentLetterRoutes");
 const coachMonthlyChampionRoutes = require("./wellnessCoachRoutes/coachMonthlyChampionRoutes");
 const coachUserCommitmentLetterRoutes = require("./wellnessCoachRoutes/coachUserCommitmentLetterRoutes");
+const coachCoachInsightRoutes = require("./wellnessCoachRoutes/coachCoachInsightRoutes");
 const coachMealReviewRoutes = require("./wellnessCoachRoutes/coachMealReviewRoutes");
 const assistantLaunchAssessmentRoutes = require("./assistantWellnessCoachRoutes/assistantLaunchAssessmentRoutes");
 const assistantPrakrutiAssessmentRoutes = require("./assistantWellnessCoachRoutes/assistantPrakrutiAssessmentRoutes");
@@ -118,6 +120,7 @@ const assistantRealPeopleTestimonialRoutes = require("./assistantWellnessCoachRo
 const assistantCommitmentLetterRoutes = require("./assistantWellnessCoachRoutes/assistantCommitmentLetterRoutes");
 const assistantMonthlyChampionRoutes = require("./assistantWellnessCoachRoutes/assistantMonthlyChampionRoutes");
 const assistantUserCommitmentLetterRoutes = require("./assistantWellnessCoachRoutes/assistantUserCommitmentLetterRoutes");
+const assistantCoachInsightRoutes = require("./assistantWellnessCoachRoutes/assistantCoachInsightRoutes");
 const assistantMealReviewRoutes = require("./assistantWellnessCoachRoutes/assistantMealReviewRoutes");
 const assistantConsultancyRoutes = require("./assistantWellnessCoachRoutes/assistantConsultancyRoutes");
 
@@ -148,6 +151,7 @@ router.use("/coach/heal-users", coachHealthProgressRoutes);
 router.use("/coach/heal-users", coachMetabolicMetricsRoutes);
 router.use("/coach/heal-users", coachDailyReflectionRoutes);
 router.use("/coach/heal-users", coachUserCommitmentLetterRoutes);
+router.use("/coach/heal-users", coachCoachInsightRoutes);
 router.use("/coach/real-people-testimonials", coachRealPeopleTestimonialRoutes);
 router.use("/coach/commitment-letters", coachCommitmentLetterRoutes);
 router.use("/coach/monthly-champions", coachMonthlyChampionRoutes);
@@ -173,6 +177,7 @@ router.use("/assistant/heal-users", assistantHealthProgressRoutes);
 router.use("/assistant/heal-users", assistantMetabolicMetricsRoutes);
 router.use("/assistant/heal-users", assistantDailyReflectionRoutes);
 router.use("/assistant/heal-users", assistantUserCommitmentLetterRoutes);
+router.use("/assistant/heal-users", assistantCoachInsightRoutes);
 router.use("/assistant/real-people-testimonials", assistantRealPeopleTestimonialRoutes);
 router.use("/assistant/commitment-letters", assistantCommitmentLetterRoutes);
 router.use("/assistant/monthly-champions", assistantMonthlyChampionRoutes);
@@ -243,6 +248,7 @@ router.use("/user/prakruti-assessment", prakrutiAssessmentRoutes);
 router.use("/user/health-progress", healthProgressRoutes);
 router.use("/user/metabolic-metrics", metabolicMetricsRoutes);
 router.use("/user/daily-reflection", dailyReflectionRoutes);
+router.use("/user/coach-insight", coachInsightRoutes);
 router.use("/user/supplements", supplementRecommendationRoutes);
 router.use("/user/supplements", supplementDosageRoutes);
 router.use("/user/wellness-prescriptions", wellnessPrescriptionRoutes);

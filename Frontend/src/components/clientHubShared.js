@@ -13,6 +13,7 @@ export const CLIENT_HUB_TABS = {
     shortLabel: "Prescriptions",
   },
   "commitment-letter": { id: "commitment-letter", label: "Commitment letter", shortLabel: "Commitment" },
+  "coach-message": { id: "coach-message", label: "Coach message", shortLabel: "Coach message" },
   "internal-parameters": { id: "internal-parameters", label: "Internal parameters", shortLabel: "Internal params" },
   "physical-exercises": { id: "physical-exercises", label: "Physical exercises", shortLabel: "Exercises" },
   "mental-wellbeing": { id: "mental-wellbeing", label: "Mental wellbeing", shortLabel: "Mental wellbeing" },
@@ -33,6 +34,7 @@ export const CLIENT_HUB_HEAL_EXTRA_TAB_IDS = [
   "diet-plan",
   "wellness-prescriptions",
   "commitment-letter",
+  "coach-message",
   "internal-parameters",
   "physical-exercises",
   "mental-wellbeing",
@@ -60,7 +62,7 @@ export const CLIENT_HUB_TAB_GROUPS = [
   {
     id: "care",
     label: "Care plans",
-    tabIds: ["reminders", "diet-plan", "wellness-prescriptions", "commitment-letter", "internal-parameters"],
+    tabIds: ["reminders", "diet-plan", "wellness-prescriptions", "commitment-letter", "coach-message", "internal-parameters"],
   },
   {
     id: "wellness",

@@ -20,6 +20,7 @@ import { AssistantUserHealthProgress } from "./AssistantUserHealthProgress.jsx";
 import { AssistantUserMetabolicMetrics } from "./AssistantUserMetabolicMetrics.jsx";
 import { AssistantUserDailyReflection } from "./AssistantUserDailyReflection.jsx";
 import { AssistantUserCommitmentLetter } from "./AssistantUserCommitmentLetter.jsx";
+import { AssistantUserCoachInsight } from "./AssistantUserCoachInsight.jsx";
 
 function renderAssistantTab(tab, embedded) {
   switch (tab) {
@@ -35,6 +36,8 @@ function renderAssistantTab(tab, embedded) {
       return <AssistantUserWellnessPrescriptions embedded={embedded} />;
     case "commitment-letter":
       return <AssistantUserCommitmentLetter embedded={embedded} />;
+    case "coach-message":
+      return <AssistantUserCoachInsight embedded={embedded} />;
     case "internal-parameters":
       return <AssistantUserTestRecommendations embedded={embedded} />;
     case "physical-exercises":
