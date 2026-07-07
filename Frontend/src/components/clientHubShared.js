@@ -21,6 +21,7 @@ export const CLIENT_HUB_TABS = {
   "supplement-dosage": { id: "supplement-dosage", label: "Dosage", shortLabel: "Dosage" },
   "meal-tracking": { id: "meal-tracking", label: "Meal tracking", shortLabel: "Meals" },
   "health-progress": { id: "health-progress", label: "Health progress", shortLabel: "Health progress" },
+  "metabolic-metrics": { id: "metabolic-metrics", label: "Metabolic health", shortLabel: "Metabolic" },
   "launch-assessment": { id: "launch-assessment", label: "LAUNCH assessment", shortLabel: "LAUNCH" },
   "prakruti-assessment": { id: "prakruti-assessment", label: "Prakruti assessment", shortLabel: "Prakruti" },
 };
@@ -40,6 +41,7 @@ export const CLIENT_HUB_HEAL_EXTRA_TAB_IDS = [
   "supplement-dosage",
   "meal-tracking",
   "health-progress",
+  "metabolic-metrics",
   "launch-assessment",
   "prakruti-assessment",
 ];
@@ -49,6 +51,11 @@ export const CLIENT_HUB_TAB_GROUPS = [
     id: "tracking",
     label: "Tracking",
     tabIds: ["water", "steps", "meal-tracking", "health-progress"],
+  },
+  {
+    id: "metabolic-health",
+    label: "Metabolic health",
+    tabIds: ["metabolic-metrics"],
   },
   {
     id: "care",

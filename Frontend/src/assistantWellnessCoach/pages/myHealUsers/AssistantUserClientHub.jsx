@@ -17,6 +17,7 @@ import { AssistantUserSupplementDosage } from "./AssistantUserSupplementDosage.j
 import { AssistantUserLaunchAssessment } from "./AssistantUserLaunchAssessment.jsx";
 import { AssistantUserPrakrutiAssessment } from "./AssistantUserPrakrutiAssessment.jsx";
 import { AssistantUserHealthProgress } from "./AssistantUserHealthProgress.jsx";
+import { AssistantUserMetabolicMetrics } from "./AssistantUserMetabolicMetrics.jsx";
 import { AssistantUserDailyReflection } from "./AssistantUserDailyReflection.jsx";
 import { AssistantUserCommitmentLetter } from "./AssistantUserCommitmentLetter.jsx";
 
@@ -52,6 +53,8 @@ function renderAssistantTab(tab, embedded) {
       return <AssistantUserPrakrutiAssessment embedded={embedded} />;
     case "health-progress":
       return <AssistantUserHealthProgress embedded={embedded} />;
+    case "metabolic-metrics":
+      return <AssistantUserMetabolicMetrics embedded={embedded} />;
     case "daily-reflection":
       return <AssistantUserDailyReflection embedded={embedded} />;
     default:
