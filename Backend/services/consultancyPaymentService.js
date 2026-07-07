@@ -3,7 +3,7 @@ const config = require("../config");
 const { getUserById, updateUser } = require("../models/userModel");
 const { getWellnessCoachRecordById } = require("../models/wellnessCoachModel");
 const { completeConsultancyEnrollment } = require("../models/userConversionModel");
-const { isConsultancyOnlyTier, isHealTier } = require("../models/userAssignmentLogic");
+const { isConsultancyOnlyTier } = require("../models/userAssignmentLogic");
 const {
   buildCheckoutPreview,
   getActiveRazorpayGateway,
@@ -61,12 +61,6 @@ async function createConsultancyOrder(userId, { referralCode, paymentMethod = "u
   if (!user) {
     const err = new Error("User not found");
     err.name = "NotFoundError";
-    throw err;
-  }
-
-  if (isHealTier(user.userTier)) {
-    const err = new Error("Consultancy is not available after Energy Exchange membership");
-    err.name = "AlreadyEnrolledError";
     throw err;
   }
 

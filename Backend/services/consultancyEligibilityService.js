@@ -44,7 +44,7 @@ function formatConsultancyFyLabel(fy, { isRenewal = false } = {}) {
 /**
  * Seek users may buy consultancy for the current FY once.
  * Consultancy-only users may buy the next FY in advance (one FY ahead).
- * Heal members cannot buy consultancy.
+ * Heal members may book additional counselling sessions at any time.
  */
 async function resolveConsultancyPurchaseEligibility(user, { now = new Date() } = {}) {
   const appConfig = await getAppConfig();
@@ -55,10 +55,16 @@ async function resolveConsultancyPurchaseEligibility(user, { now = new Date() } 
 
   if (isHealTier(user.userTier)) {
     return {
-      canPurchase: false,
-      reason: "heal_member",
-      purchasableFy: null,
-      purchasableFyLabel: null,
+      canPurchase: true,
+      reason: null,
+      purchasableFy: {
+        fyStartYear: currentFy.fyStartYear,
+        fyStartMonth: currentFy.fyStartMonth,
+        startsAt: currentFy.startsAt,
+        endsAt: currentFy.endsAt,
+        label: formatConsultancyFyLabel(currentFy, { isRenewal: false }),
+      },
+      purchasableFyLabel: formatConsultancyFyLabel(currentFy, { isRenewal: false }),
       isRenewal: false,
       currentFy,
       fyStartMonth,
