@@ -26,6 +26,14 @@ import {
   validatePhoneDigits,
 } from "../../utils/personFieldValidation.js";
 import { validateImageFileSize } from "../../utils/mediaUploadValidation.js";
+import {
+  PROFILE_PASSWORD_MIN_LEN,
+  PROFILE_PASSWORD_MAX_LEN,
+  validateConfirmPassword,
+  validateCurrentPassword,
+  validateNewPassword,
+  validateProfilePasswordFields,
+} from "../../utils/profilePasswordValidation.js";
 
 export function CoachProfile() {
   const dispatch = useDispatch();
@@ -43,6 +51,18 @@ export function CoachProfile() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPw, setShowPw] = useState({ cur: false, next: false, conf: false });
 
+  const [passwordErrors, setPasswordErrors] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  
+  const clearPasswordError = (field) => {
+    setPasswordErrors((prev) => ({
+      ...prev,
+      [field]: "",
+    }));
+  };
   const fileInputRef = useRef(null);
   const [photoLoading, setPhotoLoading] = useState(false);
 
@@ -113,21 +133,103 @@ export function CoachProfile() {
     }
   };
 
+  // const handleSave = async () => {
+  //   if (tab === "personal") {
+  //     const trimmedName = name.trim();
+  //     const trimmedPhone = phone.trim();
+  //     const nameErr = validatePersonName(trimmedName);
+  //     if (nameErr) {
+  //       await Swal.fire({ icon: "error", title: "Validation error", text: nameErr });
+  //       return;
+  //     }
+  //     const phoneErr = validatePhoneDigits(trimmedPhone, { label: "Phone number" });
+  //     if (phoneErr) {
+  //       await Swal.fire({ icon: "error", title: "Validation error", text: phoneErr });
+  //       return;
+  //     }
+  //     setLoading(true);
+  //     try {
+  //       const data = await coachUpdateMe(coachToken, {
+  //         name: trimmedName,
+  //         phone: trimmedPhone,
+  //         phoneCountryCode: coach?.phoneCountryCode,
+  //         bio: bio.trim() || null,
+  //       });
+  //       if (data?.coach) dispatch(setCoach(data.coach));
+  //       await Swal.fire({ icon: "success", title: data?.message || "Profile updated", timer: 1300 });
+  //     } catch (e) {
+  //       if (e?.status === 401) {
+  //         dispatch(logoutCoach());
+  //         return;
+  //       }
+  //       await Swal.fire({ icon: "error", title: "Update failed", text: e.message || "Update failed" });
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //     return;
+  //   }
+
+  //   if (!currentPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
+  //     await Swal.fire({ icon: "error", title: "Validation error", text: "Fill in current password, new password, and confirmation." });
+  //     return;
+  //   }
+  //   if (newPassword !== confirmPassword) {
+  //     await Swal.fire({ icon: "error", title: "Validation error", text: "New password and confirmation do not match." });
+  //     return;
+  //   }
+  //   if (newPassword.length < 8) {
+  //     await Swal.fire({ icon: "error", title: "Validation error", text: "New password must be at least 8 characters." });
+  //     return;
+  //   }
+  //   setLoading(true);
+  //   try {
+  //     const data = await coachChangePassword(coachToken, { currentPassword, newPassword });
+  //     await Swal.fire({ icon: "success", title: data?.message || "Password updated", timer: 1300 });
+  //     setCurrentPassword("");
+  //     setNewPassword("");
+  //     setConfirmPassword("");
+  //   } catch (e) {
+  //     if (e?.status === 401) {
+  //       dispatch(logoutCoach());
+  //       return;
+  //     }
+  //     await Swal.fire({ icon: "error", title: "Password change failed", text: e.message || "Password change failed" });
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+
   const handleSave = async () => {
     if (tab === "personal") {
       const trimmedName = name.trim();
       const trimmedPhone = phone.trim();
+  
       const nameErr = validatePersonName(trimmedName);
       if (nameErr) {
-        await Swal.fire({ icon: "error", title: "Validation error", text: nameErr });
+        await Swal.fire({
+          icon: "error",
+          title: "Validation error",
+          text: nameErr,
+        });
         return;
       }
-      const phoneErr = validatePhoneDigits(trimmedPhone, { label: "Phone number" });
+  
+      const phoneErr = validatePhoneDigits(trimmedPhone, {
+        label: "Phone number",
+      });
+  
       if (phoneErr) {
-        await Swal.fire({ icon: "error", title: "Validation error", text: phoneErr });
+        await Swal.fire({
+          icon: "error",
+          title: "Validation error",
+          text: phoneErr,
+        });
         return;
       }
+  
       setLoading(true);
+  
       try {
         const data = await coachUpdateMe(coachToken, {
           name: trimmedName,
@@ -135,45 +237,85 @@ export function CoachProfile() {
           phoneCountryCode: coach?.phoneCountryCode,
           bio: bio.trim() || null,
         });
-        if (data?.coach) dispatch(setCoach(data.coach));
-        await Swal.fire({ icon: "success", title: data?.message || "Profile updated", timer: 1300 });
+  
+        if (data?.coach) {
+          dispatch(setCoach(data.coach));
+        }
+  
+        await Swal.fire({
+          icon: "success",
+          title: data?.message || "Profile updated",
+          timer: 1300,
+        });
       } catch (e) {
         if (e?.status === 401) {
           dispatch(logoutCoach());
           return;
         }
-        await Swal.fire({ icon: "error", title: "Update failed", text: e.message || "Update failed" });
+  
+        await Swal.fire({
+          icon: "error",
+          title: "Update failed",
+          text: e.message || "Update failed",
+        });
       } finally {
         setLoading(false);
       }
+  
       return;
     }
-
-    if (!currentPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
-      await Swal.fire({ icon: "error", title: "Validation error", text: "Fill in current password, new password, and confirmation." });
+  
+    // Password Validation
+    const errors = validateProfilePasswordFields({
+      currentPassword,
+      newPassword,
+      confirmPassword,
+    });
+  
+    setPasswordErrors(errors);
+  
+    if (
+      errors.currentPassword ||
+      errors.newPassword ||
+      errors.confirmPassword
+    ) {
       return;
     }
-    if (newPassword !== confirmPassword) {
-      await Swal.fire({ icon: "error", title: "Validation error", text: "New password and confirmation do not match." });
-      return;
-    }
-    if (newPassword.length < 8) {
-      await Swal.fire({ icon: "error", title: "Validation error", text: "New password must be at least 8 characters." });
-      return;
-    }
+  
     setLoading(true);
+  
     try {
-      const data = await coachChangePassword(coachToken, { currentPassword, newPassword });
-      await Swal.fire({ icon: "success", title: data?.message || "Password updated", timer: 1300 });
+      const data = await coachChangePassword(coachToken, {
+        currentPassword,
+        newPassword,
+      });
+  
+      await Swal.fire({
+        icon: "success",
+        title: data?.message || "Password updated",
+        timer: 1300,
+      });
+  
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
+  
+      setPasswordErrors({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
     } catch (e) {
       if (e?.status === 401) {
         dispatch(logoutCoach());
         return;
       }
-      await Swal.fire({ icon: "error", title: "Password change failed", text: e.message || "Password change failed" });
+  
+      await Swal.fire({
+        icon: "error",
+        title: "Password change failed",
+        text: e.message || "Password change failed",
+      });
     } finally {
       setLoading(false);
     }
@@ -243,32 +385,137 @@ export function CoachProfile() {
           </ProfileField>
         </>
       }
+      // passwordFields={
+      //   <>
+      //     <ProfilePasswordField
+      //       label="Current Password"
+      //       value={currentPassword}
+      //       onChange={(e) => setCurrentPassword(e.target.value)}
+      //       visible={showPw.cur}
+      //       onToggleVisible={() => setShowPw((s) => ({ ...s, cur: !s.cur }))}
+      //       autoComplete="current-password"
+      //     />
+      //     <ProfilePasswordField
+      //       label="New Password"
+      //       value={newPassword}
+      //       onChange={(e) => setNewPassword(e.target.value)}
+      //       visible={showPw.next}
+      //       onToggleVisible={() => setShowPw((s) => ({ ...s, next: !s.next }))}
+      //       autoComplete="new-password"
+      //       hint="Must be at least 8 characters."
+      //     />
+      //     <ProfilePasswordField
+      //       label="Confirm Password"
+      //       value={confirmPassword}
+      //       onChange={(e) => setConfirmPassword(e.target.value)}
+      //       visible={showPw.conf}
+      //       onToggleVisible={() => setShowPw((s) => ({ ...s, conf: !s.conf }))}
+      //       autoComplete="new-password"
+      //     />
+      //   </>
+      // }
+
       passwordFields={
         <>
+          <p className="profile-password-form__intro">
+            Update your password regularly. Use{" "}
+            {PROFILE_PASSWORD_MIN_LEN}–{PROFILE_PASSWORD_MAX_LEN} characters
+            and avoid reusing passwords from other sites.
+          </p>
+      
           <ProfilePasswordField
             label="Current Password"
             value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
+            onChange={(e) => {
+              setCurrentPassword(e.target.value);
+              clearPasswordError("currentPassword");
+            }}
+            onBlur={(e) =>
+              setPasswordErrors((prev) => ({
+                ...prev,
+                currentPassword: validateCurrentPassword(e.target.value),
+              }))
+            }
             visible={showPw.cur}
-            onToggleVisible={() => setShowPw((s) => ({ ...s, cur: !s.cur }))}
+            onToggleVisible={() =>
+              setShowPw((s) => ({
+                ...s,
+                cur: !s.cur,
+              }))
+            }
             autoComplete="current-password"
+            error={passwordErrors.currentPassword}
           />
+      
           <ProfilePasswordField
             label="New Password"
             value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
+            onChange={(e) => {
+              setNewPassword(e.target.value);
+              clearPasswordError("newPassword");
+      
+              if (
+                passwordErrors.confirmPassword &&
+                e.target.value === confirmPassword
+              ) {
+                clearPasswordError("confirmPassword");
+              }
+            }}
+            onBlur={(e) =>
+              setPasswordErrors((prev) => ({
+                ...prev,
+                newPassword: validateNewPassword(
+                  e.target.value,
+                  currentPassword
+                ),
+                confirmPassword: confirmPassword
+                  ? validateConfirmPassword(
+                      confirmPassword,
+                      e.target.value
+                    )
+                  : prev.confirmPassword,
+              }))
+            }
             visible={showPw.next}
-            onToggleVisible={() => setShowPw((s) => ({ ...s, next: !s.next }))}
+            onToggleVisible={() =>
+              setShowPw((s) => ({
+                ...s,
+                next: !s.next,
+              }))
+            }
             autoComplete="new-password"
-            hint="Must be at least 8 characters."
+            hint={`Must be ${PROFILE_PASSWORD_MIN_LEN}–${PROFILE_PASSWORD_MAX_LEN} characters.`}
+            minLength={PROFILE_PASSWORD_MIN_LEN}
+            maxLength={PROFILE_PASSWORD_MAX_LEN}
+            error={passwordErrors.newPassword}
           />
+      
           <ProfilePasswordField
             label="Confirm Password"
             value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
+            onChange={(e) => {
+              setConfirmPassword(e.target.value);
+              clearPasswordError("confirmPassword");
+            }}
+            onBlur={(e) =>
+              setPasswordErrors((prev) => ({
+                ...prev,
+                confirmPassword: validateConfirmPassword(
+                  e.target.value,
+                  newPassword
+                ),
+              }))
+            }
             visible={showPw.conf}
-            onToggleVisible={() => setShowPw((s) => ({ ...s, conf: !s.conf }))}
+            onToggleVisible={() =>
+              setShowPw((s) => ({
+                ...s,
+                conf: !s.conf,
+              }))
+            }
             autoComplete="new-password"
+            maxLength={PROFILE_PASSWORD_MAX_LEN}
+            error={passwordErrors.confirmPassword}
           />
         </>
       }
