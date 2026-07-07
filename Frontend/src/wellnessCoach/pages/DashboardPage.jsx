@@ -68,19 +68,6 @@ const STAT_CARDS = [
     ),
   },
   {
-    key: "pendingApprovals",
-    label: "Pending approvals (total)",
-    description: "Meal logs, testimonials & commitment letters",
-    tone: "amber",
-    to: "/coach/meal-approvals",
-    icon: (
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-        <circle cx="12" cy="12" r="10" />
-        <path d="M12 6v6l4 2" />
-      </svg>
-    ),
-  },
-  {
     key: "pendingMealApprovals",
     label: "Pending meal logs",
     description: "Client meal entries awaiting your review",
@@ -93,6 +80,31 @@ const STAT_CARDS = [
       </svg>
     ),
   },
+  {
+    key: "pendingTestimonials",
+    label: "Pending testimonials",
+    description: "Client success stories awaiting approval",
+    tone: "purple",
+    to: "/coach/real-people-testimonials",
+    icon: (
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      </svg>
+    ),
+  },
+  {
+    key: "pendingCommitmentLetters",
+    label: "Pending commitment letters",
+    description: "Signed letters awaiting your review",
+    tone: "indigo",
+    to: "/coach/commitment-letters",
+    icon: (
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <path d="M14 2v6h6" />
+      </svg>
+    ),
+  },
 ];
 
 const shortcuts = [
@@ -100,6 +112,7 @@ const shortcuts = [
   { title: "Manage assistants", desc: "View and manage assistant coaches", icon: "assistants", to: "/coach/my-assistants" },
   { title: "Meal approvals", desc: "Review pending meal logs", icon: "meals", to: "/coach/meal-approvals" },
   { title: "Testimonials", desc: "Approve client success stories", icon: "testimonials", to: "/coach/real-people-testimonials" },
+  { title: "Commitment letters", desc: "Review signed commitment letters", icon: "letters", to: "/coach/commitment-letters" },
   { title: "My profile", desc: "Update your coach profile", icon: "profile", to: "/coach/profile" },
 ];
 
@@ -161,6 +174,14 @@ function ShortcutIcon({ type }) {
     return (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      </svg>
+    );
+  }
+  if (type === "letters") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <path d="M14 2v6h6" />
       </svg>
     );
   }
@@ -320,9 +341,9 @@ export function CoachDashboardPage() {
 
       <section className="admin-dashboard__section" aria-label="Quick insights" aria-busy={loading}>
         <h2 className="dashboard-section-head__title">Quick Insights</h2>
-        <div className="stat-grid stat-grid--dashboard stat-grid--dashboard-6 admin-dashboard__stats">
+        <div className="stat-grid stat-grid--dashboard stat-grid--dashboard-7 admin-dashboard__stats">
           {loading ? (
-            <DashboardStatsSkeleton count={6} />
+            <DashboardStatsSkeleton count={7} />
           ) : (
             statValues.map((card) => (
               <DashboardStatCard

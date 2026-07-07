@@ -39,19 +39,6 @@ const STAT_CARDS = [
     ),
   },
   {
-    key: "pendingApprovals",
-    label: "Pending approvals (total)",
-    description: "Meal logs, testimonials & commitment letters",
-    tone: "amber",
-    to: "/assistant/meal-approvals",
-    icon: (
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-        <circle cx="12" cy="12" r="10" />
-        <path d="M12 6v6l4 2" />
-      </svg>
-    ),
-  },
-  {
     key: "pendingMealApprovals",
     label: "Pending meal logs",
     description: "Client meal entries awaiting your review",
@@ -337,7 +324,7 @@ export function AssistantDashboardPage() {
         <h2 className="dashboard-section-head__title">Quick Insights</h2>
         <div className="stat-grid stat-grid--dashboard stat-grid--dashboard-6 admin-dashboard__stats">
           {loading ? (
-            <DashboardStatsSkeleton count={6} />
+            <DashboardStatsSkeleton count={5} />
           ) : (
             statValues.map((card) => (
               <DashboardStatCard

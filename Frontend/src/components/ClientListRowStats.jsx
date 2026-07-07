@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { AiOutlineEye } from "react-icons/ai";
+import { AdminMediaImage } from "../admin/components/AdminMediaImage.jsx";
 import { getClientHubModuleCount, isHealTier } from "./clientHubShared.js";
 
 export function getClientInitials(name) {
@@ -17,7 +18,7 @@ export function ClientTableUserCell({ user }) {
   return (
     <div className="user-cell">
       <span className="user-cell__avatar" aria-hidden="true">
-        {getClientInitials(user?.name)}
+        <AdminMediaImage path={user?.profileImage} round width={40} height={40} alt="" />
       </span>
       <div>
         <div className="user-cell__name">{user?.name || "—"}</div>

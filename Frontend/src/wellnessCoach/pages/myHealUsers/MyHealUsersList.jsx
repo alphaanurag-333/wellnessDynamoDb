@@ -161,6 +161,7 @@ export function MyHealUsersList() {
         <table className="data-table">
           <thead>
             <tr>
+              <th>S No.</th>
               <th>Client</th>
               <th>Phone</th>
               <th>Tier</th>
@@ -172,16 +173,17 @@ export function MyHealUsersList() {
           </thead>
           <tbody>
             {loading ? (
-              <CoachTableLoaderRow colSpan={7} label="Loading clients…" />
+              <CoachTableLoaderRow colSpan={8} label="Loading clients…" />
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={7}>
+                <td colSpan={8}>
                   <p className="table-placeholder">No clients found for the current filters.</p>
                 </td>
               </tr>
             ) : (
-              users.map((u) => (
+              users.map((u, idx) => (
                 <tr key={u._id || u.id}>
+                  <td className="data-table__muted">{idx + 1}</td>
                   <td>
                     <ClientTableUserCell user={u} />
                   </td>
