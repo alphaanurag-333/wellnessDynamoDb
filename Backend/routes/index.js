@@ -71,6 +71,7 @@ const supplementRecommendationRoutes = require("./userRoutes/supplementRecommend
 const supplementDosageRoutes = require("./userRoutes/supplementDosageRoutes");
 const wellnessPrescriptionRoutes = require("./userRoutes/wellnessPrescriptionRoutes");
 const coachAuthRoutes = require("./wellnessCoachRoutes/coachAuthRoutes");
+const coachDashboardRoutes = require("./wellnessCoachRoutes/coachDashboardRoutes");
 const coachSpecializationRoutes = require("./wellnessCoachRoutes/coachSpecializationRoutes");
 const coachAssistantRoutes = require("./wellnessCoachRoutes/coachAssistantRoutes");
 const coachHealUserRoutes = require("./wellnessCoachRoutes/coachHealUserRoutes");
@@ -99,6 +100,7 @@ const coachConsultancyRoutes = require("./wellnessCoachRoutes/coachConsultancyRo
 const coachEnergyExchangeRoutes = require("./wellnessCoachRoutes/coachEnergyExchangeRoutes");
 const coachProgramRoutes = require("./wellnessCoachRoutes/coachProgramRoutes");
 const assistantAuthRoutes = require("./assistantWellnessCoachRoutes/assistantAuthRoutes");
+const assistantDashboardRoutes = require("./assistantWellnessCoachRoutes/assistantDashboardRoutes");
 const assistantHealUserRoutes = require("./assistantWellnessCoachRoutes/assistantHealUserRoutes");
 const assistantReminderRoutes = require("./assistantWellnessCoachRoutes/assistantReminderRoutes");
 const assistantTestRecommendationRoutes = require("./assistantWellnessCoachRoutes/assistantTestRecommendationRoutes");
@@ -128,6 +130,7 @@ router.get("/health", (req, res) => {
 router.use("/admin/auth", adminAuthRoutes);
 router.use("/admin/dashboard", adminDashboardRoutes);
 router.use("/coach/auth", coachAuthRoutes);
+router.use("/coach/dashboard", coachDashboardRoutes);
 router.use("/coach/specializations", coachSpecializationRoutes);
 router.use("/coach/assistants", coachAssistantRoutes);
 router.use("/coach/heal-users", coachReminderRoutes);
@@ -154,6 +157,7 @@ router.use("/coach/consultancy", coachConsultancyRoutes);
 router.use("/coach/energy-exchange", coachEnergyExchangeRoutes);
 router.use("/coach/programs", coachProgramRoutes);
 router.use("/assistant/auth", assistantAuthRoutes);
+router.use("/assistant/dashboard", assistantDashboardRoutes);
 router.use("/assistant/heal-users", assistantReminderRoutes);
 router.use("/assistant/heal-users", assistantTestRecommendationRoutes);
 router.use("/assistant/heal-users", assistantWellnessPrescriptionRoutes);

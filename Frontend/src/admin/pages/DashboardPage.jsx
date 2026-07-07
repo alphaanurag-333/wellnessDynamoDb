@@ -30,7 +30,7 @@ const STAT_CARDS = [
   },
   {
     key: "activePrograms",
-    label: "Active Programs",
+    label: "Active Wellness Programs",
     tone: "green",
     icon: (
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -64,13 +64,30 @@ const STAT_CARDS = [
     ),
   },
   {
-    key: "pendingApprovals",
-    label: "Pending Approvals",
+    key: "pendingCoachApprovals",
+    label: "Pending WC signups",
+    description: "Wellness coach accounts awaiting admin approval",
     tone: "amber",
     icon: (
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-        <circle cx="12" cy="12" r="10" />
-        <path d="M12 6v6l4 2" />
+        <circle cx="12" cy="8" r="4" />
+        <path d="M5 20a7 7 0 0 1 14 0" />
+        <path d="M12 12v4" />
+        <path d="M10 16h4" />
+      </svg>
+    ),
+  },
+  {
+    key: "pendingUserAssignments",
+    label: "Pending user assignments",
+    description: "Heal & consultancy users awaiting coach assignment",
+    tone: "orange",
+    icon: (
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <circle cx="9" cy="7" r="4" />
+        <path d="M2 21a7 7 0 0 1 14 0" />
+        <path d="M19 8v6" />
+        <path d="M16 11h6" />
       </svg>
     ),
   },
@@ -178,12 +195,13 @@ function ShortcutCard({ to, title, desc, icon }) {
   );
 }
 
-function DashboardStatCard({ label, value, tone, icon }) {
+function DashboardStatCard({ label, value, description, tone, icon }) {
   return (
     <article className={`stat-card stat-card--dashboard stat-card--${tone}`}>
       <div className="stat-card__body">
         <div className="stat-card__label">{label}</div>
         <div className="stat-card__value">{value}</div>
+        {description ? <p className="stat-card__desc">{description}</p> : null}
       </div>
       <div className="stat-card__icon" aria-hidden="true">
         {icon}
@@ -253,15 +271,16 @@ export function DashboardPage() {
 
       <section className="admin-dashboard__section" aria-label="Quick insights" aria-busy={loading}>
         <h2 className="dashboard-section-head__title">Quick Insights</h2>
-        <div className="stat-grid stat-grid--dashboard admin-dashboard__stats">
+        <div className="stat-grid stat-grid--dashboard stat-grid--dashboard-7 admin-dashboard__stats">
           {loading ? (
-            <DashboardStatsSkeleton />
+            <DashboardStatsSkeleton count={7} />
           ) : (
             statValues.map((card) => (
               <DashboardStatCard
                 key={card.key}
                 label={card.label}
                 value={card.value}
+                description={card.description}
                 tone={card.tone}
                 icon={card.icon}
               />
