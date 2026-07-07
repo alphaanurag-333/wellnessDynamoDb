@@ -2548,6 +2548,16 @@ a.btn:hover {
   line-height: 1.4;
 }
 
+.auth-field__hint--error {
+  color: #dc2626;
+}
+
+.auth-field--invalid .auth-input-wrap,
+.auth-field--invalid .auth-select {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.12);
+}
+
 .auth-phone-row {
   display: grid;
   grid-template-columns: minmax(9.5rem, 34%) 1fr;

@@ -21,6 +21,8 @@ const { ensureEntityReferralCode } = require("../../models/referralCodeModel");
 const { normalizeEmail, normalizePhone, normalizeCountryCode } = require("../../models/userModel");
 const config = require("../../config");
 const { generateOtp, getOtpExpiryDate, isOtpExpired, deliverOtp } = require("../../utils/otp");
+const { assertPasswordPolicy } = require("../../utils/passwordPolicy");
+const { assertBioPolicy } = require("../../utils/bioPolicy");
 
 function assertCoachCanLogin(coach) {
   if (!coach) {
@@ -97,9 +99,8 @@ exports.registerWellnessCoach = asyncHandler(async (req, res) => {
   if (!normName) throw new AppError("Name is required", 400);
   if (!normEmail) throw new AppError("Email is required", 400);
   if (!normPhone) throw new AppError("Mobile number is required", 400);
-  if (!password || String(password).length < 8) {
-    throw new AppError("Password must be at least 8 characters", 400);
-  }
+  assertPasswordPolicy(password, { required: true, label: "Password" });
+  assertBioPolicy(bio);
 
   const existingByEmail = await getWellnessCoachByEmail(normEmail);
   if (existingByEmail) throw new AppError("An account with this email already exists", 409);
@@ -118,7 +119,7 @@ exports.registerWellnessCoach = asyncHandler(async (req, res) => {
     phone: normPhone,
     phoneCountryCode: normCc,
     password: hashedPassword,
-    bio: bio != null ? String(bio).trim() || null : null,
+    bio: assertBioPolicy(bio),
     specializationId: parsedSpecializationId,
     country: country != null ? String(country).trim() || null : null,
     state: state != null ? String(state).trim() || null : null,
@@ -243,7 +244,7 @@ exports.updateWellnessCoachProfile = asyncHandler(async (req, res) => {
   if (name !== undefined) updates.name = String(name).trim();
   if (phone !== undefined) updates.phone = String(phone).trim();
   if (phoneCountryCode !== undefined) updates.phoneCountryCode = String(phoneCountryCode).trim();
-  if (bio !== undefined) updates.bio = String(bio || "").trim() || null;
+  if (bio !== undefined) updates.bio = assertBioPolicy(bio);
 
   const fcmId = parseFcmIdFromBody(req.body);
   if (fcmId !== undefined) updates.fcmId = fcmId;
@@ -289,9 +290,7 @@ exports.changeWellnessCoachPassword = asyncHandler(async (req, res) => {
     throw new AppError("Current password and new password are required", 400);
   }
 
-  if (String(newPassword).length < 8) {
-    throw new AppError("New password must be at least 8 characters", 400);
-  }
+  assertPasswordPolicy(newPassword, { required: true, label: "New password" });
 
   if (!coach.password) {
     throw new AppError("Password login is not set up for this account", 400);

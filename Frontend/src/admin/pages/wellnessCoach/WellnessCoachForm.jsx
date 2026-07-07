@@ -26,16 +26,23 @@ import {
   dialCodeFromPhonecode,
   emptyCoachForm,
   getLocationOptions,
+  sanitizeBio,
   validateCoachForm,
 } from "./WellnessCoachShared.js";
 import {
+  blockIndianMobileFirstDigitKeyDown,
   blockPersonNameDigitKeyDown,
-  blockPhoneNonDigitKeyDown,
   EMAIL_MAX_LEN,
+  INDIAN_MOBILE_INPUT_PATTERN,
+  PHONE_NATIONAL_LEN,
   sanitizeEmailInput,
   sanitizePersonName,
   sanitizePhoneDigits,
 } from "../../../utils/personFieldValidation.js";
+import {
+  PROFILE_PASSWORD_MAX_LEN,
+  PROFILE_PASSWORD_MIN_LEN,
+} from "../../../utils/profilePasswordValidation.js";
 import { validateImageFileSize } from "../../../utils/mediaUploadValidation.js";
 import { WellnessCoachSubmitLoader } from "./WellnessCoachPageLoader.jsx";
 
@@ -125,7 +132,11 @@ export function WellnessCoachForm({
     setValues((p) => ({ ...p, phone: sanitizePhoneDigits(e.target.value) }));
   };
 
-  const handlePhoneKeyDown = blockPhoneNonDigitKeyDown;
+  const handleBioInput = (e) => {
+    setValues((p) => ({ ...p, bio: sanitizeBio(e.target.value) }));
+  };
+
+  const handlePhoneKeyDown = blockIndianMobileFirstDigitKeyDown;
   const handleNameKeyDown = blockPersonNameDigitKeyDown;
 
   const dialCountryOptions = useMemo(
@@ -322,11 +333,17 @@ export function WellnessCoachForm({
             className="user-field__input"
             value={values.password}
             onChange={handleChange("password")}
-            placeholder={mode === "create" ? "Minimum 8 characters" : "Leave blank to keep current password"}
+            placeholder={mode === "create" ? `${PROFILE_PASSWORD_MIN_LEN}–${PROFILE_PASSWORD_MAX_LEN} characters` : "Leave blank to keep current password"}
             autoComplete={mode === "create" ? "new-password" : "off"}
             required={mode === "create"}
-            minLength={mode === "create" ? 8 : undefined}
+            minLength={mode === "create" ? PROFILE_PASSWORD_MIN_LEN : undefined}
+            maxLength={PROFILE_PASSWORD_MAX_LEN}
           />
+          {mode === "create" ? (
+            <span className="user-field__label small text-body-secondary d-block mt-1">
+              Use {PROFILE_PASSWORD_MIN_LEN}–{PROFILE_PASSWORD_MAX_LEN} characters.
+            </span>
+          ) : null}
         </label>
         <label className="user-field col-12 col-md-6 min-w-0">
           <span className="user-field__label">
@@ -355,15 +372,15 @@ export function WellnessCoachForm({
               placeholder="9876543210"
               autoComplete="tel-national"
               inputMode="numeric"
-              pattern="[0-9]{10}"
+              pattern={INDIAN_MOBILE_INPUT_PATTERN}
               aria-label="Mobile number without country code"
-              maxLength={10}
-              minLength={10}
+              maxLength={PHONE_NATIONAL_LEN}
+              minLength={PHONE_NATIONAL_LEN}
               required
             />
           </div>
           <span className="user-field__label small text-body-secondary d-block mt-1">
-            10-digit number without country code.
+            {PHONE_NATIONAL_LEN}-digit number starting with 6–9.
           </span>
         </label>
         <label className="user-field col-12 col-md-6">
@@ -411,9 +428,12 @@ export function WellnessCoachForm({
             className="user-field__input"
             rows={3}
             value={values.bio}
-            onChange={handleChange("bio")}
+            onChange={handleBioInput}
             maxLength={BIO_MAX_LEN}
           />
+          <span className="user-field__label small text-body-secondary d-block mt-1">
+            {String(values.bio ?? "").length}/{BIO_MAX_LEN} characters
+          </span>
         </label>
       </div>
 

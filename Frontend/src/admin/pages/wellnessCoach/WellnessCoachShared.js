@@ -5,12 +5,18 @@ import {
   validatePersonName,
   validatePhoneDigits,
 } from "../../../utils/personFieldValidation.js";
+import {
+  PROFILE_PASSWORD_MAX_LEN,
+  PROFILE_PASSWORD_MIN_LEN,
+  validateRegistrationConfirmPassword,
+  validateRegistrationPassword,
+} from "../../../utils/profilePasswordValidation.js";
 
 export const LIST_LIMIT = 10;
 export const LIST_SEARCH_MAX_LEN = 120;
 export { PERSON_NAME_MAX_LEN as NAME_MAX_LEN, EMAIL_MAX_LEN } from "../../../utils/personFieldValidation.js";
 // export const EMAIL_MAX_LEN = 120;
-export const BIO_MAX_LEN = 2000;
+export const BIO_MAX_LEN = 150;
 export const DEFAULT_DIAL = "+91";
 
 export function getSpecializationOptionId(option) {
@@ -138,13 +144,58 @@ export function coachToForm(coach) {
   };
 }
 
-export function validateCoachPassword(password, { required = false } = {}) {
-  const value = String(password ?? "").trim();
-  if (!value) {
-    return required ? "Password is required (minimum 8 characters)." : "";
-  }
-  if (value.length < 8) return "Password must be at least 8 characters.";
+export function sanitizeBio(raw, maxLen = BIO_MAX_LEN) {
+  return String(raw ?? "").slice(0, maxLen);
+}
+
+export function validateBio(bio, { maxLen = BIO_MAX_LEN } = {}) {
+  const value = String(bio ?? "");
+  if (value.length > maxLen) return `Bio must be at most ${maxLen} characters.`;
   return "";
+}
+
+export function validateCoachPassword(password, { required = false, label = "Password" } = {}) {
+  const value = String(password ?? "");
+  if (!value.trim()) {
+    return required ? `${label} is required (${PROFILE_PASSWORD_MIN_LEN}–${PROFILE_PASSWORD_MAX_LEN} characters).` : "";
+  }
+  if (value.length < PROFILE_PASSWORD_MIN_LEN) {
+    return `${label} must be at least ${PROFILE_PASSWORD_MIN_LEN} characters.`;
+  }
+  if (value.length > PROFILE_PASSWORD_MAX_LEN) {
+    return `${label} cannot exceed ${PROFILE_PASSWORD_MAX_LEN} characters.`;
+  }
+  return "";
+}
+
+export function validateCoachRegisterFields(form) {
+  const loc = getLocationOptions(form.countryIso, form.stateCode);
+  let stateErr = "";
+  if (!loc.citiesFromCountry && !String(form.state ?? "").trim()) {
+    const states = State.getStatesOfCountry(form.countryIso) || [];
+    if (states.length > 0) stateErr = "State / region is required.";
+  }
+
+  return {
+    name: validatePersonName(form.name, { label: "Full name" }),
+    email: validateEmail(form.email, { label: "Email address" }),
+    phone: validatePhoneDigits(form.phone),
+    password: validateRegistrationPassword(form.password),
+    confirmPassword: validateRegistrationConfirmPassword(form.confirmPassword, form.password),
+    specializationId: !String(form.specializationId ?? "").trim() ? "Specialization is required." : "",
+    bio: validateBio(form.bio),
+    country: !String(form.country ?? "").trim() ? "Country is required." : "",
+    state: stateErr,
+    city: !String(form.city ?? "").trim() ? "City is required." : "",
+  };
+}
+
+export function firstCoachFormError(errors) {
+  return Object.values(errors).find(Boolean) || "";
+}
+
+export function validateCoachRegisterForm(form) {
+  return firstCoachFormError(validateCoachRegisterFields(form));
 }
 
 export function validateCoachForm(form, { requirePassword = false } = {}) {
@@ -169,6 +220,8 @@ export function validateCoachForm(form, { requirePassword = false } = {}) {
   }
   if (!String(form.city ?? "").trim()) return "City is required.";
   if (!String(form.specializationId ?? "").trim()) return "Specialization is required.";
+  const bioErr = validateBio(form.bio);
+  if (bioErr) return bioErr;
   if (form.status && !["active", "inactive"].includes(form.status)) {
     return "Status must be active or inactive.";
   }

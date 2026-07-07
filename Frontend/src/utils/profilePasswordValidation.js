@@ -6,6 +6,25 @@ export function validateCurrentPassword(value) {
   return "";
 }
 
+export function validateRegistrationPassword(value) {
+  const trimmed = String(value ?? "");
+  if (!trimmed.trim()) return "Password is required.";
+  if (trimmed.length < PROFILE_PASSWORD_MIN_LEN) {
+    return `Password must be at least ${PROFILE_PASSWORD_MIN_LEN} characters.`;
+  }
+  if (trimmed.length > PROFILE_PASSWORD_MAX_LEN) {
+    return `Password cannot exceed ${PROFILE_PASSWORD_MAX_LEN} characters.`;
+  }
+  return "";
+}
+
+export function validateRegistrationConfirmPassword(value, password = "") {
+  const trimmed = String(value ?? "");
+  if (!trimmed.trim()) return "Please confirm your password.";
+  if (trimmed !== password) return "Passwords do not match.";
+  return "";
+}
+
 export function validateNewPassword(value, currentPassword = "") {
   const trimmed = String(value ?? "");
   if (!trimmed.trim()) return "New password is required.";

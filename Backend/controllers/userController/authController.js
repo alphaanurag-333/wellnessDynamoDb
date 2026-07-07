@@ -9,6 +9,7 @@ const {
   verifyRegistrationOtp,
 } = require("../../utils/registrationOtpStore");
 const config = require("../../config");
+const { assertPasswordPolicy } = require("../../utils/passwordPolicy");
 const { getHealthConcernById } = require("../../models/healthConcernModel");
 const {
   createUser,
@@ -148,9 +149,7 @@ exports.registerUser = asyncHandler(async (req, res) => {
   }
 
   if (password) {
-    if (password.length < 8) {
-      throw new AppError("password must be at least 8 characters", 400);
-    }
+    assertPasswordPolicy(password, { required: true, label: "Password" });
     fields.passwordHash = await hashPassword(password);
   }
 
@@ -338,9 +337,7 @@ exports.updateUserProfile = asyncHandler(async (req, res) => {
 
   const password = String(body.password ?? body.newPassword ?? "").trim();
   if (password) {
-    if (password.length < 8) {
-      throw new AppError("password must be at least 8 characters", 400);
-    }
+    assertPasswordPolicy(password, { required: true, label: "Password" });
     updates.passwordHash = await hashPassword(password);
   }
 

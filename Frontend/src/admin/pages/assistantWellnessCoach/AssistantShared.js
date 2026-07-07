@@ -9,6 +9,10 @@ import {
   validatePersonName,
   validatePhoneDigits,
 } from "../../../utils/personFieldValidation.js";
+import {
+  PROFILE_PASSWORD_MAX_LEN,
+  PROFILE_PASSWORD_MIN_LEN,
+} from "../../../utils/profilePasswordValidation.js";
 
 export const LIST_LIMIT = 10;
 export const DESIGNATION_MAX_LEN = 120;
@@ -52,12 +56,19 @@ export function assistantToForm(assistant) {
   };
 }
 
-export function validateAssistantPassword(password, { required = false } = {}) {
-  const value = String(password ?? "").trim();
-  if (!value) {
-    return required ? "Password is required (minimum 8 characters)." : "";
+export function validateAssistantPassword(password, { required = false, label = "Password" } = {}) {
+  const value = String(password ?? "");
+  if (!value.trim()) {
+    return required
+      ? `${label} is required (${PROFILE_PASSWORD_MIN_LEN}–${PROFILE_PASSWORD_MAX_LEN} characters).`
+      : "";
   }
-  if (value.length < 8) return "Password must be at least 8 characters.";
+  if (value.length < PROFILE_PASSWORD_MIN_LEN) {
+    return `${label} must be at least ${PROFILE_PASSWORD_MIN_LEN} characters.`;
+  }
+  if (value.length > PROFILE_PASSWORD_MAX_LEN) {
+    return `${label} cannot exceed ${PROFILE_PASSWORD_MAX_LEN} characters.`;
+  }
   return "";
 }
 

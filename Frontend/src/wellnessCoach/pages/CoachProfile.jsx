@@ -15,7 +15,11 @@ import {
 import { CoachPageLoadingState } from "../components/CoachPageLoader.jsx";
 import { mediaUrl } from "../../media.js";
 import { logoutCoach, setCoach } from "../../store/authSlice.js";
-import { CopyReferralCode } from "../../components/ReferralAssignmentShared.jsx";
+import {
+  BIO_MAX_LEN,
+  sanitizeBio,
+  validateBio,
+} from "../../admin/pages/wellnessCoach/WellnessCoachShared.js";
 import {
   blockPersonNameDigitKeyDown,
   blockPhoneNonDigitKeyDown,
@@ -227,6 +231,16 @@ export function CoachProfile() {
         });
         return;
       }
+
+      const bioErr = validateBio(bio);
+      if (bioErr) {
+        await Swal.fire({
+          icon: "error",
+          title: "Validation error",
+          text: bioErr,
+        });
+        return;
+      }
   
       setLoading(true);
   
@@ -374,11 +388,14 @@ export function CoachProfile() {
             <textarea
               className="user-field__input"
               value={bio}
-              onChange={(e) => setBio(e.target.value)}
+              onChange={(e) => setBio(sanitizeBio(e.target.value))}
               rows={4}
-              maxLength={2000}
+              maxLength={BIO_MAX_LEN}
               placeholder="Tell clients about your experience and approach."
             />
+            <span className="user-field__label small text-body-secondary d-block mt-1">
+              {String(bio ?? "").length}/{BIO_MAX_LEN} characters
+            </span>
           </ProfileField>
           <ProfileField label="Referral code" fullWidth>
             <CopyReferralCode code={coach?.referralCode} label="" />

@@ -14,6 +14,9 @@ import {
   dialCodeFromPhonecode,
   getLocationOptions,
   getSpecializationOptionId,
+  sanitizeBio,
+  validateCoachRegisterFields,
+  validateCoachRegisterForm,
 } from "../../admin/pages/wellnessCoach/WellnessCoachShared.js";
 import { CoachSubmitLoader } from "../components/CoachPageLoader.jsx";
 import { AuthPasswordToggle } from "../../components/AuthPasswordToggle.jsx";
@@ -21,17 +24,37 @@ import { selectLoginBrandLogoUrl } from "../../store/appConfigSelectors.js";
 import { mediaUrl } from "../../media.js";
 import defaultLogo from "../../assets/logo/defaultlogo.png";
 import {
+  blockIndianMobileFirstDigitKeyDown,
   blockPersonNameDigitKeyDown,
-  blockPhoneNonDigitKeyDown,
   EMAIL_MAX_LEN,
+  INDIAN_MOBILE_INPUT_PATTERN,
   PERSON_NAME_MAX_LEN,
+  PHONE_NATIONAL_LEN,
   sanitizeEmailInput,
   sanitizePersonName,
   sanitizePhoneDigits,
-  validateEmail,
-  validatePersonName,
-  validatePhoneDigits,
 } from "../../utils/personFieldValidation.js";
+import {
+  PROFILE_PASSWORD_MAX_LEN,
+  PROFILE_PASSWORD_MIN_LEN,
+} from "../../utils/profilePasswordValidation.js";
+
+function charCount(value, max) {
+  return `${String(value ?? "").length}/${max}`;
+}
+
+function AuthFieldMeta({ error, hint, counter }) {
+  if (error) {
+    return (
+      <span className="auth-field__hint auth-field__hint--error" role="alert">
+        {error}
+      </span>
+    );
+  }
+  if (counter) return <span className="auth-field__hint">{counter}</span>;
+  if (hint) return <span className="auth-field__hint">{hint}</span>;
+  return null;
+}
 
 function emptyRegisterForm() {
   return {
@@ -52,34 +75,6 @@ function emptyRegisterForm() {
   };
 }
 
-function validateRegisterForm(form) {
-  const nameErr = validatePersonName(form.name);
-  if (nameErr) return nameErr;
-
-  const emailErr = validateEmail(form.email, { label: "Email address" });
-  if (emailErr) return emailErr;
-
-  const phoneErr = validatePhoneDigits(form.phone);
-  const password = String(form.password ?? "");
-  const confirmPassword = String(form.confirmPassword ?? "");
-
-  if (phoneErr) return phoneErr;
-  if (!password) return "Password is required (minimum 8 characters).";
-  if (password.length < 8) return "Password must be at least 8 characters.";
-  if (password !== confirmPassword) return "Passwords do not match.";
-  if (!String(form.specializationId ?? "").trim()) return "Specialization is required.";
-
-  if (!String(form.country ?? "").trim()) return "Country is required.";
-  const loc = getLocationOptions(form.countryIso, form.stateCode);
-  if (!loc.citiesFromCountry && !String(form.state ?? "").trim()) {
-    const states = State.getStatesOfCountry(form.countryIso) || [];
-    if (states.length > 0) return "State / region is required.";
-  }
-  if (!String(form.city ?? "").trim()) return "City is required.";
-
-  return "";
-}
-
 export function CoachRegisterPage() {
   const coachToken = useSelector((s) => s.auth.coachToken);
   const brandLogoUrl = useSelector(selectLoginBrandLogoUrl);
@@ -90,6 +85,7 @@ export function CoachRegisterPage() {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [specializationOptions, setSpecializationOptions] = useState([]);
   const [specializationsLoading, setSpecializationsLoading] = useState(true);
 
@@ -140,23 +136,56 @@ export function CoachRegisterPage() {
 
   if (coachToken) return <Navigate to="/coach/dashboard" replace />;
 
+  const clearFieldError = (field) => {
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const runFieldValidation = (nextForm, field) => {
+    const errors = validateCoachRegisterFields(nextForm);
+    if (field) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        if (errors[field]) next[field] = errors[field];
+        else delete next[field];
+        return next;
+      });
+      return errors[field] || "";
+    }
+    setFieldErrors(errors);
+    return validateCoachRegisterForm(nextForm);
+  };
+
   const handleChange = (field) => (e) => {
+    clearFieldError(field);
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
   };
 
   const handleEmailInput = (e) => {
+    clearFieldError("email");
     setForm((prev) => ({ ...prev, email: sanitizeEmailInput(e.target.value) }));
   };
 
   const handleNameInput = (e) => {
+    clearFieldError("name");
     setForm((prev) => ({ ...prev, name: sanitizePersonName(e.target.value) }));
   };
 
   const handlePhoneInput = (e) => {
+    clearFieldError("phone");
     setForm((prev) => ({ ...prev, phone: sanitizePhoneDigits(e.target.value) }));
   };
 
-  const handlePhoneKeyDown = blockPhoneNonDigitKeyDown;
+  const handleBioInput = (e) => {
+    clearFieldError("bio");
+    setForm((prev) => ({ ...prev, bio: sanitizeBio(e.target.value) }));
+  };
+
+  const handlePhoneKeyDown = blockIndianMobileFirstDigitKeyDown;
   const handleNameKeyDown = blockPersonNameDigitKeyDown;
 
   const setPhoneCountryIso = (iso) => {
@@ -184,7 +213,7 @@ export function CoachRegisterPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const err = validateRegisterForm(form);
+    const err = runFieldValidation(form);
     if (err) {
       return Swal.fire({ icon: "warning", title: "Validation", text: err, confirmButtonColor: "#ea580c" });
     }
@@ -251,7 +280,7 @@ export function CoachRegisterPage() {
 
         <form className="auth-form auth-form--register" onSubmit={handleSubmit}>
           <div className="row g-3">
-            <label className="auth-field col-12 col-md-6">
+            <label className={`auth-field col-12 col-md-6${fieldErrors.name ? " auth-field--invalid" : ""}`}>
               <span className="auth-field__label">
                 Full name <span className="required-dot">*</span>
               </span>
@@ -262,16 +291,24 @@ export function CoachRegisterPage() {
                   value={form.name}
                   onChange={handleNameInput}
                   onKeyDown={handleNameKeyDown}
+                  onBlur={() => runFieldValidation(form, "name")}
                   placeholder="Your full name"
                   maxLength={PERSON_NAME_MAX_LEN}
+                  minLength={2}
                   inputMode="text"
                   autoCapitalize="words"
+                  aria-invalid={fieldErrors.name ? "true" : undefined}
                   required
                 />
               </div>
+              <AuthFieldMeta
+                error={fieldErrors.name}
+                hint={`Letters only, ${PERSON_NAME_MAX_LEN} characters max.`}
+                counter={charCount(form.name, PERSON_NAME_MAX_LEN)}
+              />
             </label>
 
-            <label className="auth-field col-12 col-md-6">
+            <label className={`auth-field col-12 col-md-6${fieldErrors.email ? " auth-field--invalid" : ""}`}>
               <span className="auth-field__label">
                 Email address <span className="required-dot">*</span>
               </span>
@@ -281,15 +318,21 @@ export function CoachRegisterPage() {
                   name="email"
                   value={form.email}
                   onChange={handleEmailInput}
+                  onBlur={() => runFieldValidation(form, "email")}
                   placeholder="abc@example.com"
                   autoComplete="email"
                   maxLength={EMAIL_MAX_LEN}
+                  aria-invalid={fieldErrors.email ? "true" : undefined}
                   required
                 />
               </div>
+              <AuthFieldMeta
+                error={fieldErrors.email}
+                counter={charCount(form.email, EMAIL_MAX_LEN)}
+              />
             </label>
 
-            <div className="auth-field col-12 col-md-6">
+            <div className={`auth-field col-12 col-md-6${fieldErrors.phone ? " auth-field--invalid" : ""}`}>
               <span className="auth-field__label">
                 Mobile number <span className="required-dot">*</span>
               </span>
@@ -312,19 +355,26 @@ export function CoachRegisterPage() {
                     value={form.phone}
                     onChange={handlePhoneInput}
                     onKeyDown={handlePhoneKeyDown}
+                    onBlur={() => runFieldValidation(form, "phone")}
                     placeholder="9876543210"
                     autoComplete="tel-national"
                     inputMode="numeric"
-                    pattern="[0-9]{10}"
-                    maxLength={10}
-                    minLength={10}
+                    pattern={INDIAN_MOBILE_INPUT_PATTERN}
+                    maxLength={PHONE_NATIONAL_LEN}
+                    minLength={PHONE_NATIONAL_LEN}
+                    aria-invalid={fieldErrors.phone ? "true" : undefined}
                     required
                   />
                 </div>
               </div>
+              <AuthFieldMeta
+                error={fieldErrors.phone}
+                hint={`${PHONE_NATIONAL_LEN}-digit Indian mobile number starting with 6–9.`}
+                counter={charCount(form.phone, PHONE_NATIONAL_LEN)}
+              />
             </div>
 
-            <label className="auth-field col-12 col-md-6">
+            <label className={`auth-field col-12 col-md-6${fieldErrors.specializationId ? " auth-field--invalid" : ""}`}>
               <span className="auth-field__label">
                 Specialization <span className="required-dot">*</span>
               </span>
@@ -333,7 +383,9 @@ export function CoachRegisterPage() {
                 name="specializationId"
                 value={form.specializationId}
                 onChange={handleChange("specializationId")}
+                onBlur={() => runFieldValidation(form, "specializationId")}
                 disabled={specializationsLoading || specializationOptions.length === 0}
+                aria-invalid={fieldErrors.specializationId ? "true" : undefined}
                 required
               >
                 <option value="">
@@ -348,9 +400,10 @@ export function CoachRegisterPage() {
                   );
                 })}
               </select>
+              <AuthFieldMeta error={fieldErrors.specializationId} />
             </label>
 
-            <label className="auth-field col-12 col-md-6">
+            <label className={`auth-field col-12 col-md-6${fieldErrors.password ? " auth-field--invalid" : ""}`}>
               <span className="auth-field__label">
                 Password <span className="required-dot">*</span>
               </span>
@@ -360,8 +413,12 @@ export function CoachRegisterPage() {
                   name="password"
                   value={form.password}
                   onChange={handleChange("password")}
-                  placeholder="Min. 8 characters"
+                  onBlur={() => runFieldValidation(form, "password")}
+                  placeholder={`${PROFILE_PASSWORD_MIN_LEN}–${PROFILE_PASSWORD_MAX_LEN} characters`}
                   autoComplete="new-password"
+                  minLength={PROFILE_PASSWORD_MIN_LEN}
+                  maxLength={PROFILE_PASSWORD_MAX_LEN}
+                  aria-invalid={fieldErrors.password ? "true" : undefined}
                   required
                 />
                 <AuthPasswordToggle
@@ -369,9 +426,14 @@ export function CoachRegisterPage() {
                   onToggle={() => setPasswordVisible((v) => !v)}
                 />
               </div>
+              <AuthFieldMeta
+                error={fieldErrors.password}
+                hint={`Use ${PROFILE_PASSWORD_MIN_LEN}–${PROFILE_PASSWORD_MAX_LEN} characters.`}
+                counter={charCount(form.password, PROFILE_PASSWORD_MAX_LEN)}
+              />
             </label>
 
-            <label className="auth-field col-12 col-md-6">
+            <label className={`auth-field col-12 col-md-6${fieldErrors.confirmPassword ? " auth-field--invalid" : ""}`}>
               <span className="auth-field__label">
                 Confirm password <span className="required-dot">*</span>
               </span>
@@ -381,8 +443,12 @@ export function CoachRegisterPage() {
                   name="confirmPassword"
                   value={form.confirmPassword}
                   onChange={handleChange("confirmPassword")}
+                  onBlur={() => runFieldValidation(form, "confirmPassword")}
                   placeholder="Re-enter password"
                   autoComplete="new-password"
+                  minLength={PROFILE_PASSWORD_MIN_LEN}
+                  maxLength={PROFILE_PASSWORD_MAX_LEN}
+                  aria-invalid={fieldErrors.confirmPassword ? "true" : undefined}
                   required
                 />
                 <AuthPasswordToggle
@@ -390,20 +456,27 @@ export function CoachRegisterPage() {
                   onToggle={() => setConfirmVisible((v) => !v)}
                 />
               </div>
+              <AuthFieldMeta error={fieldErrors.confirmPassword} />
             </label>
 
-            <label className="auth-field col-12">
+            <label className={`auth-field col-12${fieldErrors.bio ? " auth-field--invalid" : ""}`}>
               <span className="auth-field__label">Bio</span>
               <div className="auth-input-wrap auth-input-wrap--compact auth-input-wrap--textarea">
                 <textarea
                   name="bio"
                   value={form.bio}
-                  onChange={handleChange("bio")}
+                  onChange={handleBioInput}
+                  onBlur={() => runFieldValidation(form, "bio")}
                   placeholder="Brief introduction…"
-                  rows={1}
+                  rows={3}
                   maxLength={BIO_MAX_LEN}
+                  aria-invalid={fieldErrors.bio ? "true" : undefined}
                 />
               </div>
+              <AuthFieldMeta
+                error={fieldErrors.bio}
+                counter={charCount(form.bio, BIO_MAX_LEN)}
+              />
             </label>
 
             <div className="col-12">
@@ -434,7 +507,7 @@ export function CoachRegisterPage() {
               </select>
             </label>
 
-            <label className="auth-field col-12 col-md-4">
+            <label className={`auth-field col-12 col-md-4${fieldErrors.state ? " auth-field--invalid" : ""}`}>
               <span className="auth-field__label">
                 State / region <span className="required-dot">*</span>
               </span>
@@ -443,7 +516,10 @@ export function CoachRegisterPage() {
                 value={form.stateCode || ""}
                 disabled={!form.countryIso || locationOptions.citiesFromCountry}
                 required={!locationOptions.citiesFromCountry}
+                aria-invalid={fieldErrors.state ? "true" : undefined}
                 onChange={(e) => {
+                  clearFieldError("state");
+                  clearFieldError("city");
                   const sc = e.target.value;
                   const st =
                     form.countryIso && sc
@@ -456,6 +532,7 @@ export function CoachRegisterPage() {
                     city: "",
                   }));
                 }}
+                onBlur={() => runFieldValidation(form, "state")}
               >
                 <option value="">
                   {!form.countryIso
@@ -470,9 +547,10 @@ export function CoachRegisterPage() {
                   </option>
                 ))}
               </select>
+              <AuthFieldMeta error={fieldErrors.state} />
             </label>
 
-            <label className="auth-field col-12 col-md-4">
+            <label className={`auth-field col-12 col-md-4${fieldErrors.city ? " auth-field--invalid" : ""}`}>
               <span className="auth-field__label">
                 City <span className="required-dot">*</span>
               </span>
@@ -486,7 +564,12 @@ export function CoachRegisterPage() {
                     locationOptions.states.length > 0)
                 }
                 required
-                onChange={(e) => setForm((prev) => ({ ...prev, city: e.target.value }))}
+                aria-invalid={fieldErrors.city ? "true" : undefined}
+                onChange={(e) => {
+                  clearFieldError("city");
+                  setForm((prev) => ({ ...prev, city: e.target.value }));
+                }}
+                onBlur={() => runFieldValidation(form, "city")}
               >
                 <option value="">
                   {!form.countryIso
@@ -503,6 +586,7 @@ export function CoachRegisterPage() {
                   </option>
                 ))}
               </select>
+              <AuthFieldMeta error={fieldErrors.city} />
             </label>
           </div>
 

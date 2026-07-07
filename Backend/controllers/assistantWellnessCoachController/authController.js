@@ -20,6 +20,7 @@ const { normalizePhone, normalizeCountryCode } = require("../../models/userModel
 const { ensureEntityReferralCode } = require("../../models/referralCodeModel");
 const config = require("../../config");
 const { generateOtp, getOtpExpiryDate, isOtpExpired, deliverOtp } = require("../../utils/otp");
+const { assertPasswordPolicy } = require("../../utils/passwordPolicy");
 
 const S3_FOLDER = "assistant-wellness-coach";
 const ROLE = "assistant_wellness_coach";
@@ -218,9 +219,7 @@ exports.changeAssistantWellnessCoachPassword = asyncHandler(async (req, res) => 
     throw new AppError("Current password and new password are required", 400);
   }
 
-  if (String(newPassword).length < 8) {
-    throw new AppError("New password must be at least 8 characters", 400);
-  }
+  assertPasswordPolicy(newPassword, { required: true, label: "New password" });
 
   if (!assistant.password) {
     throw new AppError("Password login is not set up for this account", 400);
