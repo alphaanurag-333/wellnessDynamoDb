@@ -1455,6 +1455,35 @@ const TABLE_DEFINITIONS = [
     ...PAY_PER_REQUEST,
   },
   {
+    TableName: "UserHealConsultancyTrack",
+    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
+    AttributeDefinitions: [
+      { AttributeName: "id", AttributeType: "S" },
+      { AttributeName: "userId", AttributeType: "S" },
+      { AttributeName: "parentCoachId", AttributeType: "S" },
+      { AttributeName: "createdAt", AttributeType: "S" },
+    ],
+    GlobalSecondaryIndexes: [
+      {
+        IndexName: "UserIdCreatedAtIndex",
+        KeySchema: [
+          { AttributeName: "userId", KeyType: "HASH" },
+          { AttributeName: "createdAt", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+      {
+        IndexName: "ParentCoachIdCreatedAtIndex",
+        KeySchema: [
+          { AttributeName: "parentCoachId", KeyType: "HASH" },
+          { AttributeName: "createdAt", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+    ],
+    ...PAY_PER_REQUEST,
+  },
+  {
     TableName: "UserProgram",
     KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
     AttributeDefinitions: [

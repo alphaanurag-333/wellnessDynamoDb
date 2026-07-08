@@ -10091,6 +10091,73 @@ fieldset.form-field legend {
   gap: 1rem;
 }
 
+.user-heal-consultancy-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.heal-consultancy-table tbody td {
+  vertical-align: top;
+}
+
+.heal-consultancy-table__edit-row td {
+  background: #f8fafc;
+  padding: 1rem 1.25rem;
+}
+
+.heal-consultancy-table__edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.heal-consultancy-table__edit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.heal-consultancy-table__edit-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.heal-consultancy-status {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.heal-consultancy-status--requested {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.heal-consultancy-status--scheduled {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.heal-consultancy-status--completed {
+  background: #ecfdf5;
+  color: #15803d;
+}
+
+.heal-consultancy-status--follow_up_needed {
+  background: #fefce8;
+  color: #a16207;
+}
+
+.heal-consultancy-status--cancelled {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
 .metabolic-metric-card__current {
   margin-bottom: 0.75rem;
 }
