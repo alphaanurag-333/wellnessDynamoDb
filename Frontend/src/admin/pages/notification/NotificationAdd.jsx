@@ -143,8 +143,8 @@ export function NotificationForm({ mode = "create", initialNotification = null }
           </button>
         )}
         <button type="submit" className="btn btn--primary" disabled={saving}>
-          <IoSendOutline size={16} />
           {saving ? "Saving…" : editId ? "Update notification" : "Save notification"}
+          <IoSendOutline size={16} />
         </button>
       </div>
     </form>

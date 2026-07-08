@@ -116,7 +116,7 @@ export function ProgramCatalogEdit() {
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
             />
           </label>
-          <label className="user-field col-12 col-md-4" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <label className="user-field col-12 col-md-4" style={{ display: "flex", alignItems: "self-start", gap: 8 }}>
             <input
               type="checkbox"
               checked={form.isActive}
@@ -126,7 +126,7 @@ export function ProgramCatalogEdit() {
           </label>
         </div>
         <div className="form-actions">
-          <button type="button" className="btn btn--ghost" onClick={() => navigate("/admin/programs")}>Cancel</button>
+          <button style={{marginRight:"15px"}} type="button" className="btn btn--ghost" onClick={() => navigate("/admin/programs")}>Cancel</button>
           <button type="submit" className="btn btn--primary" disabled={saving}>{saving ? "Saving..." : "Save changes"}</button>
         </div>
       </form>

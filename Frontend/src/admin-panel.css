@@ -817,6 +817,7 @@ a.admin-header__dropdown-item {
   margin-top: 2px;
   font-size: 1.85rem;
   line-height: 1.15;
+  text-align: right;
 }
 
 .stat-card--dashboard .stat-card__desc {
