@@ -60,10 +60,10 @@ export function SiteHeader() {
   }, [loginOpen]);
 
   const healthRoutes = [
-    "/weight-management",
+    "/fat-loss",
     "/gut-health",
-    "/diabetes-care",
-    "/thyroid-care",
+    "/diabetes-reversal",
+    "/thyroid",
   ];
 
   const isHealthActive = healthRoutes.includes(location.pathname);
@@ -114,7 +114,7 @@ export function SiteHeader() {
                 About Us
               </NavLink>
 
-              {/* <div className="site-header__dropdown">
+              <div className="site-header__dropdown">
                 <button
                   type="button"
                   className={`site-header__link site-header__dropdown-btn ${
@@ -134,12 +134,18 @@ export function SiteHeader() {
 
                 <div className="site-header__dropdown-menu">
                   <NavLink
-                    to="/weight-management"
+                    to="/fat-loss"
                     className={({ isActive }) => (isActive ? "active" : "")}
                   >
                     Weight Management
                   </NavLink>
 
+                  <NavLink
+                    to="/diabetes-reversal"
+                    className={({ isActive }) => (isActive ? "active" : "")}
+                  >
+                    Diabetes Reversal
+                  </NavLink>
                   <NavLink
                     to="/gut-health"
                     className={({ isActive }) => (isActive ? "active" : "")}
@@ -148,20 +154,13 @@ export function SiteHeader() {
                   </NavLink>
 
                   <NavLink
-                    to="/diabetes-care"
-                    className={({ isActive }) => (isActive ? "active" : "")}
-                  >
-                    Diabetes Care
-                  </NavLink>
-
-                  <NavLink
-                    to="/thyroid-care"
+                    to="/thyroid"
                     className={({ isActive }) => (isActive ? "active" : "")}
                   >
                     Thyroid Care
                   </NavLink>
                 </div>
-              </div> */}
+              </div>
 
               <NavLink
                 to="/success-stories"
@@ -265,14 +264,14 @@ export function SiteHeader() {
             About Us
           </NavLink>
 
-          {/* <details open={isHealthActive}>
+          <details open={isHealthActive}>
             <summary className={isHealthActive ? "active" : ""}>
               Health Solutions
             </summary>
 
             <div className="mobile-submenu">
               <NavLink
-                to="/weight-management"
+                to="/fat-loss"
                 className={({ isActive }) => (isActive ? "active" : "")}
                 onClick={() => setMobileMenuOpen(false)}
               >
@@ -288,7 +287,7 @@ export function SiteHeader() {
               </NavLink>
 
               <NavLink
-                to="/diabetes-care"
+                to="/diabetes-reversal"
                 className={({ isActive }) => (isActive ? "active" : "")}
                 onClick={() => setMobileMenuOpen(false)}
               >
@@ -296,14 +295,14 @@ export function SiteHeader() {
               </NavLink>
 
               <NavLink
-                to="/thyroid-care"
+                to="/thyroid"
                 className={({ isActive }) => (isActive ? "active" : "")}
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Thyroid Care
               </NavLink>
             </div>
-          </details> */}
+          </details>
 
           <NavLink
             to="/success-stories"
