@@ -771,6 +771,7 @@ a.admin-header__dropdown-item {
   margin-top: 2px;
   font-size: 2rem;
   line-height: 1.15;
+  text-align: right;
 }
 
 .stat-card--yellow .stat-card__icon {

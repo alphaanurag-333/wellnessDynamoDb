@@ -341,7 +341,7 @@ const SuccessStories = () => {
             <Swiper
               modules={[Navigation]}
               slidesPerView={3}
-              spaceBetween={28}
+              spaceBetween={30}
               speed={700}
               navigation={{
                 prevEl: prevRef.current,
@@ -358,15 +358,15 @@ const SuccessStories = () => {
               }}
               breakpoints={{
                 0: {
-                  slidesPerView: 1.05,
+                  slidesPerView: 1,
                   spaceBetween: 16,
                 },
                 576: {
-                  slidesPerView: 1.35,
+                  slidesPerView: 1,
                   spaceBetween: 18,
                 },
                 768: {
-                  slidesPerView: 2.05,
+                  slidesPerView: 2,
                   spaceBetween: 22,
                 },
                 992: {

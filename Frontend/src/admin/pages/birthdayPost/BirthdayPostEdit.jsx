@@ -99,8 +99,8 @@ function BirthdayPostForm({ post }) {
           Cancel
         </button>
         <button type="submit" className="btn btn--primary" disabled={saving}>
-          <IoSendOutline size={16} />
           {saving ? "Saving…" : "Update"}
+          <IoSendOutline size={16} />
         </button>
       </div>
     </form>

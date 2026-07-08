@@ -118,7 +118,7 @@ export default function VideoTestimonials() {
         <h2 className="voice-title">Voice of Healing : Unfiltered</h2>
         <Swiper
           modules={[Autoplay]}
-          slidesPerView={3}
+          slidesPerView={4}
           spaceBetween={25}
           loop={enableLoop}
           autoplay={

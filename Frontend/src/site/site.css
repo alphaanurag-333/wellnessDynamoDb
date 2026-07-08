@@ -5155,7 +5155,7 @@ BMI SECTION
 }
 
 .bmi-section .container {
-  max-width: var(--container-width);
+  /* max-width: var(--container-width); */
   width: 100%;
   padding: 0px var(--container-padding);
   margin: 0px auto;
@@ -5753,7 +5753,7 @@ HYDRATION SECTION
 
 .hydration-section .container {
   width: 100%;
-  max-width: var(--container-width);
+  /* max-width: var(--container-width); */
   padding: 0px var(--container-padding);
   margin: 0px auto;
 }
@@ -6282,7 +6282,7 @@ PRINT
 
 .success-story .container {
   width: 100%;
-  max-width: var(--container-width);
+  /* max-width: var(--container-width); */
   padding: 0px var(--container-padding);
   margin: auto;
   padding: 70px 0px;
@@ -6371,7 +6371,7 @@ PRINT
 
 .transformation .container {
   width: 100%;
-  max-width: var(--container-width);
+  /* max-width: var(--container-width); */
   padding: 0px var(--container-padding);
   margin: auto;
 }
@@ -6515,7 +6515,7 @@ PRINT
 .transformation-section .container {
   width: 100%;
   overflow: hidden;
-  max-width: var(--container-width);
+  /* max-width: var(--container-width); */
   margin: 0 auto;
   padding: 0 var(--container-padding);
 }
@@ -7146,6 +7146,7 @@ PRINT
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: top;
   transition: var(--transition);
   overflow: hidden;
 }
@@ -7243,7 +7244,7 @@ PRINT
 }
 
 .bmr-section .container {
-  max-width: var(--container-width);
+  /* max-width: var(--container-width); */
   width: 100%;
   margin: 0 auto;
   padding: 0 var(--container-padding);
@@ -7632,7 +7633,7 @@ BODY FAT SECTION
 
 .bodyfat-section .container {
   width: 100%;
-  max-width: var(--container-width);
+  /* max-width: var(--container-width); */
   margin: auto;
   padding: 0 var(--container-padding);
 }
@@ -8187,7 +8188,7 @@ VISERAL FAT SECTION
 
 .visceral-section .container {
   width: 100%;
-  max-width: var(--container-width);
+  /* max-width: var(--container-width); */
   margin: auto;
   padding: 0 var(--container-padding);
 }
@@ -8728,6 +8729,9 @@ SCROLLBAR
   .image-card {
     width: 390px;
     height: 490px;
+  }
+  .success-content{
+    margin-left: 25px;
   }
 }
 
