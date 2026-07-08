@@ -30,15 +30,16 @@ export default function WellnessHero() {
           </p>
 
           <div className="wellness-hero__actions">
-            <button className="wellness-btn wellness-btn--primary">
-              Book a free consultation
+            <button
+              type="button"
+              className="wellness-btn wellness-btn--primary"
+              onClick={() =>
+                window.open("https://wa.me/919372109740", "_blank", "noopener,noreferrer")
+              }
+            >
+              Book a consultation
               <FiArrowRight />
-            </button>
-
-            <button className="wellness-btn wellness-btn--secondary">
-              Explore Our Services
-            </button>
-          </div>
+            </button>          </div>
         </div>
 
         <div className="wellness-hero__visual">

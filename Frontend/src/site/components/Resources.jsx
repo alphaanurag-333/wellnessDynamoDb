@@ -64,8 +64,14 @@ const ResourcesSection = () => {
               tomorrow.
             </p>
 
-            <button className="final-cta__button">
-              Book Your Free Consultation
+            <button
+              type="button"
+              className="final-cta__button"
+              onClick={() =>
+                window.open("https://wa.me/919372109740", "_blank", "noopener,noreferrer")
+              }
+            >
+              Book Your Consultation
             </button>
           </div>
         </div>

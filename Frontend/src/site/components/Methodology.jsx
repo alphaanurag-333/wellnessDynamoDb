@@ -1,6 +1,5 @@
 import discoveryImg from "../images/discovery.png";
-import analysisImg from "../images/analysis.png";
-import programImg from "../images/program.png";
+import analysisImg from "../images/analysis.png";import programImg from "../images/program.png";
 
 const methodologyData = [
   {
@@ -31,7 +30,7 @@ export default function Methodology() {
     <section className="methodology">
       <div className="site-container">
         <div className="methodology__header">
-          <h2>How we work with Clients</h2>
+          <h2> Our Wellness Roadmap</h2>
           <p>
             We specialize in uncovering the intricate connections between diet,
             lifestyle and overall health. Through personalized consultations and
@@ -51,8 +50,14 @@ export default function Methodology() {
 
                 <p>{item.description}</p>
 
-                <button>Book a free consultation</button>
-              </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    window.open("https://wa.me/919372109740", "_blank", "noopener,noreferrer")
+                  }
+                >
+                  Book a consultation
+                </button>              </div>
             </div>
           ))}
         </div>
