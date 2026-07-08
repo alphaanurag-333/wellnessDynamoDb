@@ -12,6 +12,7 @@ import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { SEARCH_DEBOUNCE_MS } from "../../../hooks/useDebouncedSearch.js";
 import {
+  REVIEW_MIN_LEN,
   REVIEW_MAX_LEN,
   USER_ID_MAX_LEN,
   emptyForm,
@@ -89,8 +90,8 @@ export function RealPeopleTestimonialForm({ mode = "create", initial = null }) {
     const stars = Number(form.stars);
 
     if (!userId) return Swal.fire({ icon: "error", title: "Validation", text: "User ID is required." });
-    if (!review || review.length < 5) {
-      return Swal.fire({ icon: "error", title: "Validation", text: "Review must be at least 5 characters." });
+    if (!review || review.length < REVIEW_MIN_LEN) {
+      return Swal.fire({ icon: "error", title: "Validation", text: `Review must be at least ${REVIEW_MIN_LEN} characters.` });
     }
     if (!Number.isFinite(stars) || stars < 1 || stars > 5) {
       return Swal.fire({ icon: "error", title: "Validation", text: "Stars must be 1–5." });
