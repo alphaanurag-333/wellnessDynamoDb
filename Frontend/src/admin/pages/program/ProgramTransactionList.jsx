@@ -109,7 +109,7 @@ export function ProgramTransactionList() {
             onChange={(e) => setSearch(e.target.value.slice(0, LIST_SEARCH_MAX_LEN))}
           />
         </label>
-        <label className="user-field admin-crud-filters__select">
+        {/* <label className="user-field admin-crud-filters__select">
           <span className="user-field__label">Payment status</span>
           <select className="user-field__input" value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)}>
             <option value="all">All</option>
@@ -118,7 +118,7 @@ export function ProgramTransactionList() {
             <option value="failed">Failed</option>
             <option value="refunded">Refunded</option>
           </select>
-        </label>
+        </label> */}
       </div>
       <div className="table-scroll">
         <table className="data-table">

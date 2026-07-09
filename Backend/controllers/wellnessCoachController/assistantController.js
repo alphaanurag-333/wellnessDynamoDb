@@ -9,6 +9,7 @@ const {
 const {
   createAssistantWellnessCoach,
   getAssistantWellnessCoachById,
+  getAssistantWellnessCoachRecordById,
   getAssistantByEmail,
   getAssistantByPhone,
   updateAssistantWellnessCoach,
@@ -123,7 +124,7 @@ exports.createMyAssistantController = asyncHandler(async (req, res) => {
 
 exports.updateMyAssistantController = asyncHandler(async (req, res) => {
   const coachId = req.auth?.sub;
-  const current = await getAssistantWellnessCoachById(req.params.id);
+  const current = await getAssistantWellnessCoachRecordById(req.params.id);
   if (!current) throw new AppError("Assistant not found", 404);
   if (current.wellnessCoachId !== coachId) throw new AppError("Assistant not found", 404);
 
@@ -196,7 +197,7 @@ exports.updateMyAssistantController = asyncHandler(async (req, res) => {
 
 exports.deleteMyAssistantController = asyncHandler(async (req, res) => {
   const coachId = req.auth?.sub;
-  const current = await getAssistantWellnessCoachById(req.params.id);
+  const current = await getAssistantWellnessCoachRecordById(req.params.id);
   if (!current) throw new AppError("Assistant not found", 404);
   if (current.wellnessCoachId !== coachId) throw new AppError("Assistant not found", 404);
 

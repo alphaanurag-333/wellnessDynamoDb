@@ -11,6 +11,8 @@ import {
   coachListHealthProgressMenstrualCycle,
   coachListHealthProgressCondition,
 } from "../../api/coachHealthProgress.js";
+import { coachGetUserSleepTracking } from "../../api/coachSleepTracking.js";
+import { coachGetUserHeartRateTracking } from "../../api/coachHeartRateTracking.js";
 
 const healthProgressApi = {
   getSettings: coachGetHealthProgressSettings,
@@ -20,6 +22,8 @@ const healthProgressApi = {
   listBloodPressure: coachListHealthProgressBloodPressure,
   listMenstrualCycle: coachListHealthProgressMenstrualCycle,
   listCondition: coachListHealthProgressCondition,
+  listSleep: coachGetUserSleepTracking,
+  listHeartRate: coachGetUserHeartRateTracking,
 };
 
 export function UserHealthProgress({ embedded = false }) {

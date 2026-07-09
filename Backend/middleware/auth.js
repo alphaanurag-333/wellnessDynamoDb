@@ -4,7 +4,7 @@ const { verifyAccessToken } = require("../utils/jwt");
 const { getAdminById } = require("../models/adminModel");
 const { getUserById } = require("../models/userModel");
 const { getWellnessCoachRecordById } = require("../models/wellnessCoachModel");
-const { getAssistantWellnessCoachById } = require("../models/assistantWellnessCoachModel");
+const { getAssistantWellnessCoachRecordById } = require("../models/assistantWellnessCoachModel");
 
 function readBearer(req) {
   const h = req.headers.authorization;
@@ -152,7 +152,7 @@ const protectAssistantWellnessCoach = asyncHandler(async (req, res, next) => {
     throw new AppError("Invalid token payload", 401);
   }
 
-  const account = await getAssistantWellnessCoachById(subject);
+  const account = await getAssistantWellnessCoachRecordById(subject);
   if (!account) {
     throw new AppError("Account not found", 401);
   }

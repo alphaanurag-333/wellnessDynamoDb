@@ -5,6 +5,9 @@ const {
   computeBmr,
   computeBodyFat,
   computeVisceralFat,
+  computeFattyLiverIndex,
+  getFliRiskCategory,
+  buildFattyLiverSnapshot,
   buildMetricSnapshot,
   buildDashboardFromLogs,
 } = require("../utils/metabolicMetricsCalculations");
@@ -43,6 +46,35 @@ test("computeVisceralFat returns risk assessment", () => {
   assert.ok(result.riskAssessment);
 });
 
+test("computeFattyLiverIndex returns expected value", () => {
+  const fli = computeFattyLiverIndex({
+    bmi: 28,
+    waistCm: 95,
+    triglycerides: 150,
+    ggt: 45,
+  });
+  assert.ok(fli != null);
+  assert.ok(fli > 0);
+});
+
+test("getFliRiskCategory maps risk bands", () => {
+  assert.equal(getFliRiskCategory(20).label, "Low risk");
+  assert.equal(getFliRiskCategory(45).label, "Indeterminate");
+  assert.equal(getFliRiskCategory(70).label, "High risk");
+});
+
+test("buildFattyLiverSnapshot stores fli risk", () => {
+  const snapshot = buildFattyLiverSnapshot({
+    bmi: 28,
+    waistCm: 95,
+    triglycerides: 150,
+    ggt: 45,
+  });
+  assert.equal(snapshot.metricType, "fatty_liver");
+  assert.ok(snapshot.fli > 0);
+  assert.ok(snapshot.fliRiskLabel);
+});
+
 test("buildMetricSnapshot stores bmi category", () => {
   const snapshot = buildMetricSnapshot("bmi", {
     gender: "male",
@@ -73,6 +105,18 @@ test("buildDashboardFromLogs groups latest metrics", () => {
         activityLevel: "moderately_active",
         recordedAt: "2026-07-06T12:00:00.000Z",
       },
+      {
+        id: "3",
+        metricType: "fatty_liver",
+        fli: 42.5,
+        triglycerides: 150,
+        ggt: 45,
+        bmi: 28,
+        waistCm: 95,
+        fliRiskLabel: "Indeterminate",
+        fliRiskColor: "#f59e0b",
+        recordedAt: "2026-07-05T12:00:00.000Z",
+      },
     ],
     { formatChartDate: () => "7Jul26" }
   );
@@ -80,4 +124,6 @@ test("buildDashboardFromLogs groups latest metrics", () => {
   assert.equal(dashboard.bmi.current.value, 28.1);
   assert.equal(dashboard.bmr.current.value, 1540);
   assert.equal(dashboard.tdee.current.value, 2100);
+  assert.equal(dashboard.fattyLiver.current.value, 42.5);
+  assert.equal(dashboard.fattyLiver.history.length, 1);
 });

@@ -267,7 +267,7 @@ async function createAssistantWellnessCoach(fields) {
   return withLegacyId(item);
 }
 
-async function getAssistantWellnessCoachById(id) {
+async function getAssistantWellnessCoachRecordById(id) {
   const { Item } = await docClient.send(
     new GetCommand({
       TableName: TABLE,
@@ -275,6 +275,11 @@ async function getAssistantWellnessCoachById(id) {
     })
   );
   return withLegacyId(Item || null);
+}
+
+async function getAssistantWellnessCoachById(id) {
+  const item = await getAssistantWellnessCoachRecordById(id);
+  return item ? toPublicAssistant(item) : null;
 }
 
 async function updateAssistantWellnessCoach(id, updates) {
@@ -285,7 +290,7 @@ async function updateAssistantWellnessCoach(id, updates) {
 
   if (entries.length === 0) throw new Error("No valid fields provided for update");
 
-  const current = await getAssistantWellnessCoachById(id);
+  const current = await getAssistantWellnessCoachRecordById(id);
   if (!current) {
     const err = new Error("Assistant wellness coach not found");
     err.name = "NotFoundError";
@@ -424,6 +429,7 @@ module.exports = {
   buildAssistantItem,
   createAssistantWellnessCoach,
   getAssistantWellnessCoachById,
+  getAssistantWellnessCoachRecordById,
   getAssistantByEmail,
   getAssistantByPhone,
   updateAssistantWellnessCoach,

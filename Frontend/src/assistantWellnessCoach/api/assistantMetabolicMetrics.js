@@ -35,3 +35,16 @@ export async function assistantListMetabolicMetricHistory(token, userId, params 
     normalizeApiError(error);
   }
 }
+
+export async function assistantSaveFattyLiverMetric(token, userId, payload = {}) {
+  try {
+    const { data: body } = await assistantApi.post(
+      `${basePath(userId)}/fatty-liver`,
+      payload,
+      { headers: authHeader(token) }
+    );
+    return { log: body.log ?? null };
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}

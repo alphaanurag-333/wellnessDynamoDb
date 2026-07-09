@@ -10,6 +10,7 @@ const {
   computeProgressPercent,
   buildTodayCompletionMap,
   toggleUserSupplementDosageLog,
+  buildLogId,
   normalizeLogDate,
   normalizePeriod,
 } = require("../../models/userSupplementDosageLogModel");
@@ -104,6 +105,12 @@ exports.toggleUserSupplementDosageLogController = asyncHandler(async (req, res) 
     throw new AppError("Invalid period for this dosage plan", 400);
   }
 
+  // Fetch the pre-toggle state so we can apply the known write locally below.
+  // DynamoDB GSI queries are eventually consistent, so re-querying these indexes
+  // immediately after the write can still return stale data.
+  const logsBeforeToggle = await queryLogsByDosageId(dosageId);
+  const todayLogsBeforeToggle = await queryLogsByUserIdAndDate(userId, logDate);
+
   let result;
   try {
     result = await toggleUserSupplementDosageLog({
@@ -116,9 +123,16 @@ exports.toggleUserSupplementDosageLogController = asyncHandler(async (req, res) 
     handleValidationError(err);
   }
 
-  const logs = await queryLogsByDosageId(dosageId);
+  const toggledLogId = buildLogId(dosageId, logDate, period);
+  const applyToggleDelta = (logsList) => {
+    const filtered = (logsList || []).filter((log) => log.id !== toggledLogId);
+    if (result.completed && result.log) filtered.push(result.log);
+    return filtered;
+  };
+
+  const logs = applyToggleDelta(logsBeforeToggle);
   const progressPercent = computeProgressPercent(dosage, logs);
-  const todayLogs = await queryLogsByUserIdAndDate(userId, logDate);
+  const todayLogs = applyToggleDelta(todayLogsBeforeToggle);
   const todayCompletion = buildTodayCompletionMap(dosage, todayLogs, logDate);
 
   return res.status(200).json({

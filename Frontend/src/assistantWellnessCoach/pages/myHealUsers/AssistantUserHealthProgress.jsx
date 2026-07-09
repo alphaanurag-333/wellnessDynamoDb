@@ -10,6 +10,10 @@ import {
   assistantListHealthProgressMenstrualCycle,
   assistantListHealthProgressCondition,
 } from "../../api/assistantHealthProgress.js";
+import {
+  assistantGetUserSleepTracking,
+  assistantGetUserHeartRateTracking,
+} from "../../api/assistantHealUsers.js";
 
 const healthProgressApi = {
   getSettings: assistantGetHealthProgressSettings,
@@ -18,6 +22,8 @@ const healthProgressApi = {
   listBloodPressure: assistantListHealthProgressBloodPressure,
   listMenstrualCycle: assistantListHealthProgressMenstrualCycle,
   listCondition: assistantListHealthProgressCondition,
+  listSleep: assistantGetUserSleepTracking,
+  listHeartRate: assistantGetUserHeartRateTracking,
 };
 
 export function AssistantUserHealthProgress({ embedded = false }) {

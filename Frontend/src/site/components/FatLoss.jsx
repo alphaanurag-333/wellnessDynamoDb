@@ -1,5 +1,6 @@
 import React from "react";
 import fatLossImg from "../../site/images/fat-loss.jpg"; // Change path
+import TransformationStoriesSection from "./TransformationStoriesSection";
 
 const FatLoss = () => {
   return (
@@ -64,6 +65,8 @@ const FatLoss = () => {
           </div>
         </div>
       </section>
+
+    <TransformationStoriesSection />
 
       <section className="obesity-section">
         <div className="container">

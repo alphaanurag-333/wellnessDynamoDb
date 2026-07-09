@@ -3,6 +3,7 @@ const { protectWellnessCoach } = require("../../middleware/auth");
 const {
   getCoachMetabolicMetricsDashboardController,
   listCoachMetabolicMetricHistoryController,
+  createCoachFattyLiverMetricController,
 } = require("../../controllers/wellnessCoachController/metabolicMetricsController");
 
 const router = express.Router({ mergeParams: true });
@@ -21,6 +22,11 @@ router.get(
   "/:userId/metabolic-metrics/history/:metricType",
   protectWellnessCoach,
   listCoachMetabolicMetricHistoryController
+);
+router.post(
+  "/:userId/metabolic-metrics/fatty-liver",
+  protectWellnessCoach,
+  createCoachFattyLiverMetricController
 );
 
 module.exports = router;

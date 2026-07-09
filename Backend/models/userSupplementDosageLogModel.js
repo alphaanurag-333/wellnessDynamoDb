@@ -170,12 +170,17 @@ function computeProgressPercent(dosage, logs) {
 
 function buildTodayCompletionMap(dosage, logs, logDate) {
   const date = normalizeLogDate(logDate);
+  const dosageId = String(dosage?.id || dosage?._id || "").trim();
   const map = {};
   for (const row of dosage?.periods || []) {
     map[row.period] = false;
   }
   for (const log of logs || []) {
-    if (log.logDate === date && log.period) {
+    if (
+      log.logDate === date &&
+      log.period &&
+      String(log.dosageId || "").trim() === dosageId
+    ) {
       map[log.period] = true;
     }
   }

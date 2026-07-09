@@ -97,7 +97,7 @@ export function AssistantConsultancyTransactionList() {
                 aria-label="Search transactions"
               />
             </div>
-            <select
+            {/* <select
               className="user-list-status-select"
               value={paymentStatus}
               onChange={(e) => setPaymentStatus(e.target.value)}
@@ -108,7 +108,7 @@ export function AssistantConsultancyTransactionList() {
               <option value="pending">Pending</option>
               <option value="failed">Failed</option>
               <option value="refunded">Refunded</option>
-            </select>
+            </select> */}
           </div>
           <Link to="/assistant/consultancy/enrolled-users" className="btn btn--accent">
             Enrolled users
