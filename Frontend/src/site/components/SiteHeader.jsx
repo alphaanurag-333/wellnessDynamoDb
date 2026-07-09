@@ -61,8 +61,9 @@ export function SiteHeader() {
 
   const healthRoutes = [
     "/fat-loss",
-    "/gut-health",
     "/diabetes-reversal",
+    "/pcod-pcos-reversal",
+    "/gut-health",
     "/thyroid",
   ];
 
@@ -146,11 +147,12 @@ export function SiteHeader() {
                   >
                     Diabetes Reversal
                   </NavLink>
+
                   <NavLink
-                    to="/gut-health"
+                    to="/pcod-pcos-reversal"
                     className={({ isActive }) => (isActive ? "active" : "")}
                   >
-                    Gut Health
+                    PCOD / PCOS Reversal
                   </NavLink>
 
                   <NavLink
@@ -158,6 +160,13 @@ export function SiteHeader() {
                     className={({ isActive }) => (isActive ? "active" : "")}
                   >
                     Thyroid Care
+                  </NavLink>
+
+                  <NavLink
+                    to="/gut-health"
+                    className={({ isActive }) => (isActive ? "active" : "")}
+                  >
+                    Gut Health
                   </NavLink>
                 </div>
               </div>
@@ -196,7 +205,11 @@ export function SiteHeader() {
               className="site-header__cta"
               onClick={(e) => {
                 e.preventDefault();
-                window.open("https://wa.me/919372109740", "_blank", "noopener,noreferrer");
+                window.open(
+                  "https://wa.me/919372109740",
+                  "_blank",
+                  "noopener,noreferrer",
+                );
               }}
             >
               Book a consultation
@@ -286,19 +299,19 @@ export function SiteHeader() {
               </NavLink>
 
               <NavLink
-                to="/gut-health"
-                className={({ isActive }) => (isActive ? "active" : "")}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Gut Health
-              </NavLink>
-
-              <NavLink
                 to="/diabetes-reversal"
                 className={({ isActive }) => (isActive ? "active" : "")}
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Diabetes Care
+                Diabetes Reversal
+              </NavLink>
+
+              <NavLink
+                to="/pcod-pcos-reversal"
+                className={({ isActive }) => (isActive ? "active" : "")}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                PCOD / PCOS reversal
               </NavLink>
 
               <NavLink
@@ -307,6 +320,14 @@ export function SiteHeader() {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Thyroid Care
+              </NavLink>
+
+              <NavLink
+                to="/gut-health"
+                className={({ isActive }) => (isActive ? "active" : "")}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Gut Health
               </NavLink>
             </div>
           </details>
@@ -342,7 +363,11 @@ export function SiteHeader() {
           onClick={(e) => {
             e.preventDefault();
             setMobileMenuOpen(false);
-            window.open("https://wa.me/919372109740", "_blank", "noopener,noreferrer");
+            window.open(
+              "https://wa.me/919372109740",
+              "_blank",
+              "noopener,noreferrer",
+            );
           }}
         >
           Book a consultation

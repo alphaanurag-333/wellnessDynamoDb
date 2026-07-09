@@ -11,6 +11,7 @@ import FatLoss from "../components/FatLoss.jsx";
 import Diabetes from "../components/Diabetes.jsx";
 import Thyroid from "../components/Thyroid.jsx";
 import GutHealth from "../components/GutHealth.jsx";
+import Pcod from "../components/Pcod.jsx";
 
 export const publicRouteTree = (
   <Route path="/" element={<PublicLayout />}>
@@ -23,7 +24,7 @@ export const publicRouteTree = (
     <Route path="/diabetes-reversal" element={<Diabetes/>} />
     <Route path="/thyroid" element={<Thyroid/>} />
     <Route path="/gut-health" element={<GutHealth/>} />
-    {/* <Route path="/gut-health" element={<FatLoss/>} /> */}
+    <Route path="/pcod-pcos-reversal" element={<Pcod/>} />
 
     <Route
       path="/privacy-policy"

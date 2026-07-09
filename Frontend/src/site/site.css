@@ -6450,13 +6450,15 @@ PRINT
 
 .transformation-category-card__desc {
   margin: 8px 12px 0;
-  color: var(--text-body);
+  color: #959595;
   font-size: 13px;
   line-height: 1.55;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  text-align: left;
+  font-weight: 500;
 }
 
 .transformation-list {
@@ -8749,8 +8751,8 @@ SCROLLBAR
   background-size: 36px 23px;
 }
 
-.gut-health-hero .zigzag{
-    position: absolute;
+.gut-health-hero .zigzag {
+  position: absolute;
   bottom: -2px;
   left: 0;
   width: 100%;
@@ -8770,9 +8772,8 @@ SCROLLBAR
   background: #fff;
 }
 
-.gut-about{
+.gut-about {
   background: #fdf7ee;
-
 }
 
 .fat-about-wrapper {
@@ -8781,18 +8782,17 @@ SCROLLBAR
   align-items: center;
   gap: 45px;
 }
-.gut-health-info{
+.gut-health-info {
   max-width: 1110px;
   margin: 0 auto;
 }
 
-.gut-health-info h2{
+.gut-health-info h2 {
   text-align: center;
   font-size: 36px;
   font-weight: 600;
   margin-bottom: 35px;
 }
-
 
 .fat-image {
   flex: 0 0 48%;
@@ -8808,11 +8808,11 @@ SCROLLBAR
 
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  /* gap: 22px; */
 }
 
 .fat-content p {
-  font-size: 19px;
+  font-size: 16px;
   line-height: 1.9;
   color: #444;
 }
@@ -8877,11 +8877,10 @@ SCROLLBAR
 }
 
 .obesity-content p {
-    font-size: 18px;
-    line-height: 1.6;
-    color: #555;
-    text-align: center;
-   
+  font-size: 18px;
+  line-height: 1.6;
+  color: #555;
+  text-align: center;
 }
 
 .hope-box {
@@ -8905,14 +8904,6 @@ SCROLLBAR
   font-size: 18px;
   line-height: 1.6;
 }
-
-
-
-
-
-
-
-
 
 /* =========================
    RESPONSIVE
@@ -9189,7 +9180,7 @@ SCROLLBAR
 }
 
 @media (max-width: 992px) {
-    .obesity-card {
+  .obesity-card {
     padding: 30px;
   }
 
