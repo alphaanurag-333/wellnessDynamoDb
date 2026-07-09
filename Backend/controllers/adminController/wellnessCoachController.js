@@ -22,6 +22,8 @@ const {
 } = require("../../models/wellnessCoachModel");
 const { countAssistantsByWellnessCoachId } = require("../../models/assistantWellnessCoachModel");
 const { getSpecializationById } = require("../../models/specializationModel");
+const { assertPasswordPolicy } = require("../../utils/passwordPolicy");
+const { assertBioPolicy } = require("../../utils/bioPolicy");
 const { normalizeEmail, normalizePhone, normalizeCountryCode } = require("../../models/userModel");
 
 const S3_FOLDER = "wellness-coach";
@@ -107,7 +109,7 @@ function parseCoachBody(body) {
     email,
     phone,
     phoneCountryCode,
-    bio: body.bio !== undefined ? String(body.bio || "").trim() || null : null,
+    bio: body.bio !== undefined ? assertBioPolicy(body.bio) : null,
     specializationId: parseSpecializationId(body.specializationId),
     country: body.country !== undefined ? String(body.country || "").trim() || null : null,
     state: body.state !== undefined ? String(body.state || "").trim() || null : null,
@@ -125,9 +127,7 @@ function parseCoachPassword(body, { required = false } = {}) {
     if (required) throw new AppError("password is required", 400);
     return undefined;
   }
-  if (password.length < 8) {
-    throw new AppError("password must be at least 8 characters", 400);
-  }
+  assertPasswordPolicy(password, { required: true, label: "Password" });
   return password;
 }
 
@@ -216,7 +216,7 @@ exports.updateWellnessCoachController = asyncHandler(async (req, res) => {
     }
     updates.approvalStatus = approvalStatus;
   }
-  if (body.bio !== undefined) updates.bio = String(body.bio || "").trim() || null;
+  if (body.bio !== undefined) updates.bio = assertBioPolicy(body.bio);
   if (body.specializationId !== undefined) {
     const specializationId = parseSpecializationId(body.specializationId);
     await assertValidSpecializationId(specializationId);

@@ -21,6 +21,7 @@ const {
   normalizeStatus,
   ALLOWED_STATUS,
 } = require("../../models/assistantWellnessCoachModel");
+const { assertPasswordPolicy } = require("../../utils/passwordPolicy");
 const { normalizeEmail, normalizePhone, normalizeCountryCode } = require("../../models/userModel");
 
 const S3_FOLDER = "assistant-wellness-coach";
@@ -96,9 +97,7 @@ function parseAssistantPassword(body, { required = false } = {}) {
     if (required) throw new AppError("password is required", 400);
     return undefined;
   }
-  if (password.length < 8) {
-    throw new AppError("password must be at least 8 characters", 400);
-  }
+  assertPasswordPolicy(password, { required: true, label: "Password" });
   return password;
 }
 

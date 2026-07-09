@@ -99,6 +99,7 @@ export function AssistantMyHealUsersList() {
         <table className="data-table">
           <thead>
             <tr>
+              <th>S No.</th>
               <th>Client</th>
               <th>Phone</th>
               <th>Tier</th>
@@ -109,16 +110,17 @@ export function AssistantMyHealUsersList() {
           </thead>
           <tbody>
             {loading ? (
-              <CoachTableLoaderRow colSpan={6} label="Loading clients…" />
+              <CoachTableLoaderRow colSpan={7} label="Loading clients…" />
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={6}>
+                <td colSpan={7}>
                   <p className="table-placeholder">No clients assigned to you yet.</p>
                 </td>
               </tr>
             ) : (
-              users.map((u) => (
+              users.map((u, idx) => (
                 <tr key={u._id || u.id}>
+                  <td className="data-table__muted">{idx + 1}</td>
                   <td>
                     <ClientTableUserCell user={u} />
                   </td>

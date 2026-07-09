@@ -8749,6 +8749,18 @@ SCROLLBAR
   background-size: 36px 23px;
 }
 
+.gut-health-hero .zigzag{
+    position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 22px;
+  transform: rotate(180deg);
+  background:
+    linear-gradient(-45deg, transparent 27px, #fdf7ee 0),
+    linear-gradient(45deg, transparent 27px, #fdf7ee 0);
+  background-size: 36px 23px;
+}
 /* ===========================
         ABOUT
 =========================== */
@@ -8758,12 +8770,29 @@ SCROLLBAR
   background: #fff;
 }
 
+.gut-about{
+  background: #fdf7ee;
+
+}
+
 .fat-about-wrapper {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 45px;
 }
+.gut-health-info{
+  max-width: 1110px;
+  margin: 0 auto;
+}
+
+.gut-health-info h2{
+  text-align: center;
+  font-size: 36px;
+  font-weight: 600;
+  margin-bottom: 35px;
+}
+
 
 .fat-image {
   flex: 0 0 48%;
@@ -8877,74 +8906,13 @@ SCROLLBAR
   line-height: 1.6;
 }
 
-/* ===========================
-        RESPONSIVE
-=========================== */
 
-@media (max-width: 992px) {
-  .obesity-card {
-    padding: 30px;
-  }
 
-  .obesity-heading h2 {
-    font-size: 28px;
-  }
 
-  .obesity-content p {
-    font-size: 18px;
-  }
 
-  .hope-box h3 {
-    font-size: 30px;
-  }
-}
 
-@media (max-width: 768px) {
-  .obesity-section {
-    padding: 60px 0;
-  }
 
-  .obesity-card {
-    padding: 25px;
-    gap: 25px;
-  }
 
-  .obesity-heading h2 {
-    font-size: 32px;
-  }
-
-  .obesity-content p {
-    font-size: 16px;
-    line-height: 1.8;
-  }
-
-  .hope-box {
-    padding: 25px;
-  }
-
-  .hope-box h3 {
-    font-size: 26px;
-  }
-
-  .hope-box p {
-    font-size: 16px;
-  }
-}
-
-@media (max-width: 480px) {
-  .obesity-heading h2 {
-    font-size: 24px;
-  }
-
-  .obesity-badge {
-    font-size: 12px;
-    padding: 7px 16px;
-  }
-
-  .hope-box h3 {
-    font-size: 22px;
-  }
-}
 
 /* =========================
    RESPONSIVE
@@ -9221,6 +9189,21 @@ SCROLLBAR
 }
 
 @media (max-width: 992px) {
+    .obesity-card {
+    padding: 30px;
+  }
+
+  .obesity-heading h2 {
+    font-size: 28px;
+  }
+
+  .obesity-content p {
+    font-size: 18px;
+  }
+
+  .hope-box h3 {
+    font-size: 30px;
+  }
   .fat-about-wrapper {
     flex-direction: column;
   }
@@ -9825,6 +9808,35 @@ SCROLLBAR
   }
 }
 @media (max-width: 768px) {
+  .obesity-section {
+    padding: 60px 0;
+  }
+
+  .obesity-card {
+    padding: 25px;
+    gap: 25px;
+  }
+
+  .obesity-heading h2 {
+    font-size: 32px;
+  }
+
+  .obesity-content p {
+    font-size: 16px;
+    line-height: 1.8;
+  }
+
+  .hope-box {
+    padding: 25px;
+  }
+
+  .hope-box h3 {
+    font-size: 26px;
+  }
+
+  .hope-box p {
+    font-size: 16px;
+  }
   .fat-hero {
     padding: 70px 0 90px;
   }
@@ -10706,6 +10718,18 @@ SCROLLBAR
 }
 
 @media (max-width: 576px) {
+  .obesity-heading h2 {
+    font-size: 24px;
+  }
+
+  .obesity-badge {
+    font-size: 12px;
+    padding: 7px 16px;
+  }
+
+  .hope-box h3 {
+    font-size: 22px;
+  }
   .container {
     padding: 0 15px;
   }

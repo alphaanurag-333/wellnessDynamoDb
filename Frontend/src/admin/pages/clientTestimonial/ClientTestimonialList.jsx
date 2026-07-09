@@ -13,6 +13,7 @@ import {
 } from "../../api/clientTestimonialsController.js";
 import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
+import { useDebouncedSearch } from "../../../hooks/useDebouncedSearch.js";
 import { mediaUrl } from "../../../media.js";
 import {
   DESCRIPTION_PREVIEW_LEN,
@@ -29,7 +30,9 @@ export function ClientTestimonialList() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [togglingId, setTogglingId] = useState("");
-  const [listSearch, setListSearch] = useState("");
+  const { searchInput: listSearch, debouncedSearch, onSearchChange, setSearchInput } = useDebouncedSearch("", {
+    maxLength: SEARCH_MAX_LEN,
+  });
   const [listStatus, setListStatus] = useState("");
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
@@ -43,7 +46,7 @@ export function ClientTestimonialList() {
         page,
         limit: LIST_LIMIT,
         ...(listStatus ? { status: listStatus } : {}),
-        ...(listSearch.trim() ? { search: listSearch.trim() } : {}),
+        ...(debouncedSearch ? { search: debouncedSearch } : {}),
       });
       setRows(clientTestimonials);
       setPages(pagination?.pages ?? 1);
@@ -54,7 +57,7 @@ export function ClientTestimonialList() {
     } finally {
       setLoading(false);
     }
-  }, [adminToken, dispatch, listSearch, listStatus, page]);
+  }, [adminToken, dispatch, debouncedSearch, listStatus, page]);
 
   useEffect(() => {
     loadRows();
@@ -62,7 +65,7 @@ export function ClientTestimonialList() {
 
   useEffect(() => {
     setPage(1);
-  }, [listSearch, listStatus]);
+  }, [debouncedSearch, listStatus]);
 
   const onDelete = async (row) => {
     const { isConfirmed } = await Swal.fire({
@@ -105,7 +108,7 @@ export function ClientTestimonialList() {
   const hasFilters = Boolean(listSearch.trim() || listStatus);
 
   const clearFilters = () => {
-    setListSearch("");
+    setSearchInput("");
     setListStatus("");
   };
 
@@ -128,7 +131,7 @@ export function ClientTestimonialList() {
               className="user-field__input"
               value={listSearch}
               maxLength={SEARCH_MAX_LEN}
-              onChange={(e) => setListSearch(sanitizeSingleLine(e.target.value, SEARCH_MAX_LEN))}
+              onChange={(e) => onSearchChange(sanitizeSingleLine(e.target.value, SEARCH_MAX_LEN))}
               placeholder="Name or description..."
             />
           </label>

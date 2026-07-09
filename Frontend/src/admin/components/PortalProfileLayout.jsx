@@ -100,9 +100,7 @@ export function ProfilePageLayout({
         {tab === "password" ? (
           <div className="admin-profile-panel">
             <div className="profile-password-form">
-              <p className="profile-password-form__intro">
-                Update your password regularly. Use at least 8 characters and avoid reusing passwords from other sites.
-              </p>
+       
               {passwordFields}
             </div>
           </div>

@@ -1,6 +1,7 @@
 const AppError = require("../utils/AppError");
 const { getUserById } = require("../models/userModel");
 
+const REVIEW_MIN = 3;
 const REVIEW_MAX = 500;
 
 function readIdParam(req) {
@@ -10,7 +11,7 @@ function readIdParam(req) {
 function validateReview(review) {
   const value = String(review ?? "").trim();
   if (!value) throw new AppError("review is required", 400);
-  if (value.length < 5) throw new AppError("review must be at least 5 characters", 400);
+  if (value.length < REVIEW_MIN) throw new AppError(`review must be at least ${REVIEW_MIN} characters`, 400);
   if (value.length > REVIEW_MAX) {
     throw new AppError(`review cannot exceed ${REVIEW_MAX} characters`, 400);
   }
@@ -73,6 +74,7 @@ function readTestimonialUserId(record) {
 }
 
 module.exports = {
+  REVIEW_MIN,
   REVIEW_MAX,
   readIdParam,
   validateReview,

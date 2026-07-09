@@ -29,6 +29,19 @@ import {
   formatMoney,
   PaymentStatusPill,
 } from "../../../components/consultancy/ConsultancyPortalShared.jsx";
+import { CoachPageLoadingState } from "../../components/CoachPageLoader.jsx";
+
+const CONSULTANCY_STATUS_LABELS = {
+  scheduled: "Scheduled",
+  completed: "Completed",
+  follow_up_needed: "Follow-up needed",
+  cancelled: "Cancelled",
+};
+
+function consultancyStatusLabel(value) {
+  if (!value) return "—";
+  return CONSULTANCY_STATUS_LABELS[value] || value;
+}
 
 export function CoachConsultancyClientPage() {
   const { userId } = useParams();
@@ -37,7 +50,6 @@ export function CoachConsultancyClientPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    zoomMeetingLink: "",
     sessionScheduledAt: "",
     consultancyStatus: "",
     consultancyNotes: "",
@@ -50,7 +62,6 @@ export function CoachConsultancyClientPage() {
       setClient(data);
       const txn = data.latestConsultancyTransaction;
       setForm({
-        zoomMeetingLink: txn?.zoomMeetingLink || "",
         sessionScheduledAt: txn?.sessionScheduledAt ? txn.sessionScheduledAt.slice(0, 16) : "",
         consultancyStatus: txn?.consultancyStatus || "",
         consultancyNotes: txn?.consultancyNotes || "",
@@ -73,7 +84,6 @@ export function CoachConsultancyClientPage() {
     setSaving(true);
     try {
       await coachUpdateConsultancyClient(txnId, {
-        zoomMeetingLink: form.zoomMeetingLink,
         sessionScheduledAt: form.sessionScheduledAt ? new Date(form.sessionScheduledAt).toISOString() : null,
         consultancyStatus: form.consultancyStatus || null,
         consultancyNotes: form.consultancyNotes,
@@ -86,22 +96,28 @@ export function CoachConsultancyClientPage() {
     }
   };
 
-  if (loading) return <div className="page-card">Loading client…</div>;
-  if (!client?.user) return <div className="page-card">Client not found.</div>;
+  if (loading) {
+    return (
+      <div className="page-card consultancy-client-page">
+        <CoachPageLoadingState label="Loading client…" />
+      </div>
+    );
+  }
+  if (!client?.user) return <div className="page-card consultancy-client-page">Client not found.</div>;
 
   const { user, latestConsultancyTransaction: txn, subscriptionActive } = client;
 
   return (
     <div className="page-card consultancy-client-page">
-      <div className="page-card__head">
-        <div>
-          <Link to="/coach/consultancy/enrolled-users" className="btn btn--ghost btn--sm">
-            ← Back
+      <div className="page-card__head consultancy-client-page__head">
+        <div className="consultancy-client-page__intro">
+          <Link to="/coach/consultancy/enrolled-users" className="consultancy-client-page__back">
+            ← Back to enrolled users
           </Link>
           <h2 className="page-card__title">{user.name || "Client"}</h2>
           <p className="page-card__desc">{user.email}</p>
         </div>
-        <div className="page-card__actions">
+        <div className="page-card__actions consultancy-client-page__badges">
           <UserTierBadge tier={user.userTier} assignmentStatus={user.assignmentStatus} />
           <span className={`tier-badge ${subscriptionActive ? "tier-badge--heal" : "tier-badge--consultancy"}`}>
             {subscriptionActive ? "Seek to Heal active" : "Consultancy only"}
@@ -109,80 +125,92 @@ export function CoachConsultancyClientPage() {
         </div>
       </div>
 
-      <section className="user-detail-grid" style={{ marginBottom: "1.5rem" }}>
-        <div className="user-detail-row">
-          <span className="user-detail-row__label">Phone</span>
-          <span className="user-detail-row__value">
-            {[user.phoneCountryCode, user.phone].filter(Boolean).join(" ") || "—"}
-          </span>
-        </div>
-        <div className="user-detail-row">
-          <span className="user-detail-row__label">Consultancy payment</span>
-          <span className="user-detail-row__value">
-            {txn ? (
-              <>
-                <PaymentStatusPill status={txn.paymentStatus} /> · {formatMoney(txn.totalAmount)} ·{" "}
-                {txn.referenceNumber}
-              </>
-            ) : (
-              "—"
-            )}
-          </span>
-        </div>
-        <div className="user-detail-row">
-          <span className="user-detail-row__label">Paid at</span>
-          <span className="user-detail-row__value">{formatJoined(txn?.paidAt)}</span>
+      <section className="form-card consultancy-client-page__overview">
+        <h3 className="form-card__title">Client overview</h3>
+        <div className="user-detail-grid user-view-grid">
+          <div className="user-detail-row">
+            <span className="user-detail-row__label">Phone</span>
+            <span className="user-detail-row__value">
+              {[user.phoneCountryCode, user.phone].filter(Boolean).join(" ") || "—"}
+            </span>
+          </div>
+          <div className="user-detail-row">
+            <span className="user-detail-row__label">Consultancy payment</span>
+            <span className="user-detail-row__value consultancy-client-page__payment">
+              {txn ? (
+                <>
+                  <PaymentStatusPill status={txn.paymentStatus} />
+                  <span>{formatMoney(txn.totalAmount)}</span>
+                  <span className="consultancy-client-page__ref">{txn.referenceNumber}</span>
+                </>
+              ) : (
+                "—"
+              )}
+            </span>
+          </div>
+          <div className="user-detail-row">
+            <span className="user-detail-row__label">Paid at</span>
+            <span className="user-detail-row__value">{formatJoined(txn?.paidAt)}</span>
+          </div>
+          {txn?.consultancyStatus ? (
+            <div className="user-detail-row">
+              <span className="user-detail-row__label">Session status</span>
+              <span className="user-detail-row__value">{consultancyStatusLabel(txn.consultancyStatus)}</span>
+            </div>
+          ) : null}
         </div>
       </section>
 
       {txn ? (
-        <form className="form-card" onSubmit={handleSave}>
+        <section className="form-card consultancy-client-page__session">
           <h3 className="form-card__title">Session & consultancy notes</h3>
-          <label className="form-field">
-            <span>Zoom / meeting link</span>
-            <input
-              type="url"
-              value={form.zoomMeetingLink}
-              onChange={(e) => setForm((f) => ({ ...f, zoomMeetingLink: e.target.value }))}
-              placeholder="https://zoom.us/j/..."
-            />
-          </label>
-          <label className="form-field">
-            <span>Session date & time</span>
-            <input
-              type="datetime-local"
-              value={form.sessionScheduledAt}
-              onChange={(e) => setForm((f) => ({ ...f, sessionScheduledAt: e.target.value }))}
-            />
-          </label>
-          <label className="form-field">
-            <span>Consultancy status</span>
-            <select
-              value={form.consultancyStatus}
-              onChange={(e) => setForm((f) => ({ ...f, consultancyStatus: e.target.value }))}
-            >
-              <option value="">—</option>
-              <option value="scheduled">Scheduled</option>
-              <option value="completed">Completed</option>
-              <option value="follow_up_needed">Follow-up needed</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-          </label>
-          <label className="form-field">
-            <span>Notes</span>
-            <textarea
-              rows={4}
-              value={form.consultancyNotes}
-              onChange={(e) => setForm((f) => ({ ...f, consultancyNotes: e.target.value }))}
-            />
-          </label>
-          {txn.sessionScheduledAt ? (
-            <p className="form-hint">Current schedule: {formatDate(txn.sessionScheduledAt)}</p>
-          ) : null}
-          <button type="submit" className="btn btn--accent" disabled={saving}>
-            {saving ? "Saving…" : "Save changes"}
-          </button>
-        </form>
+          <p className="page-card__desc consultancy-client-page__session-desc">
+            Update the scheduled session, track consultancy progress, and keep private notes for this client.
+          </p>
+          <form onSubmit={handleSave}>
+            <div className="consultancy-client-page__form-row">
+              <label className="form-field">
+                <span>Session date & time</span>
+                <input
+                  type="datetime-local"
+                  value={form.sessionScheduledAt}
+                  onChange={(e) => setForm((f) => ({ ...f, sessionScheduledAt: e.target.value }))}
+                />
+              </label>
+              <label className="form-field">
+                <span>Consultancy status</span>
+                <select
+                  value={form.consultancyStatus}
+                  onChange={(e) => setForm((f) => ({ ...f, consultancyStatus: e.target.value }))}
+                >
+                  <option value="">Not set</option>
+                  {Object.entries(CONSULTANCY_STATUS_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <label className="form-field">
+              <span>Notes</span>
+              <textarea
+                rows={4}
+                value={form.consultancyNotes}
+                onChange={(e) => setForm((f) => ({ ...f, consultancyNotes: e.target.value }))}
+                placeholder="Session summary, follow-up items, or internal notes…"
+              />
+            </label>
+            {txn.sessionScheduledAt ? (
+              <p className="form-hint">Last saved schedule: {formatDate(txn.sessionScheduledAt)}</p>
+            ) : null}
+            <div className="consultancy-client-page__form-actions">
+              <button type="submit" className="btn btn--accent" disabled={saving}>
+                {saving ? "Saving…" : "Save changes"}
+              </button>
+            </div>
+          </form>
+        </section>
       ) : (
         <p className="table-placeholder">No paid consultancy transaction on file.</p>
       )}

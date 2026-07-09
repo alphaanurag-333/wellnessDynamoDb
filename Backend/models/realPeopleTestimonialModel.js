@@ -55,7 +55,7 @@ function sanitizeStars(value) {
 function sanitizeReview(value) {
   const review = String(value || "").trim();
   if (!review) throw new Error("review is required");
-  if (review.length < 5) throw new Error("review must be at least 5 characters");
+  if (review.length < 3) throw new Error("review must be at least 3 characters");
   if (review.length > 500) throw new Error("review cannot exceed 500 characters");
   return review;
 }

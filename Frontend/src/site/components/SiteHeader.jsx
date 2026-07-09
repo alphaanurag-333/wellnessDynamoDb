@@ -191,8 +191,15 @@ export function SiteHeader() {
             </nav>
 
             {/* CTA */}
-            <Link to="#" className="site-header__cta">
-              Book a free consultation
+            <Link
+              to="#"
+              className="site-header__cta"
+              onClick={(e) => {
+                e.preventDefault();
+                window.open("https://wa.me/919372109740", "_blank", "noopener,noreferrer");
+              }}
+            >
+              Book a consultation
             </Link>
 
             {/* Mobile Button */}
@@ -332,9 +339,13 @@ export function SiteHeader() {
         <Link
           to="#"
           className="mobile-cta"
-          onClick={() => setMobileMenuOpen(false)}
+          onClick={(e) => {
+            e.preventDefault();
+            setMobileMenuOpen(false);
+            window.open("https://wa.me/919372109740", "_blank", "noopener,noreferrer");
+          }}
         >
-          Book a free consultation
+          Book a consultation
         </Link>
       </div>
     </>

@@ -25,6 +25,10 @@ import {
   validateAssistantForm,
 } from "./MyAssistantShared.js";
 import {
+  PROFILE_PASSWORD_MAX_LEN,
+  PROFILE_PASSWORD_MIN_LEN,
+} from "../../../utils/profilePasswordValidation.js";
+import {
   blockPersonNameDigitKeyDown,
   blockPhoneNonDigitKeyDown,
   EMAIL_MAX_LEN,
@@ -249,11 +253,17 @@ export function MyAssistantForm({
             className="user-field__input"
             value={values.password}
             onChange={handleChange("password")}
-            placeholder={mode === "create" ? "Minimum 8 characters" : "Leave blank to keep current password"}
+            placeholder={mode === "create" ? `${PROFILE_PASSWORD_MIN_LEN}–${PROFILE_PASSWORD_MAX_LEN} characters` : "Leave blank to keep current password"}
             autoComplete={mode === "create" ? "new-password" : "off"}
             required={mode === "create"}
-            minLength={mode === "create" ? 8 : undefined}
+            minLength={mode === "create" ? PROFILE_PASSWORD_MIN_LEN : undefined}
+            maxLength={PROFILE_PASSWORD_MAX_LEN}
           />
+          {mode === "create" ? (
+            <span className="user-field__label small text-body-secondary d-block mt-1">
+              Use {PROFILE_PASSWORD_MIN_LEN}–{PROFILE_PASSWORD_MAX_LEN} characters.
+            </span>
+          ) : null}
         </label>
         <label className="user-field col-12 col-md-6 min-w-0">
           <span className="user-field__label">

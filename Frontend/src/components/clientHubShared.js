@@ -13,6 +13,7 @@ export const CLIENT_HUB_TABS = {
     shortLabel: "Prescriptions",
   },
   "commitment-letter": { id: "commitment-letter", label: "Commitment letter", shortLabel: "Commitment" },
+  "coach-message": { id: "coach-message", label: "Coach message", shortLabel: "Coach message" },
   "internal-parameters": { id: "internal-parameters", label: "Internal parameters", shortLabel: "Internal params" },
   "physical-exercises": { id: "physical-exercises", label: "Physical exercises", shortLabel: "Exercises" },
   "mental-wellbeing": { id: "mental-wellbeing", label: "Mental wellbeing", shortLabel: "Mental wellbeing" },
@@ -21,6 +22,8 @@ export const CLIENT_HUB_TABS = {
   "supplement-dosage": { id: "supplement-dosage", label: "Dosage", shortLabel: "Dosage" },
   "meal-tracking": { id: "meal-tracking", label: "Meal tracking", shortLabel: "Meals" },
   "health-progress": { id: "health-progress", label: "Health progress", shortLabel: "Health progress" },
+  "metabolic-metrics": { id: "metabolic-metrics", label: "Metabolic health", shortLabel: "Metabolic" },
+  consultancy: { id: "consultancy", label: "Consultancy", shortLabel: "Consultancy" },
   "launch-assessment": { id: "launch-assessment", label: "LAUNCH assessment", shortLabel: "LAUNCH" },
   "prakruti-assessment": { id: "prakruti-assessment", label: "Prakruti assessment", shortLabel: "Prakruti" },
 };
@@ -32,6 +35,7 @@ export const CLIENT_HUB_HEAL_EXTRA_TAB_IDS = [
   "diet-plan",
   "wellness-prescriptions",
   "commitment-letter",
+  "coach-message",
   "internal-parameters",
   "physical-exercises",
   "mental-wellbeing",
@@ -40,6 +44,8 @@ export const CLIENT_HUB_HEAL_EXTRA_TAB_IDS = [
   "supplement-dosage",
   "meal-tracking",
   "health-progress",
+  "metabolic-metrics",
+  "consultancy",
   "launch-assessment",
   "prakruti-assessment",
 ];
@@ -51,9 +57,14 @@ export const CLIENT_HUB_TAB_GROUPS = [
     tabIds: ["water", "steps", "meal-tracking", "health-progress"],
   },
   {
+    id: "metabolic-health",
+    label: "Metabolic health",
+    tabIds: ["metabolic-metrics"],
+  },
+  {
     id: "care",
     label: "Care plans",
-    tabIds: ["reminders", "diet-plan", "wellness-prescriptions", "commitment-letter", "internal-parameters"],
+    tabIds: ["reminders", "diet-plan", "wellness-prescriptions", "commitment-letter", "coach-message", "internal-parameters", "consultancy"],
   },
   {
     id: "wellness",

@@ -1,6 +1,5 @@
 export default function FinalCTA() {
-  return (
-    <section className="final-cta">
+  return (    <section className="final-cta">
       <div className="final-cta__overlay"></div>
 
       <div className="final-cta__shape final-cta__shape--top"></div>
@@ -19,10 +18,15 @@ export default function FinalCTA() {
             journey towards lasting vitality.
           </p>
 
-          <button className="final-cta__button">
-            Book Your Free Consultation
-          </button>
-        </div>
+          <button
+            type="button"
+            className="final-cta__button"
+            onClick={() =>
+              window.open("https://wa.me/919372109740", "_blank", "noopener,noreferrer")
+            }
+          >
+            Book Your Consultation
+          </button>        </div>
       </div>
     </section>
   );

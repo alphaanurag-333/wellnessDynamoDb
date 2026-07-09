@@ -1,4 +1,5 @@
 export const LIST_LIMIT = 10;
+export const REVIEW_MIN_LEN = 3;
 export const REVIEW_MAX_LEN = 500;
 export const SEARCH_MAX_LEN = 50;
 export const REVIEW_PREVIEW_LEN = 80;

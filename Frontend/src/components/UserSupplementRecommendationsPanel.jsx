@@ -3,6 +3,14 @@ import { Link } from "react-router-dom";
 import Swal from "sweetalert2";
 import { fetchActiveSupplementCatalog } from "../wellnessCoach/api/coachSupplementCatalog.js";
 
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="3">
+      <path d="M5 12l5 5L19 7" />
+    </svg>
+  );
+}
+
 function formatRupee(amount) {
   return `Rs. ${Number(amount || 0).toLocaleString("en-IN")}`;
 }
@@ -17,6 +25,60 @@ function formatAssignedDate(iso) {
 function deliveryOptionLabel(option) {
   if (option === "self_billing") return "Self Billing (upload bill)";
   return "Request delivery from coach";
+}
+
+function SupplementPickerCard({ supplement, selected, qty, onToggle, onQtyChange }) {
+  const id = supplement.id || supplement._id;
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onToggle(id);
+    }
+  };
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      className={`catalog-picker__card catalog-picker__card--supplement${selected ? " catalog-picker__card--selected" : ""}`}
+      onClick={() => onToggle(id)}
+      onKeyDown={handleKeyDown}
+      aria-pressed={selected}
+    >
+      <div className="catalog-picker__card-head">
+        <span className="catalog-picker__card-name">{supplement.name}</span>
+        <span className="catalog-picker__card-check" aria-hidden="true">
+          {selected ? <CheckIcon /> : null}
+        </span>
+      </div>
+      <div className="catalog-picker__card-meta">
+        <span className="catalog-picker__badge">
+          {supplement.packSize} {supplement.unit}
+        </span>
+        <span className="catalog-picker__badge catalog-picker__badge--type">{formatRupee(supplement.price)}</span>
+      </div>
+      {selected ? (
+        <div
+          className="catalog-picker__card-qty"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
+          <label className="catalog-picker__card-qty-label" htmlFor={`supplement-qty-${id}`}>
+            Quantity
+          </label>
+          <input
+            id={`supplement-qty-${id}`}
+            type="number"
+            min={1}
+            className="form-control catalog-picker__card-qty-input"
+            value={qty || 1}
+            onChange={(e) => onQtyChange(id, e.target.value)}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function RecommendationHistoryCard({ recommendation, onRemove, removing, canRemove }) {
@@ -331,38 +393,18 @@ export function UserSupplementRecommendationsPanel({
           <div className="catalog-picker">
             <div className="catalog-picker__grid">
               {filteredCatalog.map((supplement) => {
-              const id = supplement.id || supplement._id;
-              const isSelected = Boolean(selected[id]);
-              return (
-                <div
-                  key={id}
-                  className={`catalog-picker__card${isSelected ? " catalog-picker__card--selected" : ""}`}
-                >
-                  <button
-                    type="button"
-                    className="catalog-picker__card-head"
-                    onClick={() => toggleSelect(id)}
-                  >
-                    <span className="catalog-picker__card-name">{supplement.name}</span>
-                    <span className="catalog-picker__card-meta">
-                      {supplement.packSize} {supplement.unit} · {formatRupee(supplement.price)}
-                    </span>
-                  </button>
-                  {isSelected ? (
-                    <div className="mt-2">
-                      <label className="user-field__label">Qty</label>
-                      <input
-                        type="number"
-                        min={1}
-                        className="form-control"
-                        value={selected[id] || 1}
-                        onChange={(e) => setQty(id, e.target.value)}
-                      />
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
+                const id = supplement.id || supplement._id;
+                return (
+                  <SupplementPickerCard
+                    key={id}
+                    supplement={supplement}
+                    selected={Boolean(selected[id])}
+                    qty={selected[id]}
+                    onToggle={toggleSelect}
+                    onQtyChange={setQty}
+                  />
+                );
+              })}
             </div>
             {filteredCatalog.length === 0 ? (
               <p className="catalog-picker__empty">No supplements match your search.</p>

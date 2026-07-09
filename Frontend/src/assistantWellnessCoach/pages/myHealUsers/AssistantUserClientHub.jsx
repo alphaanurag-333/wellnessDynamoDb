@@ -17,8 +17,11 @@ import { AssistantUserSupplementDosage } from "./AssistantUserSupplementDosage.j
 import { AssistantUserLaunchAssessment } from "./AssistantUserLaunchAssessment.jsx";
 import { AssistantUserPrakrutiAssessment } from "./AssistantUserPrakrutiAssessment.jsx";
 import { AssistantUserHealthProgress } from "./AssistantUserHealthProgress.jsx";
+import { AssistantUserMetabolicMetrics } from "./AssistantUserMetabolicMetrics.jsx";
+import { AssistantUserHealConsultancyTracks } from "./AssistantUserHealConsultancyTracks.jsx";
 import { AssistantUserDailyReflection } from "./AssistantUserDailyReflection.jsx";
 import { AssistantUserCommitmentLetter } from "./AssistantUserCommitmentLetter.jsx";
+import { AssistantUserCoachInsight } from "./AssistantUserCoachInsight.jsx";
 
 function renderAssistantTab(tab, embedded) {
   switch (tab) {
@@ -34,6 +37,8 @@ function renderAssistantTab(tab, embedded) {
       return <AssistantUserWellnessPrescriptions embedded={embedded} />;
     case "commitment-letter":
       return <AssistantUserCommitmentLetter embedded={embedded} />;
+    case "coach-message":
+      return <AssistantUserCoachInsight embedded={embedded} />;
     case "internal-parameters":
       return <AssistantUserTestRecommendations embedded={embedded} />;
     case "physical-exercises":
@@ -52,6 +57,10 @@ function renderAssistantTab(tab, embedded) {
       return <AssistantUserPrakrutiAssessment embedded={embedded} />;
     case "health-progress":
       return <AssistantUserHealthProgress embedded={embedded} />;
+    case "metabolic-metrics":
+      return <AssistantUserMetabolicMetrics embedded={embedded} />;
+    case "consultancy":
+      return <AssistantUserHealConsultancyTracks embedded={embedded} />;
     case "daily-reflection":
       return <AssistantUserDailyReflection embedded={embedded} />;
     default:

@@ -89,7 +89,7 @@ export function CoachConsultancyEnrolledUsersList() {
               <option value="assistant">Assistant clients</option>
             </select>
           </div>
-          <Link to="/coach/consultancy/transactions" className="btn btn--accent">
+          <Link to="/coach/consultancy/transactions" className="btn btn--accent consultancy-page__cta">
             Transactions
           </Link>
         </div>
@@ -106,14 +106,15 @@ export function CoachConsultancyEnrolledUsersList() {
               <th>Meeting with</th>
               <th>Latest payment</th>
               <th>Paid at</th>
+              <th className="data-table__actions-col">Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <CoachTableLoaderRow colSpan={7} label="Loading enrolled users…" />
+              <CoachTableLoaderRow colSpan={8} label="Loading enrolled users…" />
             ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={7}>
+                <td colSpan={8}>
                   <p className="table-placeholder">No consultancy enrolled users linked to your account yet.</p>
                 </td>
               </tr>
@@ -121,7 +122,10 @@ export function CoachConsultancyEnrolledUsersList() {
               rows.map((row) => (
                 <tr key={row.user.id}>
                   <td>
-                    <Link to={`/coach/consultancy/clients/${row.user.id}`} className="data-table__primary data-table__link">
+                    <Link
+                      to={`/coach/consultancy/clients/${row.user.id}`}
+                      className="data-table__primary data-table__link"
+                    >
                       {row.user.name || "—"}
                     </Link>
                     <div className="data-table__muted">{row.user.email || "—"}</div>
@@ -135,6 +139,16 @@ export function CoachConsultancyEnrolledUsersList() {
                     <div className="data-table__muted">{formatMoney(row.latestTransaction?.totalAmount)}</div>
                   </td>
                   <td>{formatJoined(row.latestTransaction?.paidAt)}</td>
+                  <td className="data-table__actions-col">
+                    <div className="data-table__actions">
+                      <Link
+                        to={`/coach/consultancy/clients/${row.user.id}`}
+                        className="btn btn--ghost btn--sm"
+                      >
+                        View
+                      </Link>
+                    </div>
+                  </td>
                 </tr>
               ))
             )}

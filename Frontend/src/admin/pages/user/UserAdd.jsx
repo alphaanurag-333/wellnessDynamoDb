@@ -174,9 +174,9 @@ const STATUS_OPTIONS = [
 const GENDER_OPTIONS = [
   { value: "male", label: "Male" },
   { value: "female", label: "Female" },
-  { value: "other", label: "Other" },
-  { value: "boy", label: "Boy" },
-  { value: "girl", label: "Girl" },
+  // { value: "other", label: "Other" },
+  // { value: "boy", label: "Boy" },
+  // { value: "girl", label: "Girl" },
   { value: "guess", label: "Prefer not to say" },
 ];
 

@@ -20,8 +20,11 @@ import { UserSupplementDosage } from "./UserSupplementDosage.jsx";
 import { UserLaunchAssessment } from "./UserLaunchAssessment.jsx";
 import { UserPrakrutiAssessment } from "./UserPrakrutiAssessment.jsx";
 import { UserHealthProgress } from "./UserHealthProgress.jsx";
+import { UserMetabolicMetrics } from "./UserMetabolicMetrics.jsx";
+import { UserHealConsultancyTracks } from "./UserHealConsultancyTracks.jsx";
 import { UserDailyReflection } from "./UserDailyReflection.jsx";
 import { UserCommitmentLetter } from "./UserCommitmentLetter.jsx";
+import { UserCoachInsight } from "./UserCoachInsight.jsx";
 
 function renderCoachTab(tab, embedded) {
   switch (tab) {
@@ -37,6 +40,8 @@ function renderCoachTab(tab, embedded) {
       return <UserWellnessPrescriptions embedded={embedded} />;
     case "commitment-letter":
       return <UserCommitmentLetter embedded={embedded} />;
+    case "coach-message":
+      return <UserCoachInsight embedded={embedded} />;
     case "internal-parameters":
       return <UserTestRecommendations embedded={embedded} />;
     case "physical-exercises":
@@ -55,6 +60,10 @@ function renderCoachTab(tab, embedded) {
       return <UserPrakrutiAssessment embedded={embedded} />;
     case "health-progress":
       return <UserHealthProgress embedded={embedded} />;
+    case "metabolic-metrics":
+      return <UserMetabolicMetrics embedded={embedded} />;
+    case "consultancy":
+      return <UserHealConsultancyTracks embedded={embedded} />;
     case "daily-reflection":
       return <UserDailyReflection embedded={embedded} />;
     default:

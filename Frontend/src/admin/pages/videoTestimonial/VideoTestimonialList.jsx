@@ -13,6 +13,7 @@ import {
 } from "../../api/videoTestimonialsController.js";
 import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
+import { useDebouncedSearch } from "../../../hooks/useDebouncedSearch.js";
 import { mediaUrl } from "../../../media.js";
 import { LIST_LIMIT, SEARCH_MAX_LEN } from "./VideoTestimonialShared.js";
 
@@ -23,7 +24,9 @@ export function VideoTestimonialList() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [togglingId, setTogglingId] = useState("");
-  const [listSearch, setListSearch] = useState("");
+  const { searchInput: listSearch, debouncedSearch, onSearchChange, setSearchInput } = useDebouncedSearch("", {
+    maxLength: SEARCH_MAX_LEN,
+  });
   const [listType, setListType] = useState("");
   const [listStatus, setListStatus] = useState("");
   const [page, setPage] = useState(1);
@@ -39,7 +42,7 @@ export function VideoTestimonialList() {
         limit: LIST_LIMIT,
         ...(listType ? { type: listType } : {}),
         ...(listStatus ? { status: listStatus } : {}),
-        ...(listSearch.trim() ? { search: listSearch.trim() } : {}),
+        ...(debouncedSearch ? { search: debouncedSearch } : {}),
       });
       setRows(videoTestimonials);
       setPages(pagination?.pages ?? 1);
@@ -50,7 +53,7 @@ export function VideoTestimonialList() {
     } finally {
       setLoading(false);
     }
-  }, [adminToken, dispatch, listSearch, listStatus, listType, page]);
+  }, [adminToken, dispatch, debouncedSearch, listStatus, listType, page]);
 
   useEffect(() => {
     loadRows();
@@ -58,7 +61,7 @@ export function VideoTestimonialList() {
 
   useEffect(() => {
     setPage(1);
-  }, [listSearch, listStatus, listType]);
+  }, [debouncedSearch, listStatus, listType]);
 
   const onDelete = async (row) => {
     const { isConfirmed } = await Swal.fire({
@@ -101,7 +104,7 @@ export function VideoTestimonialList() {
   const hasFilters = Boolean(listSearch.trim() || listStatus || listType);
 
   const clearFilters = () => {
-    setListSearch("");
+    setSearchInput("");
     setListType("");
     setListStatus("");
   };
@@ -125,7 +128,7 @@ export function VideoTestimonialList() {
               className="user-field__input"
               maxLength={SEARCH_MAX_LEN}
               value={listSearch}
-              onChange={(e) => setListSearch(e.target.value.slice(0, SEARCH_MAX_LEN))}
+              onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Name..."
             />
           </label>

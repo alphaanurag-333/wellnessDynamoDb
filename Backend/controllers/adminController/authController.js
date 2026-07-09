@@ -15,6 +15,7 @@ const {
   toPublicAdmin,
 } = require("../../models/adminModel");
 const config = require("../../config");
+const { assertPasswordPolicy } = require("../../utils/passwordPolicy");
 
 const S3_FOLDER = "admin";
 
@@ -151,13 +152,7 @@ exports.changeAdminPassword = asyncHandler(async (req, res) => {
     throw new AppError("Current password and new password are required", 400);
   }
 
-  if (String(newPassword).length < 8) {
-    throw new AppError("New password must be at least 8 characters", 400);
-  }
-
-  if (String(newPassword).length > 15) {
-    throw new AppError("New password cannot exceed 15 characters", 400);
-  }
+  assertPasswordPolicy(newPassword, { required: true, label: "New password" });
 
   const isCurrentPasswordValid = await comparePassword(currentPassword, admin.password);
   if (!isCurrentPasswordValid) {
