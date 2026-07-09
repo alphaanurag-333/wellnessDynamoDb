@@ -16,9 +16,9 @@ import "swiper/css/navigation";
 
 import clinicImage from "../images/about-hero.png";
 import oilImage from "../images/Exercise.jpg";
-import CardOne from "../images/about-card-one.jpg";
-import CardTwo from "../images/about-card-two.jpg";
-import CardThree from "../images/about-card-three.jpg";
+import CardOne from "../images/about-card-one.png";
+import CardTwo from "../images/about-card-two.png";
+import CardThree from "../images/about-card-three.png";
 import img1 from "../images/about-faq-1.png";
 import img2 from "../images/about-faq-2.png";
 import img3 from "../images/about-faq-3.png";
