@@ -14,37 +14,48 @@ import gutImg from "../images/gut-health.png";
 import FinalCTA from "./FinalCTA";
 import VideoTestimonials from "./VideoTestimonials";
 import TransformationStoriesSection from "./TransformationStoriesSection";
+import { NavLink } from "react-router-dom";
 
 const CATEGORY_ITEMS = [
   {
     id: "diabetes",
     title: "Diabetes Reversal",
+    url: "/diabetes-reversal",
     image: diabetesImg,
-    description: "Yoga, an ancient practice rooted in Indian philosophy, lifestyle guidance, and clinical care to support blood sugar balance.",
+    description:
+      "Yoga, an ancient practice rooted in Indian philosophy, lifestyle guidance, and clinical care to support blood sugar balance.",
   },
   {
     id: "fat-loss",
     title: "Fat Loss",
+    url: "/fat-loss",
     image: fatLossImg,
-    description: "Support better hormonal balance and sustainable fat loss through structured nutrition and daily wellness habits.",
+    description:
+      "Support better hormonal balance and sustainable fat loss through structured nutrition and daily wellness habits.",
   },
   {
     id: "pcos",
     title: "PCOD-PCOS",
+    url: "/pcod-pcos-reversal",
     image: pcosImg,
-    description: "Focus on hormonal health and lifestyle management for improved cycle balance and long-term wellbeing.",
+    description:
+      "Focus on hormonal health and lifestyle management for improved cycle balance and long-term wellbeing.",
   },
   {
     id: "thyroid",
     title: "Thyroid Care",
+    url: "/thyroid",
     image: thyroidImg,
-    description: "Personalized plans to support thyroid function, metabolism, and overall energy through guided clinical wellness.",
+    description:
+      "Personalized plans to support thyroid function, metabolism, and overall energy through guided clinical wellness.",
   },
   {
     id: "gut",
     title: "Gut Health",
+         url: "/gut-health",
     image: gutImg,
-    description: "Build healthier daily routines to support digestion, immunity, and overall gut wellness.",
+    description:
+      "Build healthier daily routines to support digestion, immunity, and overall gut wellness.",
   },
 ];
 
@@ -169,13 +180,17 @@ const SuccessStories = () => {
           >
             {CATEGORY_ITEMS.map((item) => (
               <SwiperSlide key={item.id}>
-                <article className="transformation-category-card">
+                <NavLink to={item.url}>
+                  <article className="transformation-category-card">
                   <div className="transformation-image">
                     <img src={item.image} alt={item.title} loading="lazy" />
                   </div>
                   <h4>{item.title}</h4>
-                  <p className="transformation-category-card__desc">{item.description}</p>
+                  <p className="transformation-category-card__desc">
+                    {item.description}
+                  </p>
                 </article>
+                </NavLink>
               </SwiperSlide>
             ))}
           </Swiper>
