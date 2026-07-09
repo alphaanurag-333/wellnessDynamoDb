@@ -343,97 +343,8 @@ const AboutUsSection = () => {
       </section>
 
       <Methodology />
-      <section className="aboutFaq">
-        <div className="site-container">
-          <div className="aboutFaq__wrapper">
-            {/* LEFT */}
 
-            <div className="aboutFaq__gallery">
-              <div className="aboutFaq__column">
-                <div className="aboutFaq__image aboutFaq__image--large">
-                  <img src={img1} alt="Wellness" />
-                </div>
-
-                <div className="aboutFaq__image aboutFaq__image--small">
-                  <img src={img3} alt="Yoga" />
-                </div>
-              </div>
-
-              <div className="aboutFaq__column">
-                <div className="aboutFaq__image aboutFaq__image--small">
-                  <img src={img2} alt="Nutrition" />
-                </div>
-
-                <div className="aboutFaq__image aboutFaq__image--large">
-                  <img src={img4} alt="Diagnostics" />
-                </div>
-              </div>
-            </div>
-
-            {/* RIGHT */}
-
-            <div className="aboutFaq__content">
-              <span className="aboutFaq__label">OUR PROCESS</span>
-
-              <h2 className="aboutFaq__title">
-                <span> Holistic Approach</span>
-              </h2>
-              <p className="aboutFaq__para">
-                We believe in a holistic approach towards health & Wellness.
-                <br />
-                Holistic Health recognizes the interconnectedness of mind, body
-                & spirit and treats them as one which emphasizes the importance
-                of nurturing each aspect to achieve optimal well-being.
-              </p>
-
-              <div
-                className="accordion aboutFaqAccordion"
-                id="aboutFaqAccordion"
-              >
-                {faqData.map((item, index) => (
-                  <div className="accordion-item" key={item.id}>
-                    <h2 className="accordion-header" id={`heading${item.id}`}>
-                      <button
-                        className={`accordion-button ${
-                          index !== 0 ? "collapsed" : ""
-                        }`}
-                        type="button"
-                        data-bs-toggle="collapse"
-                        data-bs-target={`#collapse${item.id}`}
-                        aria-expanded={index === 0}
-                        aria-controls={`collapse${item.id}`}
-                      >
-                        <div className="aboutFaqAccordion__header">
-                          <div className="aboutFaqAccordion__icon">
-                            {item.icon}
-                          </div>
-
-                          <span className="aboutFaqAccordion__question">
-                            {item.question}
-                          </span>
-                        </div>
-                      </button>
-                    </h2>
-
-                    <div
-                      id={`collapse${item.id}`}
-                      className={`accordion-collapse collapse ${
-                        index === 0 ? "show" : ""
-                      }`}
-                      aria-labelledby={`heading${item.id}`}
-                      data-bs-parent="#aboutFaqAccordion"
-                    >
-                      <div className="accordion-body">{item.answer}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {(coachesLoading || wellnessCoaches.length > 0) && (
+  {(coachesLoading || wellnessCoaches.length > 0) && (
         <section className="medicalBoard">
           <div className="site-container">
             <div className="medicalBoard__top">
@@ -532,6 +443,98 @@ const AboutUsSection = () => {
         </section>
       )}
 
+
+      <section className="aboutFaq">
+        <div className="site-container">
+          <div className="aboutFaq__wrapper">
+            {/* LEFT */}
+
+            <div className="aboutFaq__gallery">
+              <div className="aboutFaq__column">
+                <div className="aboutFaq__image aboutFaq__image--large">
+                  <img src={img1} alt="Wellness" />
+                </div>
+
+                <div className="aboutFaq__image aboutFaq__image--small">
+                  <img src={img3} alt="Yoga" />
+                </div>
+              </div>
+
+              <div className="aboutFaq__column">
+                <div className="aboutFaq__image aboutFaq__image--small">
+                  <img src={img2} alt="Nutrition" />
+                </div>
+
+                <div className="aboutFaq__image aboutFaq__image--large">
+                  <img src={img4} alt="Diagnostics" />
+                </div>
+              </div>
+            </div>
+
+            {/* RIGHT */}
+
+            <div className="aboutFaq__content">
+              <span className="aboutFaq__label">OUR PROCESS</span>
+
+              <h2 className="aboutFaq__title">
+                <span> Holistic Approach</span>
+              </h2>
+              <p className="aboutFaq__para">
+                We believe in a holistic approach towards health & Wellness.
+                <br />
+                Holistic Health recognizes the interconnectedness of mind, body
+                & spirit and treats them as one which emphasizes the importance
+                of nurturing each aspect to achieve optimal well-being.
+              </p>
+
+              <div
+                className="accordion aboutFaqAccordion"
+                id="aboutFaqAccordion"
+              >
+                {faqData.map((item, index) => (
+                  <div className="accordion-item" key={item.id}>
+                    <h2 className="accordion-header" id={`heading${item.id}`}>
+                      <button
+                        className={`accordion-button ${
+                          index !== 0 ? "collapsed" : ""
+                        }`}
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target={`#collapse${item.id}`}
+                        aria-expanded={index === 0}
+                        aria-controls={`collapse${item.id}`}
+                      >
+                        <div className="aboutFaqAccordion__header">
+                          <div className="aboutFaqAccordion__icon">
+                            {item.icon}
+                          </div>
+
+                          <span className="aboutFaqAccordion__question">
+                            {item.question}
+                          </span>
+                        </div>
+                      </button>
+                    </h2>
+
+                    <div
+                      id={`collapse${item.id}`}
+                      className={`accordion-collapse collapse ${
+                        index === 0 ? "show" : ""
+                      }`}
+                      aria-labelledby={`heading${item.id}`}
+                      data-bs-parent="#aboutFaqAccordion"
+                    >
+                      <div className="accordion-body">{item.answer}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    
       <section className="final-cta">
         <div className="final-cta__overlay"></div>
 
