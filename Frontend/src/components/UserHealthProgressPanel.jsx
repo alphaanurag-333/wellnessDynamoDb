@@ -20,6 +20,25 @@ function formatDate(value) {
   });
 }
 
+function formatTime(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  return d.toLocaleTimeString("en-GB", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+function formatDurationMinutes(minutes) {
+  const total = Number(minutes) || 0;
+  if (total <= 0) return "—";
+  const hours = Math.floor(total / 60);
+  const mins = total % 60;
+  return `${hours}h ${mins}m`;
+}
+
 function HistoryTable({ title, columns, rows, emptyText = "No entries yet." }) {
   return (
     <div className="page-card">
@@ -69,6 +88,8 @@ export function UserHealthProgressPanel({
   const [bpLogs, setBpLogs] = useState([]);
   const [cycleLogs, setCycleLogs] = useState([]);
   const [conditionLogs, setConditionLogs] = useState([]);
+  const [sleepHistory, setSleepHistory] = useState([]);
+  const [heartRateHistory, setHeartRateHistory] = useState([]);
 
   const loadAll = useCallback(async () => {
     if (!token || !userId) return;
@@ -96,6 +117,18 @@ export function UserHealthProgressPanel({
       if (nextSettings.conditionComparison && api.listCondition) {
         requests.push(api.listCondition(token, userId, { page: 1, limit: 50 }).then((r) => setConditionLogs(r?.logs ?? [])));
       } else setConditionLogs([]);
+
+      if (api.listSleep) {
+        requests.push(
+          api.listSleep(token, userId, { days: 7 }).then((r) => setSleepHistory(r?.data?.history ?? [])),
+        );
+      } else setSleepHistory([]);
+
+      if (api.listHeartRate) {
+        requests.push(
+          api.listHeartRate(token, userId, { days: 7 }).then((r) => setHeartRateHistory(r?.data?.history ?? [])),
+        );
+      } else setHeartRateHistory([]);
 
       await Promise.all(requests);
     } catch (err) {
@@ -268,6 +301,33 @@ export function UserHealthProgressPanel({
           )}
         </div>
       ) : null}
+
+      <HistoryTable
+        title="Sleep tracking history"
+        columns={[
+          { key: "date", label: "Date", render: (row) => formatDate(row.date) },
+          { key: "duration", label: "Duration", render: (row) => formatDurationMinutes(row.durationMinutes) },
+          { key: "bed", label: "Bed time", render: (row) => formatTime(row.bedTime) },
+          { key: "wake", label: "Wake time", render: (row) => formatTime(row.wakeTime) },
+          { key: "source", label: "Source", render: (row) => row.source || "—" },
+        ]}
+        rows={sleepHistory.filter((row) => row.durationMinutes > 0)}
+        emptyText="No sleep data synced yet."
+      />
+
+      <HistoryTable
+        title="Heart rate history"
+        columns={[
+          { key: "date", label: "Date", render: (row) => formatDate(row.date) },
+          { key: "latest", label: "Latest BPM", render: (row) => row.latestBpm || "—" },
+          { key: "resting", label: "Resting", render: (row) => row.restingBpm || "—" },
+          { key: "average", label: "Average", render: (row) => row.averageBpm || "—" },
+          { key: "max", label: "Max", render: (row) => row.maxBpm || "—" },
+          { key: "source", label: "Source", render: (row) => row.source || "—" },
+        ]}
+        rows={heartRateHistory.filter((row) => row.latestBpm > 0)}
+        emptyText="No heart rate data synced yet."
+      />
     </div>
   );
 }

@@ -10219,6 +10219,35 @@ fieldset.form-field legend {
   margin: 0.75rem 0 1rem;
 }
 
+.metabolic-fli-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0.75rem 0 1rem;
+}
+
+.metabolic-fli-form__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.metabolic-fli-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--admin-muted);
+}
+
+.metabolic-fli-form__field input {
+  width: 100%;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.95rem;
+}
+
 /* -------------------------------------------------------------------------- */
 /*  Monthly champions (coach / assistant portal)                               */
 /* -------------------------------------------------------------------------- */

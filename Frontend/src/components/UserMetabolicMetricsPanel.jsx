@@ -106,6 +106,11 @@ function HistoryTable({ columns, rows }) {
 export function UserMetabolicMetricsPanel({ token, userId, api, onUnauthorized }) {
   const [loading, setLoading] = useState(true);
   const [dashboard, setDashboard] = useState(null);
+  const [triglycerides, setTriglycerides] = useState("");
+  const [ggt, setGgt] = useState("");
+  const [bmiOverride, setBmiOverride] = useState("");
+  const [waistCmOverride, setWaistCmOverride] = useState("");
+  const [savingFli, setSavingFli] = useState(false);
 
   const loadAll = useCallback(async () => {
     if (!token || !userId) return;
@@ -125,6 +130,39 @@ export function UserMetabolicMetricsPanel({ token, userId, api, onUnauthorized }
     loadAll();
   }, [loadAll]);
 
+  const handleSaveFattyLiver = async (event) => {
+    event.preventDefault();
+    if (!api.saveFattyLiverMetric) return;
+
+    const payload = {
+      triglycerides: Number(triglycerides),
+      ggt: Number(ggt),
+    };
+    if (bmiOverride.trim()) payload.bmi = Number(bmiOverride);
+    if (waistCmOverride.trim()) payload.waistCm = Number(waistCmOverride);
+
+    if (!payload.triglycerides || !payload.ggt) {
+      Swal.fire("Validation", "Triglycerides and GGT are required.", "warning");
+      return;
+    }
+
+    setSavingFli(true);
+    try {
+      await api.saveFattyLiverMetric(token, userId, payload);
+      setTriglycerides("");
+      setGgt("");
+      setBmiOverride("");
+      setWaistCmOverride("");
+      await loadAll();
+      Swal.fire("Saved", "Fatty Liver Index updated successfully.", "success");
+    } catch (err) {
+      if (err?.status === 401) onUnauthorized?.();
+      else Swal.fire("Error", err?.message || "Failed to save Fatty Liver Index", "error");
+    } finally {
+      setSavingFli(false);
+    }
+  };
+
   if (loading) {
     return <p className="page-card__desc">Loading metabolic health metrics…</p>;
   }
@@ -134,6 +172,7 @@ export function UserMetabolicMetricsPanel({ token, userId, api, onUnauthorized }
   const tdee = dashboard?.tdee;
   const bodyFat = dashboard?.bodyFat;
   const visceralFat = dashboard?.visceralFat;
+  const fattyLiver = dashboard?.fattyLiver;
 
   return (
     <div className="metabolic-metrics-panel">
@@ -253,6 +292,108 @@ export function UserMetabolicMetricsPanel({ token, userId, api, onUnauthorized }
           ]}
         />
       </MetricCard>
+
+      <div className="page-card metabolic-metric-card">
+        <h3 className="form-card__title">Fatty Liver Index</h3>
+        {fattyLiver?.current ? (
+          <>
+            <div className="metabolic-metric-card__current">
+              <div className="metabolic-value-block metabolic-value-block--green">
+                <strong className="metabolic-value-block__value">
+                  {fattyLiver.current.value ?? fattyLiver.current.fli ?? "—"}
+                </strong>
+                <span className="metabolic-value-block__label">
+                  FLI
+                  {fattyLiver.current.riskLabel ? ` · ${fattyLiver.current.riskLabel}` : ""}
+                </span>
+              </div>
+              <p className="page-card__desc">
+                TG: {fattyLiver.current.triglycerides ?? "—"} · GGT:{" "}
+                {fattyLiver.current.ggt ?? "—"} · BMI: {fattyLiver.current.bmi ?? "—"} · Waist:{" "}
+                {fattyLiver.current.waistCm ?? "—"} cm
+              </p>
+              <MiniBarChart
+                data={fattyLiver.history ?? []}
+                dataKey="value"
+                color="#22c55e"
+              />
+            </div>
+            {fattyLiver.current.recordedAt ? (
+              <p className="page-card__desc metabolic-metric-card__date">
+                Last updated: {formatDate(fattyLiver.current.recordedAt)}
+              </p>
+            ) : null}
+          </>
+        ) : (
+          <p className="page-card__desc">
+            No Fatty Liver Index recorded yet. Enter triglycerides and GGT from the
+            client&apos;s blood report below to calculate FLI.
+          </p>
+        )}
+        {api.saveFattyLiverMetric ? (
+          <form className="metabolic-fli-form" onSubmit={handleSaveFattyLiver}>
+            <div className="metabolic-fli-form__grid">
+              <label className="metabolic-fli-form__field">
+                <span>Triglycerides (mg/dL)</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={triglycerides}
+                  onChange={(e) => setTriglycerides(e.target.value)}
+                  placeholder="e.g. 150"
+                />
+              </label>
+              <label className="metabolic-fli-form__field">
+                <span>GGT (U/L)</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={ggt}
+                  onChange={(e) => setGgt(e.target.value)}
+                  placeholder="e.g. 45"
+                />
+              </label>
+              <label className="metabolic-fli-form__field">
+                <span>BMI override (optional)</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={bmiOverride}
+                  onChange={(e) => setBmiOverride(e.target.value)}
+                  placeholder="Uses latest BMI log if blank"
+                />
+              </label>
+              <label className="metabolic-fli-form__field">
+                <span>Waist cm override (optional)</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={waistCmOverride}
+                  onChange={(e) => setWaistCmOverride(e.target.value)}
+                  placeholder="Uses latest visceral fat log if blank"
+                />
+              </label>
+            </div>
+            <button type="submit" className="btn btn-primary" disabled={savingFli}>
+              {savingFli ? "Saving…" : "Save Fatty Liver Index"}
+            </button>
+          </form>
+        ) : null}
+        <HistoryTable
+          rows={fattyLiver?.history ?? []}
+          columns={[
+            { key: "date", label: "Date", render: (r) => formatDate(r.recordedAt) },
+            { key: "tg", label: "TG", render: (r) => r.triglycerides ?? "—" },
+            { key: "ggt", label: "GGT", render: (r) => r.ggt ?? "—" },
+            { key: "fli", label: "FLI", render: (r) => r.value ?? r.fli ?? "—" },
+            { key: "risk", label: "Risk", render: (r) => r.riskLabel || "—" },
+          ]}
+        />
+      </div>
     </div>
   );
 }

@@ -5,13 +5,16 @@ const {
   readPagination,
   loadTargetUser,
 } = require("../healthProgressControllerHelpers");
-const { buildDashboardFromLogs, normalizeMetricType } = require("../../utils/metabolicMetricsCalculations");
+const { buildDashboardFromLogs, normalizeMetricTypeFilter } = require("../../utils/metabolicMetricsCalculations");
 const { formatChartDate } = require("../../utils/healthProgressHelpers");
 const {
   listMetabolicMetricLogsByUser,
   listAllMetabolicMetricLogsByUser,
   toPublicMetabolicMetricLog,
 } = require("../../models/healthProgressMetabolicMetricModel");
+const {
+  createFattyLiverMetricForUser,
+} = require("../metabolicMetricsFattyLiverHelpers");
 
 async function assistantContext(req) {
   const assistantId = req.auth?.sub;
@@ -49,7 +52,7 @@ exports.listAssistantMetabolicMetricHistoryController = asyncHandler(async (req,
   let metricType = null;
   if (req.params?.metricType || req.query?.metricType || req.query?.metric_type) {
     try {
-      metricType = normalizeMetricType(
+      metricType = normalizeMetricTypeFilter(
         req.params?.metricType || req.query?.metricType || req.query?.metric_type
       );
     } catch (err) {
@@ -68,5 +71,22 @@ exports.listAssistantMetabolicMetricHistoryController = asyncHandler(async (req,
     message: "Metabolic metric history fetched",
     logs: result.items.map(toPublicMetabolicMetricLog),
     pagination: result.pagination,
+  });
+});
+
+exports.createAssistantFattyLiverMetricController = asyncHandler(async (req, res) => {
+  const { userId } = await assistantContext(req);
+  const actingCoachId = req.auth?.sub;
+
+  const log = await createFattyLiverMetricForUser({
+    userId,
+    body: req.body || {},
+    enteredByCoachId: actingCoachId,
+  });
+
+  return res.status(201).json({
+    status: true,
+    message: "Fatty liver index saved",
+    log,
   });
 });

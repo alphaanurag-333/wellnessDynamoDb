@@ -10,6 +10,7 @@ const {
 const {
   ageFromDob,
   normalizeMetricType,
+  normalizeMetricTypeFilter,
   buildMetricSnapshot,
   buildDashboardFromLogs,
 } = require("../../utils/metabolicMetricsCalculations");
@@ -88,7 +89,13 @@ exports.listMetabolicMetricHistoryController = asyncHandler(async (req, res) => 
   const { page, limit } = readPagination(req);
   let metricType = null;
   if (req.params?.metricType || req.query?.metricType || req.query?.metric_type) {
-    metricType = resolveMetricTypeFromRequest(req);
+    try {
+      metricType = normalizeMetricTypeFilter(
+        req.params?.metricType || req.query?.metricType || req.query?.metric_type
+      );
+    } catch (err) {
+      throw new AppError(err.message, 400);
+    }
   }
 
   const result = await listMetabolicMetricLogsByUser(userId, {

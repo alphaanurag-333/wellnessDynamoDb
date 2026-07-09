@@ -10,6 +10,7 @@ const { getWellnessCoachById } = require("../../models/wellnessCoachModel");
 const {
   createAssistantWellnessCoach,
   getAssistantWellnessCoachById,
+  getAssistantWellnessCoachRecordById,
   getAssistantByEmail,
   getAssistantByPhone,
   updateAssistantWellnessCoach,
@@ -205,7 +206,7 @@ exports.updateAssistantController = asyncHandler(async (req, res) => {
   const { coachId, id } = req.params;
   const coach = await assertCoachExists(coachId);
 
-  const current = await getAssistantWellnessCoachById(id);
+  const current = await getAssistantWellnessCoachRecordById(id);
   if (!current) throw new AppError("Assistant wellness coach not found", 404);
   assertAssistantBelongsToCoach(current, coachId);
 
@@ -274,7 +275,7 @@ exports.deleteAssistantController = asyncHandler(async (req, res) => {
   const { coachId, id } = req.params;
   await assertCoachExists(coachId);
 
-  const current = await getAssistantWellnessCoachById(id);
+  const current = await getAssistantWellnessCoachRecordById(id);
   if (!current) throw new AppError("Assistant wellness coach not found", 404);
   assertAssistantBelongsToCoach(current, coachId);
 

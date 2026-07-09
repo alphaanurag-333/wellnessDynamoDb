@@ -12,6 +12,7 @@ const {
   getAssistantByEmail,
   getAssistantByPhone,
   getAssistantWellnessCoachById,
+  getAssistantWellnessCoachRecordById,
   updateAssistantWellnessCoach,
   populateWellnessCoach,
   toPublicAssistant,
@@ -161,7 +162,7 @@ exports.getAssistantWellnessCoachProfile = asyncHandler(async (req, res) => {
 });
 
 exports.updateAssistantWellnessCoachProfile = asyncHandler(async (req, res) => {
-  const assistant = await getAssistantWellnessCoachById(req.auth?.sub);
+  const assistant = await getAssistantWellnessCoachRecordById(req.auth?.sub);
   if (!assistant) {
     throw new AppError("Assistant wellness coach not found", 404);
   }
@@ -208,7 +209,7 @@ exports.updateAssistantWellnessCoachProfile = asyncHandler(async (req, res) => {
 });
 
 exports.changeAssistantWellnessCoachPassword = asyncHandler(async (req, res) => {
-  const assistant = await getAssistantWellnessCoachById(req.auth?.sub);
+  const assistant = await getAssistantWellnessCoachRecordById(req.auth?.sub);
   if (!assistant) {
     throw new AppError("Assistant wellness coach not found", 404);
   }

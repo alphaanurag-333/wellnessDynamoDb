@@ -5,6 +5,7 @@ const {
   uploadFileFromRequest,
   deleteStoredMedia,
   parseMediaKeyFromBody,
+  resolvePublicUrl,
 } = require("../../utils/s3");
 const { getHealthConcernById } = require("../../models/healthConcernModel");
 const { getWellnessCoachById } = require("../../models/wellnessCoachModel");
@@ -34,6 +35,11 @@ function parseBool(value) {
   if (s === "true") return true;
   if (s === "false") return false;
   return undefined;
+}
+
+function resolveCoachProfileImage(profileImage) {
+  if (!profileImage) return null;
+  return resolvePublicUrl(profileImage) || profileImage;
 }
 
 /** Accepts fcm_id, fcmId, fcm_token, fcmToken. Undefined = omit; empty string = clear. */
@@ -149,7 +155,13 @@ async function enrichUser(user) {
     if (pub.assignedCoachType === "wellness_coach") {
       const coach = await getWellnessCoachById(pub.assignedCoachId);
       pub.assignedCoach = coach
-        ? { id: coach.id, _id: coach._id ?? coach.id, name: coach.name, profileImage: coach.profileImage || null, type: "wellness_coach" }
+        ? {
+            id: coach.id,
+            _id: coach._id ?? coach.id,
+            name: coach.name,
+            profileImage: resolveCoachProfileImage(coach.profileImage),
+            type: "wellness_coach",
+          }
         : null;
     } else if (pub.assignedCoachType === "assistant_wellness_coach") {
       const assistant = await getAssistantWellnessCoachById(pub.assignedCoachId);
@@ -158,7 +170,7 @@ async function enrichUser(user) {
             id: assistant.id,
             _id: assistant._id ?? assistant.id,
             name: assistant.name,
-            profileImage: assistant.profileImage || null,
+            profileImage: resolveCoachProfileImage(assistant.profileImage),
             type: "assistant_wellness_coach",
           }
         : null;
@@ -168,7 +180,12 @@ async function enrichUser(user) {
   if (pub.parentCoachId) {
     const parentCoach = await getWellnessCoachById(pub.parentCoachId);
     pub.parentCoach = parentCoach
-      ? { id: parentCoach.id, _id: parentCoach._id ?? parentCoach.id, name: parentCoach.name, profileImage: parentCoach.profileImage || null }
+      ? {
+          id: parentCoach.id,
+          _id: parentCoach._id ?? parentCoach.id,
+          name: parentCoach.name,
+          profileImage: resolveCoachProfileImage(parentCoach.profileImage),
+        }
       : null;
   }
 

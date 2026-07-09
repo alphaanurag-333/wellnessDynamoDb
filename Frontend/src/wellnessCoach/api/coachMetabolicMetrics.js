@@ -35,3 +35,16 @@ export async function coachListMetabolicMetricHistory(token, userId, params = {}
     normalizeApiError(error);
   }
 }
+
+export async function coachSaveFattyLiverMetric(token, userId, payload = {}) {
+  try {
+    const { data: body } = await coachApi.post(
+      `${basePath(userId)}/fatty-liver`,
+      payload,
+      { headers: authHeader(token) }
+    );
+    return { log: body.log ?? null };
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
