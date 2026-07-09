@@ -18,6 +18,7 @@ const {
   DEFAULT_STATUS_PARTITIONS,
 } = require("../utils/dynamoList");
 const { getReadMapForUser } = require("./userNotificationReadModel");
+const { getUserById } = require("./userModel");
 
 const TABLE = "Notification";
 const STATUS = new Set(["active", "inactive"]);
@@ -64,9 +65,21 @@ function isBroadcastNotification(item) {
   return BROADCAST_KINDS.has(kind) && isSupportedAudience(item.audienceType);
 }
 
-function isNotificationVisibleToUser(item, userId) {
+function isSentOnOrAfterUserJoined(notification, userCreatedAt) {
+  const joinedAt = String(userCreatedAt || "").trim();
+  if (!joinedAt) return true;
+
+  const sentAt = String(notification?.sentAt || notification?.createdAt || "").trim();
+  if (!sentAt) return false;
+
+  return sentAt >= joinedAt;
+}
+
+function isNotificationVisibleToUser(item, userId, userCreatedAt = null) {
   if (!item || normalizeStatus(item.status) !== "active") return false;
-  if (isBroadcastNotification(item)) return true;
+  if (isBroadcastNotification(item)) {
+    return isSentOnOrAfterUserJoined(item, userCreatedAt);
+  }
   return String(item.userId || "").trim() === String(userId || "").trim();
 }
 
@@ -401,12 +414,20 @@ async function findTargetedNotificationForUser(userId, { kind, referenceId }) {
 }
 
 async function listApplicableNotificationsForUser(userId) {
+  const uid = String(userId || "").trim();
+  const user = uid ? await getUserById(uid) : null;
+  const userCreatedAt = user?.createdAt || null;
+
   const [broadcast, targeted] = await Promise.all([
     queryAllBroadcastNotifications(),
-    queryTargetedNotificationsForUser(userId),
+    queryTargetedNotificationsForUser(uid),
   ]);
 
-  const merged = [...broadcast, ...targeted];
+  const applicableBroadcasts = broadcast.filter((item) =>
+    isSentOnOrAfterUserJoined(item, userCreatedAt)
+  );
+
+  const merged = [...applicableBroadcasts, ...targeted];
   merged.sort(sortBySentAtDesc);
   return merged;
 }
@@ -452,10 +473,12 @@ async function countUnreadNotificationsForUser(userId) {
 }
 
 async function getNotificationForUser(userId, notificationId) {
+  const uid = String(userId || "").trim();
   const item = await getNotificationRecordById(notificationId);
-  if (!isNotificationVisibleToUser(item, userId)) return null;
+  const user = uid ? await getUserById(uid) : null;
+  if (!isNotificationVisibleToUser(item, uid, user?.createdAt || null)) return null;
 
-  const readMap = await getReadMapForUser(userId, [notificationId]);
+  const readMap = await getReadMapForUser(uid, [notificationId]);
   return toUserInboxNotification(item, readMap);
 }
 
