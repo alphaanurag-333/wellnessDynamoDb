@@ -44,6 +44,16 @@ function emptyEditForm() {
   };
 }
 
+function emptyCreateForm() {
+  return {
+    concern: "",
+    status: "scheduled",
+    scheduledAt: "",
+    meetingLink: "",
+    coachNotes: "",
+  };
+}
+
 function trackToEditForm(track) {
   if (!track) return emptyEditForm();
   return {
@@ -70,9 +80,15 @@ export function UserHealConsultancyTracksPanel({
 }) {
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState("");
+  const [deletingId, setDeletingId] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const [tracks, setTracks] = useState([]);
   const [editingId, setEditingId] = useState("");
   const [editForm, setEditForm] = useState(emptyEditForm());
+  const [createForm, setCreateForm] = useState(emptyCreateForm());
+
+  const canManage = !readOnly && (api.updateTrack || api.createTrack || api.deleteTrack);
 
   const loadAll = useCallback(async () => {
     if (!token || !userId) return;
@@ -123,6 +139,62 @@ export function UserHealConsultancyTracksPanel({
     }
   };
 
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    if (!api.createTrack) return;
+    if (!String(createForm.concern || "").trim()) {
+      Swal.fire("Validation", "Concern is required", "warning");
+      return;
+    }
+
+    setCreating(true);
+    try {
+      await api.createTrack(token, userId, {
+        concern: createForm.concern.trim(),
+        status: createForm.status,
+        scheduledAt: createForm.scheduledAt || null,
+        meetingLink: createForm.meetingLink || null,
+        coachNotes: createForm.coachNotes || null,
+      });
+      Swal.fire("Created", "Consultancy track added", "success");
+      setCreateForm(emptyCreateForm());
+      setShowCreateForm(false);
+      await loadAll();
+    } catch (err) {
+      if (err?.status === 401) onUnauthorized?.();
+      else Swal.fire("Error", err?.message || "Failed to create consultancy track", "error");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleDelete = async (track) => {
+    if (!api.deleteTrack) return;
+    const trackId = track.id || track._id;
+    const result = await Swal.fire({
+      title: "Delete consultancy track?",
+      text: "This will remove the entry from the user's app as well.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Delete",
+      confirmButtonColor: "#d33",
+    });
+    if (!result.isConfirmed) return;
+
+    setDeletingId(trackId);
+    try {
+      await api.deleteTrack(token, userId, trackId);
+      if (editingId === trackId) cancelEdit();
+      Swal.fire("Deleted", "Consultancy track removed", "success");
+      await loadAll();
+    } catch (err) {
+      if (err?.status === 401) onUnauthorized?.();
+      else Swal.fire("Error", err?.message || "Failed to delete consultancy track", "error");
+    } finally {
+      setDeletingId("");
+    }
+  };
+
   if (loading) {
     return <p className="page-card__desc">Loading consultancy tracks…</p>;
   }
@@ -130,15 +202,97 @@ export function UserHealConsultancyTracksPanel({
   return (
     <div className="user-heal-consultancy-panel">
       <div className="page-card">
-        <h3 className="form-card__title">Consultancy tracks</h3>
-        <p className="page-card__desc">
-          Consultancy requests booked by this heal client. Update status, schedule, and notes below.
-        </p>
+        <div className="page-card__head consultancy-page__head">
+          <div className="consultancy-page__intro">
+            <h3 className="form-card__title">Consultancy tracks</h3>
+            <p className="page-card__desc">
+              Manage consultancy reviews for this heal client. Entries appear in the user's Review
+              Tracking screen.
+            </p>
+          </div>
+          {canManage && api.createTrack ? (
+            <div className="page-card__actions">
+              <button
+                type="button"
+                className="btn btn--accent btn--sm"
+                onClick={() => setShowCreateForm((open) => !open)}
+              >
+                {showCreateForm ? "Cancel" : "Add track"}
+              </button>
+            </div>
+          ) : null}
+        </div>
+
+        {showCreateForm && api.createTrack ? (
+          <form className="heal-consultancy-table__edit-form" onSubmit={handleCreate}>
+            <div className="heal-consultancy-table__edit-grid">
+              <label className="user-field">
+                <span className="user-field__label">Status</span>
+                <select
+                  className="user-field__input"
+                  value={createForm.status}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, status: e.target.value }))}
+                >
+                  {STATUS_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="user-field">
+                <span className="user-field__label">Scheduled at</span>
+                <input
+                  className="user-field__input"
+                  type="datetime-local"
+                  value={createForm.scheduledAt}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, scheduledAt: e.target.value }))}
+                />
+              </label>
+              <label className="user-field">
+                <span className="user-field__label">Meeting link</span>
+                <input
+                  className="user-field__input"
+                  type="url"
+                  value={createForm.meetingLink}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, meetingLink: e.target.value }))}
+                  placeholder="https://"
+                />
+              </label>
+            </div>
+            <label className="user-field">
+              <span className="user-field__label">Concern</span>
+              <textarea
+                className="user-field__input"
+                rows={2}
+                value={createForm.concern}
+                onChange={(e) => setCreateForm((f) => ({ ...f, concern: e.target.value }))}
+                placeholder="Reason or focus for this consultancy review"
+                required
+                maxLength={500}
+              />
+            </label>
+            <label className="user-field">
+              <span className="user-field__label">Coach notes</span>
+              <textarea
+                className="user-field__input"
+                rows={3}
+                value={createForm.coachNotes}
+                onChange={(e) => setCreateForm((f) => ({ ...f, coachNotes: e.target.value }))}
+              />
+            </label>
+            <div className="heal-consultancy-table__edit-actions">
+              <button type="submit" className="btn btn--primary btn--sm" disabled={creating}>
+                {creating ? "Creating…" : "Create track"}
+              </button>
+            </div>
+          </form>
+        ) : null}
       </div>
 
       <div className="page-card">
         {!tracks.length ? (
-          <p className="page-card__desc">No consultancy requests yet.</p>
+          <p className="page-card__desc">No consultancy tracks yet.</p>
         ) : (
           <div className="table-wrap">
             <table className="data-table heal-consultancy-table">
@@ -150,14 +304,15 @@ export function UserHealConsultancyTracksPanel({
                   <th>Scheduled</th>
                   <th>Meeting</th>
                   <th>Notes</th>
-                  {!readOnly && api.updateTrack ? <th className="data-table__actions-col">Actions</th> : null}
+                  {canManage ? <th className="data-table__actions-col">Actions</th> : null}
                 </tr>
               </thead>
               <tbody>
                 {tracks.map((track) => {
                   const trackId = track.id || track._id;
                   const isEditing = editingId === trackId;
-                  const colSpan = readOnly || !api.updateTrack ? 6 : 7;
+                  const colSpan = canManage ? 7 : 6;
+                  const busy = savingId === trackId || deletingId === trackId;
 
                   return (
                     <Fragment key={trackId}>
@@ -186,15 +341,30 @@ export function UserHealConsultancyTracksPanel({
                             {truncateText(track.coachNotes, 40)}
                           </span>
                         </td>
-                        {!readOnly && api.updateTrack ? (
+                        {canManage ? (
                           <td className="data-table__actions-col">
-                            <button
-                              type="button"
-                              className="btn btn--ghost btn--sm"
-                              onClick={() => (isEditing ? cancelEdit() : startEdit(track))}
-                            >
-                              {isEditing ? "Cancel" : "Manage"}
-                            </button>
+                            <div className="data-table__actions">
+                              {api.updateTrack ? (
+                                <button
+                                  type="button"
+                                  className="btn btn--ghost btn--sm"
+                                  disabled={busy}
+                                  onClick={() => (isEditing ? cancelEdit() : startEdit(track))}
+                                >
+                                  {isEditing ? "Cancel" : "Manage"}
+                                </button>
+                              ) : null}
+                              {api.deleteTrack ? (
+                                <button
+                                  type="button"
+                                  className="btn btn--ghost btn--sm"
+                                  disabled={busy}
+                                  onClick={() => handleDelete(track)}
+                                >
+                                  {deletingId === trackId ? "Deleting…" : "Delete"}
+                                </button>
+                              ) : null}
+                            </div>
                           </td>
                         ) : null}
                       </tr>

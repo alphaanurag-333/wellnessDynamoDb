@@ -4,7 +4,7 @@ const {
   buildFattyLiverSnapshot,
 } = require("../utils/metabolicMetricsCalculations");
 const {
-  createMetabolicMetricLog,
+  upsertMetabolicMetricLog,
   listAllMetabolicMetricLogsByUser,
   toPublicMetabolicMetricLog,
 } = require("../models/healthProgressMetabolicMetricModel");
@@ -59,7 +59,7 @@ async function createFattyLiverMetricForUser({
 
   let log;
   try {
-    log = await createMetabolicMetricLog({
+    log = await upsertMetabolicMetricLog({
       userId,
       ...snapshot,
       enteredByCoachId,

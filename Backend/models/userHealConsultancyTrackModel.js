@@ -1,5 +1,5 @@
 const { v4: uuidv4 } = require("uuid");
-const { PutCommand, GetCommand, UpdateCommand } = require("@aws-sdk/lib-dynamodb");
+const { PutCommand, GetCommand, UpdateCommand, DeleteCommand } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../config/db");
 const { queryPartition } = require("../utils/dynamoList");
 
@@ -170,6 +170,17 @@ async function updateHealConsultancyTrack(id, updates) {
   return Attributes;
 }
 
+async function deleteHealConsultancyTrack(id) {
+  if (!id) throw new Error("id is required");
+  await docClient.send(
+    new DeleteCommand({
+      TableName: TABLE,
+      Key: { id: String(id) },
+      ConditionExpression: "attribute_exists(id)",
+    })
+  );
+}
+
 module.exports = {
   TABLE,
   TRACK_STATUSES,
@@ -181,4 +192,5 @@ module.exports = {
   getHealConsultancyTrackById,
   listHealConsultancyTracksByUserId,
   updateHealConsultancyTrack,
+  deleteHealConsultancyTrack,
 };

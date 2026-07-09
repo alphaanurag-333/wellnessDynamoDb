@@ -10,6 +10,7 @@ const {
   buildFattyLiverSnapshot,
   buildMetricSnapshot,
   buildDashboardFromLogs,
+  dedupeMetricLogsByDate,
 } = require("../utils/metabolicMetricsCalculations");
 
 test("computeBmi returns expected value", () => {
@@ -126,4 +127,64 @@ test("buildDashboardFromLogs groups latest metrics", () => {
   assert.equal(dashboard.tdee.current.value, 2100);
   assert.equal(dashboard.fattyLiver.current.value, 42.5);
   assert.equal(dashboard.fattyLiver.history.length, 1);
+});
+
+test("dedupeMetricLogsByDate keeps newest log per calendar day", () => {
+  const deduped = dedupeMetricLogsByDate([
+    {
+      id: "newer",
+      metricType: "visceral_fat",
+      estimatedVisceralFat: 12,
+      recordedAt: "2026-07-09T12:00:00.000Z",
+      updatedAt: "2026-07-09T15:00:00.000Z",
+    },
+    {
+      id: "older",
+      metricType: "visceral_fat",
+      estimatedVisceralFat: 10,
+      recordedAt: "2026-07-09T12:00:00.000Z",
+      updatedAt: "2026-07-09T10:00:00.000Z",
+    },
+    {
+      id: "yesterday",
+      metricType: "visceral_fat",
+      estimatedVisceralFat: 8,
+      recordedAt: "2026-07-08T12:00:00.000Z",
+    },
+  ]);
+
+  assert.equal(deduped.length, 2);
+  assert.equal(deduped[0].id, "newer");
+  assert.equal(deduped[1].id, "yesterday");
+});
+
+test("buildDashboardFromLogs dedupes same-day visceral fat history", () => {
+  const dashboard = buildDashboardFromLogs(
+    [
+      {
+        id: "vf-2",
+        metricType: "visceral_fat",
+        waistHeightRatio: 0.53,
+        estimatedVisceralFat: 12,
+        visceralFatPercent: 40,
+        visceralFatRisk: "Early Accumulation",
+        recordedAt: "2026-07-09T12:00:00.000Z",
+        updatedAt: "2026-07-09T16:00:00.000Z",
+      },
+      {
+        id: "vf-1",
+        metricType: "visceral_fat",
+        waistHeightRatio: 0.51,
+        estimatedVisceralFat: 10,
+        visceralFatPercent: 33.3,
+        visceralFatRisk: "Healthy",
+        recordedAt: "2026-07-09T12:00:00.000Z",
+        updatedAt: "2026-07-09T10:00:00.000Z",
+      },
+    ],
+    { formatChartDate: () => "9Jul26" }
+  );
+
+  assert.equal(dashboard.visceralFat.history.length, 1);
+  assert.equal(dashboard.visceralFat.current.estimatedVisceralFat, 12);
 });
