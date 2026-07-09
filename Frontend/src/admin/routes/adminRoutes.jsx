@@ -111,6 +111,10 @@ import { ClientTestimonialList } from "../pages/clientTestimonial/ClientTestimon
 import { ClientTestimonialAdd } from "../pages/clientTestimonial/ClientTestimonialAdd.jsx";
 import { ClientTestimonialEdit } from "../pages/clientTestimonial/ClientTestimonialEdit.jsx";
 import { ClientTestimonialView } from "../pages/clientTestimonial/ClientTestimonialView.jsx";
+import { ProgramTestimonialList } from "../pages/programTestimonial/ProgramTestimonialList.jsx";
+import { ProgramTestimonialAdd } from "../pages/programTestimonial/ProgramTestimonialAdd.jsx";
+import { ProgramTestimonialEdit } from "../pages/programTestimonial/ProgramTestimonialEdit.jsx";
+import { ProgramTestimonialView } from "../pages/programTestimonial/ProgramTestimonialView.jsx";
 import { VideoTestimonialList } from "../pages/videoTestimonial/VideoTestimonialList.jsx";
 import { VideoTestimonialAdd } from "../pages/videoTestimonial/VideoTestimonialAdd.jsx";
 import { VideoTestimonialEdit } from "../pages/videoTestimonial/VideoTestimonialEdit.jsx";
@@ -351,6 +355,12 @@ export const adminRouteTree = (
       <Route path="new" element={<ClientTestimonialAdd />} />
       <Route path=":testimonialId/edit" element={<ClientTestimonialEdit />} />
       <Route path=":testimonialId" element={<ClientTestimonialView />} />
+    </Route>
+    <Route path="program-testimonials" element={<Outlet />}>
+      <Route index element={<ProgramTestimonialList />} />
+      <Route path="new" element={<ProgramTestimonialAdd />} />
+      <Route path=":testimonialId/edit" element={<ProgramTestimonialEdit />} />
+      <Route path=":testimonialId" element={<ProgramTestimonialView />} />
     </Route>
     <Route path="real-people-testimonials" element={<Outlet />}>
       <Route index element={<RealPeopleTestimonialList />} />

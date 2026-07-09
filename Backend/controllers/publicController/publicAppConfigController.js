@@ -37,7 +37,7 @@ function toPublicClientAppConfig(doc) {
     latitude: config.latitude ?? "",
     longitude: config.longitude ?? "",
     facebook: config.facebook ?? "",
-    twitter: config.twitter ?? "",
+    youtube: config.youtube ?? config.twitter ?? "",
     instagram: config.instagram ?? "",
     linkedin: config.linkedin ?? "",
     app_details: config.app_details ?? "",

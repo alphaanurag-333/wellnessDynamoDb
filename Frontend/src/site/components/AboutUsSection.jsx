@@ -16,7 +16,6 @@ import "swiper/css/navigation";
 
 import clinicImage from "../images/about-hero.png";
 import oilImage from "../images/Exercise.jpg";
-import founderImg from "../images/Exercise.jpg";
 import CardOne from "../images/about-card-one.jpg";
 import CardTwo from "../images/about-card-two.jpg";
 import CardThree from "../images/about-card-three.jpg";
@@ -170,6 +169,7 @@ const AboutUsSection = () => {
 
   const [expanded, setExpanded] = useState(false);
   const [cofounderMessage, setCofounderMessage] = useState(null);
+  const [leadershipImageError, setLeadershipImageError] = useState(false);
   const [wellnessCoaches, setWellnessCoaches] = useState([]);
   const [coachesLoading, setCoachesLoading] = useState(true);
   const prevRef = useRef(null);
@@ -193,6 +193,10 @@ const AboutUsSection = () => {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    setLeadershipImageError(false);
+  }, [cofounderMessage?.profileImage]);
 
   useEffect(() => {
     let cancelled = false;
@@ -226,8 +230,9 @@ const AboutUsSection = () => {
     cofounderMessage?.message?.trim() || FALLBACK_COFOUNDER.message;
   const leadershipImage = cofounderMessage?.profileImage
     ? mediaUrl(cofounderMessage.profileImage)
-    : founderImg;
+    : "";
   const leadershipParagraphs = messageParagraphs(leadershipMessage);
+  const showLeadershipImage = Boolean(leadershipImage) && !leadershipImageError;
 
   const marqueeItems = [...items, ...items, ...items, ...items];
 
@@ -278,17 +283,19 @@ const AboutUsSection = () => {
 
       <section className="leadership">
         <div className="site-container">
-          <div className="leadership__card">
-            {/* Left Image */}
-            <div className="leadership__image">
-              <img
-                src={leadershipImage || DEFAULT_IMAGE_SRC}
-                alt={leadershipName}
-                onError={handleMediaImageError}
-              />
-            </div>
+          <div className={`leadership__card${showLeadershipImage ? "" : " leadership__card--no-image"}`}>
+            {showLeadershipImage ? (
+              <div className="leadership__image">
+                <div className="leadership__image-frame">
+                  <img
+                    src={leadershipImage}
+                    alt={leadershipName}
+                    onError={() => setLeadershipImageError(true)}
+                  />
+                </div>
+              </div>
+            ) : null}
 
-            {/* Right Content */}
             <div className="leadership__content">
               <span className="leadership__badge">A NOTE FROM LEADERSHIP</span>
 

@@ -1,5 +1,6 @@
 import React from "react";
 import fatLossImg from "../../site/images/fat-loss.jpg"; // Change path
+import ProgramTestimonialsSection from "./ProgramTestimonialsSection";
 
 const Diabetes = () => {
   return (
@@ -68,7 +69,7 @@ We are dedicated to revolutionizing the approach to managing and even reversing 
         </div>
       </section>
 
-     
+      <ProgramTestimonialsSection type="diabetes_reversal" />
       
     </section>
   );

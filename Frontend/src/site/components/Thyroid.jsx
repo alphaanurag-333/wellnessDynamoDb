@@ -1,5 +1,6 @@
 import React from "react";
 import fatLossImg from "../../site/images/fat-loss.jpg"; // Change path
+import ProgramTestimonialsSection from "./ProgramTestimonialsSection";
 
 const Thyroid = () => {
   return (
@@ -68,7 +69,7 @@ We understand that each individual’s journey to thyroid reversal is unique. Ou
         </div>
       </section>
 
-     
+      <ProgramTestimonialsSection type="thyroid_care" />
       
     </section>
   );

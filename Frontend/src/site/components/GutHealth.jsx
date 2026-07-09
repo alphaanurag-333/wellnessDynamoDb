@@ -1,5 +1,6 @@
 import React from "react";
 import fatLossImg from "../../site/images/fat-loss.jpg"; // Change path
+import ProgramTestimonialsSection from "./ProgramTestimonialsSection";
 
 const GutHealth = () => {
   return (
@@ -152,6 +153,8 @@ const GutHealth = () => {
           </div>
         </div>
       </section>
+
+      <ProgramTestimonialsSection type="gut_health" />
     </section>
   );
 };

@@ -58,7 +58,7 @@ function formatAmount(amount) {
 const SOCIAL_FIELDS = [
   { key: "facebook", label: "Facebook", icon: "facebook" },
   { key: "instagram", label: "Instagram", icon: "instagram" },
-  { key: "twitter", label: "X (Twitter)", icon: "twitter" },
+  { key: "youtube", label: "YouTube", icon: "youtube" },
   { key: "linkedin", label: "LinkedIn", icon: "linkedin" },
 ];
 
@@ -192,7 +192,7 @@ export function useSiteConfig() {
       key,
       label,
       icon,
-      href: str(config?.[key]),
+      href: str(key === "youtube" ? (config?.youtube ?? config?.twitter) : config?.[key]),
     })).filter((item) => item.href);
 
     const footerMeta = parseAppFooterText(footerText);
