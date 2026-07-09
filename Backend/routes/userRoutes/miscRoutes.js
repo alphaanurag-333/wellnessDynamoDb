@@ -8,6 +8,7 @@ const {
   getActiveRealPeopleTestimonials,
   getActiveVideoTestimonials,
   getCofounderMessage,
+  getManagingDirectorMessage,
   getActiveHealthConcerns,
   getActiveHealthDisorders,
   getActiveHealthTools,
@@ -36,6 +37,7 @@ router.get("/program-testimonials", getActiveProgramTestimonials);
 router.get("/real-people-testimonials", getActiveRealPeopleTestimonials);
 router.get("/video-testimonials", getActiveVideoTestimonials);
 router.get("/cofounder-message", getCofounderMessage);
+router.get("/managing-director-message", getManagingDirectorMessage);
 router.get("/health-concerns", getActiveHealthConcerns);
 router.get("/health-disorders", getActiveHealthDisorders);
 router.get("/health-tools", getActiveHealthTools);

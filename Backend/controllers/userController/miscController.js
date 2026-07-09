@@ -8,6 +8,7 @@ const { listProgramTestimonials } = require("../../models/programTestimonialMode
 const { listRealPeopleTestimonials } = require("../../models/realPeopleTestimonialModel");
 const { listVideoTestimonials } = require("../../models/videoTestimonials");
 const { getCofounderMessage } = require("../../models/cofounderMessageModel");
+const { getManagingDirectorMessage } = require("../../models/managingDirectorMessageModel");
 const { listHealthConcerns } = require("../../models/healthConcernModel");
 const { listHealthDisorders } = require("../../models/healthDisorderModel");
 const { listHealthTools } = require("../../models/healthToolModel");
@@ -191,6 +192,20 @@ exports.getCofounderMessage = asyncHandler(async (req, res) => {
     status: true,
     message: cofounderMessage ? "Cofounder message fetched" : "Cofounder message not available",
     data: cofounderMessage,
+  });
+});
+
+exports.getManagingDirectorMessage = asyncHandler(async (req, res) => {
+  const record = await getManagingDirectorMessage();
+  const managingDirectorMessage =
+    record && String(record.status || "active").toLowerCase() === "active" ? record : null;
+
+  return res.status(200).json({
+    status: true,
+    message: managingDirectorMessage
+      ? "Managing director message fetched"
+      : "Managing director message not available",
+    data: managingDirectorMessage,
   });
 });
 

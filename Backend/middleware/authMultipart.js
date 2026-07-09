@@ -45,6 +45,11 @@ const cofounderMessageUpload = memoryFields([
   { name: "videoFile", maxCount: 1 },
 ]);
 
+const managingDirectorMessageUpload = memoryFields([
+  { name: "profileImage", maxCount: 1 },
+  { name: "videoFile", maxCount: 1 },
+]);
+
 const healthRecipeUpload = memoryFields([
   { name: "thumbnailFile", maxCount: 1 },
   { name: "videoFile", maxCount: 1 },
@@ -86,6 +91,7 @@ exports.optionalClientTestimonialsFile = optionalMultipart(clientTestimonialsUpl
 exports.optionalProgramTestimonialFile = optionalMultipart(programTestimonialUpload);
 exports.optionalVideoTestimonialsFiles = optionalMultipart(videoTestimonialsUpload);
 exports.optionalCofounderMessageFiles = optionalMultipart(cofounderMessageUpload);
+exports.optionalManagingDirectorMessageFiles = optionalMultipart(managingDirectorMessageUpload);
 exports.optionalHealthConcernFile = optionalMultipart(healthConcernUpload);
 exports.optionalHealthToolFile = optionalMultipart(healthToolUpload);
 exports.optionalSupplementFile = optionalMultipart(supplementUpload);
