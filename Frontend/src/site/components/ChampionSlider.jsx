@@ -85,9 +85,10 @@ export default function ChampionSlider() {
   const enableLoop = items.length > 1;
 
   return (
-    <section className="champion-section" aria-label="Monthly champions">
+    <section className="champion-section container" aria-label="Monthly champions">
+            <h2 className="healing-title">Champion of the Month</h2>
       <Swiper
-        className="container"
+        className=""
         modules={[Autoplay]}
         spaceBetween={24}
         slidesPerView={3}
