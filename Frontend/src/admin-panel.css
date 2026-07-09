@@ -806,7 +806,7 @@ a.admin-header__dropdown-item {
 .stat-card--dashboard .stat-card__top {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
+ justify-content: space-between; 
   gap: 12px;
 }
 
@@ -816,7 +816,7 @@ a.admin-header__dropdown-item {
   justify-content: flex-end;
   gap: 10px;
   flex-shrink: 0;
-  margin-left: auto;
+  /* margin-left: auto; */
 }
 
 .stat-card--dashboard .stat-card__icon {
@@ -850,6 +850,7 @@ a.admin-header__dropdown-item {
   letter-spacing: -0.02em;
   text-align: right;
   white-space: nowrap;
+  margin: 0 auto;
 }
 
 .stat-card--dashboard .stat-card__value--revenue {

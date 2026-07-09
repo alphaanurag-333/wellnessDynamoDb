@@ -234,14 +234,17 @@ function DashboardStatCard({ label, value, description, tone, icon, to, valueTyp
     <article className={`stat-card stat-card--dashboard stat-card--${tone}${to ? " stat-card--link" : ""}`}>
       <div className="stat-card__body">
         <div className="stat-card__top">
-          <div className="stat-card__label">{label}</div>
-          <div className="stat-card__metric">
-            <div className={`stat-card__value${valueType === "revenue" ? " stat-card__value--revenue" : ""}`}>{value}</div>
+           <div className="stat-card__metric">
             <div className="stat-card__icon" aria-hidden="true">
               {icon}
             </div>
           </div>
+          <div className="stat-card__label">{label}</div>
+         
         </div>
+
+                    <div className={`stat-card__value${valueType === "revenue" ? " stat-card__value--revenue" : ""}`}>{value}</div>
+
         {description ? <p className="stat-card__desc">{description}</p> : null}
       </div>
     </article>
