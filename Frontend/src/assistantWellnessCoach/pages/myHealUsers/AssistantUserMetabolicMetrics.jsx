@@ -2,10 +2,14 @@ import { useDispatch, useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
 import { UserMetabolicMetricsPanel } from "../../../components/UserMetabolicMetricsPanel.jsx";
 import { logoutAssistant } from "../../../store/authSlice.js";
-import { assistantGetMetabolicMetricsDashboard } from "../../api/assistantMetabolicMetrics.js";
+import {
+  assistantGetMetabolicMetricsDashboard,
+  assistantSaveFattyLiverMetric,
+} from "../../api/assistantMetabolicMetrics.js";
 
 const metabolicMetricsApi = {
   getDashboard: assistantGetMetabolicMetricsDashboard,
+  saveFattyLiverMetric: assistantSaveFattyLiverMetric,
 };
 
 export function AssistantUserMetabolicMetrics({ embedded = false }) {

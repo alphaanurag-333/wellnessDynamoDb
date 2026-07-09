@@ -62,3 +62,41 @@ export async function assistantGetUserStepsTracking(token, userId, { days = 7, f
     normalizeApiError(error);
   }
 }
+
+export async function assistantGetUserSleepTracking(token, userId, { days = 7, date } = {}) {
+  const q = new URLSearchParams();
+  if (days != null) q.set("days", String(days));
+  if (date) q.set("date", date);
+  const suffix = q.toString() ? `?${q}` : "";
+  try {
+    const { data: body } = await assistantApi.get(
+      `/assistant/heal-users/${userId}/sleep-tracking${suffix}`,
+      { headers: authHeader(token) }
+    );
+    return {
+      user: body.user ?? null,
+      data: body.data ?? { today: {}, history: [], range: {}, connections: {} },
+    };
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function assistantGetUserHeartRateTracking(token, userId, { days = 7, date } = {}) {
+  const q = new URLSearchParams();
+  if (days != null) q.set("days", String(days));
+  if (date) q.set("date", date);
+  const suffix = q.toString() ? `?${q}` : "";
+  try {
+    const { data: body } = await assistantApi.get(
+      `/assistant/heal-users/${userId}/heart-rate-tracking${suffix}`,
+      { headers: authHeader(token) }
+    );
+    return {
+      user: body.user ?? null,
+      data: body.data ?? { today: {}, history: [], range: {}, connections: {} },
+    };
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}

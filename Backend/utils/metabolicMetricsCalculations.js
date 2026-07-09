@@ -8,6 +8,7 @@ const ACTIVITY_MULTIPLIERS = [
 ];
 
 const METRIC_TYPES = new Set(["bmi", "bmr", "body_fat", "visceral_fat"]);
+const HISTORY_METRIC_TYPES = new Set([...METRIC_TYPES, "fatty_liver"]);
 
 function normalizeGender(value) {
   const next = String(value || "").toLowerCase().trim();
@@ -145,10 +146,64 @@ function computeVisceralFat({ gender, age, heightCm, waistCm }) {
   };
 }
 
+function computeFattyLiverIndex({ bmi, waistCm, triglycerides, ggt }) {
+  const b = Number(bmi);
+  const wc = Number(waistCm);
+  const tg = Number(triglycerides);
+  const g = Number(ggt);
+  if (!b || !wc || !tg || !g || b <= 0 || wc <= 0 || tg <= 0 || g <= 0) return null;
+
+  const L =
+    0.953 * Math.log(tg) +
+    0.139 * b +
+    0.718 * Math.log(g) +
+    0.053 * wc -
+    15.745;
+  const fli = (100 * Math.exp(L)) / (1 + Math.exp(L));
+  if (!Number.isFinite(fli)) return null;
+  return Number(fli.toFixed(1));
+}
+
+function getFliRiskCategory(fli) {
+  const value = Number(fli);
+  if (!Number.isFinite(value)) return { label: "Unknown", color: "#94a3b8" };
+  if (value < 30) return { label: "Low risk", color: "#22c55e" };
+  if (value < 60) return { label: "Indeterminate", color: "#f59e0b" };
+  return { label: "High risk", color: "#ef4444" };
+}
+
+function buildFattyLiverSnapshot({ bmi, waistCm, triglycerides, ggt }) {
+  const fli = computeFattyLiverIndex({ bmi, waistCm, triglycerides, ggt });
+  if (fli == null) {
+    throw new Error("Unable to calculate Fatty Liver Index from provided values");
+  }
+  const risk = getFliRiskCategory(fli);
+  return {
+    metricType: "fatty_liver",
+    bmi: Number(bmi),
+    waistCm: Number(waistCm),
+    triglycerides: Number(triglycerides),
+    ggt: Number(ggt),
+    fli,
+    fliRiskLabel: risk.label,
+    fliRiskColor: risk.color,
+  };
+}
+
 function normalizeMetricType(value) {
   const next = String(value || "").toLowerCase().trim().replace(/-/g, "_");
   if (!METRIC_TYPES.has(next)) {
     throw new Error("metricType must be bmi, bmr, body_fat, or visceral_fat");
+  }
+  return next;
+}
+
+function normalizeMetricTypeFilter(value) {
+  const next = String(value || "").toLowerCase().trim().replace(/-/g, "_");
+  if (!HISTORY_METRIC_TYPES.has(next)) {
+    throw new Error(
+      "metricType must be bmi, bmr, body_fat, visceral_fat, or fatty_liver"
+    );
   }
   return next;
 }
@@ -242,6 +297,7 @@ function buildDashboardFromLogs(logs, { formatChartDate }) {
     bmr: [],
     body_fat: [],
     visceral_fat: [],
+    fatty_liver: [],
   };
 
   for (const log of logs) {
@@ -290,10 +346,26 @@ function buildDashboardFromLogs(logs, { formatChartDate }) {
       chartDate: formatChartDate(log.recordedAt),
     }));
 
+  const mapFattyLiverHistory = (items) =>
+    items.map((log) => ({
+      id: log.id,
+      value: log.fli,
+      fli: log.fli,
+      triglycerides: log.triglycerides,
+      ggt: log.ggt,
+      bmi: log.bmi,
+      waistCm: log.waistCm,
+      riskLabel: log.fliRiskLabel,
+      riskColor: log.fliRiskColor,
+      recordedAt: log.recordedAt,
+      chartDate: formatChartDate(log.recordedAt),
+    }));
+
   const bmiLatest = latest("bmi");
   const bmrLatest = latest("bmr");
   const bodyFatLatest = latest("body_fat");
   const visceralLatest = latest("visceral_fat");
+  const fattyLiverLatest = latest("fatty_liver");
 
   return {
     bmi: {
@@ -355,6 +427,22 @@ function buildDashboardFromLogs(logs, { formatChartDate }) {
         : null,
       history: mapVisceralHistory(byType.visceral_fat),
     },
+    fattyLiver: {
+      current: fattyLiverLatest
+        ? {
+            value: fattyLiverLatest.fli,
+            fli: fattyLiverLatest.fli,
+            triglycerides: fattyLiverLatest.triglycerides,
+            ggt: fattyLiverLatest.ggt,
+            bmi: fattyLiverLatest.bmi,
+            waistCm: fattyLiverLatest.waistCm,
+            riskLabel: fattyLiverLatest.fliRiskLabel,
+            riskColor: fattyLiverLatest.fliRiskColor,
+            recordedAt: fattyLiverLatest.recordedAt,
+          }
+        : null,
+      history: mapFattyLiverHistory(byType.fatty_liver),
+    },
   };
 }
 
@@ -372,7 +460,11 @@ module.exports = {
   computeBodyFat,
   assessVisceralFatRisk,
   computeVisceralFat,
+  computeFattyLiverIndex,
+  getFliRiskCategory,
+  buildFattyLiverSnapshot,
   normalizeMetricType,
+  normalizeMetricTypeFilter,
   buildMetricSnapshot,
   buildDashboardFromLogs,
 };
