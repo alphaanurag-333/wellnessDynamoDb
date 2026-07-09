@@ -118,7 +118,7 @@ export function EnergyExchangeTransactionList() {
             aria-label="Search transactions"
           />
         </label>
-        <label className="user-field admin-crud-filters__select">
+        {/* <label className="user-field admin-crud-filters__select">
           <span className="user-field__label">Status</span>
           <select
             className="user-field__input"
@@ -132,7 +132,7 @@ export function EnergyExchangeTransactionList() {
             <option value="failed">Failed</option>
             <option value="refunded">Refunded</option>
           </select>
-        </label>
+        </label> */}
         {hasFilters ? (
           <button type="button" className="btn btn--ghost" onClick={clearFilters}>
             Clear filters

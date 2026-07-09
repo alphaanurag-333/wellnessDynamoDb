@@ -7,6 +7,10 @@ import ContactUsSection from "../components/ContactUs.jsx";
 import AboutUsSection from "../components/AboutUsSection.jsx";
 import ResourcesSection from "../components/Resources.jsx";
 import SuccessStories from "../components/SuccessStories.jsx";
+import FatLoss from "../components/FatLoss.jsx";
+import Diabetes from "../components/Diabetes.jsx";
+import Thyroid from "../components/Thyroid.jsx";
+import GutHealth from "../components/GutHealth.jsx";
 
 export const publicRouteTree = (
   <Route path="/" element={<PublicLayout />}>
@@ -15,6 +19,12 @@ export const publicRouteTree = (
     <Route path="/about-us" element={<AboutUsSection/>} />
     <Route path="/resources" element={<ResourcesSection/>} />
     <Route path="/success-stories" element={<SuccessStories/>} />
+    <Route path="/fat-loss" element={<FatLoss/>} />
+    <Route path="/diabetes-reversal" element={<Diabetes/>} />
+    <Route path="/thyroid" element={<Thyroid/>} />
+    <Route path="/gut-health" element={<GutHealth/>} />
+    {/* <Route path="/gut-health" element={<FatLoss/>} /> */}
+
     <Route
       path="/privacy-policy"
       element={<StaticPageView slug="privacy-policy" fallbackTitle="Privacy Policy" />}

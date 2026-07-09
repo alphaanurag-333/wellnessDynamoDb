@@ -18,6 +18,7 @@ const STAT_CARDS = [
   {
     key: "totalUsers",
     label: "Total Users",
+    to: "/admin/users",
     tone: "blue",
     icon: (
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -31,6 +32,7 @@ const STAT_CARDS = [
   {
     key: "activePrograms",
     label: "Active Wellness Programs",
+    to: "/admin/programs?status=active",
     tone: "green",
     icon: (
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -42,6 +44,7 @@ const STAT_CARDS = [
   {
     key: "activeWellnessCoaches",
     label: "Coaches (WC) Active",
+    to: "/admin/coaches?status=active",
     tone: "purple",
     icon: (
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -53,6 +56,7 @@ const STAT_CARDS = [
   {
     key: "activeAssistants",
     label: "AWC's Active",
+    to: "/admin/awcs?status=active",
     tone: "indigo",
     icon: (
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -67,6 +71,7 @@ const STAT_CARDS = [
     key: "pendingCoachApprovals",
     label: "Pending WC signups",
     description: "Wellness coach accounts awaiting admin approval",
+    to: "/admin/coaches?approval=pending",
     tone: "amber",
     icon: (
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -81,6 +86,7 @@ const STAT_CARDS = [
     key: "pendingUserAssignments",
     label: "Pending user assignments",
     description: "Heal & consultancy users awaiting coach assignment",
+    to: "/admin/consultancy/pending-assignment",
     tone: "orange",
     icon: (
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -92,8 +98,9 @@ const STAT_CARDS = [
     ),
   },
   {
-    key: "revenueAndPayouts",
-    label: "Revenue & Payouts",
+    key: "consultancyRevenue",
+    label: "Consultancy Revenue",
+    to: "/admin/consultancy/transactions",
     tone: "teal",
     format: "revenue",
     icon: (
@@ -101,6 +108,21 @@ const STAT_CARDS = [
         <rect x="2" y="5" width="20" height="14" rx="2" />
         <path d="M2 10h20" />
         <path d="M6 15h2" />
+      </svg>
+    ),
+  },
+  {
+    key: "programRevenue",
+    label: "Program Revenue",
+    to: "/admin/programs/transactions",
+    tone: "emerald",
+    format: "revenue",
+    icon: (
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+        <path d="M8 7h8" />
+        <path d="M8 11h5" />
       </svg>
     ),
   },
@@ -119,11 +141,23 @@ function formatRevenue(amount, currency = "INR") {
   return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(Number(amount));
 }
 
+function getStatRawValue(card, statistics) {
+  if (!statistics) return null;
+  if (statistics[card.key] != null) return statistics[card.key];
+  if (card.key === "consultancyRevenue") {
+    return statistics.charts?.revenueByProduct?.find((row) => row.key === "consultancy")?.value ?? 0;
+  }
+  if (card.key === "programRevenue") {
+    return statistics.charts?.revenueByProduct?.find((row) => row.key === "program")?.value ?? 0;
+  }
+  return null;
+}
+
 function formatStatValue(card, statistics) {
-  if (!statistics) return "—";
-  const raw = statistics[card.key];
+  const raw = getStatRawValue(card, statistics);
+  if (raw == null) return "—";
   if (card.format === "revenue") {
-    return formatRevenue(raw, statistics.currency);
+    return formatRevenue(raw, statistics?.currency);
   }
   return formatCount(raw);
 }
@@ -195,18 +229,29 @@ function ShortcutCard({ to, title, desc, icon }) {
   );
 }
 
-function DashboardStatCard({ label, value, description, tone, icon }) {
-  return (
-    <article className={`stat-card stat-card--dashboard stat-card--${tone}`}>
+function DashboardStatCard({ label, value, description, tone, icon, to, valueType }) {
+  const card = (
+    <article className={`stat-card stat-card--dashboard stat-card--${tone}${to ? " stat-card--link" : ""}`}>
       <div className="stat-card__body">
-        <div className="stat-card__label">{label}</div>
-        <div className="stat-card__value">{value}</div>
+        <div className="stat-card__top">
+          <div className="stat-card__label">{label}</div>
+          <div className="stat-card__metric">
+            <div className={`stat-card__value${valueType === "revenue" ? " stat-card__value--revenue" : ""}`}>{value}</div>
+            <div className="stat-card__icon" aria-hidden="true">
+              {icon}
+            </div>
+          </div>
+        </div>
         {description ? <p className="stat-card__desc">{description}</p> : null}
       </div>
-      <div className="stat-card__icon" aria-hidden="true">
-        {icon}
-      </div>
     </article>
+  );
+
+  if (!to) return card;
+  return (
+    <Link to={to} className="dashboard-stat-link" aria-label={`${label}: ${value}`}>
+      {card}
+    </Link>
   );
 }
 
@@ -271,9 +316,9 @@ export function DashboardPage() {
 
       <section className="admin-dashboard__section" aria-label="Quick insights" aria-busy={loading}>
         <h2 className="dashboard-section-head__title">Quick Insights</h2>
-        <div className="stat-grid stat-grid--dashboard stat-grid--dashboard-7 admin-dashboard__stats">
+        <div className="stat-grid stat-grid--dashboard admin-dashboard__stats">
           {loading ? (
-            <DashboardStatsSkeleton count={7} />
+            <DashboardStatsSkeleton count={8} />
           ) : (
             statValues.map((card) => (
               <DashboardStatCard
@@ -283,6 +328,8 @@ export function DashboardPage() {
                 description={card.description}
                 tone={card.tone}
                 icon={card.icon}
+                to={card.to}
+                valueType={card.format}
               />
             ))
           )}

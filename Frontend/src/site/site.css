@@ -2589,11 +2589,17 @@ a:hover {
 
   color: var(--text-heading);
 
-  font-size: 24px;
+  font-size: 26px;
   font-weight: var(--fw-bold);
   line-height: 1.3;
 }
-
+.methodology-card__content h5,
+h5.pillar-card__head-title {
+  margin: 8px 0;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+}
 .methodology-card__content p {
   margin: 12px 0 34px;
 
@@ -2997,7 +3003,9 @@ a:hover {
   font-weight: 600;
   color: var(--dark);
   outline: none;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
 .bmi-calc-field input:focus,
@@ -4481,6 +4489,7 @@ a:hover {
   font-weight: var(--fw-semibold);
 
   line-height: 1.3;
+  text-align: center;
 }
 
 .pillar-card__description {
@@ -4488,9 +4497,9 @@ a:hover {
 
   color: var(--text-body);
 
-  font-size: 17px;
+  font-size: 16px;
 
-  line-height: 31px;
+  line-height: 25px;
 
   font-weight: var(--fw-regular);
 }
@@ -6793,6 +6802,7 @@ PRINT
   position: relative;
   overflow: hidden;
   border-radius: 25px;
+  min-height: 200px;
 }
 .champion-card.birthday-card {
   width: 100%;
@@ -8663,6 +8673,247 @@ SCROLLBAR
   border-radius: 999px;
 }
 
+/* ===========================
+        HERO SECTION
+=========================== */
+
+.fat-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 90px 0 120px;
+  background: linear-gradient(
+    90deg,
+    rgba(133, 58, 140, 0.95),
+    rgba(215, 73, 110, 0.95)
+  );
+}
+
+.fat-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("../../assets/images/fat-loss-banner.jpg") center center/cover
+    no-repeat;
+  opacity: 0.18;
+}
+
+.fat-hero-content {
+  position: relative;
+  z-index: 2;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  text-align: center;
+}
+
+.fat-subtitle {
+  color: #fff;
+  font-size: 18px;
+  letter-spacing: 8px;
+  margin-bottom: 15px;
+}
+
+.fat-title {
+  color: #fff;
+  font-size: 68px;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+.fat-description {
+  width: 100%;
+  max-width: 760px;
+
+  color: #fff;
+  font-size: 22px;
+  line-height: 1.7;
+}
+
+/* ===========================
+        ZIG ZAG
+=========================== */
+
+.zigzag {
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 22px;
+  transform: rotate(180deg);
+  background:
+    linear-gradient(-45deg, transparent 27px, #fff 0),
+    linear-gradient(45deg, transparent 27px, #fff 0);
+  background-size: 36px 23px;
+}
+
+.gut-health-hero .zigzag{
+    position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 22px;
+  transform: rotate(180deg);
+  background:
+    linear-gradient(-45deg, transparent 27px, #fdf7ee 0),
+    linear-gradient(45deg, transparent 27px, #fdf7ee 0);
+  background-size: 36px 23px;
+}
+/* ===========================
+        ABOUT
+=========================== */
+
+.fat-about {
+  padding: 70px 0;
+  background: #fff;
+}
+
+.gut-about{
+  background: #fdf7ee;
+
+}
+
+.fat-about-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 45px;
+}
+.gut-health-info{
+  max-width: 1110px;
+  margin: 0 auto;
+}
+
+.gut-health-info h2{
+  text-align: center;
+  font-size: 36px;
+  font-weight: 600;
+  margin-bottom: 35px;
+}
+
+
+.fat-image {
+  flex: 0 0 48%;
+}
+
+.fat-image img {
+  width: 100%;
+  display: block;
+}
+
+.fat-content {
+  flex: 0 0 52%;
+
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.fat-content p {
+  font-size: 19px;
+  line-height: 1.9;
+  color: #444;
+}
+
+/* ==============================
+        OBESITY SECTION
+================================ */
+
+.obesity-section {
+  padding: 80px 0;
+  background: #f7f9fc;
+}
+
+.obesity-card {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+
+  background: #fff;
+  padding: 35px;
+  border-radius: 20px;
+
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.08);
+}
+
+.obesity-heading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.obesity-badge {
+  background: #ffe4ea;
+  color: #d64770;
+
+  padding: 8px 20px;
+  border-radius: 30px;
+
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  margin-bottom: 20px;
+}
+
+.obesity-heading h2 {
+  font-size: 32px;
+  font-weight: 700;
+  color: #222;
+  line-height: 1.25;
+  max-width: 745px;
+}
+
+.obesity-heading h2 span {
+  color: #d64770;
+}
+
+.obesity-content {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.obesity-content p {
+    font-size: 18px;
+    line-height: 1.6;
+    color: #555;
+    text-align: center;
+   
+}
+
+.hope-box {
+  background: linear-gradient(135deg, #d64770, #9b4fa5);
+
+  padding: 35px;
+  border-radius: 16px;
+
+  color: #fff;
+}
+
+.hope-box h3 {
+  font-size: 38px;
+  margin-bottom: 15px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.hope-box p {
+  color: #fff;
+  font-size: 18px;
+  line-height: 1.6;
+}
+
+
+
+
+
+
+
+
+
 /* =========================
    RESPONSIVE
 ========================= */
@@ -8730,12 +8981,19 @@ SCROLLBAR
     width: 390px;
     height: 490px;
   }
-  .success-content{
+  .success-content {
     margin-left: 25px;
   }
 }
 
 @media (max-width: 1200px) {
+  .fat-title {
+    font-size: 58px;
+  }
+
+  .fat-description {
+    font-size: 20px;
+  }
   .wellness__title {
     font-size: 54px;
   }
@@ -8916,7 +9174,6 @@ SCROLLBAR
     height: 105px;
   }
 
-
   .calculate-btn {
     font-size: 24px;
   }
@@ -8932,6 +9189,42 @@ SCROLLBAR
 }
 
 @media (max-width: 992px) {
+    .obesity-card {
+    padding: 30px;
+  }
+
+  .obesity-heading h2 {
+    font-size: 28px;
+  }
+
+  .obesity-content p {
+    font-size: 18px;
+  }
+
+  .hope-box h3 {
+    font-size: 30px;
+  }
+  .fat-about-wrapper {
+    flex-direction: column;
+  }
+
+  .fat-image,
+  .fat-content {
+    flex: 0 0 100%;
+    width: 100%;
+  }
+
+  .fat-title {
+    font-size: 48px;
+  }
+
+  .fat-description {
+    font-size: 18px;
+  }
+
+  .fat-content p {
+    font-size: 17px;
+  }
   .bmr-wrapper {
     flex-direction: column-reverse;
   }
@@ -9515,6 +9808,61 @@ SCROLLBAR
   }
 }
 @media (max-width: 768px) {
+  .obesity-section {
+    padding: 60px 0;
+  }
+
+  .obesity-card {
+    padding: 25px;
+    gap: 25px;
+  }
+
+  .obesity-heading h2 {
+    font-size: 32px;
+  }
+
+  .obesity-content p {
+    font-size: 16px;
+    line-height: 1.8;
+  }
+
+  .hope-box {
+    padding: 25px;
+  }
+
+  .hope-box h3 {
+    font-size: 26px;
+  }
+
+  .hope-box p {
+    font-size: 16px;
+  }
+  .fat-hero {
+    padding: 70px 0 90px;
+  }
+
+  .fat-subtitle {
+    font-size: 13px;
+    letter-spacing: 4px;
+  }
+
+  .fat-title {
+    font-size: 38px;
+  }
+
+  .fat-description {
+    font-size: 16px;
+    line-height: 1.7;
+  }
+
+  .fat-about {
+    padding: 50px 0;
+  }
+
+  .fat-content p {
+    font-size: 16px;
+    line-height: 1.8;
+  }
   .form-group {
     width: 100%;
   }
@@ -10370,6 +10718,38 @@ SCROLLBAR
 }
 
 @media (max-width: 576px) {
+  .obesity-heading h2 {
+    font-size: 24px;
+  }
+
+  .obesity-badge {
+    font-size: 12px;
+    padding: 7px 16px;
+  }
+
+  .hope-box h3 {
+    font-size: 22px;
+  }
+  .container {
+    padding: 0 15px;
+  }
+
+  .fat-title {
+    font-size: 30px;
+  }
+
+  .fat-description {
+    font-size: 15px;
+  }
+
+  .fat-content p {
+    font-size: 15px;
+  }
+
+  .fat-subtitle {
+    letter-spacing: 2px;
+    font-size: 12px;
+  }
   .mobile-sidebar {
     width: 280px;
   }
@@ -11184,7 +11564,6 @@ SCROLLBAR
     width: 120px;
     height: 120px;
   }
-
 
   .result-card h4 {
     font-size: 16px;

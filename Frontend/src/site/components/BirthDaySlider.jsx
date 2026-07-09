@@ -56,6 +56,7 @@ export default function BirthdaySlider() {
 
   return (
     <section className="champion-section" aria-label="Birthday wishes">
+
       <Swiper
         className="container"
         modules={[Autoplay]}

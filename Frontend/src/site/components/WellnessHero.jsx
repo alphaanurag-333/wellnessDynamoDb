@@ -26,8 +26,10 @@ export default function WellnessHero() {
             prioritize physical, mental, and emotional wellness. By offering
             personalized programs and guidance, we strive to inspire positive
             lifestyle changes that promote disease & medicine free life along
-            with longevity and vitality.
+            with longevity and vitality. <br /><br />
+            Through our commitment to redefining wellness, we aim to create a community where individuals are motivated to make sustainable choices that enhance their overall health and quality of life. Join us on this journey to embrace healthy living and unlock your full potential at India Redefining Wellness.
           </p>
+
 
           <div className="wellness-hero__actions">
             <button

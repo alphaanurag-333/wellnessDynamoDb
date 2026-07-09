@@ -108,7 +108,7 @@ export function CoachConsultancyTransactionList() {
               <option value="direct">My direct</option>
               <option value="assistant">Assistant clients</option>
             </select>
-            <select
+            {/* <select
               className="user-list-status-select"
               value={paymentStatus}
               onChange={(e) => setPaymentStatus(e.target.value)}
@@ -119,7 +119,7 @@ export function CoachConsultancyTransactionList() {
               <option value="pending">Pending</option>
               <option value="failed">Failed</option>
               <option value="refunded">Refunded</option>
-            </select>
+            </select> */}
           </div>
           <Link to="/coach/consultancy/enrolled-users" className="btn btn--accent">
             Enrolled users

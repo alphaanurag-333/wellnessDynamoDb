@@ -1,86 +1,57 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Navigation } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { DEFAULT_IMAGE_SRC, handleMediaImageError, mediaUrl } from "../../media.js";
-import { fetchHealthConcerns, fetchTransformations } from "../api/publicMisc.js";
+import { handleMediaImageError } from "../../media.js";
 import successImg from "../images/about-one.png";
-import categoryFallbackImg from "../images/diabetes.png";
+import diabetesImg from "../images/diabetes.png";
+import fatLossImg from "../images/fat-loss.png";
+import pcosImg from "../images/pcod.png";
+import thyroidImg from "../images/thyroid.png";
+import gutImg from "../images/gut-health.png";
 import FinalCTA from "./FinalCTA";
 import VideoTestimonials from "./VideoTestimonials";
 import TransformationStoriesSection from "./TransformationStoriesSection";
 
-function mapHealthConcern(row) {
-  if (!row) return null;
-
-  const id = row.id || row._id;
-  const title = String(row.title || "").trim();
-  if (!id || !title) return null;
-
-  const icon = row.icon ? mediaUrl(row.icon) : "";
-
-  return {
-    id,
-    title,
-    description: String(row.description || "").trim(),
-    image: icon || categoryFallbackImg,
-  };
-}
+const CATEGORY_ITEMS = [
+  {
+    id: "diabetes",
+    title: "Diabetes Reversal",
+    image: diabetesImg,
+    description: "Yoga, an ancient practice rooted in Indian philosophy, lifestyle guidance, and clinical care to support blood sugar balance.",
+  },
+  {
+    id: "fat-loss",
+    title: "Fat Loss",
+    image: fatLossImg,
+    description: "Support better hormonal balance and sustainable fat loss through structured nutrition and daily wellness habits.",
+  },
+  {
+    id: "pcos",
+    title: "PCOD-PCOS",
+    image: pcosImg,
+    description: "Focus on hormonal health and lifestyle management for improved cycle balance and long-term wellbeing.",
+  },
+  {
+    id: "thyroid",
+    title: "Thyroid Care",
+    image: thyroidImg,
+    description: "Personalized plans to support thyroid function, metabolism, and overall energy through guided clinical wellness.",
+  },
+  {
+    id: "gut",
+    title: "Gut Health",
+    image: gutImg,
+    description: "Build healthier daily routines to support digestion, immunity, and overall gut wellness.",
+  },
+];
 
 const SuccessStories = () => {
   const categoryPrevRef = useRef(null);
   const categoryNextRef = useRef(null);
-  const [transformations, setTransformations] = useState(null);
-  const [healthConcerns, setHealthConcerns] = useState(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const data = await fetchTransformations({ page: 1, limit: 24 });
-        if (cancelled) return;
-        const rows = Array.isArray(data?.transformations) ? data.transformations : [];
-        setTransformations(rows);
-      } catch {
-        if (!cancelled) setTransformations([]);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const data = await fetchHealthConcerns({ page: 1, limit: 50 });
-        if (cancelled) return;
-        const rows = Array.isArray(data?.healthConcerns) ? data.healthConcerns : [];
-        setHealthConcerns(rows.map(mapHealthConcern).filter(Boolean));
-      } catch {
-        if (!cancelled) setHealthConcerns([]);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const heroImage =
-    (transformations?.[0]?.newImage ? mediaUrl(transformations[0].newImage) : "") ||
-    (transformations?.[0]?.oldImage ? mediaUrl(transformations[0].oldImage) : "") ||
-    successImg;
-
-  const categoriesLoading = healthConcerns === null;
-  const hasCategories = Boolean(healthConcerns?.length);
-  const enableCategoryLoop = (healthConcerns?.length || 0) > 4;
+  const enableCategoryLoop = CATEGORY_ITEMS.length > 4;
 
   return (
     <section className="success-story">
@@ -104,7 +75,7 @@ const SuccessStories = () => {
           <div className="success-image">
             <div className="image-card">
               <img
-                src={heroImage || DEFAULT_IMAGE_SRC}
+                src={successImg}
                 alt="Transformation success story"
                 onError={handleMediaImageError}
               />
@@ -113,117 +84,101 @@ const SuccessStories = () => {
         </div>
       </div>
 
-     <div className="video-testimonial">
-       <VideoTestimonials />
-     </div>
+      <div className="video-testimonial">
+        <VideoTestimonials />
+      </div>
+
       <section className="transformation">
         <div className="container">
           <div className="transformation-categories__head">
             <div className="transformation-heading">
               <h2>Our Success Stories</h2>
-              {/* <p>
-                Explore clinical results across specialized health concerns and
-                medical conditions.
-              </p> */}
             </div>
 
-            {hasCategories ? (
-              <div className="slider-navigation transformation-categories__nav">
-                <button
-                  ref={categoryPrevRef}
-                  type="button"
-                  className="slider-btn"
-                  aria-label="Previous category"
-                >
-                  <ChevronLeft size={20} />
-                </button>
-                <button
-                  ref={categoryNextRef}
-                  type="button"
-                  className="slider-btn"
-                  aria-label="Next category"
-                >
-                  <ChevronRight size={20} />
-                </button>
-              </div>
-            ) : null}
+            <div className="slider-navigation transformation-categories__nav">
+              <button
+                ref={categoryPrevRef}
+                type="button"
+                className="slider-btn"
+                aria-label="Previous category"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <button
+                ref={categoryNextRef}
+                type="button"
+                className="slider-btn"
+                aria-label="Next category"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
           </div>
 
-          {categoriesLoading ? (
-            <p className="transformation-section__loading">Loading categories…</p>
-          ) : hasCategories ? (
-            <Swiper
-              modules={[Navigation, Autoplay]}
-              slidesPerView={5}
-              spaceBetween={18}
-              speed={650}
-              loop={enableCategoryLoop}
-              autoplay={
-                enableCategoryLoop
-                  ? {
-                      delay: 2800,
-                      disableOnInteraction: false,
-                      pauseOnMouseEnter: true,
-                    }
-                  : false
-              }
-              navigation={{
-                prevEl: categoryPrevRef.current,
-                nextEl: categoryNextRef.current,
-              }}
-              onSwiper={(swiper) => {
-                setTimeout(() => {
-                  swiper.params.navigation.prevEl = categoryPrevRef.current;
-                  swiper.params.navigation.nextEl = categoryNextRef.current;
-                  swiper.navigation.destroy();
-                  swiper.navigation.init();
-                  swiper.navigation.update();
-                });
-              }}
-              breakpoints={{
-                0: {
-                  slidesPerView: 1.35,
-                  spaceBetween: 14,
-                },
-                480: {
-                  slidesPerView: 2.1,
-                  spaceBetween: 16,
-                },
-                768: {
-                  slidesPerView: 3.1,
-                  spaceBetween: 18,
-                },
-                992: {
-                  slidesPerView: 4,
-                  spaceBetween: 18,
-                },
-                1200: {
-                  slidesPerView: 5,
-                  spaceBetween: 18,
-                },
-              }}
-              className="transformationCategoriesSwiper"
-            >
-              {healthConcerns.map((item) => (
-                <SwiperSlide key={item.id}>
-                  <article className="transformation-category-card">
-                    <div className="transformation-image">
-                      <img
-                        src={item.image || DEFAULT_IMAGE_SRC}
-                        alt={item.title}
-                        loading="lazy"
-                        onError={handleMediaImageError}
-                      />
-                    </div>
-                    <h4>{item.title}</h4>
-                    {item.description ? (
-                      <p className="transformation-category-card__desc">{item.description}</p>
-                    ) : null}
-                  </article>
-                </SwiperSlide>
-              ))}
-            </Swiper>
-          ) : null}
+          <Swiper
+            modules={[Navigation, Autoplay]}
+            slidesPerView={5}
+            spaceBetween={18}
+            speed={650}
+            loop={enableCategoryLoop}
+            autoplay={
+              enableCategoryLoop
+                ? {
+                    delay: 2800,
+                    disableOnInteraction: false,
+                    pauseOnMouseEnter: true,
+                  }
+                : false
+            }
+            navigation={{
+              prevEl: categoryPrevRef.current,
+              nextEl: categoryNextRef.current,
+            }}
+            onSwiper={(swiper) => {
+              setTimeout(() => {
+                swiper.params.navigation.prevEl = categoryPrevRef.current;
+                swiper.params.navigation.nextEl = categoryNextRef.current;
+                swiper.navigation.destroy();
+                swiper.navigation.init();
+                swiper.navigation.update();
+              });
+            }}
+            breakpoints={{
+              0: {
+                slidesPerView: 1.35,
+                spaceBetween: 14,
+              },
+              480: {
+                slidesPerView: 2.1,
+                spaceBetween: 16,
+              },
+              768: {
+                slidesPerView: 3.1,
+                spaceBetween: 18,
+              },
+              992: {
+                slidesPerView: 4,
+                spaceBetween: 18,
+              },
+              1200: {
+                slidesPerView: 5,
+                spaceBetween: 18,
+              },
+            }}
+            className="transformationCategoriesSwiper"
+          >
+            {CATEGORY_ITEMS.map((item) => (
+              <SwiperSlide key={item.id}>
+                <article className="transformation-category-card">
+                  <div className="transformation-image">
+                    <img src={item.image} alt={item.title} loading="lazy" />
+                  </div>
+                  <h4>{item.title}</h4>
+                  <p className="transformation-category-card__desc">{item.description}</p>
+                </article>
+              </SwiperSlide>
+            ))}
+          </Swiper>
         </div>
       </section>
 

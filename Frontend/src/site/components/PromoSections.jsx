@@ -80,7 +80,7 @@ export function CommunitySection() {
           {appName} Community
         </h2>
         <p className="site-subtext site-subtext--center">{community.description}</p>
-        <SiteButton href={community.ctaHref}>{community.ctaLabel}</SiteButton>
+        <SiteButton href="#">{community.ctaLabel}</SiteButton>
       </div>
     </section>
   );

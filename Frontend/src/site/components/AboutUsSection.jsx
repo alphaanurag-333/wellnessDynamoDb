@@ -1,8 +1,15 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation } from "swiper/modules";
-import { DEFAULT_IMAGE_SRC, handleMediaImageError, mediaUrl } from "../../media.js";
-import { fetchCofounderMessage, fetchWellnessCoaches } from "../api/publicMisc.js";
+import {
+  DEFAULT_IMAGE_SRC,
+  handleMediaImageError,
+  mediaUrl,
+} from "../../media.js";
+import {
+  fetchCofounderMessage,
+  fetchWellnessCoaches,
+} from "../api/publicMisc.js";
 
 import "swiper/css";
 import "swiper/css/navigation";
@@ -37,6 +44,8 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import AboutUs from "./About.jsx";
+import Methodology from "./Methodology.jsx";
 
 const FALLBACK_COFOUNDER = {
   name: "Ms. Banita Acharya",
@@ -97,8 +106,9 @@ const AboutUsSection = () => {
     {
       id: 1,
       title: "Our Mission",
+      headTitle:"Reinvigorating India’s Wellness Heritage.",
       description:
-        "We’re passionate about redefining India’s rich heritage of wellness practices in context to the modern era backed by science & research.Drawing inspiration from Ayurveda, Yoga, Meditation, and other traditional systems of medicine, we seek to blend ancient wisdom with contemporary science to promote holistic well-being for individuals across India.",
+        "We’re passionate about redefining India’s rich heritage of wellness practices in context to the modern era backed by science & research. Drawing inspiration from Ayurveda, Yoga, Meditation, and other traditional systems of medicine, we seek to blend ancient wisdom with contemporary science to promote holistic well-being for individuals across India.",
 
       icon: CardOne,
       active: true,
@@ -106,16 +116,20 @@ const AboutUsSection = () => {
     {
       id: 2,
       title: "Our Vision",
+            headTitle:"To Inspire & Educate India to live a Healthy & Happy Life.",
+
       description:
-        "Usually people are reactive and disease oriented when it comes to health. We should be inspired for the cause of being healthy inside-out to live a disease free life.Current health situation is getting deteriorated primarily because of change in lifestyle hence it is important to get educated rightly about the good health practices.",
+        "Usually people are reactive and disease oriented when it comes to health. We should be inspired for the cause of being healthy inside-out to live a disease free life.  Current health situation is getting deteriorated primarily because of change in lifestyle hence it is important to get educated rightly about the good health practices.",
       icon: CardTwo,
       active: false,
     },
     {
       id: 3,
       title: "Our Goal",
+            headTitle:"Reach out One million families help them living a Healthy & Medicine Free life.",
+
       description:
-        "Our goal is to reach out to One million families, empowering them to achieve a healthy and medicine-free life by addressing and reversing lifestyle disorders through holistic and sustainable fat-loss methods. By integrating comprehensive wellness strategies that encompass balanced nutrition,stress management, and natural healing practices.  ",
+        "Our goal is to reach out to One million families, empowering them to achieve a healthy and medicine-free life by addressing and reversing lifestyle disorders through holistic and sustainable fat-loss methods. By integrating comprehensive wellness strategies that encompass balanced nutrition, regular physical activity, stress management, and natural healing practices, we aim to transform lives and foster long-term health improvements. ",
       icon: CardThree,
       active: false,
     },
@@ -188,7 +202,11 @@ const AboutUsSection = () => {
       try {
         const response = await fetchWellnessCoaches({ page: 1, limit: 50 });
         if (!cancelled) {
-          setWellnessCoaches(Array.isArray(response?.wellnessCoaches) ? response.wellnessCoaches : []);
+          setWellnessCoaches(
+            Array.isArray(response?.wellnessCoaches)
+              ? response.wellnessCoaches
+              : [],
+          );
         }
       } catch {
         if (!cancelled) setWellnessCoaches([]);
@@ -202,8 +220,10 @@ const AboutUsSection = () => {
     };
   }, []);
 
-  const leadershipName = cofounderMessage?.name?.trim() || FALLBACK_COFOUNDER.name;
-  const leadershipMessage = cofounderMessage?.message?.trim() || FALLBACK_COFOUNDER.message;
+  const leadershipName =
+    cofounderMessage?.name?.trim() || FALLBACK_COFOUNDER.name;
+  const leadershipMessage =
+    cofounderMessage?.message?.trim() || FALLBACK_COFOUNDER.message;
   const leadershipImage = cofounderMessage?.profileImage
     ? mediaUrl(cofounderMessage.profileImage)
     : founderImg;
@@ -324,12 +344,13 @@ const AboutUsSection = () => {
                 key={item.id}
               >
                 <div className="pillar-card__icon">
-                  {" "}
+                 
                   <img src={item.icon} alt="Founder" />
                 </div>
 
                 <div className="pillar-card__content">
                   <h3 className="pillar-card__title">{item.title}</h3>
+                  <h5 className="pillar-card__head-title">{item.headTitle}</h5>
 
                   <p className="pillar-card__description">{item.description}</p>
                 </div>
@@ -339,6 +360,7 @@ const AboutUsSection = () => {
         </div>
       </section>
 
+      <Methodology />
       <section className="aboutFaq">
         <div className="site-container">
           <div className="aboutFaq__wrapper">
@@ -430,90 +452,102 @@ const AboutUsSection = () => {
       </section>
 
       {(coachesLoading || wellnessCoaches.length > 0) && (
-      <section className="medicalBoard">
-        <div className="site-container">
-          <div className="medicalBoard__top">
-            <div className="medicalBoard__heading">
-              <h2>Our Wellness Coaches</h2>
+        <section className="medicalBoard">
+          <div className="site-container">
+            <div className="medicalBoard__top">
+              <div className="medicalBoard__heading">
+                <h2>Our Wellness Coaches</h2>
 
-              <p>World-class experts dedicated to your sanctuary journey.</p>
+                <p>World-class experts dedicated to your sanctuary journey.</p>
+              </div>
+
+              {wellnessCoaches.length > 0 && (
+                <div className="medicalBoard__navigation">
+                  <button
+                    ref={prevRef}
+                    className="medicalBoard__navBtn"
+                    type="button"
+                    aria-label="Previous coach"
+                  >
+                    <ChevronLeft size={22} />
+                  </button>
+
+                  <button
+                    ref={nextRef}
+                    className="medicalBoard__navBtn"
+                    type="button"
+                    aria-label="Next coach"
+                  >
+                    <ChevronRight size={22} />
+                  </button>
+                </div>
+              )}
             </div>
 
-            {wellnessCoaches.length > 0 && (
-              <div className="medicalBoard__navigation">
-                <button ref={prevRef} className="medicalBoard__navBtn" type="button" aria-label="Previous coach">
-                  <ChevronLeft size={22} />
-                </button>
+            {coachesLoading ? (
+              <p className="medicalBoard__loading">Loading wellness coaches…</p>
+            ) : (
+              <Swiper
+                modules={[Navigation]}
+                spaceBetween={28}
+                slidesPerView={4}
+                onInit={(swiper) => {
+                  swiper.params.navigation.prevEl = prevRef.current;
+                  swiper.params.navigation.nextEl = nextRef.current;
 
-                <button ref={nextRef} className="medicalBoard__navBtn" type="button" aria-label="Next coach">
-                  <ChevronRight size={22} />
-                </button>
-              </div>
+                  swiper.navigation.destroy();
+                  swiper.navigation.init();
+                  swiper.navigation.update();
+                }}
+                navigation={{
+                  prevEl: prevRef.current,
+                  nextEl: nextRef.current,
+                }}
+                breakpoints={{
+                  0: {
+                    slidesPerView: 1.2,
+                    spaceBetween: 18,
+                  },
+                  768: {
+                    slidesPerView: 2.3,
+                    spaceBetween: 20,
+                  },
+                  992: {
+                    slidesPerView: 4,
+                    spaceBetween: 22,
+                  },
+                  1200: {
+                    slidesPerView: 4,
+                    spaceBetween: 24,
+                  },
+                }}
+                className="medicalBoardSlider"
+              >
+                {wellnessCoaches.map((coach) => (
+                  <SwiperSlide key={coach.id || coach._id}>
+                    <div className="doctorCard">
+                      <div className="doctorCard__image">
+                        <img
+                          src={
+                            mediaUrl(coach.profileImage) || DEFAULT_IMAGE_SRC
+                          }
+                          alt={coach.name || "Wellness coach"}
+                          onError={handleMediaImageError}
+                        />
+                      </div>
+
+                      <div className="doctorCard__content">
+                        <h3>{coach.name}</h3>
+
+                        <p>{coachDesignation(coach)}</p>
+                      </div>
+                    </div>
+                  </SwiperSlide>
+                ))}
+              </Swiper>
             )}
           </div>
-
-          {coachesLoading ? (
-            <p className="medicalBoard__loading">Loading wellness coaches…</p>
-          ) : (
-          <Swiper
-            modules={[Navigation]}
-            spaceBetween={28}
-            slidesPerView={4}
-            onInit={(swiper) => {
-              swiper.params.navigation.prevEl = prevRef.current;
-              swiper.params.navigation.nextEl = nextRef.current;
-
-              swiper.navigation.destroy();
-              swiper.navigation.init();
-              swiper.navigation.update();
-            }}
-            navigation={{
-              prevEl: prevRef.current,
-              nextEl: nextRef.current,
-            }}
-            breakpoints={{
-              0: {
-                slidesPerView: 1.2,
-                spaceBetween: 18,
-              },
-              768: {
-                slidesPerView: 2.3,
-                spaceBetween: 20,
-              },
-              992: {
-                slidesPerView: 4,
-                spaceBetween: 22,
-              },
-              1200: {
-                slidesPerView: 4,
-                spaceBetween: 24,
-              },
-            }}
-            className="medicalBoardSlider"
-          >
-            {wellnessCoaches.map((coach) => (
-              <SwiperSlide key={coach.id || coach._id}>
-                <div className="doctorCard">
-                  <div className="doctorCard__image">
-                    <img
-                      src={mediaUrl(coach.profileImage) || DEFAULT_IMAGE_SRC}
-                      alt={coach.name || "Wellness coach"}
-                      onError={handleMediaImageError}
-                    />
-                  </div>
-
-                  <div className="doctorCard__content">
-                    <h3>{coach.name}</h3>
-
-                    <p>{coachDesignation(coach)}</p>
-                  </div>
-                </div>
-              </SwiperSlide>
-            ))}
-          </Swiper>
-          )}
-        </div>
-      </section>
+        </section>
       )}
 
       <section className="final-cta">
@@ -548,8 +582,6 @@ const AboutUsSection = () => {
           </div>
         </div>
       </section>
-
-      
     </section>
   );
 };

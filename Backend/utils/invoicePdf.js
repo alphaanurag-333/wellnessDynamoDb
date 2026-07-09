@@ -149,6 +149,7 @@ function generateConsultancyInvoicePdf({
       drawLabelValue(doc, PAGE.margin, y, "Meeting with", `${assigneeName} (${assigneeRole})`);
       y += 16;
     }
+
     if (healthConcern?.description) {
       doc.fillColor(COLORS.muted).fontSize(9).text("Notes", PAGE.margin, y);
       doc
@@ -161,7 +162,6 @@ function generateConsultancyInvoicePdf({
         width: contentWidth - 110,
       }) + 8;
     }
-
     y += 8;
     drawDivider(doc, y);
     y += 16;
