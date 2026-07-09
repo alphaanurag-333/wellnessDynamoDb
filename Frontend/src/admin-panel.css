@@ -769,6 +769,13 @@ a.admin-header__dropdown-item {
   text-decoration: none;
   color: inherit;
   display: block;
+  cursor: pointer;
+  border-radius: var(--admin-radius);
+}
+
+.dashboard-stat-link:focus-visible {
+  outline: 2px solid rgba(45, 106, 62, 0.45);
+  outline-offset: 2px;
 }
 
 .stat-card--link {
@@ -782,24 +789,44 @@ a.admin-header__dropdown-item {
 }
 
 .stat-card--dashboard {
-  align-items: flex-start;
-  gap: 14px;
-  padding: 18px 20px;
-  min-height: 124px;
+  display: block;
+  padding: 16px 18px;
+  min-height: 118px;
+  height: 100%;
 }
 
 .stat-card--dashboard .stat-card__body {
-  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   min-width: 0;
+  height: 100%;
+}
+
+.stat-card--dashboard .stat-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.stat-card--dashboard .stat-card__metric {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .stat-card--dashboard .stat-card__icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
   flex-shrink: 0;
-  align-self: center;
+  display: grid;
+  place-items: center;
 }
 
 .stat-card--dashboard .stat-card__icon svg {
@@ -811,19 +838,33 @@ a.admin-header__dropdown-item {
   font-size: 0.82rem;
   line-height: 1.35;
   overflow-wrap: anywhere;
+  padding-top: 2px;
+  max-width: 58%;
 }
 
 .stat-card--dashboard .stat-card__value {
-  margin-top: 2px;
-  font-size: 1.85rem;
-  line-height: 1.15;
+  margin: 0;
+  font-size: 1.75rem;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   text-align: right;
+  white-space: nowrap;
+}
+
+.stat-card--dashboard .stat-card__value--revenue {
+  font-size: clamp(0.95rem, 1.15vw, 1.2rem);
+  letter-spacing: -0.01em;
+  white-space: normal;
+  text-align: right;
+  max-width: 9.5rem;
+  line-height: 1.2;
 }
 
 .stat-card--dashboard .stat-card__desc {
-  margin: 0.35rem 0 0;
+  margin: 0;
   font-size: 0.72rem;
-  line-height: 1.35;
+  line-height: 1.4;
   color: var(--admin-muted);
 }
 
@@ -857,6 +898,10 @@ a.admin-header__dropdown-item {
 
 .stat-card--teal .stat-card__icon {
   background: linear-gradient(135deg, #34d399, #10b981);
+}
+
+.stat-card--emerald .stat-card__icon {
+  background: linear-gradient(135deg, #6ee7b7, #059669);
 }
 
 .shortcut-grid {
@@ -1036,16 +1081,15 @@ a.admin-header__dropdown-item {
 }
 
 .admin-dashboard-stat-skeleton__value {
-  width: 48%;
+  width: 52px;
   height: 28px;
-  margin-top: 10px;
   border-radius: 8px;
 }
 
 .admin-dashboard-stat-skeleton__icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
   flex-shrink: 0;
 }
 

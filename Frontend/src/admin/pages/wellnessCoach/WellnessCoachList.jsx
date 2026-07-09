@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import Swal from "sweetalert2";
 import { IoEyeSharp } from "react-icons/io5";
@@ -20,14 +20,15 @@ import { WellnessCoachTableLoaderRow } from "./WellnessCoachPageLoader.jsx";
 export function WellnessCoachList() {
   const dispatch = useDispatch();
   const adminToken = useSelector((s) => s.auth.adminToken);
+  const [searchParams] = useSearchParams();
   const [rows, setRows] = useState([]);
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [approvalFilter, setApprovalFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get("status") || "");
+  const [approvalFilter, setApprovalFilter] = useState(() => searchParams.get("approval") || "");
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [togglingId, setTogglingId] = useState("");

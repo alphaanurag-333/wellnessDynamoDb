@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import Swal from "sweetalert2";
 import { IoEyeSharp } from "react-icons/io5";
@@ -17,6 +17,7 @@ import { WellnessCoachTableLoaderRow } from "../wellnessCoach/WellnessCoachPageL
 export function AssistantList() {
   const dispatch = useDispatch();
   const adminToken = useSelector((s) => s.auth.adminToken);
+  const [searchParams] = useSearchParams();
   const [rows, setRows] = useState([]);
   const [coachMap, setCoachMap] = useState({});
   const [page, setPage] = useState(1);
@@ -24,7 +25,7 @@ export function AssistantList() {
   const [total, setTotal] = useState(0);
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get("status") || "");
   const [coachFilter, setCoachFilter] = useState("");
   const [coaches, setCoaches] = useState([]);
   const [loading, setLoading] = useState(false);

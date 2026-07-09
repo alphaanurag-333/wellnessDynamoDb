@@ -156,6 +156,9 @@ async function getAdminDashboardStats() {
     { name: "Programs", value: activePrograms, color: "#10b981" },
   ];
 
+  const revenueByProduct = buildRevenueByProduct(paidTransactions);
+  const productRevenueMap = Object.fromEntries(revenueByProduct.map((row) => [row.key, row.value]));
+
   return {
     totalUsers,
     activePrograms,
@@ -165,6 +168,8 @@ async function getAdminDashboardStats() {
     pendingCoachApprovals,
     pendingUserAssignments,
     revenueAndPayouts: revenue.totalAmount,
+    consultancyRevenue: productRevenueMap.consultancy ?? 0,
+    programRevenue: productRevenueMap.program ?? 0,
     currency: revenue.currency || "INR",
     charts: {
       platformOverview,

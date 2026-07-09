@@ -6,10 +6,14 @@ export function DashboardStatCardSkeleton() {
   return (
     <article className="stat-card stat-card--dashboard admin-dashboard-stat-skeleton">
       <div className="stat-card__body">
-        <Skeleton className="admin-dashboard-stat-skeleton__label" />
-        <Skeleton className="admin-dashboard-stat-skeleton__value" />
+        <div className="stat-card__top">
+          <Skeleton className="admin-dashboard-stat-skeleton__label" />
+          <div className="stat-card__metric">
+            <Skeleton className="admin-dashboard-stat-skeleton__value" />
+            <Skeleton className="admin-dashboard-stat-skeleton__icon" />
+          </div>
+        </div>
       </div>
-      <Skeleton className="admin-dashboard-stat-skeleton__icon" />
     </article>
   );
 }
