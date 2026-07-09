@@ -926,14 +926,17 @@ a.admin-header__dropdown-item {
 
 .admin-dashboard__intro {
   display: flex;
+  flex-direction: row;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
+  width: 100%;
 }
 
 .admin-dashboard__refresh {
   flex-shrink: 0;
   margin-top: 4px;
+  margin-left: auto;
 }
 
 .admin-dashboard__section {
@@ -1274,7 +1277,7 @@ a.admin-header__dropdown-item {
   }
 
   .admin-dashboard__refresh {
-    align-self: flex-start;
+    align-self: flex-end;
     margin-top: 0;
   }
 
