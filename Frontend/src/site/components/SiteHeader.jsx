@@ -138,7 +138,7 @@ export function SiteHeader() {
                     to="/fat-loss"
                     className={({ isActive }) => (isActive ? "active" : "")}
                   >
-                    Weight Management
+                   Fat Loss
                   </NavLink>
 
                   <NavLink
@@ -295,7 +295,7 @@ export function SiteHeader() {
                 className={({ isActive }) => (isActive ? "active" : "")}
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Weight Management
+                Fat Loss
               </NavLink>
 
               <NavLink

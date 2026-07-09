@@ -1,5 +1,6 @@
 import React from "react";
 import fatLossImg from "../../site/images/fat-loss.jpg"; // Change path
+import ProgramTestimonialsSection from "./ProgramTestimonialsSection";
 
 const Pcod = () => {
   return (
@@ -53,7 +54,7 @@ const Pcod = () => {
         </div>
       </section>
 
-   
+      <ProgramTestimonialsSection type="pcod_pcos_reversal" />
 
       
     </section>

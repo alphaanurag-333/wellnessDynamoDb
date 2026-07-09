@@ -9,6 +9,15 @@ export async function fetchClientTestimonials(params = {}) {
   }
 }
 
+export async function fetchProgramTestimonials(params = {}) {
+  try {
+    const { data } = await api.get("/public/misc/program-testimonials", { params });
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function fetchRealPeopleTestimonials(params = {}) {
   try {
     const { data } = await api.get("/public/misc/real-people-testimonials", { params });

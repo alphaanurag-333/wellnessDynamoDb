@@ -32,7 +32,7 @@ const SCALAR_KEYS = [
   "latitude",
   "longitude",
   "facebook",
-  "twitter",
+  "youtube",
   "instagram",
   "linkedin",
   "app_details",
@@ -317,7 +317,7 @@ function validateSettingsForm({
 
   const socialEntries = [
     { key: "facebook", label: "Facebook" },
-    { key: "twitter", label: "Twitter / X" },
+    { key: "youtube", label: "YouTube" },
     { key: "instagram", label: "Instagram" },
     { key: "linkedin", label: "LinkedIn" },
   ];
@@ -491,7 +491,13 @@ export function BusinessSetting() {
     }
     setHasDoc(true);
     const next = Object.fromEntries(
-      SCALAR_KEYS.map((k) => [k, doc[k] != null ? String(doc[k]) : ""]),
+      SCALAR_KEYS.map((k) => {
+        if (k === "youtube") {
+          const val = doc.youtube ?? doc.twitter;
+          return [k, val != null ? String(val) : ""];
+        }
+        return [k, doc[k] != null ? String(doc[k]) : ""];
+      }),
     );
     next.average_rating = normalizeShortDecimalOnBlur(
       sanitizeShortDecimalInput(next.average_rating),
@@ -1406,15 +1412,15 @@ export function BusinessSetting() {
                       <span className="settings-char-count">{charCount(scalars.facebook, LIMITS.socialUrl)}</span>
                     </div>
                     <div className="user-field">
-                      <span className="user-field__label">Twitter / X</span>
+                      <span className="user-field__label">YouTube</span>
                       <input
                         className="user-field__input"
-                        value={scalars.twitter}
-                        onChange={(e) => setScalars((s) => ({ ...s, twitter: e.target.value }))}
+                        value={scalars.youtube}
+                        onChange={(e) => setScalars((s) => ({ ...s, youtube: e.target.value }))}
                         placeholder="https://"
                         maxLength={LIMITS.socialUrl}
                       />
-                      <span className="settings-char-count">{charCount(scalars.twitter, LIMITS.socialUrl)}</span>
+                      <span className="settings-char-count">{charCount(scalars.youtube, LIMITS.socialUrl)}</span>
                     </div>
                     <div className="user-field ">
                       <span className="user-field__label">Instagram</span>

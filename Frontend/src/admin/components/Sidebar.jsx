@@ -20,7 +20,7 @@ const NAV_GROUP_PATTERNS = {
   launchAssessment: /\/admin\/(launch-questions|launch-focus-areas)(\/|$)/,
   prakrutiAssessment: /\/admin\/(prakruti-questions|prakruti-things-to-avoid|prakruti-recommendations)(\/|$)/,
   testimonials:
-    /\/admin\/(transformations|client-testimonials|real-people-testimonials|commitment-letters|video-testimonials)(\/|$)/,
+    /\/admin\/(transformations|client-testimonials|program-testimonials|real-people-testimonials|commitment-letters|video-testimonials)(\/|$)/,
 };
 
 function normalizePath(pathname) {

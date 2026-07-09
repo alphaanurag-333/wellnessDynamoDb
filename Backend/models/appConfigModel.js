@@ -43,7 +43,7 @@ async function createAppConfig() {
     latitude:       "",
     longitude:      "",
     facebook:       "",
-    twitter:        "",
+    youtube:        "",
     instagram:      "",
     linkedin:       "",
     app_details:    "",

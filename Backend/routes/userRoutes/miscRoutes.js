@@ -4,6 +4,7 @@ const {
   getActiveFaqs,
   getStaticPageBySlug,
   getActiveClientTestimonials,
+  getActiveProgramTestimonials,
   getActiveRealPeopleTestimonials,
   getActiveVideoTestimonials,
   getCofounderMessage,
@@ -31,6 +32,7 @@ router.get("/banners", getActiveBanners);
 router.get("/faqs", getActiveFaqs);
 router.get("/pages/:slug", getStaticPageBySlug);
 router.get("/client-testimonials", getActiveClientTestimonials);
+router.get("/program-testimonials", getActiveProgramTestimonials);
 router.get("/real-people-testimonials", getActiveRealPeopleTestimonials);
 router.get("/video-testimonials", getActiveVideoTestimonials);
 router.get("/cofounder-message", getCofounderMessage);
