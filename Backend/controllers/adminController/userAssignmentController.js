@@ -1,7 +1,11 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
-const { getUserById, listUsersByParentCoachId, listUsersByAssignedCoachId, listPendingAssignmentUsers, normalizeUserTier } = require("../../models/userModel");
-const { convertSeekToHeal, convertHealToSeek } = require("../../models/userConversionModel");
+const { getUserById, updateUser, listUsersByParentCoachId, listUsersByAssignedCoachId, listPendingAssignmentUsers, normalizeUserTier } = require("../../models/userModel");
+const { convertHealToSeek } = require("../../models/userConversionModel");
+const {
+  adminConvertUserToHeal,
+  setupPaidClientEntitlements,
+} = require("../../services/adminHealConversionService");
 const { assignPendingHealUser, reassignHealUser } = require("../../models/userAssignmentModel");
 const { getWellnessCoachRecordById } = require("../../models/wellnessCoachModel");
 const { getAssistantWellnessCoachById } = require("../../models/assistantWellnessCoachModel");
@@ -60,10 +64,12 @@ exports.convertUserToSeekController = asyncHandler(async (req, res) => {
 
 exports.convertUserToHealController = asyncHandler(async (req, res) => {
   const referralCode = req.body?.referralCode ?? req.body?.referral_code ?? null;
+  const catalogProgramId = req.body?.catalogProgramId ?? req.body?.catalog_program_id ?? null;
   let user;
   try {
-    user = await convertSeekToHeal(req.params.id, { referralCode, allowFromSeek: true });
+    user = await adminConvertUserToHeal(req.params.id, { referralCode, catalogProgramId });
   } catch (err) {
+    if (err?.name === "ValidationError") throw new AppError(err.message, 400);
     mapAssignmentError(err);
   }
 
@@ -93,6 +99,30 @@ exports.assignHealUserController = asyncHandler(async (req, res) => {
     });
   } catch (err) {
     mapAssignmentError(err);
+  }
+
+  if (normalizeUserTier(user.userTier) === "heal") {
+    const needsEntitlements = !user.programPurchased || !user.energyExchangeEnabled;
+    if (needsEntitlements) {
+      try {
+        user = await setupPaidClientEntitlements(user);
+      } catch (err) {
+        if (err?.name === "ValidationError") throw new AppError(err.message, 400);
+        throw err;
+      }
+    }
+    if (!user.healPaidAt) {
+      const onboardingPatches =
+        user.paidOnboardingCompleted === true
+          ? { healPaidAt: new Date().toISOString() }
+          : {
+              healPaidAt: new Date().toISOString(),
+              paidOnboardingCompleted: false,
+              paidOnboardingStep: "register",
+              paidOnboardingStepStatus: null,
+            };
+      user = await updateUser(user.id, onboardingPatches);
+    }
   }
 
   try {

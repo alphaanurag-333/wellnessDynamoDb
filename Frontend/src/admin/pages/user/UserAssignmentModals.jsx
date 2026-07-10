@@ -298,7 +298,10 @@ export function ConvertToHealModal({ user, open, onClose, onSuccess }) {
       <div className="modal-card">
         <h3 className="modal-card__title">Convert to Heal (paid)</h3>
         <p className="modal-card__subtitle">
-          Upgrade {user.name || user.email} from Seek to Heal. Optional referral code determines coach assignment.
+          Upgrade {user.name || user.email} from Seek to Heal. This assigns the default Wellness Program,
+          enables Energy Exchange, and prepares paid onboarding in the app. Use a referral code so coach
+          assignment, program, and Energy Exchange are set up immediately; otherwise assign a coach after
+          conversion.
         </p>
         <form onSubmit={handleSubmit} className="modal-card__form">
           <label className="user-field">
