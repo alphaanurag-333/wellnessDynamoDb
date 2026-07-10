@@ -21,7 +21,7 @@ function readPagination(req) {
   return { page, limit };
 }
 
-function parseCreateBody(body = {}) {
+function parseConcernField(body = {}) {
   const concern = body.concern ?? body.healthConcern ?? body.notes;
   if (!String(concern || "").trim()) {
     throw new AppError("concern is required", 400);
@@ -29,10 +29,51 @@ function parseCreateBody(body = {}) {
   if (String(concern).trim().length > MAX_CONCERN_LENGTH) {
     throw new AppError(`concern must be at most ${MAX_CONCERN_LENGTH} characters`, 400);
   }
+  return String(concern).trim();
+}
+
+function parseOptionalScheduledAt(body = {}) {
+  const raw = body.scheduledAt ?? body.scheduled_at ?? null;
+  if (raw == null || raw === "") return null;
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) {
+    throw new AppError("scheduledAt must be a valid date", 400);
+  }
+  return date.toISOString();
+}
+
+function parseOptionalMeetingLink(body = {}) {
+  if (body.meetingLink === undefined && body.meeting_link === undefined) return null;
+  return String(body.meetingLink ?? body.meeting_link ?? "").trim() || null;
+}
+
+function parseOptionalCoachNotes(body = {}) {
+  if (body.coachNotes === undefined && body.coach_notes === undefined) return null;
+  const notes = String(body.coachNotes ?? body.coach_notes ?? "").trim();
+  if (notes.length > MAX_NOTES_LENGTH) {
+    throw new AppError(`coachNotes must be at most ${MAX_NOTES_LENGTH} characters`, 400);
+  }
+  return notes || null;
+}
+
+function parseCreateBody(body = {}) {
+  return {
+    concern: parseConcernField(body),
+    scheduledAt: parseOptionalScheduledAt(body),
+  };
+}
+
+function parseCoachCreateBody(body = {}) {
+  const status = body.status ?? body.consultancyStatus ?? body.consultancy_status ?? "scheduled";
+  const normalized = normalizeTrackStatus(status);
+  if (!normalized) throw new AppError("Invalid consultancy status", 400);
 
   return {
-    concern: String(concern).trim(),
-    scheduledAt: body.scheduledAt ?? body.scheduled_at ?? null,
+    concern: parseConcernField(body),
+    status: normalized,
+    scheduledAt: parseOptionalScheduledAt(body),
+    meetingLink: parseOptionalMeetingLink(body),
+    coachNotes: parseOptionalCoachNotes(body),
   };
 }
 
@@ -105,6 +146,7 @@ module.exports = {
   readUserIdParam,
   readPagination,
   parseCreateBody,
+  parseCoachCreateBody,
   parseStatusUpdateBody,
   loadHealUser,
   loadTrackForUser,

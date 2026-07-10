@@ -2,11 +2,14 @@ const { v4: uuidv4 } = require("uuid");
 const { PutCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../config/db");
 const { queryPartition } = require("../utils/dynamoList");
-const { toNumberOrNull } = require("../utils/healthProgressHelpers");
+const {
+  toNumberOrNull,
+  toIsoDateOnly,
+} = require("../utils/healthProgressHelpers");
 
 const TABLE = "HealthProgressMetabolicMetric";
 
-function buildMetabolicMetricItem(input, { id, now }) {
+function buildMetabolicMetricItem(input, { id, now, createdAt }) {
   return {
     id: id || uuidv4(),
     userId: String(input.userId || "").trim(),
@@ -39,9 +42,63 @@ function buildMetabolicMetricItem(input, { id, now }) {
     fliRiskColor: input.fliRiskColor ? String(input.fliRiskColor) : null,
     enteredByCoachId: input.enteredByCoachId ? String(input.enteredByCoachId) : null,
     recordedAt: input.recordedAt || now,
-    createdAt: now,
+    createdAt: createdAt || now,
     updatedAt: now,
   };
+}
+
+async function findMetabolicMetricLogByUserTypeAndDate(userId, metricType, dateOnly) {
+  if (!userId || !metricType || !dateOnly) return null;
+
+  const result = await listMetabolicMetricLogsByUser(userId, {
+    page: 1,
+    limit: 100,
+    metricType,
+  });
+
+  const matches = result.items.filter(
+    (item) => toIsoDateOnly(item.recordedAt) === dateOnly
+  );
+  if (!matches.length) return null;
+
+  return matches.reduce((best, item) => {
+    if (!best) return item;
+    const bestTime = new Date(best.updatedAt || best.createdAt || 0).getTime();
+    const itemTime = new Date(item.updatedAt || item.createdAt || 0).getTime();
+    return itemTime > bestTime ? item : best;
+  }, null);
+}
+
+async function upsertMetabolicMetricLog(input) {
+  const now = new Date().toISOString();
+  if (!input.userId) throw new Error("userId is required");
+  if (!input.metricType) throw new Error("metricType is required");
+
+  const dateOnly = toIsoDateOnly(input.recordedAt);
+  const existing = dateOnly
+    ? await findMetabolicMetricLogByUserTypeAndDate(
+        input.userId,
+        input.metricType,
+        dateOnly
+      )
+    : null;
+
+  if (existing) {
+    const item = buildMetabolicMetricItem(input, {
+      id: existing.id,
+      now,
+      createdAt: existing.createdAt,
+    });
+    await docClient.send(
+      new PutCommand({
+        TableName: TABLE,
+        Item: item,
+      })
+    );
+    return item;
+  }
+
+  return createMetabolicMetricLog(input);
 }
 
 async function createMetabolicMetricLog(input) {
@@ -130,6 +187,8 @@ module.exports = {
   TABLE,
   buildMetabolicMetricItem,
   createMetabolicMetricLog,
+  upsertMetabolicMetricLog,
+  findMetabolicMetricLogByUserTypeAndDate,
   getMetabolicMetricLogById,
   listMetabolicMetricLogsByUser,
   listAllMetabolicMetricLogsByUser,

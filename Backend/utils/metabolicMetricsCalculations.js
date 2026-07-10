@@ -1,3 +1,5 @@
+const { toIsoDateOnly } = require("./healthProgressHelpers");
+
 const ACTIVITY_MULTIPLIERS = [
   { key: "sedentary", label: "Sedentary : little or no exercise", multiplier: 1.2 },
   { key: "lightly_active", label: "Exercise 1 - 3 time/week", multiplier: 1.375 },
@@ -264,8 +266,23 @@ function buildMetricSnapshot(metricType, inputs) {
     if (!heightCm || !neckCm || !waistCm) {
       throw new Error("heightCm, neckCm, and waistCm are required for body fat");
     }
+    if (!isFemaleGender(gender) && waistCm <= neckCm) {
+      throw new Error("Waist must be greater than neck circumference");
+    }
+    if (isFemaleGender(gender)) {
+      if (!hipCm || hipCm <= 0) {
+        throw new Error("hipCm is required for female body fat calculation");
+      }
+      if (waistCm + hipCm <= neckCm) {
+        throw new Error("Waist + hip must be greater than neck circumference");
+      }
+    }
     const bodyFat = computeBodyFat({ gender, heightCm, neckCm, waistCm, hipCm });
-    if (!bodyFat) throw new Error("Unable to calculate body fat from provided values");
+    if (!bodyFat) {
+      throw new Error(
+        "Unable to calculate body fat from provided values. Verify neck and waist measurements and that values are in centimeters."
+      );
+    }
     return {
       ...base,
       bodyFatPercent: bodyFat.bodyFatPercent,
@@ -291,6 +308,29 @@ function buildMetricSnapshot(metricType, inputs) {
   throw new Error("Unsupported metricType");
 }
 
+function dedupeMetricLogsByDate(logs) {
+  const byDate = new Map();
+
+  for (const log of logs) {
+    const dateKey = toIsoDateOnly(log.recordedAt) || log.id;
+    const existing = byDate.get(dateKey);
+    if (!existing) {
+      byDate.set(dateKey, log);
+      continue;
+    }
+
+    const existingTime = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
+    const itemTime = new Date(log.updatedAt || log.createdAt || 0).getTime();
+    if (itemTime >= existingTime) {
+      byDate.set(dateKey, log);
+    }
+  }
+
+  return Array.from(byDate.values()).sort(
+    (a, b) => new Date(b.recordedAt || 0) - new Date(a.recordedAt || 0)
+  );
+}
+
 function buildDashboardFromLogs(logs, { formatChartDate }) {
   const byType = {
     bmi: [],
@@ -305,7 +345,7 @@ function buildDashboardFromLogs(logs, { formatChartDate }) {
     if (byType[type]) byType[type].push(log);
   }
 
-  const latest = (type) => byType[type][0] || null;
+  const latest = (type) => dedupeMetricLogsByDate(byType[type])[0] || null;
 
   const mapBmiHistory = (items) =>
     items.map((log) => ({
@@ -377,7 +417,7 @@ function buildDashboardFromLogs(logs, { formatChartDate }) {
             recordedAt: bmiLatest.recordedAt,
           }
         : null,
-      history: mapBmiHistory(byType.bmi),
+      history: mapBmiHistory(dedupeMetricLogsByDate(byType.bmi)),
     },
     bmr: {
       current: bmrLatest
@@ -387,7 +427,7 @@ function buildDashboardFromLogs(logs, { formatChartDate }) {
             recordedAt: bmrLatest.recordedAt,
           }
         : null,
-      history: mapBmrHistory(byType.bmr),
+      history: mapBmrHistory(dedupeMetricLogsByDate(byType.bmr)),
     },
     tdee: {
       current: bmrLatest
@@ -397,7 +437,7 @@ function buildDashboardFromLogs(logs, { formatChartDate }) {
             recordedAt: bmrLatest.recordedAt,
           }
         : null,
-      history: mapBmrHistory(byType.bmr).map((item) => ({
+      history: mapBmrHistory(dedupeMetricLogsByDate(byType.bmr)).map((item) => ({
         id: item.id,
         value: item.tdee,
         recordedAt: item.recordedAt,
@@ -413,7 +453,7 @@ function buildDashboardFromLogs(logs, { formatChartDate }) {
             recordedAt: bodyFatLatest.recordedAt,
           }
         : null,
-      history: mapBodyFatHistory(byType.body_fat),
+      history: mapBodyFatHistory(dedupeMetricLogsByDate(byType.body_fat)),
     },
     visceralFat: {
       current: visceralLatest
@@ -425,7 +465,7 @@ function buildDashboardFromLogs(logs, { formatChartDate }) {
             recordedAt: visceralLatest.recordedAt,
           }
         : null,
-      history: mapVisceralHistory(byType.visceral_fat),
+      history: mapVisceralHistory(dedupeMetricLogsByDate(byType.visceral_fat)),
     },
     fattyLiver: {
       current: fattyLiverLatest
@@ -441,7 +481,7 @@ function buildDashboardFromLogs(logs, { formatChartDate }) {
             recordedAt: fattyLiverLatest.recordedAt,
           }
         : null,
-      history: mapFattyLiverHistory(byType.fatty_liver),
+      history: mapFattyLiverHistory(dedupeMetricLogsByDate(byType.fatty_liver)),
     },
   };
 }
@@ -466,5 +506,6 @@ module.exports = {
   normalizeMetricType,
   normalizeMetricTypeFilter,
   buildMetricSnapshot,
+  dedupeMetricLogsByDate,
   buildDashboardFromLogs,
 };

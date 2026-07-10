@@ -29,3 +29,25 @@ export async function assistantUpdateHealConsultancyTrack(token, userId, trackId
     normalizeApiError(error);
   }
 }
+
+export async function assistantCreateHealConsultancyTrack(token, userId, payload) {
+  try {
+    const { data: body } = await assistantApi.post(basePath(userId), payload, {
+      headers: authHeader(token),
+    });
+    return body.data?.track ?? body.track ?? null;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function assistantDeleteHealConsultancyTrack(token, userId, trackId) {
+  try {
+    await assistantApi.delete(`${basePath(userId)}/${trackId}`, {
+      headers: authHeader(token),
+    });
+    return true;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}

@@ -16,7 +16,7 @@ const {
 } = require("../../utils/metabolicMetricsCalculations");
 const { formatChartDate } = require("../../utils/healthProgressHelpers");
 const {
-  createMetabolicMetricLog,
+  upsertMetabolicMetricLog,
   listMetabolicMetricLogsByUser,
   listAllMetabolicMetricLogsByUser,
   toPublicMetabolicMetricLog,
@@ -68,7 +68,7 @@ exports.createMetabolicMetricController = asyncHandler(async (req, res) => {
 
   let log;
   try {
-    log = await createMetabolicMetricLog({
+    log = await upsertMetabolicMetricLog({
       userId,
       ...snapshot,
       recordedAt: parseRecordedAt(body),

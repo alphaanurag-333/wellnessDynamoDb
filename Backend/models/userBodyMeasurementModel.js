@@ -2,6 +2,7 @@ const { v4: uuidv4 } = require("uuid");
 const { PutCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../config/db");
 const { queryPartition } = require("../utils/dynamoList");
+const { resolvePublicUrl } = require("../utils/s3");
 
 const TABLE = "UserBodyMeasurement";
 
@@ -87,7 +88,11 @@ async function getLatestBodyMeasurementForUser(userId) {
 
 function toPublicBodyMeasurement(item) {
   if (!item) return null;
-  return { ...item, _id: item.id };
+  return {
+    ...item,
+    _id: item.id,
+    weightPicUrl: item.weightPicKey ? resolvePublicUrl(item.weightPicKey) : null,
+  };
 }
 
 module.exports = {

@@ -3,12 +3,16 @@ import { useParams } from "react-router-dom";
 import { UserHealConsultancyTracksPanel } from "../../../components/UserHealConsultancyTracksPanel.jsx";
 import {
   coachListHealConsultancyTracks,
+  coachCreateHealConsultancyTrack,
   coachUpdateHealConsultancyTrack,
+  coachDeleteHealConsultancyTrack,
 } from "../../api/coachHealConsultancyTracks.js";
 
 const healConsultancyApi = {
   listTracks: coachListHealConsultancyTracks,
+  createTrack: coachCreateHealConsultancyTrack,
   updateTrack: coachUpdateHealConsultancyTrack,
+  deleteTrack: coachDeleteHealConsultancyTrack,
 };
 
 export function UserHealConsultancyTracks({ embedded = false }) {
