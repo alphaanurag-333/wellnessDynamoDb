@@ -181,12 +181,12 @@ export function SiteHeader() {
               </NavLink>
 
               <NavLink
-                to="/resources"
+                to="/wellnesspedia"
                 className={({ isActive }) =>
                   `site-header__link ${isActive ? "active" : ""}`
                 }
               >
-                Resources
+                Wellnesspedia
               </NavLink>
 
               <NavLink
@@ -341,11 +341,11 @@ export function SiteHeader() {
           </NavLink>
 
           <NavLink
-            to="/resources"
+            to="/wellnesspedia"
             className={({ isActive }) => (isActive ? "active" : "")}
             onClick={() => setMobileMenuOpen(false)}
           >
-            Resources
+            Wellnesspedia
           </NavLink>
 
           <NavLink
