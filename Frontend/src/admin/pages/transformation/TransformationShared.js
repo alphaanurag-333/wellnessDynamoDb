@@ -11,6 +11,8 @@ export const TIME_TAKEN_MAX = 120;
 export const TIME_TAKEN_MAX_LEN = 3;
 export const LIST_SEARCH_MAX_LEN = 50;
 export { IMAGE_MAX_SIZE_BYTES };
+export const IMAGE_WIDTH = 199;
+export const IMAGE_HEIGHT = 251;
 export const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/jpg"]);
 export const LIST_LIMIT = 10;
 

@@ -5,6 +5,17 @@ function usersBase() {
   return "/admin/users";
 }
 
+export async function adminConvertUserToSeek(token, userId) {
+  try {
+    const { data: res } = await api.post(`${usersBase()}/${encodeURIComponent(userId)}/convert-to-seek`, {}, {
+      headers: authHeader(token),
+    });
+    return normalizeUser(res.user);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function adminConvertUserToHeal(token, userId, { referralCode } = {}) {
   const body = {};
   if (referralCode && String(referralCode).trim()) {

@@ -1,7 +1,7 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
 const { getUserById, listUsersByParentCoachId, listUsersByAssignedCoachId, listPendingAssignmentUsers, normalizeUserTier } = require("../../models/userModel");
-const { convertSeekToHeal } = require("../../models/userConversionModel");
+const { convertSeekToHeal, convertHealToSeek } = require("../../models/userConversionModel");
 const { assignPendingHealUser, reassignHealUser } = require("../../models/userAssignmentModel");
 const { getWellnessCoachRecordById } = require("../../models/wellnessCoachModel");
 const { getAssistantWellnessCoachById } = require("../../models/assistantWellnessCoachModel");
@@ -14,6 +14,7 @@ function mapAssignmentError(err) {
   if (err?.name === "AlreadyConvertedError") throw new AppError(err.message, 409);
   if (err?.name === "InvalidReferralCodeError") throw new AppError(err.message, 400);
   if (err?.name === "InvalidHealAssignmentError") throw new AppError(err.message, 400);
+  if (err?.name === "InvalidTierError") throw new AppError(err.message, 400);
   if (err?.name === "ImmutableFieldError") throw new AppError(err.message, 400);
   throw err;
 }
@@ -41,6 +42,21 @@ async function resolveParentCoachId({ assignedCoachId, assignedCoachType, parent
 
   throw new AppError("assignedCoachType must be wellness_coach or assistant_wellness_coach", 400);
 }
+
+exports.convertUserToSeekController = asyncHandler(async (req, res) => {
+  let user;
+  try {
+    user = await convertHealToSeek(req.params.id);
+  } catch (err) {
+    mapAssignmentError(err);
+  }
+
+  return res.status(200).json({
+    status: true,
+    message: "User downgraded to Seek successfully",
+    user: await enrichUser(user),
+  });
+});
 
 exports.convertUserToHealController = asyncHandler(async (req, res) => {
   const referralCode = req.body?.referralCode ?? req.body?.referral_code ?? null;

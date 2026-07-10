@@ -11,6 +11,7 @@ const {
 } = require("../../controllers/adminController/userController");
 const {
   convertUserToHealController,
+  convertUserToSeekController,
   assignHealUserController,
   reassignHealUserController,
   listPendingAssignmentUsersController,
@@ -31,6 +32,7 @@ router.get("/:id/energy-exchange", protectAdmin, getUserEnergyExchangeAdminContr
 router.get("/:id", protectAdmin, getUserByIdController);
 router.post("/", protectAdmin, optionalUserFile, createUserController);
 router.post("/:id/convert-to-heal", protectAdmin, convertUserToHealController);
+router.post("/:id/convert-to-seek", protectAdmin, convertUserToSeekController);
 router.post("/:id/assign-coach", protectAdmin, assignHealUserController);
 router.post("/:id/reassign-coach", protectAdmin, reassignHealUserController);
 router.patch("/:id", protectAdmin, optionalUserFile, updateUserController);
