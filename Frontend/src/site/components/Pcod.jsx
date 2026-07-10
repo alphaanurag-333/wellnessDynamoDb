@@ -1,5 +1,5 @@
 import React from "react";
-import fatLossImg from "../../site/images/fat-loss.jpg"; // Change path
+import fatLossImg from "../../site/images/pcod-banner.png"; // Change path
 import ProgramTestimonialsSection from "./ProgramTestimonialsSection";
 
 const Pcod = () => {
