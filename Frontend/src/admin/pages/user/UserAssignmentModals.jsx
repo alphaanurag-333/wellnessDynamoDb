@@ -6,6 +6,7 @@ import {
   adminAssignHealUserCoach,
   adminReassignHealUserCoach,
   adminConvertUserToHeal,
+  adminConvertUserToSeek,
 } from "../../api/adminUserAssignment.js";
 import { logout } from "../../../store/authSlice.js";
 import { resolveUserId } from "../../api/adminUsers.js";
@@ -200,6 +201,56 @@ export function UserAssignCoachModal({ user, open, onClose, onSuccess, mode = "a
             </button>
             <button type="submit" className="btn btn--primary" disabled={loading}>
               {loading ? "Saving…" : mode === "assign" ? "Assign coach" : "Save reassignment"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+export function ConvertToSeekModal({ user, open, onClose, onSuccess }) {
+  const dispatch = useDispatch();
+  const adminToken = useSelector((s) => s.auth.adminToken);
+  const [loading, setLoading] = useState(false);
+
+  if (!open || !user) return null;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!adminToken) return;
+
+    setLoading(true);
+    try {
+      const updated = await adminConvertUserToSeek(adminToken, resolveUserId(user));
+      await Swal.fire({ icon: "success", title: "Downgraded to Seek", timer: 1500 });
+      onSuccess?.(updated);
+      onClose?.();
+    } catch (err) {
+      if (err?.status === 401) {
+        dispatch(logout());
+        return;
+      }
+      await Swal.fire({ icon: "error", title: "Downgrade failed", text: err.message || "Could not downgrade user." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" role="dialog" aria-modal="true">
+      <div className="modal-card">
+        <h3 className="modal-card__title">Downgrade to Seek (free)</h3>
+        <p className="modal-card__subtitle">
+          Downgrade {user.name || user.email} from Heal to Seek. Coach assignment and referral code will be removed.
+        </p>
+        <form onSubmit={handleSubmit} className="modal-card__form">
+          <div className="modal-card__actions">
+            <button type="button" className="btn btn--ghost" onClick={onClose} disabled={loading}>
+              Cancel
+            </button>
+            <button type="submit" className="btn btn--danger" disabled={loading}>
+              {loading ? "Downgrading…" : "Downgrade to Seek"}
             </button>
           </div>
         </form>

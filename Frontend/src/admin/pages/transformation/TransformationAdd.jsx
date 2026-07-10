@@ -16,7 +16,9 @@ import {
   ALLOWED_IMAGE_TYPES,
   DESCRIPTION_MAX_LEN,
   DESCRIPTION_MIN_LEN,
+  IMAGE_HEIGHT,
   IMAGE_MAX_SIZE_BYTES,
+  IMAGE_WIDTH,
   TIME_TAKEN_MAX,
   TIME_TAKEN_MAX_LEN,
   TIME_TAKEN_MIN,
@@ -231,7 +233,7 @@ export function TransformationForm({ mode = "create", initialTransformation = nu
         </label>
         <label className="user-field col-12 col-md-6">
           <span className="user-field__label">
-            Before image (max 5 MB){" "}
+            Before image ({IMAGE_WIDTH}×{IMAGE_HEIGHT} px, max 5 MB){" "}
             {!editId ? <span className="required-dot">*</span> : "(optional — replace current)"}
           </span>
           <input
@@ -244,7 +246,8 @@ export function TransformationForm({ mode = "create", initialTransformation = nu
         </label>
         <label className="user-field col-12 col-md-6">
           <span className="user-field__label">
-            After image (max 5 MB) {!editId ? <span className="required-dot">*</span> : "(optional — replace current)"}
+            After image ({IMAGE_WIDTH}×{IMAGE_HEIGHT} px, max 5 MB){" "}
+            {!editId ? <span className="required-dot">*</span> : "(optional — replace current)"}
           </span>
           <input
             ref={newInputRef}

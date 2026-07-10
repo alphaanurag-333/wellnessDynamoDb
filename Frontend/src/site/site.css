@@ -6859,7 +6859,7 @@ PRINT
 .transformation-story-card__compare {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0;
+  gap: 4px;
   background: #f8fafc;
 }
 

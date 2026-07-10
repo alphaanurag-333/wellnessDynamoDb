@@ -13,7 +13,7 @@ import {
   formatAssignedCoachLabel,
   formatReferredByLabel,
 } from "../../../components/ReferralAssignmentShared.jsx";
-import { ConvertToHealModal, UserAssignCoachModal } from "./UserAssignmentModals.jsx";
+import { ConvertToHealModal, ConvertToSeekModal, UserAssignCoachModal } from "./UserAssignmentModals.jsx";
 
 function formatDate(iso) {
   if (!iso) return "—";
@@ -40,6 +40,7 @@ export function UserView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showConvertModal, setShowConvertModal] = useState(false);
+  const [showDowngradeModal, setShowDowngradeModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [assignMode, setAssignMode] = useState("assign");
 
@@ -124,6 +125,7 @@ export function UserView() {
 
   const tier = String(user.userTier || "seek").toLowerCase();
   const isSeek = tier === "seek";
+  const isHeal = tier === "heal";
   const isConsultancyOnly = tier === "consultancy_only";
   const isPendingAssignment =
     (tier === "heal" || tier === "consultancy_only") && user.assignmentStatus === "pending_admin";
@@ -145,6 +147,11 @@ export function UserView() {
             {isSeek ? (
               <button type="button" className="btn btn--accent" onClick={() => setShowConvertModal(true)}>
                 Convert to Heal
+              </button>
+            ) : null}
+            {isHeal ? (
+              <button type="button" className="btn btn--ghost" onClick={() => setShowDowngradeModal(true)}>
+                Downgrade to Seek
               </button>
             ) : null}
             {isConsultancyOnly ? (
@@ -228,6 +235,12 @@ export function UserView() {
         user={user}
         open={showConvertModal}
         onClose={() => setShowConvertModal(false)}
+        onSuccess={setUser}
+      />
+      <ConvertToSeekModal
+        user={user}
+        open={showDowngradeModal}
+        onClose={() => setShowDowngradeModal(false)}
         onSuccess={setUser}
       />
       <UserAssignCoachModal
