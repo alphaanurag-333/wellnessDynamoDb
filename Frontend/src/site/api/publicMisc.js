@@ -45,6 +45,15 @@ export async function fetchCofounderMessage() {
   }
 }
 
+export async function fetchManagingDirectorMessage() {
+  try {
+    const { data } = await api.get("/public/misc/managing-director-message");
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function fetchWellnessCoaches(params = {}) {
   try {
     const { data } = await api.get("/public/misc/wellness-coaches", { params });

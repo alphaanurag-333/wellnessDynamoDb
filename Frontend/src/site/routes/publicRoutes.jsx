@@ -18,7 +18,7 @@ export const publicRouteTree = (
     <Route index element={<HomePage />} />
     <Route path="/contact-us" element={<ContactUsSection />} />
     <Route path="/about-us" element={<AboutUsSection/>} />
-    <Route path="/resources" element={<ResourcesSection/>} />
+    <Route path="/wellnesspedia" element={<ResourcesSection/>} />
     <Route path="/success-stories" element={<SuccessStories/>} />
     <Route path="/fat-loss" element={<FatLoss/>} />
     <Route path="/diabetes-reversal" element={<Diabetes/>} />

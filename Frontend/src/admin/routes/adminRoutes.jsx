@@ -120,6 +120,7 @@ import { VideoTestimonialAdd } from "../pages/videoTestimonial/VideoTestimonialA
 import { VideoTestimonialEdit } from "../pages/videoTestimonial/VideoTestimonialEdit.jsx";
 import { VideoTestimonialView } from "../pages/videoTestimonial/VideoTestimonialView.jsx";
 import { CofounderMessagePage } from "../pages/cofounderMessage/CofounderMessagePage.jsx";
+import { ManagingDirectorMessagePage } from "../pages/managingDirectorMessage/ManagingDirectorMessagePage.jsx";
 import { ContactInquiryList } from "../pages/contactInquiry/ContactInquiryList.jsx";
 import { ContactInquiryView } from "../pages/contactInquiry/ContactInquiryView.jsx";
 import {SectionPage} from "../pages/SectionPage.jsx";
@@ -382,6 +383,7 @@ export const adminRouteTree = (
     </Route>
 
     <Route path="cofounder-message" element={<CofounderMessagePage />} />
+    <Route path="managing-director-message" element={<ManagingDirectorMessagePage />} />
 
     <Route path="*" element={<NotFoundPage />} />
   </Route>

@@ -4223,6 +4223,11 @@ h5.pillar-card__head-title {
   background: var(--primary-light);
 }
 
+.leadership--alt {
+  background: #fff;
+  padding-top: 0;
+}
+
 .leadership__card {
   width: 100%;
   background: var(--card-bg);

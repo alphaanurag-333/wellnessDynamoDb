@@ -8,6 +8,7 @@ import {
 } from "../../media.js";
 import {
   fetchCofounderMessage,
+  fetchManagingDirectorMessage,
   fetchWellnessCoaches,
 } from "../api/publicMisc.js";
 
@@ -31,8 +32,6 @@ import {
   ShieldPlus,
   Heart,
   Dumbbell,
-  ArrowRight,
-  ArrowUpRight,
   Target,
   Eye,
   Sparkles,
@@ -45,6 +44,7 @@ import {
 } from "lucide-react";
 import AboutUs from "./About.jsx";
 import Methodology from "./Methodology.jsx";
+import { LeadershipMessageSection } from "./LeadershipMessageSection.jsx";
 
 const FALLBACK_COFOUNDER = {
   name: "Ms. Banita Acharya",
@@ -73,13 +73,6 @@ We are currently working on a Project to inspire & educate 10 Lakhs families wit
 
 I wish you all the very best ! Come & join us in our mission… Let’s make this world a better place to live !`,
 };
-
-function messageParagraphs(text) {
-  return String(text || "")
-    .split(/\n\s*\n/)
-    .map((part) => part.trim())
-    .filter(Boolean);
-}
 
 function coachDesignation(coach) {
   const specialization = coach?.specializationTitle?.trim();
@@ -167,9 +160,8 @@ const AboutUsSection = () => {
     // },
   ];
 
-  const [expanded, setExpanded] = useState(false);
   const [cofounderMessage, setCofounderMessage] = useState(null);
-  const [leadershipImageError, setLeadershipImageError] = useState(false);
+  const [managingDirectorMessage, setManagingDirectorMessage] = useState(null);
   const [wellnessCoaches, setWellnessCoaches] = useState([]);
   const [coachesLoading, setCoachesLoading] = useState(true);
   const prevRef = useRef(null);
@@ -195,8 +187,23 @@ const AboutUsSection = () => {
   }, []);
 
   useEffect(() => {
-    setLeadershipImageError(false);
-  }, [cofounderMessage?.profileImage]);
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const response = await fetchManagingDirectorMessage();
+        if (!cancelled && response?.data) {
+          setManagingDirectorMessage(response.data);
+        }
+      } catch {
+        /* no managing director message */
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -224,15 +231,16 @@ const AboutUsSection = () => {
     };
   }, []);
 
-  const leadershipName =
-    cofounderMessage?.name?.trim() || FALLBACK_COFOUNDER.name;
-  const leadershipMessage =
-    cofounderMessage?.message?.trim() || FALLBACK_COFOUNDER.message;
-  const leadershipImage = cofounderMessage?.profileImage
-    ? mediaUrl(cofounderMessage.profileImage)
-    : "";
-  const leadershipParagraphs = messageParagraphs(leadershipMessage);
-  const showLeadershipImage = Boolean(leadershipImage) && !leadershipImageError;
+  const cofounderName = cofounderMessage?.name?.trim() || FALLBACK_COFOUNDER.name;
+  const cofounderDesignation = FALLBACK_COFOUNDER.designation;
+  const cofounderBody = cofounderMessage?.message?.trim() || FALLBACK_COFOUNDER.message;
+  const cofounderProfileImage = cofounderMessage?.profileImage || "";
+
+  const managingDirectorName = managingDirectorMessage?.name?.trim() || "";
+  const managingDirectorDesignation =
+    managingDirectorMessage?.designation?.trim() || "Managing Director";
+  const managingDirectorBody = managingDirectorMessage?.message?.trim() || "";
+  const managingDirectorProfileImage = managingDirectorMessage?.profileImage || "";
 
   const marqueeItems = [...items, ...items, ...items, ...items];
 
@@ -281,57 +289,24 @@ const AboutUsSection = () => {
         </div>
       </section>
 
-      <section className="leadership">
-        <div className="site-container">
-          <div className={`leadership__card${showLeadershipImage ? "" : " leadership__card--no-image"}`}>
-            {showLeadershipImage ? (
-              <div className="leadership__image">
-                <div className="leadership__image-frame">
-                  <img
-                    src={leadershipImage}
-                    alt={leadershipName}
-                    onError={() => setLeadershipImageError(true)}
-                  />
-                </div>
-              </div>
-            ) : null}
+      <LeadershipMessageSection
+        badge="A NOTE FROM LEADERSHIP"
+        title="Co-Founder's Message"
+        name={cofounderName}
+        designation={cofounderDesignation}
+        message={cofounderBody}
+        profileImage={cofounderProfileImage}
+      />
 
-            <div className="leadership__content">
-              <span className="leadership__badge">A NOTE FROM LEADERSHIP</span>
-
-              <h2 className="leadership__title">Co-Founder's Message</h2>
-
-              <div className="leadership__author">
-                <h4>{leadershipName}</h4>
-                <span>{FALLBACK_COFOUNDER.designation}</span>
-              </div>
-
-              <div
-                className={`leadership__description ${
-                  expanded ? "expanded" : ""
-                }`}
-              >
-                {leadershipParagraphs.map((paragraph, index) => (
-                  <p key={index}>{paragraph}</p>
-                ))}
-              </div>
-
-              <button
-                className="leadership__link"
-                onClick={() => setExpanded(!expanded)}
-              >
-                {expanded ? "Read Less" : "Read More"}
-
-                {expanded ? (
-                  <ArrowUpRight size={18} />
-                ) : (
-                  <ArrowRight size={18} />
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
+      <LeadershipMessageSection
+        badge="A NOTE FROM LEADERSHIP"
+        title="Managing Director's Message"
+        name={managingDirectorName}
+        designation={managingDirectorDesignation}
+        message={managingDirectorBody}
+        profileImage={managingDirectorProfileImage}
+        className="leadership--alt"
+      />
       <section className="pillars">
         <div className="site-container">
           {/* Heading */}

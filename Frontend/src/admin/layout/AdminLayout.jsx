@@ -104,6 +104,7 @@ function titleFromPath(pathname) {
   }
 
   if (p.startsWith("/admin/cofounder-message")) return "Cofounder message";
+  if (p.startsWith("/admin/managing-director-message")) return "Managing director message";
 
   if (p.startsWith("/admin/launch-questions")) {
     if (/^\/admin\/launch-questions\/new$/.test(p)) return "Add LAUNCH question";
