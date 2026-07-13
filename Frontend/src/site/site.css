@@ -10939,6 +10939,16 @@ margin: 0 auto;
     font-size: 24px;
   }
 
+    .hero-title{
+    font-size: 36px;
+
+  }
+  .hero-description{
+    font-size: 15px;
+    line-height: 16px;
+    
+  }
+
   .obesity-badge {
     font-size: 12px;
     padding: 7px 16px;
