@@ -32,6 +32,8 @@ const {
   deleteUserAccountByPhoneOtp,
   sendProfilePhoneChangeOtp: sendProfilePhoneChangeOtpHelper,
   verifyProfilePhoneChangeOtp: verifyProfilePhoneChangeOtpHelper,
+  sendProfileWhatsappChangeOtp: sendProfileWhatsappChangeOtpHelper,
+  verifyProfileWhatsappChangeOtp: verifyProfileWhatsappChangeOtpHelper,
 } = require("./userProfileHelpers");
 const { uploadFileFromRequest } = require("../../utils/s3");
 
@@ -448,6 +450,48 @@ exports.verifyProfilePhoneChangeOtp = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     message: "Phone number updated successfully",
+    user: await enrichUser(updated),
+  });
+});
+
+/** POST /user/auth/profile/whatsapp/otp/send — OTP to new WhatsApp number before profile update */
+exports.sendProfileWhatsappChangeOtp = asyncHandler(async (req, res) => {
+  const userId = req.auth?.sub || req.user?.id;
+  const user = await getUserById(userId);
+  if (!user) throw new AppError("User not found", 404);
+
+  const { otp } = await sendProfileWhatsappChangeOtpHelper(user, {
+    whatsappPhone: req.body.whatsappPhone,
+    whatsappCountryCode: req.body.whatsappCountryCode,
+  });
+
+  const payload = {
+    status: true,
+    message: "WhatsApp change OTP sent successfully",
+  };
+
+  if (config.exposeOtpInResponse && config.nodeEnv !== "production") {
+    payload.debugOtp = otp;
+  }
+
+  return res.status(200).json(payload);
+});
+
+/** POST /user/auth/profile/whatsapp/otp/verify — confirm WhatsApp change with OTP */
+exports.verifyProfileWhatsappChangeOtp = asyncHandler(async (req, res) => {
+  const userId = req.auth?.sub || req.user?.id;
+  const user = await getUserById(userId);
+  if (!user) throw new AppError("User not found", 404);
+
+  const updated = await verifyProfileWhatsappChangeOtpHelper(user, {
+    whatsappPhone: req.body.whatsappPhone,
+    whatsappCountryCode: req.body.whatsappCountryCode,
+    otp: req.body.otp,
+  });
+
+  return res.status(200).json({
+    status: true,
+    message: "WhatsApp number updated successfully",
     user: await enrichUser(updated),
   });
 });

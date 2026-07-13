@@ -242,6 +242,8 @@ function sanitizeUpdateField(key, value) {
       "pincode",
       "pendingPhone",
       "pendingPhoneCountryCode",
+      "pendingWhatsappPhone",
+      "pendingWhatsappCountryCode",
     ].includes(key)
   ) {
     const s = value == null ? "" : String(value).trim();
