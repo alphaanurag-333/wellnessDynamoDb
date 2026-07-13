@@ -238,15 +238,36 @@ async function buildUserUpdatesFromBody(body, current, { allowStatus = true, req
     }
   }
 
-  const whatsappSame = parseBool(body.whatsappSameAsMobile);
-  if (whatsappSame !== undefined) updates.whatsappSameAsMobile = whatsappSame;
-  if (body.whatsappCountryCode !== undefined) {
-    updates.whatsappCountryCode = normalizeCountryCode(body.whatsappCountryCode);
-  }
-  if (body.whatsappPhone !== undefined) {
-    const waPhone = normalizePhone(body.whatsappPhone) || null;
-    if (waPhone) assertValidIndianMobile(waPhone, { field: "whatsappPhone" });
-    updates.whatsappPhone = waPhone;
+  const hasWhatsappFields =
+    body.whatsappSameAsMobile !== undefined ||
+    body.whatsappCountryCode !== undefined ||
+    body.whatsappPhone !== undefined;
+
+  if (hasWhatsappFields) {
+    const requested = resolveRequestedWhatsapp(body, current);
+    const currentEff = getEffectiveWhatsapp(current);
+
+    if (isWhatsappChanged(current, requested)) {
+      if (requested.sameAsMobile && !currentEff.sameAsMobile) {
+        updates.whatsappSameAsMobile = true;
+      } else {
+        throw new AppError(
+          "WhatsApp number changes require OTP verification. Use /user/auth/profile/whatsapp/otp/send and /verify.",
+          400
+        );
+      }
+    } else {
+      const whatsappSame = parseBool(body.whatsappSameAsMobile);
+      if (whatsappSame !== undefined) updates.whatsappSameAsMobile = whatsappSame;
+      if (body.whatsappCountryCode !== undefined) {
+        updates.whatsappCountryCode = normalizeCountryCode(body.whatsappCountryCode);
+      }
+      if (body.whatsappPhone !== undefined) {
+        const waPhone = normalizePhone(body.whatsappPhone) || null;
+        if (waPhone) assertValidIndianMobile(waPhone, { field: "whatsappPhone" });
+        updates.whatsappPhone = waPhone;
+      }
+    }
   }
   if (body.dob !== undefined) updates.dob = normalizeDob(body.dob);
   if (body.gender !== undefined) {
@@ -344,6 +365,58 @@ async function deleteUserAccountByPhoneOtp({ phone, phoneCountryCode, otp }) {
   }
 }
 
+function getEffectiveWhatsapp(user) {
+  if (user.whatsappSameAsMobile) {
+    return {
+      sameAsMobile: true,
+      countryCode: normalizeCountryCode(user.phoneCountryCode),
+      phone: normalizePhone(user.phone),
+    };
+  }
+  return {
+    sameAsMobile: false,
+    countryCode: normalizeCountryCode(user.whatsappCountryCode),
+    phone: normalizePhone(user.whatsappPhone),
+  };
+}
+
+function resolveRequestedWhatsapp(body, current) {
+  const whatsappSameRaw = parseBool(body.whatsappSameAsMobile);
+  const sameAsMobile =
+    whatsappSameRaw !== undefined ? whatsappSameRaw : Boolean(current.whatsappSameAsMobile);
+
+  if (sameAsMobile) {
+    return {
+      sameAsMobile: true,
+      countryCode: normalizeCountryCode(current.phoneCountryCode),
+      phone: normalizePhone(current.phone),
+    };
+  }
+
+  const countryCode =
+    body.whatsappCountryCode !== undefined
+      ? normalizeCountryCode(body.whatsappCountryCode)
+      : normalizeCountryCode(current.whatsappCountryCode);
+  const phone =
+    body.whatsappPhone !== undefined
+      ? normalizePhone(body.whatsappPhone) || null
+      : normalizePhone(current.whatsappPhone);
+
+  return { sameAsMobile: false, countryCode, phone };
+}
+
+function isWhatsappChanged(current, requested) {
+  const currentEff = getEffectiveWhatsapp(current);
+
+  if (requested.sameAsMobile !== currentEff.sameAsMobile) return true;
+  if (requested.sameAsMobile) return false;
+
+  return (
+    normalizePhone(requested.phone) !== normalizePhone(currentEff.phone) ||
+    normalizeCountryCode(requested.countryCode) !== normalizeCountryCode(currentEff.countryCode)
+  );
+}
+
 async function sendProfilePhoneChangeOtp(user, { phone, phoneCountryCode }) {
   const normalizedPhone = normalizePhone(phone);
   if (!normalizedPhone) throw new AppError("phone is required", 400);
@@ -395,7 +468,7 @@ async function verifyProfilePhoneChangeOtp(user, { phone, phoneCountryCode, otp 
 
   await assertUniquePhone(cc, normalizedPhone, user.id);
 
-  const updated = await updateUser(user.id, {
+  const updatePayload = {
     phone: normalizedPhone,
     phoneCountryCode: cc,
     phoneKey: buildPhoneKey(cc, normalizedPhone),
@@ -403,6 +476,92 @@ async function verifyProfilePhoneChangeOtp(user, { phone, phoneCountryCode, otp 
     otpExpire: null,
     pendingPhone: null,
     pendingPhoneCountryCode: null,
+  };
+
+  if (user.whatsappSameAsMobile) {
+    updatePayload.whatsappCountryCode = cc;
+    updatePayload.whatsappPhone = normalizedPhone;
+  }
+
+  const updated = await updateUser(user.id, updatePayload);
+
+  return updated;
+}
+
+async function sendProfileWhatsappChangeOtp(user, { whatsappPhone, whatsappCountryCode }) {
+  const requested = resolveRequestedWhatsapp(
+    { whatsappSameAsMobile: false, whatsappPhone, whatsappCountryCode },
+    user
+  );
+
+  if (requested.sameAsMobile) {
+    throw new AppError("OTP is not required when WhatsApp is same as mobile", 400);
+  }
+
+  const normalizedPhone = normalizePhone(requested.phone);
+  if (!normalizedPhone) throw new AppError("whatsappPhone is required", 400);
+  assertValidIndianMobile(normalizedPhone, { field: "whatsappPhone" });
+  const cc = normalizeCountryCode(requested.countryCode || user.whatsappCountryCode);
+
+  const currentEff = getEffectiveWhatsapp(user);
+  if (
+    !currentEff.sameAsMobile &&
+    normalizePhone(requested.phone) === normalizePhone(currentEff.phone) &&
+    normalizeCountryCode(requested.countryCode) === normalizeCountryCode(currentEff.countryCode)
+  ) {
+    throw new AppError("WhatsApp number is unchanged", 400);
+  }
+
+  const otp = generateOtp();
+  const otpExpire = getOtpExpiryDate();
+
+  await updateUser(user.id, {
+    otp,
+    otpExpire,
+    pendingWhatsappPhone: normalizedPhone,
+    pendingWhatsappCountryCode: cc,
+  });
+
+  await deliverOtp({
+    phone: normalizedPhone,
+    phoneCountryCode: cc,
+    otp,
+  });
+
+  return { otp, otpExpire };
+}
+
+async function verifyProfileWhatsappChangeOtp(user, { whatsappPhone, whatsappCountryCode, otp }) {
+  const normalizedPhone = normalizePhone(whatsappPhone);
+  if (!normalizedPhone) throw new AppError("whatsappPhone is required", 400);
+  const cc = normalizeCountryCode(whatsappCountryCode || user.whatsappCountryCode);
+  const code = String(otp ?? "").trim();
+  if (!code) throw new AppError("otp is required", 400);
+
+  if (!user.otp || !user.otpExpire) {
+    throw new AppError("No OTP requested. Send WhatsApp-change OTP first.", 400);
+  }
+  if (isOtpExpired(user.otpExpire)) {
+    throw new AppError("OTP has expired. Request a new code.", 400);
+  }
+  if (String(user.otp) !== code) {
+    throw new AppError("Invalid OTP", 401);
+  }
+  if (
+    normalizePhone(user.pendingWhatsappPhone) !== normalizedPhone ||
+    normalizeCountryCode(user.pendingWhatsappCountryCode) !== cc
+  ) {
+    throw new AppError("WhatsApp number does not match the pending verification request", 400);
+  }
+
+  const updated = await updateUser(user.id, {
+    whatsappSameAsMobile: false,
+    whatsappCountryCode: cc,
+    whatsappPhone: normalizedPhone,
+    otp: null,
+    otpExpire: null,
+    pendingWhatsappPhone: null,
+    pendingWhatsappCountryCode: null,
   });
 
   return updated;
@@ -421,4 +580,6 @@ module.exports = {
   deleteUserAccountByPhoneOtp,
   sendProfilePhoneChangeOtp,
   verifyProfilePhoneChangeOtp,
+  sendProfileWhatsappChangeOtp,
+  verifyProfileWhatsappChangeOtp,
 };
