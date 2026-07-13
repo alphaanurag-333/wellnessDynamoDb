@@ -7,7 +7,7 @@ import { logout } from "../../../store/authSlice.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { NotFoundPage } from "../NotFoundPage.jsx";
 import { AdminPageHeader, AdminStatusBadge } from "../../components/AdminCrud.jsx";
-import { formatDate } from "./TransformationShared.js";
+import { formatDate, IMAGE_HEIGHT, IMAGE_WIDTH } from "./TransformationShared.js";
 
 function DetailRow({ label, value }) {
   return (
@@ -101,12 +101,13 @@ export function TransformationView() {
             </div>
             <AdminMediaImage
               path={transformation.oldImage}
-              width={240}
-              height={220}
+              width={IMAGE_WIDTH}
+              height={IMAGE_HEIGHT}
               radius={8}
               alt="Before"
-              objectFit="contain"
-              style={{ width: "100%", height: 220, background: "#f1f3f5" }}
+              objectFit="cover"
+              className="admin-media-thumb--transformation"
+              style={{ width: IMAGE_WIDTH, maxWidth: "100%", height: IMAGE_HEIGHT, background: "#f1f3f5" }}
             />
           </div>
           <div className="col-6 col-md-6">
@@ -115,12 +116,13 @@ export function TransformationView() {
             </div>
             <AdminMediaImage
               path={transformation.newImage}
-              width={240}
-              height={220}
+              width={IMAGE_WIDTH}
+              height={IMAGE_HEIGHT}
               radius={8}
               alt="After"
-              objectFit="contain"
-              style={{ width: "100%", height: 220, background: "#f1f3f5" }}
+              objectFit="cover"
+              className="admin-media-thumb--transformation"
+              style={{ width: IMAGE_WIDTH, maxWidth: "100%", height: IMAGE_HEIGHT, background: "#f1f3f5" }}
             />
           </div>
         </div>
