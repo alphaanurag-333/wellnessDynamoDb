@@ -160,6 +160,7 @@ a:hover {
   box-shadow: none;
   transition: transform 0.22s ease;
   min-height: 100vh;
+  overflow: hidden;
 }
 
 .admin-sidebar__brand {
@@ -213,6 +214,9 @@ a:hover {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(30, 51, 84, 0.35) rgba(30, 51, 84, 0.08);
   padding: 10px 10px 12px;
   display: flex;
   flex-direction: column;
@@ -223,9 +227,19 @@ a:hover {
   width: 6px;
 }
 
-.admin-sidebar__nav::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+.admin-sidebar__nav::-webkit-scrollbar-track {
+  background: rgba(30, 51, 84, 0.06);
   border-radius: 99px;
+  margin: 4px 0;
+}
+
+.admin-sidebar__nav::-webkit-scrollbar-thumb {
+  background: rgba(30, 51, 84, 0.28);
+  border-radius: 99px;
+}
+
+.admin-sidebar__nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(30, 51, 84, 0.42);
 }
 
 .admin-sidebar__link {
@@ -3306,6 +3320,17 @@ a.btn:hover {
 .admin-media-thumb--fallback {
   object-fit: contain;
   padding: 3px;
+}
+.data-table .admin-media-thumb {
+
+  height: 44px !important;
+  width: 44px !important;
+}
+
+.admin-media-thumb--transformation {
+  width: 200px !important;
+  height: 250px !important;
+  object-fit: cover;
 }
 
 .admin-media-thumb--responsive {
@@ -7226,6 +7251,39 @@ fieldset.form-field legend {
 
 .modal-card--wide {
   width: min(520px, 92vw);
+}
+
+.image-crop-modal__card {
+  width: min(520px, 96vw);
+  padding: 1rem 1.25rem 1.25rem;
+}
+
+.image-crop-modal__crop-area {
+  position: relative;
+  width: 100%;
+  height: min(360px, 58vh);
+  background: #0f172a;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.image-crop-modal__zoom {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.85rem 0 0.25rem;
+}
+
+.image-crop-modal__zoom-label {
+  flex: 0 0 auto;
+  font-size: 0.875rem;
+  color: var(--admin-muted);
+}
+
+.image-crop-modal__zoom input[type="range"] {
+  flex: 1 1 auto;
+  width: 100%;
+  accent-color: var(--admin-primary, #2563eb);
 }
 
 @media (max-width: 720px) {

@@ -6,6 +6,7 @@ import { adminCreateTransformation, adminUpdateTransformation } from "../../api/
 import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
+import { ImageCropModal } from "../../components/ImageCropModal.jsx";
 import { mediaUrl } from "../../../media.js";
 import { blockPhoneNonDigitKeyDown } from "../../../utils/personFieldValidation.js";
 import {
@@ -62,6 +63,26 @@ export function TransformationForm({ mode = "create", initialTransformation = nu
   );
   const oldInputRef = useRef(null);
   const newInputRef = useRef(null);
+  const [cropModal, setCropModal] = useState({
+    open: false,
+    which: null,
+    src: "",
+    fileName: "",
+    mimeType: "",
+  });
+
+  const revokeBlobUrl = (url) => {
+    if (url && String(url).startsWith("blob:")) URL.revokeObjectURL(url);
+  };
+
+  const closeCropModal = () => {
+    setCropModal((prev) => {
+      revokeBlobUrl(prev.src);
+      const inputRef = prev.which === "old" ? oldInputRef : newInputRef;
+      if (inputRef?.current) inputRef.current.value = "";
+      return { open: false, which: null, src: "", fileName: "", mimeType: "" };
+    });
+  };
 
   const resetForm = () => {
     setForm(emptyForm());
@@ -94,9 +115,36 @@ export function TransformationForm({ mode = "create", initialTransformation = nu
         void Swal.fire({ icon: "error", title: "Validation error", text: "Image must be 5 MB or less." });
         return;
       }
+
+      setCropModal({
+        open: true,
+        which,
+        src: URL.createObjectURL(file),
+        fileName: file.name,
+        mimeType: file.type,
+      });
+      return;
     }
-    setFile(file);
-    setPreview(file ? URL.createObjectURL(file) : baseline ? mediaUrl(baseline) : "");
+
+    setFile(null);
+    setPreview(baseline ? mediaUrl(baseline) : "");
+  };
+
+  const handleCropConfirm = (croppedFile) => {
+    const which = cropModal.which;
+    if (!which) {
+      closeCropModal();
+      return;
+    }
+
+    const setFile = which === "old" ? setOldFile : setNewFile;
+    const setPreview = which === "old" ? setOldPreview : setNewPreview;
+    const currentPreview = which === "old" ? oldPreview : newPreview;
+
+    revokeBlobUrl(currentPreview);
+    setFile(croppedFile);
+    setPreview(URL.createObjectURL(croppedFile));
+    closeCropModal();
   };
 
   const onSubmit = async (e) => {
@@ -233,7 +281,7 @@ export function TransformationForm({ mode = "create", initialTransformation = nu
         </label>
         <label className="user-field col-12 col-md-6">
           <span className="user-field__label">
-            Before image ({IMAGE_WIDTH}×{IMAGE_HEIGHT} px, max 5 MB){" "}
+            Before image (width {IMAGE_WIDTH}px × height {IMAGE_HEIGHT}px, max 5 MB){" "}
             {!editId ? <span className="required-dot">*</span> : "(optional — replace current)"}
           </span>
           <input
@@ -246,7 +294,7 @@ export function TransformationForm({ mode = "create", initialTransformation = nu
         </label>
         <label className="user-field col-12 col-md-6">
           <span className="user-field__label">
-            After image ({IMAGE_WIDTH}×{IMAGE_HEIGHT} px, max 5 MB){" "}
+            After image (width {IMAGE_WIDTH}px × height {IMAGE_HEIGHT}px, max 5 MB){" "}
             {!editId ? <span className="required-dot">*</span> : "(optional — replace current)"}
           </span>
           <input
@@ -268,12 +316,13 @@ export function TransformationForm({ mode = "create", initialTransformation = nu
               <AdminMediaImage
                 path={editBaselineOld}
                 src={oldPreview || undefined}
-                width={280}
-                height={180}
+                width={IMAGE_WIDTH}
+                height={IMAGE_HEIGHT}
                 radius={8}
                 alt="Before"
-                objectFit="contain"
-                style={{ width: "100%", height: 180, background: "#f1f3f5" }}
+                objectFit="cover"
+                className="admin-media-thumb--transformation"
+                style={{ width: IMAGE_WIDTH, maxWidth: "100%", height: IMAGE_HEIGHT, background: "#f1f3f5" }}
               />
             </div>
           ) : null}
@@ -285,17 +334,30 @@ export function TransformationForm({ mode = "create", initialTransformation = nu
               <AdminMediaImage
                 path={editBaselineNew}
                 src={newPreview || undefined}
-                width={280}
-                height={180}
+                width={IMAGE_WIDTH}
+                height={IMAGE_HEIGHT}
                 radius={8}
                 alt="After"
-                objectFit="contain"
-                style={{ width: "100%", height: 180, background: "#f1f3f5" }}
+                objectFit="cover"
+                className="admin-media-thumb--transformation"
+                style={{ width: IMAGE_WIDTH, maxWidth: "100%", height: IMAGE_HEIGHT, background: "#f1f3f5" }}
               />
             </div>
           ) : null}
         </div>
       ) : null}
+      <ImageCropModal
+        key={cropModal.src || "closed"}
+        open={cropModal.open}
+        title={cropModal.which === "old" ? "Crop before image" : cropModal.which === "new" ? "Crop after image" : "Crop image"}
+        imageSrc={cropModal.src}
+        outputWidth={IMAGE_WIDTH}
+        outputHeight={IMAGE_HEIGHT}
+        originalFileName={cropModal.fileName}
+        originalMimeType={cropModal.mimeType}
+        onCancel={closeCropModal}
+        onConfirm={handleCropConfirm}
+      />
       <div className="user-form__actions">
         {isEditMode ? (
           <button type="button" className="btn btn--ghost" onClick={() => navigate("/admin/transformations")}>
