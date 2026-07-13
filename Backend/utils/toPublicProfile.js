@@ -15,6 +15,10 @@ function toPublicProfile(doc) {
   delete o.otpExpire;
   delete o.resetPasswordToken;
   delete o.resetPasswordExpire;
+  delete o.pendingPhone;
+  delete o.pendingPhoneCountryCode;
+  delete o.pendingWhatsappPhone;
+  delete o.pendingWhatsappCountryCode;
   return o;
 }
 
