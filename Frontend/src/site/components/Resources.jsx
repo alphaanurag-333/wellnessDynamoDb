@@ -2,14 +2,18 @@ import React from "react";
 import { Plus } from "lucide-react";
 import { FiArrowRight } from "react-icons/fi";
 import BMISection from "./BMISection";
-import HydrationGuide from "./HydrationGuide";
 import BMRCalculator from "./BMRCalculator";
 import BodyFatCalculator from "./BodyFatCalculator";
 import VisceralFatCalculator from "./VisceralFatCalculator";
 
 const ResourcesSection = () => {
+  const scrollToTools = () => {
+    const el = document.getElementById("wellness-tools");
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   return (
-    <section className="wellness-toolkit">
+    <section className="wellness-toolkit wellnesspedia-page">
       <div className="resources-header">
         <div className="site-container">
           <div className="wellness-toolkit__content">
@@ -27,7 +31,11 @@ const ResourcesSection = () => {
               guides designed for your restorative sanctuary.
             </p>
 
-            <button className="wellness-toolkit__button">
+            <button
+              type="button"
+              className="wellness-toolkit__button"
+              onClick={scrollToTools}
+            >
               <span className="button-icon">
                 <Plus size={14} strokeWidth={2.5} />
               </span>
@@ -40,11 +48,14 @@ const ResourcesSection = () => {
         <div className="wellness-toolkit__glow"></div>
       </div>
 
-      <BMISection />
-      {/* <HydrationGuide /> */}
-      <BMRCalculator />
-      <BodyFatCalculator />
-      <VisceralFatCalculator /> 
+      <div id="wellness-tools" className="wellnesspedia-page__tools">
+        <BMISection />
+        {/* <HydrationGuide /> */}
+        <BMRCalculator />
+        <BodyFatCalculator />
+        <VisceralFatCalculator />
+      </div>
+
       <section className="final-cta">
         <div className="final-cta__overlay"></div>
 

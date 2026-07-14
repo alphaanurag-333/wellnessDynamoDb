@@ -27,6 +27,8 @@ function LeadershipNoteCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [needsToggle, setNeedsToggle] = useState(false);
+  const descriptionRef = useRef(null);
 
   const paragraphs = messageParagraphs(message);
   const imageSrc = profileImage ? mediaUrl(profileImage) : "";
@@ -36,6 +38,31 @@ function LeadershipNoteCard({
   useEffect(() => {
     setImageError(false);
   }, [imageSrc]);
+
+  useEffect(() => {
+    setExpanded(false);
+  }, [message]);
+
+  useEffect(() => {
+    const el = descriptionRef.current;
+    if (!el) return undefined;
+
+    const measure = () => {
+      if (expanded) return;
+      // Slight buffer so rounding / subpixel layout doesn't flash a needless toggle.
+      setNeedsToggle(el.scrollHeight > el.clientHeight + 1);
+    };
+
+    measure();
+    const resizeObserver = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    resizeObserver?.observe(el);
+    window.addEventListener("resize", measure);
+
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [message, paragraphs.length, expanded]);
 
   if (!name || paragraphs.length === 0) {
     return null;
@@ -68,16 +95,21 @@ function LeadershipNoteCard({
           {designation ? <span>{designation}</span> : null}
         </div>
 
-        <div className={`leadership__description${expanded ? " expanded" : ""}`}>
+        <div
+          ref={descriptionRef}
+          className={`leadership__description${expanded ? " expanded" : ""}`}
+        >
           {paragraphs.map((paragraph, index) => (
             <p key={index}>{paragraph}</p>
           ))}
         </div>
 
-        <button type="button" className="leadership__link" onClick={toggleExpanded}>
-          {expanded ? "Read Less" : "Read More"}
-          {expanded ? <ArrowUpRight size={18} /> : <ArrowRight size={18} />}
-        </button>
+        {needsToggle || expanded ? (
+          <button type="button" className="leadership__link" onClick={toggleExpanded}>
+            {expanded ? "Read Less" : "Read More"}
+            {expanded ? <ArrowUpRight size={18} /> : <ArrowRight size={18} />}
+          </button>
+        ) : null}
       </div>
     </div>
   );
@@ -111,12 +143,15 @@ export function LeadershipMessageSection({
 
 export function LeadershipNotesSlider({ notes = [], loading = false }) {
   const swiperRef = useRef(null);
+  const prevRef = useRef(null);
+  const nextRef = useRef(null);
 
   const updateSlideHeight = () => {
     const swiper = swiperRef.current;
     if (!swiper) return;
     requestAnimationFrame(() => {
-      swiper.updateAutoHeight?.(300);
+      swiper.updateAutoHeight?.(200);
+      swiper.update?.();
     });
   };
 
@@ -142,11 +177,21 @@ export function LeadershipNotesSlider({ notes = [], loading = false }) {
     <section className="leadership leadership-slider">
       <div className="site-container">
         {enableLoop ? (
-          <div className="leadership-slider__nav" aria-hidden="false">
-            <button type="button" className="leadership-slider__navBtn leadership-slider__navBtn--prev" aria-label="Previous note">
+          <div className="leadership-slider__nav">
+            <button
+              ref={prevRef}
+              type="button"
+              className="leadership-slider__navBtn"
+              aria-label="Previous note"
+            >
               <ChevronLeft size={22} />
             </button>
-            <button type="button" className="leadership-slider__navBtn leadership-slider__navBtn--next" aria-label="Next note">
+            <button
+              ref={nextRef}
+              type="button"
+              className="leadership-slider__navBtn"
+              aria-label="Next note"
+            >
               <ChevronRight size={22} />
             </button>
           </div>
@@ -159,10 +204,24 @@ export function LeadershipNotesSlider({ notes = [], loading = false }) {
           autoHeight
           observer
           observeParents
+          watchOverflow
           onSwiper={(swiper) => {
             swiperRef.current = swiper;
+            requestAnimationFrame(() => swiper.updateAutoHeight?.(0));
           }}
-          loop={enableLoop}
+          onSlideChange={(swiper) => {
+            requestAnimationFrame(() => swiper.updateAutoHeight?.(200));
+          }}
+          onInit={(swiper) => {
+            if (!enableLoop) return;
+            swiper.params.navigation.prevEl = prevRef.current;
+            swiper.params.navigation.nextEl = nextRef.current;
+            swiper.navigation.destroy();
+            swiper.navigation.init();
+            swiper.navigation.update();
+          }}
+          loop={false}
+          rewind={enableLoop}
           autoplay={
             enableLoop
               ? {
@@ -172,15 +231,16 @@ export function LeadershipNotesSlider({ notes = [], loading = false }) {
                 }
               : false
           }
-          pagination={enableLoop ? { clickable: true } : false}
-          navigation={
+          pagination={
             enableLoop
               ? {
-                  prevEl: ".leadership-slider__navBtn--prev",
-                  nextEl: ".leadership-slider__navBtn--next",
+                  clickable: true,
+                  bulletClass: "leadership-slider__bullet",
+                  bulletActiveClass: "leadership-slider__bullet--active",
                 }
               : false
           }
+          navigation={false}
           className="leadership-slider__swiper"
         >
           {items.map((note) => (

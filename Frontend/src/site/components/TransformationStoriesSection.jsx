@@ -167,9 +167,13 @@ export default function TransformationStoriesSection() {
                 spaceBetween: 16,
               },
               768: {
-                slidesPerView: 3,
+                slidesPerView: 2,
                 spaceBetween: 28,
               },
+              1024:{
+                slidesPerView: 3,
+                spaceBetween: 28,
+              }
             }}
             className="transformationStoriesSwiper"
           >

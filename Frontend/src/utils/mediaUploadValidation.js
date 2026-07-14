@@ -1,4 +1,4 @@
-export const IMAGE_MAX_SIZE_MB = 5;
+export const IMAGE_MAX_SIZE_MB = 25;
 export const VIDEO_MAX_SIZE_MB = 25;
 export const IMAGE_MAX_SIZE_BYTES = IMAGE_MAX_SIZE_MB * 1024 * 1024;
 export const VIDEO_MAX_SIZE_BYTES = VIDEO_MAX_SIZE_MB * 1024 * 1024;

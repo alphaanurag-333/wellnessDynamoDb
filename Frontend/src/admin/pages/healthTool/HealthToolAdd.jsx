@@ -133,7 +133,7 @@ export function HealthToolForm({ mode = "create", initialTool = null }) {
         </label>
         <label className="user-field col-12">
           <span className="user-field__label">
-            Icon image (up to 5 MB){" "}
+            Icon image (up to 25 MB){" "}
             {editId ? "(optional — leave unchanged to keep current)" : <span className="required-dot">*</span>}
           </span>
           <input
@@ -155,7 +155,7 @@ export function HealthToolForm({ mode = "create", initialTool = null }) {
                   setIconFile(null);
                   setIconPreview(editBaselineIcon ? mediaUrl(editBaselineIcon) : "");
                   e.target.value = "";
-                  void Swal.fire({ icon: "error", title: "Validation error", text: "Image must be 5 MB or less." });
+                  void Swal.fire({ icon: "error", title: "Validation error", text: "Image must be 25 MB or less." });
                   return;
                 }
               }

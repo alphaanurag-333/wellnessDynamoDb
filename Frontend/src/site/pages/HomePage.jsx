@@ -17,7 +17,7 @@ import TransformationStoriesSection from "../components/TransformationStoriesSec
 
 export function HomePage() {
   return (
-    <>
+    <div className="home-page">
       <SiteHero />
       <ChampionSlider />
       <WellnessHero />
@@ -32,6 +32,6 @@ export function HomePage() {
       {/* <CommunitySection /> */}
       {/* <BmiCalculator /> */}
       <FinalCTA />
-    </>
+    </div>
   );
 }

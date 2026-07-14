@@ -112,7 +112,7 @@ export function TransformationForm({ mode = "create", initialTransformation = nu
         setFile(null);
         setPreview(baseline ? mediaUrl(baseline) : "");
         e.target.value = "";
-        void Swal.fire({ icon: "error", title: "Validation error", text: "Image must be 5 MB or less." });
+        void Swal.fire({ icon: "error", title: "Validation error", text: "Image must be 25 MB or less." });
         return;
       }
 
@@ -281,7 +281,7 @@ export function TransformationForm({ mode = "create", initialTransformation = nu
         </label>
         <label className="user-field col-12 col-md-6">
           <span className="user-field__label">
-            Before image (width {IMAGE_WIDTH}px × height {IMAGE_HEIGHT}px, max 5 MB){" "}
+            Before image (width {IMAGE_WIDTH}px × height {IMAGE_HEIGHT}px, max 25 MB){" "}
             {!editId ? <span className="required-dot">*</span> : "(optional — replace current)"}
           </span>
           <input
@@ -294,7 +294,7 @@ export function TransformationForm({ mode = "create", initialTransformation = nu
         </label>
         <label className="user-field col-12 col-md-6">
           <span className="user-field__label">
-            After image (width {IMAGE_WIDTH}px × height {IMAGE_HEIGHT}px, max 5 MB){" "}
+            After image (width {IMAGE_WIDTH}px × height {IMAGE_HEIGHT}px, max 25 MB){" "}
             {!editId ? <span className="required-dot">*</span> : "(optional — replace current)"}
           </span>
           <input

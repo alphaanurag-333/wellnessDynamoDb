@@ -116,15 +116,15 @@ export default function TestimonialsSection({ items: itemsProp }) {
           breakpoints={{
             0: {
               slidesPerView: 1,
-              spaceBetween: 18,
+              spaceBetween: 14,
             },
             768: {
-              slidesPerView: 3,
-              spaceBetween: 24,
+              slidesPerView: 2,
+              spaceBetween: 18,
             },
-            1200: {
+            992: {
               slidesPerView: 3,
-              spaceBetween: 28,
+              spaceBetween: 20,
             },
           }}
           className="successStoriesSwiper"
@@ -136,7 +136,7 @@ export default function TestimonialsSection({ items: itemsProp }) {
                   <div className="success-card__avatar">
                     <img
                       src={item.image || DEFAULT_IMAGE_SRC}
-                      alt={item.name}
+                      alt=""
                       loading="lazy"
                       onError={handleMediaImageError}
                     />
@@ -145,7 +145,7 @@ export default function TestimonialsSection({ items: itemsProp }) {
                 </div>
 
                 <blockquote className="success-card__review">
-                  <p>&ldquo;{item.review}&rdquo;</p>
+                  <p>{item.review}</p>
                 </blockquote>
 
                 <p className="success-card__author">

@@ -94,14 +94,14 @@ export function validateForm(form, { editId, imageFile, hasExistingImage }) {
   if (status !== "active" && status !== "inactive") return "Status must be active or inactive.";
 
   if (!editId) {
-    if (!(imageFile instanceof File)) return "Please upload an image (JPEG, PNG, GIF, or WebP, max 5 MB).";
+    if (!(imageFile instanceof File)) return "Please upload an image (JPEG, PNG, GIF, or WebP, max 25 MB).";
   } else if (!(imageFile instanceof File) && !hasExistingImage) {
     return "Upload an image — this record has no image yet.";
   }
 
   if (imageFile instanceof File) {
     if (!isAllowedSupplementImageFile(imageFile)) return "Image must be a JPEG, PNG, GIF, or WebP image.";
-    if (imageFile.size > IMAGE_MAX_SIZE_BYTES) return "Image must be 5 MB or smaller.";
+    if (imageFile.size > IMAGE_MAX_SIZE_BYTES) return "Image must be 25 MB or smaller.";
   }
 
   return "";

@@ -234,7 +234,7 @@ export function VideoTestimonialForm({ mode = "create", initialTestimonial = nul
         </label>
         <label className="user-field col-12 col-md-6">
           <span className="user-field__label">
-            Profile image (up to 5 MB){" "}
+            Profile image (up to 25 MB){" "}
             {editId ? "(optional — keep file empty to retain current)" : <span className="required-dot">*</span>}
           </span>
           <input
@@ -252,7 +252,7 @@ export function VideoTestimonialForm({ mode = "create", initialTestimonial = nul
                 void Swal.fire({
                   icon: "error",
                   title: "Validation error",
-                  text: "Profile image must be 5 MB or less.",
+                  text: "Profile image must be 25 MB or less.",
                 });
                 return;
               }
@@ -322,7 +322,7 @@ export function VideoTestimonialForm({ mode = "create", initialTestimonial = nul
                   void Swal.fire({
                     icon: "error",
                     title: "Validation error",
-                    text: "Video size must be 25 MB or less.",
+                    text: "Video size must be 225 MB or less.",
                   });
                   return;
                 }

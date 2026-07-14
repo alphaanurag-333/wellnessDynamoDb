@@ -140,7 +140,7 @@ function CoachBoardSection({
         ) : (
           <Swiper
             modules={[Navigation]}
-            spaceBetween={28}
+            spaceBetween={16}
             slidesPerView={4}
             onInit={(swiper) => {
               swiper.params.navigation.prevEl = prevRef.current;
@@ -156,20 +156,24 @@ function CoachBoardSection({
             }}
             breakpoints={{
               0: {
-                slidesPerView: 1.2,
-                spaceBetween: 18,
+                slidesPerView: 1,
+                spaceBetween: 12,
+              },
+              640: {
+                slidesPerView: 2,
+                spaceBetween: 12,
               },
               768: {
-                slidesPerView: 2.3,
-                spaceBetween: 20,
+                slidesPerView: 3,
+                spaceBetween: 14,
               },
               992: {
                 slidesPerView: 4,
-                spaceBetween: 22,
+                spaceBetween: 16,
               },
               1200: {
-                slidesPerView: 4,
-                spaceBetween: 24,
+                slidesPerView: 5,
+                spaceBetween: 16,
               },
             }}
             className="medicalBoardSlider"
@@ -390,8 +394,8 @@ const AboutUsSection = () => {
   const marqueeItems = [...items, ...items, ...items, ...items];
 
   return (
-    <section className="about-wellness">
-      <div className="site-container">
+    <section className="about-wellness about-page">
+      <div className="container">
         <div className="wellness__wrapper">
           <div className="wellness__content">
             <span className="wellness__label">WELCOME TO OUR SPACE</span>

@@ -26,12 +26,11 @@ function mapProgramTestimonial(row) {
   };
 }
 
-function ProgramTestimonialCard({ item }) {
-  const [expanded, setExpanded] = useState(false);
+function ProgramTestimonialCard({ item, expanded, onToggle }) {
   const showToggle = item.description.length > READ_MORE_MIN_CHARS;
 
   return (
-    <article className="program-testimonial-card">
+    <article className={`program-testimonial-card${expanded ? " program-testimonial-card--expanded" : ""}`}>
       <div className="program-testimonial-card__header">
         <div className="program-testimonial-card__avatar">
           <img
@@ -56,7 +55,7 @@ function ProgramTestimonialCard({ item }) {
         <button
           type="button"
           className="program-testimonial-card__link"
-          onClick={() => setExpanded((prev) => !prev)}
+          onClick={() => onToggle(item.id)}
           aria-expanded={expanded}
         >
           {expanded ? "Read Less" : "Read More"}
@@ -71,9 +70,14 @@ export default function ProgramTestimonialsSection({ type, title, subtitle }) {
   const prevRef = useRef(null);
   const nextRef = useRef(null);
   const [testimonials, setTestimonials] = useState(null);
+  const [expandedId, setExpandedId] = useState(null);
   const meta = getProgramTestimonialMeta(type);
   const sectionTitle = title || meta.sectionTitle;
   const sectionSubtitle = subtitle || meta.sectionSubtitle;
+
+  const toggleExpanded = (id) => {
+    setExpandedId((prev) => (prev === id ? null : id));
+  };
 
   useEffect(() => {
     if (!type) {
@@ -82,6 +86,7 @@ export default function ProgramTestimonialsSection({ type, title, subtitle }) {
     }
 
     let cancelled = false;
+    setExpandedId(null);
 
     (async () => {
       try {
@@ -153,15 +158,11 @@ export default function ProgramTestimonialsSection({ type, title, subtitle }) {
             }}
             breakpoints={{
               0: {
-                slidesPerView: 1.05,
+                slidesPerView: 1,
                 spaceBetween: 16,
               },
-              576: {
-                slidesPerView: 1.35,
-                spaceBetween: 18,
-              },
               768: {
-                slidesPerView: 2.05,
+                slidesPerView: 2,
                 spaceBetween: 22,
               },
               992: {
@@ -173,7 +174,11 @@ export default function ProgramTestimonialsSection({ type, title, subtitle }) {
           >
             {testimonials.map((item) => (
               <SwiperSlide key={item.id}>
-                <ProgramTestimonialCard item={item} />
+                <ProgramTestimonialCard
+                  item={item}
+                  expanded={expandedId === item.id}
+                  onToggle={toggleExpanded}
+                />
               </SwiperSlide>
             ))}
           </Swiper>

@@ -177,7 +177,7 @@ export function CofounderMessagePage() {
             </label>
             <label className="user-field col-12 col-md-6">
               <span className="user-field__label">
-                Profile image (up to 5 MB){" "}
+                Profile image (up to 25 MB){" "}
                 {exists ? "(optional — keep empty to retain current)" : <span className="required-dot">*</span>}
               </span>
               <input
@@ -192,7 +192,7 @@ export function CofounderMessagePage() {
                     revokeProfilePreviewBlob();
                     setProfilePreview(baselineProfileImage ? mediaUrl(baselineProfileImage) : "");
                     e.target.value = "";
-                    void Swal.fire({ icon: "error", title: "Validation error", text: "Profile image must be 5 MB or less." });
+                    void Swal.fire({ icon: "error", title: "Validation error", text: "Profile image must be 25 MB or less." });
                     return;
                   }
                   setProfileImageFile(file);

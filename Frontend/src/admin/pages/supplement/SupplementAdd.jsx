@@ -184,7 +184,7 @@ export function SupplementForm({ mode = "create", initialSupplement = null }) {
         </label>
         <label className="user-field col-12">
           <span className="user-field__label">
-            Image (up to 5 MB){" "}
+            Image (up to 25 MB){" "}
             {editId ? "(optional — leave unchanged to keep current)" : <span className="required-dot">*</span>}
           </span>
           <input
@@ -206,7 +206,7 @@ export function SupplementForm({ mode = "create", initialSupplement = null }) {
                   setImageFile(null);
                   setImagePreview(editBaselineImage ? mediaUrl(editBaselineImage) : "");
                   e.target.value = "";
-                  void Swal.fire({ icon: "error", title: "Validation error", text: "Image must be 5 MB or less." });
+                  void Swal.fire({ icon: "error", title: "Validation error", text: "Image must be 25 MB or less." });
                   return;
                 }
               }

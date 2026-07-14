@@ -99,9 +99,15 @@ export default function VideoTestimonials() {
 
   if (items === null) {
     return (
-      <section className="video-slider-section container" aria-busy="true" aria-label="Loading video testimonials">
-        <h2 className="voice-title">Voice of Healing : Unfiltered</h2>
-        <p className="site-testimonials__loading">Loading video testimonials…</p>
+      <section
+        className="video-slider-section"
+        aria-busy="true"
+        aria-label="Loading video testimonials"
+      >
+        <div className="container">
+          <h2 className="voice-title">Voice of Healing : Unfiltered</h2>
+          <p className="site-testimonials__loading">Loading video testimonials…</p>
+        </div>
       </section>
     );
   }
@@ -114,66 +120,93 @@ export default function VideoTestimonials() {
 
   return (
     <>
-      <section className="video-slider-section container" aria-label="Video testimonials">
-        <h2 className="voice-title">Voice of Healing : Unfiltered</h2>
-        <Swiper
-          modules={[Autoplay]}
-          slidesPerView={4}
-          spaceBetween={25}
-          loop={enableLoop}
-          autoplay={
-            enableLoop
-              ? {
-                  delay: 3000,
-                  disableOnInteraction: false,
-                }
-              : false
-          }
-          breakpoints={{
-            0: {
-              slidesPerView: 1,
-            },
-            768: {
-              slidesPerView: 2,
-            },
-            1024: {
-              slidesPerView: 3,
-            },
-          }}
-        >
-          {items.map((item) => (
-            <SwiperSlide key={item.id}>
-              <button
-                type="button"
-                className="video-card"
-                onClick={() => setActiveItem(item)}
-                aria-label={`Play video testimonial from ${item.name}`}
-              >
-                <img
-                  src={item.image || DEFAULT_IMAGE_SRC}
-                  alt={item.name}
-                  loading="lazy"
-                  onError={handleMediaImageError}
-                />
+      <section className="video-slider-section" aria-label="Video testimonials">
+        <div className="container">
+          <h2 className="voice-title">Voice of Healing : Unfiltered</h2>
+          <Swiper
+            modules={[Autoplay]}
+            slidesPerView={3}
+            spaceBetween={20}
+            loop={enableLoop}
+            autoplay={
+              enableLoop
+                ? {
+                    delay: 3000,
+                    disableOnInteraction: false,
+                    pauseOnMouseEnter: true,
+                  }
+                : false
+            }
+            breakpoints={{
+              0: {
+                slidesPerView: 1.15,
+                spaceBetween: 12,
+              },
+              576: {
+                slidesPerView: 2,
+                spaceBetween: 14,
+              },
+              992: {
+                slidesPerView: 3,
+                spaceBetween: 18,
+              },
+            }}
+            className="videoTestimonialsSwiper"
+          >
+            {items.map((item) => (
+              <SwiperSlide key={item.id}>
+                <article className="video-card-wrap">
+                  <button
+                    type="button"
+                    className="video-card"
+                    onClick={() => setActiveItem(item)}
+                    aria-label={`Play video testimonial from ${item.name}`}
+                  >
+                    <img
+                      src={item.image || DEFAULT_IMAGE_SRC}
+                      alt=""
+                      loading="lazy"
+                      onError={handleMediaImageError}
+                    />
 
-                <span className="play-btn" aria-hidden>
-                  <FaPlay />
-                </span>
-              </button>
-            </SwiperSlide>
-          ))}
-        </Swiper>
+                    <span className="play-btn" aria-hidden>
+                      <FaPlay />
+                    </span>
+                  </button>
+                  <p className="video-card__name">{item.name}</p>
+                </article>
+              </SwiperSlide>
+            ))}
+          </Swiper>
+        </div>
       </section>
 
       {activeItem ? (
-        <div className="video-modal" onClick={() => setActiveItem(null)} role="dialog" aria-modal="true">
+        <div
+          className="video-modal"
+          onClick={() => setActiveItem(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={activeItem.name}
+        >
           <div className="video-modal-content" onClick={(e) => e.stopPropagation()}>
-            <button type="button" className="close-btn" onClick={() => setActiveItem(null)} aria-label="Close video">
+            <button
+              type="button"
+              className="close-btn"
+              onClick={() => setActiveItem(null)}
+              aria-label="Close video"
+            >
               ×
             </button>
 
             {activeItem.type === "video" ? (
-              <video src={activeItem.playUrl} controls autoPlay playsInline className="video-modal-player" />
+              <video
+                src={activeItem.playUrl}
+                controls
+                autoPlay
+                playsInline
+                className="video-modal-player"
+              />
             ) : (
               <iframe
                 src={`${activeItem.playUrl}?autoplay=1`}

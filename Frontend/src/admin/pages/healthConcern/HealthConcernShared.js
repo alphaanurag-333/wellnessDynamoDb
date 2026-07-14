@@ -69,7 +69,7 @@ export function validateForm(form, { editId, iconFile, hasExistingIcon }) {
 
   if (!editId) {
     if (!(iconFile instanceof File)) {
-      return "Please upload an icon image (JPEG, PNG, GIF, or WebP, max 5 MB).";
+      return "Please upload an icon image (JPEG, PNG, GIF, or WebP, max 25 MB).";
     }
   } else if (!(iconFile instanceof File) && !hasExistingIcon) {
     return "Upload an icon image — this record has no icon yet.";
@@ -80,7 +80,7 @@ export function validateForm(form, { editId, iconFile, hasExistingIcon }) {
       return "Icon must be a JPEG, PNG, GIF, or WebP image.";
     }
     if (iconFile.size > IMAGE_MAX_SIZE_BYTES) {
-      return "Icon image must be 5 MB or smaller.";
+      return "Icon image must be 25 MB or smaller.";
     }
   }
 

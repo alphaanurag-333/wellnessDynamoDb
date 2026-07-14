@@ -127,7 +127,7 @@ export function validateForm(form, { editId, oldFile, newFile, hasExistingImages
 
   if (!editId) {
     if (!(oldFile instanceof File) || !(newFile instanceof File)) {
-      return "Please upload both before and after images (JPEG, PNG, GIF, or WebP, max 5 MB each).";
+      return "Please upload both before and after images (JPEG, PNG, GIF, or WebP, max 25 MB each).";
     }
   } else if (!(oldFile instanceof File) && !(newFile instanceof File) && !hasExistingImages) {
     return "This record is missing images; upload before and after images.";
@@ -139,7 +139,7 @@ export function validateForm(form, { editId, oldFile, newFile, hasExistingImages
         return "Images must be JPEG, PNG, GIF, or WebP.";
       }
       if (file.size > IMAGE_MAX_SIZE_BYTES) {
-        return "Each image must be 5 MB or smaller.";
+        return "Each image must be 25 MB or smaller.";
       }
     }
   }

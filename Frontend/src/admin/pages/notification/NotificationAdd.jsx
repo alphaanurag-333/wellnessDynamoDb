@@ -108,7 +108,7 @@ export function NotificationForm({ mode = "create", initialNotification = null }
           </select>
         </label>
         <label className="user-field col-12 col-md-6">
-          <span className="user-field__label">Image (up to 5 MB, optional)</span>
+          <span className="user-field__label">Image (up to 25 MB, optional)</span>
           <input
             ref={fileInputRef}
             type="file"
@@ -120,7 +120,7 @@ export function NotificationForm({ mode = "create", initialNotification = null }
                 setImageFile(null);
                 setImagePreview(editBaselineImage ? mediaUrl(editBaselineImage) : "");
                 e.target.value = "";
-                void Swal.fire({ icon: "error", title: "Validation error", text: "Image size must be 5 MB or less." });
+                void Swal.fire({ icon: "error", title: "Validation error", text: "Image size must be 25 MB or less." });
                 return;
               }
               setImageFile(file);

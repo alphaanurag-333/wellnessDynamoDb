@@ -65,8 +65,8 @@ const SuccessStories = () => {
   const enableCategoryLoop = CATEGORY_ITEMS.length > 4;
 
   return (
-    <section className="success-story">
-      <div className="container">
+    <section className="success-story success-stories-page">
+      <div className="container success-story__hero">
         <div className="success-wrapper">
           <div className="success-content">
             <span className="success-tag">CLINICALLY PROVEN RESULTS</span>
@@ -104,6 +104,7 @@ const SuccessStories = () => {
           <div className="transformation-categories__head">
             <div className="transformation-heading">
               <h2>Our Success Stories</h2>
+              <p>Explore clinically guided programs and real outcomes.</p>
             </div>
 
             <div className="slider-navigation transformation-categories__nav">

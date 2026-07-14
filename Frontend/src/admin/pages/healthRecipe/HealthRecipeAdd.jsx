@@ -388,7 +388,7 @@ export function HealthRecipeForm({ mode = "create", initialRecipe = null }) {
         />
         <label className="user-field col-12">
           <span className="user-field__label">
-            Thumbnail image (upto 5 MB){" "}
+            Thumbnail image (upto 25 MB){" "}
             {editId ? "(optional — leave unchanged to keep current)" : <span className="required-dot">*</span>}
           </span>
           <input
@@ -411,7 +411,7 @@ export function HealthRecipeForm({ mode = "create", initialRecipe = null }) {
                   setThumbnailFile(null);
                   setThumbnailPreview(editBaselineThumbnail ? mediaUrl(editBaselineThumbnail) : "");
                   e.target.value = "";
-                  void Swal.fire({ icon: "error", title: "Validation error", text: "Image must be 5 MB or less." });
+                  void Swal.fire({ icon: "error", title: "Validation error", text: "Image must be 25 MB or less." });
                   return;
                 }
               }

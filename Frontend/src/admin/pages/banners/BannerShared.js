@@ -1,11 +1,29 @@
+import {
+  IMAGE_MAX_SIZE_BYTES,
+  IMAGE_MAX_SIZE_MB,
+} from "../../../utils/mediaUploadValidation.js";
+
 export const TITLE_MAX_LEN = 35;
 export const DESCRIPTION_MIN_LEN = 5;
 export const DESCRIPTION_MAX_LEN = 255;
 export const DESCRIPTION_PREVIEW_LEN = 80;
 
-export { IMAGE_MAX_SIZE_BYTES } from "../../../utils/mediaUploadValidation.js";
+/** Website hero banner crop size — wide landscape for object-fit: cover */
+export const IMAGE_WIDTH = 1920;
+export const IMAGE_HEIGHT = 640;
+
+export const ALLOWED_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "image/jpg",
+]);
+
+export { IMAGE_MAX_SIZE_BYTES, IMAGE_MAX_SIZE_MB };
 export const LIST_LIMIT = 10;
 export const LIST_SEARCH_MAX_LEN = 50;
+
 export function emptyForm() {
   return { title: "", description: "", status: "active" };
 }

@@ -60,14 +60,14 @@ export function validateForm(form, { editId, thumbnailFile, hasExistingThumbnail
   if (status !== "active" && status !== "inactive") return "Status must be active or inactive.";
 
   if (!editId) {
-    if (!(thumbnailFile instanceof File)) return "Please upload a thumbnail image (JPEG, PNG, GIF, or WebP, max 5 MB).";
+    if (!(thumbnailFile instanceof File)) return "Please upload a thumbnail image (JPEG, PNG, GIF, or WebP, max 25 MB).";
   } else if (!(thumbnailFile instanceof File) && !hasExistingThumbnail) {
     return "Upload a thumbnail image — this record has no thumbnail yet.";
   }
 
   if (thumbnailFile instanceof File) {
     if (!ALLOWED_IMAGE_TYPES.has(thumbnailFile.type)) return "Thumbnail must be a JPEG, PNG, GIF, or WebP image.";
-    if (thumbnailFile.size > IMAGE_MAX_SIZE_BYTES) return "Thumbnail image must be 5 MB or smaller.";
+    if (thumbnailFile.size > IMAGE_MAX_SIZE_BYTES) return "Thumbnail image must be 25 MB or smaller.";
   }
   if (videoFile instanceof File) {
     if (!ALLOWED_VIDEO_TYPES.has(videoFile.type)) {

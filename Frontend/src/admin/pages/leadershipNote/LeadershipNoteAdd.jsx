@@ -209,7 +209,7 @@ export function LeadershipNoteForm({ mode = "create", initialNote = null }) {
         </label>
         <label className="user-field col-12">
           <span className="user-field__label">
-            Upload profile image (up to 5 MB){" "}
+            Upload profile image (up to 25 MB){" "}
             {editId ? "(optional — leave unchanged to keep current)" : <span className="required-dot">*</span>}
           </span>
           <input
@@ -223,7 +223,7 @@ export function LeadershipNoteForm({ mode = "create", initialNote = null }) {
                 setProfileFile(null);
                 setProfilePreview(editBaselineProfileImage ? mediaUrl(editBaselineProfileImage) : "");
                 e.target.value = "";
-                void Swal.fire({ icon: "error", title: "Validation error", text: "Image size must be 5 MB or less." });
+                void Swal.fire({ icon: "error", title: "Validation error", text: "Image size must be 25 MB or less." });
                 return;
               }
               setProfileFile(file);

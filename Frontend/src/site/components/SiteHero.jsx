@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
-import { Autoplay, Pagination, EffectCreative } from "swiper/modules";
+import { Autoplay, Pagination, EffectFade } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/pagination";
+import "swiper/css/effect-fade";
 import { handleMediaImageError, mediaUrl } from "../../media.js";
 import { fetchActiveBanners } from "../api/publicMisc.js";
 
@@ -51,23 +52,14 @@ export function SiteHero() {
   return (
     <Swiper
       key={`hero-${slides.length}`}
-      spaceBetween={30}
-      speed={1800}
-      effect="creative"
-      creativeEffect={{
-        prev: {
-          opacity: 0,
-          scale: 1.15,
-        },
-        next: {
-          opacity: 0,
-          scale: 1.25,
-        },
-      }}
+      spaceBetween={0}
+      speed={900}
+      effect="fade"
+      fadeEffect={{ crossFade: true }}
       centeredSlides
       loop={slides.length > 1}
       autoplay={{
-        delay: 2500,
+        delay: 3500,
         disableOnInteraction: false,
       }}
       pagination={{
@@ -82,7 +74,7 @@ export function SiteHero() {
       `;
         },
       }}
-      modules={[Autoplay, Pagination, EffectCreative]}
+      modules={[Autoplay, Pagination, EffectFade]}
       className="heroSwiper"
     >
       {slides.map((slide) => (
