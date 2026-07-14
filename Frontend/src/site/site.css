@@ -4338,7 +4338,7 @@ h5.pillar-card__head-title {
 
 .leadership__content {
   min-width: 0;
-  max-width: 42rem;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -5061,7 +5061,7 @@ h5.pillar-card__head-title {
 
 .medicalBoardSlider .swiper-wrapper {
   align-items: stretch;
-  padding-top: 0;
+  padding-top: 10px;
 }
 
 .medicalBoardSlider .swiper-slide {
@@ -12959,6 +12959,7 @@ SMALL DEVICES
 
   .about-page .methodology-card {
     width: min(100%, 320px);
+    margin: 0 auto;
   }
 
   .about-page .medicalBoard__top {
