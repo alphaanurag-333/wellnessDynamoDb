@@ -10,6 +10,7 @@ import {
   fetchCofounderMessage,
   fetchManagingDirectorMessage,
   fetchWellnessCoaches,
+  fetchAssistantWellnessCoaches,
 } from "../api/publicMisc.js";
 
 import "swiper/css";
@@ -74,14 +75,127 @@ We are currently working on a Project to inspire & educate 10 Lakhs families wit
 I wish you all the very best ! Come & join us in our mission… Let’s make this world a better place to live !`,
 };
 
-function coachDesignation(coach) {
+function coachDesignation(coach, fallback = "WELLNESS COACH") {
   const specialization = coach?.specializationTitle?.trim();
   if (specialization) return specialization.toUpperCase();
+
+  const designation = coach?.designation?.trim();
+  if (designation) return designation.toUpperCase();
 
   const bio = coach?.bio?.trim();
   if (bio) return bio;
 
-  return "WELLNESS COACH";
+  return fallback;
+}
+
+function CoachBoardSection({
+  title,
+  subtitle,
+  coaches,
+  loading,
+  loadingLabel,
+  emptyFallbackLabel,
+  prevRef,
+  nextRef,
+  ariaPrev,
+  ariaNext,
+}) {
+  if (!loading && coaches.length === 0) return null;
+
+  return (
+    <section className="medicalBoard">
+      <div className="site-container">
+        <div className="medicalBoard__top">
+          <div className="medicalBoard__heading">
+            <h2>{title}</h2>
+            <p>{subtitle}</p>
+          </div>
+
+          {coaches.length > 0 && (
+            <div className="medicalBoard__navigation">
+              <button
+                ref={prevRef}
+                className="medicalBoard__navBtn"
+                type="button"
+                aria-label={ariaPrev}
+              >
+                <ChevronLeft size={22} />
+              </button>
+
+              <button
+                ref={nextRef}
+                className="medicalBoard__navBtn"
+                type="button"
+                aria-label={ariaNext}
+              >
+                <ChevronRight size={22} />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {loading ? (
+          <p className="medicalBoard__loading">{loadingLabel}</p>
+        ) : (
+          <Swiper
+            modules={[Navigation]}
+            spaceBetween={28}
+            slidesPerView={4}
+            onInit={(swiper) => {
+              swiper.params.navigation.prevEl = prevRef.current;
+              swiper.params.navigation.nextEl = nextRef.current;
+
+              swiper.navigation.destroy();
+              swiper.navigation.init();
+              swiper.navigation.update();
+            }}
+            navigation={{
+              prevEl: prevRef.current,
+              nextEl: nextRef.current,
+            }}
+            breakpoints={{
+              0: {
+                slidesPerView: 1.2,
+                spaceBetween: 18,
+              },
+              768: {
+                slidesPerView: 2.3,
+                spaceBetween: 20,
+              },
+              992: {
+                slidesPerView: 4,
+                spaceBetween: 22,
+              },
+              1200: {
+                slidesPerView: 4,
+                spaceBetween: 24,
+              },
+            }}
+            className="medicalBoardSlider"
+          >
+            {coaches.map((coach) => (
+              <SwiperSlide key={coach.id || coach._id}>
+                <div className="doctorCard">
+                  <div className="doctorCard__image">
+                    <img
+                      src={mediaUrl(coach.profileImage) || DEFAULT_IMAGE_SRC}
+                      alt={coach.name || emptyFallbackLabel}
+                      onError={handleMediaImageError}
+                    />
+                  </div>
+
+                  <div className="doctorCard__content">
+                    <h3>{coach.name}</h3>
+                    <p>{coachDesignation(coach, emptyFallbackLabel)}</p>
+                  </div>
+                </div>
+              </SwiperSlide>
+            ))}
+          </Swiper>
+        )}
+      </div>
+    </section>
+  );
 }
 
 const AboutUsSection = () => {
@@ -98,7 +212,7 @@ const AboutUsSection = () => {
     {
       id: 1,
       title: "Our Mission",
-      headTitle:"Reinvigorating India’s Wellness Heritage.",
+      headTitle: "Reinvigorating India’s Wellness Heritage.",
       description:
         "We’re passionate about redefining India’s rich heritage of wellness practices in context to the modern era backed by science & research. Drawing inspiration from Ayurveda, Yoga, Meditation, and other traditional systems of medicine, we seek to blend ancient wisdom with contemporary science to promote holistic well-being for individuals across India.",
 
@@ -108,7 +222,7 @@ const AboutUsSection = () => {
     {
       id: 2,
       title: "Our Vision",
-            headTitle:"To Inspire & Educate India to live a Healthy & Happy Life.",
+      headTitle: "To Inspire & Educate India to live a Healthy & Happy Life.",
 
       description:
         "Usually people are reactive and disease oriented when it comes to health. We should be inspired for the cause of being healthy inside-out to live a disease free life.  Current health situation is getting deteriorated primarily because of change in lifestyle hence it is important to get educated rightly about the good health practices.",
@@ -118,7 +232,7 @@ const AboutUsSection = () => {
     {
       id: 3,
       title: "Our Goal",
-            headTitle:"Reach out One million families help them living a Healthy & Medicine Free life.",
+      headTitle: "Reach out One million families help them living a Healthy & Medicine Free life.",
 
       description:
         "Our goal is to reach out to One million families, empowering them to achieve a healthy and medicine-free life by addressing and reversing lifestyle disorders through holistic and sustainable fat-loss methods. By integrating comprehensive wellness strategies that encompass balanced nutrition, regular physical activity, stress management, and natural healing practices, we aim to transform lives and foster long-term health improvements. ",
@@ -164,8 +278,12 @@ const AboutUsSection = () => {
   const [managingDirectorMessage, setManagingDirectorMessage] = useState(null);
   const [wellnessCoaches, setWellnessCoaches] = useState([]);
   const [coachesLoading, setCoachesLoading] = useState(true);
+  const [assistantWellnessCoaches, setAssistantWellnessCoaches] = useState([]);
+  const [assistantsLoading, setAssistantsLoading] = useState(true);
   const prevRef = useRef(null);
   const nextRef = useRef(null);
+  const assistantPrevRef = useRef(null);
+  const assistantNextRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -223,6 +341,32 @@ const AboutUsSection = () => {
         if (!cancelled) setWellnessCoaches([]);
       } finally {
         if (!cancelled) setCoachesLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      setAssistantsLoading(true);
+      try {
+        const response = await fetchAssistantWellnessCoaches({ page: 1, limit: 50 });
+        if (!cancelled) {
+          setAssistantWellnessCoaches(
+            Array.isArray(response?.assistantWellnessCoaches)
+              ? response.assistantWellnessCoaches
+              : [],
+          );
+        }
+      } catch {
+        if (!cancelled) setAssistantWellnessCoaches([]);
+      } finally {
+        if (!cancelled) setAssistantsLoading(false);
       }
     })();
 
@@ -300,7 +444,7 @@ const AboutUsSection = () => {
 
       <LeadershipMessageSection
         badge="A NOTE FROM LEADERSHIP"
-        title="Managing Director's Message"
+        title="Director sales and Client Acquistion"
         name={managingDirectorName}
         designation={managingDirectorDesignation}
         message={managingDirectorBody}
@@ -320,13 +464,12 @@ const AboutUsSection = () => {
           <div className="pillars__wrapper">
             {pillars.map((item) => (
               <div
-                className={`pillar-card ${
-                  item.active ? "pillar-card--active" : ""
-                }`}
+                className={`pillar-card ${item.active ? "pillar-card--active" : ""
+                  }`}
                 key={item.id}
               >
                 <div className="pillar-card__icon">
-                 
+
                   <img src={item.icon} alt="Founder" />
                 </div>
 
@@ -344,104 +487,31 @@ const AboutUsSection = () => {
 
       <Methodology />
 
-  {(coachesLoading || wellnessCoaches.length > 0) && (
-        <section className="medicalBoard">
-          <div className="site-container">
-            <div className="medicalBoard__top">
-              <div className="medicalBoard__heading">
-                <h2>Our Wellness Coaches</h2>
+      <CoachBoardSection
+        title="Our Wellness Coaches"
+        subtitle="World-class experts dedicated to your sanctuary journey."
+        coaches={wellnessCoaches}
+        loading={coachesLoading}
+        loadingLabel="Loading wellness coaches…"
+        emptyFallbackLabel="WELLNESS COACH"
+        prevRef={prevRef}
+        nextRef={nextRef}
+        ariaPrev="Previous coach"
+        ariaNext="Next coach"
+      />
 
-                <p>World-class experts dedicated to your sanctuary journey.</p>
-              </div>
-
-              {wellnessCoaches.length > 0 && (
-                <div className="medicalBoard__navigation">
-                  <button
-                    ref={prevRef}
-                    className="medicalBoard__navBtn"
-                    type="button"
-                    aria-label="Previous coach"
-                  >
-                    <ChevronLeft size={22} />
-                  </button>
-
-                  <button
-                    ref={nextRef}
-                    className="medicalBoard__navBtn"
-                    type="button"
-                    aria-label="Next coach"
-                  >
-                    <ChevronRight size={22} />
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {coachesLoading ? (
-              <p className="medicalBoard__loading">Loading wellness coaches…</p>
-            ) : (
-              <Swiper
-                modules={[Navigation]}
-                spaceBetween={28}
-                slidesPerView={4}
-                onInit={(swiper) => {
-                  swiper.params.navigation.prevEl = prevRef.current;
-                  swiper.params.navigation.nextEl = nextRef.current;
-
-                  swiper.navigation.destroy();
-                  swiper.navigation.init();
-                  swiper.navigation.update();
-                }}
-                navigation={{
-                  prevEl: prevRef.current,
-                  nextEl: nextRef.current,
-                }}
-                breakpoints={{
-                  0: {
-                    slidesPerView: 1.2,
-                    spaceBetween: 18,
-                  },
-                  768: {
-                    slidesPerView: 2.3,
-                    spaceBetween: 20,
-                  },
-                  992: {
-                    slidesPerView: 4,
-                    spaceBetween: 22,
-                  },
-                  1200: {
-                    slidesPerView: 4,
-                    spaceBetween: 24,
-                  },
-                }}
-                className="medicalBoardSlider"
-              >
-                {wellnessCoaches.map((coach) => (
-                  <SwiperSlide key={coach.id || coach._id}>
-                    <div className="doctorCard">
-                      <div className="doctorCard__image">
-                        <img
-                          src={
-                            mediaUrl(coach.profileImage) || DEFAULT_IMAGE_SRC
-                          }
-                          alt={coach.name || "Wellness coach"}
-                          onError={handleMediaImageError}
-                        />
-                      </div>
-
-                      <div className="doctorCard__content">
-                        <h3>{coach.name}</h3>
-
-                        <p>{coachDesignation(coach)}</p>
-                      </div>
-                    </div>
-                  </SwiperSlide>
-                ))}
-              </Swiper>
-            )}
-          </div>
-        </section>
-      )}
+      <CoachBoardSection
+        title="Our Assistant Wellness Coaches"
+        subtitle="Dedicated support coaches helping you stay on your wellness path."
+        coaches={assistantWellnessCoaches}
+        loading={assistantsLoading}
+        loadingLabel="Loading assistant wellness coaches…"
+        emptyFallbackLabel="ASSISTANT WELLNESS COACH"
+        prevRef={assistantPrevRef}
+        nextRef={assistantNextRef}
+        ariaPrev="Previous assistant coach"
+        ariaNext="Next assistant coach"
+      />
 
 
       <section className="aboutFaq">
@@ -495,9 +565,8 @@ const AboutUsSection = () => {
                   <div className="accordion-item" key={item.id}>
                     <h2 className="accordion-header" id={`heading${item.id}`}>
                       <button
-                        className={`accordion-button ${
-                          index !== 0 ? "collapsed" : ""
-                        }`}
+                        className={`accordion-button ${index !== 0 ? "collapsed" : ""
+                          }`}
                         type="button"
                         data-bs-toggle="collapse"
                         data-bs-target={`#collapse${item.id}`}
@@ -518,9 +587,8 @@ const AboutUsSection = () => {
 
                     <div
                       id={`collapse${item.id}`}
-                      className={`accordion-collapse collapse ${
-                        index === 0 ? "show" : ""
-                      }`}
+                      className={`accordion-collapse collapse ${index === 0 ? "show" : ""
+                        }`}
                       aria-labelledby={`heading${item.id}`}
                       data-bs-parent="#aboutFaqAccordion"
                     >
@@ -534,7 +602,7 @@ const AboutUsSection = () => {
         </div>
       </section>
 
-    
+
       <section className="final-cta">
         <div className="final-cta__overlay"></div>
 

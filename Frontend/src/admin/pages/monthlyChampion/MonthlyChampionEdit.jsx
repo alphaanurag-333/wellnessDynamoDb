@@ -63,7 +63,7 @@ function MonthlyChampionForm({ post }) {
           <span className="user-detail-row__value">{post.monthYear || "—"}</span>
         </div>
         <div className="user-detail-row">
-          <span className="user-detail-row__label">Rank</span>
+          <span className="user-detail-row__label">Title</span>
           <span className="user-detail-row__value">{rankBadge(post.rank)}</span>
         </div>
       </div>

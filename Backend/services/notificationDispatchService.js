@@ -166,13 +166,11 @@ async function ensureBirthdayReminderInbox({
 
 async function dispatchMonthlyChampionNotification({
   userId,
-  rank,
   monthLabel,
   averageScore,
   postId,
 }) {
-  const rankLabel = Number(rank) === 1 ? "#1" : Number(rank) === 2 ? "#2" : "#3";
-  const message = `Congratulations! You ranked ${rankLabel} Champion for ${monthLabel} with an average daily reflection score of ${averageScore}%.`;
+  const message = `Congratulations! You are a Champion of ${monthLabel} with an average daily reflection score of ${averageScore}%.`;
 
   const notification = await createTargetedNotification({
     userId,

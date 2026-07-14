@@ -64,33 +64,25 @@ async function computeUserAveragesForMonth(monthYear) {
 }
 
 /**
- * Assigns "competition ranking" (ties share a rank, next rank skips accordingly,
- * e.g. scores [90, 90, 80] -> ranks [1, 1, 3]) and keeps only rows with rank <= 3.
- * If multiple users tie for rank 3, all of them are included (per business rule:
- * "if someone's score is same then include multiple users in similar rank").
+ * Keeps only users with the highest average score for the month.
+ * All tied top scorers are included and marked rank 1 (no 2nd/3rd place).
+ * Example: scores [90, 90, 80] -> only the two users with 90.
  */
-function assignCompetitionRanks(sortedRows, { topN = 3 } = {}) {
-  const result = [];
-  let currentRank = 0;
-  let previousScore = null;
+function assignCompetitionRanks(sortedRows) {
+  if (!sortedRows.length) return [];
 
-  sortedRows.forEach((row, index) => {
-    if (previousScore === null || row.averageScore !== previousScore) {
-      currentRank = index + 1;
-      previousScore = row.averageScore;
-    }
-    result.push({ ...row, rank: currentRank });
-  });
-
-  return result.filter((row) => row.rank <= topN);
+  const topScore = sortedRows[0].averageScore;
+  return sortedRows
+    .filter((row) => row.averageScore === topScore)
+    .map((row) => ({ ...row, rank: 1 }));
 }
 
 /**
- * Full pipeline: scan -> average -> rank -> keep top N (with ties).
+ * Full pipeline: scan -> average -> keep only top scorers (ties included).
  */
-async function computeMonthlyRankings(monthYear, { topN = 3 } = {}) {
+async function computeMonthlyRankings(monthYear) {
   const averaged = await computeUserAveragesForMonth(monthYear);
-  return assignCompetitionRanks(averaged, { topN });
+  return assignCompetitionRanks(averaged);
 }
 
 module.exports = {

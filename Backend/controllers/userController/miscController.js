@@ -16,6 +16,10 @@ const { listHealthRecipes } = require("../../models/healthRecipeModel");
 const { listYoga } = require("../../models/yogaModel");
 const { listTransformations } = require("../../models/transformationModel");
 const { listWellnessCoaches } = require("../../models/wellnessCoachModel");
+const {
+  listAssistantWellnessCoaches,
+  toPublicAssistant,
+} = require("../../models/assistantWellnessCoachModel");
 const { getSpecializationById } = require("../../models/specializationModel");
 const { listBirthdayPostsByPostDate } = require("../../models/birthdayPostModel");
 const { listActiveTestCatalog, listActiveTestCatalogPaginated } = require("../../models/testCatalogModel");
@@ -364,6 +368,24 @@ exports.getActiveWellnessCoaches = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     wellnessCoaches,
+    pagination: data.pagination,
+  });
+});
+
+exports.getActiveAssistantWellnessCoaches = asyncHandler(async (req, res) => {
+  const { page, limit } = readPaging(req.query);
+  const data = await listAssistantWellnessCoaches({
+    page,
+    limit,
+    status: "active",
+    search: readSearch(req.query),
+  });
+
+  const assistantWellnessCoaches = data.assistants.map((row) => toPublicAssistant(row));
+
+  return res.status(200).json({
+    status: true,
+    assistantWellnessCoaches,
     pagination: data.pagination,
   });
 });

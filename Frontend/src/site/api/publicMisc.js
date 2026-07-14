@@ -63,6 +63,15 @@ export async function fetchWellnessCoaches(params = {}) {
   }
 }
 
+export async function fetchAssistantWellnessCoaches(params = {}) {
+  try {
+    const { data } = await api.get("/public/misc/assistant-wellness-coaches", { params });
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function fetchHealthRecipes(params = {}) {
   try {
     const { data } = await api.get("/public/misc/health-recipes", { params });

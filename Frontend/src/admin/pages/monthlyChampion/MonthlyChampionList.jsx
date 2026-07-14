@@ -156,7 +156,7 @@ export function MonthlyChampionList() {
                 <th>S No.</th>
                 <th>User</th>
                 <th>Month</th>
-                <th>Rank</th>
+                <th>Title</th>
                 <th>Avg score</th>
                 <th>Status</th>
                 <th>Comments</th>

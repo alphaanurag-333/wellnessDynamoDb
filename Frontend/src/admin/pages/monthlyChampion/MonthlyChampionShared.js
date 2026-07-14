@@ -14,12 +14,8 @@ export function formatDateTime(value) {
   return new Date(value).toLocaleString();
 }
 
-export function rankBadge(rank) {
-  const n = Number(rank);
-  if (n === 1) return "🥇 Rank #1";
-  if (n === 2) return "🥈 Rank #2";
-  if (n === 3) return "🥉 Rank #3";
-  return `Rank #${rank ?? "—"}`;
+export function rankBadge(_rank) {
+  return "🏆 Champion";
 }
 
 export function localTodayDateOnly() {

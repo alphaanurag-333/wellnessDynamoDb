@@ -87,7 +87,7 @@ export function MonthlyChampionView() {
         <div className="user-view-grid">
           <DetailRow label="User" value={post.user?.name || post.userId} />
           <DetailRow label="Month" value={post.monthYear} />
-          <DetailRow label="Rank" value={rankBadge(post.rank)} />
+          <DetailRow label="Title" value={rankBadge(post.rank)} />
           <DetailRow label="Average score" value={`${post.averageScore}%`} />
           <DetailRow label="Days submitted" value={post.daysSubmitted} />
           <div className="user-detail-row">

@@ -3,6 +3,7 @@ const {
   findMonthlyChampionPostByUserAndMonth,
   createMonthlyChampionPost,
   updateMonthlyChampionPost,
+  listMonthlyChampionPostsByMonth,
   monthLabel,
 } = require("../models/monthlyChampionPostModel");
 const { dispatchMonthlyChampionNotification } = require("./notificationDispatchService");
@@ -16,24 +17,31 @@ function previousMonthYear(reference = new Date()) {
   return `${y}-${m}`;
 }
 
-function buildChampionMessage({ rank, monthLbl, averageScore }) {
-  const rankLabel = rank === 1 ? "🥇 Rank #1" : rank === 2 ? "🥈 Rank #2" : "🥉 Rank #3";
-  return `${rankLabel} Champion of ${monthLbl}! Average daily reflection score: ${averageScore}%.`;
+function buildChampionMessage({ monthLbl, averageScore }) {
+  return `Champion of ${monthLbl}! Average daily reflection score: ${averageScore}%.`;
 }
 
 async function upsertChampionPost({ userId, monthYear, rank, averageScore, daysSubmitted }) {
   const existing = await findMonthlyChampionPostByUserAndMonth(userId, monthYear);
   const monthLbl = monthLabel(monthYear);
-  const message = buildChampionMessage({ rank, monthLbl, averageScore });
+  const message = buildChampionMessage({ monthLbl, averageScore });
 
   if (existing) {
     const needsUpdate =
       existing.rank !== rank ||
       existing.averageScore !== averageScore ||
-      existing.daysSubmitted !== daysSubmitted;
+      existing.daysSubmitted !== daysSubmitted ||
+      existing.message !== message ||
+      existing.status !== "active";
 
     const post = needsUpdate
-      ? await updateMonthlyChampionPost(existing.id, { rank, averageScore, daysSubmitted })
+      ? await updateMonthlyChampionPost(existing.id, {
+          rank,
+          averageScore,
+          daysSubmitted,
+          message,
+          status: "active",
+        })
       : existing;
 
     return { post, isNew: false, monthLbl };
@@ -52,11 +60,10 @@ async function upsertChampionPost({ userId, monthYear, rank, averageScore, daysS
   return { post, isNew: true, monthLbl };
 }
 
-async function notifyChampion(post, { rank, monthLbl, averageScore }) {
+async function notifyChampion(post, { monthLbl, averageScore }) {
   try {
     await dispatchMonthlyChampionNotification({
       userId: post.userId,
-      rank,
       monthLabel: monthLbl,
       averageScore,
       postId: post.id,
@@ -68,14 +75,40 @@ async function notifyChampion(post, { rank, monthLbl, averageScore }) {
 }
 
 /**
+ * Deactivate active posts for the month that are no longer top scorers
+ * (e.g. former rank 2/3 posts after switching to top-only champions).
+ */
+async function deactivateNonWinners(monthYear, winnerUserIds) {
+  const { monthlyChampionPosts } = await listMonthlyChampionPostsByMonth({
+    monthYear,
+    page: 1,
+    limit: 200,
+    status: "active",
+  });
+
+  let deactivated = 0;
+  for (const post of monthlyChampionPosts) {
+    if (winnerUserIds.has(post.userId)) continue;
+    try {
+      await updateMonthlyChampionPost(post.id, { status: "inactive" });
+      deactivated += 1;
+    } catch (err) {
+      console.error("Failed to deactivate non-winner champion post:", post.id, err?.message || err);
+    }
+  }
+  return deactivated;
+}
+
+/**
  * Computes and persists Monthly Champion posts for a given month (default: previous
  * calendar month, since the job is meant to run on the 1st of the following month).
+ * Only top scorers are champions; ties for the highest score all win.
  * Idempotent: re-running for the same month updates existing posts instead of duplicating,
  * and only sends the "you won" notification the first time a post is created.
  */
 async function runMonthlyChampionJob(options = {}) {
   const monthYear = options.monthYear || previousMonthYear();
-  const rankings = await computeMonthlyRankings(monthYear, { topN: 3 });
+  const rankings = await computeMonthlyRankings(monthYear);
 
   const results = [];
   for (const row of rankings) {
@@ -89,7 +122,7 @@ async function runMonthlyChampionJob(options = {}) {
       });
 
       if (isNew) {
-        await notifyChampion(post, { rank: row.rank, monthLbl, averageScore: row.averageScore });
+        await notifyChampion(post, { monthLbl, averageScore: row.averageScore });
       }
 
       results.push({ userId: row.userId, rank: row.rank, averageScore: row.averageScore, isNew, postId: post.id });
@@ -98,6 +131,9 @@ async function runMonthlyChampionJob(options = {}) {
       results.push({ userId: row.userId, error: err?.message || "processing_failed" });
     }
   }
+
+  const winnerUserIds = new Set(rankings.map((row) => row.userId));
+  const deactivated = await deactivateNonWinners(monthYear, winnerUserIds);
 
   const created = results.filter((r) => r.isNew).length;
   const updated = results.filter((r) => r.isNew === false).length;
@@ -109,6 +145,7 @@ async function runMonthlyChampionJob(options = {}) {
     created,
     updated,
     failed,
+    deactivated,
     results,
   };
 }

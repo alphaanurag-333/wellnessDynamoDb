@@ -5,15 +5,6 @@ import "swiper/css";
 import { DEFAULT_IMAGE_SRC, handleMediaImageError, mediaUrl } from "../../media.js";
 import { fetchMonthlyChampions } from "../api/publicMisc.js";
 
-function rankLabel(rank) {
-  const n = Number(rank);
-  if (n === 1) return "Rank #1 Champion";
-  if (n === 2) return "Rank #2 Champion";
-  if (n === 3) return "Rank #3 Champion";
-  if (Number.isFinite(n) && n > 0) return `Rank #${n} Champion`;
-  return "Champion Of The Month";
-}
-
 function championSubtitle(row) {
   const message = String(row.message || "").trim();
   if (message) return message;
@@ -44,10 +35,10 @@ function mapChampion(row) {
   return {
     id,
     name,
-    title: rankLabel(row.rank),
+    title: "Champion Of The Month",
     subtitle: championSubtitle(row),
     avatar: profileImage ? mediaUrl(profileImage) : DEFAULT_IMAGE_SRC,
-    rank: row.rank,
+    averageScore: row.averageScore,
   };
 }
 
@@ -66,7 +57,7 @@ export default function ChampionSlider() {
           rows
             .map(mapChampion)
             .filter(Boolean)
-            .sort((a, b) => (Number(a.rank) || 99) - (Number(b.rank) || 99))
+            .sort((a, b) => (Number(b.averageScore) || 0) - (Number(a.averageScore) || 0))
         );
       } catch {
         if (!cancelled) setItems([]);

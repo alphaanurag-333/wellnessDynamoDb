@@ -17,24 +17,11 @@ function formatMonthLabel(monthYear) {
   return new Date(year, month - 1, 1).toLocaleString("en-US", { month: "long", year: "numeric" });
 }
 
-function rankTone(rank) {
-  const n = Number(rank);
-  if (n === 1) return "gold";
-  if (n === 2) return "silver";
-  if (n === 3) return "bronze";
-  return "default";
-}
-
 function ChampionCard({ row, onViewComments }) {
-  const tone = rankTone(row.rank);
   const commentCount = row.commentCount ?? 0;
 
   return (
-    <article className={`mc-champion-card mc-champion-card--${tone}`}>
-      <div className="mc-champion-card__rank" aria-hidden="true">
-        <span className="mc-champion-card__rank-num">#{row.rank}</span>
-      </div>
-
+    <article className="mc-champion-card mc-champion-card--gold">
       <div className="mc-champion-card__main">
         <div className="mc-champion-card__header">
           <AdminMediaImage
@@ -49,7 +36,7 @@ function ChampionCard({ row, onViewComments }) {
             <h3 className="mc-champion-card__name">{row.user?.name || "—"}</h3>
             <p className="mc-champion-card__meta">{formatMonthLabel(row.monthYear)}</p>
           </div>
-          <span className={`mc-champion-card__badge mc-champion-card__badge--${tone}`}>
+          <span className="mc-champion-card__badge mc-champion-card__badge--gold">
             {rankBadge(row.rank)}
           </span>
         </div>
@@ -117,7 +104,7 @@ function ChampionCommentsModal({ champion, comments, loading, onClose }) {
               Comments — {champion.user?.name || "Champion"}
             </h2>
             <p className="modal-card__subtitle">
-              {rankBadge(champion.rank)} · {formatMonthLabel(champion.monthYear)}
+              {formatMonthLabel(champion.monthYear)}
             </p>
           </div>
           <button type="button" className="btn btn--ghost btn--sm mc-comments-modal__close" onClick={onClose} aria-label="Close">
