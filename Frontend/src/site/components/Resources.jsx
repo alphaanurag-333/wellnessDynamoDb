@@ -71,7 +71,7 @@ const ResourcesSection = () => {
                 window.open("https://wa.me/919372109740", "_blank", "noopener,noreferrer")
               }
             >
-              Book Your Consultation
+              JOIN IRW WELLNESS COMMUNITY
             </button>
           </div>
         </div>

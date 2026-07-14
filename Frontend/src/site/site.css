@@ -3217,7 +3217,7 @@ h5.pillar-card__head-title {
   margin-top: 42px;
 
   width: 380px;
-  height: 68px;
+  height: fit-content;
 
   border: none;
   border-radius: var(--radius-pill);
@@ -3505,7 +3505,7 @@ h5.pillar-card__head-title {
 
 .site-footer__bottom-meta {
   min-width: 0;
-  flex: 1 1 280px;
+  /* flex: 1 1 280px; */
 }
 
 .site-footer__bottom-meta p {
@@ -3530,7 +3530,7 @@ h5.pillar-card__head-title {
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 8px 4px;
-  flex: 1 1 320px;
+  /* flex: 1 1 320px; */
 }
 
 .site-footer__bottom-links a {
@@ -10417,7 +10417,8 @@ margin: 0 auto;
   .final-cta__button {
     width: 100%;
     max-width: 340px;
-    height: 60px;
+
+    
     margin-top: 32px;
   }
 
@@ -10998,9 +10999,85 @@ margin: 0 auto;
 }
 
 @media (max-width: 576px) {
+
+  .methodology{
+    padding: 45px 0;
+  }
+
+  .methodology__header{
+    margin-bottom: 45px;
+  }
   .obesity-heading h2 {
     font-size: 24px;
   }
+
+    .hero-title{
+    font-size: 36px;
+    margin-bottom: 15px;
+
+  }
+  .hero-description{
+    font-size: 15px;
+    line-height: 16px;
+    width: 85%;
+    
+  }
+  .champion-section , .real-healing-section{
+    margin: 35px 0;
+  }
+
+  .healing-title{
+    margin-bottom: 25px;
+    font-size: 24px;
+  }
+
+  .wellness-hero__badge{
+    padding: 0 12px;
+    font-size: 10px;
+  }
+
+  .wellness-hero__title{
+    font-size: 28px;
+  }
+  .wellness-hero__description , .methodology__header p{
+    font-size: 14px;
+  }
+  .wellness-btn--primary{
+    height: 42px;
+  }
+  .wellness-hero__stat-card{
+    flex-direction: column;
+  }
+  .wellness-hero__stat-card h4{
+    font-size: 28px;
+  }
+  .methodology-card__content p , .transformation-story-card__body p{
+    font-size: 14px;
+    text-align: left;
+  }
+  .transformation-story-card__label{
+    top: unset;
+    bottom: 12px;
+    left: 50%;
+    transform: translate(-50% , 0);
+  }
+  .transformation-header {
+    margin-bottom: 25px;
+  }
+   .transformation-section .swiper{
+    margin: 25px 0;
+   }
+   .final-cta__title{
+    font-size: 28px;
+   }
+   .final-cta__button{
+
+    
+    font-size: 16px;
+    width: fit-content;
+    padding: 6px 25px;
+   }
+
 
   .obesity-badge {
     font-size: 12px;
@@ -11112,8 +11189,8 @@ margin: 0 auto;
     margin-bottom: 32px;
   }
 
-  .success-stories__header h2 {
-    font-size: 2rem;
+  .success-stories__header h2 , .methodology__header h2{
+    font-size: 35px;
   }
 
   .success-card {
@@ -11130,7 +11207,10 @@ margin: 0 auto;
   }
 
   .success-card__review p {
-    font-size: 1rem;
+    font-size: 15px;
+    text-wrap: wrap;
+    word-break: break-all;
+
   }
 
   .contact-card {
@@ -11884,6 +11964,24 @@ margin: 0 auto;
 
   .visceral-footer p {
     font-size: 12px;
+  }
+  .site-footer__bottom-links{
+    justify-content: center;
+  }
+  .site-footer__bottom-meta p{
+    text-align: center;
+  }
+  .site-footer__bottom-meta {
+    margin: 0 auto;
+  }
+  .site-footer__bottom-links a{
+    font-size: 12px;
+  }
+  .wellness-hero__image{
+    height: 335px;
+  }
+  .wellness-hero__stat-card{
+    bottom: -64px;
   }
 }
 
