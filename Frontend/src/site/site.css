@@ -1971,7 +1971,7 @@ a:hover {
   left: 8%;
   right: auto;
   transform: none;
-  bottom: 18px;
+  bottom: 28px;
   z-index: 12;
 }
 
@@ -2125,7 +2125,7 @@ a:hover {
   display: flex;
   justify-content: flex-start;
   align-items: center;
-  gap: 22px;
+  gap: 38px;
 }
 
 .heroSwiper .swiper-pagination-bullet {
@@ -2149,8 +2149,8 @@ a:hover {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border: 1px solid rgba(255, 255, 255, 0.85);
   border-radius: 50%;
   transform: translate(-50%, -50%);
@@ -2158,8 +2158,8 @@ a:hover {
 
 .heroSwiper .bullet-progress {
   position: absolute;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%) rotate(-90deg);
@@ -4284,7 +4284,7 @@ h5.pillar-card__head-title {
   padding: var(--space-6) var(--space-8);
   display: grid;
   grid-template-columns: 200px minmax(0, 1fr);
-  align-items: start;
+  align-items: stretch;
   column-gap: var(--space-8);
   row-gap: var(--space-5);
   overflow: visible;
@@ -10078,7 +10078,7 @@ SCROLLBAR
     left: var(--space-4);
     right: auto;
     transform: none;
-    bottom: 10px;
+    bottom: 14px;
   }
 
   .obesity-card {
@@ -11674,6 +11674,9 @@ SCROLLBAR
 }
 
 @media (max-width: 576px) {
+.heroSwiper .swiper-pagination{
+  gap: 18px;
+}
   .static-page-content{
     padding: 0 15px;
   }
