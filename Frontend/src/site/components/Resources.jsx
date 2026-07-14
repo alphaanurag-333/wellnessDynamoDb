@@ -1,5 +1,6 @@
 import React from "react";
 import { Plus } from "lucide-react";
+import { FiArrowRight } from "react-icons/fi";
 import BMISection from "./BMISection";
 import HydrationGuide from "./HydrationGuide";
 import BMRCalculator from "./BMRCalculator";
@@ -68,10 +69,15 @@ const ResourcesSection = () => {
               type="button"
               className="final-cta__button"
               onClick={() =>
-                window.open("https://wa.me/919372109740", "_blank", "noopener,noreferrer")
+                window.open(
+                  "https://chat.whatsapp.com/Lcv5qyt7tvX6nrif7poqBB",
+                  "_blank",
+                  "noopener,noreferrer"
+                )
               }
             >
               JOIN IRW WELLNESS COMMUNITY
+              <FiArrowRight />
             </button>
           </div>
         </div>

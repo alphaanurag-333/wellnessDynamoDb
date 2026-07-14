@@ -3244,9 +3244,10 @@ h5.pillar-card__head-title {
 
 .final-cta__button {
   margin-top: 42px;
-padding: 8px 15px;
-  width: 380px;
-  height: fit-content;
+  height: 60px;
+  padding: 0 32px;
+  width: auto;
+  max-width: 100%;
 
   border: none;
   border-radius: var(--radius-pill);
@@ -3254,22 +3255,35 @@ padding: 8px 15px;
   background: #007d1f;
   color: var(--text-white);
 
-  font-size: 18px;
-  font-weight: var(--fw-bold);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.02em;
 
   cursor: pointer;
 
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
 
   transition: var(--transition);
 }
 
 .final-cta__button:hover {
-  transform: translateY(-3px);
+  background: #006918;
+  transform: translateY(-2px);
 }
 
 .final-cta__button:active {
   transform: translateY(0);
+}
+
+.final-cta__button svg {
+  flex-shrink: 0;
+  font-size: 18px;
 }
 
 /* ---------Footer------------------- */
@@ -10617,10 +10631,9 @@ margin: 0 auto;
   }
 
   .final-cta__button {
-    width: 100%;
-    max-width: 340px;
-
-    
+    width: auto;
+    max-width: 100%;
+    padding: 0 28px;
     margin-top: 32px;
   }
 
@@ -11278,11 +11291,10 @@ margin: 0 auto;
     font-size: 28px;
    }
    .final-cta__button{
-
-    
-    font-size: 16px;
-    width: fit-content;
-    padding: 8px 25px;
+    font-size: 15px;
+    height: 54px;
+    padding: 0 24px;
+    width: auto;
    }
 
 

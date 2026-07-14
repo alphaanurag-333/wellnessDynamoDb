@@ -19,21 +19,17 @@ export function HomePage() {
   return (
     <>
       <SiteHero />
-   
-      <WellnessHero />
-     
-    
-      <StatsSection />
       <ChampionSlider />
-      <BirthdaySlider />
+      <WellnessHero />
+      <StatsSection />
+      {/* <BirthdaySlider /> */}
       <Methodology />
       <TransformationStoriesSection />
       {/* <About /> */}
       <RealHealingSlider />
-     
       <ServicesSection />
       <TestimonialsSection />
-      <CommunitySection />
+      {/* <CommunitySection /> */}
       {/* <BmiCalculator /> */}
       <FinalCTA />
     </>

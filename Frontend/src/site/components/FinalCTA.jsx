@@ -1,5 +1,10 @@
+import { FiArrowRight } from "react-icons/fi";
+
+const COMMUNITY_LINK = "https://chat.whatsapp.com/Lcv5qyt7tvX6nrif7poqBB";
+
 export default function FinalCTA() {
-  return (    <section className="final-cta">
+  return (
+    <section className="final-cta">
       <div className="final-cta__overlay"></div>
 
       <div className="final-cta__shape final-cta__shape--top"></div>
@@ -22,11 +27,13 @@ export default function FinalCTA() {
             type="button"
             className="final-cta__button"
             onClick={() =>
-              window.open("https://wa.me/919372109740", "_blank", "noopener,noreferrer")
+              window.open(COMMUNITY_LINK, "_blank", "noopener,noreferrer")
             }
           >
             JOIN IRW WELLNESS COMMUNITY
-          </button>        </div>
+            <FiArrowRight />
+          </button>
+        </div>
       </div>
     </section>
   );

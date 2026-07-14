@@ -43,6 +43,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { FiArrowRight } from "react-icons/fi";
 import AboutUs from "./About.jsx";
 import Methodology from "./Methodology.jsx";
 import { LeadershipMessageSection, LeadershipNotesSlider } from "./LeadershipMessageSection.jsx";
@@ -442,7 +443,7 @@ const AboutUsSection = () => {
         profileImage={cofounderProfileImage}
       />
 
-      <LeadershipNotesSlider notes={leadershipNotes} loading={leadershipNotesLoading} />
+      
 
       <section className="pillars">
         <div className="site-container">
@@ -505,6 +506,9 @@ const AboutUsSection = () => {
         ariaPrev="Previous assistant coach"
         ariaNext="Next assistant coach"
       />
+
+
+<LeadershipNotesSlider notes={leadershipNotes} loading={leadershipNotesLoading} />
 
 
       <section className="aboutFaq">
@@ -620,10 +624,15 @@ const AboutUsSection = () => {
               type="button"
               className="final-cta__button"
               onClick={() =>
-                window.open("https://wa.me/919372109740", "_blank", "noopener,noreferrer")
+                window.open(
+                  "https://chat.whatsapp.com/Lcv5qyt7tvX6nrif7poqBB",
+                  "_blank",
+                  "noopener,noreferrer"
+                )
               }
             >
               JOIN IRW WELLNESS COMMUNITY
+              <FiArrowRight />
             </button>
           </div>
         </div>
