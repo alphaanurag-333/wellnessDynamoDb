@@ -26,7 +26,7 @@ export function PublicLayout() {
   }, [pathname]);
 
   return (
-    <div className="site-shell">
+    <div className="">
       <a href="#main-content" className="visually-hidden-focusable">
         Skip to main content
       </a>

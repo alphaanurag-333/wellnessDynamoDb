@@ -124,7 +124,7 @@ export default function TransformationStoriesSection() {
       <div className="container">
         <div className="transformation-header">
           <div className="header-left">
-            <h2>Real Transformations</h2>
+            <h2>Transformations</h2>
             <p>Swipe to see before-and-after results from our community</p>
           </div>
 
