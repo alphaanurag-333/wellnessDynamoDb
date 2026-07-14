@@ -9,8 +9,8 @@ export const DESCRIPTION_MAX_LEN = 255;
 export const DESCRIPTION_PREVIEW_LEN = 80;
 
 /** Website hero banner crop size — wide landscape for object-fit: cover */
-export const IMAGE_WIDTH = 1198;
-export const IMAGE_HEIGHT = 479;
+export const IMAGE_WIDTH = 1905;
+export const IMAGE_HEIGHT = 640;
 
 export const ALLOWED_IMAGE_TYPES = new Set([
   "image/jpeg",
