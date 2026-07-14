@@ -1,6 +1,7 @@
 const express = require("express");
 
 const { protectAdmin } = require("../../middleware/auth");
+const { authorize } = require("../../middleware/authorize");
 const {
   listContactInquiriesController,
   getContactInquiryByIdController,
@@ -10,9 +11,9 @@ const {
 
 const router = express.Router();
 
-router.get("/", protectAdmin, listContactInquiriesController);
-router.get("/:id", protectAdmin, getContactInquiryByIdController);
-router.patch("/:id", protectAdmin, updateContactInquiryController);
-router.delete("/:id", protectAdmin, deleteContactInquiryController);
+router.get("/", protectAdmin, authorize("contact-inquiries.view"), listContactInquiriesController);
+router.get("/:id", protectAdmin, authorize("contact-inquiries.view"), getContactInquiryByIdController);
+router.patch("/:id", protectAdmin, authorize("contact-inquiries.edit"), updateContactInquiryController);
+router.delete("/:id", protectAdmin, authorize("contact-inquiries.delete"), deleteContactInquiryController);
 
 module.exports = router;

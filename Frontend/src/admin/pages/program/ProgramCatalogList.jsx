@@ -13,6 +13,7 @@ import {
 import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { useDebouncedSearch } from "../../../hooks/useDebouncedSearch.js";
+import { useResourcePermissions } from "../../hooks/useHasPermission.js";
 import {
   formatDate,
   formatMoney,
@@ -26,6 +27,7 @@ export function ProgramCatalogList() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const adminToken = useSelector((s) => s.auth.adminToken);
+  const { canEdit, canDelete } = useResourcePermissions("programs");
   const [searchParams] = useSearchParams();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -181,7 +183,8 @@ export function ProgramCatalogList() {
                       <td className="data-table__muted">{formatDate(row.createdAt)}</td>
                       <td>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                          <button
+                          {canEdit ? (
+<button
                             type="button"
                             className={`settings-switch${active ? " settings-switch--on" : ""}`}
                             role="switch"
@@ -191,12 +194,14 @@ export function ProgramCatalogList() {
                           >
                             <span className="settings-switch__knob" aria-hidden />
                           </button>
+                          ) : null}
                           <AdminStatusBadge status={active ? "active" : "inactive"} />
                         </div>
                       </td>
                       <td>
                         <div className="row-actions">
-                          <button
+                          {canEdit ? (
+<button
                             type="button"
                             className="icon-btn icon-btn--edit"
                             title="Edit"
@@ -204,9 +209,12 @@ export function ProgramCatalogList() {
                           >
                             <MdEditSquare size={18} />
                           </button>
-                          <button type="button" className="icon-btn icon-btn--delete" title="Delete" onClick={() => onDelete(row)}>
+                          ) : null}
+                          {canDelete ? (
+<button type="button" className="icon-btn icon-btn--delete" title="Delete" onClick={() => onDelete(row)}>
                             <AiFillDelete size={18} />
                           </button>
+                          ) : null}
                         </div>
                       </td>
                     </tr>

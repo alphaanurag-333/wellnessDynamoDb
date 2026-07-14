@@ -1,5 +1,6 @@
 const express = require("express");
 const { protectAdmin } = require("../../middleware/auth");
+const { authorize, authorizeAny } = require("../../middleware/authorize");
 const {
   listProgramCatalogController,
   getProgramCatalogByIdController,
@@ -15,14 +16,30 @@ const {
 
 const router = express.Router();
 
-router.get("/transactions", protectAdmin, listAdminProgramTransactionsController);
-router.get("/transactions/:id", protectAdmin, getAdminProgramTransactionController);
-router.get("/transactions/:id/invoice", protectAdmin, getAdminProgramInvoiceController);
+router.get(
+  "/transactions",
+  protectAdmin,
+  authorize("programs.transactions.view"),
+  listAdminProgramTransactionsController
+);
+router.get(
+  "/transactions/:id",
+  protectAdmin,
+  authorize("programs.transactions.view"),
+  getAdminProgramTransactionController
+);
+router.get(
+  "/transactions/:id/invoice",
+  protectAdmin,
+  authorize("programs.transactions.view"),
+  getAdminProgramInvoiceController
+);
 
-router.get("/", protectAdmin, listProgramCatalogController);
-router.post("/", protectAdmin, createProgramCatalogController);
-router.get("/:id", protectAdmin, getProgramCatalogByIdController);
-router.patch("/:id", protectAdmin, updateProgramCatalogController);
-router.delete("/:id", protectAdmin, deleteProgramCatalogController);
+// Catalog has no dedicated View action — list/detail allowed with edit or delete.
+router.get("/", protectAdmin, authorizeAny("programs.edit", "programs.delete"), listProgramCatalogController);
+router.post("/", protectAdmin, authorize("programs.edit"), createProgramCatalogController);
+router.get("/:id", protectAdmin, authorizeAny("programs.edit", "programs.delete"), getProgramCatalogByIdController);
+router.patch("/:id", protectAdmin, authorize("programs.edit"), updateProgramCatalogController);
+router.delete("/:id", protectAdmin, authorize("programs.delete"), deleteProgramCatalogController);
 
 module.exports = router;

@@ -1,5 +1,6 @@
 const express = require("express");
 const { protectAdmin } = require("../../middleware/auth");
+const { authorize } = require("../../middleware/authorize");
 const {
   listWellnessPrescriptionCatalogController,
   getWellnessPrescriptionCatalogByIdController,
@@ -10,10 +11,35 @@ const {
 
 const router = express.Router();
 
-router.get("/", protectAdmin, listWellnessPrescriptionCatalogController);
-router.get("/:id", protectAdmin, getWellnessPrescriptionCatalogByIdController);
-router.post("/", protectAdmin, createWellnessPrescriptionCatalogController);
-router.patch("/:id", protectAdmin, updateWellnessPrescriptionCatalogController);
-router.delete("/:id", protectAdmin, deleteWellnessPrescriptionCatalogController);
+router.get(
+  "/",
+  protectAdmin,
+  authorize("wellness-prescriptions.view"),
+  listWellnessPrescriptionCatalogController
+);
+router.get(
+  "/:id",
+  protectAdmin,
+  authorize("wellness-prescriptions.view"),
+  getWellnessPrescriptionCatalogByIdController
+);
+router.post(
+  "/",
+  protectAdmin,
+  authorize("wellness-prescriptions.edit"),
+  createWellnessPrescriptionCatalogController
+);
+router.patch(
+  "/:id",
+  protectAdmin,
+  authorize("wellness-prescriptions.edit"),
+  updateWellnessPrescriptionCatalogController
+);
+router.delete(
+  "/:id",
+  protectAdmin,
+  authorize("wellness-prescriptions.delete"),
+  deleteWellnessPrescriptionCatalogController
+);
 
 module.exports = router;

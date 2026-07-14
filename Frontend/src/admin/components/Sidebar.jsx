@@ -3,24 +3,33 @@ import { useDispatch, useSelector } from "react-redux";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { navItems } from "../data/navItems.js";
 import { selectAppDisplayName, selectPanelLogoUrl } from "../../store/appConfigSelectors.js";
+import { selectIsSuperAdmin, selectPermissions } from "../../store/authSelectors.js";
 import { mediaUrl } from "../../media.js";
 import { logout } from "../../store/authSlice.js";
 import { confirmLogout } from "../utils/confirmLogout.js";
+import { filterNavItemsByPermission } from "../utils/navAccess.js";
 import { NavIcon } from "./NavIcon.jsx";
 import defaultLogo from "../../assets/logo/defaultlogo.png";
 
 const NAV_GROUP_PATTERNS = {
   consultancy: /\/admin\/consultancy(\/|$)/,
   "energy-exchange": /\/admin\/energy-exchange(\/|$)/,
-  program: /\/admin\/(coaches|awcs)(\/|$)/,
   "wellness-program": /\/admin\/programs(\/|$)/,
-  wellness: /\/admin\/(nutrition-plans|support-tickets|camp-events|program-completions)(\/|$)/,
-  content: /\/admin\/(banners|notifications|faq|contact-inquiries|static-pages)(\/|$)/,
-  health: /\/admin\/(health-concerns|health-tools|health-recipes|health-disorders|yoga|physical-exercises)(\/|$)/,
+  team: /\/admin\/(coaches|awcs|specializations)(\/|$)/,
+  health:
+    /\/admin\/(health-concerns|health-tools|health-recipes|health-disorders|yoga|physical-exercises|supplements|medical-condition-questions)(\/|$)/,
   launchAssessment: /\/admin\/(launch-questions|launch-focus-areas)(\/|$)/,
   prakrutiAssessment: /\/admin\/(prakruti-questions|prakruti-things-to-avoid|prakruti-recommendations)(\/|$)/,
+  catalogs:
+    /\/admin\/(test-catalog|diet-plan-catalog|wellness-prescriptions|mental-wellbeing)(\/|$)/,
   testimonials:
     /\/admin\/(transformations|client-testimonials|program-testimonials|real-people-testimonials|commitment-letters|video-testimonials)(\/|$)/,
+  leadership: /\/admin\/(leadership-notes|cofounder-message)(\/|$)/,
+  engagement:
+    /\/admin\/(banners|birthday-posts|birthday-notifications|monthly-champions|notifications)(\/|$)/,
+  content: /\/admin\/(faq|contact-inquiries|static-pages|coupons)(\/|$)/,
+  settings: /\/admin\/(settings|profile)(\/|$)/,
+  administration: /\/admin\/(sub-admins|roles)(\/|$)/,
 };
 
 function normalizePath(pathname) {
@@ -59,7 +68,14 @@ export function Sidebar({ id = "admin-sidebar", onNavigate, drawerOpen, desktopC
   const location = useLocation();
   const brandLogoUrl = useSelector(selectPanelLogoUrl);
   const appDisplayName = useSelector(selectAppDisplayName);
+  const isSuperAdmin = useSelector(selectIsSuperAdmin);
+  const permissions = useSelector(selectPermissions);
   const logoSrc = mediaUrl(brandLogoUrl) || defaultLogo;
+
+  const visibleNavItems = useMemo(
+    () => filterNavItemsByPermission(navItems, { isSuperAdmin, permissions }),
+    [isSuperAdmin, permissions]
+  );
 
   const initialOpen = useMemo(() => {
     const open = {};
@@ -122,7 +138,7 @@ export function Sidebar({ id = "admin-sidebar", onNavigate, drawerOpen, desktopC
       </div>
 
       <nav className="admin-sidebar__nav">
-        {navItems.map((item) =>
+        {visibleNavItems.map((item) =>
           Array.isArray(item.children) && item.id ? (
             <div key={item.id} className="admin-sidebar__group">
               <button

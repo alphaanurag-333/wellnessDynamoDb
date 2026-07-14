@@ -88,8 +88,9 @@ exports.updateProgramCatalogController = asyncHandler(async (req, res) => {
       throw new AppError("status must be active or inactive", 400);
     }
     updates.status = status;
+  } else if (req.body.isActive !== undefined) {
+    updates.isActive = req.body.isActive;
   }
-  if (req.body.isActive !== undefined) updates.isActive = req.body.isActive;
 
   if (Object.keys(updates).length === 0) {
     throw new AppError("At least one field is required for update", 400);

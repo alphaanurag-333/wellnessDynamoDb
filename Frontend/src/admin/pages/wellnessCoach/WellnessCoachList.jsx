@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
+import { useResourcePermissions } from "../../hooks/useHasPermission.js";
 import Swal from "sweetalert2";
 import { IoEyeSharp } from "react-icons/io5";
 import { MdEditSquare } from "react-icons/md";
@@ -20,6 +21,7 @@ import { WellnessCoachTableLoaderRow } from "./WellnessCoachPageLoader.jsx";
 export function WellnessCoachList() {
   const dispatch = useDispatch();
   const adminToken = useSelector((s) => s.auth.adminToken);
+  const { canEdit, canDelete } = useResourcePermissions("coaches");
   const [searchParams] = useSearchParams();
   const [rows, setRows] = useState([]);
   const [page, setPage] = useState(1);
@@ -190,9 +192,11 @@ export function WellnessCoachList() {
               <option value="rejected">Rejected</option>
             </select>
           </form>
-          <Link to="new" className="btn btn--accent">
-            + Add coach
-          </Link>
+          {canEdit ? (
+            <Link to="new" className="btn btn--accent">
+              + Add coach
+            </Link>
+          ) : null}
         </div>
       </div>
 
@@ -252,7 +256,8 @@ export function WellnessCoachList() {
                     </td>
                     <td className="data-table__muted">{formatDate(row.createdAt)}</td>
                     <td>
-                      <button
+                      {canEdit ? (
+<button
                         type="button"
                         className={`settings-switch${row.status === "active" ? " settings-switch--on" : ""}`}
                         role="switch"
@@ -264,13 +269,33 @@ export function WellnessCoachList() {
                       >
                         <span className="settings-switch__knob" aria-hidden />
                       </button>
+                      ) : null}
                     </td>
                     <td className="data-table__approval-col">
                       <div className="approval-cell">
                         <span className={`approval-badge approval-badge--${approval}`}>{approval}</span>
                         <div className="approval-actions">
-                          {approval === "pending" ? (
-                            <>
+                          {canEdit ? (
+                            approval === "pending" ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className="btn btn--xs btn--success"
+                                  disabled={approvingId === id}
+                                  onClick={() => handleApprove(row, "approved")}
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn--xs btn--danger"
+                                  disabled={approvingId === id}
+                                  onClick={() => handleApprove(row, "rejected")}
+                                >
+                                  Reject
+                                </button>
+                              </>
+                            ) : approval === "rejected" ? (
                               <button
                                 type="button"
                                 className="btn btn--xs btn--success"
@@ -279,34 +304,17 @@ export function WellnessCoachList() {
                               >
                                 Approve
                               </button>
+                            ) : (
                               <button
                                 type="button"
                                 className="btn btn--xs btn--danger"
                                 disabled={approvingId === id}
                                 onClick={() => handleApprove(row, "rejected")}
                               >
-                                Reject
+                                Revoke
                               </button>
-                            </>
-                          ) : approval === "rejected" ? (
-                            <button
-                              type="button"
-                              className="btn btn--xs btn--success"
-                              disabled={approvingId === id}
-                              onClick={() => handleApprove(row, "approved")}
-                            >
-                              Approve
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              className="btn btn--xs btn--danger"
-                              disabled={approvingId === id}
-                              onClick={() => handleApprove(row, "rejected")}
-                            >
-                              Revoke
-                            </button>
-                          )}
+                            )
+                          ) : null}
                         </div>
                       </div>
                     </td>
@@ -315,10 +323,13 @@ export function WellnessCoachList() {
                         <Link to={id} className="icon-btn icon-btn--view" title="View">
                           <IoEyeSharp size={18} />
                         </Link>
-                        <Link to={`${id}/edit`} className="icon-btn icon-btn--edit" title="Edit">
+                        {canEdit ? (
+<Link to={`${id}/edit`} className="icon-btn icon-btn--edit" title="Edit">
                           <MdEditSquare size={18} />
                         </Link>
-                        <button
+                        ) : null}
+                        {canDelete ? (
+<button
                           type="button"
                           className="icon-btn icon-btn--delete"
                           title="Delete"
@@ -326,6 +337,7 @@ export function WellnessCoachList() {
                         >
                           <AiFillDelete size={18} />
                         </button>
+                        ) : null}
                       </div>
                     </td>
                   </tr>

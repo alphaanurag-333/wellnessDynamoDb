@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { selectAppDisplayName, selectPanelLogoUrl } from "../../store/appConfigSelectors.js";
+import { selectIsSuperAdmin, selectPermissions } from "../../store/authSelectors.js";
 import { AdminMediaImage } from "./AdminMediaImage.jsx";
 import { mediaUrl } from "../../media.js";
 import { logout } from "../../store/authSlice.js";
 import { confirmLogout } from "../utils/confirmLogout.js";
+import { canAccessLeaf } from "../utils/navAccess.js";
 import { NavIcon } from "./NavIcon.jsx";
 import { TrackingRefreshButton } from "../../components/TrackingRefreshButton.jsx";
 import defaultLogo from "../../assets/logo/defaultlogo.png";
@@ -22,9 +24,12 @@ export function Header({
   const navigate = useNavigate();
   const location = useLocation();
   const admin = useSelector((s) => s.auth.admin);
+  const isSuperAdmin = useSelector(selectIsSuperAdmin);
+  const permissions = useSelector(selectPermissions);
   const brandLogoUrl = useSelector(selectPanelLogoUrl);
   const appDisplayName = useSelector(selectAppDisplayName);
   const brandLogoSrc = mediaUrl(brandLogoUrl) || defaultLogo;
+  const canOpenSettings = canAccessLeaf("settings", { isSuperAdmin, permissions });
 
   const [menuOpenState, setMenuOpenState] = useState(false);
   const wrapRef = useRef(null);
@@ -133,15 +138,17 @@ export function Header({
               </span>
               Profile
             </Link>
-            <Link to="/admin/settings" className="admin-header__dropdown-item" role="menuitem" onClick={closeMenu}>
-              <span className="admin-header__dropdown-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="3" />
-                  <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
-                </svg>
-              </span>
-              Settings
-            </Link>
+            {canOpenSettings ? (
+              <Link to="/admin/settings" className="admin-header__dropdown-item" role="menuitem" onClick={closeMenu}>
+                <span className="admin-header__dropdown-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                  </svg>
+                </span>
+                Settings
+              </Link>
+            ) : null}
             <div className="admin-header__dropdown-sep" role="separator" />
             <button type="button" className="admin-header__dropdown-item" role="menuitem" onClick={handleLogout}>
               <span className="admin-header__dropdown-icon" aria-hidden="true">

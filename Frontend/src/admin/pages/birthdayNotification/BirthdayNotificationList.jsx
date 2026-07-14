@@ -12,6 +12,7 @@ import {
 } from "../../api/birthdayNotificationController.js";
 import { AdminListHeader, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
+import { useResourcePermissions } from "../../hooks/useHasPermission.js";
 import {
   LIST_LIMIT,
   STATUS_OPTIONS,
@@ -33,6 +34,7 @@ export function BirthdayNotificationList() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const adminToken = useSelector((s) => s.auth.adminToken);
+  const { canEdit } = useResourcePermissions("birthday-notifications");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [runningJob, setRunningJob] = useState(false);
@@ -138,9 +140,11 @@ export function BirthdayNotificationList() {
           title="Birthday notifications"
           subtitle={subtitle}
           actions={
-            <button type="button" className="btn btn--primary" onClick={onRunJob} disabled={runningJob}>
-              {runningJob ? "Running…" : "Run job"}
-            </button>
+            canEdit ? (
+              <button type="button" className="btn btn--primary" onClick={onRunJob} disabled={runningJob}>
+                {runningJob ? "Running…" : "Run job"}
+              </button>
+            ) : null
           }
         />
 
@@ -212,15 +216,17 @@ export function BirthdayNotificationList() {
                         >
                           <AiOutlineEye size={18} />
                         </button>
-                        <button
-                          type="button"
-                          className="icon-btn icon-btn--edit"
-                          title="Resend"
-                          disabled={resendingId === row._id}
-                          onClick={() => onResend(row)}
-                        >
-                          <MdSend size={18} />
-                        </button>
+                        {canEdit ? (
+                          <button
+                            type="button"
+                            className="icon-btn icon-btn--edit"
+                            title="Resend"
+                            disabled={resendingId === row._id}
+                            onClick={() => onResend(row)}
+                          >
+                            <MdSend size={18} />
+                          </button>
+                        ) : null}
                       </div>
                     </td>
                   </tr>

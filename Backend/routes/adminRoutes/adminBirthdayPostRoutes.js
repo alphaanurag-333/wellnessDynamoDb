@@ -1,6 +1,7 @@
 const express = require("express");
 
 const { protectAdmin } = require("../../middleware/auth");
+const { authorize } = require("../../middleware/authorize");
 const {
   listBirthdayPostsController,
   getBirthdayPostByIdController,
@@ -10,9 +11,14 @@ const {
 
 const router = express.Router();
 
-router.get("/", protectAdmin, listBirthdayPostsController);
-router.get("/:id", protectAdmin, getBirthdayPostByIdController);
-router.patch("/:id", protectAdmin, updateBirthdayPostController);
-router.delete("/:postId/comments/:commentId", protectAdmin, deleteBirthdayPostCommentController);
+router.get("/", protectAdmin, authorize("birthday-posts.view"), listBirthdayPostsController);
+router.get("/:id", protectAdmin, authorize("birthday-posts.view"), getBirthdayPostByIdController);
+router.patch("/:id", protectAdmin, authorize("birthday-posts.edit"), updateBirthdayPostController);
+router.delete(
+  "/:postId/comments/:commentId",
+  protectAdmin,
+  authorize("birthday-posts.delete"),
+  deleteBirthdayPostCommentController
+);
 
 module.exports = router;

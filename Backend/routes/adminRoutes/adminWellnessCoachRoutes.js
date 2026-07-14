@@ -1,6 +1,7 @@
 const express = require("express");
 
 const { protectAdmin } = require("../../middleware/auth");
+const { authorize } = require("../../middleware/authorize");
 const {
   optionalWellnessCoachFile,
   optionalAssistantWellnessCoachFile,
@@ -24,19 +25,45 @@ const { listHealUsersByCoachController } = require("../../controllers/adminContr
 
 const router = express.Router();
 
-router.get("/assistants", protectAdmin, listAllAssistantsController);
+// Assistant Coach sub-resource -> `awcs.*` (matches the "awcs" nav leaf).
+router.get("/assistants", protectAdmin, authorize("awcs.view"), listAllAssistantsController);
 
-router.get("/", protectAdmin, listWellnessCoachesController);
-router.post("/", protectAdmin, optionalWellnessCoachFile, createWellnessCoachController);
-router.get("/:id", protectAdmin, getWellnessCoachByIdController);
-router.patch("/:id", protectAdmin, optionalWellnessCoachFile, updateWellnessCoachController);
-router.delete("/:id", protectAdmin, deleteWellnessCoachController);
+// Wellness Coach CRUD -> `coaches.*`.
+router.get("/", protectAdmin, authorize("coaches.view"), listWellnessCoachesController);
+router.post(
+  "/",
+  protectAdmin,
+  authorize("coaches.edit"),
+  optionalWellnessCoachFile,
+  createWellnessCoachController
+);
+router.get("/:id", protectAdmin, authorize("coaches.view"), getWellnessCoachByIdController);
+router.patch(
+  "/:id",
+  protectAdmin,
+  authorize("coaches.edit"),
+  optionalWellnessCoachFile,
+  updateWellnessCoachController
+);
+router.delete("/:id", protectAdmin, authorize("coaches.delete"), deleteWellnessCoachController);
 
-router.get("/:coachId/assistants", protectAdmin, listAssistantsController);
-router.get("/:coachId/heal-users", protectAdmin, listHealUsersByCoachController);
-router.post("/:coachId/assistants", protectAdmin, optionalAssistantWellnessCoachFile, createAssistantController);
-router.get("/:coachId/assistants/:id", protectAdmin, getAssistantByIdController);
-router.patch("/:coachId/assistants/:id", protectAdmin, optionalAssistantWellnessCoachFile, updateAssistantController);
-router.delete("/:coachId/assistants/:id", protectAdmin, deleteAssistantController);
+router.get("/:coachId/assistants", protectAdmin, authorize("awcs.view"), listAssistantsController);
+router.get("/:coachId/heal-users", protectAdmin, authorize("coaches.view"), listHealUsersByCoachController);
+router.post(
+  "/:coachId/assistants",
+  protectAdmin,
+  authorize("awcs.edit"),
+  optionalAssistantWellnessCoachFile,
+  createAssistantController
+);
+router.get("/:coachId/assistants/:id", protectAdmin, authorize("awcs.view"), getAssistantByIdController);
+router.patch(
+  "/:coachId/assistants/:id",
+  protectAdmin,
+  authorize("awcs.edit"),
+  optionalAssistantWellnessCoachFile,
+  updateAssistantController
+);
+router.delete("/:coachId/assistants/:id", protectAdmin, authorize("awcs.delete"), deleteAssistantController);
 
 module.exports = router;

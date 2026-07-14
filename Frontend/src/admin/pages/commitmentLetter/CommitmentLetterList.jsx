@@ -11,6 +11,7 @@ import {
 } from "../../api/commitmentLetters.js";
 import { AdminListHeader, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
+import { useResourcePermissions } from "../../hooks/useHasPermission.js";
 import {
   approvalBadgeClass,
   approvalLabel,
@@ -21,6 +22,7 @@ import {
 export function CommitmentLetterList() {
   const dispatch = useDispatch();
   const adminToken = useSelector((s) => s.auth.adminToken);
+  const { canEdit, canDelete } = useResourcePermissions("commitment-letters");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [listApproval, setListApproval] = useState("");
@@ -193,7 +195,7 @@ export function CommitmentLetterList() {
                     </td>
                     <td>
                       <div className="row-actions">
-                        {row.approvalStatus === "pending" ? (
+                        {canEdit && row.approvalStatus === "pending" ? (
                           <>
                             <button type="button" className="btn btn--ghost btn--sm" onClick={() => onReview(row, "approved")}>
                               Approve
@@ -203,9 +205,11 @@ export function CommitmentLetterList() {
                             </button>
                           </>
                         ) : null}
-                        <button type="button" className="icon-btn icon-btn--delete" title="Delete" onClick={() => onDelete(row)}>
-                          <AiFillDelete size={18} />
-                        </button>
+                        {canDelete ? (
+                          <button type="button" className="icon-btn icon-btn--delete" title="Delete" onClick={() => onDelete(row)}>
+                            <AiFillDelete size={18} />
+                          </button>
+                        ) : null}
                       </div>
                     </td>
                   </tr>

@@ -6,6 +6,7 @@ import { adminLogin } from "../api/adminAuth.js";
 import { selectLoginBrandLogoUrl } from "../../store/appConfigSelectors.js";
 import { mediaUrl } from "../../media.js";
 import { setCredentials } from "../../store/authSlice.js";
+import { firstAllowedAdminPath } from "../utils/navAccess.js";
 import defaultLogo from "../../assets/logo/defaultlogo.png";
 import { AuthPasswordToggle } from "../../components/AuthPasswordToggle.jsx";
 
@@ -13,6 +14,7 @@ export function AdminLoginPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const adminToken = useSelector((s) => s.auth.adminToken);
+  const admin = useSelector((s) => s.auth.admin);
   const brandLogoUrl = useSelector(selectLoginBrandLogoUrl);
   const brandLogoSrc = mediaUrl(brandLogoUrl) || defaultLogo;
   const [email, setEmail] = useState("");
@@ -21,7 +23,15 @@ export function AdminLoginPage() {
   const [loading, setLoading] = useState(false);
 
   if (adminToken) {
-    return <Navigate to="/admin/dashboard" replace />;
+    return (
+      <Navigate
+        to={firstAllowedAdminPath({
+          isSuperAdmin: Boolean(admin?.isSuperAdmin),
+          permissions: Array.isArray(admin?.permissions) ? admin.permissions : [],
+        })}
+        replace
+      />
+    );
   }
 
   const handleSubmit = async (e) => {
@@ -56,7 +66,13 @@ export function AdminLoginPage() {
       text: name ? `Welcome, ${name}.` : "Welcome to the admin panel.",
        timer: 1500,
     });
-    navigate("/admin/dashboard", { replace: true });
+    navigate(
+      firstAllowedAdminPath({
+        isSuperAdmin: Boolean(data.admin?.isSuperAdmin),
+        permissions: Array.isArray(data.admin?.permissions) ? data.admin.permissions : [],
+      }),
+      { replace: true }
+    );
   };
 
   return (

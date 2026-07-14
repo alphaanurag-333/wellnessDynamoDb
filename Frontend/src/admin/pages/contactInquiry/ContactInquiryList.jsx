@@ -10,6 +10,7 @@ import {
 } from "../../api/contactInquiries.js";
 import { AdminListHeader, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
+import { useResourcePermissions } from "../../hooks/useHasPermission.js";
 import {
   INQUIRY_TYPE_OPTIONS,
   InquiryStatusBadge,
@@ -27,6 +28,7 @@ import {
 export function ContactInquiryList() {
   const dispatch = useDispatch();
   const adminToken = useSelector((s) => s.auth.adminToken);
+  const { canDelete } = useResourcePermissions("contact-inquiries");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
@@ -233,14 +235,16 @@ export function ContactInquiryList() {
                           >
                             <AiOutlineEye size={18} />
                           </Link>
-                          <button
-                            type="button"
-                            className="icon-btn icon-btn--delete"
-                            title="Delete"
-                            onClick={() => onDelete(row)}
-                          >
-                            <AiFillDelete size={18} />
-                          </button>
+                          {canDelete ? (
+                            <button
+                              type="button"
+                              className="icon-btn icon-btn--delete"
+                              title="Delete"
+                              onClick={() => onDelete(row)}
+                            >
+                              <AiFillDelete size={18} />
+                            </button>
+                          ) : null}
                         </div>
                       </td>
                     </tr>

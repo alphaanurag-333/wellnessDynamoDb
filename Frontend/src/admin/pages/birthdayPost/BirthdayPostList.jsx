@@ -8,6 +8,7 @@ import { AiOutlineEye } from "react-icons/ai";
 import { adminListBirthdayPosts } from "../../api/birthdayPostController.js";
 import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
+import { useResourcePermissions } from "../../hooks/useHasPermission.js";
 import {
   LIST_LIMIT,
   STATUS_OPTIONS,
@@ -19,6 +20,7 @@ export function BirthdayPostList() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const adminToken = useSelector((s) => s.auth.adminToken);
+  const { canEdit } = useResourcePermissions("birthday-posts");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
@@ -141,13 +143,15 @@ export function BirthdayPostList() {
                         >
                           <AiOutlineEye size={18} />
                         </button>
-                        <Link
-                          to={`/admin/birthday-posts/${row._id}/edit`}
-                          className="icon-btn icon-btn--edit"
-                          title="Edit"
-                        >
-                          <MdEditSquare size={18} />
-                        </Link>
+                        {canEdit ? (
+                          <Link
+                            to={`/admin/birthday-posts/${row._id}/edit`}
+                            className="icon-btn icon-btn--edit"
+                            title="Edit"
+                          >
+                            <MdEditSquare size={18} />
+                          </Link>
+                        ) : null}
                       </div>
                     </td>
                   </tr>

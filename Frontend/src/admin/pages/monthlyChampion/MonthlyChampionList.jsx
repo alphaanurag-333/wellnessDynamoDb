@@ -11,6 +11,7 @@ import {
 } from "../../api/monthlyChampions.js";
 import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
+import { useResourcePermissions } from "../../hooks/useHasPermission.js";
 import {
   LIST_LIMIT,
   STATUS_OPTIONS,
@@ -25,6 +26,7 @@ export function MonthlyChampionList() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const adminToken = useSelector((s) => s.auth.adminToken);
+  const { canEdit } = useResourcePermissions("monthly-champions");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [runningJob, setRunningJob] = useState(false);
@@ -111,9 +113,11 @@ export function MonthlyChampionList() {
           title="Monthly champions"
           subtitle={subtitle}
           actions={
-            <button type="button" className="btn btn--primary" onClick={onRunJob} disabled={runningJob}>
-              {runningJob ? "Running…" : "Run job"}
-            </button>
+            canEdit ? (
+              <button type="button" className="btn btn--primary" onClick={onRunJob} disabled={runningJob}>
+                {runningJob ? "Running…" : "Run job"}
+              </button>
+            ) : null
           }
         />
 
@@ -192,14 +196,16 @@ export function MonthlyChampionList() {
                         >
                           <AiOutlineEye size={18} />
                         </button>
-                        <button
-                          type="button"
-                          className="icon-btn icon-btn--edit"
-                          title="Edit"
-                          onClick={() => navigate(`/admin/monthly-champions/${row._id}/edit`)}
-                        >
-                          <MdEditSquare size={18} />
-                        </button>
+                        {canEdit ? (
+                          <button
+                            type="button"
+                            className="icon-btn icon-btn--edit"
+                            title="Edit"
+                            onClick={() => navigate(`/admin/monthly-champions/${row._id}/edit`)}
+                          >
+                            <MdEditSquare size={18} />
+                          </button>
+                        ) : null}
                       </div>
                     </td>
                   </tr>

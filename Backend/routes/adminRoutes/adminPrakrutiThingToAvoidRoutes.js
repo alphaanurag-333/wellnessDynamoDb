@@ -1,5 +1,6 @@
 const express = require("express");
 const { protectAdmin } = require("../../middleware/auth");
+const { authorize } = require("../../middleware/authorize");
 const {
   listPrakrutiThingsToAvoidController,
   getPrakrutiThingToAvoidByIdController,
@@ -10,10 +11,35 @@ const {
 
 const router = express.Router();
 
-router.get("/", protectAdmin, listPrakrutiThingsToAvoidController);
-router.get("/:id", protectAdmin, getPrakrutiThingToAvoidByIdController);
-router.post("/", protectAdmin, createPrakrutiThingToAvoidController);
-router.patch("/:id", protectAdmin, updatePrakrutiThingToAvoidController);
-router.delete("/:id", protectAdmin, deletePrakrutiThingToAvoidController);
+router.get(
+  "/",
+  protectAdmin,
+  authorize("prakruti-things-to-avoid.view"),
+  listPrakrutiThingsToAvoidController
+);
+router.get(
+  "/:id",
+  protectAdmin,
+  authorize("prakruti-things-to-avoid.view"),
+  getPrakrutiThingToAvoidByIdController
+);
+router.post(
+  "/",
+  protectAdmin,
+  authorize("prakruti-things-to-avoid.edit"),
+  createPrakrutiThingToAvoidController
+);
+router.patch(
+  "/:id",
+  protectAdmin,
+  authorize("prakruti-things-to-avoid.edit"),
+  updatePrakrutiThingToAvoidController
+);
+router.delete(
+  "/:id",
+  protectAdmin,
+  authorize("prakruti-things-to-avoid.delete"),
+  deletePrakrutiThingToAvoidController
+);
 
 module.exports = router;

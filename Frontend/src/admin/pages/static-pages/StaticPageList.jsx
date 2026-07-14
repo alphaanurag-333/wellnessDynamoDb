@@ -7,11 +7,13 @@ import { MdEditSquare } from "react-icons/md";
 import { listPages } from "../../api/adminMisc.js";
 import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
+import { useResourcePermissions } from "../../hooks/useHasPermission.js";
 
 export function StaticPageList() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const adminToken = useSelector((s) => s.auth.adminToken);
+  const { canEdit } = useResourcePermissions("static-pages");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -73,14 +75,16 @@ export function StaticPageList() {
                     <td className="data-table__muted">{row.updatedAt ? new Date(row.updatedAt).toLocaleString() : "—"}</td>
                     <td>
                       <div className="row-actions">
-                        <button
-                          type="button"
-                          className="icon-btn icon-btn--edit"
-                          title="Edit"
-                          onClick={() => navigate(`/admin/static-pages/${row._id}/edit`)}
-                        >
-                          <MdEditSquare size={18} />
-                        </button>
+                        {canEdit ? (
+                          <button
+                            type="button"
+                            className="icon-btn icon-btn--edit"
+                            title="Edit"
+                            onClick={() => navigate(`/admin/static-pages/${row._id}/edit`)}
+                          >
+                            <MdEditSquare size={18} />
+                          </button>
+                        ) : null}
                       </div>
                     </td>
                   </tr>

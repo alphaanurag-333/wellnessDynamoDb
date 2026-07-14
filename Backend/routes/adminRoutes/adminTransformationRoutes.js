@@ -1,6 +1,7 @@
 const express = require("express");
 
 const { protectAdmin } = require("../../middleware/auth");
+const { authorize } = require("../../middleware/authorize");
 const { optionalTransformationFiles } = require("../../middleware/authMultipart");
 const {
   listTransformationsController,
@@ -12,10 +13,22 @@ const {
 
 const router = express.Router();
 
-router.get("/", protectAdmin, listTransformationsController);
-router.get("/:id", protectAdmin, getTransformationByIdController);
-router.post("/", protectAdmin, optionalTransformationFiles, createTransformationController);
-router.patch("/:id", protectAdmin, optionalTransformationFiles, updateTransformationController);
-router.delete("/:id", protectAdmin, deleteTransformationController);
+router.get("/", protectAdmin, authorize("transformations.view"), listTransformationsController);
+router.get("/:id", protectAdmin, authorize("transformations.view"), getTransformationByIdController);
+router.post(
+  "/",
+  protectAdmin,
+  authorize("transformations.edit"),
+  optionalTransformationFiles,
+  createTransformationController
+);
+router.patch(
+  "/:id",
+  protectAdmin,
+  authorize("transformations.edit"),
+  optionalTransformationFiles,
+  updateTransformationController
+);
+router.delete("/:id", protectAdmin, authorize("transformations.delete"), deleteTransformationController);
 
 module.exports = router;

@@ -1,6 +1,7 @@
 const express = require("express");
 
 const { protectAdmin } = require("../../middleware/auth");
+const { authorize } = require("../../middleware/authorize");
 const { optionalHealthRecipeFile } = require("../../middleware/authMultipart");
 const {
   listHealthRecipesController,
@@ -12,10 +13,22 @@ const {
 
 const router = express.Router();
 
-router.get("/", protectAdmin, listHealthRecipesController);
-router.get("/:id", protectAdmin, getHealthRecipeByIdController);
-router.post("/", protectAdmin, optionalHealthRecipeFile, createHealthRecipeController);
-router.patch("/:id", protectAdmin, optionalHealthRecipeFile, updateHealthRecipeController);
-router.delete("/:id", protectAdmin, deleteHealthRecipeController);
+router.get("/", protectAdmin, authorize("health-recipes.view"), listHealthRecipesController);
+router.get("/:id", protectAdmin, authorize("health-recipes.view"), getHealthRecipeByIdController);
+router.post(
+  "/",
+  protectAdmin,
+  authorize("health-recipes.edit"),
+  optionalHealthRecipeFile,
+  createHealthRecipeController
+);
+router.patch(
+  "/:id",
+  protectAdmin,
+  authorize("health-recipes.edit"),
+  optionalHealthRecipeFile,
+  updateHealthRecipeController
+);
+router.delete("/:id", protectAdmin, authorize("health-recipes.delete"), deleteHealthRecipeController);
 
 module.exports = router;

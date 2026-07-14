@@ -10,12 +10,14 @@ import { adminDeleteBanner, adminListBanners, adminUpdateBanner } from "../../ap
 import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { useDebouncedSearch } from "../../../hooks/useDebouncedSearch.js";
+import { useResourcePermissions } from "../../hooks/useHasPermission.js";
 import { formatDate, LIST_LIMIT, truncate, DESCRIPTION_PREVIEW_LEN, LIST_SEARCH_MAX_LEN } from "./BannerShared.js";
 
 export function BannerList() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const adminToken = useSelector((s) => s.auth.adminToken);
+  const { canEdit, canDelete } = useResourcePermissions("banners");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [togglingId, setTogglingId] = useState("");
@@ -112,9 +114,11 @@ export function BannerList() {
           title="Banners"
           subtitle={subtitle}
           actions={
+            canEdit ? (
             <button type="button" className="btn btn--primary" onClick={() => navigate("/admin/banners/new")}>
               Add banner
             </button>
+          ) : null
           }
         />
         <div className="admin-crud-filters">
@@ -175,7 +179,8 @@ export function BannerList() {
                     <td className="data-table__muted">{formatDate(row.createdAt)}</td>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <button
+                        {canEdit ? (
+<button
                           type="button"
                           className={`settings-switch${row.status === "active" ? " settings-switch--on" : ""}`}
                           role="switch"
@@ -187,6 +192,7 @@ export function BannerList() {
                         >
                           <span className="settings-switch__knob" aria-hidden />
                         </button>
+                        ) : null}
                         <AdminStatusBadge status={row.status} />
                       </div>
                     </td>
@@ -195,7 +201,8 @@ export function BannerList() {
                         <Link to={`/admin/banners/${row._id}`} className="icon-btn icon-btn--view" title="View">
                           <AiOutlineEye size={18} />
                         </Link>
-                        <button
+                        {canEdit ? (
+<button
                           type="button"
                           className="icon-btn icon-btn--edit"
                           title="Edit"
@@ -203,9 +210,12 @@ export function BannerList() {
                         >
                           <MdEditSquare size={18} />
                         </button>
-                        <button type="button" className="icon-btn icon-btn--delete" title="Delete" onClick={() => onDelete(row)}>
+                        ) : null}
+                        {canDelete ? (
+<button type="button" className="icon-btn icon-btn--delete" title="Delete" onClick={() => onDelete(row)}>
                           <AiFillDelete size={18} />
                         </button>
+                        ) : null}
                       </div>
                     </td>
                   </tr>

@@ -6,6 +6,7 @@ import Swal from "sweetalert2";
 import { getAppConfig, patchAppConfig } from "../../api/adminMisc.js";
 import { fetchAppConfig } from "../../../store/appConfigSlice.js";
 import { logout } from "../../../store/authSlice.js";
+import { useHasPermission } from "../../hooks/useHasPermission.js";
 import { mediaUrl } from "../../../media.js";
 import {
   blockPersonNameDigitKeyDown,
@@ -444,6 +445,7 @@ export function BusinessSetting() {
   const dispatch = useDispatch();
   const baseId = useId();
   const adminToken = useSelector((s) => s.auth.adminToken);
+  const canEdit = useHasPermission("settings.edit");
   const [tab, setTab] = useState("general");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -605,6 +607,10 @@ export function BusinessSetting() {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    if (!canEdit) {
+      await Swal.fire({ icon: "warning", title: "Access denied", text: "You don't have permission to edit settings." });
+      return;
+    }
     if (!adminToken) {
       await Swal.fire({ icon: "error", title: "Not signed in", text: "You are not signed in." });
       return;
@@ -1599,9 +1605,11 @@ export function BusinessSetting() {
             })}
 
             <div className="settings-form-footer settings-form-footer--centered">
-              <button type="submit" className="btn--settings-save" disabled={saving || !hasDoc}>
-                {saving ? "Saving…" : "Save settings"}
-              </button>
+              {canEdit ? (
+                <button type="submit" className="btn--settings-save" disabled={saving || !hasDoc}>
+                  {saving ? "Saving…" : "Save settings"}
+                </button>
+              ) : null}
             </div>
           </>
         )}

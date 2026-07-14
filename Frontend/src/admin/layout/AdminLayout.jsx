@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
+import Swal from "sweetalert2";
 import { adminGetMe } from "../api/adminAuth.js";
 import { Footer } from "../components/Footer.jsx";
 import { Header } from "../components/Header.jsx";
@@ -8,6 +9,8 @@ import { Sidebar } from "../components/Sidebar.jsx";
 import { flattenNavLinks, navItems } from "../data/navItems.js";
 import { useMediaQuery } from "../../hooks/useMediaQuery.js";
 import { logout, setAdmin } from "../../store/authSlice.js";
+import { selectIsSuperAdmin, selectPermissions } from "../../store/authSelectors.js";
+import { canAccessPath, firstAllowedAdminPath } from "../utils/navAccess.js";
 
 function titleFromPath(pathname) {
   const p = pathname.replace(/\/$/, "") || "/";
@@ -208,23 +211,38 @@ export function AdminLayout() {
   const { pathname } = useLocation();
   const dispatch = useDispatch();
   const adminToken = useSelector((s) => s.auth.adminToken);
+  const isSuperAdmin = useSelector(selectIsSuperAdmin);
+  const permissions = useSelector(selectPermissions);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [headerRefresh, setHeaderRefresh] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
 
   const pageTitle = useMemo(() => titleFromPath(pathname), [pathname]);
+  const authContext = useMemo(
+    () => ({ isSuperAdmin, permissions }),
+    [isSuperAdmin, permissions]
+  );
+  const pathAllowed = useMemo(() => canAccessPath(pathname, authContext), [pathname, authContext]);
+  const fallbackPath = useMemo(() => firstAllowedAdminPath(authContext), [authContext]);
 
   useEffect(() => {
     if (!adminToken) return;
     let cancelled = false;
+    setAuthReady(false);
     (async () => {
       try {
         const data = await adminGetMe(adminToken);
-        if (!cancelled && data?.user) dispatch(setAdmin(data.user));
+        // Refreshes isSuperAdmin/roleId/permissions on every navigation, so a
+        // permission change made by the Super Admin is reflected without
+        // requiring the sub-admin to log out and back in.
+        if (!cancelled && data?.admin) dispatch(setAdmin(data.admin));
       } catch (e) {
         if (e?.status === 401) dispatch(logout());
+      } finally {
+        if (!cancelled) setAuthReady(true);
       }
     })();
     return () => {
@@ -244,6 +262,19 @@ export function AdminLayout() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  useEffect(() => {
+    const onForbidden = (event) => {
+      Swal.fire({
+        icon: "warning",
+        title: "Access denied",
+        text: event.detail?.message || "You don't have permission to do that.",
+        confirmButtonColor: "#ea580c",
+      });
+    };
+    window.addEventListener("admin:forbidden", onForbidden);
+    return () => window.removeEventListener("admin:forbidden", onForbidden);
+  }, []);
+
   const closeSidebar = () => setSidebarOpen(false);
 
   const toggleSidebar = () => {
@@ -257,6 +288,10 @@ export function AdminLayout() {
 
   if (!adminToken) {
     return <Navigate to="/admin/login" replace />;
+  }
+
+  if (authReady && !pathAllowed) {
+    return <Navigate to={fallbackPath} replace />;
   }
 
   return (

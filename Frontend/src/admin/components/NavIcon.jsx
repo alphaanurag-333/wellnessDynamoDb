@@ -376,6 +376,12 @@ export function NavIcon({ name }) {
           <path d="M9 21V9" />
         </Icon>
       );
+    case "shield":
+      return (
+        <Icon>
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
+        </Icon>
+      );
     case "clipboard-list":
       return (
         <Icon>

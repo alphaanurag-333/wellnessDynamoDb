@@ -13,6 +13,7 @@ import {
 } from "../../api/adminHealthConcerns.js";
 import { logout } from "../../../store/authSlice.js";
 import { useDebouncedSearch } from "../../../hooks/useDebouncedSearch.js";
+import { useResourcePermissions } from "../../hooks/useHasPermission.js";
 import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { formatDate, LIST_LIMIT, LIST_SEARCH_MAX_LEN, truncate, DESCRIPTION_PREVIEW_LEN } from "./HealthConcernShared.js";
 
@@ -20,6 +21,7 @@ export function HealthConcernList() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const adminToken = useSelector((s) => s.auth.adminToken);
+  const { canEdit, canDelete } = useResourcePermissions("health-concerns");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [togglingId, setTogglingId] = useState("");
@@ -116,9 +118,11 @@ export function HealthConcernList() {
           title="Health concerns"
           subtitle={subtitle}
           actions={
+            canEdit ? (
             <button type="button" className="btn btn--primary" onClick={() => navigate("/admin/health-concerns/new")}>
               Add health concern
             </button>
+          ) : null
           }
         />
         <div className="admin-crud-filters">
@@ -180,7 +184,8 @@ export function HealthConcernList() {
                     <td className="data-table__muted">{formatDate(row.createdAt)}</td>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <button
+                        {canEdit ? (
+<button
                           type="button"
                           className={`settings-switch${row.status === "active" ? " settings-switch--on" : ""}`}
                           role="switch"
@@ -192,6 +197,7 @@ export function HealthConcernList() {
                         >
                           <span className="settings-switch__knob" aria-hidden />
                         </button>
+                        ) : null}
                         <AdminStatusBadge status={row.status} />
                       </div>
                     </td>
@@ -200,7 +206,8 @@ export function HealthConcernList() {
                         <Link to={`/admin/health-concerns/${row._id}`} className="icon-btn icon-btn--view" title="View">
                           <AiOutlineEye size={18} />
                         </Link>
-                        <button
+                        {canEdit ? (
+<button
                           type="button"
                           className="icon-btn icon-btn--edit"
                           title="Edit"
@@ -208,9 +215,12 @@ export function HealthConcernList() {
                         >
                           <MdEditSquare size={18} />
                         </button>
-                        <button type="button" className="icon-btn icon-btn--delete" title="Delete" onClick={() => onDelete(row)}>
+                        ) : null}
+                        {canDelete ? (
+<button type="button" className="icon-btn icon-btn--delete" title="Delete" onClick={() => onDelete(row)}>
                           <AiFillDelete size={18} />
                         </button>
+                        ) : null}
                       </div>
                     </td>
                   </tr>

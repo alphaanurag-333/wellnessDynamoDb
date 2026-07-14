@@ -1,8 +1,8 @@
 import axios from "axios";
 
-// const API_BASE = "http://localhost:5000";
+const API_BASE = "http://localhost:5000";
 // const API_BASE = "https://wellness.developmentalphawizz.com:5001";
-const API_BASE = "https://wellness-aws.developmentalphawizz.com:5001";
+// const API_BASE = "https://wellness-aws.developmentalphawizz.com:5001";
 const AUTH_STORAGE_KEY = "wellness_admin_auth";
 
 
@@ -98,6 +98,11 @@ api.interceptors.response.use(
       } catch {
         writeStoredAuth(null);
       }
+    }
+
+    if (status === 403 && typeof window !== "undefined") {
+      const message = error?.response?.data?.message || "You don't have permission to do that.";
+      window.dispatchEvent(new CustomEvent("admin:forbidden", { detail: { message, url: requestUrl } }));
     }
 
     return Promise.reject(error);

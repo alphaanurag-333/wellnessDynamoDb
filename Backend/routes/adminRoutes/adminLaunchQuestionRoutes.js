@@ -1,6 +1,7 @@
 const express = require("express");
 
 const { protectAdmin } = require("../../middleware/auth");
+const { authorize } = require("../../middleware/authorize");
 const {
   listLaunchQuestionsController,
   getLaunchQuestionByIdController,
@@ -11,10 +12,10 @@ const {
 
 const router = express.Router();
 
-router.get("/", protectAdmin, listLaunchQuestionsController);
-router.get("/:id", protectAdmin, getLaunchQuestionByIdController);
-router.post("/", protectAdmin, createLaunchQuestionController);
-router.patch("/:id", protectAdmin, updateLaunchQuestionController);
-router.delete("/:id", protectAdmin, deleteLaunchQuestionController);
+router.get("/", protectAdmin, authorize("launch-questions.view"), listLaunchQuestionsController);
+router.get("/:id", protectAdmin, authorize("launch-questions.view"), getLaunchQuestionByIdController);
+router.post("/", protectAdmin, authorize("launch-questions.edit"), createLaunchQuestionController);
+router.patch("/:id", protectAdmin, authorize("launch-questions.edit"), updateLaunchQuestionController);
+router.delete("/:id", protectAdmin, authorize("launch-questions.delete"), deleteLaunchQuestionController);
 
 module.exports = router;

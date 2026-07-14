@@ -14,22 +14,37 @@ const {
   updateAdmin,
   toPublicAdmin,
 } = require("../../models/adminModel");
+const { getRoleById } = require("../../models/roleModel");
+const { resolvePermissions } = require("../../utils/permissions");
 const config = require("../../config");
 const { assertPasswordPolicy } = require("../../utils/passwordPolicy");
 
 const S3_FOLDER = "admin";
 
-function sendAuthResponse(res, statusCode, admin) {
+async function resolveAdminAuthContext(admin) {
+  const isSuperAdmin = Boolean(admin.isSuperAdmin);
+  const role = !isSuperAdmin && admin.roleId ? await getRoleById(admin.roleId) : null;
+  const permissions = resolvePermissions(admin, role);
+  return { isSuperAdmin, roleId: admin.roleId || null, permissions };
+}
+
+async function sendAuthResponse(res, statusCode, admin) {
+  const { isSuperAdmin, roleId, permissions } = await resolveAdminAuthContext(admin);
+
   const { accessToken, refreshToken } = createTokenPair({
     sub: admin.id,
     role: "admin",
+    isSuperAdmin,
+    roleId,
+    permissions,
   });
+
   return res.status(statusCode).json({
     status: true,
     message: "Authentication successful",
     accessToken,
     refreshToken,
-    admin: toPublicAdmin(admin),
+    admin: { ...toPublicAdmin(admin), permissions },
   });
 }
 
@@ -95,10 +110,12 @@ exports.getAdminProfile = asyncHandler(async (req, res) => {
     throw new AppError("Admin not found", 404);
   }
 
+  const { permissions } = await resolveAdminAuthContext(admin);
+
   return res.status(200).json({
     status: true,
     message: "Admin profile fetched successfully",
-    admin: toPublicAdmin(admin),
+    admin: { ...toPublicAdmin(admin), permissions },
   });
 });
 
@@ -196,7 +213,8 @@ exports.refreshAdminToken = asyncHandler(async (req, res) => {
     throw new AppError("Admin not found", 404);
   }
 
-  const tokens = createTokenPair({ sub: admin.id, role: "admin" });
+  const { isSuperAdmin, roleId, permissions } = await resolveAdminAuthContext(admin);
+  const tokens = createTokenPair({ sub: admin.id, role: "admin", isSuperAdmin, roleId, permissions });
 
   return res.status(200).json({
     status: true,

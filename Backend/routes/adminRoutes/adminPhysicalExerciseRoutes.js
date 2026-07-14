@@ -1,6 +1,7 @@
 const express = require("express");
 
 const { protectAdmin } = require("../../middleware/auth");
+const { authorize } = require("../../middleware/authorize");
 const { optionalPhysicalExerciseFile } = require("../../middleware/authMultipart");
 const {
   listPhysicalExerciseController,
@@ -12,10 +13,27 @@ const {
 
 const router = express.Router();
 
-router.get("/", protectAdmin, listPhysicalExerciseController);
-router.get("/:id", protectAdmin, getPhysicalExerciseByIdController);
-router.post("/", protectAdmin, optionalPhysicalExerciseFile, createPhysicalExerciseController);
-router.patch("/:id", protectAdmin, optionalPhysicalExerciseFile, updatePhysicalExerciseController);
-router.delete("/:id", protectAdmin, deletePhysicalExerciseController);
+router.get("/", protectAdmin, authorize("physical-exercises.view"), listPhysicalExerciseController);
+router.get("/:id", protectAdmin, authorize("physical-exercises.view"), getPhysicalExerciseByIdController);
+router.post(
+  "/",
+  protectAdmin,
+  authorize("physical-exercises.edit"),
+  optionalPhysicalExerciseFile,
+  createPhysicalExerciseController
+);
+router.patch(
+  "/:id",
+  protectAdmin,
+  authorize("physical-exercises.edit"),
+  optionalPhysicalExerciseFile,
+  updatePhysicalExerciseController
+);
+router.delete(
+  "/:id",
+  protectAdmin,
+  authorize("physical-exercises.delete"),
+  deletePhysicalExerciseController
+);
 
 module.exports = router;

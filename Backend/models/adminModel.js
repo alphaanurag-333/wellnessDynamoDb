@@ -10,6 +10,12 @@ const { client, docClient } = require("../config/db");
 const { v4: uuidv4 } = require("uuid");
 const { toPublicProfile } = require("../utils/toPublicProfile");
 const { normalizeStoredMedia, resolvePublicUrl } = require("../utils/s3");
+const {
+  listByPartitionKey,
+  buildContainsFilter,
+  appendFilter,
+  sortByCreatedAtDesc,
+} = require("../utils/dynamoList");
 
 const TABLE = "Admin";
 
@@ -86,7 +92,16 @@ async function getAdminKeyById(id) {
   return buildAdminKey(item, sortKey);
 }
 
-async function createAdmin({ name, email, password, phone = null, profileImage = null, status = "active" }) {
+async function createAdmin({
+  name,
+  email,
+  password,
+  phone = null,
+  profileImage = null,
+  status = "active",
+  isSuperAdmin = false,
+  roleId = null,
+}) {
   const now = new Date().toISOString();
   const item = {
     id: uuidv4(),
@@ -98,9 +113,14 @@ async function createAdmin({ name, email, password, phone = null, profileImage =
     resetPasswordToken: null,
     resetPasswordExpire: null,
     status,
+    isSuperAdmin: Boolean(isSuperAdmin),
+    // Omit roleId for Super Admins — DynamoDB GSI keys cannot be null.
     createdAt: now,
     updatedAt: now,
   };
+  if (!item.isSuperAdmin && roleId) {
+    item.roleId = roleId;
+  }
 
   const { sortKey } = await getAdminTableKeyMeta();
   const condition = sortKey
@@ -147,6 +167,57 @@ async function getAdminByEmail(email) {
   return Items[0] || null;
 }
 
+async function listAdmins({ page = 1, limit = 20, status, search, includeSuperAdmins = true } = {}) {
+  const normalizedStatus = status ? String(status).toLowerCase().trim() : "";
+  const searchFilter = buildContainsFilter(["name", "email"], search);
+  const exprNames = { ...(searchFilter.exprNames || {}) };
+  const exprValues = { ...(searchFilter.exprValues || {}) };
+  let filterExpression = searchFilter.filterExpression;
+
+  // Exclude super admins in the query/filter path so pagination.total matches
+  // the returned rows (never filter after paginateDynamo has already counted them).
+  if (!includeSuperAdmins) {
+    exprNames["#isSuperAdmin"] = "isSuperAdmin";
+    exprValues[":isSuperAdminFalse"] = false;
+    filterExpression = appendFilter(filterExpression, "#isSuperAdmin = :isSuperAdminFalse");
+  }
+
+  const { items, pagination } = await listByPartitionKey({
+    tableName: TABLE,
+    indexName: "StatusCreatedAtIndex",
+    partitionKeyValue: normalizedStatus || undefined,
+    filterExpression,
+    exprNames,
+    exprValues,
+    search: searchFilter.search,
+    searchFields: searchFilter.searchFields,
+    scanIndexForward: false,
+    page,
+    limit,
+    maxLimit: 200,
+    sortFn: sortByCreatedAtDesc,
+  });
+
+  return {
+    admins: items.map((row) => toPublicAdmin(row)),
+    pagination,
+  };
+}
+
+async function countAdminsByRoleId(roleId) {
+  if (!roleId) return 0;
+  const { Count } = await docClient.send(
+    new QueryCommand({
+      TableName: TABLE,
+      IndexName: "RoleIdIndex",
+      KeyConditionExpression: "roleId = :roleId",
+      ExpressionAttributeValues: { ":roleId": roleId },
+      Select: "COUNT",
+    })
+  );
+  return Count ?? 0;
+}
+
 async function updateAdmin(id, updates) {
   if (!updates || typeof updates !== "object") {
     throw new Error("updates must be a non-null object");
@@ -160,8 +231,15 @@ async function updateAdmin(id, updates) {
   const exprNames = {};
   const exprValues = { ":updatedAt": new Date().toISOString() };
   let setExpr = "SET updatedAt = :updatedAt";
+  const removeAttrs = [];
 
   for (const [key, val] of allowedUpdates) {
+    // roleId is a GSI key — null/empty must REMOVE the attribute, never SET null.
+    if (key === "roleId" && (val === null || val === "")) {
+      exprNames["#roleId"] = "roleId";
+      removeAttrs.push("#roleId");
+      continue;
+    }
     const k = `#${key}`;
     const v = `:${key}`;
     exprNames[k] = key;
@@ -181,10 +259,15 @@ async function updateAdmin(id, updates) {
     ? "attribute_exists(id) AND attribute_exists(#sk)"
     : "attribute_exists(id)";
 
+  let updateExpression = setExpr;
+  if (removeAttrs.length > 0) {
+    updateExpression += ` REMOVE ${removeAttrs.join(", ")}`;
+  }
+
   const updateParams = {
     TableName: TABLE,
     Key: key,
-    UpdateExpression: setExpr,
+    UpdateExpression: updateExpression,
     ExpressionAttributeNames: exprNames,
     ExpressionAttributeValues: exprValues,
     ConditionExpression: condition,
@@ -251,4 +334,6 @@ module.exports = {
   deleteAdmin,
   toPublicAdmin,
   getAdminTableKeyMeta,
+  listAdmins,
+  countAdminsByRoleId,
 };

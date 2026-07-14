@@ -13,6 +13,7 @@ import {
 import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { useDebouncedSearch } from "../../../hooks/useDebouncedSearch.js";
+import { useResourcePermissions } from "../../hooks/useHasPermission.js";
 import { PRAKRUTI_TYPES, prakrutiTypeLabel } from "../../../components/prakrutiShared.js";
 import { formatDate, truncate, TITLE_PREVIEW_LEN, LIST_LIMIT, LIST_SEARCH_MAX_LEN } from "./PrakrutiRecommendationShared.js";
 
@@ -20,6 +21,7 @@ export function PrakrutiRecommendationList() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const adminToken = useSelector((s) => s.auth.adminToken);
+  const { canEdit, canDelete } = useResourcePermissions("prakruti-recommendations");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [togglingId, setTogglingId] = useState("");
@@ -115,9 +117,11 @@ export function PrakrutiRecommendationList() {
           title="Prakruti Recommendations"
           subtitle={subtitle}
           actions={
+            canEdit ? (
             <button type="button" className="btn btn--primary" onClick={() => navigate("/admin/prakruti-recommendations/new")}>
               Add item
             </button>
+          ) : null
           }
         />
         <div className="admin-crud-filters">
@@ -183,7 +187,8 @@ export function PrakrutiRecommendationList() {
                     <td><TableCellText value={row.title} max={TITLE_PREVIEW_LEN} /></td>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <button
+                        {canEdit ? (
+<button
                           type="button"
                           className={`settings-switch${row.status === "active" ? " settings-switch--on" : ""}`}
                           role="switch"
@@ -193,6 +198,7 @@ export function PrakrutiRecommendationList() {
                         >
                           <span className="settings-switch__knob" aria-hidden />
                         </button>
+                        ) : null}
                         <AdminStatusBadge status={row.status} />
                       </div>
                     </td>
@@ -202,7 +208,8 @@ export function PrakrutiRecommendationList() {
                         <Link to={`/admin/prakruti-recommendations/${row._id}`} className="icon-btn icon-btn--view" title="View">
                           <AiOutlineEye size={18} />
                         </Link>
-                        <button
+                        {canEdit ? (
+<button
                           type="button"
                           className="icon-btn icon-btn--edit"
                           title="Edit"
@@ -210,9 +217,12 @@ export function PrakrutiRecommendationList() {
                         >
                           <MdEditSquare size={18} />
                         </button>
-                        <button type="button" className="icon-btn icon-btn--delete" title="Delete" onClick={() => onDelete(row)}>
+                        ) : null}
+                        {canDelete ? (
+<button type="button" className="icon-btn icon-btn--delete" title="Delete" onClick={() => onDelete(row)}>
                           <AiFillDelete size={18} />
                         </button>
+                        ) : null}
                       </div>
                     </td>
                   </tr>

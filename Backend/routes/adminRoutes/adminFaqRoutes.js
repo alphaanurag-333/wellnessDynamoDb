@@ -1,6 +1,7 @@
 const express = require("express");
 
 const { protectAdmin } = require("../../middleware/auth");
+const { authorize } = require("../../middleware/authorize");
 const {
   listFaqsController,
   getFaqByIdController,
@@ -11,10 +12,10 @@ const {
 
 const router = express.Router();
 
-router.get("/", protectAdmin, listFaqsController);
-router.get("/:id", protectAdmin, getFaqByIdController);
-router.post("/", protectAdmin, createFaqController);
-router.patch("/:id", protectAdmin, updateFaqController);
-router.delete("/:id", protectAdmin, deleteFaqController);
+router.get("/", protectAdmin, authorize("faq.view"), listFaqsController);
+router.get("/:id", protectAdmin, authorize("faq.view"), getFaqByIdController);
+router.post("/", protectAdmin, authorize("faq.edit"), createFaqController);
+router.patch("/:id", protectAdmin, authorize("faq.edit"), updateFaqController);
+router.delete("/:id", protectAdmin, authorize("faq.delete"), deleteFaqController);
 
 module.exports = router;

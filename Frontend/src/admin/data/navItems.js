@@ -1,7 +1,7 @@
 /**
  * Central navigation config: path segments under /admin/*
  * Items with `children` render as collapsible groups; leaf entries use `to` relative to /admin.
- * Order mirrors adminRoutes.jsx: core → users → program → wellness → health → LAUNCH → catalogs → content → settings.
+ * Order: core → users → payments → programs/team → health → assessments → catalogs → content → settings.
  */
 export const navItems = [
   { to: "dashboard", label: "Dashboard", icon: "grid" },
@@ -31,18 +31,31 @@ export const navItems = [
       { to: "programs/transactions", label: "Transactions", icon: "receipt" },
     ],
   },
-  { to: "coaches", label: "Wellness Coaches", icon: "user" },
-  { to: "awcs", label: "Assistant Coaches", icon: "user-plus" },
-  { to: "specializations", label: "Specializations", icon: "award" },
-
-  { to: "health-concerns", label: "Health Concerns", icon: "heart" },
-  // { to: "health-tools", label: "Health Tools", icon: "stethoscope" },
-  { to: "health-recipes", label: "Health Recipes", icon: "utensils" },
-  { to: "health-disorders", label: "Health Disorders", icon: "activity" },
-  { to: "yoga", label: "Yoga", icon: "yoga" },
-  { to: "physical-exercises", label: "Physical Exercise", icon: "activity" },
-  { to: "supplements", label: "Supplements", icon: "box" },
-  { to: "medical-condition-questions", label: "Medical Conditions", icon: "clipboard-list" },
+  {
+    id: "team",
+    label: "Team & Coaches",
+    icon: "users",
+    children: [
+      { to: "coaches", label: "Wellness Coaches", icon: "user" },
+      { to: "awcs", label: "Assistant Coaches", icon: "user-plus" },
+      { to: "specializations", label: "Specializations", icon: "award" },
+    ],
+  },
+  {
+    id: "health",
+    label: "Health Library",
+    icon: "heart",
+    children: [
+      { to: "health-concerns", label: "Health Concerns", icon: "heart" },
+      // { to: "health-tools", label: "Health Tools", icon: "stethoscope" },
+      { to: "health-recipes", label: "Health Recipes", icon: "utensils" },
+      { to: "health-disorders", label: "Health Disorders", icon: "activity" },
+      { to: "yoga", label: "Yoga", icon: "yoga" },
+      { to: "physical-exercises", label: "Physical Exercise", icon: "activity" },
+      { to: "supplements", label: "Supplements", icon: "box" },
+      { to: "medical-condition-questions", label: "Medical Conditions", icon: "clipboard-list" },
+    ],
+  },
   {
     id: "launchAssessment",
     label: "LAUNCH Assessment",
@@ -62,10 +75,17 @@ export const navItems = [
       { to: "prakruti-recommendations", label: "Recommendations", icon: "sparkles" },
     ],
   },
-  { to: "test-catalog", label: "Test Catalog", icon: "activity" },
-  { to: "diet-plan-catalog", label: "Diet Plan Catalog", icon: "utensils" },
-  { to: "wellness-prescriptions", label: "Wellness Prescriptions", icon: "clipboard-list" },
-  { to: "mental-wellbeing", label: "Mental Wellbeing", icon: "sparkles" },
+  {
+    id: "catalogs",
+    label: "Catalogs",
+    icon: "list",
+    children: [
+      { to: "test-catalog", label: "Test Catalog", icon: "activity" },
+      { to: "diet-plan-catalog", label: "Diet Plan Catalog", icon: "utensils" },
+      { to: "wellness-prescriptions", label: "Wellness Prescriptions", icon: "clipboard-list" },
+      { to: "mental-wellbeing", label: "Mental Wellbeing", icon: "sparkles" },
+    ],
+  },
   {
     id: "testimonials",
     label: "Testimonials & Media",
@@ -74,25 +94,65 @@ export const navItems = [
       { to: "client-testimonials", label: "Client Testimonials", icon: "quote" },
       { to: "program-testimonials", label: "Program Testimonials", icon: "quote" },
       { to: "real-people-testimonials", label: "Real People Testimonials", icon: "quote" },
-      { to: "commitment-letters", label: "Commitment Letters", icon: "file" },
       { to: "video-testimonials", label: "Video Testimonials", icon: "video" },
+      { to: "transformations", label: "Transformations", icon: "trending-up" },
+      { to: "commitment-letters", label: "Commitment Letters", icon: "file" },
     ],
   },
-  
-  { to: "transformations", label: "Transformations", icon: "trending-up" },
-  { to: "leadership-notes", label: "Leadership Notes", icon: "message-circle" },
-  { to: "cofounder-message", label: "Cofounder Message", icon: "quote" },
-  { to: "banners", label: "Banner Management", icon: "layout" },
-  { to: "birthday-posts", label: "Birthday Posts", icon: "cake" },
-  { to: "birthday-notifications", label: "Birthday Notifications", icon: "bell" },
-  { to: "monthly-champions", label: "Monthly Champions", icon: "award" },
-  { to: "notifications", label: "Notifications", icon: "bell" },
-  // { to: "coupons", label: "Coupons", icon: "percent" },
-  { to: "faq", label: "FAQ", icon: "help" },
-  { to: "contact-inquiries", label: "Contact Inquiries", icon: "mail" },
-  { to: "static-pages", label: "Static Pages", icon: "file" },
-  { to: "settings", label: "App Settings", icon: "gear" },
-  { to: "profile", label: "Admin Profile", icon: "profile" },
+  {
+    id: "leadership",
+    label: "Leadership Messages",
+    icon: "quote",
+    children: [
+      { to: "leadership-notes", label: "Leadership Notes", icon: "message-circle" },
+      { to: "cofounder-message", label: "Cofounder Message", icon: "quote" },
+    ],
+  },
+  {
+    id: "engagement",
+    label: "Engagement",
+    icon: "award",
+    children: [
+      { to: "banners", label: "Banner Management", icon: "layout" },
+      { to: "birthday-posts", label: "Birthday Posts", icon: "cake" },
+      { to: "birthday-notifications", label: "Birthday Notifications", icon: "bell" },
+      { to: "monthly-champions", label: "Monthly Champions", icon: "award" },
+      { to: "notifications", label: "Notifications", icon: "bell" },
+    ],
+  },
+  {
+    id: "content",
+    label: "Site Content",
+    icon: "file",
+    children: [
+      { to: "faq", label: "FAQ", icon: "help" },
+      { to: "contact-inquiries", label: "Contact Inquiries", icon: "mail" },
+      { to: "static-pages", label: "Static Pages", icon: "file" },
+      // { to: "coupons", label: "Coupons", icon: "percent" },
+    ],
+  },
+  {
+    id: "settings",
+    label: "Settings",
+    icon: "gear",
+    children: [
+      { to: "settings", label: "App Settings", icon: "gear" },
+      { to: "profile", label: "Admin Profile", icon: "profile" },
+    ],
+  },
+  {
+    id: "administration",
+    label: "Administration",
+    icon: "shield",
+    // Super Admin only — not permission-gated like every other group above,
+    // since sub-admin/role management is meta-admin functionality that must
+    // never be delegable via a role's permissions.
+    superAdminOnly: true,
+    children: [
+      { to: "sub-admins", label: "Sub-Admins", icon: "users" },
+      { to: "roles", label: "Roles & Permissions", icon: "clipboard-list" },
+    ],
+  },
 ];
 
 export function flattenNavLinks(items) {

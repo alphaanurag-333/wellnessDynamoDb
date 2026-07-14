@@ -34,30 +34,33 @@ export function emptyForm() {
     description: "",
     price: "",
     currency: "INR",
-    isActive: true,
+    status: "active",
   };
 }
 
 export function formFromProgram(program) {
   if (!program) return emptyForm();
+  const isActive = program.isActive !== false && program.status !== "inactive";
   return {
     title: program.title || "",
     programType: program.programType || "goal_based",
     description: program.description || "",
     price: String(program.price ?? ""),
     currency: program.currency || "INR",
-    isActive: program.isActive !== false && program.status !== "inactive",
+    status: isActive ? "active" : "inactive",
   };
 }
 
 export function toPayload(form) {
+  const status = form.status === "inactive" ? "inactive" : "active";
   return {
     title: String(form.title || "").trim(),
     programType: form.programType,
     description: String(form.description || "").trim(),
     price: Number(form.price),
     currency: form.currency || "INR",
-    isActive: Boolean(form.isActive),
+    status,
+    isActive: status === "active",
   };
 }
 

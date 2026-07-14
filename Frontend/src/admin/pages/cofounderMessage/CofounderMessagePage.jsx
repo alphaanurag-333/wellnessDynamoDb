@@ -10,6 +10,7 @@ import {
 } from "../../api/cofounderMessageController.js";
 import { AdminListHeader } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
+import { useHasPermission } from "../../hooks/useHasPermission.js";
 import { mediaUrl } from "../../../media.js";
 import {
   IMAGE_MAX_SIZE_BYTES,
@@ -22,6 +23,7 @@ import {
 export function CofounderMessagePage() {
   const dispatch = useDispatch();
   const adminToken = useSelector((s) => s.auth.adminToken);
+  const canEdit = useHasPermission("cofounder-message.edit");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -83,7 +85,7 @@ export function CofounderMessagePage() {
 
   const onSubmit = async (e) => {
     e.preventDefault();
-    if (!adminToken) return;
+    if (!adminToken || !canEdit) return;
 
     const payload = {
       name: String(form.name || "").replace(/\s+/g, " ").slice(0, NAME_MAX_LEN).trim(),
@@ -144,6 +146,8 @@ export function CofounderMessagePage() {
                 value={form.name}
                 onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
                 required
+                disabled={!canEdit}
+                readOnly={!canEdit}
               />
             </label>
             <label className="user-field col-12 col-md-6">
@@ -152,6 +156,7 @@ export function CofounderMessagePage() {
                 className="user-field__input"
                 value={form.status}
                 onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
+                disabled={!canEdit}
               >
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
@@ -173,8 +178,11 @@ export function CofounderMessagePage() {
                 value={form.message}
                 onChange={(e) => setForm((p) => ({ ...p, message: e.target.value }))}
                 required
+                disabled={!canEdit}
+                readOnly={!canEdit}
               />
             </label>
+            {canEdit ? (
             <label className="user-field col-12 col-md-6">
               <span className="user-field__label">
                 Profile image (up to 25 MB){" "}
@@ -220,12 +228,26 @@ export function CofounderMessagePage() {
                 </div>
               ) : null}
             </label>
+            ) : profilePreview ? (
+              <div className="col-12">
+                <AdminMediaImage
+                  path={baselineProfileImage}
+                  src={profilePreview}
+                  round
+                  width={96}
+                  height={96}
+                  alt="Profile preview"
+                />
+              </div>
+            ) : null}
           </div>
-          <div className="user-form__actions">
-            <button type="submit" className="btn btn--primary" disabled={saving}>
-              {saving ? "Saving…" : exists ? "Update message" : "Create message"}
-            </button>
-          </div>
+          {canEdit ? (
+            <div className="user-form__actions">
+              <button type="submit" className="btn btn--primary" disabled={saving}>
+                {saving ? "Saving…" : exists ? "Update message" : "Create message"}
+              </button>
+            </div>
+          ) : null}
         </form>
       </div>
     </div>

@@ -11,6 +11,7 @@ import { logout } from "../../../store/authSlice.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
 import { UserTierBadge } from "../../../components/ReferralAssignmentShared.jsx";
+import { useResourcePermissions } from "../../hooks/useHasPermission.js";
 
 function formatJoined(iso) {
   if (!iso) return "—";
@@ -26,6 +27,7 @@ function csvEscape(value) {
 export function UserList() {
   const dispatch = useDispatch();
   const adminToken = useSelector((s) => s.auth.adminToken);
+  const { canEdit, canDelete } = useResourcePermissions("users");
   const [users, setUsers] = useState([]);
   const [page, setPage] = useState(1);
   const limit = 10;
@@ -227,9 +229,11 @@ export function UserList() {
           <button type="button" className="btn btn--ghost" onClick={handleExportCsv}>
             Export CSV
           </button>
-          <Link to="new" className="btn btn--accent">
-            + Add user
-          </Link>
+          {canEdit ? (
+            <Link to="new" className="btn btn--accent">
+              + Add user
+            </Link>
+          ) : null}
           </>
         }
       />
@@ -298,18 +302,20 @@ export function UserList() {
                     <td className="data-table__muted">{formatJoined(u.createdAt)}</td>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <button
-                          type="button"
-                          className={`settings-switch${u.status === "active" ? " settings-switch--on" : ""}`}
-                          role="switch"
-                          aria-checked={u.status === "active"}
-                          aria-label={`Toggle status for ${u.name || u.email}`}
-                          onClick={() => handleToggleStatus(u)}
-                          disabled={togglingUserId === uid}
-                          title={u.status === "active" ? "Deactivate user" : "Activate user"}
-                        >
-                          <span className="settings-switch__knob" aria-hidden />
-                        </button>
+                        {canEdit ? (
+                          <button
+                            type="button"
+                            className={`settings-switch${u.status === "active" ? " settings-switch--on" : ""}`}
+                            role="switch"
+                            aria-checked={u.status === "active"}
+                            aria-label={`Toggle status for ${u.name || u.email}`}
+                            onClick={() => handleToggleStatus(u)}
+                            disabled={togglingUserId === uid}
+                            title={u.status === "active" ? "Deactivate user" : "Activate user"}
+                          >
+                            <span className="settings-switch__knob" aria-hidden />
+                          </button>
+                        ) : null}
                         <AdminStatusBadge status={u.status} />
                       </div>
                     </td>
@@ -318,18 +324,16 @@ export function UserList() {
                         <Link to={uid} className="icon-btn icon-btn--view" title="View">
                           <IoEyeSharp size={18} />
                         </Link>
-                        <Link to={`${uid}/edit`} className="icon-btn icon-btn--edit" title="Edit">
-                          <MdEditSquare size={18} />
-                        </Link>
-                        {/* <button type="button" className="icon-btn icon-btn--block" title="Block" onClick={() => handleBlock(u)}>
-                          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
-                            <circle cx="12" cy="12" r="10" />
-                            <path d="m4.9 4.9 14.2 14.2" />
-                          </svg>
-                        </button> */}
-                        <button type="button" className="icon-btn icon-btn--delete" title="Delete" onClick={() => handleDelete(u)}>
-                          <AiFillDelete size={18} />
-                        </button>
+                        {canEdit ? (
+                          <Link to={`${uid}/edit`} className="icon-btn icon-btn--edit" title="Edit">
+                            <MdEditSquare size={18} />
+                          </Link>
+                        ) : null}
+                        {canDelete ? (
+                          <button type="button" className="icon-btn icon-btn--delete" title="Delete" onClick={() => handleDelete(u)}>
+                            <AiFillDelete size={18} />
+                          </button>
+                        ) : null}
                       </div>
                     </td>
                   </tr>

@@ -1,6 +1,7 @@
 const express = require("express");
 
 const { protectAdmin } = require("../../middleware/auth");
+const { authorize } = require("../../middleware/authorize");
 const { optionalProgramTestimonialFile } = require("../../middleware/authMultipart");
 const {
   listProgramTestimonialsController,
@@ -12,10 +13,32 @@ const {
 
 const router = express.Router();
 
-router.get("/", protectAdmin, listProgramTestimonialsController);
-router.get("/:id", protectAdmin, getProgramTestimonialByIdController);
-router.post("/", protectAdmin, optionalProgramTestimonialFile, createProgramTestimonialController);
-router.patch("/:id", protectAdmin, optionalProgramTestimonialFile, updateProgramTestimonialController);
-router.delete("/:id", protectAdmin, deleteProgramTestimonialController);
+router.get("/", protectAdmin, authorize("program-testimonials.view"), listProgramTestimonialsController);
+router.get(
+  "/:id",
+  protectAdmin,
+  authorize("program-testimonials.view"),
+  getProgramTestimonialByIdController
+);
+router.post(
+  "/",
+  protectAdmin,
+  authorize("program-testimonials.edit"),
+  optionalProgramTestimonialFile,
+  createProgramTestimonialController
+);
+router.patch(
+  "/:id",
+  protectAdmin,
+  authorize("program-testimonials.edit"),
+  optionalProgramTestimonialFile,
+  updateProgramTestimonialController
+);
+router.delete(
+  "/:id",
+  protectAdmin,
+  authorize("program-testimonials.delete"),
+  deleteProgramTestimonialController
+);
 
 module.exports = router;

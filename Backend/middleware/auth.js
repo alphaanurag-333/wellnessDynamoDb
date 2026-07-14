@@ -2,6 +2,8 @@ const AppError = require("../utils/AppError");
 const { asyncHandler } = require("../utils/asyncHandler");
 const { verifyAccessToken } = require("../utils/jwt");
 const { getAdminById } = require("../models/adminModel");
+const { getRoleById } = require("../models/roleModel");
+const { resolvePermissions } = require("../utils/permissions");
 const { getUserById } = require("../models/userModel");
 const { getWellnessCoachRecordById } = require("../models/wellnessCoachModel");
 const { getAssistantWellnessCoachRecordById } = require("../models/assistantWellnessCoachModel");
@@ -58,8 +60,21 @@ const protectAdmin = asyncHandler(async (req, res, next) => {
 
   assertActiveAccount(account);
 
+  // Resolved live (not just from the JWT) so permission edits by the Super
+  // Admin take effect on the sub-admin's very next request, not just after
+  // their token is refreshed/they log in again.
+  const isSuperAdmin = Boolean(account.isSuperAdmin);
+  const role = !isSuperAdmin && account.roleId ? await getRoleById(account.roleId) : null;
+  const permissions = resolvePermissions(account, role);
+
   req.user = account;
-  req.auth = { role: "admin", sub: subject };
+  req.auth = {
+    role: "admin",
+    sub: subject,
+    isSuperAdmin,
+    roleId: account.roleId || null,
+    permissions,
+  };
   next();
 });
 

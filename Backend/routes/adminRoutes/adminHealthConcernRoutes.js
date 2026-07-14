@@ -1,6 +1,7 @@
 const express = require("express");
 
 const { protectAdmin } = require("../../middleware/auth");
+const { authorize } = require("../../middleware/authorize");
 const { optionalHealthConcernFile } = require("../../middleware/authMultipart");
 const {
   listHealthConcernsController,
@@ -12,10 +13,22 @@ const {
 
 const router = express.Router();
 
-router.get("/", protectAdmin, listHealthConcernsController);
-router.get("/:id", protectAdmin, getHealthConcernByIdController);
-router.post("/", protectAdmin, optionalHealthConcernFile, createHealthConcernController);
-router.patch("/:id", protectAdmin, optionalHealthConcernFile, updateHealthConcernController);
-router.delete("/:id", protectAdmin, deleteHealthConcernController);
+router.get("/", protectAdmin, authorize("health-concerns.view"), listHealthConcernsController);
+router.get("/:id", protectAdmin, authorize("health-concerns.view"), getHealthConcernByIdController);
+router.post(
+  "/",
+  protectAdmin,
+  authorize("health-concerns.edit"),
+  optionalHealthConcernFile,
+  createHealthConcernController
+);
+router.patch(
+  "/:id",
+  protectAdmin,
+  authorize("health-concerns.edit"),
+  optionalHealthConcernFile,
+  updateHealthConcernController
+);
+router.delete("/:id", protectAdmin, authorize("health-concerns.delete"), deleteHealthConcernController);
 
 module.exports = router;

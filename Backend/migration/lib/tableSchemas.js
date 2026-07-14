@@ -23,6 +23,9 @@ const TABLE_DEFINITIONS = [
     AttributeDefinitions: [
       { AttributeName: "id", AttributeType: "S" },
       { AttributeName: "email", AttributeType: "S" },
+      { AttributeName: "status", AttributeType: "S" },
+      { AttributeName: "createdAt", AttributeType: "S" },
+      { AttributeName: "roleId", AttributeType: "S" },
     ],
     GlobalSecondaryIndexes: [
       {
@@ -30,6 +33,34 @@ const TABLE_DEFINITIONS = [
         KeySchema: [{ AttributeName: "email", KeyType: "HASH" }],
         Projection: { ProjectionType: "ALL" },
       },
+      statusCreatedAtIndex(),
+      {
+        IndexName: "RoleIdIndex",
+        KeySchema: [
+          { AttributeName: "roleId", KeyType: "HASH" },
+          { AttributeName: "createdAt", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+    ],
+    ...PAY_PER_REQUEST,
+  },
+  {
+    TableName: "Role",
+    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
+    AttributeDefinitions: [
+      { AttributeName: "id", AttributeType: "S" },
+      { AttributeName: "slug", AttributeType: "S" },
+      { AttributeName: "status", AttributeType: "S" },
+      { AttributeName: "createdAt", AttributeType: "S" },
+    ],
+    GlobalSecondaryIndexes: [
+      {
+        IndexName: "SlugIndex",
+        KeySchema: [{ AttributeName: "slug", KeyType: "HASH" }],
+        Projection: { ProjectionType: "ALL" },
+      },
+      statusCreatedAtIndex(),
     ],
     ...PAY_PER_REQUEST,
   },

@@ -154,6 +154,12 @@ import { SpecializationList } from "../pages/specialization/SpecializationList.j
 import { SpecializationAdd } from "../pages/specialization/SpecializationAdd.jsx";
 import { SpecializationEdit } from "../pages/specialization/SpecializationEdit.jsx";
 import { SpecializationView } from "../pages/specialization/SpecializationView.jsx";
+import { SubAdminList } from "../pages/subAdmin/SubAdminList.jsx";
+import { SubAdminAdd } from "../pages/subAdmin/SubAdminAdd.jsx";
+import { SubAdminEdit } from "../pages/subAdmin/SubAdminEdit.jsx";
+import { RoleList } from "../pages/role/RoleList.jsx";
+import { RoleAdd } from "../pages/role/RoleAdd.jsx";
+import { RoleEdit } from "../pages/role/RoleEdit.jsx";
 
 export const adminRouteTree = (
   <Route path="/admin" element={<AdminLayout />}>
@@ -392,6 +398,17 @@ export const adminRouteTree = (
     </Route>
 
     <Route path="cofounder-message" element={<CofounderMessagePage />} />
+
+    <Route path="sub-admins" element={<Outlet />}>
+      <Route index element={<SubAdminList />} />
+      <Route path="new" element={<SubAdminAdd />} />
+      <Route path=":subAdminId/edit" element={<SubAdminEdit />} />
+    </Route>
+    <Route path="roles" element={<Outlet />}>
+      <Route index element={<RoleList />} />
+      <Route path="new" element={<RoleAdd />} />
+      <Route path=":roleId/edit" element={<RoleEdit />} />
+    </Route>
 
     <Route path="*" element={<NotFoundPage />} />
   </Route>

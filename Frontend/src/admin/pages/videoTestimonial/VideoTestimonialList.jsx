@@ -14,6 +14,7 @@ import {
 import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { useDebouncedSearch } from "../../../hooks/useDebouncedSearch.js";
+import { useResourcePermissions } from "../../hooks/useHasPermission.js";
 import { mediaUrl } from "../../../media.js";
 import { LIST_LIMIT, SEARCH_MAX_LEN } from "./VideoTestimonialShared.js";
 
@@ -21,6 +22,7 @@ export function VideoTestimonialList() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const adminToken = useSelector((s) => s.auth.adminToken);
+  const { canEdit, canDelete } = useResourcePermissions("video-testimonials");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [togglingId, setTogglingId] = useState("");
@@ -116,9 +118,11 @@ export function VideoTestimonialList() {
           title="Video testimonials"
           subtitle={subtitle}
           actions={
+            canEdit ? (
             <button type="button" className="btn btn--primary" onClick={() => navigate("/admin/video-testimonials/new")}>
               Add video testimonial
             </button>
+          ) : null
           }
         />
         <div className="admin-crud-filters">
@@ -196,7 +200,8 @@ export function VideoTestimonialList() {
                     </td>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <button
+                        {canEdit ? (
+<button
                           type="button"
                           className={`settings-switch${row.status === "active" ? " settings-switch--on" : ""}`}
                           role="switch"
@@ -207,6 +212,7 @@ export function VideoTestimonialList() {
                         >
                           <span className="settings-switch__knob" aria-hidden />
                         </button>
+                        ) : null}
                         <AdminStatusBadge status={row.status} />
                       </div>
                     </td>
@@ -215,7 +221,8 @@ export function VideoTestimonialList() {
                         <Link to={`/admin/video-testimonials/${row._id}`} className="icon-btn icon-btn--view" title="View">
                           <AiOutlineEye size={18} />
                         </Link>
-                        <button
+                        {canEdit ? (
+<button
                           type="button"
                           className="icon-btn icon-btn--edit"
                           title="Edit"
@@ -223,9 +230,12 @@ export function VideoTestimonialList() {
                         >
                           <MdEditSquare size={18} />
                         </button>
-                        <button type="button" className="icon-btn icon-btn--delete" title="Delete" onClick={() => onDelete(row)}>
+                        ) : null}
+                        {canDelete ? (
+<button type="button" className="icon-btn icon-btn--delete" title="Delete" onClick={() => onDelete(row)}>
                           <AiFillDelete size={18} />
                         </button>
+                        ) : null}
                       </div>
                     </td>
                   </tr>

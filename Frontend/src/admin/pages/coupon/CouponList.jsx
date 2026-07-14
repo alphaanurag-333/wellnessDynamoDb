@@ -9,6 +9,7 @@ import { adminDeleteCoupon, adminListCoupons, adminUpdateCoupon } from "../../ap
 import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { useDebouncedSearch } from "../../../hooks/useDebouncedSearch.js";
+import { useResourcePermissions } from "../../hooks/useHasPermission.js";
 import {
   LIST_LIMIT,
   LIST_SEARCH_MAX_LEN,
@@ -24,6 +25,7 @@ export function CouponList() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const adminToken = useSelector((s) => s.auth.adminToken);
+  const { canEdit, canDelete } = useResourcePermissions("coupons");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [togglingId, setTogglingId] = useState("");
@@ -122,9 +124,11 @@ export function CouponList() {
           title="Coupons"
           subtitle={subtitle}
           actions={
+            canEdit ? (
             <button type="button" className="btn btn--primary" onClick={() => navigate("/admin/coupons/new")}>
               Add coupon
             </button>
+          ) : null
           }
         />
         <div className="admin-crud-filters">
@@ -182,7 +186,8 @@ export function CouponList() {
                     <td>{formatDiscountValue(row)}</td>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <button
+                        {canEdit ? (
+<button
                           type="button"
                           className={`settings-switch${row.status === "active" ? " settings-switch--on" : ""}`}
                           role="switch"
@@ -194,6 +199,7 @@ export function CouponList() {
                         >
                           <span className="settings-switch__knob" aria-hidden />
                         </button>
+                        ) : null}
                         <AdminStatusBadge status={row.status} />
                       </div>
                     </td>
@@ -202,7 +208,8 @@ export function CouponList() {
                         <Link to={`/admin/coupons/${getCouponId(row)}`} className="icon-btn icon-btn--view" title="View">
                           <AiOutlineEye size={18} />
                         </Link>
-                        <button
+                        {canEdit ? (
+<button
                           type="button"
                           className="icon-btn icon-btn--edit"
                           title="Edit"
@@ -210,9 +217,12 @@ export function CouponList() {
                         >
                           <MdEditSquare size={18} />
                         </button>
-                        <button type="button" className="icon-btn icon-btn--delete" title="Delete" onClick={() => onDelete(row)}>
+                        ) : null}
+                        {canDelete ? (
+<button type="button" className="icon-btn icon-btn--delete" title="Delete" onClick={() => onDelete(row)}>
                           <AiFillDelete size={18} />
                         </button>
+                        ) : null}
                       </div>
                     </td>
                   </tr>

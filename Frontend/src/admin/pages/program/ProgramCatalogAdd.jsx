@@ -91,13 +91,16 @@ export function ProgramCatalogAdd() {
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
             />
           </label>
-          <label className="user-field col-12 col-md-4" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <input
-              type="checkbox"
-              checked={form.isActive}
-              onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))}
-            />
-            <span className="user-field__label" style={{ margin: 0 }}>Active (visible to coaches)</span>
+          <label className="user-field col-12 col-md-4">
+            <span className="user-field__label">Status</span>
+            <select
+              className="user-field__input"
+              value={form.status}
+              onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
+            >
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
           </label>
         </div>
         <div className="form-actions">

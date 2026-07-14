@@ -13,12 +13,14 @@ import {
 import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { useDebouncedSearch } from "../../../hooks/useDebouncedSearch.js";
+import { useResourcePermissions } from "../../hooks/useHasPermission.js";
 import { answerTypeLabel, formatDate, truncate, QUESTION_PREVIEW_LEN, LIST_LIMIT, LIST_SEARCH_MAX_LEN } from "./MedicalConditionQuestionShared.js";
 
 export function MedicalConditionQuestionList() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const adminToken = useSelector((s) => s.auth.adminToken);
+  const { canEdit, canDelete } = useResourcePermissions("medical-condition-questions");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [togglingId, setTogglingId] = useState("");
@@ -111,9 +113,11 @@ export function MedicalConditionQuestionList() {
           title="Medical Conditions"
           subtitle={subtitle}
           actions={
+            canEdit ? (
             <button type="button" className="btn btn--primary" onClick={() => navigate("/admin/medical-condition-questions/new")}>
               Add question
             </button>
+          ) : null
           }
         />
         <div className="admin-crud-filters">
@@ -169,7 +173,8 @@ export function MedicalConditionQuestionList() {
                     <td className="data-table__muted">{formatDate(row.createdAt)}</td>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <button
+                        {canEdit ? (
+<button
                           type="button"
                           className={`settings-switch${row.status === "active" ? " settings-switch--on" : ""}`}
                           role="switch"
@@ -181,6 +186,7 @@ export function MedicalConditionQuestionList() {
                         >
                           <span className="settings-switch__knob" aria-hidden />
                         </button>
+                        ) : null}
                         <AdminStatusBadge status={row.status} />
                       </div>
                     </td>
@@ -189,7 +195,8 @@ export function MedicalConditionQuestionList() {
                         <Link to={`/admin/medical-condition-questions/${row._id}`} className="icon-btn icon-btn--view" title="View">
                           <AiOutlineEye size={18} />
                         </Link>
-                        <button
+                        {canEdit ? (
+<button
                           type="button"
                           className="icon-btn icon-btn--edit"
                           title="Edit"
@@ -197,9 +204,12 @@ export function MedicalConditionQuestionList() {
                         >
                           <MdEditSquare size={18} />
                         </button>
-                        <button type="button" className="icon-btn icon-btn--delete" title="Delete" onClick={() => onDelete(row)}>
+                        ) : null}
+                        {canDelete ? (
+<button type="button" className="icon-btn icon-btn--delete" title="Delete" onClick={() => onDelete(row)}>
                           <AiFillDelete size={18} />
                         </button>
+                        ) : null}
                       </div>
                     </td>
                   </tr>
