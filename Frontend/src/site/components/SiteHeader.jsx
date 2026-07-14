@@ -32,7 +32,17 @@ export function SiteHeader() {
   useEffect(() => {
     setMobileOpen(false);
     setLoginOpen(false);
+    setMobileMenuOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [mobileMenuOpen]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -217,7 +227,10 @@ export function SiteHeader() {
 
             {/* Mobile Button */}
             <button
+              type="button"
               className="mobile-menu-btn"
+              aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={mobileMenuOpen}
               onClick={() => setMobileMenuOpen(true)}
             >
               <span></span>
@@ -233,14 +246,7 @@ export function SiteHeader() {
           mobileMenuOpen ? "mobile-overlay--show" : ""
         }`}
         onClick={() => setMobileMenuOpen(false)}
-      ></div>
-
-      <div
-        className={`mobile-overlay ${
-          mobileMenuOpen ? "mobile-overlay--show" : ""
-        }`}
-        onClick={() => setMobileMenuOpen(false)}
-      ></div>
+      />
 
       <div
         className={`mobile-sidebar ${

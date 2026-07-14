@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Navigation, Pagination } from "swiper/modules";
 import { ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
@@ -23,6 +23,7 @@ function LeadershipNoteCard({
   designation,
   message,
   profileImage = "",
+  onExpandChange,
 }) {
   const [expanded, setExpanded] = useState(false);
   const [imageError, setImageError] = useState(false);
@@ -39,6 +40,14 @@ function LeadershipNoteCard({
   if (!name || paragraphs.length === 0) {
     return null;
   }
+
+  const toggleExpanded = () => {
+    setExpanded((prev) => {
+      const next = !prev;
+      queueMicrotask(() => onExpandChange?.(next));
+      return next;
+    });
+  };
 
   return (
     <div className={`leadership__card${showImage ? "" : " leadership__card--no-image"}`}>
@@ -65,7 +74,7 @@ function LeadershipNoteCard({
           ))}
         </div>
 
-        <button type="button" className="leadership__link" onClick={() => setExpanded((prev) => !prev)}>
+        <button type="button" className="leadership__link" onClick={toggleExpanded}>
           {expanded ? "Read Less" : "Read More"}
           {expanded ? <ArrowUpRight size={18} /> : <ArrowRight size={18} />}
         </button>
@@ -101,6 +110,16 @@ export function LeadershipMessageSection({
 }
 
 export function LeadershipNotesSlider({ notes = [], loading = false }) {
+  const swiperRef = useRef(null);
+
+  const updateSlideHeight = () => {
+    const swiper = swiperRef.current;
+    if (!swiper) return;
+    requestAnimationFrame(() => {
+      swiper.updateAutoHeight?.(300);
+    });
+  };
+
   if (loading) {
     return (
       <section className="leadership">
@@ -137,6 +156,12 @@ export function LeadershipNotesSlider({ notes = [], loading = false }) {
           modules={[Autoplay, Navigation, Pagination]}
           spaceBetween={24}
           slidesPerView={1}
+          autoHeight
+          observer
+          observeParents
+          onSwiper={(swiper) => {
+            swiperRef.current = swiper;
+          }}
           loop={enableLoop}
           autoplay={
             enableLoop
@@ -167,6 +192,7 @@ export function LeadershipNotesSlider({ notes = [], loading = false }) {
                 designation={note.designation}
                 message={note.message}
                 profileImage={note.profileImage || ""}
+                onExpandChange={updateSlideHeight}
               />
             </SwiperSlide>
           ))}
