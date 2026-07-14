@@ -45,9 +45,9 @@ export function ServicesSection() {
             const Icon = SERVICE_ICONS[item.icon] || IoPeopleOutline;
             return (
               <SiteCard key={item.title} className="site-service-card site-service-card--hover">
-                <span className="site-service-card__index" aria-hidden>
+                {/* <span className="site-service-card__index" aria-hidden>
                   {String(index + 1).padStart(2, "0")}
-                </span>
+                </span> */}
                 <div className="site-service-card__icon" aria-hidden>
                   <Icon />
                 </div>
