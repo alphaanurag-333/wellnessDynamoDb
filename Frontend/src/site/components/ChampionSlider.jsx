@@ -85,7 +85,7 @@ export default function ChampionSlider() {
   }
 
   const enableLoop = items.length > 1;
-  const monthHint = items.find((item) => item.monthLabel)?.monthLabel || "";
+  const count = items.length;
 
   return (
     <section className="champion-section monthly-champions" aria-label="Monthly champions">
@@ -95,18 +95,15 @@ export default function ChampionSlider() {
           <h2 className="monthly-champions__title">
             Champion of the <span>Month</span>
           </h2>
-          {/* <p className="monthly-champions__subtitle">
-            {monthHint
-              ? `Celebrating top daily reflection consistency for ${monthHint}.`
-              : "Celebrating members with outstanding daily reflection consistency."}
-          </p> */}
         </div>
 
         <Swiper
-          className=""
+          className={`monthly-champions__slider monthly-champions__slider--count-${Math.min(count, 3)}`}
           modules={[Autoplay]}
           spaceBetween={24}
-          slidesPerView={3}
+          slidesPerView={Math.min(3, count)}
+          centeredSlides={count === 1}
+          centerInsufficientSlides
           loop={enableLoop}
           autoplay={
             enableLoop
@@ -119,12 +116,20 @@ export default function ChampionSlider() {
           breakpoints={{
             0: {
               slidesPerView: 1,
+              centeredSlides: true,
+              spaceBetween: 16,
             },
             640: {
-              slidesPerView: 2,
+              slidesPerView: Math.min(2, count),
+              centeredSlides: count === 1,
+              centerInsufficientSlides: true,
+              spaceBetween: 20,
             },
             992: {
-              slidesPerView: 3,
+              slidesPerView: Math.min(3, count),
+              centeredSlides: count === 1,
+              centerInsufficientSlides: true,
+              spaceBetween: 24,
             },
           }}
         >

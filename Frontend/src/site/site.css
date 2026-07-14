@@ -7189,9 +7189,39 @@ PRINT
   line-height: 1.6;
 }
 
+.monthly-champions__slider {
+  width: 100%;
+}
+
+.monthly-champions__slider--count-1 {
+  max-width: 420px;
+  margin-inline: auto;
+}
+
+.monthly-champions__slider--count-2 {
+  max-width: 880px;
+  margin-inline: auto;
+}
+
+.monthly-champions__slider .swiper-slide {
+  display: flex;
+  height: auto;
+  justify-content: center;
+}
+
+.monthly-champions__slider .champion-card {
+  width: 100%;
+  max-width: 100%;
+}
+
 @media (max-width: 700px) {
   .monthly-champions__header {
     margin-bottom: 28px;
+  }
+
+  .monthly-champions__slider--count-1,
+  .monthly-champions__slider--count-2 {
+    max-width: 100%;
   }
 }
 
