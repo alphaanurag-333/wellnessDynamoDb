@@ -119,11 +119,11 @@ export default function TestimonialsSection({ items: itemsProp }) {
               spaceBetween: 18,
             },
             768: {
-              slidesPerView: 2,
+              slidesPerView: 3,
               spaceBetween: 24,
             },
             1200: {
-              slidesPerView: 2,
+              slidesPerView: 3,
               spaceBetween: 28,
             },
           }}
