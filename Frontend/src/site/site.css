@@ -2907,9 +2907,11 @@ h5.pillar-card__head-title {
 
 .success-card__review p {
   margin: 0;
-  font-size: clamp(1rem, 1.6vw, 1.15rem);
+  font-size: 16px;
   line-height: 1.75;
   color: var(--text-heading);
+    word-break: break-all;
+
 }
 
 .success-card__author {
@@ -3242,7 +3244,7 @@ h5.pillar-card__head-title {
 
 .final-cta__button {
   margin-top: 42px;
-
+padding: 8px 15px;
   width: 380px;
   height: fit-content;
 
@@ -7011,8 +7013,9 @@ PRINT
 
 .transformation-story-card__label {
   position: absolute;
-  top: 12px;
-  left: 12px;
+  bottom: 12px;
+  left: 50%;
+  transform: translate(-50% , 0);
   z-index: 1;
   padding: 5px 10px;
   border-radius: 999px;
@@ -11166,7 +11169,14 @@ margin: 0 auto;
 }
 
 @media (max-width: 576px) {
+  .static-page-content{
+    padding: 0 15px;
+  }
 
+  .static-page-title{
+    font-size: 26px;
+  }
+ 
   .methodology{
     padding: 45px 0;
   }
@@ -11242,7 +11252,7 @@ margin: 0 auto;
     
     font-size: 16px;
     width: fit-content;
-    padding: 6px 25px;
+    padding: 8px 25px;
    }
 
 
@@ -11376,8 +11386,7 @@ margin: 0 auto;
   .success-card__review p {
     font-size: 15px;
     text-wrap: wrap;
-    word-break: break-all;
-
+  
   }
 
   .contact-card {
@@ -11396,7 +11405,7 @@ margin: 0 auto;
   }
 
   .contact-footer button {
-    height: 54px;
+    height: 45px;
     font-size: 15px;
   }
 
@@ -12156,8 +12165,15 @@ margin: 0 auto;
     
   }
   .static-page-body{
-            padding: 28px 0 56px;
+            padding: 12px 0 56px;
+
   }
+  .static-page-content p,   .static-page-content li{
+    font-size: 14px;
+  }
+    .static-page-content h2{
+      font-size: 20px;
+    }
 }
 
 /*====================================
