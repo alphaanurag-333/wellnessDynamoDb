@@ -13,7 +13,7 @@ const {
   normalizeCountryCode,
   buildPhoneKey,
 } = require("./userModel");
-const { getWellnessCoachById } = require("./wellnessCoachModel");
+const { getWellnessCoachById, normalizeVisibleFlag, visibilityFilterParts } = require("./wellnessCoachModel");
 const { getSpecializationById } = require("./specializationModel");
 const {
   normalizeStoredMedia,
@@ -27,6 +27,7 @@ const {
 const {
   listByPartitionKey,
   buildContainsFilter,
+  appendFilter,
   sortByCreatedAtDesc,
 } = require("../utils/dynamoList");
 
@@ -79,6 +80,8 @@ function buildAssistantItem(input, { id, now } = {}) {
     password: input.password != null ? String(input.password) : null,
     fcmId: input.fcmId != null ? String(input.fcmId).trim() || null : null,
     status: normalizeStatus(input.status),
+    webVisible: normalizeVisibleFlag(input.webVisible, true),
+    appVisible: normalizeVisibleFlag(input.appVisible, true),
     referralCode: input.referralCode != null ? String(input.referralCode).trim().toUpperCase() || null : null,
     createdAt: now,
     updatedAt: now,
@@ -90,6 +93,7 @@ function sanitizeUpdateField(key, value) {
   if (key === "phone") return normalizePhone(value);
   if (key === "phoneCountryCode") return normalizeCountryCode(value);
   if (key === "status") return normalizeStatus(value);
+  if (key === "webVisible" || key === "appVisible") return normalizeVisibleFlag(value, true);
   if (key === "profileImage") {
     return normalizeProfileImageField(value);
   }
@@ -347,12 +351,17 @@ async function deleteAssistantWellnessCoach(id) {
 
 async function listAssistantsByWellnessCoachId(
   wellnessCoachId,
-  { page = 1, limit = 20, status, search } = {}
+  { page = 1, limit = 20, status, search, platform, webVisible, appVisible } = {}
 ) {
   const safePage = Math.max(1, Number(page) || 1);
   const safeLimit = Math.min(200, Math.max(1, Number(limit) || 20));
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const normalizedSearch = String(search || "").trim().toLowerCase();
+  const channel = String(platform || "").toLowerCase().trim();
+  const wantWebVisible =
+    webVisible !== undefined ? webVisible : channel === "web" ? true : undefined;
+  const wantAppVisible =
+    appVisible !== undefined ? appVisible : channel === "app" ? true : undefined;
 
   const { Items = [] } = await docClient.send(
     new QueryCommand({
@@ -368,6 +377,14 @@ async function listAssistantsByWellnessCoachId(
 
   if (normalizedStatus) {
     rows = rows.filter((r) => r.status === normalizedStatus);
+  }
+  if (wantWebVisible !== undefined) {
+    const expected = normalizeVisibleFlag(wantWebVisible, true);
+    rows = rows.filter((r) => normalizeVisibleFlag(r.webVisible, true) === expected);
+  }
+  if (wantAppVisible !== undefined) {
+    const expected = normalizeVisibleFlag(wantAppVisible, true);
+    rows = rows.filter((r) => normalizeVisibleFlag(r.appVisible, true) === expected);
   }
   if (normalizedSearch) {
     rows = rows.filter(
@@ -390,9 +407,26 @@ async function listAssistantsByWellnessCoachId(
   };
 }
 
-async function listAssistantWellnessCoaches({ page = 1, limit = 20, status, search, wellnessCoachId } = {}) {
+async function listAssistantWellnessCoaches({
+  page = 1,
+  limit = 20,
+  status,
+  search,
+  wellnessCoachId,
+  platform,
+  webVisible,
+  appVisible,
+} = {}) {
   if (wellnessCoachId) {
-    return listAssistantsByWellnessCoachId(wellnessCoachId, { page, limit, status, search });
+    return listAssistantsByWellnessCoachId(wellnessCoachId, {
+      page,
+      limit,
+      status,
+      search,
+      platform,
+      webVisible,
+      appVisible,
+    });
   }
 
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
@@ -400,15 +434,47 @@ async function listAssistantWellnessCoaches({ page = 1, limit = 20, status, sear
     ["name", "email", "phone", "designation"],
     search
   );
+  const channel = String(platform || "").toLowerCase().trim();
+  const wantWebVisible =
+    webVisible !== undefined ? webVisible : channel === "web" ? true : undefined;
+  const wantAppVisible =
+    appVisible !== undefined ? appVisible : channel === "app" ? true : undefined;
+
+  let filterExpression = searchFilter.filterExpression;
+  const exprNames = { ...(searchFilter.exprNames || {}) };
+  const exprValues = { ...(searchFilter.exprValues || {}) };
+  for (const part of [
+    visibilityFilterParts("webVisible", wantWebVisible),
+    visibilityFilterParts("appVisible", wantAppVisible),
+  ]) {
+    if (!part) continue;
+    Object.assign(exprNames, part.exprNames);
+    Object.assign(exprValues, part.exprValues);
+    filterExpression = appendFilter(filterExpression, part.expression);
+  }
+
   const { items, pagination } = await listByPartitionKey({
     tableName: TABLE,
     indexName: "StatusCreatedAtIndex",
     partitionKeyValue: normalizedStatus || undefined,
-    filterExpression: searchFilter.filterExpression,
-    exprNames: searchFilter.exprNames,
-    exprValues: searchFilter.exprValues,
+    filterExpression,
+    exprNames,
+    exprValues,
     search: searchFilter.search,
     searchFields: searchFilter.searchFields,
+    searchFn: searchFilter.search
+      ? (item, term) => {
+          if (wantWebVisible !== undefined && normalizeVisibleFlag(item.webVisible, true) !== normalizeVisibleFlag(wantWebVisible, true)) {
+            return false;
+          }
+          if (wantAppVisible !== undefined && normalizeVisibleFlag(item.appVisible, true) !== normalizeVisibleFlag(wantAppVisible, true)) {
+            return false;
+          }
+          return ["name", "email", "phone", "designation"].some((field) =>
+            String(item[field] || "").toLowerCase().includes(term)
+          );
+        }
+      : undefined,
     scanIndexForward: false,
     page,
     limit,
@@ -441,4 +507,5 @@ module.exports = {
   populateWellnessCoach,
   populateWellnessCoaches,
   toPublicAssistant,
+  normalizeVisibleFlag,
 };

@@ -1,6 +1,6 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 
-import { Printer, Info } from "lucide-react";
+import { Info } from "lucide-react";
 
 const BMISection = () => {
   const [gender, setGender] = useState("male");
@@ -17,9 +17,9 @@ const BMISection = () => {
   const [weightKg, setWeightKg] = useState(70);
   const [weightLb, setWeightLb] = useState(154.3);
 
-  const [bmi, setBmi] = useState(22.9);
-  const [category, setCategory] = useState("Healthy Weight");
-  const [resultColor, setResultColor] = useState("#22c55e");
+  const [bmi, setBmi] = useState(null);
+  const [category, setCategory] = useState("");
+  const [resultColor, setResultColor] = useState("#94a3b8");
 
   /* -----------------------------
       UNIT CONVERSION
@@ -53,9 +53,9 @@ const BMISection = () => {
 
     setWeightUnit(unit);
   };
- 
+
   /* -----------------------------
-      BMI CALCULATION
+      BMI CALCULATION (on click only)
   ------------------------------*/
 
   const calculateBMI = () => {
@@ -98,52 +98,28 @@ const BMISection = () => {
   };
 
   /* -----------------------------
-      AUTO CALCULATE
-  ------------------------------*/
-
-  useEffect(() => {
-    calculateBMI();
-  }, [heightCm, feet, inch, weightKg, weightLb, heightUnit, weightUnit]);
-
-  /* -----------------------------
       MARKER POSITION
   ------------------------------*/
 
   const markerPosition = useMemo(() => {
-  let position = 0;
+    if (bmi == null) return "0%";
 
-  if (bmi < 18.5) {
-    // Blue (0 - 18.5%)
-    position = (bmi / 18.5) * 18.5;
+    let position = 0;
 
-  } else if (bmi < 25) {
-    // Green (18.5 - 50%)
-    position =
-      18.5 +
-      ((bmi - 18.5) / (25 - 18.5)) * 31.5;
+    if (bmi < 18.5) {
+      position = (bmi / 18.5) * 18.5;
+    } else if (bmi < 25) {
+      position = 18.5 + ((bmi - 18.5) / (25 - 18.5)) * 31.5;
+    } else if (bmi < 30) {
+      position = 50 + ((bmi - 25) / (30 - 25)) * 12.5;
+    } else {
+      const maxBMI = 40;
+      const value = Math.min(bmi, maxBMI);
+      position = 62.5 + ((value - 30) / (maxBMI - 30)) * 37.5;
+    }
 
-  } else if (bmi < 30) {
-    // Yellow (50 - 62.5%)
-    position =
-      50 +
-      ((bmi - 25) / (30 - 25)) * 12.5;
-
-  } else {
-    // Red (62.5 - 100%)
-    const maxBMI = 40;
-    const value = Math.min(bmi, maxBMI);
-
-    position =
-      62.5 +
-      ((value - 30) / (maxBMI - 30)) * 37.5;
-  }
-
-  return `${position}%`;
-}, [bmi]);
-
-  const printResult = () => {
-    window.print();
-  };
+    return `${position}%`;
+  }, [bmi]);
 
   return (
     <section className="bmi-section">
@@ -329,11 +305,6 @@ const BMISection = () => {
               <button type="button" className="calculate-btn" onClick={calculateBMI}>
                 Calculate BMI
               </button>
-
-              {/* <button className="print-btn" onClick={printResult}>
-                <Printer size={18} />
-                Print
-              </button> */}
             </div>
 
             {/* RESULT */}
@@ -341,7 +312,7 @@ const BMISection = () => {
             <div className="result-card">
               <div className="result-header">
                 <span>YOUR RESULT</span>
-                <h3 style={{ color: resultColor }}>{bmi}</h3>{" "}
+                <h3 style={{ color: resultColor }}>{bmi ?? "--"}</h3>
               </div>
               <div className="progress">
                 <div className="blue"></div>
@@ -352,12 +323,11 @@ const BMISection = () => {
 
                 <div className="red"></div>
 
-                <div
-                  className="indicator"
-                  style={{ left: markerPosition }}
-                ></div>
+                {bmi != null ? (
+                  <div className="indicator" style={{ left: markerPosition }}></div>
+                ) : null}
               </div>
-              <h4 style={{ color: resultColor }}>{category}</h4>{" "}
+              <h4 style={{ color: resultColor }}>{category || "Enter values and calculate"}</h4>
             </div>
           </div>
         </div>

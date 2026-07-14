@@ -17,6 +17,7 @@ const {
   listWellnessCoaches,
   normalizeStatus,
   normalizeApprovalStatus,
+  normalizeVisibleFlag,
   ALLOWED_STATUS,
   ALLOWED_APPROVAL_STATUS,
 } = require("../../models/wellnessCoachModel");
@@ -117,6 +118,8 @@ function parseCoachBody(body) {
     profileImage: profileImage !== undefined ? profileImage : null,
     status,
     approvalStatus,
+    webVisible: body.webVisible !== undefined ? normalizeVisibleFlag(body.webVisible, true) : true,
+    appVisible: body.appVisible !== undefined ? normalizeVisibleFlag(body.appVisible, true) : true,
     password: body.password !== undefined ? String(body.password || "").trim() : undefined,
   };
 }
@@ -208,6 +211,12 @@ exports.updateWellnessCoachController = asyncHandler(async (req, res) => {
       throw new AppError("status must be active or inactive", 400);
     }
     updates.status = status;
+  }
+  if (body.webVisible !== undefined) {
+    updates.webVisible = normalizeVisibleFlag(body.webVisible, true);
+  }
+  if (body.appVisible !== undefined) {
+    updates.appVisible = normalizeVisibleFlag(body.appVisible, true);
   }
   if (body.approvalStatus !== undefined) {
     const approvalStatus = normalizeApprovalStatus(body.approvalStatus);

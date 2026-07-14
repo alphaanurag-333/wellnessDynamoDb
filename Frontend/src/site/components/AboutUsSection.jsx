@@ -316,7 +316,7 @@ const AboutUsSection = () => {
     (async () => {
       setLeadershipNotesLoading(true);
       try {
-        const response = await fetchLeadershipNotes({ page: 1, limit: 50 });
+        const response = await fetchLeadershipNotes({ page: 1, limit: 50, platform: "web" });
         if (!cancelled) {
           setLeadershipNotes(
             Array.isArray(response?.leadershipNotes) ? response.leadershipNotes : [],
@@ -340,7 +340,7 @@ const AboutUsSection = () => {
     (async () => {
       setCoachesLoading(true);
       try {
-        const response = await fetchWellnessCoaches({ page: 1, limit: 50 });
+        const response = await fetchWellnessCoaches({ page: 1, limit: 50, platform: "web" });
         if (!cancelled) {
           setWellnessCoaches(
             Array.isArray(response?.wellnessCoaches)
@@ -366,7 +366,7 @@ const AboutUsSection = () => {
     (async () => {
       setAssistantsLoading(true);
       try {
-        const response = await fetchAssistantWellnessCoaches({ page: 1, limit: 50 });
+        const response = await fetchAssistantWellnessCoaches({ page: 1, limit: 50, platform: "web" });
         if (!cancelled) {
           setAssistantWellnessCoaches(
             Array.isArray(response?.assistantWellnessCoaches)

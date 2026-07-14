@@ -118,6 +118,25 @@ export function WellnessCoachList() {
     }
   };
 
+  const handleToggleVisibility = async (row, field) => {
+    if (!adminToken || (field !== "webVisible" && field !== "appVisible")) return;
+    const id = resolveCoachId(row);
+    const next = !(row[field] !== false);
+    setTogglingId(`${id}:${field}`);
+    try {
+      await adminUpdateWellnessCoach(adminToken, id, { [field]: next });
+      setRows((prev) => prev.map((r) => (resolveCoachId(r) === id ? { ...r, [field]: next } : r)));
+    } catch (e) {
+      if (e?.status === 401) {
+        dispatch(logout());
+        return;
+      }
+      await Swal.fire({ icon: "error", title: "Update failed", text: e.message });
+    } finally {
+      setTogglingId("");
+    }
+  };
+
   const handleApprove = async (row, approvalStatus) => {
     if (!adminToken) return;
     const id = resolveCoachId(row);
@@ -216,16 +235,18 @@ export function WellnessCoachList() {
               <th>Location</th>
               <th>Created</th>
               <th>Status</th>
+              <th>Web Visible</th>
+              <th>App Visible</th>
               <th>Approval</th>
               <th className="data-table__actions-col">Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <WellnessCoachTableLoaderRow colSpan={8} />
+              <WellnessCoachTableLoaderRow colSpan={10} />
             ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={8}>
+                <td colSpan={10}>
                   <p className="table-placeholder">No wellness coaches found.</p>
                 </td>
               </tr>
@@ -233,6 +254,8 @@ export function WellnessCoachList() {
               rows.filter((row) => !approvalFilter || row.approvalStatus === approvalFilter).map((row, idx) => {
                 const id = resolveCoachId(row);
                 const approval = row.approvalStatus || "approved";
+                const webOn = row.webVisible !== false;
+                const appOn = row.appVisible !== false;
                 return (
                   <tr key={id}>
                     <td className="data-table__muted">{(page - 1) * LIST_LIMIT + idx + 1}</td>
@@ -270,6 +293,42 @@ export function WellnessCoachList() {
                         <span className="settings-switch__knob" aria-hidden />
                       </button>
                       ) : null}
+                    </td>
+                    <td>
+                      {canEdit ? (
+                        <button
+                          type="button"
+                          className={`settings-switch${webOn ? " settings-switch--on" : ""}`}
+                          role="switch"
+                          aria-checked={webOn}
+                          aria-label={`Toggle web visibility for ${row.name || row.email}`}
+                          onClick={() => handleToggleVisibility(row, "webVisible")}
+                          disabled={togglingId === `${id}:webVisible`}
+                          title={webOn ? "Hide on web" : "Show on web"}
+                        >
+                          <span className="settings-switch__knob" aria-hidden />
+                        </button>
+                      ) : (
+                        <span className="data-table__muted">{webOn ? "Yes" : "No"}</span>
+                      )}
+                    </td>
+                    <td>
+                      {canEdit ? (
+                        <button
+                          type="button"
+                          className={`settings-switch${appOn ? " settings-switch--on" : ""}`}
+                          role="switch"
+                          aria-checked={appOn}
+                          aria-label={`Toggle app visibility for ${row.name || row.email}`}
+                          onClick={() => handleToggleVisibility(row, "appVisible")}
+                          disabled={togglingId === `${id}:appVisible`}
+                          title={appOn ? "Hide on app" : "Show on app"}
+                        >
+                          <span className="settings-switch__knob" aria-hidden />
+                        </button>
+                      ) : (
+                        <span className="data-table__muted">{appOn ? "Yes" : "No"}</span>
+                      )}
                     </td>
                     <td className="data-table__approval-col">
                       <div className="approval-cell">

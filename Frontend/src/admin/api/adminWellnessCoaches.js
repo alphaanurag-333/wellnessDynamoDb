@@ -12,13 +12,25 @@ export function resolveCoachId(row) {
 function normalizeCoach(row) {
   if (!row) return null;
   const id = resolveCoachId(row);
-  return { ...row, id, _id: id };
+  return {
+    ...row,
+    id,
+    _id: id,
+    webVisible: row.webVisible !== false,
+    appVisible: row.appVisible !== false,
+  };
 }
 
 function normalizeAssistant(row) {
   if (!row) return null;
   const id = String(row._id || row.id || "");
-  return { ...row, id, _id: id };
+  return {
+    ...row,
+    id,
+    _id: id,
+    webVisible: row.webVisible !== false,
+    appVisible: row.appVisible !== false,
+  };
 }
 
 function appendCoachFields(fd, fields) {
@@ -34,6 +46,8 @@ function appendCoachFields(fd, fields) {
     "state",
     "city",
     "status",
+    "webVisible",
+    "appVisible",
     "password",
   ];
   for (const key of keys) {
@@ -45,7 +59,17 @@ function appendCoachFields(fd, fields) {
 
 function appendAssistantFields(fd, fields) {
   if (!fields || typeof fields !== "object") return;
-  const keys = ["name", "email", "phone", "phoneCountryCode", "designation", "status", "password"];
+  const keys = [
+    "name",
+    "email",
+    "phone",
+    "phoneCountryCode",
+    "designation",
+    "status",
+    "webVisible",
+    "appVisible",
+    "password",
+  ];
   for (const key of keys) {
     if (fields[key] !== undefined && fields[key] !== null) {
       fd.append(key, String(fields[key]));
@@ -66,6 +90,8 @@ export function buildCoachPayload(fields) {
     state: fields.state != null ? String(fields.state).trim() || null : null,
     city: fields.city != null ? String(fields.city).trim() || null : null,
     status: fields.status || "active",
+    webVisible: fields.webVisible !== false,
+    appVisible: fields.appVisible !== false,
     password: fields.password != null ? String(fields.password) : undefined,
   };
 }
@@ -84,6 +110,8 @@ export function buildCoachUpdatePayload(fields) {
   if (fields.state !== undefined) payload.state = String(fields.state ?? "").trim() || null;
   if (fields.city !== undefined) payload.city = String(fields.city ?? "").trim() || null;
   if (fields.status !== undefined) payload.status = fields.status;
+  if (fields.webVisible !== undefined) payload.webVisible = Boolean(fields.webVisible);
+  if (fields.appVisible !== undefined) payload.appVisible = Boolean(fields.appVisible);
   if (fields.password !== undefined) payload.password = String(fields.password);
   return payload;
 }
@@ -96,6 +124,8 @@ export function buildAssistantPayload(fields) {
     phoneCountryCode: String(fields.phoneCountryCode ?? "+91").trim() || "+91",
     designation: fields.designation != null ? String(fields.designation).trim() || null : null,
     status: fields.status || "active",
+    webVisible: fields.webVisible !== false,
+    appVisible: fields.appVisible !== false,
     password: fields.password != null ? String(fields.password) : undefined,
   };
 }
@@ -110,6 +140,8 @@ export function buildAssistantUpdatePayload(fields) {
     payload.designation = String(fields.designation ?? "").trim() || null;
   }
   if (fields.status !== undefined) payload.status = fields.status;
+  if (fields.webVisible !== undefined) payload.webVisible = Boolean(fields.webVisible);
+  if (fields.appVisible !== undefined) payload.appVisible = Boolean(fields.appVisible);
   if (fields.password !== undefined) payload.password = String(fields.password);
   return payload;
 }

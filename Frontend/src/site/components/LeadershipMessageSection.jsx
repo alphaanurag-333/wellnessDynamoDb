@@ -257,7 +257,7 @@ export function LeadershipNotesSection() {
     (async () => {
       setLoading(true);
       try {
-        const response = await fetchLeadershipNotes({ page: 1, limit: 50 });
+        const response = await fetchLeadershipNotes({ page: 1, limit: 50, platform: "web" });
         if (!cancelled) {
           setNotes(Array.isArray(response?.leadershipNotes) ? response.leadershipNotes : []);
         }

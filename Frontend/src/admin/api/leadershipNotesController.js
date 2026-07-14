@@ -39,6 +39,8 @@ function appendCommonFields(fd, fields) {
   if (fields.badge !== undefined) fd.append("badge", String(fields.badge ?? "").trim());
   if (fields.message !== undefined) fd.append("message", String(fields.message ?? "").trim());
   if (fields.status !== undefined) fd.append("status", String(fields.status ?? "active").trim());
+  if (fields.webVisible !== undefined) fd.append("webVisible", String(Boolean(fields.webVisible)));
+  if (fields.appVisible !== undefined) fd.append("appVisible", String(Boolean(fields.appVisible)));
 }
 
 export async function adminCreateLeadershipNote(token, fields) {
@@ -78,6 +80,8 @@ export async function adminUpdateLeadershipNote(token, id, fields) {
   if (fields?.badge !== undefined) payload.badge = String(fields.badge).trim();
   if (fields?.message !== undefined) payload.message = String(fields.message).trim();
   if (fields?.status !== undefined) payload.status = String(fields.status).trim();
+  if (fields?.webVisible !== undefined) payload.webVisible = Boolean(fields.webVisible);
+  if (fields?.appVisible !== undefined) payload.appVisible = Boolean(fields.appVisible);
 
   try {
     const { data } = await api.patch(`${leadershipNotesBase()}/${encodeURIComponent(id)}`, payload, {

@@ -319,12 +319,14 @@ exports.getActiveTransformations = asyncHandler(async (req, res) => {
 
 exports.getActiveWellnessCoaches = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
+  const platform = String(req.query.platform || "").trim().toLowerCase() || undefined;
   const data = await listWellnessCoaches({
     page,
     limit,
     status: "active",
     approvalStatus: "approved",
     search: readSearch(req.query),
+    platform,
   });
 
   const specCache = new Map();
@@ -360,11 +362,13 @@ exports.getActiveWellnessCoaches = asyncHandler(async (req, res) => {
 
 exports.getActiveAssistantWellnessCoaches = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
+  const platform = String(req.query.platform || "").trim().toLowerCase() || undefined;
   const data = await listAssistantWellnessCoaches({
     page,
     limit,
     status: "active",
     search: readSearch(req.query),
+    platform,
   });
 
   const assistantWellnessCoaches = data.assistants.map((row) => toPublicAssistant(row));
@@ -378,11 +382,13 @@ exports.getActiveAssistantWellnessCoaches = asyncHandler(async (req, res) => {
 
 exports.getActiveLeadershipNotes = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
+  const platform = String(req.query.platform || "").trim().toLowerCase() || undefined;
   const data = await listLeadershipNotes({
     page,
     limit,
     status: "active",
     search: readSearch(req.query),
+    platform,
   });
 
   return res.status(200).json({

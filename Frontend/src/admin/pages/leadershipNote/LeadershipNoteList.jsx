@@ -106,6 +106,28 @@ export function LeadershipNoteList() {
     }
   };
 
+  const onToggleVisibility = async (row, field) => {
+    if (!adminToken || (field !== "webVisible" && field !== "appVisible")) return;
+    const id = row._id || row.id;
+    const next = !(row[field] !== false);
+    setTogglingId(`${id}:${field}`);
+    try {
+      await adminUpdateLeadershipNote(adminToken, id, { [field]: next });
+      setRows((prev) =>
+        prev.map((r) => ((r._id || r.id) === id ? { ...r, [field]: next } : r))
+      );
+    } catch (e) {
+      if (e?.status === 401) return dispatch(logout());
+      await Swal.fire({
+        icon: "error",
+        title: "Update failed",
+        text: e.message || "Could not update visibility.",
+      });
+    } finally {
+      setTogglingId("");
+    }
+  };
+
   const pageInfo = useMemo(() => `Page ${page} of ${pages} · ${total} notes`, [page, pages, total]);
   const subtitle = listCountSubtitle(loading, total, "leadership note", "leadership notes");
   const hasFilters = Boolean(listSearch.trim() || listStatus);
@@ -164,19 +186,23 @@ export function LeadershipNoteList() {
                 <th>Designation</th>
                 <th>Message</th>
                 <th>Status</th>
+                <th>Web</th>
+                <th>App</th>
                 <th className="data-table__actions-col">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <AdminTableLoaderRow colSpan={7} label="Loading leadership notes..." />
+                <AdminTableLoaderRow colSpan={9} label="Loading leadership notes..." />
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={7}>No leadership notes found.</td>
+                  <td colSpan={9}>No leadership notes found.</td>
                 </tr>
               ) : (
                 rows.map((row, idx) => {
                   const id = row._id || row.id;
+                  const webOn = row.webVisible !== false;
+                  const appOn = row.appVisible !== false;
                   return (
                     <tr key={id}>
                       <td className="data-table__muted">{(page - 1) * LIST_LIMIT + idx + 1}</td>
@@ -216,6 +242,42 @@ export function LeadershipNoteList() {
                           ) : null}
                           <AdminStatusBadge status={row.status} />
                         </div>
+                      </td>
+                      <td>
+                        {canEdit ? (
+                          <button
+                            type="button"
+                            className={`settings-switch${webOn ? " settings-switch--on" : ""}`}
+                            role="switch"
+                            aria-checked={webOn}
+                            aria-label={`Toggle web visibility for leadership note ${idx + 1}`}
+                            onClick={() => onToggleVisibility(row, "webVisible")}
+                            disabled={togglingId === `${id}:webVisible`}
+                            title={webOn ? "Hide on web" : "Show on web"}
+                          >
+                            <span className="settings-switch__knob" aria-hidden />
+                          </button>
+                        ) : (
+                          <span className="data-table__muted">{webOn ? "Yes" : "No"}</span>
+                        )}
+                      </td>
+                      <td>
+                        {canEdit ? (
+                          <button
+                            type="button"
+                            className={`settings-switch${appOn ? " settings-switch--on" : ""}`}
+                            role="switch"
+                            aria-checked={appOn}
+                            aria-label={`Toggle app visibility for leadership note ${idx + 1}`}
+                            onClick={() => onToggleVisibility(row, "appVisible")}
+                            disabled={togglingId === `${id}:appVisible`}
+                            title={appOn ? "Hide on app" : "Show on app"}
+                          >
+                            <span className="settings-switch__knob" aria-hidden />
+                          </button>
+                        ) : (
+                          <span className="data-table__muted">{appOn ? "Yes" : "No"}</span>
+                        )}
                       </td>
                       <td>
                         <div className="row-actions">

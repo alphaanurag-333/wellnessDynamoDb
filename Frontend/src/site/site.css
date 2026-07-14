@@ -7837,7 +7837,7 @@ PRINT
   height: 45px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-light);
-  background: #fff;
+  background: #f2f3f9 !important;
   outline: none;
   padding: 0 16px;
   font-size: 16px;
@@ -7910,6 +7910,7 @@ PRINT
   height: 45px;
   /* border-radius: 0; */
   box-shadow: none;
+  background: #f2f3f9 !important;
   border: 1px solid var(--border-light);
 }
 
@@ -8223,7 +8224,7 @@ INPUT
   border-radius: var(--radius-sm);
   padding: 0 18px;
   outline: none;
-  background: white;
+  background: #f2f3f9 !important;
   font-size: 16px;
   transition: var(--transition);
 }
@@ -12408,6 +12409,7 @@ SCROLLBAR
   .bmr-section .form-group input {
     height: 42px;
     font-size: 16px;
+
   }
 
   .bmr-section .unit-input input {

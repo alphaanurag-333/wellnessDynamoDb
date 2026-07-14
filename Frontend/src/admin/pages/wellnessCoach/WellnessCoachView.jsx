@@ -134,6 +134,24 @@ export function WellnessCoachView() {
     }
   };
 
+  const handleToggleAssistantVisibility = async (assistant, field) => {
+    if (!adminToken || !coachId || (field !== "webVisible" && field !== "appVisible")) return;
+    const aid = resolveAssistantId(assistant);
+    const next = !(assistant[field] !== false);
+    setTogglingAssistantId(`${aid}:${field}`);
+    try {
+      await adminUpdateCoachAssistant(adminToken, coachId, aid, { [field]: next });
+      setAssistants((prev) =>
+        prev.map((row) => (resolveAssistantId(row) === aid ? { ...row, [field]: next } : row))
+      );
+    } catch (e) {
+      if (e?.status === 401) dispatch(logout());
+      else await Swal.fire({ icon: "error", title: "Update failed", text: e.message });
+    } finally {
+      setTogglingAssistantId("");
+    }
+  };
+
   const handleApproveCoach = async (approvalStatus) => {
     if (!adminToken || !coachId) return;
     const label = approvalStatus === "approved" ? "Approve" : approvalStatus === "rejected" ? "Reject" : "Set Pending";
@@ -314,21 +332,25 @@ export function WellnessCoachView() {
                 <th>Mobile</th>
                 <th>Designation</th>
                 <th>Status</th>
+                <th>Web</th>
+                <th>App</th>
                 <th className="data-table__actions-col">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loadingAssistants ? (
-                <WellnessCoachTableLoaderRow colSpan={6} />
+                <WellnessCoachTableLoaderRow colSpan={8} />
               ) : assistants.length === 0 ? (
                 <tr>
-                  <td colSpan={6}>
+                  <td colSpan={8}>
                     <p className="table-placeholder">No assistants yet.</p>
                   </td>
                 </tr>
               ) : (
                 assistants.map((a) => {
                   const aid = resolveAssistantId(a);
+                  const webOn = a.webVisible !== false;
+                  const appOn = a.appVisible !== false;
                   return (
                     <tr key={aid}>
                       <td>{a.name}</td>
@@ -345,6 +367,34 @@ export function WellnessCoachView() {
                           onClick={() => handleToggleAssistantStatus(a)}
                           disabled={togglingAssistantId === aid}
                           title={a.status === "active" ? "Deactivate assistant" : "Activate assistant"}
+                        >
+                          <span className="settings-switch__knob" aria-hidden />
+                        </button>
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className={`settings-switch${webOn ? " settings-switch--on" : ""}`}
+                          role="switch"
+                          aria-checked={webOn}
+                          aria-label={`Toggle web visibility for ${a.name || a.email}`}
+                          onClick={() => handleToggleAssistantVisibility(a, "webVisible")}
+                          disabled={togglingAssistantId === `${aid}:webVisible`}
+                          title={webOn ? "Hide on web" : "Show on web"}
+                        >
+                          <span className="settings-switch__knob" aria-hidden />
+                        </button>
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className={`settings-switch${appOn ? " settings-switch--on" : ""}`}
+                          role="switch"
+                          aria-checked={appOn}
+                          aria-label={`Toggle app visibility for ${a.name || a.email}`}
+                          onClick={() => handleToggleAssistantVisibility(a, "appVisible")}
+                          disabled={togglingAssistantId === `${aid}:appVisible`}
+                          title={appOn ? "Hide on app" : "Show on app"}
                         >
                           <span className="settings-switch__knob" aria-hidden />
                         </button>

@@ -6,9 +6,11 @@ import { IoEyeSharp } from "react-icons/io5";
 import {
   adminListAllAssistants,
   adminListWellnessCoaches,
+  adminUpdateCoachAssistant,
   resolveCoachId,
 } from "../../api/adminWellnessCoaches.js";
 import { logout } from "../../../store/authSlice.js";
+import { useResourcePermissions } from "../../hooks/useHasPermission.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { LIST_LIMIT, formatPhone, resolveAssistantId } from "./AssistantShared.js";
@@ -17,6 +19,7 @@ import { WellnessCoachTableLoaderRow } from "../wellnessCoach/WellnessCoachPageL
 export function AssistantList() {
   const dispatch = useDispatch();
   const adminToken = useSelector((s) => s.auth.adminToken);
+  const { canEdit } = useResourcePermissions("awcs");
   const [searchParams] = useSearchParams();
   const [rows, setRows] = useState([]);
   const [coachMap, setCoachMap] = useState({});
@@ -30,6 +33,7 @@ export function AssistantList() {
   const [coaches, setCoaches] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
+  const [togglingId, setTogglingId] = useState("");
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchInput.trim()), 400);
@@ -86,6 +90,29 @@ export function AssistantList() {
   useEffect(() => {
     loadRows();
   }, [loadRows]);
+
+  const handleToggleVisibility = async (row, field) => {
+    if (!adminToken || (field !== "webVisible" && field !== "appVisible")) return;
+    const aid = resolveAssistantId(row);
+    const cid = row.wellnessCoachId;
+    if (!aid || !cid) return;
+    const next = !(row[field] !== false);
+    setTogglingId(`${aid}:${field}`);
+    try {
+      await adminUpdateCoachAssistant(adminToken, cid, aid, { [field]: next });
+      setRows((prev) =>
+        prev.map((r) => (resolveAssistantId(r) === aid ? { ...r, [field]: next } : r))
+      );
+    } catch (e) {
+      if (e?.status === 401) {
+        dispatch(logout());
+        return;
+      }
+      await Swal.fire({ icon: "error", title: "Update failed", text: e.message || "Could not update." });
+    } finally {
+      setTogglingId("");
+    }
+  };
 
   const pageInfo = useMemo(() => `Page ${page} of ${pages} · ${total} assistants`, [page, pages, total]);
 
@@ -153,15 +180,17 @@ export function AssistantList() {
               <th>Mobile</th>
               <th>Designation</th>
               <th>Status</th>
+              <th>Web Visible</th>
+              <th>App Visible</th>
               <th className="data-table__actions-col">Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <WellnessCoachTableLoaderRow colSpan={7} />
+              <WellnessCoachTableLoaderRow colSpan={9} />
             ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={7}>
+                <td colSpan={9}>
                   <p className="table-placeholder">No assistants found.</p>
                 </td>
               </tr>
@@ -170,6 +199,8 @@ export function AssistantList() {
                 const aid = resolveAssistantId(row);
                 const cid = row.wellnessCoachId;
                 const coach = coachMap[cid] || row.wellnessCoach;
+                const webOn = row.webVisible !== false;
+                const appOn = row.appVisible !== false;
                 return (
                   <tr key={aid}>
                     <td className="data-table__muted">{(page - 1) * LIST_LIMIT + idx + 1}</td>
@@ -195,6 +226,42 @@ export function AssistantList() {
                     <td><TableCellText value={row.designation} /></td>
                     <td>
                       <AdminStatusBadge status={row.status} />
+                    </td>
+                    <td>
+                      {canEdit ? (
+                        <button
+                          type="button"
+                          className={`settings-switch${webOn ? " settings-switch--on" : ""}`}
+                          role="switch"
+                          aria-checked={webOn}
+                          aria-label={`Toggle web visibility for ${row.name || row.email}`}
+                          onClick={() => handleToggleVisibility(row, "webVisible")}
+                          disabled={togglingId === `${aid}:webVisible`}
+                          title={webOn ? "Hide on web" : "Show on web"}
+                        >
+                          <span className="settings-switch__knob" aria-hidden />
+                        </button>
+                      ) : (
+                        <span className="data-table__muted">{webOn ? "Yes" : "No"}</span>
+                      )}
+                    </td>
+                    <td>
+                      {canEdit ? (
+                        <button
+                          type="button"
+                          className={`settings-switch${appOn ? " settings-switch--on" : ""}`}
+                          role="switch"
+                          aria-checked={appOn}
+                          aria-label={`Toggle app visibility for ${row.name || row.email}`}
+                          onClick={() => handleToggleVisibility(row, "appVisible")}
+                          disabled={togglingId === `${aid}:appVisible`}
+                          title={appOn ? "Hide on app" : "Show on app"}
+                        >
+                          <span className="settings-switch__knob" aria-hidden />
+                        </button>
+                      ) : (
+                        <span className="data-table__muted">{appOn ? "Yes" : "No"}</span>
+                      )}
                     </td>
                     <td>
                       {cid ? (

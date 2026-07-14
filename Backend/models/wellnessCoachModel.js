@@ -39,6 +39,43 @@ function normalizeApprovalStatus(value, fallback = "approved") {
   return ALLOWED_APPROVAL_STATUS.has(next) ? next : fallback;
 }
 
+/** Missing attributes count as visible so older rows stay listed until backfill. */
+function normalizeVisibleFlag(value, fallback = true) {
+  if (value === undefined || value === null || value === "") return Boolean(fallback);
+  if (typeof value === "boolean") return value;
+  const s = String(value).toLowerCase().trim();
+  if (s === "true" || s === "1" || s === "yes") return true;
+  if (s === "false" || s === "0" || s === "no") return false;
+  return Boolean(fallback);
+}
+
+function visibilityFilterParts(field, wantVisible) {
+  if (wantVisible === undefined || wantVisible === null) return null;
+  const visible = normalizeVisibleFlag(wantVisible, true);
+  const nameKey = `#${field}`;
+  const trueKey = `:${field}True`;
+  const falseKey = `:${field}False`;
+  if (visible) {
+    return {
+      expression: `(attribute_not_exists(${nameKey}) OR ${nameKey} = ${trueKey})`,
+      exprNames: { [nameKey]: field },
+      exprValues: { [trueKey]: true },
+    };
+  }
+  return {
+    expression: `${nameKey} = ${falseKey}`,
+    exprNames: { [nameKey]: field },
+    exprValues: { [falseKey]: false },
+  };
+}
+
+function isVisibleForPlatform(item, platform) {
+  const channel = String(platform || "").toLowerCase().trim();
+  if (channel === "web") return normalizeVisibleFlag(item?.webVisible, true);
+  if (channel === "app") return normalizeVisibleFlag(item?.appVisible, true);
+  return true;
+}
+
 function withLegacyId(item) {
   if (!item) return null;
   return { ...item, _id: item.id };
@@ -78,6 +115,8 @@ function buildCoachItem(input, { id, now } = {}) {
     fcmId: input.fcmId != null ? String(input.fcmId).trim() || null : null,
     status: normalizeStatus(input.status),
     approvalStatus: normalizeApprovalStatus(input.approvalStatus, input._defaultApproval || "approved"),
+    webVisible: normalizeVisibleFlag(input.webVisible, true),
+    appVisible: normalizeVisibleFlag(input.appVisible, true),
     referralCode: input.referralCode != null ? String(input.referralCode).trim().toUpperCase() || null : null,
     createdAt: now,
     updatedAt: now,
@@ -90,6 +129,7 @@ function sanitizeUpdateField(key, value) {
   if (key === "phoneCountryCode") return normalizeCountryCode(value);
   if (key === "status") return normalizeStatus(value);
   if (key === "approvalStatus") return normalizeApprovalStatus(value);
+  if (key === "webVisible" || key === "appVisible") return normalizeVisibleFlag(value, true);
   if (key === "specializationId") {
     const s = value == null ? "" : String(value).trim();
     return s || null;
@@ -252,11 +292,33 @@ async function deleteWellnessCoach(id) {
   );
 }
 
-async function listWellnessCoaches({ page = 1, limit = 20, status, approvalStatus, search } = {}) {
+async function listWellnessCoaches({
+  page = 1,
+  limit = 20,
+  status,
+  approvalStatus,
+  search,
+  platform,
+  webVisible,
+  appVisible,
+} = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const normalizedApproval = approvalStatus ? normalizeApprovalStatus(approvalStatus, "") : "";
   const searchFields = ["name", "email", "phone", "specializationId"];
   const searchTerm = String(search || "").trim();
+  const channel = String(platform || "").toLowerCase().trim();
+  const wantWebVisible =
+    webVisible !== undefined
+      ? webVisible
+      : channel === "web"
+        ? true
+        : undefined;
+  const wantAppVisible =
+    appVisible !== undefined
+      ? appVisible
+      : channel === "app"
+        ? true
+        : undefined;
 
   let filterExpression = null;
   const exprNames = {};
@@ -266,12 +328,27 @@ async function listWellnessCoaches({ page = 1, limit = 20, status, approvalStatu
     exprValues[":approvalStatus"] = normalizedApproval;
     filterExpression = appendFilter(filterExpression, "#approvalStatus = :approvalStatus");
   }
+  for (const part of [
+    visibilityFilterParts("webVisible", wantWebVisible),
+    visibilityFilterParts("appVisible", wantAppVisible),
+  ]) {
+    if (!part) continue;
+    Object.assign(exprNames, part.exprNames);
+    Object.assign(exprValues, part.exprValues);
+    filterExpression = appendFilter(filterExpression, part.expression);
+  }
 
   // When a search term is present, listByPartitionKey drops the DynamoDB
-  // FilterExpression and filters in memory, so fold the approval check into searchFn.
+  // FilterExpression and filters in memory, so fold visibility into searchFn.
   const searchFn = searchTerm
     ? (item, term) => {
         if (normalizedApproval && normalizeApprovalStatus(item.approvalStatus, "") !== normalizedApproval) {
+          return false;
+        }
+        if (wantWebVisible !== undefined && normalizeVisibleFlag(item.webVisible, true) !== normalizeVisibleFlag(wantWebVisible, true)) {
+          return false;
+        }
+        if (wantAppVisible !== undefined && normalizeVisibleFlag(item.appVisible, true) !== normalizeVisibleFlag(wantAppVisible, true)) {
           return false;
         }
         return searchFields.some((field) =>
@@ -325,12 +402,44 @@ async function countAllWellnessCoaches() {
   return total;
 }
 
+function normalizeVisibleFlag(value, fallback = true) {
+  if (value === undefined || value === null || value === "") return Boolean(fallback);
+  if (typeof value === "boolean") return value;
+  const s = String(value).toLowerCase().trim();
+  if (s === "true" || s === "1" || s === "yes") return true;
+  if (s === "false" || s === "0" || s === "no") return false;
+  return Boolean(fallback);
+}
+
+function visibilityFilterParts(field, wantVisible) {
+  if (wantVisible === undefined || wantVisible === null) return null;
+  const visible = normalizeVisibleFlag(wantVisible, true);
+  const nameKey = `#${field}`;
+  const trueKey = `:${field}True`;
+  const falseKey = `:${field}False`;
+  if (visible) {
+    return {
+      expression: `(attribute_not_exists(${nameKey}) OR ${nameKey} = ${trueKey})`,
+      exprNames: { [nameKey]: field },
+      exprValues: { [trueKey]: true },
+    };
+  }
+  return {
+    expression: `${nameKey} = ${falseKey}`,
+    exprNames: { [nameKey]: field },
+    exprValues: { [falseKey]: false },
+  };
+}
+
 module.exports = {
   TABLE,
   ALLOWED_STATUS,
   ALLOWED_APPROVAL_STATUS,
   normalizeStatus,
   normalizeApprovalStatus,
+  normalizeVisibleFlag,
+  isVisibleForPlatform,
+  visibilityFilterParts,
   buildCoachItem,
   createWellnessCoach,
   getWellnessCoachById,

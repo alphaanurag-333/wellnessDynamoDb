@@ -17,6 +17,7 @@ const {
   deleteLeadershipNote,
   listLeadershipNotes,
   normalizeStatus,
+  normalizeVisibleFlag,
   DEFAULT_BADGE,
 } = require("../../models/leadershipNoteModel");
 
@@ -51,6 +52,10 @@ exports.createLeadershipNoteController = asyncHandler(async (req, res) => {
   const badge = String(req.body.badge || "").trim() || DEFAULT_BADGE;
   const message = String(req.body.message || "").trim();
   const status = normalizeStatus(req.body.status, "active");
+  const webVisible =
+    req.body.webVisible !== undefined ? normalizeVisibleFlag(req.body.webVisible, true) : true;
+  const appVisible =
+    req.body.appVisible !== undefined ? normalizeVisibleFlag(req.body.appVisible, true) : true;
 
   const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
   const profileImageRaw = parseProfileImageFromBody(req.body);
@@ -76,6 +81,8 @@ exports.createLeadershipNoteController = asyncHandler(async (req, res) => {
     message,
     profileImage,
     status,
+    webVisible,
+    appVisible,
   });
 
   return res.status(201).json({
@@ -140,6 +147,12 @@ exports.updateLeadershipNoteController = asyncHandler(async (req, res) => {
       throw new AppError("status must be active or inactive", 400);
     }
     updates.status = status;
+  }
+  if (req.body.webVisible !== undefined) {
+    updates.webVisible = normalizeVisibleFlag(req.body.webVisible, true);
+  }
+  if (req.body.appVisible !== undefined) {
+    updates.appVisible = normalizeVisibleFlag(req.body.appVisible, true);
   }
 
   if (Object.keys(updates).length === 0) {

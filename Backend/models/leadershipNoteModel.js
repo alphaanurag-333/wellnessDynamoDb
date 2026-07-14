@@ -15,8 +15,10 @@ const {
 const {
   listByPartitionKey,
   buildContainsFilter,
+  appendFilter,
   sortByCreatedAtDesc,
 } = require("../utils/dynamoList");
+const { normalizeVisibleFlag, visibilityFilterParts } = require("./wellnessCoachModel");
 
 const TABLE = "LeadershipNotes";
 const STATUS = new Set(["active", "inactive"]);
@@ -45,6 +47,8 @@ function toPublicLeadershipNote(item) {
   const row = withLegacyId(normalizeMediaItemFromStorage(item));
   if (!row) return null;
   if (row.profileImage) row.profileImage = resolvePublicUrl(row.profileImage);
+  row.webVisible = normalizeVisibleFlag(row.webVisible, true);
+  row.appVisible = normalizeVisibleFlag(row.appVisible, true);
   return row;
 }
 
@@ -55,6 +59,7 @@ function sanitizeUpdateField(key, value) {
     return String(value ?? "").trim();
   }
   if (field === "status") return normalizeStatus(value);
+  if (field === "webVisible" || field === "appVisible") return normalizeVisibleFlag(value, true);
   return value;
 }
 
@@ -67,6 +72,8 @@ async function createLeadershipNote({
   profileImage,
   profile_image,
   status = "active",
+  webVisible = true,
+  appVisible = true,
 }) {
   const now = new Date().toISOString();
   const imageKey = normalizeProfileImageField(profileImage ?? profile_image);
@@ -80,6 +87,8 @@ async function createLeadershipNote({
     message: String(message || "").trim(),
     profileImage: imageKey,
     status: normalizeStatus(status),
+    webVisible: normalizeVisibleFlag(webVisible, true),
+    appVisible: normalizeVisibleFlag(appVisible, true),
     createdAt: now,
     updatedAt: now,
   };
@@ -157,18 +166,66 @@ async function deleteLeadershipNote(id) {
   );
 }
 
-async function listLeadershipNotes({ page = 1, limit = 10, status, search } = {}) {
+async function listLeadershipNotes({
+  page = 1,
+  limit = 10,
+  status,
+  search,
+  platform,
+  webVisible,
+  appVisible,
+} = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const searchFilter = buildContainsFilter(["name", "designation", "title", "message"], search);
+  const channel = String(platform || "").toLowerCase().trim();
+  const wantWebVisible =
+    webVisible !== undefined ? webVisible : channel === "web" ? true : undefined;
+  const wantAppVisible =
+    appVisible !== undefined ? appVisible : channel === "app" ? true : undefined;
+
+  let filterExpression = searchFilter.filterExpression;
+  const exprNames = { ...(searchFilter.exprNames || {}) };
+  const exprValues = { ...(searchFilter.exprValues || {}) };
+  for (const part of [
+    visibilityFilterParts("webVisible", wantWebVisible),
+    visibilityFilterParts("appVisible", wantAppVisible),
+  ]) {
+    if (!part) continue;
+    Object.assign(exprNames, part.exprNames);
+    Object.assign(exprValues, part.exprValues);
+    filterExpression = appendFilter(filterExpression, part.expression);
+  }
+
   const { items, pagination } = await listByPartitionKey({
     tableName: TABLE,
     indexName: "StatusCreatedAtIndex",
     partitionKeyValue: normalizedStatus || undefined,
-    filterExpression: searchFilter.filterExpression,
-    exprNames: searchFilter.exprNames,
-    exprValues: searchFilter.exprValues,
+    filterExpression,
+    exprNames,
+    exprValues,
     search: searchFilter.search,
     searchFields: searchFilter.searchFields,
+    searchFn: searchFilter.search
+      ? (item, term) => {
+          if (
+            wantWebVisible !== undefined &&
+            normalizeVisibleFlag(item.webVisible, true) !== normalizeVisibleFlag(wantWebVisible, true)
+          ) {
+            return false;
+          }
+          if (
+            wantAppVisible !== undefined &&
+            normalizeVisibleFlag(item.appVisible, true) !== normalizeVisibleFlag(wantAppVisible, true)
+          ) {
+            return false;
+          }
+          return ["name", "designation", "title", "message"].some((field) =>
+            String(item[field] || "")
+              .toLowerCase()
+              .includes(term)
+          );
+        }
+      : undefined,
     scanIndexForward: false,
     page,
     limit,
@@ -186,6 +243,7 @@ module.exports = {
   TABLE,
   DEFAULT_BADGE,
   normalizeStatus,
+  normalizeVisibleFlag,
   createLeadershipNote,
   getLeadershipNoteById,
   getLeadershipNoteRecordById,
