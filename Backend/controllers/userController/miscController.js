@@ -8,7 +8,6 @@ const { listProgramTestimonials } = require("../../models/programTestimonialMode
 const { listRealPeopleTestimonials } = require("../../models/realPeopleTestimonialModel");
 const { listVideoTestimonials } = require("../../models/videoTestimonials");
 const { getCofounderMessage } = require("../../models/cofounderMessageModel");
-const { getManagingDirectorMessage } = require("../../models/managingDirectorMessageModel");
 const { listHealthConcerns } = require("../../models/healthConcernModel");
 const { listHealthDisorders } = require("../../models/healthDisorderModel");
 const { listHealthTools } = require("../../models/healthToolModel");
@@ -20,6 +19,7 @@ const {
   listAssistantWellnessCoaches,
   toPublicAssistant,
 } = require("../../models/assistantWellnessCoachModel");
+const { listLeadershipNotes } = require("../../models/leadershipNoteModel");
 const { getSpecializationById } = require("../../models/specializationModel");
 const { listBirthdayPostsByPostDate } = require("../../models/birthdayPostModel");
 const { listActiveTestCatalog, listActiveTestCatalogPaginated } = require("../../models/testCatalogModel");
@@ -199,20 +199,6 @@ exports.getCofounderMessage = asyncHandler(async (req, res) => {
   });
 });
 
-exports.getManagingDirectorMessage = asyncHandler(async (req, res) => {
-  const record = await getManagingDirectorMessage();
-  const managingDirectorMessage =
-    record && String(record.status || "active").toLowerCase() === "active" ? record : null;
-
-  return res.status(200).json({
-    status: true,
-    message: managingDirectorMessage
-      ? "Managing director message fetched"
-      : "Managing director message not available",
-    data: managingDirectorMessage,
-  });
-});
-
 exports.getActiveHealthConcerns = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
   const data = resolveListMedia(
@@ -386,6 +372,22 @@ exports.getActiveAssistantWellnessCoaches = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     assistantWellnessCoaches,
+    pagination: data.pagination,
+  });
+});
+
+exports.getActiveLeadershipNotes = asyncHandler(async (req, res) => {
+  const { page, limit } = readPaging(req.query);
+  const data = await listLeadershipNotes({
+    page,
+    limit,
+    status: "active",
+    search: readSearch(req.query),
+  });
+
+  return res.status(200).json({
+    status: true,
+    leadershipNotes: data.leadershipNotes,
     pagination: data.pagination,
   });
 });

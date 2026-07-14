@@ -8,9 +8,9 @@ import {
 } from "../../media.js";
 import {
   fetchCofounderMessage,
-  fetchManagingDirectorMessage,
   fetchWellnessCoaches,
   fetchAssistantWellnessCoaches,
+  fetchLeadershipNotes,
 } from "../api/publicMisc.js";
 
 import "swiper/css";
@@ -45,7 +45,7 @@ import {
 } from "lucide-react";
 import AboutUs from "./About.jsx";
 import Methodology from "./Methodology.jsx";
-import { LeadershipMessageSection } from "./LeadershipMessageSection.jsx";
+import { LeadershipMessageSection, LeadershipNotesSlider } from "./LeadershipMessageSection.jsx";
 
 const FALLBACK_COFOUNDER = {
   name: "Ms. Banita Acharya",
@@ -275,7 +275,8 @@ const AboutUsSection = () => {
   ];
 
   const [cofounderMessage, setCofounderMessage] = useState(null);
-  const [managingDirectorMessage, setManagingDirectorMessage] = useState(null);
+  const [leadershipNotes, setLeadershipNotes] = useState([]);
+  const [leadershipNotesLoading, setLeadershipNotesLoading] = useState(true);
   const [wellnessCoaches, setWellnessCoaches] = useState([]);
   const [coachesLoading, setCoachesLoading] = useState(true);
   const [assistantWellnessCoaches, setAssistantWellnessCoaches] = useState([]);
@@ -308,13 +309,18 @@ const AboutUsSection = () => {
     let cancelled = false;
 
     (async () => {
+      setLeadershipNotesLoading(true);
       try {
-        const response = await fetchManagingDirectorMessage();
-        if (!cancelled && response?.data) {
-          setManagingDirectorMessage(response.data);
+        const response = await fetchLeadershipNotes({ page: 1, limit: 50 });
+        if (!cancelled) {
+          setLeadershipNotes(
+            Array.isArray(response?.leadershipNotes) ? response.leadershipNotes : [],
+          );
         }
       } catch {
-        /* no managing director message */
+        if (!cancelled) setLeadershipNotes([]);
+      } finally {
+        if (!cancelled) setLeadershipNotesLoading(false);
       }
     })();
 
@@ -380,12 +386,6 @@ const AboutUsSection = () => {
   const cofounderBody = cofounderMessage?.message?.trim() || FALLBACK_COFOUNDER.message;
   const cofounderProfileImage = cofounderMessage?.profileImage || "";
 
-  const managingDirectorName = managingDirectorMessage?.name?.trim() || "";
-  const managingDirectorDesignation =
-    managingDirectorMessage?.designation?.trim() || "Managing Director";
-  const managingDirectorBody = managingDirectorMessage?.message?.trim() || "";
-  const managingDirectorProfileImage = managingDirectorMessage?.profileImage || "";
-
   const marqueeItems = [...items, ...items, ...items, ...items];
 
   return (
@@ -442,15 +442,8 @@ const AboutUsSection = () => {
         profileImage={cofounderProfileImage}
       />
 
-      <LeadershipMessageSection
-        badge="A NOTE FROM LEADERSHIP"
-        title="Director sales and Client Acquistion"
-        name={managingDirectorName}
-        designation={managingDirectorDesignation}
-        message={managingDirectorBody}
-        profileImage={managingDirectorProfileImage}
-        className="leadership--alt"
-      />
+      <LeadershipNotesSlider notes={leadershipNotes} loading={leadershipNotesLoading} />
+
       <section className="pillars">
         <div className="site-container">
           {/* Heading */}

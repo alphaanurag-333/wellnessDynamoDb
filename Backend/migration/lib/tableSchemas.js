@@ -183,6 +183,17 @@ const TABLE_DEFINITIONS = [
     ...PAY_PER_REQUEST,
   },
   {
+    TableName: "LeadershipNotes",
+    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
+    AttributeDefinitions: [
+      { AttributeName: "id", AttributeType: "S" },
+      { AttributeName: "status", AttributeType: "S" },
+      { AttributeName: "createdAt", AttributeType: "S" },
+    ],
+    GlobalSecondaryIndexes: [statusCreatedAtIndex()],
+    ...PAY_PER_REQUEST,
+  },
+  {
     TableName: "ProgramTestimonials",
     KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
     AttributeDefinitions: [
@@ -255,17 +266,6 @@ const TABLE_DEFINITIONS = [
   },
   {
     TableName: "CofounderMessage",
-    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
-    AttributeDefinitions: [
-      { AttributeName: "id", AttributeType: "S" },
-      { AttributeName: "status", AttributeType: "S" },
-      { AttributeName: "createdAt", AttributeType: "S" },
-    ],
-    GlobalSecondaryIndexes: [statusCreatedAtIndex()],
-    ...PAY_PER_REQUEST,
-  },
-  {
-    TableName: "ManagingDirectorMessage",
     KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
     AttributeDefinitions: [
       { AttributeName: "id", AttributeType: "S" },

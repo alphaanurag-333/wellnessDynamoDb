@@ -1,24 +1,11 @@
-/**
- * Create ManagingDirectorMessage DynamoDB table.
- * Usage: node tables/createManagingDirectorMessageTable.js
- */
 require("dotenv").config();
 
-const { DynamoDBClient, CreateTableCommand } = require("@aws-sdk/client-dynamodb");
-const config = require("../config");
+const { CreateTableCommand } = require("@aws-sdk/client-dynamodb");
+const { client } = require("../config/db");
 
-const client = new DynamoDBClient({
-  region: config.awsRegion,
-  ...(config.awsAccessKeyId && config.awsSecretAccessKey
-    ? { credentials: { accessKeyId: config.awsAccessKeyId, secretAccessKey: config.awsSecretAccessKey } }
-    : {}),
-});
-
-const TABLE = "ManagingDirectorMessage";
-
-async function main() {
+async function createLeadershipNotesTable() {
   const params = {
-    TableName: TABLE,
+    TableName: "LeadershipNotes",
     KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
     AttributeDefinitions: [
       { AttributeName: "id", AttributeType: "S" },
@@ -39,16 +26,16 @@ async function main() {
   };
 
   try {
-    await client.send(new CreateTableCommand(params));
-    console.log(`Table ${TABLE} created.`);
+    const result = await client.send(new CreateTableCommand(params));
+    console.log("LeadershipNotes table created:", result.TableDescription.TableArn);
   } catch (err) {
     if (err.name === "ResourceInUseException") {
-      console.log(`Table ${TABLE} already exists`);
+      console.log("LeadershipNotes table already exists");
     } else {
-      console.error(err.message);
+      console.error("Error creating table:", err.message);
       process.exitCode = 1;
     }
   }
 }
 
-main();
+createLeadershipNotesTable();

@@ -8,15 +8,9 @@ const {
 } = require("../utils/mediaFieldAliases");
 
 const COFOUNDER_MESSAGE_ID = "cofounder-message";
-const MEDIA_FIELDS = ["profileImage", "video"];
+const MEDIA_FIELDS = ["profileImage"];
 const TABLE = "CofounderMessage";
-const TYPE = new Set(["link", "video"]);
 const STATUS = new Set(["active", "inactive"]);
-
-function normalizeType(value, fallback = "link") {
-  const next = String(value || fallback).toLowerCase().trim();
-  return TYPE.has(next) ? next : fallback;
-}
 
 function normalizeStatus(value, fallback = "active") {
   const next = String(value || fallback).toLowerCase().trim();
@@ -35,13 +29,12 @@ function toPublicCofounderMessage(item) {
 
 function sanitizeUpdateField(key, value) {
   const field = normalizeUpdateFieldName(key);
-  if (field === "type") return normalizeType(value);
   if (field === "status") return normalizeStatus(value);
-  if (field === "profileImage" || field === "video") {
+  if (field === "profileImage") {
     if (value == null || String(value).trim() === "") return "";
     return normalizeMediaField(value, field);
   }
-  if (["name", "message", "ytLink"].includes(field)) return String(value).trim();
+  if (["name", "message"].includes(field)) return String(value).trim();
   return value;
 }
 
@@ -52,9 +45,6 @@ async function createCofounderMessageShell() {
     name: "",
     profileImage: "",
     message: "",
-    ytLink: "",
-    video: "",
-    type: "link",
     status: "active",
     createdAt: now,
     updatedAt: now,
@@ -87,7 +77,7 @@ async function getCofounderMessage() {
 }
 
 async function updateCofounderMessage(updates) {
-  const blockedFields = new Set(["id", "_id", "createdAt"]);
+  const blockedFields = new Set(["id", "_id", "createdAt", "video", "ytLink", "type"]);
   const entries = Object.entries(updates || {})
     .filter(([k, v]) => !blockedFields.has(k) && v !== undefined)
     .map(([k, v]) => [normalizeUpdateFieldName(k), sanitizeUpdateField(k, v)]);
@@ -127,7 +117,6 @@ async function updateCofounderMessage(updates) {
 
 module.exports = {
   COFOUNDER_MESSAGE_ID,
-  normalizeType,
   normalizeStatus,
   createCofounderMessageShell,
   getCofounderMessage,

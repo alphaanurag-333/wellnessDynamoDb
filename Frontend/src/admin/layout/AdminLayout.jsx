@@ -74,6 +74,13 @@ function titleFromPath(pathname) {
     return "Client testimonials";
   }
 
+  if (p.startsWith("/admin/leadership-notes")) {
+    if (/^\/admin\/leadership-notes\/new$/.test(p)) return "Add leadership note";
+    if (/^\/admin\/leadership-notes\/[^/]+\/edit$/.test(p)) return "Edit leadership note";
+    if (/^\/admin\/leadership-notes\/[^/]+$/.test(p)) return "Leadership note details";
+    return "Leadership notes";
+  }
+
   if (p.startsWith("/admin/program-testimonials")) {
     if (/^\/admin\/program-testimonials\/new$/.test(p)) return "Add program testimonial";
     if (/^\/admin\/program-testimonials\/[^/]+\/edit$/.test(p)) return "Edit program testimonial";
@@ -104,7 +111,6 @@ function titleFromPath(pathname) {
   }
 
   if (p.startsWith("/admin/cofounder-message")) return "Cofounder message";
-  if (p.startsWith("/admin/managing-director-message")) return "Managing director message";
 
   if (p.startsWith("/admin/launch-questions")) {
     if (/^\/admin\/launch-questions\/new$/.test(p)) return "Add LAUNCH question";

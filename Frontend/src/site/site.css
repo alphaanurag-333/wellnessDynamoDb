@@ -4228,6 +4228,55 @@ h5.pillar-card__head-title {
   padding-top: 0;
 }
 
+.leadership-slider {
+  position: relative;
+}
+
+.leadership-slider__loading {
+  margin: 0;
+  color: #6b7280;
+  text-align: center;
+  padding: 24px 0;
+}
+
+.leadership-slider__nav {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.leadership-slider__navBtn {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: var(--shadow-sm);
+  color: #1f2937;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.leadership-slider__navBtn:hover {
+  color: var(--brand, #e85d3b);
+}
+
+.leadership-slider__swiper {
+  padding-bottom: 40px;
+}
+
+.leadership-slider .swiper-pagination-bullet {
+  background: #d1d5db;
+  opacity: 1;
+}
+
+.leadership-slider .swiper-pagination-bullet-active {
+  background: var(--brand, #e85d3b);
+}
+
 .leadership__card {
   width: 100%;
   background: var(--card-bg);

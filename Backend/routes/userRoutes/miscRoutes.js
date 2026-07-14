@@ -8,7 +8,6 @@ const {
   getActiveRealPeopleTestimonials,
   getActiveVideoTestimonials,
   getCofounderMessage,
-  getManagingDirectorMessage,
   getActiveHealthConcerns,
   getActiveHealthDisorders,
   getActiveHealthTools,
@@ -17,6 +16,7 @@ const {
   getActiveTransformations,
   getActiveWellnessCoaches,
   getActiveAssistantWellnessCoaches,
+  getActiveLeadershipNotes,
   getActiveBirthdayPosts,
   getActiveMonthlyChampions,
   getActiveTestCatalog,
@@ -38,7 +38,6 @@ router.get("/program-testimonials", getActiveProgramTestimonials);
 router.get("/real-people-testimonials", getActiveRealPeopleTestimonials);
 router.get("/video-testimonials", getActiveVideoTestimonials);
 router.get("/cofounder-message", getCofounderMessage);
-router.get("/managing-director-message", getManagingDirectorMessage);
 router.get("/health-concerns", getActiveHealthConcerns);
 router.get("/health-disorders", getActiveHealthDisorders);
 router.get("/health-tools", getActiveHealthTools);
@@ -47,6 +46,7 @@ router.get("/yoga", getActiveYoga);
 router.get("/transformations", getActiveTransformations);
 router.get("/wellness-coaches", getActiveWellnessCoaches);
 router.get("/assistant-wellness-coaches", getActiveAssistantWellnessCoaches);
+router.get("/leadership-notes", getActiveLeadershipNotes);
 router.get("/birthday-posts", getActiveBirthdayPosts);
 router.get("/monthly-champions", getActiveMonthlyChampions);
 router.get("/test-catalog", getActiveTestCatalog);

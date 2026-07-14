@@ -45,15 +45,6 @@ export async function fetchCofounderMessage() {
   }
 }
 
-export async function fetchManagingDirectorMessage() {
-  try {
-    const { data } = await api.get("/public/misc/managing-director-message");
-    return data;
-  } catch (error) {
-    normalizeApiError(error);
-  }
-}
-
 export async function fetchWellnessCoaches(params = {}) {
   try {
     const { data } = await api.get("/public/misc/wellness-coaches", { params });
@@ -66,6 +57,15 @@ export async function fetchWellnessCoaches(params = {}) {
 export async function fetchAssistantWellnessCoaches(params = {}) {
   try {
     const { data } = await api.get("/public/misc/assistant-wellness-coaches", { params });
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function fetchLeadershipNotes(params = {}) {
+  try {
+    const { data } = await api.get("/public/misc/leadership-notes", { params });
     return data;
   } catch (error) {
     normalizeApiError(error);

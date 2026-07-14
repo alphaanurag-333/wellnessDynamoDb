@@ -111,6 +111,10 @@ import { ClientTestimonialList } from "../pages/clientTestimonial/ClientTestimon
 import { ClientTestimonialAdd } from "../pages/clientTestimonial/ClientTestimonialAdd.jsx";
 import { ClientTestimonialEdit } from "../pages/clientTestimonial/ClientTestimonialEdit.jsx";
 import { ClientTestimonialView } from "../pages/clientTestimonial/ClientTestimonialView.jsx";
+import { LeadershipNoteList } from "../pages/leadershipNote/LeadershipNoteList.jsx";
+import { LeadershipNoteAdd } from "../pages/leadershipNote/LeadershipNoteAdd.jsx";
+import { LeadershipNoteEdit } from "../pages/leadershipNote/LeadershipNoteEdit.jsx";
+import { LeadershipNoteView } from "../pages/leadershipNote/LeadershipNoteView.jsx";
 import { ProgramTestimonialList } from "../pages/programTestimonial/ProgramTestimonialList.jsx";
 import { ProgramTestimonialAdd } from "../pages/programTestimonial/ProgramTestimonialAdd.jsx";
 import { ProgramTestimonialEdit } from "../pages/programTestimonial/ProgramTestimonialEdit.jsx";
@@ -120,7 +124,6 @@ import { VideoTestimonialAdd } from "../pages/videoTestimonial/VideoTestimonialA
 import { VideoTestimonialEdit } from "../pages/videoTestimonial/VideoTestimonialEdit.jsx";
 import { VideoTestimonialView } from "../pages/videoTestimonial/VideoTestimonialView.jsx";
 import { CofounderMessagePage } from "../pages/cofounderMessage/CofounderMessagePage.jsx";
-import { ManagingDirectorMessagePage } from "../pages/managingDirectorMessage/ManagingDirectorMessagePage.jsx";
 import { ContactInquiryList } from "../pages/contactInquiry/ContactInquiryList.jsx";
 import { ContactInquiryView } from "../pages/contactInquiry/ContactInquiryView.jsx";
 import {SectionPage} from "../pages/SectionPage.jsx";
@@ -357,6 +360,12 @@ export const adminRouteTree = (
       <Route path=":testimonialId/edit" element={<ClientTestimonialEdit />} />
       <Route path=":testimonialId" element={<ClientTestimonialView />} />
     </Route>
+    <Route path="leadership-notes" element={<Outlet />}>
+      <Route index element={<LeadershipNoteList />} />
+      <Route path="new" element={<LeadershipNoteAdd />} />
+      <Route path=":noteId/edit" element={<LeadershipNoteEdit />} />
+      <Route path=":noteId" element={<LeadershipNoteView />} />
+    </Route>
     <Route path="program-testimonials" element={<Outlet />}>
       <Route index element={<ProgramTestimonialList />} />
       <Route path="new" element={<ProgramTestimonialAdd />} />
@@ -383,7 +392,6 @@ export const adminRouteTree = (
     </Route>
 
     <Route path="cofounder-message" element={<CofounderMessagePage />} />
-    <Route path="managing-director-message" element={<ManagingDirectorMessagePage />} />
 
     <Route path="*" element={<NotFoundPage />} />
   </Route>

@@ -17,6 +17,7 @@ const adminUpload = memorySingle("file");
 const bannerUpload = memorySingle("file");
 const notificationUpload = memorySingle("file");
 const clientTestimonialsUpload = memorySingle("file");
+const leadershipNotesUpload = memorySingle("file");
 const programTestimonialUpload = memorySingle("file");
 const wellnessCoachUpload = memorySingle("file");
 const assistantWellnessCoachUpload = memorySingle("file");
@@ -42,12 +43,6 @@ const videoTestimonialsUpload = memoryFields([
 
 const cofounderMessageUpload = memoryFields([
   { name: "profileImage", maxCount: 1 },
-  { name: "videoFile", maxCount: 1 },
-]);
-
-const managingDirectorMessageUpload = memoryFields([
-  { name: "profileImage", maxCount: 1 },
-  { name: "videoFile", maxCount: 1 },
 ]);
 
 const healthRecipeUpload = memoryFields([
@@ -88,10 +83,10 @@ exports.optionalProfileImageFile = optionalMultipart(profileImageUpload);
 exports.optionalBannerFile = optionalMultipart(bannerUpload);
 exports.optionalNotificationFile = optionalMultipart(notificationUpload);
 exports.optionalClientTestimonialsFile = optionalMultipart(clientTestimonialsUpload);
+exports.optionalLeadershipNotesFile = optionalMultipart(leadershipNotesUpload);
 exports.optionalProgramTestimonialFile = optionalMultipart(programTestimonialUpload);
 exports.optionalVideoTestimonialsFiles = optionalMultipart(videoTestimonialsUpload);
 exports.optionalCofounderMessageFiles = optionalMultipart(cofounderMessageUpload);
-exports.optionalManagingDirectorMessageFiles = optionalMultipart(managingDirectorMessageUpload);
 exports.optionalHealthConcernFile = optionalMultipart(healthConcernUpload);
 exports.optionalHealthToolFile = optionalMultipart(healthToolUpload);
 exports.optionalSupplementFile = optionalMultipart(supplementUpload);

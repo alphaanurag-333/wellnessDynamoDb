@@ -156,7 +156,7 @@ export function Header({
               Cofounder Message
             </Link>
             <Link
-              to="/admin/managing-director-message"
+              to="/admin/leadership-notes"
               className="admin-header__dropdown-item"
               role="menuitem"
               onClick={closeMenu}
@@ -166,7 +166,7 @@ export function Header({
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                 </svg>
               </span>
-              Managing Director Message
+              Leadership Notes
             </Link>
             <div className="admin-header__dropdown-sep" role="separator" />
             <button type="button" className="admin-header__dropdown-item" role="menuitem" onClick={handleLogout}>
