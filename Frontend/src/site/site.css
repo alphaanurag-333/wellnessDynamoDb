@@ -4285,6 +4285,7 @@ h5.pillar-card__head-title {
   padding: 40px;
 
   display: flex;
+  flex-direction: column;
   align-items: flex-start;
   justify-content: space-between;
   gap: 50px;
@@ -9309,8 +9310,8 @@ SCROLLBAR
   }
 
   .pillar-card__icon {
-    width: 48px;
-    height: 48px;
+    /* width: 48px;
+    height: 48px; */
     margin-bottom: 26px;
   }
 
@@ -11982,6 +11983,15 @@ margin: 0 auto;
   }
   .wellness-hero__stat-card{
     bottom: -64px;
+  }
+  .static-page-hero{
+    padding: 25px 0;
+    min-height: unset;
+    padding-bottom: 0;
+    
+  }
+  .static-page-body{
+            padding: 28px 0 56px;
   }
 }
 
