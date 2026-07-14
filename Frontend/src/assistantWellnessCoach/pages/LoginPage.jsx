@@ -37,6 +37,7 @@ export function AssistantLoginPage() {
       brandLogoSrc={brandLogoSrc}
       title="Assistant Wellness Coach"
       subtitle="Sign in with password or OTP to access your assistant dashboard."
+      portalNavActive="assistant"
       onPasswordLogin={assistantLogin}
       onOtpSend={assistantSendLoginOtp}
       onOtpVerify={assistantVerifyLoginOtp}

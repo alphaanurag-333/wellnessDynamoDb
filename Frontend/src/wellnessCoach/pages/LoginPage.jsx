@@ -37,6 +37,7 @@ export function CoachLoginPage() {
       brandLogoSrc={brandLogoSrc}
       title="Wellness Coach"
       subtitle="Sign in with password or OTP to access your coach dashboard."
+      portalNavActive="coach"
       onPasswordLogin={coachLogin}
       onOtpSend={coachSendLoginOtp}
       onOtpVerify={coachVerifyLoginOtp}

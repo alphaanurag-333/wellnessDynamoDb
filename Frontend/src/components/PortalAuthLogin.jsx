@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Country } from "country-state-city";
 import Swal from "sweetalert2";
 import { AuthPasswordToggle } from "./AuthPasswordToggle.jsx";
+import { AuthPortalNav } from "./AuthPortalNav.jsx";
 import defaultLogo from "../assets/logo/defaultlogo.png";
 import {
   ALL_COUNTRIES,
@@ -23,6 +24,7 @@ export function PortalAuthLogin({
   title,
   subtitle,
   footer = null,
+  portalNavActive = null,
   onPasswordLogin,
   onOtpSend,
   onOtpVerify,
@@ -217,6 +219,8 @@ export function PortalAuthLogin({
         </div>
         <h1 className="auth-card__title">{title}</h1>
         <p className="auth-card__subtitle">{subtitle}</p>
+
+        {portalNavActive ? <AuthPortalNav active={portalNavActive} /> : null}
 
         <div className="auth-login-tabs" role="tablist" aria-label="Login method">
           <button

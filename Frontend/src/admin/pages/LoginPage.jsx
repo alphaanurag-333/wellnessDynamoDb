@@ -9,6 +9,7 @@ import { setCredentials } from "../../store/authSlice.js";
 import { firstAllowedAdminPath } from "../utils/navAccess.js";
 import defaultLogo from "../../assets/logo/defaultlogo.png";
 import { AuthPasswordToggle } from "../../components/AuthPasswordToggle.jsx";
+import { AuthPortalNav } from "../../components/AuthPortalNav.jsx";
 
 export function AdminLoginPage() {
   const dispatch = useDispatch();
@@ -97,6 +98,7 @@ export function AdminLoginPage() {
         <p className="auth-card__subtitle">
           Enter your credentials to access the admin dashboard.
         </p>
+        <AuthPortalNav active="admin" />
         <form className="auth-form" onSubmit={handleSubmit}>
           <label className="auth-field">
             <span className="auth-field__label">Email ID <span className="required-dot">*</span></span>
