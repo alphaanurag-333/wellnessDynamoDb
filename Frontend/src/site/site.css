@@ -2634,7 +2634,7 @@ h5.pillar-card__head-title {
 
   font-size: 17px;
   line-height: 1.6;
-  text-align: justify;
+  text-align: left;
   min-height: 130px;
 }
 
@@ -4311,7 +4311,7 @@ padding: 8px 15px;
   padding: 40px;
 
   display: flex;
-  flex-direction: column;
+  /* flex-direction: column; */
   align-items: flex-start;
   justify-content: space-between;
   gap: 40px;
@@ -9359,7 +9359,7 @@ SCROLLBAR
   }
 
   .pillar-card {
-    padding: 30px 26px;
+    /* padding: 30px 26px; */
   }
 
   .pillar-card__title {
@@ -9458,7 +9458,7 @@ SCROLLBAR
   }
 
   .pillar-card {
-    padding: 28px 22px;
+    /* padding: 28px 22px; */
   }
 
   .pillar-card__icon {
@@ -11772,7 +11772,7 @@ margin: 0 auto;
     height: 380px;
   }
   .success-story .container {
-    padding: 40px 0px;
+    padding: 40px 15px;
   }
 
   .success-tag {
