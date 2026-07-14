@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
-import { Autoplay, Navigation, Pagination } from "swiper/modules";
+import { Navigation } from "swiper/modules";
 import { ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { mediaUrl } from "../../media.js";
 import { fetchLeadershipNotes } from "../api/publicMisc.js";
 
 import "swiper/css";
 import "swiper/css/navigation";
-import "swiper/css/pagination";
 
 function messageParagraphs(text) {
   return String(text || "")
@@ -37,41 +36,31 @@ function LeadershipNoteCard({
 
   useEffect(() => {
     setImageError(false);
-  }, [imageSrc]);
-
-  useEffect(() => {
     setExpanded(false);
-  }, [message]);
+  }, [imageSrc, message]);
 
   useEffect(() => {
     const el = descriptionRef.current;
-    if (!el) return undefined;
+    if (!el || expanded) return undefined;
 
-    const measure = () => {
-      if (expanded) return;
-      // Slight buffer so rounding / subpixel layout doesn't flash a needless toggle.
-      setNeedsToggle(el.scrollHeight > el.clientHeight + 1);
-    };
-
+    const measure = () => setNeedsToggle(el.scrollHeight > el.clientHeight + 1);
     measure();
-    const resizeObserver = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
-    resizeObserver?.observe(el);
-    window.addEventListener("resize", measure);
 
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    observer?.observe(el);
+    window.addEventListener("resize", measure);
     return () => {
-      resizeObserver?.disconnect();
+      observer?.disconnect();
       window.removeEventListener("resize", measure);
     };
-  }, [message, paragraphs.length, expanded]);
+  }, [message, expanded]);
 
-  if (!name || paragraphs.length === 0) {
-    return null;
-  }
+  if (!name || paragraphs.length === 0) return null;
 
   const toggleExpanded = () => {
     setExpanded((prev) => {
       const next = !prev;
-      queueMicrotask(() => onExpandChange?.(next));
+      queueMicrotask(() => onExpandChange?.());
       return next;
     });
   };
@@ -81,13 +70,18 @@ function LeadershipNoteCard({
       {showImage ? (
         <div className="leadership__image">
           <div className="leadership__image-frame">
-            <img src={imageSrc} alt={name} onError={() => setImageError(true)} />
+            <img
+              src={imageSrc}
+              alt={name}
+              onError={() => setImageError(true)}
+              onLoad={() => onExpandChange?.()}
+            />
           </div>
         </div>
       ) : null}
 
       <div className="leadership__content">
-        <span className="leadership__badge">{badge}</span>
+        {badge ? <span className="leadership__badge">{badge}</span> : null}
         {heading ? <h2 className="leadership__title">{heading}</h2> : null}
 
         <div className="leadership__author">
@@ -104,12 +98,14 @@ function LeadershipNoteCard({
           ))}
         </div>
 
-        {needsToggle || expanded ? (
-          <button type="button" className="leadership__link" onClick={toggleExpanded}>
-            {expanded ? "Read Less" : "Read More"}
-            {expanded ? <ArrowUpRight size={18} /> : <ArrowRight size={18} />}
-          </button>
-        ) : null}
+        <div className="leadership__link-slot">
+          {needsToggle || expanded ? (
+            <button type="button" className="leadership__link" onClick={toggleExpanded}>
+              {expanded ? "Read Less" : "Read More"}
+              {expanded ? <ArrowUpRight size={18} /> : <ArrowRight size={18} />}
+            </button>
+          ) : null}
+        </div>
       </div>
     </div>
   );
@@ -141,23 +137,45 @@ export function LeadershipMessageSection({
   );
 }
 
+function equalizeSlideHeights(swiper) {
+  if (!swiper?.slides?.length) return;
+
+  const slides = Array.from(swiper.slides);
+  slides.forEach((slide) => {
+    slide.style.height = "auto";
+  });
+
+  const maxHeight = Math.max(0, ...slides.map((slide) => slide.offsetHeight));
+  if (maxHeight <= 0) return;
+
+  slides.forEach((slide) => {
+    slide.style.height = `${maxHeight}px`;
+  });
+}
+
 export function LeadershipNotesSlider({ notes = [], loading = false }) {
   const swiperRef = useRef(null);
   const prevRef = useRef(null);
   const nextRef = useRef(null);
 
-  const updateSlideHeight = () => {
-    const swiper = swiperRef.current;
-    if (!swiper) return;
-    requestAnimationFrame(() => {
-      swiper.updateAutoHeight?.(200);
-      swiper.update?.();
-    });
+  const items = (Array.isArray(notes) ? notes : []).filter(
+    (note) => note?.name && String(note?.message || "").trim()
+  );
+  const showNav = items.length > 1;
+
+  const syncHeights = () => {
+    requestAnimationFrame(() => equalizeSlideHeights(swiperRef.current));
   };
+
+  useEffect(() => {
+    syncHeights();
+    window.addEventListener("resize", syncHeights);
+    return () => window.removeEventListener("resize", syncHeights);
+  }, [items.length]);
 
   if (loading) {
     return (
-      <section className="leadership">
+      <section className="leadership leadership-slider" aria-label="Leadership notes">
         <div className="site-container">
           <p className="leadership-slider__loading">Loading leadership notes…</p>
         </div>
@@ -165,82 +183,50 @@ export function LeadershipNotesSlider({ notes = [], loading = false }) {
     );
   }
 
-  const items = (Array.isArray(notes) ? notes : []).filter(
-    (note) => note?.name && String(note?.message || "").trim()
-  );
-
   if (items.length === 0) return null;
 
-  const enableLoop = items.length > 1;
-
   return (
-    <section className="leadership leadership-slider">
+    <section className="leadership leadership-slider" aria-label="Leadership notes">
       <div className="site-container">
-        {enableLoop ? (
+        {showNav ? (
           <div className="leadership-slider__nav">
-            <button
-              ref={prevRef}
-              type="button"
-              className="leadership-slider__navBtn"
-              aria-label="Previous note"
-            >
+            <button ref={prevRef} type="button" className="leadership-slider__navBtn" aria-label="Previous note">
               <ChevronLeft size={22} />
             </button>
-            <button
-              ref={nextRef}
-              type="button"
-              className="leadership-slider__navBtn"
-              aria-label="Next note"
-            >
+            <button ref={nextRef} type="button" className="leadership-slider__navBtn" aria-label="Next note">
               <ChevronRight size={22} />
             </button>
           </div>
         ) : null}
 
         <Swiper
-          modules={[Autoplay, Navigation, Pagination]}
-          spaceBetween={24}
+          modules={[Navigation]}
           slidesPerView={1}
-          autoHeight
-          observer
-          observeParents
+          spaceBetween={24}
+          speed={700}
           watchOverflow
+          navigation={
+            showNav
+              ? {
+                  prevEl: prevRef.current,
+                  nextEl: nextRef.current,
+                }
+              : false
+          }
           onSwiper={(swiper) => {
             swiperRef.current = swiper;
-            requestAnimationFrame(() => swiper.updateAutoHeight?.(0));
+            syncHeights();
+            if (!showNav) return;
+            setTimeout(() => {
+              swiper.params.navigation.prevEl = prevRef.current;
+              swiper.params.navigation.nextEl = nextRef.current;
+              swiper.navigation.destroy();
+              swiper.navigation.init();
+              swiper.navigation.update();
+              syncHeights();
+            });
           }}
-          onSlideChange={(swiper) => {
-            requestAnimationFrame(() => swiper.updateAutoHeight?.(200));
-          }}
-          onInit={(swiper) => {
-            if (!enableLoop) return;
-            swiper.params.navigation.prevEl = prevRef.current;
-            swiper.params.navigation.nextEl = nextRef.current;
-            swiper.navigation.destroy();
-            swiper.navigation.init();
-            swiper.navigation.update();
-          }}
-          loop={false}
-          rewind={enableLoop}
-          autoplay={
-            enableLoop
-              ? {
-                  delay: 6000,
-                  disableOnInteraction: false,
-                  pauseOnMouseEnter: true,
-                }
-              : false
-          }
-          pagination={
-            enableLoop
-              ? {
-                  clickable: true,
-                  bulletClass: "leadership-slider__bullet",
-                  bulletActiveClass: "leadership-slider__bullet--active",
-                }
-              : false
-          }
-          navigation={false}
+          onSlideChange={syncHeights}
           className="leadership-slider__swiper"
         >
           {items.map((note) => (
@@ -252,7 +238,7 @@ export function LeadershipNotesSlider({ notes = [], loading = false }) {
                 designation={note.designation}
                 message={note.message}
                 profileImage={note.profileImage || ""}
-                onExpandChange={updateSlideHeight}
+                onExpandChange={syncHeights}
               />
             </SwiperSlide>
           ))}
