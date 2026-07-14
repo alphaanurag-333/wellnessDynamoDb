@@ -19,10 +19,13 @@ export function HomePage() {
   return (
     <>
       <SiteHero />
-      <ChampionSlider />
+   
       <WellnessHero />
-      <BirthdaySlider />
+     
+    
       <StatsSection />
+      <ChampionSlider />
+      <BirthdaySlider />
       <Methodology />
       <TransformationStoriesSection />
       {/* <About /> */}

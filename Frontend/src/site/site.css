@@ -7130,6 +7130,68 @@ PRINT
   border-radius: 25px;
   min-height: 200px;
 }
+
+/* -------- Monthly Champions heading (cards keep existing style) -------- */
+.monthly-champions {
+  width: 100%;
+  padding: clamp(48px, 6vw, 72px) 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 10% 20%, rgba(231, 134, 58, 0.12), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 90% 80%, rgba(106, 195, 106, 0.1), transparent 50%),
+    linear-gradient(180deg, var(--primary-light) 0%, #fff8f3 45%, var(--bg-body) 100%);
+}
+
+.monthly-champions.champion-section {
+  padding: clamp(48px, 6vw, 72px) 0;
+}
+
+.monthly-champions__header {
+  max-width: 720px;
+  margin: 0 auto 40px;
+  text-align: center;
+}
+
+.monthly-champions__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 18px;
+  border-radius: var(--radius-pill);
+  background: var(--secondary-light);
+  color: #1d5d1d;
+  font-size: 12px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+.monthly-champions__title {
+  margin: 0 0 12px;
+  color: var(--text-heading);
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: var(--fw-bold);
+  line-height: 1.15;
+}
+
+.monthly-champions__title span {
+  color: var(--primary);
+}
+
+.monthly-champions__subtitle {
+  margin: 0;
+  color: var(--text-body);
+  font-size: clamp(14px, 1.4vw, 17px);
+  line-height: 1.6;
+}
+
+@media (max-width: 700px) {
+  .monthly-champions__header {
+    margin-bottom: 28px;
+  }
+}
+
 .champion-card.birthday-card {
   width: 100%;
 

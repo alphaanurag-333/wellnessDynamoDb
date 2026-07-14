@@ -5,6 +5,16 @@ import "swiper/css";
 import { DEFAULT_IMAGE_SRC, handleMediaImageError, mediaUrl } from "../../media.js";
 import { fetchMonthlyChampions } from "../api/publicMisc.js";
 
+function formatMonthLabel(monthYear) {
+  const raw = String(monthYear || "").trim();
+  if (!/^\d{4}-\d{2}$/.test(raw)) return "";
+  const [year, month] = raw.split("-").map(Number);
+  return new Date(year, month - 1, 1).toLocaleString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+}
+
 function championSubtitle(row) {
   const message = String(row.message || "").trim();
   if (message) return message;
@@ -39,6 +49,7 @@ function mapChampion(row) {
     subtitle: championSubtitle(row),
     avatar: profileImage ? mediaUrl(profileImage) : DEFAULT_IMAGE_SRC,
     averageScore: row.averageScore,
+    monthLabel: formatMonthLabel(row.monthYear),
   };
 }
 
@@ -74,60 +85,74 @@ export default function ChampionSlider() {
   }
 
   const enableLoop = items.length > 1;
+  const monthHint = items.find((item) => item.monthLabel)?.monthLabel || "";
 
   return (
-    <section className="champion-section container" aria-label="Monthly champions">
-            <h2 className="healing-title">Champion of the Month</h2>
-      <Swiper
-        className=""
-        modules={[Autoplay]}
-        spaceBetween={24}
-        slidesPerView={3}
-        loop={enableLoop}
-        autoplay={
-          enableLoop
-            ? {
-                delay: 2500,
-                disableOnInteraction: false,
-              }
-            : false
-        }
-        breakpoints={{
-          0: {
-            slidesPerView: 1,
-          },
-          640: {
-            slidesPerView: 2,
-          },
-          992: {
-            slidesPerView: 3,
-          },
-        }}
-      >
-        {items.map((item) => (
-          <SwiperSlide key={item.id}>
-            <article className="champion-card">
-              <div className="champion-title">{item.title}</div>
+    <section className="champion-section monthly-champions" aria-label="Monthly champions">
+      <div className="site-container">
+        <div className="monthly-champions__header">
+          <span className="monthly-champions__badge">Community Pride</span>
+          <h2 className="monthly-champions__title">
+            Champion of the <span>Month</span>
+          </h2>
+          {/* <p className="monthly-champions__subtitle">
+            {monthHint
+              ? `Celebrating top daily reflection consistency for ${monthHint}.`
+              : "Celebrating members with outstanding daily reflection consistency."}
+          </p> */}
+        </div>
 
-              <div className="champion-user">
-                <div className="champion-avatar">
-                  <img
-                    src={item.avatar || DEFAULT_IMAGE_SRC}
-                    alt={item.name}
-                    loading="lazy"
-                    onError={handleMediaImageError}
-                  />
-                </div>
+        <Swiper
+          className=""
+          modules={[Autoplay]}
+          spaceBetween={24}
+          slidesPerView={3}
+          loop={enableLoop}
+          autoplay={
+            enableLoop
+              ? {
+                  delay: 2500,
+                  disableOnInteraction: false,
+                }
+              : false
+          }
+          breakpoints={{
+            0: {
+              slidesPerView: 1,
+            },
+            640: {
+              slidesPerView: 2,
+            },
+            992: {
+              slidesPerView: 3,
+            },
+          }}
+        >
+          {items.map((item) => (
+            <SwiperSlide key={item.id}>
+              <article className="champion-card">
+                <div className="champion-title">{item.title}</div>
 
-                <div className="champion-info">
-                  <h4>{item.name}</h4>
-                  <p>{item.subtitle}</p>
+                <div className="champion-user">
+                  <div className="champion-avatar">
+                    <img
+                      src={item.avatar || DEFAULT_IMAGE_SRC}
+                      alt={item.name}
+                      loading="lazy"
+                      onError={handleMediaImageError}
+                    />
+                  </div>
+
+                  <div className="champion-info">
+                    <h4>{item.name}</h4>
+                    <p>{item.subtitle}</p>
+                  </div>
                 </div>
-              </div>
-            </article>
-          </SwiperSlide>
-        ))}
-      </Swiper>
+              </article>
+            </SwiperSlide>
+          ))}
+        </Swiper>
+      </div>
     </section>
   );
 }
