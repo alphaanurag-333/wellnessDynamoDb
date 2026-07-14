@@ -145,8 +145,8 @@ export default function TransformationStoriesSection() {
         ) : hasTransformations ? (
           <Swiper
             modules={[Navigation]}
-            slidesPerView={3}
-            spaceBetween={28}
+            slidesPerView={1}
+            spaceBetween={16}
             speed={700}
             navigation={{
               prevEl: prevRef.current,
@@ -163,18 +163,10 @@ export default function TransformationStoriesSection() {
             }}
             breakpoints={{
               0: {
-                slidesPerView: 1.05,
+                slidesPerView: 1,
                 spaceBetween: 16,
               },
-              576: {
-                slidesPerView: 1.35,
-                spaceBetween: 18,
-              },
               768: {
-                slidesPerView: 2.05,
-                spaceBetween: 22,
-              },
-              992: {
                 slidesPerView: 3,
                 spaceBetween: 28,
               },

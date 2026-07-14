@@ -6690,20 +6690,34 @@ PRINT
 ==========================*/
 
 .transformation-section .swiper {
-  overflow: visible;
+  overflow: hidden;
   margin: 55px 0;
-  padding: 0 10px;
+  padding: 0;
 }
 
 .transformationStoriesSwiper {
-  overflow: visible;
+  overflow: hidden;
   margin: 0;
-  padding: 0 4px 8px;
+  padding: 0;
+  width: 100%;
 }
 
 .transformationStoriesSwiper .swiper-slide {
   display: flex;
   height: auto;
+  box-sizing: border-box;
+}
+
+@media (min-width: 768px) {
+  .transformation-section .swiper {
+    overflow: visible;
+    padding: 0 10px;
+  }
+
+  .transformationStoriesSwiper {
+    overflow: visible;
+    padding: 0 4px 8px;
+  }
 }
 
 .programTestimonialsSwiper {
