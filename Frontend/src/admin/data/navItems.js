@@ -78,7 +78,10 @@ export const navItems = [
       { to: "video-testimonials", label: "Video Testimonials", icon: "video" },
     ],
   },
+  
   { to: "transformations", label: "Transformations", icon: "trending-up" },
+  { to: "leadership-notes", label: "Leadership Notes", icon: "message-circle" },
+  { to: "cofounder-message", label: "Cofounder Message", icon: "quote" },
   { to: "banners", label: "Banner Management", icon: "layout" },
   { to: "birthday-posts", label: "Birthday Posts", icon: "cake" },
   { to: "birthday-notifications", label: "Birthday Notifications", icon: "bell" },

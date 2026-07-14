@@ -4457,16 +4457,40 @@ h5.pillar-card__head-title {
 }
 
 .leadership-slider__swiper .swiper-wrapper {
-  align-items: flex-start;
+  align-items: stretch;
 }
 
 .leadership-slider__swiper .swiper-slide {
-  height: auto !important;
+  height: auto;
   box-sizing: border-box;
   width: 100%;
+  display: flex;
 }
 
 .leadership-slider__swiper .swiper-slide > .leadership__card {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  align-self: stretch;
+}
+
+.leadership-slider__swiper .leadership__content {
+  height: 100%;
+  max-width: none;
+}
+
+.leadership-slider__swiper .leadership__description {
+  width: 100%;
+}
+
+.leadership-slider__swiper .leadership__link-slot {
+  margin-top: auto;
+  min-height: 1.75rem;
+  display: flex;
+  align-items: center;
+}
+
+.leadership-slider__swiper .leadership__link {
   margin: 0;
 }
 
