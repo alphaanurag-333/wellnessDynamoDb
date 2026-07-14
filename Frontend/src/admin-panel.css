@@ -1071,6 +1071,229 @@ a.admin-header__dropdown-item {
   font-weight: 700;
 }
 
+/* Welcome home for sub-admins without dashboard.view */
+.admin-welcome {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  width: 100%;
+}
+
+.admin-welcome__hero {
+  position: relative;
+  overflow: hidden;
+  padding: 28px 28px 30px;
+  border-radius: var(--admin-radius);
+  border: 1px solid var(--admin-border-soft);
+  background:
+    radial-gradient(120% 80% at 100% 0%, rgba(232, 136, 79, 0.16), transparent 55%),
+    linear-gradient(135deg, #f7fafc 0%, #eef4fb 48%, #e8f0f8 100%);
+  box-shadow: var(--admin-shadow-sm);
+}
+
+.admin-welcome__hero-mark {
+  position: absolute;
+  top: 18px;
+  right: 20px;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  color: var(--admin-brand-blue);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--admin-border-soft);
+}
+
+.admin-welcome__hero-mark .admin-nav-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.admin-welcome__eyebrow {
+  margin: 0 0 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--admin-brand-saffron-deep);
+}
+
+.admin-welcome__title {
+  margin: 0;
+  max-width: 32ch;
+  font-family: var(--admin-font-heading);
+  font-size: clamp(1.65rem, 2.4vw, 2.1rem);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--admin-brand-blue);
+}
+
+.admin-welcome__subtitle {
+  margin: 12px 0 0;
+  max-width: 58ch;
+  font-size: 0.98rem;
+  line-height: 1.55;
+  color: var(--admin-muted);
+}
+
+.admin-welcome__panels {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 900px) {
+  .admin-welcome__panels {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-welcome__hero-mark {
+    display: none;
+  }
+}
+
+.admin-welcome__card {
+  padding: 18px 20px;
+  border-radius: var(--admin-radius);
+  border: 1px solid var(--admin-border-soft);
+  background: var(--admin-surface);
+  box-shadow: var(--admin-shadow-sm);
+}
+
+.admin-welcome__card-title {
+  margin: 0 0 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--admin-text);
+}
+
+.admin-welcome__tips {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--admin-muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.admin-welcome__tips li + li {
+  margin-top: 6px;
+}
+
+.admin-welcome__access-count {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--admin-muted);
+}
+
+.admin-welcome__shortcuts {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.admin-welcome__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 22px 20px;
+  border-radius: var(--admin-radius);
+  border: 1px dashed var(--admin-border);
+  background: var(--admin-surface-muted);
+  color: var(--admin-muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.admin-welcome__empty p {
+  margin: 0;
+  max-width: 52ch;
+}
+
+.admin-welcome__link-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 1100px) {
+  .admin-welcome__link-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-welcome__link-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-welcome__link {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 14px 14px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--admin-border-soft);
+  background: var(--admin-surface);
+  text-decoration: none;
+  color: inherit;
+  box-shadow: var(--admin-shadow-sm);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.admin-welcome__link:hover {
+  border-color: #b7c8de;
+  box-shadow: var(--admin-shadow);
+  transform: translateY(-1px);
+}
+
+.admin-welcome__link-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  color: var(--admin-brand-blue);
+  background: #eef4fb;
+}
+
+.admin-welcome__link-icon .admin-nav-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.admin-welcome__link-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.admin-welcome__link-group {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--admin-sidebar-muted);
+}
+
+.admin-welcome__link-label {
+  font-size: 0.95rem;
+  font-weight: 650;
+  color: var(--admin-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-welcome__link-arrow {
+  color: var(--admin-sidebar-muted);
+}
+
 @keyframes admin-skeleton-shimmer {
   0% {
     background-position: 200% 0;

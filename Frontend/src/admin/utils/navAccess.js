@@ -1,7 +1,11 @@
 import { navItems, flattenNavLinks } from "../data/navItems.js";
 
-/** Self-service account management — always available to authenticated admins. */
-export const ALWAYS_VISIBLE_LEAVES = new Set(["profile"]);
+/**
+ * Always available to authenticated admins:
+ * - dashboard — home (full stats or welcome view)
+ * - profile — self-service account management
+ */
+export const ALWAYS_VISIBLE_LEAVES = new Set(["dashboard", "profile"]);
 
 /** Map a nav `to` segment (e.g. `consultancy/enrolled-users`) to permission base. */
 export function toPermissionBase(to) {
@@ -100,8 +104,11 @@ export function canAccessPath(pathname, auth) {
   return true;
 }
 
-/** First permitted admin path after login, e.g. `/admin/dashboard`. */
+/** First permitted admin path after login — always prefer home dashboard. */
 export function firstAllowedAdminPath(auth) {
+  // Dashboard is always visible (welcome view when lacking dashboard.view).
+  if (canAccessLeaf("dashboard", auth)) return "/admin/dashboard";
+
   const visible = filterNavItemsByPermission(navItems, auth);
   const flat = flattenNavLinks(visible);
   const first = flat.find((item) => item.to && item.to !== "profile") || flat[0];

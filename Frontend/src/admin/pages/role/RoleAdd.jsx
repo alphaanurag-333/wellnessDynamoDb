@@ -36,7 +36,22 @@ export function RoleForm({ mode = "create", initialRole = null }) {
       setCatalogLoading(true);
       try {
         const catalog = await adminGetPermissionCatalog(adminToken);
-        setGroups(catalog?.groups || []);
+        const nextGroups = catalog?.groups || [];
+        setGroups(nextGroups);
+
+        // Drop obsolete slugs still stored on older roles (e.g. programs.view).
+        const known = new Set();
+        for (const group of nextGroups) {
+          for (const item of group.items || []) {
+            for (const perm of item.permissions || []) {
+              if (perm?.slug) known.add(perm.slug);
+            }
+          }
+        }
+        setForm((prev) => ({
+          ...prev,
+          permissions: (prev.permissions || []).filter((slug) => known.has(slug)),
+        }));
       } catch (e) {
         if (e?.status === 401) return dispatch(logout());
         await Swal.fire({

@@ -9,16 +9,18 @@ const {
   listRoles,
 } = require("../../models/roleModel");
 const { countAdminsByRoleId } = require("../../models/adminModel");
-const { areValidPermissions, getPermissionCatalog } = require("../../config/permissionCatalog");
+const { isValidPermission, getPermissionCatalog } = require("../../config/permissionCatalog");
 
-function assertValidPermissions(permissions) {
-  if (permissions === undefined) return;
+/**
+ * Keep only catalog-known slugs. Obsolete entries (e.g. removed `.view` after a
+ * catalog change) are dropped so role updates still succeed.
+ */
+function sanitizePermissions(permissions) {
+  if (permissions === undefined) return undefined;
   if (!Array.isArray(permissions)) {
     throw new AppError("permissions must be an array of permission slugs", 400);
   }
-  if (!areValidPermissions(permissions)) {
-    throw new AppError("permissions contains one or more unknown permission slugs", 400);
-  }
+  return [...new Set(permissions.map((slug) => String(slug)).filter(isValidPermission))];
 }
 
 exports.listRolesController = asyncHandler(async (req, res) => {
@@ -52,14 +54,19 @@ exports.createRoleController = asyncHandler(async (req, res) => {
   if (!name || !String(name).trim()) {
     throw new AppError("Role name is required", 400);
   }
-  assertValidPermissions(permissions);
+  const cleanedPermissions = sanitizePermissions(permissions);
 
   const existing = await getRoleBySlug(slug || name);
   if (existing) {
     throw new AppError("A role with this name/slug already exists", 409);
   }
 
-  const role = await createRole({ name, slug: slug || name, permissions, status });
+  const role = await createRole({
+    name,
+    slug: slug || name,
+    permissions: cleanedPermissions,
+    status,
+  });
 
   return res.status(201).json({
     status: true,
@@ -75,7 +82,7 @@ exports.updateRoleController = asyncHandler(async (req, res) => {
   }
 
   const { name, slug, permissions, status } = req.body;
-  assertValidPermissions(permissions);
+  const cleanedPermissions = sanitizePermissions(permissions);
 
   if (slug !== undefined && slug !== role.slug) {
     const existing = await getRoleBySlug(slug);
@@ -87,7 +94,7 @@ exports.updateRoleController = asyncHandler(async (req, res) => {
   const updates = {};
   if (name !== undefined) updates.name = name;
   if (slug !== undefined) updates.slug = slug;
-  if (permissions !== undefined) updates.permissions = permissions;
+  if (cleanedPermissions !== undefined) updates.permissions = cleanedPermissions;
   if (status !== undefined) updates.status = status;
 
   const updated = await updateRole(role.id, updates);

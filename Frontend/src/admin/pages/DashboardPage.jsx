@@ -4,7 +4,9 @@ import { useDispatch, useSelector } from "react-redux";
 import { AdminDashboardCharts } from "../components/AdminDashboardCharts.jsx";
 import { DashboardChartsSkeleton, DashboardStatsSkeleton } from "../components/AdminDashboardSkeleton.jsx";
 import { adminGetDashboardStatistics } from "../api/adminDashboard.js";
+import { useHasPermission } from "../hooks/useHasPermission.js";
 import { logout } from "../../store/authSlice.js";
+import { WelcomeDashboard } from "./WelcomeDashboard.jsx";
 
 const shortcuts = [
   { title: "User Management", desc: "Manage all platform users", icon: "users", to: "/admin/users" },
@@ -261,12 +263,13 @@ function DashboardStatCard({ label, value, description, tone, icon, to, valueTyp
 export function DashboardPage() {
   const dispatch = useDispatch();
   const adminToken = useSelector((s) => s.auth.adminToken);
+  const canViewDashboard = useHasPermission("dashboard.view");
   const [statistics, setStatistics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
   const loadStatistics = useCallback(async () => {
-    if (!adminToken) {
+    if (!adminToken || !canViewDashboard) {
       setLoading(false);
       return;
     }
@@ -281,7 +284,7 @@ export function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [adminToken, dispatch]);
+  }, [adminToken, canViewDashboard, dispatch]);
 
   useEffect(() => {
     loadStatistics();
@@ -295,6 +298,10 @@ export function DashboardPage() {
       })),
     [statistics]
   );
+
+  if (!canViewDashboard) {
+    return <WelcomeDashboard />;
+  }
 
   return (
     <div className="page-stack admin-dashboard">
