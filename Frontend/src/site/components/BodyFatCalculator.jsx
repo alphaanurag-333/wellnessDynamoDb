@@ -3,6 +3,13 @@ import React, { useMemo, useState } from "react";
 
 import maleImg from "../../site/images/male.png";
 import femaleImg from "../../site/images/female.png";
+import {
+  RequiredMark,
+  isPositiveNumber,
+  isValidAge,
+  validateCalculatorFields,
+  showCalculatorError,
+} from "../utils/calculatorValidation.jsx";
 
 const referenceData = [
   {
@@ -71,16 +78,26 @@ export default function BodyFatCalculator() {
 
   //------------------------------------------------
 
-  const calculateBodyFat = () => {
+  const calculateBodyFat = async () => {
+    const checks = [
+      { label: "Gender", valid: Boolean(gender) },
+      { label: "Age", valid: isValidAge(age) },
+      { label: "Height", valid: isPositiveNumber(height) },
+      { label: "Weight", valid: isPositiveNumber(weight) },
+      { label: "Neck", valid: isPositiveNumber(neck) },
+      { label: "Waist", valid: isPositiveNumber(waist) },
+    ];
+    if (gender === "female") {
+      checks.push({ label: "Hip", valid: isPositiveNumber(hip) });
+    }
+
+    const ok = await validateCalculatorFields(checks);
+    if (!ok) return;
+
     const h = heightInCm();
-
     const n = cm(neck);
-
     const w = cm(waist);
-
     const hp = cm(hip);
-
-    if (!h || !n || !w) return;
 
     let result = 0;
 
@@ -89,12 +106,18 @@ export default function BodyFatCalculator() {
         495 / (1.0324 - 0.19077 * Math.log10(w - n) + 0.15456 * Math.log10(h)) -
         450;
     } else {
-      if (!hp) return;
-
       result =
         495 /
           (1.29579 - 0.35004 * Math.log10(w + hp - n) + 0.221 * Math.log10(h)) -
         450;
+    }
+
+    if (!Number.isFinite(result)) {
+      await showCalculatorError(
+        "Unable to calculate",
+        "Check that waist is larger than neck (and hip for women). Measurement values look invalid."
+      );
+      return;
     }
 
     setBodyFat(result.toFixed(1));
@@ -121,7 +144,9 @@ export default function BodyFatCalculator() {
               {/* Gender */}
 
               <div className="form-group">
-                <label>Gender</label>
+                <label>
+                  Gender <RequiredMark />
+                </label>
 
                 <div className="gender-wrapper">
                   <div
@@ -147,11 +172,16 @@ export default function BodyFatCalculator() {
               {/* Age */}
 
               <div className="form-group">
-                <label>Age</label>
+                <label>
+                  Age <RequiredMark />
+                </label>
 
                 <input
                   type="number"
                   value={age}
+                  min={1}
+                  max={120}
+                  required
                   onChange={(e) => setAge(e.target.value)}
                 />
               </div>
@@ -159,13 +189,16 @@ export default function BodyFatCalculator() {
               {/* Height */}
 
               <div className="form-group">
-                <label>Height</label>
+                <label>
+                  Height <RequiredMark />
+                </label>
 
                 <div className="unit-input">
                   <input
                     type="number"
                     placeholder="Height"
                     value={height}
+                    required
                     onChange={(e) => setHeight(e.target.value)}
                   />
 
@@ -192,13 +225,16 @@ export default function BodyFatCalculator() {
               {/* Weight */}
 
               <div className="form-group">
-                <label>Weight</label>
+                <label>
+                  Weight <RequiredMark />
+                </label>
 
                 <div className="unit-input">
                   <input
                     type="number"
                     placeholder="Weight"
                     value={weight}
+                    required
                     onChange={(e) => setWeight(e.target.value)}
                   />
 
@@ -225,13 +261,16 @@ export default function BodyFatCalculator() {
               {/* Neck */}
 
               <div className="form-group">
-                <label>Neck</label>
+                <label>
+                  Neck <RequiredMark />
+                </label>
 
                 <div className="unit-input">
                   <input
                     type="number"
                     placeholder="Neck"
                     value={neck}
+                    required
                     onChange={(e) => setNeck(e.target.value)}
                   />
 
@@ -258,13 +297,16 @@ export default function BodyFatCalculator() {
               {/* Waist */}
 
               <div className="form-group">
-                <label>Waist</label>
+                <label>
+                  Waist <RequiredMark />
+                </label>
 
                 <div className="unit-input">
                   <input
                     type="number"
                     placeholder="Waist"
                     value={waist}
+                    required
                     onChange={(e) => setWaist(e.target.value)}
                   />
 
@@ -290,13 +332,16 @@ export default function BodyFatCalculator() {
 
               {gender === "female" && (
                 <div className="form-group">
-                  <label>Hip</label>
+                  <label>
+                    Hip <RequiredMark />
+                  </label>
 
                   <div className="unit-input">
                     <input
                       type="number"
                       placeholder="Hip"
                       value={hip}
+                      required
                       onChange={(e) => setHip(e.target.value)}
                     />
 

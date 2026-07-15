@@ -2,6 +2,12 @@ import React, { useMemo, useState } from "react";
 
 import maleImg from "../../site/images/male.png";
 import femaleImg from "../../site/images/female.png";
+import {
+  RequiredMark,
+  isPositiveNumber,
+  isValidAge,
+  validateCalculatorFields,
+} from "../utils/calculatorValidation.jsx";
 
 const activityLevels = [
   {
@@ -67,12 +73,17 @@ export default function BMRCalculator() {
 
   //------------------------------------------------
 
-  const calculateBMR = () => {
+  const calculateBMR = async () => {
+    const ok = await validateCalculatorFields([
+      { label: "Gender", valid: Boolean(gender) },
+      { label: "Age", valid: isValidAge(age) },
+      { label: "Height", valid: isPositiveNumber(height) },
+      { label: "Weight", valid: isPositiveNumber(weight) },
+    ]);
+    if (!ok) return;
+
     const h = convertHeightToCm();
-
     const w = convertWeightToKg();
-
-    if (!h || !w || !age) return;
 
     let result = 0;
 
@@ -143,7 +154,9 @@ export default function BMRCalculator() {
               {/* Gender */}
 
               <div className="form-group">
-                <label>Gender</label>
+                <label>
+                  Gender <RequiredMark />
+                </label>
 
                 <div className="gender-wrapper">
                   <div
@@ -169,11 +182,16 @@ export default function BMRCalculator() {
               {/* Age */}
 
               <div className="form-group">
-                <label>Age</label>
+                <label>
+                  Age <RequiredMark />
+                </label>
 
                 <input
                   type="number"
                   value={age}
+                  min={1}
+                  max={120}
+                  required
                   onChange={(e) => setAge(e.target.value)}
                 />
               </div>
@@ -181,13 +199,16 @@ export default function BMRCalculator() {
               {/* Height */}
 
               <div className="form-group form-group--full">
-                <label>Height</label>
+                <label>
+                  Height <RequiredMark />
+                </label>
 
                 <div className="unit-input">
                   <input
                     type="number"
                     placeholder="Height"
                     value={height}
+                    required
                     onChange={(e) => setHeight(e.target.value)}
                   />
 
@@ -212,13 +233,16 @@ export default function BMRCalculator() {
               </div>
 
               <div className="form-group form-group--full">
-                <label>Weight</label>
+                <label>
+                  Weight <RequiredMark />
+                </label>
 
                 <div className="unit-input">
                   <input
                     type="number"
                     placeholder="Weight"
                     value={weight}
+                    required
                     onChange={(e) => setWeight(e.target.value)}
                   />
 

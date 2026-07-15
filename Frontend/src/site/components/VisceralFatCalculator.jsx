@@ -3,6 +3,12 @@ import React, { useMemo, useState } from "react";
 
 import maleImg from "../../site/images/male.png";
 import femaleImg from "../../site/images/female.png";
+import {
+  RequiredMark,
+  isPositiveNumber,
+  isValidAge,
+  validateCalculatorFields,
+} from "../utils/calculatorValidation.jsx";
 
 const visceralRisk = [
   {
@@ -91,13 +97,17 @@ export default function VisceralFatCalculator() {
 
   //------------------------------------
 
-  const calculate = () => {
+  const calculate = async () => {
+    const ok = await validateCalculatorFields([
+      { label: "Gender", valid: Boolean(gender) },
+      { label: "Age", valid: isValidAge(age) },
+      { label: "Height", valid: isPositiveNumber(height) },
+      { label: "Waist", valid: isPositiveNumber(waist) },
+    ]);
+    if (!ok) return;
 
     const h = heightCM();
-
     const w = waistCM();
-
-    if (!h || !w) return;
 
     const whtr = w / h;
 
@@ -106,36 +116,19 @@ export default function VisceralFatCalculator() {
     let level = 0;
 
     if (gender === "male") {
-
-      level = Math.round(
-        (whtr * 100) +
-        (age * 0.18) -
-        30
-      );
-
+      level = Math.round(whtr * 100 + age * 0.18 - 30);
     } else {
-
-      level = Math.round(
-        (whtr * 100) +
-        (age * 0.15) -
-        28
-      );
-
+      level = Math.round(whtr * 100 + age * 0.15 - 28);
     }
 
     if (level < 1) level = 1;
-
     if (level > 30) level = 30;
-    
+
     setVisceralFat(level);
 
-    const percent = (
-      (level / 30) *
-      100
-    ).toFixed(1);
+    const percent = ((level / 30) * 100).toFixed(1);
 
     setVisceralPercent(percent);
-
   };
 
   //------------------------------------
@@ -185,7 +178,7 @@ export default function VisceralFatCalculator() {
               <div className="form-group">
 
                 <label>
-                  Gender
+                  Gender <RequiredMark />
                 </label>
 
                 <div className="gender-wrapper">
@@ -231,12 +224,15 @@ export default function VisceralFatCalculator() {
               <div className="form-group">
 
                 <label>
-                  Age
+                  Age <RequiredMark />
                 </label>
 
                 <input
                   type="number"
                   value={age}
+                  min={1}
+                  max={120}
+                  required
                   onChange={(e)=>
                     setAge(e.target.value)
                   }
@@ -249,7 +245,7 @@ export default function VisceralFatCalculator() {
               <div className="form-group">
 
                 <label>
-                  Height
+                  Height <RequiredMark />
                 </label>
 
                 <div className="unit-input">
@@ -258,6 +254,7 @@ export default function VisceralFatCalculator() {
                     type="number"
                     placeholder="Height"
                     value={height}
+                    required
                     onChange={(e)=>
                       setHeight(e.target.value)
                     }
@@ -302,7 +299,7 @@ export default function VisceralFatCalculator() {
               <div className="form-group">
 
                 <label>
-                  Waist
+                  Waist <RequiredMark />
                 </label>
 
                 <div className="unit-input">
@@ -311,6 +308,7 @@ export default function VisceralFatCalculator() {
                     type="number"
                     placeholder="Waist"
                     value={waist}
+                    required
                     onChange={(e)=>
                       setWaist(e.target.value)
                     }

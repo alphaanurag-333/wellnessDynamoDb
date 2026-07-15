@@ -213,7 +213,7 @@ export function UserView() {
               </span>
             </div>
             <DetailRow label="User tier" value={tier === "heal" ? "Heal (paid)" : "Seek (free)"} />
-            {tier === "heal" ? (
+            {tier === "heal" || tier === "consultancy_only" ? (
               <>
                 <DetailRow label="Assignment status" value={user.assignmentStatus || "—"} />
                 <DetailRow label="Assigned to" value={formatAssignedCoachLabel(user)} />

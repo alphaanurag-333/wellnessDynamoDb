@@ -47,7 +47,7 @@ export function AssistantSidebar({ id = "assistant-sidebar", onNavigate, drawerO
         </span>
         <div className="admin-sidebar__brand-text">
           <div className="admin-sidebar__title">{appDisplayName || "Wellness"}</div>
-          <div className="admin-sidebar__subtitle">Assistant Wellness Coach</div>
+          <div className="admin-sidebar__subtitle">Assistant Coach</div>
         </div>
       </div>
 

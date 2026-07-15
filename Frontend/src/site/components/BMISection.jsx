@@ -1,6 +1,12 @@
 import React, { useState, useMemo } from "react";
 
 import { Info } from "lucide-react";
+import {
+  RequiredMark,
+  isPositiveNumber,
+  isValidAge,
+  validateCalculatorFields,
+} from "../utils/calculatorValidation.jsx";
 
 const BMISection = () => {
   const [gender, setGender] = useState("male");
@@ -58,7 +64,22 @@ const BMISection = () => {
       BMI CALCULATION (on click only)
   ------------------------------*/
 
-  const calculateBMI = () => {
+  const calculateBMI = async () => {
+    const heightOk =
+      heightUnit === "cm"
+        ? isPositiveNumber(heightCm)
+        : isPositiveNumber(feet) && Number(inch) >= 0 && inch !== "";
+    const weightOk =
+      weightUnit === "kg" ? isPositiveNumber(weightKg) : isPositiveNumber(weightLb);
+
+    const ok = await validateCalculatorFields([
+      { label: "Age", valid: isValidAge(age) },
+      { label: "Gender", valid: Boolean(gender) },
+      { label: "Height", valid: heightOk },
+      { label: "Weight", valid: weightOk },
+    ]);
+    if (!ok) return;
+
     let height = 0;
     let weight = 0;
 
@@ -66,7 +87,6 @@ const BMISection = () => {
       height = Number(heightCm) / 100;
     } else {
       const totalInches = Number(feet) * 12 + Number(inch);
-
       height = totalInches * 0.0254;
     }
 
@@ -75,8 +95,6 @@ const BMISection = () => {
     } else {
       weight = Number(weightLb) * 0.45359237;
     }
-
-    if (!height || !weight || height <= 0 || weight <= 0) return;
 
     const value = Number((weight / (height * height)).toFixed(1));
 
@@ -169,18 +187,25 @@ const BMISection = () => {
           <div className="bmi-right bmi-form">
             <div className="form-row">
               <div className="form-group age">
-                <label>Age</label>
+                <label>
+                  Age <RequiredMark />
+                </label>
 
                 <input
                   type="number"
                   placeholder="Years"
                   value={age}
+                  min={1}
+                  max={120}
+                  required
                   onChange={(e) => setAge(e.target.value)}
                 />
               </div>
 
               <div className="form-group gender">
-                <label>Gender</label>
+                <label>
+                  Gender <RequiredMark />
+                </label>
 
                 <div className="gender-buttons">
                   <button
@@ -207,7 +232,9 @@ const BMISection = () => {
             <div className="form-row">
               <div className="form-group">
                 <div className="field-header">
-                  <label>Height</label>
+                  <label>
+                    Height <RequiredMark />
+                  </label>
 
                   <div className="unit-switch">
                     <button
@@ -256,7 +283,9 @@ const BMISection = () => {
 
               <div className="form-group">
                 <div className="field-header">
-                  <label>Weight</label>
+                  <label>
+                    Weight <RequiredMark />
+                  </label>
 
                   <div className="unit-switch">
                     <button
