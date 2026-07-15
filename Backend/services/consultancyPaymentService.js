@@ -56,7 +56,7 @@ function logPaymentFailure({ transactionId, userId, reason }) {
   });
 }
 
-async function createConsultancyOrder(userId, { referralCode, paymentMethod = "upi", healthConcernId, fyStartYear } = {}) {
+async function createConsultancyOrder(userId, { referralCode, paymentMethod = "upi", healthConcernId } = {}) {
   const user = await getUserById(userId);
   if (!user) {
     const err = new Error("User not found");
@@ -75,13 +75,8 @@ async function createConsultancyOrder(userId, { referralCode, paymentMethod = "u
     throw err;
   }
 
+  // FY is derived server-side from eligibility; clients do not select it.
   const targetFy = eligibility.purchasableFy;
-  const requestedFy = fyStartYear != null && fyStartYear !== "" ? Number(fyStartYear) : null;
-  if (requestedFy != null && Number.isFinite(requestedFy) && requestedFy !== targetFy.fyStartYear) {
-    const err = new Error("Selected financial year is not available for purchase");
-    err.name = "ValidationError";
-    throw err;
-  }
 
   const existingPending = await getPendingConsultancyOrderForUser(userId);
   if (existingPending) {

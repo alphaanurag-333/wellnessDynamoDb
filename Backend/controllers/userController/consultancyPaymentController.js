@@ -49,7 +49,6 @@ exports.createConsultancyOrderController = asyncHandler(async (req, res) => {
   const referralCode = req.body?.referralCode ?? req.body?.referral_code ?? null;
   const paymentMethod = req.body?.paymentMethod ?? req.body?.payment_method ?? "upi";
   const healthConcernId = parseHealthConcernIdFromBody(req.body);
-  const fyStartYear = req.body?.fyStartYear ?? req.body?.fy_start_year ?? null;
 
   let result;
   try {
@@ -57,7 +56,6 @@ exports.createConsultancyOrderController = asyncHandler(async (req, res) => {
       referralCode,
       paymentMethod,
       healthConcernId,
-      fyStartYear,
     });
   } catch (err) {
     mapCheckoutError(err);
