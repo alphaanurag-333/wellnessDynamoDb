@@ -2361,7 +2361,7 @@ a:hover {
   position: absolute;
 
   left: var(--space-3);
-  bottom: var(--space-3);
+  bottom: -70px;
 
   width: min(210px, 70%);
 
@@ -7587,7 +7587,7 @@ PRINT
 
 .video-slider-section {
   width: 100%;
-  padding: var(--space-8) 0;
+  padding:28px 0;
 }
 
 .video-slider-section .container {
@@ -10034,6 +10034,10 @@ SCROLLBAR
 
 
 @media (max-width: 992px) {
+
+  .success-story .container{
+    padding: 15px;
+  }
   .swiper.heroSwiper,
   .heroSwiper--loading {
     height: clamp(180px, 40vw, 280px);
@@ -10699,7 +10703,7 @@ SCROLLBAR
   .success-content {
     width: 100%;
     text-align: center;
-    margin-bottom: var(--section-header-mb);
+    /* margin-bottom: var(--section-header-mb); */
   }
 
   .success-text {
@@ -11031,7 +11035,7 @@ SCROLLBAR
   .wellness-hero__stat-card {
     width: min(180px, 55%);
     left: var(--space-3);
-    bottom: var(--space-3);
+    bottom: -70px;
   }
 
   .methodology__header h2 {
@@ -11616,7 +11620,7 @@ SCROLLBAR
   }
 
   .transformation {
-    padding: var(--section-padding-y) 0;
+    padding: 28px 0;
   }
 
   .transformation-heading {
@@ -11655,7 +11659,7 @@ SCROLLBAR
 
   .slider-navigation {
     width: 100%;
-    justify-content: center;
+    justify-content: end;
   }
 
   .slider-btn {
@@ -11788,6 +11792,7 @@ SCROLLBAR
   }
   .transformation-header {
     margin-bottom: var(--space-4);
+    gap: 16px;
   }
    .transformation-section .swiper{
     margin: 0;
@@ -12302,7 +12307,7 @@ SCROLLBAR
     height: 380px;
   }
   .success-story .container {
-    padding: 40px 15px;
+    padding:  15px;
   }
 
   .success-tag {
@@ -12719,7 +12724,7 @@ SCROLLBAR
     aspect-ratio: 4 / 5;
   }
   .wellness-hero__stat-card{
-    bottom: var(--space-3);
+    bottom: -110px;
     left: var(--space-3);
   }
   .static-page-hero{
@@ -13108,7 +13113,7 @@ SMALL DEVICES
   .success-stories-page .success-wrapper {
     flex-direction: column;
     align-items: stretch;
-    gap: var(--space-6);
+    gap:18px;
   }
 
   .success-stories-page .success-content,
@@ -13213,7 +13218,7 @@ SMALL DEVICES
   .home-page > .real-healing-section,
   .home-page > .final-cta {
     padding-top: var(--space-6);
-    padding-bottom: var(--space-6);
+    padding-bottom: 120px;
   }
 
   .home-page .header-left {
@@ -13239,7 +13244,7 @@ SMALL DEVICES
   .home-page > .final-cta,
   .home-page > .site-section--stats {
     padding-top: var(--space-5);
-    padding-bottom: var(--space-5);
+    padding-bottom: 120px;
   }
 
   .home-page .methodology-card {

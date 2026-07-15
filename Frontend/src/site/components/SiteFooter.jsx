@@ -26,7 +26,6 @@ const FOOTER_EXPLORE_LINKS = [
   { label: "Home", to: "/" },
   { label: "About Us", to: "/about-us" },
   { label: "Success Stories", to: "/success-stories" },
-  { label: "Resources", to: "/resources" },
   { label: "Contact Us", to: "/contact-us" },
 ];
 
