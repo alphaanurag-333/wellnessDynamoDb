@@ -462,10 +462,10 @@ export default function VisceralFatCalculator() {
 
             </div>
 
-           <div className="visceral-results">
-                 <h5>Visceral Fat Analysis</h5>
+          </div>
 
-            {/* RESULT CIRCLES */}
+          <div className="visceral-middle">
+            <h5>Visceral Fat Analysis</h5>
 
             <div className="visceral-result-wrapper">
 
@@ -509,8 +509,6 @@ export default function VisceralFatCalculator() {
 
             </div>
 
-            {/* CURRENT STATUS */}
-
             <div className="visceral-status">
 
               <h4>Your Risk Assessment</h4>
@@ -522,8 +520,6 @@ export default function VisceralFatCalculator() {
               </span>
 
             </div>
-
-              {/* SUMMARY */}
 
             <div className="summary-card">
 
@@ -588,18 +584,9 @@ export default function VisceralFatCalculator() {
 
             </div>
 
-           </div>
-
           </div>
-             
-
-          {/* RIGHT */}
 
           <div className="visceral-right">
-
-        
-
-            {/* RISK TABLE */}
 
             <div className="risk-table">
 

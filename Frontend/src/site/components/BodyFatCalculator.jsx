@@ -208,7 +208,7 @@ export default function BodyFatCalculator() {
     <section className="bodyfat-section">
       <div className="container">
         <div className="bodyfat-wrapper">
-          {/* LEFT */}
+          {/* LEFT — form */}
 
           <div className="bodyfat-left">
             <h2>Body Fat Calculator</h2>
@@ -538,14 +538,12 @@ export default function BodyFatCalculator() {
             </div>
           </div>
 
-          {/* RIGHT */}
+          {/* MIDDLE — results */}
 
-          <div className="bodyfat-right">
-            <h5>Reference - Body Fat %</h5>
+          <div className="bodyfat-middle">
+            <h5>Your Results</h5>
 
             <div className="bodyfat-result-wrapper">
-              {/* Body Fat */}
-
               <div className="result-card">
                 <h4>Body Fat %</h4>
 
@@ -553,8 +551,6 @@ export default function BodyFatCalculator() {
                   <span>{bodyFat ? `${bodyFat}%` : "--"}</span>
                 </div>
               </div>
-
-              {/* Lean Mass */}
 
               <div className="result-card">
                 <h4>Lean Muscle %</h4>
@@ -564,10 +560,6 @@ export default function BodyFatCalculator() {
                 </div>
               </div>
             </div>
-
-          
-
-            {/* Classification */}
 
             <div className="classification">
               <h4>Your Category</h4>
@@ -596,8 +588,6 @@ export default function BodyFatCalculator() {
                             : "Obese"}
               </span>
             </div>
-
-            {/* Information */}
 
             <div className="bodyfat-info">
               <div className="info-item">
@@ -630,8 +620,12 @@ export default function BodyFatCalculator() {
                 <span>{age} Years</span>
               </div>
             </div>
+          </div>
 
-              {/* Reference Table */}
+          {/* RIGHT — reference */}
+
+          <div className="bodyfat-right">
+            <h5>Reference - Body Fat %</h5>
 
             <div className="reference-table">
               <div className="reference-header">
