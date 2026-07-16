@@ -192,23 +192,23 @@ export default function ContactUsSection() {
 
   return (
     <section className="contact-section">
-      <div className="contact-hero">
-        <div className="contact-hero-content">
-          <span className="contact-tag">CONTACT OUR TEAM</span>
+      <div className="contact-hero pt-3 pb-0" style={{minHeight:'auto'}}>
+        <div className="contact-hero-content" style={{width:'100%',height:'auto'}}>
+          {/* <span className="contact-tag">CONTACT OUR TEAM</span> */}
 
-          <h1 className="contact-title">
+          <h1 className="wellness__title ">
             Contact Our
             <span> Wellness Team</span>
           </h1>
 
-          <p className="contact-description">
+          <p className="contact-description" style={{maxWidth:'100%'}}>
             Expert guidance for your wellness journey. Reach out to our
             specialists for personalized clinical support.
           </p>
         </div>
       </div>
 
-      <div className="contact-card">
+      <div className="contact-card mt-4 mb-4">
         <form onSubmit={handleSubmit} noValidate>
           {feedback ? (
             <div
@@ -287,7 +287,7 @@ export default function ContactUsSection() {
             <div className={`contact-field${fieldErrors.phone ? " contact-field--invalid" : ""}`}>
               <label htmlFor="contact-phone">Phone Number</label>
               <div className="contact-phone-row">
-                <select
+                <select  
                   id="contact-phone-country"
                   className="contact-phone-country"
                   value={formData.phoneCountryIso}
@@ -329,7 +329,7 @@ export default function ContactUsSection() {
           </div>
 
           <div className={`contact-field contact-full${fieldErrors.inquiry ? " contact-field--invalid" : ""}`}>
-            <label htmlFor="contact-inquiry">Inquiry Type</label>
+            <label htmlFor="contact-inquiry">Enquiry Type</label>
             <select
               id="contact-inquiry"
               name="inquiry"
@@ -343,7 +343,7 @@ export default function ContactUsSection() {
               <option value="consultation">Book Consultation</option>
               <option value="program">Health Program</option>
               <option value="appointment">Appointment</option>
-              <option value="general">General Inquiry</option>
+              <option value="general">General Enquiry</option>
             </select>
             <FieldHint id="contact-inquiry-error" error={fieldErrors.inquiry} />
           </div>

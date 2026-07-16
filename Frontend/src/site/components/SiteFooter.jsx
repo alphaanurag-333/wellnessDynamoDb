@@ -2,7 +2,7 @@ import { Fragment } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube } from "react-icons/fa";
-import { Mail, MapPin, Phone } from "lucide-react";
+import { Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 import defaultLogo from "../../assets/logo/defaultlogo.png";
 import { selectLoginBrandLogoUrl } from "../../store/appConfigSelectors.js";
 import { useSiteConfig } from "../hooks/useSiteConfig.js";
@@ -26,7 +26,7 @@ const FOOTER_EXPLORE_LINKS = [
   { label: "Home", to: "/" },
   { label: "About Us", to: "/about-us" },
   { label: "Success Stories", to: "/success-stories" },
-  { label: "Resources", to: "/resources" },
+  { label: "Wellnesspedia", to: "/wellnesspedia" },
   { label: "Contact Us", to: "/contact-us" },
 ];
 
@@ -89,10 +89,14 @@ export function SiteFooter() {
           <div className="site-footer__brand">
             <Link to="/" className="site-footer__brand-head">
               <img src={logoSrc} alt={appName} className="site-footer__brand-logo" />
-              <h3 className="site-footer__brand-name">{appName}</h3>
+              <h3 className="site-footer__brand-name">{appName}
+                <br/>
+                <FooterBrandText text={footerText} />
+              </h3>
+             
             </Link>
 
-            <FooterBrandText text={footerText} />
+            {/* <FooterBrandText text={footerText} /> */}
 
             {social.length > 0 ? (
               <div className="site-footer__social" aria-label="Social media links">
@@ -139,11 +143,22 @@ export function SiteFooter() {
             ) : null}
 
             {contact.phone ? (
-              <div className="site-footer__contact-row">
+//               <div className="site-footer__contact-row">
+//   <a
+//     href={`https://wa.me/91${contact.phone.replace(/\D/g, "")}`}
+//     target="_blank"
+//     rel="noopener noreferrer"
+//     className="whatsapp-btn pt-2"
+//   >
+//     <MessageCircle size={18} />
+//     <span>Chat on WhatsApp</span>
+//   </a>
+// </div>
+              <div className="site-footer__contact-row ">
                 <span className="site-footer__contact-icon" aria-hidden="true">
-                  <Phone size={16} />
+                  <MessageCircle size={16}/>
                 </span>
-                <a href={`tel:${contact.phone}`}>{contact.phone}</a>
+                <a href={`https://wa.me/91${contact.phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer" className="border-bottom border-1 "><span>Chat on WhatsApp</span></a>
               </div>
             ) : null}
 
@@ -152,7 +167,7 @@ export function SiteFooter() {
                 <span className="site-footer__contact-icon" aria-hidden="true">
                   <Mail size={16} />
                 </span>
-                <a href={`mailto:${contact.email}`}>{contact.email}</a>
+                <a href={`mailto:${contact.email}`} className="border-bottom">{contact.email}</a>
               </div>
             ) : null}
           </div>

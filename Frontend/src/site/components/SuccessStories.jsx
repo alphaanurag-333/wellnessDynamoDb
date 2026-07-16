@@ -66,14 +66,14 @@ const SuccessStories = () => {
 
   return (
     <section className="success-story success-stories-page">
-      <div className="container success-story__hero">
+      <div className="container success-story__hero pt-2 pb-2">
         <div className="success-wrapper">
           <div className="success-content">
-            <span className="success-tag">CLINICALLY PROVEN RESULTS</span>
+            {/* <span className="success-tag">CLINICALLY PROVEN RESULTS</span> */}
 
-            <h2 className="success-title">
-              Our <span>Success</span> <br />
-              Stories
+            <h2 className="wellness__title">
+              Our <span> Success  Stories</span> 
+             
             </h2>
 
             <p className="success-text">

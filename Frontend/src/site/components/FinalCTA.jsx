@@ -4,7 +4,7 @@ const COMMUNITY_LINK = "https://chat.whatsapp.com/Lcv5qyt7tvX6nrif7poqBB";
 
 export default function FinalCTA() {
   return (
-    <section className="final-cta">
+    <section className="final-cta p-0 pt-3 pb-3">
       <div className="final-cta__overlay"></div>
 
       <div className="final-cta__shape final-cta__shape--top"></div>
@@ -12,26 +12,22 @@ export default function FinalCTA() {
 
       <div className="site-container">
         <div className="final-cta__content">
-          <h2 className="final-cta__title">
-            Ready to rediscover your
-            <br />
-            health?
-          </h2>
+          <h2 className="final-cta__title">Ready to rediscover your health?</h2>
 
-          <p className="final-cta__description">
+          <p className="final-cta__description" style={{ maxWidth: "100%" }}>
             Schedule your free 20-minute discovery call today and start your
             journey towards lasting vitality.
           </p>
 
           <button
             type="button"
-            className="final-cta__button"
+            className="final-cta__button mt-0 "
             onClick={() =>
               window.open(COMMUNITY_LINK, "_blank", "noopener,noreferrer")
             }
           >
-            JOIN IRW WELLNESS COMMUNITY
-            <FiArrowRight />
+            JOIN IRW COMMUNITY
+            {/* <FiArrowRight /> */}
           </button>
         </div>
       </div>

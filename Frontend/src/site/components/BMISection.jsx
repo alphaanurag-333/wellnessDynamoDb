@@ -191,7 +191,7 @@ const BMISection = () => {
                   Age <RequiredMark />
                 </label>
 
-                <input
+                {/* <input 
                   type="number"
                   placeholder="Years"
                   value={age}
@@ -199,7 +199,26 @@ const BMISection = () => {
                   max={120}
                   required
                   onChange={(e) => setAge(e.target.value)}
-                />
+                /> */}
+                <input
+  type="number"
+  placeholder="Years"
+  value={age}
+  min={1}
+  max={120}
+  required
+  onKeyDown={(e) => {
+    if (["e", "E", "+", "-", "."].includes(e.key)) {
+      e.preventDefault();
+    }
+  }}
+  onChange={(e) => {
+    const value = e.target.value;
+    if (value === "" || (/^\d+$/.test(value) && Number(value) <= 120)) {
+      setAge(value);
+    }
+  }}
+/>
               </div>
 
               <div className="form-group gender">

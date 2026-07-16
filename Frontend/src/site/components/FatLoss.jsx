@@ -13,7 +13,7 @@ const FatLoss = () => {
         <div className="site-container">
           <div className="program-highlight__card">
             <div className="program-highlight__heading">
-              <span className="program-highlight__badge">Why weight loss matters</span>
+              <span className="program-highlight__badge">Why Fat loss matters</span>
               <h2>
                 Did you know obesity increases your chance of being hospitalized
                 by <span>6 times?</span>

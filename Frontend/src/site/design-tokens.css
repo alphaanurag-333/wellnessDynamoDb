@@ -13,7 +13,7 @@
 
   /* Typography scale */
   --font-size-display: clamp(2rem, 4vw, 2.75rem);
-  --font-size-h1: 2.5rem;
+  --font-size-h1: 2.2rem;
   --font-size-h2: 2rem;
   --font-size-h3: 1.5rem;
   --font-size-h4: 1.25rem;
@@ -39,7 +39,7 @@
   --space-4: 1rem;
   --space-5: 1.5rem;
   --space-6: 2rem;
-  --space-8: 3rem;
+  --space-8: 2rem;
   --space-10: 4rem;
   --space-12: 5rem;
 

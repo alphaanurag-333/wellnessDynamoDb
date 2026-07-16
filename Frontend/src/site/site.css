@@ -722,6 +722,7 @@
   font-size: 0.92rem;
   line-height: 1.6;
   color: var(--site-muted);
+  text-align: justify;
 }
 
 @media (min-width: 576px) {
@@ -1571,8 +1572,8 @@ a:hover {
 }
 
 .site-header__logo {
-  width: 52px;
-  height: 52px;
+  width: 70px;
+  height: 70px;
   object-fit: contain;
   border-radius: 12px;
   flex-shrink: 0;
@@ -2022,12 +2023,13 @@ a:hover {
   width: 100%;
   height: 100%;
   pointer-events: none;
-  background: linear-gradient(
+  background: linear-gradient(90deg, rgb(94 94 94 / 62%) 0%, rgb(203 203 203 / 32%) 45%, rgb(255 255 255 / 18%) 100%);
+  /* background: linear-gradient(
     90deg,
     rgba(0, 0, 0, 0.62) 0%,
     rgba(0, 0, 0, 0.32) 45%,
     rgba(0, 0, 0, 0.18) 100%
-  );
+  ); */
 }
 
 .hero-content {
@@ -2279,6 +2281,7 @@ a:hover {
   font-size: var(--font-size-lg);
   line-height: 1.6;
   color: var(--text-body);
+  text-align: justify;
 }
 
 .wellness-hero__actions {
@@ -2551,6 +2554,7 @@ h5.pillar-card__head-title {
   line-height: 1.6;
   text-align: left;
   min-height: 130px;
+  text-align: justify;
 }
 
 .methodology-card__content button {
@@ -2844,6 +2848,7 @@ h5.pillar-card__head-title {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 5;
   overflow: hidden;
+  text-align: justify;
 }
 
 .success-card__author {
@@ -3158,7 +3163,7 @@ h5.pillar-card__head-title {
   line-height: 0.95;
   font-weight: var(--fw-bold);
 
-  max-width: 961px;
+  /* max-width: 961px; */
 }
 
 .final-cta__description {
@@ -4308,7 +4313,7 @@ h5.pillar-card__head-title {
 
 .leadership__image {
   width: 200px;
-  max-width: 100%;
+  /* max-width: 100%; */
   justify-self: center;
 }
 
@@ -4702,6 +4707,7 @@ h5.pillar-card__head-title {
   line-height: 25px;
 
   font-weight: var(--fw-regular);
+  text-align: justify;
 }
 
 /*==================================================
@@ -7094,6 +7100,7 @@ PRINT
   font-size: 0.95rem;
   line-height: 1.75;
   flex: 1;
+  text-align: justify;
 }
 
 .transformation-story-card__meta {
@@ -7203,7 +7210,7 @@ PRINT
 .monthly-champions__title {
   margin: 0 0 12px;
   color: var(--text-heading);
-  font-size: clamp(28px, 4vw, 44px);
+  font-size: clamp(28px, 4vw, 35px);
   font-weight: var(--fw-bold);
   line-height: 1.15;
 }
@@ -7459,11 +7466,11 @@ PRINT
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  padding: 24px;
+  padding: 20px;
   box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 5px;
   height: 100%;
   transition: var(--transition);
 }
@@ -7515,10 +7522,11 @@ PRINT
 
 .real-healing-review {
   color: var(--text-body);
-  font-size: var(--fs-base);
+  font-size: 0.92rem;
   line-height: 1.9;
   font-style: italic;
   flex: 1;
+  text-align: justify;
 }
 
 .real-healing-bottom {
@@ -9753,7 +9761,7 @@ SCROLLBAR
   }
 
   .leadership__image {
-    width: 180px;
+    width: 200px;
   }
 
   .leadership__image-frame {
@@ -9787,6 +9795,7 @@ SCROLLBAR
   .pillar-card__description {
     font-size: 16px;
     line-height: 29px;
+    text-align: justify;
   }
   .success-content {
     width: 40%;
@@ -9898,6 +9907,7 @@ SCROLLBAR
     margin-top: 14px;
     font-size: 15px;
     line-height: 27px;
+    text-align: justify;
   }
   .bmi-left {
     width: 38%;
@@ -11388,6 +11398,7 @@ SCROLLBAR
     margin-top: 12px;
     font-size: 15px;
     line-height: 28px;
+    text-align: justify;
   }
 
   .aboutFaq {
@@ -11738,7 +11749,7 @@ SCROLLBAR
 
   .swiper.heroSwiper,
   .heroSwiper--loading {
-    height: 165px;
+    height: 200px;
   }
 
   .hero-content {
@@ -11992,7 +12003,7 @@ SCROLLBAR
   }
 
   .leadership__image {
-    width: 110px;
+    width: 170px;
   }
 
   .leadership__image-frame {
@@ -12039,6 +12050,7 @@ SCROLLBAR
   .pillar-card__description {
     font-size: 14px;
     line-height: 26px;
+    text-align: justify;
   }
 
   .resources-header .site-container {
@@ -13009,7 +13021,7 @@ SMALL DEVICES
   }
 
   .about-page .doctorCard__image {
-    max-width: 110px;
+    max-width: 170px;
   }
 
   .about-page .wellness__text {
@@ -13360,4 +13372,118 @@ SMALL DEVICES
     font-size: var(--font-size-body);
     line-height: var(--line-height-body);
   }
+}
+
+
+
+/* Desktop */
+@media (min-width: 768px) {
+    .improvingimg {
+        display: none;
+    }
+      .managemobile {
+      padding: 0px !important;
+    }
+   
+    
+}
+
+/* Mobile */
+@media (max-width: 767.98px) {
+    .improvingimg {
+        display: block;
+        margin-top: 20px;
+    }
+    .wellness-hero__stat-card p {
+          font-size: 9px;
+    }
+    .site-cards {
+      padding: 0.0rem !important;
+    }
+    .transformation-header {
+      flex-direction:row !important;
+    }
+    .improvingimgs {
+      display: none;
+    }
+    .final-cta__button {
+      margin-top: 0px !important;
+    }
+.monthly-champions__title {
+   font-size:  var(--font-size-h3) !important;
+}
+.header-left p {
+  font-size: 11px !important;
+}
+}
+
+@media (min-width: 768px) and (max-width: 991.98px) {
+    .improvingimg {
+        display: block;
+        margin-top: 20px;
+    }
+    .improvingimgs {
+      display: none;
+    }
+   
+  
+}
+
+
+
+.whatsapp-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #25D366;
+    color: #fff !important;
+    padding: 10px 18px;
+    border-radius: 50px;
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.whatsapp-btn:hover {
+    background: #1ebe5d;
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(37, 211, 102, 0.3);
+}
+
+.whatsapp-btn svg {
+    flex-shrink: 0;
+}
+
+
+
+
+
+
+
+/* Mobile & Tablet (Default) */
+.maindesktop {
+    display: none;
+}
+
+/* Desktop (992px and above) */
+@media (min-width: 992px) {
+    .maindesktop {
+        display: flex;
+    }
+}
+
+
+
+/* Mobile & Tablet */
+.main {
+    display: flex;
+}
+
+/* Desktop (992px and above) */
+@media (min-width: 992px) {
+    .main {
+        display: none;
+    }
 }

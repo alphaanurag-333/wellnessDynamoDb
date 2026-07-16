@@ -105,8 +105,9 @@ function CoachBoardSection({
 
   return (
     <section className="medicalBoard">
-      <div className="site-container">
-        <div className="medicalBoard__top">
+      <div className="site-container">  
+        
+        <div className="medicalBoard__top mb-0">
           <div className="medicalBoard__heading">
             <h2>{title}</h2>
             <p>{subtitle}</p>
@@ -207,7 +208,7 @@ const AboutUsSection = () => {
   const items = [
     { title: "Fat Loss", icon: <Flame size={18} /> },
     { title: "Thyroid", icon: <Activity size={18} /> },
-    { title: "Throat", icon: <HeartPulse size={18} /> },
+    
     { title: "PCOS", icon: <ShieldPlus size={18} /> },
     { title: "Gut Health", icon: <Heart size={18} /> },
     { title: "Stress Management", icon: <Dumbbell size={18} /> },
@@ -394,16 +395,14 @@ const AboutUsSection = () => {
   const marqueeItems = [...items, ...items, ...items, ...items];
 
   return (
-    <section className="about-wellness about-page">
+    <section className="about-wellness about-page p-0 pt-3">
       <div className="container">
         <div className="wellness__wrapper">
           <div className="wellness__content">
-            <span className="wellness__label">WELCOME TO OUR SPACE</span>
+            {/* <span className="wellness__label">WELCOME TO OUR SPACE</span> */}
 
             <h2 className="wellness__title">
-              Meet Your
-              <br />
-              <span>Wellness</span> Partner
+              Meet Your <span> Wellness</span> Partner
             </h2>
 
             <p className="wellness__text">
@@ -424,7 +423,7 @@ const AboutUsSection = () => {
         </div>
       </div>
 
-      <section className="marquee-section">
+      <section className="marquee-section mt-2">
         <div className="marquee">
           <div className="marquee-track">
             {marqueeItems.map((item, index) => (
@@ -449,7 +448,7 @@ const AboutUsSection = () => {
 
       
 
-      <section className="pillars">
+      <section className="pillars pt-3 pb-3">
         <div className="site-container">
           {/* Heading */}
 
@@ -515,48 +514,67 @@ const AboutUsSection = () => {
 <LeadershipNotesSlider notes={leadershipNotes} loading={leadershipNotesLoading} />
 
 
-      <section className="aboutFaq">
+      <section className="aboutFaq pt-2">
         <div className="site-container">
           <div className="aboutFaq__wrapper">
             {/* LEFT */}
 
-            <div className="aboutFaq__gallery">
-              <div className="aboutFaq__column">
-                <div className="aboutFaq__image aboutFaq__image--large">
-                  <img src={img1} alt="Wellness" />
-                </div>
+           <div className="aboutFaq__gallery d-none d-lg-flex">
+  <div className="aboutFaq__column">
+    <div className="aboutFaq__image aboutFaq__image--large">
+      <img src={img1} alt="Wellness" />
+    </div>
 
-                <div className="aboutFaq__image aboutFaq__image--small">
-                  <img src={img3} alt="Yoga" />
-                </div>
-              </div>
+    <div className="aboutFaq__image aboutFaq__image--small">
+      <img src={img3} alt="Yoga" />
+    </div>
+  </div>
 
-              <div className="aboutFaq__column">
-                <div className="aboutFaq__image aboutFaq__image--small">
-                  <img src={img2} alt="Nutrition" />
-                </div>
+  <div className="aboutFaq__column">
+    <div className="aboutFaq__image aboutFaq__image--small">
+      <img src={img2} alt="Nutrition" />
+    </div>
 
-                <div className="aboutFaq__image aboutFaq__image--large">
-                  <img src={img4} alt="Diagnostics" />
-                </div>
-              </div>
-            </div>
+    <div className="aboutFaq__image aboutFaq__image--large">
+      <img src={img4} alt="Diagnostics" />
+    </div>
+  </div>
+</div>
 
             {/* RIGHT */}
 
             <div className="aboutFaq__content">
               <span className="aboutFaq__label">OUR PROCESS</span>
 
-              <h2 className="aboutFaq__title">
-                <span> Holistic Approach</span>
-              </h2>
-              <p className="aboutFaq__para">
-                We believe in a holistic approach towards health & Wellness.
-                <br />
-                Holistic Health recognizes the interconnectedness of mind, body
-                & spirit and treats them as one which emphasizes the importance
-                of nurturing each aspect to achieve optimal well-being.
-              </p>
+             <p className="aboutFaq__para">
+  We believe in a holistic approach towards health & Wellness.
+  <br />
+  Holistic Health recognizes the interconnectedness of mind, body
+  & spirit and treats them as one which emphasizes the importance
+  of nurturing each aspect to achieve optimal well-being.
+</p>
+
+<div className="aboutFaq__gallery d-flex d-lg-none">
+  <div className="aboutFaq__column">
+    <div className="aboutFaq__image aboutFaq__image--large">
+      <img src={img1} alt="Wellness" />
+    </div>
+
+    <div className="aboutFaq__image aboutFaq__image--small">
+      <img src={img3} alt="Yoga" />
+    </div>
+  </div>
+
+  <div className="aboutFaq__column">
+    <div className="aboutFaq__image aboutFaq__image--small">
+      <img src={img2} alt="Nutrition" />
+    </div>
+
+    <div className="aboutFaq__image aboutFaq__image--large">
+      <img src={img4} alt="Diagnostics" />
+    </div>
+  </div>
+</div>
 
               <div
                 className="accordion aboutFaqAccordion"
@@ -626,7 +644,7 @@ const AboutUsSection = () => {
 
             <button
               type="button"
-              className="final-cta__button"
+              className="final-cta__button mt-0 mb-0"
               onClick={() =>
                 window.open(
                   "https://chat.whatsapp.com/Lcv5qyt7tvX6nrif7poqBB",
@@ -635,8 +653,8 @@ const AboutUsSection = () => {
                 )
               }
             >
-              JOIN IRW WELLNESS COMMUNITY
-              <FiArrowRight />
+              JOIN IRW COMMUNITY
+              {/* <FiArrowRight /> */}
             </button>
           </div>
         </div>
