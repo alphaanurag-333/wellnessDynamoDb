@@ -7037,7 +7037,7 @@ PRINT
 }
 
 .transformation-story-card:hover .transformation-story-card__photo img {
-  transform: scale(1.04);
+  /* transform: scale(1.04); */
 }
 
 .transformation-story-card__photo--after {
