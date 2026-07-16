@@ -4,7 +4,7 @@ const DEFAULT_MAX_HEIGHT = 320;
 
 /**
  * Full-width banner / notification image for admin detail pages.
- * Matches website hero crop aspect (1920×640).
+ * Default aspect matches website desktop hero crop (1920×640).
  */
 export function AdminDetailBannerImage({
   path,
@@ -13,6 +13,7 @@ export function AdminDetailBannerImage({
   maxHeight = DEFAULT_MAX_HEIGHT,
   radius = 8,
   hideWhenMissing = false,
+  aspectRatio = "1920 / 640",
 }) {
   if (hideWhenMissing && !path && !src) return null;
 
@@ -22,7 +23,7 @@ export function AdminDetailBannerImage({
       style={{
         width: "100%",
         maxWidth: 960,
-        aspectRatio: "1920 / 640",
+        aspectRatio,
         maxHeight,
         borderRadius: radius,
         overflow: "hidden",

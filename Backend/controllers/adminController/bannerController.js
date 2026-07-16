@@ -1,7 +1,7 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
 const {
-  uploadFileFromRequest,
+  uploadMulterField,
   deleteStoredMedia,
   parseMediaKeyFromBody,
 } = require("../../utils/s3");
@@ -33,18 +33,21 @@ exports.createBannerController = asyncHandler(async (req, res) => {
   const description = String(req.body.description || "").trim();
   const status = String(req.body.status || "active").trim().toLowerCase();
 
-  const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
-  const image =
-    uploadedKey ?? parseMediaKeyFromBody(req.body.image, "image");
+  const uploadedImage = await uploadMulterField(req, "file", S3_FOLDER);
+  const uploadedMobileImage = await uploadMulterField(req, "mobileImage", S3_FOLDER);
+  const image = uploadedImage ?? parseMediaKeyFromBody(req.body.image, "image");
+  const mobileImage =
+    uploadedMobileImage ?? parseMediaKeyFromBody(req.body.mobileImage, "mobileImage");
 
   if (!title) throw new AppError("title is required", 400);
   if (!description) throw new AppError("description is required", 400);
   if (!image) throw new AppError("image is required", 400);
+  if (!mobileImage) throw new AppError("mobileImage is required", 400);
   if (!["active", "inactive"].includes(status)) {
     throw new AppError("status must be active or inactive", 400);
   }
 
-  const banner = await createBanner({ title, description, image, status });
+  const banner = await createBanner({ title, description, image, mobileImage, status });
   return res.status(201).json({ status: true, message: "Banner created successfully", banner });
 });
 
@@ -77,13 +80,28 @@ exports.updateBannerController = asyncHandler(async (req, res) => {
     }
     updates.image = image ?? "";
   }
+  if (req.body.mobileImage !== undefined) {
+    const mobileImage = parseMediaKeyFromBody(req.body.mobileImage, "mobileImage");
+    if (mobileImage === null && current.mobileImage) {
+      await deleteStoredMedia(current.mobileImage);
+    }
+    updates.mobileImage = mobileImage ?? "";
+  }
 
-  const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
-  if (uploadedKey) {
-    if (current.image && current.image !== uploadedKey) {
+  const uploadedImage = await uploadMulterField(req, "file", S3_FOLDER);
+  if (uploadedImage) {
+    if (current.image && current.image !== uploadedImage) {
       await deleteStoredMedia(current.image);
     }
-    updates.image = uploadedKey;
+    updates.image = uploadedImage;
+  }
+
+  const uploadedMobileImage = await uploadMulterField(req, "mobileImage", S3_FOLDER);
+  if (uploadedMobileImage) {
+    if (current.mobileImage && current.mobileImage !== uploadedMobileImage) {
+      await deleteStoredMedia(current.mobileImage);
+    }
+    updates.mobileImage = uploadedMobileImage;
   }
 
   if (Object.keys(updates).length === 0) {
@@ -104,6 +122,7 @@ exports.deleteBannerController = asyncHandler(async (req, res) => {
   const current = await getBannerRecordById(req.params.id);
   if (!current) throw new AppError("Banner not found", 404);
   if (current.image) await deleteStoredMedia(current.image);
+  if (current.mobileImage) await deleteStoredMedia(current.mobileImage);
 
   try {
     await deleteBanner(req.params.id);

@@ -94,7 +94,23 @@ export function BannerView() {
       />
 
       <div className="page-card user-view-card">
-        <AdminDetailBannerImage path={banner.image} alt={banner.title || "Banner"} />
+        <div className="user-detail-row" style={{ marginBottom: 8 }}>
+          <span className="user-detail-row__label">Desktop banner</span>
+        </div>
+        <AdminDetailBannerImage path={banner.image} alt={banner.title || "Desktop banner"} />
+        {banner.mobileImage ? (
+          <>
+            <div className="user-detail-row" style={{ marginTop: 20, marginBottom: 8 }}>
+              <span className="user-detail-row__label">Mobile / app banner</span>
+            </div>
+            <AdminDetailBannerImage
+              path={banner.mobileImage}
+              alt={`${banner.title || "Banner"} (mobile)`}
+              aspectRatio="1080 / 480"
+              maxHeight={240}
+            />
+          </>
+        ) : null}
         <div className="user-view-grid">
           <DetailRow label="Title" value={banner.title} />
           <div className="user-detail-row user-detail-row--stack">

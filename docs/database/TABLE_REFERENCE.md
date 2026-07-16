@@ -173,7 +173,7 @@ PK `id` · GSI `StatusIndex` · `question`, `answer`, `status`, timestamps
 
 ### `Banner`
 
-PK `id` · GSI `StatusCreatedAtIndex` · `title`, `image`, `status`, timestamps
+PK `id` · GSI `StatusCreatedAtIndex` · `title`, `description`, `image` (desktop), `mobileImage` (mobile/app), `status`, timestamps
 
 ### `CelebrationBanners`
 

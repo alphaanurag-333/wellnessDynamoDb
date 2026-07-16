@@ -30,13 +30,23 @@ export async function adminGetBannerById(token, id) {
   }
 }
 
-export async function adminCreateBanner(token, fields, file) {
-  if (file instanceof File) {
+function appendBannerFormData(fd, fields) {
+  if (fields.title !== undefined) fd.append("title", String(fields.title ?? "").trim());
+  if (fields.description !== undefined) fd.append("description", String(fields.description ?? "").trim());
+  if (fields.status !== undefined) fd.append("status", String(fields.status || "active"));
+}
+
+export async function adminCreateBanner(token, fields, file, mobileFile) {
+  const hasFiles = file instanceof File || mobileFile instanceof File;
+  if (hasFiles) {
     const fd = new FormData();
-    fd.append("title", String(fields.title ?? "").trim());
-    fd.append("description", String(fields.description ?? "").trim());
-    fd.append("status", String(fields.status || "active"));
-    fd.append("file", file);
+    appendBannerFormData(fd, {
+      title: fields.title,
+      description: fields.description,
+      status: fields.status || "active",
+    });
+    if (file instanceof File) fd.append("file", file);
+    if (mobileFile instanceof File) fd.append("mobileImage", mobileFile);
     try {
       const { data } = await api.post(bannersBase(), fd, { headers: authHeader(token) });
       return data.banner;
@@ -52,6 +62,7 @@ export async function adminCreateBanner(token, fields, file) {
         title: String(fields.title ?? "").trim(),
         description: String(fields.description ?? "").trim(),
         image: String(fields.image ?? "").trim(),
+        mobileImage: String(fields.mobileImage ?? "").trim(),
         status: String(fields.status || "active"),
       },
       { headers: authHeader(token) }
@@ -62,15 +73,17 @@ export async function adminCreateBanner(token, fields, file) {
   }
 }
 
-export async function adminUpdateBanner(token, id, fields, file) {
-  if (file instanceof File) {
+export async function adminUpdateBanner(token, id, fields, file, mobileFile) {
+  const hasFiles = file instanceof File || mobileFile instanceof File;
+  if (hasFiles) {
     const fd = new FormData();
-    if (fields.title !== undefined) fd.append("title", String(fields.title).trim());
-    if (fields.description !== undefined) fd.append("description", String(fields.description).trim());
-    if (fields.status !== undefined) fd.append("status", String(fields.status));
-    fd.append("file", file);
+    appendBannerFormData(fd, fields);
+    if (file instanceof File) fd.append("file", file);
+    if (mobileFile instanceof File) fd.append("mobileImage", mobileFile);
     try {
-      const { data } = await api.patch(`${bannersBase()}/${encodeURIComponent(id)}`, fd, { headers: authHeader(token) });
+      const { data } = await api.patch(`${bannersBase()}/${encodeURIComponent(id)}`, fd, {
+        headers: authHeader(token),
+      });
       return data.banner;
     } catch (error) {
       normalizeApiError(error);
@@ -82,9 +95,12 @@ export async function adminUpdateBanner(token, id, fields, file) {
   if (fields.description !== undefined) payload.description = String(fields.description).trim();
   if (fields.status !== undefined) payload.status = String(fields.status);
   if (fields.image !== undefined) payload.image = String(fields.image).trim();
+  if (fields.mobileImage !== undefined) payload.mobileImage = String(fields.mobileImage).trim();
 
   try {
-    const { data } = await api.patch(`${bannersBase()}/${encodeURIComponent(id)}`, payload, { headers: authHeader(token) });
+    const { data } = await api.patch(`${bannersBase()}/${encodeURIComponent(id)}`, payload, {
+      headers: authHeader(token),
+    });
     return data.banner;
   } catch (error) {
     normalizeApiError(error);
