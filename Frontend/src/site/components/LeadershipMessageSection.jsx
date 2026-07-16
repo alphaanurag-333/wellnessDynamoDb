@@ -122,11 +122,13 @@ function LeadershipNoteCard({
 
       <div className="leadership__content">
         {/* {badge ? <span className="leadership__badge">{badge}</span> : null} */}
-        {heading ? <h2 className="leadership__title">{heading}</h2> : null}
+        <div className="leadership__meta">
+          {heading ? <h2 className="leadership__title">{heading}</h2> : null}
 
-        <div className="leadership__author">
-          <h4>{name}</h4>
-          {designation ? <span>{designation}</span> : null}
+          <div className="leadership__author">
+            <h4>{name}</h4>
+            {designation ? <span>{designation}</span> : null}
+          </div>
         </div>
 
         <div

@@ -151,13 +151,13 @@ export function RealPeopleTestimonialList() {
         <AdminListHeader
           title="Real people testimonials"
           subtitle={subtitle}
-          actions={
-            canEdit ? (
-            <button type="button" className="btn btn--primary" onClick={() => navigate("/admin/real-people-testimonials/new")}>
-              Add testimonial
-            </button>
-          ) : null
-          }
+          // actions={
+          //   canEdit ? (
+          //   <button type="button" className="btn btn--primary" onClick={() => navigate("/admin/real-people-testimonials/new")}>
+          //     Add testimonial
+          //   </button>
+          // ) : null
+          // }
         />
         <div className="admin-crud-filters">
           <label className="user-field admin-crud-filters__search">

@@ -29,10 +29,10 @@ export default function WellnessHero() {
 
             <div className="wellness-hero__stat-card">
               <div className="wellness-hero__stat-icon">
-                <FiAward />
+                <FiAward /> 
               </div>
 
-              <div>
+              <div >
                 <h4>5,000+</h4>
                 <p>Lives transformed through our personalized programs.</p>
               </div>

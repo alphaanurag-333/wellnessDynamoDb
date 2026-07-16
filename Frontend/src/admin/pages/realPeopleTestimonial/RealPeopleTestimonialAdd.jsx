@@ -126,7 +126,7 @@ export function RealPeopleTestimonialForm({ mode = "create", initial = null }) {
   return (
     <form onSubmit={onSubmit}>
       <div className="row g-3">
-        <label className="user-field col-12 col-md-6">
+        {/* <label className="user-field col-12 col-md-6">
           <span className="user-field__label">User ID <span className="required-dot">*</span></span>
           <input
             className="user-field__input"
@@ -139,7 +139,7 @@ export function RealPeopleTestimonialForm({ mode = "create", initial = null }) {
           <small className="data-table__muted">
             Name, profile, health concern, and member since are loaded from this user. {form.userId.length}/{USER_ID_MAX_LEN}
           </small>
-        </label>
+        </label> */}
         <label className="user-field col-12 col-md-4">
           <span className="user-field__label">Stars</span>
           <select className="user-field__input" value={form.stars} onChange={(e) => setForm((p) => ({ ...p, stars: e.target.value }))}>
