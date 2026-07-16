@@ -205,7 +205,7 @@ export default function BodyFatCalculator() {
   }, [bodyFat]);
 
   return (
-    <section className="bodyfat-section">
+    <section className="bodyfat-section pt-2 pb-2">
       <div className="container">
         <div className="bodyfat-wrapper">
           {/* LEFT — form */}

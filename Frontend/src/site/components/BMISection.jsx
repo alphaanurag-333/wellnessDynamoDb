@@ -166,7 +166,7 @@ const BMISection = () => {
   }, [bmi]);
 
   return (
-    <section className="bmi-section">
+    <section className="bmi-section pt-2 pb-2">
       <div className="container">
         <div className="bmi-wrapper">
           {/* LEFT */}
@@ -210,7 +210,7 @@ const BMISection = () => {
 
           {/* RIGHT */}
 
-          <div className="bmi-right bmi-form">
+          <div className="bmi-right bmi-form margint">
             <div className="form-row">
               <div className="form-group age">
                 <label>

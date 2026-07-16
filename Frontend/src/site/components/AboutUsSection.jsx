@@ -108,7 +108,7 @@ function CoachBoardSection({
     <section className="medicalBoard">
       <div className="site-container">  
         
-        <div className="medicalBoard__top mb-0">
+        {/* <div className="medicalBoard__top mb-0">
           
           <div className="medicalBoard__heading">
             <h2>{title}</h2>
@@ -136,8 +136,26 @@ function CoachBoardSection({
               </button>
             </div>
           )}
-        </div>
+        </div> */}
 
+
+ <div className="transformation-header mb-2">
+          <div className="header-left">
+            <h2>{title}</h2>
+            <p>{subtitle}</p>
+          </div>
+         
+        {coaches.length > 0 ? (
+          <div className="leadership-slider__nav">
+            <button ref={prevRef} type="button" className="leadership-slider__navBtn" aria-label="Previous note">
+              <ChevronLeft size={22} />
+            </button>
+            <button ref={nextRef} type="button" className="leadership-slider__navBtn" aria-label="Next note">
+              <ChevronRight size={22} />
+            </button>
+          </div>
+        ) : null}
+ </div>
         {loading ? (
           <p className="medicalBoard__loading">{loadingLabel}</p>
         ) : (
@@ -191,11 +209,21 @@ function CoachBoardSection({
                       onError={handleMediaImageError}
                     />
                   </div>
-
-                  <div className="doctorCard__content">
+<div
+    className="doctorCard__content pt-2"
+    style={{
+      marginTop: "0px",
+    }}
+  >
+    <h3 style={{ margin: "0 0 6px" }}>{coach.name}</h3>
+    <p style={{ margin: 0 }}>
+      {coachDesignation(coach, emptyFallbackLabel)}
+    </p>
+  </div>
+                  {/* <div className="doctorCard__content">
                     <h3>{coach.name}</h3>
                     <p>{coachDesignation(coach, emptyFallbackLabel)}</p>
-                  </div>
+                  </div> */}
                 </div>
               </SwiperSlide>
             ))}

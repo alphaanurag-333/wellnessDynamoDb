@@ -46,15 +46,15 @@ export default function ProgramPage({
       </section>
 
       <section
-        className={`program-about${aboutMode === "gut" ? " program-about--gut" : ""}`}
+        className={`pt-3 pb-3 program-about${aboutMode === "gut" ? " program-about--gut" : ""}`}
       >
         <div className="site-container">
           {aboutMode === "gut" ? (
             <div className="program-about__gut">
               <div className="program-about__intro">
-                <h2 className="program-about__heading">Understanding Gut Health</h2>
+                <h2 className="program-about__heading text-center">Understanding Gut Health</h2>
                 {paragraphs.map((text) => (
-                  <p key={text.slice(0, 48)}>{text}</p>
+                  <p className="text-center" key={text.slice(0, 48)}>{text}</p>
                 ))}
               </div>
 
@@ -79,7 +79,7 @@ export default function ProgramPage({
                 </div>
               ) : null}
               <div className="program-about__content">
-                <h2 className="program-about__heading">About the program</h2>
+                <h2 className="program-about__heading mb-0">About the program</h2>
                 {paragraphs.map((text) => (
                   <p key={text.slice(0, 48)}>{text}</p>
                 ))}

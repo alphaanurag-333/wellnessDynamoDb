@@ -195,7 +195,7 @@ export default function ContactUsSection() {
         </div>
       </div>
 
-      <div className="contact-card mt-4 mb-4">
+      <div className="contact-card mt-3 mb-3">
         <form onSubmit={handleSubmit} noValidate>
           {feedback ? (
             <div

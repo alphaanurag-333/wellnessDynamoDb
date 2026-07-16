@@ -135,11 +135,11 @@ export default function BMRCalculator() {
   }, [bmr]);
 
   return (
-    <section className="bmr-section">
+    <section className="bmr-section pt-2 pb-2">
       <div className="container">
         <div className="bmr-wrapper">
           <div className="bmr-right">
-            <h5>Your Daily Baseline</h5>
+            <h5 className="mb-2">Your Daily Baseline</h5>
 
             <div className="bmr-circle">
               <div className="circle">
@@ -165,7 +165,7 @@ export default function BMRCalculator() {
               ))}
             </div>
 
-            <p className="activity-note">
+            <p className="activity-note mt-2 mb-2">
               TDEE - Total Daily Energy Expenditure
             </p>
           </div>
