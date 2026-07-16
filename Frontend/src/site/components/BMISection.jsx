@@ -3,8 +3,14 @@ import React, { useState, useMemo } from "react";
 import { Info } from "lucide-react";
 import {
   RequiredMark,
-  isPositiveNumber,
   isValidAge,
+  isValidHeight,
+  isValidWeight,
+  isInRange,
+  blockInvalidIntegerKeyDown,
+  blockInvalidCalculatorNumberKeyDown,
+  sanitizePositiveInteger,
+  sanitizePositiveDecimal,
   validateCalculatorFields,
 } from "../utils/calculatorValidation.jsx";
 
@@ -67,16 +73,36 @@ const BMISection = () => {
   const calculateBMI = async () => {
     const heightOk =
       heightUnit === "cm"
-        ? isPositiveNumber(heightCm)
-        : isPositiveNumber(feet) && Number(inch) >= 0 && inch !== "";
+        ? isValidHeight(heightCm, "cm")
+        : isInRange(feet, 1, 8) && isInRange(inch, 0, 11);
     const weightOk =
-      weightUnit === "kg" ? isPositiveNumber(weightKg) : isPositiveNumber(weightLb);
+      weightUnit === "kg"
+        ? isValidWeight(weightKg, "kg")
+        : isValidWeight(weightLb, "lbs");
 
     const ok = await validateCalculatorFields([
-      { label: "Age", valid: isValidAge(age) },
+      {
+        label: "Age",
+        valid: isValidAge(age),
+        hint: "Age (1–120 years)",
+      },
       { label: "Gender", valid: Boolean(gender) },
-      { label: "Height", valid: heightOk },
-      { label: "Weight", valid: weightOk },
+      {
+        label: "Height",
+        valid: heightOk,
+        hint:
+          heightUnit === "cm"
+            ? "Height (50–300 cm)"
+            : "Height (1–8 ft and 0–11 in)",
+      },
+      {
+        label: "Weight",
+        valid: weightOk,
+        hint:
+          weightUnit === "kg"
+            ? "Weight (10–500 kg)"
+            : "Weight (22–1100 lb)",
+      },
     ]);
     if (!ok) return;
 
@@ -191,34 +217,19 @@ const BMISection = () => {
                   Age <RequiredMark />
                 </label>
 
-                {/* <input 
+                <input
                   type="number"
+                  inputMode="numeric"
                   placeholder="Years"
                   value={age}
                   min={1}
                   max={120}
                   required
-                  onChange={(e) => setAge(e.target.value)}
-                /> */}
-                <input
-  type="number"
-  placeholder="Years"
-  value={age}
-  min={1}
-  max={120}
-  required
-  onKeyDown={(e) => {
-    if (["e", "E", "+", "-", "."].includes(e.key)) {
-      e.preventDefault();
-    }
-  }}
-  onChange={(e) => {
-    const value = e.target.value;
-    if (value === "" || (/^\d+$/.test(value) && Number(value) <= 120)) {
-      setAge(value);
-    }
-  }}
-/>
+                  onKeyDown={blockInvalidIntegerKeyDown}
+                  onChange={(e) =>
+                    setAge(sanitizePositiveInteger(e.target.value, { max: 120 }))
+                  }
+                />
               </div>
 
               <div className="form-group gender">
@@ -278,8 +289,18 @@ const BMISection = () => {
                   <div className="input-unit">
                     <input
                       type="number"
+                      inputMode="decimal"
+                      min={0}
                       value={heightCm}
-                      onChange={(e) => setHeightCm(e.target.value)}
+                      onKeyDown={blockInvalidCalculatorNumberKeyDown}
+                      onChange={(e) =>
+                        setHeightCm(
+                          sanitizePositiveDecimal(e.target.value, {
+                            maxDecimals: 1,
+                            max: 300,
+                          })
+                        )
+                      }
                     />
                     <span>cm</span>
                   </div>
@@ -287,14 +308,26 @@ const BMISection = () => {
                   <div className="height-feet">
                     <input
                       type="number"
+                      inputMode="numeric"
+                      min={0}
+                      max={8}
                       value={feet}
-                      onChange={(e) => setFeet(e.target.value)}
+                      onKeyDown={blockInvalidIntegerKeyDown}
+                      onChange={(e) =>
+                        setFeet(sanitizePositiveInteger(e.target.value, { max: 8 }))
+                      }
                     />
 
                     <input
                       type="number"
+                      inputMode="numeric"
+                      min={0}
+                      max={11}
                       value={inch}
-                      onChange={(e) => setInch(e.target.value)}
+                      onKeyDown={blockInvalidIntegerKeyDown}
+                      onChange={(e) =>
+                        setInch(sanitizePositiveInteger(e.target.value, { max: 11 }))
+                      }
                     />
                   </div>
                 )}
@@ -329,8 +362,18 @@ const BMISection = () => {
                   <div className="input-unit">
                     <input
                       type="number"
+                      inputMode="decimal"
+                      min={0}
                       value={weightKg}
-                      onChange={(e) => setWeightKg(e.target.value)}
+                      onKeyDown={blockInvalidCalculatorNumberKeyDown}
+                      onChange={(e) =>
+                        setWeightKg(
+                          sanitizePositiveDecimal(e.target.value, {
+                            maxDecimals: 1,
+                            max: 500,
+                          })
+                        )
+                      }
                     />
                     <span>kg</span>
                   </div>
@@ -338,8 +381,18 @@ const BMISection = () => {
                   <div className="input-unit">
                     <input
                       type="number"
+                      inputMode="decimal"
+                      min={0}
                       value={weightLb}
-                      onChange={(e) => setWeightLb(e.target.value)}
+                      onKeyDown={blockInvalidCalculatorNumberKeyDown}
+                      onChange={(e) =>
+                        setWeightLb(
+                          sanitizePositiveDecimal(e.target.value, {
+                            maxDecimals: 1,
+                            max: 1100,
+                          })
+                        )
+                      }
                     />
                     <span>lb</span>
                   </div>

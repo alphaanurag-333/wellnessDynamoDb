@@ -5,8 +5,17 @@ import maleImg from "../../site/images/male.png";
 import femaleImg from "../../site/images/female.png";
 import {
   RequiredMark,
-  isPositiveNumber,
   isValidAge,
+  isValidHeight,
+  isValidMeasurement,
+  isValidFeetInches,
+  feetInchesToCm,
+  cmToFeetInches,
+  formatHeightDisplay,
+  blockInvalidIntegerKeyDown,
+  blockInvalidCalculatorNumberKeyDown,
+  sanitizePositiveInteger,
+  sanitizePositiveDecimal,
   validateCalculatorFields,
 } from "../utils/calculatorValidation.jsx";
 
@@ -59,6 +68,10 @@ export default function VisceralFatCalculator() {
 
   const [height, setHeight] = useState("");
 
+  const [feet, setFeet] = useState("");
+
+  const [inch, setInch] = useState("");
+
   const [waist, setWaist] = useState("");
 
   const [heightUnit, setHeightUnit] = useState("cm");
@@ -73,14 +86,27 @@ export default function VisceralFatCalculator() {
 
   //------------------------------------
 
+  const changeHeightUnit = (unit) => {
+    if (unit === heightUnit) return;
+    if (unit === "ft") {
+      const { feet: f, inches: i } = cmToFeetInches(height);
+      setFeet(f);
+      setInch(i);
+    } else {
+      const cm = feetInchesToCm(feet, inch);
+      setHeight(cm ? String(Math.round(cm)) : "");
+    }
+    setHeightUnit(unit);
+  };
+
+  //------------------------------------
+
   const heightCM = () => {
-
-    if (!height) return 0;
-
-    if (heightUnit === "cm") return Number(height);
-
-    return Number(height) * 30.48;
-
+    if (heightUnit === "cm") {
+      if (!height) return 0;
+      return Number(height);
+    }
+    return feetInchesToCm(feet, inch);
   };
 
   //------------------------------------
@@ -100,9 +126,30 @@ export default function VisceralFatCalculator() {
   const calculate = async () => {
     const ok = await validateCalculatorFields([
       { label: "Gender", valid: Boolean(gender) },
-      { label: "Age", valid: isValidAge(age) },
-      { label: "Height", valid: isPositiveNumber(height) },
-      { label: "Waist", valid: isPositiveNumber(waist) },
+      {
+        label: "Age",
+        valid: isValidAge(age),
+        hint: "Age (1–120 years)",
+      },
+      {
+        label: "Height",
+        valid:
+          heightUnit === "cm"
+            ? isValidHeight(height, "cm")
+            : isValidFeetInches(feet, inch),
+        hint:
+          heightUnit === "ft"
+            ? "Height (1–8 ft and 0–11 in)"
+            : "Height (50–300 cm)",
+      },
+      {
+        label: "Waist",
+        valid: isValidMeasurement(waist, waistUnit),
+        hint:
+          waistUnit === "in"
+            ? "Waist (8–80 in)"
+            : "Waist (20–200 cm)",
+      },
     ]);
     if (!ok) return;
 
@@ -229,12 +276,14 @@ export default function VisceralFatCalculator() {
 
                 <input
                   type="number"
+                  inputMode="numeric"
                   value={age}
                   min={1}
                   max={120}
                   required
-                  onChange={(e)=>
-                    setAge(e.target.value)
+                  onKeyDown={blockInvalidIntegerKeyDown}
+                  onChange={(e) =>
+                    setAge(sanitizePositiveInteger(e.target.value, { max: 120 }))
                   }
                 />
 
@@ -250,15 +299,58 @@ export default function VisceralFatCalculator() {
 
                 <div className="unit-input">
 
-                  <input
-                    type="number"
-                    placeholder="Height"
-                    value={height}
-                    required
-                    onChange={(e)=>
-                      setHeight(e.target.value)
-                    }
-                  />
+                  {heightUnit === "cm" ? (
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      placeholder="Height"
+                      value={height}
+                      min={0}
+                      required
+                      onKeyDown={blockInvalidCalculatorNumberKeyDown}
+                      onChange={(e) =>
+                        setHeight(
+                          sanitizePositiveDecimal(e.target.value, {
+                            maxDecimals: 2,
+                            max: 300,
+                          })
+                        )
+                      }
+                    />
+                  ) : (
+                    <div className="height-feet">
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        placeholder="ft"
+                        value={feet}
+                        min={0}
+                        max={8}
+                        required
+                        onKeyDown={blockInvalidIntegerKeyDown}
+                        onChange={(e) =>
+                          setFeet(
+                            sanitizePositiveInteger(e.target.value, { max: 8 })
+                          )
+                        }
+                      />
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        placeholder="in"
+                        value={inch}
+                        min={0}
+                        max={11}
+                        required
+                        onKeyDown={blockInvalidIntegerKeyDown}
+                        onChange={(e) =>
+                          setInch(
+                            sanitizePositiveInteger(e.target.value, { max: 11 })
+                          )
+                        }
+                      />
+                    </div>
+                  )}
 
                   <div className="unit-switch">
 
@@ -269,7 +361,7 @@ export default function VisceralFatCalculator() {
                         ?"active":""
                       }
                       onClick={()=>
-                        setHeightUnit("cm")
+                        changeHeightUnit("cm")
                       }
                     >
                       cm
@@ -282,10 +374,10 @@ export default function VisceralFatCalculator() {
                         ?"active":""
                       }
                       onClick={()=>
-                        setHeightUnit("ft")
+                        changeHeightUnit("ft")
                       }
                     >
-                      ft
+                      ft/in
                     </button>
 
                   </div>
@@ -306,11 +398,19 @@ export default function VisceralFatCalculator() {
 
                   <input
                     type="number"
+                    inputMode="decimal"
                     placeholder="Waist"
                     value={waist}
+                    min={0}
                     required
-                    onChange={(e)=>
-                      setWaist(e.target.value)
+                    onKeyDown={blockInvalidCalculatorNumberKeyDown}
+                    onChange={(e) =>
+                      setWaist(
+                        sanitizePositiveDecimal(e.target.value, {
+                          maxDecimals: 2,
+                          max: waistUnit === "in" ? 80 : 200,
+                        })
+                      )
                     }
                   />
 
@@ -460,9 +560,11 @@ export default function VisceralFatCalculator() {
 
                 <span>
 
-                  {height
-                    ? `${height} ${heightUnit}`
-                    : "--"}
+                  {formatHeightDisplay(heightUnit, {
+                    heightCm: height,
+                    feet,
+                    inches: inch,
+                  })}
 
                 </span>
 

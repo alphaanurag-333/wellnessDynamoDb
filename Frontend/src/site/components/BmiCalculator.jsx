@@ -1,4 +1,14 @@
 import { useMemo, useState } from "react";
+import {
+  isValidAge,
+  isValidHeight,
+  isValidWeight,
+  blockInvalidIntegerKeyDown,
+  blockInvalidCalculatorNumberKeyDown,
+  sanitizePositiveInteger,
+  sanitizePositiveDecimal,
+  validateCalculatorFields,
+} from "../utils/calculatorValidation.jsx";
 
 function getBmiCategory(value) {
   if (value < 18.5) return { label: "Underweight", color: "#60a5fa" };
@@ -15,10 +25,10 @@ function computeBmi(heightCm, weightKg) {
 }
 
 export default function BmiCalculator() {
-  const [age, setAge] = useState(25);
+  const [age, setAge] = useState("25");
   const [gender, setGender] = useState("Male");
-  const [height, setHeight] = useState(175);
-  const [weight, setWeight] = useState(70);
+  const [height, setHeight] = useState("175");
+  const [weight, setWeight] = useState("70");
   const [result, setResult] = useState(() => computeBmi(175, 70));
 
   const bmiData = useMemo(() => {
@@ -31,8 +41,29 @@ export default function BmiCalculator() {
     return Math.min(Math.max((result / 40) * 180 - 90, -90), 90);
   }, [result]);
 
-  const handleCalculate = (e) => {
+  const handleCalculate = async (e) => {
     e.preventDefault();
+    const ok = await validateCalculatorFields([
+      {
+        label: "Age",
+        valid: isValidAge(age),
+        hint: "Age (1–120 years)",
+      },
+      {
+        label: "Height",
+        valid: isValidHeight(height, "cm"),
+        hint: "Height (50–300 cm)",
+      },
+      {
+        label: "Weight",
+        valid: isValidWeight(weight, "kg"),
+        hint: "Weight (10–500 kg)",
+      },
+    ]);
+    if (!ok) {
+      setResult(null);
+      return;
+    }
     setResult(computeBmi(height, weight));
   };
 
@@ -51,10 +82,14 @@ export default function BmiCalculator() {
                 <span className="bmi-calc-field__label">Age</span>
                 <input
                   type="number"
+                  inputMode="numeric"
                   min={1}
                   max={120}
                   value={age}
-                  onChange={(e) => setAge(e.target.value)}
+                  onKeyDown={blockInvalidIntegerKeyDown}
+                  onChange={(e) =>
+                    setAge(sanitizePositiveInteger(e.target.value, { max: 120 }))
+                  }
                   placeholder="Years"
                 />
               </label>
@@ -74,10 +109,19 @@ export default function BmiCalculator() {
               <div className="bmi-calc-field__unit">
                 <input
                   type="number"
-                  min={50}
+                  inputMode="decimal"
+                  min={0}
                   max={300}
                   value={height}
-                  onChange={(e) => setHeight(e.target.value)}
+                  onKeyDown={blockInvalidCalculatorNumberKeyDown}
+                  onChange={(e) =>
+                    setHeight(
+                      sanitizePositiveDecimal(e.target.value, {
+                        maxDecimals: 1,
+                        max: 300,
+                      })
+                    )
+                  }
                   placeholder="175"
                 />
                 <span>cm</span>
@@ -89,10 +133,19 @@ export default function BmiCalculator() {
               <div className="bmi-calc-field__unit">
                 <input
                   type="number"
-                  min={10}
+                  inputMode="decimal"
+                  min={0}
                   max={500}
                   value={weight}
-                  onChange={(e) => setWeight(e.target.value)}
+                  onKeyDown={blockInvalidCalculatorNumberKeyDown}
+                  onChange={(e) =>
+                    setWeight(
+                      sanitizePositiveDecimal(e.target.value, {
+                        maxDecimals: 1,
+                        max: 500,
+                      })
+                    )
+                  }
                   placeholder="70"
                 />
                 <span>kg</span>

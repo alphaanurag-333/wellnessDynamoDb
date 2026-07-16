@@ -4,8 +4,16 @@ import maleImg from "../../site/images/male.png";
 import femaleImg from "../../site/images/female.png";
 import {
   RequiredMark,
-  isPositiveNumber,
   isValidAge,
+  isValidHeight,
+  isValidWeight,
+  isValidFeetInches,
+  feetInchesToCm,
+  cmToFeetInches,
+  blockInvalidIntegerKeyDown,
+  blockInvalidCalculatorNumberKeyDown,
+  sanitizePositiveInteger,
+  sanitizePositiveDecimal,
   validateCalculatorFields,
 } from "../utils/calculatorValidation.jsx";
 
@@ -38,47 +46,71 @@ const activityLevels = [
 
 export default function BMRCalculator() {
   const [gender, setGender] = useState("male");
-
   const [age, setAge] = useState(28);
-
   const [height, setHeight] = useState("");
-
+  const [feet, setFeet] = useState("");
+  const [inch, setInch] = useState("");
   const [weight, setWeight] = useState("");
-
   const [heightUnit, setHeightUnit] = useState("cm");
-
   const [weightUnit, setWeightUnit] = useState("kg");
-
   const [bmr, setBmr] = useState(0);
 
-  //------------------------------------------------
-
-  const convertHeightToCm = () => {
-    if (!height) return 0;
-
-    if (heightUnit === "cm") return Number(height);
-
-    return Number(height) * 30.48;
+  const changeHeightUnit = (unit) => {
+    if (unit === heightUnit) return;
+    if (unit === "ft") {
+      const { feet: f, inches: i } = cmToFeetInches(height);
+      setFeet(f);
+      setInch(i);
+    } else {
+      const cm = feetInchesToCm(feet, inch);
+      setHeight(cm ? String(Math.round(cm)) : "");
+    }
+    setHeightUnit(unit);
   };
 
-  //------------------------------------------------
+  const convertHeightToCm = () => {
+    if (heightUnit === "cm") {
+      if (!height) return 0;
+      return Number(height);
+    }
+    return feetInchesToCm(feet, inch);
+  };
 
   const convertWeightToKg = () => {
     if (!weight) return 0;
-
     if (weightUnit === "kg") return Number(weight);
-
     return Number(weight) * 0.453592;
   };
 
-  //------------------------------------------------
-
   const calculateBMR = async () => {
+    const heightOk =
+      heightUnit === "cm"
+        ? isValidHeight(height, "cm")
+        : isValidFeetInches(feet, inch);
+
     const ok = await validateCalculatorFields([
       { label: "Gender", valid: Boolean(gender) },
-      { label: "Age", valid: isValidAge(age) },
-      { label: "Height", valid: isPositiveNumber(height) },
-      { label: "Weight", valid: isPositiveNumber(weight) },
+      {
+        label: "Age",
+        valid: isValidAge(age),
+        hint: "Age (1–120 years)",
+      },
+      {
+        label: "Height",
+        valid: heightOk,
+        hint:
+          heightUnit === "ft"
+            ? "Height (1–8 ft and 0–11 in)"
+            : "Height (50–300 cm)",
+      },
+      {
+        label: "Weight",
+        valid: isValidWeight(weight, weightUnit),
+        hint:
+          weightUnit === "lbs"
+            ? "Weight (22–1100 lbs)"
+            : "Weight (10–500 kg)",
+      },
     ]);
     if (!ok) return;
 
@@ -86,7 +118,6 @@ export default function BMRCalculator() {
     const w = convertWeightToKg();
 
     let result = 0;
-
     if (gender === "male") {
       result = 10 * w + 6.25 * h - 5 * age + 5;
     } else {
@@ -95,8 +126,6 @@ export default function BMRCalculator() {
 
     setBmr(Math.round(result));
   };
-
-  //------------------------------------------------
 
   const tdee = useMemo(() => {
     return activityLevels.map((item) => ({
@@ -109,14 +138,12 @@ export default function BMRCalculator() {
     <section className="bmr-section">
       <div className="container">
         <div className="bmr-wrapper">
-          {/* LEFT */}
           <div className="bmr-right">
             <h5>Your Daily Baseline</h5>
 
             <div className="bmr-circle">
               <div className="circle">
                 <h2>{bmr || "--"}</h2>
-
                 <span>KCAL / DAY</span>
               </div>
             </div>
@@ -124,7 +151,6 @@ export default function BMRCalculator() {
             <div className="activity-table">
               <div className="activity-header">
                 <span>Activity Levels</span>
-
                 <span>TDEE</span>
               </div>
 
@@ -132,10 +158,8 @@ export default function BMRCalculator() {
                 <div className="activity-row" key={index}>
                   <div className="activity-name">
                     <span className="dot"></span>
-
                     {item.name}
                   </div>
-
                   <strong>{item.value || "--"}</strong>
                 </div>
               ))}
@@ -146,13 +170,10 @@ export default function BMRCalculator() {
             </p>
           </div>
 
-          {/* RIGHT */}
           <div className="bmr-left">
             <h2>BMR Calculator</h2>
 
             <div className="bmr-form">
-              {/* Gender */}
-
               <div className="form-group">
                 <label>
                   Gender <RequiredMark />
@@ -179,8 +200,6 @@ export default function BMRCalculator() {
                 </div>
               </div>
 
-              {/* Age */}
-
               <div className="form-group">
                 <label>
                   Age <RequiredMark />
@@ -188,15 +207,17 @@ export default function BMRCalculator() {
 
                 <input
                   type="number"
+                  inputMode="numeric"
                   value={age}
                   min={1}
                   max={120}
                   required
-                  onChange={(e) => setAge(e.target.value)}
+                  onKeyDown={blockInvalidIntegerKeyDown}
+                  onChange={(e) =>
+                    setAge(sanitizePositiveInteger(e.target.value, { max: 120 }))
+                  }
                 />
               </div>
-
-              {/* Height */}
 
               <div className="form-group form-group--full">
                 <label>
@@ -204,19 +225,64 @@ export default function BMRCalculator() {
                 </label>
 
                 <div className="unit-input">
-                  <input
-                    type="number"
-                    placeholder="Height"
-                    value={height}
-                    required
-                    onChange={(e) => setHeight(e.target.value)}
-                  />
+                  {heightUnit === "cm" ? (
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      placeholder="Height"
+                      value={height}
+                      min={0}
+                      required
+                      onKeyDown={blockInvalidCalculatorNumberKeyDown}
+                      onChange={(e) =>
+                        setHeight(
+                          sanitizePositiveDecimal(e.target.value, {
+                            maxDecimals: 2,
+                            max: 300,
+                          })
+                        )
+                      }
+                    />
+                  ) : (
+                    <div className="height-feet">
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        placeholder="ft"
+                        value={feet}
+                        min={0}
+                        max={8}
+                        required
+                        onKeyDown={blockInvalidIntegerKeyDown}
+                        onChange={(e) =>
+                          setFeet(
+                            sanitizePositiveInteger(e.target.value, { max: 8 })
+                          )
+                        }
+                      />
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        placeholder="in"
+                        value={inch}
+                        min={0}
+                        max={11}
+                        required
+                        onKeyDown={blockInvalidIntegerKeyDown}
+                        onChange={(e) =>
+                          setInch(
+                            sanitizePositiveInteger(e.target.value, { max: 11 })
+                          )
+                        }
+                      />
+                    </div>
+                  )}
 
                   <div className="unit-switch">
                     <button
                       type="button"
                       className={heightUnit === "cm" ? "active" : ""}
-                      onClick={() => setHeightUnit("cm")}
+                      onClick={() => changeHeightUnit("cm")}
                     >
                       cm
                     </button>
@@ -224,9 +290,9 @@ export default function BMRCalculator() {
                     <button
                       type="button"
                       className={heightUnit === "ft" ? "active" : ""}
-                      onClick={() => setHeightUnit("ft")}
+                      onClick={() => changeHeightUnit("ft")}
                     >
-                      ft
+                      ft/in
                     </button>
                   </div>
                 </div>
@@ -240,10 +306,20 @@ export default function BMRCalculator() {
                 <div className="unit-input">
                   <input
                     type="number"
+                    inputMode="decimal"
                     placeholder="Weight"
                     value={weight}
+                    min={0}
                     required
-                    onChange={(e) => setWeight(e.target.value)}
+                    onKeyDown={blockInvalidCalculatorNumberKeyDown}
+                    onChange={(e) =>
+                      setWeight(
+                        sanitizePositiveDecimal(e.target.value, {
+                          maxDecimals: 2,
+                          max: weightUnit === "lbs" ? 1100 : 500,
+                        })
+                      )
+                    }
                   />
 
                   <div className="unit-switch">

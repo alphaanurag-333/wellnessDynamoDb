@@ -5692,6 +5692,24 @@ FEET / INCH
   width: 50%;
 }
 
+/* Shared ft/in inputs inside unit-input rows (BMR / Body Fat / Visceral) */
+.bmr-section .height-feet,
+.bodyfat-section .height-feet,
+.visceral-section .height-feet {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 10px;
+}
+
+.bmr-section .height-feet input,
+.bodyfat-section .height-feet input,
+.visceral-section .height-feet input {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+
 /*=================================================
 BUTTON ROW
 =================================================*/

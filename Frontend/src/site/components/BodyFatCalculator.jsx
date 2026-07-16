@@ -5,8 +5,18 @@ import maleImg from "../../site/images/male.png";
 import femaleImg from "../../site/images/female.png";
 import {
   RequiredMark,
-  isPositiveNumber,
   isValidAge,
+  isValidHeight,
+  isValidWeight,
+  isValidMeasurement,
+  isValidFeetInches,
+  feetInchesToCm,
+  cmToFeetInches,
+  formatHeightDisplay,
+  blockInvalidIntegerKeyDown,
+  blockInvalidCalculatorNumberKeyDown,
+  sanitizePositiveInteger,
+  sanitizePositiveDecimal,
   validateCalculatorFields,
   showCalculatorError,
 } from "../utils/calculatorValidation.jsx";
@@ -36,6 +46,10 @@ export default function BodyFatCalculator() {
 
   const [height, setHeight] = useState("");
 
+  const [feet, setFeet] = useState("");
+
+  const [inch, setInch] = useState("");
+
   const [weight, setWeight] = useState("");
 
   const [neck, setNeck] = useState("");
@@ -54,6 +68,21 @@ export default function BodyFatCalculator() {
 
   //------------------------------------------------
 
+  const changeHeightUnit = (unit) => {
+    if (unit === heightUnit) return;
+    if (unit === "ft") {
+      const { feet: f, inches: i } = cmToFeetInches(height);
+      setFeet(f);
+      setInch(i);
+    } else {
+      const cm = feetInchesToCm(feet, inch);
+      setHeight(cm ? String(Math.round(cm)) : "");
+    }
+    setHeightUnit(unit);
+  };
+
+  //------------------------------------------------
+
   const cm = (value) => {
     if (!value) return 0;
 
@@ -63,9 +92,11 @@ export default function BodyFatCalculator() {
   //------------------------------------------------
 
   const heightInCm = () => {
-    if (!height) return 0;
-
-    return heightUnit === "cm" ? Number(height) : Number(height) * 30.48;
+    if (heightUnit === "cm") {
+      if (!height) return 0;
+      return Number(height);
+    }
+    return feetInchesToCm(feet, inch);
   };
 
   //------------------------------------------------
@@ -81,14 +112,56 @@ export default function BodyFatCalculator() {
   const calculateBodyFat = async () => {
     const checks = [
       { label: "Gender", valid: Boolean(gender) },
-      { label: "Age", valid: isValidAge(age) },
-      { label: "Height", valid: isPositiveNumber(height) },
-      { label: "Weight", valid: isPositiveNumber(weight) },
-      { label: "Neck", valid: isPositiveNumber(neck) },
-      { label: "Waist", valid: isPositiveNumber(waist) },
+      {
+        label: "Age",
+        valid: isValidAge(age),
+        hint: "Age (1–120 years)",
+      },
+      {
+        label: "Height",
+        valid:
+          heightUnit === "cm"
+            ? isValidHeight(height, "cm")
+            : isValidFeetInches(feet, inch),
+        hint:
+          heightUnit === "ft"
+            ? "Height (1–8 ft and 0–11 in)"
+            : "Height (50–300 cm)",
+      },
+      {
+        label: "Weight",
+        valid: isValidWeight(weight, weightUnit),
+        hint:
+          weightUnit === "lbs"
+            ? "Weight (22–1100 lbs)"
+            : "Weight (10–500 kg)",
+      },
+      {
+        label: "Neck",
+        valid: isValidMeasurement(neck, measureUnit),
+        hint:
+          measureUnit === "in"
+            ? "Neck (8–80 in)"
+            : "Neck (20–200 cm)",
+      },
+      {
+        label: "Waist",
+        valid: isValidMeasurement(waist, measureUnit),
+        hint:
+          measureUnit === "in"
+            ? "Waist (8–80 in)"
+            : "Waist (20–200 cm)",
+      },
     ];
     if (gender === "female") {
-      checks.push({ label: "Hip", valid: isPositiveNumber(hip) });
+      checks.push({
+        label: "Hip",
+        valid: isValidMeasurement(hip, measureUnit),
+        hint:
+          measureUnit === "in"
+            ? "Hip (8–80 in)"
+            : "Hip (20–200 cm)",
+      });
     }
 
     const ok = await validateCalculatorFields(checks);
@@ -178,11 +251,15 @@ export default function BodyFatCalculator() {
 
                 <input
                   type="number"
+                  inputMode="numeric"
                   value={age}
                   min={1}
                   max={120}
                   required
-                  onChange={(e) => setAge(e.target.value)}
+                  onKeyDown={blockInvalidIntegerKeyDown}
+                  onChange={(e) =>
+                    setAge(sanitizePositiveInteger(e.target.value, { max: 120 }))
+                  }
                 />
               </div>
 
@@ -194,19 +271,64 @@ export default function BodyFatCalculator() {
                 </label>
 
                 <div className="unit-input">
-                  <input
-                    type="number"
-                    placeholder="Height"
-                    value={height}
-                    required
-                    onChange={(e) => setHeight(e.target.value)}
-                  />
+                  {heightUnit === "cm" ? (
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      placeholder="Height"
+                      value={height}
+                      min={0}
+                      required
+                      onKeyDown={blockInvalidCalculatorNumberKeyDown}
+                      onChange={(e) =>
+                        setHeight(
+                          sanitizePositiveDecimal(e.target.value, {
+                            maxDecimals: 2,
+                            max: 300,
+                          })
+                        )
+                      }
+                    />
+                  ) : (
+                    <div className="height-feet">
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        placeholder="ft"
+                        value={feet}
+                        min={0}
+                        max={8}
+                        required
+                        onKeyDown={blockInvalidIntegerKeyDown}
+                        onChange={(e) =>
+                          setFeet(
+                            sanitizePositiveInteger(e.target.value, { max: 8 })
+                          )
+                        }
+                      />
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        placeholder="in"
+                        value={inch}
+                        min={0}
+                        max={11}
+                        required
+                        onKeyDown={blockInvalidIntegerKeyDown}
+                        onChange={(e) =>
+                          setInch(
+                            sanitizePositiveInteger(e.target.value, { max: 11 })
+                          )
+                        }
+                      />
+                    </div>
+                  )}
 
                   <div className="unit-switch">
                     <button
                       type="button"
                       className={heightUnit === "cm" ? "active" : ""}
-                      onClick={() => setHeightUnit("cm")}
+                      onClick={() => changeHeightUnit("cm")}
                     >
                       cm
                     </button>
@@ -214,9 +336,9 @@ export default function BodyFatCalculator() {
                     <button
                       type="button"
                       className={heightUnit === "ft" ? "active" : ""}
-                      onClick={() => setHeightUnit("ft")}
+                      onClick={() => changeHeightUnit("ft")}
                     >
-                      ft
+                      ft/in
                     </button>
                   </div>
                 </div>
@@ -232,10 +354,20 @@ export default function BodyFatCalculator() {
                 <div className="unit-input">
                   <input
                     type="number"
+                    inputMode="decimal"
                     placeholder="Weight"
                     value={weight}
+                    min={0}
                     required
-                    onChange={(e) => setWeight(e.target.value)}
+                    onKeyDown={blockInvalidCalculatorNumberKeyDown}
+                    onChange={(e) =>
+                      setWeight(
+                        sanitizePositiveDecimal(e.target.value, {
+                          maxDecimals: 2,
+                          max: weightUnit === "lbs" ? 1100 : 500,
+                        })
+                      )
+                    }
                   />
 
                   <div className="unit-switch">
@@ -268,10 +400,20 @@ export default function BodyFatCalculator() {
                 <div className="unit-input">
                   <input
                     type="number"
+                    inputMode="decimal"
                     placeholder="Neck"
                     value={neck}
+                    min={0}
                     required
-                    onChange={(e) => setNeck(e.target.value)}
+                    onKeyDown={blockInvalidCalculatorNumberKeyDown}
+                    onChange={(e) =>
+                      setNeck(
+                        sanitizePositiveDecimal(e.target.value, {
+                          maxDecimals: 2,
+                          max: measureUnit === "in" ? 80 : 200,
+                        })
+                      )
+                    }
                   />
 
                   <div className="unit-switch">
@@ -304,10 +446,20 @@ export default function BodyFatCalculator() {
                 <div className="unit-input">
                   <input
                     type="number"
+                    inputMode="decimal"
                     placeholder="Waist"
                     value={waist}
+                    min={0}
                     required
-                    onChange={(e) => setWaist(e.target.value)}
+                    onKeyDown={blockInvalidCalculatorNumberKeyDown}
+                    onChange={(e) =>
+                      setWaist(
+                        sanitizePositiveDecimal(e.target.value, {
+                          maxDecimals: 2,
+                          max: measureUnit === "in" ? 80 : 200,
+                        })
+                      )
+                    }
                   />
 
                   <div className="unit-switch">
@@ -339,10 +491,20 @@ export default function BodyFatCalculator() {
                   <div className="unit-input">
                     <input
                       type="number"
+                      inputMode="decimal"
                       placeholder="Hip"
                       value={hip}
+                      min={0}
                       required
-                      onChange={(e) => setHip(e.target.value)}
+                      onKeyDown={blockInvalidCalculatorNumberKeyDown}
+                      onChange={(e) =>
+                        setHip(
+                          sanitizePositiveDecimal(e.target.value, {
+                            maxDecimals: 2,
+                            max: measureUnit === "in" ? 80 : 200,
+                          })
+                        )
+                      }
                     />
 
                     <div className="unit-switch">
@@ -447,7 +609,13 @@ export default function BodyFatCalculator() {
               <div className="info-item">
                 <strong>Height</strong>
 
-                <span>{height ? `${height} ${heightUnit}` : "--"}</span>
+                <span>
+                  {formatHeightDisplay(heightUnit, {
+                    heightCm: height,
+                    feet,
+                    inches: inch,
+                  })}
+                </span>
               </div>
 
               <div className="info-item">

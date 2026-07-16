@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Droplets } from "lucide-react";
+import {
+  blockInvalidIntegerKeyDown,
+  blockInvalidCalculatorNumberKeyDown,
+  sanitizePositiveInteger,
+  sanitizePositiveDecimal,
+} from "../utils/calculatorValidation.jsx";
 
 const activityLevels = [
   {
@@ -151,10 +157,14 @@ const HydrationGuide = () => {
 
                 <input
                   type="number"
+                  inputMode="numeric"
                   placeholder="Years"
                   value={age}
+                  min={0}
+                  max={120}
+                  onKeyDown={blockInvalidIntegerKeyDown}
                   onChange={(e) =>
-                    setAge(e.target.value)
+                    setAge(sanitizePositiveInteger(e.target.value, { max: 120 }))
                   }
                 />
 
@@ -190,10 +200,18 @@ const HydrationGuide = () => {
 
                 <input
                   type="number"
+                  inputMode="decimal"
                   placeholder="Weight"
                   value={weight}
+                  min={0}
+                  onKeyDown={blockInvalidCalculatorNumberKeyDown}
                   onChange={(e) =>
-                    setWeight(e.target.value)
+                    setWeight(
+                      sanitizePositiveDecimal(e.target.value, {
+                        maxDecimals: 1,
+                        max: weightUnit === "lb" ? 1100 : 500,
+                      })
+                    )
                   }
                 />
 
