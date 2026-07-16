@@ -12097,7 +12097,8 @@ SCROLLBAR
 
   .swiper.heroSwiper,
   .heroSwiper--loading {
-    height: 200px;
+    /* height: 200px; */
+    height: 300px;
   }
 
   .hero-content {
