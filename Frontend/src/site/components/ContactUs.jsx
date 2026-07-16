@@ -188,7 +188,7 @@ export default function ContactUsSection() {
             <span> Wellness Team</span>
           </h1>
 
-          <p className="contact-description" style={{maxWidth:'100%'}}>
+          <p className="contact-description" style={{maxWidth:'99%'}}>
             Expert guidance for your wellness journey. Reach out to our
             specialists for personalized clinical support.
           </p>
