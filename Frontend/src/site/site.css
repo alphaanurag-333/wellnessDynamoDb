@@ -9542,6 +9542,10 @@ SCROLLBAR
   background: var(--bg-body);
 }
 
+.program-page p {
+  text-align: justify;
+}
+
 .program-hero {
   position: relative;
   overflow: hidden;
