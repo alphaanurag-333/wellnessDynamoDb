@@ -9,7 +9,7 @@ import { selectIsSuperAdmin } from "../../../store/authSelectors.js";
 import { NotFoundPage } from "../NotFoundPage.jsx";
 import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { RoleForm } from "./RoleAdd.jsx";
-import { getRoleId } from "./RoleShared.js";
+import { getRoleId, getRoleScope } from "./RoleShared.js";
 
 export function RoleEdit() {
   const { roleId } = useParams();
@@ -60,12 +60,14 @@ export function RoleEdit() {
     return <NotFoundPage />;
   }
 
+  const roleScope = role ? getRoleScope(role) : "ADMIN";
+
   return (
     <div className="user-page">
       <AdminPageHeader
         title="Edit role"
         subtitle="Update this role's name, status, and permissions."
-        backTo="/admin/roles"
+        backTo={`/admin/roles?scope=${encodeURIComponent(roleScope)}`}
       />
       <div className="page-card">
         {loading ? (

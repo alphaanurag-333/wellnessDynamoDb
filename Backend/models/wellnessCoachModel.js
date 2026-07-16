@@ -4,6 +4,7 @@ const {
   UpdateCommand,
   DeleteCommand,
   QueryCommand,
+  ScanCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require("uuid");
 const { docClient } = require("../config/db");
@@ -94,7 +95,7 @@ function buildCoachItem(input, { id, now } = {}) {
   const phone = normalizePhone(input.phone);
   const email = normalizeEmail(input.email);
 
-  return {
+  const item = {
     id: id || uuidv4(),
     name: String(input.name || "").trim(),
     email,
@@ -121,6 +122,22 @@ function buildCoachItem(input, { id, now } = {}) {
     createdAt: now,
     updatedAt: now,
   };
+
+  // Omit roleId when null — keeps GSI-friendly patterns consistent with Admin.
+  const roleId =
+    input.roleId != null && String(input.roleId).trim() ? String(input.roleId).trim() : null;
+  if (roleId) item.roleId = roleId;
+
+  if (
+    input.permissionOverrides != null &&
+    typeof input.permissionOverrides === "object" &&
+    !Array.isArray(input.permissionOverrides) &&
+    Object.keys(input.permissionOverrides).length > 0
+  ) {
+    item.permissionOverrides = input.permissionOverrides;
+  }
+
+  return item;
 }
 
 function sanitizeUpdateField(key, value) {
@@ -152,6 +169,15 @@ function sanitizeUpdateField(key, value) {
   }
   if (key === "otpExpire") {
     return value != null && value !== "" ? String(value) : null;
+  }
+  if (key === "roleId") {
+    if (value == null || value === "") return null;
+    return String(value).trim() || null;
+  }
+  if (key === "permissionOverrides") {
+    if (value == null) return null;
+    if (typeof value !== "object" || Array.isArray(value)) return null;
+    return value;
   }
   return value;
 }
@@ -245,13 +271,24 @@ async function updateWellnessCoach(id, updates) {
   }
 
   const merged = { ...current };
-  for (const [k, v] of entries) merged[k] = v;
+  const removeAttrs = [];
+  for (const [k, v] of entries) {
+    // roleId / permissionOverrides: null means REMOVE the attribute.
+    if ((k === "roleId" || k === "permissionOverrides") && (v === null || v === "")) {
+      removeAttrs.push(k);
+      delete merged[k];
+      continue;
+    }
+    merged[k] = v;
+  }
 
   if (updates.phone !== undefined || updates.phoneCountryCode !== undefined) {
     merged.phoneKey = buildPhoneKey(merged.phoneCountryCode, merged.phone);
   }
 
-  const patchKeys = entries.map(([k]) => k);
+  const patchKeys = entries
+    .map(([k]) => k)
+    .filter((k) => !removeAttrs.includes(k));
   if (patchKeys.includes("phone") || patchKeys.includes("phoneCountryCode")) {
     patchKeys.push("phoneKey");
   }
@@ -267,11 +304,19 @@ async function updateWellnessCoach(id, updates) {
     setExpr += `, #${key} = :${key}`;
   }
 
+  let updateExpression = setExpr;
+  if (removeAttrs.length > 0) {
+    for (const key of removeAttrs) {
+      exprNames[`#${key}`] = key;
+    }
+    updateExpression += ` REMOVE ${removeAttrs.map((k) => `#${k}`).join(", ")}`;
+  }
+
   const { Attributes } = await docClient.send(
     new UpdateCommand({
       TableName: TABLE,
       Key: { id },
-      UpdateExpression: setExpr,
+      UpdateExpression: updateExpression,
       ExpressionAttributeNames: exprNames,
       ExpressionAttributeValues: exprValues,
       ConditionExpression: "attribute_exists(id)",
@@ -280,6 +325,26 @@ async function updateWellnessCoach(id, updates) {
   );
 
   return toPublicWellnessCoach(Attributes || null);
+}
+
+async function countCoachesByRoleId(roleId) {
+  if (!roleId) return 0;
+  let total = 0;
+  let lastKey;
+  do {
+    const { Count, LastEvaluatedKey } = await docClient.send(
+      new ScanCommand({
+        TableName: TABLE,
+        FilterExpression: "roleId = :roleId",
+        ExpressionAttributeValues: { ":roleId": roleId },
+        Select: "COUNT",
+        ExclusiveStartKey: lastKey,
+      })
+    );
+    total += Count || 0;
+    lastKey = LastEvaluatedKey;
+  } while (lastKey);
+  return total;
 }
 
 async function deleteWellnessCoach(id) {
@@ -450,5 +515,6 @@ module.exports = {
   deleteWellnessCoach,
   listWellnessCoaches,
   countAllWellnessCoaches,
+  countCoachesByRoleId,
   toPublicWellnessCoach,
 };

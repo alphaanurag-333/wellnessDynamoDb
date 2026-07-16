@@ -13,7 +13,10 @@ import {
   adminGetSpecializationById,
   adminListSpecializations,
 } from "../../api/adminSpecializations.js";
+import { adminGetRoleById, adminListRoles } from "../../api/roleApi.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
+import { AdminPageLoader } from "../../components/AdminLoader.jsx";
+import { PermissionCheckboxTree } from "../../components/PermissionCheckboxTree.jsx";
 import { logout } from "../../../store/authSlice.js";
 import {
   ALL_COUNTRIES,
@@ -29,6 +32,10 @@ import {
   sanitizeBio,
   validateCoachForm,
 } from "./WellnessCoachShared.js";
+import {
+  ALL_COACH_PERMISSION_KEYS,
+  getCoachPermissionCheckboxGroups,
+} from "../../../wellnessCoach/data/coachPermissionKeys.js";
 import {
   blockIndianMobileFirstDigitKeyDown,
   blockPersonNameDigitKeyDown,
@@ -46,6 +53,35 @@ import {
 import { validateImageFileSize } from "../../../utils/mediaUploadValidation.js";
 import { WellnessCoachSubmitLoader } from "./WellnessCoachPageLoader.jsx";
 
+function applyPermissionOverrides(rolePermissions, overrides) {
+  const next = new Set(Array.isArray(rolePermissions) ? rolePermissions : []);
+  if (overrides && typeof overrides === "object") {
+    for (const [key, value] of Object.entries(overrides)) {
+      if (value) next.add(key);
+      else next.delete(key);
+    }
+  }
+  return [...next];
+}
+
+function computePermissionOverrides(rolePermissions, selectedPermissions) {
+  const roleSet = new Set(Array.isArray(rolePermissions) ? rolePermissions : []);
+  const selectedSet = new Set(Array.isArray(selectedPermissions) ? selectedPermissions : []);
+  const overrides = {};
+  for (const key of ALL_COACH_PERMISSION_KEYS) {
+    const inRole = roleSet.has(key);
+    const selected = selectedSet.has(key);
+    if (inRole !== selected) overrides[key] = selected;
+  }
+  return Object.keys(overrides).length > 0 ? overrides : null;
+}
+
+function overridesEqual(a, b) {
+  const left = a && typeof a === "object" ? a : null;
+  const right = b && typeof b === "object" ? b : null;
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
 export function WellnessCoachForm({
   mode = "create",
   coachId = "",
@@ -59,12 +95,41 @@ export function WellnessCoachForm({
   const [values, setValues] = useState(() => emptyCoachForm());
   const [specializationOptions, setSpecializationOptions] = useState([]);
   const [specializationsLoading, setSpecializationsLoading] = useState(false);
+  const [coachRoles, setCoachRoles] = useState([]);
+  const [rolePermissions, setRolePermissions] = useState([]);
+  const [selectedPermissions, setSelectedPermissions] = useState([]);
+  const [catalogGroups, setCatalogGroups] = useState([]);
+  const [overridesOpen, setOverridesOpen] = useState(false);
+  const [rbacLoading, setRbacLoading] = useState(false);
   const [profileFile, setProfileFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef(null);
   const fileInputId = useId();
+
+  useEffect(() => {
+    if (!adminToken) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [{ roles }] = await Promise.all([
+          adminListRoles(adminToken, { status: "active", limit: 200, scope: "COACH" }),
+        ]);
+        if (cancelled) return;
+        setCoachRoles(Array.isArray(roles) ? roles : []);
+        setCatalogGroups(getCoachPermissionCheckboxGroups());
+      } catch {
+        if (!cancelled) {
+          setCoachRoles([]);
+          setCatalogGroups(getCoachPermissionCheckboxGroups());
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [adminToken]);
 
   useEffect(() => {
     if (!adminToken) return;
@@ -110,11 +175,58 @@ export function WellnessCoachForm({
   }, [initialCoach]);
 
   useEffect(() => {
+    if (!adminToken) return;
+    let cancelled = false;
+    (async () => {
+      const roleId = String(values.roleId || "").trim();
+      if (!roleId) {
+        setRolePermissions([]);
+        setSelectedPermissions([]);
+        return;
+      }
+      setRbacLoading(true);
+      try {
+        const role = await adminGetRoleById(adminToken, roleId);
+        if (cancelled) return;
+        const base = Array.isArray(role?.permissions) ? role.permissions : [];
+        setRolePermissions(base);
+        setSelectedPermissions(applyPermissionOverrides(base, values.permissionOverrides));
+      } catch {
+        if (!cancelled) {
+          setRolePermissions([]);
+          setSelectedPermissions([]);
+        }
+      } finally {
+        if (!cancelled) setRbacLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Only reload when roleId changes — overrides applied once from form seed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminToken, values.roleId]);
+
+  useEffect(() => {
     if (!profileFile) return;
     const url = URL.createObjectURL(profileFile);
     setPreviewUrl(url);
     return () => URL.revokeObjectURL(url);
   }, [profileFile]);
+
+  const handleRoleChange = (e) => {
+    const roleId = e.target.value;
+    setValues((p) => ({ ...p, roleId, permissionOverrides: null }));
+    setOverridesOpen(false);
+  };
+
+  const handleOverridePermissionsChange = (permissions) => {
+    setSelectedPermissions(permissions);
+    setValues((p) => ({
+      ...p,
+      permissionOverrides: computePermissionOverrides(rolePermissions, permissions),
+    }));
+  };
 
   const handleChange = (field) => (e) => {
     setValues((p) => ({ ...p, [field]: e.target.value }));
@@ -206,14 +318,32 @@ export function WellnessCoachForm({
     setSubmitting(true);
     try {
       let coach;
+      const roleId = String(values.roleId || "").trim() || null;
+      const permissionOverrides = roleId
+        ? computePermissionOverrides(rolePermissions, selectedPermissions)
+        : null;
+      const fieldsForApi = {
+        ...values,
+        roleId,
+        permissionOverrides,
+      };
+
       if (mode === "create") {
-        coach = await adminCreateWellnessCoach(adminToken, buildCoachPayload(values), profileFile);
+        coach = await adminCreateWellnessCoach(adminToken, buildCoachPayload(fieldsForApi), profileFile);
       } else {
         const initial = coachToForm(initialCoach);
         const patch = {};
-        const next = buildCoachPayload(values);
-        const initialApi = buildCoachPayload(initial);
+        const next = buildCoachPayload(fieldsForApi);
+        const initialApi = buildCoachPayload({
+          ...initial,
+          roleId: initial.roleId || null,
+          permissionOverrides: initial.permissionOverrides || null,
+        });
         for (const key of Object.keys(next)) {
+          if (key === "permissionOverrides") {
+            if (!overridesEqual(next[key], initialApi[key])) patch[key] = next[key];
+            continue;
+          }
           if (next[key] !== initialApi[key]) patch[key] = next[key];
         }
         if (!String(values.password ?? "").trim()) {
@@ -422,6 +552,41 @@ export function WellnessCoachForm({
             ))}
           </select>
         </label>
+        <label className="user-field col-12 col-md-6">
+          <span className="user-field__label">Role</span>
+          <select className="user-field__input" value={values.roleId || ""} onChange={handleRoleChange}>
+            <option value="">No role (Full access)</option>
+            {coachRoles.map((role) => (
+              <option key={role.id || role._id} value={role.id || role._id}>
+                {role.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        {values.roleId ? (
+          <div className="col-12">
+            <button
+              type="button"
+              className="btn btn--ghost btn--sm"
+              onClick={() => setOverridesOpen((open) => !open)}
+            >
+              {overridesOpen ? "Hide" : "Show"} advanced: override permissions for this coach
+            </button>
+            {overridesOpen ? (
+              <div className="mt-3">
+                {rbacLoading ? (
+                  <AdminPageLoader label="Loading role permissions..." />
+                ) : (
+                  <PermissionCheckboxTree
+                    groups={catalogGroups}
+                    selectedPermissions={selectedPermissions}
+                    onChange={handleOverridePermissionsChange}
+                  />
+                )}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         <label className="user-field col-12">
           <span className="user-field__label">Bio</span>
           <textarea

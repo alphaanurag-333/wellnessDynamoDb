@@ -47,7 +47,11 @@ export function SubAdminForm({ mode = "create", initialSubAdmin = null }) {
     if (!adminToken) return;
     (async () => {
       try {
-        const { roles: list } = await adminListRoles(adminToken, { status: "active", limit: 200 });
+        const { roles: list } = await adminListRoles(adminToken, {
+          status: "active",
+          limit: 200,
+          scope: "ADMIN",
+        });
         setRoles(list);
       } catch {
         // handled by the required-select validation below

@@ -7,6 +7,10 @@ const { resolvePermissions } = require("../utils/permissions");
 const { getUserById } = require("../models/userModel");
 const { getWellnessCoachRecordById } = require("../models/wellnessCoachModel");
 const { getAssistantWellnessCoachRecordById } = require("../models/assistantWellnessCoachModel");
+const {
+  resolveCoachPermissions,
+  permissionMapToList,
+} = require("../utils/coachPermissions");
 
 function readBearer(req) {
   const h = req.headers.authorization;
@@ -140,8 +144,14 @@ const protectWellnessCoach = asyncHandler(async (req, res, next) => {
 
   assertActiveAccount(account);
 
+  const permissionMap = await resolveCoachPermissions(account, { req });
   req.user = account;
-  req.auth = { role: "wellness_coach", sub: subject };
+  req.auth = {
+    role: "wellness_coach",
+    sub: subject,
+    roleId: account.roleId || null,
+    permissions: permissionMapToList(permissionMap),
+  };
   next();
 });
 

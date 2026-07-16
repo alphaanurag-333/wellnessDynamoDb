@@ -5,6 +5,7 @@ import { coachGetMe } from "../api/coachAuth.js";
 import { CoachFooter } from "../components/Footer.jsx";
 import { CoachHeader } from "../components/Header.jsx";
 import { CoachSidebar } from "../components/Sidebar.jsx";
+import { CoachPermissionsProvider } from "../hooks/useHasPermission.jsx";
 import { flattenNavLinks, coachNavItems } from "../data/navItems.js";
 import { useMediaQuery } from "../../hooks/useMediaQuery.js";
 import { logoutCoach, setCoach } from "../../store/authSlice.js";
@@ -82,38 +83,40 @@ export function WellnessCoachLayout() {
   }
 
   return (
-    <div
-      className={`admin-shell${sidebarOpen ? " admin-shell--nav-open" : ""}${
-        sidebarCollapsed ? " admin-shell--sidebar-collapsed" : ""
-      }`}
-    >
-      <button
-        type="button"
-        className="admin-backdrop"
-        aria-label="Close navigation"
-        tabIndex={-1}
-        onClick={closeSidebar}
-      />
-      <CoachSidebar
-        id="coach-sidebar"
-        drawerOpen={sidebarOpen}
-        desktopCollapsed={sidebarCollapsed}
-        onNavigate={closeSidebar}
-      />
-
-      <div className="admin-main">
-        <CoachHeader
-          onMenuClick={toggleSidebar}
-          isDesktop={isDesktop}
-          mobileNavOpen={sidebarOpen}
-          desktopSidebarCollapsed={sidebarCollapsed}
-          headerRefresh={headerRefresh}
+    <CoachPermissionsProvider>
+      <div
+        className={`admin-shell${sidebarOpen ? " admin-shell--nav-open" : ""}${
+          sidebarCollapsed ? " admin-shell--sidebar-collapsed" : ""
+        }`}
+      >
+        <button
+          type="button"
+          className="admin-backdrop"
+          aria-label="Close navigation"
+          tabIndex={-1}
+          onClick={closeSidebar}
         />
-        <main className="admin-content">
-          <Outlet context={{ setHeaderRefresh }} />
-        </main>
-        <CoachFooter />
+        <CoachSidebar
+          id="coach-sidebar"
+          drawerOpen={sidebarOpen}
+          desktopCollapsed={sidebarCollapsed}
+          onNavigate={closeSidebar}
+        />
+
+        <div className="admin-main">
+          <CoachHeader
+            onMenuClick={toggleSidebar}
+            isDesktop={isDesktop}
+            mobileNavOpen={sidebarOpen}
+            desktopSidebarCollapsed={sidebarCollapsed}
+            headerRefresh={headerRefresh}
+          />
+          <main className="admin-content">
+            <Outlet context={{ setHeaderRefresh }} />
+          </main>
+          <CoachFooter />
+        </div>
       </div>
-    </div>
+    </CoachPermissionsProvider>
   );
 }

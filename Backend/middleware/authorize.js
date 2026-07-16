@@ -2,11 +2,13 @@ const AppError = require("../utils/AppError");
 const { hasPermission } = require("../utils/permissions");
 
 /**
- * Gate a route behind a permission slug from Backend/config/permissionCatalog.js.
- * Must run after `protectAdmin` (relies on `req.auth.isSuperAdmin`/`permissions`).
+ * Gate a route behind a permission slug.
+ * Must run after `protectAdmin` or `protectWellnessCoach`
+ * (relies on `req.auth.permissions` / `req.auth.isSuperAdmin`).
  *
  * Super admins always pass. Everyone else must have `permissionSlug` in their
- * role's permissions, otherwise the request is rejected with 403.
+ * resolved permissions, otherwise the request is rejected with 403.
+ * For coach clientTab child keys, the parent group key is also required.
  */
 function authorize(permissionSlug) {
   return (req, res, next) => {

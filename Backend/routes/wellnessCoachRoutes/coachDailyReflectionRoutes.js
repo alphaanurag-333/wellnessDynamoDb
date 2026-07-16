@@ -1,5 +1,6 @@
 const express = require("express");
 const { protectWellnessCoach } = require("../../middleware/auth");
+const { authorize } = require("../../middleware/authorize");
 const {
   getCoachUserDailyReflectionSettingsController,
   updateCoachUserDailyReflectionSettingsController,
@@ -10,17 +11,17 @@ const router = express.Router({ mergeParams: true });
 
 router.get(
   "/:userId/daily-reflection-settings",
-  protectWellnessCoach,
+  protectWellnessCoach, authorize("clientTab.wellness.daily-reflection"),
   getCoachUserDailyReflectionSettingsController
 );
 router.patch(
   "/:userId/daily-reflection-settings",
-  protectWellnessCoach,
+  protectWellnessCoach, authorize("clientTab.wellness.daily-reflection"),
   updateCoachUserDailyReflectionSettingsController
 );
 router.get(
   "/:userId/daily-reflection/history",
-  protectWellnessCoach,
+  protectWellnessCoach, authorize("clientTab.wellness.daily-reflection"),
   getCoachUserDailyReflectionHistoryController
 );
 

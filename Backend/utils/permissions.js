@@ -1,4 +1,5 @@
 const { ALL_PERMISSIONS, isValidPermission } = require("../config/permissionCatalog");
+const { parentPermissionKey } = require("../config/coachPermissionCatalog");
 
 /**
  * Effective permissions for an admin: super admins implicitly have every
@@ -15,10 +16,22 @@ function resolvePermissions(admin, role) {
   return role.permissions.filter((slug) => isValidPermission(slug));
 }
 
+/**
+ * True when `auth.permissions` includes `slug`.
+ * Super admins always pass.
+ * For coach clientTab child keys, the parent group key must also be present.
+ */
 function hasPermission(auth, slug) {
   if (!auth) return false;
   if (auth.isSuperAdmin) return true;
-  return Array.isArray(auth.permissions) && auth.permissions.includes(slug);
+  if (!Array.isArray(auth.permissions) || !auth.permissions.includes(slug)) {
+    return false;
+  }
+  const parent = parentPermissionKey(slug);
+  if (parent && !auth.permissions.includes(parent)) {
+    return false;
+  }
+  return true;
 }
 
 module.exports = { resolvePermissions, hasPermission };

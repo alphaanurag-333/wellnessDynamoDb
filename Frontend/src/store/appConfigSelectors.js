@@ -53,3 +53,8 @@ export function selectConsultancyAmount(state) {
   const amount = selectAppConfigData(state)?.consultancy_amount;
   return amount != null ? String(amount).trim() : "";
 }
+
+export function selectMultilang(state) {
+  const raw = selectAppConfigData(state)?.multilang;
+  return raw === true || String(raw || "").toLowerCase() === "true";
+}

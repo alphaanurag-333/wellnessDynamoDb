@@ -1,5 +1,6 @@
 const express = require("express");
 const { protectWellnessCoach } = require("../../middleware/auth");
+const { authorize } = require("../../middleware/authorize");
 const {
   getCoachMetabolicMetricsDashboardController,
   listCoachMetabolicMetricHistoryController,
@@ -10,22 +11,22 @@ const router = express.Router({ mergeParams: true });
 
 router.get(
   "/:userId/metabolic-metrics/dashboard",
-  protectWellnessCoach,
+  protectWellnessCoach, authorize("clientTab.metabolic-health.metabolic-metrics"),
   getCoachMetabolicMetricsDashboardController
 );
 router.get(
   "/:userId/metabolic-metrics/history",
-  protectWellnessCoach,
+  protectWellnessCoach, authorize("clientTab.metabolic-health.metabolic-metrics"),
   listCoachMetabolicMetricHistoryController
 );
 router.get(
   "/:userId/metabolic-metrics/history/:metricType",
-  protectWellnessCoach,
+  protectWellnessCoach, authorize("clientTab.metabolic-health.metabolic-metrics"),
   listCoachMetabolicMetricHistoryController
 );
 router.post(
   "/:userId/metabolic-metrics/fatty-liver",
-  protectWellnessCoach,
+  protectWellnessCoach, authorize("clientTab.metabolic-health.metabolic-metrics"),
   createCoachFattyLiverMetricController
 );
 

@@ -40,7 +40,7 @@ export function SubAdminList() {
   const loadRoles = useCallback(async () => {
     if (!adminToken) return;
     try {
-      const { roles } = await adminListRoles(adminToken, { limit: 200 });
+      const { roles } = await adminListRoles(adminToken, { limit: 200, scope: "ADMIN" });
       const map = {};
       for (const role of roles) map[role.id] = role.name;
       setRoleMap(map);

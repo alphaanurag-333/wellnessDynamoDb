@@ -1,5 +1,6 @@
 const express = require("express");
 const { protectWellnessCoach } = require("../../middleware/auth");
+const { authorize } = require("../../middleware/authorize");
 const {
   listCoachUserRemindersController,
   createCoachUserReminderController,
@@ -10,10 +11,10 @@ const {
 
 const router = express.Router({ mergeParams: true });
 
-router.get("/:userId/reminders", protectWellnessCoach, listCoachUserRemindersController);
-router.post("/:userId/reminders", protectWellnessCoach, createCoachUserReminderController);
-router.put("/:userId/reminders/:reminderId", protectWellnessCoach, updateCoachUserReminderController);
-router.patch("/:userId/reminders/:reminderId/toggle", protectWellnessCoach, toggleCoachUserReminderController);
-router.delete("/:userId/reminders/:reminderId", protectWellnessCoach, deleteCoachUserReminderController);
+router.get("/:userId/reminders", protectWellnessCoach, authorize("clientTab.care.reminders"), listCoachUserRemindersController);
+router.post("/:userId/reminders", protectWellnessCoach, authorize("clientTab.care.reminders"), createCoachUserReminderController);
+router.put("/:userId/reminders/:reminderId", protectWellnessCoach, authorize("clientTab.care.reminders"), updateCoachUserReminderController);
+router.patch("/:userId/reminders/:reminderId/toggle", protectWellnessCoach, authorize("clientTab.care.reminders"), toggleCoachUserReminderController);
+router.delete("/:userId/reminders/:reminderId", protectWellnessCoach, authorize("clientTab.care.reminders"), deleteCoachUserReminderController);
 
 module.exports = router;

@@ -1,5 +1,6 @@
 const express = require("express");
 const { protectWellnessCoach } = require("../../middleware/auth");
+const { authorize } = require("../../middleware/authorize");
 const {
   listCoachUserDietPlanAssignmentsController,
   createCoachUserDietPlanAssignmentController,
@@ -8,11 +9,11 @@ const {
 
 const router = express.Router({ mergeParams: true });
 
-router.get("/:userId/diet-plan-assignments", protectWellnessCoach, listCoachUserDietPlanAssignmentsController);
-router.post("/:userId/diet-plan-assignments", protectWellnessCoach, createCoachUserDietPlanAssignmentController);
+router.get("/:userId/diet-plan-assignments", protectWellnessCoach, authorize("clientTab.care.diet-plan"), listCoachUserDietPlanAssignmentsController);
+router.post("/:userId/diet-plan-assignments", protectWellnessCoach, authorize("clientTab.care.diet-plan"), createCoachUserDietPlanAssignmentController);
 router.delete(
   "/:userId/diet-plan-assignments/:assignmentId",
-  protectWellnessCoach,
+  protectWellnessCoach, authorize("clientTab.care.diet-plan"),
   deleteCoachUserDietPlanAssignmentController
 );
 

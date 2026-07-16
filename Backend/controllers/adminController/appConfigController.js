@@ -41,6 +41,15 @@ function parseJSON(value, fallback) {
   }
 }
 
+function normalizeBooleanFlag(value, fallback = false) {
+  if (value === undefined || value === null || value === "") return Boolean(fallback);
+  if (typeof value === "boolean") return value;
+  const s = String(value).trim().toLowerCase();
+  if (s === "true" || s === "1" || s === "yes" || s === "on") return true;
+  if (s === "false" || s === "0" || s === "no" || s === "off") return false;
+  return Boolean(fallback);
+}
+
 async function s3KeyFromUploadedFile(req, field) {
   const file = req.files?.[field]?.[0];
   if (!file) return undefined;
@@ -118,6 +127,7 @@ exports.createAppConfigController = asyncHandler(async (req, res) => {
     energy_exchange_default_fy_discounts,
     energy_exchange_fy_discount_ranges,
     energy_exchange_time_based_discount_range,
+    multilang,
   } = req.body;
 
   if (!app_name || !app_email || !app_mobile) {
@@ -165,6 +175,7 @@ exports.createAppConfigController = asyncHandler(async (req, res) => {
         config.energy_exchange_time_based_discount_range
       )
     ),
+    multilang: normalizeBooleanFlag(multilang, false),
     payment_gateways: parseJSON(payment_gateways, config.payment_gateways),
     admin_logo: (await s3KeyFromUploadedFile(req, "admin_logo")) ?? "",
     user_logo: (await s3KeyFromUploadedFile(req, "user_logo")) ?? "",
@@ -229,6 +240,10 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
             ? normalizeTaxType(req.body[field])
             : req.body[field];
     }
+  }
+
+  if (req.body.multilang !== undefined) {
+    updates.multilang = normalizeBooleanFlag(req.body.multilang, false);
   }
 
   if (req.body.payment_gateways !== undefined) {

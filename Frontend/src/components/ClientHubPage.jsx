@@ -3,6 +3,7 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import Swal from "sweetalert2";
 import { UserTierBadge, formatAssignedCoachLabel } from "./ReferralAssignmentShared.jsx";
 import { CoachPageLoadingState } from "../wellnessCoach/components/CoachPageLoader.jsx";
+import { AccessRestrictedView, LOCK_TOOLTIP } from "../wellnessCoach/components/AccessRestrictedView.jsx";
 import { NotFoundPage } from "../admin/pages/NotFoundPage.jsx";
 import {
   getClientHubTabGroups,
@@ -26,12 +27,33 @@ function getInitials(name) {
     .toUpperCase();
 }
 
+function LockIcon() {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  );
+}
+
 export function ClientHubPage({
   listPath,
   fetchUser,
   renderTab,
   showReassign = false,
   onReassign,
+  /** Optional: (tabId, groupId) => boolean. When omitted, all tabs are unlocked. */
+  canAccessTab,
 }) {
   const { userId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -42,6 +64,23 @@ export function ClientHubPage({
 
   const tabGroups = useMemo(() => getClientHubTabGroups(user?.userTier), [user?.userTier]);
   const activeTab = resolveClientHubTab(searchParams.get("tab"), user?.userTier);
+
+  const isTabAllowed = useCallback(
+    (tabId, groupId) => {
+      if (typeof canAccessTab !== "function") return true;
+      return canAccessTab(tabId, groupId) !== false;
+    },
+    [canAccessTab]
+  );
+
+  const activeTabGroupId = useMemo(() => {
+    for (const group of tabGroups) {
+      if (group.tabs.some((t) => t.id === activeTab)) return group.id;
+    }
+    return null;
+  }, [tabGroups, activeTab]);
+
+  const activeTabAllowed = isTabAllowed(activeTab, activeTabGroupId);
 
   const setActiveTab = useCallback(
     (tabId) => {
@@ -132,15 +171,23 @@ export function ClientHubPage({
             <select
               className="user-field__input"
               value={activeTab}
-              onChange={(e) => setActiveTab(e.target.value)}
+              onChange={(e) => {
+                const tabId = e.target.value;
+                const group = tabGroups.find((g) => g.tabs.some((t) => t.id === tabId));
+                if (!isTabAllowed(tabId, group?.id)) return;
+                setActiveTab(tabId);
+              }}
             >
               {tabGroups.map((group) => (
                 <optgroup key={group.id} label={group.label}>
-                  {group.tabs.map((tab) => (
-                    <option key={tab.id} value={tab.id}>
-                      {tab.label}
-                    </option>
-                  ))}
+                  {group.tabs.map((tab) => {
+                    const allowed = isTabAllowed(tab.id, group.id);
+                    return (
+                      <option key={tab.id} value={tab.id} disabled={!allowed}>
+                        {allowed ? tab.label : `${tab.label} (locked)`}
+                      </option>
+                    );
+                  })}
                 </optgroup>
               ))}
             </select>
@@ -153,18 +200,28 @@ export function ClientHubPage({
                 <ul className="client-hub-nav__list" role="tablist" aria-label={group.label}>
                   {group.tabs.map((tab) => {
                     const isActive = activeTab === tab.id;
+                    const allowed = isTabAllowed(tab.id, group.id);
                     return (
                       <li key={tab.id}>
                         <button
                           type="button"
                           role="tab"
                           aria-selected={isActive}
+                          aria-disabled={!allowed}
                           aria-controls={`client-hub-panel-${tab.id}`}
                           id={`client-hub-tab-${tab.id}`}
-                          className={`client-hub-nav__btn${isActive ? " client-hub-nav__btn--active" : ""}`}
-                          onClick={() => setActiveTab(tab.id)}
+                          title={allowed ? undefined : LOCK_TOOLTIP}
+                          className={`client-hub-nav__btn${isActive ? " client-hub-nav__btn--active" : ""}${
+                            !allowed ? " client-hub-nav__btn--locked" : ""
+                          }`}
+                          style={!allowed ? { opacity: 0.45, cursor: "not-allowed" } : undefined}
+                          onClick={() => {
+                            if (!allowed) return;
+                            setActiveTab(tab.id);
+                          }}
                         >
-                          {tab.shortLabel || tab.label}
+                          <span>{tab.shortLabel || tab.label}</span>
+                          {!allowed ? <LockIcon /> : null}
                         </button>
                       </li>
                     );
@@ -182,7 +239,11 @@ export function ClientHubPage({
             aria-labelledby={`client-hub-tab-${activeTab}`}
             className="client-hub-page__panel"
           >
-            {renderTab(activeTab, { embedded: true, user, onUserUpdated: () => setReloadKey((k) => k + 1) })}
+            {activeTabAllowed ? (
+              renderTab(activeTab, { embedded: true, user, onUserUpdated: () => setReloadKey((k) => k + 1) })
+            ) : (
+              <AccessRestrictedView />
+            )}
           </div>
         </div>
       </div>

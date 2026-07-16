@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef } from "react";
 
-const ACTION_LABELS = { view: "View", edit: "Edit", delete: "Delete" };
+const ACTION_LABELS = { view: "View", edit: "Edit", delete: "Delete", access: "Access" };
 
 function CheckboxWithIndeterminate({
   checked,

@@ -6,6 +6,8 @@ import { coachGetUserWaterTracking } from "../../api/coachWaterTracking.js";
 import { coachListAssistants } from "../../api/coachAssistants.js";
 import { coachReassignHealUser } from "../../api/coachHealUsers.js";
 import { logoutCoach } from "../../../store/authSlice.js";
+import { useCoachPermissions } from "../../hooks/useHasPermission.jsx";
+import { permissionKeyForClientTab } from "../../data/coachPermissionKeys.js";
 import { CoachUserWaterTrackingPage } from "./CoachUserWaterTrackingPage.jsx";
 import { CoachUserStepsTrackingPage } from "./CoachUserStepsTrackingPage.jsx";
 import { UserReminders } from "../userReminders/UserReminders.jsx";
@@ -76,6 +78,15 @@ export function UserClientHub() {
   const coachToken = useSelector((s) => s.auth.coachToken);
   const coach = useSelector((s) => s.auth.coach);
   const coachId = coach?._id || coach?.id;
+  const { hasPermission } = useCoachPermissions();
+  const canAccessClientTab = useCallback(
+    (tabId) => {
+      const key = permissionKeyForClientTab(tabId);
+      if (!key) return true;
+      return hasPermission(key);
+    },
+    [hasPermission]
+  );
   const [assistants, setAssistants] = useState([]);
   const [reassignUser, setReassignUser] = useState(null);
   const [reassignAssistantId, setReassignAssistantId] = useState("");
@@ -142,6 +153,7 @@ export function UserClientHub() {
         fetchUser={fetchUser}
         showReassign
         onReassign={setReassignUser}
+        canAccessTab={canAccessClientTab}
         renderTab={(tab, { embedded }) => renderCoachTab(tab, embedded)}
       />
 

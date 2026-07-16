@@ -1,5 +1,6 @@
 const express = require("express");
 const { protectWellnessCoach } = require("../../middleware/auth");
+const { authorize } = require("../../middleware/authorize");
 const {
   listHealUsersForCoachPortalController,
   reassignHealUserForCoachPortalController,
@@ -11,11 +12,36 @@ const { getCoachHealUserHeartRateTrackingController } = require("../../controlle
 
 const router = express.Router();
 
-router.get("/", protectWellnessCoach, listHealUsersForCoachPortalController);
-router.get("/:id/water-tracking", protectWellnessCoach, getCoachHealUserWaterTrackingController);
-router.get("/:id/steps-tracking", protectWellnessCoach, getCoachHealUserStepsTrackingController);
-router.get("/:id/sleep-tracking", protectWellnessCoach, getCoachHealUserSleepTrackingController);
-router.get("/:id/heart-rate-tracking", protectWellnessCoach, getCoachHealUserHeartRateTrackingController);
-router.post("/:id/reassign", protectWellnessCoach, reassignHealUserForCoachPortalController);
+router.get("/", protectWellnessCoach, authorize("nav.my-users"), listHealUsersForCoachPortalController);
+router.get(
+  "/:id/water-tracking",
+  protectWellnessCoach,
+  authorize("clientTab.tracking.water"),
+  getCoachHealUserWaterTrackingController
+);
+router.get(
+  "/:id/steps-tracking",
+  protectWellnessCoach,
+  authorize("clientTab.tracking.steps"),
+  getCoachHealUserStepsTrackingController
+);
+router.get(
+  "/:id/sleep-tracking",
+  protectWellnessCoach,
+  authorize("clientTab.tracking"),
+  getCoachHealUserSleepTrackingController
+);
+router.get(
+  "/:id/heart-rate-tracking",
+  protectWellnessCoach,
+  authorize("clientTab.tracking"),
+  getCoachHealUserHeartRateTrackingController
+);
+router.post(
+  "/:id/reassign",
+  protectWellnessCoach,
+  authorize("nav.my-users"),
+  reassignHealUserForCoachPortalController
+);
 
 module.exports = router;

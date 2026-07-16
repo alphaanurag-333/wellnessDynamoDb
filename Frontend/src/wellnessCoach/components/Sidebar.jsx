@@ -6,7 +6,64 @@ import { mediaUrl } from "../../media.js";
 import { logoutCoach } from "../../store/authSlice.js";
 import defaultLogo from "../../assets/logo/defaultlogo.png";
 import { coachNavItems } from "../data/navItems.js";
+import { navPermissionKey } from "../data/coachPermissionKeys.js";
+import { useHasPermission } from "../hooks/useHasPermission.jsx";
 import { confirmCoachLogout } from "../utils/confirmLogout.js";
+import { LOCK_TOOLTIP } from "./AccessRestrictedView.jsx";
+
+function LockIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className="admin-sidebar__lock-icon"
+    >
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  );
+}
+
+function CoachNavItem({ item, onNavigate }) {
+  const allowed = useHasPermission(navPermissionKey(item.to));
+
+  if (!allowed) {
+    return (
+      <span
+        className="admin-sidebar__link admin-sidebar__link--locked"
+        title={LOCK_TOOLTIP}
+        aria-disabled="true"
+        onClick={(e) => e.preventDefault()}
+        style={{ opacity: 0.45, cursor: "not-allowed", pointerEvents: "auto" }}
+      >
+        <NavIcon name={item.icon} />
+        <span className="admin-sidebar__link-text">{item.label}</span>
+        <LockIcon />
+      </span>
+    );
+  }
+
+  return (
+    <NavLink
+      to={item.to}
+      title={item.label}
+      className={({ isActive }) =>
+        `admin-sidebar__link${isActive ? " admin-sidebar__link--active" : ""}`
+      }
+      onClick={onNavigate}
+    >
+      <NavIcon name={item.icon} />
+      <span className="admin-sidebar__link-text">{item.label}</span>
+    </NavLink>
+  );
+}
 
 export function CoachSidebar({ id = "coach-sidebar", onNavigate, drawerOpen, desktopCollapsed }) {
   const dispatch = useDispatch();
@@ -53,18 +110,7 @@ export function CoachSidebar({ id = "coach-sidebar", onNavigate, drawerOpen, des
 
       <nav className="admin-sidebar__nav">
         {coachNavItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            title={item.label}
-            className={({ isActive }) =>
-              `admin-sidebar__link${isActive ? " admin-sidebar__link--active" : ""}`
-            }
-            onClick={onNavigate}
-          >
-            <NavIcon name={item.icon} />
-            <span className="admin-sidebar__link-text">{item.label}</span>
-          </NavLink>
+          <CoachNavItem key={item.to} item={item} onNavigate={onNavigate} />
         ))}
       </nav>
 

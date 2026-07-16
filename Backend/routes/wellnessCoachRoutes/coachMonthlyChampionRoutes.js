@@ -1,6 +1,7 @@
 const express = require("express");
 
 const { protectWellnessCoach } = require("../../middleware/auth");
+const { authorize } = require("../../middleware/authorize");
 const {
   listCoachMonthlyChampionPostsController,
   getCoachMonthlyChampionPostByIdController,
@@ -8,7 +9,17 @@ const {
 
 const router = express.Router();
 
-router.get("/", protectWellnessCoach, listCoachMonthlyChampionPostsController);
-router.get("/:id", protectWellnessCoach, getCoachMonthlyChampionPostByIdController);
+router.get(
+  "/",
+  protectWellnessCoach,
+  authorize("nav.monthly-champions"),
+  listCoachMonthlyChampionPostsController
+);
+router.get(
+  "/:id",
+  protectWellnessCoach,
+  authorize("nav.monthly-champions"),
+  getCoachMonthlyChampionPostByIdController
+);
 
 module.exports = router;

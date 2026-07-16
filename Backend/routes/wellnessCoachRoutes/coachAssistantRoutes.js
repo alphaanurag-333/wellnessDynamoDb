@@ -1,5 +1,6 @@
 const express = require("express");
 const { protectWellnessCoach } = require("../../middleware/auth");
+const { authorize } = require("../../middleware/authorize");
 const { optionalAssistantWellnessCoachFile } = require("../../middleware/authMultipart");
 const {
   listMyAssistantsController,
@@ -12,7 +13,7 @@ const {
 
 const router = express.Router();
 
-router.use(protectWellnessCoach);
+router.use(protectWellnessCoach, authorize("nav.my-assistants"));
 
 router.get("/", listMyAssistantsController);
 router.get("/count", getMyAssistantCountController);

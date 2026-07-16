@@ -114,7 +114,7 @@ const LIMITS = {
   appDetail: 50,
   address: 100,
   latLng: 10,
-  socialUrl: 50,
+  socialUrl: 120,
   appDetails: 500,
   footerText: 100,
   statsField: 10,
@@ -456,6 +456,7 @@ export function BusinessSetting() {
   const [scalars, setScalars] = useState(() =>
     Object.fromEntries(SCALAR_KEYS.map((k) => [k, ""])),
   );
+  const [multilang, setMultilang] = useState(false);
   const [paymentGateways, setPaymentGateways] = useState(() => normalizeGateways([]));
   const [energyExchangeFyDiscounts, setEnergyExchangeFyDiscounts] = useState(() => ({ ...DEFAULT_FY_DISCOUNTS }));
   const [energyExchangeFyDiscountRanges, setEnergyExchangeFyDiscountRanges] = useState(defaultFyDiscountRanges);
@@ -482,6 +483,7 @@ export function BusinessSetting() {
     if (!doc) {
       setHasDoc(false);
       setScalars(Object.fromEntries(SCALAR_KEYS.map((k) => [k, ""])));
+      setMultilang(false);
       setPaymentGateways(normalizeGateways([]));
       setEnergyExchangeFyDiscountRanges(defaultFyDiscountRanges());
       setEnergyExchangeTimeBasedDiscountRange({ ...DEFAULT_FY_DISCOUNT_RANGE });
@@ -518,6 +520,9 @@ export function BusinessSetting() {
     next.happy_clients = sanitizeDigitsOnly(next.happy_clients, LIMITS.statsField);
     next.success_rate = sanitizePercentInput(next.success_rate);
     setScalars(next);
+    setMultilang(
+      doc.multilang === true || String(doc.multilang || "").toLowerCase() === "true"
+    );
     setPaymentGateways(normalizeGateways(doc.payment_gateways));
     setEnergyExchangeFyDiscounts({
       ...DEFAULT_FY_DISCOUNTS,
@@ -585,6 +590,7 @@ export function BusinessSetting() {
     for (const k of SCALAR_KEYS) {
       fd.append(k, scalars[k] ?? "");
     }
+    fd.append("multilang", multilang ? "true" : "false");
     fd.append("payment_gateways", JSON.stringify(gatewaysForApi(paymentGateways)));
     fd.append(
       "energy_exchange_default_fy_discounts",
@@ -810,6 +816,20 @@ export function BusinessSetting() {
                         maxLength={LIMITS.appDetail}
                       />
                       <span className="settings-char-count">{charCount(scalars.app_detail, LIMITS.appDetail)}</span>
+                    </div>
+
+                    <div className="user-field user-field--full">
+                      <span className="user-field__label">Multi-language</span>
+                      <div className="d-flex align-items-center gap-3">
+                        <SettingsToggle
+                          id={`${baseId}-multilang`}
+                          checked={multilang}
+                          onChange={setMultilang}
+                        />
+                        <span className="small text-body-secondary">
+                          {multilang ? "Enabled" : "Disabled"}
+                        </span>
+                      </div>
                     </div>
             
                     {/* <div className="user-field user-field--full">

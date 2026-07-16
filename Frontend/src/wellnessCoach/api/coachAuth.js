@@ -45,6 +45,20 @@ export async function coachGetMe(token) {
   }
 }
 
+export async function coachGetPermissions(token) {
+  try {
+    const { data } = await coachApi.get("/coach/auth/me/permissions", {
+      headers: authHeader(token),
+    });
+    return {
+      roleId: data.roleId ?? null,
+      permissions: data.permissions && typeof data.permissions === "object" ? data.permissions : {},
+    };
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function coachUpdateMe(token, body) {
   try {
     const { data } = await coachApi.patch("/coach/auth/me", body, { headers: authHeader(token) });

@@ -7,25 +7,37 @@ const {
   updateRole,
   deleteRole,
   listRoles,
+  normalizeScope,
 } = require("../../models/roleModel");
 const { countAdminsByRoleId } = require("../../models/adminModel");
+const { countCoachesByRoleId } = require("../../models/wellnessCoachModel");
 const { isValidPermission, getPermissionCatalog } = require("../../config/permissionCatalog");
+const {
+  isValidCoachPermission,
+  getCoachPermissionCatalog,
+} = require("../../config/coachPermissionCatalog");
 
 /**
- * Keep only catalog-known slugs. Obsolete entries (e.g. removed `.view` after a
- * catalog change) are dropped so role updates still succeed.
+ * Keep only catalog-known slugs for the given scope.
  */
-function sanitizePermissions(permissions) {
+function sanitizePermissions(permissions, scope = "ADMIN") {
   if (permissions === undefined) return undefined;
   if (!Array.isArray(permissions)) {
     throw new AppError("permissions must be an array of permission slugs", 400);
   }
-  return [...new Set(permissions.map((slug) => String(slug)).filter(isValidPermission))];
+  const isValid = scope === "COACH" ? isValidCoachPermission : isValidPermission;
+  return [...new Set(permissions.map((slug) => String(slug)).filter(isValid))];
 }
 
 exports.listRolesController = asyncHandler(async (req, res) => {
-  const { page, limit, status, search } = req.query;
-  const { roles, pagination } = await listRoles({ page, limit, status, search });
+  const { page, limit, status, search, scope } = req.query;
+  const { roles, pagination } = await listRoles({
+    page,
+    limit,
+    status,
+    search,
+    scope: scope ? normalizeScope(scope, "ADMIN") : undefined,
+  });
 
   return res.status(200).json({
     status: true,
@@ -49,23 +61,53 @@ exports.getRoleByIdController = asyncHandler(async (req, res) => {
 });
 
 exports.createRoleController = asyncHandler(async (req, res) => {
-  const { name, slug, permissions = [], status = "active" } = req.body;
+  const { name, slug, permissions = [], status = "active", scope = "ADMIN" } = req.body;
+  const normalizedScope = normalizeScope(scope, "ADMIN");
 
   if (!name || !String(name).trim()) {
     throw new AppError("Role name is required", 400);
   }
-  const cleanedPermissions = sanitizePermissions(permissions);
+  const cleanedPermissions = sanitizePermissions(permissions, normalizedScope);
 
-  const existing = await getRoleBySlug(slug || name);
+  // Coach slugs are namespaced so they never collide with Admin roles of the same display name.
+  let resolvedSlug = slug || name;
+  if (normalizedScope === "COACH") {
+    const raw = String(resolvedSlug || "").trim();
+    const alreadyPrefixed = /^coach[-_]/i.test(raw);
+    resolvedSlug = alreadyPrefixed ? raw : `coach-${raw}`;
+  }
+
+  const existing = await getRoleBySlug(resolvedSlug, { scope: normalizedScope });
   if (existing) {
-    throw new AppError("A role with this name/slug already exists", 409);
+    throw new AppError(
+      `A ${normalizedScope === "COACH" ? "coach" : "admin"} role with this name/slug already exists`,
+      409
+    );
+  }
+
+  // Defensive: also block exact slug reuse across scopes on shared SlugIndex.
+  const anyScope = await getRoleBySlug(resolvedSlug);
+  if (anyScope && normalizeScope(anyScope.scope, "ADMIN") !== normalizedScope) {
+    // Same slug reserved by the other scope — remint with an explicit coach/admin prefix.
+    resolvedSlug =
+      normalizedScope === "COACH"
+        ? `coach-${String(slug || name).trim()}`
+        : `admin-${String(slug || name).trim()}`;
+    const again = await getRoleBySlug(resolvedSlug, { scope: normalizedScope });
+    if (again) {
+      throw new AppError(
+        `A ${normalizedScope === "COACH" ? "coach" : "admin"} role with this name/slug already exists`,
+        409
+      );
+    }
   }
 
   const role = await createRole({
     name,
-    slug: slug || name,
+    slug: resolvedSlug,
     permissions: cleanedPermissions,
     status,
+    scope: normalizedScope,
   });
 
   return res.status(201).json({
@@ -81,13 +123,14 @@ exports.updateRoleController = asyncHandler(async (req, res) => {
     throw new AppError("Role not found", 404);
   }
 
+  const roleScope = normalizeScope(role.scope, "ADMIN");
   const { name, slug, permissions, status } = req.body;
-  const cleanedPermissions = sanitizePermissions(permissions);
+  const cleanedPermissions = sanitizePermissions(permissions, roleScope);
 
   if (slug !== undefined && slug !== role.slug) {
-    const existing = await getRoleBySlug(slug);
+    const existing = await getRoleBySlug(slug, { scope: roleScope });
     if (existing && existing.id !== role.id) {
-      throw new AppError("A role with this slug already exists", 409);
+      throw new AppError("A role with this slug already exists for this scope", 409);
     }
   }
 
@@ -96,6 +139,7 @@ exports.updateRoleController = asyncHandler(async (req, res) => {
   if (slug !== undefined) updates.slug = slug;
   if (cleanedPermissions !== undefined) updates.permissions = cleanedPermissions;
   if (status !== undefined) updates.status = status;
+  // scope is immutable after create — ignore body.scope
 
   const updated = await updateRole(role.id, updates);
 
@@ -112,12 +156,23 @@ exports.deleteRoleController = asyncHandler(async (req, res) => {
     throw new AppError("Role not found", 404);
   }
 
-  const usageCount = await countAdminsByRoleId(role.id);
-  if (usageCount > 0) {
-    throw new AppError(
-      `Cannot delete this role — it is assigned to ${usageCount} sub-admin(s). Reassign them first.`,
-      409
-    );
+  const roleScope = normalizeScope(role.scope, "ADMIN");
+  if (roleScope === "COACH") {
+    const usageCount = await countCoachesByRoleId(role.id);
+    if (usageCount > 0) {
+      throw new AppError(
+        `Cannot delete this role — it is assigned to ${usageCount} coach(es). Reassign them first.`,
+        409
+      );
+    }
+  } else {
+    const usageCount = await countAdminsByRoleId(role.id);
+    if (usageCount > 0) {
+      throw new AppError(
+        `Cannot delete this role — it is assigned to ${usageCount} sub-admin(s). Reassign them first.`,
+        409
+      );
+    }
   }
 
   await deleteRole(role.id);
@@ -129,9 +184,23 @@ exports.deleteRoleController = asyncHandler(async (req, res) => {
 });
 
 exports.getPermissionCatalogController = asyncHandler(async (req, res) => {
+  const rawScope = Array.isArray(req.query.scope) ? req.query.scope[0] : req.query.scope;
+  const scope = normalizeScope(rawScope || "ADMIN", "ADMIN");
+  if (scope === "COACH") {
+    const catalog = getCoachPermissionCatalog();
+    return res.status(200).json({
+      status: true,
+      message: "Coach permission catalog fetched successfully",
+      scope: "COACH",
+      groups: catalog.groups,
+      permissions: catalog.permissions,
+    });
+  }
+
   return res.status(200).json({
     status: true,
     message: "Permission catalog fetched successfully",
+    scope: "ADMIN",
     ...getPermissionCatalog(),
   });
 });

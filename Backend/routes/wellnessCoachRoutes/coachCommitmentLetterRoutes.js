@@ -1,5 +1,6 @@
 const express = require("express");
 const { protectWellnessCoach } = require("../../middleware/auth");
+const { authorize } = require("../../middleware/authorize");
 const {
   listCoachCommitmentLettersController,
   listCoachPendingCommitmentLettersController,
@@ -10,10 +11,35 @@ const {
 
 const router = express.Router();
 
-router.get("/pending", protectWellnessCoach, listCoachPendingCommitmentLettersController);
-router.get("/", protectWellnessCoach, listCoachCommitmentLettersController);
-router.get("/:id", protectWellnessCoach, getCoachCommitmentLetterByIdController);
-router.patch("/:id/review", protectWellnessCoach, reviewCoachCommitmentLetterController);
-router.delete("/:id", protectWellnessCoach, deleteCoachCommitmentLetterController);
+router.get(
+  "/pending",
+  protectWellnessCoach,
+  authorize("nav.commitment-letters"),
+  listCoachPendingCommitmentLettersController
+);
+router.get(
+  "/",
+  protectWellnessCoach,
+  authorize("nav.commitment-letters"),
+  listCoachCommitmentLettersController
+);
+router.get(
+  "/:id",
+  protectWellnessCoach,
+  authorize("nav.commitment-letters"),
+  getCoachCommitmentLetterByIdController
+);
+router.patch(
+  "/:id/review",
+  protectWellnessCoach,
+  authorize("nav.commitment-letters"),
+  reviewCoachCommitmentLetterController
+);
+router.delete(
+  "/:id",
+  protectWellnessCoach,
+  authorize("nav.commitment-letters"),
+  deleteCoachCommitmentLetterController
+);
 
 module.exports = router;

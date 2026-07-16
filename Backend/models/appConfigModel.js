@@ -68,6 +68,8 @@ async function createAppConfig() {
     },
     energy_exchange_time_based_discount_range: { min: 0, max: 100 },
 
+    multilang: false,
+
     // Nested array with credentials object
     payment_gateways: [],   // default empty 
 
