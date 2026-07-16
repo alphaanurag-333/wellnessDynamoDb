@@ -1,9 +1,9 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { Country } from "country-state-city";
 import FinalCTA from "./FinalCTA";
 import { submitContactInquiry } from "../api/publicMisc.js";
+import ContactCountryDialSelect from "./ContactCountryDialSelect.jsx";
 import {
-  ALL_COUNTRIES,
   DEFAULT_ISO,
   FIELD_LIMITS,
   INITIAL_CONTACT_FORM,
@@ -49,19 +49,6 @@ export default function ContactUsSection() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState(null);
-
-  const dialCountryOptions = useMemo(
-    () =>
-      ALL_COUNTRIES.map((c) => {
-        const dial = dialCodeFromPhonecode(c.phonecode);
-        return (
-          <option key={c.isoCode} value={c.isoCode} title={`${c.name} (${dial})`}>
-            {dial}
-          </option>
-        );
-      }),
-    []
-  );
 
   const clearFieldError = (name) => {
     setFieldErrors((prev) => {
@@ -118,14 +105,14 @@ export default function ContactUsSection() {
     }));
   };
 
-  const handlePhoneCountryChange = (e) => {
-    const iso = e.target.value || DEFAULT_ISO;
-    const country = Country.getCountryByCode(iso);
+  const handlePhoneCountryChange = (iso) => {
+    const countryIso = iso || DEFAULT_ISO;
+    const country = Country.getCountryByCode(countryIso);
     setFeedback(null);
     clearFieldError("phone");
     setFormData((prev) => ({
       ...prev,
-      phoneCountryIso: iso,
+      phoneCountryIso: countryIso,
       phoneCountryCode: country ? dialCodeFromPhonecode(country.phonecode) : prev.phoneCountryCode,
       phone: sanitizeContactPhone(prev.phone, country ? dialCodeFromPhonecode(country.phonecode) : prev.phoneCountryCode),
     }));
@@ -287,20 +274,13 @@ export default function ContactUsSection() {
             <div className={`contact-field${fieldErrors.phone ? " contact-field--invalid" : ""}`}>
               <label htmlFor="contact-phone">Phone Number</label>
               <div className="contact-phone-row">
-                <select  
+                <ContactCountryDialSelect
                   id="contact-phone-country"
-                  className="contact-phone-country"
                   value={formData.phoneCountryIso}
                   onChange={handlePhoneCountryChange}
                   disabled={submitting}
-                  aria-label="Country code"
-                  autoComplete="tel-country-code"
-                  title={
-                    ALL_COUNTRIES.find((c) => c.isoCode === formData.phoneCountryIso)?.name || "Country code"
-                  }
-                >
-                  {dialCountryOptions}
-                </select>
+                  ariaLabel="Country code"
+                />
                 <input
                   id="contact-phone"
                   type="tel"

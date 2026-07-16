@@ -3788,6 +3788,136 @@ h5.pillar-card__head-title {
   background-repeat: no-repeat;
 }
 
+.contact-phone-country-select {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+.contact-phone-country-select--open {
+  z-index: 30;
+}
+
+.contact-phone-country-trigger {
+  display: block;
+  text-align: left;
+  font-family: inherit;
+  line-height: 40px;
+}
+
+.contact-phone-country-trigger:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.contact-phone-country-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 40;
+  width: max(100%, 220px);
+  max-width: min(280px, calc(100vw - 32px));
+  padding: 4px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14);
+}
+
+.contact-phone-country-search {
+  width: 100%;
+  height: 34px;
+  margin-bottom: 4px;
+  padding: 0 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: #fcfaf8;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-heading);
+  outline: none;
+}
+
+.contact-phone-country-search::placeholder {
+  color: var(--text-muted);
+}
+
+.contact-phone-country-search:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(231, 134, 58, 0.1);
+}
+
+.contact-phone-country-menu {
+  --contact-phone-country-item-height: 36px;
+  max-height: calc(var(--contact-phone-country-item-height) * 5 + 8px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.contact-phone-country-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: var(--contact-phone-country-item-height, 36px);
+  min-height: var(--contact-phone-country-item-height, 36px);
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-heading);
+  text-align: left;
+  cursor: pointer;
+}
+
+.contact-phone-country-option:hover,
+.contact-phone-country-option:focus-visible {
+  background: rgba(231, 134, 58, 0.1);
+  outline: none;
+}
+
+.contact-phone-country-option--selected {
+  background: rgba(231, 134, 58, 0.14);
+  font-weight: 600;
+}
+
+.contact-phone-country-option__dial {
+  flex: 0 0 3.25rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.contact-phone-country-option__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.contact-phone-country-option--selected .contact-phone-country-option__name {
+  color: var(--text-heading);
+}
+
+.contact-phone-country-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--contact-phone-country-item-height, 36px);
+  padding: 0 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
 .contact-phone-input {
   width: 100%;
   min-width: 0;
@@ -11388,6 +11518,26 @@ SCROLLBAR
     height: 46px;
     font-size: 14px;
     padding-right: 22px;
+  }
+
+  .contact-phone-country-trigger {
+    line-height: 46px;
+  }
+
+  .contact-phone-country-search {
+    height: 38px;
+    font-size: 14px;
+  }
+
+  .contact-phone-country-menu {
+    --contact-phone-country-item-height: 40px;
+    max-height: calc(var(--contact-phone-country-item-height) * 5 + 8px);
+  }
+
+  .contact-phone-country-option {
+    height: var(--contact-phone-country-item-height);
+    min-height: var(--contact-phone-country-item-height);
+    font-size: 14px;
   }
 
   .contact-phone-input {
