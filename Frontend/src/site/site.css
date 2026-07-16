@@ -4432,6 +4432,7 @@ h5.pillar-card__head-title {
   display: inline;
   overflow-wrap: anywhere;
   word-break: break-word;
+  text-align: justify;
 }
 
 .leadership__description p + p::before {
@@ -10010,6 +10011,7 @@ SCROLLBAR
     font-size: var(--font-size-body);
     line-height: var(--line-height-body);
     -webkit-line-clamp: 6;
+    text-align: justify;
   }
 
   .pillars__wrapper {
@@ -11464,6 +11466,7 @@ SCROLLBAR
     font-size: var(--font-size-small);
     line-height: 1.6;
     -webkit-line-clamp: 5;
+    text-align: justify;
   }
 
   .leadership-slider__nav {
