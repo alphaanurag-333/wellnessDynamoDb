@@ -114,7 +114,7 @@ export default function ProgramTestimonialsSection({ type, title, subtitle }) {
       aria-label={`${meta.label} testimonials`}
     >
       <div className="container">
-        <div className="transformation-header">
+        {/* <div className="transformation-header">
           <div className="header-left">
             <h2>{sectionTitle}</h2>
             <p>{sectionSubtitle}</p>
@@ -140,8 +140,24 @@ export default function ProgramTestimonialsSection({ type, title, subtitle }) {
               </button>
             </div>
           ) : null}
-        </div>
-
+        </div> */}
+<div className="transformation-header mb-2">
+          <div className="header-left">
+            <h2>{sectionTitle}</h2>
+            <p>{sectionSubtitle}</p>
+          </div>
+         
+        {hasTestimonials ? (
+          <div className="leadership-slider__nav">
+            <button onClick={() => swiperRef.current?.slidePrev()} type="button" className="leadership-slider__navBtn" aria-label="Previous note">
+              <ChevronLeft size={22} />
+            </button>
+            <button onClick={() => swiperRef.current?.slideNext()} type="button" className="leadership-slider__navBtn" aria-label="Next note">
+              <ChevronRight size={22} />
+            </button>
+          </div>
+        ) : null}
+ </div>
         {loading ? (
           <p className="transformation-section__loading">Loading testimonials…</p>
         ) : (

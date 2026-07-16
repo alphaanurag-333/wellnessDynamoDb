@@ -241,7 +241,7 @@ export function LeadershipNotesSlider({ notes = [], loading = false }) {
     <section className="leadership leadership-slider pt-2 pb-0" aria-label="Leadership notes">
       
       <div className="site-container">
-         <div className="transformation-header">
+         <div className="transformation-header mb-2">
           <div className="header-left">
             <h2>Notes from Leadership</h2>
             <p>Guiding our vision with transparency, purpose, and commitment</p>
@@ -261,6 +261,14 @@ export function LeadershipNotesSlider({ notes = [], loading = false }) {
         <Swiper
           modules={[Navigation]}
           slidesPerView={2}
+           breakpoints={{
+    0: {
+      slidesPerView: 1,
+    },
+    768: {
+      slidesPerView: 2,
+    },
+  }}
           spaceBetween={24}
           speed={700}
           watchOverflow

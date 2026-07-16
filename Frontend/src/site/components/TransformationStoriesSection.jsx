@@ -117,9 +117,9 @@ export default function TransformationStoriesSection() {
   const hasTransformations = Boolean(transformations?.length);
 
   return (
-    <section className="transformation-section pb-0" aria-label="Real transformations">
+    <section className="transformation-section pb-3" aria-label="Real transformations">
       <div className="container">
-        <div className="transformation-header">
+        {/* <div className="transformation-header ">
           <div className="header-left">
             <h2>Transformations</h2>
             <p>Swipe to see before-and-after results from our community</p>
@@ -145,8 +145,25 @@ export default function TransformationStoriesSection() {
               </button>
             </div>
           ) : null}
-        </div>
+        </div> */}
 
+<div className="transformation-header mb-2">
+          <div className="header-left">
+            <h2>Transformations</h2>
+            <p>Swipe to see before-and-after results from our community</p>
+          </div>
+         
+        {hasTransformations ? (
+          <div className="leadership-slider__nav">
+            <button onClick={() => swiperRef.current?.slidePrev()} type="button" className="leadership-slider__navBtn" aria-label="Previous note">
+              <ChevronLeft size={22} />
+            </button>
+            <button onClick={() => swiperRef.current?.slideNext()} type="button" className="leadership-slider__navBtn" aria-label="Next note">
+              <ChevronRight size={22} />
+            </button>
+          </div>
+        ) : null}
+ </div>
         {transformationsLoading ? (
           <p className="transformation-section__loading">Loading transformations…</p>
         ) : hasTransformations ? (
