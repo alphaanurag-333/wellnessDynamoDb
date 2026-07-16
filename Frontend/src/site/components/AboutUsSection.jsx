@@ -108,6 +108,7 @@ function CoachBoardSection({
       <div className="site-container">  
         
         <div className="medicalBoard__top mb-0">
+          
           <div className="medicalBoard__heading">
             <h2>{title}</h2>
             <p>{subtitle}</p>
