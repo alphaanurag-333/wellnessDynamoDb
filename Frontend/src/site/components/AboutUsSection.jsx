@@ -438,7 +438,7 @@ const AboutUsSection = () => {
               Meet Your <span> Wellness</span> Partner
             </h2>
 
-            <p className="wellness__text">
+            <p className="wellness__text mt-0 mb-0">
               We merge advanced clinical diagnostics with restorative holistic
               practices to create your personalized path to vitality.
             </p>
@@ -582,7 +582,7 @@ const AboutUsSection = () => {
             <div className="aboutFaq__content">
               <span className="aboutFaq__label">OUR PROCESS</span>
 
-             <p className="aboutFaq__para">
+             <p className="aboutFaq__para managmt">
   We believe in a holistic approach towards health & Wellness.
   <br />
   Holistic Health recognizes the interconnectedness of mind, body

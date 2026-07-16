@@ -7000,7 +7000,7 @@ PRINT
 }
 
 .transformation-category-card:hover img {
-  transform: translateY(-6px);
+  /* transform: translateY(-6px); */
   box-shadow: var(--shadow-md);
 }
 
@@ -9682,7 +9682,7 @@ SCROLLBAR
   width: 100%;
   height: 100%;
   display: block;
-  object-fit: cover;
+  object-fit: fill;
 }
 
 .program-about__heading {
@@ -11799,7 +11799,7 @@ SCROLLBAR
 
   .aboutFaq__label {
     font-size: 11px;
-    padding: 7px 15px;
+    padding: 0px 0px;
   }
 
   .aboutFaq__title {
@@ -13797,6 +13797,9 @@ SMALL DEVICES
     margin-bottom: 5px !important;
   }
   .margint {
+    margin-top: 0px;
+  }
+  .managmt {
     margin-top: 0px;
   }
 }
