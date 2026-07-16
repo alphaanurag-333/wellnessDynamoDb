@@ -149,7 +149,7 @@ export default function ChampionSlider() {
                   </div>
 
                   <div className="champion-info">
-                    <h4>{item.name}</h4>
+                    <h4 className="text-start">{item.name}</h4>
                     <p>{item.subtitle}</p>
                   </div>
                 </div>

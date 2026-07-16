@@ -99,7 +99,7 @@ const SuccessStories = () => {
       </div>
 
       <section className="transformation">
-        <div className="container">
+        <div className="site-container">
           {/* <div className="transformation-categories__head">
             <div className="transformation-heading">
               <h2>Our Success Stories</h2>

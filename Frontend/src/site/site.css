@@ -13802,6 +13802,10 @@ SMALL DEVICES
   .managmt {
     margin-top: 0px;
   }
+
+  .wellness-hero__stat-card {
+    padding:10px;
+  }
 }
 
 

@@ -113,7 +113,7 @@ export default function ProgramTestimonialsSection({ type, title, subtitle }) {
       className="transformation-section program-testimonials-section"
       aria-label={`${meta.label} testimonials`}
     >
-      <div className="container">
+      <div className="site-container">
         {/* <div className="transformation-header">
           <div className="header-left">
             <h2>{sectionTitle}</h2>
