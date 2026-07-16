@@ -4201,6 +4201,7 @@ h5.pillar-card__head-title {
   font-size: var(--font-size-lg);
   line-height: var(--line-height-body);
   color: var(--text-body);
+  text-align: justify;
 }
 
 /*=========================
@@ -4505,7 +4506,7 @@ h5.pillar-card__head-title {
 .leadership__title {
   margin: 0;
   color: var(--text-heading);
-  font-size: clamp(1.25rem, 2.2vw, 1.75rem);
+  font-size: clamp(1.25rem, 2.2vw, 1.65rem);
   font-weight: var(--fw-bold);
   line-height: 1.25;
   letter-spacing: -0.02em;
@@ -5060,6 +5061,7 @@ h5.pillar-card__head-title {
   margin-top: 16px;
   color: var(--text-body);
   font-weight: 500;
+  text-align: justify;
 }
 
 /*==================================================
@@ -5150,6 +5152,7 @@ h5.pillar-card__head-title {
 
   font-size: 16px;
   line-height: 30px;
+  text-align: justify;
 }
 
 /*==================================================
@@ -5334,20 +5337,20 @@ h5.pillar-card__head-title {
 
 .doctorCard__image {
   width: 100%;
-  max-width: 160px;
+  /* max-width: 160px; */
   aspect-ratio: 1;
   height: auto;
   margin: 0 auto;
 
   overflow: hidden;
 
-  border-radius: 50%;
-
+  /* border-radius: 50%; */
+border-radius:5px;
   background: var(--bg-section, #f5eeea);
 
   box-shadow: none;
-  border: 3px solid #fff;
-  outline: 1px solid var(--border-color);
+  /* border: 3px solid #fff;
+  outline: 1px solid var(--border-color); */
 }
 
 .doctorCard__image img {
@@ -5363,7 +5366,7 @@ h5.pillar-card__head-title {
 }
 
 .doctorCard:hover .doctorCard__image img {
-  transform: scale(1.05);
+  /* transform: scale(1.05); */
 }
 
 /*==================================================
@@ -6037,7 +6040,8 @@ RESULT CARD
   width: 100%;
   background: #f5f7fc;
   border-radius: var(--radius-md);
-  padding: 22px;
+  padding: 10px;
+  
 }
 
 .result-header {
@@ -6832,6 +6836,7 @@ PRINT
   font-size: var(--fs-base);
   line-height: 30px;
   font-family: var(--font-primary);
+  text-align: justify;
 }
 
 .success-image {
@@ -6947,6 +6952,7 @@ PRINT
   overflow: hidden;
   text-align: left;
   font-weight: 500;
+  text-align: justify;
 }
 
 .transformation-list {
@@ -8046,7 +8052,7 @@ PRINT
   width: 460px;
   background: var(--bg-card);
   border-radius: var(--radius-lg);
-  padding: 25px;
+  padding: 15px;
   box-shadow: var(--shadow-md);
   border: 1px solid var(--border-light);
 }
@@ -8238,8 +8244,8 @@ PRINT
 ===================================== */
 
 .bmr-circle {
-  width: 150px;
-  height: 150px;
+  width: 130px;
+  height: 130px;
   margin: 0 auto 25px;
   border-radius: 50%;
   padding: 6px;
@@ -8470,7 +8476,7 @@ TITLE
 .bodyfat-left h2 {
   font-size: var(--fs-2xl);
   color: var(--text-heading);
-  margin-bottom: 24px;
+  margin-bottom: 15px;
 }
 
 .bodyfat-right h5 {
@@ -8696,7 +8702,8 @@ RESULT SECTION
 
 .bodyfat-result-wrapper .result-card h4 {
   margin-bottom: 12px;
-  font-size: var(--fs-lg);
+  /* font-size: var(--fs-lg); */
+  font-size: 15px;
   color: var(--text-heading);
   font-weight: var(--fw-semibold);
   text-align: center;
@@ -9693,6 +9700,7 @@ SCROLLBAR
   color: var(--text-body);
   font-size: var(--font-size-body);
   line-height: var(--line-height-body);
+  text-align: justify;
 }
 
 .program-about__gut {
@@ -9702,9 +9710,10 @@ SCROLLBAR
 }
 
 .program-about__intro {
-  max-width: 46rem;
+  /* max-width: 46rem; */
   margin-inline: auto;
   text-align: center;
+  text-align: justify;
 }
 
 .program-conditions {
@@ -9772,7 +9781,7 @@ SCROLLBAR
 
 .program-highlight__heading h2 {
   margin: 0;
-  max-width: 40rem;
+  /* max-width: 40rem; */
   color: var(--text-heading);
   font-size: var(--font-size-h3);
   font-weight: var(--fw-bold);
@@ -10955,7 +10964,7 @@ SCROLLBAR
   }
 
   .doctorCard__image {
-    max-width: 140px;
+    /* max-width: 140px; */
   }
 
   .doctorCard__content {
@@ -11873,7 +11882,7 @@ SCROLLBAR
   }
 
   .doctorCard__image {
-    max-width: 120px;
+    /* max-width: 120px; */
   }
 
   .doctorCard__content {
@@ -13199,8 +13208,8 @@ SMALL DEVICES
 }
 
 .about-page .doctorCard__image {
-  max-width: 140px;
-  border-radius: 50%;
+  /* max-width: 140px;
+  border-radius: 50%; */
 }
 
 .about-page .doctorCard__content h3 {
@@ -13285,7 +13294,7 @@ SMALL DEVICES
   }
 
   .about-page .doctorCard__image {
-    max-width: 120px;
+    /* max-width: 120px; */
   }
 
   .about-page .wellness__wrapper {
@@ -13391,7 +13400,7 @@ SMALL DEVICES
   }
 
   .about-page .doctorCard__image {
-    max-width: 170px;
+    /* max-width: 170px; */
   }
 
   .about-page .wellness__text {
@@ -13779,6 +13788,9 @@ SMALL DEVICES
   }
   .marginmanages {
     margin-bottom: 5px !important;
+  }
+  .margint {
+    margin-top: 0px;
   }
 }
 

@@ -103,7 +103,7 @@ function LeadershipNoteCard({
 
   return (
     <div
-      className={`leadership__card${showImage ? "" : " leadership__card--no-image"}${
+      className={`p-3 leadership__card${showImage ? "" : " leadership__card--no-image"}${
         hasVideo ? " leadership__card--with-video" : ""
       }`}
     >
@@ -260,7 +260,7 @@ export function LeadershipNotesSlider({ notes = [], loading = false }) {
  </div>
         <Swiper
           modules={[Navigation]}
-          slidesPerView={1}
+          slidesPerView={2}
           spaceBetween={24}
           speed={700}
           watchOverflow

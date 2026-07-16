@@ -9,7 +9,7 @@ const FatLoss = () => {
     <ProgramPage {...page}>
       <TransformationStoriesSection />
 
-      <section className="program-highlight">
+      <section className="program-highlight pt-2">
         <div className="site-container">
           <div className="program-highlight__card">
             <div className="program-highlight__heading">

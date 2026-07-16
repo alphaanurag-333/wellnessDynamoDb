@@ -117,7 +117,7 @@ export default function TransformationStoriesSection() {
   const hasTransformations = Boolean(transformations?.length);
 
   return (
-    <section className="transformation-section" aria-label="Real transformations">
+    <section className="transformation-section pb-0" aria-label="Real transformations">
       <div className="container">
         <div className="transformation-header">
           <div className="header-left">

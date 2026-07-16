@@ -204,7 +204,7 @@ export default function VisceralFatCalculator() {
 
   return (
 
-    <section className="visceral-section">
+    <section className="visceral-section pt-2 pb-2">
 
       <div className="container">
 
