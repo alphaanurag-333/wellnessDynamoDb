@@ -3243,7 +3243,7 @@ h5.pillar-card__head-title {
   grid-template-columns: minmax(0, 1.45fr) repeat(3, minmax(0, 1fr));
   gap: clamp(18px, 2.5vw, 28px);
   align-items: start;
-  padding: clamp(28px, 4vw, 40px) 0 clamp(20px, 3vw, 28px);
+  padding: clamp(28px, 4vw, 40px) 0 clamp(10px, 3vw, 10px);
 }
 
 .site-footer__brand,
@@ -3271,12 +3271,12 @@ h5.pillar-card__head-title {
 }
 
 .site-footer__brand-logo {
-  width: 46px;
-  height: 46px;
+  width: 70px;
+  height: 70px;
   border-radius: 12px;
   object-fit: contain;
   flex-shrink: 0;
-  background: #fff;
+  /* background: #fff; */
   padding: 0;
   box-shadow: none;
 }
@@ -10561,7 +10561,7 @@ SCROLLBAR
   }
 
   .site-header__name {
-    font-size: 0.98rem;
+    font-size: 0.75rem;
   }
 }
 
@@ -10600,13 +10600,13 @@ SCROLLBAR
   }
 
   .site-header__logo {
-    width: 46px;
-    height: 46px;
+    width: 60px;
+    height: 60px;
   }
 
   .site-header__logo img {
-    width: 46px;
-    height: 46px;
+    width: 60px;
+    height: 60px;
   }
   .bmi-card {
     padding: 40px 25px;
@@ -13871,3 +13871,16 @@ SMALL DEVICES
         display: none;
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -5,6 +5,7 @@ import BMISection from "./BMISection";
 import BMRCalculator from "./BMRCalculator";
 import BodyFatCalculator from "./BodyFatCalculator";
 import VisceralFatCalculator from "./VisceralFatCalculator";
+import FinalCTA from "./FinalCTA";
 
 const ResourcesSection = () => {
   const scrollToTools = () => {
@@ -56,7 +57,7 @@ const ResourcesSection = () => {
         <VisceralFatCalculator />
       </div>
 
-      <section className="final-cta">
+      {/* <section className="final-cta">
         <div className="final-cta__overlay"></div>
 
         <div className="final-cta__shape final-cta__shape--top"></div>
@@ -92,7 +93,8 @@ const ResourcesSection = () => {
             </button>
           </div>
         </div>
-      </section>
+      </section> */}
+   <FinalCTA/>
     </section>
   );
 };

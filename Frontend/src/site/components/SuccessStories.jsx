@@ -65,10 +65,11 @@ const SuccessStories = () => {
   const enableCategoryLoop = CATEGORY_ITEMS.length > 4;
 
   return (
-    <section className="success-story success-stories-page">
+   
+    <section className="success-story success-stories-page wellness-toolkit wellnesspedia-page">
       <div className="container success-story__hero pt-2 pb-2">
         <div className="success-wrapper">
-          <div className="success-content">
+          <div className="success-content mb-0">
             {/* <span className="success-tag">CLINICALLY PROVEN RESULTS</span> */}
 
             <h2 className="wellness__title">
@@ -101,7 +102,7 @@ const SuccessStories = () => {
 
       <section className="transformation">
         <div className="container">
-          <div className="transformation-categories__head">
+          {/* <div className="transformation-categories__head">
             <div className="transformation-heading">
               <h2>Our Success Stories</h2>
               <p>Explore clinically guided programs and real outcomes.</p>
@@ -125,8 +126,24 @@ const SuccessStories = () => {
                 <ChevronRight size={20} />
               </button>
             </div>
+          </div> */}
+ <div className="transformation-header">
+          <div className="header-left">
+            <h2>Our Success Stories</h2>
+            <p>Explore clinically guided programs and real outcomes.</p>
           </div>
 
+          {/* {hasTransformations ? ( */}
+            <div className="slider-navigation">
+              <button ref={categoryPrevRef} type="button" className="slider-btn" aria-label="Previous transformation">
+                <ChevronLeft size={20} />
+              </button>
+              <button ref={categoryNextRef} type="button" className="slider-btn" aria-label="Next transformation">
+                <ChevronRight size={20} />
+              </button>
+            </div>
+           {/* ) : null} */}
+        </div>
           <Swiper
             modules={[Navigation, Autoplay]}
             slidesPerView={5}
@@ -201,6 +218,7 @@ const SuccessStories = () => {
       <TransformationStoriesSection />
       <FinalCTA />
     </section>
+  
   );
 };
 
