@@ -391,6 +391,9 @@ const AboutUsSection = () => {
   const cofounderDesignation = FALLBACK_COFOUNDER.designation;
   const cofounderBody = cofounderMessage?.message?.trim() || FALLBACK_COFOUNDER.message;
   const cofounderProfileImage = cofounderMessage?.profileImage || "";
+  const cofounderVideoType = cofounderMessage?.type || "none";
+  const cofounderYtLink = cofounderMessage?.ytLink || "";
+  const cofounderVideo = cofounderMessage?.video || "";
 
   const marqueeItems = [...items, ...items, ...items, ...items];
 
@@ -444,6 +447,9 @@ const AboutUsSection = () => {
         designation={cofounderDesignation}
         message={cofounderBody}
         profileImage={cofounderProfileImage}
+        videoType={cofounderVideoType}
+        ytLink={cofounderYtLink}
+        video={cofounderVideo}
       />
 
       

@@ -15,10 +15,24 @@ export async function adminGetCofounderMessage(token) {
 
 function buildFormData(fields) {
   const fd = new FormData();
+  const type = String(fields.type ?? "none").trim().toLowerCase();
+
   fd.append("name", String(fields.name ?? "").trim());
   fd.append("message", String(fields.message ?? "").trim());
+  fd.append("type", type);
   if (fields?.status !== undefined) fd.append("status", String(fields.status).trim());
-  if (fields.profileImageFile instanceof File) fd.append("profileImage", fields.profileImageFile);
+
+  if (type === "link") {
+    fd.append("ytLink", String(fields.ytLink ?? "").trim());
+  }
+
+  if (fields.profileImageFile instanceof File) {
+    fd.append("profileImage", fields.profileImageFile);
+  }
+  if (type === "video" && fields.videoFile instanceof File) {
+    fd.append("videoFile", fields.videoFile);
+  }
+
   return fd;
 }
 

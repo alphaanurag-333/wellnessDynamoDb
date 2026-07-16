@@ -3,6 +3,7 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation } from "swiper/modules";
 import { ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { mediaUrl } from "../../media.js";
+import { youtubeEmbedUrl } from "../../utils/youtubeEmbed.js";
 import { fetchLeadershipNotes } from "../api/publicMisc.js";
 
 import "swiper/css";
@@ -15,6 +16,35 @@ function messageParagraphs(text) {
     .filter(Boolean);
 }
 
+function LeadershipVideo({ videoType = "none", ytLink = "", video = "", className = "" }) {
+  const type = videoType === "video" ? "video" : videoType === "link" ? "link" : "none";
+
+  if (type === "link") {
+    const embedUrl = youtubeEmbedUrl(ytLink);
+    if (!embedUrl) return null;
+    return (
+      <div className={`leadership__video leadership__video--embed${className ? ` ${className}` : ""}`}>
+        <iframe
+          src={embedUrl}
+          title="Co-founder message video"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        />
+      </div>
+    );
+  }
+
+  if (type === "video" && video) {
+    return (
+      <div className={`leadership__video leadership__video--upload${className ? ` ${className}` : ""}`}>
+        <video src={mediaUrl(video)} controls playsInline preload="metadata" />
+      </div>
+    );
+  }
+
+  return null;
+}
+
 function LeadershipNoteCard({
   badge = "A NOTE FROM LEADERSHIP",
   title,
@@ -22,6 +52,9 @@ function LeadershipNoteCard({
   designation,
   message,
   profileImage = "",
+  videoType = "none",
+  ytLink = "",
+  video = "",
   onExpandChange,
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -33,6 +66,9 @@ function LeadershipNoteCard({
   const imageSrc = profileImage ? mediaUrl(profileImage) : "";
   const showImage = Boolean(imageSrc) && !imageError;
   const heading = String(title || designation || "").trim();
+  const hasVideo =
+    (videoType === "link" && String(ytLink || "").trim()) ||
+    (videoType === "video" && String(video || "").trim());
 
   useEffect(() => {
     setImageError(false);
@@ -66,7 +102,11 @@ function LeadershipNoteCard({
   };
 
   return (
-    <div className={`leadership__card${showImage ? "" : " leadership__card--no-image"}`}>
+    <div
+      className={`leadership__card${showImage ? "" : " leadership__card--no-image"}${
+        hasVideo ? " leadership__card--with-video" : ""
+      }`}
+    >
       {showImage ? (
         <div className="leadership__image">
           <div className="leadership__image-frame">
@@ -107,6 +147,12 @@ function LeadershipNoteCard({
           ) : null}
         </div>
       </div>
+
+      {hasVideo ? (
+        <div className="leadership__video-wrap">
+          <LeadershipVideo videoType={videoType} ytLink={ytLink} video={video} />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -119,6 +165,9 @@ export function LeadershipMessageSection({
   designation,
   message,
   profileImage = "",
+  videoType = "none",
+  ytLink = "",
+  video = "",
   className = "",
 }) {
   return (
@@ -131,6 +180,9 @@ export function LeadershipMessageSection({
           designation={designation}
           message={message}
           profileImage={profileImage}
+          videoType={videoType}
+          ytLink={ytLink}
+          video={video}
         />
       </div>
     </section>

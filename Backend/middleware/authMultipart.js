@@ -43,6 +43,7 @@ const videoTestimonialsUpload = memoryFields([
 
 const cofounderMessageUpload = memoryFields([
   { name: "profileImage", maxCount: 1 },
+  { name: "videoFile", maxCount: 1 },
 ]);
 
 const healthRecipeUpload = memoryFields([

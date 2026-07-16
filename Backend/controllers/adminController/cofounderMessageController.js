@@ -17,13 +17,23 @@ const {
 } = require("../../models/cofounderMessageModel");
 
 const ALLOWED_STATUS = ["active", "inactive"];
+const ALLOWED_VIDEO_TYPE = ["none", "link", "video"];
 const S3_FOLDER = "cofounder-messages";
 const MESSAGE_MAX_LEN = 5000;
+
+function readVideoType(body, fallback = "none") {
+  const type = String(body?.type ?? fallback).trim().toLowerCase();
+  if (!ALLOWED_VIDEO_TYPE.includes(type)) {
+    throw new AppError("type must be none, link, or video", 400);
+  }
+  return type;
+}
 
 function buildCreateUpdates(req) {
   const name = String(req.body.name || "").trim();
   const message = String(req.body.message || "").trim();
   const status = String(req.body.status || "active").trim().toLowerCase();
+  const type = readVideoType(req.body);
 
   if (!name) throw new AppError("name is required", 400);
   if (!message) throw new AppError("message is required", 400);
@@ -32,7 +42,14 @@ function buildCreateUpdates(req) {
   }
   if (!ALLOWED_STATUS.includes(status)) throw new AppError("status must be active or inactive", 400);
 
-  return { name, message, status };
+  return {
+    name,
+    message,
+    status,
+    type,
+    ytLink: type === "link" ? String(req.body.ytLink || "").trim() : "",
+    video: "",
+  };
 }
 
 async function applyProfileUpload(req, current, updates) {
@@ -50,6 +67,56 @@ async function applyProfileUpload(req, current, updates) {
   }
 
   return uploadedProfile;
+}
+
+async function applyVideoFields(req, current, updates) {
+  if (req.body.type !== undefined) {
+    updates.type = readVideoType(req.body);
+  }
+
+  if (req.body.ytLink !== undefined) {
+    updates.ytLink = String(req.body.ytLink || "").trim();
+  }
+  if (req.body.video !== undefined) {
+    updates.video = parseMediaKeyFromBody(req.body.video, "video") ?? "";
+  }
+
+  const uploadedVideo = await uploadMulterField(req, "videoFile", S3_FOLDER);
+  if (uploadedVideo) {
+    if (current?.video) await deleteStoredMedia(current.video);
+    updates.video = uploadedVideo;
+    if (updates.type === undefined) updates.type = "video";
+  }
+
+  if (updates.type === "none") {
+    updates.ytLink = "";
+    if (current?.video) {
+      await deleteStoredMedia(current.video);
+      updates.video = "";
+    }
+  } else if (updates.type === "link") {
+    if (current?.video) {
+      await deleteStoredMedia(current.video);
+      updates.video = "";
+    }
+  } else if (updates.type === "video") {
+    updates.ytLink = "";
+  }
+}
+
+function validateVideoFields(updates, current) {
+  const nextType = updates.type ?? current?.type ?? "none";
+  if (nextType === "none") return;
+
+  const nextYtLink = updates.ytLink !== undefined ? updates.ytLink : (current?.ytLink ?? "");
+  const nextVideo = updates.video !== undefined ? updates.video : (current?.video ?? "");
+
+  if (nextType === "link" && !String(nextYtLink || "").trim()) {
+    throw new AppError("ytLink is required when video type is link", 400);
+  }
+  if (nextType === "video" && !String(nextVideo || "").trim()) {
+    throw new AppError("video file is required when video type is video", 400);
+  }
 }
 
 function validateProfile(updates, current) {
@@ -82,9 +149,11 @@ exports.createCofounderMessageController = asyncHandler(async (req, res) => {
 
   const updates = { ...base, profileImage: "" };
   const uploadedProfile = await applyProfileUpload(req, null, updates);
+  await applyVideoFields(req, null, updates);
 
   if (!uploadedProfile) throw new AppError("profileImage is required", 400);
   validateProfile(updates, null);
+  validateVideoFields(updates, null);
 
   const cofounderMessage = await updateCofounderMessage(updates);
 
@@ -126,12 +195,14 @@ exports.updateCofounderMessageController = asyncHandler(async (req, res) => {
   }
 
   await applyProfileUpload(req, current, updates);
+  await applyVideoFields(req, current, updates);
 
   if (Object.keys(updates).length === 0) {
     throw new AppError("At least one field is required for update", 400);
   }
 
   validateProfile(updates, current);
+  validateVideoFields(updates, current);
 
   let cofounderMessage;
   try {

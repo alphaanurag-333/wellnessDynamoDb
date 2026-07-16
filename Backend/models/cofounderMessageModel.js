@@ -8,13 +8,19 @@ const {
 } = require("../utils/mediaFieldAliases");
 
 const COFOUNDER_MESSAGE_ID = "cofounder-message";
-const MEDIA_FIELDS = ["profileImage"];
+const MEDIA_FIELDS = ["profileImage", "video"];
 const TABLE = "CofounderMessage";
 const STATUS = new Set(["active", "inactive"]);
+const VIDEO_TYPE = new Set(["none", "link", "video"]);
 
 function normalizeStatus(value, fallback = "active") {
   const next = String(value || fallback).toLowerCase().trim();
   return STATUS.has(next) ? next : fallback;
+}
+
+function normalizeVideoType(value, fallback = "none") {
+  const next = String(value || fallback).toLowerCase().trim();
+  return VIDEO_TYPE.has(next) ? next : fallback;
 }
 
 function withLegacyId(item) {
@@ -30,11 +36,12 @@ function toPublicCofounderMessage(item) {
 function sanitizeUpdateField(key, value) {
   const field = normalizeUpdateFieldName(key);
   if (field === "status") return normalizeStatus(value);
-  if (field === "profileImage") {
+  if (field === "type") return normalizeVideoType(value);
+  if (field === "profileImage" || field === "video") {
     if (value == null || String(value).trim() === "") return "";
     return normalizeMediaField(value, field);
   }
-  if (["name", "message"].includes(field)) return String(value).trim();
+  if (["name", "message", "ytLink"].includes(field)) return String(value).trim();
   return value;
 }
 
@@ -45,6 +52,9 @@ async function createCofounderMessageShell() {
     name: "",
     profileImage: "",
     message: "",
+    type: "none",
+    ytLink: "",
+    video: "",
     status: "active",
     createdAt: now,
     updatedAt: now,
@@ -77,7 +87,7 @@ async function getCofounderMessage() {
 }
 
 async function updateCofounderMessage(updates) {
-  const blockedFields = new Set(["id", "_id", "createdAt", "video", "ytLink", "type"]);
+  const blockedFields = new Set(["id", "_id", "createdAt"]);
   const entries = Object.entries(updates || {})
     .filter(([k, v]) => !blockedFields.has(k) && v !== undefined)
     .map(([k, v]) => [normalizeUpdateFieldName(k), sanitizeUpdateField(k, v)]);
