@@ -139,7 +139,7 @@ export default function VideoTestimonials() {
             }
             breakpoints={{
               0: {
-                slidesPerView: 1.15,
+                slidesPerView: 1,
                 spaceBetween: 12,
               },
               576: {
@@ -147,7 +147,7 @@ export default function VideoTestimonials() {
                 spaceBetween: 14,
               },
               992: {
-                slidesPerView: 3,
+                slidesPerView: 4,
                 spaceBetween: 18,
               },
             }}

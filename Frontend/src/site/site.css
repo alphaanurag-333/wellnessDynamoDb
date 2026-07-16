@@ -3230,7 +3230,7 @@ h5.pillar-card__head-title {
   font-family: var(--font-primary);
   background: linear-gradient(180deg, #fff8f3 0%, var(--footer-bg) 42%, #fdeee3 100%);
   padding: 0 0 16px;
-  border-top: 1px solid rgba(231, 134, 58, 0.12);
+  /* border-top: 1px solid rgba(231, 134, 58, 0.12); */
 }
 
 .site-footer__accent {
@@ -4556,7 +4556,7 @@ h5.pillar-card__head-title {
 .pillars {
   width: 100%;
   padding: var(--section-padding-y) 0;
-  background: #f4f7fc;
+  background: var(--admin-bg);
 }
 
 .pillars__heading {
@@ -4974,7 +4974,7 @@ h5.pillar-card__head-title {
 .medicalBoard {
   width: 100%;
   padding: var(--space-8) 0;
-  background: #ffffff;
+  background: var(--admin-bg);
   overflow: hidden;
 }
 
@@ -7640,7 +7640,8 @@ PRINT
 .video-card img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+    object-fit: contain;
+  /* object-fit: cover; */
   object-position: center;
   transition: transform var(--transition);
   display: block;
@@ -12314,7 +12315,7 @@ SCROLLBAR
     height: 380px;
   }
   .success-story .container {
-    padding: 40px 15px;
+    padding: 0px 15px;
   }
 
   .success-tag {
@@ -12823,7 +12824,7 @@ SMALL DEVICES
 .about-page > .medicalBoard + .medicalBoard {
   padding-top: var(--space-4);
   border-top: 1px solid var(--border-light);
-  background: #faf8f6;
+  background: var(--admin-bg);
 }
 
 .about-page .medicalBoard__top {
@@ -13371,6 +13372,9 @@ SMALL DEVICES
     margin-bottom: var(--space-4);
     font-size: var(--font-size-body);
     line-height: var(--line-height-body);
+  }
+  .manageimg {
+    flex-direction: unset !important;
   }
 }
 
