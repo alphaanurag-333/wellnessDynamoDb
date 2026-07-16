@@ -560,7 +560,7 @@ const AboutUsSection = () => {
   of nurturing each aspect to achieve optimal well-being.
 </p>
 
-<div className="aboutFaq__gallery d-flex d-lg-none">
+<div className="aboutFaq__gallery d-flex d-lg-none manageimg">
   <div className="aboutFaq__column">
     <div className="aboutFaq__image aboutFaq__image--large">
       <img src={img1} alt="Wellness" />
