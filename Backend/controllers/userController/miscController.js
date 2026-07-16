@@ -37,6 +37,7 @@ const {
   listActiveMentalWellbeingPaginated,
 } = require("../../models/mentalWellbeingModel");
 const { listActiveSupplements } = require("../../models/supplementModel");
+const { isReferralCodeValidForDiscount } = require("../../services/consultancyPricingService");
 const {
   listMonthlyChampionPostsByMonth,
   findLatestMonthWithChampions,
@@ -618,4 +619,19 @@ exports.submitContactInquiry = asyncHandler(async (req, res) => {
     }
     throw err;
   }
+});
+
+/** GET /public/misc/referral/validate — check if a referral code exists */
+exports.validateReferralCode = asyncHandler(async (req, res) => {
+  const referralCode = req.query.referralCode ?? req.query.referral_code ?? req.query.ref ?? null;
+  const referral = await isReferralCodeValidForDiscount(referralCode);
+  const normalizedCode = referral.valid
+    ? String(referralCode).trim().toUpperCase()
+    : null;
+
+  return res.status(200).json({
+    status: true,
+    valid: referral.valid,
+    referralCode: normalizedCode,
+  });
 });

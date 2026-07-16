@@ -56,7 +56,7 @@ function logPaymentFailure({ transactionId, userId, reason }) {
   });
 }
 
-async function createConsultancyOrder(userId, { referralCode, paymentMethod = "upi", healthConcernId } = {}) {
+async function createConsultancyOrder(userId, { referralCode, paymentMethod = "upi", healthConcernId, healthConcernOther } = {}) {
   const user = await getUserById(userId);
   if (!user) {
     const err = new Error("User not found");
@@ -108,7 +108,8 @@ async function createConsultancyOrder(userId, { referralCode, paymentMethod = "u
   }
 
   const healthConcern = await resolveHealthConcernForConsultancy(
-    healthConcernId || user.primaryHealthConcern
+    healthConcernId || user.primaryHealthConcern,
+    { healthConcernOther },
   );
 
   const preview = await buildCheckoutPreview({ referralCode });

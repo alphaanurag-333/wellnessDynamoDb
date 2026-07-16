@@ -36,6 +36,7 @@ const {
   verifyProfileWhatsappChangeOtp: verifyProfileWhatsappChangeOtpHelper,
 } = require("./userProfileHelpers");
 const { uploadFileFromRequest } = require("../../utils/s3");
+const { resolveRegistrationReferralFields } = require("../../services/registrationReferralService");
 
 function sendAuthResponse(res, statusCode, user, message = "Authentication successful") {
   const { accessToken, refreshToken } = createTokenPair({
@@ -165,6 +166,10 @@ exports.registerUser = asyncHandler(async (req, res) => {
 
   const fcmFromBody = parseFcmIdFromBody(req.body);
   if (fcmFromBody !== undefined) fields.fcm_id = fcmFromBody;
+
+  const referralCodeInput = req.body?.referralCode ?? req.body?.referral_code ?? null;
+  const referralFields = await resolveRegistrationReferralFields(referralCodeInput);
+  Object.assign(fields, referralFields);
 
   const user = await createUser(fields);
 
