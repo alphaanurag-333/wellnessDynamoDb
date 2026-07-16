@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
-import { Navigation } from "swiper/modules";
 import "swiper/css";
-import "swiper/css/navigation";
 import { ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { DEFAULT_IMAGE_SRC, handleMediaImageError, mediaUrl } from "../../media.js";
 import { fetchProgramTestimonials } from "../api/publicMisc.js";
@@ -67,8 +65,7 @@ function ProgramTestimonialCard({ item, expanded, onToggle }) {
 }
 
 export default function ProgramTestimonialsSection({ type, title, subtitle }) {
-  const prevRef = useRef(null);
-  const nextRef = useRef(null);
+  const swiperRef = useRef(null);
   const [testimonials, setTestimonials] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
   const meta = getProgramTestimonialMeta(type);
@@ -125,10 +122,20 @@ export default function ProgramTestimonialsSection({ type, title, subtitle }) {
 
           {hasTestimonials ? (
             <div className="slider-navigation">
-              <button ref={prevRef} type="button" className="slider-btn" aria-label="Previous testimonial">
+              <button
+                type="button"
+                className="slider-btn"
+                aria-label="Previous testimonial"
+                onClick={() => swiperRef.current?.slidePrev()}
+              >
                 <ChevronLeft size={20} />
               </button>
-              <button ref={nextRef} type="button" className="slider-btn" aria-label="Next testimonial">
+              <button
+                type="button"
+                className="slider-btn"
+                aria-label="Next testimonial"
+                onClick={() => swiperRef.current?.slideNext()}
+              >
                 <ChevronRight size={20} />
               </button>
             </div>
@@ -139,22 +146,11 @@ export default function ProgramTestimonialsSection({ type, title, subtitle }) {
           <p className="transformation-section__loading">Loading testimonials…</p>
         ) : (
           <Swiper
-            modules={[Navigation]}
             slidesPerView={3}
             spaceBetween={28}
             speed={700}
-            navigation={{
-              prevEl: prevRef.current,
-              nextEl: nextRef.current,
-            }}
             onSwiper={(swiper) => {
-              setTimeout(() => {
-                swiper.params.navigation.prevEl = prevRef.current;
-                swiper.params.navigation.nextEl = nextRef.current;
-                swiper.navigation.destroy();
-                swiper.navigation.init();
-                swiper.navigation.update();
-              });
+              swiperRef.current = swiper;
             }}
             breakpoints={{
               0: {

@@ -1,8 +1,7 @@
 import { useRef } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
-import { Autoplay, Navigation } from "swiper/modules";
+import { Autoplay } from "swiper/modules";
 import "swiper/css";
-import "swiper/css/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { handleMediaImageError } from "../../media.js";
 import successImg from "../images/about-one.png";
@@ -60,8 +59,7 @@ const CATEGORY_ITEMS = [
 ];
 
 const SuccessStories = () => {
-  const categoryPrevRef = useRef(null);
-  const categoryNextRef = useRef(null);
+  const categorySwiperRef = useRef(null);
   const enableCategoryLoop = CATEGORY_ITEMS.length > 4;
 
   return (
@@ -133,19 +131,27 @@ const SuccessStories = () => {
             <p>Explore clinically guided programs and real outcomes.</p>
           </div>
 
-          {/* {hasTransformations ? ( */}
             <div className="slider-navigation">
-              <button ref={categoryPrevRef} type="button" className="slider-btn" aria-label="Previous transformation">
+              <button
+                type="button"
+                className="slider-btn"
+                aria-label="Previous category"
+                onClick={() => categorySwiperRef.current?.slidePrev()}
+              >
                 <ChevronLeft size={20} />
               </button>
-              <button ref={categoryNextRef} type="button" className="slider-btn" aria-label="Next transformation">
+              <button
+                type="button"
+                className="slider-btn"
+                aria-label="Next category"
+                onClick={() => categorySwiperRef.current?.slideNext()}
+              >
                 <ChevronRight size={20} />
               </button>
             </div>
-           {/* ) : null} */}
         </div>
           <Swiper
-            modules={[Navigation, Autoplay]}
+            modules={[Autoplay]}
             slidesPerView={5}
             spaceBetween={18}
             speed={650}
@@ -159,18 +165,8 @@ const SuccessStories = () => {
                   }
                 : false
             }
-            navigation={{
-              prevEl: categoryPrevRef.current,
-              nextEl: categoryNextRef.current,
-            }}
             onSwiper={(swiper) => {
-              setTimeout(() => {
-                swiper.params.navigation.prevEl = categoryPrevRef.current;
-                swiper.params.navigation.nextEl = categoryNextRef.current;
-                swiper.navigation.destroy();
-                swiper.navigation.init();
-                swiper.navigation.update();
-              });
+              categorySwiperRef.current = swiper;
             }}
             breakpoints={{
               0: {

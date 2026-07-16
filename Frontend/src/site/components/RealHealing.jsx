@@ -99,11 +99,11 @@ export default function RealHealingSlider() {
   if (items === null) {
     return (
       <section className="real-healing-section container" aria-busy="true" aria-label="Loading real healing stories">
-         <div class="transformation-header">
-          <div class="header-left">
-        <h2 className="">Real People : Real Healing</h2>
-        <p className="real-healing-section__loading">Loading stories…</p>
-        </div>
+        <div className="transformation-header">
+          <div className="header-left">
+            <h2>Real People : Real Healing</h2>
+            <p className="real-healing-section__loading">Loading stories…</p>
+          </div>
         </div>
       </section>
     );

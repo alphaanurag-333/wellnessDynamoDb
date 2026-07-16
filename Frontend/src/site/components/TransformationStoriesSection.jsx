@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
-import { Navigation } from "swiper/modules";
 import "swiper/css";
-import "swiper/css/navigation";
 import { ChevronLeft, ChevronRight, Clock3 } from "lucide-react";
 import { handleMediaImageError, mediaUrl } from "../../media.js";
 import { fetchTransformations } from "../api/publicMisc.js";
@@ -93,8 +91,7 @@ function TransformationStoryCard({ item }) {
 }
 
 export default function TransformationStoriesSection() {
-  const prevRef = useRef(null);
-  const nextRef = useRef(null);
+  const swiperRef = useRef(null);
   const [transformations, setTransformations] = useState(null);
 
   useEffect(() => {
@@ -130,10 +127,20 @@ export default function TransformationStoriesSection() {
 
           {hasTransformations ? (
             <div className="slider-navigation">
-              <button ref={prevRef} type="button" className="slider-btn" aria-label="Previous transformation">
+              <button
+                type="button"
+                className="slider-btn"
+                aria-label="Previous transformation"
+                onClick={() => swiperRef.current?.slidePrev()}
+              >
                 <ChevronLeft size={20} />
               </button>
-              <button ref={nextRef} type="button" className="slider-btn" aria-label="Next transformation">
+              <button
+                type="button"
+                className="slider-btn"
+                aria-label="Next transformation"
+                onClick={() => swiperRef.current?.slideNext()}
+              >
                 <ChevronRight size={20} />
               </button>
             </div>
@@ -144,22 +151,11 @@ export default function TransformationStoriesSection() {
           <p className="transformation-section__loading">Loading transformations…</p>
         ) : hasTransformations ? (
           <Swiper
-            modules={[Navigation]}
             slidesPerView={1}
             spaceBetween={16}
             speed={700}
-            navigation={{
-              prevEl: prevRef.current,
-              nextEl: nextRef.current,
-            }}
             onSwiper={(swiper) => {
-              setTimeout(() => {
-                swiper.params.navigation.prevEl = prevRef.current;
-                swiper.params.navigation.nextEl = nextRef.current;
-                swiper.navigation.destroy();
-                swiper.navigation.init();
-                swiper.navigation.update();
-              });
+              swiperRef.current = swiper;
             }}
             breakpoints={{
               0: {
@@ -170,10 +166,10 @@ export default function TransformationStoriesSection() {
                 slidesPerView: 2,
                 spaceBetween: 28,
               },
-              1024:{
+              1024: {
                 slidesPerView: 3,
                 spaceBetween: 28,
-              }
+              },
             }}
             className="transformationStoriesSwiper"
           >
