@@ -88,7 +88,7 @@ export default function ChampionSlider() {
   const count = items.length;
 
   return (
-    <section className="champion-section monthly-champions" aria-label="Monthly champions">
+    <section className="champion-section monthly-champions paddingmanage" aria-label="Monthly champions">
       <div className="site-container">
         <div className="monthly-champions__header">
           <span className="monthly-champions__badge">Community Pride</span>
@@ -136,7 +136,7 @@ export default function ChampionSlider() {
           {items.map((item) => (
             <SwiperSlide key={item.id}>
               <article className="champion-card">
-                <div className="champion-title">{item.title}</div>
+                <div className="champion-title marginmanages">{item.title}</div>
 
                 <div className="champion-user">
                   <div className="champion-avatar">

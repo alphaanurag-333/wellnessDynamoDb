@@ -7625,6 +7625,7 @@ PRINT
   font-size: 14px;
   color: var(--text-body);
   margin-bottom: 0;
+  text-align: justify;
 }
 
 .birthday-info h4 {
@@ -7733,7 +7734,7 @@ PRINT
 }
 
 .real-healing-card:hover {
-  transform: translateY(-6px);
+  /* transform: translateY(-6px); */
   box-shadow: var(--shadow-md);
 }
 
@@ -13758,10 +13759,22 @@ SMALL DEVICES
     flex-direction: unset !important;
   }
   .champion-card {
-    padding: 5px 20px !important;
+    padding: 2px 5px !important;
+    min-height: 125px !important;
   }
   .monthly-champions__header {
     margin-bottom: 0px !important; 
+  }
+  .monthly-champions__badge {
+    height: 20px !important;
+    margin-bottom:5px !important;
+  }
+  .paddingmanage {
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+  }
+  .marginmanages {
+    margin-bottom: 5px !important;
   }
 }
 
