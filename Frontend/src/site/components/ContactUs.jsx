@@ -191,7 +191,7 @@ export default function ContactUsSection() {
   const phonePlaceholder = isIndiaDial(formData.phoneCountryCode) ? "9876543210" : "Phone number";
 
   return (
-    <section className="contact-section">
+    <section className="wellness-toolkit wellnesspedia-page contact-section">
       <div className="contact-hero pt-3 pb-0" style={{minHeight:'auto'}}>
         <div className="contact-hero-content" style={{width:'100%',height:'auto'}}>
           {/* <span className="contact-tag">CONTACT OUR TEAM</span> */}

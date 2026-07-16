@@ -47,6 +47,7 @@ import { FiArrowRight } from "react-icons/fi";
 import AboutUs from "./About.jsx";
 import Methodology from "./Methodology.jsx";
 import { LeadershipMessageSection, LeadershipNotesSlider } from "./LeadershipMessageSection.jsx";
+import FinalCTA from "./FinalCTA.jsx";
 
 const FALLBACK_COFOUNDER = {
   name: "Ms. Banita Acharya",
@@ -629,7 +630,7 @@ const AboutUsSection = () => {
       </section>
 
 
-      <section className="final-cta">
+      {/* <section className="final-cta">
         <div className="final-cta__overlay"></div>
 
         <div className="final-cta__shape final-cta__shape--top"></div>
@@ -641,7 +642,7 @@ const AboutUsSection = () => {
               Are you tired of facing your wellness journey alone?
             </h2>
 
-            <p className="final-cta__description">
+            <p className="final-cta__description" style={{maxWidth:'100%',textAlign:'justify'}}>
               Discover a healthier, happier you with our vibrant wellness
               community. Connect, learn, and grow alongside like-minded
               individuals on your journey to well-being. Take the first step
@@ -661,11 +662,12 @@ const AboutUsSection = () => {
               }
             >
               JOIN IRW COMMUNITY
-              {/* <FiArrowRight /> */}
+              
             </button>
           </div>
         </div>
-      </section>
+      </section> */}
+     <FinalCTA/>
     </section>
   );
 };

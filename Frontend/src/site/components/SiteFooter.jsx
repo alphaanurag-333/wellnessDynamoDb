@@ -86,20 +86,17 @@ export function SiteFooter() {
 
       <div className="site-container">
         <div className="site-footer__grid">
-          <div className="site-footer__brand">
+          <div className="site-footer__brand d-flex">
             <Link to="/" className="site-footer__brand-head">
+
               <img src={logoSrc} alt={appName} className="site-footer__brand-logo" />
+               </Link>
               <h3 className="site-footer__brand-name">{appName}
                 <br/>
                 <FooterBrandText text={footerText} />
-              </h3>
-             
-            </Link>
-
-            {/* <FooterBrandText text={footerText} /> */}
-
-            {social.length > 0 ? (
-              <div className="site-footer__social" aria-label="Social media links">
+                {/* <br/> */}
+                 {social.length > 0 ? (
+              <div className="site-footer__social mt-1" aria-label="Social media links">
                 {social.map((item) => {
                   const Icon = SOCIAL_ICONS[item.icon];
 
@@ -118,6 +115,32 @@ export function SiteFooter() {
                 })}
               </div>
             ) : null}
+              </h3>
+             
+           
+
+            {/* <FooterBrandText text={footerText} /> */}
+
+            {/* {social.length > 0 ? (
+              <div className="site-footer__social" aria-label="Social media links">
+                {social.map((item) => {
+                  const Icon = SOCIAL_ICONS[item.icon];
+
+                  return (
+                    <a
+                      key={item.key}
+                      href={item.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={item.label}
+                      title={item.label}
+                    >
+                      {Icon ? <Icon aria-hidden="true" /> : null}
+                    </a>
+                  );
+                })}
+              </div>
+            ) : null} */}
           </div>
 
           <nav className="site-footer__column" aria-label="Wellness programs">
@@ -175,8 +198,8 @@ export function SiteFooter() {
 
         <div className="site-footer__bottom">
           <div className="site-footer__bottom-meta">
-            <p>{copyrightLine}</p>
-            {footerCredit ? <p className="site-footer__credit">{footerCredit}</p> : null}
+            <p className="text-dark">{copyrightLine}</p>
+            {footerCredit ? <p className="site-footer__credit text-dark fw-semibold">{footerCredit}</p> : null}
           </div>
 
           <nav className="site-footer__bottom-links" aria-label="Legal links">
@@ -187,7 +210,7 @@ export function SiteFooter() {
                     ·
                   </span>
                 ) : null}
-                <Link to={link.to}>{link.label}</Link>
+                <Link to={link.to} className="text-dark">{link.label}</Link>
               </Fragment>
             ))}
           </nav>

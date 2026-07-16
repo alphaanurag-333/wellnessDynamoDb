@@ -65,7 +65,8 @@ const SuccessStories = () => {
   const enableCategoryLoop = CATEGORY_ITEMS.length > 4;
 
   return (
-    <section className="success-story success-stories-page">
+   
+    <section className="success-story success-stories-page wellness-toolkit wellnesspedia-page">
       <div className="container success-story__hero pt-2 pb-2">
         <div className="success-wrapper">
           <div className="success-content mb-0">
@@ -217,6 +218,7 @@ const SuccessStories = () => {
       <TransformationStoriesSection />
       <FinalCTA />
     </section>
+  
   );
 };
 
