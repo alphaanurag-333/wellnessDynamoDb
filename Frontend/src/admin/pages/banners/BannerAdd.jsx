@@ -13,6 +13,8 @@ import {
   IMAGE_MAX_SIZE_BYTES,
   IMAGE_MAX_SIZE_MB,
   IMAGE_WIDTH,
+  MOBILE_IMAGE_HEIGHT,
+  MOBILE_IMAGE_WIDTH,
   TITLE_MAX_LEN,
   DESCRIPTION_MIN_LEN,
   DESCRIPTION_MAX_LEN,
@@ -39,13 +41,21 @@ export function BannerForm({ mode = "create", initialBanner = null }) {
   });
   const editId = isEditMode && initialBanner ? initialBanner._id || initialBanner.id || "" : "";
   const editBaselineImage = isEditMode && initialBanner ? initialBanner.image || "" : "";
+  const editBaselineMobileImage =
+    isEditMode && initialBanner ? initialBanner.mobileImage || "" : "";
   const [imageFile, setImageFile] = useState(null);
+  const [mobileImageFile, setMobileImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(() =>
     isEditMode && initialBanner?.image ? mediaUrl(initialBanner.image) : ""
   );
+  const [mobileImagePreview, setMobileImagePreview] = useState(() =>
+    isEditMode && initialBanner?.mobileImage ? mediaUrl(initialBanner.mobileImage) : ""
+  );
   const fileInputRef = useRef(null);
+  const mobileFileInputRef = useRef(null);
   const [cropModal, setCropModal] = useState({
     open: false,
+    which: null,
     src: "",
     fileName: "",
     mimeType: "",
@@ -58,31 +68,40 @@ export function BannerForm({ mode = "create", initialBanner = null }) {
   const closeCropModal = () => {
     setCropModal((prev) => {
       revokeBlobUrl(prev.src);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      return { open: false, src: "", fileName: "", mimeType: "" };
+      const inputRef = prev.which === "mobile" ? mobileFileInputRef : fileInputRef;
+      if (inputRef?.current) inputRef.current.value = "";
+      return { open: false, which: null, src: "", fileName: "", mimeType: "" };
     });
   };
 
   const resetForm = () => {
     revokeBlobUrl(imagePreview);
+    revokeBlobUrl(mobileImagePreview);
     setForm(emptyForm());
     setImageFile(null);
+    setMobileImageFile(null);
     setImagePreview("");
+    setMobileImagePreview("");
     if (fileInputRef.current) fileInputRef.current.value = "";
+    if (mobileFileInputRef.current) mobileFileInputRef.current.value = "";
   };
 
-  const handleImagePick = (e) => {
+  const handleImagePick = (which, e) => {
     const file = e.target.files?.[0] || null;
+    const isMobile = which === "mobile";
+    const setFile = isMobile ? setMobileImageFile : setImageFile;
+    const setPreview = isMobile ? setMobileImagePreview : setImagePreview;
+    const baseline = isMobile ? editBaselineMobileImage : editBaselineImage;
 
     if (!file) {
-      setImageFile(null);
-      setImagePreview(editBaselineImage ? mediaUrl(editBaselineImage) : "");
+      setFile(null);
+      setPreview(baseline ? mediaUrl(baseline) : "");
       return;
     }
 
     if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
-      setImageFile(null);
-      setImagePreview(editBaselineImage ? mediaUrl(editBaselineImage) : "");
+      setFile(null);
+      setPreview(baseline ? mediaUrl(baseline) : "");
       e.target.value = "";
       void Swal.fire({
         icon: "error",
@@ -93,8 +112,8 @@ export function BannerForm({ mode = "create", initialBanner = null }) {
     }
 
     if (file.size > IMAGE_MAX_SIZE_BYTES) {
-      setImageFile(null);
-      setImagePreview(editBaselineImage ? mediaUrl(editBaselineImage) : "");
+      setFile(null);
+      setPreview(baseline ? mediaUrl(baseline) : "");
       e.target.value = "";
       void Swal.fire({
         icon: "error",
@@ -106,6 +125,7 @@ export function BannerForm({ mode = "create", initialBanner = null }) {
 
     setCropModal({
       open: true,
+      which,
       src: URL.createObjectURL(file),
       fileName: file.name,
       mimeType: file.type,
@@ -113,9 +133,21 @@ export function BannerForm({ mode = "create", initialBanner = null }) {
   };
 
   const handleCropConfirm = (croppedFile) => {
-    revokeBlobUrl(imagePreview);
-    setImageFile(croppedFile);
-    setImagePreview(URL.createObjectURL(croppedFile));
+    const which = cropModal.which;
+    if (!which) {
+      closeCropModal();
+      return;
+    }
+    const isMobile = which === "mobile";
+    const currentPreview = isMobile ? mobileImagePreview : imagePreview;
+    revokeBlobUrl(currentPreview);
+    if (isMobile) {
+      setMobileImageFile(croppedFile);
+      setMobileImagePreview(URL.createObjectURL(croppedFile));
+    } else {
+      setImageFile(croppedFile);
+      setImagePreview(URL.createObjectURL(croppedFile));
+    }
     closeCropModal();
   };
 
@@ -132,7 +164,15 @@ export function BannerForm({ mode = "create", initialBanner = null }) {
       await Swal.fire({
         icon: "error",
         title: "Validation error",
-        text: "Banner image is required.",
+        text: "Desktop banner image is required.",
+      });
+      return;
+    }
+    if (!editId && !(mobileImageFile instanceof File)) {
+      await Swal.fire({
+        icon: "error",
+        title: "Validation error",
+        text: "Mobile banner image is required.",
       });
       return;
     }
@@ -145,10 +185,10 @@ export function BannerForm({ mode = "create", initialBanner = null }) {
     setSaving(true);
     try {
       if (editId) {
-        await adminUpdateBanner(adminToken, editId, payload, imageFile);
+        await adminUpdateBanner(adminToken, editId, payload, imageFile, mobileImageFile);
         await Swal.fire({ icon: "success", title: "Banner updated", timer: 1500 });
       } else {
-        await adminCreateBanner(adminToken, payload, imageFile);
+        await adminCreateBanner(adminToken, payload, imageFile, mobileImageFile);
         await Swal.fire({ icon: "success", title: "Banner created", timer: 1500 });
       }
       navigate("/admin/banners");
@@ -164,10 +204,25 @@ export function BannerForm({ mode = "create", initialBanner = null }) {
     }
   };
 
+  const cropIsMobile = cropModal.which === "mobile";
+  const cropWidth = cropIsMobile ? MOBILE_IMAGE_WIDTH : IMAGE_WIDTH;
+  const cropHeight = cropIsMobile ? MOBILE_IMAGE_HEIGHT : IMAGE_HEIGHT;
+
   return (
     <>
       <form onSubmit={onSubmit}>
         <div className="row g-3">
+          <label className="user-field col-12 col-md-6">
+            <span className="user-field__label">Status</span>
+            <select
+              className="user-field__input"
+              value={form.status}
+              onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
+            >
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </label>
           <label className="user-field col-12 col-md-6">
             <span
               className="user-field__label"
@@ -212,67 +267,97 @@ export function BannerForm({ mode = "create", initialBanner = null }) {
               {form.description.trim().length}/{DESCRIPTION_MAX_LEN} (min {DESCRIPTION_MIN_LEN})
             </small>
           </label>
-          <label className="user-field col-12 col-md-6">
-            <span className="user-field__label">Status</span>
-            <select
-              className="user-field__input"
-              value={form.status}
-              onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
-            >
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-          </label>
-          <div className="user-field col-12">
+
+          <div className="user-field col-12 col-md-6">
             <span className="user-field__label">
-              Banner image ({IMAGE_WIDTH}px × {IMAGE_HEIGHT}px, max {IMAGE_MAX_SIZE_MB} MB){" "}
+              Desktop banner image ({IMAGE_WIDTH}px × {IMAGE_HEIGHT}px, max {IMAGE_MAX_SIZE_MB} MB){" "}
               {editId ? "(optional)" : <span className="required-dot">*</span>}
             </span>
             <p className="data-table__muted" style={{ margin: "0 0 8px", fontSize: 13 }}>
-              Recommended resolution: <strong>{IMAGE_WIDTH} × {IMAGE_HEIGHT}px</strong> (widescreen).
-              Use the crop tool so the image fills the website hero without stretching or black bars.
-              Keep important content in the center — edges may crop slightly on smaller screens.
+              Recommended: <strong>{IMAGE_WIDTH} × {IMAGE_HEIGHT}px</strong> for the website desktop
+              hero. Keep important content in the center.
             </p>
             <input
               ref={fileInputRef}
               type="file"
               accept="image/jpeg,image/png,image/gif,image/webp"
               className="user-field__input"
-              onChange={handleImagePick}
+              onChange={(e) => handleImagePick("desktop", e)}
             />
+            {imagePreview ? (
+              <div className="banner-image-preview" style={{ marginTop: 12 }}>
+                <p className="data-table__muted" style={{ marginBottom: 8, fontSize: 13 }}>
+                  Desktop preview ({IMAGE_WIDTH} × {IMAGE_HEIGHT}px)
+                </p>
+                <div
+                  className="banner-image-preview__frame"
+                  style={{
+                    width: "100%",
+                    maxWidth: 720,
+                    aspectRatio: `${IMAGE_WIDTH} / ${IMAGE_HEIGHT}`,
+                    borderRadius: 12,
+                    overflow: "hidden",
+                    border: "1px solid var(--admin-border, #e5e7eb)",
+                    background: "#111",
+                  }}
+                >
+                  <img
+                    src={imagePreview}
+                    alt="Desktop banner preview"
+                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                  />
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="user-field col-12 col-md-6">
+            <span className="user-field__label">
+              Mobile banner image ({MOBILE_IMAGE_WIDTH}px × {MOBILE_IMAGE_HEIGHT}px, max{" "}
+              {IMAGE_MAX_SIZE_MB} MB){" "}
+              {editId ? "(optional)" : <span className="required-dot">*</span>}
+            </span>
+            <p className="data-table__muted" style={{ margin: "0 0 8px", fontSize: 13 }}>
+              Recommended: <strong>
+                {MOBILE_IMAGE_WIDTH} × {MOBILE_IMAGE_HEIGHT}px
+              </strong>{" "}
+              for mobile website and the app home banner. Use a tighter crop so faces/text stay
+              readable on smaller screens.
+            </p>
+            <input
+              ref={mobileFileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              className="user-field__input"
+              onChange={(e) => handleImagePick("mobile", e)}
+            />
+            {mobileImagePreview ? (
+              <div className="banner-image-preview" style={{ marginTop: 12 }}>
+                <p className="data-table__muted" style={{ marginBottom: 8, fontSize: 13 }}>
+                  Mobile / app preview ({MOBILE_IMAGE_WIDTH} × {MOBILE_IMAGE_HEIGHT}px)
+                </p>
+                <div
+                  className="banner-image-preview__frame"
+                  style={{
+                    width: "100%",
+                    maxWidth: 420,
+                    aspectRatio: `${MOBILE_IMAGE_WIDTH} / ${MOBILE_IMAGE_HEIGHT}`,
+                    borderRadius: 12,
+                    overflow: "hidden",
+                    border: "1px solid var(--admin-border, #e5e7eb)",
+                    background: "#111",
+                  }}
+                >
+                  <img
+                    src={mobileImagePreview}
+                    alt="Mobile banner preview"
+                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                  />
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
-
-        {imagePreview ? (
-          <div className="banner-image-preview" style={{ marginTop: 16 }}>
-            <p className="data-table__muted" style={{ marginBottom: 8, fontSize: 13 }}>
-              Preview ({IMAGE_WIDTH} × {IMAGE_HEIGHT}px website crop)
-            </p>
-            <div
-              className="banner-image-preview__frame"
-              style={{
-                width: "100%",
-                maxWidth: 720,
-                aspectRatio: `${IMAGE_WIDTH} / ${IMAGE_HEIGHT}`,
-                borderRadius: 12,
-                overflow: "hidden",
-                border: "1px solid var(--admin-border, #e5e7eb)",
-                background: "#111",
-              }}
-            >
-              <img
-                src={imagePreview}
-                alt="Banner preview"
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  display: "block",
-                }}
-              />
-            </div>
-          </div>
-        ) : null}
 
         <div className="user-form__actions">
           {isEditMode ? (
@@ -296,10 +381,10 @@ export function BannerForm({ mode = "create", initialBanner = null }) {
 
       <ImageCropModal
         open={cropModal.open}
-        title="Crop banner image"
+        title={cropIsMobile ? "Crop mobile banner image" : "Crop desktop banner image"}
         imageSrc={cropModal.src}
-        outputWidth={IMAGE_WIDTH}
-        outputHeight={IMAGE_HEIGHT}
+        outputWidth={cropWidth}
+        outputHeight={cropHeight}
         originalFileName={cropModal.fileName}
         originalMimeType={cropModal.mimeType}
         onCancel={closeCropModal}
@@ -314,7 +399,7 @@ export function BannerAdd() {
     <div className="user-page">
       <AdminPageHeader
         title="Create banner"
-        subtitle={`Upload a ${IMAGE_WIDTH}×${IMAGE_HEIGHT}px hero banner (max ${IMAGE_MAX_SIZE_MB} MB).`}
+        subtitle={`Upload desktop (${IMAGE_WIDTH}×${IMAGE_HEIGHT}px) and mobile (${MOBILE_IMAGE_WIDTH}×${MOBILE_IMAGE_HEIGHT}px) banners (max ${IMAGE_MAX_SIZE_MB} MB each).`}
         backTo="/admin/banners"
       />
       <div className="page-card">

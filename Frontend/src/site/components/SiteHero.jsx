@@ -21,13 +21,20 @@ export function SiteHero() {
         const banners = Array.isArray(data?.banners) ? data.banners : [];
         setSlides(
           banners
-            .filter((banner) => banner?.image)
-            .map((banner) => ({
-              id: banner.id || banner._id,
-              title: banner.title || "",
-              description: banner.description || "",
-              image: mediaUrl(banner.image) || banner.image,
-            }))
+            .filter((banner) => banner?.image || banner?.mobileImage)
+            .map((banner) => {
+              const desktop = mediaUrl(banner.image) || banner.image || "";
+              const mobile =
+                mediaUrl(banner.mobileImage) || banner.mobileImage || desktop;
+              return {
+                id: banner.id || banner._id,
+                title: banner.title || "",
+                description: banner.description || "",
+                image: desktop || mobile,
+                mobileImage: mobile,
+              };
+            })
+            .filter((slide) => slide.image)
         );
       } catch {
         if (!cancelled) setSlides([]);
@@ -81,12 +88,17 @@ export function SiteHero() {
         <SwiperSlide key={slide.id}>
           <div className="slide-flash" />
           <div className="hero-bg">
-            <img
-              src={slide.image}
-              alt={slide.title || "Banner"}
-              className="hero-bg-image"
-              onError={handleMediaImageError}
-            />
+            <picture>
+              {slide.mobileImage && slide.mobileImage !== slide.image ? (
+                <source media="(max-width: 992px)" srcSet={slide.mobileImage} />
+              ) : null}
+              <img
+                src={slide.image}
+                alt={slide.title || "Banner"}
+                className="hero-bg-image"
+                onError={handleMediaImageError}
+              />
+            </picture>
           </div>
           <div className="hero-overlay" />
           <div className="hero-content">

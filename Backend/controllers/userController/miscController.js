@@ -102,7 +102,7 @@ exports.getActiveBanners = asyncHandler(async (req, res) => {
   const data = resolveListMedia(
     await listBanners({ page, limit, status: "active" }),
     "banners",
-    ["image"]
+    ["image", "mobileImage"]
   );
   return res.status(200).json({ status: true, banners: data.banners, pagination: data.pagination });
 });

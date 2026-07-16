@@ -8,9 +8,16 @@ export const DESCRIPTION_MIN_LEN = 5;
 export const DESCRIPTION_MAX_LEN = 255;
 export const DESCRIPTION_PREVIEW_LEN = 80;
 
-/** Website hero banner crop size — wide landscape for object-fit: cover */
+/** Website desktop hero banner crop — wide landscape */
 export const IMAGE_WIDTH = 1905;
 export const IMAGE_HEIGHT = 640;
+
+/**
+ * Mobile web + app banner crop.
+ * Matches phone strip (~full width × 180px app carousel) and mobile site hero.
+ */
+export const MOBILE_IMAGE_WIDTH = 1080;
+export const MOBILE_IMAGE_HEIGHT = 480;
 
 export const ALLOWED_IMAGE_TYPES = new Set([
   "image/jpeg",

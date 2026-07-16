@@ -14,7 +14,10 @@ const memoryFields = (fields) => createMemoryUploader().fields(fields);
 const memorySingle = (field) => createMemoryUploader().single(field);
 
 const adminUpload = memorySingle("file");
-const bannerUpload = memorySingle("file");
+const bannerUpload = memoryFields([
+  { name: "file", maxCount: 1 },
+  { name: "mobileImage", maxCount: 1 },
+]);
 const notificationUpload = memorySingle("file");
 const clientTestimonialsUpload = memorySingle("file");
 const leadershipNotesUpload = memorySingle("file");

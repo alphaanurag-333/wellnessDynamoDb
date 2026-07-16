@@ -2013,6 +2013,12 @@ a:hover {
   background: #121212;
 }
 
+.hero-bg picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 .hero-bg-image {
   animation: none;
 }
@@ -10173,7 +10179,8 @@ SCROLLBAR
 @media (max-width: 992px) {
   .swiper.heroSwiper,
   .heroSwiper--loading {
-    height: clamp(180px, 40vw, 280px);
+    /* Matches mobile banner crop 1080×480 (~2.25:1) */
+    height: clamp(160px, 44.444vw, 320px);
   }
 
   .hero-overlay {
@@ -11876,7 +11883,8 @@ SCROLLBAR
 
   .swiper.heroSwiper,
   .heroSwiper--loading {
-    height: 200px;
+    /* ~1080×480 mobile crop on narrow phones */
+    height: clamp(150px, 44.444vw, 220px);
   }
 
   .hero-content {

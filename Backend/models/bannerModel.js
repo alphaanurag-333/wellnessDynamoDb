@@ -26,27 +26,33 @@ function withLegacyId(item) {
   return { ...item, _id: item.id };
 }
 
-function normalizeImageField(value) {
+function normalizeImageField(value, fieldName = "image") {
   if (value == null || String(value).trim() === "") return "";
   const objectKey = normalizeStoredMedia(String(value).trim());
-  if (!objectKey) throw new Error("image must be a valid S3 object key (e.g. banner/photo.jpg)");
+  if (!objectKey) {
+    throw new Error(`${fieldName} must be a valid S3 object key (e.g. banner/photo.jpg)`);
+  }
   return objectKey;
 }
+
+const MEDIA_FIELDS = new Set(["image", "mobileImage"]);
 
 function toPublicBanner(banner) {
   const item = withLegacyId(banner);
   if (!item) return null;
   if (item.image) item.image = resolvePublicUrl(item.image);
+  if (item.mobileImage) item.mobileImage = resolvePublicUrl(item.mobileImage);
   return item;
 }
 
-async function createBanner({ title, description, image, status = "active" }) {
+async function createBanner({ title, description, image, mobileImage = "", status = "active" }) {
   const now = new Date().toISOString();
   const item = {
     id: uuidv4(),
     title: String(title || "").trim(),
     description: String(description || "").trim(),
-    image: normalizeImageField(image),
+    image: normalizeImageField(image, "image"),
+    mobileImage: normalizeImageField(mobileImage, "mobileImage"),
     status: normalizeStatus(status),
     createdAt: now,
     updatedAt: now,
@@ -85,7 +91,7 @@ async function updateBanner(id, updates) {
 
   for (const [k, v] of entries) {
     exprNames[`#${k}`] = k;
-    exprValues[`:${k}`] = k === "image" ? normalizeImageField(v) : v;
+    exprValues[`:${k}`] = MEDIA_FIELDS.has(k) ? normalizeImageField(v, k) : v;
     setExpr += `, #${k} = :${k}`;
   }
 
