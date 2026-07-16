@@ -26,6 +26,7 @@ const {
   getActiveMentalWellbeing,
   getActiveSupplements,
   submitContactInquiry,
+  validateReferralCode,
 } = require("../../controllers/userController/miscController");
 
 const router = express.Router();
@@ -56,5 +57,6 @@ router.get("/physical-exercises", getActivePhysicalExercises);
 router.get("/mental-wellbeing", getActiveMentalWellbeing);
 router.get("/supplements", getActiveSupplements);
 router.post("/contact-inquiries", submitContactInquiry);
+router.get("/referral/validate", validateReferralCode);
 
 module.exports = router;
