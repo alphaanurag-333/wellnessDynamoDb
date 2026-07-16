@@ -31,7 +31,7 @@ export function ServicesSection() {
   const { services } = useSiteConfig();
 
   return (
-    <section id={services.id} className="site-section site-section--muted" aria-labelledby="services-heading">
+    <section id={services.id} className="site-section site-section--muted pt-0" aria-labelledby="services-heading">
       <div className="site-container">
         <div className="site-section__header site-section__header--centered">
           <p className="site-eyebrow">{services.eyebrow}</p>
@@ -44,7 +44,7 @@ export function ServicesSection() {
           {services.items.map((item, index) => {
             const Icon = SERVICE_ICONS[item.icon] || IoPeopleOutline;
             return (
-              <SiteCard key={item.title} className="site-service-card site-service-card--hover">
+              <SiteCard key={item.title} className="site-service-card site-service-card--hover p-3">
                 {/* <span className="site-service-card__index" aria-hidden>
                   {String(index + 1).padStart(2, "0")}
                 </span> */}

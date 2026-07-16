@@ -14,24 +14,24 @@ const ResourcesSection = () => {
 
   return (
     <section className="wellness-toolkit wellnesspedia-page">
-      <div className="resources-header">
+      <div className="resources-header pt-2 pb-0">
         <div className="site-container">
-          <div className="wellness-toolkit__content">
-            <span className="wellness-toolkit__badge">
+          <div className="wellness-toolkit__content" style={{maxWidth:"100%"}}>
+            {/* <span className="wellness-toolkit__badge">
               CLINICALLY PROVEN TOOLS
-            </span>
+            </span> */}
 
-            <h2 className="wellness-toolkit__title">
+            <h2 className="wellness__title">
               Your Wellness <span>Toolkit</span>
             </h2>
 
-            <p className="wellness-toolkit__description">
+            <p className="wellness-toolkit__description" style={{maxWidth:"100%"}}>
               Empowering your health journey with precision-engineered
               resources. Access our clinical calculators and expert-curated
               guides designed for your restorative sanctuary.
             </p>
 
-            <button
+            {/* <button
               type="button"
               className="wellness-toolkit__button"
               onClick={scrollToTools}
@@ -41,7 +41,7 @@ const ResourcesSection = () => {
               </span>
 
               <span>Start Calculating</span>
-            </button>
+            </button> */}
           </div>
         </div>
 
@@ -68,7 +68,7 @@ const ResourcesSection = () => {
               Are you tired of facing your wellness journey alone?
             </h2>
 
-            <p className="final-cta__description">
+            <p className="final-cta__description" style={{maxWidth:'100%', textAlign:'justify'}}>
               Discover a healthier, happier you with our vibrant wellness
               community. Connect, learn, and grow alongside like-minded
               individuals on your journey to well-being. Take the first step
@@ -78,7 +78,7 @@ const ResourcesSection = () => {
 
             <button
               type="button"
-              className="final-cta__button"
+              className="final-cta__button mt-0"
               onClick={() =>
                 window.open(
                   "https://chat.whatsapp.com/Lcv5qyt7tvX6nrif7poqBB",
@@ -87,7 +87,7 @@ const ResourcesSection = () => {
                 )
               }
             >
-              JOIN IRW WELLNESS COMMUNITY
+              JOIN IRW COMMUNITY
               <FiArrowRight />
             </button>
           </div>

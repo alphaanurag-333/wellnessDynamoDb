@@ -30,7 +30,7 @@ export function StatsSection() {
   if (!stats.length) return null;
 
   return (
-    <section className="site-section site-section--stats" aria-label="Platform highlights">
+    <section className="site-section site-section--stats managemobile" aria-label="Platform highlights">
       <div className="site-container">
         <div className={`site-stats site-stats--${Math.min(stats.length, 4)}`}>
           {stats.map((card) => (

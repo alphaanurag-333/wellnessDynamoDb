@@ -9,15 +9,36 @@ export default function WellnessHero() {
     <section className="wellness-hero">
       <div className="wellness-hero__container">
         <div className="wellness-hero__content">
-          <div className="wellness-hero__badge">
+          {/* <div className="wellness-hero__badge">
             Welcome to India Redefining Wellness!
-          </div>
+          </div> */}
 
           <h1 className="wellness-hero__title">
             Improving health by<span> Inspiring </span>
-            healthy <br />
+            healthy 
             living.
           </h1>
+
+ <div className="wellness-hero__visual improvingimg">
+          <div className="wellness-hero__image-wrapper">
+            <img
+              src={heroImage}
+              alt="Wellness Clinic"
+              className="wellness-hero__image"
+            />
+
+            <div className="wellness-hero__stat-card">
+              <div className="wellness-hero__stat-icon">
+                <FiAward />
+              </div>
+
+              <div>
+                <h4>5,000+</h4>
+                <p>Lives transformed through our personalized programs.</p>
+              </div>
+            </div>
+          </div>
+        </div> 
 
           <p className="wellness-hero__description">
             At India Redefining Wellness, we’re dedicated to improving health by
@@ -44,7 +65,7 @@ export default function WellnessHero() {
             </button>          </div>
         </div>
 
-        <div className="wellness-hero__visual">
+        <div className="wellness-hero__visual improvingimgs">
           <div className="wellness-hero__image-wrapper">
             <img
               src={heroImage}

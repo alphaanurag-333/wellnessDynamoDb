@@ -21,7 +21,7 @@ export const ABOUT_SECTION = {
 
 export const SERVICES_SECTION = {
   id: "services",
-  eyebrow: "What We Offer",
+  // eyebrow: "What We Offer",
   title: "Holistic Programs for Real Results",
   items: [
     {

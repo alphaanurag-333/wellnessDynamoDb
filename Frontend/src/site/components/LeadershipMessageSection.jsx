@@ -81,7 +81,7 @@ function LeadershipNoteCard({
       ) : null}
 
       <div className="leadership__content">
-        {badge ? <span className="leadership__badge">{badge}</span> : null}
+        {/* {badge ? <span className="leadership__badge">{badge}</span> : null} */}
         {heading ? <h2 className="leadership__title">{heading}</h2> : null}
 
         <div className="leadership__author">
@@ -122,7 +122,7 @@ export function LeadershipMessageSection({
   className = "",
 }) {
   return (
-    <section className={`leadership${className ? ` ${className}` : ""}`}>
+    <section className={`pt-2 leadership${className ? ` ${className}` : ""}`}>
       <div className="site-container">
         <LeadershipNoteCard
           badge={badge}
@@ -186,8 +186,15 @@ export function LeadershipNotesSlider({ notes = [], loading = false }) {
   if (items.length === 0) return null;
 
   return (
-    <section className="leadership leadership-slider" aria-label="Leadership notes">
+    <section className="leadership leadership-slider pt-2 pb-0" aria-label="Leadership notes">
+      
       <div className="site-container">
+         <div className="transformation-header">
+          <div className="header-left">
+            <h2>Notes from Leadership</h2>
+            <p>Guiding our vision with transparency, purpose, and commitment</p>
+          </div>
+         
         {showNav ? (
           <div className="leadership-slider__nav">
             <button ref={prevRef} type="button" className="leadership-slider__navBtn" aria-label="Previous note">
@@ -198,7 +205,7 @@ export function LeadershipNotesSlider({ notes = [], loading = false }) {
             </button>
           </div>
         ) : null}
-
+ </div>
         <Swiper
           modules={[Navigation]}
           slidesPerView={1}
