@@ -7425,7 +7425,7 @@ PRINT
   position: relative;
   overflow: hidden;
   border-radius: 25px;
-  min-height: 200px;
+  min-height: 150px;
 }
 
 /* -------- Monthly Champions heading (cards keep existing style) -------- */
@@ -12098,7 +12098,7 @@ SCROLLBAR
   .swiper.heroSwiper,
   .heroSwiper--loading {
     /* height: 200px; */
-    height: 300px;
+    height: 250px;
   }
 
   .hero-content {
@@ -13756,6 +13756,12 @@ SMALL DEVICES
   }
   .manageimg {
     flex-direction: unset !important;
+  }
+  .champion-card {
+    padding: 5px 20px !important;
+  }
+  .monthly-champions__header {
+    margin-bottom: 0px !important; 
   }
 }
 
