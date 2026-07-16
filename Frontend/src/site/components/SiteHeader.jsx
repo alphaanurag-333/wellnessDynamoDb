@@ -10,6 +10,7 @@ import {
 import { LOGIN_PORTAL_LINKS, SITE_NAV_LINKS } from "../data/siteNav.js";
 import { useSiteConfig } from "../hooks/useSiteConfig.js";
 import { SiteButton } from "./SiteButton.jsx";
+import { ChevronDown } from "lucide-react";
 
 function isNavActive(pathname, to) {
   if (to === "/") return pathname === "/";
@@ -292,7 +293,7 @@ export function SiteHeader() {
 
           <details open={isHealthActive}>
             <summary className={isHealthActive ? "active" : ""}>
-              Health Solutions
+              Health Solutions   <ChevronDown size={18} />
             </summary>
 
             <div className="mobile-submenu">

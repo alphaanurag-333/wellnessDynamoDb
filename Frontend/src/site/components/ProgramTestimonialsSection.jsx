@@ -147,7 +147,7 @@ export default function ProgramTestimonialsSection({ type, title, subtitle }) {
             <p>{sectionSubtitle}</p>
           </div>
          
-        {hasTestimonials ? (
+        {testimonials?.length > 3 ? (
           <div className="leadership-slider__nav">
             <button onClick={() => swiperRef.current?.slidePrev()} type="button" className="leadership-slider__navBtn" aria-label="Previous note">
               <ChevronLeft size={22} />

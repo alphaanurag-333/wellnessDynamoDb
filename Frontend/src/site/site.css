@@ -7020,7 +7020,7 @@ PRINT
   overflow: hidden;
   text-align: left;
   font-weight: 500;
-  text-align: justify;
+ 
 }
 
 .transformation-list {
@@ -14044,6 +14044,7 @@ SMALL DEVICES
         display: none;
     }
 }
+
 
 
 
