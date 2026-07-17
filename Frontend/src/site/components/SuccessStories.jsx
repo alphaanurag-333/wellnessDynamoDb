@@ -67,6 +67,11 @@ const SuccessStories = () => {
   const categorySwiperRef = useRef(null);
   const enableCategoryLoop = CATEGORY_ITEMS.length > 4;
 
+
+  const showNavigation =
+  window.innerWidth >= 1200
+    ? CATEGORY_ITEMS.length > 5
+    : CATEGORY_ITEMS.length > 1;
   return (
    
     <section className="success-story success-stories-page wellness-toolkit wellnesspedia-page">
@@ -136,7 +141,8 @@ const SuccessStories = () => {
             <p>Explore clinically guided programs and real outcomes.</p>
           </div>
 
-            <div className="slider-navigation">
+
+            <div className="slider-navigation d-none">
               <button
                 type="button"
                 className="slider-btn"
@@ -156,6 +162,7 @@ const SuccessStories = () => {
             </div>
         </div>
           <Swiper
+          loop={true}
             modules={[Autoplay]}
             slidesPerView={5}
             spaceBetween={14}

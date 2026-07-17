@@ -160,6 +160,7 @@ function CoachBoardSection({
           <p className="medicalBoard__loading">{loadingLabel}</p>
         ) : (
           <Swiper
+          loop={true}
             modules={[Navigation]}
             spaceBetween={16}
             slidesPerView={4}
@@ -580,9 +581,9 @@ const AboutUsSection = () => {
             {/* RIGHT */}
 
             <div className="aboutFaq__content">
-              <span className="aboutFaq__label">OUR PROCESS</span>
+              <span className="aboutFaq__label pl-0">OUR PROCESS</span>
 
-             <p className="aboutFaq__para managmt">
+             <p className="aboutFaq__para managmt mt-0">
   We believe in a holistic approach towards health & Wellness.
   <br />
   Holistic Health recognizes the interconnectedness of mind, body

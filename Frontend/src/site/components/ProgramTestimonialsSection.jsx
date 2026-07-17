@@ -162,6 +162,7 @@ export default function ProgramTestimonialsSection({ type, title, subtitle }) {
           <p className="transformation-section__loading">Loading testimonials…</p>
         ) : (
           <Swiper
+          loop={true}
             slidesPerView={3}
             spaceBetween={28}
             speed={700}

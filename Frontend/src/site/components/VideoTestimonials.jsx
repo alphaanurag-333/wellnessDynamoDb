@@ -177,7 +177,7 @@ export default function VideoTestimonials() {
     <section className="video-slider-section" aria-label="Video testimonials">
       <div className="container">
         <h2 className="voice-title">Voice of Healing : Unfiltered</h2>
-        <Swiper
+        <Swiper loop={true}
           modules={[Autoplay]}
           slidesPerView={3}
           spaceBetween={20}

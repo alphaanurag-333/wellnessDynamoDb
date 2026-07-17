@@ -167,7 +167,7 @@ export default function TransformationStoriesSection() {
         {transformationsLoading ? (
           <p className="transformation-section__loading">Loading transformations…</p>
         ) : hasTransformations ? (
-          <Swiper
+          <Swiper loop={true}
             slidesPerView={1}
             spaceBetween={16}
             speed={700}
