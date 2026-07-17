@@ -8,7 +8,7 @@ import {
   buildAssistantPayload,
   buildAssistantUpdatePayload,
 } from "../../api/adminWellnessCoaches.js";
-import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
+import { AdminImagePicker, ADMIN_IMAGE_PRESETS } from "../../components/AdminImagePicker.jsx";
 import { logout } from "../../../store/authSlice.js";
 import {
   ALL_COUNTRIES,
@@ -36,7 +36,6 @@ import {
   sanitizePersonName,
   sanitizePhoneDigits,
 } from "../../../utils/personFieldValidation.js";
-import { validateImageFileSize } from "../../../utils/mediaUploadValidation.js";
 import { WellnessCoachSubmitLoader } from "../wellnessCoach/WellnessCoachPageLoader.jsx";
 
 export function AssistantForm({
@@ -66,13 +65,6 @@ export function AssistantForm({
     setPreviewUrl(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }, [initialAssistant]);
-
-  useEffect(() => {
-    if (!profileFile) return;
-    const url = URL.createObjectURL(profileFile);
-    setPreviewUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [profileFile]);
 
   const handleChange = (field) => (e) => {
     setValues((p) => ({ ...p, [field]: e.target.value }));
@@ -181,42 +173,27 @@ export function AssistantForm({
       ) : null}
 
       <div className="d-flex flex-column flex-sm-row align-items-start gap-3 pb-4 mb-4 border-bottom">
-        <div className="position-relative flex-shrink-0">
-          <input
-            ref={fileInputRef}
-            id={fileInputId}
-            type="file"
-            accept="image/jpeg,image/png,image/gif,image/webp"
-            className="d-none"
-            onChange={async (e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-              const sizeErr = validateImageFileSize(file);
-              if (sizeErr) {
-                e.target.value = "";
-                await Swal.fire({ icon: "error", title: "Validation error", text: sizeErr });
-                return;
-              }
-              setProfileFile(file);
-            }}
-          />
-          <label htmlFor={fileInputId} className="mb-0 d-block" style={{ cursor: "pointer" }}>
-            <div
-              className="rounded-circle border overflow-hidden bg-body-secondary"
-              style={{ width: 96, height: 96 }}
-            >
-              <AdminMediaImage
-                path={initialAssistant?.profileImage}
-                src={previewUrl || undefined}
-                round
-                width={96}
-                height={96}
-                alt="Profile"
-              />
-            </div>
-            <div className="text-center small text-primary mt-2">Photo</div>
-          </label>
-        </div>
+        <AdminImagePicker
+          variant="avatar"
+          label="Profile photo"
+          chooseLabel="Photo"
+          hint={`Crop to ${ADMIN_IMAGE_PRESETS.profile.width} × ${ADMIN_IMAGE_PRESETS.profile.height}px (max 25 MB). JPEG, PNG, GIF, or WebP.`}
+          outputWidth={ADMIN_IMAGE_PRESETS.profile.width}
+          outputHeight={ADMIN_IMAGE_PRESETS.profile.height}
+          avatarSize={96}
+          cropTitle="Crop profile image"
+          file={profileFile}
+          previewUrl={previewUrl || ""}
+          baselinePath={initialAssistant?.profileImage || ""}
+          inputRef={fileInputRef}
+          onChange={({ file, previewUrl: nextPreview }) => {
+            if (previewUrl && String(previewUrl).startsWith("blob:") && previewUrl !== nextPreview) {
+              URL.revokeObjectURL(previewUrl);
+            }
+            setProfileFile(file);
+            setPreviewUrl(nextPreview || null);
+          }}
+        />
       </div>
 
       <div className="row g-3 mb-4">

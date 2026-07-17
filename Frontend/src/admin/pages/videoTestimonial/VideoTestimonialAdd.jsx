@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
@@ -8,10 +7,10 @@ import {
   adminUpdateVideoTestimonial,
 } from "../../api/videoTestimonialsController.js";
 import { AdminPageHeader } from "../../components/AdminCrud.jsx";
+import { AdminImagePicker, ADMIN_IMAGE_PRESETS } from "../../components/AdminImagePicker.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { mediaUrl } from "../../../media.js";
 import {
-  IMAGE_MAX_SIZE_BYTES,
   NAME_MAX_LEN,
   TYPE_OPTIONS,
   VIDEO_MAX_SIZE_BYTES,
@@ -183,12 +182,6 @@ export function VideoTestimonialForm({ mode = "create", initialTestimonial = nul
     }
   };
 
-  const profilePreviewLabel = profileImageFile
-    ? "New image preview"
-    : editBaselineProfileImage
-      ? "Current saved image"
-      : "";
-
   const videoPreviewLabel = videoFile
     ? "New video preview"
     : editBaselineVideo && form.type === "video"
@@ -232,60 +225,31 @@ export function VideoTestimonialForm({ mode = "create", initialTestimonial = nul
             <option value="inactive">Inactive</option>
           </select>
         </label>
-        <label className="user-field col-12 col-md-6">
-          <span className="user-field__label">
-            Profile image (up to 25 MB){" "}
-            {editId ? "(optional — keep file empty to retain current)" : <span className="required-dot">*</span>}
-          </span>
-          <input
-            ref={profileFileInputRef}
-            className="user-field__input"
-            type="file"
-            accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp"
-            onChange={(e) => {
-              const file = e.target.files?.[0] || null;
-              if (file && file.size > IMAGE_MAX_SIZE_BYTES) {
-                setProfileImageFile(null);
-                revokeProfilePreviewBlob();
-                setProfilePreview(editBaselineProfileImage ? mediaUrl(editBaselineProfileImage) : "");
-                e.target.value = "";
-                void Swal.fire({
-                  icon: "error",
-                  title: "Validation error",
-                  text: "Profile image must be 25 MB or less.",
-                });
-                return;
-              }
+        <div className="user-field col-12 col-md-6">
+          <AdminImagePicker
+            label="Profile image"
+            hint="Square portrait for the video testimonial. Crop to 400 × 400px after selecting."
+            required={!editId}
+            optionalLabel={Boolean(editId)}
+            outputWidth={ADMIN_IMAGE_PRESETS.profile.width}
+            outputHeight={ADMIN_IMAGE_PRESETS.profile.height}
+            previewMaxWidth={ADMIN_IMAGE_PRESETS.profile.previewMaxWidth}
+            previewRound={ADMIN_IMAGE_PRESETS.profile.round}
+            cropTitle="Crop profile image"
+            file={profileImageFile}
+            previewUrl={profilePreview}
+            baselinePath={editBaselineProfileImage}
+            inputRef={profileFileInputRef}
+            onChange={({ file, previewUrl }) => {
+              revokeProfilePreviewBlob();
               setProfileImageFile(file);
-              if (file) {
-                revokeProfilePreviewBlob();
-                const url = URL.createObjectURL(file);
-                profilePreviewBlobRef.current = url;
-                setProfilePreview(url);
-              } else {
-                revokeProfilePreviewBlob();
-                setProfilePreview(editBaselineProfileImage ? mediaUrl(editBaselineProfileImage) : "");
+              if (file && previewUrl && String(previewUrl).startsWith("blob:")) {
+                profilePreviewBlobRef.current = previewUrl;
               }
+              setProfilePreview(previewUrl);
             }}
           />
-          {profilePreview ? (
-            <div style={{ marginTop: 12 }}>
-              <AdminMediaImage
-                path={profileImageFile ? undefined : editBaselineProfileImage}
-                src={profilePreview}
-                round
-                width={96}
-                height={96}
-                alt="Profile preview"
-              />
-              {profilePreviewLabel ? (
-                <small className="data-table__muted" style={{ display: "block", marginTop: 6 }}>
-                  {profilePreviewLabel}
-                </small>
-              ) : null}
-            </div>
-          ) : null}
-        </label>
+        </div>
         {form.type === "link" ? (
           <label className="user-field col-12">
             <span className="user-field__label">

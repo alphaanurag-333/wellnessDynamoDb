@@ -1,5 +1,4 @@
 import { useRef, useState } from "react";
-import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
@@ -8,11 +7,11 @@ import {
   adminUpdateProgramTestimonial,
 } from "../../api/programTestimonials.js";
 import { AdminPageHeader } from "../../components/AdminCrud.jsx";
+import { AdminImagePicker, ADMIN_IMAGE_PRESETS } from "../../components/AdminImagePicker.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { mediaUrl } from "../../../media.js";
 import {
   DESCRIPTION_MAX_LEN,
-  IMAGE_MAX_SIZE_BYTES,
   NAME_MAX_LEN,
   TYPE_OPTIONS,
   emptyForm,
@@ -153,45 +152,28 @@ export function ProgramTestimonialForm({ mode = "create", initialTestimonial = n
             required
           />
         </label>
-        <label className="user-field col-12">
-          <span className="user-field__label">
-            Upload profile image (up to 25 MB){" "}
-            {editId ? "(optional — leave unchanged to keep current)" : <span className="required-dot">*</span>}
-          </span>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="user-field__input"
-            onChange={(e) => {
-              const file = e.target.files?.[0] || null;
-              if (file && file.size > IMAGE_MAX_SIZE_BYTES) {
-                setProfileFile(null);
-                setProfilePreview(editBaselineProfileImage ? mediaUrl(editBaselineProfileImage) : "");
-                e.target.value = "";
-                void Swal.fire({ icon: "error", title: "Validation error", text: "Image size must be 25 MB or less." });
-                return;
-              }
+        <div className="user-field col-12 col-md-6">
+          <AdminImagePicker
+            label="Profile image"
+            hint="Square portrait for the program testimonial card. Crop to 400 × 400px after selecting."
+            required={!editId}
+            optionalLabel={Boolean(editId)}
+            outputWidth={ADMIN_IMAGE_PRESETS.profile.width}
+            outputHeight={ADMIN_IMAGE_PRESETS.profile.height}
+            previewMaxWidth={ADMIN_IMAGE_PRESETS.profile.previewMaxWidth}
+            previewRound={ADMIN_IMAGE_PRESETS.profile.round}
+            cropTitle="Crop profile image"
+            file={profileFile}
+            previewUrl={profilePreview}
+            baselinePath={editBaselineProfileImage}
+            inputRef={fileInputRef}
+            onChange={({ file, previewUrl }) => {
               setProfileFile(file);
-              setProfilePreview(
-                file ? URL.createObjectURL(file) : editBaselineProfileImage ? mediaUrl(editBaselineProfileImage) : ""
-              );
+              setProfilePreview(previewUrl);
             }}
           />
-        </label>
-      </div>
-      {(profilePreview || editBaselineProfileImage) ? (
-        <div style={{ marginTop: 10 }}>
-          <AdminMediaImage
-            path={editBaselineProfileImage}
-            src={profilePreview || undefined}
-            round
-            width={72}
-            height={72}
-            alt="Profile preview"
-          />
         </div>
-      ) : null}
+      </div>
       <div className="user-form__actions">
         {isEditMode ? (
           <button type="button" className="btn btn--ghost" onClick={() => navigate("/admin/program-testimonials")}>

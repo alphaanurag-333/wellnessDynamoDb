@@ -1,10 +1,10 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { adminCreateSubAdmin, adminUpdateSubAdmin } from "../../api/subAdminApi.js";
 import { adminListRoles } from "../../api/roleApi.js";
-import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
+import { AdminImagePicker, ADMIN_IMAGE_PRESETS } from "../../components/AdminImagePicker.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { selectIsSuperAdmin } from "../../../store/authSelectors.js";
 import {
@@ -13,7 +13,6 @@ import {
   blockIndianMobileFirstDigitKeyDown,
   sanitizePhoneDigits,
 } from "../../../utils/personFieldValidation.js";
-import { validateImageFileSize } from "../../../utils/mediaUploadValidation.js";
 import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { NotFoundPage } from "../NotFoundPage.jsx";
 import { NAME_MAX_LEN, emptyForm, getSubAdminId, validateSubAdminForm } from "./SubAdminShared.js";
@@ -24,7 +23,6 @@ export function SubAdminForm({ mode = "create", initialSubAdmin = null }) {
   const navigate = useNavigate();
   const adminToken = useSelector((s) => s.auth.adminToken);
   const fileInputRef = useRef(null);
-  const fileInputId = useId();
 
   const [saving, setSaving] = useState(false);
   const [roles, setRoles] = useState([]);
@@ -58,16 +56,6 @@ export function SubAdminForm({ mode = "create", initialSubAdmin = null }) {
       }
     })();
   }, [adminToken]);
-
-  useEffect(() => {
-    if (!profileFile) {
-      setPreviewUrl(null);
-      return;
-    }
-    const url = URL.createObjectURL(profileFile);
-    setPreviewUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [profileFile]);
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -111,42 +99,27 @@ export function SubAdminForm({ mode = "create", initialSubAdmin = null }) {
   return (
     <form onSubmit={onSubmit}>
       <div className="d-flex flex-column flex-sm-row align-items-start gap-3 gap-sm-4 pb-4 mb-4 border-bottom">
-        <div className="position-relative flex-shrink-0">
-          <input
-            ref={fileInputRef}
-            id={fileInputId}
-            type="file"
-            accept="image/jpeg,image/png,image/gif,image/webp"
-            className="d-none"
-            onChange={async (e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-              const sizeErr = validateImageFileSize(file);
-              if (sizeErr) {
-                e.target.value = "";
-                await Swal.fire({ icon: "error", title: "Validation error", text: sizeErr });
-                return;
-              }
-              setProfileFile(file);
-            }}
-          />
-          <label htmlFor={fileInputId} className="mb-0 d-block" style={{ cursor: "pointer" }}>
-            <div
-              className="rounded-circle border border-2 overflow-hidden bg-body-secondary d-flex align-items-center justify-content-center"
-              style={{ width: 96, height: 96 }}
-            >
-              <AdminMediaImage
-                path={initialSubAdmin?.profileImage}
-                src={previewUrl || undefined}
-                round
-                width={96}
-                height={96}
-                alt="Profile"
-              />
-            </div>
-            <div className="text-center small text-primary mt-2">Profile picture</div>
-          </label>
-        </div>
+        <AdminImagePicker
+          variant="avatar"
+          label="Profile picture"
+          chooseLabel="Profile picture"
+          hint={`Crop to ${ADMIN_IMAGE_PRESETS.profile.width} × ${ADMIN_IMAGE_PRESETS.profile.height}px (max 25 MB). JPEG, PNG, GIF, or WebP.`}
+          outputWidth={ADMIN_IMAGE_PRESETS.profile.width}
+          outputHeight={ADMIN_IMAGE_PRESETS.profile.height}
+          avatarSize={96}
+          cropTitle="Crop profile image"
+          file={profileFile}
+          previewUrl={previewUrl || ""}
+          baselinePath={initialSubAdmin?.profileImage || ""}
+          inputRef={fileInputRef}
+          onChange={({ file, previewUrl: nextPreview }) => {
+            if (previewUrl && String(previewUrl).startsWith("blob:") && previewUrl !== nextPreview) {
+              URL.revokeObjectURL(previewUrl);
+            }
+            setProfileFile(file);
+            setPreviewUrl(nextPreview || null);
+          }}
+        />
       </div>
 
       <div className="row g-3">

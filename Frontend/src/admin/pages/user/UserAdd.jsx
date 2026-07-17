@@ -11,7 +11,7 @@ import {
 } from "../../api/adminUsers.js";
 import { UserSubmitLoader } from "./UserPageLoader.jsx";
 import { adminListHealthConcerns } from "../../api/adminHealthConcerns.js";
-import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
+import { AdminImagePicker, ADMIN_IMAGE_PRESETS } from "../../components/AdminImagePicker.jsx";
 import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { mediaUrl } from "../../../media.js";
 import { logout } from "../../../store/authSlice.js";
@@ -28,7 +28,6 @@ import {
   EMAIL_MAX_LEN,
   INDIAN_MOBILE_INPUT_PATTERN,
 } from "../../../utils/personFieldValidation.js";
-import { validateImageFileSize } from "../../../utils/mediaUploadValidation.js";
 
 const GENDER_VALUES = ["male", "female", "other", "boy", "girl", "guess"];
 
@@ -316,13 +315,6 @@ export function UserProfileForm({
   }, [initialUser]);
 
   useEffect(() => {
-    if (!profileFile) return;
-    const url = URL.createObjectURL(profileFile);
-    setPreviewUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [profileFile]);
-
-  useEffect(() => {
     if (!values.whatsappSameAsMobile) return;
     setValues((p) => {
       const wcc = (p.phoneCountryCode || "").trim() || DEFAULT_DIAL;
@@ -429,20 +421,8 @@ export function UserProfileForm({
 
   const handleNameKeyDown = blockPersonNameDigitKeyDown;
 
-  const handleFile = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const sizeErr = validateImageFileSize(file);
-    if (sizeErr) {
-      e.target.value = "";
-      await Swal.fire({ icon: "error", title: "Validation error", text: sizeErr });
-      return;
-    }
-    setProfileFile(file);
-    setFormError("");
-  };
-
   const clearFile = () => {
+    if (previewUrl && String(previewUrl).startsWith("blob:")) URL.revokeObjectURL(previewUrl);
     setProfileFile(null);
     setPreviewUrl(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -503,44 +483,30 @@ export function UserProfileForm({
         </div>
       ) : null}
       <div className="d-flex flex-column flex-sm-row align-items-start gap-3 gap-sm-4 pb-4 mb-4 border-bottom">
-        <div className="position-relative flex-shrink-0">
-          <input
-            ref={fileInputRef}
-            id={fileInputId}
-            type="file"
-            accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp"
-            className="d-none"
-            onChange={handleFile}
-          />
-          <label htmlFor={fileInputId} className="mb-0 d-block" style={{ cursor: "pointer" }}>
-            <div
-              className="rounded-circle border border-2 overflow-hidden bg-body-secondary d-flex align-items-center justify-content-center position-relative shadow-sm"
-              style={{ width: 112, height: 112 }}
-            >
-              <AdminMediaImage
-                path={initialUser?.profileImage}
-                src={previewUrl || undefined}
-                round
-                width={112}
-                height={112}
-                alt="Profile"
-              />
-              <span className="position-absolute bottom-0 start-50 translate-middle-x badge rounded-pill bg-primary px-2 py-1 mb-1 small">
-                Photo
-              </span>
-            </div>
-            <div className="text-center small text-primary mt-2">Choose image</div>
-          </label>
-        </div>
-        <div className="flex-grow-1 pt-sm-1">
-          <div className="fw-semibold mb-1">Profile image</div>
-          <p className="text-body-secondary small mb-2 mb-sm-3">Optional. JPEG, PNG, GIF, or WebP.</p>
-          {profileFile ? (
-            <button type="button" className="btn btn-outline-secondary btn-sm" onClick={clearFile}>
-              Remove new image
-            </button>
-          ) : null}
-        </div>
+        <AdminImagePicker
+          variant="avatar"
+          label="Profile image"
+          chooseLabel="Choose image"
+          hint={`Optional. Crop to ${ADMIN_IMAGE_PRESETS.profile.width} × ${ADMIN_IMAGE_PRESETS.profile.height}px (max 25 MB). JPEG, PNG, GIF, or WebP.`}
+          outputWidth={ADMIN_IMAGE_PRESETS.profile.width}
+          outputHeight={ADMIN_IMAGE_PRESETS.profile.height}
+          avatarSize={112}
+          cropTitle="Crop profile image"
+          file={profileFile}
+          previewUrl={previewUrl || ""}
+          baselinePath={initialUser?.profileImage || ""}
+          inputRef={fileInputRef}
+          showClear={Boolean(profileFile)}
+          onClear={clearFile}
+          onChange={({ file, previewUrl: nextPreview }) => {
+            setFormError("");
+            if (previewUrl && String(previewUrl).startsWith("blob:") && previewUrl !== nextPreview) {
+              URL.revokeObjectURL(previewUrl);
+            }
+            setProfileFile(file);
+            setPreviewUrl(nextPreview || null);
+          }}
+        />
       </div>
 
       <p className="small text-uppercase text-body-secondary fw-semibold mb-3">Basic details</p>

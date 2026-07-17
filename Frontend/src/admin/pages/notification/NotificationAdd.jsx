@@ -1,15 +1,14 @@
 import { useRef, useState } from "react";
-import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { IoSendOutline } from "react-icons/io5";
 import { adminCreateNotification, adminUpdateNotification } from "../../api/notificationController.js";
 import { AdminPageHeader } from "../../components/AdminCrud.jsx";
+import { AdminImagePicker, ADMIN_IMAGE_PRESETS } from "../../components/AdminImagePicker.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { mediaUrl } from "../../../media.js";
 import {
-  IMAGE_MAX_SIZE_BYTES,
   MESSAGE_MAX_LEN,
   NOTIFICATION_AUDIENCE,
   emptyForm,
@@ -107,30 +106,25 @@ export function NotificationForm({ mode = "create", initialNotification = null }
             <option value="inactive">Inactive</option>
           </select>
         </label>
-        <label className="user-field col-12 col-md-6">
-          <span className="user-field__label">Image (up to 25 MB, optional)</span>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="user-field__input"
-            onChange={(e) => {
-              const file = e.target.files?.[0] || null;
-              if (file && file.size > IMAGE_MAX_SIZE_BYTES) {
-                setImageFile(null);
-                setImagePreview(editBaselineImage ? mediaUrl(editBaselineImage) : "");
-                e.target.value = "";
-                void Swal.fire({ icon: "error", title: "Validation error", text: "Image size must be 25 MB or less." });
-                return;
-              }
+        <div className="user-field col-12 col-md-6">
+          <AdminImagePicker
+            label="Notification image"
+            hint="Optional wide image for the notification. Crop to 800 × 480px after selecting."
+            optionalLabel={Boolean(editId)}
+            outputWidth={ADMIN_IMAGE_PRESETS.notification.width}
+            outputHeight={ADMIN_IMAGE_PRESETS.notification.height}
+            previewMaxWidth={ADMIN_IMAGE_PRESETS.notification.previewMaxWidth}
+            cropTitle="Crop notification image"
+            file={imageFile}
+            previewUrl={imagePreview}
+            baselinePath={editBaselineImage}
+            inputRef={fileInputRef}
+            onChange={({ file, previewUrl }) => {
               setImageFile(file);
-              setImagePreview(file ? URL.createObjectURL(file) : editBaselineImage ? mediaUrl(editBaselineImage) : "");
+              setImagePreview(previewUrl);
             }}
           />
-        </label>
-      </div>
-      <div style={{ marginTop: 6 }}>
-        <AdminMediaImage path={editBaselineImage} src={imagePreview || undefined} width={100} height={60} radius={8} alt="Preview" />
+        </div>
       </div>
       <div className="user-form__actions">
         {isEditMode ? (

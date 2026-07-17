@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AdminPageLoader } from "../../components/AdminLoader.jsx";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
+import { AdminImagePicker, ADMIN_IMAGE_PRESETS } from "../../components/AdminImagePicker.jsx";
 import { useDispatch, useSelector } from "react-redux";
 import Swal from "sweetalert2";
 import {
@@ -13,7 +14,6 @@ import { logout } from "../../../store/authSlice.js";
 import { useHasPermission } from "../../hooks/useHasPermission.js";
 import { mediaUrl } from "../../../media.js";
 import {
-  IMAGE_MAX_SIZE_BYTES,
   MESSAGE_MAX_LEN,
   NAME_MAX_LEN,
   VIDEO_MAX_SIZE_BYTES,
@@ -337,51 +337,31 @@ export function CofounderMessagePage() {
             ) : null}
 
             {canEdit ? (
-              <label className="user-field col-12 col-md-6">
-                <span className="user-field__label">
-                  Profile image (up to 25 MB){" "}
-                  {exists ? "(optional — keep empty to retain current)" : <span className="required-dot">*</span>}
-                </span>
-                <input
-                  ref={profileFileInputRef}
-                  className="user-field__input"
-                  type="file"
-                  accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] || null;
-                    if (file && file.size > IMAGE_MAX_SIZE_BYTES) {
-                      setProfileImageFile(null);
-                      revokeProfilePreviewBlob();
-                      setProfilePreview(baselineProfileImage ? mediaUrl(baselineProfileImage) : "");
-                      e.target.value = "";
-                      void Swal.fire({ icon: "error", title: "Validation error", text: "Profile image must be 25 MB or less." });
-                      return;
-                    }
+              <div className="user-field col-12 col-md-6">
+                <AdminImagePicker
+                  label="Profile image"
+                  hint="Square portrait for the co-founder card. Crop to 400 × 400px after selecting."
+                  required={!exists}
+                  optionalLabel={Boolean(exists)}
+                  outputWidth={ADMIN_IMAGE_PRESETS.profile.width}
+                  outputHeight={ADMIN_IMAGE_PRESETS.profile.height}
+                  previewMaxWidth={ADMIN_IMAGE_PRESETS.profile.previewMaxWidth}
+                  previewRound={ADMIN_IMAGE_PRESETS.profile.round}
+                  cropTitle="Crop profile image"
+                  file={profileImageFile}
+                  previewUrl={profilePreview}
+                  baselinePath={baselineProfileImage}
+                  inputRef={profileFileInputRef}
+                  onChange={({ file, previewUrl }) => {
+                    revokeProfilePreviewBlob();
                     setProfileImageFile(file);
-                    if (file) {
-                      revokeProfilePreviewBlob();
-                      const url = URL.createObjectURL(file);
-                      profilePreviewBlobRef.current = url;
-                      setProfilePreview(url);
-                    } else {
-                      revokeProfilePreviewBlob();
-                      setProfilePreview(baselineProfileImage ? mediaUrl(baselineProfileImage) : "");
+                    if (file && previewUrl && String(previewUrl).startsWith("blob:")) {
+                      profilePreviewBlobRef.current = previewUrl;
                     }
+                    setProfilePreview(previewUrl);
                   }}
                 />
-                {profilePreview ? (
-                  <div style={{ marginTop: 12 }}>
-                    <AdminMediaImage
-                      path={profileImageFile ? undefined : baselineProfileImage}
-                      src={profilePreview}
-                      round
-                      width={96}
-                      height={96}
-                      alt="Profile preview"
-                    />
-                  </div>
-                ) : null}
-              </label>
+              </div>
             ) : profilePreview ? (
               <div className="col-12">
                 <AdminMediaImage

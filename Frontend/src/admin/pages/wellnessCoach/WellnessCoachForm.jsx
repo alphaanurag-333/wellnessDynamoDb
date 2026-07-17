@@ -14,7 +14,7 @@ import {
   adminListSpecializations,
 } from "../../api/adminSpecializations.js";
 import { adminGetRoleById, adminListRoles } from "../../api/roleApi.js";
-import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
+import { AdminImagePicker, ADMIN_IMAGE_PRESETS } from "../../components/AdminImagePicker.jsx";
 import { AdminPageLoader } from "../../components/AdminLoader.jsx";
 import { PermissionCheckboxTree } from "../../components/PermissionCheckboxTree.jsx";
 import { logout } from "../../../store/authSlice.js";
@@ -50,7 +50,6 @@ import {
   PROFILE_PASSWORD_MAX_LEN,
   PROFILE_PASSWORD_MIN_LEN,
 } from "../../../utils/profilePasswordValidation.js";
-import { validateImageFileSize } from "../../../utils/mediaUploadValidation.js";
 import { WellnessCoachSubmitLoader } from "./WellnessCoachPageLoader.jsx";
 
 function applyPermissionOverrides(rolePermissions, overrides) {
@@ -206,13 +205,6 @@ export function WellnessCoachForm({
     // Only reload when roleId changes — overrides applied once from form seed.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminToken, values.roleId]);
-
-  useEffect(() => {
-    if (!profileFile) return;
-    const url = URL.createObjectURL(profileFile);
-    setPreviewUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [profileFile]);
 
   const handleRoleChange = (e) => {
     const roleId = e.target.value;
@@ -384,42 +376,27 @@ export function WellnessCoachForm({
       ) : null}
 
       <div className="d-flex flex-column flex-sm-row align-items-start gap-3 gap-sm-4 pb-4 mb-4 border-bottom">
-        <div className="position-relative flex-shrink-0">
-          <input
-            ref={fileInputRef}
-            id={fileInputId}
-            type="file"
-            accept="image/jpeg,image/png,image/gif,image/webp"
-            className="d-none"
-            onChange={async (e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-              const sizeErr = validateImageFileSize(file);
-              if (sizeErr) {
-                e.target.value = "";
-                await Swal.fire({ icon: "error", title: "Validation error", text: sizeErr });
-                return;
-              }
-              setProfileFile(file);
-            }}
-          />
-          <label htmlFor={fileInputId} className="mb-0 d-block" style={{ cursor: "pointer" }}>
-            <div
-              className="rounded-circle border border-2 overflow-hidden bg-body-secondary d-flex align-items-center justify-content-center"
-              style={{ width: 96, height: 96 }}
-            >
-              <AdminMediaImage
-                path={initialCoach?.profileImage}
-                src={previewUrl || undefined}
-                round
-                width={96}
-                height={96}
-                alt="Profile"
-              />
-            </div>
-            <div className="text-center small text-primary mt-2">Photo</div>
-          </label>
-        </div>
+        <AdminImagePicker
+          variant="avatar"
+          label="Profile photo"
+          chooseLabel="Photo"
+          hint={`Crop to ${ADMIN_IMAGE_PRESETS.profile.width} × ${ADMIN_IMAGE_PRESETS.profile.height}px (max 25 MB). JPEG, PNG, GIF, or WebP.`}
+          outputWidth={ADMIN_IMAGE_PRESETS.profile.width}
+          outputHeight={ADMIN_IMAGE_PRESETS.profile.height}
+          avatarSize={96}
+          cropTitle="Crop profile image"
+          file={profileFile}
+          previewUrl={previewUrl || ""}
+          baselinePath={initialCoach?.profileImage || ""}
+          inputRef={fileInputRef}
+          onChange={({ file, previewUrl: nextPreview }) => {
+            if (previewUrl && String(previewUrl).startsWith("blob:") && previewUrl !== nextPreview) {
+              URL.revokeObjectURL(previewUrl);
+            }
+            setProfileFile(file);
+            setPreviewUrl(nextPreview || null);
+          }}
+        />
       </div>
 
       <div className="row g-3 mb-4">
