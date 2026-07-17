@@ -35,8 +35,8 @@ export function StaticPageView({ slug, fallbackTitle = "Page" }) {
   return (
     <section className="static-page-section">
       <div className="static-page-hero">
-        <div className="site-container static-page-hero__inner">
-          <span className="static-page-tag">INFORMATION</span>
+        <div className="site-container static-page-hero__inner paddingmanages">
+          {/* <span className="static-page-tag">INFORMATION</span> */}
           <h1 className="static-page-title">{loading ? "Loading…" : title}</h1>
         </div>
       </div>
