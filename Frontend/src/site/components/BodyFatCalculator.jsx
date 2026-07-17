@@ -211,12 +211,12 @@ export default function BodyFatCalculator() {
           {/* LEFT — form */}
 
           <div className="bodyfat-left">
-            <h2 style={{fontSize:'20px'}}>Body Fat Calculator</h2>
+            <h2>Body Fat Calculator</h2>
 
             <div className="bodyfat-form">
               {/* Gender */}
 
-              <div className="form-group">
+              <div className="form-group form-group--full">
                 <label className="mb-2">
                   Gender <RequiredMark />
                 </label>
@@ -244,7 +244,7 @@ export default function BodyFatCalculator() {
 
               {/* Age */}
 
-              <div className="form-group">
+              <div className="form-group form-group--full">
                 <label className="mb-2">
                   Age <RequiredMark />
                 </label>
@@ -263,14 +263,31 @@ export default function BodyFatCalculator() {
                 />
               </div>
 
-              {/* Height */}
+              {/* Height + Weight */}
+              <div className="form-row">
+                <div className="form-group">
+                  <div className="field-header">
+                    <label>
+                      Height <RequiredMark />
+                    </label>
+                    <div className="unit-switch">
+                      <button
+                        type="button"
+                        className={heightUnit === "cm" ? "active" : ""}
+                        onClick={() => changeHeightUnit("cm")}
+                      >
+                        cm
+                      </button>
+                      <button
+                        type="button"
+                        className={heightUnit === "ft" ? "active" : ""}
+                        onClick={() => changeHeightUnit("ft")}
+                      >
+                        ft/in
+                      </button>
+                    </div>
+                  </div>
 
-              <div className="form-group">
-                <label className="mb-2">
-                  Height <RequiredMark />
-                </label>
-
-                <div className="unit-input">
                   {heightUnit === "cm" ? (
                     <input
                       type="number"
@@ -323,35 +340,31 @@ export default function BodyFatCalculator() {
                       />
                     </div>
                   )}
-
-                  <div className="unit-switch">
-                    <button
-                      type="button"
-                      className={heightUnit === "cm" ? "active" : ""}
-                      onClick={() => changeHeightUnit("cm")}
-                    >
-                      cm
-                    </button>
-
-                    <button
-                      type="button"
-                      className={heightUnit === "ft" ? "active" : ""}
-                      onClick={() => changeHeightUnit("ft")}
-                    >
-                      ft/in
-                    </button>
-                  </div>
                 </div>
-              </div>
 
-              {/* Weight */}
+                <div className="form-group">
+                  <div className="field-header">
+                    <label>
+                      Weight <RequiredMark />
+                    </label>
+                    <div className="unit-switch">
+                      <button
+                        type="button"
+                        className={weightUnit === "kg" ? "active" : ""}
+                        onClick={() => setWeightUnit("kg")}
+                      >
+                        kg
+                      </button>
+                      <button
+                        type="button"
+                        className={weightUnit === "lbs" ? "active" : ""}
+                        onClick={() => setWeightUnit("lbs")}
+                      >
+                        lbs
+                      </button>
+                    </div>
+                  </div>
 
-              <div className="form-group">
-                <label className="mb-2">
-                  Weight <RequiredMark />
-                </label>
-
-                <div className="unit-input">
                   <input
                     type="number"
                     inputMode="decimal"
@@ -369,35 +382,34 @@ export default function BodyFatCalculator() {
                       )
                     }
                   />
-
-                  <div className="unit-switch">
-                    <button
-                      type="button"
-                      className={weightUnit === "kg" ? "active" : ""}
-                      onClick={() => setWeightUnit("kg")}
-                    >
-                      kg
-                    </button>
-
-                    <button
-                      type="button"
-                      className={weightUnit === "lbs" ? "active" : ""}
-                      onClick={() => setWeightUnit("lbs")}
-                    >
-                      lbs
-                    </button>
-                  </div>
                 </div>
               </div>
 
-              {/* Neck */}
+              {/* Neck + Waist */}
+              <div className="form-row">
+                <div className="form-group">
+                  <div className="field-header">
+                    <label>
+                      Neck <RequiredMark />
+                    </label>
+                    <div className="unit-switch">
+                      <button
+                        type="button"
+                        className={measureUnit === "cm" ? "active" : ""}
+                        onClick={() => setMeasureUnit("cm")}
+                      >
+                        cm
+                      </button>
+                      <button
+                        type="button"
+                        className={measureUnit === "in" ? "active" : ""}
+                        onClick={() => setMeasureUnit("in")}
+                      >
+                        in
+                      </button>
+                    </div>
+                  </div>
 
-              <div className="form-group">
-                <label className="mb-2">
-                  Neck <RequiredMark />
-                </label>
-
-                <div className="unit-input">
                   <input
                     type="number"
                     inputMode="decimal"
@@ -415,35 +427,31 @@ export default function BodyFatCalculator() {
                       )
                     }
                   />
-
-                  <div className="unit-switch">
-                    <button
-                      type="button"
-                      className={measureUnit === "cm" ? "active" : ""}
-                      onClick={() => setMeasureUnit("cm")}
-                    >
-                      cm
-                    </button>
-
-                    <button
-                      type="button"
-                      className={measureUnit === "in" ? "active" : ""}
-                      onClick={() => setMeasureUnit("in")}
-                    >
-                      in
-                    </button>
-                  </div>
                 </div>
-              </div>
 
-              {/* Waist */}
+                <div className="form-group">
+                  <div className="field-header">
+                    <label>
+                      Waist <RequiredMark />
+                    </label>
+                    <div className="unit-switch">
+                      <button
+                        type="button"
+                        className={measureUnit === "cm" ? "active" : ""}
+                        onClick={() => setMeasureUnit("cm")}
+                      >
+                        cm
+                      </button>
+                      <button
+                        type="button"
+                        className={measureUnit === "in" ? "active" : ""}
+                        onClick={() => setMeasureUnit("in")}
+                      >
+                        in
+                      </button>
+                    </div>
+                  </div>
 
-              <div className="form-group">
-                <label className="mb-2">
-                  Waist <RequiredMark />
-                </label>
-
-                <div className="unit-input">
                   <input
                     type="number"
                     inputMode="decimal"
@@ -461,52 +469,15 @@ export default function BodyFatCalculator() {
                       )
                     }
                   />
-
-                  <div className="unit-switch">
-                    <button
-                      type="button"
-                      className={measureUnit === "cm" ? "active" : ""}
-                      onClick={() => setMeasureUnit("cm")}
-                    >
-                      cm
-                    </button>
-
-                    <button
-                      type="button"
-                      className={measureUnit === "in" ? "active" : ""}
-                      onClick={() => setMeasureUnit("in")}
-                    >
-                      in
-                    </button>
-                  </div>
                 </div>
               </div>
 
               {gender === "female" && (
-                <div className="form-group">
-                  <label>
-                    Hip <RequiredMark />
-                  </label>
-
-                  <div className="unit-input">
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      placeholder="Hip"
-                      value={hip}
-                      min={0}
-                      required
-                      onKeyDown={blockInvalidCalculatorNumberKeyDown}
-                      onChange={(e) =>
-                        setHip(
-                          sanitizePositiveDecimal(e.target.value, {
-                            maxDecimals: 2,
-                            max: measureUnit === "in" ? 80 : 200,
-                          })
-                        )
-                      }
-                    />
-
+                <div className="form-group form-group--full">
+                  <div className="field-header">
+                    <label>
+                      Hip <RequiredMark />
+                    </label>
                     <div className="unit-switch">
                       <button
                         type="button"
@@ -515,7 +486,6 @@ export default function BodyFatCalculator() {
                       >
                         cm
                       </button>
-
                       <button
                         type="button"
                         className={measureUnit === "in" ? "active" : ""}
@@ -525,6 +495,24 @@ export default function BodyFatCalculator() {
                       </button>
                     </div>
                   </div>
+
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    placeholder="Hip"
+                    value={hip}
+                    min={0}
+                    required
+                    onKeyDown={blockInvalidCalculatorNumberKeyDown}
+                    onChange={(e) =>
+                      setHip(
+                        sanitizePositiveDecimal(e.target.value, {
+                          maxDecimals: 2,
+                          max: measureUnit === "in" ? 80 : 200,
+                        })
+                      )
+                    }
+                  />
                 </div>
               )}
 
