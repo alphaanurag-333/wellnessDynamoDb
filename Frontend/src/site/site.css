@@ -8174,7 +8174,7 @@ PRINT
 .bmr-left h2 {
   font-size: var(--fs-2xl);
   color: var(--text-heading);
-  margin-bottom: 35px;
+  margin-bottom: 5px;
   font-weight: var(--fw-bold);
 }
 
@@ -8586,7 +8586,7 @@ TITLE
 .bodyfat-left h2 {
   font-size: var(--fs-2xl);
   color: var(--text-heading);
-  margin-bottom: 15px;
+  margin-bottom: 10px;
 }
 
 .bodyfat-right h5 {
@@ -8603,7 +8603,7 @@ FORM
 .bodyfat-form {
   display: flex;
   flex-wrap: wrap;
-  gap: 22px;
+  gap: 10px;
 }
 
 .form-group {
@@ -9184,7 +9184,7 @@ TITLE
 .visceral-left h2 {
   font-size: var(--fs-2xl);
   color: var(--text-heading);
-  margin-bottom: 24px;
+  margin-bottom: 10px;
   font-weight: var(--fw-bold);
 }
 
@@ -9580,7 +9580,7 @@ FOOTER
 ====================================*/
 
 .visceral-footer {
-  border-top: 1px solid var(--border-light);
+  /* border-bottom: 1px solid var(--border-light); */
   padding-top: 18px;
 }
 
@@ -11355,11 +11355,11 @@ SCROLLBAR
 
   .bodyfat-left h2 {
     font-size: var(--font-size-h2);
-    margin-bottom: 25px;
+    margin-bottom: 5px;
   }
 
   .bodyfat-form {
-    gap: 18px;
+    gap: 10px;
   }
 
   .form-group {
@@ -11403,7 +11403,7 @@ SCROLLBAR
 
   .visceral-left h2 {
     font-size: var(--font-size-h2);
-    margin-bottom: 25px;
+    margin-bottom: 5px;
   }
 
   .visceral-form {
