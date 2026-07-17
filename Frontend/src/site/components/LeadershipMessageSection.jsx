@@ -107,30 +107,30 @@ function LeadershipNoteCard({
         hasVideo ? " leadership__card--with-video" : ""
       }`}
     >
-      {showImage ? (
-        <div className="leadership__image">
-          <div className="leadership__image-frame">
-            <img
-              src={imageSrc}
-              alt={name}
-              onError={() => setImageError(true)}
-              onLoad={() => onExpandChange?.()}
-            />
+      <div className="leadership__header">
+        {showImage ? (
+          <div className="leadership__image">
+            <div className="leadership__image-frame">
+              <img
+                src={imageSrc}
+                alt={name}
+                onError={() => setImageError(true)}
+                onLoad={() => onExpandChange?.()}
+              />
+            </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
 
-      <div className="leadership__content">
-        {/* {badge ? <span className="leadership__badge">{badge}</span> : null} */}
         <div className="leadership__meta">
           {heading ? <h2 className="leadership__title">{heading}</h2> : null}
-
           <div className="leadership__author">
             <h4>{name}</h4>
             {designation ? <span>{designation}</span> : null}
           </div>
         </div>
+      </div>
 
+      <div className="leadership__content">
         <div
           ref={descriptionRef}
           className={`leadership__description${expanded ? " expanded" : ""}`}
@@ -199,12 +199,8 @@ function equalizeSlideHeights(swiper) {
     slide.style.height = "auto";
   });
 
-  const maxHeight = Math.max(0, ...slides.map((slide) => slide.offsetHeight));
-  if (maxHeight <= 0) return;
-
-  slides.forEach((slide) => {
-    slide.style.height = `${maxHeight}px`;
-  });
+  // Let each slide size to its content (including video) — do not force a shared height
+  // that can clip the video row on tablet widths.
 }
 
 export function LeadershipNotesSlider({ notes = [], loading = false }) {
@@ -307,6 +303,9 @@ export function LeadershipNotesSlider({ notes = [], loading = false }) {
                 designation={note.designation}
                 message={note.message}
                 profileImage={note.profileImage || ""}
+                videoType={note.videoType || "none"}
+                ytLink={note.ytLink || ""}
+                video={note.video || ""}
                 onExpandChange={syncHeights}
               />
             </SwiperSlide>
