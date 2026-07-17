@@ -15,7 +15,7 @@ export function SiteHero() {
 
     (async () => {
       try {
-        const data = await fetchActiveBanners({ page: 1, limit: 20 });
+        const data = await fetchActiveBanners({ page: 1, limit: 20, bannerType: "main" });
         if (cancelled) return;
 
         const banners = Array.isArray(data?.banners) ? data.banners : [];

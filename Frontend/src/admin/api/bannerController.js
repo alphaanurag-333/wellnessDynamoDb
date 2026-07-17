@@ -4,12 +4,13 @@ function bannersBase() {
   return "/admin/banners";
 }
 
-export async function adminListBanners(token, { page = 1, limit = 50, status, search } = {}) {
+export async function adminListBanners(token, { page = 1, limit = 50, status, search, bannerType } = {}) {
   const q = new URLSearchParams();
   q.set("page", String(page));
   q.set("limit", String(limit));
   if (status) q.set("status", status);
   if (search && String(search).trim()) q.set("search", String(search).trim());
+  if (bannerType && String(bannerType).trim()) q.set("bannerType", String(bannerType).trim());
   try {
     const { data } = await api.get(`${bannersBase()}?${q}`, { headers: authHeader(token) });
     return {
@@ -34,6 +35,7 @@ function appendBannerFormData(fd, fields) {
   if (fields.title !== undefined) fd.append("title", String(fields.title ?? "").trim());
   if (fields.description !== undefined) fd.append("description", String(fields.description ?? "").trim());
   if (fields.status !== undefined) fd.append("status", String(fields.status || "active"));
+  if (fields.bannerType !== undefined) fd.append("bannerType", String(fields.bannerType || "main"));
 }
 
 export async function adminCreateBanner(token, fields, file, mobileFile) {
@@ -44,6 +46,7 @@ export async function adminCreateBanner(token, fields, file, mobileFile) {
       title: fields.title,
       description: fields.description,
       status: fields.status || "active",
+      bannerType: fields.bannerType || "main",
     });
     if (file instanceof File) fd.append("file", file);
     if (mobileFile instanceof File) fd.append("mobileImage", mobileFile);
@@ -64,6 +67,7 @@ export async function adminCreateBanner(token, fields, file, mobileFile) {
         image: String(fields.image ?? "").trim(),
         mobileImage: String(fields.mobileImage ?? "").trim(),
         status: String(fields.status || "active"),
+        bannerType: String(fields.bannerType || "main"),
       },
       { headers: authHeader(token) }
     );
@@ -94,6 +98,7 @@ export async function adminUpdateBanner(token, id, fields, file, mobileFile) {
   if (fields.title !== undefined) payload.title = String(fields.title).trim();
   if (fields.description !== undefined) payload.description = String(fields.description).trim();
   if (fields.status !== undefined) payload.status = String(fields.status);
+  if (fields.bannerType !== undefined) payload.bannerType = String(fields.bannerType || "main");
   if (fields.image !== undefined) payload.image = String(fields.image).trim();
   if (fields.mobileImage !== undefined) payload.mobileImage = String(fields.mobileImage).trim();
 

@@ -7,7 +7,7 @@ import { logout } from "../../../store/authSlice.js";
 import { AdminDetailBannerImage } from "../../components/AdminDetailBannerImage.jsx";
 import { NotFoundPage } from "../NotFoundPage.jsx";
 import { AdminPageHeader, AdminStatusBadge } from "../../components/AdminCrud.jsx";
-import { formatDate } from "./BannerShared.js";
+import { formatDate, bannerTypeLabel } from "./BannerShared.js";
 
 function DetailRow({ label, value }) {
   return (
@@ -113,6 +113,7 @@ export function BannerView() {
         ) : null}
         <div className="user-view-grid">
           <DetailRow label="Title" value={banner.title} />
+          <DetailRow label="Banner type" value={bannerTypeLabel(banner.bannerType)} />
           <div className="user-detail-row user-detail-row--stack">
             <span className="user-detail-row__label">Description</span>
             <div style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>{banner.description || "—"}</div>

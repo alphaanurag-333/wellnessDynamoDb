@@ -11,14 +11,28 @@ const {
   listByPartitionKey,
   buildContainsFilter,
   sortByCreatedAtDesc,
+  fieldMatchesTerm,
 } = require("../utils/dynamoList");
 
 const TABLE = "Banner";
 const STATUS = new Set(["active", "inactive"]);
+const BANNER_TYPES = new Set(["main", "wellnesspedia"]);
 
 function normalizeStatus(value, fallback = "active") {
   const next = String(value || fallback).toLowerCase().trim();
   return STATUS.has(next) ? next : fallback;
+}
+
+function normalizeBannerType(value, fallback = "main") {
+  const next = String(value || "").toLowerCase().trim();
+  if (BANNER_TYPES.has(next)) return next;
+  return fallback === "" ? "" : "main";
+}
+
+/** Existing banners without bannerType are treated as main. */
+function resolveBannerType(item) {
+  if (!item) return "main";
+  return normalizeBannerType(item.bannerType, "main");
 }
 
 function withLegacyId(item) {
@@ -40,12 +54,20 @@ const MEDIA_FIELDS = new Set(["image", "mobileImage"]);
 function toPublicBanner(banner) {
   const item = withLegacyId(banner);
   if (!item) return null;
+  item.bannerType = resolveBannerType(item);
   if (item.image) item.image = resolvePublicUrl(item.image);
   if (item.mobileImage) item.mobileImage = resolvePublicUrl(item.mobileImage);
   return item;
 }
 
-async function createBanner({ title, description, image, mobileImage = "", status = "active" }) {
+async function createBanner({
+  title,
+  description,
+  image,
+  mobileImage = "",
+  status = "active",
+  bannerType = "main",
+}) {
   const now = new Date().toISOString();
   const item = {
     id: uuidv4(),
@@ -54,6 +76,7 @@ async function createBanner({ title, description, image, mobileImage = "", statu
     image: normalizeImageField(image, "image"),
     mobileImage: normalizeImageField(mobileImage, "mobileImage"),
     status: normalizeStatus(status),
+    bannerType: normalizeBannerType(bannerType, "main"),
     createdAt: now,
     updatedAt: now,
   };
@@ -90,8 +113,16 @@ async function updateBanner(id, updates) {
   let setExpr = "SET updatedAt = :updatedAt";
 
   for (const [k, v] of entries) {
+    let value = v;
+    if (MEDIA_FIELDS.has(k)) {
+      value = normalizeImageField(v, k);
+    } else if (k === "bannerType") {
+      value = normalizeBannerType(v, "main");
+    } else if (k === "status") {
+      value = normalizeStatus(v);
+    }
     exprNames[`#${k}`] = k;
-    exprValues[`:${k}`] = MEDIA_FIELDS.has(k) ? normalizeImageField(v, k) : v;
+    exprValues[`:${k}`] = value;
     setExpr += `, #${k} = :${k}`;
   }
 
@@ -115,9 +146,13 @@ async function deleteBanner(id) {
   }));
 }
 
-async function listBanners({ page = 1, limit = 10, status, search } = {}) {
+async function listBanners({ page = 1, limit = 10, status, search, bannerType } = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
+  const normalizedType = normalizeBannerType(bannerType, "");
   const searchFilter = buildContainsFilter(["title", "description"], search);
+  const realSearch = String(searchFilter.search || "").trim().toLowerCase();
+  const needsMemoryFilter = Boolean(normalizedType) || Boolean(realSearch);
+
   const { items, pagination } = await listByPartitionKey({
     tableName: TABLE,
     indexName: "StatusCreatedAtIndex",
@@ -125,8 +160,15 @@ async function listBanners({ page = 1, limit = 10, status, search } = {}) {
     filterExpression: searchFilter.filterExpression,
     exprNames: searchFilter.exprNames,
     exprValues: searchFilter.exprValues,
-    search: searchFilter.search,
-    searchFields: searchFilter.searchFields,
+    search: needsMemoryFilter ? realSearch || "*" : undefined,
+    searchFields: needsMemoryFilter ? ["title", "description"] : undefined,
+    searchFn: needsMemoryFilter
+      ? (item) => {
+          if (normalizedType && resolveBannerType(item) !== normalizedType) return false;
+          if (!realSearch) return true;
+          return ["title", "description"].some((field) => fieldMatchesTerm(item, field, realSearch));
+        }
+      : undefined,
     scanIndexForward: false,
     page,
     limit,
@@ -141,6 +183,7 @@ async function listBanners({ page = 1, limit = 10, status, search } = {}) {
 }
 
 module.exports = {
+  BANNER_TYPES,
   createBanner,
   getBannerById,
   getBannerRecordById,
@@ -148,4 +191,6 @@ module.exports = {
   deleteBanner,
   listBanners,
   toPublicBanner,
+  normalizeBannerType,
+  resolveBannerType,
 };

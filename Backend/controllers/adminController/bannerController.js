@@ -15,10 +15,31 @@ const {
 } = require("../../models/bannerModel");
 
 const S3_FOLDER = "banner";
+const BANNER_TYPE_VALUES = new Set(["main", "wellnesspedia"]);
+
+function parseBannerType(raw, { required = false } = {}) {
+  const value = String(raw || "").trim().toLowerCase();
+  if (!value) {
+    if (required) return null;
+    return "";
+  }
+  if (!BANNER_TYPE_VALUES.has(value)) return null;
+  return value;
+}
 
 exports.listBannersController = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, status, search } = req.query;
-  const data = await listBanners({ page, limit, status, search });
+  const { page = 1, limit = 10, status, search, bannerType, type } = req.query;
+  const parsedType = parseBannerType(bannerType || type);
+  if ((bannerType || type) && parsedType === null) {
+    throw new AppError("bannerType must be main or wellnesspedia", 400);
+  }
+  const data = await listBanners({
+    page,
+    limit,
+    status,
+    search,
+    ...(parsedType ? { bannerType: parsedType } : {}),
+  });
   return res.status(200).json({ status: true, banners: data.banners, pagination: data.pagination });
 });
 
@@ -32,6 +53,7 @@ exports.createBannerController = asyncHandler(async (req, res) => {
   const title = String(req.body.title || "").trim();
   const description = String(req.body.description || "").trim();
   const status = String(req.body.status || "active").trim().toLowerCase();
+  const bannerType = parseBannerType(req.body.bannerType || req.body.type || "main", { required: true });
 
   const uploadedImage = await uploadMulterField(req, "file", S3_FOLDER);
   const uploadedMobileImage = await uploadMulterField(req, "mobileImage", S3_FOLDER);
@@ -46,8 +68,18 @@ exports.createBannerController = asyncHandler(async (req, res) => {
   if (!["active", "inactive"].includes(status)) {
     throw new AppError("status must be active or inactive", 400);
   }
+  if (!bannerType) {
+    throw new AppError("bannerType must be main or wellnesspedia", 400);
+  }
 
-  const banner = await createBanner({ title, description, image, mobileImage, status });
+  const banner = await createBanner({
+    title,
+    description,
+    image,
+    mobileImage,
+    status,
+    bannerType,
+  });
   return res.status(201).json({ status: true, message: "Banner created successfully", banner });
 });
 
@@ -72,6 +104,13 @@ exports.updateBannerController = asyncHandler(async (req, res) => {
       throw new AppError("status must be active or inactive", 400);
     }
     updates.status = status;
+  }
+  if (req.body.bannerType !== undefined || req.body.type !== undefined) {
+    const bannerType = parseBannerType(req.body.bannerType ?? req.body.type, { required: true });
+    if (!bannerType) {
+      throw new AppError("bannerType must be main or wellnesspedia", 400);
+    }
+    updates.bannerType = bannerType;
   }
   if (req.body.image !== undefined) {
     const image = parseMediaKeyFromBody(req.body.image, "image");

@@ -19,6 +19,14 @@ export const IMAGE_HEIGHT = 640;
 export const MOBILE_IMAGE_WIDTH = 1080;
 export const MOBILE_IMAGE_HEIGHT = 480;
 
+export const BANNER_TYPE_MAIN = "main";
+export const BANNER_TYPE_WELLNESSPEDIA = "wellnesspedia";
+
+export const BANNER_TYPE_OPTIONS = [
+  { value: BANNER_TYPE_MAIN, label: "Main banner" },
+  { value: BANNER_TYPE_WELLNESSPEDIA, label: "Wellnesspedia banner" },
+];
+
 export const ALLOWED_IMAGE_TYPES = new Set([
   "image/jpeg",
   "image/png",
@@ -32,7 +40,17 @@ export const LIST_LIMIT = 10;
 export const LIST_SEARCH_MAX_LEN = 50;
 
 export function emptyForm() {
-  return { title: "", description: "", status: "active" };
+  return {
+    title: "",
+    description: "",
+    status: "active",
+    bannerType: BANNER_TYPE_MAIN,
+  };
+}
+
+export function bannerTypeLabel(value) {
+  const key = String(value || BANNER_TYPE_MAIN).toLowerCase();
+  return BANNER_TYPE_OPTIONS.find((opt) => opt.value === key)?.label || "Main banner";
 }
 
 export function sanitizeTitleInput(value) {
@@ -63,6 +81,7 @@ export function truncate(str, max) {
 export function validateBannerForm(form) {
   const title = form.title.trim();
   const description = form.description.trim();
+  const bannerType = String(form.bannerType || "").trim().toLowerCase();
 
   if (!title) return "Title is required.";
   if (title.length > TITLE_MAX_LEN) return `Title cannot exceed ${TITLE_MAX_LEN} characters.`;
@@ -73,6 +92,10 @@ export function validateBannerForm(form) {
   }
   if (description.length > DESCRIPTION_MAX_LEN) {
     return `Description cannot exceed ${DESCRIPTION_MAX_LEN} characters.`;
+  }
+
+  if (!BANNER_TYPE_OPTIONS.some((opt) => opt.value === bannerType)) {
+    return "Banner type must be Main banner or Wellnesspedia banner.";
   }
 
   return "";

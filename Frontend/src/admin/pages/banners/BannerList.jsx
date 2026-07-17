@@ -11,7 +11,15 @@ import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } f
 import { logout } from "../../../store/authSlice.js";
 import { useDebouncedSearch } from "../../../hooks/useDebouncedSearch.js";
 import { useResourcePermissions } from "../../hooks/useHasPermission.js";
-import { formatDate, LIST_LIMIT, truncate, DESCRIPTION_PREVIEW_LEN, LIST_SEARCH_MAX_LEN } from "./BannerShared.js";
+import {
+  formatDate,
+  LIST_LIMIT,
+  DESCRIPTION_PREVIEW_LEN,
+  LIST_SEARCH_MAX_LEN,
+  BANNER_TYPE_OPTIONS,
+  BANNER_TYPE_MAIN,
+  bannerTypeLabel,
+} from "./BannerShared.js";
 
 export function BannerList() {
   const dispatch = useDispatch();
@@ -28,6 +36,7 @@ export function BannerList() {
     maxLength: LIST_SEARCH_MAX_LEN,
   });
   const [listStatus, setListStatus] = useState("");
+  const [listBannerType, setListBannerType] = useState(BANNER_TYPE_MAIN);
 
   const loadRows = useCallback(async () => {
     if (!adminToken) return;
@@ -36,6 +45,7 @@ export function BannerList() {
       const { banners, pagination } = await adminListBanners(adminToken, {
         page,
         limit: LIST_LIMIT,
+        bannerType: listBannerType,
         ...(debouncedSearch ? { search: debouncedSearch } : {}),
         ...(listStatus ? { status: listStatus } : {}),
       });
@@ -48,7 +58,7 @@ export function BannerList() {
     } finally {
       setLoading(false);
     }
-  }, [adminToken, dispatch, debouncedSearch, listStatus, page]);
+  }, [adminToken, dispatch, debouncedSearch, listStatus, listBannerType, page]);
 
   useEffect(() => {
     loadRows();
@@ -56,7 +66,7 @@ export function BannerList() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, listStatus]);
+  }, [debouncedSearch, listStatus, listBannerType]);
 
   const onDelete = async (row) => {
     const { isConfirmed } = await Swal.fire({
@@ -101,6 +111,7 @@ export function BannerList() {
   const pageInfo = useMemo(() => `Page ${page} of ${pages} · ${total} banners`, [page, pages, total]);
   const subtitle = listCountSubtitle(loading, total, "banner", "banners");
   const hasFilters = Boolean(listSearch.trim() || listStatus);
+  const activeTypeLabel = bannerTypeLabel(listBannerType);
 
   const clearFilters = () => {
     setSearchInput("");
@@ -115,12 +126,28 @@ export function BannerList() {
           subtitle={subtitle}
           actions={
             canEdit ? (
-            <button type="button" className="btn btn--primary" onClick={() => navigate("/admin/banners/new")}>
-              Add banner
-            </button>
-          ) : null
+              <button type="button" className="btn btn--primary" onClick={() => navigate("/admin/banners/new")}>
+                Add banner
+              </button>
+            ) : null
           }
         />
+
+        <div className="settings-tabs banner-type-tabs" role="tablist" aria-label="Banner type">
+          {BANNER_TYPE_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              role="tab"
+              aria-selected={listBannerType === opt.value}
+              className={`settings-tabs__tab${listBannerType === opt.value ? " settings-tabs__tab--active" : ""}`}
+              onClick={() => setListBannerType(opt.value)}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
         <div className="admin-crud-filters">
           <label className="user-field admin-crud-filters__search">
             <span className="user-field__label">Search title or description</span>
@@ -128,7 +155,7 @@ export function BannerList() {
               className="user-field__input"
               value={listSearch}
               onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="Filter by title or description…"
+              placeholder={`Filter ${activeTypeLabel.toLowerCase()}…`}
             />
           </label>
           <label className="user-field admin-crud-filters__select">
@@ -153,6 +180,7 @@ export function BannerList() {
                 <th>Image</th>
                 <th>Title</th>
                 <th>Description</th>
+                <th>Type</th>
                 <th>Created</th>
                 <th>Status</th>
                 <th className="data-table__actions-col">Actions</th>
@@ -160,10 +188,10 @@ export function BannerList() {
             </thead>
             <tbody>
               {loading ? (
-                <AdminTableLoaderRow colSpan={7} label="Loading banners..." />
+                <AdminTableLoaderRow colSpan={8} label="Loading banners..." />
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={7}>No banners found.</td>
+                  <td colSpan={8}>No {activeTypeLabel.toLowerCase()}s found.</td>
                 </tr>
               ) : (
                 rows.map((row, idx) => (
@@ -172,26 +200,29 @@ export function BannerList() {
                     <td>
                       <AdminMediaImage path={row.image} width={56} height={42} radius={6} alt="" />
                     </td>
-                    <td><TableCellText value={row.title} /></td>
+                    <td>
+                      <TableCellText value={row.title} />
+                    </td>
                     <td className="data-table__muted" title={row.description || ""}>
                       <TableCellText value={row.description} max={DESCRIPTION_PREVIEW_LEN} />
                     </td>
+                    <td className="data-table__muted">{bannerTypeLabel(row.bannerType)}</td>
                     <td className="data-table__muted">{formatDate(row.createdAt)}</td>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         {canEdit ? (
-<button
-                          type="button"
-                          className={`settings-switch${row.status === "active" ? " settings-switch--on" : ""}`}
-                          role="switch"
-                          aria-checked={row.status === "active"}
-                          aria-label={`Toggle status for ${row.title}`}
-                          onClick={() => onToggleStatus(row)}
-                          disabled={togglingId === row._id}
-                          title={row.status === "active" ? "Deactivate banner" : "Activate banner"}
-                        >
-                          <span className="settings-switch__knob" aria-hidden />
-                        </button>
+                          <button
+                            type="button"
+                            className={`settings-switch${row.status === "active" ? " settings-switch--on" : ""}`}
+                            role="switch"
+                            aria-checked={row.status === "active"}
+                            aria-label={`Toggle status for ${row.title}`}
+                            onClick={() => onToggleStatus(row)}
+                            disabled={togglingId === row._id}
+                            title={row.status === "active" ? "Deactivate banner" : "Activate banner"}
+                          >
+                            <span className="settings-switch__knob" aria-hidden />
+                          </button>
                         ) : null}
                         <AdminStatusBadge status={row.status} />
                       </div>
@@ -202,19 +233,24 @@ export function BannerList() {
                           <AiOutlineEye size={18} />
                         </Link>
                         {canEdit ? (
-<button
-                          type="button"
-                          className="icon-btn icon-btn--edit"
-                          title="Edit"
-                          onClick={() => navigate(`/admin/banners/${row._id}/edit`)}
-                        >
-                          <MdEditSquare size={18} />
-                        </button>
+                          <button
+                            type="button"
+                            className="icon-btn icon-btn--edit"
+                            title="Edit"
+                            onClick={() => navigate(`/admin/banners/${row._id}/edit`)}
+                          >
+                            <MdEditSquare size={18} />
+                          </button>
                         ) : null}
                         {canDelete ? (
-<button type="button" className="icon-btn icon-btn--delete" title="Delete" onClick={() => onDelete(row)}>
-                          <AiFillDelete size={18} />
-                        </button>
+                          <button
+                            type="button"
+                            className="icon-btn icon-btn--delete"
+                            title="Delete"
+                            onClick={() => onDelete(row)}
+                          >
+                            <AiFillDelete size={18} />
+                          </button>
                         ) : null}
                       </div>
                     </td>
@@ -231,7 +267,12 @@ export function BannerList() {
               <button type="button" className="btn btn--ghost" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
                 Previous
               </button>
-              <button type="button" className="btn btn--ghost" disabled={page >= pages} onClick={() => setPage((p) => Math.min(pages, p + 1))}>
+              <button
+                type="button"
+                className="btn btn--ghost"
+                disabled={page >= pages}
+                onClick={() => setPage((p) => Math.min(pages, p + 1))}
+              >
                 Next
               </button>
             </div>

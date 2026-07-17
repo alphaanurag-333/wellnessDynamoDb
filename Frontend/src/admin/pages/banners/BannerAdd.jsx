@@ -18,6 +18,8 @@ import {
   TITLE_MAX_LEN,
   DESCRIPTION_MIN_LEN,
   DESCRIPTION_MAX_LEN,
+  BANNER_TYPE_OPTIONS,
+  BANNER_TYPE_MAIN,
   emptyForm,
   sanitizeTitleInput,
   sanitizeDescriptionInput,
@@ -37,6 +39,7 @@ export function BannerForm({ mode = "create", initialBanner = null }) {
       title: initialBanner.title || "",
       description: initialBanner.description || "",
       status: initialBanner.status || "active",
+      bannerType: initialBanner.bannerType || BANNER_TYPE_MAIN,
     };
   });
   const editId = isEditMode && initialBanner ? initialBanner._id || initialBanner.id || "" : "";
@@ -181,6 +184,7 @@ export function BannerForm({ mode = "create", initialBanner = null }) {
       title: form.title.trim(),
       description: form.description.trim(),
       status: form.status || "active",
+      bannerType: form.bannerType || BANNER_TYPE_MAIN,
     };
     setSaving(true);
     try {
@@ -212,6 +216,23 @@ export function BannerForm({ mode = "create", initialBanner = null }) {
     <>
       <form onSubmit={onSubmit}>
         <div className="row g-3">
+          <label className="user-field col-12 col-md-6">
+            <span className="user-field__label">
+              Banner type <span className="required-dot">*</span>
+            </span>
+            <select
+              className="user-field__input"
+              value={form.bannerType}
+              onChange={(e) => setForm((p) => ({ ...p, bannerType: e.target.value }))}
+              required
+            >
+              {BANNER_TYPE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="user-field col-12 col-md-6">
             <span className="user-field__label">Status</span>
             <select

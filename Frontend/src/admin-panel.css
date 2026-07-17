@@ -5733,6 +5733,10 @@ a.icon-btn {
   margin-top: 12px;
 }
 
+.banner-type-tabs {
+  margin: 0 0 1rem;
+}
+
 .settings-tab-panel {
   padding-top: 18px;
   min-height: 120px;

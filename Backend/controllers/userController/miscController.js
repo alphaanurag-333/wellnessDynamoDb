@@ -99,8 +99,10 @@ function toPublicSiteMonthlyChampion(post, user) {
 
 exports.getActiveBanners = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
+  const rawType = String(req.query.bannerType || req.query.type || "main").trim().toLowerCase();
+  const bannerType = rawType === "wellnesspedia" ? "wellnesspedia" : "main";
   const data = resolveListMedia(
-    await listBanners({ page, limit, status: "active" }),
+    await listBanners({ page, limit, status: "active", bannerType }),
     "banners",
     ["image", "mobileImage"]
   );
