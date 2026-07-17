@@ -13315,7 +13315,7 @@ SMALL DEVICES
 }
 
 .about-page .leadership__card--with-video .leadership__image {
-  max-width: 132px;
+  max-width: 140px;
 }
 
 @media (min-width: 769px) {
@@ -13595,8 +13595,8 @@ SMALL DEVICES
 
   .about-page .leadership__card--with-video .leadership__image {
     grid-area: image;
-    width: 96px;
-    max-width: 96px;
+    width: 110px;
+    max-width: 110px;
     justify-self: start;
   }
 
@@ -13928,6 +13928,9 @@ SMALL DEVICES
   }
   .managmobile {
     display: flex;
+  }
+  .displaymain {
+    display: block !important;
   }
 }
 

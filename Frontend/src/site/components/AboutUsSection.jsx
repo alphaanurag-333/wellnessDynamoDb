@@ -449,9 +449,9 @@ const AboutUsSection = () => {
               <img src={clinicImage} alt="Clinic" />
             </div>
 
-            <div className="wellness__floatingCard">
+            {/* <div className="wellness__floatingCard displaymain">
               <img src={oilImage} alt="Essential Oil" />
-            </div>
+            </div> */}
           </div>
         </div>
       </div>
