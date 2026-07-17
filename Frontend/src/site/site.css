@@ -9163,8 +9163,8 @@ HOVER EFFECTS
 
 .static-page-hero {
   width: 100%;
-  min-height: 200px;
-  padding: 48px 0 56px;
+  /* min-height: 200px; */
+  padding: 10px 0 0px;
   background: linear-gradient(
     135deg,
     var(--primary-light) 0%,
@@ -9201,7 +9201,7 @@ HOVER EFFECTS
 }
 
 .static-page-body {
-  padding: 40px 0 72px;
+  padding: 10px 0 10px;
   max-width: 860px;
 }
 
@@ -11490,7 +11490,7 @@ SCROLLBAR
   }
 
   .static-page-body {
-    padding: 28px 0 56px;
+    padding: 28px 10px 56px;
   }
 
   .bodyfat-section {
@@ -13394,13 +13394,13 @@ SCROLLBAR
     left: var(--space-3);
   }
   .static-page-hero{
-    padding: 25px 0;
+    padding: 15px 0;
     min-height: unset;
     padding-bottom: 0;
     
   }
   .static-page-body{
-            padding: 12px 0 56px;
+            padding: 12px 0 10px;
 
   }
   .static-page-content p,   .static-page-content li{
@@ -14287,6 +14287,9 @@ SMALL DEVICES
 @media (min-width: 992px) {
     .main {
         display: none;
+    }
+    .paddingmanages {
+      padding-left: 0px;
     }
 }
 
