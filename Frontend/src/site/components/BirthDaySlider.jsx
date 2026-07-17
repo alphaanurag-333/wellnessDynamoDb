@@ -58,6 +58,7 @@ export default function BirthdaySlider() {
     <section className="champion-section" aria-label="Birthday wishes">
 
       <Swiper
+      loop={true}
         className="container"
         modules={[Autoplay]}
         spaceBetween={24}

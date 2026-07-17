@@ -257,6 +257,7 @@ export function LeadershipNotesSlider({ notes = [], loading = false }) {
         ) : null}
  </div>
         <Swiper
+        loop={true}
           modules={[Navigation]}
           slidesPerView={2}
            breakpoints={{

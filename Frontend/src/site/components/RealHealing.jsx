@@ -118,7 +118,7 @@ export default function RealHealingSlider() {
   return (
     <section className="real-healing-section container" aria-label="Real people real healing">
       <h2 className="healing-title">Real People : Real Healing</h2>
-      <Swiper
+      <Swiper loop={true}
         modules={[Autoplay]}
         slidesPerView={3}
         spaceBetween={25}

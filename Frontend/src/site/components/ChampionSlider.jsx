@@ -98,6 +98,7 @@ export default function ChampionSlider() {
         </div>
 
         <Swiper
+        loop={true}
           className={`monthly-champions__slider monthly-champions__slider--count-${Math.min(count, 3)}`}
           modules={[Autoplay]}
           spaceBetween={24}
