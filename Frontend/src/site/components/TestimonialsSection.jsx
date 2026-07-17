@@ -97,7 +97,7 @@ export default function TestimonialsSection({ items: itemsProp }) {
           <h2>Client Reviews</h2>
         </div>
 
-        <Swiper loop={true}
+        <Swiper
           modules={[Pagination, Autoplay]}
           slidesPerView={2}
           spaceBetween={28}

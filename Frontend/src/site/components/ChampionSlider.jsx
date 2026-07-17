@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 import "swiper/css";
 import { DEFAULT_IMAGE_SRC, handleMediaImageError, mediaUrl } from "../../media.js";
 import { fetchMonthlyChampions } from "../api/publicMisc.js";
@@ -53,8 +54,72 @@ function mapChampion(row) {
   };
 }
 
+function ChampionCard({ item, expanded, onToggle }) {
+  const [needsToggle, setNeedsToggle] = useState(false);
+  const textRef = useRef(null);
+
+  useEffect(() => {
+    const el = textRef.current;
+    if (!el || expanded) return undefined;
+
+    const measure = () => {
+      setNeedsToggle(el.scrollHeight > el.clientHeight + 1);
+    };
+
+    measure();
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    observer?.observe(el);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [item.subtitle, expanded]);
+
+  const showToggle = needsToggle || expanded;
+
+  return (
+    <article className={`champion-card${expanded ? " champion-card--expanded" : ""}`}>
+      <div className="champion-title marginmanages">{item.title}</div>
+
+      <div className="champion-user">
+        <div className="champion-avatar">
+          <img
+            src={item.avatar || DEFAULT_IMAGE_SRC}
+            alt={item.name}
+            loading="lazy"
+            onError={handleMediaImageError}
+          />
+        </div>
+
+        <div className="champion-info">
+          <h4 className="text-start fonrside">{item.name}</h4>
+          <p
+            ref={textRef}
+            className={expanded ? "champion-info__text" : "champion-info__text champion-info__text--clamped"}
+          >
+            {item.subtitle}
+          </p>
+          {showToggle ? (
+            <button
+              type="button"
+              className="champion-info__more"
+              onClick={() => onToggle(item.id)}
+              aria-expanded={expanded}
+            >
+              {expanded ? "Read Less" : "Read More"}
+              {expanded ? <ArrowUpRight size={16} aria-hidden /> : <ArrowRight size={16} aria-hidden />}
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </article>
+  );
+}
+
 export default function ChampionSlider() {
   const [items, setItems] = useState(null);
+  const [expandedId, setExpandedId] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -87,6 +152,10 @@ export default function ChampionSlider() {
   const enableLoop = items.length > 1;
   const count = items.length;
 
+  const toggleExpanded = (id) => {
+    setExpandedId((prev) => (prev === id ? null : id));
+  };
+
   return (
     <section className="champion-section monthly-champions paddingmanage pt-3 pb-3" aria-label="Monthly champions">
       <div className="site-container">
@@ -98,7 +167,6 @@ export default function ChampionSlider() {
         </div>
 
         <Swiper
-        loop={true}
           className={`monthly-champions__slider monthly-champions__slider--count-${Math.min(count, 3)}`}
           modules={[Autoplay]}
           spaceBetween={24}
@@ -136,25 +204,11 @@ export default function ChampionSlider() {
         >
           {items.map((item) => (
             <SwiperSlide key={item.id}>
-              <article className="champion-card">
-                <div className="champion-title marginmanages">{item.title}</div>
-
-                <div className="champion-user">
-                  <div className="champion-avatar">
-                    <img
-                      src={item.avatar || DEFAULT_IMAGE_SRC}
-                      alt={item.name}
-                      loading="lazy"
-                      onError={handleMediaImageError}
-                    />
-                  </div>
-
-                  <div className="champion-info">
-                    <h4 className="text-start fonrside">{item.name}</h4>
-                    <p>{item.subtitle}</p>
-                  </div>
-                </div>
-              </article>
+              <ChampionCard
+                item={item}
+                expanded={expandedId === item.id}
+                onToggle={toggleExpanded}
+              />
             </SwiperSlide>
           ))}
         </Swiper>

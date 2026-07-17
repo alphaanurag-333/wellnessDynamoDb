@@ -7618,6 +7618,7 @@ PRINT
   display: flex;
   height: auto;
   justify-content: center;
+  align-items: flex-start;
 }
 
 .monthly-champions__slider .champion-card {
@@ -7727,6 +7728,11 @@ PRINT
   text-align: center;
 }
 
+.monthly-champions .champion-info {
+  text-align: left;
+  min-width: 0;
+}
+
 .birthday-info {
   text-align: left;
 }
@@ -7743,6 +7749,57 @@ PRINT
   color: var(--text-body);
   margin-bottom: 0;
   text-align: justify;
+}
+
+.champion-info__text--clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-height: 4.5em; /* 3 lines fallback so card stays compact */
+}
+
+.champion-info__text:not(.champion-info__text--clamped) {
+  max-height: none;
+  display: block;
+  -webkit-line-clamp: unset;
+  overflow: visible;
+}
+
+.champion-info__more {
+  margin-top: 8px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: var(--fw-semibold);
+  transition: var(--transition);
+  min-height: auto;
+  position: relative;
+  z-index: 2;
+}
+
+.champion-info__more svg {
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+
+.champion-info__more:hover {
+  color: var(--primary-hover);
+}
+
+.champion-info__more:hover svg {
+  transform: translateX(4px);
+}
+
+.champion-card--expanded {
+  overflow: visible;
 }
 
 .birthday-info h4 {
@@ -7817,10 +7874,21 @@ PRINT
 .champion-section .swiper-slide {
   display: flex;
   height: auto;
+  align-items: flex-start;
 }
 
 .champion-section .swiper-slide .champion-card {
-  height: 100%;
+  height: auto;
+  width: 100%;
+}
+
+.monthly-champions .champion-card {
+  min-height: 0;
+  height: auto;
+}
+
+.monthly-champions .champion-card:not(.champion-card--expanded) {
+  min-height: 0;
 }
 
 /* ------------healing Slider----------------- */
@@ -8560,7 +8628,7 @@ LAYOUT
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 0.9fr);
   gap: 24px;
-  align-items: stretch;
+  align-items: start;
 }
 
 .bodyfat-left,
@@ -8596,9 +8664,60 @@ LAYOUT
   box-shadow: var(--shadow-sm);
 }
 
-.bodyfat-left .form-group,
+.bodyfat-left .form-group.form-group--full,
 .visceral-left .form-group {
   width: 100%;
+}
+
+.bodyfat-form .form-row {
+  width: 100%;
+  display: flex;
+  gap: 12px;
+  margin-bottom: 0;
+}
+
+.bodyfat-form .form-row .form-group {
+  width: 50%;
+  min-width: 0;
+  flex: 1;
+}
+
+.bodyfat-form .field-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.bodyfat-form .field-header label {
+  margin-bottom: 0;
+  white-space: nowrap;
+}
+
+.bodyfat-form .field-header .unit-switch {
+  flex-shrink: 0;
+}
+
+.bodyfat-form .field-header .unit-switch button {
+  min-width: 36px;
+  height: 28px;
+  padding: 0 8px;
+  font-size: 11px;
+}
+
+.bodyfat-form .form-group input {
+  height: 42px;
+}
+
+.bodyfat-form .height-feet {
+  display: flex;
+  gap: 8px;
+}
+
+.bodyfat-form .height-feet input {
+  width: 50%;
+  min-width: 0;
 }
 
 /*=====================================
@@ -8609,6 +8728,7 @@ TITLE
   font-size: var(--fs-2xl);
   color: var(--text-heading);
   margin-bottom: 10px;
+  font-weight: var(--fw-bold);
 }
 
 .bodyfat-right h5 {
@@ -11386,6 +11506,15 @@ SCROLLBAR
     gap: 10px;
   }
 
+  .bodyfat-form .form-row {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .bodyfat-form .form-row .form-group {
+    width: 100%;
+  }
+
   .form-group {
     width: 100%;
   }
@@ -13974,8 +14103,12 @@ SMALL DEVICES
     flex-direction: unset !important;
   }
   .champion-card {
-    padding: 2px 5px !important;
-    min-height: 95px !important;
+    padding: 8px 10px !important;
+    min-height: 0 !important;
+    height: auto !important;
+  }
+  .champion-card--expanded {
+    min-height: auto !important;
   }
   .champion-avatar {
     width: 60px;
@@ -13984,7 +14117,7 @@ SMALL DEVICES
 
     .champion-user, .birthday-user {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 10px;
 }
@@ -13995,6 +14128,15 @@ SMALL DEVICES
   margin-bottom: 0;
   /* text-align: justify; */
 }
+  .champion-info__text--clamped {
+    -webkit-line-clamp: 2;
+    max-height: 2.8em;
+  }
+  .champion-info__more {
+    margin-top: 4px;
+    font-size: 11px;
+    gap: 4px;
+  }
   .monthly-champions__header {
     margin-bottom: 0px !important; 
   }

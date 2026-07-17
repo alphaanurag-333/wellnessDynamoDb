@@ -162,7 +162,6 @@ const SuccessStories = () => {
             </div>
         </div>
           <Swiper
-          loop={true}
             modules={[Autoplay]}
             slidesPerView={5}
             spaceBetween={14}

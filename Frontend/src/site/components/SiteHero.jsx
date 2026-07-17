@@ -57,7 +57,7 @@ export function SiteHero() {
   }
 
   return (
-    <Swiper loop={true}
+    <Swiper
       key={`hero-${slides.length}`}
       spaceBetween={0}
       speed={900}
