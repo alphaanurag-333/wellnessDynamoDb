@@ -45,7 +45,7 @@ export default function FinalCTA() {
               Are you tired of facing your wellness journey alone?
             </h2>
 
-            <p className="final-cta__description" style={{maxWidth:'100%',textAlign:'justify'}}>
+            <p className="final-cta__description" style={{maxWidth:'100%',textAlign:'center'}}>
               Discover a healthier, happier you with our vibrant wellness
               community. Connect, learn, and grow alongside like-minded
               individuals on your journey to well-being. Take the first step

@@ -211,13 +211,13 @@ export default function BodyFatCalculator() {
           {/* LEFT — form */}
 
           <div className="bodyfat-left">
-            <h2>Body Fat Calculator</h2>
+            <h2 style={{fontSize:'20px'}}>Body Fat Calculator</h2>
 
             <div className="bodyfat-form">
               {/* Gender */}
 
               <div className="form-group">
-                <label>
+                <label className="mb-2">
                   Gender <RequiredMark />
                 </label>
 
@@ -245,7 +245,7 @@ export default function BodyFatCalculator() {
               {/* Age */}
 
               <div className="form-group">
-                <label>
+                <label className="mb-2">
                   Age <RequiredMark />
                 </label>
 
@@ -266,7 +266,7 @@ export default function BodyFatCalculator() {
               {/* Height */}
 
               <div className="form-group">
-                <label>
+                <label className="mb-2">
                   Height <RequiredMark />
                 </label>
 
@@ -347,7 +347,7 @@ export default function BodyFatCalculator() {
               {/* Weight */}
 
               <div className="form-group">
-                <label>
+                <label className="mb-2">
                   Weight <RequiredMark />
                 </label>
 
@@ -393,7 +393,7 @@ export default function BodyFatCalculator() {
               {/* Neck */}
 
               <div className="form-group">
-                <label>
+                <label className="mb-2">
                   Neck <RequiredMark />
                 </label>
 
@@ -439,7 +439,7 @@ export default function BodyFatCalculator() {
               {/* Waist */}
 
               <div className="form-group">
-                <label>
+                <label className="mb-2">
                   Waist <RequiredMark />
                 </label>
 

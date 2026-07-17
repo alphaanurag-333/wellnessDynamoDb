@@ -23,7 +23,7 @@ const CATEGORY_ITEMS = [
     image: diabetesImg,
     theme: "diabetes",
     description:
-      "Yoga, an ancient practice rooted in Indian philosophy, lifestyle guidance, and clinical care to support blood sugar balance.",
+      "Take control of your health through personalized nutrition, targeted exercise, and expert guidance—aimed at reducing medication dependence and improving wellbeing.",
   },
   {
     id: "fat-loss",
@@ -32,7 +32,7 @@ const CATEGORY_ITEMS = [
     image: fatLossImg,
     theme: "fat-loss",
     description:
-      "Support better hormonal balance and sustainable fat loss through structured nutrition and daily wellness habits.",
+      "Achieve your ideal weight with personalized nutrition, effective workouts, and ongoing coach support for a healthier lifestyle.",
   },
   {
     id: "pcos",
@@ -41,16 +41,16 @@ const CATEGORY_ITEMS = [
     image: pcosImg,
     theme: "pcos",
     description:
-      "Focus on hormonal health and lifestyle management for improved cycle balance and long-term wellbeing.",
+      "A holistic approach to managing Polycystic Ovary Syndrome with personalized nutrition, tailored exercise, and hormonal balance strategies.",
   },
-  {
+  {  
     id: "thyroid",
     title: "Thyroid Care",
     url: "/thyroid",
     image: thyroidImg,
     theme: "thyroid",
     description:
-      "Personalized plans to support thyroid function, metabolism, and overall energy through guided clinical wellness.",
+      "Restore balance and optimize thyroid function with customized nutrition, targeted exercise, and expert guidance for hypo- and hyperthyroidism.",
   },
   {
     id: "gut",
@@ -59,7 +59,7 @@ const CATEGORY_ITEMS = [
     image: gutImg,
     theme: "gut",
     description:
-      "Build healthier daily routines to support digestion, immunity, and overall gut wellness.",
+      "Promote a healthy digestive system with personalized nutrition, probiotics, and expert advice to improve digestion, immunity, and overall wellbeing.",
   },
 ];
 
@@ -208,7 +208,7 @@ const SuccessStories = () => {
                     <img src={item.image} alt={item.title} loading="lazy" />
                   </div>
                   <h4>{item.title}</h4>
-                  <p className="transformation-category-card__desc">
+                  <p className="transformation-category-card__desc" style={{textAlign:'justify'}}>
                     {item.description}
                   </p>
                   <NavLink to={item.url} className="transformation-category-card__more">

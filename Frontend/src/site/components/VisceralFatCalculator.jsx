@@ -680,7 +680,12 @@ export default function VisceralFatCalculator() {
 
             {/* FOOTER */}
 
-            <div className="visceral-footer">
+           
+
+          </div>
+
+        </div>
+ <div className="visceral-footer">
 
               <p>
 
@@ -693,11 +698,6 @@ export default function VisceralFatCalculator() {
               </p>
 
             </div>
-
-          </div>
-
-        </div>
-
       </div>
 
     </section>
