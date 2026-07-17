@@ -10,10 +10,10 @@ import {
 } from "../../utils/personFieldValidation.js";
 
 export const FIELD_LIMITS = {
-  firstName: 20,
-  lastName: 20,
-  email: 50,
-  message: 500,
+  firstName: 100,
+  lastName: 100,
+  email: 100,
+  message: 1000,
   phoneNational: 15,
   phoneNationalIndia: 10,
 };

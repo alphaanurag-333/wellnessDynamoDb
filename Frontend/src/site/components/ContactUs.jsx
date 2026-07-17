@@ -210,7 +210,7 @@ export default function ContactUsSection() {
             <div className={`contact-field${fieldErrors.firstName ? " contact-field--invalid" : ""}`}>
               <label htmlFor="contact-firstName">
                 First Name
-                <span className="contact-field-limit">{formData.firstName.length}/{FIELD_LIMITS.firstName}</span>
+                {/* <span className="contact-field-limit">{formData.firstName.length}/{FIELD_LIMITS.firstName}</span> */}
               </label>
               <input
                 id="contact-firstName"
@@ -231,7 +231,7 @@ export default function ContactUsSection() {
             <div className={`contact-field${fieldErrors.lastName ? " contact-field--invalid" : ""}`}>
               <label htmlFor="contact-lastName">
                 Last Name
-                <span className="contact-field-limit">{formData.lastName.length}/{FIELD_LIMITS.lastName}</span>
+                {/* <span className="contact-field-limit">{formData.lastName.length}/{FIELD_LIMITS.lastName}</span> */}
               </label>
               <input
                 id="contact-lastName"
@@ -254,7 +254,7 @@ export default function ContactUsSection() {
             <div className={`contact-field${fieldErrors.email ? " contact-field--invalid" : ""}`}>
               <label htmlFor="contact-email">
                 Email Address
-                <span className="contact-field-limit">{formData.email.length}/{FIELD_LIMITS.email}</span>
+                {/* <span className="contact-field-limit">{formData.email.length}/{FIELD_LIMITS.email}</span> */}
               </label>
               <input
                 id="contact-email"
@@ -331,7 +331,7 @@ export default function ContactUsSection() {
           <div className={`contact-field contact-full${fieldErrors.message ? " contact-field--invalid" : ""}`}>
             <label htmlFor="contact-message">
               Your Message
-              <span className="contact-field-limit">{formData.message.length}/{FIELD_LIMITS.message}</span>
+              {/* <span className="contact-field-limit">{formData.message.length}/{FIELD_LIMITS.message}</span> */} 
             </label>
             <textarea
               id="contact-message"

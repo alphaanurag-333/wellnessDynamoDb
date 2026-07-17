@@ -18,13 +18,13 @@ const STATUS = new Set(["new", "read", "archived"]);
 const INQUIRY_TYPES = new Set(["consultation", "program", "appointment", "general"]);
 
 const FIELD_LIMITS = {
-  firstName: 20,
-  lastName: 20,
-  email: 50,
+  firstName: 100,
+  lastName: 100,
+  email: 100,
   phoneCountryCode: 6,
   phoneNational: 15,
   phone: 24,
-  message: 500,
+  message: 1000,
 };
 
 function isIndiaDial(code) {
