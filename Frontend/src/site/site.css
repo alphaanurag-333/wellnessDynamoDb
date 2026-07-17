@@ -265,7 +265,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  min-height: 80px;
+  min-height: 60px;
 }
 
 .site-header__brand {
@@ -11460,6 +11460,7 @@ SCROLLBAR
 
   .methodology__header p {
     font-size: 16px;
+    text-align: justify;
   }
 
   .methodology__cards {
@@ -12181,7 +12182,7 @@ SCROLLBAR
   .swiper.heroSwiper,
   .heroSwiper--loading {
     /* ~1080×480 mobile crop on narrow phones */
-    height: clamp(150px, 44.444vw, 220px);
+    height: clamp(190px, 44.444vw, 220px);
   }
 
   .hero-content {
@@ -12212,6 +12213,7 @@ SCROLLBAR
   }
   .wellness-hero__description , .methodology__header p{
     font-size: 14px;
+    text-align: justify;
   }
   .wellness-btn--primary{
     height: 42px;
@@ -12225,6 +12227,7 @@ SCROLLBAR
   .methodology-card__content p , .transformation-story-card__body p{
     font-size: 14px;
     text-align: left;
+    text-align: justify;
   }
   .transformation-story-card__label{
    
@@ -13931,6 +13934,9 @@ SMALL DEVICES
   }
   .displaymain {
     display: block !important;
+  }
+  .displaychampion {
+    display: none !important;
   }
 }
 
