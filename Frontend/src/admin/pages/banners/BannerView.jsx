@@ -7,7 +7,7 @@ import { logout } from "../../../store/authSlice.js";
 import { AdminDetailBannerImage } from "../../components/AdminDetailBannerImage.jsx";
 import { NotFoundPage } from "../NotFoundPage.jsx";
 import { AdminPageHeader, AdminStatusBadge } from "../../components/AdminCrud.jsx";
-import { formatDate, bannerTypeLabel } from "./BannerShared.js";
+import { formatDate, bannerTypeLabel, BANNER_TYPE_WELLNESSPEDIA } from "./BannerShared.js";
 
 function DetailRow({ label, value }) {
   return (
@@ -94,20 +94,33 @@ export function BannerView() {
       />
 
       <div className="page-card user-view-card">
-        <div className="user-detail-row" style={{ marginBottom: 8 }}>
-          <span className="user-detail-row__label">Desktop banner</span>
-        </div>
-        <AdminDetailBannerImage path={banner.image} alt={banner.title || "Desktop banner"} />
+        {banner.bannerType !== BANNER_TYPE_WELLNESSPEDIA && banner.image ? (
+          <>
+            <div className="user-detail-row" style={{ marginBottom: 8 }}>
+              <span className="user-detail-row__label">Desktop banner</span>
+            </div>
+            <AdminDetailBannerImage path={banner.image} alt={banner.title || "Desktop banner"} />
+          </>
+        ) : null}
         {banner.mobileImage ? (
           <>
-            <div className="user-detail-row" style={{ marginTop: 20, marginBottom: 8 }}>
-              <span className="user-detail-row__label">Mobile / app banner</span>
+            <div
+              className="user-detail-row"
+              style={{
+                marginTop: banner.bannerType !== BANNER_TYPE_WELLNESSPEDIA && banner.image ? 20 : 0,
+                marginBottom: 8,
+              }}
+            >
+              <span className="user-detail-row__label">
+                {banner.bannerType === BANNER_TYPE_WELLNESSPEDIA ? "Banner image" : "Mobile / app banner"}
+              </span>
             </div>
             <AdminDetailBannerImage
               path={banner.mobileImage}
               alt={`${banner.title || "Banner"} (mobile)`}
               aspectRatio="1080 / 480"
-              maxHeight={240}
+              maxHeight={360}
+              objectFit="contain"
             />
           </>
         ) : null}

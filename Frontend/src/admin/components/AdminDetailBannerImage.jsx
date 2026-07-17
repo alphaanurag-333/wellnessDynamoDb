@@ -14,6 +14,7 @@ export function AdminDetailBannerImage({
   radius = 8,
   hideWhenMissing = false,
   aspectRatio = "1920 / 640",
+  objectFit = "cover",
 }) {
   if (hideWhenMissing && !path && !src) return null;
 
@@ -36,9 +37,9 @@ export function AdminDetailBannerImage({
         height={maxHeight}
         radius={0}
         alt={alt}
-        objectFit="cover"
+        objectFit={objectFit}
         responsive
-        style={{ width: "100%", height: "100%", maxHeight: "none", objectFit: "cover" }}
+        style={{ width: "100%", height: "100%", maxHeight: "none", objectFit }}
       />
     </div>
   );

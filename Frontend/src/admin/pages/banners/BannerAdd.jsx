@@ -20,6 +20,7 @@ import {
   DESCRIPTION_MAX_LEN,
   BANNER_TYPE_OPTIONS,
   BANNER_TYPE_MAIN,
+  BANNER_TYPE_WELLNESSPEDIA,
   emptyForm,
   sanitizeTitleInput,
   sanitizeDescriptionInput,
@@ -42,6 +43,7 @@ export function BannerForm({ mode = "create", initialBanner = null }) {
       bannerType: initialBanner.bannerType || BANNER_TYPE_MAIN,
     };
   });
+  const isWellnesspedia = form.bannerType === BANNER_TYPE_WELLNESSPEDIA;
   const editId = isEditMode && initialBanner ? initialBanner._id || initialBanner.id || "" : "";
   const editBaselineImage = isEditMode && initialBanner ? initialBanner.image || "" : "";
   const editBaselineMobileImage =
@@ -163,7 +165,7 @@ export function BannerForm({ mode = "create", initialBanner = null }) {
       await Swal.fire({ icon: "error", title: "Validation error", text: validationError });
       return;
     }
-    if (!editId && !(imageFile instanceof File)) {
+    if (!editId && !isWellnesspedia && !(imageFile instanceof File)) {
       await Swal.fire({
         icon: "error",
         title: "Validation error",
@@ -186,13 +188,16 @@ export function BannerForm({ mode = "create", initialBanner = null }) {
       status: form.status || "active",
       bannerType: form.bannerType || BANNER_TYPE_MAIN,
     };
+    // Wellnesspedia: only mobile banner is uploaded for now
+    const desktopFile = isWellnesspedia ? null : imageFile;
+    const mobileFile = mobileImageFile;
     setSaving(true);
     try {
       if (editId) {
-        await adminUpdateBanner(adminToken, editId, payload, imageFile, mobileImageFile);
+        await adminUpdateBanner(adminToken, editId, payload, desktopFile, mobileFile);
         await Swal.fire({ icon: "success", title: "Banner updated", timer: 1500 });
       } else {
-        await adminCreateBanner(adminToken, payload, imageFile, mobileImageFile);
+        await adminCreateBanner(adminToken, payload, desktopFile, mobileFile);
         await Swal.fire({ icon: "success", title: "Banner created", timer: 1500 });
       }
       navigate("/admin/banners");
@@ -289,61 +294,66 @@ export function BannerForm({ mode = "create", initialBanner = null }) {
             </small>
           </label>
 
-          <div className="user-field col-12 col-md-6">
-            <span className="user-field__label">
-              Desktop banner image ({IMAGE_WIDTH}px × {IMAGE_HEIGHT}px, max {IMAGE_MAX_SIZE_MB} MB){" "}
-              {editId ? "(optional)" : <span className="required-dot">*</span>}
-            </span>
-            <p className="data-table__muted" style={{ margin: "0 0 8px", fontSize: 13 }}>
-              Recommended: <strong>{IMAGE_WIDTH} × {IMAGE_HEIGHT}px</strong> for the website desktop
-              hero. Keep important content in the center.
-            </p>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/gif,image/webp"
-              className="user-field__input"
-              onChange={(e) => handleImagePick("desktop", e)}
-            />
-            {imagePreview ? (
-              <div className="banner-image-preview" style={{ marginTop: 12 }}>
-                <p className="data-table__muted" style={{ marginBottom: 8, fontSize: 13 }}>
-                  Desktop preview ({IMAGE_WIDTH} × {IMAGE_HEIGHT}px)
-                </p>
-                <div
-                  className="banner-image-preview__frame"
-                  style={{
-                    width: "100%",
-                    maxWidth: 720,
-                    aspectRatio: `${IMAGE_WIDTH} / ${IMAGE_HEIGHT}`,
-                    borderRadius: 12,
-                    overflow: "hidden",
-                    border: "1px solid var(--admin-border, #e5e7eb)",
-                    background: "#111",
-                  }}
-                >
-                  <img
-                    src={imagePreview}
-                    alt="Desktop banner preview"
-                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                  />
+          {!isWellnesspedia ? (
+            <div className="user-field col-12 col-md-6">
+              <span className="user-field__label">
+                Desktop banner image ({IMAGE_WIDTH}px × {IMAGE_HEIGHT}px, max {IMAGE_MAX_SIZE_MB} MB){" "}
+                {editId ? "(optional)" : <span className="required-dot">*</span>}
+              </span>
+              <p className="data-table__muted" style={{ margin: "0 0 8px", fontSize: 13 }}>
+                Recommended: <strong>
+                  {IMAGE_WIDTH} × {IMAGE_HEIGHT}px
+                </strong>{" "}
+                for the website desktop hero. Keep important content in the center.
+              </p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                className="user-field__input"
+                onChange={(e) => handleImagePick("desktop", e)}
+              />
+              {imagePreview ? (
+                <div className="banner-image-preview" style={{ marginTop: 12 }}>
+                  <p className="data-table__muted" style={{ marginBottom: 8, fontSize: 13 }}>
+                    Desktop preview ({IMAGE_WIDTH} × {IMAGE_HEIGHT}px)
+                  </p>
+                  <div
+                    className="banner-image-preview__frame"
+                    style={{
+                      width: "100%",
+                      maxWidth: 720,
+                      aspectRatio: `${IMAGE_WIDTH} / ${IMAGE_HEIGHT}`,
+                      borderRadius: 12,
+                      overflow: "hidden",
+                      border: "1px solid var(--admin-border, #e5e7eb)",
+                      background: "#111",
+                    }}
+                  >
+                    <img
+                      src={imagePreview}
+                      alt="Desktop banner preview"
+                      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                    />
+                  </div>
                 </div>
-              </div>
-            ) : null}
-          </div>
+              ) : null}
+            </div>
+          ) : null}
 
-          <div className="user-field col-12 col-md-6">
+          <div className={`user-field col-12${isWellnesspedia ? "" : " col-md-6"}`}>
             <span className="user-field__label">
-              Mobile banner image ({MOBILE_IMAGE_WIDTH}px × {MOBILE_IMAGE_HEIGHT}px, max{" "}
-              {IMAGE_MAX_SIZE_MB} MB){" "}
+              {isWellnesspedia ? "Banner image" : "Mobile banner image"} ({MOBILE_IMAGE_WIDTH}px ×{" "}
+              {MOBILE_IMAGE_HEIGHT}px, max {IMAGE_MAX_SIZE_MB} MB){" "}
               {editId ? "(optional)" : <span className="required-dot">*</span>}
             </span>
             <p className="data-table__muted" style={{ margin: "0 0 8px", fontSize: 13 }}>
               Recommended: <strong>
                 {MOBILE_IMAGE_WIDTH} × {MOBILE_IMAGE_HEIGHT}px
               </strong>{" "}
-              for mobile website and the app home banner. Use a tighter crop so faces/text stay
-              readable on smaller screens.
+              {isWellnesspedia
+                ? "for the Wellnesspedia banner."
+                : "for mobile website and the app home banner. Use a tighter crop so faces/text stay readable on smaller screens."}
             </p>
             <input
               ref={mobileFileInputRef}
@@ -355,7 +365,8 @@ export function BannerForm({ mode = "create", initialBanner = null }) {
             {mobileImagePreview ? (
               <div className="banner-image-preview" style={{ marginTop: 12 }}>
                 <p className="data-table__muted" style={{ marginBottom: 8, fontSize: 13 }}>
-                  Mobile / app preview ({MOBILE_IMAGE_WIDTH} × {MOBILE_IMAGE_HEIGHT}px)
+                  {isWellnesspedia ? "Banner" : "Mobile / app"} preview ({MOBILE_IMAGE_WIDTH} ×{" "}
+                  {MOBILE_IMAGE_HEIGHT}px)
                 </p>
                 <div
                   className="banner-image-preview__frame"
@@ -371,7 +382,7 @@ export function BannerForm({ mode = "create", initialBanner = null }) {
                 >
                   <img
                     src={mobileImagePreview}
-                    alt="Mobile banner preview"
+                    alt={isWellnesspedia ? "Banner preview" : "Mobile banner preview"}
                     style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
                   />
                 </div>
@@ -402,7 +413,13 @@ export function BannerForm({ mode = "create", initialBanner = null }) {
 
       <ImageCropModal
         open={cropModal.open}
-        title={cropIsMobile ? "Crop mobile banner image" : "Crop desktop banner image"}
+        title={
+          cropIsMobile
+            ? isWellnesspedia
+              ? "Crop banner image"
+              : "Crop mobile banner image"
+            : "Crop desktop banner image"
+        }
         imageSrc={cropModal.src}
         outputWidth={cropWidth}
         outputHeight={cropHeight}

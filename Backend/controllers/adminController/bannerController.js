@@ -63,8 +63,10 @@ exports.createBannerController = asyncHandler(async (req, res) => {
 
   if (!title) throw new AppError("title is required", 400);
   if (!description) throw new AppError("description is required", 400);
-  if (!image) throw new AppError("image is required", 400);
   if (!mobileImage) throw new AppError("mobileImage is required", 400);
+  if (bannerType !== "wellnesspedia" && !image) {
+    throw new AppError("image is required", 400);
+  }
   if (!["active", "inactive"].includes(status)) {
     throw new AppError("status must be active or inactive", 400);
   }
@@ -72,10 +74,12 @@ exports.createBannerController = asyncHandler(async (req, res) => {
     throw new AppError("bannerType must be main or wellnesspedia", 400);
   }
 
+  const resolvedImage = image || mobileImage;
+
   const banner = await createBanner({
     title,
     description,
-    image,
+    image: resolvedImage,
     mobileImage,
     status,
     bannerType,
