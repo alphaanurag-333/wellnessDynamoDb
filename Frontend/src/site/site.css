@@ -4186,7 +4186,7 @@ h5.pillar-card__head-title {
 
 .wellness__title {
   margin: 0;
-
+margin-bottom: 10px;
   font-size: var(--font-size-display);
   line-height: var(--line-height-heading);
   font-weight: var(--fw-bold);
@@ -7313,6 +7313,7 @@ PRINT
   color: var(--text-body);
   font-size: 15px;
   line-height: 1.7;
+  text-align: justify;
 }
 
 .program-testimonial-card__quote--expanded {
@@ -7535,12 +7536,12 @@ PRINT
   background-image: url("../site/images/champion-card-bg.png");
   background-size: cover;
   border-radius: var(--radius-md);
-  padding: 25px 20px;
+  padding: 15px 20px;
   border: 1px solid var(--border-light);
   /* box-shadow: var(--shadow-sm); */
   position: relative;
   overflow: hidden;
-  border-radius: 25px;
+  border-radius: 12px;
   min-height: 150px;
 }
 
@@ -7679,7 +7680,7 @@ PRINT
   color: var(--primary);
   font-size: var(--font-size-h4);
   font-weight: var(--fw-bold);
-  margin-bottom: 16px;
+  margin-bottom: 5px;
 }
 .birthday-title {
   color: #683f7c;
@@ -9660,9 +9661,9 @@ SCROLLBAR
   background: var(--bg-body);
 }
 
-.program-page p {
+/* .program-page p {
   text-align: justify;
-}
+} */
 
 .program-hero {
   position: relative;
@@ -9852,6 +9853,7 @@ SCROLLBAR
   color: var(--text-body);
   font-size: var(--font-size-small);
   line-height: var(--line-height-body);
+  text-align: justify;
 }
 
 .program-highlight {
@@ -10247,6 +10249,7 @@ SCROLLBAR
   .leadership__description {
     font-size: var(--font-size-body);
     line-height: var(--line-height-body);
+    text-align: justify;
   }
   .pillars {
     padding: var(--section-padding-y) 0;
@@ -12520,6 +12523,7 @@ SCROLLBAR
     font-size: var(--font-size-small);
     line-height: 1.6;
     -webkit-line-clamp: 5;
+    text-align: justify;
   }
 
   .leadership__link {
@@ -13950,8 +13954,26 @@ SMALL DEVICES
   }
   .champion-card {
     padding: 2px 5px !important;
-    min-height: 125px !important;
+    min-height: 95px !important;
   }
+  .champion-avatar {
+    width: 60px;
+    height: 60px;
+    min-width: 60px; }
+
+    .champion-user, .birthday-user {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+  .champion-info p {
+  margin-top: 6px;
+  font-size: 10px;
+  color: var(--text-body);
+  margin-bottom: 0;
+  /* text-align: justify; */
+}
   .monthly-champions__header {
     margin-bottom: 0px !important; 
   }
@@ -13964,7 +13986,11 @@ SMALL DEVICES
     padding-bottom: 10px !important;
   }
   .marginmanages {
-    margin-bottom: 5px !important;
+    margin-bottom: 0px !important;
+    font-size: 14px;
+  }
+  .fonrside {
+    font-size: 14px !important;
   }
   .margint {
     margin-top: 0px;

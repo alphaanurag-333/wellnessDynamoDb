@@ -88,7 +88,7 @@ export default function ChampionSlider() {
   const count = items.length;
 
   return (
-    <section className="champion-section monthly-champions paddingmanage" aria-label="Monthly champions">
+    <section className="champion-section monthly-champions paddingmanage pt-3 pb-3" aria-label="Monthly champions">
       <div className="site-container">
         <div className="monthly-champions__header">
           <span className="monthly-champions__badge">Community Pride</span>
@@ -149,7 +149,7 @@ export default function ChampionSlider() {
                   </div>
 
                   <div className="champion-info">
-                    <h4 className="text-start">{item.name}</h4>
+                    <h4 className="text-start fonrside">{item.name}</h4>
                     <p>{item.subtitle}</p>
                   </div>
                 </div>

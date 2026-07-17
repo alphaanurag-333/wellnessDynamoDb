@@ -80,7 +80,7 @@ const SuccessStories = () => {
              
             </h2>
 
-            <p className="success-text">
+            <p className="success-text mb-0">
               Real transformations from real people. Witness how our clinical
               approach to wellness has helped hundreds reclaim their vitality
               and health.

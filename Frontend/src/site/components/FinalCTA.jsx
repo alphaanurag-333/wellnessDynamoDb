@@ -41,21 +41,39 @@ export default function FinalCTA() {
 
         <div className="site-container">
           <div className="final-cta__content">
-            <h2 className="final-cta__title">
-              Are you tired of facing your wellness journey alone?
-            </h2>
+          <h2
+  className="final-cta__title"
+  style={{
+    fontSize: "clamp(1.75rem, 4vw, 2rem)",
+    lineHeight: "1.2",
+    fontWeight: 700,
+    textAlign: "center",
+    marginBottom: "10px",
+  }}
+>
+  Are you tired of facing your wellness journey alone?
+</h2>
 
-            <p className="final-cta__description" style={{maxWidth:'100%',textAlign:'center'}}>
-              Discover a healthier, happier you with our vibrant wellness
-              community. Connect, learn, and grow alongside like-minded
-              individuals on your journey to well-being. Take the first step
-              towards a balanced life – join us today and transform your
-              tomorrow.
-            </p>
+<p
+  className="final-cta__description"
+  style={{
+    maxWidth: "100%",
+    margin: "0 auto",
+    fontSize: "clamp(0.95rem, 2vw, 1.2rem)",
+    lineHeight: "1.6",
+    textAlign: "center",
+    color: "#fff",
+  }}
+>
+  Discover a healthier, happier you with our vibrant wellness community.
+  Connect, learn, and grow alongside like-minded individuals on your journey
+  to well-being. Take the first step towards a balanced life – join us today
+  and transform your tomorrow.
+</p>
 
                   <button
              type="button"
-             className="final-cta__button mt-0 "
+             className="final-cta__button mt-3 mb-0"
              onClick={() =>
                window.open(COMMUNITY_LINK, "_blank", "noopener,noreferrer")
              }
