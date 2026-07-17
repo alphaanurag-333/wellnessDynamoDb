@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
 import { FaPlay } from "react-icons/fa";
@@ -63,9 +63,75 @@ function mapVideoTestimonial(row) {
   return { id, name, type, image, playUrl };
 }
 
+function VideoTestimonialCard({ item, isPlaying, onPlay }) {
+  const videoRef = useRef(null);
+
+  useEffect(() => {
+    if (!isPlaying || item.type !== "video") return undefined;
+    const el = videoRef.current;
+    if (!el) return undefined;
+    const playPromise = el.play?.();
+    if (playPromise?.catch) playPromise.catch(() => {});
+    return () => {
+      el.pause?.();
+    };
+  }, [isPlaying, item.type]);
+
+  if (isPlaying) {
+    return (
+      <article className="video-card-wrap">
+        <div className="video-card video-card--playing" aria-label={`Playing video from ${item.name}`}>
+          {item.type === "video" ? (
+            <video
+              ref={videoRef}
+              src={item.playUrl}
+              controls
+              autoPlay
+              playsInline
+              className="video-card__player"
+            />
+          ) : (
+            <iframe
+              src={`${item.playUrl}?autoplay=1`}
+              title={item.name}
+              allow="autoplay; encrypted-media; picture-in-picture"
+              allowFullScreen
+              className="video-card__player"
+            />
+          )}
+        </div>
+        <p className="video-card__name">{item.name}</p>
+      </article>
+    );
+  }
+
+  return (
+    <article className="video-card-wrap">
+      <button
+        type="button"
+        className="video-card"
+        onClick={() => onPlay(item.id)}
+        aria-label={`Play video testimonial from ${item.name}`}
+      >
+        <img
+          src={item.image || DEFAULT_IMAGE_SRC}
+          alt=""
+          loading="lazy"
+          onError={handleMediaImageError}
+        />
+        <span className="play-btn" aria-hidden>
+          <FaPlay />
+        </span>
+      </button>
+      <p className="video-card__name">{item.name}</p>
+    </article>
+  );
+}
+
 export default function VideoTestimonials() {
   const [items, setItems] = useState(null);
-  const [activeItem, setActiveItem] = useState(null);
+  const [playingId, setPlayingId] = useState(null);
+  const swiperRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -86,17 +152,6 @@ export default function VideoTestimonials() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!activeItem) return undefined;
-
-    const onKeyDown = (e) => {
-      if (e.key === "Escape") setActiveItem(null);
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activeItem]);
-
   if (items === null) {
     return (
       <section
@@ -116,108 +171,62 @@ export default function VideoTestimonials() {
     return null;
   }
 
-  const enableLoop = items.length > 3;
+  const enableLoop = items.length > 3 && !playingId;
 
   return (
-    <>
-      <section className="video-slider-section" aria-label="Video testimonials">
-        <div className="container">
-          <h2 className="voice-title">Voice of Healing : Unfiltered</h2>
-          <Swiper
-            modules={[Autoplay]}
-            slidesPerView={3}
-            spaceBetween={20}
-            loop={enableLoop}
-            autoplay={
-              enableLoop
-                ? {
-                    delay: 3000,
-                    disableOnInteraction: false,
-                    pauseOnMouseEnter: true,
-                  }
-                : false
-            }
-            breakpoints={{
-              0: {
-                slidesPerView: 1,
-                spaceBetween: 12,
-              },
-              576: {
-                slidesPerView: 2,
-                spaceBetween: 14,
-              },
-              992: {
-                slidesPerView: 4,
-                spaceBetween: 18,
-              },
-            }}
-            className="videoTestimonialsSwiper"
-          >
-            {items.map((item) => (
-              <SwiperSlide key={item.id}>
-                <article className="video-card-wrap">
-                  <button
-                    type="button"
-                    className="video-card"
-                    onClick={() => setActiveItem(item)}
-                    aria-label={`Play video testimonial from ${item.name}`}
-                  >
-                    <img
-                      src={item.image || DEFAULT_IMAGE_SRC}
-                      alt=""
-                      loading="lazy"
-                      onError={handleMediaImageError}
-                    />
-
-                    <span className="play-btn" aria-hidden>
-                      <FaPlay />
-                    </span>
-                  </button>
-                  <p className="video-card__name">{item.name}</p>
-                </article>
-              </SwiperSlide>
-            ))}
-          </Swiper>
-        </div>
-      </section>
-
-      {activeItem ? (
-        <div
-          className="video-modal"
-          onClick={() => setActiveItem(null)}
-          role="dialog"
-          aria-modal="true"
-          aria-label={activeItem.name}
+    <section className="video-slider-section" aria-label="Video testimonials">
+      <div className="container">
+        <h2 className="voice-title">Voice of Healing : Unfiltered</h2>
+        <Swiper
+          modules={[Autoplay]}
+          slidesPerView={3}
+          spaceBetween={20}
+          loop={enableLoop}
+          autoplay={
+            enableLoop
+              ? {
+                  delay: 3000,
+                  disableOnInteraction: false,
+                  pauseOnMouseEnter: true,
+                }
+              : false
+          }
+          onSwiper={(swiper) => {
+            swiperRef.current = swiper;
+          }}
+          onSlideChange={() => {
+            if (playingId) setPlayingId(null);
+          }}
+          breakpoints={{
+            0: {
+              slidesPerView: 1,
+              spaceBetween: 12,
+            },
+            576: {
+              slidesPerView: 2,
+              spaceBetween: 14,
+            },
+            992: {
+              slidesPerView: 4,
+              spaceBetween: 18,
+            },
+          }}
+          className="videoTestimonialsSwiper"
         >
-          <div className="video-modal-content" onClick={(e) => e.stopPropagation()}>
-            <button
-              type="button"
-              className="close-btn"
-              onClick={() => setActiveItem(null)}
-              aria-label="Close video"
-            >
-              ×
-            </button>
-
-            {activeItem.type === "video" ? (
-              <video
-                src={activeItem.playUrl}
-                controls
-                autoPlay
-                playsInline
-                className="video-modal-player"
+          {items.map((item) => (
+            <SwiperSlide key={item.id}>
+              <VideoTestimonialCard
+                item={item}
+                isPlaying={playingId === item.id}
+                onPlay={(id) => {
+                  setPlayingId(id);
+                  swiperRef.current?.autoplay?.stop?.();
+                }}
               />
-            ) : (
-              <iframe
-                src={`${activeItem.playUrl}?autoplay=1`}
-                title={activeItem.name}
-                allow="autoplay; encrypted-media; picture-in-picture"
-                allowFullScreen
-              />
-            )}
-          </div>
-        </div>
-      ) : null}
-    </>
+            </SwiperSlide>
+          ))}
+        </Swiper>
+      </div>
+    </section>
   );
 }
