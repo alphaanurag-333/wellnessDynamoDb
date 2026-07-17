@@ -21,6 +21,7 @@ const CATEGORY_ITEMS = [
     title: "Diabetes Reversal",
     url: "/diabetes-reversal",
     image: diabetesImg,
+    theme: "diabetes",
     description:
       "Yoga, an ancient practice rooted in Indian philosophy, lifestyle guidance, and clinical care to support blood sugar balance.",
   },
@@ -29,6 +30,7 @@ const CATEGORY_ITEMS = [
     title: "Fat Loss",
     url: "/fat-loss",
     image: fatLossImg,
+    theme: "fat-loss",
     description:
       "Support better hormonal balance and sustainable fat loss through structured nutrition and daily wellness habits.",
   },
@@ -37,6 +39,7 @@ const CATEGORY_ITEMS = [
     title: "PCOD-PCOS",
     url: "/pcod-pcos-reversal",
     image: pcosImg,
+    theme: "pcos",
     description:
       "Focus on hormonal health and lifestyle management for improved cycle balance and long-term wellbeing.",
   },
@@ -45,14 +48,16 @@ const CATEGORY_ITEMS = [
     title: "Thyroid Care",
     url: "/thyroid",
     image: thyroidImg,
+    theme: "thyroid",
     description:
       "Personalized plans to support thyroid function, metabolism, and overall energy through guided clinical wellness.",
   },
   {
     id: "gut",
     title: "Gut Health",
-         url: "/gut-health",
+    url: "/gut-health",
     image: gutImg,
+    theme: "gut",
     description:
       "Build healthier daily routines to support digestion, immunity, and overall gut wellness.",
   },
@@ -153,9 +158,11 @@ const SuccessStories = () => {
           <Swiper
             modules={[Autoplay]}
             slidesPerView={5}
-            spaceBetween={18}
+            spaceBetween={14}
             speed={650}
             loop={enableCategoryLoop}
+            preventClicks={false}
+            preventClicksPropagation={false}
             autoplay={
               enableCategoryLoop
                 ? {
@@ -171,31 +178,32 @@ const SuccessStories = () => {
             breakpoints={{
               0: {
                 slidesPerView: 1,
-                spaceBetween: 14,
+                spaceBetween: 12,
               },
               480: {
                 slidesPerView: 2,
-                spaceBetween: 16,
+                spaceBetween: 12,
               },
               768: {
                 slidesPerView: 3,
-                spaceBetween: 18,
+                spaceBetween: 14,
               },
               992: {
                 slidesPerView: 4,
-                spaceBetween: 18,
+                spaceBetween: 14,
               },
               1200: {
                 slidesPerView: 5,
-                spaceBetween: 18,
+                spaceBetween: 14,
               },
             }}
             className="transformationCategoriesSwiper"
           >
             {CATEGORY_ITEMS.map((item) => (
               <SwiperSlide key={item.id}>
-                <NavLink to={item.url}>
-                  <article className="transformation-category-card">
+                <article
+                  className={`transformation-category-card transformation-category-card--${item.theme}`}
+                >
                   <div className="transformation-image">
                     <img src={item.image} alt={item.title} loading="lazy" />
                   </div>
@@ -203,8 +211,10 @@ const SuccessStories = () => {
                   <p className="transformation-category-card__desc">
                     {item.description}
                   </p>
+                  <NavLink to={item.url} className="transformation-category-card__more">
+                    Read More
+                  </NavLink>
                 </article>
-                </NavLink>
               </SwiperSlide>
             ))}
           </Swiper>
