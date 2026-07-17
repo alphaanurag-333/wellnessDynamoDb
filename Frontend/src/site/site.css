@@ -10893,9 +10893,9 @@ SCROLLBAR
     justify-content: center;
   }
 
-  .wellness__image {
+  /* .wellness__image {
     max-width: 100%;
-  }
+  } */
 
   .wellness__title {
     font-size: var(--font-size-h1);
