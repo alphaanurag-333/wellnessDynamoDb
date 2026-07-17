@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { AdminPageLoadingState } from "../../components/AdminLoader.jsx";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { adminGetBannerById } from "../../api/bannerController.js";
+import Swal from "sweetalert2";
+import { adminDeleteBanner, adminGetBannerById } from "../../api/bannerController.js";
 import { logout } from "../../../store/authSlice.js";
 import { AdminDetailBannerImage } from "../../components/AdminDetailBannerImage.jsx";
 import { NotFoundPage } from "../NotFoundPage.jsx";
 import { AdminPageHeader, AdminStatusBadge } from "../../components/AdminCrud.jsx";
+import { useResourcePermissions } from "../../hooks/useHasPermission.js";
 import { formatDate, bannerTypeLabel, BANNER_TYPE_WELLNESSPEDIA } from "./BannerShared.js";
 
 function DetailRow({ label, value }) {
@@ -23,9 +25,11 @@ export function BannerView() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const adminToken = useSelector((s) => s.auth.adminToken);
+  const { canDelete } = useResourcePermissions("banners");
   const [banner, setBanner] = useState(null);
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!adminToken || !bannerId) return;
@@ -59,6 +63,36 @@ export function BannerView() {
     };
   }, [adminToken, dispatch, bannerId]);
 
+  const onDelete = async () => {
+    if (!banner || !adminToken) return;
+    const { isConfirmed } = await Swal.fire({
+      icon: "warning",
+      title: "Delete banner?",
+      html: `Are you sure you want to delete <strong>${String(banner.title || "this banner")}</strong>?<br/><span style="color:#6b7280">This action cannot be undone.</span>`,
+      showCancelButton: true,
+      focusCancel: true,
+      reverseButtons: true,
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Yes, delete",
+      cancelButtonText: "Cancel",
+      allowOutsideClick: false,
+    });
+    if (!isConfirmed) return;
+
+    setDeleting(true);
+    try {
+      await adminDeleteBanner(adminToken, banner._id || banner.id || bannerId);
+      await Swal.fire({ icon: "success", title: "Banner deleted", timer: 1500, showConfirmButton: false });
+      navigate("/admin/banners");
+    } catch (e) {
+      if (e?.status === 401) return dispatch(logout());
+      await Swal.fire({ icon: "error", title: "Delete failed", text: e.message || "Could not delete banner." });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (notFound) {
     return <NotFoundPage />;
   }
@@ -87,9 +121,16 @@ export function BannerView() {
         subtitle="View this banner."
         onBack={() => navigate(-1)}
         actions={
-          <Link to="edit" className="btn btn--primary user-page__edit-link">
-            Edit banner
-          </Link>
+          <>
+            <Link to="edit" className="btn btn--primary user-page__edit-link">
+              Edit banner
+            </Link>
+            {canDelete ? (
+              <button type="button" className="btn btn--danger" onClick={onDelete} disabled={deleting}>
+                {deleting ? "Deleting…" : "Delete"}
+              </button>
+            ) : null}
+          </>
         }
       />
 

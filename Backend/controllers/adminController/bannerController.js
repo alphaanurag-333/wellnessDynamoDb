@@ -61,17 +61,18 @@ exports.createBannerController = asyncHandler(async (req, res) => {
   const mobileImage =
     uploadedMobileImage ?? parseMediaKeyFromBody(req.body.mobileImage, "mobileImage");
 
+  if (!bannerType) {
+    throw new AppError("bannerType must be main or wellnesspedia", 400);
+  }
   if (!title) throw new AppError("title is required", 400);
   if (!description) throw new AppError("description is required", 400);
   if (!mobileImage) throw new AppError("mobileImage is required", 400);
+  // Wellnesspedia banners are mobile-only; desktop image is optional and falls back to mobile
   if (bannerType !== "wellnesspedia" && !image) {
     throw new AppError("image is required", 400);
   }
   if (!["active", "inactive"].includes(status)) {
     throw new AppError("status must be active or inactive", 400);
-  }
-  if (!bannerType) {
-    throw new AppError("bannerType must be main or wellnesspedia", 400);
   }
 
   const resolvedImage = image || mobileImage;
