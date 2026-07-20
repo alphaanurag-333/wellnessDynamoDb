@@ -173,7 +173,7 @@ export function LeadershipMessageSection({
   className = "",
 }) {
   return (
-    <section className={`pt-2 leadership${className ? ` ${className}` : ""}`}>
+    <section className={`pt-2 pb-2 leadership${className ? ` ${className}` : ""}`}>
       <div className="site-container">
         <LeadershipNoteCard
           badge={badge}

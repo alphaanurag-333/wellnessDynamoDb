@@ -220,7 +220,7 @@ export default function ContactUsSection() {
           </p>
         </div>
       </div>
-      <div className="contact-card mt-3 mb-3">
+      <div className="contact-card mt-0 mb-3">
         <form onSubmit={handleSubmit} noValidate>
           {feedback ? (
             <div
