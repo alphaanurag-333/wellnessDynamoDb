@@ -2,11 +2,9 @@ const express = require("express");
 
 const { protectAdmin } = require("../../middleware/auth");
 const { authorize } = require("../../middleware/authorize");
-const { optionalClientTestimonialsFile } = require("../../middleware/authMultipart");
 const {
   listClientTestimonialsController,
   getClientTestimonialByIdController,
-  createClientTestimonialController,
   updateClientTestimonialController,
   deleteClientTestimonialController,
 } = require("../../controllers/adminController/clientTestimonialsController");
@@ -20,18 +18,10 @@ router.get(
   authorize("client-testimonials.view"),
   getClientTestimonialByIdController
 );
-router.post(
-  "/",
-  protectAdmin,
-  authorize("client-testimonials.edit"),
-  optionalClientTestimonialsFile,
-  createClientTestimonialController
-);
 router.patch(
   "/:id",
   protectAdmin,
   authorize("client-testimonials.edit"),
-  optionalClientTestimonialsFile,
   updateClientTestimonialController
 );
 router.delete(

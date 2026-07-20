@@ -1,31 +1,32 @@
 import { useEffect, useState } from "react";
-import { AdminPageLoader } from "../../components/AdminLoader.jsx";
-import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 import Swal from "sweetalert2";
-import { adminGetClientTestimonialById } from "../../api/clientTestimonialsController.js";
-import { logout } from "../../../store/authSlice.js";
-import { NotFoundPage } from "../NotFoundPage.jsx";
-import { AdminPageHeader } from "../../components/AdminCrud.jsx";
-import { ClientTestimonialForm } from "./ClientTestimonialAdd.jsx";
+import { AdminPageLoader } from "../../admin/components/AdminLoader.jsx";
+import { AdminPageHeader } from "../../admin/components/AdminCrud.jsx";
+import { NotFoundPage } from "../../admin/pages/NotFoundPage.jsx";
+import { PortalClientTestimonialForm } from "./PortalClientTestimonialForm.jsx";
 
-export function ClientTestimonialEdit() {
+export function PortalClientTestimonialEditPage({
+  token,
+  onUnauthorized,
+  basePath,
+  getTestimonial,
+  updateTestimonial,
+}) {
   const { testimonialId } = useParams();
   const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const adminToken = useSelector((s) => s.auth.adminToken);
   const [row, setRow] = useState(null);
   const [notFound, setNotFound] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!adminToken || !testimonialId) return;
+    if (!token || !testimonialId) return;
     let cancelled = false;
     setLoading(true);
     setNotFound(false);
     (async () => {
       try {
-        const data = await adminGetClientTestimonialById(adminToken, testimonialId);
+        const data = await getTestimonial(token, testimonialId);
         if (cancelled) return;
         if (!data) {
           setNotFound(true);
@@ -35,7 +36,7 @@ export function ClientTestimonialEdit() {
       } catch (e) {
         if (cancelled) return;
         if (e?.status === 401) {
-          dispatch(logout());
+          onUnauthorized?.();
           return;
         }
         if (e?.status === 404) {
@@ -43,7 +44,7 @@ export function ClientTestimonialEdit() {
           return;
         }
         await Swal.fire({ icon: "error", title: "Load failed", text: e.message || "Failed to load testimonial." });
-        navigate("/admin/client-testimonials");
+        navigate(basePath);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -51,18 +52,16 @@ export function ClientTestimonialEdit() {
     return () => {
       cancelled = true;
     };
-  }, [adminToken, dispatch, navigate, testimonialId]);
+  }, [token, onUnauthorized, getTestimonial, navigate, testimonialId, basePath]);
 
-  if (notFound) {
-    return <NotFoundPage />;
-  }
+  if (notFound) return <NotFoundPage />;
 
   return (
     <div className="user-page">
       <AdminPageHeader
         title="Edit client testimonial"
-        subtitle="Update this client testimonial."
-        backTo="/admin/client-testimonials"
+        subtitle="Update rating, description, or public status. Name and photo stay linked to the user."
+        backTo={basePath}
       />
       <div className="page-card">
         {loading ? (
@@ -70,7 +69,14 @@ export function ClientTestimonialEdit() {
             <AdminPageLoader label="Loading testimonial..." />
           </div>
         ) : row ? (
-          <ClientTestimonialForm initialTestimonial={row} key={row._id || testimonialId} />
+          <PortalClientTestimonialForm
+            token={token}
+            onUnauthorized={onUnauthorized}
+            basePath={basePath}
+            updateTestimonial={updateTestimonial}
+            initialTestimonial={row}
+            key={row._id || testimonialId}
+          />
         ) : null}
       </div>
     </div>

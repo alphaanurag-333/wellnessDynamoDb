@@ -93,12 +93,25 @@ const STAT_CARDS = [
       </svg>
     ),
   },
+  {
+    key: "pendingTestimonials",
+    label: "Pending client reviews",
+    description: "User reviews awaiting publish",
+    tone: "purple",
+    to: "/coach/client-testimonials",
+    icon: (
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      </svg>
+    ),
+  },
 ];
 
 const shortcuts = [
   { title: "My clients", desc: "View and manage assigned clients", icon: "users", to: "/coach/my-users" },
   { title: "Manage assistants", desc: "View and manage assistant coaches", icon: "assistants", to: "/coach/my-assistants" },
   { title: "Meal approvals", desc: "Review pending meal logs", icon: "meals", to: "/coach/meal-approvals" },
+  { title: "Client testimonials", desc: "Publish or manage client reviews", icon: "testimonials", to: "/coach/client-testimonials" },
   { title: "Commitment letters", desc: "Review signed commitment letters", icon: "letters", to: "/coach/commitment-letters" },
   { title: "My profile", desc: "Update your coach profile", icon: "profile", to: "/coach/profile" },
 ];

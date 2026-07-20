@@ -1,13 +1,10 @@
 import { useEffect, useState } from "react";
-import { AdminPageLoadingState } from "../../components/AdminLoader.jsx";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
-import { adminGetClientTestimonialById } from "../../api/clientTestimonialsController.js";
-import { logout } from "../../../store/authSlice.js";
-import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
-import { NotFoundPage } from "../NotFoundPage.jsx";
-import { AdminPageHeader, AdminStatusBadge } from "../../components/AdminCrud.jsx";
-import { formatDateTime } from "./ClientTestimonialShared.js";
+import { AdminPageLoadingState } from "../../admin/components/AdminLoader.jsx";
+import { AdminMediaImage } from "../../admin/components/AdminMediaImage.jsx";
+import { AdminPageHeader, AdminStatusBadge } from "../../admin/components/AdminCrud.jsx";
+import { NotFoundPage } from "../../admin/pages/NotFoundPage.jsx";
+import { formatDateTime } from "../../admin/pages/clientTestimonial/ClientTestimonialShared.js";
 
 function DetailRow({ label, value }) {
   return (
@@ -18,23 +15,21 @@ function DetailRow({ label, value }) {
   );
 }
 
-export function ClientTestimonialView() {
+export function PortalClientTestimonialView({ token, onUnauthorized, basePath, getTestimonial }) {
   const { testimonialId } = useParams();
   const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const adminToken = useSelector((s) => s.auth.adminToken);
   const [row, setRow] = useState(null);
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!adminToken || !testimonialId) return;
+    if (!token || !testimonialId) return;
     let cancelled = false;
     setError("");
     setNotFound(false);
     (async () => {
       try {
-        const data = await adminGetClientTestimonialById(adminToken, testimonialId);
+        const data = await getTestimonial(token, testimonialId);
         if (cancelled) return;
         if (!data) {
           setNotFound(true);
@@ -44,7 +39,7 @@ export function ClientTestimonialView() {
       } catch (e) {
         if (cancelled) return;
         if (e?.status === 401) {
-          dispatch(logout());
+          onUnauthorized?.();
           return;
         }
         if (e?.status === 404) {
@@ -57,11 +52,9 @@ export function ClientTestimonialView() {
     return () => {
       cancelled = true;
     };
-  }, [adminToken, dispatch, testimonialId]);
+  }, [token, onUnauthorized, getTestimonial, testimonialId]);
 
-  if (notFound) {
-    return <NotFoundPage />;
-  }
+  if (notFound) return <NotFoundPage />;
 
   if (error) {
     return (
@@ -69,16 +62,14 @@ export function ClientTestimonialView() {
         <p className="user-list-error" role="alert">
           {error}
         </p>
-        <button type="button" className="btn btn--ghost" onClick={() => navigate("/admin/client-testimonials")}>
+        <button type="button" className="btn btn--ghost" onClick={() => navigate(basePath)}>
           Back to list
         </button>
       </div>
     );
   }
 
-  if (!row) {
-    return <AdminPageLoadingState label="Loading testimonial…" />;
-  }
+  if (!row) return <AdminPageLoadingState label="Loading testimonial…" />;
 
   return (
     <div className="user-page">
@@ -101,7 +92,6 @@ export function ClientTestimonialView() {
           <DetailRow label="Name" value={row.name} />
           <DetailRow label="Rating" value={row.rating} />
           <DetailRow label="User ID" value={row.userId || "—"} />
-          <DetailRow label="Managed by coach" value={row.managedByCoachId || "—"} />
           <div className="user-detail-row">
             <span className="user-detail-row__label">Public status</span>
             <span className="user-detail-row__value">

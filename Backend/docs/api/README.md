@@ -32,3 +32,4 @@ node scripts/buildApiCatalog.js
 - [Birthday notifications & posts](./birthday-feature.md)
 - [Daily reflection score](./daily-reflection-feature.md)
 - [Monthly champions](./monthly-champions-feature.md)
+- [Client testimonials (user reviews)](./client-testimonials-user-feature.md)

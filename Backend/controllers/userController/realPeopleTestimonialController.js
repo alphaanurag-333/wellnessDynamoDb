@@ -7,9 +7,6 @@ const {
 const { resolveListMedia } = require("./userMiscMedia");
 const { readIdParam } = require("../realPeopleTestimonialControllerHelpers");
 
-const ADMIN_ONLY_MSG =
-  "Real People testimonials are managed by admin only. Create and review are no longer available here.";
-
 exports.listUserRealPeopleTestimonialsController = asyncHandler(async (req, res) => {
   const userId = req.auth?.sub;
   if (!userId) throw new AppError("Unauthorized", 401);
@@ -44,16 +41,4 @@ exports.getUserRealPeopleTestimonialByIdController = asyncHandler(async (req, re
   }
 
   return res.status(200).json({ status: true, realPeopleTestimonial: testimonial });
-});
-
-exports.createUserRealPeopleTestimonialController = asyncHandler(async () => {
-  throw new AppError(ADMIN_ONLY_MSG, 410);
-});
-
-exports.updateUserRealPeopleTestimonialController = asyncHandler(async () => {
-  throw new AppError(ADMIN_ONLY_MSG, 410);
-});
-
-exports.deleteUserRealPeopleTestimonialController = asyncHandler(async () => {
-  throw new AppError(ADMIN_ONLY_MSG, 410);
 });

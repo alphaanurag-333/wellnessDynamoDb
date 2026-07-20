@@ -108,7 +108,6 @@ import { BirthdayPostList } from "../pages/birthdayPost/BirthdayPostList.jsx";
 import { BirthdayPostView } from "../pages/birthdayPost/BirthdayPostView.jsx";
 import { BirthdayPostEdit } from "../pages/birthdayPost/BirthdayPostEdit.jsx";
 import { ClientTestimonialList } from "../pages/clientTestimonial/ClientTestimonialList.jsx";
-import { ClientTestimonialAdd } from "../pages/clientTestimonial/ClientTestimonialAdd.jsx";
 import { ClientTestimonialEdit } from "../pages/clientTestimonial/ClientTestimonialEdit.jsx";
 import { ClientTestimonialView } from "../pages/clientTestimonial/ClientTestimonialView.jsx";
 import { LeadershipNoteList } from "../pages/leadershipNote/LeadershipNoteList.jsx";
@@ -362,7 +361,6 @@ export const adminRouteTree = (
     </Route>
     <Route path="client-testimonials" element={<Outlet />}>
       <Route index element={<ClientTestimonialList />} />
-      <Route path="new" element={<ClientTestimonialAdd />} />
       <Route path=":testimonialId/edit" element={<ClientTestimonialEdit />} />
       <Route path=":testimonialId" element={<ClientTestimonialView />} />
     </Route>

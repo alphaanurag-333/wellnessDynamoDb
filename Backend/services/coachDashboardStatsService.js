@@ -10,6 +10,7 @@ const {
 const { listUsersByParentCoachId, toPublicUser } = require("../models/userModel");
 const { queryMealLogsByCoachId } = require("../models/mealTrackingModel");
 const { listUserCommitmentLetters } = require("../models/userCommitmentLetterModel");
+const { listClientTestimonials } = require("../models/clientTestimonials");
 const { normalizeUserTier } = require("../models/userAssignmentLogic");
 
 const RECENT_LIMIT = 5;
@@ -90,6 +91,7 @@ async function getCoachDashboardStats(coachId) {
     totalAssistants,
     mealLogs,
     commitmentData,
+    testimonialData,
   ] = await Promise.all([
     listUsersByParentCoachId(coachId, { page: 1, limit: 200, userTier: "client" }),
     listAssistantsByWellnessCoachId(coachId, { page: 1, limit: 200 }),
@@ -99,6 +101,12 @@ async function getCoachDashboardStats(coachId) {
       page: 1,
       limit: 100,
       approvalStatus: "pending",
+      managedByCoachId: coachId,
+    }),
+    listClientTestimonials({
+      page: 1,
+      limit: 100,
+      status: "inactive",
       managedByCoachId: coachId,
     }),
   ]);
@@ -112,7 +120,7 @@ async function getCoachDashboardStats(coachId) {
 
   const pendingMealApprovals = (mealLogs || []).length;
   const pendingCommitmentLetters = (commitmentData.commitmentLetters || []).length;
-  const pendingTestimonials = 0;
+  const pendingTestimonials = (testimonialData.clientTestimonials || []).length;
   const pendingApprovals =
     pendingMealApprovals + pendingCommitmentLetters + pendingTestimonials;
 
@@ -131,7 +139,7 @@ async function getCoachDashboardStats(coachId) {
     ],
     pendingApprovals: [
       { key: "meals", name: "Meal logs", value: pendingMealApprovals, color: "#f59e0b" },
-      { key: "testimonials", name: "Testimonials", value: pendingTestimonials, color: "#a855f7" },
+      { key: "testimonials", name: "Client reviews", value: pendingTestimonials, color: "#a855f7" },
       {
         key: "commitment_letters",
         name: "Commitment letters",

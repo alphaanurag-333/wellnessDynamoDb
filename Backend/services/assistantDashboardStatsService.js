@@ -5,6 +5,7 @@ const {
 const { listUsersByAssignedCoachId, toPublicUser } = require("../models/userModel");
 const { queryMealLogsByCoachId } = require("../models/mealTrackingModel");
 const { listUserCommitmentLetters } = require("../models/userCommitmentLetterModel");
+const { listClientTestimonials } = require("../models/clientTestimonials");
 const { normalizeUserTier } = require("../models/userAssignmentLogic");
 
 const RECENT_LIMIT = 5;
@@ -69,7 +70,7 @@ async function getAssistantDashboardStats(assistantId) {
     throw new Error("Assistant is not linked to a wellness coach");
   }
 
-  const [clientData, mealLogs, commitmentData] = await Promise.all([
+  const [clientData, mealLogs, commitmentData, testimonialData] = await Promise.all([
     listUsersByAssignedCoachId(assistantId, {
       parentCoachId,
       page: 1,
@@ -83,6 +84,12 @@ async function getAssistantDashboardStats(assistantId) {
       approvalStatus: "pending",
       managedByCoachId: parentCoachId,
     }),
+    listClientTestimonials({
+      page: 1,
+      limit: 100,
+      status: "inactive",
+      managedByCoachId: parentCoachId,
+    }),
   ]);
 
   const clients = clientData.users || [];
@@ -94,7 +101,10 @@ async function getAssistantDashboardStats(assistantId) {
     commitmentData.commitmentLetters,
     assistantId
   ).length;
-  const pendingTestimonials = 0;
+  const pendingTestimonials = filterForAssistant(
+    testimonialData.clientTestimonials,
+    assistantId
+  ).length;
   const pendingApprovals =
     pendingMealApprovals + pendingCommitmentLetters + pendingTestimonials;
 
@@ -109,7 +119,7 @@ async function getAssistantDashboardStats(assistantId) {
     ],
     pendingApprovals: [
       { key: "meals", name: "Meal logs", value: pendingMealApprovals, color: "#f59e0b" },
-      { key: "testimonials", name: "Testimonials", value: pendingTestimonials, color: "#a855f7" },
+      { key: "testimonials", name: "Client reviews", value: pendingTestimonials, color: "#a855f7" },
       {
         key: "commitment_letters",
         name: "Commitment letters",

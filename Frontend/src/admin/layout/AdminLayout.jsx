@@ -71,7 +71,6 @@ function titleFromPath(pathname) {
   }
 
   if (p.startsWith("/admin/client-testimonials")) {
-    if (/^\/admin\/client-testimonials\/new$/.test(p)) return "Add client testimonial";
     if (/^\/admin\/client-testimonials\/[^/]+\/edit$/.test(p)) return "Edit client testimonial";
     if (/^\/admin\/client-testimonials\/[^/]+$/.test(p)) return "Client testimonial details";
     return "Client testimonials";

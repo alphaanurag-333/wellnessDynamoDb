@@ -12,6 +12,11 @@ import { logoutAssistant, setAssistant } from "../../store/authSlice.js";
 function titleFromPath(pathname) {
   const p = pathname.replace(/\/$/, "") || "/";
   if (/^\/assistant\/profile\/?$/.test(p)) return "Profile";
+  if (/^\/assistant\/client-testimonials\/[^/]+\/edit\/?$/.test(p)) return "Edit client testimonial";
+  if (/^\/assistant\/client-testimonials\/[^/]+\/?$/.test(p)) return "Client testimonial details";
+  if (/^\/assistant\/client-testimonials\/?$/.test(p)) return "Client Testimonials";
+  if (/^\/assistant\/monthly-champions\/[^/]+\/?$/.test(p)) return "Monthly champion details";
+  if (/^\/assistant\/monthly-champions\/?$/.test(p)) return "Monthly Champions";
   if (/^\/assistant\/my-users\/[^/]+\/water-tracking\/?$/.test(p)) return "Water tracking";
   if (/^\/assistant\/my-users\/[^/]+\/steps-tracking\/?$/.test(p)) return "Steps tracking";
   if (/^\/assistant\/my-users\/?$/.test(p)) return "My Clients";

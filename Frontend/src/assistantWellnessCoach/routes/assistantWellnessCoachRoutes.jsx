@@ -8,7 +8,8 @@ import { AssistantUserClientHub } from "../pages/myHealUsers/AssistantUserClient
 import { ClientHubLegacyRedirect } from "../../components/ClientHubLegacyRedirect.jsx";
 import { AssistantRealPeopleTestimonialsPage } from "../pages/realPeopleTestimonial/AssistantRealPeopleTestimonialsPage.jsx";
 import { AssistantCommitmentLettersPage } from "../pages/commitmentLetter/AssistantCommitmentLettersPage.jsx";
-import { AssistantMonthlyChampionsPage } from "../pages/monthlyChampion/AssistantMonthlyChampionsPage.jsx";
+import { AssistantClientTestimonialsLayout, AssistantClientTestimonialList, AssistantClientTestimonialView, AssistantClientTestimonialEdit } from "../pages/clientTestimonial/AssistantClientTestimonialsPage.jsx";
+import { AssistantMonthlyChampionsLayout, AssistantMonthlyChampionList, AssistantMonthlyChampionView } from "../pages/monthlyChampion/AssistantMonthlyChampionsPage.jsx";
 import { AssistantMealApprovalsPage } from "../pages/mealReview/AssistantMealApprovalsPage.jsx";
 import { AssistantConsultancyTransactionList } from "../pages/consultancy/AssistantConsultancyTransactionList.jsx";
 import { AssistantConsultancyEnrolledUsersList } from "../pages/consultancy/AssistantConsultancyEnrolledUsersList.jsx";
@@ -35,9 +36,17 @@ export const assistantWellnessCoachRouteTree = (
     <Route path="my-users/:userId/launch-assessment" element={<ClientHubLegacyRedirect segment="launch-assessment" basePath="/assistant" />} />
     <Route path="my-users/:userId/prakruti-assessment" element={<ClientHubLegacyRedirect segment="prakruti-assessment" basePath="/assistant" />} />
     <Route path="meal-approvals" element={<AssistantMealApprovalsPage />} />
+    <Route path="client-testimonials" element={<AssistantClientTestimonialsLayout />}>
+      <Route index element={<AssistantClientTestimonialList />} />
+      <Route path=":testimonialId/edit" element={<AssistantClientTestimonialEdit />} />
+      <Route path=":testimonialId" element={<AssistantClientTestimonialView />} />
+    </Route>
     <Route path="real-people-testimonials" element={<AssistantRealPeopleTestimonialsPage />} />
     <Route path="commitment-letters" element={<AssistantCommitmentLettersPage />} />
-    <Route path="monthly-champions" element={<AssistantMonthlyChampionsPage />} />
+    <Route path="monthly-champions" element={<AssistantMonthlyChampionsLayout />}>
+      <Route index element={<AssistantMonthlyChampionList />} />
+      <Route path=":postId" element={<AssistantMonthlyChampionView />} />
+    </Route>
     <Route path="consultancy/transactions" element={<AssistantConsultancyTransactionList />} />
     <Route path="consultancy/enrolled-users" element={<AssistantConsultancyEnrolledUsersList />} />
     <Route path="*" element={<NotFoundPage />} />

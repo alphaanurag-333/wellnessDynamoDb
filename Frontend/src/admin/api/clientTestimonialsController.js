@@ -32,45 +32,8 @@ export async function adminGetClientTestimonialById(token, id) {
   }
 }
 
-export async function adminCreateClientTestimonial(token, fields) {
-  if (fields?.file instanceof File) {
-    const fd = new FormData();
-    fd.append("name", String(fields.name ?? "").trim());
-    fd.append("rating", String(fields.rating ?? ""));
-    fd.append("description", String(fields.description ?? "").trim());
-    fd.append("status", String(fields.status ?? "active").trim());
-    fd.append("file", fields.file);
-    try {
-      const { data } = await api.post(clientTestimonialsBase(), fd, { headers: authHeader(token) });
-      return data.clientTestimonial;
-    } catch (error) {
-      normalizeApiError(error);
-    }
-  }
-
-  throw new Error("Profile image upload file is required.");
-}
-
 export async function adminUpdateClientTestimonial(token, id, fields) {
-  if (fields?.file instanceof File) {
-    const fd = new FormData();
-    if (fields.name !== undefined) fd.append("name", String(fields.name).trim());
-    if (fields.rating !== undefined) fd.append("rating", String(fields.rating));
-    if (fields.description !== undefined) fd.append("description", String(fields.description).trim());
-    if (fields.status !== undefined) fd.append("status", String(fields.status).trim());
-    fd.append("file", fields.file);
-    try {
-      const { data } = await api.patch(`${clientTestimonialsBase()}/${encodeURIComponent(id)}`, fd, {
-        headers: authHeader(token),
-      });
-      return data.clientTestimonial;
-    } catch (error) {
-      normalizeApiError(error);
-    }
-  }
-
   const payload = {};
-  if (fields?.name !== undefined) payload.name = String(fields.name).trim();
   if (fields?.rating !== undefined) payload.rating = Number(fields.rating);
   if (fields?.description !== undefined) payload.description = String(fields.description).trim();
   if (fields?.status !== undefined) payload.status = String(fields.status).trim();

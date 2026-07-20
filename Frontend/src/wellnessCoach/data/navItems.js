@@ -2,6 +2,7 @@ export const coachNavItems = [
   { to: "dashboard", label: "Dashboard", icon: "grid" },
   { to: "my-users", label: "My Clients", icon: "clipboard-list" },
   { to: "meal-approvals", label: "Meal Approvals", icon: "clipboard-list" },
+  { to: "client-testimonials", label: "Client Testimonials", icon: "quote" },
   { to: "commitment-letters", label: "Commitment Letters", icon: "file" },
   { to: "monthly-champions", label: "Monthly Champions", icon: "award" },
   { to: "consultancy/transactions", label: "Consultancy Payments", icon: "wallet" },

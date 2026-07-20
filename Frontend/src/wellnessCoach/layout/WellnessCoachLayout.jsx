@@ -17,6 +17,11 @@ function titleFromPath(pathname) {
   if (/^\/coach\/my-assistants\/new\/?$/.test(p)) return "Add assistant";
   if (/^\/coach\/my-assistants\/[^/]+\/?$/.test(p)) return "Assistant details";
   if (/^\/coach\/my-assistants\/?$/.test(p)) return "Assistants (AWC)";
+  if (/^\/coach\/client-testimonials\/[^/]+\/edit\/?$/.test(p)) return "Edit client testimonial";
+  if (/^\/coach\/client-testimonials\/[^/]+\/?$/.test(p)) return "Client testimonial details";
+  if (/^\/coach\/client-testimonials\/?$/.test(p)) return "Client Testimonials";
+  if (/^\/coach\/monthly-champions\/[^/]+\/?$/.test(p)) return "Monthly champion details";
+  if (/^\/coach\/monthly-champions\/?$/.test(p)) return "Monthly Champions";
   if (/^\/coach\/my-users\/[^/]+\/water-tracking\/?$/.test(p)) return "Water tracking";
   if (/^\/coach\/my-users\/[^/]+\/steps-tracking\/?$/.test(p)) return "Steps tracking";
   if (/^\/coach\/my-users\/?$/.test(p)) return "My Clients";

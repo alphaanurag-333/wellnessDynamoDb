@@ -1,22 +1,46 @@
+import { Outlet } from "react-router-dom";
+import { useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { logoutAssistant } from "../../../store/authSlice.js";
-import { PortalMonthlyChampionsPage } from "../../../components/PortalMonthlyChampionsPage.jsx";
+import { PortalMonthlyChampionList } from "../../../components/monthlyChampion/PortalMonthlyChampionList.jsx";
+import { PortalMonthlyChampionView } from "../../../components/monthlyChampion/PortalMonthlyChampionView.jsx";
 import {
-  assistantListMonthlyChampions,
   assistantGetMonthlyChampionById,
+  assistantListMonthlyChampions,
 } from "../../api/assistantMonthlyChampions.js";
 
-export function AssistantMonthlyChampionsPage() {
+const BASE = "/assistant/monthly-champions";
+
+export function AssistantMonthlyChampionsLayout() {
+  return <Outlet />;
+}
+
+export function AssistantMonthlyChampionList() {
   const dispatch = useDispatch();
   const assistantToken = useSelector((s) => s.auth.assistantToken);
+  const onUnauthorized = useCallback(() => dispatch(logoutAssistant()), [dispatch]);
 
   return (
-    <PortalMonthlyChampionsPage
+    <PortalMonthlyChampionList
       token={assistantToken}
-      onUnauthorized={() => dispatch(logoutAssistant())}
+      onUnauthorized={onUnauthorized}
+      basePath={BASE}
       listChampions={assistantListMonthlyChampions}
-      getChampionById={assistantGetMonthlyChampionById}
-      title="Monthly champions"
+    />
+  );
+}
+
+export function AssistantMonthlyChampionView() {
+  const dispatch = useDispatch();
+  const assistantToken = useSelector((s) => s.auth.assistantToken);
+  const onUnauthorized = useCallback(() => dispatch(logoutAssistant()), [dispatch]);
+
+  return (
+    <PortalMonthlyChampionView
+      token={assistantToken}
+      onUnauthorized={onUnauthorized}
+      basePath={BASE}
+      getChampion={assistantGetMonthlyChampionById}
     />
   );
 }

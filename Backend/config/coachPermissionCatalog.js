@@ -17,6 +17,7 @@ const COACH_NAV_ITEMS = [
   { to: "dashboard", label: "Dashboard" },
   { to: "my-users", label: "My Clients" },
   { to: "meal-approvals", label: "Meal Approvals" },
+  { to: "client-testimonials", label: "Client Testimonials" },
   { to: "commitment-letters", label: "Commitment Letters" },
   { to: "monthly-champions", label: "Monthly Champions" },
   { to: "consultancy/transactions", label: "Consultancy Payments" },

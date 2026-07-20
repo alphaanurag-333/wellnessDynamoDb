@@ -1,20 +1,20 @@
 import { useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
-import { adminUpdateClientTestimonial } from "../../api/clientTestimonialsController.js";
-import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
-import { logout } from "../../../store/authSlice.js";
+import { AdminMediaImage } from "../../admin/components/AdminMediaImage.jsx";
 import {
   DESCRIPTION_MAX_LEN,
   sanitizeMultiLine,
-} from "./ClientTestimonialShared.js";
+} from "../../admin/pages/clientTestimonial/ClientTestimonialShared.js";
 
-export function ClientTestimonialForm({ initialTestimonial = null }) {
-  const dispatch = useDispatch();
+export function PortalClientTestimonialForm({
+  token,
+  onUnauthorized,
+  basePath,
+  updateTestimonial,
+  initialTestimonial = null,
+}) {
   const navigate = useNavigate();
-  const adminToken = useSelector((s) => s.auth.adminToken);
-
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(() => ({
     rating: String(initialTestimonial?.rating ?? 5),
@@ -25,7 +25,7 @@ export function ClientTestimonialForm({ initialTestimonial = null }) {
 
   const onSubmit = async (e) => {
     e.preventDefault();
-    if (!adminToken || !editId) return;
+    if (!token || !editId) return;
 
     const description = sanitizeMultiLine(form.description, DESCRIPTION_MAX_LEN).trim();
     const rating = Number(form.rating);
@@ -41,16 +41,20 @@ export function ClientTestimonialForm({ initialTestimonial = null }) {
 
     setSaving(true);
     try {
-      await adminUpdateClientTestimonial(adminToken, editId, {
+      await updateTestimonial(token, editId, {
         description,
         rating,
         status: form.status || "inactive",
       });
       await Swal.fire({ icon: "success", title: "Client testimonial updated", timer: 1500 });
-      navigate("/admin/client-testimonials");
+      navigate(basePath);
     } catch (err) {
-      if (err?.status === 401) return dispatch(logout());
-      await Swal.fire({ icon: "error", title: "Save failed", text: err.message || "Could not save client testimonial." });
+      if (err?.status === 401) return onUnauthorized?.();
+      await Swal.fire({
+        icon: "error",
+        title: "Save failed",
+        text: err.message || "Could not save client testimonial.",
+      });
     } finally {
       setSaving(false);
     }
@@ -131,7 +135,7 @@ export function ClientTestimonialForm({ initialTestimonial = null }) {
         </label>
       </div>
       <div className="user-form__actions">
-        <button type="button" className="btn btn--ghost" onClick={() => navigate("/admin/client-testimonials")}>
+        <button type="button" className="btn btn--ghost" onClick={() => navigate(basePath)}>
           Cancel edit
         </button>
         <button type="submit" className="btn btn--primary" disabled={saving || !editId}>

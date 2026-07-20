@@ -8,7 +8,8 @@ import { UserClientHub } from "../pages/myHealUsers/UserClientHub.jsx";
 import { ClientHubLegacyRedirect } from "../../components/ClientHubLegacyRedirect.jsx";
 import { CoachRealPeopleTestimonialsPage } from "../pages/realPeopleTestimonial/CoachRealPeopleTestimonialsPage.jsx";
 import { CoachCommitmentLettersPage } from "../pages/commitmentLetter/CoachCommitmentLettersPage.jsx";
-import { CoachMonthlyChampionsPage } from "../pages/monthlyChampion/CoachMonthlyChampionsPage.jsx";
+import { CoachClientTestimonialsLayout, CoachClientTestimonialList, CoachClientTestimonialView, CoachClientTestimonialEdit } from "../pages/clientTestimonial/CoachClientTestimonialsPage.jsx";
+import { CoachMonthlyChampionsLayout, CoachMonthlyChampionList, CoachMonthlyChampionView } from "../pages/monthlyChampion/CoachMonthlyChampionsPage.jsx";
 import { CoachMealApprovalsPage } from "../pages/mealReview/CoachMealApprovalsPage.jsx";
 import { MyAssistantList } from "../pages/myAssistants/MyAssistantList.jsx";
 import { MyAssistantAdd } from "../pages/myAssistants/MyAssistantAdd.jsx";
@@ -46,9 +47,17 @@ export const wellnessCoachRouteTree = (
     <Route path="my-users/:userId/launch-assessment" element={<ClientHubLegacyRedirect segment="launch-assessment" basePath="/coach" />} />
     <Route path="my-users/:userId/prakruti-assessment" element={<ClientHubLegacyRedirect segment="prakruti-assessment" basePath="/coach" />} />
     <Route path="meal-approvals" element={guarded("nav.meal-approvals", <CoachMealApprovalsPage />)} />
+    <Route path="client-testimonials" element={guarded("nav.client-testimonials", <CoachClientTestimonialsLayout />)}>
+      <Route index element={<CoachClientTestimonialList />} />
+      <Route path=":testimonialId/edit" element={<CoachClientTestimonialEdit />} />
+      <Route path=":testimonialId" element={<CoachClientTestimonialView />} />
+    </Route>
     <Route path="real-people-testimonials" element={<CoachRealPeopleTestimonialsPage />} />
     <Route path="commitment-letters" element={guarded("nav.commitment-letters", <CoachCommitmentLettersPage />)} />
-    <Route path="monthly-champions" element={guarded("nav.monthly-champions", <CoachMonthlyChampionsPage />)} />
+    <Route path="monthly-champions" element={guarded("nav.monthly-champions", <CoachMonthlyChampionsLayout />)}>
+      <Route index element={<CoachMonthlyChampionList />} />
+      <Route path=":postId" element={<CoachMonthlyChampionView />} />
+    </Route>
     <Route
       path="consultancy/transactions"
       element={guarded("nav.consultancy/transactions", <CoachConsultancyTransactionList />)}
