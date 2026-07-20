@@ -155,14 +155,21 @@ export default function VideoTestimonials() {
   if (items === null) {
     return (
       <section
-        className="video-slider-section"
+        className="video-slider-section pt-3"
         aria-busy="true"
         aria-label="Loading video testimonials"
       >
-        <div className="container">
+        
+        <div className="transformation-header">
+          <div className="header-left">
+            <h2>Voice of Healing : Unfiltered</h2>
+           <p className="site-testimonials__loading">Loading video testimonials…</p>
+          </div>
+           </div>
+        {/* <div className="container">
           <h2 className="voice-title">Voice of Healing : Unfiltered</h2>
           <p className="site-testimonials__loading">Loading video testimonials…</p>
-        </div>
+        </div> */}
       </section>
     );
   }
@@ -174,7 +181,7 @@ export default function VideoTestimonials() {
   const enableLoop = items.length > 3 && !playingId;
 
   return (
-    <section className="video-slider-section" aria-label="Video testimonials">
+    <section className="video-slider-section pt-3" aria-label="Video testimonials">
       <div className="container">
         <h2 className="voice-title">Voice of Healing : Unfiltered</h2>
         <Swiper

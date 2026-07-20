@@ -2517,7 +2517,7 @@ a:hover {
   padding: 20px;
   display: block;
   border-radius: 42px;
-  object-fit: cover;
+  object-fit: fill;
   transition: transform 0.8s ease;
 }
 
@@ -5430,7 +5430,7 @@ border-radius:5px;
 
   display: block;
 
-  object-fit: cover;
+  object-fit: fill;
   object-position: center top;
 
   transition: var(--transition);
@@ -13750,7 +13750,7 @@ SMALL DEVICES
   .about-page .pillar-card__icon img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: fill;
   }
 
   .about-page .aboutFaq__gallery {
