@@ -22,7 +22,7 @@ const ResourcesSection = () => {
               CLINICALLY PROVEN TOOLS
             </span> */}
 
-            <h2 className="wellness__title">
+            <h2 className="wellness__title mb-0">
               Your Wellness <span>Toolkit</span>
             </h2>
 
