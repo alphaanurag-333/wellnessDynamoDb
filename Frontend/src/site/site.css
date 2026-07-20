@@ -5550,13 +5550,13 @@ border-radius:5px;
 
   border-radius: 50%;
 
-  background: radial-gradient(
+  /* background: radial-gradient(
     circle,
     rgba(170, 233, 160, 0.55) 0%,
     rgba(170, 233, 160, 0.28) 35%,
     rgba(170, 233, 160, 0.12) 60%,
     rgba(170, 233, 160, 0) 80%
-  );
+  ); */
 
   filter: blur(40px);
 }

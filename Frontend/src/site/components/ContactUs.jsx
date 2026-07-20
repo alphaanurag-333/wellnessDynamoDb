@@ -113,8 +113,15 @@ export default function ContactUsSection() {
     setFormData((prev) => ({
       ...prev,
       phoneCountryIso: countryIso,
-      phoneCountryCode: country ? dialCodeFromPhonecode(country.phonecode) : prev.phoneCountryCode,
-      phone: sanitizeContactPhone(prev.phone, country ? dialCodeFromPhonecode(country.phonecode) : prev.phoneCountryCode),
+      phoneCountryCode: country
+        ? dialCodeFromPhonecode(country.phonecode)
+        : prev.phoneCountryCode,
+      phone: sanitizeContactPhone(
+        prev.phone,
+        country
+          ? dialCodeFromPhonecode(country.phonecode)
+          : prev.phoneCountryCode,
+      ),
     }));
   };
 
@@ -159,7 +166,8 @@ export default function ContactUsSection() {
       setFormData(INITIAL_CONTACT_FORM);
       setFeedback({
         type: "success",
-        text: result?.message || "Thank you! Our team will get back to you soon.",
+        text:
+          result?.message || "Thank you! Our team will get back to you soon.",
       });
     } catch (err) {
       setFeedback({
@@ -175,26 +183,43 @@ export default function ContactUsSection() {
     ? "10-digit, starts with 6–9"
     : "4–15 digits, no country code";
 
-  const phonePlaceholder = isIndiaDial(formData.phoneCountryCode) ? "9876543210" : "Phone number";
+  const phonePlaceholder = isIndiaDial(formData.phoneCountryCode)
+    ? "9876543210"
+    : "Phone number";
 
   return (
     <section className="wellness-toolkit wellnesspedia-page contact-section">
-      <div className=" contact-hero pt-3 pb-0" style={{minHeight:'auto'}}>
-        <div className="contact-hero-content" style={{width:'100%',height:'auto'}}>
-          {/* <span className="contact-tag">CONTACT OUR TEAM</span> */}
+      {/* <div className=" contact-hero pt-3 pb-0" style={{ minHeight: "auto" }}>
+        <div
+          className="contact-hero-content"
+          style={{ width: "100%", height: "auto" }}
+        >
+          
 
           <h1 className="wellness__title ">
             Contact Our
             <span> Wellness Team</span>
           </h1>
 
-          <p className="contact-description" style={{maxWidth:'99%'}}>
+          <p className="contact-description" style={{ maxWidth: "99%" }}>
+            Expert guidance for your wellness journey. Reach out to our
+            specialists for personalized clinical support.
+          </p>
+        </div>
+      </div> */}
+
+      <div class="site-container">
+        <div class="wellness-toolkit__content pt-2" style={{maxWidth:'100%'}}>
+          <h2 class="wellness__title mb-0">
+                       Contact Our
+            <span> Wellness Team</span>
+          </h2>
+          <p class="wellness-toolkit__description" style={{maxWidth:'100%'}}>
             Expert guidance for your wellness journey. Reach out to our
             specialists for personalized clinical support.
           </p>
         </div>
       </div>
-
       <div className="contact-card mt-3 mb-3">
         <form onSubmit={handleSubmit} noValidate>
           {feedback ? (
@@ -207,7 +232,9 @@ export default function ContactUsSection() {
           ) : null}
 
           <div className="contact-row">
-            <div className={`contact-field${fieldErrors.firstName ? " contact-field--invalid" : ""}`}>
+            <div
+              className={`contact-field${fieldErrors.firstName ? " contact-field--invalid" : ""}`}
+            >
               <label htmlFor="contact-firstName">
                 First Name
                 {/* <span className="contact-field-limit">{formData.firstName.length}/{FIELD_LIMITS.firstName}</span> */}
@@ -223,12 +250,19 @@ export default function ContactUsSection() {
                 maxLength={FIELD_LIMITS.firstName}
                 disabled={submitting}
                 aria-invalid={Boolean(fieldErrors.firstName)}
-                aria-describedby={fieldErrors.firstName ? "contact-firstName-error" : undefined}
+                aria-describedby={
+                  fieldErrors.firstName ? "contact-firstName-error" : undefined
+                }
               />
-              <FieldHint id="contact-firstName-error" error={fieldErrors.firstName} />
+              <FieldHint
+                id="contact-firstName-error"
+                error={fieldErrors.firstName}
+              />
             </div>
 
-            <div className={`contact-field${fieldErrors.lastName ? " contact-field--invalid" : ""}`}>
+            <div
+              className={`contact-field${fieldErrors.lastName ? " contact-field--invalid" : ""}`}
+            >
               <label htmlFor="contact-lastName">
                 Last Name
                 {/* <span className="contact-field-limit">{formData.lastName.length}/{FIELD_LIMITS.lastName}</span> */}
@@ -244,14 +278,21 @@ export default function ContactUsSection() {
                 maxLength={FIELD_LIMITS.lastName}
                 disabled={submitting}
                 aria-invalid={Boolean(fieldErrors.lastName)}
-                aria-describedby={fieldErrors.lastName ? "contact-lastName-error" : undefined}
+                aria-describedby={
+                  fieldErrors.lastName ? "contact-lastName-error" : undefined
+                }
               />
-              <FieldHint id="contact-lastName-error" error={fieldErrors.lastName} />
+              <FieldHint
+                id="contact-lastName-error"
+                error={fieldErrors.lastName}
+              />
             </div>
           </div>
 
           <div className="contact-row contact-row--split">
-            <div className={`contact-field${fieldErrors.email ? " contact-field--invalid" : ""}`}>
+            <div
+              className={`contact-field${fieldErrors.email ? " contact-field--invalid" : ""}`}
+            >
               <label htmlFor="contact-email">
                 Email Address
                 {/* <span className="contact-field-limit">{formData.email.length}/{FIELD_LIMITS.email}</span> */}
@@ -266,12 +307,16 @@ export default function ContactUsSection() {
                 maxLength={FIELD_LIMITS.email}
                 disabled={submitting}
                 aria-invalid={Boolean(fieldErrors.email)}
-                aria-describedby={fieldErrors.email ? "contact-email-error" : undefined}
+                aria-describedby={
+                  fieldErrors.email ? "contact-email-error" : undefined
+                }
               />
               <FieldHint id="contact-email-error" error={fieldErrors.email} />
             </div>
 
-            <div className={`contact-field${fieldErrors.phone ? " contact-field--invalid" : ""}`}>
+            <div
+              className={`contact-field${fieldErrors.phone ? " contact-field--invalid" : ""}`}
+            >
               <label htmlFor="contact-phone">Phone Number</label>
               <div className="contact-phone-row">
                 <ContactCountryDialSelect
@@ -294,13 +339,21 @@ export default function ContactUsSection() {
                   onPaste={(e) => {
                     e.preventDefault();
                     const text = e.clipboardData.getData("text");
-                    handlePhoneChange({ target: { name: "phone", value: text } });
+                    handlePhoneChange({
+                      target: { name: "phone", value: text },
+                    });
                   }}
                   inputMode="numeric"
-                  maxLength={isIndiaDial(formData.phoneCountryCode) ? FIELD_LIMITS.phoneNationalIndia : FIELD_LIMITS.phoneNational}
+                  maxLength={
+                    isIndiaDial(formData.phoneCountryCode)
+                      ? FIELD_LIMITS.phoneNationalIndia
+                      : FIELD_LIMITS.phoneNational
+                  }
                   disabled={submitting}
                   aria-invalid={Boolean(fieldErrors.phone)}
-                  aria-describedby={fieldErrors.phone ? "contact-phone-help" : undefined}
+                  aria-describedby={
+                    fieldErrors.phone ? "contact-phone-help" : undefined
+                  }
                   autoComplete="tel-national"
                 />
               </div>
@@ -308,7 +361,9 @@ export default function ContactUsSection() {
             </div>
           </div>
 
-          <div className={`contact-field contact-full${fieldErrors.inquiry ? " contact-field--invalid" : ""}`}>
+          <div
+            className={`contact-field contact-full${fieldErrors.inquiry ? " contact-field--invalid" : ""}`}
+          >
             <label htmlFor="contact-inquiry">Enquiry Type</label>
             <select
               id="contact-inquiry"
@@ -317,7 +372,9 @@ export default function ContactUsSection() {
               onChange={handleChange}
               disabled={submitting}
               aria-invalid={Boolean(fieldErrors.inquiry)}
-              aria-describedby={fieldErrors.inquiry ? "contact-inquiry-error" : undefined}
+              aria-describedby={
+                fieldErrors.inquiry ? "contact-inquiry-error" : undefined
+              }
             >
               <option value="">Select an option...</option>
               <option value="consultation">Book Consultation</option>
@@ -328,10 +385,12 @@ export default function ContactUsSection() {
             <FieldHint id="contact-inquiry-error" error={fieldErrors.inquiry} />
           </div>
 
-          <div className={`contact-field contact-full${fieldErrors.message ? " contact-field--invalid" : ""}`}>
+          <div
+            className={`contact-field contact-full${fieldErrors.message ? " contact-field--invalid" : ""}`}
+          >
             <label htmlFor="contact-message">
               Your Message
-              {/* <span className="contact-field-limit">{formData.message.length}/{FIELD_LIMITS.message}</span> */} 
+              {/* <span className="contact-field-limit">{formData.message.length}/{FIELD_LIMITS.message}</span> */}
             </label>
             <textarea
               id="contact-message"
@@ -342,9 +401,16 @@ export default function ContactUsSection() {
               maxLength={FIELD_LIMITS.message}
               disabled={submitting}
               aria-invalid={Boolean(fieldErrors.message)}
-              aria-describedby={fieldErrors.message ? "contact-message-error" : "contact-message-meta"}
+              aria-describedby={
+                fieldErrors.message
+                  ? "contact-message-error"
+                  : "contact-message-meta"
+              }
             />
-            <FieldHint id={fieldErrors.message ? "contact-message-error" : undefined} error={fieldErrors.message} />
+            <FieldHint
+              id={fieldErrors.message ? "contact-message-error" : undefined}
+              error={fieldErrors.message}
+            />
           </div>
 
           <div className="contact-footer">
