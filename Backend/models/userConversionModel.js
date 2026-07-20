@@ -8,7 +8,7 @@ const {
   getReferralCodeRecord,
   registerReferralCode,
   generateUniqueReferralCode,
-  deleteReferralCodeRecord,
+  updateReferralCodeOwnerCoachId,
 } = require("./referralCodeModel");
 const { getWellnessCoachRecordById } = require("./wellnessCoachModel");
 const { getAssistantWellnessCoachById } = require("./assistantWellnessCoachModel");
@@ -61,6 +61,40 @@ async function loadReferralContext(referralRecord) {
 }
 
 /**
+ * Ensure the user's referral code exists in the registry and ownerCoachId is current.
+ * Reuses the code created at registration when present.
+ */
+async function ensureUserReferralRegistry(userId, referralCode, ownerCoachId) {
+  const code = String(referralCode || "").trim().toUpperCase();
+  if (!code) throw new Error("referralCode is required");
+
+  const owner = String(ownerCoachId || "").trim() || "pending";
+  const existing = await getReferralCodeRecord(code);
+
+  if (existing) {
+    if (String(existing.ownerCoachId || "") !== owner) {
+      await updateReferralCodeOwnerCoachId(code, owner);
+    }
+    return code;
+  }
+
+  await registerReferralCode({
+    referralCode: code,
+    entityType: "user",
+    entityId: userId,
+    ownerCoachId: owner,
+  });
+  return code;
+}
+
+function resolveReferralCodeInput(user, referralCode) {
+  const fromRequest = referralCode ? String(referralCode).trim() : "";
+  if (fromRequest) return fromRequest;
+  const fromHistory = user?.referredByCode ? String(user.referredByCode).trim() : "";
+  return fromHistory;
+}
+
+/**
  * Record successful consultancy payment: consultancy_only tier + coach assignment.
  * Does not upgrade to Seek to Heal (subscription).
  */
@@ -88,7 +122,7 @@ async function completeConsultancyEnrollment(userId, { referralCode } = {}) {
     throw err;
   }
 
-  const normalizedReferralCode = referralCode ? String(referralCode).trim() : "";
+  const normalizedReferralCode = resolveReferralCodeInput(user, referralCode);
   const referralRecord = normalizedReferralCode
     ? await getReferralCodeRecord(normalizedReferralCode)
     : null;
@@ -112,7 +146,7 @@ async function completeConsultancyEnrollment(userId, { referralCode } = {}) {
     assignedAt: assignment.assignmentStatus === "assigned" ? now : null,
   };
 
-  const updated = await updateUser(userId, updates);
+  const updated = await updateUser(userId, omitExistingHistoryFields(updates, user));
   assertHealUserAssignment(updated);
   return updated;
 }
@@ -138,14 +172,14 @@ async function convertSeekToHeal(userId, { referralCode, allowFromSeek = false }
   const tier = normalizeTier(user.userTier);
 
   if (tier === "consultancy_only") {
-    const newReferralCode = await generateUniqueReferralCode();
+    const ownReferralCode = user.referralCode || (await generateUniqueReferralCode());
     const now = new Date().toISOString();
     const parentCoachIdForRegistry = String(user.parentCoachId || "").trim() || null;
 
     const updates = omitExistingHistoryFields(
       {
         userTier: "heal",
-        referralCode: newReferralCode,
+        referralCode: ownReferralCode,
         convertedAt: now,
       },
       user
@@ -154,21 +188,13 @@ async function convertSeekToHeal(userId, { referralCode, allowFromSeek = false }
     const updated = await updateUser(userId, updates);
     assertHealUserAssignment(updated);
 
-    if (updated.assignmentStatus === "assigned" && parentCoachIdForRegistry) {
-      await registerReferralCode({
-        referralCode: newReferralCode,
-        entityType: "user",
-        entityId: userId,
-        ownerCoachId: parentCoachIdForRegistry,
-      });
-    } else {
-      await registerReferralCode({
-        referralCode: newReferralCode,
-        entityType: "user",
-        entityId: userId,
-        ownerCoachId: "pending",
-      });
-    }
+    await ensureUserReferralRegistry(
+      userId,
+      ownReferralCode,
+      updated.assignmentStatus === "assigned" && parentCoachIdForRegistry
+        ? parentCoachIdForRegistry
+        : "pending"
+    );
 
     return updated;
   }
@@ -179,7 +205,7 @@ async function convertSeekToHeal(userId, { referralCode, allowFromSeek = false }
     throw err;
   }
 
-  const normalizedReferralCode = referralCode ? String(referralCode).trim() : "";
+  const normalizedReferralCode = resolveReferralCodeInput(user, referralCode);
   const referralRecord = normalizedReferralCode
     ? await getReferralCodeRecord(normalizedReferralCode)
     : null;
@@ -187,14 +213,14 @@ async function convertSeekToHeal(userId, { referralCode, allowFromSeek = false }
   const context = await loadReferralContext(referralRecord);
   const assignment = resolveConversionAssignment(referralRecord, context, normalizedReferralCode);
 
-  const newReferralCode = await generateUniqueReferralCode();
+  const ownReferralCode = user.referralCode || (await generateUniqueReferralCode());
   const now = new Date().toISOString();
   const parentCoachIdForRegistry = assignment.parentCoachId || null;
 
   const updates = omitExistingHistoryFields(
     {
       userTier: "heal",
-      referralCode: newReferralCode,
+      referralCode: ownReferralCode,
       convertedAt: now,
       referredByUserId: assignment.referredByUserId,
       referredByCode: assignment.referredByCode,
@@ -213,28 +239,21 @@ async function convertSeekToHeal(userId, { referralCode, allowFromSeek = false }
   const updated = await updateUser(userId, updates);
   assertHealUserAssignment(updated);
 
-  if (assignment.assignmentStatus === "assigned") {
-    await registerReferralCode({
-      referralCode: newReferralCode,
-      entityType: "user",
-      entityId: userId,
-      ownerCoachId: parentCoachIdForRegistry,
-    });
-  } else {
-    await registerReferralCode({
-      referralCode: newReferralCode,
-      entityType: "user",
-      entityId: userId,
-      ownerCoachId: "pending",
-    });
-  }
+  await ensureUserReferralRegistry(
+    userId,
+    ownReferralCode,
+    assignment.assignmentStatus === "assigned" && parentCoachIdForRegistry
+      ? parentCoachIdForRegistry
+      : "pending"
+  );
 
   return updated;
 }
 
 /**
  * Admin downgrade: Heal (paid subscription) → Seek (free).
- * Clears heal-specific assignment and referral code; referral history (referredBy*, convertedAt) is kept.
+ * Clears heal-specific assignment; keeps the user's referral code (issued at registration).
+ * Referral history (referredBy*, convertedAt) is kept.
  */
 async function convertHealToSeek(userId) {
   const user = await getUserById(userId);
@@ -252,9 +271,12 @@ async function convertHealToSeek(userId) {
 
   if (user.referralCode) {
     try {
-      await deleteReferralCodeRecord(user.referralCode);
+      await updateReferralCodeOwnerCoachId(user.referralCode, "pending");
     } catch (err) {
-      if (err?.name !== "ConditionalCheckFailedException") {
+      if (err?.name === "ConditionalCheckFailedException") {
+        // Registry row missing — recreate with pending owner.
+        await ensureUserReferralRegistry(userId, user.referralCode, "pending");
+      } else {
         throw err;
       }
     }
@@ -262,7 +284,6 @@ async function convertHealToSeek(userId) {
 
   const updates = {
     userTier: "seek",
-    referralCode: null,
     assignedCoachId: null,
     assignedCoachType: null,
     parentCoachId: null,

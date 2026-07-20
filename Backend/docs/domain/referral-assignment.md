@@ -11,14 +11,14 @@ Business rules for Seek → Heal conversion, referral codes, and coach assignmen
 
 ## Referral codes
 
-Every **Wellness Coach**, **Assistant Wellness Coach**, and **Heal user** gets a unique `referralCode` stored in the **`ReferralCode`** registry table.
+Every **Wellness Coach**, **Assistant Wellness Coach**, and **user** (from registration) gets a unique `referralCode` stored in the **`ReferralCode`** registry table.
 
 | Field | Purpose |
 |-------|---------|
 | `referralCode` | Partition key |
 | `entityType` | `wellness_coach` \| `assistant_wellness_coach` \| `user` |
 | `entityId` | Owning record id |
-| `ownerCoachId` | Wellness coach for peer-referral resolution |
+| `ownerCoachId` | Wellness coach for peer-referral resolution (`pending` until a coach is assigned) |
 
 ## User assignment fields (Heal)
 
@@ -30,13 +30,14 @@ Every **Wellness Coach**, **Assistant Wellness Coach**, and **Heal user** gets a
 | `assignmentStatus` | Yes | `assigned` \| `pending_admin` |
 | `referredBy*` | **Immutable** | Referral history at conversion |
 
-## Conversion rules (Seek → Heal)
+## Conversion rules (Seek → Heal / consultancy)
 
 | Referral type | Assignment |
 |---------------|------------|
 | Wellness coach code | Direct to coach |
 | Assistant code | To assistant; `parentCoachId` = assistant's coach |
-| Heal user (peer) code | To referrer's `parentCoachId` coach |
+| Peer user code (referrer has coach/assistant) | Inherit referrer's assignment |
+| Peer user code (referrer has no coach) | `pending_admin` until admin assigns |
 | No code | `pending_admin` until admin assigns |
 
 ## Reassignment
@@ -58,6 +59,7 @@ See [API reference](../api/README.md) for full route tables.
 
 ## Implementation
 
+- `models/userModel.js` — `createUser` issues referral code at registration
 - `models/userConversionModel.js` — `convertSeekToHeal`
 - `models/userAssignmentModel.js` — `reassignHealUser`, `assignPendingHealUser`
 - `models/userAssignmentLogic.js` — validation & patch builders

@@ -157,28 +157,54 @@ function resolveConversionAssignment(referralRecord, context, referralCodeInput)
       err.name = "InvalidReferralCodeError";
       throw err;
     }
-    if (normalizeUserTier(referer.userTier) !== "heal") {
-      const err = new Error("Referral code belongs to a non-Heal user");
-      err.name = "InvalidReferralCodeError";
-      throw err;
-    }
 
-    const owningCoachId = String(referer.parentCoachId || "").trim();
-    if (!owningCoachId) {
-      const err = new Error("Referring user has no owning wellness coach");
-      err.name = "InvalidReferralCodeError";
-      throw err;
-    }
-
-    return {
+    const referredBy = {
       referredByUserId: referer.id,
       referredByCode,
       referredByEntityType: "user",
       referredByEntityId: referer.id,
-      assignedCoachId: owningCoachId,
-      assignedCoachType: "wellness_coach",
-      parentCoachId: owningCoachId,
-      assignmentStatus: "assigned",
+    };
+
+    const assignedCoachId = String(referer.assignedCoachId || "").trim();
+    const assignedCoachType = normalizeAssignedCoachType(referer.assignedCoachType);
+    const parentCoachId = String(referer.parentCoachId || "").trim();
+    const refererAssigned =
+      normalizeAssignmentStatus(referer.assignmentStatus, "") === "assigned" &&
+      Boolean(assignedCoachId) &&
+      Boolean(assignedCoachType) &&
+      Boolean(parentCoachId);
+
+    // Referrer has a coach/assistant → inherit that assignment.
+    if (refererAssigned) {
+      return {
+        ...referredBy,
+        assignedCoachId,
+        assignedCoachType,
+        parentCoachId,
+        assignmentStatus: "assigned",
+        assignmentSource: "referral",
+      };
+    }
+
+    // Legacy / parent-only: roll up to owning wellness coach when present.
+    if (parentCoachId) {
+      return {
+        ...referredBy,
+        assignedCoachId: parentCoachId,
+        assignedCoachType: "wellness_coach",
+        parentCoachId,
+        assignmentStatus: "assigned",
+        assignmentSource: "referral",
+      };
+    }
+
+    // Referrer has no coach yet → admin must assign the new client.
+    return {
+      ...referredBy,
+      assignedCoachId: null,
+      assignedCoachType: null,
+      parentCoachId: null,
+      assignmentStatus: "pending_admin",
       assignmentSource: "referral",
     };
   }

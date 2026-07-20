@@ -5,7 +5,6 @@ const { getUserById } = require("../models/userModel");
 const { getWellnessCoachRecordById } = require("../models/wellnessCoachModel");
 const { getAssistantWellnessCoachById } = require("../models/assistantWellnessCoachModel");
 const { loadReferralContext } = require("../models/userConversionModel");
-const { normalizeUserTier } = require("../models/userAssignmentLogic");
 
 function contactFromEntity(entity, type) {
   if (!entity) return null;
@@ -131,33 +130,84 @@ async function resolveMeetingAssignee(referralCodeInput) {
 
   if (referralRecord.entityType === "user") {
     const referer = context.refererUser;
-    if (!referer || normalizeUserTier(referer.userTier) !== "heal") {
+    if (!referer) {
       const err = new Error("Invalid referral code");
       err.name = "InvalidReferralCodeError";
       throw err;
     }
+
+    const assignedCoachId = String(referer.assignedCoachId || "").trim();
+    const assignedCoachType = String(referer.assignedCoachType || "").trim();
     const owningCoachId = String(referer.parentCoachId || "").trim();
-    if (!owningCoachId) {
-      const err = new Error("Invalid referral code");
-      err.name = "InvalidReferralCodeError";
-      throw err;
+
+    // Prefer the referrer's direct assignee (coach or assistant) when assigned.
+    if (
+      String(referer.assignmentStatus || "").toLowerCase() === "assigned" &&
+      assignedCoachId &&
+      (assignedCoachType === "wellness_coach" || assignedCoachType === "assistant_wellness_coach") &&
+      owningCoachId
+    ) {
+      if (assignedCoachType === "assistant_wellness_coach") {
+        const assistant = await getAssistantWellnessCoachById(assignedCoachId);
+        if (!assistant || assistant.status !== "active") {
+          const err = new Error("Invalid referral code");
+          err.name = "InvalidReferralCodeError";
+          throw err;
+        }
+        return {
+          assigneeType: "assistant_wellness_coach",
+          assigneeId: assistant.id,
+          assignee: contactFromEntity(assistant, "assistant_wellness_coach"),
+          parentCoachId: owningCoachId,
+          visibleToCoachIds: [assistant.id, owningCoachId],
+          referralCodeUsed: referralRecord.referralCode,
+          referralEntityType: "user",
+          referralEntityId: referer.id,
+        };
+      }
+
+      const coach = await getWellnessCoachRecordById(assignedCoachId);
+      if (!coach || coach.status !== "active") {
+        const err = new Error("Invalid referral code");
+        err.name = "InvalidReferralCodeError";
+        throw err;
+      }
+      return {
+        assigneeType: "wellness_coach",
+        assigneeId: coach.id,
+        assignee: contactFromEntity(coach, "wellness_coach"),
+        parentCoachId: coach.id,
+        visibleToCoachIds: [coach.id],
+        referralCodeUsed: referralRecord.referralCode,
+        referralEntityType: "user",
+        referralEntityId: referer.id,
+      };
     }
-    const coach = await getWellnessCoachRecordById(owningCoachId);
-    if (!coach || coach.status !== "active") {
-      const err = new Error("Invalid referral code");
-      err.name = "InvalidReferralCodeError";
-      throw err;
+
+    // Fallback: owning wellness coach only.
+    if (owningCoachId) {
+      const coach = await getWellnessCoachRecordById(owningCoachId);
+      if (!coach || coach.status !== "active") {
+        const err = new Error("Invalid referral code");
+        err.name = "InvalidReferralCodeError";
+        throw err;
+      }
+      return {
+        assigneeType: "wellness_coach",
+        assigneeId: coach.id,
+        assignee: contactFromEntity(coach, "wellness_coach"),
+        parentCoachId: coach.id,
+        visibleToCoachIds: [coach.id],
+        referralCodeUsed: referralRecord.referralCode,
+        referralEntityType: "user",
+        referralEntityId: referer.id,
+      };
     }
-    return {
-      assigneeType: "wellness_coach",
-      assigneeId: coach.id,
-      assignee: contactFromEntity(coach, "wellness_coach"),
-      parentCoachId: coach.id,
-      visibleToCoachIds: [coach.id],
-      referralCodeUsed: referralRecord.referralCode,
-      referralEntityType: "user",
-      referralEntityId: referer.id,
-    };
+
+    // Referrer has no coach — meeting stays with admin until assignment.
+    const err = new Error("Referring user has no assigned coach");
+    err.name = "InvalidReferralCodeError";
+    throw err;
   }
 
   const err = new Error("Invalid referral code");

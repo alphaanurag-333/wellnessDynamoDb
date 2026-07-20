@@ -162,7 +162,7 @@ describe("resolveConversionAssignment", () => {
     );
   });
 
-  it("rejects peer referral when referer has no owning coach", () => {
+  it("leaves peer referral pending admin when referer has no owning coach", () => {
     const referralRecord = {
       referralCode: "PEER4444",
       entityType: "user",
@@ -177,11 +177,73 @@ describe("resolveConversionAssignment", () => {
       assignmentStatus: "pending_admin",
     };
 
-    assert.throws(
-      () =>
-        resolveConversionAssignment(referralRecord, { refererUser: pendingReferer }, "PEER4444"),
-      (err) => err.name === "InvalidReferralCodeError"
+    const result = resolveConversionAssignment(
+      referralRecord,
+      { refererUser: pendingReferer },
+      "PEER4444"
     );
+
+    assert.equal(result.assignmentStatus, "pending_admin");
+    assert.equal(result.assignedCoachId, null);
+    assert.equal(result.parentCoachId, null);
+    assert.equal(result.referredByUserId, USER_A_ID);
+    assert.equal(result.referredByCode, "PEER4444");
+    assert.equal(result.assignmentSource, "referral");
+  });
+
+  it("accepts seek peer referral and leaves pending admin when referer has no coach", () => {
+    const referralRecord = {
+      referralCode: "SEEK1111",
+      entityType: "user",
+      entityId: USER_A_ID,
+      ownerCoachId: "pending",
+    };
+
+    const seekReferer = {
+      id: USER_A_ID,
+      userTier: "seek",
+      parentCoachId: null,
+      assignmentStatus: null,
+    };
+
+    const result = resolveConversionAssignment(
+      referralRecord,
+      { refererUser: seekReferer },
+      "SEEK1111"
+    );
+
+    assert.equal(result.assignmentStatus, "pending_admin");
+    assert.equal(result.referredByUserId, USER_A_ID);
+    assert.equal(result.referredByEntityType, "user");
+  });
+
+  it("inherits assistant assignment from referer when referer is assigned to an assistant", () => {
+    const referralRecord = {
+      referralCode: "PEER5555",
+      entityType: "user",
+      entityId: USER_A_ID,
+      ownerCoachId: COACH_ID,
+    };
+
+    const referer = {
+      id: USER_A_ID,
+      userTier: "heal",
+      assignmentStatus: "assigned",
+      assignedCoachId: ASSISTANT_ID,
+      assignedCoachType: "assistant_wellness_coach",
+      parentCoachId: COACH_ID,
+    };
+
+    const result = resolveConversionAssignment(
+      referralRecord,
+      { refererUser: referer },
+      "PEER5555"
+    );
+
+    assert.equal(result.assignmentStatus, "assigned");
+    assert.equal(result.assignedCoachId, ASSISTANT_ID);
+    assert.equal(result.assignedCoachType, "assistant_wellness_coach");
+    assert.equal(result.parentCoachId, COACH_ID);
   });
 });
 

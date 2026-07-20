@@ -18,6 +18,10 @@ const {
   sortByCreatedAtDesc,
 } = require("../utils/dynamoList");
 const { matchesAssignedClientTier } = require("./userAssignmentLogic");
+const {
+  registerReferralCode,
+  generateUniqueReferralCode,
+} = require("./referralCodeModel");
 const { computeDobMonthDay, birthdayQueryMonthDays, userBirthdayMatchesDate } = require("../utils/dobMonthDay");
 
 const TABLE = "User";
@@ -350,12 +354,14 @@ function buildUserItem(input, { id, now } = {}) {
 
 async function createUser(fields) {
   const now = new Date().toISOString();
-  const item = omitSparseGsiAttributes(buildUserItem(fields, { now }));
+  const referralCode = fields.referralCode || (await generateUniqueReferralCode());
+  const item = omitSparseGsiAttributes(buildUserItem({ ...fields, referralCode }, { now }));
 
   if (!item.name) throw new Error("name is required");
   if (!item.email) throw new Error("email is required");
   if (!item.phone) throw new Error("phone is required");
   if (!item.phoneKey) throw new Error("phoneKey is required");
+  if (!item.referralCode) throw new Error("referralCode is required");
 
   await docClient.send(
     new PutCommand({
@@ -364,6 +370,13 @@ async function createUser(fields) {
       ConditionExpression: "attribute_not_exists(id)",
     })
   );
+
+  await registerReferralCode({
+    referralCode: item.referralCode,
+    entityType: "user",
+    entityId: item.id,
+    ownerCoachId: String(item.parentCoachId || "").trim() || "pending",
+  });
 
   return withLegacyId(item);
 }

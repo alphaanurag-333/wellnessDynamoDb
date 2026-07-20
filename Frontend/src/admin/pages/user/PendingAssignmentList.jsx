@@ -73,8 +73,8 @@ export function PendingAssignmentList() {
         <div className="consultancy-page__intro">
           <h2 className="page-card__title">Pending manual assignment</h2>
           <p className="page-card__desc">
-            Consultancy-paid users without a referral code. Assign a wellness coach or assistant to each
-            client below.
+            Consultancy-paid users awaiting a coach — either no referral was used, or the referrer
+            has no assigned wellness coach / assistant yet. Assign a coach or assistant below.
           </p>
           {!loading && !loadError ? (
             <p className="data-table__muted">{countLabel}</p>

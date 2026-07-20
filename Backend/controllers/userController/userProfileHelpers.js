@@ -27,6 +27,7 @@ const {
   USER_ALLOWED_STATUS,
   USER_ALLOWED_GENDERS,
 } = require("../../models/userModel");
+const { ensureEntityReferralCode } = require("../../models/referralCodeModel");
 
 function parseBool(value) {
   if (value === undefined || value === null || value === "") return undefined;
@@ -135,7 +136,25 @@ function parseUserFields(body, { requirePassword = false } = {}) {
 
 async function enrichUser(user) {
   if (!user) return null;
-  const pub = toPublicUser(user);
+
+  let source = user;
+  try {
+    const code = await ensureEntityReferralCode({
+      tableName: "User",
+      entityType: "user",
+      entityId: user.id,
+      ownerCoachId: String(user.parentCoachId || "").trim() || "pending",
+      referralCode: user.referralCode,
+    });
+    if (code && code !== user.referralCode) {
+      source = { ...user, referralCode: code };
+    }
+  } catch (err) {
+    // Non-fatal: profile still returns without blocking on registry issues.
+    console.error("[enrichUser] ensure referral code failed", err.message);
+  }
+
+  const pub = toPublicUser(source);
   const concernId = pub.primaryHealthConcern;
   if (concernId && typeof concernId === "string") {
     const concern = await getHealthConcernById(concernId);

@@ -42,9 +42,7 @@ async function resolveRegistrationReferralFields(referralCodeInput) {
 
   if (record.entityType === "user") {
     const referer = context.refererUser;
-    if (!referer || String(referer.userTier || "").toLowerCase() !== "heal") {
-      return {};
-    }
+    if (!referer) return {};
     return {
       referredByUserId: referer.id,
       referredByCode,
