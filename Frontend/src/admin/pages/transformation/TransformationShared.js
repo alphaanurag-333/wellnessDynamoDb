@@ -9,6 +9,9 @@ export const DESCRIPTION_MAX_LEN = 255;
 export const TIME_TAKEN_MIN = 1;
 export const TIME_TAKEN_MAX = 120;
 export const TIME_TAKEN_MAX_LEN = 3;
+export const INCHES_LOST_MIN = 1;
+export const INCHES_LOST_MAX = 50;
+export const INCHES_LOST_MAX_LEN = 4;
 export const LIST_SEARCH_MAX_LEN = 50;
 export { IMAGE_MAX_SIZE_BYTES };
 export const IMAGE_WIDTH = 200;
@@ -20,6 +23,7 @@ export function emptyForm() {
   return {
     name: "",
     timeTaken: "",
+    inchesLost: "",
     achievements: "",
     description: "",
     status: "active",
@@ -75,6 +79,38 @@ export function validateTimeTakenMonths(value) {
   return "";
 }
 
+/** Inches lost — up to one decimal place, capped at INCHES_LOST_MAX. */
+export function sanitizeInchesLost(raw) {
+  let next = String(raw ?? "").replace(/[^\d.]/g, "");
+  const firstDot = next.indexOf(".");
+  if (firstDot !== -1) {
+    next = `${next.slice(0, firstDot + 1)}${next.slice(firstDot + 1).replace(/\./g, "")}`;
+    const [whole, fraction = ""] = next.split(".");
+    next = `${whole.slice(0, 2)}.${fraction.slice(0, 1)}`;
+  } else {
+    next = next.slice(0, 2);
+  }
+  if (!next || next === ".") return next === "." ? "." : "";
+  const num = Number.parseFloat(next);
+  if (!Number.isFinite(num)) return "";
+  if (num > INCHES_LOST_MAX) return String(INCHES_LOST_MAX);
+  return next;
+}
+
+export function validateInchesLost(value) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "Inches lost is required.";
+  if (!/^\d+(\.\d)?$/.test(raw)) return "Inches lost must be a number (one decimal place allowed).";
+  const num = Number.parseFloat(raw);
+  if (!Number.isFinite(num) || num < INCHES_LOST_MIN) {
+    return `Inches lost must be at least ${INCHES_LOST_MIN}.`;
+  }
+  if (num > INCHES_LOST_MAX) {
+    return `Inches lost cannot exceed ${INCHES_LOST_MAX}.`;
+  }
+  return "";
+}
+
 export function truncate(str, max) {
   const s = String(str ?? "");
   if (s.length <= max) return s;
@@ -100,6 +136,9 @@ export function validateForm(form, { editId, oldFile, newFile, hasExistingImages
 
   const timeTakenErr = validateTimeTakenMonths(form.timeTaken);
   if (timeTakenErr) return timeTakenErr;
+
+  const inchesLostErr = validateInchesLost(form.inchesLost);
+  if (inchesLostErr) return inchesLostErr;
 
   const achievements = form.achievements.trim();
   const description = form.description.trim();

@@ -44,8 +44,8 @@ export default function FinalCTA() {
           <h2
   className="final-cta__title"
   style={{
-    fontSize: "clamp(1.75rem, 4vw, 2rem)",
-    lineHeight: "1.2",
+    fontSize: "clamp(1.55rem, 4vw, 2rem)",
+    // lineHeight: "1.2",
     fontWeight: 700,
     textAlign: "center",
     marginBottom: "10px",

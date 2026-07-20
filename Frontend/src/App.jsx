@@ -10,6 +10,7 @@ import { CoachLoginPage } from "./wellnessCoach/pages/LoginPage.jsx";
 import { CoachRegisterPage } from "./wellnessCoach/pages/RegisterPage.jsx";
 import { wellnessCoachRouteTree } from "./wellnessCoach/routes/wellnessCoachRoutes.jsx";
 import { publicRouteTree } from "./site/routes/publicRoutes.jsx";
+import { SiteNotFoundPage } from "./site/pages/SiteNotFoundPage.jsx";
 import { selectAppConfigData } from "./store/appConfigSelectors.js";
 import { clearAppConfig, fetchAppConfig, fetchPublicAppConfig } from "./store/appConfigSlice.js";
 import { mediaUrl } from "./media.js";
@@ -57,6 +58,18 @@ function AppConfigSync() {
   return null;
 }
 
+function CatchAllNotFound() {
+  const { pathname } = useLocation();
+  if (
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/coach") ||
+    pathname.startsWith("/assistant")
+  ) {
+    return <NotFoundPage />;
+  }
+  return <SiteNotFoundPage />;
+}
+
 export default function App() {
   return (
     <>
@@ -72,7 +85,7 @@ export default function App() {
         {wellnessCoachRouteTree}
         <Route path="/assistant/login" element={<AssistantLoginPage />} />
         {assistantWellnessCoachRouteTree}
-        <Route path="*" element={<NotFoundPage />} />
+        <Route path="*" element={<CatchAllNotFound />} />
       </Routes>
     </>
   );

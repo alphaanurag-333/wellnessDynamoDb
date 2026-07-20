@@ -507,11 +507,11 @@ const AboutUsSection = () => {
                   <img src={item.icon} alt="Founder" />
                 </div>
 
-                <div className="pillar-card__content">
-                  <h3 className="pillar-card__title">{item.title}</h3>
-                  <h5 className="pillar-card__head-title">{item.headTitle}</h5>
+                <div className="methodology-card__content mb-0">
+                  <h3 className="">{item.title}</h3>
+                  <h5>{item.headTitle}</h5>
 
-                  <p className="pillar-card__description">{item.description}</p>
+                  <p className="pillar-card__description mb-0">{item.description}</p>
                 </div>
               </div>
             ))}
@@ -522,7 +522,7 @@ const AboutUsSection = () => {
       <Methodology />
 
       <CoachBoardSection
-        title="Our Wellness Coaches"
+        title="Wellness Coaches"
         subtitle="World-class experts dedicated to your sanctuary journey."
         coaches={wellnessCoaches}
         loading={coachesLoading}
@@ -535,7 +535,7 @@ const AboutUsSection = () => {
       />
 
       <CoachBoardSection
-        title="Our Assistant Wellness Coaches"
+        title="Assistant Wellness Coaches"
         subtitle="Dedicated support coaches helping you stay on your wellness path."
         coaches={assistantWellnessCoaches}
         loading={assistantsLoading}

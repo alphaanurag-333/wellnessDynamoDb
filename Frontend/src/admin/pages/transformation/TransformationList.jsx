@@ -164,6 +164,7 @@ export function TransformationList() {
                 <th>After</th>
                 <th>Achievements</th>
                 <th>Time</th>
+                <th>Inches</th>
                 <th>Name</th>
                 <th>Created</th>
                 <th>Status</th>
@@ -172,10 +173,10 @@ export function TransformationList() {
             </thead>
             <tbody>
               {loading ? (
-                <AdminTableLoaderRow colSpan={9} label="Loading transformations..." />
+                <AdminTableLoaderRow colSpan={10} label="Loading transformations..." />
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={9}>No transformations found.</td>
+                  <td colSpan={10}>No transformations found.</td>
                 </tr>
               ) : (
                 rows.map((row, idx) => (
@@ -191,6 +192,7 @@ export function TransformationList() {
                       <TableCellText value={row.achievements} max={60} />
                     </td>
                     <td>{row.timeTaken != null ? row.timeTaken : "—"}</td>
+                    <td>{row.inchesLost != null ? row.inchesLost : "—"}</td>
                     <td className="data-table__muted">{row.name || "—"}</td>
                     <td className="data-table__muted">{formatDate(row.createdAt)}</td>
                     <td>

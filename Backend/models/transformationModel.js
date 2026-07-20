@@ -40,12 +40,22 @@ function normalizeImageField(value, fieldName) {
   return normalizeMediaField(value, fieldName);
 }
 
-async function createTransformation({ name, timeTaken, achievements, oldImage, newImage, description, status = "active" }) {
+async function createTransformation({
+  name,
+  timeTaken,
+  inchesLost,
+  achievements,
+  oldImage,
+  newImage,
+  description,
+  status = "active",
+}) {
   const now = new Date().toISOString();
   const item = {
     id: uuidv4(),
     name: String(name || "").trim(),
     timeTaken: Number(timeTaken),
+    inchesLost: Number(inchesLost),
     achievements: String(achievements || "").trim(),
     oldImage: normalizeImageField(oldImage, "oldImage"),
     newImage: normalizeImageField(newImage, "newImage"),

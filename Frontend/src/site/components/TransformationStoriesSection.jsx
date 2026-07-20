@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, Clock3 } from "lucide-react";
 import { handleMediaImageError, mediaUrl } from "../../media.js";
 import { fetchTransformations } from "../api/publicMisc.js";
 
-function parseTags(achievements, timeTaken) {
+function parseTags(achievements, timeTaken, inchesLost) {
   const tags = String(achievements || "")
     .split(/[,|\n]+/)
     .map((part) => part.trim())
@@ -15,6 +15,11 @@ function parseTags(achievements, timeTaken) {
   const months = Number(timeTaken);
   if (Number.isFinite(months) && months > 0) {
     tags.push(`${months} ${months === 1 ? "Month" : "Months"}`);
+  }
+
+  const inches = Number(inchesLost);
+  if (Number.isFinite(inches) && inches > 0) {
+    tags.push(`${inches} ${inches === 1 ? "Inch Lost" : "Inches Lost"}`);
   }
 
   return tags;
@@ -37,7 +42,7 @@ function mapTransformation(row) {
     description,
     oldImage,
     newImage,
-    tags: parseTags(row.achievements, row.timeTaken),
+    tags: parseTags(row.achievements, row.timeTaken, row.inchesLost),
     timeTaken: row.timeTaken,
   };
 }

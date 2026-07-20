@@ -17,6 +17,8 @@ const {
 const S3_FOLDER = "transformation";
 const TIME_TAKEN_MIN = 1;
 const TIME_TAKEN_MAX = 120;
+const INCHES_LOST_MIN = 1;
+const INCHES_LOST_MAX = 50;
 
 function normalizeTimeTaken(value) {
   const num = Number(value);
@@ -27,6 +29,18 @@ function normalizeTimeTaken(value) {
     );
   }
   return num;
+}
+
+function normalizeInchesLost(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num) || num < INCHES_LOST_MIN || num > INCHES_LOST_MAX) {
+    throw new AppError(
+      `inchesLost must be a number between ${INCHES_LOST_MIN} and ${INCHES_LOST_MAX}`,
+      400
+    );
+  }
+  // Allow one decimal place (e.g. 2.5)
+  return Math.round(num * 10) / 10;
 }
 
 exports.listTransformationsController = asyncHandler(async (req, res) => {
@@ -50,6 +64,7 @@ exports.getTransformationByIdController = asyncHandler(async (req, res) => {
 exports.createTransformationController = asyncHandler(async (req, res) => {
   const name = String(req.body.name || "").trim();
   const timeTaken = normalizeTimeTaken(req.body.timeTaken);
+  const inchesLost = normalizeInchesLost(req.body.inchesLost);
   const achievements = String(req.body.achievements || "").trim();
   const description = String(req.body.description || "").trim();
   const status = String(req.body.status || "active").trim().toLowerCase();
@@ -67,6 +82,7 @@ exports.createTransformationController = asyncHandler(async (req, res) => {
   const transformation = await createTransformation({
     name,
     timeTaken,
+    inchesLost,
     achievements,
     oldImage,
     newImage,
@@ -89,6 +105,10 @@ exports.updateTransformationController = asyncHandler(async (req, res) => {
 
   if (req.body.timeTaken !== undefined) {
     updates.timeTaken = normalizeTimeTaken(req.body.timeTaken);
+  }
+
+  if (req.body.inchesLost !== undefined) {
+    updates.inchesLost = normalizeInchesLost(req.body.inchesLost);
   }
 
   if (req.body.achievements !== undefined) {
