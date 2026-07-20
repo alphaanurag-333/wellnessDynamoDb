@@ -93,7 +93,7 @@ export const navItems = [
     children: [
       { to: "client-testimonials", label: "Client Testimonials", icon: "quote" },
       { to: "program-testimonials", label: "Program Testimonials", icon: "quote" },
-      { to: "real-people-testimonials", label: "Real People Testimonials", icon: "quote" },
+      { to: "real-people-testimonials", label: "Real People : Real Healing", icon: "quote" },
       { to: "video-testimonials", label: "Video Testimonials", icon: "video" },
       { to: "transformations", label: "Transformations", icon: "trending-up" },
       { to: "commitment-letters", label: "Commitment Letters", icon: "file" },

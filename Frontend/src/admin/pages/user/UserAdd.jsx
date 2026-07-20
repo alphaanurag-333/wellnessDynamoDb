@@ -637,7 +637,7 @@ export function UserProfileForm({
               aria-label="Country calling code"
               autoComplete="tel-country-code"
               disabled
-              aria-readOnly={true}
+              aria-readonly="true"
             >
               {dialCountryOptions}
             </select>
@@ -669,28 +669,26 @@ export function UserProfileForm({
           <div className="input-group flex-nowrap">
             <select
               className="form-select flex-shrink-0"
-              style={
-                waSynced
-                  ? { width: "9.5rem", maxWidth: "42%", opacity: 0.85, cursor: "not-allowed" }
-                  : { width: "9.5rem", maxWidth: "42%" }
-              }
+              style={{ width: "9.5rem", maxWidth: "42%" }}
               value={waSynced ? values.phoneCountryIso || DEFAULT_ISO : values.whatsappCountryIso || DEFAULT_ISO}
               onChange={waSynced ? undefined : (e) => setWhatsappCountryIso(e.target.value)}
               disabled
               required={!waSynced}
               aria-label="WhatsApp country calling code"
-              aria-readOnly={true}
+              aria-readonly="true"
             >
               {dialCountryOptions}
             </select>
             <input
               id={`${fileInputId}-wa-national`}
               type="tel"
-              className="form-control min-w-0"
+              className={`form-control min-w-0${waSynced ? " bg-body-secondary" : ""}`}
               value={whatsappPhoneDisplay}
-              onChange={waSynced ? () => {} : handleWhatsappPhoneInput}
+              onChange={waSynced ? undefined : handleWhatsappPhoneInput}
               onKeyDown={waSynced ? undefined : handlePhoneKeyDown}
+              disabled={waSynced}
               readOnly={waSynced}
+              tabIndex={waSynced ? -1 : undefined}
               placeholder="9876543210"
               required={!waSynced}
               inputMode="numeric"
@@ -698,8 +696,7 @@ export function UserProfileForm({
               aria-label="WhatsApp number without country code"
               minLength={!waSynced ? 10 : undefined}
               maxLength={10}
-              style={waSynced ? { opacity: 0.85, cursor: "not-allowed" } : undefined}
-              aria-readOnly={waSynced}
+              aria-readonly={waSynced}
             />
           </div>
           <div className="form-text">

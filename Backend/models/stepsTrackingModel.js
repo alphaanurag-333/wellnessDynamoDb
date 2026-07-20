@@ -13,8 +13,8 @@ const SETTINGS_KEY = "settings";
 const CONNECTIONS_KEY = "connections";
 const DAY_KEY_PREFIX = "day#";
 
-const DEFAULT_GOAL_STEPS = 10000;
-const MIN_GOAL_STEPS = 1000;
+const DEFAULT_GOAL_STEPS = 1000;
+const MIN_GOAL_STEPS = 100;
 const MAX_GOAL_STEPS = 50000;
 const STEP_LENGTH_METERS = 0.762;
 const CALORIES_PER_STEP = 0.04;
