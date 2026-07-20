@@ -23,9 +23,13 @@ import {
   TIME_TAKEN_MAX,
   TIME_TAKEN_MAX_LEN,
   TIME_TAKEN_MIN,
+  INCHES_LOST_MAX,
+  INCHES_LOST_MAX_LEN,
+  INCHES_LOST_MIN,
   emptyForm,
   sanitizeAchievements,
   sanitizeDescription,
+  sanitizeInchesLost,
   sanitizeName,
   sanitizeTimeTakenMonths,
   validateForm,
@@ -44,6 +48,9 @@ export function TransformationForm({ mode = "create", initialTransformation = nu
       name: initialTransformation.name || "",
       timeTaken: sanitizeTimeTakenMonths(
         initialTransformation.timeTaken != null ? String(initialTransformation.timeTaken) : ""
+      ),
+      inchesLost: sanitizeInchesLost(
+        initialTransformation.inchesLost != null ? String(initialTransformation.inchesLost) : ""
       ),
       achievements: initialTransformation.achievements || "",
       description: initialTransformation.description || "",
@@ -169,6 +176,7 @@ export function TransformationForm({ mode = "create", initialTransformation = nu
     const payload = {
       name: form.name.trim(),
       timeTaken: Number(form.timeTaken),
+      inchesLost: Number(form.inchesLost),
       achievements: form.achievements.trim(),
       description: form.description.trim(),
       status: form.status || "active",
@@ -219,6 +227,25 @@ export function TransformationForm({ mode = "create", initialTransformation = nu
           />
           <small className="data-table__muted">
             Whole months only ({TIME_TAKEN_MIN}–{TIME_TAKEN_MAX}).
+          </small>
+        </label>
+        <label className="user-field col-12 col-md-4">
+          <span className="user-field__label">
+            Inches lost <span className="required-dot">*</span>
+          </span>
+          <input
+            className="user-field__input"
+            value={form.inchesLost}
+            onChange={(e) =>
+              setForm((p) => ({ ...p, inchesLost: sanitizeInchesLost(e.target.value) }))
+            }
+            inputMode="decimal"
+            maxLength={INCHES_LOST_MAX_LEN}
+            placeholder={`${INCHES_LOST_MIN} to ${INCHES_LOST_MAX}`}
+            required
+          />
+          <small className="data-table__muted">
+            One decimal allowed ({INCHES_LOST_MIN}–{INCHES_LOST_MAX}).
           </small>
         </label>
         <label className="user-field col-12 col-md-4">

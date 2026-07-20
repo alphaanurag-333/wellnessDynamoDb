@@ -4,6 +4,11 @@
 
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap");
 
+/* Keep SweetAlert above crop modal / overlays */
+.swal2-container {
+  z-index: 10000 !important;
+}
+
 :root {
   --admin-brand-blue: #1e3a5f;
   --admin-brand-blue-soft: #2c4f78;

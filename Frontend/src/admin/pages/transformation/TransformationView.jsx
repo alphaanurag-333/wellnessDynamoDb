@@ -128,6 +128,10 @@ export function TransformationView() {
         </div>
         <div className="user-view-grid">
           <DetailRow label="Time taken (months)" value={transformation.timeTaken != null ? transformation.timeTaken : "—"} />
+          <DetailRow
+            label="Inches lost"
+            value={transformation.inchesLost != null ? transformation.inchesLost : "—"}
+          />
           <div className="user-detail-row">
             <span className="user-detail-row__label">Status</span>
             <span className="user-detail-row__value">

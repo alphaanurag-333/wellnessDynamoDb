@@ -1838,7 +1838,7 @@ a:hover {
 ========================= */
 
 .mobile-sidebar__header {
-  height: 80px;
+  height: 60px;
 
   padding: 0 20px;
 
@@ -7441,11 +7441,11 @@ PRINT
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  padding: 18px 20px 0;
+  padding: 8px 18px 0;
 }
 
 .transformation-story-card__tag {
-  padding: 6px 14px;
+  padding: 5px 8px;
   border-radius: 999px;
   font-size: 0.72rem;
   font-weight: var(--fw-semibold);
@@ -11389,6 +11389,11 @@ SCROLLBAR
   }
 }
 @media (max-width: 768px) {
+
+  .site-header__inner {
+    height: 60px;
+  }
+
   .obesity-section {
     padding: var(--section-padding-y) 0;
   }
@@ -12323,7 +12328,7 @@ SCROLLBAR
   }
 
   .transformation-story-card__tags {
-    padding: 14px 16px 0;
+    padding: 8px 5px 0;
   }
 
   .transformation-story-card__label {
@@ -12359,6 +12364,10 @@ SCROLLBAR
 .heroSwiper .swiper-pagination{
   gap: 18px;
 }
+
+  .footer-title-font-size{
+    font-size: 1.55rem !important;
+  }
   .static-page-content{
     padding: 0 15px;
   }

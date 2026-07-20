@@ -35,7 +35,7 @@ export function ServicesSection() {
       <div className="site-container">
         <div className="site-section__header site-section__header--centered">
           <p className="site-eyebrow">{services.eyebrow}</p>
-          <h2 id="services-heading" className="site-heading site-heading--center">
+          <h2 id="services-heading" className="healing-title  site-heading--center">
             {services.title}
           </h2>
         </div>

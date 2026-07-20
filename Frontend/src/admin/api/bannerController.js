@@ -48,7 +48,9 @@ export async function adminCreateBanner(token, fields, file, mobileFile) {
       status: fields.status || "active",
       bannerType: fields.bannerType || "main",
     });
-    if (file instanceof File) fd.append("file", file);
+    // Wellnesspedia is mobile-only: reuse mobile file as desktop `file` when no desktop upload
+    const desktopFile = file instanceof File ? file : mobileFile instanceof File ? mobileFile : null;
+    if (desktopFile instanceof File) fd.append("file", desktopFile);
     if (mobileFile instanceof File) fd.append("mobileImage", mobileFile);
     try {
       const { data } = await api.post(bannersBase(), fd, { headers: authHeader(token) });
@@ -59,13 +61,15 @@ export async function adminCreateBanner(token, fields, file, mobileFile) {
   }
 
   try {
+    const mobileKey = String(fields.mobileImage ?? "").trim();
+    const imageKey = String(fields.image ?? "").trim() || mobileKey;
     const { data } = await api.post(
       bannersBase(),
       {
         title: String(fields.title ?? "").trim(),
         description: String(fields.description ?? "").trim(),
-        image: String(fields.image ?? "").trim(),
-        mobileImage: String(fields.mobileImage ?? "").trim(),
+        image: imageKey,
+        mobileImage: mobileKey,
         status: String(fields.status || "active"),
         bannerType: String(fields.bannerType || "main"),
       },
@@ -82,8 +86,15 @@ export async function adminUpdateBanner(token, id, fields, file, mobileFile) {
   if (hasFiles) {
     const fd = new FormData();
     appendBannerFormData(fd, fields);
-    if (file instanceof File) fd.append("file", file);
-    if (mobileFile instanceof File) fd.append("mobileImage", mobileFile);
+    const desktopFile = file instanceof File ? file : null;
+    if (desktopFile instanceof File) fd.append("file", desktopFile);
+    if (mobileFile instanceof File) {
+      fd.append("mobileImage", mobileFile);
+      // Wellnesspedia: if no desktop file, also update image from mobile
+      if (!(desktopFile instanceof File) && String(fields.bannerType || "").toLowerCase() === "wellnesspedia") {
+        fd.append("file", mobileFile);
+      }
+    }
     try {
       const { data } = await api.patch(`${bannersBase()}/${encodeURIComponent(id)}`, fd, {
         headers: authHeader(token),

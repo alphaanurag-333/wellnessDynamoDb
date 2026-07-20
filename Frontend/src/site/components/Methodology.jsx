@@ -63,7 +63,8 @@ export default function Methodology() {
                   }
                 >
                   Book a consultation
-                </button>              </div>
+                </button>        
+                      </div>
             </div>
           ))}
         </div>

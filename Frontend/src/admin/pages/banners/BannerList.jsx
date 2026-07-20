@@ -72,15 +72,21 @@ export function BannerList() {
     const { isConfirmed } = await Swal.fire({
       icon: "warning",
       title: "Delete banner?",
-      text: `This will delete "${row.title}".`,
+      html: `Are you sure you want to delete <strong>${String(row.title || "this banner")}</strong>?<br/><span style="color:#6b7280">This action cannot be undone.</span>`,
       showCancelButton: true,
+      focusCancel: true,
+      reverseButtons: true,
       confirmButtonColor: "#dc2626",
-      confirmButtonText: "Delete",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Yes, delete",
+      cancelButtonText: "Cancel",
+      allowOutsideClick: false,
+      allowEscapeKey: true,
     });
     if (!isConfirmed || !adminToken) return;
     try {
-      await adminDeleteBanner(adminToken, row._id);
-      await Swal.fire({ icon: "success", title: "Banner deleted", timer: 1500 });
+      await adminDeleteBanner(adminToken, row._id || row.id);
+      await Swal.fire({ icon: "success", title: "Banner deleted", timer: 1500, showConfirmButton: false });
       await loadRows();
     } catch (e) {
       if (e?.status === 401) return dispatch(logout());
