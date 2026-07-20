@@ -21,6 +21,8 @@ export function RealPeopleTestimonialEdit() {
   useEffect(() => {
     if (!adminToken || !testimonialId) return;
     let cancelled = false;
+    setLoading(true);
+    setNotFound(false);
     (async () => {
       try {
         const data = await adminGetRealPeopleTestimonialById(adminToken, testimonialId);
@@ -49,12 +51,16 @@ export function RealPeopleTestimonialEdit() {
 
   return (
     <div className="user-page">
-      <AdminPageHeader title="Edit real people testimonial" backTo="/admin/real-people-testimonials" />
+      <AdminPageHeader
+        title="Edit real people testimonial"
+        subtitle="Update this healing story."
+        backTo="/admin/real-people-testimonials"
+      />
       <div className="page-card">
         {loading ? (
           <AdminPageLoader label="Loading…" />
         ) : row ? (
-          <RealPeopleTestimonialForm mode="edit" initial={row} key={row._id} />
+          <RealPeopleTestimonialForm mode="edit" initial={row} key={row._id || testimonialId} />
         ) : null}
       </div>
     </div>

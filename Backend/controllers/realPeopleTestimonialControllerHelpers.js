@@ -1,11 +1,18 @@
 const AppError = require("../utils/AppError");
-const { getUserById } = require("../models/userModel");
 
 const REVIEW_MIN = 3;
 const REVIEW_MAX = 500;
+const NAME_MAX = 35;
 
 function readIdParam(req) {
   return String(req.params.id || req.params.testimonialId || "").trim();
+}
+
+function validateName(name) {
+  const value = String(name ?? "").trim();
+  if (!value) throw new AppError("name is required", 400);
+  if (value.length > NAME_MAX) throw new AppError(`name cannot exceed ${NAME_MAX} characters`, 400);
+  return value;
 }
 
 function validateReview(review) {
@@ -26,11 +33,9 @@ function validateStars(stars) {
   return Math.round(num);
 }
 
-async function validateUserId(userId) {
-  const id = String(userId || "").trim();
-  if (!id) throw new AppError("userId is required", 400);
-  const user = await getUserById(id);
-  if (!user) throw new AppError("User not found", 400);
+function validateHealthConcernId(healthConcernId) {
+  const id = String(healthConcernId || "").trim();
+  if (!id) throw new AppError("healthConcernId is required", 400);
   return id;
 }
 
@@ -42,46 +47,14 @@ function validateStatus(status) {
   return value;
 }
 
-function validateApprovalStatus(approvalStatus) {
-  const value = String(approvalStatus || "").trim().toLowerCase();
-  if (!["pending", "approved", "rejected"].includes(value)) {
-    throw new AppError("approvalStatus must be pending, approved, or rejected", 400);
-  }
-  return value;
-}
-
-function assertCoachCanManageTestimonial(record, { coachId, assistantId } = {}) {
-  const managedByCoachId = String(record?.managedByCoachId || "").trim();
-  const assignedCoachType = String(record?.assignedCoachType || "").trim();
-  const assignedCoachId = String(record?.assignedCoachId || "").trim();
-
-  if (assistantId) {
-    if (
-      assignedCoachType === "assistant_wellness_coach" &&
-      assignedCoachId === String(assistantId)
-    ) {
-      return;
-    }
-    throw new AppError("Testimonial is not assigned to you", 403);
-  }
-
-  if (coachId && managedByCoachId === String(coachId)) return;
-  throw new AppError("Testimonial is not under your coaching hierarchy", 403);
-}
-
-function readTestimonialUserId(record) {
-  return String(record?.userId || record?.submittedByUserId || "").trim();
-}
-
 module.exports = {
   REVIEW_MIN,
   REVIEW_MAX,
+  NAME_MAX,
   readIdParam,
+  validateName,
   validateReview,
   validateStars,
-  validateUserId,
+  validateHealthConcernId,
   validateStatus,
-  validateApprovalStatus,
-  assertCoachCanManageTestimonial,
-  readTestimonialUserId,
 };

@@ -7914,7 +7914,8 @@ PRINT
   display: flex;
   flex-direction: column;
   gap: 5px;
-  height: 100%;
+  height: auto;
+  width: 100%;
   transition: var(--transition);
 }
 
@@ -7949,9 +7950,14 @@ PRINT
   font-size: 1rem;
 }
 
+.realHealingSwiper .swiper-wrapper {
+  align-items: stretch;
+}
+
 .realHealingSwiper .swiper-slide {
   display: flex;
   height: auto;
+  align-items: flex-start;
 }
 
 .real-healing-tag {
@@ -7968,8 +7974,44 @@ PRINT
   font-size: 0.92rem;
   line-height: 1.9;
   font-style: italic;
-  flex: 1;
+  flex: 0 1 auto;
   text-align: justify;
+  margin: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.real-healing-review--expanded {
+  display: block;
+  -webkit-line-clamp: unset;
+  overflow: visible;
+}
+
+.real-healing-more {
+  margin: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  color: var(--primary);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  transition: var(--transition);
+  align-self: flex-start;
+}
+
+.real-healing-more svg {
+  flex-shrink: 0;
+}
+
+.real-healing-more:hover {
+  opacity: 0.85;
 }
 
 .real-healing-bottom {

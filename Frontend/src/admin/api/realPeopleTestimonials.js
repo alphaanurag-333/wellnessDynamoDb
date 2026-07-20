@@ -6,13 +6,13 @@ function base() {
 
 export async function adminListRealPeopleTestimonials(
   token,
-  { page = 1, limit = 10, status, approvalStatus, search } = {}
+  { page = 1, limit = 10, status, search, healthConcernId } = {}
 ) {
   const q = new URLSearchParams();
   q.set("page", String(page));
   q.set("limit", String(limit));
   if (status) q.set("status", status);
-  if (approvalStatus) q.set("approvalStatus", approvalStatus);
+  if (healthConcernId) q.set("healthConcernId", String(healthConcernId));
   if (search && String(search).trim()) q.set("search", String(search).trim());
   try {
     const { data } = await api.get(`${base()}?${q}`, { headers: authHeader(token) });
@@ -35,18 +35,20 @@ export async function adminGetRealPeopleTestimonialById(token, id) {
 }
 
 export async function adminCreateRealPeopleTestimonial(token, fields) {
+  if (!(fields?.file instanceof File)) {
+    throw new Error("Profile image upload file is required.");
+  }
+
+  const fd = new FormData();
+  fd.append("name", String(fields.name ?? "").trim());
+  fd.append("stars", String(fields.stars ?? fields.rating ?? ""));
+  fd.append("review", String(fields.review ?? "").trim());
+  fd.append("healthConcernId", String(fields.healthConcernId ?? "").trim());
+  fd.append("status", String(fields.status ?? "active").trim());
+  fd.append("file", fields.file);
+
   try {
-    const { data } = await api.post(
-      base(),
-      {
-        userId: String(fields.userId ?? "").trim(),
-        review: String(fields.review ?? "").trim(),
-        stars: Number(fields.stars),
-        status: String(fields.status || "active"),
-        approvalStatus: String(fields.approvalStatus || "approved"),
-      },
-      { headers: authHeader(token) }
-    );
+    const { data } = await api.post(base(), fd, { headers: authHeader(token) });
     return data.realPeopleTestimonial;
   } catch (error) {
     normalizeApiError(error);
@@ -54,28 +56,43 @@ export async function adminCreateRealPeopleTestimonial(token, fields) {
 }
 
 export async function adminUpdateRealPeopleTestimonial(token, id, fields) {
-  const payload = {};
-  if (fields?.userId !== undefined) payload.userId = String(fields.userId).trim();
-  if (fields?.review !== undefined) payload.review = String(fields.review).trim();
-  if (fields?.stars !== undefined) payload.stars = Number(fields.stars);
-  if (fields?.status !== undefined) payload.status = String(fields.status);
-  if (fields?.approvalStatus !== undefined) payload.approvalStatus = String(fields.approvalStatus);
-
-  try {
-    const { data } = await api.patch(`${base()}/${encodeURIComponent(id)}`, payload, { headers: authHeader(token) });
-    return data.realPeopleTestimonial;
-  } catch (error) {
-    normalizeApiError(error);
+  if (fields?.file instanceof File) {
+    const fd = new FormData();
+    if (fields.name !== undefined) fd.append("name", String(fields.name).trim());
+    if (fields.stars !== undefined || fields.rating !== undefined) {
+      fd.append("stars", String(fields.stars ?? fields.rating));
+    }
+    if (fields.review !== undefined) fd.append("review", String(fields.review).trim());
+    if (fields.healthConcernId !== undefined) {
+      fd.append("healthConcernId", String(fields.healthConcernId).trim());
+    }
+    if (fields.status !== undefined) fd.append("status", String(fields.status).trim());
+    fd.append("file", fields.file);
+    try {
+      const { data } = await api.patch(`${base()}/${encodeURIComponent(id)}`, fd, {
+        headers: authHeader(token),
+      });
+      return data.realPeopleTestimonial;
+    } catch (error) {
+      normalizeApiError(error);
+    }
   }
-}
 
-export async function adminReviewRealPeopleTestimonial(token, id, { action, rejectionReason } = {}) {
+  const payload = {};
+  if (fields?.name !== undefined) payload.name = String(fields.name).trim();
+  if (fields?.stars !== undefined || fields?.rating !== undefined) {
+    payload.stars = Number(fields.stars ?? fields.rating);
+  }
+  if (fields?.review !== undefined) payload.review = String(fields.review).trim();
+  if (fields?.healthConcernId !== undefined) {
+    payload.healthConcernId = String(fields.healthConcernId).trim();
+  }
+  if (fields?.status !== undefined) payload.status = String(fields.status).trim();
+
   try {
-    const { data } = await api.patch(
-      `${base()}/${encodeURIComponent(id)}/review`,
-      { action, rejectionReason },
-      { headers: authHeader(token) }
-    );
+    const { data } = await api.patch(`${base()}/${encodeURIComponent(id)}`, payload, {
+      headers: authHeader(token),
+    });
     return data.realPeopleTestimonial;
   } catch (error) {
     normalizeApiError(error);

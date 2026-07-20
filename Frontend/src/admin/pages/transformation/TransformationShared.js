@@ -12,6 +12,8 @@ export const TIME_TAKEN_MAX_LEN = 3;
 export const INCHES_LOST_MIN = 1;
 export const INCHES_LOST_MAX = 50;
 export const INCHES_LOST_MAX_LEN = 4;
+export const ORDER_MIN = 0;
+export const ORDER_MAX = 100000;
 export const LIST_SEARCH_MAX_LEN = 50;
 export { IMAGE_MAX_SIZE_BYTES };
 export const IMAGE_WIDTH = 200;
@@ -24,6 +26,7 @@ export function emptyForm() {
     name: "",
     timeTaken: "",
     inchesLost: "",
+    order: "0",
     achievements: "",
     description: "",
     status: "active",
@@ -111,6 +114,27 @@ export function validateInchesLost(value) {
   return "";
 }
 
+export function sanitizeOrder(value) {
+  const digitsOnly = String(value ?? "").replace(/[^0-9]/g, "");
+  if (!digitsOnly) return "";
+  const n = Math.min(Number(digitsOnly), ORDER_MAX);
+  return String(n);
+}
+
+export function validateOrder(value) {
+  const raw = String(value ?? "").trim();
+  if (raw === "") return "Order is required.";
+  if (!/^\d+$/.test(raw)) return "Order must be a whole number.";
+  const num = Number.parseInt(raw, 10);
+  if (!Number.isFinite(num) || num < ORDER_MIN) {
+    return `Order must be at least ${ORDER_MIN}.`;
+  }
+  if (num > ORDER_MAX) {
+    return `Order cannot exceed ${ORDER_MAX}.`;
+  }
+  return "";
+}
+
 export function truncate(str, max) {
   const s = String(str ?? "");
   if (s.length <= max) return s;
@@ -139,6 +163,9 @@ export function validateForm(form, { editId, oldFile, newFile, hasExistingImages
 
   const inchesLostErr = validateInchesLost(form.inchesLost);
   if (inchesLostErr) return inchesLostErr;
+
+  const orderErr = validateOrder(form.order);
+  if (orderErr) return orderErr;
 
   const achievements = form.achievements.trim();
   const description = form.description.trim();

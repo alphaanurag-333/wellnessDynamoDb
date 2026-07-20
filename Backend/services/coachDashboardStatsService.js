@@ -10,7 +10,6 @@ const {
 const { listUsersByParentCoachId, toPublicUser } = require("../models/userModel");
 const { queryMealLogsByCoachId } = require("../models/mealTrackingModel");
 const { listUserCommitmentLetters } = require("../models/userCommitmentLetterModel");
-const { listRealPeopleTestimonials } = require("../models/realPeopleTestimonialModel");
 const { normalizeUserTier } = require("../models/userAssignmentLogic");
 
 const RECENT_LIMIT = 5;
@@ -91,19 +90,12 @@ async function getCoachDashboardStats(coachId) {
     totalAssistants,
     mealLogs,
     commitmentData,
-    testimonialData,
   ] = await Promise.all([
     listUsersByParentCoachId(coachId, { page: 1, limit: 200, userTier: "client" }),
     listAssistantsByWellnessCoachId(coachId, { page: 1, limit: 200 }),
     countAssistantsByWellnessCoachId(coachId),
     queryMealLogsByCoachId(coachId, { status: "pending_review" }),
     listUserCommitmentLetters({
-      page: 1,
-      limit: 100,
-      approvalStatus: "pending",
-      managedByCoachId: coachId,
-    }),
-    listRealPeopleTestimonials({
       page: 1,
       limit: 100,
       approvalStatus: "pending",
@@ -120,7 +112,7 @@ async function getCoachDashboardStats(coachId) {
 
   const pendingMealApprovals = (mealLogs || []).length;
   const pendingCommitmentLetters = (commitmentData.commitmentLetters || []).length;
-  const pendingTestimonials = (testimonialData.realPeopleTestimonials || []).length;
+  const pendingTestimonials = 0;
   const pendingApprovals =
     pendingMealApprovals + pendingCommitmentLetters + pendingTestimonials;
 

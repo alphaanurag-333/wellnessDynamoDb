@@ -1,19 +1,23 @@
 export const LIST_LIMIT = 10;
+export const NAME_MAX_LEN = 35;
 export const REVIEW_MIN_LEN = 3;
 export const REVIEW_MAX_LEN = 500;
-export const SEARCH_MAX_LEN = 50;
 export const REVIEW_PREVIEW_LEN = 80;
-/** Standard UUID string length (with hyphens). */
-export const USER_ID_MAX_LEN = 36;
+export const SEARCH_MAX_LEN = 50;
+export { IMAGE_MAX_SIZE_BYTES } from "../../../utils/mediaUploadValidation.js";
 
 export function emptyForm() {
   return {
-    userId: "",
-    review: "",
+    name: "",
     stars: "5",
+    review: "",
+    healthConcernId: "",
     status: "active",
-    approvalStatus: "approved",
   };
+}
+
+export function sanitizeSingleLine(value, maxLen) {
+  return String(value ?? "").replace(/\s+/g, " ").slice(0, maxLen);
 }
 
 export function sanitizeReview(value, maxLen = REVIEW_MAX_LEN) {
@@ -21,6 +25,10 @@ export function sanitizeReview(value, maxLen = REVIEW_MAX_LEN) {
     .replace(/\r\n/g, "\n")
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
+    .replace(/https?:\/\/\S+/gi, "")
+    .replace(/www\.\S+/gi, "")
+    .replace(/\b[\w-]+\.(?:com|net|org|in|io|co|info|biz|gov|edu|app|dev|me|us|uk|xyz)\b\S*/gi, "")
+    .replace(/[^\p{L}\p{N}\s.,!?'"():;\-]/gu, "")
     .slice(0, maxLen);
 }
 
@@ -37,26 +45,11 @@ export function truncate(str, max) {
   return `${s.slice(0, max)}…`;
 }
 
-export function approvalLabel(status) {
-  const s = String(status || "").toLowerCase();
-  if (s === "approved") return "Approved";
-  if (s === "rejected") return "Rejected";
-  return "Pending";
-}
-
-export function approvalBadgeClass(status) {
-  const s = String(status || "").toLowerCase();
-  if (s === "approved") return "admin-status-badge admin-status-badge--active";
-  if (s === "rejected") return "admin-status-badge admin-status-badge--inactive";
-  return "admin-status-badge";
-}
-
 export function healthConcernLabel(row) {
   const title =
     row?.healthConcernTitle ||
     row?.healthConcern?.title ||
-    row?.heading ||
-    row?.user?.primaryHealthConcern?.title;
+    row?.heading;
   return title ? String(title) : "—";
 }
 
@@ -71,5 +64,9 @@ export function starsValue(row) {
 }
 
 export function testimonialAvatarPath(row) {
-  return row?.userAvatar || row?.profileImage || row?.user?.profileImage || "";
+  return row?.profileImage || row?.userAvatar || row?.user?.profileImage || "";
+}
+
+export function displayName(row) {
+  return String(row?.name || row?.userName || row?.user?.name || "").trim() || "—";
 }

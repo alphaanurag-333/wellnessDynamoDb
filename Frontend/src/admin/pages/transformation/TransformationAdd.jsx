@@ -26,11 +26,14 @@ import {
   INCHES_LOST_MAX,
   INCHES_LOST_MAX_LEN,
   INCHES_LOST_MIN,
+  ORDER_MIN,
+  ORDER_MAX,
   emptyForm,
   sanitizeAchievements,
   sanitizeDescription,
   sanitizeInchesLost,
   sanitizeName,
+  sanitizeOrder,
   sanitizeTimeTakenMonths,
   validateForm,
 } from "./TransformationShared.js";
@@ -51,6 +54,9 @@ export function TransformationForm({ mode = "create", initialTransformation = nu
       ),
       inchesLost: sanitizeInchesLost(
         initialTransformation.inchesLost != null ? String(initialTransformation.inchesLost) : ""
+      ),
+      order: sanitizeOrder(
+        initialTransformation.order != null ? String(initialTransformation.order) : "0"
       ),
       achievements: initialTransformation.achievements || "",
       description: initialTransformation.description || "",
@@ -177,6 +183,7 @@ export function TransformationForm({ mode = "create", initialTransformation = nu
       name: form.name.trim(),
       timeTaken: Number(form.timeTaken),
       inchesLost: Number(form.inchesLost),
+      order: Number(form.order),
       achievements: form.achievements.trim(),
       description: form.description.trim(),
       status: form.status || "active",
@@ -246,6 +253,24 @@ export function TransformationForm({ mode = "create", initialTransformation = nu
           />
           <small className="data-table__muted">
             One decimal allowed ({INCHES_LOST_MIN}–{INCHES_LOST_MAX}).
+          </small>
+        </label>
+        <label className="user-field col-12 col-md-4">
+          <span className="user-field__label">
+            Order <span className="required-dot">*</span>
+          </span>
+          <input
+            className="user-field__input"
+            value={form.order}
+            onChange={(e) => setForm((p) => ({ ...p, order: sanitizeOrder(e.target.value) }))}
+            onKeyDown={blockPhoneNonDigitKeyDown}
+            inputMode="numeric"
+            pattern="[0-9]*"
+            placeholder={`${ORDER_MIN} to ${ORDER_MAX}`}
+            required
+          />
+          <small className="data-table__muted">
+            Lower number shows first ({ORDER_MIN}–{ORDER_MAX}).
           </small>
         </label>
         <label className="user-field col-12 col-md-4">

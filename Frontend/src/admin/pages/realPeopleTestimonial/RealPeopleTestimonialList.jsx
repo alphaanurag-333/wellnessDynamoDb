@@ -9,24 +9,23 @@ import { AiFillDelete, AiOutlineEye } from "react-icons/ai";
 import {
   adminDeleteRealPeopleTestimonial,
   adminListRealPeopleTestimonials,
-  adminReviewRealPeopleTestimonial,
   adminUpdateRealPeopleTestimonial,
 } from "../../api/realPeopleTestimonials.js";
 import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { useDebouncedSearch } from "../../../hooks/useDebouncedSearch.js";
 import { useResourcePermissions } from "../../hooks/useHasPermission.js";
+import { mediaUrl } from "../../../media.js";
 import {
   REVIEW_PREVIEW_LEN,
   LIST_LIMIT,
   SEARCH_MAX_LEN,
-  approvalBadgeClass,
-  approvalLabel,
+  displayName,
   healthConcernLabel,
   reviewText,
+  sanitizeSingleLine,
   starsValue,
   testimonialAvatarPath,
-  truncate,
 } from "./RealPeopleTestimonialShared.js";
 
 export function RealPeopleTestimonialList() {
@@ -41,7 +40,6 @@ export function RealPeopleTestimonialList() {
     maxLength: SEARCH_MAX_LEN,
   });
   const [listStatus, setListStatus] = useState("");
-  const [listApproval, setListApproval] = useState("");
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [total, setTotal] = useState(0);
@@ -54,7 +52,6 @@ export function RealPeopleTestimonialList() {
         page,
         limit: LIST_LIMIT,
         ...(listStatus ? { status: listStatus } : {}),
-        ...(listApproval ? { approvalStatus: listApproval } : {}),
         ...(debouncedSearch ? { search: debouncedSearch } : {}),
       });
       setRows(realPeopleTestimonials);
@@ -66,7 +63,7 @@ export function RealPeopleTestimonialList() {
     } finally {
       setLoading(false);
     }
-  }, [adminToken, dispatch, listApproval, debouncedSearch, listStatus, page]);
+  }, [adminToken, dispatch, debouncedSearch, listStatus, page]);
 
   useEffect(() => {
     loadRows();
@@ -74,12 +71,13 @@ export function RealPeopleTestimonialList() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, listStatus, listApproval]);
+  }, [debouncedSearch, listStatus]);
 
   const onDelete = async (row) => {
     const { isConfirmed } = await Swal.fire({
       icon: "warning",
       title: "Delete testimonial?",
+      text: "This action cannot be undone.",
       showCancelButton: true,
       confirmButtonColor: "#dc2626",
       confirmButtonText: "Delete",
@@ -111,53 +109,32 @@ export function RealPeopleTestimonialList() {
     }
   };
 
-  const onReview = async (row, action) => {
-    if (!adminToken) return;
-    let rejectionReason = "";
-    if (action === "rejected") {
-      const result = await Swal.fire({
-        title: "Rejection reason (optional)",
-        input: "text",
-        showCancelButton: true,
-      });
-      if (!result.isConfirmed) return;
-      rejectionReason = String(result.value || "").trim();
-    } else {
-      const { isConfirmed } = await Swal.fire({
-        icon: "question",
-        title: "Approve testimonial?",
-        showCancelButton: true,
-        confirmButtonText: "Approve",
-      });
-      if (!isConfirmed) return;
-    }
-    try {
-      await adminReviewRealPeopleTestimonial(adminToken, row._id, { action, rejectionReason });
-      await Swal.fire({ icon: "success", title: action === "approved" ? "Approved" : "Rejected", timer: 1500 });
-      await loadRows();
-    } catch (e) {
-      if (e?.status === 401) return dispatch(logout());
-      await Swal.fire({ icon: "error", title: "Review failed", text: e.message });
-    }
-  };
-
-  const pageInfo = useMemo(() => `Page ${page} of ${pages} · ${total} items`, [page, pages, total]);
+  const pageInfo = useMemo(() => `Page ${page} of ${pages} · ${total} testimonials`, [page, pages, total]);
   const subtitle = listCountSubtitle(loading, total, "testimonial", "testimonials");
-  const hasFilters = Boolean(listSearch.trim() || listStatus || listApproval);
+  const hasFilters = Boolean(listSearch.trim() || listStatus);
+
+  const clearFilters = () => {
+    setSearchInput("");
+    setListStatus("");
+  };
 
   return (
     <div className="user-page">
       <div className="page-card">
         <AdminListHeader
-          title="Real people testimonials"
+          title="Real People : Real Healing"
           subtitle={subtitle}
-          // actions={
-          //   canEdit ? (
-          //   <button type="button" className="btn btn--primary" onClick={() => navigate("/admin/real-people-testimonials/new")}>
-          //     Add testimonial
-          //   </button>
-          // ) : null
-          // }
+          actions={
+            canEdit ? (
+              <button
+                type="button"
+                className="btn btn--primary"
+                onClick={() => navigate("/admin/real-people-testimonials/new")}
+              >
+                Add testimonial
+              </button>
+            ) : null
+          }
         />
         <div className="admin-crud-filters">
           <label className="user-field admin-crud-filters__search">
@@ -165,9 +142,9 @@ export function RealPeopleTestimonialList() {
             <input
               className="user-field__input"
               value={listSearch}
-              onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="Review text…"
               maxLength={SEARCH_MAX_LEN}
+              onChange={(e) => onSearchChange(sanitizeSingleLine(e.target.value, SEARCH_MAX_LEN))}
+              placeholder="Name or review..."
             />
           </label>
           <label className="user-field admin-crud-filters__select">
@@ -178,17 +155,8 @@ export function RealPeopleTestimonialList() {
               <option value="inactive">Inactive</option>
             </select>
           </label>
-          <label className="user-field admin-crud-filters__select">
-            <span className="user-field__label">Approval</span>
-            <select className="user-field__input" value={listApproval} onChange={(e) => setListApproval(e.target.value)}>
-              <option value="">All</option>
-              <option value="pending">Pending</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
-            </select>
-          </label>
           {hasFilters ? (
-            <button type="button" className="btn btn--ghost" onClick={() => { setSearchInput(""); setListStatus(""); setListApproval(""); }}>
+            <button type="button" className="btn btn--ghost" onClick={clearFilters}>
               Clear filters
             </button>
           ) : null}
@@ -197,22 +165,23 @@ export function RealPeopleTestimonialList() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>#</th>
-                <th>Avatar</th>
+                <th>S No.</th>
+                <th>Image</th>
                 <th>Name</th>
                 <th>Health concern</th>
-                <th>Review</th>
                 <th>Stars</th>
-                <th>Approval</th>
+                <th>Review</th>
                 <th>Status</th>
                 <th className="data-table__actions-col">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <AdminTableLoaderRow colSpan={9} label="Loading…" />
+                <AdminTableLoaderRow colSpan={8} label="Loading testimonials..." />
               ) : rows.length === 0 ? (
-                <tr><td colSpan={9}>No testimonials found.</td></tr>
+                <tr>
+                  <td colSpan={8}>No testimonials found.</td>
+                </tr>
               ) : (
                 rows.map((row, idx) => (
                   <tr key={row._id}>
@@ -220,55 +189,67 @@ export function RealPeopleTestimonialList() {
                     <td>
                       <AdminMediaImage
                         path={testimonialAvatarPath(row)}
+                        src={testimonialAvatarPath(row) ? mediaUrl(testimonialAvatarPath(row)) : undefined}
                         round
-                        width={40}
-                        height={40}
-                        alt={row.userName || "Profile"}
+                        width={48}
+                        height={48}
+                        alt={displayName(row)}
                       />
                     </td>
-                    <td><TableCellText value={row.userName} /></td>
-                    <td className="data-table__muted">{healthConcernLabel(row)}</td>
-                    <td className="data-table__muted" title={reviewText(row) !== "—" ? reviewText(row) : undefined}>
-                      <TableCellText value={reviewText(row) !== "—" ? reviewText(row) : ""} max={REVIEW_PREVIEW_LEN} />
-                    </td>
-                    <td>{starsValue(row)}</td>
-                    <td><span className={approvalBadgeClass(row.approvalStatus)}>{approvalLabel(row.approvalStatus)}</span></td>
                     <td>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <TableCellText value={displayName(row)} />
+                    </td>
+                    <td className="data-table__muted">{healthConcernLabel(row)}</td>
+                    <td className="data-table__muted">{starsValue(row)}</td>
+                    <td className="data-table__muted" title={reviewText(row)}>
+                      <TableCellText value={reviewText(row)} max={REVIEW_PREVIEW_LEN} />
+                    </td>
+                    <td>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         {canEdit ? (
-<button
-                          type="button"
-                          className={`settings-switch${row.status === "active" ? " settings-switch--on" : ""}`}
-                          role="switch"
-                          aria-checked={row.status === "active"}
-                          aria-label={`Toggle status for ${row.userName || "testimonial"}`}
-                          onClick={() => onToggleStatus(row)}
-                          disabled={togglingId === row._id}
-                        >
-                          <span className="settings-switch__knob" aria-hidden />
-                        </button>
+                          <button
+                            type="button"
+                            className={`settings-switch${row.status === "active" ? " settings-switch--on" : ""}`}
+                            role="switch"
+                            aria-checked={row.status === "active"}
+                            aria-label={`Toggle status for testimonial ${idx + 1}`}
+                            onClick={() => onToggleStatus(row)}
+                            disabled={togglingId === row._id}
+                          >
+                            <span className="settings-switch__knob" aria-hidden />
+                          </button>
                         ) : null}
                         <AdminStatusBadge status={row.status} />
                       </div>
                     </td>
                     <td>
                       <div className="row-actions">
-                        {row.approvalStatus === "pending" ? (
-                          <>
-                            <button type="button" className="btn btn--ghost btn--sm" onClick={() => onReview(row, "approved")}>Approve</button>
-                            <button type="button" className="btn btn--ghost btn--sm" onClick={() => onReview(row, "rejected")}>Reject</button>
-                          </>
-                        ) : null}
-                        <Link to={`/admin/real-people-testimonials/${row._id}`} className="icon-btn icon-btn--view" title="View">
+                        <Link
+                          to={`/admin/real-people-testimonials/${row._id}`}
+                          className="icon-btn icon-btn--view"
+                          title="View"
+                        >
                           <AiOutlineEye size={18} />
                         </Link>
-                        <button type="button" className="icon-btn icon-btn--edit" title="Edit" onClick={() => navigate(`/admin/real-people-testimonials/${row._id}/edit`)}>
-                          <MdEditSquare size={18} />
-                        </button>
+                        {canEdit ? (
+                          <button
+                            type="button"
+                            className="icon-btn icon-btn--edit"
+                            title="Edit"
+                            onClick={() => navigate(`/admin/real-people-testimonials/${row._id}/edit`)}
+                          >
+                            <MdEditSquare size={18} />
+                          </button>
+                        ) : null}
                         {canDelete ? (
-<button type="button" className="icon-btn icon-btn--delete" title="Delete" onClick={() => onDelete(row)}>
-                          <AiFillDelete size={18} />
-                        </button>
+                          <button
+                            type="button"
+                            className="icon-btn icon-btn--delete"
+                            title="Delete"
+                            onClick={() => onDelete(row)}
+                          >
+                            <AiFillDelete size={18} />
+                          </button>
                         ) : null}
                       </div>
                     </td>
@@ -282,8 +263,12 @@ export function RealPeopleTestimonialList() {
           <div className="user-list-pagination">
             <span className="user-list-pagination__info">{pageInfo}</span>
             <div className="user-list-pagination__btns">
-              <button type="button" className="btn btn--ghost" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Previous</button>
-              <button type="button" className="btn btn--ghost" disabled={page >= pages} onClick={() => setPage((p) => Math.min(pages, p + 1))}>Next</button>
+              <button type="button" className="btn btn--ghost" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                Previous
+              </button>
+              <button type="button" className="btn btn--ghost" disabled={page >= pages} onClick={() => setPage((p) => Math.min(pages, p + 1))}>
+                Next
+              </button>
             </div>
           </div>
         ) : null}

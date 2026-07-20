@@ -132,6 +132,7 @@ export function TransformationView() {
             label="Inches lost"
             value={transformation.inchesLost != null ? transformation.inchesLost : "—"}
           />
+          <DetailRow label="Order" value={transformation.order != null ? transformation.order : "—"} />
           <div className="user-detail-row">
             <span className="user-detail-row__label">Status</span>
             <span className="user-detail-row__value">

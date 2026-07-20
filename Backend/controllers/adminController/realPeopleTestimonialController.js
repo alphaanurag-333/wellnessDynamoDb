@@ -1,30 +1,47 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
 const {
+  uploadFileFromRequest,
+  deleteStoredMedia,
+  parseMediaKeyFromBody,
+} = require("../../utils/s3");
+const {
+  readProfileImageKey,
+  parseProfileImageFromBody,
+} = require("../../utils/mediaFieldAliases");
+const { getHealthConcernById } = require("../../models/healthConcernModel");
+const {
   createRealPeopleTestimonial,
   getRealPeopleTestimonialById,
   getRealPeopleTestimonialRecordById,
   updateRealPeopleTestimonial,
   deleteRealPeopleTestimonial,
   listRealPeopleTestimonials,
-  reviewRealPeopleTestimonial,
 } = require("../../models/realPeopleTestimonialModel");
 const {
   readIdParam,
   validateReview,
   validateStars,
-  validateUserId,
   validateStatus,
-  validateApprovalStatus,
+  validateName,
+  validateHealthConcernId,
 } = require("../realPeopleTestimonialControllerHelpers");
 
+const S3_FOLDER = "real-people-testimonials";
+
+async function assertHealthConcernExists(healthConcernId) {
+  const id = validateHealthConcernId(healthConcernId);
+  const concern = await getHealthConcernById(id);
+  if (!concern) throw new AppError("Health concern not found", 400);
+  return id;
+}
+
 exports.listRealPeopleTestimonialsController = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, status, approvalStatus, search, healthConcernId } = req.query;
+  const { page = 1, limit = 10, status, search, healthConcernId } = req.query;
   const data = await listRealPeopleTestimonials({
     page,
     limit,
     status,
-    approvalStatus,
     search,
     healthConcernId: String(healthConcernId || "").trim() || undefined,
   });
@@ -42,19 +59,29 @@ exports.getRealPeopleTestimonialByIdController = asyncHandler(async (req, res) =
 });
 
 exports.createRealPeopleTestimonialController = asyncHandler(async (req, res) => {
-  const userId = await validateUserId(req.body.userId);
+  const name = validateName(req.body.name);
   const review = validateReview(req.body.review ?? req.body.content);
   const stars = validateStars(req.body.stars ?? req.body.rating);
   const status = validateStatus(req.body.status || "active");
-  const approvalStatus = validateApprovalStatus(req.body.approvalStatus || "approved");
+  const healthConcernId = await assertHealthConcernExists(req.body.healthConcernId);
+
+  const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
+  const profileImageRaw = parseProfileImageFromBody(req.body);
+  const profileImage =
+    uploadedKey ??
+    (profileImageRaw !== undefined
+      ? parseMediaKeyFromBody(profileImageRaw, "profileImage")
+      : undefined);
+
+  if (!profileImage) throw new AppError("profileImage is required", 400);
 
   const testimonial = await createRealPeopleTestimonial({
-    userId,
+    name,
     review,
     stars,
+    healthConcernId,
+    profileImage,
     status,
-    approvalStatus,
-    submittedByRole: "admin",
   });
 
   return res.status(201).json({
@@ -70,8 +97,9 @@ exports.updateRealPeopleTestimonialController = asyncHandler(async (req, res) =>
   if (!current) throw new AppError("Testimonial not found", 404);
 
   const updates = {};
+  const currentProfileImage = readProfileImageKey(current);
 
-  if (req.body.userId !== undefined) updates.userId = await validateUserId(req.body.userId);
+  if (req.body.name !== undefined) updates.name = validateName(req.body.name);
   if (req.body.review !== undefined || req.body.content !== undefined) {
     updates.review = validateReview(req.body.review ?? req.body.content);
   }
@@ -79,14 +107,28 @@ exports.updateRealPeopleTestimonialController = asyncHandler(async (req, res) =>
     updates.stars = validateStars(req.body.stars ?? req.body.rating);
   }
   if (req.body.status !== undefined) updates.status = validateStatus(req.body.status);
-  if (req.body.approvalStatus !== undefined) {
-    updates.approvalStatus = validateApprovalStatus(req.body.approvalStatus);
-    if (updates.approvalStatus === "approved" && req.body.status === undefined) {
-      updates.status = "active";
+  if (req.body.healthConcernId !== undefined) {
+    updates.healthConcernId = await assertHealthConcernExists(req.body.healthConcernId);
+  }
+
+  const profileImageRaw = parseProfileImageFromBody(req.body);
+  if (profileImageRaw !== undefined) {
+    const profileImage = parseMediaKeyFromBody(profileImageRaw, "profileImage");
+    if (profileImage === null && currentProfileImage) {
+      await deleteStoredMedia(currentProfileImage);
     }
-    if (updates.approvalStatus === "rejected" && req.body.status === undefined) {
-      updates.status = "inactive";
+    if (profileImage === null) {
+      throw new AppError("profileImage cannot be empty", 400);
     }
+    updates.profileImage = profileImage;
+  }
+
+  const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
+  if (uploadedKey) {
+    if (currentProfileImage && currentProfileImage !== uploadedKey) {
+      await deleteStoredMedia(currentProfileImage);
+    }
+    updates.profileImage = uploadedKey;
   }
 
   if (Object.keys(updates).length === 0) {
@@ -110,34 +152,13 @@ exports.updateRealPeopleTestimonialController = asyncHandler(async (req, res) =>
   });
 });
 
-exports.approveRealPeopleTestimonialController = asyncHandler(async (req, res) => {
-  const id = readIdParam(req);
-  const current = await getRealPeopleTestimonialRecordById(id);
-  if (!current) throw new AppError("Testimonial not found", 404);
-
-  const action = String(req.body.action || req.body.approvalStatus || "approved").trim().toLowerCase();
-  if (!["approved", "rejected"].includes(action)) {
-    throw new AppError("action must be approved or rejected", 400);
-  }
-
-  const testimonial = await reviewRealPeopleTestimonial(id, {
-    approvalStatus: action,
-    reviewedByRole: "admin",
-    reviewedById: req.auth?.sub,
-    rejectionReason: req.body.rejectionReason,
-  });
-
-  return res.status(200).json({
-    status: true,
-    message: action === "approved" ? "Testimonial approved" : "Testimonial rejected",
-    realPeopleTestimonial: testimonial,
-  });
-});
-
 exports.deleteRealPeopleTestimonialController = asyncHandler(async (req, res) => {
   const id = readIdParam(req);
   const current = await getRealPeopleTestimonialRecordById(id);
   if (!current) throw new AppError("Testimonial not found", 404);
+
+  const profileImage = readProfileImageKey(current);
+  if (profileImage) await deleteStoredMedia(profileImage);
 
   try {
     await deleteRealPeopleTestimonial(id);

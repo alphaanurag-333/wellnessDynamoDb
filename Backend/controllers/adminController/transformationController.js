@@ -12,6 +12,9 @@ const {
   updateTransformation,
   deleteTransformation,
   listTransformations,
+  normalizeOrder,
+  ORDER_MIN,
+  ORDER_MAX,
 } = require("../../models/transformationModel");
 
 const S3_FOLDER = "transformation";
@@ -39,8 +42,18 @@ function normalizeInchesLost(value) {
       400
     );
   }
-  // Allow one decimal place (e.g. 2.5)
   return Math.round(num * 10) / 10;
+}
+
+function normalizeOrderValue(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num) || !Number.isInteger(num) || num < ORDER_MIN || num > ORDER_MAX) {
+    throw new AppError(
+      `order must be a whole number between ${ORDER_MIN} and ${ORDER_MAX}`,
+      400
+    );
+  }
+  return normalizeOrder(num);
 }
 
 exports.listTransformationsController = asyncHandler(async (req, res) => {
@@ -68,6 +81,10 @@ exports.createTransformationController = asyncHandler(async (req, res) => {
   const achievements = String(req.body.achievements || "").trim();
   const description = String(req.body.description || "").trim();
   const status = String(req.body.status || "active").trim().toLowerCase();
+  const order =
+    req.body.order !== undefined && req.body.order !== ""
+      ? normalizeOrderValue(req.body.order)
+      : 0;
   const uploadedOld = await uploadMulterField(req, "oldImage", S3_FOLDER);
   const uploadedNew = await uploadMulterField(req, "newImage", S3_FOLDER);
   const oldImage = uploadedOld ?? parseMediaKeyFromBody(req.body.oldImage, "oldImage");
@@ -87,6 +104,7 @@ exports.createTransformationController = asyncHandler(async (req, res) => {
     oldImage,
     newImage,
     description,
+    order,
     status,
   });
 
@@ -109,6 +127,10 @@ exports.updateTransformationController = asyncHandler(async (req, res) => {
 
   if (req.body.inchesLost !== undefined) {
     updates.inchesLost = normalizeInchesLost(req.body.inchesLost);
+  }
+
+  if (req.body.order !== undefined) {
+    updates.order = normalizeOrderValue(req.body.order);
   }
 
   if (req.body.achievements !== undefined) {

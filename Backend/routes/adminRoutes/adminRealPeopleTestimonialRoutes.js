@@ -1,12 +1,12 @@
 const express = require("express");
 const { protectAdmin } = require("../../middleware/auth");
 const { authorize } = require("../../middleware/authorize");
+const { optionalRealPeopleTestimonialFile } = require("../../middleware/authMultipart");
 const {
   listRealPeopleTestimonialsController,
   getRealPeopleTestimonialByIdController,
   createRealPeopleTestimonialController,
   updateRealPeopleTestimonialController,
-  approveRealPeopleTestimonialController,
   deleteRealPeopleTestimonialController,
 } = require("../../controllers/adminController/realPeopleTestimonialController");
 
@@ -28,18 +28,14 @@ router.post(
   "/",
   protectAdmin,
   authorize("real-people-testimonials.edit"),
+  optionalRealPeopleTestimonialFile,
   createRealPeopleTestimonialController
-);
-router.patch(
-  "/:id/review",
-  protectAdmin,
-  authorize("real-people-testimonials.edit"),
-  approveRealPeopleTestimonialController
 );
 router.patch(
   "/:id",
   protectAdmin,
   authorize("real-people-testimonials.edit"),
+  optionalRealPeopleTestimonialFile,
   updateRealPeopleTestimonialController
 );
 router.delete(

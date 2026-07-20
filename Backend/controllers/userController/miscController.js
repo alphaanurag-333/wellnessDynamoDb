@@ -163,11 +163,10 @@ exports.getActiveRealPeopleTestimonials = asyncHandler(async (req, res) => {
       page,
       limit,
       status: "active",
-      publicOnly: true,
       healthConcernId,
     }),
     "realPeopleTestimonials",
-    ["userAvatar"]
+    ["profileImage", "userAvatar"]
   );
   return res.status(200).json({
     status: true,

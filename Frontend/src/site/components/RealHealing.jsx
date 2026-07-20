@@ -1,10 +1,13 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { IoStar, IoStarHalf, IoStarOutline } from "react-icons/io5";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
 import "swiper/css";
 import { DEFAULT_IMAGE_SRC, handleMediaImageError, mediaUrl } from "../../media.js";
 import { fetchRealPeopleTestimonials } from "../api/publicMisc.js";
+
+const READ_MORE_MIN_CHARS = 120;
 
 function HealingStars({ rating }) {
   const value = Math.min(5, Math.max(0, Number(rating) || 0));
@@ -57,7 +60,7 @@ function mapHealingTestimonial(row) {
 
   const id = row.id || row._id;
   const review = String(row.review ?? row.content ?? "").trim();
-  const name = String(row.userName || row.user?.name || "").trim();
+  const name = String(row.name || row.userName || row.user?.name || "").trim();
 
   if (!id || !review || !name) return null;
 
@@ -74,8 +77,73 @@ function mapHealingTestimonial(row) {
   };
 }
 
+function RealHealingCard({ item, expanded, onToggle }) {
+  const showToggle = item.review.length > READ_MORE_MIN_CHARS;
+
+  return (
+    <article className={`real-healing-card${expanded ? " real-healing-card--expanded" : ""}`}>
+      <div className="real-healing-top">
+        <HealingStars rating={item.stars} />
+        <span className="real-healing-tag">{item.category}</span>
+      </div>
+
+      <p className={`real-healing-review${expanded ? " real-healing-review--expanded" : ""}`}>
+        &ldquo;{item.review}&rdquo;
+      </p>
+
+      {showToggle ? (
+        <button
+          type="button"
+          className="real-healing-more"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onToggle(item.id);
+          }}
+          aria-expanded={expanded}
+        >
+          {expanded ? "Read Less" : "Read More"}
+          {expanded ? <ArrowUpRight size={16} aria-hidden /> : <ArrowRight size={16} aria-hidden />}
+        </button>
+      ) : null}
+
+      <div className="real-healing-bottom">
+        <div className="real-healing-profile">
+          <img
+            src={item.image || DEFAULT_IMAGE_SRC}
+            alt={item.name}
+            loading="lazy"
+            onError={handleMediaImageError}
+          />
+          <div>
+            <h4>{item.name}</h4>
+            <span>{item.memberSince}</span>
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 export default function RealHealingSlider() {
+  const swiperRef = useRef(null);
   const [items, setItems] = useState(null);
+  const [expandedId, setExpandedId] = useState(null);
+
+  const toggleExpanded = useCallback((id) => {
+    setExpandedId((prev) => (prev === id ? null : id));
+  }, []);
+
+  useEffect(() => {
+    const swiper = swiperRef.current;
+    if (!swiper?.autoplay) return;
+    if (expandedId) swiper.autoplay.stop();
+    else if (!swiper.autoplay.running) swiper.autoplay.start();
+  }, [expandedId]);
+
+  const handleSlideChange = useCallback(() => {
+    setExpandedId(null);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -113,8 +181,6 @@ export default function RealHealingSlider() {
     return null;
   }
 
-  const enableLoop = items.length > 1;
-
   return (
     <section className="real-healing-section container" aria-label="Real people real healing">
       <h2 className="healing-title">Real People : Real Healing</h2>
@@ -122,53 +188,35 @@ export default function RealHealingSlider() {
         modules={[Autoplay]}
         slidesPerView={3}
         spaceBetween={25}
-        loop={enableLoop}
+        loop={false}
+        speed={600}
         autoplay={
-          enableLoop
+          items.length > 1
             ? {
-                delay: 3000,
-                disableOnInteraction: false,
+                delay: 3500,
+                disableOnInteraction: true,
+                pauseOnMouseEnter: true,
               }
             : false
         }
+        onSwiper={(swiper) => {
+          swiperRef.current = swiper;
+        }}
+        onSlideChange={handleSlideChange}
         breakpoints={{
-          0: {
-            slidesPerView: 1,
-          },
-          640: {
-            slidesPerView: 2,
-          },
-          1024: {
-            slidesPerView: 3,
-          },
+          0: { slidesPerView: 1 },
+          640: { slidesPerView: 2 },
+          1024: { slidesPerView: 3 },
         }}
         className="realHealingSwiper"
       >
         {items.map((item) => (
           <SwiperSlide key={item.id}>
-            <article className="real-healing-card">
-              <div className="real-healing-top">
-                <HealingStars rating={item.stars} />
-                <span className="real-healing-tag">{item.category}</span>
-              </div>
-
-              <p className="real-healing-review">&ldquo;{item.review}&rdquo;</p>
-
-              <div className="real-healing-bottom">
-                <div className="real-healing-profile">
-                  <img
-                    src={item.image || DEFAULT_IMAGE_SRC}
-                    alt={item.name}
-                    loading="lazy"
-                    onError={handleMediaImageError}
-                  />
-                  <div>
-                    <h4>{item.name}</h4>
-                    <span>{item.memberSince}</span>
-                  </div>
-                </div>
-              </div>
-            </article>
+            <RealHealingCard
+              item={item}
+              expanded={expandedId === item.id}
+              onToggle={toggleExpanded}
+            />
           </SwiperSlide>
         ))}
       </Swiper>

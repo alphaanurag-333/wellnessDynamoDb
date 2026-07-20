@@ -36,6 +36,7 @@ export async function adminCreateTransformation(token, fields, oldFile, newFile)
     fd.append("name", String(fields.name ?? "").trim());
     fd.append("timeTaken", String(fields.timeTaken ?? ""));
     fd.append("inchesLost", String(fields.inchesLost ?? ""));
+    fd.append("order", String(fields.order ?? "0"));
     fd.append("achievements", String(fields.achievements ?? "").trim());
     fd.append("description", String(fields.description ?? "").trim());
     fd.append("status", String(fields.status || "active"));
@@ -55,6 +56,7 @@ export async function adminCreateTransformation(token, fields, oldFile, newFile)
         name: String(fields.name ?? "").trim(),
         timeTaken: Number(fields.timeTaken),
         inchesLost: Number(fields.inchesLost),
+        order: Number(fields.order ?? 0),
         achievements: String(fields.achievements ?? "").trim(),
         description: String(fields.description ?? "").trim(),
         oldImage: String(fields.oldImage ?? "").trim(),
@@ -76,6 +78,7 @@ export async function adminUpdateTransformation(token, id, fields, oldFile, newF
     if (fields.name !== undefined) fd.append("name", String(fields.name).trim());
     if (fields.timeTaken !== undefined) fd.append("timeTaken", String(fields.timeTaken));
     if (fields.inchesLost !== undefined) fd.append("inchesLost", String(fields.inchesLost));
+    if (fields.order !== undefined) fd.append("order", String(fields.order));
     if (fields.achievements !== undefined) fd.append("achievements", String(fields.achievements).trim());
     if (fields.description !== undefined) fd.append("description", String(fields.description).trim());
     if (fields.status !== undefined) fd.append("status", String(fields.status));
@@ -92,6 +95,7 @@ export async function adminUpdateTransformation(token, id, fields, oldFile, newF
   if (fields.name !== undefined) payload.name = String(fields.name).trim();
   if (fields.timeTaken !== undefined) payload.timeTaken = Number(fields.timeTaken);
   if (fields.inchesLost !== undefined) payload.inchesLost = Number(fields.inchesLost);
+  if (fields.order !== undefined) payload.order = Number(fields.order);
   if (fields.achievements !== undefined) payload.achievements = String(fields.achievements).trim();
   if (fields.description !== undefined) payload.description = String(fields.description).trim();
   if (fields.oldImage !== undefined) payload.oldImage = String(fields.oldImage).trim();

@@ -6,17 +6,18 @@ import {
   adminCreateRealPeopleTestimonial,
   adminUpdateRealPeopleTestimonial,
 } from "../../api/realPeopleTestimonials.js";
-import { adminGetUser } from "../../api/adminUsers.js";
+import { adminListHealthConcerns } from "../../api/adminHealthConcerns.js";
 import { AdminPageHeader } from "../../components/AdminCrud.jsx";
-import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
+import { AdminImagePicker, ADMIN_IMAGE_PRESETS } from "../../components/AdminImagePicker.jsx";
 import { logout } from "../../../store/authSlice.js";
-import { SEARCH_DEBOUNCE_MS } from "../../../hooks/useDebouncedSearch.js";
+import { mediaUrl } from "../../../media.js";
 import {
-  REVIEW_MIN_LEN,
+  NAME_MAX_LEN,
   REVIEW_MAX_LEN,
-  USER_ID_MAX_LEN,
+  REVIEW_MIN_LEN,
   emptyForm,
   sanitizeReview,
+  sanitizeSingleLine,
 } from "./RealPeopleTestimonialShared.js";
 
 export function RealPeopleTestimonialForm({ mode = "create", initial = null }) {
@@ -24,95 +25,107 @@ export function RealPeopleTestimonialForm({ mode = "create", initial = null }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const adminToken = useSelector((s) => s.auth.adminToken);
+
   const [saving, setSaving] = useState(false);
-  const [userPreview, setUserPreview] = useState(null);
-  const [loadingUser, setLoadingUser] = useState(false);
-  const [debouncedUserId, setDebouncedUserId] = useState("");
-  const loadRequestRef = useRef(0);
+  const [healthConcerns, setHealthConcerns] = useState([]);
   const [form, setForm] = useState(() => {
     if (!initial) return emptyForm();
     return {
-      userId: initial.userId || "",
-      review: initial.review || initial.content || "",
+      name: initial.name || initial.userName || "",
       stars: String(initial.stars ?? initial.rating ?? 5),
+      review: initial.review || initial.content || "",
+      healthConcernId: initial.healthConcernId || initial.healthConcern?.id || "",
       status: initial.status || "active",
-      approvalStatus: initial.approvalStatus || "approved",
     };
   });
   const editId = isEditMode && initial ? initial._id || initial.id || "" : "";
+  const editBaselineProfileImage =
+    isEditMode && initial ? initial.profileImage || initial.userAvatar || "" : "";
+  const [profileFile, setProfileFile] = useState(null);
+  const [profilePreview, setProfilePreview] = useState(() =>
+    isEditMode && (initial?.profileImage || initial?.userAvatar)
+      ? mediaUrl(initial.profileImage || initial.userAvatar)
+      : ""
+  );
+  const fileInputRef = useRef(null);
 
-  const loadUserPreview = async (userId) => {
-    const id = String(userId || "").trim();
-    if (!id || !adminToken) {
-      setUserPreview(null);
-      setLoadingUser(false);
-      return;
-    }
-    const requestId = ++loadRequestRef.current;
-    setLoadingUser(true);
-    try {
-      const user = await adminGetUser(adminToken, id);
-      if (requestId !== loadRequestRef.current) return;
-      setUserPreview(user);
-    } catch {
-      if (requestId !== loadRequestRef.current) return;
-      setUserPreview(null);
-    } finally {
-      if (requestId === loadRequestRef.current) setLoadingUser(false);
-    }
+  useEffect(() => {
+    if (!adminToken) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { healthConcerns: rows } = await adminListHealthConcerns(adminToken, {
+          status: "active",
+          limit: 200,
+        });
+        if (!cancelled) setHealthConcerns(Array.isArray(rows) ? rows : []);
+      } catch (err) {
+        if (err?.status === 401) dispatch(logout());
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [adminToken, dispatch]);
+
+  const resetForm = () => {
+    setForm(emptyForm());
+    setProfileFile(null);
+    setProfilePreview("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
-
-  useEffect(() => {
-    const id = form.userId.trim();
-    if (!id) {
-      setDebouncedUserId("");
-      setUserPreview(null);
-      setLoadingUser(false);
-      return;
-    }
-    const timer = window.setTimeout(() => setDebouncedUserId(id), SEARCH_DEBOUNCE_MS);
-    return () => window.clearTimeout(timer);
-  }, [form.userId]);
-
-  useEffect(() => {
-    if (!debouncedUserId) return;
-    loadUserPreview(debouncedUserId);
-  }, [adminToken, debouncedUserId]);
-
-  const userIdReady = Boolean(form.userId.trim()) && form.userId.trim() === debouncedUserId;
 
   const onSubmit = async (e) => {
     e.preventDefault();
     if (!adminToken) return;
 
-    const userId = form.userId.trim();
+    const name = sanitizeSingleLine(form.name, NAME_MAX_LEN).trim();
     const review = sanitizeReview(form.review, REVIEW_MAX_LEN).trim();
     const stars = Number(form.stars);
+    const healthConcernId = String(form.healthConcernId || "").trim();
 
-    if (!userId) return Swal.fire({ icon: "error", title: "Validation", text: "User ID is required." });
+    if (!name) {
+      await Swal.fire({ icon: "error", title: "Validation error", text: "Name is required." });
+      return;
+    }
+    if (!healthConcernId) {
+      await Swal.fire({ icon: "error", title: "Validation error", text: "Health concern is required." });
+      return;
+    }
     if (!review || review.length < REVIEW_MIN_LEN) {
-      return Swal.fire({ icon: "error", title: "Validation", text: `Review must be at least ${REVIEW_MIN_LEN} characters.` });
+      await Swal.fire({
+        icon: "error",
+        title: "Validation error",
+        text: `Review must be at least ${REVIEW_MIN_LEN} characters.`,
+      });
+      return;
+    }
+    if (!editId && !(profileFile instanceof File)) {
+      await Swal.fire({ icon: "error", title: "Validation error", text: "Profile image is required." });
+      return;
     }
     if (!Number.isFinite(stars) || stars < 1 || stars > 5) {
-      return Swal.fire({ icon: "error", title: "Validation", text: "Stars must be 1–5." });
+      await Swal.fire({ icon: "error", title: "Validation error", text: "Stars must be between 1 and 5." });
+      return;
     }
 
     const payload = {
-      userId,
+      name,
       review,
       stars,
-      status: form.status,
-      approvalStatus: form.approvalStatus,
+      healthConcernId,
+      file: profileFile,
+      status: form.status || "active",
     };
 
     setSaving(true);
     try {
       if (editId) {
         await adminUpdateRealPeopleTestimonial(adminToken, editId, payload);
-        await Swal.fire({ icon: "success", title: "Updated", timer: 1500 });
+        await Swal.fire({ icon: "success", title: "Testimonial updated", timer: 1500 });
       } else {
         await adminCreateRealPeopleTestimonial(adminToken, payload);
-        await Swal.fire({ icon: "success", title: "Created", timer: 1500 });
+        await Swal.fire({ icon: "success", title: "Testimonial created", timer: 1500 });
       }
       navigate("/admin/real-people-testimonials");
     } catch (err) {
@@ -126,86 +139,119 @@ export function RealPeopleTestimonialForm({ mode = "create", initial = null }) {
   return (
     <form onSubmit={onSubmit}>
       <div className="row g-3">
-        {/* <label className="user-field col-12 col-md-6">
-          <span className="user-field__label">User ID <span className="required-dot">*</span></span>
+        <label className="user-field col-12 col-md-6">
+          <span className="user-field__label" style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+            <span>
+              Name <span className="required-dot">*</span>
+            </span>
+            <small>
+              {form.name.length}/{NAME_MAX_LEN}
+            </small>
+          </span>
           <input
             className="user-field__input"
-            value={form.userId}
-            onChange={(e) => setForm((p) => ({ ...p, userId: e.target.value.slice(0, USER_ID_MAX_LEN) }))}
-            placeholder="Paste user UUID"
-            maxLength={USER_ID_MAX_LEN}
+            value={form.name}
+            maxLength={NAME_MAX_LEN}
+            onChange={(e) => setForm((p) => ({ ...p, name: sanitizeSingleLine(e.target.value, NAME_MAX_LEN) }))}
             required
           />
-          <small className="data-table__muted">
-            Name, profile, health concern, and member since are loaded from this user. {form.userId.length}/{USER_ID_MAX_LEN}
-          </small>
-        </label> */}
-        <label className="user-field col-12 col-md-4">
-          <span className="user-field__label">Stars</span>
-          <select className="user-field__input" value={form.stars} onChange={(e) => setForm((p) => ({ ...p, stars: e.target.value }))}>
+        </label>
+        <label className="user-field col-12 col-md-6">
+          <span className="user-field__label">
+            Rating stars <span className="required-dot">*</span>
+          </span>
+          <select
+            className="user-field__input"
+            value={form.stars}
+            onChange={(e) => setForm((p) => ({ ...p, stars: e.target.value }))}
+            required
+          >
             {[5, 4, 3, 2, 1].map((n) => (
-              <option key={n} value={String(n)}>{n} star{n > 1 ? "s" : ""}</option>
+              <option key={n} value={String(n)}>
+                {n} star{n > 1 ? "s" : ""}
+              </option>
             ))}
           </select>
         </label>
-        <label className="user-field col-12 col-md-4">
+        <label className="user-field col-12 col-md-6">
+          <span className="user-field__label">
+            Health concern <span className="required-dot">*</span>
+          </span>
+          <select
+            className="user-field__input"
+            value={form.healthConcernId}
+            onChange={(e) => setForm((p) => ({ ...p, healthConcernId: e.target.value }))}
+            required
+          >
+            <option value="">Select concern</option>
+            {healthConcerns.map((c) => (
+              <option key={c._id || c.id} value={c._id || c.id}>
+                {c.title}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="user-field col-12 col-md-6">
           <span className="user-field__label">Status</span>
-          <select className="user-field__input" value={form.status} onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}>
+          <select
+            className="user-field__input"
+            value={form.status}
+            onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
+          >
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
           </select>
         </label>
-        <label className="user-field col-12 col-md-4">
-          <span className="user-field__label">Approval</span>
-          <select
-            className="user-field__input"
-            value={form.approvalStatus}
-            onChange={(e) => setForm((p) => ({ ...p, approvalStatus: e.target.value }))}
-          >
-            <option value="approved">Approved</option>
-            <option value="pending">Pending</option>
-            <option value="rejected">Rejected</option>
-          </select>
-        </label>
         <label className="user-field col-12">
-          <span className="user-field__label">Review <span className="required-dot">*</span></span>
+          <span className="user-field__label" style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+            <span>
+              Review <span className="required-dot">*</span>
+            </span>
+            <small>
+              {form.review.length}/{REVIEW_MAX_LEN}
+            </small>
+          </span>
           <textarea
             className="user-field__input"
-            rows={5}
-            value={form.review}
+            rows={4}
             maxLength={REVIEW_MAX_LEN}
+            value={form.review}
             onChange={(e) => setForm((p) => ({ ...p, review: sanitizeReview(e.target.value, REVIEW_MAX_LEN) }))}
             required
           />
-          <small className="data-table__muted">{form.review.length}/{REVIEW_MAX_LEN}</small>
         </label>
-      </div>
-
-      {loadingUser ? (
-        <p className="data-table__muted" style={{ marginTop: 12 }}>Loading user profile…</p>
-      ) : userPreview ? (
-        <div className="page-card" style={{ marginTop: 12, padding: 12 }}>
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            <AdminMediaImage path={userPreview.profileImage} round width={56} height={56} alt={userPreview.name || "Profile"} />
-            <div>
-              <strong>{userPreview.name || "—"}</strong>
-              <div className="data-table__muted">
-                Health concern: {userPreview.primaryHealthConcern?.title || userPreview.healthConcernTitle || "—"}
-              </div>
-              <div className="data-table__muted">
-                Member since {userPreview.createdAt ? new Date(userPreview.createdAt).getFullYear() : "—"}
-              </div>
-            </div>
-          </div>
+        <div className="user-field col-12 col-md-6">
+          <AdminImagePicker
+            label="Profile image"
+            hint="Square portrait for the testimonial card. Crop to 400 × 400px after selecting."
+            required={!editId}
+            optionalLabel={Boolean(editId)}
+            outputWidth={ADMIN_IMAGE_PRESETS.profile.width}
+            outputHeight={ADMIN_IMAGE_PRESETS.profile.height}
+            previewMaxWidth={ADMIN_IMAGE_PRESETS.profile.previewMaxWidth}
+            previewRound={ADMIN_IMAGE_PRESETS.profile.round}
+            cropTitle="Crop profile image"
+            file={profileFile}
+            previewUrl={profilePreview}
+            baselinePath={editBaselineProfileImage}
+            inputRef={fileInputRef}
+            onChange={({ file, previewUrl }) => {
+              setProfileFile(file);
+              setProfilePreview(previewUrl);
+            }}
+          />
         </div>
-      ) : userIdReady && !loadingUser ? (
-        <p className="data-table__muted" style={{ marginTop: 12 }}>User not found for this ID.</p>
-      ) : null}
-
+      </div>
       <div className="user-form__actions">
-        <button type="button" className="btn btn--ghost" onClick={() => navigate("/admin/real-people-testimonials")}>
-          Cancel
-        </button>
+        {isEditMode ? (
+          <button type="button" className="btn btn--ghost" onClick={() => navigate("/admin/real-people-testimonials")}>
+            Cancel edit
+          </button>
+        ) : (
+          <button type="button" className="btn btn--ghost" onClick={resetForm}>
+            Reset
+          </button>
+        )}
         <button type="submit" className="btn btn--primary" disabled={saving}>
           {saving ? "Saving…" : editId ? "Update" : "Create"}
         </button>
@@ -219,7 +265,7 @@ export function RealPeopleTestimonialAdd() {
     <div className="user-page">
       <AdminPageHeader
         title="Create real people testimonial"
-        subtitle="Link a user and add their review. Profile details come from the user record."
+        subtitle="Add a healing story for the Real People : Real Healing section."
         backTo="/admin/real-people-testimonials"
       />
       <div className="page-card">

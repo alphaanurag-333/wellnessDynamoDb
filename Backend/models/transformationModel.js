@@ -3,7 +3,6 @@ const {
   GetCommand,
   UpdateCommand,
   DeleteCommand,
-  QueryCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require("uuid");
 
@@ -12,17 +11,24 @@ const { normalizeMediaField, resolveMediaFields } = require("../utils/s3");
 const {
   listByPartitionKey,
   buildContainsFilter,
-  sortByCreatedAtDesc,
 } = require("../utils/dynamoList");
 
-const TRANSFORMATION_MEDIA = ["oldImage", "newImage"];
+const TRANSFORM_MEDIA = ["oldImage", "newImage"];
 
 const TABLE = "Transformation";
 const STATUS = new Set(["active", "inactive"]);
+const ORDER_MIN = 0;
+const ORDER_MAX = 100000;
 
 function normalizeStatus(value, fallback = "active") {
   const next = String(value || fallback).trim().toLowerCase();
   return STATUS.has(next) ? next : fallback;
+}
+
+function normalizeOrder(value, fallback = 0) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < ORDER_MIN) return fallback;
+  return Math.min(Math.floor(n), ORDER_MAX);
 }
 
 function withLegacyId(item) {
@@ -32,12 +38,27 @@ function withLegacyId(item) {
 
 function toPublicTransformation(item) {
   const row = withLegacyId(item);
-  return row ? resolveMediaFields(row, TRANSFORMATION_MEDIA) : null;
+  if (!row) return null;
+  const resolved = resolveMediaFields(row, TRANSFORM_MEDIA);
+  return {
+    ...resolved,
+    order: normalizeOrder(resolved.order, 9999),
+  };
 }
 
 function normalizeImageField(value, fieldName) {
   if (value == null || String(value).trim() === "") return "";
   return normalizeMediaField(value, fieldName);
+}
+
+/** Lower `order` first; missing order last; then newest createdAt. */
+function sortByOrderAsc(a, b) {
+  const orderA = normalizeOrder(a?.order, 9999);
+  const orderB = normalizeOrder(b?.order, 9999);
+  if (orderA !== orderB) return orderA - orderB;
+  const aTime = new Date(a?.createdAt || 0).getTime();
+  const bTime = new Date(b?.createdAt || 0).getTime();
+  return bTime - aTime;
 }
 
 async function createTransformation({
@@ -48,6 +69,7 @@ async function createTransformation({
   oldImage,
   newImage,
   description,
+  order = 0,
   status = "active",
 }) {
   const now = new Date().toISOString();
@@ -60,6 +82,7 @@ async function createTransformation({
     oldImage: normalizeImageField(oldImage, "oldImage"),
     newImage: normalizeImageField(newImage, "newImage"),
     description: String(description || "").trim(),
+    order: normalizeOrder(order),
     status: normalizeStatus(status),
     createdAt: now,
     updatedAt: now,
@@ -100,19 +123,22 @@ async function updateTransformation(id, updates) {
     const n = `#${key}`;
     const v = `:${key}`;
     exprNames[n] = key;
-    exprValues[v] =
-      key === "oldImage" || key === "newImage"
-        ? normalizeImageField(value, key)
-        : value;
+    if (key === "oldImage" || key === "newImage") {
+      exprValues[v] = normalizeImageField(value, key);
+    } else if (key === "order") {
+      exprValues[v] = normalizeOrder(value);
+    } else if (key === "status") {
+      exprValues[v] = normalizeStatus(value);
+    } else {
+      exprValues[v] = value;
+    }
     setExpr += `, ${n} = ${v}`;
   }
-
-  const updateParts = [setExpr];
 
   const { Attributes } = await docClient.send(new UpdateCommand({
     TableName: TABLE,
     Key: { id },
-    UpdateExpression: updateParts.join(" "),
+    UpdateExpression: setExpr,
     ExpressionAttributeNames: exprNames,
     ExpressionAttributeValues: exprValues,
     ConditionExpression: "attribute_exists(id)",
@@ -155,7 +181,7 @@ async function listTransformations({ page = 1, limit = 10, status, search } = {}
     page,
     limit,
     maxLimit: 200,
-    sortFn: sortByCreatedAtDesc,
+    sortFn: sortByOrderAsc,
   });
 
   return {
@@ -172,4 +198,7 @@ module.exports = {
   deleteTransformation,
   listTransformations,
   normalizeStatus,
+  normalizeOrder,
+  ORDER_MIN,
+  ORDER_MAX,
 };

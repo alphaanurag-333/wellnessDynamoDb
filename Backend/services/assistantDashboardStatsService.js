@@ -5,7 +5,6 @@ const {
 const { listUsersByAssignedCoachId, toPublicUser } = require("../models/userModel");
 const { queryMealLogsByCoachId } = require("../models/mealTrackingModel");
 const { listUserCommitmentLetters } = require("../models/userCommitmentLetterModel");
-const { listRealPeopleTestimonials } = require("../models/realPeopleTestimonialModel");
 const { normalizeUserTier } = require("../models/userAssignmentLogic");
 
 const RECENT_LIMIT = 5;
@@ -70,7 +69,7 @@ async function getAssistantDashboardStats(assistantId) {
     throw new Error("Assistant is not linked to a wellness coach");
   }
 
-  const [clientData, mealLogs, commitmentData, testimonialData] = await Promise.all([
+  const [clientData, mealLogs, commitmentData] = await Promise.all([
     listUsersByAssignedCoachId(assistantId, {
       parentCoachId,
       page: 1,
@@ -79,12 +78,6 @@ async function getAssistantDashboardStats(assistantId) {
     }),
     queryMealLogsByCoachId(parentCoachId, { status: "pending_review" }),
     listUserCommitmentLetters({
-      page: 1,
-      limit: 100,
-      approvalStatus: "pending",
-      managedByCoachId: parentCoachId,
-    }),
-    listRealPeopleTestimonials({
       page: 1,
       limit: 100,
       approvalStatus: "pending",
@@ -101,10 +94,7 @@ async function getAssistantDashboardStats(assistantId) {
     commitmentData.commitmentLetters,
     assistantId
   ).length;
-  const pendingTestimonials = filterForAssistant(
-    testimonialData.realPeopleTestimonials,
-    assistantId
-  ).length;
+  const pendingTestimonials = 0;
   const pendingApprovals =
     pendingMealApprovals + pendingCommitmentLetters + pendingTestimonials;
 

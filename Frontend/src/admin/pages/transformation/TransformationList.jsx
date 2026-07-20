@@ -160,6 +160,7 @@ export function TransformationList() {
             <thead>
               <tr>
                 <th>S No.</th>
+                <th>Order</th>
                 <th>Before</th>
                 <th>After</th>
                 <th>Achievements</th>
@@ -173,15 +174,16 @@ export function TransformationList() {
             </thead>
             <tbody>
               {loading ? (
-                <AdminTableLoaderRow colSpan={10} label="Loading transformations..." />
+                <AdminTableLoaderRow colSpan={11} label="Loading transformations..." />
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={10}>No transformations found.</td>
+                  <td colSpan={11}>No transformations found.</td>
                 </tr>
               ) : (
                 rows.map((row, idx) => (
                   <tr key={row._id}>
                     <td className="data-table__muted">{(page - 1) * LIST_LIMIT + idx + 1}</td>
+                    <td className="data-table__muted">{row.order != null ? row.order : "—"}</td>
                     <td>
                       <AdminMediaImage path={row.oldImage} width={44} height={44} radius={8} alt="Before" />
                     </td>
