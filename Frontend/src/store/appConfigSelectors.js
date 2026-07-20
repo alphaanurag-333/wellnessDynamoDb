@@ -1,7 +1,7 @@
 // import { miscUploadSrc } from "../api/adminMisc.js";
 import { mediaUrl } from "../media.js";
 
-const DEFAULT_APP_NAME = "Wellness";
+const DEFAULT_APP_NAME = "IR Wellness";
 
 /** Raw app config document from the API (public or admin). */
 export function selectAppConfigData(state) {
