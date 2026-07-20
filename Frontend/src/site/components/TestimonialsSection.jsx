@@ -1,11 +1,13 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { IoStar, IoStarHalf, IoStarOutline } from "react-icons/io5";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Pagination, Autoplay } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/pagination";
 import { DEFAULT_IMAGE_SRC, handleMediaImageError, mediaUrl } from "../../media.js";
 import { fetchClientTestimonials } from "../api/publicMisc.js";
+import { useClampedOverflow } from "../hooks/useClampedOverflow.js";
 
 function TestimonialStars({ rating }) {
   const value = Math.min(5, Math.max(0, Number(rating) || 0));
@@ -44,12 +46,82 @@ function mapTestimonial(row) {
   };
 }
 
+function TestimonialCard({ item, expanded, onToggle }) {
+  const { ref: reviewRef, overflows } = useClampedOverflow(item.review, expanded);
+  const showToggle = expanded || overflows;
+
+  return (
+    <article className={`success-card${expanded ? " success-card--expanded" : ""}`}>
+      <div className="success-card__top">
+        <div className="success-card__avatar">
+          <img
+            src={item.image || DEFAULT_IMAGE_SRC}
+            alt=""
+            loading="lazy"
+            onError={handleMediaImageError}
+          />
+        </div>
+        <TestimonialStars rating={item.rating} />
+      </div>
+
+      <blockquote className="success-card__review">
+        <p
+          ref={reviewRef}
+          className={expanded ? "success-card__review-text--expanded" : undefined}
+        >
+          {item.review}
+        </p>
+      </blockquote>
+
+      {showToggle ? (
+        <button
+          type="button"
+          className="success-card__more"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onToggle(item.id);
+          }}
+          aria-expanded={expanded}
+        >
+          {expanded ? "Read Less" : "Read More"}
+          {expanded ? <ArrowUpRight size={16} aria-hidden /> : <ArrowRight size={16} aria-hidden />}
+        </button>
+      ) : null}
+
+      <p className="success-card__author">
+        <span>— {item.name}</span>
+      </p>
+    </article>
+  );
+}
+
 export default function TestimonialsSection({ items: itemsProp }) {
-  const [items, setItems] = useState(() => (Array.isArray(itemsProp) ? itemsProp.map(mapTestimonial).filter(Boolean) : null));
+  const swiperRef = useRef(null);
+  const [items, setItems] = useState(() =>
+    Array.isArray(itemsProp) ? itemsProp.map(mapTestimonial).filter(Boolean) : null
+  );
+  const [expandedId, setExpandedId] = useState(null);
+
+  const toggleExpanded = useCallback((id) => {
+    setExpandedId((prev) => (prev === id ? null : id));
+  }, []);
+
+  useEffect(() => {
+    const swiper = swiperRef.current;
+    if (!swiper?.autoplay) return;
+    if (expandedId) swiper.autoplay.stop();
+    else if (!swiper.autoplay.running) swiper.autoplay.start();
+  }, [expandedId]);
+
+  const handleSlideChange = useCallback(() => {
+    setExpandedId(null);
+  }, []);
 
   useEffect(() => {
     if (Array.isArray(itemsProp)) {
       setItems(itemsProp.map(mapTestimonial).filter(Boolean));
+      setExpandedId(null);
       return undefined;
     }
 
@@ -88,8 +160,6 @@ export default function TestimonialsSection({ items: itemsProp }) {
     return null;
   }
 
-  const enableLoop = items.length > 1;
-
   return (
     <section className="success-stories" aria-label="Client reviews">
       <div className="site-container">
@@ -101,15 +171,21 @@ export default function TestimonialsSection({ items: itemsProp }) {
           modules={[Pagination, Autoplay]}
           slidesPerView={2}
           spaceBetween={28}
-          loop={enableLoop}
+          loop={false}
+          speed={600}
           autoplay={
-            enableLoop
+            items.length > 1
               ? {
                   delay: 5000,
-                  disableOnInteraction: false,
+                  disableOnInteraction: true,
+                  pauseOnMouseEnter: true,
                 }
               : false
           }
+          onSwiper={(swiper) => {
+            swiperRef.current = swiper;
+          }}
+          onSlideChange={handleSlideChange}
           pagination={{
             clickable: true,
           }}
@@ -131,27 +207,11 @@ export default function TestimonialsSection({ items: itemsProp }) {
         >
           {items.map((item) => (
             <SwiperSlide key={item.id}>
-              <article className="success-card">
-                <div className="success-card__top">
-                  <div className="success-card__avatar">
-                    <img
-                      src={item.image || DEFAULT_IMAGE_SRC}
-                      alt=""
-                      loading="lazy"
-                      onError={handleMediaImageError}
-                    />
-                  </div>
-                  <TestimonialStars rating={item.rating} />
-                </div>
-
-                <blockquote className="success-card__review">
-                  <p>{item.review}</p>
-                </blockquote>
-
-                <p className="success-card__author">
-                  <span>— {item.name}</span>
-                </p>
-              </article>
+              <TestimonialCard
+                item={item}
+                expanded={expandedId === item.id}
+                onToggle={toggleExpanded}
+              />
             </SwiperSlide>
           ))}
         </Swiper>

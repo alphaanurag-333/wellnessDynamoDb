@@ -2852,9 +2852,41 @@ h5.pillar-card__head-title {
   hyphens: none;
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 5;
+  -webkit-line-clamp: 3;
   overflow: hidden;
   text-align: justify;
+}
+
+.success-card__review-text--expanded {
+  display: block !important;
+  -webkit-line-clamp: unset !important;
+  overflow: visible !important;
+}
+
+.success-card__more {
+  margin: 0;
+  margin-left: auto;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  color: var(--primary);
+  font-size: var(--fs-xs, 0.8125rem);
+  font-weight: var(--fw-semibold);
+  transition: var(--transition, opacity 0.2s ease);
+  align-self: flex-end;
+}
+
+.success-card__more svg {
+  flex-shrink: 0;
+}
+
+.success-card__more:hover {
+  opacity: 0.85;
 }
 
 .success-card__author {
@@ -7364,6 +7396,12 @@ PRINT
   line-height: 1.6;
 }
 
+.transformation-section__loading--more {
+  padding: 12px 0 0;
+  font-size: 0.9rem;
+  opacity: 0.75;
+}
+
 .transformation-section__empty {
   max-width: 560px;
   margin-inline: auto;
@@ -7991,6 +8029,7 @@ PRINT
 
 .real-healing-more {
   margin: 0;
+  margin-left: auto;
   padding: 0;
   display: inline-flex;
   align-items: center;
@@ -8003,7 +8042,7 @@ PRINT
   font-size: var(--fs-xs);
   font-weight: var(--fw-semibold);
   transition: var(--transition);
-  align-self: flex-start;
+  align-self: flex-end;
 }
 
 .real-healing-more svg {
@@ -12649,7 +12688,7 @@ SCROLLBAR
 
   .success-card__review p {
     font-size: var(--font-size-small);
-    -webkit-line-clamp: 4;
+    -webkit-line-clamp: 3;
   }
 
   .contact-card {

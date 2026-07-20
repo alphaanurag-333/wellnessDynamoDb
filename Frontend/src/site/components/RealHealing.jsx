@@ -6,8 +6,7 @@ import { Autoplay } from "swiper/modules";
 import "swiper/css";
 import { DEFAULT_IMAGE_SRC, handleMediaImageError, mediaUrl } from "../../media.js";
 import { fetchRealPeopleTestimonials } from "../api/publicMisc.js";
-
-const READ_MORE_MIN_CHARS = 120;
+import { useClampedOverflow } from "../hooks/useClampedOverflow.js";
 
 function HealingStars({ rating }) {
   const value = Math.min(5, Math.max(0, Number(rating) || 0));
@@ -78,7 +77,8 @@ function mapHealingTestimonial(row) {
 }
 
 function RealHealingCard({ item, expanded, onToggle }) {
-  const showToggle = item.review.length > READ_MORE_MIN_CHARS;
+  const { ref: reviewRef, overflows } = useClampedOverflow(item.review, expanded);
+  const showToggle = expanded || overflows;
 
   return (
     <article className={`real-healing-card${expanded ? " real-healing-card--expanded" : ""}`}>
@@ -87,7 +87,10 @@ function RealHealingCard({ item, expanded, onToggle }) {
         <span className="real-healing-tag">{item.category}</span>
       </div>
 
-      <p className={`real-healing-review${expanded ? " real-healing-review--expanded" : ""}`}>
+      <p
+        ref={reviewRef}
+        className={`real-healing-review${expanded ? " real-healing-review--expanded" : ""}`}
+      >
         &ldquo;{item.review}&rdquo;
       </p>
 

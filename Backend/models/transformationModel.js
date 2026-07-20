@@ -162,26 +162,25 @@ async function listTransformations({ page = 1, limit = 10, status, search } = {}
   const filterExpression = searchFilter.filterExpression;
   const exprNames = { ...searchFilter.exprNames };
   const exprValues = { ...searchFilter.exprValues };
+  const hasSearch = Boolean(searchFilter.search);
 
-  const indexName = "StatusCreatedAtIndex";
-  const partitionKeyName = "status";
-  const partitionKeyValue = normalizedStatus || undefined;
-
+  // StatusOrderIndex: status HASH + order RANGE (ascending). Dynamo paginates in order.
+  // In-memory sort only when merging statuses or after search (GSI order no longer applies).
   const { items, pagination } = await listByPartitionKey({
     tableName: TABLE,
-    indexName,
-    partitionKeyName,
-    partitionKeyValue,
+    indexName: "StatusOrderIndex",
+    partitionKeyName: "status",
+    partitionKeyValue: normalizedStatus || undefined,
     filterExpression,
     exprNames,
     exprValues,
     search: searchFilter.search,
     searchFields: searchFilter.searchFields,
-    scanIndexForward: false,
+    scanIndexForward: true,
     page,
     limit,
     maxLimit: 200,
-    sortFn: sortByOrderAsc,
+    sortFn: !normalizedStatus || hasSearch ? sortByOrderAsc : undefined,
   });
 
   return {

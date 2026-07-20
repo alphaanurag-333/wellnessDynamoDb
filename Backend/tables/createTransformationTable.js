@@ -11,6 +11,7 @@ async function createTransformationTable() {
       { AttributeName: "id", AttributeType: "S" },
       { AttributeName: "status", AttributeType: "S" },
       { AttributeName: "createdAt", AttributeType: "S" },
+      { AttributeName: "order", AttributeType: "N" },
       { AttributeName: "userId", AttributeType: "S" },
     ],
     GlobalSecondaryIndexes: [
@@ -19,6 +20,14 @@ async function createTransformationTable() {
         KeySchema: [
           { AttributeName: "status", KeyType: "HASH" },
           { AttributeName: "createdAt", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+      {
+        IndexName: "StatusOrderIndex",
+        KeySchema: [
+          { AttributeName: "status", KeyType: "HASH" },
+          { AttributeName: "order", KeyType: "RANGE" },
         ],
         Projection: { ProjectionType: "ALL" },
       },

@@ -151,9 +151,11 @@ async function listByPartitionKey({
   const useMemorySearch =
     Boolean(searchTerm) &&
     (typeof searchFn === "function" || (Array.isArray(searchFields) && searchFields.length > 0));
-  const queryPage = useMemorySearch ? 1 : page;
-  const queryLimit = useMemorySearch ? Number.MAX_SAFE_INTEGER : limit;
-  const queryMaxLimit = useMemorySearch ? Number.MAX_SAFE_INTEGER : maxLimit;
+  // Custom sort must run on the full filtered set before paging (index order ≠ sortFn).
+  const needsFullFetch = useMemorySearch || typeof sortFn === "function";
+  const queryPage = needsFullFetch ? 1 : page;
+  const queryLimit = needsFullFetch ? Number.MAX_SAFE_INTEGER : limit;
+  const queryMaxLimit = needsFullFetch ? Number.MAX_SAFE_INTEGER : maxLimit;
   const queryFilter = useMemorySearch ? undefined : filterExpression;
 
   let result;
@@ -171,11 +173,9 @@ async function listByPartitionKey({
       limit: queryLimit,
       maxLimit: queryMaxLimit,
     });
-
-    if (typeof sortFn === "function") {
-      result.items.sort(sortFn);
-    }
   } else {
+    // Loads each partition fully, then sorts (if sortFn) and slices.
+    // When searching, request an unpaged set so in-memory filter can run first.
     result = await mergePartitionResults(
       statusPartitions.map((value) => ({
         tableName,
@@ -187,21 +187,34 @@ async function listByPartitionKey({
         exprValues,
         scanIndexForward,
       })),
-      { page: queryPage, limit: queryLimit, maxLimit: queryMaxLimit, sortFn }
+      {
+        page: useMemorySearch ? 1 : page,
+        limit: useMemorySearch ? Number.MAX_SAFE_INTEGER : limit,
+        maxLimit: useMemorySearch ? Number.MAX_SAFE_INTEGER : maxLimit,
+        sortFn,
+      }
     );
   }
 
-  if (!useMemorySearch) {
-    return result;
+  if (useMemorySearch) {
+    let items = result.items;
+    if (filterExpression) {
+      items = applyExprFilterInMemory(items, filterExpression, exprNames, exprValues);
+    }
+    const filtered = filterItemsBySearch(items, { search: searchTerm, searchFields, searchFn });
+    if (typeof sortFn === "function") {
+      filtered.sort(sortFn);
+    }
+    return paginateItems(filtered, page, limit, maxLimit);
   }
 
-  let items = result.items;
-  if (filterExpression) {
-    items = applyExprFilterInMemory(items, filterExpression, exprNames, exprValues);
+  // Single-partition path: sort full set, then paginate.
+  if (partitionKeyValue && typeof sortFn === "function") {
+    result.items.sort(sortFn);
+    return paginateItems(result.items, page, limit, maxLimit);
   }
 
-  const filtered = filterItemsBySearch(items, { search: searchTerm, searchFields, searchFn });
-  return paginateItems(filtered, page, limit, maxLimit);
+  return result;
 }
 
 function paginateItems(items, page, limit, maxLimit = 200) {

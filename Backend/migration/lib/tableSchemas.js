@@ -749,10 +749,19 @@ const TABLE_DEFINITIONS = [
       { AttributeName: "id", AttributeType: "S" },
       { AttributeName: "status", AttributeType: "S" },
       { AttributeName: "createdAt", AttributeType: "S" },
+      { AttributeName: "order", AttributeType: "N" },
       { AttributeName: "userId", AttributeType: "S" },
     ],
     GlobalSecondaryIndexes: [
       statusCreatedAtIndex(),
+      {
+        IndexName: "StatusOrderIndex",
+        KeySchema: [
+          { AttributeName: "status", KeyType: "HASH" },
+          { AttributeName: "order", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
       {
         IndexName: "UserIdCreatedAtIndex",
         KeySchema: [

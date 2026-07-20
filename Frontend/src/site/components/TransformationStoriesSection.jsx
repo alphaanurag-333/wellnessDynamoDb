@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
 import { ChevronLeft, ChevronRight, Clock3 } from "lucide-react";
 import { handleMediaImageError, mediaUrl } from "../../media.js";
 import { fetchTransformations } from "../api/publicMisc.js";
+
+const PAGE_SIZE = 10;
 
 function parseTags(achievements, timeTaken, inchesLost) {
   const tags = String(achievements || "")
@@ -97,110 +99,163 @@ function TransformationStoryCard({ item }) {
 
 export default function TransformationStoriesSection() {
   const swiperRef = useRef(null);
-  const [transformations, setTransformations] = useState(null);
+  const pageRef = useRef(0);
+  const hasMoreRef = useRef(true);
+  const loadingRef = useRef(false);
+  const seenIdsRef = useRef(new Set());
 
-  useEffect(() => {
-    let cancelled = false;
+  const [transformations, setTransformations] = useState([]);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-    (async () => {
-      try {
-        const data = await fetchTransformations({ page: 1, limit: 24 });
-        if (cancelled) return;
-        const rows = Array.isArray(data?.transformations) ? data.transformations : [];
-        setTransformations(rows.map(mapTransformation).filter(Boolean));
-      } catch {
-        if (!cancelled) setTransformations([]);
+  const loadMore = useCallback(async () => {
+    if (loadingRef.current || !hasMoreRef.current) return;
+
+    loadingRef.current = true;
+    const nextPage = pageRef.current + 1;
+    if (nextPage > 1) setLoadingMore(true);
+
+    try {
+      const data = await fetchTransformations({ page: nextPage, limit: PAGE_SIZE });
+      const rows = Array.isArray(data?.transformations) ? data.transformations : [];
+      const mapped = rows.map(mapTransformation).filter(Boolean).filter((item) => {
+        if (seenIdsRef.current.has(item.id)) return false;
+        seenIdsRef.current.add(item.id);
+        return true;
+      });
+
+      setTransformations((prev) => (nextPage === 1 ? mapped : [...prev, ...mapped]));
+
+      const pagination = data?.pagination;
+      const totalPages = Math.max(1, Number(pagination?.pages) || 1);
+      const received = rows.length;
+      const moreByPage = nextPage < totalPages;
+      const moreByBatch = received >= PAGE_SIZE;
+      hasMoreRef.current =
+        received > 0 && (moreByPage || (pagination?.pages == null && moreByBatch));
+      pageRef.current = nextPage;
+
+      // If still at the end after append, keep fetching until enough slides or no more.
+      queueMicrotask(() => {
+        const swiper = swiperRef.current;
+        if (!swiper || !hasMoreRef.current || loadingRef.current) return;
+        if (swiper.isEnd) {
+          loadMore();
+        }
+      });
+    } catch {
+      if (nextPage === 1) {
+        setTransformations([]);
+        hasMoreRef.current = false;
       }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
+    } finally {
+      loadingRef.current = false;
+      setLoadingMore(false);
+      setInitialLoading(false);
+    }
   }, []);
 
-  const transformationsLoading = transformations === null;
-  const hasTransformations = Boolean(transformations?.length);
+  useEffect(() => {
+    loadMore();
+  }, [loadMore]);
+
+  useEffect(() => {
+    const swiper = swiperRef.current;
+    if (!swiper) return;
+    swiper.update();
+  }, [transformations]);
+
+  const maybeLoadMore = useCallback(
+    (swiper) => {
+      if (!swiper || !hasMoreRef.current || loadingRef.current) return;
+      const perView = Math.ceil(Number(swiper.params.slidesPerView) || 1);
+      const nearEnd = swiper.activeIndex >= swiper.slides.length - perView - 1;
+      if (nearEnd || swiper.isEnd) {
+        loadMore();
+      }
+    },
+    [loadMore]
+  );
+
+  const hasTransformations = transformations.length > 0;
 
   return (
     <section className="transformation-section pb-3" aria-label="Real transformations">
       <div className="container">
-        {/* <div className="transformation-header ">
+        <div className="transformation-header mb-2">
           <div className="header-left">
             <h2>Transformations</h2>
             <p>Swipe to see before-and-after results from our community</p>
           </div>
 
           {hasTransformations ? (
-            <div className="slider-navigation">
+            <div className="leadership-slider__nav">
               <button
-                type="button"
-                className="slider-btn"
-                aria-label="Previous transformation"
                 onClick={() => swiperRef.current?.slidePrev()}
+                type="button"
+                className="leadership-slider__navBtn"
+                aria-label="Previous transformation"
               >
-                <ChevronLeft size={20} />
+                <ChevronLeft size={22} />
               </button>
               <button
+                onClick={() => {
+                  swiperRef.current?.slideNext();
+                  maybeLoadMore(swiperRef.current);
+                }}
                 type="button"
-                className="slider-btn"
+                className="leadership-slider__navBtn"
                 aria-label="Next transformation"
-                onClick={() => swiperRef.current?.slideNext()}
               >
-                <ChevronRight size={20} />
+                <ChevronRight size={22} />
               </button>
             </div>
           ) : null}
-        </div> */}
+        </div>
 
-<div className="transformation-header mb-2">
-          <div className="header-left">
-            <h2>Transformations</h2>
-            <p>Swipe to see before-and-after results from our community</p>
-          </div>
-         
-        {hasTransformations ? (
-          <div className="leadership-slider__nav">
-            <button onClick={() => swiperRef.current?.slidePrev()} type="button" className="leadership-slider__navBtn" aria-label="Previous note">
-              <ChevronLeft size={22} />
-            </button>
-            <button onClick={() => swiperRef.current?.slideNext()} type="button" className="leadership-slider__navBtn" aria-label="Next note">
-              <ChevronRight size={22} />
-            </button>
-          </div>
-        ) : null}
- </div>
-        {transformationsLoading ? (
+        {initialLoading ? (
           <p className="transformation-section__loading">Loading transformations…</p>
         ) : hasTransformations ? (
-          <Swiper loop={true}
-            slidesPerView={1}
-            spaceBetween={16}
-            speed={700}
-            onSwiper={(swiper) => {
-              swiperRef.current = swiper;
-            }}
-            breakpoints={{
-              0: {
-                slidesPerView: 1,
-                spaceBetween: 16,
-              },
-              768: {
-                slidesPerView: 2,
-                spaceBetween: 28,
-              },
-              1024: {
-                slidesPerView: 3,
-                spaceBetween: 28,
-              },
-            }}
-            className="transformationStoriesSwiper"
-          >
-            {transformations.map((item) => (
-              <SwiperSlide key={item.id}>
-                <TransformationStoryCard item={item} />
-              </SwiperSlide>
-            ))}
-          </Swiper>
+          <>
+            <Swiper
+              slidesPerView={1}
+              spaceBetween={16}
+              speed={700}
+              watchOverflow
+              onSwiper={(swiper) => {
+                swiperRef.current = swiper;
+                maybeLoadMore(swiper);
+              }}
+              onSlideChange={maybeLoadMore}
+              onReachEnd={maybeLoadMore}
+              breakpoints={{
+                0: {
+                  slidesPerView: 1,
+                  spaceBetween: 16,
+                },
+                768: {
+                  slidesPerView: 2,
+                  spaceBetween: 28,
+                },
+                1024: {
+                  slidesPerView: 3,
+                  spaceBetween: 28,
+                },
+              }}
+              className="transformationStoriesSwiper"
+            >
+              {transformations.map((item) => (
+                <SwiperSlide key={item.id}>
+                  <TransformationStoryCard item={item} />
+                </SwiperSlide>
+              ))}
+            </Swiper>
+            {loadingMore ? (
+              <p className="transformation-section__loading transformation-section__loading--more" aria-live="polite">
+                Loading more…
+              </p>
+            ) : null}
+          </>
         ) : (
           <p className="transformation-section__empty">
             Transformation stories will appear here once they are published in the admin panel.

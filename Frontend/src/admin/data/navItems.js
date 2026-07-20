@@ -91,7 +91,7 @@ export const navItems = [
     label: "Testimonials & Media",
     icon: "message-circle",
     children: [
-      { to: "client-testimonials", label: "Client Testimonials", icon: "quote" },
+      { to: "client-testimonials", label: "Client Reviews", icon: "quote" },
       { to: "program-testimonials", label: "Program Testimonials", icon: "quote" },
       { to: "real-people-testimonials", label: "Real People : Real Healing", icon: "quote" },
       { to: "video-testimonials", label: "Voice of Healing : Unfiltered", icon: "video" },
