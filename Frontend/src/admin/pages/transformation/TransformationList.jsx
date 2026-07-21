@@ -15,11 +15,15 @@ import { logout } from "../../../store/authSlice.js";
 import { useDebouncedSearch } from "../../../hooks/useDebouncedSearch.js";
 import { useResourcePermissions } from "../../hooks/useHasPermission.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
+import { blockPhoneNonDigitKeyDown } from "../../../utils/personFieldValidation.js";
 import {
   formatDate,
   LIST_LIMIT,
   LIST_SEARCH_MAX_LEN,
-  truncate,
+  ORDER_MAX,
+  ORDER_MIN,
+  sanitizeOrder,
+  validateOrder,
 } from "./TransformationShared.js";
 
 export function TransformationList() {
@@ -30,6 +34,8 @@ export function TransformationList() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [togglingId, setTogglingId] = useState("");
+  const [orderEdits, setOrderEdits] = useState({});
+  const [savingOrderId, setSavingOrderId] = useState("");
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [total, setTotal] = useState(0);
@@ -49,6 +55,7 @@ export function TransformationList() {
         ...(listStatus ? { status: listStatus } : {}),
       });
       setRows(transformations);
+      setOrderEdits({});
       setPages(pagination?.pages ?? 1);
       setTotal(pagination?.total ?? 0);
     } catch (e) {
@@ -66,6 +73,50 @@ export function TransformationList() {
   useEffect(() => {
     setPage(1);
   }, [debouncedSearch, listStatus]);
+
+  const clearOrderEdit = (id) => {
+    setOrderEdits((prev) => {
+      if (prev[id] === undefined) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  };
+
+  const getOrderValue = (row) =>
+    orderEdits[row._id] !== undefined ? orderEdits[row._id] : String(row.order ?? 0);
+
+  const onOrderChange = (row, value) => {
+    setOrderEdits((prev) => ({ ...prev, [row._id]: sanitizeOrder(value) }));
+  };
+
+  const onSaveOrder = async (row) => {
+    if (!adminToken || !canEdit || savingOrderId) return;
+    const raw = getOrderValue(row);
+    const err = validateOrder(raw);
+    if (err) {
+      await Swal.fire({ icon: "error", title: "Invalid order", text: err });
+      clearOrderEdit(row._id);
+      return;
+    }
+    const nextOrder = Number.parseInt(raw, 10);
+    const currentOrder = Number(row.order ?? 0);
+    if (nextOrder === currentOrder) {
+      clearOrderEdit(row._id);
+      return;
+    }
+    setSavingOrderId(row._id);
+    try {
+      await adminUpdateTransformation(adminToken, row._id, { order: nextOrder }, null, null);
+      await loadRows();
+    } catch (e) {
+      if (e?.status === 401) return dispatch(logout());
+      await Swal.fire({ icon: "error", title: "Order update failed", text: e.message || "Could not update order." });
+      clearOrderEdit(row._id);
+    } finally {
+      setSavingOrderId("");
+    }
+  };
 
   const onDelete = async (row) => {
     const { isConfirmed } = await Swal.fire({
@@ -183,7 +234,31 @@ export function TransformationList() {
                 rows.map((row, idx) => (
                   <tr key={row._id}>
                     <td className="data-table__muted">{(page - 1) * LIST_LIMIT + idx + 1}</td>
-                    <td className="data-table__muted">{row.order != null ? row.order : "—"}</td>
+                    <td>
+                      {canEdit ? (
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          className={`order-input${savingOrderId === row._id ? " order-input--saving" : ""}`}
+                          value={getOrderValue(row)}
+                          onChange={(e) => onOrderChange(row, e.target.value)}
+                          onBlur={() => onSaveOrder(row)}
+                          onKeyDown={(e) => {
+                            blockPhoneNonDigitKeyDown(e);
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              e.currentTarget.blur();
+                            }
+                          }}
+                          aria-label={`Order for ${row.name || "transformation"}`}
+                          title={`Lower number shows first (${ORDER_MIN}–${ORDER_MAX})`}
+                          disabled={savingOrderId === row._id}
+                        />
+                      ) : (
+                        <span className="data-table__muted">{row.order != null ? row.order : "—"}</span>
+                      )}
+                    </td>
                     <td>
                       <AdminMediaImage path={row.oldImage} width={44} height={44} radius={8} alt="Before" />
                     </td>

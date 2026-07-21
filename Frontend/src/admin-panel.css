@@ -4600,11 +4600,57 @@ a.btn:hover {
 .data-table tbody td:has(.settings-switch),
 .data-table tbody td:has(.badge),
 .data-table tbody td:has(.icon-btn),
+.data-table tbody td:has(.order-input),
 .data-table tbody td:has(.btn:not(.data-table__cell-text)) {
   width: 1%;
   max-width: none;
   overflow: visible;
   white-space: nowrap;
+}
+
+/* Inline order field (list pages) — text input, no spinner arrows */
+.order-input {
+  box-sizing: border-box;
+  width: 64px;
+  min-width: 64px;
+  height: 34px;
+  margin: 0;
+  padding: 0 8px;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  font: inherit;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  outline: none;
+  box-shadow: 0 1px 2px rgba(30, 58, 95, 0.04);
+  appearance: textfield;
+  -moz-appearance: textfield;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.order-input::-webkit-outer-spin-button,
+.order-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.order-input:hover:not(:disabled) {
+  border-color: #a8b8ce;
+}
+
+.order-input:focus {
+  border-color: var(--admin-brand-blue-soft);
+  box-shadow: 0 0 0 3px rgba(44, 79, 120, 0.12);
+}
+
+.order-input:disabled,
+.order-input--saving {
+  opacity: 0.65;
+  cursor: not-allowed;
+  background: var(--admin-surface-muted);
 }
 
 .data-table tbody tr:hover {
