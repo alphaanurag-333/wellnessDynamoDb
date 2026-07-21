@@ -214,7 +214,7 @@ const SuccessStories = () => {
                     <img src={item.image} alt={item.title} loading="lazy" />
                   </div>
                   <h4>{item.title}</h4>
-                  <p className="transformation-category-card__desc" style={{textAlign:'justify'}}>
+                  <p className="transformation-category-card__desc textjustifyimp">
                     {item.description}
                   </p>
                   <NavLink to={item.url} className="transformation-category-card__more">

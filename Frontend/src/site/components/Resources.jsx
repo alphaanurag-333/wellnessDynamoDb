@@ -17,7 +17,7 @@ const ResourcesSection = () => {
     <section className="wellness-toolkit wellnesspedia-page">
       <div className="resources-header pt-2 pb-0">
         <div className="site-container">
-          <div className="wellness-toolkit__content" style={{maxWidth:"100%"}}>
+          <div className="wellness-toolkit__content maximumwidth" >
             {/* <span className="wellness-toolkit__badge">
               CLINICALLY PROVEN TOOLS
             </span> */}
@@ -26,7 +26,7 @@ const ResourcesSection = () => {
               Your Wellness <span>Toolkit</span>
             </h2>
 
-            <p className="wellness-toolkit__description" style={{maxWidth:"100%"}}>
+            <p className="wellness-toolkit__description maximumwidth">
               Empowering your health journey with precision-engineered
               resources. Access our clinical calculators and expert-curated
               guides designed for your restorative sanctuary.
