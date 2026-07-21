@@ -211,13 +211,11 @@ function CoachBoardSection({
                     />
                   </div>
 <div
-    className="doctorCard__content pt-2"
-    style={{
-      marginTop: "0px",
-    }}
+    className="doctorCard__content pt-2 margingmmane"
+    
   >
-    <h3 style={{ margin: "0 0 6px" }}>{coach.name}</h3>
-    <p style={{ margin: 0 }}>
+    <h3 className="manmargin">{coach.name}</h3>
+    <p className="manhesd">
       {coachDesignation(coach, emptyFallbackLabel)}
     </p>
   </div>

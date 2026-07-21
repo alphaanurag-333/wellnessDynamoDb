@@ -42,28 +42,15 @@ export default function FinalCTA() {
         <div className="site-container">
           <div className="final-cta__content">
           <h2
-  className="final-cta__title"
-  style={{
-    fontSize: "clamp(1.55rem, 4vw, 2rem)",
-    // lineHeight: "1.2",
-    fontWeight: 700,
-    textAlign: "center",
-    marginBottom: "10px",
-  }}
+  className="final-cta__title contentsizes"
+  
 >
   Are you tired of facing your wellness journey alone?
 </h2>
 
 <p
-  className="final-cta__description"
-  style={{
-    maxWidth: "100%",
-    margin: "0 auto",
-    fontSize: "clamp(0.95rem, 2vw, 1.2rem)",
-    lineHeight: "1.6",
-    textAlign: "center",
-    color: "#fff",
-  }}
+  className="final-cta__description custimesmainsixe"
+ 
 >
   Discover a healthier, happier you with our vibrant wellness community.
   Connect, learn, and grow alongside like-minded individuals on your journey

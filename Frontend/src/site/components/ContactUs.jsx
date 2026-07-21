@@ -209,12 +209,12 @@ export default function ContactUsSection() {
       </div> */}
 
       <div class="site-container">
-        <div class="wellness-toolkit__content pt-2" style={{maxWidth:'100%'}}>
+        <div class="wellness-toolkit__content pt-2 maximumwidth">
           <h2 class="wellness__title mb-0">
                        Contact Our
             <span> Wellness Team</span>
           </h2>
-          <p class="wellness-toolkit__description" style={{maxWidth:'100%'}}>
+          <p class="wellness-toolkit__description maximumwidth">
             Expert guidance for your wellness journey. Reach out to our
             specialists for personalized clinical support.
           </p>
