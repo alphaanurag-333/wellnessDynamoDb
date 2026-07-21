@@ -108,7 +108,9 @@ function RealHealingCard({ item, expanded, onToggle }) {
           {expanded ? "Read Less" : "Read More"}
           {expanded ? <ArrowUpRight size={16} aria-hidden /> : <ArrowRight size={16} aria-hidden />}
         </button>
-      ) : null}
+      ) : (
+        <span className="real-healing-more real-healing-more--spacer" aria-hidden />
+      )}
 
       <div className="real-healing-bottom">
         <div className="real-healing-profile">
@@ -139,7 +141,21 @@ export default function RealHealingSlider() {
 
   useEffect(() => {
     const swiper = swiperRef.current;
-    if (!swiper?.autoplay) return;
+    if (!swiper) return;
+
+    // Grow swiper to fit expanded card — clear any fixed height Swiper applied.
+    requestAnimationFrame(() => {
+      if (swiper.el) {
+        swiper.el.style.height = expandedId ? "auto" : "";
+      }
+      if (swiper.wrapperEl) {
+        swiper.wrapperEl.style.height = expandedId ? "auto" : "";
+      }
+      swiper.updateAutoHeight?.(0);
+      swiper.update?.();
+    });
+
+    if (!swiper.autoplay) return;
     if (expandedId) swiper.autoplay.stop();
     else if (!swiper.autoplay.running) swiper.autoplay.start();
   }, [expandedId]);
@@ -169,11 +185,13 @@ export default function RealHealingSlider() {
 
   if (items === null) {
     return (
-      <section className="real-healing-section container" aria-busy="true" aria-label="Loading real healing stories">
-        <div className="transformation-header">
-          <div className="header-left">
-            <h2>Real People : Real Healing</h2>
-            <p className="real-healing-section__loading">Loading stories…</p>
+      <section className="real-healing-section" aria-busy="true" aria-label="Loading real healing stories">
+        <div className="site-container">
+          <div className="transformation-header">
+            <div className="header-left">
+              <h2>Real People : Real Healing</h2>
+              <p className="real-healing-section__loading">Loading stories…</p>
+            </div>
           </div>
         </div>
       </section>
@@ -185,44 +203,51 @@ export default function RealHealingSlider() {
   }
 
   return (
-    <section className="real-healing-section container" aria-label="Real people real healing">
-      <h2 className="healing-title">Real People : Real Healing</h2>
-      <Swiper
-        modules={[Autoplay]}
-        slidesPerView={3}
-        spaceBetween={25}
-        loop={false}
-        speed={600}
-        autoplay={
-          items.length > 1
-            ? {
-                delay: 3500,
-                disableOnInteraction: true,
-                pauseOnMouseEnter: true,
-              }
-            : false
-        }
-        onSwiper={(swiper) => {
-          swiperRef.current = swiper;
-        }}
-        onSlideChange={handleSlideChange}
-        breakpoints={{
-          0: { slidesPerView: 1 },
-          640: { slidesPerView: 2 },
-          1024: { slidesPerView: 3 },
-        }}
-        className="realHealingSwiper"
-      >
-        {items.map((item) => (
-          <SwiperSlide key={item.id}>
-            <RealHealingCard
-              item={item}
-              expanded={expandedId === item.id}
-              onToggle={toggleExpanded}
-            />
-          </SwiperSlide>
-        ))}
-      </Swiper>
+    <section
+      className={`real-healing-section${expandedId ? " real-healing-section--expanded" : ""}`}
+      aria-label="Real people real healing"
+    >
+      <div className="site-container">
+        <h2 className="healing-title">Real People : Real Healing</h2>
+        <Swiper
+          modules={[Autoplay]}
+          slidesPerView={1}
+          spaceBetween={16}
+          loop={false}
+          speed={600}
+          watchOverflow
+          autoHeight
+          autoplay={
+            items.length > 1
+              ? {
+                  delay: 3500,
+                  disableOnInteraction: true,
+                  pauseOnMouseEnter: true,
+                }
+              : false
+          }
+          onSwiper={(swiper) => {
+            swiperRef.current = swiper;
+          }}
+          onSlideChange={handleSlideChange}
+          breakpoints={{
+            0: { slidesPerView: 1, spaceBetween: 14 },
+            640: { slidesPerView: 2, spaceBetween: 18 },
+            1024: { slidesPerView: 3, spaceBetween: 24 },
+          }}
+          className="realHealingSwiper"
+        >
+          {items.map((item) => (
+            <SwiperSlide key={item.id}>
+              <RealHealingCard
+                item={item}
+                expanded={expandedId === item.id}
+                onToggle={toggleExpanded}
+              />
+            </SwiperSlide>
+          ))}
+        </Swiper>
+      </div>
     </section>
   );
 }

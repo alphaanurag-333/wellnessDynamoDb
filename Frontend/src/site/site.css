@@ -687,6 +687,11 @@
   display: grid;
   gap: 1.25rem;
   grid-template-columns: 1fr;
+  align-items: stretch;
+}
+
+.site-services__grid > .site-card {
+  height: 100%;
 }
 
 .site-service-card {
@@ -694,8 +699,10 @@
   flex-direction: column;
   gap: 0.75rem;
   height: 100%;
+  min-height: 100%;
   background-color: #fff;
   border-radius: 15px;
+  box-sizing: border-box;
 }
 
 .site-service-card__icon {
@@ -708,6 +715,7 @@
   background: rgba(232, 136, 79, 0.12);
   color: var(--site-orange-deep);
   font-size: 1.35rem;
+  flex-shrink: 0;
 }
 
 .site-service-card__title {
@@ -715,6 +723,7 @@
   font-size: 1.05rem;
   font-weight: 700;
   color: var(--site-navy);
+  flex-shrink: 0;
 }
 
 .site-service-card__text {
@@ -723,6 +732,7 @@
   line-height: 1.6;
   color: var(--site-muted);
   text-align: justify;
+  flex: 1 1 auto;
 }
 
 @media (min-width: 576px) {
@@ -7934,7 +7944,17 @@ PRINT
 .real-healing-section {
   width: 100%;
   padding: var(--space-8) 0;
+  overflow: visible;
 }
+
+.real-healing-section .site-container {
+  width: min(100% - 2rem, var(--site-container));
+  margin-inline: auto;
+  box-sizing: border-box;
+  overflow-x: clip;
+  overflow-y: visible;
+}
+
 .healing-title {
   margin: 0;
   color: #0f172a;
@@ -7943,6 +7963,43 @@ PRINT
   line-height: 1.1;
   margin-bottom: var(--section-header-mb);
 }
+
+.realHealingSwiper {
+  width: 100%;
+  overflow: hidden;
+}
+
+.real-healing-section--expanded .realHealingSwiper {
+  overflow: visible;
+  height: auto !important;
+}
+
+.real-healing-section--expanded .realHealingSwiper .swiper-wrapper {
+  height: auto !important;
+  align-items: flex-start !important;
+}
+
+.real-healing-section--expanded .realHealingSwiper .swiper-slide {
+  height: auto !important;
+}
+
+.real-healing-section--expanded .realHealingSwiper .swiper-slide-active {
+  z-index: 2;
+}
+
+.realHealingSwiper .swiper-wrapper {
+  display: flex !important;
+  align-items: stretch !important;
+}
+
+.realHealingSwiper .swiper-slide {
+  display: flex !important;
+  height: auto !important;
+  box-sizing: border-box;
+  min-width: 0;
+  align-self: stretch;
+}
+
 .real-healing-card {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
@@ -7951,22 +8008,38 @@ PRINT
   box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  height: auto;
+  gap: 12px;
   width: 100%;
-  transition: var(--transition);
+  min-width: 0;
+  flex: 1 1 auto;
+  align-self: stretch;
+  min-height: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: visible;
+  transition: box-shadow var(--transition, 0.2s ease);
 }
 
 .real-healing-card:hover {
-  /* transform: translateY(-6px); */
   box-shadow: var(--shadow-md);
+}
+
+.real-healing-card--expanded {
+  height: auto !important;
+  min-height: 0;
+  max-height: none;
+  overflow: visible !important;
+  flex: 0 0 auto;
+  align-self: stretch;
 }
 
 .real-healing-top {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 12px;
   flex-wrap: wrap;
+  min-width: 0;
+  flex-shrink: 0;
 }
 
 .real-healing-stars {
@@ -7975,6 +8048,7 @@ PRINT
   gap: 2px;
   color: var(--primary);
   font-size: var(--font-size-lg);
+  flex-shrink: 0;
 }
 
 .real-healing-stars svg {
@@ -7988,16 +8062,6 @@ PRINT
   font-size: 1rem;
 }
 
-.realHealingSwiper .swiper-wrapper {
-  align-items: stretch;
-}
-
-.realHealingSwiper .swiper-slide {
-  display: flex;
-  height: auto;
-  align-items: flex-start;
-}
-
 .real-healing-tag {
   background: var(--primary-light);
   color: var(--primary);
@@ -8005,12 +8069,16 @@ PRINT
   border-radius: var(--radius-pill);
   font-size: var(--fs-xs);
   font-weight: var(--fw-semibold);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .real-healing-review {
   color: var(--text-body);
   font-size: 0.92rem;
-  line-height: 1.9;
+  line-height: 1.7;
   font-style: italic;
   flex: 0 1 auto;
   text-align: justify;
@@ -8019,12 +8087,15 @@ PRINT
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .real-healing-review--expanded {
-  display: block;
-  -webkit-line-clamp: unset;
-  overflow: visible;
+  display: block !important;
+  -webkit-line-clamp: unset !important;
+  -webkit-box-orient: unset;
+  overflow: visible !important;
 }
 
 .real-healing-more {
@@ -8043,6 +8114,14 @@ PRINT
   font-weight: var(--fw-semibold);
   transition: var(--transition);
   align-self: flex-end;
+  flex-shrink: 0;
+  min-height: 1.25rem;
+}
+
+.real-healing-more--spacer {
+  visibility: hidden;
+  pointer-events: none;
+  cursor: default;
 }
 
 .real-healing-more svg {
@@ -8057,13 +8136,20 @@ PRINT
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 15px;
+  gap: 12px;
+  margin-top: auto;
+  min-width: 0;
+  width: 100%;
+  flex-shrink: 0;
+  padding-bottom: 2px;
 }
 
 .real-healing-profile {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
 }
 
 .real-healing-profile img {
@@ -8072,6 +8158,11 @@ PRINT
   border-radius: 50%;
   object-fit: cover;
   border: 3px solid var(--primary-light);
+  flex-shrink: 0;
+}
+
+.real-healing-profile > div {
+  min-width: 0;
 }
 
 .real-healing-profile h4 {
@@ -8079,11 +8170,18 @@ PRINT
   font-size: var(--fs-md);
   color: var(--text-heading);
   font-weight: var(--fw-bold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .real-healing-profile span {
+  display: block;
   color: var(--text-muted);
   font-size: var(--fs-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .real-healing-bottom a {
@@ -8092,11 +8190,6 @@ PRINT
   font-weight: var(--fw-semibold);
   text-decoration: underline;
   white-space: nowrap;
-}
-
-.real-healing-section .swiper-slide {
-  display: flex;
-  height: auto;
 }
 
 .real-healing-section .swiper-slide .real-healing-card {
@@ -11462,8 +11555,8 @@ SCROLLBAR
     margin-left: 83px;
   }
   .real-healing-bottom {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    align-items: center;
   }
   .video-card {
     height: auto;
@@ -12496,6 +12589,19 @@ SCROLLBAR
     margin: 0;
   }
 
+  .real-healing-section .site-container {
+    width: min(100% - 1.5rem, var(--site-container));
+  }
+
+  .realHealingSwiper {
+    overflow: hidden;
+  }
+
+  .real-healing-section--expanded .realHealingSwiper {
+    overflow: visible;
+    height: auto !important;
+  }
+
   .champion-section {
     margin-top: 0;
   }
@@ -13140,16 +13246,30 @@ SCROLLBAR
   }
 
   .real-healing-card {
-    padding: 20px;
+    padding: 16px;
+    gap: 10px;
   }
 
   .real-healing-review {
     font-size: 14px;
+    line-height: 1.65;
   }
 
   .real-healing-profile img {
-    width: 50px;
-    height: 50px;
+    width: 48px;
+    height: 48px;
+  }
+
+  .real-healing-profile {
+    gap: 10px;
+  }
+
+  .real-healing-top {
+    gap: 8px;
+  }
+
+  .real-healing-tag {
+    max-width: min(100%, 11rem);
   }
   .bmr-section {
     padding: var(--space-6) 0;

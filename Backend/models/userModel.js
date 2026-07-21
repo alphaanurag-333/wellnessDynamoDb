@@ -16,6 +16,7 @@ const {
   listByPartitionKey,
   buildContainsFilter,
   sortByCreatedAtDesc,
+  paginateItems,
 } = require("../utils/dynamoList");
 const { matchesAssignedClientTier } = require("./userAssignmentLogic");
 const {
@@ -644,14 +645,36 @@ async function listUsersByAssignedCoachId(
 }
 
 async function listPendingAssignmentUsers({ page = 1, limit = 20, search, userTier } = {}) {
-  return listUsers({
-    page,
-    limit,
+  if (userTier) {
+    return listUsers({
+      page,
+      limit,
+      search,
+      status: "active",
+      userTier,
+      assignmentStatus: "pending_admin",
+    });
+  }
+
+  // Default: all active pending clients (consultancy_only + heal), matching dashboard intent.
+  const data = await listUsers({
+    page: 1,
+    limit: 200,
     search,
     status: "active",
-    userTier: userTier || "consultancy_only",
     assignmentStatus: "pending_admin",
   });
+
+  const filtered = data.users.filter((row) => {
+    const tier = normalizeUserTier(row.userTier);
+    return tier === "consultancy_only" || tier === "heal";
+  });
+
+  const paged = paginateItems(filtered, page, limit, 200);
+  return {
+    users: paged.items,
+    pagination: paged.pagination,
+  };
 }
 
 async function listUsersWithBirthdayOnDate(dateOnly) {
@@ -693,7 +716,10 @@ async function listUsers({ page = 1, limit = 20, status, search, userTier, assig
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const normalizedTier = userTier ? normalizeUserTier(userTier, "") : "";
   const normalizedAssignment = assignmentStatus ? normalizeAssignmentStatus(assignmentStatus) : "";
+  const needsPostFilter = Boolean(normalizedTier || normalizedAssignment);
   const searchFilter = buildContainsFilter(["name", "email", "phone"], search);
+
+  // When filtering by tier/assignment in memory, load the full status set first, then page.
   const { items, pagination } = await listByPartitionKey({
     tableName: TABLE,
     indexName: "StatusCreatedAtIndex",
@@ -705,9 +731,9 @@ async function listUsers({ page = 1, limit = 20, status, search, userTier, assig
     search: searchFilter.search,
     searchFields: searchFilter.searchFields,
     scanIndexForward: false,
-    page,
-    limit,
-    maxLimit: 200,
+    page: needsPostFilter ? 1 : page,
+    limit: needsPostFilter ? Number.MAX_SAFE_INTEGER : limit,
+    maxLimit: needsPostFilter ? Number.MAX_SAFE_INTEGER : 200,
     sortFn: sortByCreatedAtDesc,
   });
 
@@ -720,15 +746,17 @@ async function listUsers({ page = 1, limit = 20, status, search, userTier, assig
     users = users.filter((row) => normalizeAssignmentStatus(row.assignmentStatus) === normalizedAssignment);
   }
 
+  if (needsPostFilter) {
+    const paged = paginateItems(users, page, limit, 200);
+    return {
+      users: paged.items,
+      pagination: paged.pagination,
+    };
+  }
+
   return {
     users,
-    pagination: normalizedTier || normalizedAssignment
-      ? {
-          ...pagination,
-          total: users.length,
-          pages: Math.max(1, Math.ceil(users.length / Math.min(200, Math.max(1, Number(limit) || 20)))),
-        }
-      : pagination,
+    pagination,
   };
 }
 

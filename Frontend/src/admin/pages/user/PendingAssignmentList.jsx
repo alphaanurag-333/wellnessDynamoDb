@@ -37,7 +37,6 @@ export function PendingAssignmentList() {
         page: pagination.page,
         limit: pagination.limit,
         search: debouncedSearch || undefined,
-        userTier: "consultancy_only",
       });
       setRows(data.users);
       setPagination(data.pagination);
@@ -73,8 +72,9 @@ export function PendingAssignmentList() {
         <div className="consultancy-page__intro">
           <h2 className="page-card__title">Pending manual assignment</h2>
           <p className="page-card__desc">
-            Consultancy-paid users awaiting a coach — either no referral was used, or the referrer
-            has no assigned wellness coach / assistant yet. Assign a coach or assistant below.
+            Consultancy and Heal users awaiting a coach — either no referral was used, or the
+            referrer has no assigned wellness coach / assistant yet. Assign a coach or assistant
+            below.
           </p>
           {!loading && !loadError ? (
             <p className="data-table__muted">{countLabel}</p>
@@ -129,7 +129,7 @@ export function PendingAssignmentList() {
                   <p className="table-placeholder">
                     {debouncedSearch
                       ? "No users match your search."
-                      : "No users are pending manual assignment. Everyone who paid with a referral code was auto-assigned, or no consultancy payments have completed yet."}
+                      : "No users are pending manual assignment. Everyone who converted with a resolvable referral was auto-assigned, or no payments have completed yet."}
                   </p>
                 </td>
               </tr>
