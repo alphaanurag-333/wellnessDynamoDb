@@ -167,20 +167,12 @@ export function UserView() {
                 Reassign coach
               </button>
             ) : null}
+            <Link to="hub" className="btn btn--primary">
+              Client programs
+            </Link>
             <Link to="edit" className="btn btn--accent">
               Edit user
             </Link>
-            <Link to="water-tracking" className="btn btn--ghost">
-              Water tracking
-            </Link>
-            <Link to="steps-tracking" className="btn btn--ghost">
-              Steps tracking
-            </Link>
-            {tier === "heal" ? (
-              <Link to="meal-tracking" className="btn btn--ghost">
-                Meal tracking
-              </Link>
-            ) : null}
           </>
         }
       />

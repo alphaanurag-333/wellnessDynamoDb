@@ -13,6 +13,7 @@ const {
   loadTargetUser,
   assertCoachCanAccessUser,
   assertAssistantCanAccessUser,
+  assertAdminCanAccessUser,
   assertHealTierUser,
   handleValidationError,
   resolveCoachIdForUser,
@@ -81,6 +82,18 @@ async function assertAssistantHealUserAccess(req) {
   assertHealTierUser(user);
 
   return { actingId: actingAssistantId, userId, user };
+}
+
+async function assertAdminHealUserAccess(req) {
+  const adminId = req.auth?.sub;
+  if (!adminId) throw new AppError("Unauthorized", 401);
+
+  const userId = readUserIdParam(req);
+  const user = await loadTargetUser(userId);
+  await assertAdminCanAccessUser(user, adminId);
+  assertHealTierUser(user);
+
+  return { actingId: adminId, userId, user };
 }
 
 function createPrakrutiAssessmentPortalHandlers({ assertHealUserAccess, createdByRole }) {
@@ -173,10 +186,16 @@ const assistantHandlers = createPrakrutiAssessmentPortalHandlers({
   createdByRole: "assistant_wellness_coach",
 });
 
+const adminHandlers = createPrakrutiAssessmentPortalHandlers({
+  assertHealUserAccess: assertAdminHealUserAccess,
+  createdByRole: "admin",
+});
+
 module.exports = {
   handlePrakrutiValidationError,
   parseThingToAvoidIds,
   createPrakrutiAssessmentPortalHandlers,
   coachHandlers,
   assistantHandlers,
+  adminHandlers,
 };

@@ -17,6 +17,7 @@ const {
   loadTargetUser,
   assertCoachCanAccessUser,
   assertAssistantCanAccessUser,
+  assertAdminCanAccessUser,
   assertHealTierUser,
   handleValidationError,
   resolveCoachIdForUser,
@@ -96,6 +97,18 @@ async function assertAssistantHealUserAccess(req) {
   assertHealTierUser(user);
 
   return { actingId: actingAssistantId, userId, user };
+}
+
+async function assertAdminHealUserAccess(req) {
+  const adminId = req.auth?.sub;
+  if (!adminId) throw new AppError("Unauthorized", 401);
+
+  const userId = readUserIdParam(req);
+  const user = await loadTargetUser(userId);
+  await assertAdminCanAccessUser(user, adminId);
+  assertHealTierUser(user);
+
+  return { actingId: adminId, userId, user };
 }
 
 function createLaunchAssessmentPortalHandlers({ assertHealUserAccess, createdByRole }) {
@@ -279,6 +292,11 @@ const assistantHandlers = createLaunchAssessmentPortalHandlers({
   createdByRole: "assistant_wellness_coach",
 });
 
+const adminHandlers = createLaunchAssessmentPortalHandlers({
+  assertHealUserAccess: assertAdminHealUserAccess,
+  createdByRole: "admin",
+});
+
 module.exports = {
   handleLaunchValidationError,
   parseTotalScore,
@@ -286,4 +304,5 @@ module.exports = {
   createLaunchAssessmentPortalHandlers,
   coachHandlers,
   assistantHandlers,
+  adminHandlers,
 };

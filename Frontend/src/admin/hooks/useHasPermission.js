@@ -1,9 +1,11 @@
 import { useSelector } from "react-redux";
 import { selectIsSuperAdmin, selectPermissions } from "../../store/authSelectors.js";
+import { parentClientHubPermissionKey } from "../data/adminClientHubPermissionKeys.js";
 
 /**
  * `useHasPermission("banners.edit")` -> true/false.
  * Super admins always pass, matching the backend's authorize() semantics.
+ * For users.clientHub.* child keys, the parent section key is also required.
  */
 export function useHasPermission(slug) {
   const isSuperAdmin = useSelector(selectIsSuperAdmin);
@@ -11,7 +13,10 @@ export function useHasPermission(slug) {
 
   if (isSuperAdmin) return true;
   if (!slug) return false;
-  return permissions.includes(slug);
+  if (!permissions.includes(slug)) return false;
+  const parent = parentClientHubPermissionKey(slug);
+  if (parent && !permissions.includes(parent)) return false;
+  return true;
 }
 
 /**

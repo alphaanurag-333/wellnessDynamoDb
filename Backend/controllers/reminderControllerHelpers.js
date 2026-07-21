@@ -74,6 +74,10 @@ async function loadReminderForUser(reminderId, userId) {
   return reminder;
 }
 
+async function assertAdminCanAccessUser(_user, _adminId) {
+  // Admins may manage any user; existence is enforced by loadTargetUser.
+}
+
 module.exports = {
   readUserIdParam,
   readReminderIdParam,
@@ -82,5 +86,6 @@ module.exports = {
   loadTargetUser,
   assertCoachCanAccessUser,
   assertAssistantCanAccessUser,
+  assertAdminCanAccessUser,
   loadReminderForUser,
 };

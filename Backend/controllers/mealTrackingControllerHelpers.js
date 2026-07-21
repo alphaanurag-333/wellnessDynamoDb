@@ -6,6 +6,7 @@ const {
   loadTargetUser,
   assertCoachCanAccessUser,
   assertAssistantCanAccessUser,
+  assertAdminCanAccessUser,
   handleValidationError,
 } = require("./reminderControllerHelpers");
 
@@ -107,6 +108,7 @@ module.exports = {
   assertHealTierUser,
   assertCoachCanAccessUser,
   assertAssistantCanAccessUser,
+  assertAdminCanAccessUser,
   loadMealLogForUser,
   handleValidationError,
   uploadMealPhoto,

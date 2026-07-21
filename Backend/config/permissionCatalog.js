@@ -171,20 +171,137 @@ const PERMISSION_GROUPS_RAW = [
   },
 ];
 
+/** Client Hub tab permissions for admin acting on behalf of coaches/AWCs. */
+const CLIENT_HUB_TAB_META = {
+  water: "Water",
+  steps: "Steps",
+  reminders: "Reminders",
+  "diet-plan": "Diet plan",
+  "wellness-prescriptions": "Prescriptions",
+  "commitment-letter": "Commitment",
+  "coach-message": "Coach message",
+  "internal-parameters": "Internal params",
+  "physical-exercises": "Exercises",
+  "mental-wellbeing": "Mental wellbeing",
+  "daily-reflection": "Daily reflection",
+  "supplement-recommendations": "Supplements",
+  "supplement-dosage": "Dosage",
+  "meal-tracking": "Meals",
+  "health-progress": "Health progress",
+  "metabolic-metrics": "Metabolic",
+  consultancy: "Consultancy",
+  "launch-assessment": "LAUNCH",
+  "prakruti-assessment": "Prakruti",
+};
+
+const CLIENT_HUB_TAB_GROUPS = [
+  {
+    id: "tracking",
+    label: "Tracking",
+    tabIds: ["water", "steps", "meal-tracking", "health-progress"],
+  },
+  {
+    id: "metabolic-health",
+    label: "Metabolic health",
+    tabIds: ["metabolic-metrics"],
+  },
+  {
+    id: "care",
+    label: "Care plans",
+    tabIds: [
+      "reminders",
+      "diet-plan",
+      "wellness-prescriptions",
+      "commitment-letter",
+      "coach-message",
+      "internal-parameters",
+      "consultancy",
+    ],
+  },
+  {
+    id: "wellness",
+    label: "Wellness",
+    tabIds: [
+      "physical-exercises",
+      "mental-wellbeing",
+      "daily-reflection",
+      "supplement-recommendations",
+      "supplement-dosage",
+    ],
+  },
+  {
+    id: "assessments",
+    label: "Assessments",
+    tabIds: ["launch-assessment", "prakruti-assessment"],
+  },
+];
+
+function clientHubGroupKey(groupId) {
+  return `users.clientHub.${groupId}`;
+}
+
+function clientHubChildKey(groupId, tabId) {
+  return `users.clientHub.${groupId}.${tabId}`;
+}
+
+/** Parent group key for users.clientHub.* child slugs, or null. */
+function parentClientHubPermissionKey(slug) {
+  const key = String(slug || "");
+  if (!key.startsWith("users.clientHub.")) return null;
+  const parts = key.split(".");
+  // users.clientHub.tracking.water → users.clientHub.tracking
+  if (parts.length < 4) return null;
+  return parts.slice(0, 3).join(".");
+}
+
+function permissionKeyForClientHubTab(tabId) {
+  for (const group of CLIENT_HUB_TAB_GROUPS) {
+    if (group.tabIds.includes(tabId)) {
+      return clientHubChildKey(group.id, tabId);
+    }
+  }
+  return null;
+}
+
+const CLIENT_HUB_PERMISSION_GROUPS = CLIENT_HUB_TAB_GROUPS.map((group) => {
+  const groupKey = clientHubGroupKey(group.id);
+  return {
+    id: `users.clientHub.${group.id}`,
+    label: `Client programs · ${group.label}`,
+    items: [
+      {
+        to: `users/client-hub/${group.id}`,
+        label: `${group.label} (section)`,
+        actions: ["access"],
+        permissions: [{ action: "access", slug: groupKey }],
+      },
+      ...group.tabIds.map((tabId) => ({
+        to: `users/client-hub/${group.id}/${tabId}`,
+        label: CLIENT_HUB_TAB_META[tabId] || tabId,
+        actions: ["access"],
+        permissions: [{ action: "access", slug: clientHubChildKey(group.id, tabId) }],
+      })),
+    ],
+  };
+});
+
 function toSlug(to, action) {
   return `${to.replace(/\//g, ".")}.${action}`;
 }
 
-const PERMISSION_GROUPS = PERMISSION_GROUPS_RAW.map((group) => ({
-  id: group.id,
-  label: group.label,
-  items: group.items.map((item) => ({
-    to: item.to,
-    label: item.label,
-    actions: item.actions,
-    permissions: item.actions.map((action) => ({ action, slug: toSlug(item.to, action) })),
+const PERMISSION_GROUPS = [
+  ...PERMISSION_GROUPS_RAW.map((group) => ({
+    id: group.id,
+    label: group.label,
+    items: group.items.map((item) => ({
+      to: item.to,
+      label: item.label,
+      actions: item.actions,
+      permissions: item.actions.map((action) => ({ action, slug: toSlug(item.to, action) })),
+    })),
   })),
-}));
+  ...CLIENT_HUB_PERMISSION_GROUPS,
+];
 
 const ALL_PERMISSIONS = Array.from(
   new Set(
@@ -233,4 +350,9 @@ module.exports = {
   areValidPermissions,
   getPermissionCatalog,
   permissionSlugsForLeaf,
+  clientHubGroupKey,
+  clientHubChildKey,
+  parentClientHubPermissionKey,
+  permissionKeyForClientHubTab,
+  CLIENT_HUB_TAB_GROUPS,
 };

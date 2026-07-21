@@ -4,6 +4,7 @@ const {
   loadTargetUser,
   assertCoachCanAccessUser,
   assertAssistantCanAccessUser,
+  assertAdminCanAccessUser,
   handleValidationError,
   resolveCoachIdForUser,
 } = require("./dietPlanControllerHelpers");
@@ -123,6 +124,7 @@ module.exports = {
   loadTargetUser,
   assertCoachCanAccessUser,
   assertAssistantCanAccessUser,
+  assertAdminCanAccessUser,
   assertHealTierUser,
   handleValidationError,
   resolveCoachIdForUser,

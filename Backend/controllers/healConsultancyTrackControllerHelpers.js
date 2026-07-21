@@ -11,6 +11,7 @@ const {
   loadTargetUser,
   assertCoachCanAccessUser,
   assertAssistantCanAccessUser,
+  assertAdminCanAccessUser,
   handleValidationError,
 } = require("./reminderControllerHelpers");
 const { assertHealTierUser } = require("./dietPlanControllerHelpers");
@@ -153,6 +154,7 @@ module.exports = {
   resolveCoachHierarchy,
   assertCoachCanAccessUser,
   assertAssistantCanAccessUser,
+  assertAdminCanAccessUser,
   handleValidationError,
   assertHealTierUser,
 };

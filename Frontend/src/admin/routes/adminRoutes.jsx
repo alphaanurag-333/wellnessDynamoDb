@@ -3,6 +3,8 @@ import { AdminLayout } from "../layout/AdminLayout.jsx";
 import { AdminProfile } from "../pages/AdminProfile.jsx";
 import { DashboardPage } from "../pages/DashboardPage.jsx";
 import { NotFoundPage } from "../pages/NotFoundPage.jsx";
+import { ClientHubLegacyRedirect } from "../../components/ClientHubLegacyRedirect.jsx";
+import { AdminUserClientHub } from "../pages/user/clientHub/AdminUserClientHub.jsx";
 import { BusinessSetting } from "../pages/setting/BusinessSetting.jsx";
 import { BannerList } from "../pages/banners/BannerList.jsx";
 import { BannerAdd } from "../pages/banners/BannerAdd.jsx";
@@ -138,9 +140,6 @@ import { ProgramTransactionList } from "../pages/program/ProgramTransactionList.
 import { ConsultancyEnrolledUsersList } from "../pages/consultancy/ConsultancyEnrolledUsersList.jsx";
 import { UserView } from "../pages/user/UserView.jsx";
 import { PendingAssignmentList } from "../pages/user/PendingAssignmentList.jsx";
-import { AdminUserWaterTrackingPage } from "../pages/user/AdminUserWaterTrackingPage.jsx";
-import { AdminUserStepsTrackingPage } from "../pages/user/AdminUserStepsTrackingPage.jsx";
-import { AdminUserMealTrackingPage } from "../pages/user/AdminUserMealTrackingPage.jsx";
 import { WellnessCoachList } from "../pages/wellnessCoach/WellnessCoachList.jsx";
 import { WellnessCoachAdd } from "../pages/wellnessCoach/WellnessCoachAdd.jsx";
 import { WellnessCoachEdit } from "../pages/wellnessCoach/WellnessCoachEdit.jsx";
@@ -182,9 +181,19 @@ export const adminRouteTree = (
       <Route index element={<UserList />} />
       <Route path="pending-assignment" element={<Navigate to="/admin/consultancy/pending-assignment" replace />} />
       <Route path="new" element={<UserAdd />} />
-      <Route path=":userId/water-tracking" element={<AdminUserWaterTrackingPage />} />
-      <Route path=":userId/steps-tracking" element={<AdminUserStepsTrackingPage />} />
-      <Route path=":userId/meal-tracking" element={<AdminUserMealTrackingPage />} />
+      <Route path=":userId/hub" element={<AdminUserClientHub />} />
+      <Route
+        path=":userId/water-tracking"
+        element={<ClientHubLegacyRedirect segment="water-tracking" basePath="/admin/users" hubPathSuffix="hub" />}
+      />
+      <Route
+        path=":userId/steps-tracking"
+        element={<ClientHubLegacyRedirect segment="steps-tracking" basePath="/admin/users" hubPathSuffix="hub" />}
+      />
+      <Route
+        path=":userId/meal-tracking"
+        element={<ClientHubLegacyRedirect segment="meal-tracking" basePath="/admin/users" hubPathSuffix="hub" />}
+      />
       <Route path=":userId/edit" element={<UserEdit />} />
       <Route path=":userId" element={<UserView />} />
     </Route>

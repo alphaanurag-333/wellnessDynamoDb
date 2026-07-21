@@ -14,6 +14,7 @@ const { getUserById, updateUser, toPublicUser } = require("../models/userModel")
 const {
   loadTargetUser,
   assertCoachCanAccessUser,
+  assertAdminCanAccessUser,
 } = require("./reminderControllerHelpers");
 const { assertHealTierUser } = require("./dietPlanControllerHelpers");
 
@@ -108,6 +109,7 @@ module.exports = {
   toRecordedAtFromDateOnly,
   loadTargetUser,
   assertCoachCanAccessUser,
+  assertAdminCanAccessUser,
   assertHealTierUser,
   updateUser,
   toPublicUser,
