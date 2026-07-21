@@ -5,6 +5,7 @@ import { AdminDashboardCharts } from "../components/AdminDashboardCharts.jsx";
 import { DashboardChartsSkeleton, DashboardStatsSkeleton } from "../components/AdminDashboardSkeleton.jsx";
 import { adminGetDashboardStatistics } from "../api/adminDashboard.js";
 import { useHasPermission } from "../hooks/useHasPermission.js";
+import { useRegisterHeaderRefresh } from "../../hooks/useRegisterHeaderRefresh.js";
 import { logout } from "../../store/authSlice.js";
 import { WelcomeDashboard } from "./WelcomeDashboard.jsx";
 
@@ -267,6 +268,7 @@ export function DashboardPage() {
   const [statistics, setStatistics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [lastRefreshedAt, setLastRefreshedAt] = useState(null);
 
   const loadStatistics = useCallback(async () => {
     if (!adminToken || !canViewDashboard) {
@@ -278,6 +280,7 @@ export function DashboardPage() {
     try {
       const stats = await adminGetDashboardStatistics(adminToken);
       setStatistics(stats);
+      setLastRefreshedAt(new Date());
     } catch (e) {
       if (e?.status === 401) dispatch(logout());
       else setLoadError(e.message || "Failed to load dashboard statistics.");
@@ -289,6 +292,12 @@ export function DashboardPage() {
   useEffect(() => {
     loadStatistics();
   }, [loadStatistics]);
+
+  useRegisterHeaderRefresh({
+    onRefresh: canViewDashboard ? loadStatistics : null,
+    refreshing: loading,
+    lastRefreshedAt,
+  });
 
   const statValues = useMemo(
     () =>
@@ -305,16 +314,6 @@ export function DashboardPage() {
 
   return (
     <div className="page-stack admin-dashboard">
-      <section className="dashboard-intro admin-dashboard__intro" aria-label="Dashboard heading">
-        <div>
-          <h1 className="dashboard-intro__title">Dashboard</h1>
-          <p className="dashboard-intro__subtitle">Welcome back! Here&apos;s a quick overview of your platform.</p>
-        </div>
-        <button type="button" className="btn btn--ghost admin-dashboard__refresh" onClick={loadStatistics} disabled={loading}>
-          {loading ? "Refreshing…" : "Refresh"}
-        </button>
-      </section>
-
       {loadError ? (
         <p className="user-list-error" role="alert">
           {loadError}{" "}

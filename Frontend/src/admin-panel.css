@@ -519,6 +519,21 @@ a:hover {
   margin-right: 0.5rem;
 }
 
+.tracking-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.tracking-refresh__meta {
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
 .tracking-refresh-btn {
   display: inline-flex;
   align-items: center;
@@ -553,18 +568,22 @@ a:hover {
 }
 
 @keyframes tracking-refresh-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 720px) {
+  .tracking-refresh__meta {
+    display: none;
+  }
+
   .tracking-refresh-btn__text {
     display: none;
   }
 
   .admin-header__refresh {
-    margin-right: 0.35rem;
-    padding: 0.4rem;
+    margin-right: 0.25rem;
   }
 }
 
@@ -1023,6 +1042,32 @@ a.admin-header__dropdown-item {
   position: relative;
   flex: 1;
   min-height: 260px;
+}
+
+.admin-dashboard-chart__body .recharts-responsive-container,
+.admin-dashboard-chart__body .recharts-wrapper,
+.admin-dashboard-chart__body .recharts-surface,
+.admin-dashboard-chart__body svg,
+.admin-dashboard-chart__plot {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.admin-dashboard-chart__body .recharts-surface:focus,
+.admin-dashboard-chart__body .recharts-surface:focus-visible,
+.admin-dashboard-chart__body .recharts-pie:focus,
+.admin-dashboard-chart__body .recharts-pie:focus-visible,
+.admin-dashboard-chart__body .recharts-sector:focus,
+.admin-dashboard-chart__body .recharts-sector:focus-visible,
+.admin-dashboard-chart__body [tabindex]:focus,
+.admin-dashboard-chart__body [tabindex]:focus-visible {
+  outline: none !important;
+  border: none !important;
+}
+
+.admin-dashboard-chart__body .recharts-surface {
+  overflow: visible;
 }
 
 .admin-dashboard-chart__split {

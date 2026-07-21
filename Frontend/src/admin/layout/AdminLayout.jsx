@@ -275,6 +275,7 @@ export function AdminLayout() {
   }, []);
 
   const closeSidebar = () => setSidebarOpen(false);
+  const outletContext = useMemo(() => ({ setHeaderRefresh }), []);
 
   const toggleSidebar = () => {
     if (isDesktop) {
@@ -323,7 +324,7 @@ export function AdminLayout() {
           headerRefresh={headerRefresh}
         />
         <main className="admin-content">
-          <Outlet context={{ setHeaderRefresh }} />
+          <Outlet context={outletContext} />
         </main>
         <Footer />
       </div>

@@ -102,7 +102,7 @@ export function sanitizeInchesLost(raw) {
 
 export function validateInchesLost(value) {
   const raw = String(value ?? "").trim();
-  if (!raw) return "Inches lost is required.";
+  if (!raw) return "";
   if (!/^\d+(\.\d)?$/.test(raw)) return "Inches lost must be a number (one decimal place allowed).";
   const num = Number.parseFloat(raw);
   if (!Number.isFinite(num) || num < INCHES_LOST_MIN) {

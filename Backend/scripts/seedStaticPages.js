@@ -1,9 +1,10 @@
 /**
- * Seed StaticPage entries for footer legal pages.
+ * Seed StaticPage entries for legal + about pages.
  * Creates missing pages and updates content for existing slugs.
  *
  * Usage (from Backend/):
  *   node --use-system-ca scripts/seedStaticPages.js
+ *   npm run seed:static-pages
  */
 require("dotenv").config();
 
@@ -247,6 +248,101 @@ const STATIC_PAGES = [
       <p>Thank you for helping us build a positive, inclusive wellness community. Your respect, honesty, and support make ${COMPANY_NAME} a place where real transformation happens—together.</p>
     `.trim(),
   },
+  {
+    title: "About Us",
+    slug: "about-us",
+    status: "active",
+    content: `
+      <h2>Welcome to India Redefining Wellness</h2>
+      <p>India Redefining Wellness is your trusted partner in holistic health and wellness transformation. We specialize in personalized holistic solutions aimed at addressing a wide range of health concerns, including personalized holistic fat loss, lifestyle disorders reversal like Diabetes, Hypo &amp; Hyper Thyroid, PCOD/PCOS, Gut Health, and Autoimmune Disorders.</p>
+
+      <p>We merge advanced clinical diagnostics with restorative holistic practices to create your personalized path to vitality. Our platform blends age-old Indian philosophy with modern research and science to redefine your health from the inside out.</p>
+
+      <h2>What We Specialize In</h2>
+      <ul>
+        <li>Personalized holistic fat loss</li>
+        <li>Lifestyle disorder management and reversal (Diabetes, Thyroid, PCOD/PCOS)</li>
+        <li>Gut health restoration</li>
+        <li>Autoimmune disorder support</li>
+        <li>Stress management and emotional wellbeing</li>
+      </ul>
+
+      <h2>Our Approach</h2>
+      <p>We believe our client's health is our responsibility. We develop an understanding of each client's current lifestyle and uncover health conditions through deep root-cause analysis. Our approach includes personalized hand-holding with consistent monitoring of all health pillars—Food &amp; Nutrition, Sleep &amp; Rest, Physical Exercise, and Emotional Health.</p>
+
+      <p>Our core principle is to educate and empower clients with the right knowledge and practices so they can take charge of their health and live a medicine-free life.</p>
+
+      <h2>Contact</h2>
+      <ul>
+        <li><strong>Email:</strong> <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a></li>
+        <li><strong>Phone:</strong> <a href="tel:${SUPPORT_PHONE.replace(/\s/g, "")}">${SUPPORT_PHONE}</a></li>
+        <li><strong>Address:</strong> ${COMPANY_ADDRESS}</li>
+      </ul>
+    `.trim(),
+  },
+  {
+    title: "Our Mission",
+    slug: "our-mission",
+    status: "active",
+    content: `
+      <h2>Reinvigorating India's Wellness Heritage</h2>
+      <p>We're passionate about redefining India's rich heritage of wellness practices in the context of the modern era, backed by science and research.</p>
+
+      <p>Drawing inspiration from Ayurveda, Yoga, Meditation, and other traditional systems of medicine, we seek to blend ancient wisdom with contemporary science to promote holistic well-being for individuals across India.</p>
+
+      <h2>What This Means</h2>
+      <ul>
+        <li>Honoring India's Vedic wellness traditions while applying modern clinical insight</li>
+        <li>Creating personalized holistic programs rooted in both philosophy and evidence</li>
+        <li>Making authentic wellness accessible, practical, and sustainable for everyday life</li>
+        <li>Educating and empowering people to take charge of their own health journey</li>
+      </ul>
+
+      <p>At India Redefining Wellness, our mission is to help you reclaim vitality through a balanced, science-backed, and culturally rooted approach to wellbeing.</p>
+    `.trim(),
+  },
+  {
+    title: "Our Vision",
+    slug: "our-vision",
+    status: "active",
+    content: `
+      <h2>To Inspire &amp; Educate India to Live a Healthy &amp; Happy Life</h2>
+      <p>Usually people are reactive and disease-oriented when it comes to health. We believe people should be inspired by the cause of being healthy inside-out—to live a disease-free life.</p>
+
+      <p>The current health situation is deteriorating primarily because of lifestyle changes. Hence it is important to get educated rightly about good health practices.</p>
+
+      <h2>Our Vision in Action</h2>
+      <ul>
+        <li>Shift the mindset from disease management to proactive wellbeing</li>
+        <li>Inspire individuals and families to prioritize preventive health</li>
+        <li>Educate communities with clear, practical wellness knowledge</li>
+        <li>Build a culture where healthy living is a daily choice, not a last resort</li>
+      </ul>
+
+      <p>We envision an India where more people live healthier, happier, and medicine-free lives—empowered by the right guidance and habits.</p>
+    `.trim(),
+  },
+  {
+    title: "Our Goal",
+    slug: "our-goal",
+    status: "active",
+    content: `
+      <h2>Reach One Million Families and Help Them Live a Healthy &amp; Medicine-Free Life</h2>
+      <p>Our goal is to reach out to one million families, empowering them to achieve a healthy and medicine-free life by addressing and reversing lifestyle disorders through holistic and sustainable methods.</p>
+
+      <p>By integrating comprehensive wellness strategies that encompass balanced nutrition, regular physical activity, stress management, and natural healing practices, we aim to transform lives and foster long-term health improvements.</p>
+
+      <h2>How We Will Get There</h2>
+      <ul>
+        <li>Personalized coaching and consistent hand-holding for every client</li>
+        <li>Holistic fat-loss and lifestyle-disorder reversal programs</li>
+        <li>Education that helps families adopt sustainable healthy habits</li>
+        <li>Building a strong team of wellness coaches to expand our reach</li>
+      </ul>
+
+      <p>We are working passionately toward inspiring and educating families across India—and creating a dedicated team of in-house wellness coaches who help people build lasting wellbeing in their communities.</p>
+    `.trim(),
+  },
 ];
 
 async function upsertPage(row) {
@@ -267,7 +363,7 @@ async function upsertPage(row) {
 }
 
 async function main() {
-  console.log("Seeding StaticPage legal pages...\n");
+  console.log("Seeding StaticPage entries...\n");
 
   let created = 0;
   let updated = 0;

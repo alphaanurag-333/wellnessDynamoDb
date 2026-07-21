@@ -11,7 +11,6 @@ const { getPageBySlug, deletePage } = require("../models/staticPageModel");
 const SLUGS_TO_DELETE = [
   "community-guidelines",
   "contact-us",
-  "about-us",
   "cancellation-policy",
   "refund-policy",
 ];

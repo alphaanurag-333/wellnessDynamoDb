@@ -10,6 +10,7 @@ import { CoachDashboardCharts } from "../components/CoachDashboardCharts.jsx";
 import { CoachPageLoader } from "../components/CoachPageLoader.jsx";
 import { coachGetDashboardStatistics } from "../api/coachDashboard.js";
 import { logoutCoach } from "../../store/authSlice.js";
+import { useRegisterHeaderRefresh } from "../../hooks/useRegisterHeaderRefresh.js";
 import { formatPhone } from "./myAssistants/MyAssistantShared.js";
 
 const STAT_CARDS = [
@@ -128,10 +129,6 @@ function formatTierLabel(tier) {
   return tier || "—";
 }
 
-function formatLocation(profile) {
-  return [profile?.city, profile?.state, profile?.country].filter(Boolean).join(", ");
-}
-
 function profileImageProps(profile) {
   const image = profile?.profileImage;
   const resolved = resolveMediaImageSrc(image);
@@ -244,10 +241,10 @@ function ShortcutCard({ to, title, desc, icon }) {
 export function CoachDashboardPage() {
   const dispatch = useDispatch();
   const coachToken = useSelector((s) => s.auth.coachToken);
-  const coach = useSelector((s) => s.auth.coach);
   const [statistics, setStatistics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [lastRefreshedAt, setLastRefreshedAt] = useState(null);
 
   const loadStatistics = useCallback(async () => {
     if (!coachToken) {
@@ -259,6 +256,7 @@ export function CoachDashboardPage() {
     try {
       const stats = await coachGetDashboardStatistics(coachToken);
       setStatistics(stats);
+      setLastRefreshedAt(new Date());
     } catch (e) {
       if (e?.status === 401) dispatch(logoutCoach());
       else setLoadError(e.message || "Failed to load dashboard statistics.");
@@ -271,6 +269,12 @@ export function CoachDashboardPage() {
     loadStatistics();
   }, [loadStatistics]);
 
+  useRegisterHeaderRefresh({
+    onRefresh: loadStatistics,
+    refreshing: loading,
+    lastRefreshedAt,
+  });
+
   const statValues = useMemo(
     () =>
       STAT_CARDS.map((card) => ({
@@ -280,60 +284,11 @@ export function CoachDashboardPage() {
     [statistics]
   );
 
-  const profile = statistics?.coach || coach;
-  const accountStatus = String(profile?.status || "active").toLowerCase() === "active" ? "Active" : "Inactive";
-  const locationLabel = formatLocation(profile);
   const recentClients = (statistics?.recentClients ?? []).slice(0, 5);
   const recentAssistants = (statistics?.recentAssistants ?? []).slice(0, 5);
-  const avatarProps = profileImageProps(profile);
 
   return (
     <div className="page-stack admin-dashboard coach-dashboard">
-      <section className="dashboard-intro admin-dashboard__intro" aria-label="Dashboard heading">
-        <div>
-          <h1 className="dashboard-intro__title">Dashboard</h1>
-          <p className="dashboard-intro__subtitle">
-            Welcome back{profile?.name ? `, ${profile.name}` : ""}! Here is your coach overview.
-          </p>
-        </div>
-        <button
-          type="button"
-          className="btn btn--ghost admin-dashboard__refresh"
-          onClick={loadStatistics}
-          disabled={loading}
-        >
-          {loading ? "Refreshing…" : "Refresh"}
-        </button>
-      </section>
-
-      <section className="coach-dashboard-welcome" aria-label="Coach summary">
-        <div className="coach-dashboard-welcome__profile">
-          <AdminMediaImage
-            {...avatarProps}
-            alt=""
-            className="coach-dashboard-welcome__avatar"
-            width={72}
-            height={72}
-            round
-          />
-          <div className="coach-dashboard-welcome__info">
-            <h2 className="coach-dashboard-welcome__name">{profile?.name || "Wellness Coach"}</h2>
-            <p className="coach-dashboard-welcome__meta">{profile?.email || "—"}</p>
-            {locationLabel ? <p className="coach-dashboard-welcome__meta">{locationLabel}</p> : null}
-          </div>
-        </div>
-        <div className="coach-dashboard-welcome__badges">
-          <span
-            className={`coach-dashboard-badge coach-dashboard-badge--${
-              accountStatus === "Active" ? "active" : "muted"
-            }`}
-          >
-            {accountStatus}
-          </span>
-          <span className="coach-dashboard-badge coach-dashboard-badge--approved">Approved</span>
-        </div>
-      </section>
-
       {loadError ? (
         <p className="user-list-error" role="alert">
           {loadError}{" "}

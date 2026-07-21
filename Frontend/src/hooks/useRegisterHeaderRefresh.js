@@ -1,17 +1,20 @@
 import { useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
 
-export function useRegisterHeaderRefresh({ onRefresh, refreshing = false } = {}) {
-  const ctx = useOutletContext();
+export function useRegisterHeaderRefresh({
+  onRefresh,
+  refreshing = false,
+  lastRefreshedAt = null,
+} = {}) {
+  const { setHeaderRefresh } = useOutletContext() ?? {};
 
   useEffect(() => {
-    const register = ctx?.setHeaderRefresh;
-    if (!register) return undefined;
+    if (!setHeaderRefresh) return undefined;
     if (!onRefresh) {
-      register(null);
+      setHeaderRefresh(null);
       return undefined;
     }
-    register({ onRefresh, refreshing });
-    return () => register(null);
-  }, [ctx, onRefresh, refreshing]);
+    setHeaderRefresh({ onRefresh, refreshing, lastRefreshedAt });
+    return () => setHeaderRefresh(null);
+  }, [setHeaderRefresh, onRefresh, refreshing, lastRefreshedAt]);
 }

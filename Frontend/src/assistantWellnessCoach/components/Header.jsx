@@ -104,6 +104,7 @@ export function AssistantHeader({
           className="admin-header__refresh"
           onClick={headerRefresh.onRefresh}
           disabled={headerRefresh.refreshing}
+          lastRefreshedAt={headerRefresh.lastRefreshedAt}
         />
       ) : null}
 

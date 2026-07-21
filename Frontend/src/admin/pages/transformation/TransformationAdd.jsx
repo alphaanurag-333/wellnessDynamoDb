@@ -182,7 +182,7 @@ export function TransformationForm({ mode = "create", initialTransformation = nu
     const payload = {
       name: form.name.trim(),
       timeTaken: Number(form.timeTaken),
-      inchesLost: Number(form.inchesLost),
+      inchesLost: String(form.inchesLost ?? "").trim() === "" ? null : Number(form.inchesLost),
       order: Number(form.order),
       achievements: form.achievements.trim(),
       description: form.description.trim(),
@@ -237,9 +237,7 @@ export function TransformationForm({ mode = "create", initialTransformation = nu
           </small>
         </label>
         <label className="user-field col-12 col-md-4">
-          <span className="user-field__label">
-            Inches lost <span className="required-dot">*</span>
-          </span>
+          <span className="user-field__label">Inches lost</span>
           <input
             className="user-field__input"
             value={form.inchesLost}
@@ -248,11 +246,10 @@ export function TransformationForm({ mode = "create", initialTransformation = nu
             }
             inputMode="decimal"
             maxLength={INCHES_LOST_MAX_LEN}
-            placeholder={`${INCHES_LOST_MIN} to ${INCHES_LOST_MAX}`}
-            required
+            placeholder={`Optional (${INCHES_LOST_MIN}–${INCHES_LOST_MAX})`}
           />
           <small className="data-table__muted">
-            One decimal allowed ({INCHES_LOST_MIN}–{INCHES_LOST_MAX}).
+            Optional. One decimal allowed ({INCHES_LOST_MIN}–{INCHES_LOST_MAX}).
           </small>
         </label>
         <label className="user-field col-12 col-md-4">

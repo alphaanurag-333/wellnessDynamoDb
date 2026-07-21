@@ -35,6 +35,9 @@ function normalizeTimeTaken(value) {
 }
 
 function normalizeInchesLost(value) {
+  if (value === undefined || value === null || String(value).trim() === "") {
+    return null;
+  }
   const num = Number(value);
   if (!Number.isFinite(num) || num < INCHES_LOST_MIN || num > INCHES_LOST_MAX) {
     throw new AppError(

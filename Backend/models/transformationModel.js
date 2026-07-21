@@ -77,7 +77,9 @@ async function createTransformation({
     id: uuidv4(),
     name: String(name || "").trim(),
     timeTaken: Number(timeTaken),
-    inchesLost: Number(inchesLost),
+    inchesLost: inchesLost == null || inchesLost === "" || !Number.isFinite(Number(inchesLost))
+      ? null
+      : Number(inchesLost),
     achievements: String(achievements || "").trim(),
     oldImage: normalizeImageField(oldImage, "oldImage"),
     newImage: normalizeImageField(newImage, "newImage"),

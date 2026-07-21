@@ -13,6 +13,12 @@ import {
 
 const PIE_COLORS = ["#2563eb", "#10b981", "#f59e0b", "#a855f7", "#6366f1", "#14b8a6"];
 
+const AXIS_TICK = { fill: "#6b7280", fontSize: 12 };
+const AXIS_TICK_SM = { fill: "#6b7280", fontSize: 11 };
+const CATEGORY_TICK = { fill: "#374151", fontSize: 12 };
+const BAR_MARGIN = { top: 8, right: 8, left: 0, bottom: 0 };
+const VERTICAL_BAR_MARGIN = { top: 4, right: 16, left: 8, bottom: 4 };
+
 function formatCurrency(value, currency = "INR") {
   const amount = Number(value) || 0;
   if (currency === "INR") {
@@ -21,7 +27,11 @@ function formatCurrency(value, currency = "INR") {
   return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(amount);
 }
 
-function ChartTooltip({ active, payload, label, currency, valueFormatter }) {
+function formatAxisThousands(v) {
+  return v >= 1000 ? `${Math.round(v / 1000)}k` : v;
+}
+
+function ChartTooltip({ active, payload, label, valueFormatter }) {
   if (!active || !payload?.length) return null;
   const value = payload[0]?.value;
   const formatted = valueFormatter ? valueFormatter(value) : value;
@@ -41,13 +51,18 @@ function ChartPanel({ title, subtitle, children, empty, emptyMessage = "No data 
         {subtitle ? <p className="admin-dashboard-chart__subtitle">{subtitle}</p> : null}
       </header>
       <div className="admin-dashboard-chart__body">
-        {empty ? (
-          <p className="admin-dashboard-chart__empty">{emptyMessage}</p>
-        ) : (
-          children
-        )}
+        {empty ? <p className="admin-dashboard-chart__empty">{emptyMessage}</p> : children}
       </div>
     </article>
+  );
+}
+
+function RevenueTooltip(props) {
+  return (
+    <ChartTooltip
+      {...props}
+      valueFormatter={(v) => formatCurrency(v, props.currency)}
+    />
   );
 }
 
@@ -65,30 +80,23 @@ export function AdminDashboardCharts({ charts, currency }) {
   return (
     <section className="admin-dashboard-charts" aria-label="Dashboard charts">
       <div className="admin-dashboard-charts__grid">
-
-      <ChartPanel
+        <ChartPanel
           title="Revenue by product"
           subtitle="Breakdown of paid revenue"
           empty={!hasProductRevenue}
         >
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={revenueByProduct} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <BarChart data={revenueByProduct} margin={BAR_MARGIN} accessibilityLayer={false}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e8edf4" vertical={false} />
-              <XAxis dataKey="name" tick={{ fill: "#6b7280", fontSize: 11 }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="name" tick={AXIS_TICK_SM} axisLine={false} tickLine={false} />
               <YAxis
-                tick={{ fill: "#6b7280", fontSize: 12 }}
+                tick={AXIS_TICK}
                 axisLine={false}
                 tickLine={false}
-                tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : v)}
+                tickFormatter={formatAxisThousands}
               />
-              <Tooltip
-                content={
-                  <ChartTooltip
-                    valueFormatter={(v) => formatCurrency(v, currency)}
-                  />
-                }
-              />
-              <Bar dataKey="value" fill="#2563eb" radius={[8, 8, 0, 0]} maxBarSize={56}>
+              <Tooltip content={<RevenueTooltip currency={currency} />} />
+              <Bar dataKey="value" fill="#2563eb" radius={[8, 8, 0, 0]} maxBarSize={56} isAnimationActive={false}>
                 {revenueByProduct.map((entry, index) => (
                   <Cell key={entry.key} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                 ))}
@@ -97,27 +105,25 @@ export function AdminDashboardCharts({ charts, currency }) {
           </ResponsiveContainer>
         </ChartPanel>
 
-     
-
         <ChartPanel
           title="Platform overview"
           subtitle="Users, coaches, assistants & programs"
           empty={!hasPlatform}
         >
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={platformOverview} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
+            <BarChart data={platformOverview} layout="vertical" margin={VERTICAL_BAR_MARGIN} accessibilityLayer={false}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e8edf4" horizontal={false} />
-              <XAxis type="number" tick={{ fill: "#6b7280", fontSize: 12 }} axisLine={false} tickLine={false} allowDecimals={false} />
+              <XAxis type="number" tick={AXIS_TICK} axisLine={false} tickLine={false} allowDecimals={false} />
               <YAxis
                 type="category"
                 dataKey="name"
                 width={88}
-                tick={{ fill: "#374151", fontSize: 12 }}
+                tick={CATEGORY_TICK}
                 axisLine={false}
                 tickLine={false}
               />
               <Tooltip content={<ChartTooltip />} />
-              <Bar dataKey="value" radius={[0, 8, 8, 0]} maxBarSize={22}>
+              <Bar dataKey="value" radius={[0, 8, 8, 0]} maxBarSize={22} isAnimationActive={false}>
                 {platformOverview.map((entry) => (
                   <Cell key={entry.name} fill={entry.color} />
                 ))}
@@ -134,7 +140,7 @@ export function AdminDashboardCharts({ charts, currency }) {
           <div className="admin-dashboard-chart__split">
             <div className="admin-dashboard-chart__plot">
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
+                <PieChart accessibilityLayer={false}>
                   <Pie
                     data={userTiers}
                     dataKey="value"
@@ -144,6 +150,8 @@ export function AdminDashboardCharts({ charts, currency }) {
                     innerRadius={52}
                     outerRadius={78}
                     paddingAngle={3}
+                    isAnimationActive={false}
+                    stroke="none"
                   >
                     {userTiers.map((entry, index) => (
                       <Cell key={entry.key} fill={PIE_COLORS[index % PIE_COLORS.length]} />
@@ -174,29 +182,20 @@ export function AdminDashboardCharts({ charts, currency }) {
           empty={!hasRevenue}
         >
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={revenueByMonth} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <BarChart data={revenueByMonth} margin={BAR_MARGIN} accessibilityLayer={false}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e8edf4" vertical={false} />
-              <XAxis dataKey="label" tick={{ fill: "#6b7280", fontSize: 12 }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="label" tick={AXIS_TICK} axisLine={false} tickLine={false} />
               <YAxis
-                tick={{ fill: "#6b7280", fontSize: 12 }}
+                tick={AXIS_TICK}
                 axisLine={false}
                 tickLine={false}
-                tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : v)}
+                tickFormatter={formatAxisThousands}
               />
-              <Tooltip
-                content={
-                  <ChartTooltip
-                    currency={currency}
-                    valueFormatter={(v) => formatCurrency(v, currency)}
-                  />
-                }
-              />
-              <Bar dataKey="revenue" fill="#14b8a6" radius={[8, 8, 0, 0]} maxBarSize={48} />
+              <Tooltip content={<RevenueTooltip currency={currency} />} />
+              <Bar dataKey="revenue" fill="#14b8a6" radius={[8, 8, 0, 0]} maxBarSize={48} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </ChartPanel>
-
-  
       </div>
     </section>
   );

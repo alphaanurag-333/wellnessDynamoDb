@@ -10,6 +10,7 @@ import { AssistantDashboardCharts } from "../components/AssistantDashboardCharts
 import { CoachPageLoader } from "../../wellnessCoach/components/CoachPageLoader.jsx";
 import { assistantGetDashboardStatistics } from "../api/assistantDashboard.js";
 import { logoutAssistant } from "../../store/authSlice.js";
+import { useRegisterHeaderRefresh } from "../../hooks/useRegisterHeaderRefresh.js";
 
 const STAT_CARDS = [
   {
@@ -229,6 +230,7 @@ export function AssistantDashboardPage() {
   const [statistics, setStatistics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [lastRefreshedAt, setLastRefreshedAt] = useState(null);
 
   const loadStatistics = useCallback(async () => {
     if (!assistantToken) {
@@ -240,6 +242,7 @@ export function AssistantDashboardPage() {
     try {
       const stats = await assistantGetDashboardStatistics(assistantToken);
       setStatistics(stats);
+      setLastRefreshedAt(new Date());
     } catch (e) {
       if (e?.status === 401) dispatch(logoutAssistant());
       else setLoadError(e.message || "Failed to load dashboard statistics.");
@@ -251,6 +254,12 @@ export function AssistantDashboardPage() {
   useEffect(() => {
     loadStatistics();
   }, [loadStatistics]);
+
+  useRegisterHeaderRefresh({
+    onRefresh: loadStatistics,
+    refreshing: loading,
+    lastRefreshedAt,
+  });
 
   const statValues = useMemo(
     () =>
@@ -275,14 +284,6 @@ export function AssistantDashboardPage() {
             Welcome back{profile?.name ? `, ${profile.name}` : ""}! Here is your assistant overview.
           </p>
         </div>
-        <button
-          type="button"
-          className="btn btn--ghost admin-dashboard__refresh"
-          onClick={loadStatistics}
-          disabled={loading}
-        >
-          {loading ? "Refreshing…" : "Refresh"}
-        </button>
       </section>
 
       <section className="coach-dashboard-welcome" aria-label="Assistant summary">

@@ -57,7 +57,7 @@ export function CoachDashboardCharts({ charts }) {
           empty={!hasTeam}
         >
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={teamOverview} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
+            <BarChart accessibilityLayer={false} data={teamOverview} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e8edf4" horizontal={false} />
               <XAxis type="number" tick={{ fill: "#6b7280", fontSize: 12 }} axisLine={false} tickLine={false} allowDecimals={false} />
               <YAxis
@@ -84,7 +84,7 @@ export function CoachDashboardCharts({ charts }) {
           empty={!hasClients}
         >
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={clientOverview} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
+            <BarChart accessibilityLayer={false} data={clientOverview} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e8edf4" horizontal={false} />
               <XAxis type="number" tick={{ fill: "#6b7280", fontSize: 12 }} axisLine={false} tickLine={false} allowDecimals={false} />
               <YAxis
@@ -111,7 +111,7 @@ export function CoachDashboardCharts({ charts }) {
           empty={!hasPending}
         >
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={pendingApprovals} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <BarChart accessibilityLayer={false} data={pendingApprovals} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e8edf4" vertical={false} />
               <XAxis dataKey="name" tick={{ fill: "#6b7280", fontSize: 11 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: "#6b7280", fontSize: 12 }} axisLine={false} tickLine={false} allowDecimals={false} />
@@ -129,7 +129,7 @@ export function CoachDashboardCharts({ charts }) {
           <div className="admin-dashboard-chart__split">
             <div className="admin-dashboard-chart__plot">
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
+                <PieChart accessibilityLayer={false}>
                   <Pie
                     data={clientTiers}
                     dataKey="value"
@@ -139,6 +139,7 @@ export function CoachDashboardCharts({ charts }) {
                     innerRadius={52}
                     outerRadius={78}
                     paddingAngle={3}
+                    stroke="none"
                   >
                     {clientTiers.map((entry, index) => (
                       <Cell key={entry.key} fill={PIE_COLORS[index % PIE_COLORS.length]} />

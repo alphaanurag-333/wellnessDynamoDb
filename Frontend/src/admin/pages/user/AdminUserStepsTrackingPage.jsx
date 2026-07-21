@@ -25,6 +25,7 @@ export function AdminUserStepsTrackingPage({ embedded = false }) {
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState(null);
   const handleRefresh = useCallback(() => setReloadKey((k) => k + 1), []);
 
   useEffect(() => {
@@ -42,6 +43,7 @@ export function AdminUserStepsTrackingPage({ embedded = false }) {
         setHistory(result.data?.history ?? []);
         setRange(result.data?.range ?? null);
         setConnections(result.data?.connections ?? null);
+        setLastRefreshedAt(new Date());
       } catch (e) {
         if (cancelled) return;
         if (e?.status === 401) {
@@ -62,7 +64,11 @@ export function AdminUserStepsTrackingPage({ embedded = false }) {
     };
   }, [adminToken, dispatch, userId, days, reloadKey]);
 
-  useRegisterHeaderRefresh({ onRefresh: handleRefresh, refreshing: loading });
+  useRegisterHeaderRefresh({
+    onRefresh: embedded ? null : handleRefresh,
+    refreshing: loading,
+    lastRefreshedAt,
+  });
 
   if (notFound) return <NotFoundPage />;
 

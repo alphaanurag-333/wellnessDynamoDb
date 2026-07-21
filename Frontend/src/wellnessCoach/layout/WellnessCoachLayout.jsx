@@ -73,6 +73,7 @@ export function WellnessCoachLayout() {
   }, []);
 
   const closeSidebar = () => setSidebarOpen(false);
+  const outletContext = useMemo(() => ({ setHeaderRefresh }), []);
 
   const toggleSidebar = () => {
     if (isDesktop) {
@@ -117,7 +118,7 @@ export function WellnessCoachLayout() {
             headerRefresh={headerRefresh}
           />
           <main className="admin-content">
-            <Outlet context={{ setHeaderRefresh }} />
+            <Outlet context={outletContext} />
           </main>
           <CoachFooter />
         </div>
