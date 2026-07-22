@@ -1,3 +1,4 @@
+export { formatDateTime } from "../../utils/formatDate.js";
 export const LIST_LIMIT = 10;
 export const NAME_MAX_LEN = 35;
 export const DESCRIPTION_MAX_LEN = 255;
@@ -22,13 +23,7 @@ export function sanitizeMultiLine(value, maxLen) {
     .replace(/[^\p{L}\p{N}\s.,!?'"():;\-]/gu, "")
     .slice(0, maxLen);
 }
-
-export function formatDateTime(value) {
-  if (!value) return "—";
-  const t = new Date(value).getTime();
-  if (Number.isNaN(t)) return "—";
-  return new Date(value).toLocaleString();
-}
+
 
 export function truncate(str, max) {
   const s = String(str ?? "");

@@ -5,12 +5,7 @@ import { AiOutlineEye } from "react-icons/ai";
 import { fetchActiveDietPlanCatalog } from "../wellnessCoach/api/coachDietPlanCatalog.js";
 import { slotLabel, typeLabel } from "../admin/pages/dietPlanCatalog/DietPlanCatalogShared.js";
 
-function formatStartDate(iso) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
+import { formatDate } from "../admin/utils/formatDate.js";
 
 function CheckIcon() {
   return (
@@ -36,7 +31,7 @@ function AssignmentCard({ assignment, onDelete, deleting, canDelete }) {
             </svg>
           </div>
           <div>
-            <div className="diet-plan-card__title">Start date: {formatStartDate(assignment.startDate)}</div>
+            <div className="diet-plan-card__title">Start date: {formatDate(assignment.startDate)}</div>
             <div className="diet-plan-card__date">
               {planCount} plan{planCount === 1 ? "" : "s"} assigned
             </div>

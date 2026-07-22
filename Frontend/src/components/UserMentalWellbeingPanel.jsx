@@ -6,12 +6,7 @@ import { CatalogPickerPagination } from "./CatalogPickerPagination.jsx";
 import { CATALOG_PAGE_SIZE, emptyCatalogPagination } from "./catalogPickerConstants.js";
 import { fetchActiveMentalWellbeingCatalog } from "../wellnessCoach/api/coachMentalWellbeingCatalog.js";
 
-function formatAssignedDate(iso) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
+import { formatDate } from "../admin/utils/formatDate.js";
 
 function itemTypeLabel(type) {
   if (type === "video") return "Video";
@@ -180,7 +175,7 @@ function AssignmentCard({ assignment, onRemove, removing, canRemove }) {
             <div className="diet-plan-card__title">{item.title || "Content"}</div>
             <div className="diet-plan-card__date">
               {itemTypeLabel(item.type)}
-              {assignment.createdAt ? ` · Assigned ${formatAssignedDate(assignment.createdAt)}` : ""}
+              {assignment.createdAt ? ` · Assigned ${formatDate(assignment.createdAt)}` : ""}
             </div>
           </div>
         </div>

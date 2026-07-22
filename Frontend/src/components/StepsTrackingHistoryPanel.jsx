@@ -2,12 +2,11 @@ import { useState } from "react";
 import { TrackingBarChart } from "./TrackingBarChart.jsx";
 import { TrackingHistoryViewToggle } from "./TrackingHistoryViewToggle.jsx";
 import { TRACKING_HISTORY_DEFAULT_DAYS } from "./trackingHistoryStats.js";
+import { formatDate } from "../admin/utils/formatDate.js";
 
 function formatDateLabel(dateOnly) {
   if (!dateOnly) return "—";
-  const d = new Date(`${dateOnly}T00:00:00.000Z`);
-  if (Number.isNaN(d.getTime())) return dateOnly;
-  return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+  return formatDate(`${dateOnly}T00:00:00.000Z`, { timeZone: "UTC" });
 }
 
 function progressPercent(stepCount, goalSteps) {

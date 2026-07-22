@@ -1,3 +1,4 @@
+export { formatDate } from "../../utils/formatDate.js";
 export const LIST_LIMIT = 10;
 export const LIST_SEARCH_MAX_LEN = 50;
 export const TITLE_MIN_LEN = 2;
@@ -53,13 +54,7 @@ export function emptyForm() {
     points: [emptyPoint()],
   };
 }
-
-export function formatDate(iso) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString();
-}
+
 
 export function listCountSubtitle(loading, total, singular, plural) {
   if (loading) return "Loading…";

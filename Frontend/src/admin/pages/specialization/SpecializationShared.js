@@ -1,3 +1,4 @@
+export { formatDate } from "../../utils/formatDate.js";
 export const TITLE_MAX_LEN = 35;
 export const DESCRIPTION_MAX_LEN = 255;
 export const TITLE_PREVIEW_LEN = 50;
@@ -54,10 +55,4 @@ export function truncateText(value, maxLen) {
 export function getSpecializationId(row) {
   return row?.id || row?._id || "";
 }
-
-export function formatDate(value) {
-  if (!value) return "—";
-  const t = new Date(value).getTime();
-  if (Number.isNaN(t)) return "—";
-  return new Date(value).toLocaleString();
-}
+

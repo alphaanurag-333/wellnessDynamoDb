@@ -1,3 +1,4 @@
+export { formatDate } from "../../utils/formatDate.js";
 export const QUESTION_MIN_LEN = 3;
 export const QUESTION_MAX_LEN = 200;
 export const QUESTION_PREVIEW_LEN = 80;
@@ -39,13 +40,7 @@ export function truncate(str, max) {
   if (s.length <= max) return s;
   return `${s.slice(0, max)}…`;
 }
-
-export function formatDate(value) {
-  if (!value) return "—";
-  const t = new Date(value).getTime();
-  if (Number.isNaN(t)) return "—";
-  return new Date(value).toLocaleString();
-}
+
 
 export function validateForm(form) {
   const question = form.question.trim();

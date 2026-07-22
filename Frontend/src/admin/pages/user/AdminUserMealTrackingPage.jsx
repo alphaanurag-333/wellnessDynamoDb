@@ -7,6 +7,7 @@ import { logout } from "../../../store/authSlice.js";
 import { NotFoundPage } from "../NotFoundPage.jsx";
 import { UserPageLoadingState } from "./UserPageLoader.jsx";
 import { AdminPageHeader } from "../../components/AdminCrud.jsx";
+import { formatDate } from "../../utils/formatDate.js";
 
 const PAGE_SIZE = 10;
 
@@ -29,18 +30,17 @@ const CATEGORY_COLORS = {
   protein: "#8b5cf6",
 };
 
-function formatDate(dateOnly) {
+function formatDateUtc(dateOnly) {
   if (!dateOnly) return "—";
-  const d = new Date(`${dateOnly}T00:00:00Z`);
-  if (Number.isNaN(d.getTime())) return dateOnly;
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+  return formatDate(`${dateOnly}T00:00:00Z`, { timeZone: "UTC" });
 }
 
 function shortDate(dateOnly) {
   if (!dateOnly) return "";
-  const d = new Date(`${dateOnly}T00:00:00Z`);
-  if (Number.isNaN(d.getTime())) return dateOnly;
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  const formatted = formatDate(`${dateOnly}T00:00:00Z`, { timeZone: "UTC" });
+  if (formatted === "—") return dateOnly;
+  // "20 Jul 2026" → "20 Jul"
+  return formatted.replace(/\s+\d{4}$/, "");
 }
 
 function formatTime(hhmm) {
@@ -210,7 +210,7 @@ function MealLogRow({ log, onDelete, deleting }) {
         )}
       </td>
       <td className="mt-table-row__date-col">
-        <div>{formatDate(log.date)}</div>
+        <div>{formatDateUtc(log.date)}</div>
         <div className="data-table__muted">{formatTime(log.entryTime)}</div>
       </td>
       <td>

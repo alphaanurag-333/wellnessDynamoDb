@@ -1,3 +1,4 @@
+export { formatDateTime } from "../../utils/formatDate.js";
 export const LIST_LIMIT = 10;
 
 export const STATUS_OPTIONS = [
@@ -10,13 +11,7 @@ export const STATUS_OPTIONS = [
 export function statusLabel(status) {
   return STATUS_OPTIONS.find((x) => x.value === status)?.label || status || "—";
 }
-
-export function formatDateTime(value) {
-  if (!value) return "—";
-  const t = new Date(value).getTime();
-  if (Number.isNaN(t)) return "—";
-  return new Date(value).toLocaleString();
-}
+
 
 export const pillBarStyle = {
   background: "#efeff4",

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 
+import { formatDate } from "../admin/utils/formatDate.js";
 const FEATURES = [
   { key: "weightPic", label: "Weight pic" },
   { key: "glucose", label: "Glucose" },
@@ -8,17 +9,7 @@ const FEATURES = [
   { key: "menstrualCycle", label: "Menstrual cycle" },
   { key: "conditionComparison", label: "Condition comparison" },
 ];
-
-function formatDate(value) {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return String(value);
-  return d.toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
+
 
 function formatTime(value) {
   if (!value) return "—";

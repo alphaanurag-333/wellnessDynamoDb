@@ -1,5 +1,6 @@
 import { PRAKRUTI_TYPES } from "../../../components/prakrutiShared.js";
 
+export { formatDate } from "../../utils/formatDate.js";
 export const TITLE_MIN_LEN = 3;
 export const TITLE_MAX_LEN = 300;
 export const TITLE_PREVIEW_LEN = 80;
@@ -27,18 +28,26 @@ export function sanitizeSortOrder(value) {
   return String(n);
 }
 
+export function validateSortOrder(value) {
+  const raw = String(value ?? "").trim();
+  if (raw === "") return "Order is required.";
+  if (!/^\d+$/.test(raw)) return "Order must be a whole number.";
+  const num = Number.parseInt(raw, 10);
+  if (!Number.isFinite(num) || num < SORT_ORDER_MIN) {
+    return `Order must be at least ${SORT_ORDER_MIN}.`;
+  }
+  if (num > SORT_ORDER_MAX) {
+    return `Order cannot exceed ${SORT_ORDER_MAX}.`;
+  }
+  return "";
+}
+
 export function truncate(str, max) {
   const s = String(str ?? "");
   if (s.length <= max) return s;
   return `${s.slice(0, max)}…`;
 }
 
-export function formatDate(value) {
-  if (!value) return "—";
-  const t = new Date(value).getTime();
-  if (Number.isNaN(t)) return "—";
-  return new Date(value).toLocaleString();
-}
 
 export function validateForm(form) {
   const prakrutiType = String(form.prakrutiType || "").trim();

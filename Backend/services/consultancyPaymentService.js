@@ -3,7 +3,6 @@ const config = require("../config");
 const { getUserById, updateUser } = require("../models/userModel");
 const { getWellnessCoachRecordById } = require("../models/wellnessCoachModel");
 const { completeConsultancyEnrollment } = require("../models/userConversionModel");
-const { isConsultancyOnlyTier } = require("../models/userAssignmentLogic");
 const {
   buildCheckoutPreview,
   getActiveRazorpayGateway,
@@ -67,9 +66,9 @@ async function createConsultancyOrder(userId, { referralCode, paymentMethod = "u
   const eligibility = await resolveConsultancyPurchaseEligibility(user);
   if (!eligibility.canPurchase || !eligibility.purchasableFy) {
     const err = new Error(
-      isConsultancyOnlyTier(user.userTier)
-        ? "No consultancy plan is available to purchase right now"
-        : "Consultancy payment has already been completed for this account"
+      eligibility.reason === "invalid_tier"
+        ? "Consultancy payment is not available for this account"
+        : "Consultancy payment is not available right now"
     );
     err.name = "AlreadyEnrolledError";
     throw err;

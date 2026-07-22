@@ -6,12 +6,7 @@ import { fetchActiveWellnessPrescriptionCatalog, fetchActiveWellnessPrescription
 import { CatalogPickerPagination } from "./CatalogPickerPagination.jsx";
 import { CATALOG_PAGE_SIZE, emptyCatalogPagination } from "./catalogPickerConstants.js";
 
-function formatAssignmentDate(iso) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
+import { formatDate } from "../admin/utils/formatDate.js";
 
 function CheckIcon() {
   return (
@@ -38,7 +33,7 @@ function AssignmentCard({ assignment, onDelete, deleting, canDelete }) {
             </svg>
           </div>
           <div>
-            <div className="diet-plan-card__title">Date: {formatAssignmentDate(assignment.date)}</div>
+            <div className="diet-plan-card__title">Date: {formatDate(assignment.date)}</div>
             <div className="diet-plan-card__date">
               {items.length} point{items.length === 1 ? "" : "s"}
               {catalogCount > 0 ? ` · ${catalogCount} from catalog` : ""}

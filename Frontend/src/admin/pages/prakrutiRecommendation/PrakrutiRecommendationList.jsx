@@ -15,7 +15,8 @@ import { logout } from "../../../store/authSlice.js";
 import { useDebouncedSearch } from "../../../hooks/useDebouncedSearch.js";
 import { useResourcePermissions } from "../../hooks/useHasPermission.js";
 import { PRAKRUTI_TYPES, prakrutiTypeLabel } from "../../../components/prakrutiShared.js";
-import { formatDate, truncate, TITLE_PREVIEW_LEN, LIST_LIMIT, LIST_SEARCH_MAX_LEN } from "./PrakrutiRecommendationShared.js";
+import { formatDate, TITLE_PREVIEW_LEN, LIST_LIMIT, LIST_SEARCH_MAX_LEN, SORT_ORDER_MIN, SORT_ORDER_MAX, sanitizeSortOrder, validateSortOrder } from "./PrakrutiRecommendationShared.js";
+import { blockPhoneNonDigitKeyDown } from "../../../utils/personFieldValidation.js";
 
 export function PrakrutiRecommendationList() {
   const dispatch = useDispatch();
@@ -25,6 +26,8 @@ export function PrakrutiRecommendationList() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [togglingId, setTogglingId] = useState("");
+  const [orderEdits, setOrderEdits] = useState({});
+  const [savingOrderId, setSavingOrderId] = useState("");
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [total, setTotal] = useState(0);
@@ -46,6 +49,7 @@ export function PrakrutiRecommendationList() {
         ...(listPrakrutiType ? { prakrutiType: listPrakrutiType } : {}),
       });
       setRows(recommendations);
+      setOrderEdits({});
       setPages(pagination?.pages ?? 1);
       setTotal(pagination?.total ?? 0);
     } catch (e) {
@@ -63,6 +67,50 @@ export function PrakrutiRecommendationList() {
   useEffect(() => {
     setPage(1);
   }, [debouncedSearch, listStatus, listPrakrutiType]);
+
+  const clearOrderEdit = (id) => {
+    setOrderEdits((prev) => {
+      if (prev[id] === undefined) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  };
+
+  const getOrderValue = (row) =>
+    orderEdits[row._id] !== undefined ? orderEdits[row._id] : String(row.sortOrder ?? 0);
+
+  const onOrderChange = (row, value) => {
+    setOrderEdits((prev) => ({ ...prev, [row._id]: sanitizeSortOrder(value) }));
+  };
+
+  const onSaveOrder = async (row) => {
+    if (!adminToken || !canEdit || savingOrderId) return;
+    const raw = getOrderValue(row);
+    const err = validateSortOrder(raw);
+    if (err) {
+      await Swal.fire({ icon: "error", title: "Invalid order", text: err });
+      clearOrderEdit(row._id);
+      return;
+    }
+    const nextOrder = Number.parseInt(raw, 10);
+    const currentOrder = Number(row.sortOrder ?? 0);
+    if (nextOrder === currentOrder) {
+      clearOrderEdit(row._id);
+      return;
+    }
+    setSavingOrderId(row._id);
+    try {
+      await adminUpdatePrakrutiRecommendation(adminToken, row._id, { sortOrder: nextOrder });
+      await loadRows();
+    } catch (e) {
+      if (e?.status === 401) return dispatch(logout());
+      await Swal.fire({ icon: "error", title: "Order update failed", text: e.message || "Could not update order." });
+      clearOrderEdit(row._id);
+    } finally {
+      setSavingOrderId("");
+    }
+  };
 
   const onDelete = async (row) => {
     const { isConfirmed } = await Swal.fire({
@@ -164,6 +212,7 @@ export function PrakrutiRecommendationList() {
           <table className="data-table">
             <thead>
               <tr>
+                <th>S No.</th>
                 <th>Order</th>
                 <th>Prakruti type</th>
                 <th>Title</th>
@@ -174,15 +223,40 @@ export function PrakrutiRecommendationList() {
             </thead>
             <tbody>
               {loading ? (
-                <AdminTableLoaderRow colSpan={6} label="Loading…" />
+                <AdminTableLoaderRow colSpan={7} label="Loading…" />
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={6}>No items found.</td>
+                  <td colSpan={7}>No items found.</td>
                 </tr>
               ) : (
-                rows.map((row) => (
+                rows.map((row, idx) => (
                   <tr key={row._id}>
-                    <td className="data-table__muted">{row.sortOrder ?? 0}</td>
+                    <td className="data-table__muted">{(page - 1) * LIST_LIMIT + idx + 1}</td>
+                    <td>
+                      {canEdit ? (
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          className={`order-input${savingOrderId === row._id ? " order-input--saving" : ""}`}
+                          value={getOrderValue(row)}
+                          onChange={(e) => onOrderChange(row, e.target.value)}
+                          onBlur={() => onSaveOrder(row)}
+                          onKeyDown={(e) => {
+                            blockPhoneNonDigitKeyDown(e);
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              e.currentTarget.blur();
+                            }
+                          }}
+                          aria-label={`Order for ${row.title || "item"}`}
+                          title={`Lower number shows first (${SORT_ORDER_MIN}–${SORT_ORDER_MAX})`}
+                          disabled={savingOrderId === row._id}
+                        />
+                      ) : (
+                        <span className="data-table__muted">{row.sortOrder != null ? row.sortOrder : "—"}</span>
+                      )}
+                    </td>
                     <td>{prakrutiTypeLabel(row.prakrutiType)}</td>
                     <td><TableCellText value={row.title} max={TITLE_PREVIEW_LEN} /></td>
                     <td>

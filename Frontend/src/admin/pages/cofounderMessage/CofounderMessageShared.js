@@ -1,3 +1,4 @@
+export { formatDateTime } from "../../utils/formatDate.js";
 export const NAME_MAX_LEN = 35;
 export const MESSAGE_MAX_LEN = 5000;
 export const YTLINK_MAX_LEN = 500;
@@ -32,10 +33,4 @@ export function messageFromApi(row) {
     status: row.status || "active",
   };
 }
-
-export function formatDateTime(value) {
-  if (!value) return "—";
-  const t = new Date(value).getTime();
-  if (Number.isNaN(t)) return "—";
-  return new Date(value).toLocaleString();
-}
+

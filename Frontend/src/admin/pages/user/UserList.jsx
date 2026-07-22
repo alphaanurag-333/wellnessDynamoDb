@@ -12,12 +12,7 @@ import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
 import { UserTierBadge } from "../../../components/ReferralAssignmentShared.jsx";
 import { useResourcePermissions } from "../../hooks/useHasPermission.js";
-
-function formatJoined(iso) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString(undefined, { dateStyle: "medium" });
-}
+import { formatDate as formatJoined } from "../../utils/formatDate.js";
 
 function csvEscape(value) {
   const raw = value == null ? "" : String(value);

@@ -1,3 +1,4 @@
+export { formatDateTime } from "../../utils/formatDate.js";
 export function approvalLabel(status) {
   const value = String(status || "").toLowerCase();
   if (value === "approved") return "Approved";
@@ -11,12 +12,6 @@ export function approvalBadgeClass(status) {
   if (value === "rejected") return "admin-status-badge admin-status-badge--inactive";
   return "admin-status-badge";
 }
-
-export function formatDateTime(value) {
-  if (!value) return "—";
-  const t = new Date(value).getTime();
-  if (Number.isNaN(t)) return "—";
-  return new Date(value).toLocaleString();
-}
+
 
 export const LIST_LIMIT = 10;

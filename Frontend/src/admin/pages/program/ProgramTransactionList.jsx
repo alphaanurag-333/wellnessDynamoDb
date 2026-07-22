@@ -9,6 +9,7 @@ import {
 import { logout } from "../../../store/authSlice.js";
 import { UserTableLoaderRow } from "../user/UserPageLoader.jsx";
 import { AdminListHeader } from "../../components/AdminCrud.jsx";
+import { formatDateTime as formatDate } from "../../utils/formatDate.js";
 
 const LIST_SEARCH_MAX_LEN = 50;
 
@@ -16,12 +17,6 @@ function formatMoney(value) {
   const n = Number(value);
   if (!Number.isFinite(n)) return "—";
   return `₹${n.toFixed(2)}`;
-}
-
-function formatDate(iso) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 }
 
 function PaymentStatusPill({ status }) {

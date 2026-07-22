@@ -11,18 +11,9 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+
 
-function formatDate(value) {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return String(value);
-  return d.toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
-
+import { formatDate } from "../admin/utils/formatDate.js";
 function MetricCard({ title, current, children, emptyText = "No data recorded yet." }) {
   return (
     <div className="page-card metabolic-metric-card">

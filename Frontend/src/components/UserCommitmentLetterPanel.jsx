@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import Swal from "sweetalert2";
 import { AdminPageLoader } from "../admin/components/AdminLoader.jsx";
 import { approvalLabel } from "../admin/pages/commitmentLetter/CommitmentLetterShared.js";
+import { formatDateTime } from "../admin/utils/formatDate.js";
 
 export function UserCommitmentLetterPanel({ token, userId, fetchLetter, embedded = false }) {
   const [letter, setLetter] = useState(null);
@@ -46,7 +47,7 @@ export function UserCommitmentLetterPanel({ token, userId, fetchLetter, embedded
             <span className="mt-pending-card__badge">{approvalLabel(letter.approvalStatus)}</span>
           </div>
           <p className="page-card__desc">
-            Submitted: {letter.createdAt ? new Date(letter.createdAt).toLocaleString() : "—"}
+            Submitted: {formatDateTime(letter.createdAt)}
             {letter.resubmissionCount ? ` · Resubmissions: ${letter.resubmissionCount}` : ""}
           </p>
           {letter.rejectionReason ? (

@@ -1,3 +1,4 @@
+export { formatDate } from "../../utils/formatDate.js";
 export const TITLE_MIN_LEN = 2;
 export const TITLE_MAX_LEN = 35;
 export const DESCRIPTION_MIN_LEN = 5;
@@ -60,13 +61,7 @@ export function truncate(str, max) {
   if (s.length <= max) return s;
   return `${s.slice(0, max)}…`;
 }
-
-export function formatDate(value) {
-  if (!value) return "—";
-  const t = new Date(value).getTime();
-  if (Number.isNaN(t)) return "—";
-  return new Date(value).toLocaleString();
-}
+
 
 export function validateForm(form) {
   const title = form.title.trim();

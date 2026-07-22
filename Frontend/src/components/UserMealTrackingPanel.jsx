@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import Swal from "sweetalert2";
+import { formatDate as formatDateShared } from "../admin/utils/formatDate.js";
 
 const PAGE_SIZE = 8;
 
@@ -48,16 +49,14 @@ const DEFAULT_ITEM = { name: "", quantityGm: "" };
 
 function formatDate(dateOnly) {
   if (!dateOnly) return "—";
-  const d = new Date(`${dateOnly}T00:00:00Z`);
-  if (Number.isNaN(d.getTime())) return dateOnly;
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+  return formatDateShared(`${dateOnly}T00:00:00Z`, { timeZone: "UTC" });
 }
 
 function shortDate(dateOnly) {
   if (!dateOnly) return "";
-  const d = new Date(`${dateOnly}T00:00:00Z`);
-  if (Number.isNaN(d.getTime())) return dateOnly;
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  const formatted = formatDateShared(`${dateOnly}T00:00:00Z`, { timeZone: "UTC" });
+  if (formatted === "—") return dateOnly;
+  return formatted.replace(/\s+\d{4}$/, "");
 }
 
 function formatTime(hhmm) {

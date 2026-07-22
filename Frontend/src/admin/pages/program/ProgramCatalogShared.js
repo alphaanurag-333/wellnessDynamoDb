@@ -1,3 +1,4 @@
+export { formatDate } from "../../utils/formatDate.js";
 export const LIST_LIMIT = 10;
 export const LIST_SEARCH_MAX_LEN = 50;
 export const TITLE_MAX_LEN = 200;
@@ -13,12 +14,7 @@ export function programTypeLabel(value) {
   const row = PROGRAM_TYPE_OPTIONS.find((o) => o.value === v);
   return row?.label || value || "—";
 }
-
-export function formatDate(iso) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString(undefined, { dateStyle: "medium" });
-}
+
 
 export function formatMoney(value, currency = "INR") {
   const n = Number(value);

@@ -1,3 +1,4 @@
+export { formatDateTime } from "../../utils/formatDate.js";
 export const LIST_LIMIT = 10;
 export const MESSAGE_MAX_LEN = 1000;
 
@@ -6,13 +7,7 @@ export const STATUS_OPTIONS = [
   { value: "active", label: "Active" },
   { value: "inactive", label: "Inactive" },
 ];
-
-export function formatDateTime(value) {
-  if (!value) return "—";
-  const t = new Date(value).getTime();
-  if (Number.isNaN(t)) return "—";
-  return new Date(value).toLocaleString();
-}
+
 
 export const pillBarStyle = {
   background: "#efeff4",

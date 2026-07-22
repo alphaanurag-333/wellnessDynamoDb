@@ -7,12 +7,7 @@ import { UserTableLoaderRow } from "../user/UserPageLoader.jsx";
 import { AdminListHeader } from "../../components/AdminCrud.jsx";
 import { formatAssignedCoachLabel } from "../../../components/ReferralAssignmentShared.jsx";
 import { healthConcernLabel } from "../../../components/consultancy/ConsultancyPortalShared.jsx";
-
-function formatDate(iso) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString(undefined, { dateStyle: "medium" });
-}
+import { formatDate } from "../../utils/formatDate.js";
 
 function enrollmentLabel(status) {
   if (status === "enrolled") return "Enrolled";

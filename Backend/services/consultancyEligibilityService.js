@@ -7,7 +7,6 @@ const {
 } = require("../models/userAssignmentLogic");
 const {
   getFinancialYear,
-  getFinancialYearByStartYear,
   normalizeFyStartMonth,
 } = require("./energyExchangePricingService");
 
@@ -41,10 +40,14 @@ function formatConsultancyFyLabel(fy, { isRenewal = false } = {}) {
   return `Current Financial Year (FY ${fy.fyStartYear})`;
 }
 
+function canBuyConsultancy(userTier) {
+  const tier = normalizeUserTier(userTier);
+  return tier === "seek" || isConsultancyOnlyTier(tier) || isHealTier(tier);
+}
+
 /**
- * Seek users may buy consultancy for the current FY once.
- * Consultancy-only users may buy the next FY in advance (one FY ahead).
- * Heal members may book additional counselling sessions at any time.
+ * Seek, consultancy-only, and Heal users may purchase consultancy any number of times.
+ * Each payment is tagged with the current financial year for records.
  */
 async function resolveConsultancyPurchaseEligibility(user, { now = new Date() } = {}) {
   const appConfig = await getAppConfig();
@@ -53,64 +56,37 @@ async function resolveConsultancyPurchaseEligibility(user, { now = new Date() } 
   const paidFyYears = await listPaidConsultancyFyYears(user.id, fyStartMonth);
   const paidYearsSorted = [...paidFyYears].sort((a, b) => a - b);
 
-  if (isHealTier(user.userTier)) {
+  if (!canBuyConsultancy(user.userTier)) {
     return {
-      canPurchase: true,
-      reason: null,
-      purchasableFy: {
+      canPurchase: false,
+      reason: "invalid_tier",
+      purchasableFy: null,
+      purchasableFyLabel: null,
+      isRenewal: false,
+      currentFy: {
         fyStartYear: currentFy.fyStartYear,
-        fyStartMonth: currentFy.fyStartMonth,
         startsAt: currentFy.startsAt,
         endsAt: currentFy.endsAt,
-        label: formatConsultancyFyLabel(currentFy, { isRenewal: false }),
       },
-      purchasableFyLabel: formatConsultancyFyLabel(currentFy, { isRenewal: false }),
-      isRenewal: false,
-      currentFy,
       fyStartMonth,
       paidFyYears: paidYearsSorted,
     };
   }
 
-  const tier = normalizeUserTier(user.userTier);
-  let purchasableFy = null;
-  let isRenewal = false;
-  let reason = "not_available";
-
-  if (tier === "seek") {
-    if (!paidFyYears.has(currentFy.fyStartYear)) {
-      purchasableFy = currentFy;
-      isRenewal = false;
-    } else {
-      reason = "already_enrolled";
-    }
-  } else if (isConsultancyOnlyTier(tier)) {
-    const nextFy = getFinancialYearByStartYear(currentFy.fyStartYear + 1, fyStartMonth);
-    if (!paidFyYears.has(nextFy.fyStartYear)) {
-      purchasableFy = nextFy;
-      isRenewal = true;
-    } else {
-      reason = "next_fy_purchased";
-    }
-  } else {
-    reason = "invalid_tier";
-  }
+  const isRenewal = isConsultancyOnlyTier(user.userTier) && paidFyYears.size > 0;
+  const label = formatConsultancyFyLabel(currentFy, { isRenewal: false });
 
   return {
-    canPurchase: Boolean(purchasableFy),
-    reason: purchasableFy ? null : reason,
-    purchasableFy: purchasableFy
-      ? {
-          fyStartYear: purchasableFy.fyStartYear,
-          fyStartMonth: purchasableFy.fyStartMonth,
-          startsAt: purchasableFy.startsAt,
-          endsAt: purchasableFy.endsAt,
-          label: formatConsultancyFyLabel(purchasableFy, { isRenewal }),
-        }
-      : null,
-    purchasableFyLabel: purchasableFy
-      ? formatConsultancyFyLabel(purchasableFy, { isRenewal })
-      : null,
+    canPurchase: true,
+    reason: null,
+    purchasableFy: {
+      fyStartYear: currentFy.fyStartYear,
+      fyStartMonth: currentFy.fyStartMonth,
+      startsAt: currentFy.startsAt,
+      endsAt: currentFy.endsAt,
+      label,
+    },
+    purchasableFyLabel: label,
     isRenewal,
     currentFy: {
       fyStartYear: currentFy.fyStartYear,

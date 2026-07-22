@@ -1,20 +1,12 @@
+import { formatDate, formatDateTime } from "../../admin/utils/formatDate.js";
+
 export function formatMoney(value) {
   const n = Number(value);
   if (!Number.isFinite(n)) return "—";
   return `Rs. ${n.toFixed(2)}`;
 }
 
-export function formatDate(iso) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-}
-
-export function formatJoined(iso) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString(undefined, { dateStyle: "medium" });
-}
+export { formatDateTime as formatDate, formatDate as formatJoined };
 
 export function PaymentStatusPill({ status }) {
   const value = String(status || "").toLowerCase();

@@ -8,12 +8,7 @@ import {
   fetchActiveTestCatalogMeta,
 } from "../wellnessCoach/api/coachTestCatalog.js";
 
-function formatReportDate(iso) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
+import { formatDate } from "../admin/utils/formatDate.js";
 
 function testTypeLabel(type) {
   const value = String(type || "").toUpperCase();
@@ -69,7 +64,7 @@ function RecommendationCard({ recommendation, onDelete, deleting, canDelete }) {
             </svg>
           </div>
           <div>
-            <div className="diet-plan-card__title">Report date: {formatReportDate(recommendation.reportDate)}</div>
+            <div className="diet-plan-card__title">Report date: {formatDate(recommendation.reportDate)}</div>
             <div className="diet-plan-card__date">
               {tests.length} test{tests.length === 1 ? "" : "s"} selected
             </div>
@@ -132,7 +127,7 @@ function LabReportCard({ report }) {
             </svg>
           </div>
           <div>
-            <div className="diet-plan-card__title">Report date: {formatReportDate(report.reportDate)}</div>
+            <div className="diet-plan-card__title">Report date: {formatDate(report.reportDate)}</div>
             <div className="diet-plan-card__date">Uploaded by client</div>
           </div>
         </div>
@@ -153,7 +148,7 @@ function LabReportCard({ report }) {
       </div>
       {report.createdAt ? (
         <div className="assignment-card__body">
-          <div className="diet-plan-card__note">Submitted {formatReportDate(report.createdAt)}</div>
+          <div className="diet-plan-card__note">Submitted {formatDate(report.createdAt)}</div>
         </div>
       ) : null}
     </article>

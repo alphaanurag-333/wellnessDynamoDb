@@ -1,3 +1,4 @@
+export { formatDateTime } from "../../utils/formatDate.js";
 export const LIST_LIMIT = 20;
 export const LIST_SEARCH_MAX_LEN = 80;
 export const MESSAGE_PREVIEW_LEN = 64;
@@ -45,19 +46,7 @@ export function pillButtonStyle(active) {
 export function getContactInquiryId(row) {
   return row?.id || row?._id || "";
 }
-
-export function formatDateTime(value) {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+
 
 export function inquiryTypeLabel(value) {
   const match = INQUIRY_TYPE_OPTIONS.find((o) => o.value === value);

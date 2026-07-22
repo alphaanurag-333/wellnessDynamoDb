@@ -8,6 +8,7 @@ import { listPages } from "../../api/adminMisc.js";
 import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { logout } from "../../../store/authSlice.js";
 import { useResourcePermissions } from "../../hooks/useHasPermission.js";
+import { formatDate } from "../../utils/formatDate.js";
 
 export function StaticPageList() {
   const dispatch = useDispatch();
@@ -72,7 +73,7 @@ export function StaticPageList() {
                     <td><TableCellText value={row.title} /></td>
                     <td><TableCellText value={row.slug} /></td>
                     <td>{row.status ? <AdminStatusBadge status={row.status} /> : "—"}</td>
-                    <td className="data-table__muted">{row.updatedAt ? new Date(row.updatedAt).toLocaleString() : "—"}</td>
+                    <td className="data-table__muted">{formatDate(row.updatedAt)}</td>
                     <td>
                       <div className="row-actions">
                         {canEdit ? (

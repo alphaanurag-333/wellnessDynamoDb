@@ -12,6 +12,7 @@ import {
   validateRegistrationPassword,
 } from "../../../utils/profilePasswordValidation.js";
 
+export { formatDate } from "../../utils/formatDate.js";
 export const LIST_LIMIT = 10;
 export const LIST_SEARCH_MAX_LEN = 120;
 export { PERSON_NAME_MAX_LEN as NAME_MAX_LEN, EMAIL_MAX_LEN } from "../../../utils/personFieldValidation.js";
@@ -234,13 +235,7 @@ export function validateCoachForm(form, { requirePassword = false } = {}) {
   }
   return "";
 }
-
-export function formatDate(value) {
-  if (!value) return "—";
-  const t = new Date(value).getTime();
-  if (Number.isNaN(t)) return "—";
-  return new Date(value).toLocaleString();
-}
+
 
 export function formatPhone(row) {
   return [row?.phoneCountryCode, row?.phone].filter(Boolean).join(" ") || "—";

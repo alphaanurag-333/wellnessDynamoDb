@@ -1,3 +1,4 @@
+export { formatDate } from "../../utils/formatDate.js";
 export const QUESTION_MAX_LEN = 100;
 export const ANSWER_MAX_LEN = 255;
 export const QUESTION_PREVIEW_LEN = 50;
@@ -45,10 +46,4 @@ export function truncateText(value, maxLen) {
 export function getFaqId(row) {
   return row?.id || row?._id || "";
 }
-
-export function formatDate(value) {
-  if (!value) return "—";
-  const t = new Date(value).getTime();
-  if (Number.isNaN(t)) return "—";
-  return new Date(value).toLocaleString();
-}
+

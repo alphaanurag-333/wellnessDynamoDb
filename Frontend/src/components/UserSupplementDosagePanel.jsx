@@ -3,18 +3,13 @@ import { Link } from "react-router-dom";
 import Swal from "sweetalert2";
 import { fetchActiveSupplementCatalog } from "../wellnessCoach/api/coachSupplementCatalog.js";
 
+import { formatDate } from "../admin/utils/formatDate.js";
 const PERIOD_ROWS = [
   { key: "morning", label: "Morning (6am – 12pm)" },
   { key: "afternoon", label: "Afternoon (12pm – 5pm)" },
   { key: "evening", label: "Evening/Night (5pm – 12am)" },
 ];
-
-function formatDate(iso) {
-  if (!iso) return "—";
-  const d = new Date(`${iso}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
+
 
 function addDays(isoDate, days) {
   const d = new Date(`${isoDate}T00:00:00.000Z`);

@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useState } from "react";
 import Swal from "sweetalert2";
+import { formatDateTime as formatDate } from "../admin/utils/formatDate.js";
 
 const STATUS_OPTIONS = [
   { value: "requested", label: "Requested" },
@@ -8,19 +9,6 @@ const STATUS_OPTIONS = [
   { value: "follow_up_needed", label: "Follow-up needed" },
   { value: "cancelled", label: "Cancelled" },
 ];
-
-function formatDate(value) {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return String(value);
-  return d.toLocaleString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 function statusLabel(value) {
   return STATUS_OPTIONS.find((item) => item.value === value)?.label || value || "—";

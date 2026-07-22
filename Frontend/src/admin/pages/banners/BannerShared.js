@@ -3,6 +3,7 @@ import {
   IMAGE_MAX_SIZE_MB,
 } from "../../../utils/mediaUploadValidation.js";
 
+export { formatDate } from "../../utils/formatDate.js";
 export const TITLE_MAX_LEN = 35;
 export const DESCRIPTION_MIN_LEN = 5;
 export const DESCRIPTION_MAX_LEN = 255;
@@ -100,10 +101,4 @@ export function validateBannerForm(form) {
 
   return "";
 }
-
-export function formatDate(value) {
-  if (!value) return "—";
-  const t = new Date(value).getTime();
-  if (Number.isNaN(t)) return "—";
-  return new Date(value).toLocaleString();
-}
+

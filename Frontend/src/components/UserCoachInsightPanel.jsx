@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import Swal from "sweetalert2";
 import { AdminPageLoader } from "../admin/components/AdminLoader.jsx";
+import { formatDateTime } from "../admin/utils/formatDate.js";
 
 const MAX_MESSAGE_LENGTH = 500;
 
 function formatUpdatedAt(iso) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString();
+  return formatDateTime(iso);
 }
 
 export function UserCoachInsightPanel({

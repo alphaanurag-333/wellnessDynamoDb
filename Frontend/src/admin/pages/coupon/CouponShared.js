@@ -1,3 +1,4 @@
+export { formatDate } from "../../utils/formatDate.js";
 export const TITLE_MAX_LEN = 35;
 export const COUPON_CODE_MAX_LEN = 32;
 export const LIST_SEARCH_MAX_LEN = 50;
@@ -71,13 +72,7 @@ export function truncateText(value, maxLen) {
   if (!text) return "—";
   return text.length > maxLen ? `${text.slice(0, maxLen)}...` : text;
 }
-
-export function formatDate(value) {
-  if (!value) return "—";
-  const t = new Date(value).getTime();
-  if (Number.isNaN(t)) return "—";
-  return new Date(value).toLocaleString();
-}
+
 
 export function formatDiscountType(value) {
   const type = String(value || "").toLowerCase();

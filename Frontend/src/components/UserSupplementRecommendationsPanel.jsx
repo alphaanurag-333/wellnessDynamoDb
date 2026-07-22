@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import Swal from "sweetalert2";
 import { fetchActiveSupplementCatalog } from "../wellnessCoach/api/coachSupplementCatalog.js";
 
+import { formatDate } from "../admin/utils/formatDate.js";
+
 function CheckIcon() {
   return (
     <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="3">
@@ -13,13 +15,6 @@ function CheckIcon() {
 
 function formatRupee(amount) {
   return `Rs. ${Number(amount || 0).toLocaleString("en-IN")}`;
-}
-
-function formatAssignedDate(iso) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 function deliveryOptionLabel(option) {
@@ -95,7 +90,7 @@ function RecommendationHistoryCard({ recommendation, onRemove, removing, canRemo
             <div className="diet-plan-card__date">
               {deliveryOptionLabel(recommendation.deliveryOption)}
               {recommendation.createdAt
-                ? ` · ${formatAssignedDate(recommendation.createdAt)}`
+                ? ` · ${formatDate(recommendation.createdAt)}`
                 : ""}
             </div>
           </div>
@@ -122,12 +117,12 @@ function RecommendationHistoryCard({ recommendation, onRemove, removing, canRemo
         </ul>
         {recommendation.deliveryOption === "coach_delivery" && recommendation.deliveryRequestedAt ? (
           <div className="assignment-card__note text-success">
-            Delivery requested on {formatAssignedDate(recommendation.deliveryRequestedAt)}
+            Delivery requested on {formatDate(recommendation.deliveryRequestedAt)}
           </div>
         ) : null}
         {recommendation.deliveryOption === "self_billing" && recommendation.billUploadedAt ? (
           <div className="assignment-card__note">
-            Bill uploaded on {formatAssignedDate(recommendation.billUploadedAt)}
+            Bill uploaded on {formatDate(recommendation.billUploadedAt)}
             {recommendation.billPdfUrl ? (
               <>
                 {" "}

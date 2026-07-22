@@ -5,12 +5,7 @@ import { CatalogPickerPagination } from "./CatalogPickerPagination.jsx";
 import { CATALOG_PAGE_SIZE, emptyCatalogPagination } from "./catalogPickerConstants.js";
 import { fetchActivePhysicalExerciseCatalog } from "../wellnessCoach/api/coachPhysicalExerciseCatalog.js";
 
-function formatAssignedDate(iso) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
+import { formatDate } from "../admin/utils/formatDate.js";
 
 function exerciseTypeLabel(type) {
   return type === "video" ? "Video" : "YouTube";
@@ -69,7 +64,7 @@ function AssignmentCard({ assignment, onRemove, removing, canRemove }) {
             <div className="diet-plan-card__title">{exercise.title || "Exercise"}</div>
             <div className="diet-plan-card__date">
               {exerciseTypeLabel(exercise.type)}
-              {assignment.createdAt ? ` · Assigned ${formatAssignedDate(assignment.createdAt)}` : ""}
+              {assignment.createdAt ? ` · Assigned ${formatDate(assignment.createdAt)}` : ""}
             </div>
           </div>
         </div>

@@ -14,12 +14,7 @@ import {
   formatReferredByLabel,
 } from "../../../components/ReferralAssignmentShared.jsx";
 import { ConvertToHealModal, ConvertToSeekModal, UserAssignCoachModal } from "./UserAssignmentModals.jsx";
-
-function formatDate(iso) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-}
+import { formatDate, formatDateTime } from "../../utils/formatDate.js";
 
 function DetailRow({ label, value }) {
   return (
@@ -106,8 +101,7 @@ export function UserView() {
 
   let dobLabel = "—";
   if (user.dob) {
-    const d = new Date(user.dob);
-    if (!Number.isNaN(d.getTime())) dobLabel = d.toLocaleDateString(undefined, { dateStyle: "medium" });
+    dobLabel = formatDate(user.dob);
   }
 
   const phc = user.primaryHealthConcern;
@@ -196,7 +190,7 @@ export function UserView() {
             <DetailRow label="Terms accepted" value={user.termsAccepted ? "Yes" : "No"} />
             <DetailRow
               label="Terms accepted at"
-              value={user.termsAcceptedAt ? formatDate(user.termsAcceptedAt) : "—"}
+              value={user.termsAcceptedAt ? formatDateTime(user.termsAcceptedAt) : "—"}
             />
             <div className="user-detail-row">
               <span className="user-detail-row__label">Status</span>
@@ -211,12 +205,12 @@ export function UserView() {
                 <DetailRow label="Assigned to" value={formatAssignedCoachLabel(user)} />
                 <DetailRow label="Owning coach" value={user.parentCoach?.name || user.parentCoachId || "—"} />
                 <DetailRow label="Referred by" value={formatReferredByLabel(user)} />
-                <DetailRow label="Converted at" value={formatDate(user.convertedAt)} />
+                <DetailRow label="Converted at" value={formatDateTime(user.convertedAt)} />
                 <CopyReferralCode code={user.referralCode} label="Referral code" />
               </>
             ) : null}
-            <DetailRow label="Created At" value={formatDate(user.createdAt)} />
-            <DetailRow label="Updated At" value={formatDate(user.updatedAt)} />
+            <DetailRow label="Created At" value={formatDateTime(user.createdAt)} />
+            <DetailRow label="Updated At" value={formatDateTime(user.updatedAt)} />
           </div>
         </div>
       </div>
@@ -290,7 +284,7 @@ function UserEnergyExchangeSection({ userId, adminToken, dispatch }) {
       <div className="user-view-grid">
         <DetailRow label="Enabled" value={u.energyExchangeEnabled ? "Yes" : "No"} />
         <DetailRow label="Paid onboarding" value={u.paidOnboardingCompleted ? "Completed" : (u.paidOnboardingStep || "pending")} />
-        <DetailRow label="Heal paid at" value={u.healPaidAt ? formatDate(u.healPaidAt) : "—"} />
+        <DetailRow label="Heal paid at" value={u.healPaidAt ? formatDateTime(u.healPaidAt) : "—"} />
         <DetailRow label="Dietary preference" value={u.dietaryPreference || "—"} />
         <DetailRow label="Wellness journey" value={(u.wellnessJourneyFor || []).join(", ") || "—"} />
         <DetailRow label="Address" value={[u.addressLine1, u.addressLine2, u.pincode].filter(Boolean).join(", ") || "—"} />

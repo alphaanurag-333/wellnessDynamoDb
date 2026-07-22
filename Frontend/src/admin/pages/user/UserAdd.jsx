@@ -28,6 +28,7 @@ import {
   EMAIL_MAX_LEN,
   INDIAN_MOBILE_INPUT_PATTERN,
 } from "../../../utils/personFieldValidation.js";
+import { formatDateTime } from "../../utils/formatDate.js";
 
 const GENDER_VALUES = ["male", "female", "other", "boy", "girl", "guess"];
 
@@ -850,11 +851,7 @@ export function UserProfileForm({
                 </div>
                 {initialUser?.termsAcceptedAt ? (
                   <div className="text-body-secondary mt-1">
-                    Recorded:{" "}
-                    {new Date(initialUser.termsAcceptedAt).toLocaleString(undefined, {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                    })}
+                    Recorded: {formatDateTime(initialUser.termsAcceptedAt)}
                   </div>
                 ) : null}
               </div>
