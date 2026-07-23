@@ -2,14 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import Swal from "sweetalert2";
-import { IoEyeSharp } from "react-icons/io5";
-import { MdEditSquare } from "react-icons/md";
-import { AiFillDelete } from "react-icons/ai";
 import {
-  adminDeleteCoachAssistant,
   adminGetWellnessCoach,
-  adminListCoachAssistants,
-  adminUpdateCoachAssistant,
   adminUpdateWellnessCoachApproval,
   resolveCoachId,
 } from "../../api/adminWellnessCoaches.js";
@@ -19,7 +13,6 @@ import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { NotFoundPage } from "../NotFoundPage.jsx";
 import { formatDate, formatPhone } from "./WellnessCoachShared.js";
 import { WellnessCoachPageLoadingState, WellnessCoachTableLoaderRow } from "./WellnessCoachPageLoader.jsx";
-import { resolveAssistantId } from "../assistantWellnessCoach/AssistantShared.js";
 import { CopyReferralCode, UserTierBadge, formatAssignedCoachLabel } from "../../../components/ReferralAssignmentShared.jsx";
 
 function DetailRow({ label, value }) {
@@ -37,30 +30,12 @@ export function WellnessCoachView() {
   const dispatch = useDispatch();
   const adminToken = useSelector((s) => s.auth.adminToken);
   const [coach, setCoach] = useState(null);
-  const [assistants, setAssistants] = useState([]);
   const [healUsers, setHealUsers] = useState([]);
-  const [loadingAssistants, setLoadingAssistants] = useState(false);
   const [loadingHealUsers, setLoadingHealUsers] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [togglingAssistantId, setTogglingAssistantId] = useState("");
   const [approvingCoach, setApprovingCoach] = useState(false);
-
-  const loadAssistants = useCallback(async () => {
-    if (!adminToken || !coachId) return;
-    setLoadingAssistants(true);
-    try {
-      const { assistants: rows } = await adminListCoachAssistants(adminToken, coachId, {
-        limit: 50,
-      });
-      setAssistants(rows);
-    } catch (e) {
-      if (e?.status === 401) dispatch(logout());
-    } finally {
-      setLoadingAssistants(false);
-    }
-  }, [adminToken, coachId, dispatch]);
 
   useEffect(() => {
     if (!adminToken || !coachId) return;
@@ -110,47 +85,8 @@ export function WellnessCoachView() {
   }, [adminToken, coachId, dispatch]);
 
   useEffect(() => {
-    if (coach) loadAssistants();
-  }, [coach, loadAssistants]);
-
-  useEffect(() => {
     if (coach) loadHealUsers();
   }, [coach, loadHealUsers]);
-
-  const handleToggleAssistantStatus = async (assistant) => {
-    if (!adminToken || !coachId) return;
-    const aid = resolveAssistantId(assistant);
-    const nextStatus = assistant.status === "active" ? "inactive" : "active";
-    setTogglingAssistantId(aid);
-    try {
-      await adminUpdateCoachAssistant(adminToken, coachId, aid, { status: nextStatus });
-      await Swal.fire({ icon: "success", title: "Status updated", timer: 1200 });
-      loadAssistants();
-    } catch (e) {
-      if (e?.status === 401) dispatch(logout());
-      else await Swal.fire({ icon: "error", title: "Update failed", text: e.message });
-    } finally {
-      setTogglingAssistantId("");
-    }
-  };
-
-  const handleToggleAssistantVisibility = async (assistant, field) => {
-    if (!adminToken || !coachId || (field !== "webVisible" && field !== "appVisible")) return;
-    const aid = resolveAssistantId(assistant);
-    const next = !(assistant[field] !== false);
-    setTogglingAssistantId(`${aid}:${field}`);
-    try {
-      await adminUpdateCoachAssistant(adminToken, coachId, aid, { [field]: next });
-      setAssistants((prev) =>
-        prev.map((row) => (resolveAssistantId(row) === aid ? { ...row, [field]: next } : row))
-      );
-    } catch (e) {
-      if (e?.status === 401) dispatch(logout());
-      else await Swal.fire({ icon: "error", title: "Update failed", text: e.message });
-    } finally {
-      setTogglingAssistantId("");
-    }
-  };
 
   const handleApproveCoach = async (approvalStatus) => {
     if (!adminToken || !coachId) return;
@@ -174,26 +110,6 @@ export function WellnessCoachView() {
       else await Swal.fire({ icon: "error", title: "Failed", text: e.message });
     } finally {
       setApprovingCoach(false);
-    }
-  };
-
-  const handleDeleteAssistant = async (assistant) => {
-    const aid = resolveAssistantId(assistant);
-    const { isConfirmed } = await Swal.fire({
-      title: "Delete assistant?",
-      text: assistant.name || assistant.email,
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#dc2626",
-    });
-    if (!isConfirmed || !adminToken) return;
-    try {
-      await adminDeleteCoachAssistant(adminToken, coachId, aid);
-      await Swal.fire({ icon: "success", title: "Assistant deleted", timer: 1200 });
-      loadAssistants();
-    } catch (e) {
-      if (e?.status === 401) dispatch(logout());
-      else await Swal.fire({ icon: "error", title: "Delete failed", text: e.message });
     }
   };
 
@@ -278,7 +194,7 @@ export function WellnessCoachView() {
 
       <div className="page-card" style={{ marginTop: 24 }}>
         <div className="page-card__head">
-          <h3 className="page-card__title">Assigned clients (direct + via assistants)</h3>
+          <h3 className="page-card__title">Assigned clients</h3>
         </div>
         <div className="table-scroll">
           <table className="data-table">
@@ -310,124 +226,6 @@ export function WellnessCoachView() {
                     </td>
                   </tr>
                 ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="page-card" style={{ marginTop: 24 }}>
-        <div className="page-card__head">
-          <h3 className="page-card__title">Assistant staff (AWC)</h3>
-          <Link to={`/admin/coaches/${id}/assistants/new`} className="btn btn--accent">
-            + Add assistant
-          </Link>
-        </div>
-        <div className="table-scroll">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Mobile</th>
-                <th>Designation</th>
-                <th>Status</th>
-                <th>Web</th>
-                <th>App</th>
-                <th className="data-table__actions-col">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loadingAssistants ? (
-                <WellnessCoachTableLoaderRow colSpan={8} />
-              ) : assistants.length === 0 ? (
-                <tr>
-                  <td colSpan={8}>
-                    <p className="table-placeholder">No assistants yet.</p>
-                  </td>
-                </tr>
-              ) : (
-                assistants.map((a) => {
-                  const aid = resolveAssistantId(a);
-                  const webOn = a.webVisible !== false;
-                  const appOn = a.appVisible !== false;
-                  return (
-                    <tr key={aid}>
-                      <td>{a.name}</td>
-                      <td className="data-table__mono">{a.email}</td>
-                      <td>{formatPhone(a)}</td>
-                      <td>{a.designation || "—"}</td>
-                      <td>
-                        <button
-                          type="button"
-                          className={`settings-switch${a.status === "active" ? " settings-switch--on" : ""}`}
-                          role="switch"
-                          aria-checked={a.status === "active"}
-                          aria-label={`Toggle status for ${a.name || a.email}`}
-                          onClick={() => handleToggleAssistantStatus(a)}
-                          disabled={togglingAssistantId === aid}
-                          title={a.status === "active" ? "Deactivate assistant" : "Activate assistant"}
-                        >
-                          <span className="settings-switch__knob" aria-hidden />
-                        </button>
-                      </td>
-                      <td>
-                        <button
-                          type="button"
-                          className={`settings-switch${webOn ? " settings-switch--on" : ""}`}
-                          role="switch"
-                          aria-checked={webOn}
-                          aria-label={`Toggle web visibility for ${a.name || a.email}`}
-                          onClick={() => handleToggleAssistantVisibility(a, "webVisible")}
-                          disabled={togglingAssistantId === `${aid}:webVisible`}
-                          title={webOn ? "Hide on web" : "Show on web"}
-                        >
-                          <span className="settings-switch__knob" aria-hidden />
-                        </button>
-                      </td>
-                      <td>
-                        <button
-                          type="button"
-                          className={`settings-switch${appOn ? " settings-switch--on" : ""}`}
-                          role="switch"
-                          aria-checked={appOn}
-                          aria-label={`Toggle app visibility for ${a.name || a.email}`}
-                          onClick={() => handleToggleAssistantVisibility(a, "appVisible")}
-                          disabled={togglingAssistantId === `${aid}:appVisible`}
-                          title={appOn ? "Hide on app" : "Show on app"}
-                        >
-                          <span className="settings-switch__knob" aria-hidden />
-                        </button>
-                      </td>
-                      <td>
-                        <div className="row-actions">
-                          <Link
-                            to={`/admin/coaches/${id}/assistants/${aid}`}
-                            className="icon-btn icon-btn--view"
-                            title="View"
-                          >
-                            <IoEyeSharp size={18} />
-                          </Link>
-                          <Link
-                            to={`/admin/coaches/${id}/assistants/${aid}/edit`}
-                            className="icon-btn icon-btn--edit"
-                            title="Edit"
-                          >
-                            <MdEditSquare size={18} />
-                          </Link>
-                          <button
-                            type="button"
-                            className="icon-btn icon-btn--delete"
-                            title="Delete"
-                            onClick={() => handleDeleteAssistant(a)}
-                          >
-                            <AiFillDelete size={18} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
               )}
             </tbody>
           </table>

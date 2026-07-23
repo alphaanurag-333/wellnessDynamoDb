@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import Swal from "sweetalert2";
 import { useDispatch, useSelector } from "react-redux";
-import { coachListAssistants } from "../../api/coachAssistants.js";
-import { coachListHealUsers, coachReassignHealUser } from "../../api/coachHealUsers.js";
+import { coachListHealUsers } from "../../api/coachHealUsers.js";
 import { logoutCoach } from "../../../store/authSlice.js";
 import { CoachPageLoadingState, CoachTableLoaderRow } from "../../components/CoachPageLoader.jsx";
 import {
@@ -35,18 +33,11 @@ function SearchIcon() {
 export function MyHealUsersList() {
   const dispatch = useDispatch();
   const coachToken = useSelector((s) => s.auth.coachToken);
-  const coach = useSelector((s) => s.auth.coach);
-  const coachId = coach?._id || coach?.id;
 
   const [users, setUsers] = useState([]);
-  const [assistants, setAssistants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [reassignUserId, setReassignUserId] = useState("");
-  const [reassignAssistantId, setReassignAssistantId] = useState("");
-  const [reassigning, setReassigning] = useState(false);
-  const [scope, setScope] = useState("all");
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search.trim()), 400);
@@ -60,7 +51,7 @@ export function MyHealUsersList() {
       const { users: rows } = await coachListHealUsers(coachToken, {
         limit: 100,
         search: debouncedSearch || undefined,
-        scope,
+        scope: "direct",
       });
       setUsers(rows);
     } catch (e) {
@@ -68,68 +59,17 @@ export function MyHealUsersList() {
     } finally {
       setLoading(false);
     }
-  }, [coachToken, debouncedSearch, dispatch, scope]);
+  }, [coachToken, debouncedSearch, dispatch]);
 
   useEffect(() => {
     loadUsers();
   }, [loadUsers]);
-
-  useEffect(() => {
-    if (!coachToken) return;
-    (async () => {
-      try {
-        const { assistants: rows } = await coachListAssistants(coachToken, { status: "active", limit: 100 });
-        setAssistants(rows || []);
-      } catch {
-        setAssistants([]);
-      }
-    })();
-  }, [coachToken]);
-
-  const handleReassign = async (user) => {
-    if (!coachToken || !coachId) return;
-    const uid = user._id || user.id;
-    setReassignUserId(uid);
-    setReassignAssistantId("");
-  };
-
-  const submitReassign = async () => {
-    if (!coachToken || !reassignUserId) return;
-    setReassigning(true);
-    try {
-      const payload =
-        reassignAssistantId && reassignAssistantId !== coachId
-          ? {
-              assignedCoachId: reassignAssistantId,
-              assignedCoachType: "assistant_wellness_coach",
-              parentCoachId: coachId,
-            }
-          : {
-              assignedCoachId: coachId,
-              assignedCoachType: "wellness_coach",
-              parentCoachId: coachId,
-            };
-
-      await coachReassignHealUser(coachToken, reassignUserId, payload);
-      await Swal.fire({ icon: "success", title: "User reassigned", timer: 1500 });
-      setReassignUserId("");
-      loadUsers();
-    } catch (e) {
-      if (e?.status === 401) dispatch(logoutCoach());
-      else await Swal.fire({ icon: "error", title: "Failed", text: e.message || "Could not reassign." });
-    } finally {
-      setReassigning(false);
-    }
-  };
 
   return (
     <div className="page-card heal-users-page">
       <div className="page-card__head heal-users-page__head">
         <div className="heal-users-page__intro">
           <h2 className="page-card__title">My clients</h2>
-          {/* <p className="page-card__desc">
-            Assigned clients in your team — Seek, consultancy, and Heal users with water and steps tracking.
-          </p> */}
         </div>
         <div className="page-card__actions user-list-toolbar heal-users-page__toolbar">
           <div className="user-list-filters heal-users-page__filters">
@@ -143,16 +83,6 @@ export function MyHealUsersList() {
                 aria-label="Search clients"
               />
             </div>
-            <select
-              className="user-list-status-select"
-              value={scope}
-              onChange={(e) => setScope(e.target.value)}
-              aria-label="Filter clients"
-            >
-              <option value="all">All clients</option>
-              <option value="direct">My direct clients</option>
-              <option value="assistant">Assistant clients</option>
-            </select>
           </div>
         </div>
       </div>
@@ -201,11 +131,7 @@ export function MyHealUsersList() {
                     <ClientListRowPrograms user={u} />
                   </td>
                   <td className="data-table__actions-col">
-                    <ClientListRowActions
-                      user={u}
-                      viewPath={`${u._id || u.id}`}
-                      onReassign={handleReassign}
-                    />
+                    <ClientListRowActions user={u} viewPath={`${u._id || u.id}`} />
                   </td>
                 </tr>
               ))
@@ -213,37 +139,6 @@ export function MyHealUsersList() {
           </tbody>
         </table>
       </div>
-
-      {reassignUserId ? (
-        <div className="modal-overlay" role="dialog" aria-modal="true">
-          <div className="modal-card">
-            <h3 className="modal-card__title">Reassign within your team</h3>
-            <label className="user-field">
-              <span className="user-field__label">Assign to</span>
-              <select
-                className="user-field__input"
-                value={reassignAssistantId || coachId}
-                onChange={(e) => setReassignAssistantId(e.target.value)}
-              >
-                <option value={coachId}>Myself (Wellness Coach)</option>
-                {assistants.map((a) => (
-                  <option key={a._id || a.id} value={a._id || a.id}>
-                    {a.name} {a.designation ? `· ${a.designation}` : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="modal-card__actions">
-              <button type="button" className="btn btn--ghost" onClick={() => setReassignUserId("")} disabled={reassigning}>
-                Cancel
-              </button>
-              <button type="button" className="btn btn--primary" onClick={submitReassign} disabled={reassigning}>
-                {reassigning ? "Saving…" : "Save"}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

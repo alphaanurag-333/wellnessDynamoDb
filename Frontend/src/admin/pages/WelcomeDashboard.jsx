@@ -50,7 +50,7 @@ function WelcomeShortcut({ to, label, icon, group }) {
   );
 }
 
-/** Shown when a sub-admin can open /admin/dashboard but lacks dashboard.view (no stats). */
+/** Shown when an admin can open /admin/dashboard but lacks dashboard.view (no stats). */
 export function WelcomeDashboard() {
   const admin = useSelector(selectAdmin);
   const isSuperAdmin = useSelector(selectIsSuperAdmin);

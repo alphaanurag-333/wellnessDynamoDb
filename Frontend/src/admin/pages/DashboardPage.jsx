@@ -12,7 +12,6 @@ import { WelcomeDashboard } from "./WelcomeDashboard.jsx";
 const shortcuts = [
   { title: "User Management", desc: "Manage all platform users", icon: "users", to: "/admin/users" },
   { title: "WC Management", desc: "Manage wellness coaches", icon: "coach", to: "/admin/coaches" },
-  { title: "AWC Management", desc: "Manage assistant coaches", icon: "assistant", to: "/admin/awcs" },
   { title: "Contact Queries", desc: "View and respond to inquiries", icon: "mail", to: "/admin/contact-inquiries" },
   { title: "Application Settings", desc: "Configure app settings", icon: "settings", to: "/admin/settings" },
 ];
@@ -53,20 +52,6 @@ const STAT_CARDS = [
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
         <circle cx="12" cy="8" r="4" />
         <path d="M5 20a7 7 0 0 1 14 0" />
-      </svg>
-    ),
-  },
-  {
-    key: "activeAssistants",
-    label: "AWC's Active",
-    to: "/admin/awcs?status=active",
-    tone: "indigo",
-    icon: (
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-        <circle cx="9" cy="7" r="4" />
-        <path d="M2 21a7 7 0 0 1 14 0" />
-        <path d="M19 8v6" />
-        <path d="M16 11h6" />
       </svg>
     ),
   },
@@ -181,16 +166,6 @@ function ShortcutIcon({ type }) {
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
         <circle cx="12" cy="8" r="3" />
         <path d="M5 20a7 7 0 0 1 14 0" />
-      </svg>
-    );
-  }
-  if (type === "assistant") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
-        <circle cx="9" cy="7" r="3" />
-        <path d="M2 21a7 7 0 0 1 14 0" />
-        <path d="M19 8v6" />
-        <path d="M16 11h6" />
       </svg>
     );
   }
@@ -327,7 +302,7 @@ export function DashboardPage() {
         <h2 className="dashboard-section-head__title">Quick Insights</h2>
         <div className="stat-grid stat-grid--dashboard admin-dashboard__stats">
           {loading ? (
-            <DashboardStatsSkeleton count={8} />
+            <DashboardStatsSkeleton count={7} />
           ) : (
             statValues.map((card) => (
               <DashboardStatCard

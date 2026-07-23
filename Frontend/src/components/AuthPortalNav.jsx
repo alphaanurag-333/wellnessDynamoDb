@@ -3,15 +3,9 @@ import { Link } from "react-router-dom";
 const PORTALS = [
   { id: "admin", to: "/admin/login", label: "Admin", shortLabel: "Admin" },
   { id: "coach", to: "/coach/login", label: "Wellness Coach", shortLabel: "Coach" },
-  {
-    id: "assistant",
-    to: "/assistant/login",
-    label: "Assistant Coach",
-    shortLabel: "Assistant",
-  },
 ];
 
-/** Segmented links between Admin / Wellness Coach / Assistant login portals. */
+/** Segmented links between Admin and Wellness Coach login portals. */
 export function AuthPortalNav({ active }) {
   return (
     <nav className="auth-portal-nav" aria-label="Choose portal">

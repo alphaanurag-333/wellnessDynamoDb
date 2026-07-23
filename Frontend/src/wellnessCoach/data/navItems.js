@@ -7,7 +7,6 @@ export const coachNavItems = [
   { to: "monthly-champions", label: "Monthly Champions", icon: "award" },
   { to: "consultancy/transactions", label: "Consultancy Payments", icon: "wallet" },
   { to: "consultancy/enrolled-users", label: "Consultancy Users", icon: "user-check" },
-  { to: "my-assistants", label: "Assistants (AWC)", icon: "user-plus" },
   { to: "profile", label: "Profile", icon: "profile" },
 ];
 

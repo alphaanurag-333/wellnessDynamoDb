@@ -13,10 +13,6 @@ import { logoutCoach, setCoach } from "../../store/authSlice.js";
 function titleFromPath(pathname) {
   const p = pathname.replace(/\/$/, "") || "/";
   if (/^\/coach\/profile\/?$/.test(p)) return "Profile";
-  if (/^\/coach\/my-assistants\/[^/]+\/edit\/?$/.test(p)) return "Edit assistant";
-  if (/^\/coach\/my-assistants\/new\/?$/.test(p)) return "Add assistant";
-  if (/^\/coach\/my-assistants\/[^/]+\/?$/.test(p)) return "Assistant details";
-  if (/^\/coach\/my-assistants\/?$/.test(p)) return "Assistants (AWC)";
   if (/^\/coach\/client-testimonials\/[^/]+\/edit\/?$/.test(p)) return "Edit client testimonial";
   if (/^\/coach\/client-testimonials\/[^/]+\/?$/.test(p)) return "Client testimonial details";
   if (/^\/coach\/client-testimonials\/?$/.test(p)) return "Client Testimonials";

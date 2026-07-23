@@ -78,7 +78,7 @@ export function WellnessCoachList() {
     const id = resolveCoachId(row);
     const { isConfirmed } = await Swal.fire({
       title: "Delete wellness coach?",
-      html: `Remove <strong>${row.name || row.email}</strong>? Assistants must be removed first.`,
+      html: `Remove <strong>${row.name || row.email}</strong>? This cannot be undone.`,
       icon: "warning",
       showCancelButton: true,
       confirmButtonText: "Delete",

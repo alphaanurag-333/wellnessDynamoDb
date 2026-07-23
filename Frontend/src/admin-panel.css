@@ -1137,7 +1137,7 @@ a.admin-header__dropdown-item {
   font-weight: 700;
 }
 
-/* Welcome home for sub-admins without dashboard.view */
+/* Welcome home when dashboard.view is missing */
 .admin-welcome {
   display: flex;
   flex-direction: column;

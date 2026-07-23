@@ -234,9 +234,8 @@ export function AdminLayout() {
     (async () => {
       try {
         const data = await adminGetMe(adminToken);
-        // Refreshes isSuperAdmin/roleId/permissions on every navigation, so a
-        // permission change made by the Super Admin is reflected without
-        // requiring the sub-admin to log out and back in.
+        // Refreshes isSuperAdmin/roleId/permissions on every navigation so
+        // permission changes are reflected without requiring a re-login.
         if (!cancelled && data?.admin) dispatch(setAdmin(data.admin));
       } catch (e) {
         if (e?.status === 401) dispatch(logout());

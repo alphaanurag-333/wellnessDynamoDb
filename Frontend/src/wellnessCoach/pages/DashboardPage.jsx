@@ -11,7 +11,6 @@ import { CoachPageLoader } from "../components/CoachPageLoader.jsx";
 import { coachGetDashboardStatistics } from "../api/coachDashboard.js";
 import { logoutCoach } from "../../store/authSlice.js";
 import { useRegisterHeaderRefresh } from "../../hooks/useRegisterHeaderRefresh.js";
-import { formatPhone } from "./myAssistants/MyAssistantShared.js";
 
 const STAT_CARDS = [
   {
@@ -37,34 +36,6 @@ const STAT_CARDS = [
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
         <path d="M22 4 12 14.01l-3-3" />
-      </svg>
-    ),
-  },
-  {
-    key: "totalAssistants",
-    label: "Total assistants",
-    tone: "purple",
-    to: "/coach/my-assistants",
-    icon: (
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-        <circle cx="9" cy="7" r="4" />
-        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-      </svg>
-    ),
-  },
-  {
-    key: "activeAssistants",
-    label: "Active assistants",
-    tone: "indigo",
-    to: "/coach/my-assistants",
-    icon: (
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-        <circle cx="9" cy="7" r="4" />
-        <path d="M2 21a7 7 0 0 1 14 0" />
-        <path d="M19 8v6" />
-        <path d="M16 11h6" />
       </svg>
     ),
   },
@@ -110,7 +81,6 @@ const STAT_CARDS = [
 
 const shortcuts = [
   { title: "My clients", desc: "View and manage assigned clients", icon: "users", to: "/coach/my-users" },
-  { title: "Manage assistants", desc: "View and manage assistant coaches", icon: "assistants", to: "/coach/my-assistants" },
   { title: "Meal approvals", desc: "Review pending meal logs", icon: "meals", to: "/coach/meal-approvals" },
   { title: "Client testimonials", desc: "Publish or manage client reviews", icon: "testimonials", to: "/coach/client-testimonials" },
   { title: "Commitment letters", desc: "Review signed commitment letters", icon: "letters", to: "/coach/commitment-letters" },
@@ -145,16 +115,6 @@ function ShortcutIcon({ type }) {
         <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
         <circle cx="9" cy="7" r="3" />
         <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-        <path d="M16 3.13a3 3 0 0 1 0 5.75" />
-      </svg>
-    );
-  }
-  if (type === "assistants") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-        <circle cx="9" cy="7" r="3" />
-        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
         <path d="M16 3.13a3 3 0 0 1 0 5.75" />
       </svg>
     );
@@ -285,7 +245,6 @@ export function CoachDashboardPage() {
   );
 
   const recentClients = (statistics?.recentClients ?? []).slice(0, 5);
-  const recentAssistants = (statistics?.recentAssistants ?? []).slice(0, 5);
 
   return (
     <div className="page-stack admin-dashboard coach-dashboard">
@@ -300,9 +259,9 @@ export function CoachDashboardPage() {
 
       <section className="admin-dashboard__section" aria-label="Quick insights" aria-busy={loading}>
         <h2 className="dashboard-section-head__title">Quick Insights</h2>
-        <div className="stat-grid stat-grid--dashboard stat-grid--dashboard-7 admin-dashboard__stats">
+        <div className="stat-grid stat-grid--dashboard admin-dashboard__stats">
           {loading ? (
-            <DashboardStatsSkeleton count={7} />
+            <DashboardStatsSkeleton count={5} />
           ) : (
             statValues.map((card) => (
               <DashboardStatCard
@@ -333,74 +292,13 @@ export function CoachDashboardPage() {
         </div>
       </section>
 
-      <section className="panel coach-dashboard-panel" aria-labelledby="coach-recent-assistants-heading">
-        <div className="coach-dashboard-panel__head">
-          <div>
-            <h2 id="coach-recent-assistants-heading" className="panel__title">
-              Recent assistants
-            </h2>
-            <p className="panel__hint">Latest assistant wellness coaches linked to your account.</p>
-          </div>
-          <Link to="/coach/my-assistants" className="btn btn--ghost btn--sm">
-            View all
-          </Link>
-        </div>
-
-        {loading ? (
-          <div className="coach-dashboard-panel__loader">
-            <CoachPageLoader label="Loading assistants..." />
-          </div>
-        ) : recentAssistants.length === 0 ? (
-          <div className="coach-dashboard-empty">
-            <p>No assistants yet.</p>
-            <Link to="/coach/my-assistants/new" className="btn btn--primary btn--sm">
-              Add your first assistant
-            </Link>
-          </div>
-        ) : (
-          <ul className="coach-dashboard-recent">
-            {recentAssistants.map((row) => {
-              const id = String(row.id || row._id || "");
-              return (
-                <li key={id}>
-                  <Link to={`/coach/my-assistants/${id}`} className="coach-dashboard-recent__item">
-                    <AdminMediaImage
-                      {...profileImageProps(row)}
-                      alt=""
-                      className="coach-dashboard-recent__avatar"
-                      width={40}
-                      height={40}
-                      round
-                    />
-                    <div className="coach-dashboard-recent__body">
-                      <span className="coach-dashboard-recent__name">{row.name || "—"}</span>
-                      <span className="coach-dashboard-recent__meta">
-                        {row.email || "—"}
-                        {row.phone ? ` · ${formatPhone(row)}` : ""}
-                      </span>
-                    </div>
-                    <span
-                      className={`coach-dashboard-badge coach-dashboard-badge--${
-                        String(row.status || "active").toLowerCase() === "active" ? "active" : "muted"
-                      }`}
-                    >
-                      {String(row.status || "active").toLowerCase() === "active" ? "Active" : "Inactive"}
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-
       <section className="panel coach-dashboard-panel" aria-labelledby="coach-recent-clients-heading">
         <div className="coach-dashboard-panel__head">
           <div>
             <h2 id="coach-recent-clients-heading" className="panel__title">
               Recent clients
             </h2>
-            <p className="panel__hint">Latest clients in your coaching hierarchy.</p>
+            <p className="panel__hint">Latest clients assigned to you.</p>
           </div>
           <Link to="/coach/my-users" className="btn btn--ghost btn--sm">
             View all

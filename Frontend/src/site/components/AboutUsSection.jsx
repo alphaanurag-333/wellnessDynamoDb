@@ -9,7 +9,6 @@ import {
 import {
   fetchCofounderMessage,
   fetchWellnessCoaches,
-  fetchAssistantWellnessCoaches,
   fetchLeadershipNotes,
 } from "../api/publicMisc.js";
 
@@ -314,12 +313,8 @@ const AboutUsSection = () => {
   const [leadershipNotesLoading, setLeadershipNotesLoading] = useState(true);
   const [wellnessCoaches, setWellnessCoaches] = useState([]);
   const [coachesLoading, setCoachesLoading] = useState(true);
-  const [assistantWellnessCoaches, setAssistantWellnessCoaches] = useState([]);
-  const [assistantsLoading, setAssistantsLoading] = useState(true);
   const prevRef = useRef(null);
   const nextRef = useRef(null);
-  const assistantPrevRef = useRef(null);
-  const assistantNextRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -382,32 +377,6 @@ const AboutUsSection = () => {
         if (!cancelled) setWellnessCoaches([]);
       } finally {
         if (!cancelled) setCoachesLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      setAssistantsLoading(true);
-      try {
-        const response = await fetchAssistantWellnessCoaches({ page: 1, limit: 50, platform: "web" });
-        if (!cancelled) {
-          setAssistantWellnessCoaches(
-            Array.isArray(response?.assistantWellnessCoaches)
-              ? response.assistantWellnessCoaches
-              : [],
-          );
-        }
-      } catch {
-        if (!cancelled) setAssistantWellnessCoaches([]);
-      } finally {
-        if (!cancelled) setAssistantsLoading(false);
       }
     })();
 
@@ -531,20 +500,6 @@ const AboutUsSection = () => {
         ariaPrev="Previous coach"
         ariaNext="Next coach"
       />
-
-      <CoachBoardSection
-        title="Assistant Wellness Coaches"
-        subtitle="Dedicated support coaches helping you stay on your wellness path."
-        coaches={assistantWellnessCoaches}
-        loading={assistantsLoading}
-        loadingLabel="Loading assistant wellness coaches…"
-        emptyFallbackLabel="ASSISTANT WELLNESS COACH"
-        prevRef={assistantPrevRef}
-        nextRef={assistantNextRef}
-        ariaPrev="Previous assistant coach"
-        ariaNext="Next assistant coach"
-      />
-
 
 <LeadershipNotesSlider notes={leadershipNotes} loading={leadershipNotesLoading} />
 

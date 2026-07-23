@@ -144,17 +144,10 @@ import { WellnessCoachList } from "../pages/wellnessCoach/WellnessCoachList.jsx"
 import { WellnessCoachAdd } from "../pages/wellnessCoach/WellnessCoachAdd.jsx";
 import { WellnessCoachEdit } from "../pages/wellnessCoach/WellnessCoachEdit.jsx";
 import { WellnessCoachView } from "../pages/wellnessCoach/WellnessCoachView.jsx";
-import { AssistantList } from "../pages/assistantWellnessCoach/AssistantList.jsx";
-import { AssistantAdd } from "../pages/assistantWellnessCoach/AssistantAdd.jsx";
-import { AssistantEdit } from "../pages/assistantWellnessCoach/AssistantEdit.jsx";
-import { AssistantView } from "../pages/assistantWellnessCoach/AssistantView.jsx";
 import { SpecializationList } from "../pages/specialization/SpecializationList.jsx";
 import { SpecializationAdd } from "../pages/specialization/SpecializationAdd.jsx";
 import { SpecializationEdit } from "../pages/specialization/SpecializationEdit.jsx";
 import { SpecializationView } from "../pages/specialization/SpecializationView.jsx";
-import { SubAdminList } from "../pages/subAdmin/SubAdminList.jsx";
-import { SubAdminAdd } from "../pages/subAdmin/SubAdminAdd.jsx";
-import { SubAdminEdit } from "../pages/subAdmin/SubAdminEdit.jsx";
 import { RoleList } from "../pages/role/RoleList.jsx";
 import { RoleAdd } from "../pages/role/RoleAdd.jsx";
 import { RoleEdit } from "../pages/role/RoleEdit.jsx";
@@ -206,12 +199,8 @@ export const adminRouteTree = (
       <Route index element={<WellnessCoachList />} />
       <Route path="new" element={<WellnessCoachAdd />} />
       <Route path=":coachId/edit" element={<WellnessCoachEdit />} />
-      <Route path=":coachId/assistants/new" element={<AssistantAdd />} />
-      <Route path=":coachId/assistants/:assistantId/edit" element={<AssistantEdit />} />
-      <Route path=":coachId/assistants/:assistantId" element={<AssistantView />} />
       <Route path=":coachId" element={<WellnessCoachView />} />
     </Route>
-    <Route path="awcs" element={<AssistantList />} />
     <Route path="specializations" element={<Outlet />}>
       <Route index element={<SpecializationList />} />
       <Route path="new" element={<SpecializationAdd />} />
@@ -406,11 +395,6 @@ export const adminRouteTree = (
 
     <Route path="cofounder-message" element={<CofounderMessagePage />} />
 
-    <Route path="sub-admins" element={<Outlet />}>
-      <Route index element={<SubAdminList />} />
-      <Route path="new" element={<SubAdminAdd />} />
-      <Route path=":subAdminId/edit" element={<SubAdminEdit />} />
-    </Route>
     <Route path="roles" element={<Outlet />}>
       <Route index element={<RoleList />} />
       <Route path="new" element={<RoleAdd />} />

@@ -2,13 +2,11 @@ export const NAME_MAX_LEN = 60;
 export const LIST_SEARCH_MAX_LEN = 50;
 export const LIST_LIMIT = 10;
 
-export const ROLE_SCOPES = [
-  { value: "ADMIN", label: "Admin / Sub-admin" },
-  { value: "COACH", label: "Wellness Coach" },
-];
+/** Coach roles only — admin sub-roles were removed with sub-admins. */
+export const ROLE_SCOPES = [{ value: "COACH", label: "Wellness Coach" }];
 
-export function emptyForm(scope = "ADMIN") {
-  return { name: "", permissions: [], status: "active", scope: scope === "COACH" ? "COACH" : "ADMIN" };
+export function emptyForm() {
+  return { name: "", permissions: [], status: "active", scope: "COACH" };
 }
 
 export function getRoleId(row) {
@@ -16,8 +14,8 @@ export function getRoleId(row) {
 }
 
 export function getRoleScope(row) {
-  const scope = String(row?.scope || "ADMIN").toUpperCase();
-  return scope === "COACH" ? "COACH" : "ADMIN";
+  const scope = String(row?.scope || "COACH").toUpperCase();
+  return scope === "ADMIN" ? "ADMIN" : "COACH";
 }
 
 export function validateRoleForm(form) {
@@ -26,4 +24,3 @@ export function validateRoleForm(form) {
   if (name.length > NAME_MAX_LEN) return `Role name cannot exceed ${NAME_MAX_LEN} characters.`;
   return "";
 }
-

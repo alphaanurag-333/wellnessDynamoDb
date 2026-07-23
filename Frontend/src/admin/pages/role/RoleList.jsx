@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminTableLoaderRow } from "../../components/AdminLoader.jsx";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { MdEditSquare } from "react-icons/md";
 import { AiFillDelete } from "react-icons/ai";
@@ -11,15 +11,14 @@ import { selectIsSuperAdmin } from "../../../store/authSelectors.js";
 import { useDebouncedSearch } from "../../../hooks/useDebouncedSearch.js";
 import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
 import { NotFoundPage } from "../NotFoundPage.jsx";
-import { LIST_LIMIT, LIST_SEARCH_MAX_LEN, ROLE_SCOPES, getRoleId, getRoleScope } from "./RoleShared.js";
+import { LIST_LIMIT, LIST_SEARCH_MAX_LEN, getRoleId, getRoleScope } from "./RoleShared.js";
 
 export function RoleList() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const adminToken = useSelector((s) => s.auth.adminToken);
   const isSuperAdmin = useSelector(selectIsSuperAdmin);
-  const listScope = String(searchParams.get("scope") || "ADMIN").toUpperCase() === "COACH" ? "COACH" : "ADMIN";
+  const listScope = "COACH";
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [togglingId, setTogglingId] = useState("");
@@ -30,13 +29,6 @@ export function RoleList() {
     maxLength: LIST_SEARCH_MAX_LEN,
   });
   const [listStatus, setListStatus] = useState("");
-
-  const setListScope = (scope) => {
-    const next = new URLSearchParams(searchParams);
-    next.set("scope", scope);
-    setSearchParams(next, { replace: true });
-    setPage(1);
-  };
 
   const loadRows = useCallback(async () => {
     if (!adminToken) return;
@@ -67,7 +59,7 @@ export function RoleList() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, listStatus, listScope]);
+  }, [debouncedSearch, listStatus]);
 
   if (!isSuperAdmin) {
     return <NotFoundPage />;
@@ -75,11 +67,10 @@ export function RoleList() {
 
   const onDelete = async (row) => {
     const id = getRoleId(row);
-    const assignee = getRoleScope(row) === "COACH" ? "coaches" : "sub-admins";
     const { isConfirmed } = await Swal.fire({
       icon: "warning",
       title: "Delete role?",
-      text: `This will delete "${row.name}". Any ${assignee} assigned to this role must be reassigned first.`,
+      text: `This will delete "${row.name}". Any coaches assigned to this role must be reassigned first.`,
       showCancelButton: true,
       confirmButtonColor: "#dc2626",
       confirmButtonText: "Delete",
@@ -127,32 +118,11 @@ export function RoleList() {
           title="Roles & Permissions"
           subtitle={subtitle}
           actions={
-            <button
-              type="button"
-              className="btn btn--primary"
-              onClick={() => navigate(`/admin/roles/new?scope=${encodeURIComponent(listScope)}`)}
-            >
+            <button type="button" className="btn btn--primary" onClick={() => navigate("/admin/roles/new")}>
               Add role
             </button>
           }
         />
-        <div className="role-scope-tabs" role="tablist" aria-label="Role scope">
-          {ROLE_SCOPES.map((opt) => {
-            const active = listScope === opt.value;
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                className={`role-scope-tabs__btn${active ? " role-scope-tabs__btn--active" : ""}`}
-                onClick={() => setListScope(opt.value)}
-              >
-                {opt.label}
-              </button>
-            );
-          })}
-        </div>
         <div className="admin-crud-filters">
           <label className="user-field admin-crud-filters__search">
             <span className="user-field__label">Search</span>
@@ -210,36 +180,36 @@ export function RoleList() {
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <button
                             type="button"
-                            className={`settings-switch${row.status === "active" ? " settings-switch--on" : ""}`}
-                            role="switch"
-                            aria-checked={row.status === "active"}
-                            aria-label={`Toggle status for ${row.name || "role"}`}
+                            className={`status-toggle${row.status === "active" ? " status-toggle--on" : ""}`}
                             onClick={() => onToggleStatus(row)}
                             disabled={togglingId === id}
-                            title={row.status === "active" ? "Deactivate" : "Activate"}
+                            aria-pressed={row.status === "active"}
+                            aria-label={`Toggle status for ${row.name || "role"}`}
                           >
-                            <span className="settings-switch__knob" aria-hidden />
+                            <span className="status-toggle__knob" />
                           </button>
                           <AdminStatusBadge status={row.status} />
                         </div>
                       </td>
                       <td>
-                        <div className="row-actions">
+                        <div className="data-table__actions">
                           <button
                             type="button"
-                            className="icon-btn icon-btn--edit"
+                            className="icon-action"
                             title="Edit"
+                            aria-label="Edit"
                             onClick={() => navigate(`/admin/roles/${id}/edit`)}
                           >
-                            <MdEditSquare size={18} />
+                            <MdEditSquare aria-hidden />
                           </button>
                           <button
                             type="button"
-                            className="icon-btn icon-btn--delete"
+                            className="icon-action icon-action--danger"
                             title="Delete"
+                            aria-label="Delete"
                             onClick={() => onDelete(row)}
                           >
-                            <AiFillDelete size={18} />
+                            <AiFillDelete aria-hidden />
                           </button>
                         </div>
                       </td>
@@ -250,29 +220,22 @@ export function RoleList() {
             </tbody>
           </table>
         </div>
-        {pages > 1 ? (
-          <div className="user-list-pagination">
-            <span className="user-list-pagination__info">{pageInfo}</span>
-            <div className="user-list-pagination__btns">
-              <button
-                type="button"
-                className="btn btn--ghost"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-              >
-                Previous
-              </button>
-              <button
-                type="button"
-                className="btn btn--ghost"
-                disabled={page >= pages}
-                onClick={() => setPage((p) => Math.min(pages, p + 1))}
-              >
-                Next
-              </button>
-            </div>
+        <div className="admin-crud-pager">
+          <span className="admin-crud-pager__info">{pageInfo}</span>
+          <div className="admin-crud-pager__btns">
+            <button type="button" className="btn btn--ghost" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+              Previous
+            </button>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              disabled={page >= pages}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Next
+            </button>
           </div>
-        ) : null}
+        </div>
       </div>
     </div>
   );

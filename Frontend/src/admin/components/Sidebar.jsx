@@ -15,7 +15,7 @@ const NAV_GROUP_PATTERNS = {
   consultancy: /\/admin\/consultancy(\/|$)/,
   "energy-exchange": /\/admin\/energy-exchange(\/|$)/,
   "wellness-program": /\/admin\/programs(\/|$)/,
-  team: /\/admin\/(coaches|awcs|specializations)(\/|$)/,
+  team: /\/admin\/(coaches|specializations)(\/|$)/,
   health:
     /\/admin\/(health-concerns|health-tools|health-recipes|health-disorders|yoga|physical-exercises|supplements|medical-condition-questions)(\/|$)/,
   launchAssessment: /\/admin\/(launch-questions|launch-focus-areas)(\/|$)/,
@@ -29,7 +29,7 @@ const NAV_GROUP_PATTERNS = {
     /\/admin\/(banners|birthday-posts|birthday-notifications|monthly-champions|notifications)(\/|$)/,
   content: /\/admin\/(faq|contact-inquiries|static-pages|coupons)(\/|$)/,
   settings: /\/admin\/(settings|profile)(\/|$)/,
-  administration: /\/admin\/(sub-admins|roles)(\/|$)/,
+  administration: /\/admin\/roles(\/|$)/,
 };
 
 function normalizePath(pathname) {

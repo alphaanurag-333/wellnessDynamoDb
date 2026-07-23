@@ -2,7 +2,6 @@ import { createSlice } from "@reduxjs/toolkit";
 
 const ADMIN_STORAGE_KEY = "wellness_admin_auth";
 const COACH_STORAGE_KEY = "wellness_coach_auth";
-const ASSISTANT_STORAGE_KEY = "wellness_assistant_auth";
 
 function readStoredAdminAuth() {
   if (typeof window === "undefined") {
@@ -92,7 +91,6 @@ function writeStoredPortalAuth(storageKey, tokenField, userField, token, refresh
 
 const adminAuth = readStoredAdminAuth();
 const coachAuth = readStoredPortalAuth(COACH_STORAGE_KEY, "coachToken", "coach");
-const assistantAuth = readStoredPortalAuth(ASSISTANT_STORAGE_KEY, "assistantToken", "assistant");
 
 const initialState = {
   adminToken: adminAuth.adminToken,
@@ -101,9 +99,6 @@ const initialState = {
   coachToken: coachAuth.token,
   coachRefreshToken: coachAuth.refreshToken,
   coach: coachAuth.user,
-  assistantToken: assistantAuth.token,
-  assistantRefreshToken: assistantAuth.refreshToken,
-  assistant: assistantAuth.user,
 };
 
 const authSlice = createSlice({
@@ -161,42 +156,6 @@ const authSlice = createSlice({
         state.coach,
       );
     },
-    setAssistantCredentials(state, action) {
-      state.assistantToken = action.payload.assistantToken;
-      state.assistantRefreshToken = action.payload.refreshToken ?? null;
-      state.assistant = action.payload.assistant;
-      writeStoredPortalAuth(
-        ASSISTANT_STORAGE_KEY,
-        "assistantToken",
-        "assistant",
-        state.assistantToken,
-        state.assistantRefreshToken,
-        state.assistant,
-      );
-    },
-    setAssistant(state, action) {
-      state.assistant = action.payload;
-      writeStoredPortalAuth(
-        ASSISTANT_STORAGE_KEY,
-        "assistantToken",
-        "assistant",
-        state.assistantToken,
-        state.assistantRefreshToken,
-        state.assistant,
-      );
-    },
-    setAssistantTokens(state, action) {
-      state.assistantToken = action.payload.assistantToken ?? state.assistantToken;
-      state.assistantRefreshToken = action.payload.refreshToken ?? state.assistantRefreshToken;
-      writeStoredPortalAuth(
-        ASSISTANT_STORAGE_KEY,
-        "assistantToken",
-        "assistant",
-        state.assistantToken,
-        state.assistantRefreshToken,
-        state.assistant,
-      );
-    },
     logout(state) {
       state.adminToken = null;
       state.refreshToken = null;
@@ -209,12 +168,6 @@ const authSlice = createSlice({
       state.coach = null;
       writeStoredPortalAuth(COACH_STORAGE_KEY, "coachToken", "coach", null, null, null);
     },
-    logoutAssistant(state) {
-      state.assistantToken = null;
-      state.assistantRefreshToken = null;
-      state.assistant = null;
-      writeStoredPortalAuth(ASSISTANT_STORAGE_KEY, "assistantToken", "assistant", null, null, null);
-    },
   },
 });
 
@@ -225,11 +178,7 @@ export const {
   setCoachCredentials,
   setCoach,
   setCoachTokens,
-  setAssistantCredentials,
-  setAssistant,
-  setAssistantTokens,
   logout,
   logoutCoach,
-  logoutAssistant,
 } = authSlice.actions;
 export default authSlice.reducer;

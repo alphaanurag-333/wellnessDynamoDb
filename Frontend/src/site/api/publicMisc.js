@@ -54,15 +54,6 @@ export async function fetchWellnessCoaches(params = {}) {
   }
 }
 
-export async function fetchAssistantWellnessCoaches(params = {}) {
-  try {
-    const { data } = await api.get("/public/misc/assistant-wellness-coaches", { params });
-    return data;
-  } catch (error) {
-    normalizeApiError(error);
-  }
-}
-
 export async function fetchLeadershipNotes(params = {}) {
   try {
     const { data } = await api.get("/public/misc/leadership-notes", { params });

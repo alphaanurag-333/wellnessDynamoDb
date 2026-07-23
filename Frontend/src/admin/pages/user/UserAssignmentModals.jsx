@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 import { useDispatch, useSelector } from "react-redux";
-import { adminListCoachAssistants, adminListWellnessCoaches } from "../../api/adminWellnessCoaches.js";
+import { adminListWellnessCoaches } from "../../api/adminWellnessCoaches.js";
 import {
   adminAssignHealUserCoach,
   adminReassignHealUserCoach,
@@ -15,10 +15,7 @@ export function UserAssignCoachModal({ user, open, onClose, onSuccess, mode = "a
   const dispatch = useDispatch();
   const adminToken = useSelector((s) => s.auth.adminToken);
   const [coaches, setCoaches] = useState([]);
-  const [assistants, setAssistants] = useState([]);
   const [selectedCoachId, setSelectedCoachId] = useState("");
-  const [assigneeType, setAssigneeType] = useState("wellness_coach");
-  const [selectedAssistantId, setSelectedAssistantId] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingOptions, setLoadingOptions] = useState(false);
 
@@ -45,41 +42,9 @@ export function UserAssignCoachModal({ user, open, onClose, onSuccess, mode = "a
   }, [adminToken, dispatch, open]);
 
   useEffect(() => {
-    if (!open || !adminToken || !selectedCoachId || assigneeType !== "assistant_wellness_coach") {
-      setAssistants([]);
-      setSelectedAssistantId("");
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const { assistants: rows } = await adminListCoachAssistants(adminToken, selectedCoachId, {
-          status: "active",
-          limit: 100,
-        });
-        if (!cancelled) {
-          setAssistants(rows || []);
-          setSelectedAssistantId("");
-        }
-      } catch {
-        if (!cancelled) setAssistants([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [adminToken, assigneeType, open, selectedCoachId]);
-
-  useEffect(() => {
     if (!open) return;
-    const parentId = user?.parentCoachId || "";
-    if (parentId) setSelectedCoachId(parentId);
-    if (user?.assignedCoachType === "assistant_wellness_coach") {
-      setAssigneeType("assistant_wellness_coach");
-      setSelectedAssistantId(user.assignedCoachId || "");
-    } else {
-      setAssigneeType("wellness_coach");
-    }
+    const parentId = user?.parentCoachId || user?.assignedCoachId || "";
+    setSelectedCoachId(parentId);
   }, [open, user]);
 
   if (!open || !user) return null;
@@ -94,25 +59,11 @@ export function UserAssignCoachModal({ user, open, onClose, onSuccess, mode = "a
       return;
     }
 
-    let payload;
-    if (assigneeType === "assistant_wellness_coach") {
-      const assistantId = String(selectedAssistantId || "").trim();
-      if (!assistantId) {
-        await Swal.fire({ icon: "warning", title: "Select an assistant coach" });
-        return;
-      }
-      payload = {
-        assignedCoachId: assistantId,
-        assignedCoachType: "assistant_wellness_coach",
-        parentCoachId: coachId,
-      };
-    } else {
-      payload = {
-        assignedCoachId: coachId,
-        assignedCoachType: "wellness_coach",
-        parentCoachId: coachId,
-      };
-    }
+    const payload = {
+      assignedCoachId: coachId,
+      assignedCoachType: "wellness_coach",
+      parentCoachId: coachId,
+    };
 
     setLoading(true);
     try {
@@ -148,18 +99,6 @@ export function UserAssignCoachModal({ user, open, onClose, onSuccess, mode = "a
         </p>
         <form onSubmit={handleSubmit} className="modal-card__form">
           <label className="user-field">
-            <span className="user-field__label">Assign to</span>
-            <select
-              className="user-field__input"
-              value={assigneeType}
-              onChange={(e) => setAssigneeType(e.target.value)}
-            >
-              <option value="wellness_coach">Wellness Coach (direct)</option>
-              <option value="assistant_wellness_coach">Assistant Wellness Coach</option>
-            </select>
-          </label>
-
-          <label className="user-field">
             <span className="user-field__label">Wellness Coach</span>
             <select
               className="user-field__input"
@@ -175,25 +114,6 @@ export function UserAssignCoachModal({ user, open, onClose, onSuccess, mode = "a
               ))}
             </select>
           </label>
-
-          {assigneeType === "assistant_wellness_coach" ? (
-            <label className="user-field">
-              <span className="user-field__label">Assistant</span>
-              <select
-                className="user-field__input"
-                value={selectedAssistantId}
-                onChange={(e) => setSelectedAssistantId(e.target.value)}
-                disabled={!selectedCoachId}
-              >
-                <option value="">Select assistant</option>
-                {assistants.map((a) => (
-                  <option key={a._id || a.id} value={a._id || a.id}>
-                    {a.name} {a.designation ? `· ${a.designation}` : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
 
           <div className="modal-card__actions">
             <button type="button" className="btn btn--ghost" onClick={onClose} disabled={loading}>

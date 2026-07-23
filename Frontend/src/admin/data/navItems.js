@@ -37,7 +37,6 @@ export const navItems = [
     icon: "users",
     children: [
       { to: "coaches", label: "Wellness Coaches", icon: "user" },
-      { to: "awcs", label: "Assistant Coaches", icon: "user-plus" },
       { to: "specializations", label: "Specializations", icon: "award" },
     ],
   },
@@ -144,14 +143,10 @@ export const navItems = [
     id: "administration",
     label: "Administration",
     icon: "shield",
-    // Super Admin only — not permission-gated like every other group above,
-    // since sub-admin/role management is meta-admin functionality that must
-    // never be delegable via a role's permissions.
+    // Super Admin only — role management is meta-admin and must not be
+    // delegable via a role's permissions.
     superAdminOnly: true,
-    children: [
-      { to: "sub-admins", label: "Sub-Admins", icon: "users" },
-      { to: "roles", label: "Roles & Permissions", icon: "clipboard-list" },
-    ],
+    children: [{ to: "roles", label: "Roles & Permissions", icon: "clipboard-list" }],
   },
 ];
 

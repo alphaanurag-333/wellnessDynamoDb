@@ -11,10 +11,6 @@ import { CoachCommitmentLettersPage } from "../pages/commitmentLetter/CoachCommi
 import { CoachClientTestimonialsLayout, CoachClientTestimonialList, CoachClientTestimonialView, CoachClientTestimonialEdit } from "../pages/clientTestimonial/CoachClientTestimonialsPage.jsx";
 import { CoachMonthlyChampionsLayout, CoachMonthlyChampionList, CoachMonthlyChampionView } from "../pages/monthlyChampion/CoachMonthlyChampionsPage.jsx";
 import { CoachMealApprovalsPage } from "../pages/mealReview/CoachMealApprovalsPage.jsx";
-import { MyAssistantList } from "../pages/myAssistants/MyAssistantList.jsx";
-import { MyAssistantAdd } from "../pages/myAssistants/MyAssistantAdd.jsx";
-import { MyAssistantEdit } from "../pages/myAssistants/MyAssistantEdit.jsx";
-import { MyAssistantView } from "../pages/myAssistants/MyAssistantView.jsx";
 import { CoachConsultancyTransactionList } from "../pages/consultancy/CoachConsultancyTransactionList.jsx";
 import { CoachConsultancyEnrolledUsersList } from "../pages/consultancy/CoachConsultancyEnrolledUsersList.jsx";
 import { CoachConsultancyClientPage } from "../pages/consultancy/CoachConsultancyClientPage.jsx";
@@ -29,7 +25,6 @@ export const wellnessCoachRouteTree = (
     <Route index element={<Navigate to="dashboard" replace />} />
     <Route path="dashboard" element={guarded("nav.dashboard", <CoachDashboardPage />)} />
     <Route path="profile" element={guarded("nav.profile", <CoachProfile />)} />
-    <Route path="my-assistants" element={guarded("nav.my-assistants", <MyAssistantList />)} />
     <Route path="my-users" element={guarded("nav.my-users", <MyHealUsersList />)} />
     <Route path="my-users/:userId" element={guarded("nav.my-users", <UserClientHub />)} />
     <Route path="my-users/:userId/water-tracking" element={<ClientHubLegacyRedirect segment="water-tracking" basePath="/coach" />} />
@@ -70,9 +65,6 @@ export const wellnessCoachRouteTree = (
       path="consultancy/clients/:userId"
       element={guarded("nav.consultancy/enrolled-users", <CoachConsultancyClientPage />)}
     />
-    <Route path="my-assistants/new" element={guarded("nav.my-assistants", <MyAssistantAdd />)} />
-    <Route path="my-assistants/:assistantId" element={guarded("nav.my-assistants", <MyAssistantView />)} />
-    <Route path="my-assistants/:assistantId/edit" element={guarded("nav.my-assistants", <MyAssistantEdit />)} />
     <Route path="*" element={<NotFoundPage />} />
   </Route>
 );
