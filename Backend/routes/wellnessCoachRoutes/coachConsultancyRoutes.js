@@ -16,32 +16,32 @@ router.use(protectWellnessCoach);
 
 router.get(
   "/transactions",
-  authorize("nav.consultancy/transactions"),
+  authorize("consultancy.transactions.view"),
   listCoachConsultancyTransactionsController
 );
 router.get(
   "/enrolled-users",
-  authorize("nav.consultancy/enrolled-users"),
+  authorize("consultancy.enrolled-users.view"),
   listCoachConsultancyEnrolledUsersController
 );
 router.get(
   "/clients/:userId",
-  authorize("nav.consultancy/enrolled-users"),
+  authorize("consultancy.enrolled-users.view"),
   getCoachConsultancyClientController
 );
 router.patch(
   "/transactions/:id",
-  authorize("nav.consultancy/transactions"),
+  authorize("consultancy.transactions.view"),
   updateCoachConsultancyClientController
 );
 router.get(
   "/transactions/:id/invoice",
-  authorize("nav.consultancy/transactions"),
+  authorize("consultancy.transactions.view"),
   getCoachConsultancyInvoiceController
 );
 router.get(
   "/transactions/:id",
-  authorize("nav.consultancy/transactions"),
+  authorize("consultancy.transactions.view"),
   getCoachConsultancyTransactionController
 );
 

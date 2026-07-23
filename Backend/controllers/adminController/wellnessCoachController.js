@@ -26,7 +26,7 @@ const { getSpecializationById } = require("../../models/specializationModel");
 const { assertPasswordPolicy } = require("../../utils/passwordPolicy");
 const { assertBioPolicy } = require("../../utils/bioPolicy");
 const { normalizeEmail, normalizePhone, normalizeCountryCode } = require("../../models/userModel");
-const { getRoleById, normalizeScope } = require("../../models/roleModel");
+const { getRoleById, roleTargetsAccountType } = require("../../models/roleModel");
 const { normalizeOverrides } = require("../../utils/coachPermissions");
 const { isValidCoachPermission } = require("../../config/coachPermissionCatalog");
 
@@ -36,8 +36,11 @@ async function assertValidCoachRoleId(roleId) {
   if (!roleId) return;
   const role = await getRoleById(roleId);
   if (!role) throw new AppError("Role not found", 400);
-  if (normalizeScope(role.scope, "ADMIN") !== "COACH") {
-    throw new AppError("Role must be a coach-scoped role", 400);
+  // Checked against `Role.accountTypes` (unified) rather than the legacy
+  // ADMIN/COACH `scope` string so this also accepts a role explicitly
+  // targeting `wellness_coach` alongside other account types.
+  if (!roleTargetsAccountType(role, "wellness_coach")) {
+    throw new AppError("Role must be assignable to wellness coach accounts", 400);
   }
   if (role.status !== "active") {
     throw new AppError("Role is not active", 400);

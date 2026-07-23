@@ -8,7 +8,7 @@ const router = express.Router();
 router.patch(
   "/:logId/review",
   protectAdmin,
-  authorize("users.clientHub.tracking.meal-tracking"),
+  authorize("clientHub.tracking.meal-tracking"),
   adminReviewMealLogController
 );
 

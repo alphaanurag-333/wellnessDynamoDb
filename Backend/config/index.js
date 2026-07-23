@@ -23,6 +23,22 @@ module.exports = {
   adminRegistrationEnabled:
     process.env.ADMIN_REGISTRATION_ENABLED === "true",
 
+  // Unified Staff RBAC Panel migration (see Backend/models/staffAccountModel.js).
+  // Each flag switches that account type's `protect*` middleware from the
+  // legacy per-table implementation over to the unified `protectStaff`
+  // (StaffAccount + Role.accountTypes). Opt-IN (defaults to "false"/legacy)
+  // so each milestone (M4 assistant -> M5 coach -> M6 admin) is a deliberate,
+  // one-at-a-time flip only after that account type's shadow-mode comparison
+  // is clean — never an accidental blanket cutover from unset env vars. Flip
+  // back to unset/"false" to roll back a single milestone without touching
+  // route files — legacy tables/middleware are left untouched until M9
+  // cleanup either way.
+  staffCutover: {
+    assistant_wellness_coach: process.env.STAFF_CUTOVER_ASSISTANT === "true",
+    wellness_coach: process.env.STAFF_CUTOVER_COACH === "true",
+    admin: process.env.STAFF_CUTOVER_ADMIN === "true",
+  },
+
   exposeOtpInResponse: process.env.EXPOSE_OTP_IN_RESPONSE === "true",
   otpLength: Number(process.env.OTP_LENGTH) || 6,
   otpExpiresMinutes: Number(process.env.OTP_EXPIRES_MINUTES) || 10,
@@ -33,6 +49,8 @@ module.exports = {
   dynamodbSkipVerify: process.env.DYNAMODB_SKIP_VERIFY === "true",
 
   awsS3BucketName: process.env.AWS_S3_BUCKET_NAME,
+  // S3 bucket region may differ from DynamoDB AWS_REGION
+  awsS3Region: process.env.AWS_S3_REGION || process.env.AWS_REGION || "ap-south-1",
   awsS3PublicBaseUrl: process.env.AWS_S3_PUBLIC_BASE_URL || "",
 
   firebaseServiceAccountPath: process.env.FIREBASE_SERVICE_ACCOUNT_PATH || "",

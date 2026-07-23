@@ -12,22 +12,22 @@ const router = express.Router({ mergeParams: true });
 
 router.get(
   "/:userId/heal-consultancy-tracks",
-  protectAdmin, authorize("users.clientHub.care.consultancy"),
+  protectAdmin, authorize("clientHub.care.consultancy"),
   listAdminHealConsultancyTracksController
 );
 router.post(
   "/:userId/heal-consultancy-tracks",
-  protectAdmin, authorize("users.clientHub.care.consultancy"),
+  protectAdmin, authorize("clientHub.care.consultancy"),
   createAdminHealConsultancyTrackController
 );
 router.patch(
   "/:userId/heal-consultancy-tracks/:trackId",
-  protectAdmin, authorize("users.clientHub.care.consultancy"),
+  protectAdmin, authorize("clientHub.care.consultancy"),
   updateAdminHealConsultancyTrackController
 );
 router.delete(
   "/:userId/heal-consultancy-tracks/:trackId",
-  protectAdmin, authorize("users.clientHub.care.consultancy"),
+  protectAdmin, authorize("clientHub.care.consultancy"),
   deleteAdminHealConsultancyTrackController
 );
 

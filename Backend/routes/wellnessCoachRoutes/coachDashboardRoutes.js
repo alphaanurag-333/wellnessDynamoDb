@@ -10,7 +10,7 @@ const router = express.Router();
 router.get(
   "/statistics",
   protectWellnessCoach,
-  authorize("nav.dashboard"),
+  authorize("dashboard.view"),
   getCoachDashboardStatistics
 );
 

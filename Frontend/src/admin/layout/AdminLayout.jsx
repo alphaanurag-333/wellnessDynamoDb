@@ -3,12 +3,13 @@ import { useDispatch, useSelector } from "react-redux";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import Swal from "sweetalert2";
 import { adminGetMe } from "../api/adminAuth.js";
+import { staffGetMe } from "../../panel/api/staffAuth.js";
 import { Footer } from "../components/Footer.jsx";
-import { Header } from "../components/Header.jsx";
-import { Sidebar } from "../components/Sidebar.jsx";
+import { PanelHeader } from "../../panel/components/PanelHeader.jsx";
+import { PanelSidebar } from "../../panel/components/PanelSidebar.jsx";
 import { flattenNavLinks, navItems } from "../data/navItems.js";
 import { useMediaQuery } from "../../hooks/useMediaQuery.js";
-import { logout, setAdmin } from "../../store/authSlice.js";
+import { logout, logoutStaff, setAdmin, setCredentials, setStaffAccount } from "../../store/authSlice.js";
 import { selectIsSuperAdmin, selectPermissions } from "../../store/authSelectors.js";
 import { canAccessPath, firstAllowedAdminPath } from "../utils/navAccess.js";
 
@@ -210,9 +211,21 @@ export function AdminLayout() {
   const { pathname } = useLocation();
   const dispatch = useDispatch();
   const adminToken = useSelector((s) => s.auth.adminToken);
+  const staffToken = useSelector((s) => s.auth.staffToken);
+  const staffRefreshToken = useSelector((s) => s.auth.staffRefreshToken);
+  const staffAccountType = useSelector((s) => s.auth.staffAccount?.accountType);
   const isSuperAdmin = useSelector(selectIsSuperAdmin);
   const permissions = useSelector(selectPermissions);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
+
+  // A generic Staff account (Marketing Manager/Trainer/Supervisor — no
+  // legacy Admin record at all) reaches admin-catalog pages through this
+  // same layout once granted the matching permission (see
+  // `Backend/middleware/auth.js#dispatchProtect`'s admin-or-staff allowance).
+  // It has no `adminToken` to mirror into, so fall back to its own
+  // `staffToken` for both this guard and the refresh effect below.
+  const isStaffFallback = !adminToken && staffAccountType === "staff" && Boolean(staffToken);
+  const effectiveToken = adminToken || (isStaffFallback ? staffToken : null);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -228,18 +241,59 @@ export function AdminLayout() {
   const fallbackPath = useMemo(() => firstAllowedAdminPath(authContext), [authContext]);
 
   useEffect(() => {
-    if (!adminToken) return;
+    if (!effectiveToken) return;
     let cancelled = false;
     setAuthReady(false);
     (async () => {
+      if (adminToken) {
+        try {
+          const data = await adminGetMe(adminToken);
+          // Refreshes isSuperAdmin/roleId/permissions on every navigation, so a
+          // permission change made by the Super Admin is reflected without
+          // requiring the sub-admin to log out and back in.
+          if (!cancelled && data?.admin) dispatch(setAdmin(data.admin));
+        } catch (e) {
+          if (e?.status === 401) dispatch(logout());
+        } finally {
+          if (!cancelled) setAuthReady(true);
+        }
+        // The shared PanelSidebar/PanelHeader render from `staffAccount`
+        // (unified shape/permissions) regardless of which portal issued the
+        // token — populate it here too so it's always fresh even for sessions
+        // that never touched `/panel/login` (same token works against either
+        // endpoint post-cutover, see `Backend/utils/staffTokens.js`).
+        try {
+          const staffData = await staffGetMe(adminToken);
+          if (!cancelled && staffData?.account) dispatch(setStaffAccount(staffData.account));
+        } catch {
+          // Best-effort — the guard/permissions above already control
+          // access; a failure here only affects sidebar rendering.
+        }
+        return;
+      }
+
+      // Staff fallback: there's no `/api/admin/auth/me` record to fetch, so
+      // this layout's own (already accountType-agnostic) `isSuperAdmin`/
+      // `permissions` gating is fed straight from the unified staff profile.
+      // `setCredentials` (not just `setAdmin`) also populates `adminToken`
+      // itself — every admin feature page's own API calls read that token
+      // directly (e.g. `adminCreateHealthConcern(adminToken, ...)`), and the
+      // same JWT is valid there too now that admin routes admit the generic
+      // Staff account type (see `Backend/middleware/auth.js#dispatchProtect`).
       try {
-        const data = await adminGetMe(adminToken);
-        // Refreshes isSuperAdmin/roleId/permissions on every navigation, so a
-        // permission change made by the Super Admin is reflected without
-        // requiring the sub-admin to log out and back in.
-        if (!cancelled && data?.admin) dispatch(setAdmin(data.admin));
+        const staffData = await staffGetMe(staffToken);
+        if (!cancelled && staffData?.account) {
+          dispatch(
+            setCredentials({
+              adminToken: staffToken,
+              refreshToken: staffRefreshToken,
+              admin: staffData.account,
+            }),
+          );
+          dispatch(setStaffAccount(staffData.account));
+        }
       } catch (e) {
-        if (e?.status === 401) dispatch(logout());
+        if (e?.status === 401) dispatch(logoutStaff());
       } finally {
         if (!cancelled) setAuthReady(true);
       }
@@ -247,7 +301,7 @@ export function AdminLayout() {
     return () => {
       cancelled = true;
     };
-  }, [adminToken, dispatch]);
+  }, [adminToken, staffToken, effectiveToken, dispatch]);
 
   useEffect(() => {
     setSidebarOpen(false);
@@ -286,8 +340,8 @@ export function AdminLayout() {
     }
   };
 
-  if (!adminToken) {
-    return <Navigate to="/admin/login" replace />;
+  if (!effectiveToken) {
+    return <Navigate to="/panel/login" replace />;
   }
 
   if (authReady && !pathAllowed) {
@@ -307,7 +361,7 @@ export function AdminLayout() {
         tabIndex={-1}
         onClick={closeSidebar}
       />
-      <Sidebar
+      <PanelSidebar
         id="admin-sidebar"
         drawerOpen={sidebarOpen}
         desktopCollapsed={sidebarCollapsed}
@@ -315,7 +369,7 @@ export function AdminLayout() {
       />
 
       <div className="admin-main">
-        <Header
+        <PanelHeader
           title={pageTitle}
           onMenuClick={toggleSidebar}
           isDesktop={isDesktop}

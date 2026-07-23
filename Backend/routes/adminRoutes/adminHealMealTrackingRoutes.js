@@ -12,27 +12,27 @@ const {
 
 const router = express.Router({ mergeParams: true });
 
-router.get("/:userId/meal-tracking", protectAdmin, authorize("users.clientHub.tracking.meal-tracking"), listAdminUserMealTrackingController);
+router.get("/:userId/meal-tracking", protectAdmin, authorize("clientHub.tracking.meal-tracking"), listAdminUserMealTrackingController);
 router.post(
   "/:userId/meal-tracking",
-  protectAdmin, authorize("users.clientHub.tracking.meal-tracking"),
+  protectAdmin, authorize("clientHub.tracking.meal-tracking"),
   optionalMealPhotoFile,
   createAdminUserMealLogController
 );
 router.put(
   "/:userId/meal-tracking/:logId",
-  protectAdmin, authorize("users.clientHub.tracking.meal-tracking"),
+  protectAdmin, authorize("clientHub.tracking.meal-tracking"),
   optionalMealPhotoFile,
   updateAdminUserMealLogController
 );
 router.delete(
   "/:userId/meal-tracking/:logId",
-  protectAdmin, authorize("users.clientHub.tracking.meal-tracking"),
+  protectAdmin, authorize("clientHub.tracking.meal-tracking"),
   deleteAdminUserMealLogController
 );
 router.patch(
   "/:userId/meal-tracking-mode",
-  protectAdmin, authorize("users.clientHub.tracking.meal-tracking"),
+  protectAdmin, authorize("clientHub.tracking.meal-tracking"),
   updateAdminUserMealTrackingModeController
 );
 

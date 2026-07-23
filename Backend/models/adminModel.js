@@ -16,6 +16,9 @@ const {
   appendFilter,
   sortByCreatedAtDesc,
 } = require("../utils/dynamoList");
+// Dual-write shim (Unified Staff RBAC Panel migration, M2) — every write here
+// also mirrors into StaffAccount. See Backend/models/staffAccountModel.js.
+const { mirrorAdmin, mirrorDelete } = require("./staffAccountModel");
 
 const TABLE = "Admin";
 
@@ -138,6 +141,7 @@ async function createAdmin({
   }
 
   await docClient.send(new PutCommand(putParams));
+  await mirrorAdmin(item);
 
   return item;
 }
@@ -279,6 +283,7 @@ async function updateAdmin(id, updates) {
   }
 
   const { Attributes } = await docClient.send(new UpdateCommand(updateParams));
+  await mirrorAdmin(Attributes);
 
   return Attributes;
 }
@@ -321,6 +326,7 @@ async function deleteAdmin(id) {
   }
 
   await docClient.send(new DeleteCommand(deleteParams));
+  await mirrorDelete(id);
   return { deleted: true };
 }
 

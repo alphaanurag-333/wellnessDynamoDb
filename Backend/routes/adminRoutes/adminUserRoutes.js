@@ -41,13 +41,13 @@ router.get("/:id/steps-tracking", protectAdmin, authorize("users.view"), getUser
 router.get(
   "/:id/sleep-tracking",
   protectAdmin,
-  authorize("users.clientHub.tracking.health-progress"),
+  authorize("clientHub.tracking.health-progress"),
   getUserSleepTrackingHistoryController
 );
 router.get(
   "/:id/heart-rate-tracking",
   protectAdmin,
-  authorize("users.clientHub.tracking.health-progress"),
+  authorize("clientHub.tracking.health-progress"),
   getUserHeartRateTrackingHistoryController
 );
 router.get(

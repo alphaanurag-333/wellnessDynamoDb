@@ -10,12 +10,12 @@ const {
 
 const router = express.Router({ mergeParams: true });
 
-router.get("/:userId/test-recommendations", protectAdmin, authorize("users.clientHub.care.internal-parameters"), listAdminUserTestRecommendationsController);
-router.post("/:userId/test-recommendations", protectAdmin, authorize("users.clientHub.care.internal-parameters"), createAdminUserTestRecommendationController);
-router.get("/:userId/lab-reports", protectAdmin, authorize("users.clientHub.care.internal-parameters"), listAdminUserLabReportsController);
+router.get("/:userId/test-recommendations", protectAdmin, authorize("clientHub.care.internal-parameters"), listAdminUserTestRecommendationsController);
+router.post("/:userId/test-recommendations", protectAdmin, authorize("clientHub.care.internal-parameters"), createAdminUserTestRecommendationController);
+router.get("/:userId/lab-reports", protectAdmin, authorize("clientHub.care.internal-parameters"), listAdminUserLabReportsController);
 router.delete(
   "/:userId/test-recommendations/:recommendationId",
-  protectAdmin, authorize("users.clientHub.care.internal-parameters"),
+  protectAdmin, authorize("clientHub.care.internal-parameters"),
   deleteAdminUserTestRecommendationController
 );
 

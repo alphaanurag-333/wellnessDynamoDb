@@ -3,6 +3,7 @@ import { createSlice } from "@reduxjs/toolkit";
 const ADMIN_STORAGE_KEY = "wellness_admin_auth";
 const COACH_STORAGE_KEY = "wellness_coach_auth";
 const ASSISTANT_STORAGE_KEY = "wellness_assistant_auth";
+const STAFF_STORAGE_KEY = "wellness_staff_auth";
 
 function readStoredAdminAuth() {
   if (typeof window === "undefined") {
@@ -93,6 +94,10 @@ function writeStoredPortalAuth(storageKey, tokenField, userField, token, refresh
 const adminAuth = readStoredAdminAuth();
 const coachAuth = readStoredPortalAuth(COACH_STORAGE_KEY, "coachToken", "coach");
 const assistantAuth = readStoredPortalAuth(ASSISTANT_STORAGE_KEY, "assistantToken", "assistant");
+// Unified Staff RBAC Panel (M7) — one auth slot for Admin/Coach/Assistant
+// logging in through `/panel/login` (`/api/staff/auth/*`), alongside (not
+// replacing) the three legacy slots above until M8's cutover.
+const staffAuth = readStoredPortalAuth(STAFF_STORAGE_KEY, "staffToken", "staffAccount");
 
 const initialState = {
   adminToken: adminAuth.adminToken,
@@ -104,6 +109,9 @@ const initialState = {
   assistantToken: assistantAuth.token,
   assistantRefreshToken: assistantAuth.refreshToken,
   assistant: assistantAuth.user,
+  staffToken: staffAuth.token,
+  staffRefreshToken: staffAuth.refreshToken,
+  staffAccount: staffAuth.user,
 };
 
 const authSlice = createSlice({
@@ -215,6 +223,48 @@ const authSlice = createSlice({
       state.assistant = null;
       writeStoredPortalAuth(ASSISTANT_STORAGE_KEY, "assistantToken", "assistant", null, null, null);
     },
+    setStaffCredentials(state, action) {
+      state.staffToken = action.payload.staffToken;
+      state.staffRefreshToken = action.payload.refreshToken ?? null;
+      state.staffAccount = action.payload.staffAccount;
+      writeStoredPortalAuth(
+        STAFF_STORAGE_KEY,
+        "staffToken",
+        "staffAccount",
+        state.staffToken,
+        state.staffRefreshToken,
+        state.staffAccount,
+      );
+    },
+    setStaffAccount(state, action) {
+      state.staffAccount = action.payload;
+      writeStoredPortalAuth(
+        STAFF_STORAGE_KEY,
+        "staffToken",
+        "staffAccount",
+        state.staffToken,
+        state.staffRefreshToken,
+        state.staffAccount,
+      );
+    },
+    setStaffTokens(state, action) {
+      state.staffToken = action.payload.staffToken ?? state.staffToken;
+      state.staffRefreshToken = action.payload.refreshToken ?? state.staffRefreshToken;
+      writeStoredPortalAuth(
+        STAFF_STORAGE_KEY,
+        "staffToken",
+        "staffAccount",
+        state.staffToken,
+        state.staffRefreshToken,
+        state.staffAccount,
+      );
+    },
+    logoutStaff(state) {
+      state.staffToken = null;
+      state.staffRefreshToken = null;
+      state.staffAccount = null;
+      writeStoredPortalAuth(STAFF_STORAGE_KEY, "staffToken", "staffAccount", null, null, null);
+    },
   },
 });
 
@@ -231,5 +281,9 @@ export const {
   logout,
   logoutCoach,
   logoutAssistant,
+  setStaffCredentials,
+  setStaffAccount,
+  setStaffTokens,
+  logoutStaff,
 } = authSlice.actions;
 export default authSlice.reducer;

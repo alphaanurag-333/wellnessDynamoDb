@@ -2,12 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { assistantGetMe } from "../api/assistantAuth.js";
+import { staffGetMe } from "../../panel/api/staffAuth.js";
 import { AssistantFooter } from "../components/Footer.jsx";
-import { AssistantHeader } from "../components/Header.jsx";
-import { AssistantSidebar } from "../components/Sidebar.jsx";
+import { PanelHeader } from "../../panel/components/PanelHeader.jsx";
+import { PanelSidebar } from "../../panel/components/PanelSidebar.jsx";
 import { flattenNavLinks, assistantNavItems } from "../data/navItems.js";
 import { useMediaQuery } from "../../hooks/useMediaQuery.js";
-import { logoutAssistant, setAssistant } from "../../store/authSlice.js";
+import { logoutAssistant, setAssistant, setStaffAccount } from "../../store/authSlice.js";
 
 function titleFromPath(pathname) {
   const p = pathname.replace(/\/$/, "") || "/";
@@ -48,6 +49,17 @@ export function AssistantWellnessCoachLayout() {
         if (!cancelled && data?.assistant) dispatch(setAssistant(data.assistant));
       } catch (e) {
         if (e?.status === 401) dispatch(logoutAssistant());
+      }
+      // The shared PanelSidebar/PanelHeader render from `staffAccount`
+      // (unified shape/permissions) regardless of which portal issued the
+      // token — populate it here too so it's always fresh even for sessions
+      // that never touched `/panel/login`.
+      try {
+        const staffData = await staffGetMe(assistantToken);
+        if (!cancelled && staffData?.account) dispatch(setStaffAccount(staffData.account));
+      } catch {
+        // Best-effort — this layout's own token guard already controls
+        // access; a failure here only affects sidebar rendering.
       }
     })();
     return () => {
@@ -96,7 +108,7 @@ export function AssistantWellnessCoachLayout() {
         tabIndex={-1}
         onClick={closeSidebar}
       />
-      <AssistantSidebar
+      <PanelSidebar
         id="assistant-sidebar"
         drawerOpen={sidebarOpen}
         desktopCollapsed={sidebarCollapsed}
@@ -104,7 +116,8 @@ export function AssistantWellnessCoachLayout() {
       />
 
       <div className="admin-main">
-        <AssistantHeader
+        <PanelHeader
+          title={pageTitle}
           onMenuClick={toggleSidebar}
           isDesktop={isDesktop}
           mobileNavOpen={sidebarOpen}

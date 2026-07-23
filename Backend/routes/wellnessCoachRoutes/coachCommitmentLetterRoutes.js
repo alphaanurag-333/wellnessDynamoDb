@@ -14,31 +14,31 @@ const router = express.Router();
 router.get(
   "/pending",
   protectWellnessCoach,
-  authorize("nav.commitment-letters"),
+  authorize("commitment-letters.view"),
   listCoachPendingCommitmentLettersController
 );
 router.get(
   "/",
   protectWellnessCoach,
-  authorize("nav.commitment-letters"),
+  authorize("commitment-letters.view"),
   listCoachCommitmentLettersController
 );
 router.get(
   "/:id",
   protectWellnessCoach,
-  authorize("nav.commitment-letters"),
+  authorize("commitment-letters.view"),
   getCoachCommitmentLetterByIdController
 );
 router.patch(
   "/:id/review",
   protectWellnessCoach,
-  authorize("nav.commitment-letters"),
+  authorize("commitment-letters.view"),
   reviewCoachCommitmentLetterController
 );
 router.delete(
   "/:id",
   protectWellnessCoach,
-  authorize("nav.commitment-letters"),
+  authorize("commitment-letters.view"),
   deleteCoachCommitmentLetterController
 );
 

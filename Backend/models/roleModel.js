@@ -8,10 +8,12 @@ const {
 const { v4: uuidv4 } = require("uuid");
 const { docClient } = require("../config/db");
 const { listByPartitionKey, buildContainsFilter, sortByCreatedAtDesc } = require("../utils/dynamoList");
+const { ACCOUNT_TYPES } = require("../config/staffPermissionCatalog");
 
 const TABLE = "Role";
 const STATUS = new Set(["active", "inactive"]);
 const SCOPES = new Set(["ADMIN", "COACH"]);
+const ACCOUNT_TYPE_SET = new Set(ACCOUNT_TYPES);
 
 function normalizeStatus(value, fallback = "active") {
   const next = String(value || fallback).toLowerCase().trim();
@@ -21,6 +23,32 @@ function normalizeStatus(value, fallback = "active") {
 function normalizeScope(value, fallback = "ADMIN") {
   const next = String(value || fallback).toUpperCase().trim();
   return SCOPES.has(next) ? next : fallback;
+}
+
+/**
+ * `accountTypes` is the unified replacement for `scope`: the staff account
+ * type(s) a role is assignable to. `scope` is kept in parallel (derived when
+ * omitted) purely for backward compatibility with code that has not yet been
+ * migrated off it (`Backend/config/coachPermissionCatalog.js` consumers,
+ * pre-M6 admin controllers) — new code should read `accountTypes`.
+ */
+function normalizeAccountTypes(value, fallbackScope = "ADMIN") {
+  if (Array.isArray(value) && value.length > 0) {
+    const cleaned = Array.from(
+      new Set(value.map((v) => String(v || "").trim()).filter((v) => ACCOUNT_TYPE_SET.has(v)))
+    );
+    if (cleaned.length > 0) return cleaned;
+  }
+  // Derive from legacy scope when accountTypes is absent/empty.
+  return normalizeScope(fallbackScope, "ADMIN") === "COACH"
+    ? ["wellness_coach", "assistant_wellness_coach"]
+    : ["admin"];
+}
+
+/** Legacy `scope` derived from `accountTypes` for rows/writers still reading `scope`. */
+function scopeFromAccountTypes(accountTypes) {
+  const types = Array.isArray(accountTypes) ? accountTypes : [];
+  return types.includes("admin") ? "ADMIN" : "COACH";
 }
 
 function normalizeSlug(value) {
@@ -38,21 +66,38 @@ function normalizePermissions(value) {
 
 function toPublicRole(role) {
   if (!role) return null;
+  const scope = normalizeScope(role.scope, "ADMIN");
   return {
     ...role,
-    scope: normalizeScope(role.scope, "ADMIN"),
+    scope,
+    accountTypes: normalizeAccountTypes(role.accountTypes, scope),
   };
 }
 
-async function createRole({ name, slug, permissions = [], status = "active", scope = "ADMIN" }) {
+/** Whether a role is assignable to the given staff account type. */
+function roleTargetsAccountType(role, accountType) {
+  const types = normalizeAccountTypes(role?.accountTypes, role?.scope);
+  return types.includes(String(accountType || ""));
+}
+
+async function createRole({
+  name,
+  slug,
+  permissions = [],
+  status = "active",
+  scope,
+  accountTypes,
+}) {
   const now = new Date().toISOString();
+  const resolvedAccountTypes = normalizeAccountTypes(accountTypes, scope || "ADMIN");
   const item = {
     id: uuidv4(),
     name: String(name || "").trim(),
     slug: normalizeSlug(slug || name),
     permissions: normalizePermissions(permissions),
     status: normalizeStatus(status),
-    scope: normalizeScope(scope, "ADMIN"),
+    scope: scope !== undefined ? normalizeScope(scope, "ADMIN") : scopeFromAccountTypes(resolvedAccountTypes),
+    accountTypes: resolvedAccountTypes,
     createdAt: now,
     updatedAt: now,
   };
@@ -113,6 +158,7 @@ async function updateRole(id, updates) {
     if (key === "permissions") nextValue = normalizePermissions(value);
     if (key === "status") nextValue = normalizeStatus(value);
     if (key === "scope") nextValue = normalizeScope(value, "ADMIN");
+    if (key === "accountTypes") nextValue = normalizeAccountTypes(value, "ADMIN");
     if (key === "name") nextValue = String(value || "").trim();
 
     exprNames[`#${key}`] = key;
@@ -145,7 +191,7 @@ async function deleteRole(id) {
   return { deleted: true };
 }
 
-async function listRoles({ page = 1, limit = 20, status, search, scope } = {}) {
+async function listRoles({ page = 1, limit = 20, status, search, scope, accountType } = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const searchFilter = buildContainsFilter(["name", "slug"], search);
   let filterExpression = searchFilter.filterExpression;
@@ -180,9 +226,16 @@ async function listRoles({ page = 1, limit = 20, status, search, scope } = {}) {
     sortFn: sortByCreatedAtDesc,
   });
 
+  let rows = items.map((row) => toPublicRole(row));
+  // accountType is a plain attribute (not a GSI key) — filter in memory. Role
+  // counts are small enough that this is cheap and avoids a 7th GSI.
+  if (accountType) {
+    rows = rows.filter((role) => role.accountTypes.includes(accountType));
+  }
+
   return {
-    roles: items.map((row) => toPublicRole(row)),
-    pagination,
+    roles: rows,
+    pagination: accountType ? { ...pagination, total: rows.length } : pagination,
   };
 }
 
@@ -194,8 +247,12 @@ module.exports = {
   deleteRole,
   listRoles,
   toPublicRole,
+  roleTargetsAccountType,
   normalizeSlug,
   normalizePermissions,
   normalizeScope,
+  normalizeAccountTypes,
+  scopeFromAccountTypes,
   SCOPES,
+  ACCOUNT_TYPES,
 };

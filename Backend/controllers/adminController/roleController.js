@@ -11,22 +11,34 @@ const {
 } = require("../../models/roleModel");
 const { countAdminsByRoleId } = require("../../models/adminModel");
 const { countCoachesByRoleId } = require("../../models/wellnessCoachModel");
-const { isValidPermission, getPermissionCatalog } = require("../../config/permissionCatalog");
-const {
-  isValidCoachPermission,
-  getCoachPermissionCatalog,
-} = require("../../config/coachPermissionCatalog");
+const { getPermissionCatalog } = require("../../config/permissionCatalog");
+const { getCoachPermissionCatalog } = require("../../config/coachPermissionCatalog");
+const { remapLegacySlugList } = require("../../config/staffPermissionSlugMap");
+const { permissionsForAccountType } = require("../../config/staffPermissionCatalog");
 
 /**
- * Keep only catalog-known slugs for the given scope.
+ * Keep only catalog-known slugs for the given scope, always persisted as
+ * unified `staffPermissionCatalog` slugs.
+ *
+ * This form (the pre-M6 admin panel's Role Management UI) still sends slugs
+ * in whichever shape its own catalog uses (legacy admin `to.action` or
+ * legacy coach `nav.*`/`clientTab.*`). Since M3 already remapped every
+ * existing Role row onto unified slugs, this must remap *incoming* slugs the
+ * same way before storing — otherwise every edit made through this legacy UI
+ * would silently re-write `Role.permissions` back into the legacy shape,
+ * which `protectStaff`/`resolveStaffPermissions` (and, post-M5/M6, the
+ * `protect*Legacy` fallbacks too) do not recognize, wiping out that role's
+ * effective permissions on its very next resolve.
  */
 function sanitizePermissions(permissions, scope = "ADMIN") {
   if (permissions === undefined) return undefined;
   if (!Array.isArray(permissions)) {
     throw new AppError("permissions must be an array of permission slugs", 400);
   }
-  const isValid = scope === "COACH" ? isValidCoachPermission : isValidPermission;
-  return [...new Set(permissions.map((slug) => String(slug)).filter(isValid))];
+  const unified = remapLegacySlugList(permissions.map((slug) => String(slug)), scope);
+  const allowedTypes = scope === "COACH" ? ["wellness_coach", "assistant_wellness_coach"] : ["admin"];
+  const allowed = new Set(allowedTypes.flatMap((type) => permissionsForAccountType(type)));
+  return unified.filter((slug) => allowed.has(slug));
 }
 
 exports.listRolesController = asyncHandler(async (req, res) => {

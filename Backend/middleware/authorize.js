@@ -54,4 +54,23 @@ function requireSuperAdmin(req, res, next) {
   return next(new AppError("Only the Super Admin can perform this action", 403));
 }
 
-module.exports = { authorize, authorizeAny, requireSuperAdmin };
+/**
+ * Gate a route to one or more staff account types. Must run after
+ * `protectStaff` (relies on `req.auth.accountType`) — used for endpoints
+ * that are only meaningful for a subset of staff, e.g. Role management
+ * (super admin only, any accountType) or coach-only "my assistants" routes.
+ */
+function requireAccountType(...accountTypes) {
+  const allowed = new Set(accountTypes.flat().filter(Boolean));
+  return (req, res, next) => {
+    if (!req.auth) {
+      return next(new AppError("Authentication required", 401));
+    }
+    if (allowed.has(req.auth.accountType)) {
+      return next();
+    }
+    return next(new AppError("You do not have permission to perform this action", 403));
+  };
+}
+
+module.exports = { authorize, authorizeAny, requireSuperAdmin, requireAccountType };

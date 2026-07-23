@@ -1,35 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { navItems } from "../data/navItems.js";
+import { panelNavItems } from "../data/navConfig.js";
 import { selectAppDisplayName, selectPanelLogoUrl } from "../../store/appConfigSelectors.js";
-import { selectIsSuperAdmin, selectPermissions } from "../../store/authSelectors.js";
+import {
+  selectIsStaffSuperAdmin,
+  selectStaffAccountType,
+  selectStaffPermissions,
+} from "../../store/staffAuthSelectors.js";
 import { mediaUrl } from "../../media.js";
-import { logout } from "../../store/authSlice.js";
+import { logout, logoutAssistant, logoutCoach, logoutStaff } from "../../store/authSlice.js";
 import { confirmLogout } from "../utils/confirmLogout.js";
-import { filterNavItemsByPermission } from "../utils/navAccess.js";
-import { NavIcon } from "./NavIcon.jsx";
+import { filterPanelNavItems, resolveNavHref } from "../utils/navAccess.js";
+import { NavIcon } from "../../admin/components/NavIcon.jsx";
 import defaultLogo from "../../assets/logo/defaultlogo.png";
 
 const NAV_GROUP_PATTERNS = {
-  consultancy: /\/admin\/consultancy(\/|$)/,
-  "energy-exchange": /\/admin\/energy-exchange(\/|$)/,
-  "wellness-program": /\/admin\/programs(\/|$)/,
-  team: /\/admin\/(coaches|awcs|specializations)(\/|$)/,
-  health:
-    /\/admin\/(health-concerns|health-tools|health-recipes|health-disorders|yoga|physical-exercises|supplements|medical-condition-questions)(\/|$)/,
-  launchAssessment: /\/admin\/(launch-questions|launch-focus-areas)(\/|$)/,
-  prakrutiAssessment: /\/admin\/(prakruti-questions|prakruti-things-to-avoid|prakruti-recommendations)(\/|$)/,
-  catalogs:
-    /\/admin\/(test-catalog|diet-plan-catalog|wellness-prescriptions|mental-wellbeing)(\/|$)/,
-  testimonials:
-    /\/admin\/(transformations|client-testimonials|program-testimonials|real-people-testimonials|commitment-letters|video-testimonials)(\/|$)/,
-  leadership: /\/admin\/(leadership-notes|cofounder-message)(\/|$)/,
-  engagement:
-    /\/admin\/(banners|birthday-posts|birthday-notifications|monthly-champions|notifications)(\/|$)/,
-  content: /\/admin\/(faq|contact-inquiries|static-pages|coupons)(\/|$)/,
-  settings: /\/admin\/(settings|profile)(\/|$)/,
-  administration: /\/admin\/(sub-admins|roles)(\/|$)/,
+  administration: /\/panel\/(staff-accounts|roles)(\/|$)/,
+  myTeam: /\/(coach|assistant)\/(my-users|meal-approvals|my-assistants)(\/|$)/,
 };
 
 function normalizePath(pathname) {
@@ -40,47 +28,32 @@ function pathInGroup(pathname, groupId) {
   return Boolean(NAV_GROUP_PATTERNS[groupId]?.test(pathname));
 }
 
-function childPathActive(pathname, segment, siblings = []) {
-  const base = `/admin/${segment}`;
+function pathMatchesHref(pathname, href) {
+  const base = normalizePath(href);
   const p = normalizePath(pathname);
-  const matchesThis = p === base || p.startsWith(`${base}/`);
-  if (!matchesThis) return false;
-
-  const bestMatch = siblings
-    .filter((child) => {
-      const childBase = `/admin/${child.to}`;
-      return p === childBase || p.startsWith(`${childBase}/`);
-    })
-    .sort((a, b) => b.to.length - a.to.length)[0];
-
-  return bestMatch?.to === segment;
-}
-
-function isTopLevelNavActive(pathname, segment) {
-  const p = normalizePath(pathname);
-  const base = `/admin/${segment}`;
   return p === base || p.startsWith(`${base}/`);
 }
 
-export function Sidebar({ id = "admin-sidebar", onNavigate, drawerOpen, desktopCollapsed }) {
+export function PanelSidebar({ id = "panel-sidebar", onNavigate, drawerOpen, desktopCollapsed }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
   const brandLogoUrl = useSelector(selectPanelLogoUrl);
   const appDisplayName = useSelector(selectAppDisplayName);
-  const isSuperAdmin = useSelector(selectIsSuperAdmin);
-  const permissions = useSelector(selectPermissions);
+  const isSuperAdmin = useSelector(selectIsStaffSuperAdmin);
+  const accountType = useSelector(selectStaffAccountType);
+  const permissions = useSelector(selectStaffPermissions);
   const logoSrc = mediaUrl(brandLogoUrl) || defaultLogo;
 
   const visibleNavItems = useMemo(
-    () => filterNavItemsByPermission(navItems, { isSuperAdmin, permissions }),
-    [isSuperAdmin, permissions]
+    () => filterPanelNavItems(panelNavItems, { isSuperAdmin, permissions, accountType }),
+    [isSuperAdmin, permissions, accountType],
   );
 
   const initialOpen = useMemo(() => {
     const open = {};
-    for (const id of Object.keys(NAV_GROUP_PATTERNS)) {
-      open[id] = pathInGroup(location.pathname, id);
+    for (const groupId of Object.keys(NAV_GROUP_PATTERNS)) {
+      open[groupId] = pathInGroup(location.pathname, groupId);
     }
     return open;
   }, [location.pathname]);
@@ -91,9 +64,9 @@ export function Sidebar({ id = "admin-sidebar", onNavigate, drawerOpen, desktopC
     setOpenGroups((prev) => {
       const next = { ...prev };
       let changed = false;
-      for (const id of Object.keys(NAV_GROUP_PATTERNS)) {
-        if (initialOpen[id] && !prev[id]) {
-          next[id] = true;
+      for (const groupId of Object.keys(NAV_GROUP_PATTERNS)) {
+        if (initialOpen[groupId] && !prev[groupId]) {
+          next[groupId] = true;
           changed = true;
         }
       }
@@ -104,8 +77,15 @@ export function Sidebar({ id = "admin-sidebar", onNavigate, drawerOpen, desktopC
   const handleLogout = async () => {
     const ok = await confirmLogout();
     if (!ok) return;
+    // Every login now funnels through `/panel/login`, so clear every legacy
+    // slot too — a Panel session for an Admin/Coach/Assistant account mirrors
+    // into their own slot (see `PanelLoginPage`), and a stale one left behind
+    // would let a "logged out" tab still pass a legacy layout's token guard.
+    dispatch(logoutStaff());
     dispatch(logout());
-    navigate("/admin/login", { replace: true });
+    dispatch(logoutCoach());
+    dispatch(logoutAssistant());
+    navigate("/panel/login", { replace: true });
     onNavigate?.();
   };
 
@@ -133,7 +113,7 @@ export function Sidebar({ id = "admin-sidebar", onNavigate, drawerOpen, desktopC
         </span>
         <div className="admin-sidebar__brand-text">
           <div className="admin-sidebar__title">{appDisplayName || "Wellness"}</div>
-          <div className="admin-sidebar__subtitle">Admin</div>
+          <div className="admin-sidebar__subtitle">Panel</div>
         </div>
       </div>
 
@@ -144,7 +124,7 @@ export function Sidebar({ id = "admin-sidebar", onNavigate, drawerOpen, desktopC
               <button
                 type="button"
                 className={`admin-sidebar__link admin-sidebar__group-btn${
-                  item.children.some((c) => childPathActive(location.pathname, c.to, item.children))
+                  item.children.some((c) => pathMatchesHref(location.pathname, resolveNavHref(c, accountType)))
                     ? " admin-sidebar__group-btn--ancestor"
                     : ""
                 }`}
@@ -168,11 +148,11 @@ export function Sidebar({ id = "admin-sidebar", onNavigate, drawerOpen, desktopC
                   {item.children.map((child) => (
                     <NavLink
                       key={child.to}
-                      to={child.to}
+                      to={resolveNavHref(child, accountType)}
                       title={child.label}
                       className={() =>
                         `admin-sidebar__link admin-sidebar__link--child${
-                          childPathActive(location.pathname, child.to, item.children)
+                          pathMatchesHref(location.pathname, resolveNavHref(child, accountType))
                             ? " admin-sidebar__link--active"
                             : ""
                         }`
@@ -189,11 +169,13 @@ export function Sidebar({ id = "admin-sidebar", onNavigate, drawerOpen, desktopC
           ) : (
             <NavLink
               key={item.to}
-              to={item.to}
+              to={resolveNavHref(item, accountType)}
               title={item.label}
               className={() =>
                 `admin-sidebar__link${
-                  isTopLevelNavActive(location.pathname, item.to) ? " admin-sidebar__link--active" : ""
+                  pathMatchesHref(location.pathname, resolveNavHref(item, accountType))
+                    ? " admin-sidebar__link--active"
+                    : ""
                 }`
               }
               onClick={onNavigate}
@@ -201,7 +183,7 @@ export function Sidebar({ id = "admin-sidebar", onNavigate, drawerOpen, desktopC
               <NavIcon name={item.icon} />
               <span className="admin-sidebar__link-text">{item.label}</span>
             </NavLink>
-          )
+          ),
         )}
       </nav>
 

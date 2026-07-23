@@ -7,6 +7,6 @@ const {
 
 const router = express.Router({ mergeParams: true });
 
-router.get("/:userId/commitment-letter", protectAdmin, authorize("users.clientHub.care.commitment-letter"), getAdminUserCommitmentLetterController);
+router.get("/:userId/commitment-letter", protectAdmin, authorize("clientHub.care.commitment-letter"), getAdminUserCommitmentLetterController);
 
 module.exports = router;

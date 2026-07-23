@@ -16,7 +16,7 @@ const {
   listAdmins,
   toPublicAdmin,
 } = require("../../models/adminModel");
-const { getRoleById } = require("../../models/roleModel");
+const { getRoleById, roleTargetsAccountType } = require("../../models/roleModel");
 
 const S3_FOLDER = "admin";
 const STATUS_VALUES = new Set(["active", "inactive"]);
@@ -40,6 +40,14 @@ async function assertRoleExists(roleId) {
   const role = await getRoleById(roleId);
   if (!role) {
     throw new AppError("Role not found", 404);
+  }
+  // Safeguard #4 (Unified Staff RBAC Panel plan): a role only usable by
+  // coach/assistant accounts must never be assignable to an admin, and
+  // vice versa — checked against `Role.accountTypes` (the unified
+  // replacement for the old `Role.scope` ADMIN/COACH split) so this holds
+  // even for roles that target multiple account types at once.
+  if (!roleTargetsAccountType(role, "admin")) {
+    throw new AppError("This role is not assignable to admin accounts", 400);
   }
   return role;
 }

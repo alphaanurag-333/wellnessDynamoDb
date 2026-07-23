@@ -6,7 +6,8 @@ const {
   deleteStoredMedia,
   parseMediaKeyFromBody,
 } = require("../../utils/s3");
-const { createTokenPair, verifyRefreshToken } = require("../../utils/jwt");
+const { verifyRefreshToken } = require("../../utils/jwt");
+const { createAccountTokenPair, payloadMatchesAccountType } = require("../../utils/staffTokens");
 const { parseFcmIdFromBody } = require("../../utils/parseFcmId");
 const {
   getWellnessCoachByEmail,
@@ -74,10 +75,7 @@ const S3_FOLDER = "wellness-coach";
 const ROLE = "wellness_coach";
 
 function sendAuthResponse(res, statusCode, coach) {
-  const { accessToken, refreshToken } = createTokenPair({
-    sub: coach.id,
-    role: ROLE,
-  });
+  const { accessToken, refreshToken } = createAccountTokenPair(ROLE, coach.id);
   return res.status(statusCode).json({
     status: true,
     message: "Authentication successful",
@@ -328,7 +326,7 @@ exports.refreshWellnessCoachToken = asyncHandler(async (req, res) => {
     throw new AppError("Invalid or expired refresh token", 401);
   }
 
-  if (payload.role !== ROLE) {
+  if (!payloadMatchesAccountType(payload, ROLE)) {
     throw new AppError("Forbidden", 403);
   }
 
@@ -341,7 +339,7 @@ exports.refreshWellnessCoachToken = asyncHandler(async (req, res) => {
     throw new AppError("Account is inactive", 403);
   }
 
-  const tokens = createTokenPair({ sub: coach.id, role: ROLE });
+  const tokens = createAccountTokenPair(ROLE, coach.id);
 
   return res.status(200).json({
     status: true,

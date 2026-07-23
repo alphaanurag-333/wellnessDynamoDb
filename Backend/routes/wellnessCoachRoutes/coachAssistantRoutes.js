@@ -13,7 +13,7 @@ const {
 
 const router = express.Router();
 
-router.use(protectWellnessCoach, authorize("nav.my-assistants"));
+router.use(protectWellnessCoach, authorize("my-assistants.view"));
 
 router.get("/", listMyAssistantsController);
 router.get("/count", getMyAssistantCountController);

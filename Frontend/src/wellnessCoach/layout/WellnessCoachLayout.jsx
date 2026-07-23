@@ -2,13 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { coachGetMe } from "../api/coachAuth.js";
+import { staffGetMe } from "../../panel/api/staffAuth.js";
 import { CoachFooter } from "../components/Footer.jsx";
-import { CoachHeader } from "../components/Header.jsx";
-import { CoachSidebar } from "../components/Sidebar.jsx";
+import { PanelHeader } from "../../panel/components/PanelHeader.jsx";
+import { PanelSidebar } from "../../panel/components/PanelSidebar.jsx";
 import { CoachPermissionsProvider } from "../hooks/useHasPermission.jsx";
 import { flattenNavLinks, coachNavItems } from "../data/navItems.js";
 import { useMediaQuery } from "../../hooks/useMediaQuery.js";
-import { logoutCoach, setCoach } from "../../store/authSlice.js";
+import { logoutCoach, setCoach, setStaffAccount } from "../../store/authSlice.js";
 
 function titleFromPath(pathname) {
   const p = pathname.replace(/\/$/, "") || "/";
@@ -53,6 +54,17 @@ export function WellnessCoachLayout() {
         if (!cancelled && data?.coach) dispatch(setCoach(data.coach));
       } catch (e) {
         if (e?.status === 401) dispatch(logoutCoach());
+      }
+      // The shared PanelSidebar/PanelHeader render from `staffAccount`
+      // (unified shape/permissions) regardless of which portal issued the
+      // token — populate it here too so it's always fresh even for sessions
+      // that never touched `/panel/login`.
+      try {
+        const staffData = await staffGetMe(coachToken);
+        if (!cancelled && staffData?.account) dispatch(setStaffAccount(staffData.account));
+      } catch {
+        // Best-effort — this layout's own token guard already controls
+        // access; a failure here only affects sidebar rendering.
       }
     })();
     return () => {
@@ -102,7 +114,7 @@ export function WellnessCoachLayout() {
           tabIndex={-1}
           onClick={closeSidebar}
         />
-        <CoachSidebar
+        <PanelSidebar
           id="coach-sidebar"
           drawerOpen={sidebarOpen}
           desktopCollapsed={sidebarCollapsed}
@@ -110,7 +122,8 @@ export function WellnessCoachLayout() {
         />
 
         <div className="admin-main">
-          <CoachHeader
+          <PanelHeader
+            title={pageTitle}
             onMenuClick={toggleSidebar}
             isDesktop={isDesktop}
             mobileNavOpen={sidebarOpen}

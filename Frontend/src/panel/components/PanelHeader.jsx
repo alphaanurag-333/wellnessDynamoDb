@@ -1,16 +1,26 @@
 import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { NavIcon } from "../../admin/components/NavIcon.jsx";
-import { AdminMediaImage } from "../../admin/components/AdminMediaImage.jsx";
 import { selectAppDisplayName, selectPanelLogoUrl } from "../../store/appConfigSelectors.js";
+import { selectStaffAccount } from "../../store/staffAuthSelectors.js";
+import { AdminMediaImage } from "../../admin/components/AdminMediaImage.jsx";
 import { mediaUrl } from "../../media.js";
-import { logoutCoach } from "../../store/authSlice.js";
+import { logout, logoutAssistant, logoutCoach, logoutStaff } from "../../store/authSlice.js";
+import { confirmLogout } from "../utils/confirmLogout.js";
+import { homePrefixForAccountType } from "../utils/navAccess.js";
+import { NavIcon } from "../../admin/components/NavIcon.jsx";
 import { TrackingRefreshButton } from "../../components/TrackingRefreshButton.jsx";
 import defaultLogo from "../../assets/logo/defaultlogo.png";
-import { confirmCoachLogout } from "../utils/confirmLogout.js";
 
-export function CoachHeader({
+const ACCOUNT_TYPE_LABELS = {
+  admin: "Admin",
+  wellness_coach: "Wellness Coach",
+  assistant_wellness_coach: "Assistant Wellness Coach",
+  staff: "Staff",
+};
+
+export function PanelHeader({
+  title,
   onMenuClick,
   isDesktop,
   mobileNavOpen,
@@ -20,10 +30,13 @@ export function CoachHeader({
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
-  const coach = useSelector((s) => s.auth.coach);
+  const staffAccount = useSelector(selectStaffAccount);
   const brandLogoUrl = useSelector(selectPanelLogoUrl);
   const appDisplayName = useSelector(selectAppDisplayName);
   const brandLogoSrc = mediaUrl(brandLogoUrl) || defaultLogo;
+  const roleLabel = staffAccount?.isSuperAdmin
+    ? "Super Admin"
+    : ACCOUNT_TYPE_LABELS[staffAccount?.accountType] || "Staff";
 
   const [menuOpenState, setMenuOpenState] = useState(false);
   const wrapRef = useRef(null);
@@ -63,11 +76,17 @@ export function CoachHeader({
   const closeMenu = () => setMenuOpenState(false);
 
   const handleLogout = async () => {
-    const ok = await confirmCoachLogout();
+    const ok = await confirmLogout();
     if (!ok) return;
+    // Every login now funnels through `/panel/login` — clear every legacy
+    // slot too so a stale Admin/Coach/Assistant token can't sneak a
+    // "logged out" tab past that portal's own layout guard.
+    dispatch(logoutStaff());
+    dispatch(logout());
     dispatch(logoutCoach());
+    dispatch(logoutAssistant());
     closeMenu();
-    navigate("/coach/login", { replace: true });
+    navigate("/panel/login", { replace: true });
   };
 
   return (
@@ -78,7 +97,7 @@ export function CoachHeader({
         onClick={onMenuClick}
         aria-label={navAriaLabel}
         aria-expanded={navAriaExpanded}
-        aria-controls="coach-sidebar"
+        aria-controls="panel-sidebar"
       >
         <NavIcon name={showCloseIcon ? "close" : "menu"} />
       </button>
@@ -95,6 +114,7 @@ export function CoachHeader({
         />
         <div className="admin-header__title-group">
           <p className="admin-header__app-line">{appDisplayName || "Wellness"}</p>
+          {title ? <p className="admin-header__page-line">{title}</p> : null}
         </div>
       </div>
       <div className="admin-header__spacer" />
@@ -112,40 +132,43 @@ export function CoachHeader({
         <button
           type="button"
           className="admin-header__avatar-btn"
-          aria-label="Coach menu"
+          aria-label="Account menu"
           aria-haspopup="true"
           aria-expanded={menuOpenState}
           onClick={() => setMenuOpenState((v) => !v)}
         >
           <AdminMediaImage
-            path={coach?.profileImage}
+            path={staffAccount?.profileImage}
             round
             width={36}
             height={36}
-            alt={coach?.name || "Coach"}
+            alt={staffAccount?.name || "Staff"}
             className="admin-header__avatar-img"
           />
         </button>
 
         {menuOpenState ? (
           <div className="admin-header__dropdown" role="menu">
-            <Link to="/coach/profile" className="admin-header__dropdown-item" role="menuitem" onClick={closeMenu}>
+            <div className="admin-header__dropdown-meta">
+              <strong>{staffAccount?.name || "Staff"}</strong>
+              <span>{roleLabel}</span>
+            </div>
+            <div className="admin-header__dropdown-sep" role="separator" />
+            <Link
+              to={`${homePrefixForAccountType(staffAccount?.accountType)}/profile`}
+              className="admin-header__dropdown-item"
+              role="menuitem"
+              onClick={closeMenu}
+            >
               <span className="admin-header__dropdown-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                  <circle cx="12" cy="7" r="4" />
-                </svg>
+                <NavIcon name="profile" />
               </span>
               Profile
             </Link>
             <div className="admin-header__dropdown-sep" role="separator" />
             <button type="button" className="admin-header__dropdown-item" role="menuitem" onClick={handleLogout}>
               <span className="admin-header__dropdown-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                  <polyline points="16 17 21 12 16 7" />
-                  <line x1="21" x2="9" y1="12" y2="12" />
-                </svg>
+                <NavIcon name="logout" />
               </span>
               Logout
             </button>

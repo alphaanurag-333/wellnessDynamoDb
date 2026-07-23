@@ -12,35 +12,35 @@ const { getCoachHealUserHeartRateTrackingController } = require("../../controlle
 
 const router = express.Router();
 
-router.get("/", protectWellnessCoach, authorize("nav.my-users"), listHealUsersForCoachPortalController);
+router.get("/", protectWellnessCoach, authorize("my-users.view"), listHealUsersForCoachPortalController);
 router.get(
   "/:id/water-tracking",
   protectWellnessCoach,
-  authorize("clientTab.tracking.water"),
+  authorize("clientHub.tracking.water"),
   getCoachHealUserWaterTrackingController
 );
 router.get(
   "/:id/steps-tracking",
   protectWellnessCoach,
-  authorize("clientTab.tracking.steps"),
+  authorize("clientHub.tracking.steps"),
   getCoachHealUserStepsTrackingController
 );
 router.get(
   "/:id/sleep-tracking",
   protectWellnessCoach,
-  authorize("clientTab.tracking"),
+  authorize("clientHub.tracking"),
   getCoachHealUserSleepTrackingController
 );
 router.get(
   "/:id/heart-rate-tracking",
   protectWellnessCoach,
-  authorize("clientTab.tracking"),
+  authorize("clientHub.tracking"),
   getCoachHealUserHeartRateTrackingController
 );
 router.post(
   "/:id/reassign",
   protectWellnessCoach,
-  authorize("nav.my-users"),
+  authorize("my-users.view"),
   reassignHealUserForCoachPortalController
 );
 

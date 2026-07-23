@@ -6,7 +6,8 @@ const {
   deleteStoredMedia,
   parseMediaKeyFromBody,
 } = require("../../utils/s3");
-const { createTokenPair, verifyRefreshToken } = require("../../utils/jwt");
+const { verifyRefreshToken } = require("../../utils/jwt");
+const { createAccountTokenPair, payloadMatchesAccountType } = require("../../utils/staffTokens");
 const {
   createAdmin,
   getAdminByEmail,
@@ -14,30 +15,28 @@ const {
   updateAdmin,
   toPublicAdmin,
 } = require("../../models/adminModel");
-const { getRoleById } = require("../../models/roleModel");
-const { resolvePermissions } = require("../../utils/permissions");
+const { getRoleById, roleTargetsAccountType } = require("../../models/roleModel");
+const { resolveStaffPermissions } = require("../../utils/permissions");
 const config = require("../../config");
 const { assertPasswordPolicy } = require("../../utils/passwordPolicy");
 
 const S3_FOLDER = "admin";
+const ROLE = "admin";
 
-async function resolveAdminAuthContext(admin) {
+async function      resolveAdminAuthContext(admin) {
   const isSuperAdmin = Boolean(admin.isSuperAdmin);
-  const role = !isSuperAdmin && admin.roleId ? await getRoleById(admin.roleId) : null;
-  const permissions = resolvePermissions(admin, role);
+  let role = !isSuperAdmin && admin.roleId ? await getRoleById(admin.roleId) : null;
+  if (role && !roleTargetsAccountType(role, ROLE)) {
+    role = null;
+  }
+  const permissions = resolveStaffPermissions({ ...admin, accountType: ROLE, isSuperAdmin }, role);
   return { isSuperAdmin, roleId: admin.roleId || null, permissions };
 }
 
 async function sendAuthResponse(res, statusCode, admin) {
   const { isSuperAdmin, roleId, permissions } = await resolveAdminAuthContext(admin);
 
-  const { accessToken, refreshToken } = createTokenPair({
-    sub: admin.id,
-    role: "admin",
-    isSuperAdmin,
-    roleId,
-    permissions,
-  });
+  const { accessToken, refreshToken } = createAccountTokenPair(ROLE, admin.id);
 
   return res.status(statusCode).json({
     status: true,
@@ -204,7 +203,7 @@ exports.refreshAdminToken = asyncHandler(async (req, res) => {
     throw new AppError("Invalid or expired refresh token", 401);
   }
 
-  if (payload.role !== "admin") {
+  if (!payloadMatchesAccountType(payload, ROLE)) {
     throw new AppError("Forbidden", 403);
   }
 
@@ -213,8 +212,7 @@ exports.refreshAdminToken = asyncHandler(async (req, res) => {
     throw new AppError("Admin not found", 404);
   }
 
-  const { isSuperAdmin, roleId, permissions } = await resolveAdminAuthContext(admin);
-  const tokens = createTokenPair({ sub: admin.id, role: "admin", isSuperAdmin, roleId, permissions });
+  const tokens = createAccountTokenPair(ROLE, admin.id);
 
   return res.status(200).json({
     status: true,

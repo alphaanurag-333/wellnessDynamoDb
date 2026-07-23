@@ -9,11 +9,11 @@ const {
 
 const router = express.Router({ mergeParams: true });
 
-router.get("/:userId/diet-plan-assignments", protectWellnessCoach, authorize("clientTab.care.diet-plan"), listCoachUserDietPlanAssignmentsController);
-router.post("/:userId/diet-plan-assignments", protectWellnessCoach, authorize("clientTab.care.diet-plan"), createCoachUserDietPlanAssignmentController);
+router.get("/:userId/diet-plan-assignments", protectWellnessCoach, authorize("clientHub.care.diet-plan"), listCoachUserDietPlanAssignmentsController);
+router.post("/:userId/diet-plan-assignments", protectWellnessCoach, authorize("clientHub.care.diet-plan"), createCoachUserDietPlanAssignmentController);
 router.delete(
   "/:userId/diet-plan-assignments/:assignmentId",
-  protectWellnessCoach, authorize("clientTab.care.diet-plan"),
+  protectWellnessCoach, authorize("clientHub.care.diet-plan"),
   deleteCoachUserDietPlanAssignmentController
 );
 

@@ -1,7 +1,6 @@
 const express = require("express");
 
 const { protectWellnessCoach } = require("../../middleware/auth");
-const { authorize } = require("../../middleware/authorize");
 const { optionalWellnessCoachFile } = require("../../middleware/authMultipart");
 const {
   registerWellnessCoach,
@@ -27,18 +26,10 @@ router.post("/refresh-token", refreshWellnessCoachToken);
 
 router.get("/me/permissions", protectWellnessCoach, getCoachPermissionsController);
 router.get("/me", protectWellnessCoach, getWellnessCoachProfile);
-router.patch(
-  "/me",
-  protectWellnessCoach,
-  authorize("nav.profile"),
-  optionalWellnessCoachFile,
-  updateWellnessCoachProfile
-);
-router.patch(
-  "/me/password",
-  protectWellnessCoach,
-  authorize("nav.profile"),
-  changeWellnessCoachPassword
-);
+// "profile" is never permission-gated (same rule as admin, see
+// Backend/config/staffPermissionSlugMap.js) — every authenticated coach can
+// manage their own profile/password regardless of role permissions.
+router.patch("/me", protectWellnessCoach, optionalWellnessCoachFile, updateWellnessCoachProfile);
+router.patch("/me/password", protectWellnessCoach, changeWellnessCoachPassword);
 
 module.exports = router;

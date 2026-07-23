@@ -11,17 +11,17 @@ const router = express.Router({ mergeParams: true });
 
 router.get(
   "/:userId/supplement-recommendations",
-  protectAdmin, authorize("users.clientHub.wellness.supplement-recommendations"),
+  protectAdmin, authorize("clientHub.wellness.supplement-recommendations"),
   listAdminUserSupplementRecommendationsController
 );
 router.post(
   "/:userId/supplement-recommendations",
-  protectAdmin, authorize("users.clientHub.wellness.supplement-recommendations"),
+  protectAdmin, authorize("clientHub.wellness.supplement-recommendations"),
   createAdminUserSupplementRecommendationController
 );
 router.delete(
   "/:userId/supplement-recommendations/:recommendationId",
-  protectAdmin, authorize("users.clientHub.wellness.supplement-recommendations"),
+  protectAdmin, authorize("clientHub.wellness.supplement-recommendations"),
   deleteAdminUserSupplementRecommendationController
 );
 

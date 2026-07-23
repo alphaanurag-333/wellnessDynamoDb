@@ -11,7 +11,7 @@ const AppError = require("./AppError");
 const { assertUploadFileSize } = require("./mediaUploadLimits");
 
 const s3Client = new S3Client({
-  region: config.awsRegion,
+  region: config.awsS3Region,
   credentials:
     config.awsAccessKeyId && config.awsSecretAccessKey
       ? {

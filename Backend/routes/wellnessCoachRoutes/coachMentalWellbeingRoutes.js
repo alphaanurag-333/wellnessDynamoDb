@@ -9,11 +9,11 @@ const {
 
 const router = express.Router({ mergeParams: true });
 
-router.get("/:userId/mental-wellbeing", protectWellnessCoach, authorize("clientTab.wellness.mental-wellbeing"), listCoachUserMentalWellbeingController);
-router.post("/:userId/mental-wellbeing", protectWellnessCoach, authorize("clientTab.wellness.mental-wellbeing"), createCoachUserMentalWellbeingController);
+router.get("/:userId/mental-wellbeing", protectWellnessCoach, authorize("clientHub.wellness.mental-wellbeing"), listCoachUserMentalWellbeingController);
+router.post("/:userId/mental-wellbeing", protectWellnessCoach, authorize("clientHub.wellness.mental-wellbeing"), createCoachUserMentalWellbeingController);
 router.delete(
   "/:userId/mental-wellbeing/:assignmentId",
-  protectWellnessCoach, authorize("clientTab.wellness.mental-wellbeing"),
+  protectWellnessCoach, authorize("clientHub.wellness.mental-wellbeing"),
   deleteCoachUserMentalWellbeingController
 );
 

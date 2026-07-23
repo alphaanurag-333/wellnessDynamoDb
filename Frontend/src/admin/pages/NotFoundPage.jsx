@@ -25,6 +25,14 @@ function notFoundContext(pathname) {
       label: "Back to dashboard",
     };
   }
+  if (pathname.startsWith("/panel")) {
+    return {
+      description:
+        "That page does not exist, or the item may have been removed. Check the address or go back to the dashboard.",
+      to: "/panel/dashboard",
+      label: "Back to dashboard",
+    };
+  }
   return {
     description:
       "That page does not exist, or it may have been moved. Check the address or return to the home page.",

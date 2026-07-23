@@ -11,13 +11,13 @@ const router = express.Router({ mergeParams: true });
 router.get(
   "/:userId/coach-insight",
   protectAdmin,
-  authorize("users.clientHub.care.coach-message"),
+  authorize("clientHub.care.coach-message"),
   getAdminUserCoachInsightController
 );
 router.put(
   "/:userId/coach-insight",
   protectAdmin,
-  authorize("users.clientHub.care.coach-message"),
+  authorize("clientHub.care.coach-message"),
   upsertAdminUserCoachInsightController
 );
 

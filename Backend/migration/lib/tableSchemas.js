@@ -46,6 +46,69 @@ const TABLE_DEFINITIONS = [
     ...PAY_PER_REQUEST,
   },
   {
+    TableName: "StaffAccount",
+    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
+    AttributeDefinitions: [
+      { AttributeName: "id", AttributeType: "S" },
+      { AttributeName: "email", AttributeType: "S" },
+      { AttributeName: "phoneKey", AttributeType: "S" },
+      { AttributeName: "accountType", AttributeType: "S" },
+      { AttributeName: "accountTypeStatus", AttributeType: "S" },
+      { AttributeName: "createdAt", AttributeType: "S" },
+      { AttributeName: "roleId", AttributeType: "S" },
+      { AttributeName: "wellnessCoachId", AttributeType: "S" },
+    ],
+    GlobalSecondaryIndexes: [
+      {
+        IndexName: "EmailIndex",
+        KeySchema: [{ AttributeName: "email", KeyType: "HASH" }],
+        Projection: { ProjectionType: "ALL" },
+      },
+      {
+        IndexName: "PhoneKeyIndex",
+        KeySchema: [{ AttributeName: "phoneKey", KeyType: "HASH" }],
+        Projection: { ProjectionType: "ALL" },
+      },
+      {
+        IndexName: "AccountTypeCreatedAtIndex",
+        KeySchema: [
+          { AttributeName: "accountType", KeyType: "HASH" },
+          { AttributeName: "createdAt", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+      {
+        // accountTypeStatus = `${accountType}#${status}` — a composite key lets
+        // us query "active admins" / "pending coaches" etc. with one GSI
+        // instead of one per (accountType, status) pair.
+        IndexName: "AccountTypeStatusCreatedAtIndex",
+        KeySchema: [
+          { AttributeName: "accountTypeStatus", KeyType: "HASH" },
+          { AttributeName: "createdAt", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+      {
+        IndexName: "RoleIdIndex",
+        KeySchema: [
+          { AttributeName: "roleId", KeyType: "HASH" },
+          { AttributeName: "createdAt", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+      {
+        // Assistants by parent wellness coach id.
+        IndexName: "WellnessCoachIdIndex",
+        KeySchema: [
+          { AttributeName: "wellnessCoachId", KeyType: "HASH" },
+          { AttributeName: "createdAt", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+    ],
+    ...PAY_PER_REQUEST,
+  },
+  {
     TableName: "Role",
     KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
     AttributeDefinitions: [

@@ -11,17 +11,17 @@ const router = express.Router({ mergeParams: true });
 
 router.get(
   "/:userId/daily-reflection-settings",
-  protectWellnessCoach, authorize("clientTab.wellness.daily-reflection"),
+  protectWellnessCoach, authorize("clientHub.wellness.daily-reflection"),
   getCoachUserDailyReflectionSettingsController
 );
 router.patch(
   "/:userId/daily-reflection-settings",
-  protectWellnessCoach, authorize("clientTab.wellness.daily-reflection"),
+  protectWellnessCoach, authorize("clientHub.wellness.daily-reflection"),
   updateCoachUserDailyReflectionSettingsController
 );
 router.get(
   "/:userId/daily-reflection/history",
-  protectWellnessCoach, authorize("clientTab.wellness.daily-reflection"),
+  protectWellnessCoach, authorize("clientHub.wellness.daily-reflection"),
   getCoachUserDailyReflectionHistoryController
 );
 

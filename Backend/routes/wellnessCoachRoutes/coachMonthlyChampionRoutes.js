@@ -12,13 +12,13 @@ const router = express.Router();
 router.get(
   "/",
   protectWellnessCoach,
-  authorize("nav.monthly-champions"),
+  authorize("monthly-champions.view"),
   listCoachMonthlyChampionPostsController
 );
 router.get(
   "/:id",
   protectWellnessCoach,
-  authorize("nav.monthly-champions"),
+  authorize("monthly-champions.view"),
   getCoachMonthlyChampionPostByIdController
 );
 

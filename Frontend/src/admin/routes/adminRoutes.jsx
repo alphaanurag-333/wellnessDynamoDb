@@ -140,14 +140,9 @@ import { ProgramTransactionList } from "../pages/program/ProgramTransactionList.
 import { ConsultancyEnrolledUsersList } from "../pages/consultancy/ConsultancyEnrolledUsersList.jsx";
 import { UserView } from "../pages/user/UserView.jsx";
 import { PendingAssignmentList } from "../pages/user/PendingAssignmentList.jsx";
-import { WellnessCoachList } from "../pages/wellnessCoach/WellnessCoachList.jsx";
-import { WellnessCoachAdd } from "../pages/wellnessCoach/WellnessCoachAdd.jsx";
-import { WellnessCoachEdit } from "../pages/wellnessCoach/WellnessCoachEdit.jsx";
-import { WellnessCoachView } from "../pages/wellnessCoach/WellnessCoachView.jsx";
-import { AssistantList } from "../pages/assistantWellnessCoach/AssistantList.jsx";
-import { AssistantAdd } from "../pages/assistantWellnessCoach/AssistantAdd.jsx";
-import { AssistantEdit } from "../pages/assistantWellnessCoach/AssistantEdit.jsx";
-import { AssistantView } from "../pages/assistantWellnessCoach/AssistantView.jsx";
+// Wellness Coach / Assistant Coach account management is retired here —
+// `/panel/staff-accounts` (+ `/panel/roles`) now covers every account type,
+// including these two, from one unified surface.
 import { SpecializationList } from "../pages/specialization/SpecializationList.jsx";
 import { SpecializationAdd } from "../pages/specialization/SpecializationAdd.jsx";
 import { SpecializationEdit } from "../pages/specialization/SpecializationEdit.jsx";
@@ -202,16 +197,9 @@ export const adminRouteTree = (
       <Route path="new" element={<ProgramCatalogAdd />} />
       <Route path=":programId/edit" element={<ProgramCatalogEdit />} />
     </Route>
-    <Route path="coaches" element={<Outlet />}>
-      <Route index element={<WellnessCoachList />} />
-      <Route path="new" element={<WellnessCoachAdd />} />
-      <Route path=":coachId/edit" element={<WellnessCoachEdit />} />
-      <Route path=":coachId/assistants/new" element={<AssistantAdd />} />
-      <Route path=":coachId/assistants/:assistantId/edit" element={<AssistantEdit />} />
-      <Route path=":coachId/assistants/:assistantId" element={<AssistantView />} />
-      <Route path=":coachId" element={<WellnessCoachView />} />
-    </Route>
-    <Route path="awcs" element={<AssistantList />} />
+    {/* Retired — see `/panel/staff-accounts` (unified across every account type). */}
+    <Route path="coaches/*" element={<Navigate to="/panel/staff-accounts" replace />} />
+    <Route path="awcs" element={<Navigate to="/panel/staff-accounts" replace />} />
     <Route path="specializations" element={<Outlet />}>
       <Route index element={<SpecializationList />} />
       <Route path="new" element={<SpecializationAdd />} />

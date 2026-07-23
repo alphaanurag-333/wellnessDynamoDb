@@ -8,7 +8,7 @@ const {
 
 const router = express.Router({ mergeParams: true });
 
-router.get("/:userId/coach-insight", protectWellnessCoach, authorize("clientTab.care.coach-message"), getCoachUserCoachInsightController);
-router.put("/:userId/coach-insight", protectWellnessCoach, authorize("clientTab.care.coach-message"), upsertCoachUserCoachInsightController);
+router.get("/:userId/coach-insight", protectWellnessCoach, authorize("clientHub.care.coach-message"), getCoachUserCoachInsightController);
+router.put("/:userId/coach-insight", protectWellnessCoach, authorize("clientHub.care.coach-message"), upsertCoachUserCoachInsightController);
 
 module.exports = router;

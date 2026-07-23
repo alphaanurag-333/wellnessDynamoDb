@@ -15,37 +15,37 @@ const router = express.Router({ mergeParams: true });
 
 router.get(
   "/:userId/health-progress-settings",
-  protectWellnessCoach, authorize("clientTab.tracking.health-progress"),
+  protectWellnessCoach, authorize("clientHub.tracking.health-progress"),
   getCoachHealthProgressSettingsController
 );
 router.patch(
   "/:userId/health-progress-settings",
-  protectWellnessCoach, authorize("clientTab.tracking.health-progress"),
+  protectWellnessCoach, authorize("clientHub.tracking.health-progress"),
   updateCoachHealthProgressSettingsController
 );
 router.get(
   "/:userId/health-progress/weight",
-  protectWellnessCoach, authorize("clientTab.tracking.health-progress"),
+  protectWellnessCoach, authorize("clientHub.tracking.health-progress"),
   listCoachWeightLogsController
 );
 router.get(
   "/:userId/health-progress/glucose",
-  protectWellnessCoach, authorize("clientTab.tracking.health-progress"),
+  protectWellnessCoach, authorize("clientHub.tracking.health-progress"),
   listCoachGlucoseLogsController
 );
 router.get(
   "/:userId/health-progress/blood-pressure",
-  protectWellnessCoach, authorize("clientTab.tracking.health-progress"),
+  protectWellnessCoach, authorize("clientHub.tracking.health-progress"),
   listCoachBloodPressureLogsController
 );
 router.get(
   "/:userId/health-progress/menstrual-cycle",
-  protectWellnessCoach, authorize("clientTab.tracking.health-progress"),
+  protectWellnessCoach, authorize("clientHub.tracking.health-progress"),
   listCoachMenstrualCycleLogsController
 );
 router.get(
   "/:userId/health-progress/condition-comparison",
-  protectWellnessCoach, authorize("clientTab.tracking.health-progress"),
+  protectWellnessCoach, authorize("clientHub.tracking.health-progress"),
   listCoachConditionLogsController
 );
 

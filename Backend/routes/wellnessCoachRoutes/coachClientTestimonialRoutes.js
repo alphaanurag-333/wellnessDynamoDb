@@ -14,31 +14,31 @@ const router = express.Router();
 router.get(
   "/pending",
   protectWellnessCoach,
-  authorize("nav.client-testimonials"),
+  authorize("client-testimonials.view"),
   listCoachPendingClientTestimonialsController
 );
 router.get(
   "/",
   protectWellnessCoach,
-  authorize("nav.client-testimonials"),
+  authorize("client-testimonials.view"),
   listCoachClientTestimonialsController
 );
 router.get(
   "/:id",
   protectWellnessCoach,
-  authorize("nav.client-testimonials"),
+  authorize("client-testimonials.view"),
   getCoachClientTestimonialByIdController
 );
 router.patch(
   "/:id",
   protectWellnessCoach,
-  authorize("nav.client-testimonials"),
+  authorize("client-testimonials.view"),
   updateCoachClientTestimonialController
 );
 router.delete(
   "/:id",
   protectWellnessCoach,
-  authorize("nav.client-testimonials"),
+  authorize("client-testimonials.view"),
   deleteCoachClientTestimonialController
 );
 

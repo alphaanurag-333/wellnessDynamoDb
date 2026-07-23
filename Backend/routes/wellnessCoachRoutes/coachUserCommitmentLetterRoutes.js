@@ -7,6 +7,6 @@ const {
 
 const router = express.Router({ mergeParams: true });
 
-router.get("/:userId/commitment-letter", protectWellnessCoach, authorize("clientTab.care.commitment-letter"), getCoachUserCommitmentLetterController);
+router.get("/:userId/commitment-letter", protectWellnessCoach, authorize("clientHub.care.commitment-letter"), getCoachUserCommitmentLetterController);
 
 module.exports = router;

@@ -12,27 +12,27 @@ const {
 
 const router = express.Router({ mergeParams: true });
 
-router.get("/:userId/meal-tracking", protectWellnessCoach, authorize("clientTab.tracking.meal-tracking"), listCoachUserMealTrackingController);
+router.get("/:userId/meal-tracking", protectWellnessCoach, authorize("clientHub.tracking.meal-tracking"), listCoachUserMealTrackingController);
 router.post(
   "/:userId/meal-tracking",
-  protectWellnessCoach, authorize("clientTab.tracking.meal-tracking"),
+  protectWellnessCoach, authorize("clientHub.tracking.meal-tracking"),
   optionalMealPhotoFile,
   createCoachUserMealLogController
 );
 router.put(
   "/:userId/meal-tracking/:logId",
-  protectWellnessCoach, authorize("clientTab.tracking.meal-tracking"),
+  protectWellnessCoach, authorize("clientHub.tracking.meal-tracking"),
   optionalMealPhotoFile,
   updateCoachUserMealLogController
 );
 router.delete(
   "/:userId/meal-tracking/:logId",
-  protectWellnessCoach, authorize("clientTab.tracking.meal-tracking"),
+  protectWellnessCoach, authorize("clientHub.tracking.meal-tracking"),
   deleteCoachUserMealLogController
 );
 router.patch(
   "/:userId/meal-tracking-mode",
-  protectWellnessCoach, authorize("clientTab.tracking.meal-tracking"),
+  protectWellnessCoach, authorize("clientHub.tracking.meal-tracking"),
   updateCoachUserMealTrackingModeController
 );
 

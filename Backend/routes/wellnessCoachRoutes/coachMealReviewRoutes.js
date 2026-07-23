@@ -11,13 +11,13 @@ const router = express.Router();
 router.get(
   "/pending-review",
   protectWellnessCoach,
-  authorize("nav.meal-approvals"),
+  authorize("meal-approvals.view"),
   listPendingMealLogsController
 );
 router.patch(
   "/:logId/review",
   protectWellnessCoach,
-  authorize("nav.meal-approvals"),
+  authorize("meal-approvals.view"),
   reviewMealLogController
 );
 
