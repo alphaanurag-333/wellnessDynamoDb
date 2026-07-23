@@ -2,11 +2,6 @@ const {
   getWellnessCoachById,
   toPublicWellnessCoach,
 } = require("../models/wellnessCoachModel");
-const {
-  listAssistantsByWellnessCoachId,
-  countAssistantsByWellnessCoachId,
-  toPublicAssistant,
-} = require("../models/assistantWellnessCoachModel");
 const { listUsersByParentCoachId, toPublicUser } = require("../models/userModel");
 const { queryMealLogsByCoachId } = require("../models/mealTrackingModel");
 const { listUserCommitmentLetters } = require("../models/userCommitmentLetterModel");
@@ -40,12 +35,6 @@ function countClientsByTier(users) {
   return { healClients, consultancyClients };
 }
 
-function countActiveAssistants(assistants) {
-  return (assistants || []).filter(
-    (row) => String(row.status || "active").toLowerCase() === "active"
-  ).length;
-}
-
 function toDashboardClient(user) {
   const pub = toPublicUser(user);
   if (!pub) return null;
@@ -57,24 +46,7 @@ function toDashboardClient(user) {
     phone: pub.phone,
     phoneCountryCode: pub.phoneCountryCode,
     profileImage: pub.profileImage,
-    userTier: pub.userTier,            
-    createdAt: pub.createdAt,
-  };
-}
-
-function toDashboardAssistant(assistant) {
-  const pub = toPublicAssistant(assistant);
-  if (!pub) return null;
-  return {
-    id: pub.id,
-    _id: pub.id,
-    name: pub.name,
-    email: pub.email,
-    phone: pub.phone,
-    phoneCountryCode: pub.phoneCountryCode,
-    profileImage: pub.profileImage,
-    status: pub.status,
-    designation: pub.designation,
+    userTier: pub.userTier,
     createdAt: pub.createdAt,
   };
 }
@@ -85,17 +57,8 @@ async function getCoachDashboardStats(coachId) {
     throw new Error("Coach account not found");
   }
 
-  const [
-    clientData,
-    assistantData,
-    totalAssistants,
-    mealLogs,
-    commitmentData,
-    testimonialData,
-  ] = await Promise.all([
+  const [clientData, mealLogs, commitmentData, testimonialData] = await Promise.all([
     listUsersByParentCoachId(coachId, { page: 1, limit: 200, userTier: "client" }),
-    listAssistantsByWellnessCoachId(coachId, { page: 1, limit: 200 }),
-    countAssistantsByWellnessCoachId(coachId),
     queryMealLogsByCoachId(coachId, { status: "pending_review" }),
     listUserCommitmentLetters({
       page: 1,
@@ -112,11 +75,8 @@ async function getCoachDashboardStats(coachId) {
   ]);
 
   const clients = clientData.users || [];
-  const assistants = assistantData.assistants || [];
   const { healClients, consultancyClients } = countClientsByTier(clients);
   const totalClients = clientData.pagination?.total ?? clients.length;
-  const activeAssistants = countActiveAssistants(assistants);
-  const inactiveAssistants = Math.max(0, totalAssistants - activeAssistants);
 
   const pendingMealApprovals = (mealLogs || []).length;
   const pendingCommitmentLetters = (commitmentData.commitmentLetters || []).length;
@@ -125,14 +85,9 @@ async function getCoachDashboardStats(coachId) {
     pendingMealApprovals + pendingCommitmentLetters + pendingTestimonials;
 
   const recentClients = takeRecent(clients).map(toDashboardClient).filter(Boolean);
-  const recentAssistants = takeRecent(assistants).map(toDashboardAssistant).filter(Boolean);
   const coachProfile = toPublicWellnessCoach(coach);
 
   const charts = {
-    teamOverview: [
-      { name: "Active assistants", value: activeAssistants, color: "#10b981" },
-      { name: "Inactive assistants", value: inactiveAssistants, color: "#94a3b8" },
-    ],
     clientOverview: [
       { name: "Heal clients", value: healClients, color: "#10b981" },
       { name: "Consultancy clients", value: consultancyClients, color: "#2563eb" },
@@ -157,15 +112,12 @@ async function getCoachDashboardStats(coachId) {
     totalClients,
     healClients,
     consultancyClients,
-    totalAssistants,
-    activeAssistants,
     pendingApprovals,
     pendingMealApprovals,
     pendingTestimonials,
     pendingCommitmentLetters,
     charts,
     recentClients,
-    recentAssistants,
     coach: {
       id: coachProfile.id,
       name: coachProfile.name,

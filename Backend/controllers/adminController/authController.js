@@ -101,6 +101,10 @@ exports.loginAdmin = asyncHandler(async (req, res) => {
     throw new AppError("Account is inactive", 403);
   }
 
+  if (!admin.isSuperAdmin) {
+    throw new AppError("Sub-admin accounts are no longer supported", 403);
+  }
+
   return sendAuthResponse(res, 200, admin);
 });
 

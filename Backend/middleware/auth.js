@@ -6,7 +6,6 @@ const { getRoleById } = require("../models/roleModel");
 const { resolvePermissions } = require("../utils/permissions");
 const { getUserById } = require("../models/userModel");
 const { getWellnessCoachRecordById } = require("../models/wellnessCoachModel");
-const { getAssistantWellnessCoachRecordById } = require("../models/assistantWellnessCoachModel");
 const {
   resolveCoachPermissions,
   permissionMapToList,
@@ -64,9 +63,8 @@ const protectAdmin = asyncHandler(async (req, res, next) => {
 
   assertActiveAccount(account);
 
-  // Resolved live (not just from the JWT) so permission edits by the Super
-  // Admin take effect on the sub-admin's very next request, not just after
-  // their token is refreshed/they log in again.
+  // Resolved live (not just from the JWT) so permission edits take effect on
+  // the admin's very next request, not just after token refresh/login.
   const isSuperAdmin = Boolean(account.isSuperAdmin);
   const role = !isSuperAdmin && account.roleId ? await getRoleById(account.roleId) : null;
   const permissions = resolvePermissions(account, role);
@@ -155,43 +153,8 @@ const protectWellnessCoach = asyncHandler(async (req, res, next) => {
   next();
 });
 
-const protectAssistantWellnessCoach = asyncHandler(async (req, res, next) => {
-  const token = readBearer(req);
-  if (!token) {
-    throw new AppError("Authentication required", 401);
-  }
-
-  let payload;
-  try {
-    payload = verifyAccessToken(token);
-  } catch {
-    throw new AppError("Invalid or expired token", 401);
-  }
-
-  if (payload.role !== "assistant_wellness_coach") {
-    throw new AppError("Forbidden", 403);
-  }
-
-  const subject = resolveSubjectFromPayload(payload);
-  if (!subject) {
-    throw new AppError("Invalid token payload", 401);
-  }
-
-  const account = await getAssistantWellnessCoachRecordById(subject);
-  if (!account) {
-    throw new AppError("Account not found", 401);
-  }
-
-  assertActiveAccount(account);
-
-  req.user = account;
-  req.auth = { role: "assistant_wellness_coach", sub: subject };
-  next();
-});
-
 module.exports = {
   protectAdmin,
   protectUser,
   protectWellnessCoach,
-  protectAssistantWellnessCoach,
 };

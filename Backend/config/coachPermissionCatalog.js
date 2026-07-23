@@ -22,7 +22,6 @@ const COACH_NAV_ITEMS = [
   { to: "monthly-champions", label: "Monthly Champions" },
   { to: "consultancy/transactions", label: "Consultancy Payments" },
   { to: "consultancy/enrolled-users", label: "Consultancy Users" },
-  { to: "my-assistants", label: "Assistants (AWC)" },
   { to: "profile", label: "Profile" },
 ];
 

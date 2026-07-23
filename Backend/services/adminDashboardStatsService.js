@@ -1,6 +1,5 @@
 const { TABLE: USER_TABLE } = require("../models/userModel");
 const { TABLE: COACH_TABLE } = require("../models/wellnessCoachModel");
-const { TABLE: ASSISTANT_TABLE } = require("../models/assistantWellnessCoachModel");
 const { TABLE: PROGRAM_TABLE } = require("../models/programCatalogModel");
 const {
   sumPaidTransactionTotals,
@@ -85,7 +84,6 @@ async function getAdminDashboardStats() {
     totalUsers,
     activePrograms,
     activeWellnessCoaches,
-    activeAssistants,
     pendingCoachApprovals,
     pendingUserAssignments,
     revenue,
@@ -108,12 +106,6 @@ async function getAdminDashboardStats() {
     }),
     countAcrossPartitions({
       tableName: COACH_TABLE,
-      indexName: STATUS_INDEX,
-      partitionKeyName: "status",
-      partitionValues: ["active"],
-    }),
-    countAcrossPartitions({
-      tableName: ASSISTANT_TABLE,
       indexName: STATUS_INDEX,
       partitionKeyName: "status",
       partitionValues: ["active"],
@@ -152,7 +144,6 @@ async function getAdminDashboardStats() {
   const platformOverview = [
     { name: "Users", value: totalUsers, color: "#2563eb" },
     { name: "Coaches", value: activeWellnessCoaches, color: "#a855f7" },
-    { name: "Assistants", value: activeAssistants, color: "#6366f1" },
     { name: "Programs", value: activePrograms, color: "#10b981" },
   ];
 
@@ -163,7 +154,6 @@ async function getAdminDashboardStats() {
     totalUsers,
     activePrograms,
     activeWellnessCoaches,
-    activeAssistants,
     pendingApprovals: pendingCoachApprovals + pendingUserAssignments,
     pendingCoachApprovals,
     pendingUserAssignments,

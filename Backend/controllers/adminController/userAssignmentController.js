@@ -1,6 +1,6 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
-const { getUserById, updateUser, listUsersByParentCoachId, listUsersByAssignedCoachId, listPendingAssignmentUsers, normalizeUserTier } = require("../../models/userModel");
+const { getUserById, updateUser, listUsersByParentCoachId, listPendingAssignmentUsers, normalizeUserTier } = require("../../models/userModel");
 const { convertHealToSeek } = require("../../models/userConversionModel");
 const {
   adminConvertUserToHeal,
@@ -8,7 +8,6 @@ const {
 } = require("../../services/adminHealConversionService");
 const { assignPendingHealUser, reassignHealUser } = require("../../models/userAssignmentModel");
 const { getWellnessCoachRecordById } = require("../../models/wellnessCoachModel");
-const { getAssistantWellnessCoachById } = require("../../models/assistantWellnessCoachModel");
 const { sendCoachAssignmentNotifications } = require("../../utils/whatsapp");
 
 const { enrichUser } = require("../userController/userProfileHelpers");
@@ -26,7 +25,10 @@ function mapAssignmentError(err) {
 async function resolveParentCoachId({ assignedCoachId, assignedCoachType, parentCoachId }) {
   const coachId = String(assignedCoachId || "").trim();
   const coachType = String(assignedCoachType || "").trim().toLowerCase();
-  const explicitParent = String(parentCoachId || "").trim();
+
+  if (coachType === "assistant_wellness_coach") {
+    throw new AppError("Assistant wellness coaches are no longer supported", 400);
+  }
 
   if (coachType === "wellness_coach") {
     const coach = await getWellnessCoachRecordById(coachId);
@@ -34,17 +36,7 @@ async function resolveParentCoachId({ assignedCoachId, assignedCoachType, parent
     return coach.id;
   }
 
-  if (coachType === "assistant_wellness_coach") {
-    const assistant = await getAssistantWellnessCoachById(coachId);
-    if (!assistant) throw new AppError("Assistant wellness coach not found", 404);
-    const resolvedParent = String(assistant.wellnessCoachId || "").trim();
-    if (explicitParent && explicitParent !== resolvedParent) {
-      throw new AppError("parentCoachId must match the assistant's wellness coach", 400);
-    }
-    return resolvedParent;
-  }
-
-  throw new AppError("assignedCoachType must be wellness_coach or assistant_wellness_coach", 400);
+  throw new AppError("assignedCoachType must be wellness_coach", 400);
 }
 
 exports.convertUserToSeekController = asyncHandler(async (req, res) => {
@@ -126,10 +118,7 @@ exports.assignHealUserController = asyncHandler(async (req, res) => {
   }
 
   try {
-    const assignee =
-      assignedCoachType === "assistant_wellness_coach"
-        ? await getAssistantWellnessCoachById(assignedCoachId)
-        : await getWellnessCoachRecordById(assignedCoachId);
+    const assignee = await getWellnessCoachRecordById(assignedCoachId);
     await sendCoachAssignmentNotifications({ user, assignee, assigneeType: assignedCoachType });
   } catch (err) {
     console.error("[UserAssignment] assignment notification failed", err.message);
@@ -211,33 +200,6 @@ exports.listHealUsersForCoachPortalController = asyncHandler(async (req, res) =>
     users,
     pagination: data.pagination,
     scope: String(scope || "all").toLowerCase(),
-  });
-});
-
-exports.listHealUsersForAssistantPortalController = asyncHandler(async (req, res) => {
-  const assistantId = req.auth?.sub || req.user?.id;
-  if (!assistantId) throw new AppError("Unauthorized", 401);
-
-  const assistant = await getAssistantWellnessCoachById(assistantId);
-  if (!assistant) throw new AppError("Account not found", 401);
-
-  const parentCoachId = String(assistant.wellnessCoachId || "").trim();
-  if (!parentCoachId) throw new AppError("Assistant is not linked to a wellness coach", 400);
-
-  const { page = 1, limit = 20, search } = req.query;
-  const data = await listUsersByAssignedCoachId(assistantId, {
-    parentCoachId,
-    page,
-    limit,
-    search,
-    userTier: "client",
-  });
-  const users = await Promise.all(data.users.map((u) => enrichUser(u)));
-
-  return res.status(200).json({
-    status: true,
-    users,
-    pagination: data.pagination,
   });
 });
 

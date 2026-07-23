@@ -16,8 +16,8 @@
  *
  * Deliberately excluded from the catalog:
  *  - `profile` (Admin Profile) — self-service account management. Every
- *    authenticated admin (including sub-admins) can always view/edit their
- *    own account; it is never permission-gated.
+ *    authenticated admin can always view/edit their own account; it is never
+ *    permission-gated.
  *  - `health-tools`, `coupons` — currently commented out of navItems.js, so
  *    they aren't part of the live sidebar structure this catalog is
  *    generated from. Their routes are left on `protectAdmin` only (unchanged
@@ -64,7 +64,6 @@ const PERMISSION_GROUPS_RAW = [
     label: "Team & Coaches",
     items: [
       { to: "coaches", label: "Wellness Coaches", actions: [VIEW, EDIT, DELETE] },
-      { to: "awcs", label: "Assistant Coaches", actions: [VIEW, EDIT, DELETE] },
       { to: "specializations", label: "Specializations", actions: [VIEW, EDIT, DELETE] },
     ],
   },
@@ -171,7 +170,7 @@ const PERMISSION_GROUPS_RAW = [
   },
 ];
 
-/** Client Hub tab permissions for admin acting on behalf of coaches/AWCs. */
+/** Client Hub tab permissions for admin acting on behalf of coaches. */
 const CLIENT_HUB_TAB_META = {
   water: "Water",
   steps: "Steps",

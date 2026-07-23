@@ -169,7 +169,7 @@ exports.deleteRoleController = asyncHandler(async (req, res) => {
     const usageCount = await countAdminsByRoleId(role.id);
     if (usageCount > 0) {
       throw new AppError(
-        `Cannot delete this role — it is assigned to ${usageCount} sub-admin(s). Reassign them first.`,
+        `Cannot delete this role — it is assigned to ${usageCount} admin(s). Reassign them first.`,
         409
       );
     }

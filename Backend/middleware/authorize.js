@@ -40,9 +40,8 @@ function authorizeAny(...permissionSlugs) {
 }
 
 /**
- * Gate a route to the Super Admin only — used for sub-admin/role management,
- * which must never be reachable by a sub-admin even if a role were
- * misconfigured to include a matching-looking permission slug.
+ * Gate a route to the Super Admin only — used for role management,
+ * which must never be reachable via delegated role permissions.
  */
 function requireSuperAdmin(req, res, next) {
   if (!req.auth) {
