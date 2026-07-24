@@ -17,7 +17,7 @@ const methodologyData = [
     title: "Root Cause Analysis",
     headTitle: "A Path to Wellness",
     description:
-      "Every disorder/disease is a result of an underlying cause! Identifying and working on the cause & correcting it gives a permanent solution.Hence, identifying the root cause is the first step towards your health journey rather than just managing/curing the surface level symptoms.",
+      "Every disorder/disease is a result of an underlying cause! Identifying and working on the cause & correcting it gives a permanent solution. Hence, identifying the root cause is the first step towards your health journey rather than just managing/curing the surface level symptoms.",
   },
   {
     id: 3,
@@ -25,7 +25,7 @@ const methodologyData = [
     title: "Personalized Program",
     headTitle: "The Power of Personalized Approach",
     description:
-      "Everyone is unique, so is their body, their health challenges and underlying root causes.Hence we offer a customized program which involves personal hand-holding, encouragement, support, guidance to uncover your full potential during this journey to achieve your health goal.",
+      "Everyone is unique, so is their body, their health challenges and underlying root causes. Hence we offer a customized program which involves personal hand-holding, encouragement, support, guidance to uncover your full potential during this journey to achieve your health goal.",
   },
 ];
 

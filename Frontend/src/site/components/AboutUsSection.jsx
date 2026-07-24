@@ -251,7 +251,7 @@ const AboutUsSection = () => {
       description:
         "We’re passionate about redefining India’s rich heritage of wellness practices in context to the modern era backed by science & research. Drawing inspiration from Ayurveda, Yoga, Meditation, and other traditional systems of medicine, we seek to blend ancient wisdom with contemporary science to promote holistic well-being for individuals across India.",
 
-      icon: CardOne,
+      icon: CardTwo,
       active: true,
     },
     {
@@ -261,7 +261,7 @@ const AboutUsSection = () => {
 
       description:
         "Usually people are reactive and disease oriented when it comes to health. We should be inspired for the cause of being healthy inside-out to live a disease free life.  Current health situation is getting deteriorated primarily because of change in lifestyle hence it is important to get educated rightly about the good health practices.",
-      icon: CardTwo,
+      icon: CardOne,
       active: false,
     },
     {

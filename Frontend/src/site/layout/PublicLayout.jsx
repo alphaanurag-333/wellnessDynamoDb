@@ -4,6 +4,7 @@ import { PATH_TO_SECTION_ID } from "../data/siteSections.js";
 import { SiteFooter } from "../components/SiteFooter.jsx";
 import { SiteHeader } from "../components/SiteHeader.jsx";
 import "../site.css";
+import ScrollToTopButton from "../components/ScrollToTopButton.jsx";
 
 function scrollToSection(sectionId) {
   if (!sectionId) return;
@@ -35,6 +36,7 @@ export function PublicLayout() {
         <Outlet />
       </main>
       <SiteFooter />
+      <ScrollToTopButton/>
     </div>
   );
 }
