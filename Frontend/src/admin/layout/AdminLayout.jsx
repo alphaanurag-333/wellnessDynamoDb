@@ -184,6 +184,12 @@ function titleFromPath(pathname) {
     return "Specializations";
   }
 
+  if (p.startsWith("/admin/team")) {
+    if (/^\/admin\/team\/new$/.test(p)) return "Add team member";
+    if (/^\/admin\/team\/[^/]+\/edit$/.test(p)) return "Edit team member";
+    return "Team Members";
+  }
+
   if (p.startsWith("/admin/faq")) {
     if (/^\/admin\/faq\/new$/.test(p)) return "Add FAQ";
     if (/^\/admin\/faq\/[^/]+\/edit$/.test(p)) return "Edit FAQ";

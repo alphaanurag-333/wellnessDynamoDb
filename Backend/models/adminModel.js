@@ -17,7 +17,7 @@ const {
   sortByCreatedAtDesc,
 } = require("../utils/dynamoList");
 
-const TABLE = "Admin";
+const TABLE = "Accounts";
 
 /** Cached from DescribeTable — null sortKey means single hash key `id`. */
 let tableKeyMeta = null;
@@ -40,6 +40,22 @@ function toPublicAdmin(admin) {
   if (!pub) return null;
   if (pub.profileImage) pub.profileImage = resolvePublicUrl(pub.profileImage);
   return pub;
+}
+
+/** Admin panel operator: accountKind admin, super admin, or legacy missing kind (not coach/assistant). */
+function isAdminAccount(item) {
+  if (!item) return false;
+  if (item.isSuperAdmin) return true;
+  if (item.accountKind === "admin") return true;
+  if (item.accountKind === "coach" || item.accountKind === "assistant") return false;
+  if (item.parentAccountId || item.wellnessCoachId) return false;
+  // Legacy rows missing accountKind that look like coaches stay out of admin getters.
+  if (item.referralCode || item.specializationId || item.approvalStatus) return false;
+  return !item.accountKind;
+}
+
+function onlyAdminAccount(item) {
+  return isAdminAccount(item) ? item : null;
 }
 
 async function getAdminTableKeyMeta() {
@@ -114,6 +130,7 @@ async function createAdmin({
     resetPasswordExpire: null,
     status,
     isSuperAdmin: Boolean(isSuperAdmin),
+    accountKind: "admin",
     // Omit roleId for Super Admins — DynamoDB GSI keys cannot be null.
     createdAt: now,
     updatedAt: now,
@@ -152,7 +169,7 @@ async function getAdminById(id) {
       Key: key,
     })
   );
-  return Item || null;
+  return onlyAdminAccount(Item || null);
 }
 
 async function getAdminByEmail(email) {
@@ -164,7 +181,7 @@ async function getAdminByEmail(email) {
       ExpressionAttributeValues: { ":email": normalizeEmail(email) },
     })
   );
-  return Items[0] || null;
+  return onlyAdminAccount(Items[0] || null);
 }
 
 async function listAdmins({ page = 1, limit = 20, status, search, includeSuperAdmins = true } = {}) {
@@ -181,6 +198,16 @@ async function listAdmins({ page = 1, limit = 20, status, search, includeSuperAd
     exprValues[":isSuperAdminFalse"] = false;
     filterExpression = appendFilter(filterExpression, "#isSuperAdmin = :isSuperAdminFalse");
   }
+
+  exprNames["#accountKind"] = "accountKind";
+  exprValues[":accountKindAdmin"] = "admin";
+  // Include legacy rows missing accountKind as admin panel operators.
+  filterExpression = appendFilter(
+    filterExpression,
+    "(attribute_not_exists(#accountKind) OR #accountKind = :accountKindAdmin OR #isSuperAdmin = :isSuperAdminTrue)"
+  );
+  exprNames["#isSuperAdmin"] = "isSuperAdmin";
+  exprValues[":isSuperAdminTrue"] = true;
 
   const { items, pagination } = await listByPartitionKey({
     tableName: TABLE,

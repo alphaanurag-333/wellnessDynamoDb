@@ -1,16 +1,17 @@
 const AppError = require("../utils/AppError");
 const { asyncHandler } = require("../utils/asyncHandler");
 const { verifyAccessToken } = require("../utils/jwt");
-const { getAdminById } = require("../models/adminModel");
+const { getAccountById, deriveAccountType } = require("../models/accountModel");
 const { getRoleById } = require("../models/roleModel");
 const { resolvePermissions } = require("../utils/permissions");
 const { getUserById } = require("../models/userModel");
-const { getWellnessCoachRecordById } = require("../models/wellnessCoachModel");
-const { getAssistantWellnessCoachRecordById } = require("../models/assistantWellnessCoachModel");
-const {
-  resolveCoachPermissions,
-  permissionMapToList,
-} = require("../utils/coachPermissions");
+
+const PANEL_JWT_ROLES = new Set([
+  "account",
+  "admin",
+  "wellness_coach",
+  "assistant_wellness_coach",
+]);
 
 function readBearer(req) {
   const h = req.headers.authorization;
@@ -19,27 +20,33 @@ function readBearer(req) {
 
 function resolveSubjectFromPayload(payload) {
   const candidate = payload?.sub ?? payload?.id ?? payload?._id ?? null;
-  if (typeof candidate !== "string") {
-    return null;
-  }
+  if (typeof candidate !== "string") return null;
   const normalized = candidate.trim();
   return normalized || null;
 }
 
 function assertActiveAccount(doc) {
-  if (doc.status === "blocked") {
-    throw new AppError("Account is blocked", 403);
+  if (doc.status === "blocked") throw new AppError("Account is blocked", 403);
+  if (doc.status === "inactive") throw new AppError("Account is inactive", 403);
+}
+
+function assertCareApproved(doc, accountType) {
+  if (accountType !== "wellness_coach" && accountType !== "assistant_wellness_coach") return;
+  if (doc.approvalStatus === "pending") {
+    throw new AppError("Your account is pending admin approval. Please wait for approval.", 403);
   }
-  if (doc.status === "inactive") {
-    throw new AppError("Account is inactive", 403);
+  if (doc.approvalStatus === "rejected") {
+    throw new AppError("Your account registration has been rejected. Please contact admin.", 403);
   }
 }
 
+/**
+ * Panel auth against global Accounts table.
+ * accountType is derived from parentAccountId + role care permissions (and accountKind fallback).
+ */
 const protectAdmin = asyncHandler(async (req, res, next) => {
   const token = readBearer(req);
-  if (!token) {
-    throw new AppError("Authentication required", 401);
-  }
+  if (!token) throw new AppError("Authentication required", 401);
 
   let payload;
   try {
@@ -48,45 +55,48 @@ const protectAdmin = asyncHandler(async (req, res, next) => {
     throw new AppError("Invalid or expired token", 401);
   }
 
-  if (payload.role !== "admin") {
+  const jwtRole = String(payload.role || payload.accountType || "").trim();
+  if (!PANEL_JWT_ROLES.has(jwtRole)) {
     throw new AppError("Forbidden", 403);
   }
 
   const subject = resolveSubjectFromPayload(payload);
-  if (!subject) {
-    throw new AppError("Invalid token payload", 401);
-  }
+  if (!subject) throw new AppError("Invalid token payload", 401);
 
-  const account = await getAdminById(subject);
-  if (!account) {
-    throw new AppError("Account not found", 401);
-  }
-
+  const account = await getAccountById(subject);
+  if (!account) throw new AppError("Account not found", 401);
   assertActiveAccount(account);
 
-  // Resolved live (not just from the JWT) so permission edits by the Super
-  // Admin take effect on the sub-admin's very next request, not just after
-  // their token is refreshed/they log in again.
   const isSuperAdmin = Boolean(account.isSuperAdmin);
   const role = !isSuperAdmin && account.roleId ? await getRoleById(account.roleId) : null;
-  const permissions = resolvePermissions(account, role);
+  const accountType = deriveAccountType(account, role);
+  assertCareApproved(account, accountType);
+
+  const permissions = resolvePermissions(account, role, accountType);
 
   req.user = account;
   req.auth = {
-    role: "admin",
+    role: accountType,
+    accountType,
     sub: subject,
     isSuperAdmin,
     roleId: account.roleId || null,
     permissions,
+    parentCoachId:
+      accountType === "assistant_wellness_coach"
+        ? account.parentAccountId || null
+        : accountType === "wellness_coach"
+          ? account.id
+          : null,
+    wellnessCoachId: account.parentAccountId || null,
+    accountKind: account.accountKind || null,
   };
-  next();
+  return next();
 });
 
 const protectUser = asyncHandler(async (req, res, next) => {
   const token = readBearer(req);
-  if (!token) {
-    throw new AppError("Authentication required", 401);
-  }
+  if (!token) throw new AppError("Authentication required", 401);
 
   let payload;
   try {
@@ -95,103 +105,43 @@ const protectUser = asyncHandler(async (req, res, next) => {
     throw new AppError("Invalid or expired token", 401);
   }
 
-  if (payload.role !== "user") {
-    throw new AppError("Forbidden", 403);
-  }
+  if (payload.role !== "user") throw new AppError("Forbidden", 403);
 
   const subject = resolveSubjectFromPayload(payload);
-  if (!subject) {
-    throw new AppError("Invalid token payload", 401);
-  }
+  if (!subject) throw new AppError("Invalid token payload", 401);
 
   const account = await getUserById(subject);
-  if (!account) {
-    throw new AppError("Account not found", 401);
-  }
-
+  if (!account) throw new AppError("Account not found", 401);
   assertActiveAccount(account);
   req.user = account;
   req.auth = { role: "user", sub: subject };
   next();
 });
 
-const protectWellnessCoach = asyncHandler(async (req, res, next) => {
-  const token = readBearer(req);
-  if (!token) {
-    throw new AppError("Authentication required", 401);
-  }
+const protectWellnessCoach = (req, res, next) => {
+  protectAdmin(req, res, (err) => {
+    if (err) return next(err);
+    if (req.auth?.accountType !== "wellness_coach") {
+      return next(new AppError("Forbidden", 403));
+    }
+    return next();
+  });
+};
 
-  let payload;
-  try {
-    payload = verifyAccessToken(token);
-  } catch {
-    throw new AppError("Invalid or expired token", 401);
-  }
-
-  if (payload.role !== "wellness_coach") {
-    throw new AppError("Forbidden", 403);
-  }
-
-  const subject = resolveSubjectFromPayload(payload);
-  if (!subject) {
-    throw new AppError("Invalid token payload", 401);
-  }
-
-  const account = await getWellnessCoachRecordById(subject);
-  if (!account) {
-    throw new AppError("Account not found", 401);
-  }
-
-  assertActiveAccount(account);
-
-  const permissionMap = await resolveCoachPermissions(account, { req });
-  req.user = account;
-  req.auth = {
-    role: "wellness_coach",
-    sub: subject,
-    roleId: account.roleId || null,
-    permissions: permissionMapToList(permissionMap),
-  };
-  next();
-});
-
-const protectAssistantWellnessCoach = asyncHandler(async (req, res, next) => {
-  const token = readBearer(req);
-  if (!token) {
-    throw new AppError("Authentication required", 401);
-  }
-
-  let payload;
-  try {
-    payload = verifyAccessToken(token);
-  } catch {
-    throw new AppError("Invalid or expired token", 401);
-  }
-
-  if (payload.role !== "assistant_wellness_coach") {
-    throw new AppError("Forbidden", 403);
-  }
-
-  const subject = resolveSubjectFromPayload(payload);
-  if (!subject) {
-    throw new AppError("Invalid token payload", 401);
-  }
-
-  const account = await getAssistantWellnessCoachRecordById(subject);
-  if (!account) {
-    throw new AppError("Account not found", 401);
-  }
-
-  assertActiveAccount(account);
-
-  req.user = account;
-  req.auth = { role: "assistant_wellness_coach", sub: subject };
-  next();
-});
+const protectAssistantWellnessCoach = (req, res, next) => {
+  protectAdmin(req, res, (err) => {
+    if (err) return next(err);
+    if (req.auth?.accountType !== "assistant_wellness_coach") {
+      return next(new AppError("Forbidden", 403));
+    }
+    return next();
+  });
+};
 
 module.exports = {
   protectAdmin,
   protectUser,
   protectWellnessCoach,
   protectAssistantWellnessCoach,
+  PANEL_JWT_ROLES,
 };

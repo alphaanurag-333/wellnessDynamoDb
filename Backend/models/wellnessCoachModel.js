@@ -26,7 +26,7 @@ const {
   sortByCreatedAtDesc,
 } = require("../utils/dynamoList");
 
-const TABLE = "WellnessCoach";
+const TABLE = "Accounts";
 const ALLOWED_STATUS = new Set(["active", "inactive"]);
 const ALLOWED_APPROVAL_STATUS = new Set(["pending", "approved", "rejected"]);
 
@@ -82,6 +82,22 @@ function withLegacyId(item) {
   return { ...item, _id: item.id };
 }
 
+/** True when the Accounts row is a wellness coach (including legacy rows missing accountKind). */
+function isCoachAccount(item) {
+  if (!item) return false;
+  if (item.accountKind === "coach") return true;
+  if (item.accountKind === "admin" || item.accountKind === "assistant") return false;
+  if (item.parentAccountId || item.wellnessCoachId) return false;
+  if (item.isSuperAdmin) return false;
+  // Legacy coach rows before accountKind backfill.
+  return Boolean(item.referralCode || item.specializationId || item.approvalStatus);
+}
+
+function onlyCoachAccount(item) {
+  const row = withLegacyId(item);
+  return isCoachAccount(row) ? row : null;
+}
+
 function toPublicWellnessCoach(coach) {
   const row = withLegacyId(coach);
   if (!row) return null;
@@ -119,6 +135,7 @@ function buildCoachItem(input, { id, now } = {}) {
     webVisible: normalizeVisibleFlag(input.webVisible, true),
     appVisible: normalizeVisibleFlag(input.appVisible, true),
     referralCode: input.referralCode != null ? String(input.referralCode).trim().toUpperCase() || null : null,
+    accountKind: "coach",
     createdAt: now,
     updatedAt: now,
   };
@@ -127,15 +144,6 @@ function buildCoachItem(input, { id, now } = {}) {
   const roleId =
     input.roleId != null && String(input.roleId).trim() ? String(input.roleId).trim() : null;
   if (roleId) item.roleId = roleId;
-
-  if (
-    input.permissionOverrides != null &&
-    typeof input.permissionOverrides === "object" &&
-    !Array.isArray(input.permissionOverrides) &&
-    Object.keys(input.permissionOverrides).length > 0
-  ) {
-    item.permissionOverrides = input.permissionOverrides;
-  }
 
   return item;
 }
@@ -194,7 +202,7 @@ async function getWellnessCoachByEmail(email) {
       Limit: 1,
     })
   );
-  return withLegacyId(Items?.[0] || null);
+  return onlyCoachAccount(Items?.[0] || null);
 }
 
 async function getWellnessCoachByPhone(phoneCountryCode, phone) {
@@ -209,7 +217,7 @@ async function getWellnessCoachByPhone(phoneCountryCode, phone) {
       Limit: 1,
     })
   );
-  return withLegacyId(Items?.[0] || null);
+  return onlyCoachAccount(Items?.[0] || null);
 }
 
 async function createWellnessCoach(fields) {
@@ -247,7 +255,7 @@ async function getWellnessCoachRecordById(id) {
       Key: { id },
     })
   );
-  return withLegacyId(Item || null);
+  return onlyCoachAccount(Item || null);
 }
 
 async function getWellnessCoachById(id) {
@@ -335,8 +343,12 @@ async function countCoachesByRoleId(roleId) {
     const { Count, LastEvaluatedKey } = await docClient.send(
       new ScanCommand({
         TableName: TABLE,
-        FilterExpression: "roleId = :roleId",
-        ExpressionAttributeValues: { ":roleId": roleId },
+        FilterExpression: "roleId = :roleId AND #accountKind = :accountKindCoach",
+        ExpressionAttributeNames: { "#accountKind": "accountKind" },
+        ExpressionAttributeValues: {
+          ":roleId": roleId,
+          ":accountKindCoach": "coach",
+        },
         Select: "COUNT",
         ExclusiveStartKey: lastKey,
       })
@@ -388,6 +400,9 @@ async function listWellnessCoaches({
   let filterExpression = null;
   const exprNames = {};
   const exprValues = {};
+  exprNames["#accountKind"] = "accountKind";
+  exprValues[":accountKindCoach"] = "coach";
+  filterExpression = appendFilter(filterExpression, "#accountKind = :accountKindCoach");
   if (normalizedApproval) {
     exprNames["#approvalStatus"] = "approvalStatus";
     exprValues[":approvalStatus"] = normalizedApproval;
@@ -446,24 +461,30 @@ async function listWellnessCoaches({
 
 async function countAllWellnessCoaches() {
   let total = 0;
-  for (const statusValue of ["active", "inactive"]) {
-    let lastKey;
-    do {
-      const { Count, LastEvaluatedKey } = await docClient.send(
-        new QueryCommand({
-          TableName: TABLE,
-          IndexName: "StatusCreatedAtIndex",
-          KeyConditionExpression: "#status = :status",
-          ExpressionAttributeNames: { "#status": "status" },
-          ExpressionAttributeValues: { ":status": statusValue },
-          Select: "COUNT",
-          ExclusiveStartKey: lastKey,
-        })
-      );
-      total += Count || 0;
-      lastKey = LastEvaluatedKey;
-    } while (lastKey);
-  }
+  let lastKey;
+  do {
+    const { Count, LastEvaluatedKey } = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE,
+        IndexName: "AccountKindCreatedAtIndex",
+        KeyConditionExpression: "#accountKind = :accountKindCoach",
+        FilterExpression: "#status = :active OR #status = :inactive",
+        ExpressionAttributeNames: {
+          "#accountKind": "accountKind",
+          "#status": "status",
+        },
+        ExpressionAttributeValues: {
+          ":accountKindCoach": "coach",
+          ":active": "active",
+          ":inactive": "inactive",
+        },
+        Select: "COUNT",
+        ExclusiveStartKey: lastKey,
+      })
+    );
+    total += Count || 0;
+    lastKey = LastEvaluatedKey;
+  } while (lastKey);
   return total;
 }
 

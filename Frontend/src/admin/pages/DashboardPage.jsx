@@ -11,8 +11,8 @@ import { WelcomeDashboard } from "./WelcomeDashboard.jsx";
 
 const shortcuts = [
   { title: "User Management", desc: "Manage all platform users", icon: "users", to: "/admin/users" },
-  { title: "WC Management", desc: "Manage wellness coaches", icon: "coach", to: "/admin/coaches" },
-  { title: "AWC Management", desc: "Manage assistant coaches", icon: "assistant", to: "/admin/awcs" },
+  { title: "WC Management", desc: "Manage wellness coaches", icon: "coach", to: "/admin/team" },
+  { title: "AWC Management", desc: "Manage assistant coaches", icon: "assistant", to: "/admin/team" },
   { title: "Contact Queries", desc: "View and respond to inquiries", icon: "mail", to: "/admin/contact-inquiries" },
   { title: "Application Settings", desc: "Configure app settings", icon: "settings", to: "/admin/settings" },
 ];
@@ -47,7 +47,7 @@ const STAT_CARDS = [
   {
     key: "activeWellnessCoaches",
     label: "Coaches (WC) Active",
-    to: "/admin/coaches?status=active",
+    to: "/admin/team",
     tone: "purple",
     icon: (
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -59,7 +59,7 @@ const STAT_CARDS = [
   {
     key: "activeAssistants",
     label: "AWC's Active",
-    to: "/admin/awcs?status=active",
+    to: "/admin/team",
     tone: "indigo",
     icon: (
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -74,7 +74,7 @@ const STAT_CARDS = [
     key: "pendingCoachApprovals",
     label: "Pending WC signups",
     description: "Wellness coach accounts awaiting admin approval",
-    to: "/admin/coaches?approval=pending",
+    to: "/admin/team",
     tone: "amber",
     icon: (
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">

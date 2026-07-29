@@ -140,24 +140,21 @@ import { ProgramTransactionList } from "../pages/program/ProgramTransactionList.
 import { ConsultancyEnrolledUsersList } from "../pages/consultancy/ConsultancyEnrolledUsersList.jsx";
 import { UserView } from "../pages/user/UserView.jsx";
 import { PendingAssignmentList } from "../pages/user/PendingAssignmentList.jsx";
-import { WellnessCoachList } from "../pages/wellnessCoach/WellnessCoachList.jsx";
-import { WellnessCoachAdd } from "../pages/wellnessCoach/WellnessCoachAdd.jsx";
-import { WellnessCoachEdit } from "../pages/wellnessCoach/WellnessCoachEdit.jsx";
-import { WellnessCoachView } from "../pages/wellnessCoach/WellnessCoachView.jsx";
-import { AssistantList } from "../pages/assistantWellnessCoach/AssistantList.jsx";
-import { AssistantAdd } from "../pages/assistantWellnessCoach/AssistantAdd.jsx";
-import { AssistantEdit } from "../pages/assistantWellnessCoach/AssistantEdit.jsx";
-import { AssistantView } from "../pages/assistantWellnessCoach/AssistantView.jsx";
+import { TeamList } from "../pages/team/TeamList.jsx";
+import { TeamAdd } from "../pages/team/TeamAdd.jsx";
+import { TeamEdit } from "../pages/team/TeamEdit.jsx";
 import { SpecializationList } from "../pages/specialization/SpecializationList.jsx";
 import { SpecializationAdd } from "../pages/specialization/SpecializationAdd.jsx";
 import { SpecializationEdit } from "../pages/specialization/SpecializationEdit.jsx";
 import { SpecializationView } from "../pages/specialization/SpecializationView.jsx";
-import { SubAdminList } from "../pages/subAdmin/SubAdminList.jsx";
-import { SubAdminAdd } from "../pages/subAdmin/SubAdminAdd.jsx";
-import { SubAdminEdit } from "../pages/subAdmin/SubAdminEdit.jsx";
 import { RoleList } from "../pages/role/RoleList.jsx";
 import { RoleAdd } from "../pages/role/RoleAdd.jsx";
 import { RoleEdit } from "../pages/role/RoleEdit.jsx";
+import { AdminMealApprovalsPage } from "../pages/mealApprovals/AdminMealApprovalsPage.jsx";
+import { MyAssistantsList } from "../pages/myAssistants/MyAssistantsList.jsx";
+import { MyAssistantsAdd } from "../pages/myAssistants/MyAssistantsAdd.jsx";
+import { MyAssistantsEdit } from "../pages/myAssistants/MyAssistantsEdit.jsx";
+import { MyAssistantsView } from "../pages/myAssistants/MyAssistantsView.jsx";
 
 export const adminRouteTree = (
   <Route path="/admin" element={<AdminLayout />}>
@@ -165,6 +162,13 @@ export const adminRouteTree = (
     <Route path="dashboard" element={<DashboardPage />} />
     <Route path="profile" element={<AdminProfile />} />
     <Route path="settings" element={<BusinessSetting />} />
+    <Route path="meal-approvals" element={<AdminMealApprovalsPage />} />
+    <Route path="my-assistants" element={<Outlet />}>
+      <Route index element={<MyAssistantsList />} />
+      <Route path="new" element={<MyAssistantsAdd />} />
+      <Route path=":id" element={<MyAssistantsView />} />
+      <Route path=":id/edit" element={<MyAssistantsEdit />} />
+    </Route>
 
     <Route path="static-pages" element={<Outlet />}>
       <Route index element={<StaticPageList />} />
@@ -202,16 +206,17 @@ export const adminRouteTree = (
       <Route path="new" element={<ProgramCatalogAdd />} />
       <Route path=":programId/edit" element={<ProgramCatalogEdit />} />
     </Route>
-    <Route path="coaches" element={<Outlet />}>
-      <Route index element={<WellnessCoachList />} />
-      <Route path="new" element={<WellnessCoachAdd />} />
-      <Route path=":coachId/edit" element={<WellnessCoachEdit />} />
-      <Route path=":coachId/assistants/new" element={<AssistantAdd />} />
-      <Route path=":coachId/assistants/:assistantId/edit" element={<AssistantEdit />} />
-      <Route path=":coachId/assistants/:assistantId" element={<AssistantView />} />
-      <Route path=":coachId" element={<WellnessCoachView />} />
+    <Route path="team" element={<Outlet />}>
+      <Route index element={<TeamList />} />
+      <Route path="new" element={<TeamAdd />} />
+      <Route path=":memberId/edit" element={<TeamEdit />} />
     </Route>
-    <Route path="awcs" element={<AssistantList />} />
+    <Route path="coaches" element={<Navigate to="/admin/team" replace />} />
+    <Route path="coaches/*" element={<Navigate to="/admin/team" replace />} />
+    <Route path="awcs" element={<Navigate to="/admin/team" replace />} />
+    <Route path="awcs/*" element={<Navigate to="/admin/team" replace />} />
+    <Route path="sub-admins" element={<Navigate to="/admin/team" replace />} />
+    <Route path="sub-admins/*" element={<Navigate to="/admin/team" replace />} />
     <Route path="specializations" element={<Outlet />}>
       <Route index element={<SpecializationList />} />
       <Route path="new" element={<SpecializationAdd />} />
@@ -406,11 +411,6 @@ export const adminRouteTree = (
 
     <Route path="cofounder-message" element={<CofounderMessagePage />} />
 
-    <Route path="sub-admins" element={<Outlet />}>
-      <Route index element={<SubAdminList />} />
-      <Route path="new" element={<SubAdminAdd />} />
-      <Route path=":subAdminId/edit" element={<SubAdminEdit />} />
-    </Route>
     <Route path="roles" element={<Outlet />}>
       <Route index element={<RoleList />} />
       <Route path="new" element={<RoleAdd />} />

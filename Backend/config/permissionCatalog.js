@@ -35,6 +35,8 @@ const PERMISSION_GROUPS_RAW = [
     items: [
       { to: "dashboard", label: "Dashboard", actions: [VIEW] },
       { to: "users", label: "User Management", actions: [VIEW, EDIT, DELETE] },
+      { to: "meal-approvals", label: "Meal Approvals", actions: [VIEW, EDIT] },
+      { to: "my-assistants", label: "My Assistants (AWC)", actions: [VIEW, EDIT, DELETE] },
     ],
   },
   {
@@ -63,8 +65,7 @@ const PERMISSION_GROUPS_RAW = [
     id: "team",
     label: "Team & Coaches",
     items: [
-      { to: "coaches", label: "Wellness Coaches", actions: [VIEW, EDIT, DELETE] },
-      { to: "awcs", label: "Assistant Coaches", actions: [VIEW, EDIT, DELETE] },
+      { to: "team", label: "Team Members", actions: [VIEW, EDIT, DELETE] },
       { to: "specializations", label: "Specializations", actions: [VIEW, EDIT, DELETE] },
     ],
   },
@@ -263,6 +264,90 @@ function permissionKeyForClientHubTab(tabId) {
   return null;
 }
 
+/**
+ * Map legacy coach RBAC slugs (nav.* / clientTab.*) onto the global catalog.
+ * Used when migrating COACH-scoped roles and resolving stale permission lists.
+ */
+const LEGACY_COACH_PERMISSION_MAP = {
+  "nav.dashboard": "dashboard.view",
+  "nav.my-users": "users.view",
+  "nav.meal-approvals": "meal-approvals.view",
+  "nav.client-testimonials": "client-testimonials.view",
+  "nav.commitment-letters": "commitment-letters.view",
+  "nav.monthly-champions": "monthly-champions.view",
+  "nav.consultancy/transactions": "consultancy.transactions.view",
+  "nav.consultancy/enrolled-users": "consultancy.enrolled-users.view",
+  "nav.my-assistants": "my-assistants.view",
+  "nav.profile": null, // profile is never permission-gated
+  "coaches.view": "team.view",
+  "coaches.edit": "team.edit",
+  "coaches.delete": "team.delete",
+  "awcs.view": "team.view",
+  "awcs.edit": "team.edit",
+  "awcs.delete": "team.delete",
+};
+
+/** Care-facing permission prefixes — used to derive coach-style panel accounts. */
+const CARE_PERMISSION_PREFIXES = [
+  "users.clientHub.",
+  "meal-approvals.",
+  "my-assistants.",
+];
+
+function roleHasCarePermissions(roleOrPermissions) {
+  const list = Array.isArray(roleOrPermissions)
+    ? roleOrPermissions
+    : Array.isArray(roleOrPermissions?.permissions)
+      ? roleOrPermissions.permissions
+      : [];
+  return list.some((slug) => {
+    const key = String(slug || "");
+    return CARE_PERMISSION_PREFIXES.some((prefix) => key.startsWith(prefix));
+  });
+}
+
+function mapLegacyCoachPermission(slug) {
+  const key = String(slug || "").trim();
+  if (!key) return null;
+  if (Object.prototype.hasOwnProperty.call(LEGACY_COACH_PERMISSION_MAP, key)) {
+    return LEGACY_COACH_PERMISSION_MAP[key];
+  }
+  if (key.startsWith("clientTab.")) {
+    return `users.clientHub.${key.slice("clientTab.".length)}`;
+  }
+  return key;
+}
+
+function normalizePermissionSlug(slug) {
+  const mapped = mapLegacyCoachPermission(slug);
+  if (mapped == null) return null;
+  return isValidPermission(mapped) ? mapped : null;
+}
+
+function normalizePermissionList(slugs) {
+  if (!Array.isArray(slugs)) return [];
+  return [...new Set(slugs.map(normalizePermissionSlug).filter(Boolean))];
+}
+
+/** Default permissions for coaches/assistants with no roleId (care operators). */
+function getDefaultCoachPermissionList(accountType = "wellness_coach") {
+  return ALL_PERMISSIONS.filter((slug) => {
+    if (accountType === "assistant_wellness_coach" && slug.startsWith("my-assistants.")) {
+      return false;
+    }
+    if (slug.startsWith("users.")) return true;
+    if (slug.startsWith("meal-approvals.")) return true;
+    if (slug.startsWith("my-assistants.")) return true;
+    if (slug.startsWith("dashboard.")) return true;
+    if (slug.startsWith("consultancy.transactions.")) return true;
+    if (slug.startsWith("consultancy.enrolled-users.")) return true;
+    if (slug.startsWith("client-testimonials.")) return true;
+    if (slug.startsWith("commitment-letters.")) return true;
+    if (slug.startsWith("monthly-champions.")) return true;
+    return false;
+  });
+}
+
 const CLIENT_HUB_PERMISSION_GROUPS = CLIENT_HUB_TAB_GROUPS.map((group) => {
   const groupKey = clientHubGroupKey(group.id);
   return {
@@ -355,4 +440,11 @@ module.exports = {
   parentClientHubPermissionKey,
   permissionKeyForClientHubTab,
   CLIENT_HUB_TAB_GROUPS,
+  LEGACY_COACH_PERMISSION_MAP,
+  mapLegacyCoachPermission,
+  normalizePermissionSlug,
+  normalizePermissionList,
+  getDefaultCoachPermissionList,
+  roleHasCarePermissions,
+  CARE_PERMISSION_PREFIXES,
 };

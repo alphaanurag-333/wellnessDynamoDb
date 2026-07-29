@@ -12,8 +12,8 @@ export const SITE_NAV_LINKS = [
 
 export const LOGIN_PORTAL_LINKS = [
   { label: "Admin Login", to: "/admin/login" },
-  { label: "Coach Login", to: "/coach/login" },
-  { label: "Assistant Coach Login", to: "/assistant/login" },
+  { label: "Coach Login", to: "/admin/login" },
+  { label: "Assistant Coach Login", to: "/admin/login" },
 ];
 
 export const FOOTER_NAV_GROUPS = [
@@ -30,8 +30,8 @@ export const FOOTER_NAV_GROUPS = [
     title: "Portals",
     links: [
       { label: "Admin", to: "/admin/login" },
-      { label: "Coach", to: "/coach/login" },
-      { label: "Assistant Coach", to: "/assistant/login" },
+      { label: "Coach", to: "/admin/login" },
+      { label: "Assistant Coach", to: "/admin/login" },
     ],
   },
 ];

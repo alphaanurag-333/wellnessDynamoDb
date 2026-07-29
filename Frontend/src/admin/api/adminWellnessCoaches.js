@@ -58,14 +58,6 @@ function appendCoachFields(fd, fields) {
   if (fields.roleId !== undefined) {
     fd.append("roleId", fields.roleId == null ? "" : String(fields.roleId));
   }
-  if (fields.permissionOverrides !== undefined) {
-    fd.append(
-      "permissionOverrides",
-      fields.permissionOverrides == null
-        ? ""
-        : JSON.stringify(fields.permissionOverrides)
-    );
-  }
 }
 
 function appendAssistantFields(fd, fields) {
@@ -105,8 +97,6 @@ export function buildCoachPayload(fields) {
     appVisible: fields.appVisible !== false,
     password: fields.password != null ? String(fields.password) : undefined,
     roleId: fields.roleId !== undefined ? (fields.roleId ? String(fields.roleId) : null) : undefined,
-    permissionOverrides:
-      fields.permissionOverrides !== undefined ? fields.permissionOverrides : undefined,
   };
 }
 
@@ -128,9 +118,6 @@ export function buildCoachUpdatePayload(fields) {
   if (fields.appVisible !== undefined) payload.appVisible = Boolean(fields.appVisible);
   if (fields.password !== undefined) payload.password = String(fields.password);
   if (fields.roleId !== undefined) payload.roleId = fields.roleId ? String(fields.roleId) : null;
-  if (fields.permissionOverrides !== undefined) {
-    payload.permissionOverrides = fields.permissionOverrides;
-  }
   return payload;
 }
 

@@ -1,5 +1,6 @@
 const express = require("express");
 const { protectAdmin } = require("../../middleware/auth");
+const { requireClientAccess } = require("../../middleware/requireClientAccess");
 const { authorize } = require("../../middleware/authorize");
 const {
   listAdminUserDietPlanAssignmentsController,
@@ -9,11 +10,11 @@ const {
 
 const router = express.Router({ mergeParams: true });
 
-router.get("/:userId/diet-plan-assignments", protectAdmin, authorize("users.clientHub.care.diet-plan"), listAdminUserDietPlanAssignmentsController);
-router.post("/:userId/diet-plan-assignments", protectAdmin, authorize("users.clientHub.care.diet-plan"), createAdminUserDietPlanAssignmentController);
+router.get("/:userId/diet-plan-assignments", protectAdmin, requireClientAccess, authorize("users.clientHub.care.diet-plan"), listAdminUserDietPlanAssignmentsController);
+router.post("/:userId/diet-plan-assignments", protectAdmin, requireClientAccess, authorize("users.clientHub.care.diet-plan"), createAdminUserDietPlanAssignmentController);
 router.delete(
   "/:userId/diet-plan-assignments/:assignmentId",
-  protectAdmin, authorize("users.clientHub.care.diet-plan"),
+  protectAdmin, requireClientAccess, authorize("users.clientHub.care.diet-plan"),
   deleteAdminUserDietPlanAssignmentController
 );
 

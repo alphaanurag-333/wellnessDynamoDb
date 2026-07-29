@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminTableLoaderRow } from "../../components/AdminLoader.jsx";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { MdEditSquare } from "react-icons/md";
 import { AiFillDelete } from "react-icons/ai";
@@ -11,15 +11,13 @@ import { selectIsSuperAdmin } from "../../../store/authSelectors.js";
 import { useDebouncedSearch } from "../../../hooks/useDebouncedSearch.js";
 import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../components/AdminCrud.jsx";
 import { NotFoundPage } from "../NotFoundPage.jsx";
-import { LIST_LIMIT, LIST_SEARCH_MAX_LEN, ROLE_SCOPES, getRoleId, getRoleScope } from "./RoleShared.js";
+import { LIST_LIMIT, LIST_SEARCH_MAX_LEN, getRoleId } from "./RoleShared.js";
 
 export function RoleList() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const adminToken = useSelector((s) => s.auth.adminToken);
   const isSuperAdmin = useSelector(selectIsSuperAdmin);
-  const listScope = String(searchParams.get("scope") || "ADMIN").toUpperCase() === "COACH" ? "COACH" : "ADMIN";
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [togglingId, setTogglingId] = useState("");
@@ -31,13 +29,6 @@ export function RoleList() {
   });
   const [listStatus, setListStatus] = useState("");
 
-  const setListScope = (scope) => {
-    const next = new URLSearchParams(searchParams);
-    next.set("scope", scope);
-    setSearchParams(next, { replace: true });
-    setPage(1);
-  };
-
   const loadRows = useCallback(async () => {
     if (!adminToken) return;
     setLoading(true);
@@ -45,7 +36,6 @@ export function RoleList() {
       const { roles, pagination } = await adminListRoles(adminToken, {
         page,
         limit: LIST_LIMIT,
-        scope: listScope,
         ...(debouncedSearch ? { search: debouncedSearch } : {}),
         ...(listStatus ? { status: listStatus } : {}),
       });
@@ -59,7 +49,7 @@ export function RoleList() {
     } finally {
       setLoading(false);
     }
-  }, [adminToken, dispatch, debouncedSearch, listStatus, page, listScope]);
+  }, [adminToken, dispatch, debouncedSearch, listStatus, page]);
 
   useEffect(() => {
     loadRows();
@@ -67,7 +57,7 @@ export function RoleList() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, listStatus, listScope]);
+  }, [debouncedSearch, listStatus]);
 
   if (!isSuperAdmin) {
     return <NotFoundPage />;
@@ -75,11 +65,10 @@ export function RoleList() {
 
   const onDelete = async (row) => {
     const id = getRoleId(row);
-    const assignee = getRoleScope(row) === "COACH" ? "coaches" : "sub-admins";
     const { isConfirmed } = await Swal.fire({
       icon: "warning",
       title: "Delete role?",
-      text: `This will delete "${row.name}". Any ${assignee} assigned to this role must be reassigned first.`,
+      text: `This will delete "${row.name}". Any accounts assigned to this role must be reassigned first.`,
       showCancelButton: true,
       confirmButtonColor: "#dc2626",
       confirmButtonText: "Delete",
@@ -127,32 +116,11 @@ export function RoleList() {
           title="Roles & Permissions"
           subtitle={subtitle}
           actions={
-            <button
-              type="button"
-              className="btn btn--primary"
-              onClick={() => navigate(`/admin/roles/new?scope=${encodeURIComponent(listScope)}`)}
-            >
+            <button type="button" className="btn btn--primary" onClick={() => navigate("/admin/roles/new")}>
               Add role
             </button>
           }
         />
-        <div className="role-scope-tabs" role="tablist" aria-label="Role scope">
-          {ROLE_SCOPES.map((opt) => {
-            const active = listScope === opt.value;
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                className={`role-scope-tabs__btn${active ? " role-scope-tabs__btn--active" : ""}`}
-                onClick={() => setListScope(opt.value)}
-              >
-                {opt.label}
-              </button>
-            );
-          })}
-        </div>
         <div className="admin-crud-filters">
           <label className="user-field admin-crud-filters__search">
             <span className="user-field__label">Search</span>
@@ -184,7 +152,6 @@ export function RoleList() {
               <tr>
                 <th>S No.</th>
                 <th>Name</th>
-                <th>Scope</th>
                 <th>Permissions</th>
                 <th>Status</th>
                 <th className="data-table__actions-col">Actions</th>
@@ -192,10 +159,10 @@ export function RoleList() {
             </thead>
             <tbody>
               {loading ? (
-                <AdminTableLoaderRow colSpan={6} label="Loading roles..." />
+                <AdminTableLoaderRow colSpan={5} label="Loading roles..." />
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={6}>No roles found.</td>
+                  <td colSpan={5}>No roles found.</td>
                 </tr>
               ) : (
                 rows.map((row, idx) => {
@@ -204,7 +171,6 @@ export function RoleList() {
                     <tr key={id || idx}>
                       <td className="data-table__muted">{(page - 1) * LIST_LIMIT + idx + 1}</td>
                       <td>{row.name}</td>
-                      <td>{getRoleScope(row)}</td>
                       <td>{Array.isArray(row.permissions) ? row.permissions.length : 0} permissions</td>
                       <td>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

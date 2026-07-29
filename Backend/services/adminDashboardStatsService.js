@@ -1,14 +1,15 @@
 const { TABLE: USER_TABLE } = require("../models/userModel");
 const { TABLE: COACH_TABLE } = require("../models/wellnessCoachModel");
-const { TABLE: ASSISTANT_TABLE } = require("../models/assistantWellnessCoachModel");
 const { TABLE: PROGRAM_TABLE } = require("../models/programCatalogModel");
 const {
   sumPaidTransactionTotals,
   listPaidTransactionsForAnalytics,
 } = require("../models/consultancyTransactionModel");
-const { countAcrossPartitions } = require("../utils/dynamoCount");
+const { countAcrossPartitions, countByIndexPartition } = require("../utils/dynamoCount");
 
 const STATUS_INDEX = "StatusCreatedAtIndex";
+const ACCOUNT_KIND_INDEX = "AccountKindCreatedAtIndex";
+const ACCOUNTS_TABLE = COACH_TABLE; // Accounts
 const USER_TIERS = ["seek", "heal", "consultancy_only"];
 const PRODUCT_LABELS = {
   consultancy: "Consultancy",
@@ -106,26 +107,37 @@ async function getAdminDashboardStats() {
       partitionKeyName: "status",
       partitionValues: ["active"],
     }),
-    countAcrossPartitions({
-      tableName: COACH_TABLE,
-      indexName: STATUS_INDEX,
-      partitionKeyName: "status",
-      partitionValues: ["active"],
+    countByIndexPartition({
+      tableName: ACCOUNTS_TABLE,
+      indexName: ACCOUNT_KIND_INDEX,
+      partitionKeyName: "accountKind",
+      partitionKeyValue: "coach",
+      filterExpression: "#status = :status",
+      exprNames: { "#status": "status" },
+      exprValues: { ":status": "active" },
     }),
-    countAcrossPartitions({
-      tableName: ASSISTANT_TABLE,
-      indexName: STATUS_INDEX,
-      partitionKeyName: "status",
-      partitionValues: ["active"],
+    countByIndexPartition({
+      tableName: ACCOUNTS_TABLE,
+      indexName: ACCOUNT_KIND_INDEX,
+      partitionKeyName: "accountKind",
+      partitionKeyValue: "assistant",
+      filterExpression: "#status = :status",
+      exprNames: { "#status": "status" },
+      exprValues: { ":status": "active" },
     }),
-    countAcrossPartitions({
-      tableName: COACH_TABLE,
-      indexName: STATUS_INDEX,
-      partitionKeyName: "status",
-      partitionValues: ["active", "inactive"],
-      filterExpression: "#approvalStatus = :approvalStatus",
-      exprNames: { "#approvalStatus": "approvalStatus" },
-      exprValues: { ":approvalStatus": "pending" },
+    countByIndexPartition({
+      tableName: ACCOUNTS_TABLE,
+      indexName: ACCOUNT_KIND_INDEX,
+      partitionKeyName: "accountKind",
+      partitionKeyValue: "coach",
+      filterExpression:
+        "#approvalStatus = :approvalStatus AND (#status = :active OR #status = :inactive)",
+      exprNames: { "#approvalStatus": "approvalStatus", "#status": "status" },
+      exprValues: {
+        ":approvalStatus": "pending",
+        ":active": "active",
+        ":inactive": "inactive",
+      },
     }),
     countAcrossPartitions({
       tableName: USER_TABLE,

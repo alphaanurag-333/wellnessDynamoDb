@@ -1,17 +1,24 @@
 const { asyncHandler } = require("../../utils/asyncHandler");
-const {
-  resolveCoachPermissions,
-} = require("../../utils/coachPermissions");
+const { ALL_PERMISSIONS } = require("../../config/permissionCatalog");
 
 /**
- * GET /coach/auth/me/permissions — resolved boolean map for the logged-in coach.
+ * GET /coach/auth/me/permissions — permission list (+ boolean map for older clients).
  */
 exports.getCoachPermissionsController = asyncHandler(async (req, res) => {
-  const permissions = await resolveCoachPermissions(req.user, { req });
+  const permissionList = Array.isArray(req.auth?.permissions)
+    ? [...req.auth.permissions]
+    : [];
+  const granted = new Set(permissionList);
+  const permissions = {};
+  for (const key of ALL_PERMISSIONS) {
+    permissions[key] = granted.has(key);
+  }
+
   return res.status(200).json({
     status: true,
     message: "Permissions fetched successfully",
-    roleId: req.user?.roleId || null,
+    roleId: req.user?.roleId || req.auth?.roleId || null,
     permissions,
+    permissionList,
   });
 });

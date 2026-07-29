@@ -6,6 +6,8 @@
 export const navItems = [
   { to: "dashboard", label: "Dashboard", icon: "grid" },
   { to: "users", label: "User Management", icon: "users" },
+  { to: "meal-approvals", label: "Meal Approvals", icon: "utensils" },
+  { to: "my-assistants", label: "My Assistants", icon: "user-plus" },
   {
     id: "consultancy",
     label: "Consultancy Payments",
@@ -36,8 +38,7 @@ export const navItems = [
     label: "Team & Coaches",
     icon: "users",
     children: [
-      { to: "coaches", label: "Wellness Coaches", icon: "user" },
-      { to: "awcs", label: "Assistant Coaches", icon: "user-plus" },
+      { to: "team", label: "Team Members", icon: "users" },
       { to: "specializations", label: "Specializations", icon: "award" },
     ],
   },
@@ -144,12 +145,10 @@ export const navItems = [
     id: "administration",
     label: "Administration",
     icon: "shield",
-    // Super Admin only — not permission-gated like every other group above,
-    // since sub-admin/role management is meta-admin functionality that must
-    // never be delegable via a role's permissions.
+    // Super Admin only — role management is meta-admin and must never be
+    // delegable via a role's permissions. Team Members live under Team & Coaches.
     superAdminOnly: true,
     children: [
-      { to: "sub-admins", label: "Sub-Admins", icon: "users" },
       { to: "roles", label: "Roles & Permissions", icon: "clipboard-list" },
     ],
   },

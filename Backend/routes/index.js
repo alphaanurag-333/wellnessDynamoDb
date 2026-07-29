@@ -61,6 +61,7 @@ const adminEnergyExchangeRoutes = require("./adminRoutes/adminEnergyExchangeRout
 const adminProgramCatalogRoutes = require("./adminRoutes/adminProgramCatalogRoutes");
 const adminMealTrackingRoutes = require("./adminRoutes/adminMealTrackingRoutes");
 const adminSubAdminRoutes = require("./adminRoutes/adminSubAdminRoutes");
+const adminTeamRoutes = require("./adminRoutes/adminTeamRoutes");
 const adminRoleRoutes = require("./adminRoutes/adminRoleRoutes");
 const adminPermissionRoutes = require("./adminRoutes/adminPermissionRoutes");
 const publicAppConfigRoutes = require("./publicRoutes/publicAppConfigRoutes");
@@ -277,6 +278,7 @@ router.use("/admin/heal-users", adminHealPrakrutiAssessmentRoutes);
 router.use("/admin/wellness-coaches", adminWellnessCoachRoutes);
 router.use("/admin/specializations", adminSpecializationRoutes);
 router.use("/admin/misc/pages", adminStaticPageRoutes);
+router.use("/admin/team", adminTeamRoutes);
 router.use("/admin/sub-admins", adminSubAdminRoutes);
 router.use("/admin/roles", adminRoleRoutes);
 router.use("/admin/permissions", adminPermissionRoutes);

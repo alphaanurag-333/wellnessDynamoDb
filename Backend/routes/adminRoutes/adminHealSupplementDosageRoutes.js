@@ -1,5 +1,6 @@
 const express = require("express");
 const { protectAdmin } = require("../../middleware/auth");
+const { requireClientAccess } = require("../../middleware/requireClientAccess");
 const { authorize } = require("../../middleware/authorize");
 const {
   listAdminUserSupplementDosagesController,
@@ -11,17 +12,17 @@ const router = express.Router({ mergeParams: true });
 
 router.get(
   "/:userId/supplement-dosages",
-  protectAdmin, authorize("users.clientHub.wellness.supplement-dosage"),
+  protectAdmin, requireClientAccess, authorize("users.clientHub.wellness.supplement-dosage"),
   listAdminUserSupplementDosagesController
 );
 router.post(
   "/:userId/supplement-dosages",
-  protectAdmin, authorize("users.clientHub.wellness.supplement-dosage"),
+  protectAdmin, requireClientAccess, authorize("users.clientHub.wellness.supplement-dosage"),
   createAdminUserSupplementDosageController
 );
 router.delete(
   "/:userId/supplement-dosages/:dosageId",
-  protectAdmin, authorize("users.clientHub.wellness.supplement-dosage"),
+  protectAdmin, requireClientAccess, authorize("users.clientHub.wellness.supplement-dosage"),
   deleteAdminUserSupplementDosageController
 );
 

@@ -1,5 +1,6 @@
 const express = require("express");
 const { protectAdmin } = require("../../middleware/auth");
+const { requireClientAccess } = require("../../middleware/requireClientAccess");
 const { authorize } = require("../../middleware/authorize");
 const {
   listAdminUserMentalWellbeingController,
@@ -9,11 +10,11 @@ const {
 
 const router = express.Router({ mergeParams: true });
 
-router.get("/:userId/mental-wellbeing", protectAdmin, authorize("users.clientHub.wellness.mental-wellbeing"), listAdminUserMentalWellbeingController);
-router.post("/:userId/mental-wellbeing", protectAdmin, authorize("users.clientHub.wellness.mental-wellbeing"), createAdminUserMentalWellbeingController);
+router.get("/:userId/mental-wellbeing", protectAdmin, requireClientAccess, authorize("users.clientHub.wellness.mental-wellbeing"), listAdminUserMentalWellbeingController);
+router.post("/:userId/mental-wellbeing", protectAdmin, requireClientAccess, authorize("users.clientHub.wellness.mental-wellbeing"), createAdminUserMentalWellbeingController);
 router.delete(
   "/:userId/mental-wellbeing/:assignmentId",
-  protectAdmin, authorize("users.clientHub.wellness.mental-wellbeing"),
+  protectAdmin, requireClientAccess, authorize("users.clientHub.wellness.mental-wellbeing"),
   deleteAdminUserMentalWellbeingController
 );
 

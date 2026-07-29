@@ -1,5 +1,6 @@
 const express = require("express");
 const { protectAdmin } = require("../../middleware/auth");
+const { requireClientAccess } = require("../../middleware/requireClientAccess");
 const { authorize } = require("../../middleware/authorize");
 const {
   listAdminHealConsultancyTracksController,
@@ -12,22 +13,22 @@ const router = express.Router({ mergeParams: true });
 
 router.get(
   "/:userId/heal-consultancy-tracks",
-  protectAdmin, authorize("users.clientHub.care.consultancy"),
+  protectAdmin, requireClientAccess, authorize("users.clientHub.care.consultancy"),
   listAdminHealConsultancyTracksController
 );
 router.post(
   "/:userId/heal-consultancy-tracks",
-  protectAdmin, authorize("users.clientHub.care.consultancy"),
+  protectAdmin, requireClientAccess, authorize("users.clientHub.care.consultancy"),
   createAdminHealConsultancyTrackController
 );
 router.patch(
   "/:userId/heal-consultancy-tracks/:trackId",
-  protectAdmin, authorize("users.clientHub.care.consultancy"),
+  protectAdmin, requireClientAccess, authorize("users.clientHub.care.consultancy"),
   updateAdminHealConsultancyTrackController
 );
 router.delete(
   "/:userId/heal-consultancy-tracks/:trackId",
-  protectAdmin, authorize("users.clientHub.care.consultancy"),
+  protectAdmin, requireClientAccess, authorize("users.clientHub.care.consultancy"),
   deleteAdminHealConsultancyTrackController
 );
 

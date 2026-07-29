@@ -1,5 +1,6 @@
 const express = require("express");
 const { protectAdmin } = require("../../middleware/auth");
+const { requireClientAccess } = require("../../middleware/requireClientAccess");
 const { authorize } = require("../../middleware/authorize");
 const {
   listAdminUserLaunchFocusAreasController,
@@ -14,20 +15,20 @@ const {
 
 const router = express.Router({ mergeParams: true });
 
-router.get("/:userId/launch-assessment/focus-areas", protectAdmin, authorize("users.clientHub.assessments.launch-assessment"), listAdminUserLaunchFocusAreasController);
-router.get("/:userId/launch-assessment/questions", protectAdmin, authorize("users.clientHub.assessments.launch-assessment"), listAdminUserLaunchQuestionsController);
-router.get("/:userId/launch-assessment/export", protectAdmin, authorize("users.clientHub.assessments.launch-assessment"), exportAdminUserLaunchQuestionsController);
-router.get("/:userId/launch-assessment", protectAdmin, authorize("users.clientHub.assessments.launch-assessment"), listAdminUserLaunchAssessmentsController);
-router.get("/:userId/launch-assessment/by-date", protectAdmin, authorize("users.clientHub.assessments.launch-assessment"), getAdminUserLaunchAssessmentByDateController);
-router.post("/:userId/launch-assessment", protectAdmin, authorize("users.clientHub.assessments.launch-assessment"), createAdminUserLaunchAssessmentController);
+router.get("/:userId/launch-assessment/focus-areas", protectAdmin, requireClientAccess, authorize("users.clientHub.assessments.launch-assessment"), listAdminUserLaunchFocusAreasController);
+router.get("/:userId/launch-assessment/questions", protectAdmin, requireClientAccess, authorize("users.clientHub.assessments.launch-assessment"), listAdminUserLaunchQuestionsController);
+router.get("/:userId/launch-assessment/export", protectAdmin, requireClientAccess, authorize("users.clientHub.assessments.launch-assessment"), exportAdminUserLaunchQuestionsController);
+router.get("/:userId/launch-assessment", protectAdmin, requireClientAccess, authorize("users.clientHub.assessments.launch-assessment"), listAdminUserLaunchAssessmentsController);
+router.get("/:userId/launch-assessment/by-date", protectAdmin, requireClientAccess, authorize("users.clientHub.assessments.launch-assessment"), getAdminUserLaunchAssessmentByDateController);
+router.post("/:userId/launch-assessment", protectAdmin, requireClientAccess, authorize("users.clientHub.assessments.launch-assessment"), createAdminUserLaunchAssessmentController);
 router.patch(
   "/:userId/launch-assessment/:assessmentId",
-  protectAdmin, authorize("users.clientHub.assessments.launch-assessment"),
+  protectAdmin, requireClientAccess, authorize("users.clientHub.assessments.launch-assessment"),
   updateAdminUserLaunchAssessmentController
 );
 router.delete(
   "/:userId/launch-assessment/:assessmentId",
-  protectAdmin, authorize("users.clientHub.assessments.launch-assessment"),
+  protectAdmin, requireClientAccess, authorize("users.clientHub.assessments.launch-assessment"),
   deleteAdminUserLaunchAssessmentController
 );
 

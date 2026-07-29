@@ -4,13 +4,12 @@ function roleBase() {
   return "/admin/roles";
 }
 
-export async function adminListRoles(token, { page = 1, limit = 100, status, search, scope } = {}) {
+export async function adminListRoles(token, { page = 1, limit = 100, status, search } = {}) {
   const q = new URLSearchParams();
   q.set("page", String(page));
   q.set("limit", String(limit));
   if (status) q.set("status", status);
   if (search && String(search).trim()) q.set("search", String(search).trim());
-  if (scope) q.set("scope", String(scope).toUpperCase());
   try {
     const { data } = await api.get(`${roleBase()}?${q}`, { headers: authHeader(token) });
     return {
@@ -42,7 +41,6 @@ export async function adminCreateRole(token, fields) {
         slug: fields.slug ? String(fields.slug).trim() : undefined,
         permissions: Array.isArray(fields.permissions) ? fields.permissions : [],
         status: fields.status || "active",
-        scope: fields.scope ? String(fields.scope).toUpperCase() : "ADMIN",
       },
       { headers: authHeader(token) }
     );
@@ -79,15 +77,12 @@ export async function adminDeleteRole(token, id) {
   }
 }
 
-export async function adminGetPermissionCatalog(token, { scope = "ADMIN" } = {}) {
+export async function adminGetPermissionCatalog(token) {
   try {
-    const q = new URLSearchParams();
-    if (scope) q.set("scope", String(scope).toUpperCase());
-    const { data } = await api.get(`/admin/permissions?${q}`, { headers: authHeader(token) });
+    const { data } = await api.get(`/admin/permissions`, { headers: authHeader(token) });
     return {
       groups: Array.isArray(data.groups) ? data.groups : [],
       permissions: Array.isArray(data.permissions) ? data.permissions : [],
-      scope: data.scope || scope,
     };
   } catch (error) {
     normalizeApiError(error);

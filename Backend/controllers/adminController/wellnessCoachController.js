@@ -26,43 +26,17 @@ const { getSpecializationById } = require("../../models/specializationModel");
 const { assertPasswordPolicy } = require("../../utils/passwordPolicy");
 const { assertBioPolicy } = require("../../utils/bioPolicy");
 const { normalizeEmail, normalizePhone, normalizeCountryCode } = require("../../models/userModel");
-const { getRoleById, normalizeScope } = require("../../models/roleModel");
-const { normalizeOverrides } = require("../../utils/coachPermissions");
-const { isValidCoachPermission } = require("../../config/coachPermissionCatalog");
+const { getRoleById } = require("../../models/roleModel");
 
 const S3_FOLDER = "wellness-coach";
 
-async function assertValidCoachRoleId(roleId) {
+async function assertValidRoleId(roleId) {
   if (!roleId) return;
   const role = await getRoleById(roleId);
   if (!role) throw new AppError("Role not found", 400);
-  if (normalizeScope(role.scope, "ADMIN") !== "COACH") {
-    throw new AppError("Role must be a coach-scoped role", 400);
-  }
   if (role.status !== "active") {
     throw new AppError("Role is not active", 400);
   }
-}
-
-function parsePermissionOverrides(value) {
-  if (value === undefined) return undefined;
-  if (value === null || value === "") return null;
-  if (typeof value === "string") {
-    try {
-      value = JSON.parse(value);
-    } catch {
-      throw new AppError("permissionOverrides must be a JSON object", 400);
-    }
-  }
-  if (typeof value !== "object" || Array.isArray(value)) {
-    throw new AppError("permissionOverrides must be an object", 400);
-  }
-  const cleaned = normalizeOverrides(value);
-  // Drop keys that match nothing useful / invalid already filtered
-  for (const key of Object.keys(cleaned)) {
-    if (!isValidCoachPermission(key)) delete cleaned[key];
-  }
-  return Object.keys(cleaned).length > 0 ? cleaned : null;
 }
 
 function parseRoleId(value) {
@@ -164,10 +138,6 @@ function parseCoachBody(body) {
     appVisible: body.appVisible !== undefined ? normalizeVisibleFlag(body.appVisible, true) : true,
     password: body.password !== undefined ? String(body.password || "").trim() : undefined,
     roleId: body.roleId !== undefined ? parseRoleId(body.roleId) : undefined,
-    permissionOverrides:
-      body.permissionOverrides !== undefined
-        ? parsePermissionOverrides(body.permissionOverrides)
-        : undefined,
   };
 }
 
@@ -208,16 +178,13 @@ exports.createWellnessCoachController = asyncHandler(async (req, res) => {
   await assertUniqueCoachEmail(fields.email);
   await assertUniqueCoachPhone(fields.phoneCountryCode, fields.phone);
   await assertValidSpecializationId(fields.specializationId);
-  if (fields.roleId !== undefined) await assertValidCoachRoleId(fields.roleId);
+  if (fields.roleId !== undefined) await assertValidRoleId(fields.roleId);
 
   const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
   if (uploadedKey) fields.profileImage = uploadedKey;
 
   // Drop undefined optional RBAC fields so buildCoachItem omits them cleanly.
-  if (fields.roleId === undefined) delete fields.roleId;
-  if (fields.permissionOverrides === undefined) delete fields.permissionOverrides;
-  if (fields.roleId === null) delete fields.roleId;
-  if (fields.permissionOverrides === null) delete fields.permissionOverrides;
+  if (fields.roleId === undefined || fields.roleId === null) delete fields.roleId;
 
   const coach = await enrichWellnessCoach(await createWellnessCoach(fields));
   return res.status(201).json({
@@ -291,11 +258,8 @@ exports.updateWellnessCoachController = asyncHandler(async (req, res) => {
 
   if (body.roleId !== undefined) {
     const roleId = parseRoleId(body.roleId);
-    await assertValidCoachRoleId(roleId);
+    await assertValidRoleId(roleId);
     updates.roleId = roleId;
-  }
-  if (body.permissionOverrides !== undefined) {
-    updates.permissionOverrides = parsePermissionOverrides(body.permissionOverrides);
   }
 
   if (body.password !== undefined) {

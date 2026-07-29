@@ -4,6 +4,7 @@ const {
   UpdateCommand,
   DeleteCommand,
   QueryCommand,
+  ScanCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require("uuid");
 const { docClient } = require("../config/db");
@@ -31,7 +32,7 @@ const {
   sortByCreatedAtDesc,
 } = require("../utils/dynamoList");
 
-const TABLE = "AssistantWellnessCoach";
+const TABLE = "Accounts";
 const ALLOWED_STATUS = new Set(["active", "inactive"]);
 
 function normalizeStatus(value, fallback = "active") {
@@ -42,6 +43,20 @@ function normalizeStatus(value, fallback = "active") {
 function withLegacyId(item) {
   if (!item) return null;
   return { ...item, _id: item.id };
+}
+
+/** True when the Accounts row is an assistant wellness coach. */
+function isAssistantAccount(item) {
+  if (!item) return false;
+  if (item.accountKind === "assistant") return true;
+  if (item.accountKind === "admin" || item.accountKind === "coach") return false;
+  // Legacy assistant rows: parent link without explicit kind.
+  return Boolean(item.parentAccountId || item.wellnessCoachId);
+}
+
+function onlyAssistantAccount(item) {
+  const row = withLegacyId(item);
+  return isAssistantAccount(row) ? row : null;
 }
 
 function normalizeProfileImageField(value) {
@@ -55,7 +70,12 @@ function normalizeProfileImageField(value) {
 
 function toPublicAssistant(assistant) {
   if (!assistant) return assistant;
-  const pub = toPublicProfile(withLegacyId(assistant));
+  const withParent = {
+    ...assistant,
+    wellnessCoachId: assistant.wellnessCoachId || assistant.parentAccountId || null,
+    parentAccountId: assistant.parentAccountId || assistant.wellnessCoachId || null,
+  };
+  const pub = toPublicProfile(withLegacyId(withParent));
   if (pub.profileImage) {
     pub.profileImage = resolvePublicUrl(pub.profileImage);
   }
@@ -66,10 +86,14 @@ function buildAssistantItem(input, { id, now } = {}) {
   const phoneCountryCode = normalizeCountryCode(input.phoneCountryCode);
   const phone = normalizePhone(input.phone);
   const email = normalizeEmail(input.email);
+  const parentId = String(input.parentAccountId || input.wellnessCoachId || "").trim();
 
-  return {
+  const item = {
     id: id || uuidv4(),
-    wellnessCoachId: String(input.wellnessCoachId || "").trim(),
+    // Keep wellnessCoachId alias for existing controllers/UI that still read it.
+    wellnessCoachId: parentId,
+    parentAccountId: parentId,
+    accountKind: "assistant",
     name: String(input.name || "").trim(),
     email,
     phoneCountryCode,
@@ -86,6 +110,12 @@ function buildAssistantItem(input, { id, now } = {}) {
     createdAt: now,
     updatedAt: now,
   };
+
+  const roleId =
+    input.roleId != null && String(input.roleId).trim() ? String(input.roleId).trim() : null;
+  if (roleId) item.roleId = roleId;
+
+  return item;
 }
 
 function sanitizeUpdateField(key, value) {
@@ -113,6 +143,10 @@ function sanitizeUpdateField(key, value) {
   if (key === "otpExpire") {
     return value != null && value !== "" ? String(value) : null;
   }
+  if (key === "roleId") {
+    if (value == null || value === "") return null;
+    return String(value).trim() || null;
+  }
   return value;
 }
 
@@ -128,7 +162,7 @@ async function getAssistantByEmail(email) {
       Limit: 1,
     })
   );
-  return withLegacyId(Items?.[0] || null);
+  return onlyAssistantAccount(Items?.[0] || null);
 }
 
 async function getAssistantByPhone(phoneCountryCode, phone) {
@@ -143,7 +177,7 @@ async function getAssistantByPhone(phoneCountryCode, phone) {
       Limit: 1,
     })
   );
-  return withLegacyId(Items?.[0] || null);
+  return onlyAssistantAccount(Items?.[0] || null);
 }
 
 async function specializationTitleForCoach(coach, titleCache) {
@@ -233,13 +267,42 @@ async function countAssistantsByWellnessCoachId(wellnessCoachId) {
   const { Count } = await docClient.send(
     new QueryCommand({
       TableName: TABLE,
-      IndexName: "WellnessCoachIndex",
-      KeyConditionExpression: "wellnessCoachId = :wellnessCoachId",
-      ExpressionAttributeValues: { ":wellnessCoachId": wellnessCoachId },
+      IndexName: "ParentAccountIndex",
+      KeyConditionExpression: "parentAccountId = :parentAccountId",
+      FilterExpression: "#accountKind = :accountKindAssistant",
+      ExpressionAttributeNames: { "#accountKind": "accountKind" },
+      ExpressionAttributeValues: {
+        ":parentAccountId": wellnessCoachId,
+        ":accountKindAssistant": "assistant",
+      },
       Select: "COUNT",
     })
   );
   return Count ?? 0;
+}
+
+async function countAssistantsByRoleId(roleId) {
+  if (!roleId) return 0;
+  let total = 0;
+  let lastKey;
+  do {
+    const { Count, LastEvaluatedKey } = await docClient.send(
+      new ScanCommand({
+        TableName: TABLE,
+        FilterExpression: "roleId = :roleId AND #accountKind = :accountKindAssistant",
+        ExpressionAttributeNames: { "#accountKind": "accountKind" },
+        ExpressionAttributeValues: {
+          ":roleId": roleId,
+          ":accountKindAssistant": "assistant",
+        },
+        Select: "COUNT",
+        ExclusiveStartKey: lastKey,
+      })
+    );
+    total += Count || 0;
+    lastKey = LastEvaluatedKey;
+  } while (lastKey);
+  return total;
 }
 
 async function createAssistantWellnessCoach(fields) {
@@ -247,7 +310,9 @@ async function createAssistantWellnessCoach(fields) {
   const referralCode = fields.referralCode || (await generateUniqueReferralCode());
   const item = buildAssistantItem({ ...fields, referralCode }, { now });
 
-  if (!item.wellnessCoachId) throw new Error("wellnessCoachId is required");
+  if (!item.parentAccountId && !item.wellnessCoachId) throw new Error("wellnessCoachId is required");
+  if (!item.parentAccountId) item.parentAccountId = item.wellnessCoachId;
+  if (!item.wellnessCoachId) item.wellnessCoachId = item.parentAccountId;
   if (!item.name) throw new Error("name is required");
   if (!item.email) throw new Error("email is required");
   if (!item.phone) throw new Error("phone is required");
@@ -265,7 +330,7 @@ async function createAssistantWellnessCoach(fields) {
     referralCode: item.referralCode,
     entityType: "assistant_wellness_coach",
     entityId: item.id,
-    ownerCoachId: item.wellnessCoachId,
+    ownerCoachId: item.parentAccountId || item.wellnessCoachId,
   });
 
   return withLegacyId(item);
@@ -278,7 +343,7 @@ async function getAssistantWellnessCoachRecordById(id) {
       Key: { id },
     })
   );
-  return withLegacyId(Item || null);
+  return onlyAssistantAccount(Item || null);
 }
 
 async function getAssistantWellnessCoachById(id) {
@@ -302,13 +367,21 @@ async function updateAssistantWellnessCoach(id, updates) {
   }
 
   const merged = { ...current };
-  for (const [k, v] of entries) merged[k] = v;
+  const removeAttrs = [];
+  for (const [k, v] of entries) {
+    if (k === "roleId" && (v === null || v === "")) {
+      removeAttrs.push(k);
+      delete merged[k];
+      continue;
+    }
+    merged[k] = v;
+  }
 
   if (updates.phone !== undefined || updates.phoneCountryCode !== undefined) {
     merged.phoneKey = buildPhoneKey(merged.phoneCountryCode, merged.phone);
   }
 
-  const patchKeys = entries.map(([k]) => k);
+  const patchKeys = entries.map(([k]) => k).filter((k) => !removeAttrs.includes(k));
   if (patchKeys.includes("phone") || patchKeys.includes("phoneCountryCode")) {
     patchKeys.push("phoneKey");
   }
@@ -324,11 +397,19 @@ async function updateAssistantWellnessCoach(id, updates) {
     setExpr += `, #${key} = :${key}`;
   }
 
+  let updateExpression = setExpr;
+  if (removeAttrs.length > 0) {
+    for (const key of removeAttrs) {
+      exprNames[`#${key}`] = key;
+    }
+    updateExpression += ` REMOVE ${removeAttrs.map((k) => `#${k}`).join(", ")}`;
+  }
+
   const { Attributes } = await docClient.send(
     new UpdateCommand({
       TableName: TABLE,
       Key: { id },
-      UpdateExpression: setExpr,
+      UpdateExpression: updateExpression,
       ExpressionAttributeNames: exprNames,
       ExpressionAttributeValues: exprValues,
       ConditionExpression: "attribute_exists(id)",
@@ -366,14 +447,19 @@ async function listAssistantsByWellnessCoachId(
   const { Items = [] } = await docClient.send(
     new QueryCommand({
       TableName: TABLE,
-      IndexName: "WellnessCoachIndex",
-      KeyConditionExpression: "wellnessCoachId = :wellnessCoachId",
-      ExpressionAttributeValues: { ":wellnessCoachId": wellnessCoachId },
+      IndexName: "ParentAccountIndex",
+      KeyConditionExpression: "parentAccountId = :parentAccountId",
+      FilterExpression: "#accountKind = :accountKindAssistant",
+      ExpressionAttributeNames: { "#accountKind": "accountKind" },
+      ExpressionAttributeValues: {
+        ":parentAccountId": wellnessCoachId,
+        ":accountKindAssistant": "assistant",
+      },
       ScanIndexForward: false,
     })
   );
 
-  let rows = Items.map(withLegacyId);
+  let rows = Items.map(withLegacyId).filter((r) => r.accountKind === "assistant");
 
   if (normalizedStatus) {
     rows = rows.filter((r) => r.status === normalizedStatus);
@@ -443,6 +529,11 @@ async function listAssistantWellnessCoaches({
   let filterExpression = searchFilter.filterExpression;
   const exprNames = { ...(searchFilter.exprNames || {}) };
   const exprValues = { ...(searchFilter.exprValues || {}) };
+  if (normalizedStatus) {
+    exprNames["#status"] = "status";
+    exprValues[":status"] = normalizedStatus;
+    filterExpression = appendFilter(filterExpression, "#status = :status");
+  }
   for (const part of [
     visibilityFilterParts("webVisible", wantWebVisible),
     visibilityFilterParts("appVisible", wantAppVisible),
@@ -455,8 +546,9 @@ async function listAssistantWellnessCoaches({
 
   const { items, pagination } = await listByPartitionKey({
     tableName: TABLE,
-    indexName: "StatusCreatedAtIndex",
-    partitionKeyValue: normalizedStatus || undefined,
+    indexName: "AccountKindCreatedAtIndex",
+    partitionKeyName: "accountKind",
+    partitionKeyValue: "assistant",
     filterExpression,
     exprNames,
     exprValues,
@@ -464,6 +556,8 @@ async function listAssistantWellnessCoaches({
     searchFields: searchFilter.searchFields,
     searchFn: searchFilter.search
       ? (item, term) => {
+          if (item.accountKind && item.accountKind !== "assistant") return false;
+          if (normalizedStatus && item.status !== normalizedStatus) return false;
           if (wantWebVisible !== undefined && normalizeVisibleFlag(item.webVisible, true) !== normalizeVisibleFlag(wantWebVisible, true)) {
             return false;
           }
@@ -503,6 +597,7 @@ module.exports = {
   listAssistantsByWellnessCoachId,
   listAssistantWellnessCoaches,
   countAssistantsByWellnessCoachId,
+  countAssistantsByRoleId,
   slimWellnessCoach,
   populateWellnessCoach,
   populateWellnessCoaches,

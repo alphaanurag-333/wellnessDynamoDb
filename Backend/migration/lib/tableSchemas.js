@@ -18,19 +18,28 @@ function statusCreatedAtIndex(indexName = "StatusCreatedAtIndex") {
 
 const TABLE_DEFINITIONS = [
   {
-    TableName: "Admin",
+    TableName: "Accounts",
     KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
     AttributeDefinitions: [
       { AttributeName: "id", AttributeType: "S" },
       { AttributeName: "email", AttributeType: "S" },
+      { AttributeName: "phoneKey", AttributeType: "S" },
       { AttributeName: "status", AttributeType: "S" },
       { AttributeName: "createdAt", AttributeType: "S" },
       { AttributeName: "roleId", AttributeType: "S" },
+      { AttributeName: "parentAccountId", AttributeType: "S" },
+      { AttributeName: "specializationId", AttributeType: "S" },
+      { AttributeName: "accountKind", AttributeType: "S" },
     ],
     GlobalSecondaryIndexes: [
       {
         IndexName: "EmailIndex",
         KeySchema: [{ AttributeName: "email", KeyType: "HASH" }],
+        Projection: { ProjectionType: "ALL" },
+      },
+      {
+        IndexName: "PhoneKeyIndex",
+        KeySchema: [{ AttributeName: "phoneKey", KeyType: "HASH" }],
         Projection: { ProjectionType: "ALL" },
       },
       statusCreatedAtIndex(),
@@ -42,9 +51,35 @@ const TABLE_DEFINITIONS = [
         ],
         Projection: { ProjectionType: "ALL" },
       },
+      {
+        IndexName: "ParentAccountIndex",
+        KeySchema: [
+          { AttributeName: "parentAccountId", KeyType: "HASH" },
+          { AttributeName: "createdAt", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+      {
+        IndexName: "SpecializationIdIndex",
+        KeySchema: [
+          { AttributeName: "specializationId", KeyType: "HASH" },
+          { AttributeName: "createdAt", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+      {
+        IndexName: "AccountKindCreatedAtIndex",
+        KeySchema: [
+          { AttributeName: "accountKind", KeyType: "HASH" },
+          { AttributeName: "createdAt", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
     ],
     ...PAY_PER_REQUEST,
   },
+  // Legacy Admin / WellnessCoach / AssistantWellnessCoach table defs intentionally
+  // omitted — panel identity lives in Accounts only (see migrateToAccounts.js).
   {
     TableName: "Role",
     KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
@@ -68,40 +103,6 @@ const TABLE_DEFINITIONS = [
     TableName: "AppConfig",
     KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
     AttributeDefinitions: [{ AttributeName: "id", AttributeType: "S" }],
-    ...PAY_PER_REQUEST,
-  },
-  {
-    TableName: "AssistantWellnessCoach",
-    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
-    AttributeDefinitions: [
-      { AttributeName: "id", AttributeType: "S" },
-      { AttributeName: "wellnessCoachId", AttributeType: "S" },
-      { AttributeName: "email", AttributeType: "S" },
-      { AttributeName: "phoneKey", AttributeType: "S" },
-      { AttributeName: "status", AttributeType: "S" },
-      { AttributeName: "createdAt", AttributeType: "S" },
-    ],
-    GlobalSecondaryIndexes: [
-      {
-        IndexName: "WellnessCoachIndex",
-        KeySchema: [
-          { AttributeName: "wellnessCoachId", KeyType: "HASH" },
-          { AttributeName: "createdAt", KeyType: "RANGE" },
-        ],
-        Projection: { ProjectionType: "ALL" },
-      },
-      {
-        IndexName: "EmailIndex",
-        KeySchema: [{ AttributeName: "email", KeyType: "HASH" }],
-        Projection: { ProjectionType: "ALL" },
-      },
-      {
-        IndexName: "PhoneKeyIndex",
-        KeySchema: [{ AttributeName: "phoneKey", KeyType: "HASH" }],
-        Projection: { ProjectionType: "ALL" },
-      },
-      statusCreatedAtIndex(),
-    ],
     ...PAY_PER_REQUEST,
   },
   {
@@ -960,40 +961,6 @@ const TABLE_DEFINITIONS = [
     ...PAY_PER_REQUEST,
   },
   {
-    TableName: "WellnessCoach",
-    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
-    AttributeDefinitions: [
-      { AttributeName: "id", AttributeType: "S" },
-      { AttributeName: "email", AttributeType: "S" },
-      { AttributeName: "phoneKey", AttributeType: "S" },
-      { AttributeName: "specializationId", AttributeType: "S" },
-      { AttributeName: "status", AttributeType: "S" },
-      { AttributeName: "createdAt", AttributeType: "S" },
-    ],
-    GlobalSecondaryIndexes: [
-      {
-        IndexName: "EmailIndex",
-        KeySchema: [{ AttributeName: "email", KeyType: "HASH" }],
-        Projection: { ProjectionType: "ALL" },
-      },
-      {
-        IndexName: "PhoneKeyIndex",
-        KeySchema: [{ AttributeName: "phoneKey", KeyType: "HASH" }],
-        Projection: { ProjectionType: "ALL" },
-      },
-      statusCreatedAtIndex(),
-      {
-        IndexName: "SpecializationIdIndex",
-        KeySchema: [
-          { AttributeName: "specializationId", KeyType: "HASH" },
-          { AttributeName: "createdAt", KeyType: "RANGE" },
-        ],
-        Projection: { ProjectionType: "ALL" },
-      },
-    ],
-    ...PAY_PER_REQUEST,
-  },
-  {
     TableName: "Yoga",
     KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
     AttributeDefinitions: [
@@ -1002,6 +969,103 @@ const TABLE_DEFINITIONS = [
       { AttributeName: "createdAt", AttributeType: "S" },
     ],
     GlobalSecondaryIndexes: [statusCreatedAtIndex()],
+    ...PAY_PER_REQUEST,
+  },
+  {
+    TableName: "PhysicalExercise",
+    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
+    AttributeDefinitions: [
+      { AttributeName: "id", AttributeType: "S" },
+      { AttributeName: "status", AttributeType: "S" },
+      { AttributeName: "createdAt", AttributeType: "S" },
+    ],
+    GlobalSecondaryIndexes: [statusCreatedAtIndex()],
+    ...PAY_PER_REQUEST,
+  },
+  {
+    TableName: "Supplement",
+    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
+    AttributeDefinitions: [
+      { AttributeName: "id", AttributeType: "S" },
+      { AttributeName: "status", AttributeType: "S" },
+      { AttributeName: "createdAt", AttributeType: "S" },
+    ],
+    GlobalSecondaryIndexes: [statusCreatedAtIndex()],
+    ...PAY_PER_REQUEST,
+  },
+  {
+    TableName: "MedicalConditionQuestion",
+    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
+    AttributeDefinitions: [
+      { AttributeName: "id", AttributeType: "S" },
+      { AttributeName: "status", AttributeType: "S" },
+      { AttributeName: "createdAt", AttributeType: "S" },
+    ],
+    GlobalSecondaryIndexes: [statusCreatedAtIndex()],
+    ...PAY_PER_REQUEST,
+  },
+  {
+    TableName: "MentalWellbeing",
+    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
+    AttributeDefinitions: [
+      { AttributeName: "id", AttributeType: "S" },
+      { AttributeName: "status", AttributeType: "S" },
+      { AttributeName: "createdAt", AttributeType: "S" },
+    ],
+    GlobalSecondaryIndexes: [statusCreatedAtIndex()],
+    ...PAY_PER_REQUEST,
+  },
+  {
+    TableName: "AssignedMentalWellbeing",
+    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
+    AttributeDefinitions: [
+      { AttributeName: "id", AttributeType: "S" },
+      { AttributeName: "userId", AttributeType: "S" },
+      { AttributeName: "createdAt", AttributeType: "S" },
+      { AttributeName: "coachId", AttributeType: "S" },
+    ],
+    GlobalSecondaryIndexes: [
+      {
+        IndexName: "UserCreatedAtIndex",
+        KeySchema: [
+          { AttributeName: "userId", KeyType: "HASH" },
+          { AttributeName: "createdAt", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+      {
+        IndexName: "CoachCreatedAtIndex",
+        KeySchema: [
+          { AttributeName: "coachId", KeyType: "HASH" },
+          { AttributeName: "createdAt", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+    ],
+    ...PAY_PER_REQUEST,
+  },
+  {
+    TableName: "SleepTracking",
+    KeySchema: [
+      { AttributeName: "userId", KeyType: "HASH" },
+      { AttributeName: "recordKey", KeyType: "RANGE" },
+    ],
+    AttributeDefinitions: [
+      { AttributeName: "userId", AttributeType: "S" },
+      { AttributeName: "recordKey", AttributeType: "S" },
+    ],
+    ...PAY_PER_REQUEST,
+  },
+  {
+    TableName: "HeartRateTracking",
+    KeySchema: [
+      { AttributeName: "userId", KeyType: "HASH" },
+      { AttributeName: "recordKey", KeyType: "RANGE" },
+    ],
+    AttributeDefinitions: [
+      { AttributeName: "userId", AttributeType: "S" },
+      { AttributeName: "recordKey", AttributeType: "S" },
+    ],
     ...PAY_PER_REQUEST,
   },
   {

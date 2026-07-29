@@ -1,5 +1,6 @@
 const express = require("express");
 const { protectAdmin } = require("../../middleware/auth");
+const { requireClientAccess } = require("../../middleware/requireClientAccess");
 const { authorize } = require("../../middleware/authorize");
 const {
   listAdminUserWellnessPrescriptionsController,
@@ -11,17 +12,17 @@ const router = express.Router({ mergeParams: true });
 
 router.get(
   "/:userId/wellness-prescriptions",
-  protectAdmin, authorize("users.clientHub.care.wellness-prescriptions"),
+  protectAdmin, requireClientAccess, authorize("users.clientHub.care.wellness-prescriptions"),
   listAdminUserWellnessPrescriptionsController
 );
 router.post(
   "/:userId/wellness-prescriptions",
-  protectAdmin, authorize("users.clientHub.care.wellness-prescriptions"),
+  protectAdmin, requireClientAccess, authorize("users.clientHub.care.wellness-prescriptions"),
   createAdminUserWellnessPrescriptionController
 );
 router.delete(
   "/:userId/wellness-prescriptions/:assignmentId",
-  protectAdmin, authorize("users.clientHub.care.wellness-prescriptions"),
+  protectAdmin, requireClientAccess, authorize("users.clientHub.care.wellness-prescriptions"),
   deleteAdminUserWellnessPrescriptionController
 );
 

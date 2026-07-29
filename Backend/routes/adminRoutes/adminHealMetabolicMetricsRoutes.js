@@ -1,5 +1,6 @@
 const express = require("express");
 const { protectAdmin } = require("../../middleware/auth");
+const { requireClientAccess } = require("../../middleware/requireClientAccess");
 const { authorize } = require("../../middleware/authorize");
 const {
   getAdminMetabolicMetricsDashboardController,
@@ -11,22 +12,22 @@ const router = express.Router({ mergeParams: true });
 
 router.get(
   "/:userId/metabolic-metrics/dashboard",
-  protectAdmin, authorize("users.clientHub.metabolic-health.metabolic-metrics"),
+  protectAdmin, requireClientAccess, authorize("users.clientHub.metabolic-health.metabolic-metrics"),
   getAdminMetabolicMetricsDashboardController
 );
 router.get(
   "/:userId/metabolic-metrics/history",
-  protectAdmin, authorize("users.clientHub.metabolic-health.metabolic-metrics"),
+  protectAdmin, requireClientAccess, authorize("users.clientHub.metabolic-health.metabolic-metrics"),
   listAdminMetabolicMetricHistoryController
 );
 router.get(
   "/:userId/metabolic-metrics/history/:metricType",
-  protectAdmin, authorize("users.clientHub.metabolic-health.metabolic-metrics"),
+  protectAdmin, requireClientAccess, authorize("users.clientHub.metabolic-health.metabolic-metrics"),
   listAdminMetabolicMetricHistoryController
 );
 router.post(
   "/:userId/metabolic-metrics/fatty-liver",
-  protectAdmin, authorize("users.clientHub.metabolic-health.metabolic-metrics"),
+  protectAdmin, requireClientAccess, authorize("users.clientHub.metabolic-health.metabolic-metrics"),
   createAdminFattyLiverMetricController
 );
 

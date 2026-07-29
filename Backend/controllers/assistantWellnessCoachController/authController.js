@@ -6,7 +6,7 @@ const {
   deleteStoredMedia,
   parseMediaKeyFromBody,
 } = require("../../utils/s3");
-const { createTokenPair, verifyRefreshToken } = require("../../utils/jwt");
+const { verifyRefreshToken } = require("../../utils/jwt");
 const { parseFcmIdFromBody } = require("../../utils/parseFcmId");
 const {
   getAssistantByEmail,
@@ -19,12 +19,16 @@ const {
 } = require("../../models/assistantWellnessCoachModel");
 const { normalizePhone, normalizeCountryCode } = require("../../models/userModel");
 const { ensureEntityReferralCode } = require("../../models/referralCodeModel");
+const {
+  resolvePanelAuthContext,
+  createPanelTokenPair,
+  isPanelJwtRole,
+} = require("../../utils/panelAuth");
 const config = require("../../config");
 const { generateOtp, getOtpExpiryDate, isOtpExpired, deliverOtp } = require("../../utils/otp");
 const { assertPasswordPolicy } = require("../../utils/passwordPolicy");
 
 const S3_FOLDER = "assistant-wellness-coach";
-const ROLE = "assistant_wellness_coach";
 
 function assertAssistantCanLogin(assistant) {
   if (!assistant) {
@@ -54,17 +58,19 @@ function parsePhoneLoginBody(body) {
   return { phone, phoneCountryCode };
 }
 
-function sendAuthResponse(res, statusCode, assistant) {
-  const { accessToken, refreshToken } = createTokenPair({
-    sub: assistant.id,
-    role: ROLE,
-  });
+async function sendAuthResponse(res, statusCode, assistant) {
+  const ctx = await resolvePanelAuthContext(assistant);
+  const { accessToken, refreshToken } = createPanelTokenPair(assistant, ctx);
   return res.status(statusCode).json({
     status: true,
     message: "Authentication successful",
     accessToken,
     refreshToken,
-    assistant: toPublicAssistant(assistant),
+    assistant: {
+      ...toPublicAssistant(assistant),
+      accountType: ctx.accountType,
+      permissions: ctx.permissions,
+    },
   });
 }
 
@@ -130,7 +136,7 @@ exports.verifyAssistantWellnessCoachLoginOtp = asyncHandler(async (req, res) => 
   }
 
   await updateAssistantWellnessCoach(assistant.id, { otp: null, otpExpire: null });
-  const fresh = await getAssistantWellnessCoachById(assistant.id);
+  const fresh = await getAssistantWellnessCoachRecordById(assistant.id);
   return sendAuthResponse(res, 200, fresh);
 });
 
@@ -143,7 +149,7 @@ exports.getAssistantWellnessCoachProfile = asyncHandler(async (req, res) => {
   const parentCoachId = String(assistant.wellnessCoachId || "").trim();
   if (parentCoachId) {
     await ensureEntityReferralCode({
-      tableName: "AssistantWellnessCoach",
+      tableName: "Accounts",
       entityType: "assistant_wellness_coach",
       entityId: assistant.id,
       ownerCoachId: parentCoachId,
@@ -258,11 +264,11 @@ exports.refreshAssistantWellnessCoachToken = asyncHandler(async (req, res) => {
     throw new AppError("Invalid or expired refresh token", 401);
   }
 
-  if (payload.role !== ROLE) {
+  if (!isPanelJwtRole(payload.role || payload.accountType)) {
     throw new AppError("Forbidden", 403);
   }
 
-  const assistant = await getAssistantWellnessCoachById(payload.sub);
+  const assistant = await getAssistantWellnessCoachRecordById(payload.sub);
   if (!assistant) {
     throw new AppError("Assistant wellness coach not found", 404);
   }
@@ -271,7 +277,11 @@ exports.refreshAssistantWellnessCoachToken = asyncHandler(async (req, res) => {
     throw new AppError("Account is inactive", 403);
   }
 
-  const tokens = createTokenPair({ sub: assistant.id, role: ROLE });
+  const ctx = await resolvePanelAuthContext(assistant);
+  if (ctx.accountType !== "assistant_wellness_coach") {
+    throw new AppError("Forbidden", 403);
+  }
+  const tokens = createPanelTokenPair(assistant, ctx);
 
   return res.status(200).json({
     status: true,

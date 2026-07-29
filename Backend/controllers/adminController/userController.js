@@ -9,6 +9,8 @@ const {
   updateUser,
   deleteUser,
   listUsers,
+  listUsersByParentCoachId,
+  listUsersByAssignedCoachId,
 } = require("../../models/userModel");
 const {
   parseUserFields,
@@ -17,21 +19,50 @@ const {
   assertUniquePhone,
   buildUserUpdatesFromBody,
 } = require("../userController/userProfileHelpers");
+const {
+  assertCanAccessClient,
+  isScopedCareOperator,
+} = require("../../utils/clientOwnership");
 
 exports.listUsersController = asyncHandler(async (req, res) => {
   const { page = 1, limit = 20, status, search, userTier, assignmentStatus } = req.query;
-  const data = await listUsers({ page, limit, status, search, userTier, assignmentStatus });
+  const accountType = req.auth?.accountType || req.auth?.role;
+
+  let data;
+  if (accountType === "wellness_coach") {
+    data = await listUsersByParentCoachId(req.auth.sub, {
+      page,
+      limit,
+      search,
+      status,
+      userTier,
+    });
+  } else if (accountType === "assistant_wellness_coach") {
+    data = await listUsersByAssignedCoachId(req.auth.sub, {
+      page,
+      limit,
+      search,
+      status,
+      userTier,
+      parentCoachId: req.auth.parentCoachId || req.auth.wellnessCoachId || undefined,
+    });
+  } else {
+    data = await listUsers({ page, limit, status, search, userTier, assignmentStatus });
+  }
+
   const users = await Promise.all(data.users.map((u) => enrichUser(u)));
   return res.status(200).json({ status: true, users, pagination: data.pagination });
 });
 
 exports.getUserByIdController = asyncHandler(async (req, res) => {
-  const user = await getUserById(req.params.id);
-  if (!user) throw new AppError("User not found", 404);
+  const user = await assertCanAccessClient(req.auth, req.params.id);
   return res.status(200).json({ status: true, user: await enrichUser(user) });
 });
 
 exports.createUserController = asyncHandler(async (req, res) => {
+  if (isScopedCareOperator(req.auth)) {
+    throw new AppError("Only admins can create users from this panel", 403);
+  }
   const { fields, password } = parseUserFields(req.body, { requirePassword: false });
 
   await assertUniqueEmail(fields.email);
@@ -62,8 +93,10 @@ exports.createUserController = asyncHandler(async (req, res) => {
 });
 
 exports.updateUserController = asyncHandler(async (req, res) => {
-  const current = await getUserById(req.params.id);
-  if (!current) throw new AppError("User not found", 404);
+  const current = await assertCanAccessClient(req.auth, req.params.id);
+  if (isScopedCareOperator(req.auth)) {
+    throw new AppError("Only admins can edit user profile fields here. Use Client Program instead.", 403);
+  }
 
   const updates = await buildUserUpdatesFromBody(req.body || {}, current, {
     allowStatus: true,
@@ -92,6 +125,9 @@ exports.updateUserController = asyncHandler(async (req, res) => {
 });
 
 exports.deleteUserController = asyncHandler(async (req, res) => {
+  if (isScopedCareOperator(req.auth)) {
+    throw new AppError("Only admins can delete users", 403);
+  }
   const current = await getUserById(req.params.id);
   if (!current) throw new AppError("User not found", 404);
   if (current.profileImage) await deleteStoredMedia(current.profileImage);

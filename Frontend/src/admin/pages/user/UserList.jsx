@@ -13,6 +13,11 @@ import { AdminListHeader, AdminStatusBadge, listCountSubtitle } from "../../comp
 import { UserTierBadge } from "../../../components/ReferralAssignmentShared.jsx";
 import { useResourcePermissions } from "../../hooks/useHasPermission.js";
 import { formatDate as formatJoined } from "../../utils/formatDate.js";
+import {
+  selectAccountType,
+  selectIsAssistantAccount,
+  selectIsCoachAccount,
+} from "../../../store/authSelectors.js";
 
 function csvEscape(value) {
   const raw = value == null ? "" : String(value);
@@ -22,6 +27,14 @@ function csvEscape(value) {
 export function UserList() {
   const dispatch = useDispatch();
   const adminToken = useSelector((s) => s.auth.adminToken);
+  const accountType = useSelector(selectAccountType);
+  const isCoachAccount = useSelector(selectIsCoachAccount);
+  const isAssistantAccount = useSelector(selectIsAssistantAccount);
+  const isScopedAccount =
+    isCoachAccount ||
+    isAssistantAccount ||
+    accountType === "wellness_coach" ||
+    accountType === "assistant_wellness_coach";
   const { canEdit, canDelete } = useResourcePermissions("users");
   const [users, setUsers] = useState([]);
   const [page, setPage] = useState(1);
@@ -57,7 +70,7 @@ export function UserList() {
         status: statusFilter || undefined,
         search: debouncedSearch || undefined,
         userTier: tierFilter || undefined,
-        assignmentStatus: assignmentFilter || undefined,
+        assignmentStatus: isScopedAccount ? undefined : assignmentFilter || undefined,
       });
       setUsers(rows);
       setTotal(pg.total ?? 0);
@@ -71,7 +84,7 @@ export function UserList() {
     } finally {
       setLoading(false);
     }
-  }, [adminToken, debouncedSearch, dispatch, limit, page, statusFilter, tierFilter, assignmentFilter]);
+  }, [adminToken, debouncedSearch, dispatch, isScopedAccount, limit, page, statusFilter, tierFilter, assignmentFilter]);
 
   useEffect(() => {
     loadUsers();
@@ -169,8 +182,8 @@ export function UserList() {
   return (
     <div className="page-card">
       <AdminListHeader
-        title="User management"
-        subtitle={listCountSubtitle(loading, total, "user", "users")}
+        title={isScopedAccount ? "My Clients" : "User management"}
+        subtitle={isScopedAccount ? listCountSubtitle(loading, total, "client", "clients") : listCountSubtitle(loading, total, "user", "users")}
         actions={
           <>
           <form className="user-list-filters" onSubmit={onSearchSubmit}>
@@ -199,16 +212,18 @@ export function UserList() {
               <option value="seek">Seek (free)</option>
               <option value="heal">Heal (paid)</option>
             </select>
-            <select
-              className="user-list-status-select"
-              value={assignmentFilter}
-              onChange={(e) => setAssignmentFilter(e.target.value)}
-              aria-label="Filter by assignment"
-            >
-              <option value="">All assignments</option>
-              <option value="pending_admin">Pending admin</option>
-              <option value="assigned">Assigned</option>
-            </select>
+            {!isScopedAccount ? (
+              <select
+                className="user-list-status-select"
+                value={assignmentFilter}
+                onChange={(e) => setAssignmentFilter(e.target.value)}
+                aria-label="Filter by assignment"
+              >
+                <option value="">All assignments</option>
+                <option value="pending_admin">Pending admin</option>
+                <option value="assigned">Assigned</option>
+              </select>
+            ) : null}
             <select
               className="user-list-status-select"
               value={statusFilter}
@@ -224,7 +239,7 @@ export function UserList() {
           <button type="button" className="btn btn--ghost" onClick={handleExportCsv}>
             Export CSV
           </button>
-          {canEdit ? (
+          {canEdit && !isScopedAccount ? (
             <Link to="new" className="btn btn--accent">
               + Add user
             </Link>
@@ -316,7 +331,7 @@ export function UserList() {
                     </td>
                     <td>
                       <div className="row-actions">
-                        <Link to={uid} className="icon-btn icon-btn--view" title="View">
+                        <Link to={`${uid}/hub`} className="icon-btn icon-btn--view" title="Open Client Hub">
                           <IoEyeSharp size={18} />
                         </Link>
                         {canEdit ? (

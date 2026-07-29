@@ -1,5 +1,6 @@
 const express = require("express");
 const { protectAdmin } = require("../../middleware/auth");
+const { requireClientAccess } = require("../../middleware/requireClientAccess");
 const { authorize } = require("../../middleware/authorize");
 const {
   listAdminUserTestRecommendationsController,
@@ -10,12 +11,12 @@ const {
 
 const router = express.Router({ mergeParams: true });
 
-router.get("/:userId/test-recommendations", protectAdmin, authorize("users.clientHub.care.internal-parameters"), listAdminUserTestRecommendationsController);
-router.post("/:userId/test-recommendations", protectAdmin, authorize("users.clientHub.care.internal-parameters"), createAdminUserTestRecommendationController);
-router.get("/:userId/lab-reports", protectAdmin, authorize("users.clientHub.care.internal-parameters"), listAdminUserLabReportsController);
+router.get("/:userId/test-recommendations", protectAdmin, requireClientAccess, authorize("users.clientHub.care.internal-parameters"), listAdminUserTestRecommendationsController);
+router.post("/:userId/test-recommendations", protectAdmin, requireClientAccess, authorize("users.clientHub.care.internal-parameters"), createAdminUserTestRecommendationController);
+router.get("/:userId/lab-reports", protectAdmin, requireClientAccess, authorize("users.clientHub.care.internal-parameters"), listAdminUserLabReportsController);
 router.delete(
   "/:userId/test-recommendations/:recommendationId",
-  protectAdmin, authorize("users.clientHub.care.internal-parameters"),
+  protectAdmin, requireClientAccess, authorize("users.clientHub.care.internal-parameters"),
   deleteAdminUserTestRecommendationController
 );
 

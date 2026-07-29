@@ -28,6 +28,13 @@ const { normalizeEmail, normalizePhone, normalizeCountryCode } = require("../../
 
 const S3_FOLDER = "assistant-wellness-coach";
 
+function assertCanManageCoachAssistants(auth, coachId) {
+  const accountType = auth?.accountType || auth?.role;
+  if (accountType === "admin") return;
+  if (accountType === "wellness_coach" && String(auth.sub) === String(coachId)) return;
+  throw new AppError("You can only manage assistants for your own coach account", 403);
+}
+
 async function assertCoachExists(wellnessCoachId) {
   const coach = await getWellnessCoachById(wellnessCoachId);
   if (!coach) throw new AppError("Wellness coach not found", 404);
@@ -133,6 +140,7 @@ async function applyProfileImageUpdates(body, current, updates, req) {
 
 exports.listAssistantsController = asyncHandler(async (req, res) => {
   const { coachId } = req.params;
+  assertCanManageCoachAssistants(req.auth, coachId);
   const coach = await assertCoachExists(coachId);
 
   const { page = 1, limit = 20, status, search } = req.query;
@@ -169,6 +177,7 @@ exports.listAllAssistantsController = asyncHandler(async (req, res) => {
 
 exports.getAssistantByIdController = asyncHandler(async (req, res) => {
   const { coachId, id } = req.params;
+  assertCanManageCoachAssistants(req.auth, coachId);
   const coach = await assertCoachExists(coachId);
 
   const assistant = await getAssistantWellnessCoachById(id);
@@ -183,6 +192,7 @@ exports.getAssistantByIdController = asyncHandler(async (req, res) => {
 
 exports.createAssistantController = asyncHandler(async (req, res) => {
   const { coachId } = req.params;
+  assertCanManageCoachAssistants(req.auth, coachId);
   const coach = await assertCoachExists(coachId);
 
   const fields = parseAssistantBody(req.body, coachId);
@@ -207,6 +217,7 @@ exports.createAssistantController = asyncHandler(async (req, res) => {
 
 exports.updateAssistantController = asyncHandler(async (req, res) => {
   const { coachId, id } = req.params;
+  assertCanManageCoachAssistants(req.auth, coachId);
   const coach = await assertCoachExists(coachId);
 
   const current = await getAssistantWellnessCoachRecordById(id);
@@ -282,6 +293,7 @@ exports.updateAssistantController = asyncHandler(async (req, res) => {
 
 exports.deleteAssistantController = asyncHandler(async (req, res) => {
   const { coachId, id } = req.params;
+  assertCanManageCoachAssistants(req.auth, coachId);
   await assertCoachExists(coachId);
 
   const current = await getAssistantWellnessCoachRecordById(id);

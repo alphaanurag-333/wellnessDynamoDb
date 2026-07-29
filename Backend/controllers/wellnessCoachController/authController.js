@@ -6,7 +6,7 @@ const {
   deleteStoredMedia,
   parseMediaKeyFromBody,
 } = require("../../utils/s3");
-const { createTokenPair, verifyRefreshToken } = require("../../utils/jwt");
+const { verifyRefreshToken } = require("../../utils/jwt");
 const { parseFcmIdFromBody } = require("../../utils/parseFcmId");
 const {
   getWellnessCoachByEmail,
@@ -19,6 +19,11 @@ const {
 const { getSpecializationById } = require("../../models/specializationModel");
 const { ensureEntityReferralCode } = require("../../models/referralCodeModel");
 const { normalizeEmail, normalizePhone, normalizeCountryCode } = require("../../models/userModel");
+const {
+  resolvePanelAuthContext,
+  createPanelTokenPair,
+  isPanelJwtRole,
+} = require("../../utils/panelAuth");
 const config = require("../../config");
 const { generateOtp, getOtpExpiryDate, isOtpExpired, deliverOtp } = require("../../utils/otp");
 const { assertPasswordPolicy } = require("../../utils/passwordPolicy");
@@ -71,19 +76,20 @@ async function assertValidActiveSpecializationId(specializationId) {
 }
 
 const S3_FOLDER = "wellness-coach";
-const ROLE = "wellness_coach";
 
-function sendAuthResponse(res, statusCode, coach) {
-  const { accessToken, refreshToken } = createTokenPair({
-    sub: coach.id,
-    role: ROLE,
-  });
+async function sendAuthResponse(res, statusCode, coach) {
+  const ctx = await resolvePanelAuthContext(coach);
+  const { accessToken, refreshToken } = createPanelTokenPair(coach, ctx);
   return res.status(statusCode).json({
     status: true,
     message: "Authentication successful",
     accessToken,
     refreshToken,
-    coach: toPublicWellnessCoach(coach),
+    coach: {
+      ...toPublicWellnessCoach(coach),
+      accountType: ctx.accountType,
+      permissions: ctx.permissions,
+    },
   });
 }
 
@@ -216,7 +222,7 @@ exports.getWellnessCoachProfile = asyncHandler(async (req, res) => {
   }
 
   await ensureEntityReferralCode({
-    tableName: "WellnessCoach",
+    tableName: "Accounts",
     entityType: "wellness_coach",
     entityId: coach.id,
     ownerCoachId: coach.id,
@@ -328,7 +334,7 @@ exports.refreshWellnessCoachToken = asyncHandler(async (req, res) => {
     throw new AppError("Invalid or expired refresh token", 401);
   }
 
-  if (payload.role !== ROLE) {
+  if (!isPanelJwtRole(payload.role || payload.accountType)) {
     throw new AppError("Forbidden", 403);
   }
 
@@ -341,7 +347,11 @@ exports.refreshWellnessCoachToken = asyncHandler(async (req, res) => {
     throw new AppError("Account is inactive", 403);
   }
 
-  const tokens = createTokenPair({ sub: coach.id, role: ROLE });
+  const ctx = await resolvePanelAuthContext(coach);
+  if (ctx.accountType !== "wellness_coach") {
+    throw new AppError("Forbidden", 403);
+  }
+  const tokens = createPanelTokenPair(coach, ctx);
 
   return res.status(200).json({
     status: true,

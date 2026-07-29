@@ -1,5 +1,6 @@
 const express = require("express");
 const { protectAdmin } = require("../../middleware/auth");
+const { requireClientAccess } = require("../../middleware/requireClientAccess");
 const { authorize } = require("../../middleware/authorize");
 const {
   listAdminUserPrakrutiThingsToAvoidController,
@@ -11,10 +12,10 @@ const {
 
 const router = express.Router({ mergeParams: true });
 
-router.get("/:userId/prakruti-assessment/things-to-avoid", protectAdmin, authorize("users.clientHub.assessments.prakruti-assessment"), listAdminUserPrakrutiThingsToAvoidController);
-router.get("/:userId/prakruti-assessment/questions", protectAdmin, authorize("users.clientHub.assessments.prakruti-assessment"), listAdminUserPrakrutiQuestionsController);
-router.get("/:userId/prakruti-assessment/export", protectAdmin, authorize("users.clientHub.assessments.prakruti-assessment"), exportAdminUserPrakrutiQuestionsController);
-router.get("/:userId/prakruti-assessment", protectAdmin, authorize("users.clientHub.assessments.prakruti-assessment"), getAdminUserPrakrutiAssessmentController);
-router.post("/:userId/prakruti-assessment", protectAdmin, authorize("users.clientHub.assessments.prakruti-assessment"), saveAdminUserPrakrutiAssessmentController);
+router.get("/:userId/prakruti-assessment/things-to-avoid", protectAdmin, requireClientAccess, authorize("users.clientHub.assessments.prakruti-assessment"), listAdminUserPrakrutiThingsToAvoidController);
+router.get("/:userId/prakruti-assessment/questions", protectAdmin, requireClientAccess, authorize("users.clientHub.assessments.prakruti-assessment"), listAdminUserPrakrutiQuestionsController);
+router.get("/:userId/prakruti-assessment/export", protectAdmin, requireClientAccess, authorize("users.clientHub.assessments.prakruti-assessment"), exportAdminUserPrakrutiQuestionsController);
+router.get("/:userId/prakruti-assessment", protectAdmin, requireClientAccess, authorize("users.clientHub.assessments.prakruti-assessment"), getAdminUserPrakrutiAssessmentController);
+router.post("/:userId/prakruti-assessment", protectAdmin, requireClientAccess, authorize("users.clientHub.assessments.prakruti-assessment"), saveAdminUserPrakrutiAssessmentController);
 
 module.exports = router;
