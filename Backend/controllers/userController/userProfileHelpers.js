@@ -3,6 +3,7 @@ const { assertValidIndianMobile } = require("../../utils/phoneValidation");
 const { generateOtp, getOtpExpiryDate, isOtpExpired, deliverOtp } = require("../../utils/otp");
 const {
   uploadFileFromRequest,
+  uploadMulterField,
   deleteStoredMedia,
   parseMediaKeyFromBody,
   resolvePublicUrl,
@@ -62,6 +63,12 @@ function parseProfileImageFromBody(value) {
   if (value === undefined) return undefined;
   if (value === null || String(value).trim() === "") return null;
   return parseMediaKeyFromBody(value, "profileImage");
+}
+
+function parsePresentablePicFromBody(value) {
+  if (value === undefined) return undefined;
+  if (value === null || String(value).trim() === "") return null;
+  return parseMediaKeyFromBody(value, "presentablePic");
 }
 
 function parseUserFields(body, { requirePassword = false } = {}) {
@@ -297,6 +304,17 @@ async function buildUserUpdatesFromBody(body, current, { allowStatus = true, req
   if (body.country !== undefined) updates.country = String(body.country || "").trim() || null;
   if (body.state !== undefined) updates.state = String(body.state || "").trim() || null;
   if (body.city !== undefined) updates.city = String(body.city || "").trim() || null;
+  if (body.addressLine1 !== undefined || body.address_line1 !== undefined) {
+    updates.addressLine1 =
+      String(body.addressLine1 ?? body.address_line1 ?? "").trim() || null;
+  }
+  if (body.addressLine2 !== undefined || body.address_line2 !== undefined) {
+    updates.addressLine2 =
+      String(body.addressLine2 ?? body.address_line2 ?? "").trim() || null;
+  }
+  if (body.pincode !== undefined) {
+    updates.pincode = String(body.pincode || "").trim() || null;
+  }
   if (body.primaryHealthConcern !== undefined) {
     const phc = String(body.primaryHealthConcern || "").trim() || null;
     if (phc) {
@@ -333,6 +351,14 @@ async function buildUserUpdatesFromBody(body, current, { allowStatus = true, req
     updates.profileImage = profileImage;
   }
 
+  if (body.presentablePic !== undefined) {
+    const presentablePic = parsePresentablePicFromBody(body.presentablePic);
+    if (presentablePic === null && current.presentablePic) {
+      await deleteStoredMedia(current.presentablePic);
+    }
+    updates.presentablePic = presentablePic;
+  }
+
   if (req) {
     const uploadedKey = await uploadFileFromRequest(req, "user");
     if (uploadedKey) {
@@ -340,6 +366,18 @@ async function buildUserUpdatesFromBody(body, current, { allowStatus = true, req
         await deleteStoredMedia(current.profileImage);
       }
       updates.profileImage = uploadedKey;
+    }
+
+    const uploadedPresentable = await uploadMulterField(
+      req,
+      "presentablePic",
+      "user/presentable"
+    );
+    if (uploadedPresentable) {
+      if (current.presentablePic && current.presentablePic !== uploadedPresentable) {
+        await deleteStoredMedia(current.presentablePic);
+      }
+      updates.presentablePic = uploadedPresentable;
     }
   }
 
@@ -373,6 +411,7 @@ async function deleteUserAccountByPhoneOtp({ phone, phoneCountryCode, otp }) {
   await updateUser(user.id, { otp: null, otpExpire: null });
 
   if (user.profileImage) await deleteStoredMedia(user.profileImage);
+  if (user.presentablePic) await deleteStoredMedia(user.presentablePic);
 
   try {
     await deleteUser(user.id);

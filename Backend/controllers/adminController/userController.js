@@ -95,6 +95,7 @@ exports.deleteUserController = asyncHandler(async (req, res) => {
   const current = await getUserById(req.params.id);
   if (!current) throw new AppError("User not found", 404);
   if (current.profileImage) await deleteStoredMedia(current.profileImage);
+  if (current.presentablePic) await deleteStoredMedia(current.presentablePic);
 
   try {
     await deleteUser(req.params.id);

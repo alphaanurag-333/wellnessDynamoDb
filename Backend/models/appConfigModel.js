@@ -3,13 +3,25 @@ const { docClient } = require("../config/db");
 const { v4: uuidv4 } = require("uuid");
 const { normalizeStoredMedia, resolvePublicUrl } = require("../utils/s3");
 
-const MEDIA_FIELDS = ["admin_logo", "user_logo", "favicon", "commitment_letter_template"];
+const MEDIA_FIELDS = [
+  "admin_logo",
+  "user_logo",
+  "favicon",
+  "commitment_letter_template",
+  "body_measurement_guide_video",
+];
+const BODY_MEASUREMENT_GUIDE_TYPES = new Set(["none", "link", "video"]);
 
 function normalizeMediaField(value) {
   if (value == null || String(value).trim() === "") return "";
   const key = normalizeStoredMedia(String(value).trim());
   if (!key) throw new Error("Invalid S3 object key for app config media field");
   return key;
+}
+
+function normalizeBodyMeasurementGuideType(value, fallback = "none") {
+  const next = String(value || fallback).toLowerCase().trim();
+  return BODY_MEASUREMENT_GUIDE_TYPES.has(next) ? next : fallback;
 }
 
 function toPublicAppConfig(config) {
@@ -39,6 +51,9 @@ async function createAppConfig() {
     user_logo:      "",
     favicon:        "",
     commitment_letter_template: "",
+    body_measurement_guide_type: "none",
+    body_measurement_guide_yt_link: "",
+    body_measurement_guide_video: "",
     address:        "",
     latitude:       "",
     longitude:      "",
@@ -52,6 +67,8 @@ async function createAppConfig() {
     success_rate:       "",
     average_rating:     "",
     happy_clients:      "",
+    google_reviews:     "",
+    facebook_followers: "",
     tax_type:           "",
     tax_value:          "",
     referral_discount:  "",
@@ -103,7 +120,15 @@ async function updateAppConfig(updates) {
 
   for (const [key, val] of Object.entries(updates)) {
     exprNames[`#${key}`] = key;
-    exprValues[`:${key}`] = MEDIA_FIELDS.includes(key) ? normalizeMediaField(val) : val;
+    let nextVal = val;
+    if (MEDIA_FIELDS.includes(key)) {
+      nextVal = normalizeMediaField(val);
+    } else if (key === "body_measurement_guide_type") {
+      nextVal = normalizeBodyMeasurementGuideType(val);
+    } else if (key === "body_measurement_guide_yt_link") {
+      nextVal = String(val ?? "").trim();
+    }
+    exprValues[`:${key}`] = nextVal;
     setExpr += `, #${key} = :${key}`;
   }
 
@@ -125,4 +150,6 @@ module.exports = {
   updateAppConfig,
   toPublicAppConfig,
   MEDIA_FIELDS,
+  BODY_MEASUREMENT_GUIDE_TYPES,
+  normalizeBodyMeasurementGuideType,
 };

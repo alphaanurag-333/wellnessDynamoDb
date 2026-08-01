@@ -3849,6 +3849,16 @@ a.btn:hover {
   color: var(--admin-text, #1f2937);
 }
 
+.user-view-presentable {
+  margin-top: 1.25rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--admin-border-soft);
+}
+
+.user-view-presentable .user-view-section-title {
+  margin-top: 0;
+}
+
 .user-view-note {
   margin: 20px 0 0;
   padding-top: 16px;
@@ -9875,6 +9885,21 @@ fieldset.form-field legend {
   background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
 }
 
+.client-hub-page__presentable {
+  margin: 0 0 1.25rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.client-hub-page__presentable-title {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
 .client-hub-page__identity {
   display: flex;
   align-items: center;
@@ -9896,6 +9921,7 @@ fieldset.form-field legend {
   font-weight: 700;
   letter-spacing: 0.03em;
   flex-shrink: 0;
+  overflow: hidden;
 }
 
 .client-hub-page__profile-main {

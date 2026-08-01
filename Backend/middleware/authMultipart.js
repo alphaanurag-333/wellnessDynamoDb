@@ -28,7 +28,10 @@ const healthConcernUpload = memorySingle("file");
 const healthToolUpload = memorySingle("file");
 const supplementUpload = memorySingle("file");
 const mentalWellbeingUpload = memorySingle("file");
-const userUpload = memorySingle("file");
+const userUpload = memoryFields([
+  { name: "file", maxCount: 1 },
+  { name: "presentablePic", maxCount: 1 },
+]);
 const weightPicUpload = memorySingle("weight_pic");
 const profileImageUpload = memorySingle("file");
 
@@ -37,6 +40,7 @@ const appConfigUpload = memoryFields([
   { name: "user_logo", maxCount: 1 },
   { name: "favicon", maxCount: 1 },
   { name: "commitment_letter_template", maxCount: 1 },
+  { name: "body_measurement_guide_video", maxCount: 1 },
 ]);
 
 const videoTestimonialsUpload = memoryFields([

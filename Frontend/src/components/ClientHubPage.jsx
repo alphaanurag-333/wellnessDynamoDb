@@ -5,6 +5,7 @@ import { UserTierBadge, formatAssignedCoachLabel } from "./ReferralAssignmentSha
 import { CoachPageLoadingState } from "../wellnessCoach/components/CoachPageLoader.jsx";
 import { AccessRestrictedView, LOCK_TOOLTIP } from "../wellnessCoach/components/AccessRestrictedView.jsx";
 import { NotFoundPage } from "../admin/pages/NotFoundPage.jsx";
+import { AdminMediaImage } from "../admin/components/AdminMediaImage.jsx";
 import {
   getClientHubTabGroups,
   resolveClientHubTab,
@@ -142,7 +143,17 @@ export function ClientHubPage({
       <div className="client-hub-page__header">
         <div className="client-hub-page__identity">
           <div className="client-hub-page__avatar" aria-hidden="true">
-            {getInitials(user?.name)}
+            {user?.profileImage ? (
+              <AdminMediaImage
+                path={user.profileImage}
+                round
+                width={56}
+                height={56}
+                alt={user?.name || "Profile"}
+              />
+            ) : (
+              getInitials(user?.name)
+            )}
           </div>
           <div className="client-hub-page__profile-main">
             <h2 className="client-hub-page__name">{user?.name || "Client"}</h2>
@@ -158,6 +169,20 @@ export function ClientHubPage({
           <span className="client-hub-page__joined">Joined {formatDate(user?.convertedAt || user?.createdAt)}</span>
         </div>
       </div>
+
+      {user?.presentablePic ? (
+        <div className="client-hub-page__presentable">
+          <h3 className="client-hub-page__presentable-title">Presentable pic (head to toe)</h3>
+          <AdminMediaImage
+            path={user.presentablePic}
+            width={160}
+            height={240}
+            radius={12}
+            alt="Presentable pic"
+            objectFit="cover"
+          />
+        </div>
+      ) : null}
 
       <div className="client-hub-layout">
         <aside className="client-hub-nav" aria-label="Client programs">

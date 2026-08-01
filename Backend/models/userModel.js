@@ -180,6 +180,9 @@ function toPublicUser(user) {
   if (pub.profileImage) {
     pub.profileImage = resolvePublicUrl(pub.profileImage);
   }
+  if (pub.presentablePic) {
+    pub.presentablePic = resolvePublicUrl(pub.presentablePic);
+  }
   return withLegacyId(pub);
 }
 
@@ -199,7 +202,7 @@ function sanitizeUpdateField(key, value) {
   if (key === "whatsappSameAsMobile" || key === "termsAccepted") {
     return Boolean(value);
   }
-  if (key === "profileImage") {
+  if (key === "profileImage" || key === "presentablePic") {
     return normalizeProfileImageField(value);
   }
   if (key === "userTier") return normalizeUserTier(value);
@@ -305,6 +308,7 @@ function buildUserItem(input, { id, now } = {}) {
     termsAccepted: Boolean(input.termsAccepted),
     termsAcceptedAt: input.termsAcceptedAt ? normalizeDob(input.termsAcceptedAt) : null,
     profileImage: normalizeProfileImageField(input.profileImage),
+    presentablePic: normalizeProfileImageField(input.presentablePic),
     fcm_id: input.fcm_id != null ? String(input.fcm_id).trim() || null : null,
     status: normalizeStatus(input.status),
     otp: input.otp != null ? String(input.otp) : null,

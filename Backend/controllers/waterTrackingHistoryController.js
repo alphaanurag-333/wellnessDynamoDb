@@ -11,7 +11,19 @@ function toHistoryUser(user) {
     _id: user.id,
     name: user.name,
     email: user.email,
+    phone: user.phone,
+    phoneCountryCode: user.phoneCountryCode,
     userTier: normalizeUserTier(user.userTier),
+    assignmentStatus: user.assignmentStatus || null,
+    assignedCoach: user.assignedCoach || null,
+    assignedCoachId: user.assignedCoachId || null,
+    assignedCoachType: user.assignedCoachType || null,
+    parentCoach: user.parentCoach || null,
+    parentCoachId: user.parentCoachId || null,
+    profileImage: user.profileImage || null,
+    presentablePic: user.presentablePic || null,
+    convertedAt: user.convertedAt || null,
+    createdAt: user.createdAt || null,
   };
 }
 

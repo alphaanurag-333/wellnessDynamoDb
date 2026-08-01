@@ -169,15 +169,6 @@ exports.submitProfileController = asyncHandler(async (req, res) => {
   });
 
   const extraUpdates = {};
-  if (body.addressLine1 !== undefined || body.address_line1 !== undefined) {
-    extraUpdates.addressLine1 = String(body.addressLine1 ?? body.address_line1 ?? "").trim() || null;
-  }
-  if (body.addressLine2 !== undefined || body.address_line2 !== undefined) {
-    extraUpdates.addressLine2 = String(body.addressLine2 ?? body.address_line2 ?? "").trim() || null;
-  }
-  if (body.pincode !== undefined) {
-    extraUpdates.pincode = String(body.pincode || "").trim() || null;
-  }
   if (body.dietaryPreference !== undefined || body.dietary_preference !== undefined) {
     const dp = normalizeDietaryPreference(body.dietaryPreference ?? body.dietary_preference);
     if (!dp) {

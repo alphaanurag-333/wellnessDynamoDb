@@ -213,6 +213,19 @@ export function UserView() {
             <DetailRow label="Updated At" value={formatDateTime(user.updatedAt)} />
           </div>
         </div>
+        {user.presentablePic ? (
+          <div className="user-view-presentable">
+            <h4 className="user-view-section-title">Presentable pic (head to toe)</h4>
+            <AdminMediaImage
+              path={user.presentablePic}
+              width={180}
+              height={280}
+              radius={12}
+              alt="Presentable pic"
+              objectFit="cover"
+            />
+          </div>
+        ) : null}
       </div>
 
       <UserEnergyExchangeSection userId={userId} adminToken={adminToken} dispatch={dispatch} />

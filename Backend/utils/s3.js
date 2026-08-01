@@ -104,9 +104,15 @@ async function uploadBufferToS3({ buffer, contentType, folder, originalName }) {
 }
 
 async function uploadFileFromRequest(req, folder) {
-  if (!req?.file?.buffer) return undefined;
-
-  return uploadMulterFile(req.file, folder);
+  if (req?.file?.buffer) {
+    return uploadMulterFile(req.file, folder);
+  }
+  // .fields() middleware puts the primary "file" under req.files.file
+  const fromFields = req?.files?.file?.[0];
+  if (fromFields?.buffer) {
+    return uploadMulterFile(fromFields, folder);
+  }
+  return undefined;
 }
 
 async function uploadMulterField(req, field, folder) {

@@ -9,11 +9,13 @@ const {
   getAppConfig,
   updateAppConfig,
   toPublicAppConfig,
+  normalizeBodyMeasurementGuideType,
 } = require("../../models/appConfigModel");
 
 const S3_FOLDER = "appconfig";
 const LOGO_FIELDS = ["admin_logo", "user_logo", "favicon"];
 const TEMPLATE_FIELDS = ["commitment_letter_template"];
+const BODY_MEASUREMENT_GUIDE_VIDEO_FIELD = "body_measurement_guide_video";
 const ALLOWED_TAX_TYPES = new Set(["inclusive", "exclusive"]);
 const {
   normalizeFyDiscountRanges,
@@ -50,6 +52,10 @@ function normalizeBooleanFlag(value, fallback = false) {
   return Boolean(fallback);
 }
 
+function isVideoMime(mimetype = "") {
+  return String(mimetype).toLowerCase().startsWith("video/");
+}
+
 async function s3KeyFromUploadedFile(req, field) {
   const file = req.files?.[field]?.[0];
   if (!file) return undefined;
@@ -66,6 +72,12 @@ async function applyMediaUploads(req, config, updates, fields) {
         throw new AppError("commitment_letter_template must be a PDF file", 400);
       }
     }
+    if (field === BODY_MEASUREMENT_GUIDE_VIDEO_FIELD) {
+      const file = req.files?.[field]?.[0];
+      if (file?.mimetype && !isVideoMime(file.mimetype)) {
+        throw new AppError("body_measurement_guide_video must be a video file", 400);
+      }
+    }
     if (config?.[field]) await deleteStoredMedia(config[field]);
     updates[field] = uploadedKey;
   }
@@ -77,6 +89,58 @@ async function applyLogoUploads(req, config, updates) {
 
 async function applyTemplateUploads(req, config, updates) {
   await applyMediaUploads(req, config, updates, TEMPLATE_FIELDS);
+}
+
+async function applyBodyMeasurementGuideVideoUpload(req, config, updates) {
+  await applyMediaUploads(req, config, updates, [BODY_MEASUREMENT_GUIDE_VIDEO_FIELD]);
+}
+
+function applyBodyMeasurementGuideFields(req, config, updates) {
+  const typeProvided = req.body.body_measurement_guide_type !== undefined;
+  const ytProvided = req.body.body_measurement_guide_yt_link !== undefined;
+  const clearVideo =
+    req.body.clear_body_measurement_guide_video === true ||
+    String(req.body.clear_body_measurement_guide_video || "").toLowerCase() === "true";
+
+  if (!typeProvided && !ytProvided && !clearVideo && !req.files?.[BODY_MEASUREMENT_GUIDE_VIDEO_FIELD]?.[0]) {
+    return;
+  }
+
+  const nextType = typeProvided
+    ? normalizeBodyMeasurementGuideType(req.body.body_measurement_guide_type)
+    : normalizeBodyMeasurementGuideType(config?.body_measurement_guide_type);
+
+  if (typeProvided) {
+    updates.body_measurement_guide_type = nextType;
+  }
+
+  if (nextType === "none") {
+    updates.body_measurement_guide_type = "none";
+    updates.body_measurement_guide_yt_link = "";
+    if (config?.body_measurement_guide_video || updates[BODY_MEASUREMENT_GUIDE_VIDEO_FIELD]) {
+      updates[BODY_MEASUREMENT_GUIDE_VIDEO_FIELD] = "";
+    }
+    return;
+  }
+
+  if (nextType === "link") {
+    updates.body_measurement_guide_type = "link";
+    if (ytProvided) {
+      updates.body_measurement_guide_yt_link = String(
+        req.body.body_measurement_guide_yt_link || ""
+      ).trim();
+    }
+    if (config?.body_measurement_guide_video || updates[BODY_MEASUREMENT_GUIDE_VIDEO_FIELD]) {
+      updates[BODY_MEASUREMENT_GUIDE_VIDEO_FIELD] = "";
+    }
+    return;
+  }
+
+  updates.body_measurement_guide_type = "video";
+  updates.body_measurement_guide_yt_link = "";
+  if (clearVideo) {
+    updates[BODY_MEASUREMENT_GUIDE_VIDEO_FIELD] = "";
+  }
 }
 
 exports.getAppConfigController = asyncHandler(async (_req, res) => {
@@ -117,6 +181,8 @@ exports.createAppConfigController = asyncHandler(async (req, res) => {
     success_rate,
     average_rating,
     happy_clients,
+    google_reviews,
+    facebook_followers,
     tax_type,
     tax_value,
     referral_discount,
@@ -155,6 +221,8 @@ exports.createAppConfigController = asyncHandler(async (req, res) => {
     success_rate: success_rate ?? "",
     average_rating: average_rating ?? "",
     happy_clients: happy_clients ?? "",
+    google_reviews: google_reviews ?? "",
+    facebook_followers: facebook_followers ?? "",
     tax_type: normalizeTaxType(tax_type),
     tax_value: tax_value ?? "",
     referral_discount: referral_discount ?? "",
@@ -220,6 +288,8 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
     "success_rate",
     "average_rating",
     "happy_clients",
+    "google_reviews",
+    "facebook_followers",
     "tax_type",
     "tax_value",
     "referral_discount",
@@ -273,6 +343,52 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
 
   await applyLogoUploads(req, config, updates);
   await applyTemplateUploads(req, config, updates);
+
+  applyBodyMeasurementGuideFields(req, config, updates);
+  const resolvedGuideType = normalizeBodyMeasurementGuideType(
+    updates.body_measurement_guide_type ?? config.body_measurement_guide_type
+  );
+  if (resolvedGuideType === "video") {
+    await applyBodyMeasurementGuideVideoUpload(req, config, updates);
+  }
+
+  if (
+    updates[BODY_MEASUREMENT_GUIDE_VIDEO_FIELD] === "" &&
+    config?.[BODY_MEASUREMENT_GUIDE_VIDEO_FIELD]
+  ) {
+    await deleteStoredMedia(config[BODY_MEASUREMENT_GUIDE_VIDEO_FIELD]);
+  }
+
+  const guideTouched =
+    req.body.body_measurement_guide_type !== undefined ||
+    req.body.body_measurement_guide_yt_link !== undefined ||
+    req.body.clear_body_measurement_guide_video !== undefined ||
+    Boolean(req.files?.[BODY_MEASUREMENT_GUIDE_VIDEO_FIELD]?.[0]);
+
+  if (guideTouched) {
+    const guideYt = String(
+      updates.body_measurement_guide_yt_link ??
+        config.body_measurement_guide_yt_link ??
+        ""
+    ).trim();
+    const guideVideo =
+      updates[BODY_MEASUREMENT_GUIDE_VIDEO_FIELD] !== undefined
+        ? updates[BODY_MEASUREMENT_GUIDE_VIDEO_FIELD]
+        : config[BODY_MEASUREMENT_GUIDE_VIDEO_FIELD] || "";
+
+    if (resolvedGuideType === "link" && !guideYt) {
+      throw new AppError(
+        "YouTube link is required for body measurement guide link type",
+        400
+      );
+    }
+    if (resolvedGuideType === "video" && !guideVideo) {
+      throw new AppError(
+        "Video file is required for body measurement guide video type",
+        400
+      );
+    }
+  }
 
   if (Object.keys(updates).length === 0) {
     throw new AppError("At least one field is required for update", 400);

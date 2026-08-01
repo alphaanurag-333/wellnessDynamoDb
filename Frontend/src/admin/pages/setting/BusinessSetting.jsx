@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { AdminPageLoader } from "../../components/AdminLoader.jsx";
 import { handleMediaImageError } from "../../components/AdminMediaImage.jsx";
 import { useDispatch, useSelector } from "react-redux";
@@ -21,7 +21,15 @@ import {
   validatePersonName,
   validatePhoneDigits,
 } from "../../../utils/personFieldValidation.js";
-import { IMAGE_MAX_SIZE_MB, validateImageFileSize } from "../../../utils/mediaUploadValidation.js";
+import {
+  IMAGE_MAX_SIZE_MB,
+  VIDEO_MAX_SIZE_MB,
+  validateImageFileSize,
+  validateVideoFileSize,
+} from "../../../utils/mediaUploadValidation.js";
+
+const BODY_MEASUREMENT_GUIDE_TYPES = ["none", "link", "video"];
+const YTLINK_MAX_LEN = 500;
 
 const SCALAR_KEYS = [
   "app_name",
@@ -42,6 +50,8 @@ const SCALAR_KEYS = [
   "success_rate",
   "average_rating",
   "happy_clients",
+  "google_reviews",
+  "facebook_followers",
   "tax_type",
   "tax_value",
   "referral_discount",
@@ -89,6 +99,7 @@ const SETTINGS_TABS = [
   { id: "energy-exchange", label: "Energy Exchange" },
   { id: "branding", label: "Media" },
   { id: "commitment-letter", label: "Commitment letter" },
+  { id: "body-measurement-guide", label: "Body measurement guide" },
   { id: "location", label: "Location" },
   { id: "social", label: "Social" },
   // { id: "content", label: "Content" },
@@ -118,6 +129,7 @@ const LIMITS = {
   appDetails: 500,
   footerText: 100,
   statsField: 10,
+  socialProofField: 20,
   decimalField: 3,
   amountField: 10,
   gatewayField: 100,
@@ -233,12 +245,15 @@ function validateSettingsForm({
   brandingFiles = {},
   energyExchangeFyDiscountRanges = {},
   energyExchangeTimeBasedDiscountRange = DEFAULT_FY_DISCOUNT_RANGE,
+  bodyMeasurementGuide = {},
 }) {
   const appVersion = (scalars.app_version || "").trim();
   const improvedUser = (scalars.improved_user || "").trim();
   const happyClients = (scalars.happy_clients || "").trim();
   const averageRating = (scalars.average_rating || "").trim();
   const successRate = (scalars.success_rate || "").trim();
+  const googleReviews = (scalars.google_reviews || "").trim();
+  const facebookFollowers = (scalars.facebook_followers || "").trim();
   const taxType = (scalars.tax_type || "").trim();
   const taxValue = (scalars.tax_value || "").trim();
   const referralDiscount = (scalars.referral_discount || "").trim();
@@ -279,6 +294,15 @@ function validateSettingsForm({
   const success = Number.parseFloat(successRate);
   if (!Number.isFinite(success) || success < 0 || success > 100) {
     return { tab: "general", text: "Success rate must be between 0 and 100 percent." };
+  }
+
+  if (!googleReviews) return { tab: "social", text: "Google reviews count is required." };
+  if (googleReviews.length > LIMITS.socialProofField) {
+    return { tab: "social", text: `Google reviews count must be at most ${LIMITS.socialProofField} characters.` };
+  }
+  if (!facebookFollowers) return { tab: "social", text: "Facebook followers count is required." };
+  if (facebookFollowers.length > LIMITS.socialProofField) {
+    return { tab: "social", text: `Facebook followers count must be at most ${LIMITS.socialProofField} characters.` };
   }
 
   if (!consultancyAmount) return { tab: "pricing", text: "Consultancy amount is required." };
@@ -379,6 +403,37 @@ function validateSettingsForm({
     };
   }
 
+  const guideType = String(bodyMeasurementGuide.type || "none").toLowerCase();
+  if (!BODY_MEASUREMENT_GUIDE_TYPES.includes(guideType)) {
+    return { tab: "body-measurement-guide", text: "Invalid body measurement guide video type." };
+  }
+  if (guideType === "link") {
+    const ytLink = String(bodyMeasurementGuide.ytLink || "").trim();
+    if (!ytLink) {
+      return { tab: "body-measurement-guide", text: "YouTube link is required for link type." };
+    }
+    if (!isValidHttpUrl(ytLink)) {
+      return {
+        tab: "body-measurement-guide",
+        text: "YouTube link must start with http:// or https://",
+      };
+    }
+  }
+  if (guideType === "video") {
+    const hasExisting = Boolean(bodyMeasurementGuide.existingVideo);
+    const hasFile = bodyMeasurementGuide.videoFile instanceof File;
+    if (!hasExisting && !hasFile) {
+      return {
+        tab: "body-measurement-guide",
+        text: "Video file is required for video type.",
+      };
+    }
+    const sizeErr = validateVideoFileSize(bodyMeasurementGuide.videoFile);
+    if (sizeErr) {
+      return { tab: "body-measurement-guide", text: sizeErr };
+    }
+  }
+
   return null;
 }
 
@@ -471,7 +526,19 @@ export function BusinessSetting() {
   const [adminLogoPreview, setAdminLogoPreview] = useState("");
   const [userLogoPreview, setUserLogoPreview] = useState("");
   const [faviconPreview, setFaviconPreview] = useState("");
-  const [serverMedia, setServerMedia] = useState({ admin: "", user: "", fav: "", commitmentTemplate: "" });
+  const [serverMedia, setServerMedia] = useState({
+    admin: "",
+    user: "",
+    fav: "",
+    commitmentTemplate: "",
+    bodyMeasurementGuideVideo: "",
+  });
+  const [bodyMeasurementGuideType, setBodyMeasurementGuideType] = useState("none");
+  const [bodyMeasurementGuideYtLink, setBodyMeasurementGuideYtLink] = useState("");
+  const [bodyMeasurementGuideVideoFile, setBodyMeasurementGuideVideoFile] = useState(null);
+  const [bodyMeasurementGuideVideoPreview, setBodyMeasurementGuideVideoPreview] = useState("");
+  const bodyMeasurementGuideVideoInputRef = useRef(null);
+  const bodyMeasurementGuideVideoBlobRef = useRef("");
   const lat = Number.parseFloat((scalars.latitude || "").trim());
   const lng = Number.parseFloat((scalars.longitude || "").trim());
   const hasValidCoords = Number.isFinite(lat) && Number.isFinite(lng);
@@ -479,6 +546,12 @@ export function BusinessSetting() {
     ? `https://maps.google.com/maps?q=${encodeURIComponent(`${lat},${lng}`)}&z=15&output=embed`
     : "";
 
+  const revokeBodyMeasurementGuideVideoBlob = () => {
+    if (bodyMeasurementGuideVideoBlobRef.current) {
+      URL.revokeObjectURL(bodyMeasurementGuideVideoBlobRef.current);
+      bodyMeasurementGuideVideoBlobRef.current = "";
+    }
+  };
   const applyConfig = useCallback((doc) => {
     if (!doc) {
       setHasDoc(false);
@@ -490,7 +563,21 @@ export function BusinessSetting() {
       setAdminLogoPreview("");
       setUserLogoPreview("");
       setFaviconPreview("");
-      setServerMedia({ admin: "", user: "", fav: "", commitmentTemplate: "" });
+      setServerMedia({
+        admin: "",
+        user: "",
+        fav: "",
+        commitmentTemplate: "",
+        bodyMeasurementGuideVideo: "",
+      });
+      setBodyMeasurementGuideType("none");
+      setBodyMeasurementGuideYtLink("");
+      setBodyMeasurementGuideVideoFile(null);
+      revokeBodyMeasurementGuideVideoBlob();
+      setBodyMeasurementGuideVideoPreview("");
+      if (bodyMeasurementGuideVideoInputRef.current) {
+        bodyMeasurementGuideVideoInputRef.current.value = "";
+      }
       return;
     }
     setHasDoc(true);
@@ -519,6 +606,8 @@ export function BusinessSetting() {
     next.improved_user = sanitizeDigitsOnly(next.improved_user, LIMITS.statsField);
     next.happy_clients = sanitizeDigitsOnly(next.happy_clients, LIMITS.statsField);
     next.success_rate = sanitizePercentInput(next.success_rate);
+    if (!String(next.google_reviews || "").trim()) next.google_reviews = "500+";
+    if (!String(next.facebook_followers || "").trim()) next.facebook_followers = "1.2K";
     setScalars(next);
     setMultilang(
       doc.multilang === true || String(doc.multilang || "").toLowerCase() === "true"
@@ -538,10 +627,33 @@ export function BusinessSetting() {
     const u = doc.user_logo ? mediaUrl(doc.user_logo) : "";
     const f = doc.favicon ? mediaUrl(doc.favicon) : "";
     const cl = doc.commitment_letter_template ? mediaUrl(doc.commitment_letter_template) : "";
-    setServerMedia({ admin: a, user: u, fav: f, commitmentTemplate: cl });
+    const guideVideo = doc.body_measurement_guide_video
+      ? mediaUrl(doc.body_measurement_guide_video)
+      : "";
+    const guideTypeRaw = String(doc.body_measurement_guide_type || "none").toLowerCase();
+    const guideType = BODY_MEASUREMENT_GUIDE_TYPES.includes(guideTypeRaw)
+      ? guideTypeRaw
+      : "none";
+    setServerMedia({
+      admin: a,
+      user: u,
+      fav: f,
+      commitmentTemplate: cl,
+      bodyMeasurementGuideVideo: guideVideo,
+    });
     setAdminLogoPreview(a);
     setUserLogoPreview(u);
     setFaviconPreview(f);
+    setBodyMeasurementGuideType(guideType);
+    setBodyMeasurementGuideYtLink(
+      guideType === "link" ? String(doc.body_measurement_guide_yt_link || "") : ""
+    );
+    setBodyMeasurementGuideVideoFile(null);
+    revokeBodyMeasurementGuideVideoBlob();
+    setBodyMeasurementGuideVideoPreview(guideType === "video" ? guideVideo : "");
+    if (bodyMeasurementGuideVideoInputRef.current) {
+      bodyMeasurementGuideVideoInputRef.current.value = "";
+    }
   }, []);
 
   useEffect(() => {
@@ -582,8 +694,32 @@ export function BusinessSetting() {
     })();
     return () => {
       cancelled = true;
+      revokeBodyMeasurementGuideVideoBlob();
     };
   }, [adminToken, applyConfig, dispatch]);
+
+  const onBodyMeasurementGuideTypeChange = (nextType) => {
+    const type = BODY_MEASUREMENT_GUIDE_TYPES.includes(nextType) ? nextType : "none";
+    setBodyMeasurementGuideType(type);
+    if (type !== "link") {
+      setBodyMeasurementGuideYtLink("");
+    }
+    if (type !== "video") {
+      setBodyMeasurementGuideVideoFile(null);
+      revokeBodyMeasurementGuideVideoBlob();
+      setBodyMeasurementGuideVideoPreview("");
+      if (bodyMeasurementGuideVideoInputRef.current) {
+        bodyMeasurementGuideVideoInputRef.current.value = "";
+      }
+    } else {
+      setBodyMeasurementGuideVideoFile(null);
+      revokeBodyMeasurementGuideVideoBlob();
+      setBodyMeasurementGuideVideoPreview(serverMedia.bodyMeasurementGuideVideo || "");
+      if (bodyMeasurementGuideVideoInputRef.current) {
+        bodyMeasurementGuideVideoInputRef.current.value = "";
+      }
+    }
+  };
 
   const buildFormData = () => {
     const fd = new FormData();
@@ -604,10 +740,18 @@ export function BusinessSetting() {
       "energy_exchange_time_based_discount_range",
       JSON.stringify(energyExchangeTimeBasedDiscountRange)
     );
+    fd.append("body_measurement_guide_type", bodyMeasurementGuideType);
+    fd.append(
+      "body_measurement_guide_yt_link",
+      bodyMeasurementGuideType === "link" ? bodyMeasurementGuideYtLink.trim() : ""
+    );
     if (adminLogoFile) fd.append("admin_logo", adminLogoFile);
     if (userLogoFile) fd.append("user_logo", userLogoFile);
     if (faviconFile) fd.append("favicon", faviconFile);
     if (commitmentTemplateFile) fd.append("commitment_letter_template", commitmentTemplateFile);
+    if (bodyMeasurementGuideType === "video" && bodyMeasurementGuideVideoFile) {
+      fd.append("body_measurement_guide_video", bodyMeasurementGuideVideoFile);
+    }
     return fd;
   };
 
@@ -635,6 +779,12 @@ export function BusinessSetting() {
       brandingFiles: { adminLogoFile, userLogoFile, faviconFile },
       energyExchangeFyDiscountRanges,
       energyExchangeTimeBasedDiscountRange,
+      bodyMeasurementGuide: {
+        type: bodyMeasurementGuideType,
+        ytLink: bodyMeasurementGuideYtLink,
+        videoFile: bodyMeasurementGuideVideoFile,
+        existingVideo: serverMedia.bodyMeasurementGuideVideo,
+      },
     });
     if (validationError) {
       setTab(validationError.tab);
@@ -657,6 +807,7 @@ export function BusinessSetting() {
       setUserLogoFile(null);
       setFaviconFile(null);
       setCommitmentTemplateFile(null);
+      setBodyMeasurementGuideVideoFile(null);
     } catch (err) {
       if (err?.status === 401) {
         dispatch(logout());
@@ -1364,6 +1515,106 @@ export function BusinessSetting() {
                 </>
               )}
 
+              {t.id === "body-measurement-guide" && (
+                <>
+                  <p className="settings-panel-hint">
+                    Video shown in the app when users tap &quot;Learn how to measure&quot; on the Body Measurements screen.
+                  </p>
+                  <div className="user-form__grid">
+                    <label className="user-field">
+                      <span className="user-field__label">Video source</span>
+                      <select
+                        className="user-field__input"
+                        value={bodyMeasurementGuideType}
+                        onChange={(e) => onBodyMeasurementGuideTypeChange(e.target.value)}
+                        disabled={!canEdit}
+                      >
+                        <option value="none">None</option>
+                        <option value="link">YouTube link</option>
+                        <option value="video">Upload video file</option>
+                      </select>
+                    </label>
+
+                    {bodyMeasurementGuideType === "link" ? (
+                      <label className="user-field" style={{ gridColumn: "1 / -1" }}>
+                        <span className="user-field__label">
+                          YouTube link <span className="required-dot">*</span>
+                        </span>
+                        <input
+                          className="user-field__input"
+                          maxLength={YTLINK_MAX_LEN}
+                          value={bodyMeasurementGuideYtLink}
+                          onChange={(e) => setBodyMeasurementGuideYtLink(e.target.value)}
+                          placeholder="https://www.youtube.com/watch?v=..."
+                          disabled={!canEdit}
+                          readOnly={!canEdit}
+                        />
+                        <span className="settings-char-count">
+                          {charCount(bodyMeasurementGuideYtLink, YTLINK_MAX_LEN)}
+                        </span>
+                      </label>
+                    ) : null}
+
+                    {bodyMeasurementGuideType === "video" ? (
+                      <label className="user-field" style={{ gridColumn: "1 / -1" }}>
+                        <span className="user-field__label">
+                          Video file (up to {VIDEO_MAX_SIZE_MB} MB){" "}
+                          {serverMedia.bodyMeasurementGuideVideo ? (
+                            "(optional — keep empty to retain current)"
+                          ) : (
+                            <span className="required-dot">*</span>
+                          )}
+                        </span>
+                        <input
+                          ref={bodyMeasurementGuideVideoInputRef}
+                          className="user-field__input"
+                          type="file"
+                          accept="video/mp4,video/webm,video/ogg,video/quicktime,.mp4,.webm,.ogg,.mov,.m4v"
+                          disabled={!canEdit}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0] || null;
+                            if (!file) {
+                              setBodyMeasurementGuideVideoFile(null);
+                              revokeBodyMeasurementGuideVideoBlob();
+                              setBodyMeasurementGuideVideoPreview(
+                                serverMedia.bodyMeasurementGuideVideo || ""
+                              );
+                              return;
+                            }
+                            const sizeErr = validateVideoFileSize(file);
+                            if (sizeErr) {
+                              e.target.value = "";
+                              void Swal.fire({
+                                icon: "error",
+                                title: "Validation error",
+                                text: sizeErr,
+                              });
+                              return;
+                            }
+                            setBodyMeasurementGuideVideoFile(file);
+                            revokeBodyMeasurementGuideVideoBlob();
+                            const blobUrl = URL.createObjectURL(file);
+                            bodyMeasurementGuideVideoBlobRef.current = blobUrl;
+                            setBodyMeasurementGuideVideoPreview(blobUrl);
+                          }}
+                        />
+                        {bodyMeasurementGuideVideoPreview ? (
+                          <video
+                            src={bodyMeasurementGuideVideoPreview}
+                            controls
+                            style={{ width: "100%", maxHeight: 280, marginTop: 12, borderRadius: 8 }}
+                          />
+                        ) : (
+                          <p className="settings-media-card__hint" style={{ marginTop: 8 }}>
+                            No video uploaded yet.
+                          </p>
+                        )}
+                      </label>
+                    ) : null}
+                  </div>
+                </>
+              )}
+
               {t.id === "location" && (
                 <>
                   <p className="settings-panel-hint">Optional address and coordinates (strings). Map preview appears when both latitude and longitude are valid.</p>
@@ -1469,6 +1720,54 @@ export function BusinessSetting() {
                         maxLength={LIMITS.socialUrl}
                       />
                       <span className="settings-char-count">{charCount(scalars.linkedin, LIMITS.socialUrl)}</span>
+                    </div>
+                  </div>
+
+                  <p className="settings-panel-hint mt-4">
+                    Display counts shown on social rating cards in the app (e.g. 500+, 1.2K).
+                  </p>
+                  <div className="user-form__grid">
+                    <div className="user-field">
+                      <span className="user-field__label">
+                        Google reviews count <span className="required-dot">*</span>
+                      </span>
+                      <input
+                        className="user-field__input"
+                        value={scalars.google_reviews}
+                        onChange={(e) =>
+                          setScalars((s) => ({
+                            ...s,
+                            google_reviews: e.target.value.slice(0, LIMITS.socialProofField),
+                          }))
+                        }
+                        placeholder="500+"
+                        maxLength={LIMITS.socialProofField}
+                        required
+                      />
+                      <span className="settings-char-count">
+                        {charCount(scalars.google_reviews, LIMITS.socialProofField)}
+                      </span>
+                    </div>
+                    <div className="user-field">
+                      <span className="user-field__label">
+                        Facebook followers count <span className="required-dot">*</span>
+                      </span>
+                      <input
+                        className="user-field__input"
+                        value={scalars.facebook_followers}
+                        onChange={(e) =>
+                          setScalars((s) => ({
+                            ...s,
+                            facebook_followers: e.target.value.slice(0, LIMITS.socialProofField),
+                          }))
+                        }
+                        placeholder="1.2K"
+                        maxLength={LIMITS.socialProofField}
+                        required
+                      />
+                      <span className="settings-char-count">
+                        {charCount(scalars.facebook_followers, LIMITS.socialProofField)}
+                      </span>
                     </div>
                   </div>
                 </>
