@@ -287,8 +287,27 @@ async function buildUserUpdatesFromBody(body, current, { allowStatus = true, req
     const currentEff = getEffectiveWhatsapp(current);
 
     if (isWhatsappChanged(current, requested)) {
-      if (requested.sameAsMobile && !currentEff.sameAsMobile) {
-        updates.whatsappSameAsMobile = true;
+      const phoneUnchanged =
+        normalizePhone(requested.phone) === normalizePhone(currentEff.phone) &&
+        normalizeCountryCode(requested.countryCode) ===
+          normalizeCountryCode(currentEff.countryCode);
+
+      // Number unchanged — allow flag-only updates (e.g. sameAsMobile after OTP
+      // already verified that number). Any actual number change requires OTP.
+      if (phoneUnchanged) {
+        updates.whatsappSameAsMobile = Boolean(requested.sameAsMobile);
+        if (requested.sameAsMobile) {
+          const nextCc =
+            updates.phoneCountryCode !== undefined
+              ? normalizeCountryCode(updates.phoneCountryCode)
+              : normalizeCountryCode(current.phoneCountryCode);
+          const nextPhone =
+            updates.phone !== undefined
+              ? normalizePhone(updates.phone)
+              : normalizePhone(current.phone);
+          updates.whatsappCountryCode = nextCc;
+          updates.whatsappPhone = nextPhone;
+        }
       } else {
         throw new AppError(
           "WhatsApp number changes require OTP verification. Use /user/auth/profile/whatsapp/otp/send and /verify.",
@@ -436,8 +455,17 @@ async function deleteUserAccountByPhoneOtp({ phone, phoneCountryCode, otp }) {
   }
 }
 
+function isTruthyFlag(value) {
+  if (value === true || value === 1) return true;
+  if (value === false || value === 0 || value == null || value === "") return false;
+  const s = String(value).trim().toLowerCase();
+  if (s === "true" || s === "1") return true;
+  if (s === "false" || s === "0") return false;
+  return Boolean(value);
+}
+
 function getEffectiveWhatsapp(user) {
-  if (user.whatsappSameAsMobile) {
+  if (isTruthyFlag(user.whatsappSameAsMobile)) {
     return {
       sameAsMobile: true,
       countryCode: normalizeCountryCode(user.phoneCountryCode),
@@ -454,13 +482,23 @@ function getEffectiveWhatsapp(user) {
 function resolveRequestedWhatsapp(body, current) {
   const whatsappSameRaw = parseBool(body.whatsappSameAsMobile);
   const sameAsMobile =
-    whatsappSameRaw !== undefined ? whatsappSameRaw : Boolean(current.whatsappSameAsMobile);
+    whatsappSameRaw !== undefined
+      ? whatsappSameRaw
+      : isTruthyFlag(current.whatsappSameAsMobile);
 
   if (sameAsMobile) {
+    const countryCode =
+      body.phoneCountryCode !== undefined
+        ? normalizeCountryCode(body.phoneCountryCode)
+        : normalizeCountryCode(current.phoneCountryCode);
+    const phone =
+      body.phone !== undefined
+        ? normalizePhone(body.phone)
+        : normalizePhone(current.phone);
     return {
       sameAsMobile: true,
-      countryCode: normalizeCountryCode(current.phoneCountryCode),
-      phone: normalizePhone(current.phone),
+      countryCode,
+      phone,
     };
   }
 
@@ -565,10 +603,6 @@ async function sendProfileWhatsappChangeOtp(user, { whatsappPhone, whatsappCount
     user
   );
 
-  if (requested.sameAsMobile) {
-    throw new AppError("OTP is not required when WhatsApp is same as mobile", 400);
-  }
-
   const normalizedPhone = normalizePhone(requested.phone);
   if (!normalizedPhone) throw new AppError("whatsappPhone is required", 400);
   assertValidIndianMobile(normalizedPhone, { field: "whatsappPhone" });
@@ -576,7 +610,6 @@ async function sendProfileWhatsappChangeOtp(user, { whatsappPhone, whatsappCount
 
   const currentEff = getEffectiveWhatsapp(user);
   if (
-    !currentEff.sameAsMobile &&
     normalizePhone(requested.phone) === normalizePhone(currentEff.phone) &&
     normalizeCountryCode(requested.countryCode) === normalizeCountryCode(currentEff.countryCode)
   ) {
@@ -625,10 +658,16 @@ async function verifyProfileWhatsappChangeOtp(user, { whatsappPhone, whatsappCou
     throw new AppError("WhatsApp number does not match the pending verification request", 400);
   }
 
+  const matchesMobile =
+    normalizedPhone === normalizePhone(user.phone) &&
+    cc === normalizeCountryCode(user.phoneCountryCode);
+
   const updated = await updateUser(user.id, {
-    whatsappSameAsMobile: false,
-    whatsappCountryCode: cc,
-    whatsappPhone: normalizedPhone,
+    whatsappSameAsMobile: matchesMobile,
+    whatsappCountryCode: matchesMobile
+      ? normalizeCountryCode(user.phoneCountryCode)
+      : cc,
+    whatsappPhone: matchesMobile ? normalizePhone(user.phone) : normalizedPhone,
     otp: null,
     otpExpire: null,
     pendingWhatsappPhone: null,
