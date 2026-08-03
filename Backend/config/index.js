@@ -32,6 +32,9 @@ module.exports = {
   awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   dynamodbSkipVerify: process.env.DYNAMODB_SKIP_VERIFY === "true",
 
+  // S3 bucket region can differ from DynamoDB (e.g. Mumbai bucket + Singapore tables)
+  awsS3Region:
+    process.env.AWS_S3_REGION || process.env.AWS_REGION || "ap-south-1",
   awsS3BucketName: process.env.AWS_S3_BUCKET_NAME,
   awsS3PublicBaseUrl: process.env.AWS_S3_PUBLIC_BASE_URL || "",
 
