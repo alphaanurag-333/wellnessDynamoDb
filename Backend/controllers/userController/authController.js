@@ -3,6 +3,7 @@ const { asyncHandler } = require("../../utils/asyncHandler");
 const { hashPassword, comparePassword } = require("../../utils/password");
 const { createTokenPair, verifyRefreshToken } = require("../../utils/jwt");
 const { generateOtp, getOtpExpiryDate, isOtpExpired, deliverOtp } = require("../../utils/otp");
+const { assertValidIndianMobile } = require("../../utils/phoneValidation");
 const {
   setRegistrationOtp,
   clearRegistrationOtp,
@@ -84,6 +85,39 @@ function assertRegistrationAvailable(email, phoneCountryCode, phone) {
   ]);
 }
 
+function parseRegistrationSameAsMobile(value) {
+  if (value === undefined || value === null || value === "") return undefined;
+  if (typeof value === "boolean") return value;
+  const s = String(value).trim().toLowerCase();
+  if (s === "true") return true;
+  if (s === "false") return false;
+  return undefined;
+}
+
+/** Resolve WhatsApp number that receives registration OTP (always required). */
+function resolveRegistrationWhatsappDelivery({
+  phone,
+  phoneCountryCode,
+  whatsappSameAsMobile,
+  whatsappPhone,
+  whatsappCountryCode,
+}) {
+  const sameAsMobile = parseRegistrationSameAsMobile(whatsappSameAsMobile);
+  if (sameAsMobile === true) {
+    return {
+      phone: normalizePhone(phone),
+      phoneCountryCode: normalizeCountryCode(phoneCountryCode),
+    };
+  }
+
+  const deliveryPhone = normalizePhone(whatsappPhone);
+  const deliveryCc = normalizeCountryCode(whatsappCountryCode || phoneCountryCode);
+  if (!deliveryPhone) {
+    throw new AppError("whatsappPhone is required when WhatsApp is not same as mobile", 400);
+  }
+  return { phone: deliveryPhone, phoneCountryCode: deliveryCc };
+}
+
 async function verifyRegistrationOtpOrThrow(identifiers, otp) {
   const code = String(otp ?? "").trim();
   if (!code) throw new AppError("otp is required", 400);
@@ -97,7 +131,7 @@ async function verifyRegistrationOtpOrThrow(identifiers, otp) {
   throw new AppError("Invalid OTP", 401);
 }
 
-/** POST /user/auth/register/otp/send — send OTP before self-registration */
+/** POST /user/auth/register/otp/send — send OTP to WhatsApp before self-registration */
 exports.sendRegisterOtp = asyncHandler(async (req, res) => {
   const email = normalizeEmail(req.body.email);
   const phone = normalizePhone(req.body.phone);
@@ -105,18 +139,31 @@ exports.sendRegisterOtp = asyncHandler(async (req, res) => {
 
   if (!email) throw new AppError("email is required", 400);
   if (!phone) throw new AppError("phone is required", 400);
+  assertValidIndianMobile(phone, { field: "phone" });
+
+  const delivery = resolveRegistrationWhatsappDelivery({
+    phone,
+    phoneCountryCode,
+    whatsappSameAsMobile: req.body.whatsappSameAsMobile,
+    whatsappPhone: req.body.whatsappPhone,
+    whatsappCountryCode: req.body.whatsappCountryCode,
+  });
+  assertValidIndianMobile(delivery.phone, { field: "whatsappPhone" });
 
   await assertRegistrationAvailable(email, phoneCountryCode, phone);
 
   const otp = generateOtp();
   const otpExpire = getOtpExpiryDate();
 
-  await setRegistrationOtp({ email, phone, phoneCountryCode }, { otp, otpExpire });
+  await setRegistrationOtp(
+    { email, phone: delivery.phone, phoneCountryCode: delivery.phoneCountryCode },
+    { otp, otpExpire }
+  );
 
   await deliverOtp({
     email,
-    phone,
-    phoneCountryCode,
+    phone: delivery.phone,
+    phoneCountryCode: delivery.phoneCountryCode,
     otp,
   });
 
@@ -124,7 +171,7 @@ exports.sendRegisterOtp = asyncHandler(async (req, res) => {
     status: true,
     message: "Registration OTP sent successfully",
   };
-   
+
   if (config.exposeOtpInResponse && config.nodeEnv !== "production") {
     payload.debugOtp = otp;
   }
@@ -132,13 +179,25 @@ exports.sendRegisterOtp = asyncHandler(async (req, res) => {
   return res.status(200).json(payload);
 });
 
-/** POST /user/auth/register — verify OTP, then create account */
+/** POST /user/auth/register — verify WhatsApp OTP, then create account */
 exports.registerUser = asyncHandler(async (req, res) => {
   const otp = req.body.otp;
   const { fields, password } = parseUserFields(req.body, { requirePassword: false });
 
+  const delivery = resolveRegistrationWhatsappDelivery({
+    phone: fields.phone,
+    phoneCountryCode: fields.phoneCountryCode,
+    whatsappSameAsMobile:
+      fields.whatsappSameAsMobile !== undefined
+        ? fields.whatsappSameAsMobile
+        : req.body.whatsappSameAsMobile,
+    whatsappPhone: fields.whatsappPhone ?? req.body.whatsappPhone,
+    whatsappCountryCode: fields.whatsappCountryCode ?? req.body.whatsappCountryCode,
+  });
+  assertValidIndianMobile(delivery.phone, { field: "whatsappPhone" });
+
   await verifyRegistrationOtpOrThrow(
-    { email: fields.email, phone: fields.phone, phoneCountryCode: fields.phoneCountryCode },
+    { email: fields.email, phone: delivery.phone, phoneCountryCode: delivery.phoneCountryCode },
     otp
   );
 
@@ -175,8 +234,8 @@ exports.registerUser = asyncHandler(async (req, res) => {
 
   await clearRegistrationOtp({
     email: fields.email,
-    phone: fields.phone,
-    phoneCountryCode: fields.phoneCountryCode,
+    phone: delivery.phone,
+    phoneCountryCode: delivery.phoneCountryCode,
   });
 
   return sendAuthResponse(res, 201, await enrichUser(user), "Registration successful");

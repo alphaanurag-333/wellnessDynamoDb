@@ -3,12 +3,26 @@ const { docClient } = require("../config/db");
 const { v4: uuidv4 } = require("uuid");
 const { normalizeStoredMedia, resolvePublicUrl } = require("../utils/s3");
 
+const BODY_MEASUREMENT_INFO_IMAGE_KEYS = [
+  "neck",
+  "shoulder",
+  "chest",
+  "waist",
+  "hip",
+  "thighs",
+];
+
+const BODY_MEASUREMENT_INFO_IMAGE_FIELDS = BODY_MEASUREMENT_INFO_IMAGE_KEYS.map(
+  (key) => `body_measurement_info_image_${key}`
+);
+
 const MEDIA_FIELDS = [
   "admin_logo",
   "user_logo",
   "favicon",
   "commitment_letter_template",
   "body_measurement_guide_video",
+  ...BODY_MEASUREMENT_INFO_IMAGE_FIELDS,
 ];
 const BODY_MEASUREMENT_GUIDE_TYPES = new Set(["none", "link", "video"]);
 
@@ -54,6 +68,7 @@ async function createAppConfig() {
     body_measurement_guide_type: "none",
     body_measurement_guide_yt_link: "",
     body_measurement_guide_video: "",
+    ...Object.fromEntries(BODY_MEASUREMENT_INFO_IMAGE_FIELDS.map((field) => [field, ""])),
     address:        "",
     latitude:       "",
     longitude:      "",
@@ -151,5 +166,7 @@ module.exports = {
   toPublicAppConfig,
   MEDIA_FIELDS,
   BODY_MEASUREMENT_GUIDE_TYPES,
+  BODY_MEASUREMENT_INFO_IMAGE_KEYS,
+  BODY_MEASUREMENT_INFO_IMAGE_FIELDS,
   normalizeBodyMeasurementGuideType,
 };
