@@ -41,6 +41,12 @@ const appConfigUpload = memoryFields([
   { name: "favicon", maxCount: 1 },
   { name: "commitment_letter_template", maxCount: 1 },
   { name: "body_measurement_guide_video", maxCount: 1 },
+  { name: "body_measurement_info_image_neck", maxCount: 1 },
+  { name: "body_measurement_info_image_shoulder", maxCount: 1 },
+  { name: "body_measurement_info_image_chest", maxCount: 1 },
+  { name: "body_measurement_info_image_waist", maxCount: 1 },
+  { name: "body_measurement_info_image_hip", maxCount: 1 },
+  { name: "body_measurement_info_image_thighs", maxCount: 1 },
 ]);
 
 const videoTestimonialsUpload = memoryFields([

@@ -257,10 +257,23 @@ async function buildUserUpdatesFromBody(body, current, { allowStatus = true, req
     const currentCc = normalizeCountryCode(current.phoneCountryCode);
 
     if (nextPhone !== currentPhone || nextCc !== currentCc) {
-      throw new AppError(
-        "Phone number changes require OTP verification. Use /user/auth/profile/phone/otp/send and /verify.",
-        400
-      );
+      if (!nextPhone) throw new AppError("phone cannot be empty", 400);
+      assertValidIndianMobile(nextPhone, { field: "phone" });
+      await assertUniquePhone(nextCc, nextPhone, current.id);
+      updates.phone = nextPhone;
+      updates.phoneCountryCode = nextCc;
+      updates.phoneKey = buildPhoneKey(nextCc, nextPhone);
+
+      const whatsappSameRaw = parseBool(body.whatsappSameAsMobile);
+      const sameAsMobile =
+        whatsappSameRaw !== undefined
+          ? whatsappSameRaw
+          : Boolean(current.whatsappSameAsMobile);
+      if (sameAsMobile) {
+        updates.whatsappSameAsMobile = true;
+        updates.whatsappCountryCode = nextCc;
+        updates.whatsappPhone = nextPhone;
+      }
     }
   }
 

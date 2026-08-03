@@ -102,14 +102,17 @@ async function computeNutritionTracking(userId, date) {
 
 async function computeMealTracking(userId, date) {
   const logs = await queryMealLogsByUserAndDateRange(userId, date, date);
-  const approvedCount = logs.filter(
-    (log) => String(log.status || "approved").toLowerCase() === "approved"
-  ).length;
+  // Count logged meals toward daily reflection progress even while pending coach
+  // review; only rejected meals are excluded.
+  const counted = logs.filter((log) => {
+    const status = String(log.status || "approved").toLowerCase();
+    return status === "approved" || status === "pending_review";
+  }).length;
 
   return {
-    current: approvedCount,
+    current: counted,
     goal: MEAL_DAILY_GOAL,
-    percent: clampPercent((approvedCount / MEAL_DAILY_GOAL) * 100),
+    percent: clampPercent((counted / MEAL_DAILY_GOAL) * 100),
   };
 }
 

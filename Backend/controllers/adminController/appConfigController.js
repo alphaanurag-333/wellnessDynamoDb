@@ -10,12 +10,14 @@ const {
   updateAppConfig,
   toPublicAppConfig,
   normalizeBodyMeasurementGuideType,
+  BODY_MEASUREMENT_INFO_IMAGE_FIELDS,
 } = require("../../models/appConfigModel");
 
 const S3_FOLDER = "appconfig";
 const LOGO_FIELDS = ["admin_logo", "user_logo", "favicon"];
 const TEMPLATE_FIELDS = ["commitment_letter_template"];
 const BODY_MEASUREMENT_GUIDE_VIDEO_FIELD = "body_measurement_guide_video";
+const BODY_MEASUREMENT_INFO_IMAGE_FIELD_SET = new Set(BODY_MEASUREMENT_INFO_IMAGE_FIELDS);
 const ALLOWED_TAX_TYPES = new Set(["inclusive", "exclusive"]);
 const {
   normalizeFyDiscountRanges,
@@ -56,6 +58,10 @@ function isVideoMime(mimetype = "") {
   return String(mimetype).toLowerCase().startsWith("video/");
 }
 
+function isImageMime(mimetype = "") {
+  return String(mimetype).toLowerCase().startsWith("image/");
+}
+
 async function s3KeyFromUploadedFile(req, field) {
   const file = req.files?.[field]?.[0];
   if (!file) return undefined;
@@ -78,6 +84,12 @@ async function applyMediaUploads(req, config, updates, fields) {
         throw new AppError("body_measurement_guide_video must be a video file", 400);
       }
     }
+    if (BODY_MEASUREMENT_INFO_IMAGE_FIELD_SET.has(field)) {
+      const file = req.files?.[field]?.[0];
+      if (file?.mimetype && !isImageMime(file.mimetype)) {
+        throw new AppError(`${field} must be an image file`, 400);
+      }
+    }
     if (config?.[field]) await deleteStoredMedia(config[field]);
     updates[field] = uploadedKey;
   }
@@ -93,6 +105,10 @@ async function applyTemplateUploads(req, config, updates) {
 
 async function applyBodyMeasurementGuideVideoUpload(req, config, updates) {
   await applyMediaUploads(req, config, updates, [BODY_MEASUREMENT_GUIDE_VIDEO_FIELD]);
+}
+
+async function applyBodyMeasurementInfoImageUploads(req, config, updates) {
+  await applyMediaUploads(req, config, updates, BODY_MEASUREMENT_INFO_IMAGE_FIELDS);
 }
 
 function applyBodyMeasurementGuideFields(req, config, updates) {
@@ -343,6 +359,7 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
 
   await applyLogoUploads(req, config, updates);
   await applyTemplateUploads(req, config, updates);
+  await applyBodyMeasurementInfoImageUploads(req, config, updates);
 
   applyBodyMeasurementGuideFields(req, config, updates);
   const resolvedGuideType = normalizeBodyMeasurementGuideType(

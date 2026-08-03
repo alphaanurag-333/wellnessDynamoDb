@@ -31,6 +31,23 @@ import {
 const BODY_MEASUREMENT_GUIDE_TYPES = ["none", "link", "video"];
 const YTLINK_MAX_LEN = 500;
 
+const BODY_MEASUREMENT_INFO_IMAGE_DEFS = [
+  { key: "neck", field: "body_measurement_info_image_neck", label: "Neck" },
+  { key: "shoulder", field: "body_measurement_info_image_shoulder", label: "Shoulder" },
+  { key: "chest", field: "body_measurement_info_image_chest", label: "Chest" },
+  { key: "waist", field: "body_measurement_info_image_waist", label: "Waist" },
+  { key: "hip", field: "body_measurement_info_image_hip", label: "Hip" },
+  { key: "thighs", field: "body_measurement_info_image_thighs", label: "Thighs" },
+];
+
+function emptyBodyMeasurementInfoImageState() {
+  return Object.fromEntries(BODY_MEASUREMENT_INFO_IMAGE_DEFS.map(({ key }) => [key, ""]));
+}
+
+function emptyBodyMeasurementInfoImageFiles() {
+  return Object.fromEntries(BODY_MEASUREMENT_INFO_IMAGE_DEFS.map(({ key }) => [key, null]));
+}
+
 const SCALAR_KEYS = [
   "app_name",
   "app_email",
@@ -246,6 +263,7 @@ function validateSettingsForm({
   energyExchangeFyDiscountRanges = {},
   energyExchangeTimeBasedDiscountRange = DEFAULT_FY_DISCOUNT_RANGE,
   bodyMeasurementGuide = {},
+  bodyMeasurementInfoImageFiles = {},
 }) {
   const appVersion = (scalars.app_version || "").trim();
   const improvedUser = (scalars.improved_user || "").trim();
@@ -434,6 +452,13 @@ function validateSettingsForm({
     }
   }
 
+  for (const { key, label } of BODY_MEASUREMENT_INFO_IMAGE_DEFS) {
+    const sizeErr = validateImageFileSize(bodyMeasurementInfoImageFiles[key]);
+    if (sizeErr) {
+      return { tab: "body-measurement-guide", text: `${label} info image: ${sizeErr}` };
+    }
+  }
+
   return null;
 }
 
@@ -532,13 +557,21 @@ export function BusinessSetting() {
     fav: "",
     commitmentTemplate: "",
     bodyMeasurementGuideVideo: "",
+    bodyMeasurementInfoImages: emptyBodyMeasurementInfoImageState(),
   });
   const [bodyMeasurementGuideType, setBodyMeasurementGuideType] = useState("none");
   const [bodyMeasurementGuideYtLink, setBodyMeasurementGuideYtLink] = useState("");
   const [bodyMeasurementGuideVideoFile, setBodyMeasurementGuideVideoFile] = useState(null);
   const [bodyMeasurementGuideVideoPreview, setBodyMeasurementGuideVideoPreview] = useState("");
+  const [bodyMeasurementInfoImageFiles, setBodyMeasurementInfoImageFiles] = useState(
+    emptyBodyMeasurementInfoImageFiles
+  );
+  const [bodyMeasurementInfoImagePreviews, setBodyMeasurementInfoImagePreviews] = useState(
+    emptyBodyMeasurementInfoImageState
+  );
   const bodyMeasurementGuideVideoInputRef = useRef(null);
   const bodyMeasurementGuideVideoBlobRef = useRef("");
+  const bodyMeasurementInfoImageBlobRefs = useRef(emptyBodyMeasurementInfoImageState());
   const lat = Number.parseFloat((scalars.latitude || "").trim());
   const lng = Number.parseFloat((scalars.longitude || "").trim());
   const hasValidCoords = Number.isFinite(lat) && Number.isFinite(lng);
@@ -552,6 +585,21 @@ export function BusinessSetting() {
       bodyMeasurementGuideVideoBlobRef.current = "";
     }
   };
+
+  const revokeBodyMeasurementInfoImageBlob = (key) => {
+    const current = bodyMeasurementInfoImageBlobRefs.current[key];
+    if (current) {
+      URL.revokeObjectURL(current);
+      bodyMeasurementInfoImageBlobRefs.current[key] = "";
+    }
+  };
+
+  const revokeAllBodyMeasurementInfoImageBlobs = () => {
+    for (const { key } of BODY_MEASUREMENT_INFO_IMAGE_DEFS) {
+      revokeBodyMeasurementInfoImageBlob(key);
+    }
+  };
+
   const applyConfig = useCallback((doc) => {
     if (!doc) {
       setHasDoc(false);
@@ -569,6 +617,7 @@ export function BusinessSetting() {
         fav: "",
         commitmentTemplate: "",
         bodyMeasurementGuideVideo: "",
+        bodyMeasurementInfoImages: emptyBodyMeasurementInfoImageState(),
       });
       setBodyMeasurementGuideType("none");
       setBodyMeasurementGuideYtLink("");
@@ -578,6 +627,9 @@ export function BusinessSetting() {
       if (bodyMeasurementGuideVideoInputRef.current) {
         bodyMeasurementGuideVideoInputRef.current.value = "";
       }
+      revokeAllBodyMeasurementInfoImageBlobs();
+      setBodyMeasurementInfoImageFiles(emptyBodyMeasurementInfoImageFiles());
+      setBodyMeasurementInfoImagePreviews(emptyBodyMeasurementInfoImageState());
       return;
     }
     setHasDoc(true);
@@ -630,6 +682,12 @@ export function BusinessSetting() {
     const guideVideo = doc.body_measurement_guide_video
       ? mediaUrl(doc.body_measurement_guide_video)
       : "";
+    const infoImages = Object.fromEntries(
+      BODY_MEASUREMENT_INFO_IMAGE_DEFS.map(({ key, field }) => [
+        key,
+        doc[field] ? mediaUrl(doc[field]) : "",
+      ])
+    );
     const guideTypeRaw = String(doc.body_measurement_guide_type || "none").toLowerCase();
     const guideType = BODY_MEASUREMENT_GUIDE_TYPES.includes(guideTypeRaw)
       ? guideTypeRaw
@@ -640,6 +698,7 @@ export function BusinessSetting() {
       fav: f,
       commitmentTemplate: cl,
       bodyMeasurementGuideVideo: guideVideo,
+      bodyMeasurementInfoImages: infoImages,
     });
     setAdminLogoPreview(a);
     setUserLogoPreview(u);
@@ -654,6 +713,9 @@ export function BusinessSetting() {
     if (bodyMeasurementGuideVideoInputRef.current) {
       bodyMeasurementGuideVideoInputRef.current.value = "";
     }
+    revokeAllBodyMeasurementInfoImageBlobs();
+    setBodyMeasurementInfoImageFiles(emptyBodyMeasurementInfoImageFiles());
+    setBodyMeasurementInfoImagePreviews(infoImages);
   }, []);
 
   useEffect(() => {
@@ -695,6 +757,7 @@ export function BusinessSetting() {
     return () => {
       cancelled = true;
       revokeBodyMeasurementGuideVideoBlob();
+      revokeAllBodyMeasurementInfoImageBlobs();
     };
   }, [adminToken, applyConfig, dispatch]);
 
@@ -752,6 +815,10 @@ export function BusinessSetting() {
     if (bodyMeasurementGuideType === "video" && bodyMeasurementGuideVideoFile) {
       fd.append("body_measurement_guide_video", bodyMeasurementGuideVideoFile);
     }
+    for (const { key, field } of BODY_MEASUREMENT_INFO_IMAGE_DEFS) {
+      const file = bodyMeasurementInfoImageFiles[key];
+      if (file) fd.append(field, file);
+    }
     return fd;
   };
 
@@ -785,6 +852,7 @@ export function BusinessSetting() {
         videoFile: bodyMeasurementGuideVideoFile,
         existingVideo: serverMedia.bodyMeasurementGuideVideo,
       },
+      bodyMeasurementInfoImageFiles,
     });
     if (validationError) {
       setTab(validationError.tab);
@@ -808,6 +876,7 @@ export function BusinessSetting() {
       setFaviconFile(null);
       setCommitmentTemplateFile(null);
       setBodyMeasurementGuideVideoFile(null);
+      setBodyMeasurementInfoImageFiles(emptyBodyMeasurementInfoImageFiles());
     } catch (err) {
       if (err?.status === 401) {
         dispatch(logout());
@@ -1611,6 +1680,82 @@ export function BusinessSetting() {
                         )}
                       </label>
                     ) : null}
+                  </div>
+
+                  <hr className="settings-section-divider" style={{ margin: "24px 0" }} />
+                  <p className="settings-panel-hint">
+                    Info images shown in the app when users tap the info icon next to each body measurement field (neck, shoulder, chest, waist, hip, thighs). Leave empty to keep the app&apos;s built-in image.
+                  </p>
+                  <div className="settings-media-grid">
+                    {BODY_MEASUREMENT_INFO_IMAGE_DEFS.map(({ key, label }) => (
+                      <div className="settings-media-card" key={key}>
+                        <label
+                          className="settings-media-card__label"
+                          htmlFor={`${baseId}-bm-info-${key}`}
+                        >
+                          {label}
+                          <span className="settings-media-card__hint">
+                            Info popup image · max {IMAGE_MAX_SIZE_MB} MB
+                          </span>
+                        </label>
+                        <input
+                          id={`${baseId}-bm-info-${key}`}
+                          type="file"
+                          accept="image/*"
+                          className="settings-media-card__input user-field__input"
+                          disabled={!canEdit}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) {
+                              revokeBodyMeasurementInfoImageBlob(key);
+                              setBodyMeasurementInfoImageFiles((prev) => ({
+                                ...prev,
+                                [key]: null,
+                              }));
+                              setBodyMeasurementInfoImagePreviews((prev) => ({
+                                ...prev,
+                                [key]: serverMedia.bodyMeasurementInfoImages?.[key] || "",
+                              }));
+                              return;
+                            }
+                            const sizeErr = validateImageFileSize(file);
+                            if (sizeErr) {
+                              e.target.value = "";
+                              void Swal.fire({
+                                icon: "error",
+                                title: "Validation error",
+                                text: sizeErr,
+                              });
+                              return;
+                            }
+                            revokeBodyMeasurementInfoImageBlob(key);
+                            const blobUrl = URL.createObjectURL(file);
+                            bodyMeasurementInfoImageBlobRefs.current[key] = blobUrl;
+                            setBodyMeasurementInfoImageFiles((prev) => ({
+                              ...prev,
+                              [key]: file,
+                            }));
+                            setBodyMeasurementInfoImagePreviews((prev) => ({
+                              ...prev,
+                              [key]: blobUrl,
+                            }));
+                          }}
+                        />
+                        <div className="settings-media-card__preview">
+                          {bodyMeasurementInfoImagePreviews[key] ? (
+                            <img
+                              src={bodyMeasurementInfoImagePreviews[key]}
+                              alt={`${label} measurement info preview`}
+                              onError={handleMediaImageError}
+                            />
+                          ) : (
+                            <p className="settings-media-card__hint" style={{ margin: 0 }}>
+                              Using app default
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </>
               )}
