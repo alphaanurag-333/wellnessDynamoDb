@@ -10,6 +10,7 @@ const {
   updateAppConfig,
   toPublicAppConfig,
   normalizeBodyMeasurementGuideType,
+  normalizeProgressPhotoGuidelines,
   BODY_MEASUREMENT_INFO_IMAGE_FIELDS,
 } = require("../../models/appConfigModel");
 
@@ -355,6 +356,14 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
     if (parsed != null) {
       updates.energy_exchange_time_based_discount_range = normalizeDiscountRange(parsed);
     }
+  }
+
+  if (req.body.progress_photo_guidelines !== undefined) {
+    const parsed = parseJSON(req.body.progress_photo_guidelines, null);
+    updates.progress_photo_guidelines = normalizeProgressPhotoGuidelines(
+      parsed,
+      config.progress_photo_guidelines
+    );
   }
 
   await applyLogoUploads(req, config, updates);

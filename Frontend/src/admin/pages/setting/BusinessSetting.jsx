@@ -117,11 +117,41 @@ const SETTINGS_TABS = [
   { id: "branding", label: "Media" },
   { id: "commitment-letter", label: "Commitment letter" },
   { id: "body-measurement-guide", label: "Body measurement guide" },
+  { id: "progress-photo-guidelines", label: "Progress photo guidelines" },
   { id: "location", label: "Location" },
   { id: "social", label: "Social" },
   // { id: "content", label: "Content" },
   // { id: "payment-gateways", label: "Payment gateways" },
 ];
+
+const EMPTY_PROGRESS_PHOTO_GUIDELINES = { en: [], hi: [] };
+
+function normalizeProgressPhotoGuidelines(value) {
+  if (Array.isArray(value)) {
+    return {
+      en: value.map((item) => String(item ?? "")),
+      hi: [],
+    };
+  }
+  if (!value || typeof value !== "object") {
+    return { en: [], hi: [] };
+  }
+  return {
+    en: Array.isArray(value.en) ? value.en.map((item) => String(item ?? "")) : [],
+    hi: Array.isArray(value.hi) ? value.hi.map((item) => String(item ?? "")) : [],
+  };
+}
+
+function guidelinesForApi(guidelines) {
+  const clean = (list) =>
+    (Array.isArray(list) ? list : [])
+      .map((item) => String(item ?? "").trim())
+      .filter(Boolean);
+  return {
+    en: clean(guidelines?.en),
+    hi: clean(guidelines?.hi),
+  };
+}
 
 const GATEWAY_DEFS = [
   { provider: "razorpay", title: "Razorpay" },
@@ -569,6 +599,9 @@ export function BusinessSetting() {
   const [bodyMeasurementInfoImagePreviews, setBodyMeasurementInfoImagePreviews] = useState(
     emptyBodyMeasurementInfoImageState
   );
+  const [progressPhotoGuidelines, setProgressPhotoGuidelines] = useState(
+    () => ({ ...EMPTY_PROGRESS_PHOTO_GUIDELINES })
+  );
   const bodyMeasurementGuideVideoInputRef = useRef(null);
   const bodyMeasurementGuideVideoBlobRef = useRef("");
   const bodyMeasurementInfoImageBlobRefs = useRef(emptyBodyMeasurementInfoImageState());
@@ -630,6 +663,7 @@ export function BusinessSetting() {
       revokeAllBodyMeasurementInfoImageBlobs();
       setBodyMeasurementInfoImageFiles(emptyBodyMeasurementInfoImageFiles());
       setBodyMeasurementInfoImagePreviews(emptyBodyMeasurementInfoImageState());
+      setProgressPhotoGuidelines({ ...EMPTY_PROGRESS_PHOTO_GUIDELINES });
       return;
     }
     setHasDoc(true);
@@ -716,6 +750,7 @@ export function BusinessSetting() {
     revokeAllBodyMeasurementInfoImageBlobs();
     setBodyMeasurementInfoImageFiles(emptyBodyMeasurementInfoImageFiles());
     setBodyMeasurementInfoImagePreviews(infoImages);
+    setProgressPhotoGuidelines(normalizeProgressPhotoGuidelines(doc.progress_photo_guidelines));
   }, []);
 
   useEffect(() => {
@@ -819,6 +854,10 @@ export function BusinessSetting() {
       const file = bodyMeasurementInfoImageFiles[key];
       if (file) fd.append(field, file);
     }
+    fd.append(
+      "progress_photo_guidelines",
+      JSON.stringify(guidelinesForApi(progressPhotoGuidelines))
+    );
     return fd;
   };
 
@@ -1757,6 +1796,98 @@ export function BusinessSetting() {
                       </div>
                     ))}
                   </div>
+                </>
+              )}
+
+              {t.id === "progress-photo-guidelines" && (
+                <>
+                  <p className="settings-panel-hint">
+                    Bullet points shown on the Progress Photos (180° View) screen. Leave a language list empty to keep the app&apos;s built-in defaults for that language.
+                  </p>
+                  {[
+                    { lang: "en", label: "English" },
+                    { lang: "hi", label: "Hindi" },
+                  ].map(({ lang, label }) => (
+                    <div key={lang} style={{ marginBottom: 28 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 12,
+                          marginBottom: 12,
+                        }}
+                      >
+                        <h3 className="settings-panel-hint" style={{ margin: 0, fontWeight: 700 }}>
+                          {label}
+                        </h3>
+                        {canEdit ? (
+                          <button
+                            type="button"
+                            className="btn btn--ghost btn--sm"
+                            onClick={() =>
+                              setProgressPhotoGuidelines((prev) => ({
+                                ...prev,
+                                [lang]: [...(prev[lang] || []), ""],
+                              }))
+                            }
+                          >
+                            Add guideline
+                          </button>
+                        ) : null}
+                      </div>
+                      {(progressPhotoGuidelines[lang] || []).length === 0 ? (
+                        <p className="settings-media-card__hint" style={{ margin: 0 }}>
+                          Using app defaults for {label}.
+                        </p>
+                      ) : (
+                        <div className="user-form__grid" style={{ gap: 12 }}>
+                          {progressPhotoGuidelines[lang].map((item, index) => (
+                            <label
+                              key={`${lang}-${index}`}
+                              className="user-field"
+                              style={{ gridColumn: "1 / -1" }}
+                            >
+                              <span className="user-field__label">Guideline {index + 1}</span>
+                              <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                                <textarea
+                                  className="user-field__input"
+                                  rows={2}
+                                  value={item}
+                                  disabled={!canEdit}
+                                  readOnly={!canEdit}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    setProgressPhotoGuidelines((prev) => {
+                                      const nextList = [...(prev[lang] || [])];
+                                      nextList[index] = value;
+                                      return { ...prev, [lang]: nextList };
+                                    });
+                                  }}
+                                  placeholder="Enter guideline text…"
+                                  style={{ flex: 1, resize: "vertical" }}
+                                />
+                                {canEdit ? (
+                                  <button
+                                    type="button"
+                                    className="btn btn--ghost btn--sm"
+                                    onClick={() =>
+                                      setProgressPhotoGuidelines((prev) => ({
+                                        ...prev,
+                                        [lang]: (prev[lang] || []).filter((_, i) => i !== index),
+                                      }))
+                                    }
+                                  >
+                                    Remove
+                                  </button>
+                                ) : null}
+                              </div>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </>
               )}
 

@@ -2,6 +2,7 @@ const { asyncHandler } = require("../../utils/asyncHandler");
 const {
   getAppConfig,
   toPublicAppConfig: resolveAppConfigMediaUrls,
+  normalizeProgressPhotoGuidelines,
 } = require("../../models/appConfigModel");
 
 /**
@@ -44,6 +45,9 @@ function toPublicClientAppConfig(doc) {
     body_measurement_info_image_waist: config.body_measurement_info_image_waist ?? "",
     body_measurement_info_image_hip: config.body_measurement_info_image_hip ?? "",
     body_measurement_info_image_thighs: config.body_measurement_info_image_thighs ?? "",
+    progress_photo_guidelines: normalizeProgressPhotoGuidelines(
+      config.progress_photo_guidelines
+    ),
     address: config.address ?? "",
     latitude: config.latitude ?? "",
     longitude: config.longitude ?? "",

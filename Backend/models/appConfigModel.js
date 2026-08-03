@@ -38,6 +38,37 @@ function normalizeBodyMeasurementGuideType(value, fallback = "none") {
   return BODY_MEASUREMENT_GUIDE_TYPES.has(next) ? next : fallback;
 }
 
+function normalizeGuidelineList(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => String(item ?? "").trim())
+    .filter(Boolean);
+}
+
+function normalizeProgressPhotoGuidelines(value, fallback = null) {
+  const base =
+    fallback && typeof fallback === "object"
+      ? fallback
+      : { en: [], hi: [] };
+  if (Array.isArray(value)) {
+    return { en: normalizeGuidelineList(value), hi: normalizeGuidelineList(base.hi) };
+  }
+  if (!value || typeof value !== "object") {
+    return {
+      en: normalizeGuidelineList(base.en),
+      hi: normalizeGuidelineList(base.hi),
+    };
+  }
+  return {
+    en: normalizeGuidelineList(
+      value.en !== undefined ? value.en : base.en
+    ),
+    hi: normalizeGuidelineList(
+      value.hi !== undefined ? value.hi : base.hi
+    ),
+  };
+}
+
 function toPublicAppConfig(config) {
   if (!config) return null;
   const { payment_methods: _paymentMethods, ...rest } = config;
@@ -69,6 +100,7 @@ async function createAppConfig() {
     body_measurement_guide_yt_link: "",
     body_measurement_guide_video: "",
     ...Object.fromEntries(BODY_MEASUREMENT_INFO_IMAGE_FIELDS.map((field) => [field, ""])),
+    progress_photo_guidelines: { en: [], hi: [] },
     address:        "",
     latitude:       "",
     longitude:      "",
@@ -142,6 +174,8 @@ async function updateAppConfig(updates) {
       nextVal = normalizeBodyMeasurementGuideType(val);
     } else if (key === "body_measurement_guide_yt_link") {
       nextVal = String(val ?? "").trim();
+    } else if (key === "progress_photo_guidelines") {
+      nextVal = normalizeProgressPhotoGuidelines(val);
     }
     exprValues[`:${key}`] = nextVal;
     setExpr += `, #${key} = :${key}`;
@@ -169,4 +203,5 @@ module.exports = {
   BODY_MEASUREMENT_INFO_IMAGE_KEYS,
   BODY_MEASUREMENT_INFO_IMAGE_FIELDS,
   normalizeBodyMeasurementGuideType,
+  normalizeProgressPhotoGuidelines,
 };
