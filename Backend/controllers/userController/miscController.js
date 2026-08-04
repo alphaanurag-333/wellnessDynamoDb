@@ -8,7 +8,7 @@ const { listProgramTestimonials } = require("../../models/programTestimonialMode
 const { listRealPeopleTestimonials } = require("../../models/realPeopleTestimonialModel");
 const { listVideoTestimonials } = require("../../models/videoTestimonials");
 const { getCofounderMessage } = require("../../models/cofounderMessageModel");
-const { listHealthConcerns } = require("../../models/healthConcernModel");
+const { listHealthConcerns, ensureOtherHealthConcern } = require("../../models/healthConcernModel");
 const { listHealthDisorders } = require("../../models/healthDisorderModel");
 const { listHealthTools } = require("../../models/healthToolModel");
 const { listHealthRecipes } = require("../../models/healthRecipeModel");
@@ -203,6 +203,7 @@ exports.getCofounderMessage = asyncHandler(async (req, res) => {
 
 exports.getActiveHealthConcerns = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
+  await ensureOtherHealthConcern();
   const data = resolveListMedia(
     await listHealthConcerns({
       page,

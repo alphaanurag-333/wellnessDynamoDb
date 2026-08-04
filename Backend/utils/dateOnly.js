@@ -26,6 +26,33 @@ function todayDateOnly() {
   return toDateOnlyString(new Date());
 }
 
+/**
+ * Meal-tracking calendar day in Asia/Kolkata, rolling at 01:00.
+ * Times 00:00–00:59 belong to the previous calendar day.
+ * @param {Date} [now]
+ * @param {string} [timeZone]
+ * @returns {string} YYYY-MM-DD
+ */
+function mealTrackingDateOnly(now = new Date(), timeZone = "Asia/Kolkata") {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    hour12: false,
+  });
+  const parts = formatter.formatToParts(now);
+  const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+  let dateOnly = `${map.year}-${map.month}-${map.day}`;
+  // hourCycle can yield "24" for midnight in some engines; treat as 0
+  const hour = Number(map.hour) % 24;
+  if (hour < 1) {
+    dateOnly = addDaysDateOnly(dateOnly, -1) || dateOnly;
+  }
+  return dateOnly;
+}
+
 function addDaysDateOnly(dateOnly, deltaDays) {
   const dt = parseDateOnly(dateOnly);
   if (!dt) return null;
@@ -59,6 +86,7 @@ module.exports = {
   toDateOnlyString,
   parseDateOnly,
   todayDateOnly,
+  mealTrackingDateOnly,
   addDaysDateOnly,
   listDateRange,
   dayLabel,

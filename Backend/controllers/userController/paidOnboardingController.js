@@ -41,9 +41,80 @@ const {
 const {
   listUserLaunchAssessmentsByUserId,
 } = require("../../models/userLaunchAssessmentModel");
+const {
+  ageFromDob,
+  buildMetricSnapshot,
+} = require("../../utils/metabolicMetricsCalculations");
+const {
+  upsertMetabolicMetricLog,
+} = require("../../models/healthProgressMetabolicMetricModel");
+const { toNumberOrNull } = require("../../utils/healthProgressHelpers");
 
 function authedUserId(req) {
   return req.auth?.sub || req.user?.id;
+}
+
+/**
+ * Persist metabolic health metrics (except Fatty Liver Index) when body
+ * measurements are saved. FLI requires blood labs (TG + GGT) and is coach-only.
+ */
+async function syncMetabolicMetricsFromBodyMeasurement(userId, user, measurement) {
+  const heightCm = toNumberOrNull(measurement?.heightCm);
+  const weightKg = toNumberOrNull(measurement?.weightKg);
+  const neckCm = toNumberOrNull(measurement?.neckCm);
+  const waistCm = toNumberOrNull(measurement?.waistCm);
+  const hipCm = toNumberOrNull(measurement?.hipCm);
+  const activityLevel = measurement?.activityLevel || "moderately_active";
+  const gender = user?.gender;
+  const age = ageFromDob(user?.dob);
+  const recordedAt = new Date().toISOString();
+
+  const upsertSnapshot = async (metricType, inputs) => {
+    try {
+      const snapshot = buildMetricSnapshot(metricType, inputs);
+      await upsertMetabolicMetricLog({
+        userId,
+        ...snapshot,
+        recordedAt,
+      });
+    } catch {
+      // Body measurement save should not fail if metric sync fails.
+    }
+  };
+
+  if (heightCm && weightKg) {
+    await upsertSnapshot("bmi", { gender, age, heightCm, weightKg });
+  }
+
+  if (heightCm && weightKg && age) {
+    await upsertSnapshot("bmr", {
+      gender,
+      age,
+      heightCm,
+      weightKg,
+      activityLevel,
+    });
+  }
+
+  if (heightCm && neckCm && waistCm) {
+    await upsertSnapshot("body_fat", {
+      gender,
+      age,
+      heightCm,
+      neckCm,
+      waistCm,
+      hipCm,
+    });
+  }
+
+  if (heightCm && waistCm && age) {
+    await upsertSnapshot("visceral_fat", {
+      gender,
+      age,
+      heightCm,
+      waistCm,
+    });
+  }
 }
 
 function parseBoolStrict(value) {
@@ -234,6 +305,8 @@ exports.submitBodyMeasurementsController = asyncHandler(async (req, res) => {
     thighsCm: body.thighsCm ?? body.thighs_cm,
     activityLevel: body.activityLevel ?? body.activity_level,
   });
+
+  await syncMetabolicMetricsFromBodyMeasurement(userId, user, measurement);
 
   const currentStatus = normalizePaidOnboardingStepStatus(user.paidOnboardingStepStatus);
   const nextStatus = markStepDone(currentStatus, "bodyMeasurement");

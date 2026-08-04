@@ -111,10 +111,10 @@ Use the `accessToken` from the response as `<USER_ACCESS_TOKEN>`.
 
 | Field | Type | Required | Rules |
 |-------|------|----------|-------|
-| `date` | string | No | `YYYY-MM-DD`; defaults to today |
+| `date` | string | No | `YYYY-MM-DD`; defaults to the current **meal day** (Asia/Kolkata, rolls at 01:00 — see below) |
 | `entryTime` | string | No | `HH:MM` (24h), e.g. `"08:30"` |
 | `category` | string | No | `functional_juice`, `salad`, `meal`, `beverage`, `snacks`, `protein`; default `meal` |
-| `mealType` | string | No | e.g. `First`, `Second`, `Snack`; max 60 chars; default `First` |
+| `mealType` | string | No | e.g. `First`, `Second`, `Third`; max 60 chars; default `First` |
 | `description` | string | No | Max 1000 chars |
 | `items` | array | No | Max 50 items; each needs `name` (required), `quantityGm` (≥ 0) |
 | `proteinGm` | number | No | ≥ 0; default `0` |
@@ -122,6 +122,14 @@ Use the `accessToken` from the response as `<USER_ACCESS_TOKEN>`.
 | `carbsGm` | number | No | ≥ 0; default `0` |
 | `caloriesKcal` | number | No | ≥ 0; default `0` |
 | `photo` | file | No | Multipart only; jpeg/png/webp |
+
+### Meal day + type uniqueness
+
+- **Meal day** uses timezone `Asia/Kolkata` and resets at **01:00**. Times `00:00`–`00:59` still belong to the previous calendar day.
+- Per meal day, a user may log each `(category, mealType)` pair **at most once** among logs with status `pending_review` or `approved`.
+- A **rejected** log frees that type for the same category again.
+- Example: Meal + First logged → First is unavailable for category `meal` until the next meal day; Beverage + First remains allowed.
+- Creating a duplicate returns a validation error (e.g. `First is already logged for meal today`).
 
 ---
 
@@ -363,6 +371,7 @@ All errors follow this shape:
 | `403` | User not Heal tier | `Seek to Heal subscription required for this feature` |
 | `404` | Log not found or not owned | `Meal log not found` |
 | `400` | Invalid category | `category must be one of: functional_juice, salad, meal, beverage, snacks, protein` |
+| `400` | Duplicate type for category today | `First is already logged for meal today` |
 | `400` | Invalid time | `entryTime must be in HH:MM format` |
 | `400` | Invalid items (multipart) | `items must be a valid JSON array` |
 | `400` | Invalid photo type | `Only JPEG, PNG, and WebP images are allowed` |
@@ -385,15 +394,15 @@ All errors follow this shape:
 
 ## Mobile app flow (recommended)
 
-1. **Macro Insights screen** → `GET /user/meal-tracking?days=7`
-2. **Submit meal** → `POST /user/meal-tracking`
+1. **Macro Insights screen** → `GET /user/meal-tracking?date=<mealDay>&days=7` (pass Asia/Kolkata meal day so charts/logs align with the 01:00 reset)
+2. **Submit meal** → `POST /user/meal-tracking` (hide already-used First/Second/Third for the selected category)
 3. **Detailed edit** → `GET /user/meal-tracking/:logId` then `PUT`
 4. **Delete entry** → `DELETE /user/meal-tracking/:logId`
 
 ```
 App  ->  POST /user/auth/login/password      ->  accessToken
-App  ->  GET  /user/meal-tracking?days=7      ->  logs + macroSummary (charts)
-App  ->  POST /user/meal-tracking             ->  mealLog created
+App  ->  GET  /user/meal-tracking?date=<mealDay>&days=7  ->  logs + macroSummary (charts)
+App  ->  POST /user/meal-tracking             ->  mealLog created (rejects duplicate category+type)
 App  ->  PUT  /user/meal-tracking/:logId      ->  mealLog updated
 App  ->  DELETE /user/meal-tracking/:logId    ->  deleted
 ```

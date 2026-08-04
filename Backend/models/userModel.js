@@ -236,6 +236,7 @@ function sanitizeUpdateField(key, value) {
       "state",
       "city",
       "primaryHealthConcern",
+      "primaryHealthConcernOther",
       "fcm_id",
       "otp",
       "resetPasswordToken",
@@ -305,6 +306,10 @@ function buildUserItem(input, { id, now } = {}) {
     city: input.city != null ? String(input.city).trim() || null : null,
     primaryHealthConcern:
       input.primaryHealthConcern != null ? String(input.primaryHealthConcern).trim() || null : null,
+    primaryHealthConcernOther:
+      input.primaryHealthConcernOther != null
+        ? String(input.primaryHealthConcernOther).trim() || null
+        : null,
     termsAccepted: Boolean(input.termsAccepted),
     termsAcceptedAt: input.termsAcceptedAt ? normalizeDob(input.termsAcceptedAt) : null,
     profileImage: normalizeProfileImageField(input.profileImage),

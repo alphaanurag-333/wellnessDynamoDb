@@ -1,6 +1,10 @@
-const { getHealthConcernById } = require("../models/healthConcernModel");
+const {
+  getHealthConcernById,
+  ensureOtherHealthConcern,
+} = require("../models/healthConcernModel");
 
 const MAX_HEALTH_CONCERN_OTHER_LENGTH = 100;
+const OTHER_HEALTH_CONCERN_SENTINEL = "__other__";
 
 function parseHealthConcernIdFromBody(body) {
   if (!body || typeof body !== "object") return null;
@@ -18,6 +22,8 @@ function parseHealthConcernOtherFromBody(body) {
   const raw =
     body.healthConcernOther ??
     body.health_concern_other ??
+    body.primaryHealthConcernOther ??
+    body.primary_health_concern_other ??
     body.customHealthConcern ??
     body.custom_health_concern ??
     null;
@@ -32,7 +38,7 @@ async function resolveHealthConcernForConsultancy(
   healthConcernId,
   { healthConcernOther } = {},
 ) {
-  const id = String(healthConcernId || "").trim();
+  let id = String(healthConcernId || "").trim();
   if (!id) {
     const err = new Error("healthConcernId is required");
     err.name = "ValidationError";
@@ -48,7 +54,11 @@ async function resolveHealthConcernForConsultancy(
     throw err;
   }
 
-  const concern = await getHealthConcernById(id);
+  let concern =
+    id === OTHER_HEALTH_CONCERN_SENTINEL
+      ? await ensureOtherHealthConcern()
+      : await getHealthConcernById(id);
+
   if (!concern || String(concern.status || "").toLowerCase() !== "active") {
     const err = new Error("healthConcernId is invalid or inactive");
     err.name = "ValidationError";
@@ -79,5 +89,7 @@ module.exports = {
   parseHealthConcernIdFromBody,
   parseHealthConcernOtherFromBody,
   resolveHealthConcernForConsultancy,
+  isOtherHealthConcernTitle,
+  OTHER_HEALTH_CONCERN_SENTINEL,
   MAX_HEALTH_CONCERN_OTHER_LENGTH,
 };

@@ -124,6 +124,38 @@ async function listHealthConcerns({ page = 1, limit = 10, status, search } = {})
   };
 }
 
+function isOtherHealthConcernTitle(title) {
+  return String(title || "").trim().toLowerCase() === "other";
+}
+
+async function findOtherHealthConcern({ status = "active" } = {}) {
+  const data = await listHealthConcerns({
+    page: 1,
+    limit: 200,
+    status,
+  });
+  return (
+    data.healthConcerns.find((hc) => isOtherHealthConcernTitle(hc.title)) ||
+    null
+  );
+}
+
+async function ensureOtherHealthConcern() {
+  const existing = await findOtherHealthConcern({ status: "active" });
+  if (existing) return existing;
+
+  const inactiveOther = await findOtherHealthConcern({ status: "inactive" });
+  if (inactiveOther) {
+    return updateHealthConcern(inactiveOther.id, { status: "active" });
+  }
+
+  return createHealthConcern({
+    title: "Other",
+    description: "Custom health concern",
+    status: "active",
+  });
+}
+
 module.exports = {
   createHealthConcern,
   getHealthConcernById,
@@ -131,4 +163,7 @@ module.exports = {
   updateHealthConcern,
   deleteHealthConcern,
   listHealthConcerns,
+  findOtherHealthConcern,
+  ensureOtherHealthConcern,
+  isOtherHealthConcernTitle,
 };

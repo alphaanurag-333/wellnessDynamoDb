@@ -10,6 +10,7 @@ const { docClient } = require("../config/db");
 const { resolvePublicUrl, deleteStoredMedia } = require("../utils/s3");
 const {
   todayDateOnly,
+  mealTrackingDateOnly,
   listDateRange,
   dayLabel,
   isValidDateOnly,
@@ -200,6 +201,17 @@ function toMealLogPublic(item) {
   };
 }
 
+function mealTypeKey(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase();
+}
+
+function isActiveMealLogStatus(status) {
+  const next = normalizeStatus(status, "approved");
+  return next === "pending_review" || next === "approved";
+}
+
 async function createMealLog({
   userId,
   coachId,
@@ -223,7 +235,9 @@ async function createMealLog({
   const uid = String(userId || "").trim();
   if (!uid) throw new Error("userId is required");
 
-  const logDate = isValidDateOnly(date) ? date : todayDateOnly();
+  const logDate = isValidDateOnly(date) ? date : mealTrackingDateOnly();
+  const normalizedCategory = normalizeCategory(category);
+  const normalizedMealType = normalizeMealType(mealType);
   const role = normalizeLoggedByRole(loggedByRole);
   const resolvedStatus =
     status !== undefined
@@ -232,14 +246,31 @@ async function createMealLog({
         ? "pending_review"
         : "approved";
 
+  const dayLogs = await queryMealLogsByUserAndDateRange(uid, logDate, logDate);
+  const typeKey = mealTypeKey(normalizedMealType);
+  const duplicate = dayLogs.find((log) => {
+    if (!isActiveMealLogStatus(log.status)) return false;
+    if (String(log.category || "").trim().toLowerCase() !== normalizedCategory) {
+      return false;
+    }
+    return mealTypeKey(log.mealType) === typeKey;
+  });
+  if (duplicate) {
+    const err = new Error(
+      `${normalizedMealType} is already logged for ${normalizedCategory} today`
+    );
+    err.name = "ValidationError";
+    throw err;
+  }
+
   const now = new Date().toISOString();
   const item = {
     id: uuidv4(),
     userId: uid,
     date: logDate,
     entryTime: normalizeEntryTime(entryTime),
-    category: normalizeCategory(category),
-    mealType: normalizeMealType(mealType),
+    category: normalizedCategory,
+    mealType: normalizedMealType,
     description: normalizeDescription(description),
     items: normalizeItems(items),
     photoKey: photoKey || null,

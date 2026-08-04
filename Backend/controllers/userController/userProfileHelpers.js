@@ -9,6 +9,10 @@ const {
   resolvePublicUrl,
 } = require("../../utils/s3");
 const { getHealthConcernById } = require("../../models/healthConcernModel");
+const {
+  parseHealthConcernOtherFromBody,
+  MAX_HEALTH_CONCERN_OTHER_LENGTH,
+} = require("../../services/consultancyHealthConcern");
 const { getWellnessCoachById } = require("../../models/wellnessCoachModel");
 const { getAssistantWellnessCoachById } = require("../../models/assistantWellnessCoachModel");
 const {
@@ -93,6 +97,34 @@ function parseUserFields(body, { requirePassword = false } = {}) {
     body.primaryHealthConcern !== undefined
       ? String(body.primaryHealthConcern || "").trim() || null
       : undefined;
+  const primaryHealthConcernOtherRaw = parseHealthConcernOtherFromBody({
+    ...body,
+    healthConcernOther:
+      body.primaryHealthConcernOther ??
+      body.primary_health_concern_other ??
+      body.healthConcernOther ??
+      body.health_concern_other ??
+      body.customHealthConcern ??
+      body.custom_health_concern,
+  });
+  const primaryHealthConcernOther =
+    body.primaryHealthConcernOther !== undefined ||
+    body.primary_health_concern_other !== undefined ||
+    body.healthConcernOther !== undefined ||
+    body.health_concern_other !== undefined ||
+    body.customHealthConcern !== undefined ||
+    body.custom_health_concern !== undefined
+      ? primaryHealthConcernOtherRaw || null
+      : undefined;
+  if (
+    primaryHealthConcernOther != null &&
+    primaryHealthConcernOther.length > MAX_HEALTH_CONCERN_OTHER_LENGTH
+  ) {
+    throw new AppError(
+      `primaryHealthConcernOther must be at most ${MAX_HEALTH_CONCERN_OTHER_LENGTH} characters`,
+      400
+    );
+  }
   const termsAccepted = parseBool(body.termsAccepted);
   const termsAcceptedAt =
     body.termsAcceptedAt !== undefined ? normalizeDob(body.termsAcceptedAt) : undefined;
@@ -125,6 +157,7 @@ function parseUserFields(body, { requirePassword = false } = {}) {
     state: state ?? null,
     city: city ?? null,
     primaryHealthConcern: primaryHealthConcern ?? null,
+    primaryHealthConcernOther: primaryHealthConcernOther ?? null,
     termsAccepted: termsAccepted ?? false,
     termsAcceptedAt: termsAcceptedAt ?? null,
     fcm_id: fcm_id ?? null,
@@ -166,10 +199,18 @@ async function enrichUser(user) {
   if (concernId && typeof concernId === "string") {
     const concern = await getHealthConcernById(concernId);
     if (concern) {
+      const isOther =
+        String(concern.title || "")
+          .trim()
+          .toLowerCase() === "other";
+      const customTitle =
+        isOther && pub.primaryHealthConcernOther
+          ? String(pub.primaryHealthConcernOther).trim()
+          : "";
       pub.primaryHealthConcern = {
         _id: concern._id || concern.id,
         id: concern.id,
-        title: concern.title || "",
+        title: customTitle || concern.title || "",
         description: concern.description || "",
         icon: concern.icon || "",
         status: concern.status || "",

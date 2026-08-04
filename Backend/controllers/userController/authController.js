@@ -13,6 +13,11 @@ const config = require("../../config");
 const { assertPasswordPolicy } = require("../../utils/passwordPolicy");
 const { getHealthConcernById } = require("../../models/healthConcernModel");
 const {
+  resolveHealthConcernForConsultancy,
+  parseHealthConcernOtherFromBody,
+  isOtherHealthConcernTitle,
+} = require("../../services/consultancyHealthConcern");
+const {
   createUser,
   getUserById,
   getUserByEmail,
@@ -216,8 +221,25 @@ exports.registerUser = asyncHandler(async (req, res) => {
   }
 
   if (fields.primaryHealthConcern) {
-    const concern = await getHealthConcernById(fields.primaryHealthConcern);
-    if (!concern) throw new AppError("primaryHealthConcern not found", 400);
+    try {
+      const healthConcernOther =
+        fields.primaryHealthConcernOther ||
+        parseHealthConcernOtherFromBody(req.body);
+      const resolved = await resolveHealthConcernForConsultancy(
+        fields.primaryHealthConcern,
+        { healthConcernOther }
+      );
+      fields.primaryHealthConcern = resolved.healthConcernId;
+      const concern = await getHealthConcernById(resolved.healthConcernId);
+      fields.primaryHealthConcernOther = isOtherHealthConcernTitle(concern?.title)
+        ? String(healthConcernOther || "").trim() || null
+        : null;
+    } catch (err) {
+      if (err?.name === "ValidationError") {
+        throw new AppError(err.message, 400);
+      }
+      throw err;
+    }
   }
 
   const uploadedProfile = await uploadFileFromRequest(req, "user");
