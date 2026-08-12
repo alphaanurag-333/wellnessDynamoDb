@@ -1,0 +1,81 @@
+ </div>
+              <sc-if value="{{ champCollapsed }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;gap:9px;align-items:stretch;">
+                  <sc-for list="{{ champPodium }}" as="p" hint-placeholder-count="3">
+                    <div style="{{ p.style }}">
+                      <span style="{{ p.rankStyle }}">{{ p.rank }}</span>
+                      <div style="flex:1;min-width:0;">
+                        <div style="font-size:12px;font-weight:700;color:#16233f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ p.name }}</div>
+                        <div style="font-size:10px;color:#9aa6b8;margin-top:1px;">{{ p.sub }}</div>
+                      </div>
+                      <span style="font-size:15px;font-weight:800;color:#b8860b;font-variant-numeric:tabular-nums;">{{ p.score }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+              <sc-if value="{{ champExpanded }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;gap:14px;background:linear-gradient(180deg,#fffaf0,#fdf0cf);border:1px solid #f2d675;border-radius:13px;padding:11px 18px;margin-bottom:9px;">
+                <span style="font-size:31px;">🥇</span>
+                <div style="flex:1;"><div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a9861a;">Champion · {{ champPeriodLabel }}</div><div style="font-size:20px;font-weight:780;color:#16233f;letter-spacing:-.01em;margin-top:2px;">{{ champName }}</div></div>
+                <div style="text-align:right;"><div style="font-size:26px;font-weight:790;color:#b8860b;font-variant-numeric:tabular-nums;">{{ champScore }}</div><div style="font-size:10.5px;color:#a9861a;font-weight:600;">points</div></div>
+              </div>
+              <div style="display:grid;grid-template-columns:30px 1fr 70px 62px;gap:8px;padding:6px 11px;font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#8a97ac;"><div>#</div><div>Client</div><div style="text-align:right;">Score</div><div style="text-align:right;">Days</div></div>
+              <div style="display:flex;flex-direction:column;gap:4px;max-height:172px;overflow-y:auto;padding-right:2px;">
+                <sc-for list="{{ champRows }}" as="c" hint-placeholder-count="4">
+                  <div sc-camel-on-click="{{ c.open }}" class="cdact" style="{{ c.rowStyle }}" style-hover="padding:9px 11px;box-shadow:0 4px 12px rgba(184,134,11,.16);border-color:#f2d675;">
+                    <span style="{{ c.rankStyle }}">{{ c.rank }}</span>
+                    <div style="min-width:0;">
+                      <div style="display:flex;align-items:center;gap:5px;"><span style="font-size:12px;font-weight:680;color:#16233f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ c.name }}</span><span style="font-size:10px;">{{ c.medal }}</span></div>
+                      <div style="height:4px;background:#f2f5fa;border-radius:2px;overflow:hidden;margin-top:3px;"><div style="{{ c.barStyle }}"></div></div>
+                    </div>
+                    <div style="text-align:right;font-size:12px;font-weight:780;color:#16233f;font-variant-numeric:tabular-nums;">{{ c.score }}</div>
+                    <div style="text-align:right;font-size:10.5px;color:#8a97ac;font-variant-numeric:tabular-nums;">{{ c.days }}d</div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="font-size:10.5px;color:#a9861a;margin-top:10px;display:flex;align-items:center;gap:6px;">⚙️ Ranked automatically from Daily Reflection scores · {{ champPeriodLabel }} · {{ champTotal }} clients</div>
+              </sc-if>
+            </div>
+          </sc-if>
+
+            <sc-if value="{{ isAdminDash }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:26px 0 10px;flex-wrap:wrap;">
+              <div style="font-size:12px;font-weight:700;letter-spacing:.04em;color:#8a97ac;text-transform:uppercase;">Revenue Analytics</div>
+              <span style="font-size:11px;color:#9aa6b8;">Overall · till today</span>
+            </div>
+
+            <div style="display:flex;gap:12px;align-items:stretch;margin-bottom:12px;">
+              <div style="flex:0 0 246px;background:linear-gradient(150deg,#0f1d3a,#1d2c50);border-radius:14px;padding:16px 18px;box-shadow:0 8px 22px rgba(16,35,63,.26);display:flex;flex-direction:column;">
+                <div style="font-size:10px;color:#9fb0cc;font-weight:800;text-transform:uppercase;letter-spacing:.07em;">{{ anRevHero.label }}</div>
+                <div style="font-size:10.5px;color:#8ea0bf;margin-top:2px;">{{ anRevHero.scopeLabel }}</div>
+                <div style="font-size:31px;font-weight:800;letter-spacing:-.035em;color:#fff;font-variant-numeric:tabular-nums;line-height:1.05;margin-top:12px;">{{ anRevHero.value }}</div>
+                <div style="margin-top:auto;padding-top:11px;border-top:1px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+                  <div>
+                    <div style="font-size:9px;color:#8ea0bf;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">{{ anRevHero.monthLabelShort }}</div>
+                    <div style="font-size:15px;font-weight:780;color:#fff;font-variant-numeric:tabular-nums;line-height:1.1;">{{ anRevHero.monthValue }}</div>
+                  </div>
+                  <span style="{{ anRevHero.deltaStyle }}">{{ anRevHero.delta }}</span>
+                </div>
+              </div>
+              <div style="flex:1;min-width:0;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+                <sc-for list="{{ anRevCardsAll }}" as="k" hint-placeholder-count="4">
+                  <div class="cdact" style="position:relative;overflow:hidden;min-width:0;background:#fff;border:1px solid #eef1f6;border-radius:12px;padding:12px 13px 11px;box-shadow:0 1px 2px rgba(16,35,63,.04);display:flex;flex-direction:column;gap:5px;transition:transform .15s ease,box-shadow .15s ease;" style-hover="box-shadow:0 6px 18px rgba(94,106,210,.12);transform:translateY(-2px);">
+                    <span style="{{ k.topBar }}"></span>
+                    <div style="font-size:10px;color:#8a97ac;font-weight:700;text-transform:uppercase;letter-spacing:.03em;line-height:1.25;">{{ k.label }}</div>
+                    <div style="font-size:19px;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.05;{{ k.accent }}">{{ k.value }}</div>
+                    <sc-if value="{{ k.hasShare }}" hint-placeholder-val="{{ true }}">
+                      <div style="height:5px;background:#f2f5fa;border-radius:3px;overflow:hidden;margin-top:2px;"><div style="{{ k.barStyle }}"></div></div>
+                      <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;"><span style="font-size:9.5px;color:#9aa6b8;font-variant-numeric:tabular-nums;">{{ k.shareLabel }}</span><sc-if value="{{ k.hasDelta }}" hint-placeholder-val="{{ false }}"><span style="{{ k.deltaStyle }}">{{ k.delta }}</span></sc-if></div>
+                    </sc-if>
+                    <sc-if value="{{ k.isAvg }}" hint-placeholder-val="{{ false }}">
+                      <sc-if value="{{ k.hasDelta }}" hint-placeholder-val="{{ false }}"><div style="margin-top:auto;display:flex;align-items:center;gap:6px;"><span style="{{ k.deltaStyle }}">{{ k.delta }}</span><span style="font-size:9.5px;color:#9aa6b8;">vs prev month</span></div></sc-if>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:22px 0 10px;flex-wrap:wrap;">
+              <div style="font-size:12px;font-weight:700;letter-spacing:.04em;color:#8a97ac;text-transform:uppercase;">Financial year · Apr → Mar</div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <button sc-camel-on-click="{{ openP

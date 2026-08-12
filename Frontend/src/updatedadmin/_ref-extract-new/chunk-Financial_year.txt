@@ -1,0 +1,93 @@
+ style="{{ k.deltaStyle }}">{{ k.delta }}</span><span style="font-size:9.5px;color:#9aa6b8;">vs prev month</span></div></sc-if>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:22px 0 10px;flex-wrap:wrap;">
+              <div style="font-size:12px;font-weight:700;letter-spacing:.04em;color:#8a97ac;text-transform:uppercase;">Financial year · Apr → Mar</div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <button sc-camel-on-click="{{ openPayModal }}" style="height:34px;padding:0 13px;border-radius:9px;border:1px solid #dcdff7;background:#eef0fc;color:#5e6ad2;font-weight:700;font-size:12px;cursor:pointer;">💳 View payments</button>
+                <sc-raw-select value="{{ anFy }}" sc-camel-on-change="{{ setAnFy }}" style="height:34px;padding:0 26px 0 11px;border:1px solid #dcdff7;border-radius:9px;background:#f7f8fd;font-size:12.5px;font-weight:700;color:#5e6ad2;cursor:pointer;outline:none;">
+                  <sc-for list="{{ anFyOpts }}" as="o" hint-placeholder-count="2"><option value="{{ o.id }}">{{ o.label }}</option></sc-for>
+                </sc-raw-select>
+                <sc-raw-select value="{{ anMonth }}" sc-camel-on-change="{{ setAnMonth }}" style="height:34px;padding:0 26px 0 11px;border:1px solid #e6ebf2;border-radius:9px;background:#fff;font-size:12.5px;font-weight:650;color:#16233f;cursor:pointer;outline:none;">
+                  <sc-for list="{{ anMonthOpts }}" as="o" hint-placeholder-count="8"><option value="{{ o.id }}">{{ o.label }}</option></sc-for>
+                </sc-raw-select>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1.35fr 1fr;gap:12px;margin-bottom:12px;">
+              <div style="background:#fff;border:1px solid #eef1f6;border-radius:12px;padding:16px 18px;box-shadow:0 1px 2px rgba(16,35,63,.04);">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+                  <div><div style="font-size:13.5px;font-weight:750;color:#16233f;">Revenue trend</div><div style="font-size:11px;color:#9aa6b8;">{{ anFy }} · Apr → Mar · tap a month</div></div>
+                  <div style="display:flex;gap:12px;"><span style="display:inline-flex;align-items:center;gap:5px;font-size:10.5px;color:#8a97ac;font-weight:600;"><span style="width:9px;height:9px;border-radius:3px;background:#2b8f5b;display:inline-block;"></span>Program</span><span style="display:inline-flex;align-items:center;gap:5px;font-size:10.5px;color:#8a97ac;font-weight:600;"><span style="width:9px;height:9px;border-radius:3px;background:#5e6ad2;display:inline-block;"></span>Consultancy</span></div>
+                </div>
+                <div style="display:flex;align-items:flex-end;gap:12px;height:172px;">
+                  <sc-for list="{{ anRevTrend }}" as="b" hint-placeholder-count="6">
+                    <div sc-camel-on-click="{{ b.pick }}" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:6px;cursor:pointer;">
+                      <span style="font-size:9.5px;font-weight:750;color:#3a4a63;font-variant-numeric:tabular-nums;">{{ b.total }}</span>
+                      <div style="flex:1;width:100%;display:flex;align-items:flex-end;justify-content:center;gap:4px;">
+                        <div style="{{ b.progStyle }}"></div><div style="{{ b.consStyle }}"></div>
+                      </div>
+                      <span style="{{ b.labelStyle }}">{{ b.label }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="background:#fff;border:1px solid #eef1f6;border-radius:12px;padding:16px 18px;box-shadow:0 1px 2px rgba(16,35,63,.04);">
+                <div style="font-size:13.5px;font-weight:750;color:#16233f;margin-bottom:2px;">Revenue by product</div>
+                <div style="font-size:11px;color:#9aa6b8;margin-bottom:14px;">{{ anMonthLabel }}</div>
+                <div style="display:flex;flex-direction:column;gap:13px;">
+                  <sc-for list="{{ anRevByProduct }}" as="p" hint-placeholder-count="3">
+                    <div>
+                      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:5px;"><span style="font-size:11.5px;color:#5a6b85;font-weight:650;">{{ p.label }}</span><span style="font-size:12.5px;font-weight:750;color:#16233f;font-variant-numeric:tabular-nums;">{{ p.value }}</span></div>
+                      <div style="height:7px;background:#f2f5fa;border-radius:4px;overflow:hidden;"><div style="{{ p.barStyle }}"></div></div>
+                      <div style="font-size:9.5px;color:#a7b2c2;margin-top:3px;font-variant-numeric:tabular-nums;">{{ p.pctLabel }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1.35fr 1fr;gap:12px;margin-bottom:12px;">
+              <div style="background:#fff;border:1px solid #eef1f6;border-radius:12px;padding:16px 18px;box-shadow:0 1px 2px rgba(16,35,63,.04);">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+                  <div><div style="font-size:13.5px;font-weight:750;color:#16233f;">Users onboarded</div><div style="font-size:11px;color:#9aa6b8;">{{ anFy }} · Apr → Mar</div></div>
+                  <span style="font-size:11px;font-weight:700;color:#2b8f5b;background:#e7f6ee;border:1px solid #cdeede;border-radius:7px;padding:3px 9px;">{{ anOnbTotal }} in {{ anFy }}</span>
+                </div>
+                <div style="display:flex;align-items:flex-end;gap:12px;height:150px;">
+                  <sc-for list="{{ anOnboard }}" as="b" hint-placeholder-count="6">
+                    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:6px;">
+                      <span style="font-size:10.5px;font-weight:750;color:#3a4a63;font-variant-numeric:tabular-nums;">{{ b.count }}</span>
+                      <div style="flex:1;width:100%;display:flex;align-items:flex-end;justify-content:center;"><div style="{{ b.barStyle }}"></div></div>
+                      <span style="{{ b.labelStyle }}">{{ b.label }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="background:#fff;border:1px solid #eef1f6;border-radius:12px;padding:16px 18px;box-shadow:0 1px 2px rgba(16,35,63,.04);">
+                <div style="font-size:13.5px;font-weight:750;color:#16233f;margin-bottom:2px;">Users by tier</div>
+                <div style="font-size:11px;color:#9aa6b8;margin-bottom:10px;">Seek, Heal &amp; consultancy-only</div>
+                <div style="display:flex;align-items:center;gap:20px;">
+                  <div style="flex:0 0 auto;">{{ donut }}</div>
+                  <div style="flex:1;display:flex;flex-direction:column;gap:12px;">
+                    <sc-for list="{{ tierLegend }}" as="t" hint-placeholder-count="3">
+                      <div style="display:flex;align-items:center;gap:9px;"><span style="{{ t.dot }}"></span><span style="flex:1;font-size:12px;color:#5a6b85;">{{ t.label }}</span><span style="font-size:14px;font-weight:750;color:#16233f;font-variant-numeric:tabular-nums;">{{ t.value }}</span></div>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+            </div>
+            </sc-if>
+        </div>
+      </sc-if>
+
+      <!-- USER MANAGEMENT -->
+      <sc-if value="{{ showUsers }}" hint-placeholder-val="{{ false }}">
+        <div style="animation:fadein .3s ease;">
+          <div style="position:relative;display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:14px;padding-right:36px;">
+            <span style="position:absolute;top:0;right:0;"><button sc-camel-on-click="{{ saveNow }}" title="{{ saveNowTitle }}" style="{{ saveNowStyle }}">{{ saveNowIcon }}</button></span>
+            <div style="min-width:0;">
+              <div style="min-width:0;">
+              <h1 style="font-size:23px;font-weight:760;letter-spacing:-.025em;mar

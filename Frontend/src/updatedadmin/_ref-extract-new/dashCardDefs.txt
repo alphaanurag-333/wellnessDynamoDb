@@ -1,0 +1,13 @@
+dashCardDefs=(s.viewAs==='wc')?[['awc','Assistant WC','indigo'],['trainee','Trainee','amber']]
+      :[['wc','Wellness Coach','purple'],['awc','Assistant WC','indigo'],['support','Support','green'],['trainee','Trainee','amber']];
+    const dashRoleCards=dashCardDefs.map(r=>{const d=staffData[r[0]];
+      const col=colS[r[2]];
+      const pend=[d.cards[1],d.cards[2]].filter(c=>+c[1]>0).map(c=>({label:c[1]+' '+(c[0].toLowerCase().replace('pending','pending').replace('total ','')),
+        style:{fontSize:'9.5px',fontWeight:700,color:'#c2661d',background:'#fdf3ec',border:'1px solid #f6dcc4',borderRadius:'5px',padding:'2px 6px',whiteSpace:'nowrap'}}));
+      return {label:r[1],value:d.cards[0][1],icon:this.icon(I.users,15),
+        iconWrap:{width:'27px',height:'27px',borderRadius:'8px',flex:'0 0 27px',background:col,color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 6px '+col+'55'},
+        accent:{color:col}, topBar:{position:'absolute',top:0,left:0,right:0,height:'3px',background:col},
+        pending:pend.length?pend:[{label:'All clear',style:{fontSize:'9.5px',fontWeight:700,color:'#2b8f5b',background:'#e7f6ee',border:'1px solid #cdeede',borderRadius:'5px',padding:'2px 6px',whiteSpace:'nowrap'}}],
+        open:()=>this.setState({staffModal:{role:r[0],key:'roster',title:d.cards[0][0],sectionTitle:d.title}}),
+        remind:()=>{const names=(d.roster||[]).map(x=>x[0]);
+          this.askRemind({title:'Remind everyone', sub:d.title+(names.le

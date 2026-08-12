@@ -36,7 +36,7 @@ export const publicRouteTree = (
     />
     <Route
       path="/community-guideline"
-      element={<StaticPageView slug="community-guideline" fallbackTitle="Community Guidelines" />}
+      element={<StaticPageView slug="community-guidelines" fallbackTitle="Community Guidelines" />}
     />
     <Route path="/terms" element={<Navigate to="/terms-and-conditions" replace />} />
     {SITE_SECTION_ROUTE_PATHS.map((segment) => (

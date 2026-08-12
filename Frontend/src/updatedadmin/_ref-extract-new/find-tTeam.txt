@@ -1,0 +1,79 @@
+gn-items:center;justify-content:space-between;gap:10px;margin:2px 0 10px;">
+                <div style="font-size:12px;font-weight:700;letter-spacing:.04em;color:#8a97ac;text-transform:uppercase;">{{ tTeam }}</div>
+                <span style="font-size:11px;color:#9aa6b8;">View a role's queue or send a reminder</span>
+              </div>
+              <div style="display:flex;gap:9px;flex-wrap:nowrap;margin-bottom:18px;">
+                <sc-for list="{{ dashRoleCards }}" as="k" hint-placeholder-count="4">
+                  <div class="cdact" style="position:relative;overflow:hidden;flex:1 1 0;min-width:0;background:#fff;border:1px solid #eef1f6;border-radius:12px;padding:12px 13px 11px;box-shadow:0 1px 2px rgba(16,35,63,.04);display:flex;flex-direction:column;gap:6px;transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease;" style-hover="border-color:#c5cbe8;box-shadow:0 6px 18px rgba(94,106,210,.12);transform:translateY(-2px);">
+                    <span style="{{ k.topBar }}"></span>
+                    <div style="display:flex;align-items:center;gap:8px;"><span style="{{ k.iconWrap }}">{{ k.icon }}</span><span style="flex:1;min-width:0;font-size:11px;color:#5a6b85;font-weight:650;line-height:1.25;">{{ k.label }}</span></div>
+                    <div style="font-size:22px;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.05;{{ k.accent }}">{{ k.value }}</div>
+                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                      <sc-for list="{{ k.pending }}" as="p" hint-placeholder-count="2"><span style="{{ p.style }}">{{ p.label }}</span></sc-for>
+                    </div>
+                    <div style="display:flex;gap:5px;margin-top:2px;">
+                      <button sc-camel-on-click="{{ k.open }}" style="flex:1;height:27px;border-radius:7px;border:1px solid #e6ebf2;background:#fff;color:#5e6ad2;font-weight:700;font-size:10.5px;cursor:pointer;">View</button>
+                      <button sc-camel-on-click="{{ k.remind }}" title="Send reminder" style="width:27px;height:27px;border-radius:7px;border:none;background:#eef0fc;color:#5e6ad2;font-size:12px;line-height:1;cursor:pointer;">🔔</button>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+
+              </sc-if>
+
+            <div sc-camel-on-mouse-enter="{{ champOpen }}" sc-camel-on-mouse-leave="{{ champShut }}" style="{{ champCardStyle }}">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+                <div style="display:flex;align-items:center;gap:9px;"><span style="font-size:19px;">🏆</span><div style="font-size:12px;font-weight:700;letter-spacing:.04em;color:#8a97ac;text-transform:uppercase;">Champion leaderboard</div><span style="{{ champHintStyle }}">{{ champHint }}</span></div>
+                <sc-raw-select value="{{ champMonth }}" sc-camel-on-change="{{ setChampMonth }}" style="height:34px;padding:0 26px 0 12px;border:1px solid #e6ebf2;border-radius:9px;background:#fff;font-size:12.5px;font-weight:600;color:#5a6b85;cursor:pointer;outline:none;">
+                  <sc-for list="{{ champMonthOpts }}" as="o" hint-placeholder-count="3"><option value="{{ o.id }}">{{ o.label }}</option></sc-for>
+                </sc-raw-select>
+              </div>
+              <sc-if value="{{ champCollapsed }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;gap:9px;align-items:stretch;">
+                  <sc-for list="{{ champPodium }}" as="p" hint-placeholder-count="3">
+                    <div style="{{ p.style }}">
+                      <span style="{{ p.rankStyle }}">{{ p.rank }}</span>
+                      <div style="flex:1;min-width:0;">
+                        <div style="font-size:12px;font-weight:700;color:#16233f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ p.name }}</div>
+                        <div style="font-size:10px;color:#9aa6b8;margin-top:1px;">{{ p.sub }}</div>
+                      </div>
+                      <span style="font-size:15px;font-weight:800;color:#b8860b;font-variant-numeric:tabular-nums;">{{ p.score }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+              <sc-if value="{{ champExpanded }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;gap:14px;background:linear-gradient(180deg,#fffaf0,#fdf0cf);border:1px solid #f2d675;border-radius:13px;padding:11px 18px;margin-bottom:9px;">
+                <span style="font-size:31px;">🥇</span>
+                <div style="flex:1;"><div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a9861a;">Champion · {{ champPeriodLabel }}</div><div style="font-size:20px;font-weight:780;color:#16233f;letter-spacing:-.01em;margin-top:2px;">{{ champName }}</div></div>
+                <div style="text-align:right;"><div style="font-size:26px;font-weight:790;color:#b8860b;font-variant-numeric:tabular-nums;">{{ champScore }}</div><div style="font-size:10.5px;color:#a9861a;font-weight:600;">points</div></div>
+              </div>
+              <div style="display:grid;grid-template-columns:30px 1fr 70px 62px;gap:8px;padding:6px 11px;font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#8a97ac;"><div>#</div><div>Client</div><div style="text-align:right;">Score</div><div style="text-align:right;">Days</div></div>
+              <div style="display:flex;flex-direction:column;gap:4px;max-height:172px;overflow-y:auto;padding-right:2px;">
+                <sc-for list="{{ champRows }}" as="c" hint-placeholder-count="4">
+                  <div sc-camel-on-click="{{ c.open }}" class="cdact" style="{{ c.rowStyle }}" style-hover="padding:9px 11px;box-shadow:0 4px 12px rgba(184,134,11,.16);border-color:#f2d675;">
+                    <span style="{{ c.rankStyle }}">{{ c.rank }}</span>
+                    <div style="min-width:0;">
+                      <div style="display:flex;align-items:center;gap:5px;"><span style="font-size:12px;font-weight:680;color:#16233f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ c.name }}</span><span style="font-size:10px;">{{ c.medal }}</span></div>
+                      <div style="height:4px;background:#f2f5fa;border-radius:2px;overflow:hidden;margin-top:3px;"><div style="{{ c.barStyle }}"></div></div>
+                    </div>
+                    <div style="text-align:right;font-size:12px;font-weight:780;color:#16233f;font-variant-numeric:tabular-nums;">{{ c.score }}</div>
+                    <div style="text-align:right;font-size:10.5px;color:#8a97ac;font-variant-numeric:tabular-nums;">{{ c.days }}d</div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="font-size:10.5px;color:#a9861a;margin-top:10px;display:flex;align-items:center;gap:6px;">⚙️ Ranked automatically from Daily Reflection scores · {{ champPeriodLabel }} · {{ champTotal }} clients</div>
+              </sc-if>
+            </div>
+          </sc-if>
+
+            <sc-if value="{{ isAdminDash }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:26px 0 10px;flex-wrap:wrap;">
+              <div style="font-size:12px;font-weight:700;letter-spacing:.04em;color:#8a97ac;text-transform:uppercase;">Revenue Analytics</div>
+              <span style="font-size:11px;color:#9aa6b8;">Overall · till today</span>
+            </div>
+
+            <div style="display:flex;gap:12px;align-items:stretch;margin-bottom:12px;">
+              <div style="flex:0 0 246px;background:linear-gradient(150deg,#0f1d3a,#1d2c50);border-radius:14px;padding:16px 18px;box-shadow:0 8px 22px rgba(16,35,63,.26);display:flex;flex-direction:column;">
+                <div style="font-size:10px;color:#9fb0cc;font-weight:800;text-transform:uppercase;letter-spacing:.07em;">{{ anRevHero.label }}</div>
+                <div style="font-size:10.5px;color:#8ea0bf;margin-top:2px;">{{ anRevHero.scope

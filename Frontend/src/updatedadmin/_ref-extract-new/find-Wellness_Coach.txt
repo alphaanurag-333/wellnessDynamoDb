@@ -1,0 +1,60 @@
+:52px 20px;text-align:center;box-shadow:0 1px 2px rgba(16,35,63,.04);">
+                  <div style="font-size:15px;font-weight:700;color:#16233f;margin-bottom:5px;">Nothing waiting on you</div>
+                  <div style="font-size:12.5px;color:#8a97ac;">Permission and role requests raised by a Wellness Coach land here.</div>
+                </div>
+              </sc-if>
+              <div style="display:flex;flex-direction:column;gap:10px;">
+                <sc-for list="{{ acApprRows }}" as="a" hint-placeholder-count="3">
+                  <div style="{{ a.cardStyle }}">
+                    <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+                      <span style="{{ a.kindStyle }}">{{ a.kind }}</span>
+                      <div style="flex:1;min-width:0;">
+                        <div style="font-size:13.5px;font-weight:700;color:#16233f;text-wrap:pretty;">{{ a.title }}</div>
+                        <div style="font-size:11.5px;color:#8a97ac;margin-top:3px;">{{ a.meta }}</div>
+                      </div>
+                      <div style="display:flex;align-items:center;gap:8px;flex:0 0 auto;">
+                        <sc-if value="{{ a.pending }}" hint-placeholder-val="{{ true }}">
+                          <sc-if value="{{ acApprCanDecide }}" hint-placeholder-val="{{ true }}">
+                            <button sc-camel-on-click="{{ a.reject }}" style="height:31px;padding:0 12px;border:1px solid #f6d0d1;border-radius:8px;background:#fff;color:#c0392b;font-weight:640;font-size:11.5px;cursor:pointer;font-family:inherit;">Reject</button>
+                            <button sc-camel-on-click="{{ a.approve }}" style="height:31px;padding:0 14px;border:none;border-radius:8px;background:#2b8f5b;color:#fff;font-weight:650;font-size:11.5px;cursor:pointer;font-family:inherit;">Approve</button>
+                          </sc-if>
+                          <sc-if value="{{ acApprReadOnly }}" hint-placeholder-val="{{ false }}">
+                            <span style="{{ a.statusStyle }}">{{ a.statusLabel }}</span>
+                          </sc-if>
+                        </sc-if>
+                        <sc-if value="{{ a.decided }}" hint-placeholder-val="{{ false }}">
+                          <span style="{{ a.statusStyle }}">{{ a.statusLabel }}</span>
+                        </sc-if>
+                      </div>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <!-- AUDIT LOG -->
+          <sc-if value="{{ acIsAudit }}" hint-placeholder-val="{{ false }}">
+            <div style="max-width:900px;">
+              <div style="font-size:13px;color:#8a97ac;margin-bottom:14px;">Every access change and staff activity, newest first. Requests, approvals, rejections, direct admin edits and what each member did.</div>
+              <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:12px;">
+                <div style="position:relative;">
+                  <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#9aa6b8;display:flex;">{{ searchIcon }}</span>
+                  <input value="{{ acLogQ }}" sc-camel-on-input="{{ onAcLogQ }}" placeholder="Search name, user ID, phone, coach or event" style="width:330px;max-width:100%;height:36px;padding:0 12px 0 34px;border:1px solid #e6ebf2;border-radius:9px;background:#fff;font-size:12.5px;color:#16233f;outline:none;font-family:inherit;" style-focus="border-color:#5e6ad2;">
+                </div>
+                <sc-raw-select value="{{ acLogKind }}" sc-camel-on-change="{{ onAcLogKind }}" style="height:36px;padding:0 30px 0 12px;border:1px solid #e6ebf2;border-radius:9px;background:#fff;font-size:12.5px;font-weight:600;color:#16233f;cursor:pointer;outline:none;font-family:inherit;">
+                  <option value="">All types</option>
+                  <option value="Role">Role changes</option>
+                  <option value="Permission">Permission changes</option>
+                  <option value="Activity">Activity</option>
+                </sc-raw-select>
+                <span style="font-size:11.5px;color:#9aa6b8;font-variant-numeric:tabular-nums;">{{ acLogCount }}</span>
+                <sc-if value="{{ acLogFiltered }}" hint-placeholder-val="{{ false }}">
+                  <button sc-camel-on-click="{{ clearAcLog }}" style="height:36px;padding:0 13px;border:1px solid #e6ebf2;border-radius:9px;background:#fff;color:#5a6b85;font-weight:600;font-size:12px;cursor:pointer;font-family:inherit;">Clear</button>
+                </sc-if>
+              </div>
+              <div style="background:#fff;border:1px solid #e6ebf2;border-radius:12px;overflow-x:auto;overflow-y:hidden;box-shadow:0 1px 2px rgba(16,35,63,.04);">
+                <div style="display:grid;grid-template-columns:84px minmax(240px,1fr) 148px 104px 84px;gap:12px;min-width:760px;padding:11px 18px;background:#f7f9fc;border-bottom:1px solid #eef1f6;font-size:10.5px;font-weight:700;letter-spacing:.05em;color:#8a97ac;text-transform:uppercase;">
+                  <div>Type</div><div>Event</div><div>Subject</div><div>Actor</div><div>When</div>
+                </div>
+                <sc-if value="{{ acLogEmpty }}" hint-placehol

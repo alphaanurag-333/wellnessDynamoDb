@@ -10,6 +10,7 @@ import { CoachLoginPage } from "./wellnessCoach/pages/LoginPage.jsx";
 import { CoachRegisterPage } from "./wellnessCoach/pages/RegisterPage.jsx";
 import { wellnessCoachRouteTree } from "./wellnessCoach/routes/wellnessCoachRoutes.jsx";
 import { publicRouteTree } from "./site/routes/publicRoutes.jsx";
+import { updatedAdminRouteTree } from "./updatedadmin/routes/updatedAdminRoutes.jsx";
 import { SiteNotFoundPage } from "./site/pages/SiteNotFoundPage.jsx";
 import { selectAppConfigData } from "./store/appConfigSelectors.js";
 import { clearAppConfig, fetchAppConfig, fetchPublicAppConfig } from "./store/appConfigSlice.js";
@@ -20,6 +21,7 @@ function portalTitle(pathname, appName) {
   if (pathname.startsWith("/coach")) return `${name} — Coach`;
   if (pathname.startsWith("/assistant")) return `${name} — Assistant`;
   if (pathname.startsWith("/admin")) return `${name} — Admin`;
+  if (pathname.startsWith("/updatedadmin")) return `${name} — Admin Console`;
   return name;
 }
 
@@ -76,6 +78,7 @@ export default function App() {
       <AppConfigSync />
       <Routes>
         {publicRouteTree}
+        {updatedAdminRouteTree}
         <Route path="/login" element={<Navigate to="/admin/login" replace />} />
         <Route path="/coache/*" element={<Navigate to="/assistant" replace />} />
         <Route path="/admin/login" element={<AdminLoginPage />} />
