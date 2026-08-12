@@ -160,6 +160,7 @@ const PERMISSION_GROUPS_RAW = [
     label: "Site Content",
     items: [
       { to: "faq", label: "FAQ", actions: [VIEW, EDIT, DELETE] },
+      { to: "sops", label: "SOP Library", actions: [VIEW, EDIT, DELETE] },
       { to: "contact-inquiries", label: "Contact Inquiries", actions: [VIEW, EDIT, DELETE] },
       { to: "static-pages", label: "Static Pages", actions: [EDIT, DELETE] },
     ],
