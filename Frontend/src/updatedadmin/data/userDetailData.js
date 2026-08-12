@@ -9,6 +9,13 @@ export const CLIENT_MENU = [
   { id: "food", label: "Food & Water Tracking" },
   { id: "bms", label: "Body, Mind & Soul (BMS)" },
   { id: "nutritions", label: "Nutritions" },
+  { id: "health-progress", label: "Health Progress" },
+  { id: "reflection", label: "Daily Reflection form" },
+  { id: "prescription", label: "Wellness Prescription" },
+  { id: "presentable", label: "Presentable Pics" },
+  { id: "exchange", label: "Energy Exchange" },
+  { id: "protocol", label: "Protocol Settings" },
+  { id: "gut", label: "Gut Reset" },
 ];
 
 export const DAILY_METRICS = [
@@ -51,7 +58,7 @@ export const ONBOARDING_STEPS = [
     meetingTitle: "Schedule HAP session",
     meetingNote: "Health Action Plan session — we will set your plan together.",
   },
-  { n: 8, label: "Protocol Settings", section: "internal", doneAction: "schedule-hap" },
+  { n: 8, label: "Protocol Settings", section: "protocol", doneAction: "schedule-hap" },
   { n: 9, label: "Commitment letter", section: "personal" },
   {
     n: 10,

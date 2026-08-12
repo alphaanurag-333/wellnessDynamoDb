@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { INITIAL_NOTIFICATIONS, NAV_ITEMS } from "./data/dashboardData.js";
+import { ProfileModal } from "./components/ProfileModal.jsx";
 import { UpdatedAdminHeader } from "./components/UpdatedAdminHeader.jsx";
 import { UpdatedAdminSidebar } from "./components/UpdatedAdminSidebar.jsx";
 import "./ref-animations.css";
@@ -9,6 +10,7 @@ import "./updatedadmin.css";
 export function UpdatedAdminLayout() {
   const { pathname } = useLocation();
   const [notifOpen, setNotifOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
   const [toast, setToast] = useState("");
   const [toastVisible, setToastVisible] = useState(false);
@@ -62,7 +64,7 @@ export function UpdatedAdminLayout() {
   }
 
   return (
-    <div className="updated-admin">
+    <div className={`updated-admin${pathname.match(/^\/updatedadmin\/users\/\d+/) ? " updated-admin--client-profile" : ""}`}>
       <UpdatedAdminSidebar onLogout={() => showToast("Logout clicked")} />
 
       <div className="main">
@@ -74,12 +76,19 @@ export function UpdatedAdminLayout() {
           onCloseNotif={() => setNotifOpen(false)}
           onMarkAllRead={handleMarkAllRead}
           onNotifClick={handleNotifClick}
+          onOpenProfile={() => setProfileOpen(true)}
           onLogout={() => showToast("Logout clicked")}
         />
         <div className="page-shell">
           <Outlet context={{ showToast }} />
         </div>
       </div>
+
+      <ProfileModal
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        onToast={showToast}
+      />
 
       <div className={`toast${toastVisible ? " toast--show" : ""}`} role="status" aria-live="polite">
         {toast}

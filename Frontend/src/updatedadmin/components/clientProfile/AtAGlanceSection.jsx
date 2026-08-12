@@ -17,6 +17,40 @@ const METRIC_TONE = {
   orange: "#ec7a45",
 };
 
+const RAIN_DROPS = Array.from({ length: 32 }, (_, i) => ({
+  left: `${(i * 13.7 + (i % 6) * 9.3) % 98}%`,
+  delay: `${((i * 0.13) % 1.6).toFixed(2)}s`,
+  duration: `${(0.52 + (i % 8) * 0.07).toFixed(2)}s`,
+  height: `${12 + (i % 6) * 5}px`,
+  opacity: 0.22 + (i % 5) * 0.12,
+}));
+
+function GlanceRainOverlay() {
+  return (
+    <div className="ua-cp-glance-rain" aria-hidden="true">
+      {RAIN_DROPS.map((drop, i) => (
+        <span
+          key={i}
+          className="ua-cp-glance-rain__drop"
+          style={{
+            left: drop.left,
+            height: drop.height,
+            opacity: drop.opacity,
+            animationDelay: drop.delay,
+            animationDuration: drop.duration,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function waterHydrationTip(metric) {
+  const current = parseInt(metric.value, 10) || 6;
+  const goal = parseInt(metric.goal, 10) || 8;
+  return `Hydration — ${current} of ${goal} glasses today`;
+}
+
 function MiniBars({ values, color }) {
   const max = Math.max(...values, 1);
   return (
@@ -150,7 +184,7 @@ function HealthCardsRow({ user, onToast }) {
   );
 }
 
-function DailyActivityBlock({ onToast }) {
+function DailyActivityBlock({ onToast, onWaterHover }) {
   return (
     <>
       <div className="ua-cp-daily-head">
@@ -160,8 +194,18 @@ function DailyActivityBlock({ onToast }) {
       <div className="ua-cp-metrics">
         {DAILY_METRICS.map((m) => {
           const color = METRIC_TONE[m.tone] || METRIC_TONE.blue;
+          const isWater = m.id === "water";
           return (
-            <button key={m.id} type="button" className="ua-cp-metric cdact" onClick={() => onToast(`${m.label} — last 5 records`)}>
+            <button
+              key={m.id}
+              type="button"
+              className={`ua-cp-metric cdact${isWater ? " ua-cp-metric--water" : ""}`}
+              onClick={() => onToast(`${m.label} — last 5 records`)}
+              onMouseEnter={isWater ? () => onWaterHover?.(true, waterHydrationTip(m)) : undefined}
+              onMouseLeave={isWater ? () => onWaterHover?.(false, "") : undefined}
+              onFocus={isWater ? () => onWaterHover?.(true, waterHydrationTip(m)) : undefined}
+              onBlur={isWater ? () => onWaterHover?.(false, "") : undefined}
+            >
               <span className="cdbig">{m.icon}</span>
               <div className="ua-cp-metric__top">
                 <span className="cdemoji ua-cp-metric__icon">{m.icon}</span>
@@ -387,12 +431,26 @@ function OnboardingStatusCard({ user, onToast, onNavigate }) {
           <div className="ua-cp-onboard-next">Next step <strong>{nextStep.label}</strong></div>
         ) : null}
         <div className="ua-cp-onboard-stepper">
-          {steps.map((step) => (
-            <div
-              key={step.n}
-              className={`ua-cp-onboard-dot${step.done ? " ua-cp-onboard-dot--done" : step.n === currentStep.n ? " ua-cp-onboard-dot--current" : ""}`}
-            >
-              {step.done ? "✓" : step.n}
+          {steps.map((step, index) => (
+            <div key={step.n} className="ua-cp-onboard-seg">
+              {index > 0 ? (
+                <span
+                  className={`ua-cp-onboard-seg__bar${steps[index - 1].done ? " ua-cp-onboard-seg__bar--done" : ""}`}
+                  aria-hidden="true"
+                />
+              ) : null}
+              <span
+                className={`ua-cp-onboard-dot${step.done ? " ua-cp-onboard-dot--done" : step.n === currentStep.n ? " ua-cp-onboard-dot--current" : ""}`}
+                title={step.label}
+              >
+                {step.done ? (
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" aria-hidden="true">
+                    <path d="M20 6 9 17l-5-5" />
+                  </svg>
+                ) : (
+                  step.n
+                )}
+              </span>
             </div>
           ))}
         </div>
@@ -479,9 +537,20 @@ export function AtAGlanceSection({ user, onToast, onNavigate }) {
   const [viewMode, setViewMode] = useState(inProgress ? "onboarding" : "onboarded");
   const [reminders, setReminders] = useState(DEFAULT_REMINDERS);
   const [remindersOpen, setRemindersOpen] = useState(false);
+  const [rainActive, setRainActive] = useState(false);
+  const [rainTip, setRainTip] = useState("");
+
+  function handleWaterHover(active, tip) {
+    setRainActive(active);
+    setRainTip(tip || "");
+  }
 
   return (
-    <div className="ua-cp-section ua-cp-section--glance">
+    <div className={`ua-cp-section ua-cp-section--glance${rainActive ? " ua-cp-section--glance-rain" : ""}`}>
+      {rainActive ? <GlanceRainOverlay /> : null}
+      {rainActive && rainTip ? (
+        <div className="ua-cp-glance-rain-tip" role="status">{rainTip}</div>
+      ) : null}
       <GlanceHeader user={user} />
       <PreviewToggle mode={viewMode} onChange={setViewMode} />
 
@@ -489,7 +558,7 @@ export function AtAGlanceSection({ user, onToast, onNavigate }) {
         <>
           <MetabolicSnapshot onToast={onToast} />
           <HealthCardsRow user={user} onToast={onToast} />
-          <DailyActivityBlock onToast={onToast} />
+          <DailyActivityBlock onToast={onToast} onWaterHover={handleWaterHover} />
           <SupplementsBlock onToast={onToast} />
           <CommsBlock
             user={user}

@@ -8,6 +8,7 @@ export function UpdatedAdminHeader({
   onCloseNotif,
   onMarkAllRead,
   onNotifClick,
+  onOpenProfile,
   onLogout,
 }) {
   const panelRef = useRef(null);
@@ -60,7 +61,7 @@ export function UpdatedAdminHeader({
                 <span>🔔</span>
                 <div>
                   <div className="header__notif-title">Notifications</div>
-                  <div className="header__notif-sub">Global · Admin view</div>
+                  <div className="header__notif-sub">Everything across the console</div>
                 </div>
                 <button type="button" className="header__notif-mark" onClick={onMarkAllRead}>
                   Mark all read
@@ -94,7 +95,7 @@ export function UpdatedAdminHeader({
 
         <div className="header__profile">
           <span className="header__profile-badge">Admin</span>
-          <button type="button" className="header__avatar" aria-label="My profile" onClick={onLogout}>
+          <button type="button" className="header__avatar" aria-label="My profile" onClick={onOpenProfile}>
             A
           </button>
         </div>
