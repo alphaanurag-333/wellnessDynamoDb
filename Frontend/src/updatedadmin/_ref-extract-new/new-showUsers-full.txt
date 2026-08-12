@@ -1,0 +1,126 @@
+<!-- USER MANAGEMENT -->
+      <sc-if value="{{ showUsers }}" hint-placeholder-val="{{ false }}">
+        <div style="animation:fadein .3s ease;">
+          <div style="position:relative;display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:14px;padding-right:36px;">
+            <span style="position:absolute;top:0;right:0;"><button sc-camel-on-click="{{ saveNow }}" title="{{ saveNowTitle }}" style="{{ saveNowStyle }}">{{ saveNowIcon }}</button></span>
+            <div style="min-width:0;">
+              <div style="min-width:0;">
+              <h1 style="font-size:23px;font-weight:760;letter-spacing:-.025em;margin:0 0 4px;">User Management</h1>
+              <div style="font-size:13px;color:#8a97ac;"><span style="font-variant-numeric:tabular-nums;font-weight:600;color:#5a6b85;">{{ userCount }}</span> clients · <span sc-camel-on-mouse-enter="{{ banitaIn }}" sc-camel-on-mouse-leave="{{ banitaOut }}" style="{{ scopeChipHover }}">{{ scopeLabel }}</span></div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <div style="position:relative;">
+                <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#9aa6b8;display:flex;">{{ searchIcon }}</span>
+                <input value="{{ userSearch }}" sc-camel-on-input="{{ onUserSearch }}" placeholder="Search name, email, phone" style="width:250px;height:38px;padding:0 12px 0 34px;border:1px solid #e6ebf2;border-radius:9px;background:#fff;font-size:13px;outline:none;">
+              </div>
+              <sc-raw-select sc-camel-on-change="{{ onTierFilter }}" style="height:38px;padding:0 30px 0 12px;border:1px solid #e6ebf2;border-radius:9px;background:#fff;font-size:13px;color:#16233f;outline:none;cursor:pointer;">
+                <option value="">All tiers</option><option value="Seek to Heal">HEAL</option><option value="Consultancy">PWC</option><sc-if value="{{ isAdminDash }}" hint-placeholder-val="{{ true }}"><option value="Seek">SEEK</option></sc-if><option value="Maintenance">MAINTENANCE</option>
+              </sc-raw-select>
+              <sc-raw-select style="height:38px;padding:0 30px 0 12px;border:1px solid #e6ebf2;border-radius:9px;background:#fff;font-size:13px;color:#16233f;outline:none;cursor:pointer;"><option>All status</option><option>Active</option><option>Inactive</option></sc-raw-select>
+              <sc-if value="{{ canExport }}" hint-placeholder-val="{{ true }}"><button style="height:38px;padding:0 15px;border-radius:9px;border:1px solid #e6ebf2;background:#fff;color:#16233f;font-weight:600;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;">{{ exportIcon }} Export CSV</button></sc-if>
+              <sc-if value="{{ editable }}" hint-placeholder-val="{{ true }}"><button style="height:38px;padding:0 16px;border-radius:9px;border:none;background:linear-gradient(180deg,#ee8351,#e56d34);color:#fff;font-weight:650;font-size:13px;cursor:pointer;box-shadow:0 2px 6px rgba(229,109,52,.35);">+ Add user</button></sc-if>
+            </div>
+          </div>
+
+          <sc-if value="{{ coachFilterOn }}" hint-placeholder-val="{{ false }}">
+            <div style="display:inline-flex;align-items:center;gap:9px;background:#eef0fc;border:1px solid #dcdff7;border-radius:10px;padding:7px 12px;margin-bottom:12px;">
+              <span style="font-size:11.5px;font-weight:650;color:#5e6ad2;">Coach: {{ coachFilterName }}</span>
+              <button sc-camel-on-click="{{ clearCoachFilter }}" title="Clear coach filter" style="border:none;background:transparent;color:#8f9adf;cursor:pointer;font-size:15px;line-height:1;">×</button>
+            </div>
+          </sc-if>
+          <div style="display:inline-flex;gap:3px;background:#eef1f6;border:1px solid #e6ebf2;border-radius:12px;padding:4px;margin-bottom:14px;">
+            <sc-for list="{{ userTypeTabs }}" as="t" hint-placeholder-count="4"><button sc-camel-on-click="{{ t.pick }}" style="{{ t.style }}">{{ t.label }} · {{ t.count }}</button></sc-for>
+          </div>
+
+          <sc-if value="{{ readOnly }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:9px;background:#fdf6ec;border:1px solid #f6e2c2;border-radius:10px;padding:11px 15px;margin-bottom:14px;font-size:12.5px;color:#9a6a1c;">{{ eyeIcon }} Read-only view — the <b style="margin:0 3px;">{{ viewAsName }}</b> role can view these records but cannot edit, add, or delete.</div>
+          </sc-if>
+
+          <div style="background:#fff;border:1px solid #e6ebf2;border-radius:12px;overflow:hidden;box-shadow:0 1px 2px rgba(16,35,63,.04);">
+            <div style="display:grid;grid-template-columns:48px 2fr minmax(116px,1.2fr) 1.3fr 1.3fr 1.05fr 1fr 74px;gap:12px;padding:13px 20px;background:#f7f9fc;border-bottom:1px solid #eef1f6;font-size:11px;font-weight:700;letter-spacing:.05em;color:#8a97ac;text-transform:uppercase;">
+              <div>#</div>
+              <div><button sc-camel-on-click="{{ sortName }}" title="Sort by name" style="{{ sortNameStyle }}">User name{{ sortNameCaret }}</button></div>
+              <div>Tier</div><div>Wellness coach</div><div>Assistant WC</div>
+              <div><button sc-camel-on-click="{{ sortActive }}" title="Sort by last active" style="{{ sortActiveStyle }}">Last active{{ sortActiveCaret }}</button></div>
+              <div>Status</div><div></div>
+            </div>
+
+            <sc-if value="{{ isLoading }}" hint-placeholder-val="{{ false }}">
+              <sc-for list="{{ eight }}" as="n" hint-placeholder-count="8"><div style="display:grid;grid-template-columns:48px 2fr minmax(116px,1.2fr) 1.3fr 1.3fr 1.05fr 1fr 74px;gap:12px;padding:16px 20px;border-bottom:1px solid #f1f4f9;align-items:center;"><div class="sk" style="width:18px;height:14px;"></div><div style="display:flex;gap:11px;align-items:center;"><div class="sk" style="width:34px;height:34px;border-radius:50%;"></div><div style="flex:1;"><div class="sk" style="width:60%;height:13px;margin-bottom:6px;"></div><div class="sk" style="width:80%;height:10px;"></div></div></div><div class="sk" style="width:70px;height:20px;border-radius:20px;"></div><div class="sk" style="width:80%;height:12px;"></div><div class="sk" style="width:60%;height:12px;"></div><div class="sk" style="width:60px;height:20px;border-radius:20px;"></div><div class="sk" style="width:90px;height:26px;border-radius:7px;margin-left:auto;"></div><div class="sk" style="width:22px;height:22px;border-radius:6px;"></div></div></sc-for>
+            </sc-if>
+
+            <sc-if value="{{ usersEmpty }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:64px 20px;text-align:center;">
+                <div style="width:64px;height:64px;border-radius:16px;background:#f2f5fa;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;color:#b6c1d1;">{{ usersEmptyIcon }}</div>
+                <div style="font-size:16px;font-weight:700;margin-bottom:6px;">No clients found</div>
+                <div style="font-size:13px;color:#8a97ac;margin-bottom:18px;">No records match your filters. Try clearing the search or filters.</div>
+                <button sc-camel-on-click="{{ clearUserFilters }}" style="height:36px;padding:0 16px;border-radius:9px;border:1px solid #e6ebf2;background:#fff;font-weight:600;font-size:13px;cursor:pointer;">Clear filters</button>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ usersHasRows }}" hint-placeholder-val="{{ true }}">
+              <sc-for list="{{ userRows }}" as="u" hint-placeholder-count="8">
+                <div sc-camel-on-click="{{ u.open }}" style="display:grid;grid-template-columns:48px 2fr minmax(116px,1.2fr) 1.3fr 1.3fr 1.05fr 1fr 74px;gap:12px;padding:14px 20px;border-bottom:1px solid #f1f4f9;align-items:center;cursor:pointer;transition:background .12s;" style-hover="background:#f9fbfd;">
+                  <div style="font-size:12.5px;color:#9aa6b8;font-variant-numeric:tabular-nums;">{{ u.n }}</div>
+                  <div style="display:flex;gap:11px;align-items:center;min-width:0;">
+                    <div style="{{ u.avatarStyle }}">{{ u.initial }}</div>
+                    <div style="min-width:0;">
+                      <div style="font-size:13.5px;font-weight:640;color:#16233f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ u.name }}</div>
+                      <div style="font-size:11.5px;color:#8a97ac;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ u.emailMasked }} · {{ u.goal }}</div>
+                    </div>
+                  </div>
+                  <div sc-camel-on-click="{{ stop }}" style="display:flex;align-items:center;gap:6px;min-width:0;flex-wrap:wrap;">
+                    <span style="{{ u.tierStyle }}">{{ u.tierText }}</span>
+                    <sc-if value="{{ u.canConvert }}" hint-placeholder-val="{{ false }}"><button sc-camel-on-click="{{ u.convert }}" title="{{ u.convertTitle }}" style="height:20px;padding:0 7px;border-radius:999px;border:1px dashed #cbd5e6;background:#fff;color:#5e6ad2;font-size:9px;font-weight:750;letter-spacing:.02em;cursor:pointer;white-space:nowrap;font-family:inherit;" style-hover="background:#eef0fc;border-color:#5e6ad2;">{{ u.convertLabel }}</button></sc-if>
+                    <sc-if value="{{ u.canDowngrade }}" hint-placeholder-val="{{ false }}"><button sc-camel-on-click="{{ u.downgrade }}" title="{{ u.downgradeTitle }}" style="height:20px;padding:0 7px;border-radius:999px;border:1px dashed #e3d4b4;background:#fff;color:#c2891b;font-size:9px;font-weight:750;letter-spacing:.02em;cursor:pointer;white-space:nowrap;font-family:inherit;" style-hover="background:#fdf8ec;border-color:#c2891b;">{{ u.downgradeLabel }}</button></sc-if>
+                    <sc-if value="{{ u.converted }}" hint-placeholder-val="{{ false }}"><button sc-camel-on-click="{{ u.revert }}" title="Undo this manual change" style="border:none;background:transparent;padding:0;color:#b6c1d1;font-size:9px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;" style-hover="color:#c0392b;">undo</button></sc-if>
+                  </div>
+                  <div sc-camel-on-click="{{ stop }}">
+                    <sc-if value="{{ editable }}" hint-placeholder-val="{{ true }}">
+                      <sc-raw-select value="{{ u.coach }}" sc-camel-on-change="{{ u.reassignWc }}" title="Reassign wellness coach" style="width:100%;height:30px;padding:0 20px 0 8px;border:1px solid #e6ebf2;border-radius:8px;background:#fff;font-size:11.5px;color:#16233f;font-weight:600;cursor:pointer;outline:none;" style-focus="border-color:#5e6ad2;">
+                        <sc-for list="{{ wcOpts }}" as="o" hint-placeholder-count="6"><option value="{{ o.id }}">{{ o.label }}</option></sc-for>
+                      </sc-raw-select>
+                    </sc-if>
+                    <sc-if value="{{ readOnly }}" hint-placeholder-val="{{ false }}"><span style="font-size:12.5px;color:#5a6b85;">{{ u.coach }}</span></sc-if>
+                  </div>
+                  <div sc-camel-on-click="{{ stop }}">
+                    <sc-if value="{{ editable }}" hint-placeholder-val="{{ true }}">
+                      <sc-raw-select value="{{ u.awc }}" sc-camel-on-change="{{ u.reassignAwc }}" title="Reassign assistant coach" style="width:100%;height:30px;padding:0 20px 0 8px;border:1px solid #e6ebf2;border-radius:8px;background:#fff;font-size:11.5px;color:#16233f;font-weight:600;cursor:pointer;outline:none;" style-focus="border-color:#5e6ad2;">
+                        <sc-for list="{{ awcOpts }}" as="o" hint-placeholder-count="8"><option value="{{ o.id }}">{{ o.label }}</option></sc-for>
+                      </sc-raw-select>
+                    </sc-if>
+                    <sc-if value="{{ readOnly }}" hint-placeholder-val="{{ false }}"><span style="font-size:12.5px;color:#5a6b85;">{{ u.awcLabel }}</span></sc-if>
+                  </div>
+                  <div style="font-size:12.5px;color:#8a97ac;font-variant-numeric:tabular-nums;">{{ u.lastActive }}</div>
+                  <div><span style="{{ u.statusStyle }}"><span style="{{ u.statusDot }}"></span>{{ u.status }}</span></div>
+                  <div sc-camel-on-click="{{ stop }}" style="display:flex;justify-content:flex-end;gap:5px;">
+                    <sc-if value="{{ u.canDelete }}" hint-placeholder-val="{{ false }}">
+                      <button sc-camel-on-click="{{ u.askDisable }}" title="{{ u.disableTitle }}" style="{{ u.disableStyle }}">{{ u.disableIcon }}</button>
+                      <button sc-camel-on-click="{{ u.askDelete }}" title="{{ u.deleteTitle }}" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid #eef1f6;border-radius:8px;background:#fff;color:#b6c1d1;cursor:pointer;transition:all .12s;" style-hover="color:#c0392b;border-color:#f6d0d1;background:#fdeaea;">{{ trashIcon }}</button>
+                    </sc-if>
+                  </div>
+                </div>
+              </sc-for>
+            </sc-if>
+          </div>
+
+          <sc-if value="{{ delUserOpen }}" hint-placeholder-val="{{ false }}">
+            <div sc-camel-on-click="{{ cancelDelUser }}" style="position:fixed;inset:0;background:rgba(11,22,40,.42);backdrop-filter:blur(2px);z-index:120;display:flex;align-items:center;justify-content:center;padding:20px;">
+              <div sc-camel-on-click="{{ stop }}" style="width:100%;max-width:400px;background:#fff;border:1px solid #e6ebf2;border-radius:14px;box-shadow:0 18px 50px rgba(16,35,63,.22);padding:22px;">
+                <div style="display:flex;align-items:center;gap:11px;margin-bottom:12px;">
+                  <div style="width:38px;height:38px;flex:0 0 38px;border-radius:10px;background:#fdeaea;color:#c0392b;display:flex;align-items:center;justify-content:center;">{{ trashIcon }}</div>
+                  <div style="font-size:16px;font-weight:720;letter-spacing:-.01em;color:#16233f;">Delete {{ delUserName }}?</div>
+                </div>
+                <div style="font-size:12.5px;color:#8a97ac;line-height:1.6;text-wrap:pretty;margin-bottom:18px;">This removes the client record, their coach assignment and all tracked history. This cannot be undone.</div>
+                <div style="display:flex;gap:9px;justify-content:flex-end;">
+                  <button sc-camel-on-click="{{ cancelDelUser }}" style="height:36px;padding:0 15px;border-radius:9px;border:1px solid #e6ebf2;background:#fff;color:#5a6b85;font-weight:600;font-size:12.5px;cursor:pointer;font-family:inherit;">Cancel</button>
+                  <button sc-camel-on-click="{{ confirmDelUser }}" style="height:36px;padding:0 16px;border-radius:9px;border:none;background:#c0392b;color:#fff;font-weight:650;font-size:12.5px;cursor:pointer;font-family:inherit;" style-hover="background:#a53023;">Delete user</button>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      

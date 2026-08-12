@@ -1,0 +1,20 @@
+anRevCardsAll }}" as="k" hint-placeholder-count="4">
+                  <div class="cdact" style="position:relative;overflow:hidden;min-width:0;background:#fff;border:1px solid #eef1f6;border-radius:12px;padding:12px 13px 11px;box-shadow:0 1px 2px rgba(16,35,63,.04);display:flex;flex-direction:column;gap:5px;transition:transform .15s ease,box-shadow .15s ease;" style-hover="box-shadow:0 6px 18px rgba(94,106,210,.12);transform:translateY(-2px);">
+                    <span style="{{ k.topBar }}"></span>
+                    <div style="font-size:10px;color:#8a97ac;font-weight:700;text-transform:uppercase;letter-spacing:.03em;line-height:1.25;">{{ k.label }}</div>
+                    <div style="font-size:19px;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.05;{{ k.accent }}">{{ k.value }}</div>
+                    <sc-if value="{{ k.hasShare }}" hint-placeholder-val="{{ true }}">
+                      <div style="height:5px;background:#f2f5fa;border-radius:3px;overflow:hidden;margin-top:2px;"><div style="{{ k.barStyle }}"></div></div>
+                      <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;"><span style="font-size:9.5px;color:#9aa6b8;font-variant-numeric:tabular-nums;">{{ k.shareLabel }}</span><sc-if value="{{ k.hasDelta }}" hint-placeholder-val="{{ false }}"><span style="{{ k.deltaStyle }}">{{ k.delta }}</span></sc-if></div>
+                    </sc-if>
+                    <sc-if value="{{ k.isAvg }}" hint-placeholder-val="{{ false }}">
+                      <sc-if value="{{ k.hasDelta }}" hint-placeholder-val="{{ false }}"><div style="margin-top:auto;display:flex;align-items:center;gap:6px;"><span style="{{ k.deltaStyle }}">{{ k.delta }}</span><span style="font-size:9.5px;color:#9aa6b8;">vs prev month</span></div></sc-if>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:22px 0 10px;flex-wrap:wrap;">
+              <div style="font-size:12px;font-weight:700;letter-spacing:.04em;color:#8a97ac;text-transform:uppercase;">Financial year · Apr → Mar</div>
+              <div style="display:flex;alig

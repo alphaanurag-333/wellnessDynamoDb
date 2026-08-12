@@ -1,14 +1,12 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { PillTabs } from "../shared.jsx";
 import {
-  DURATION_OPTIONS,
-  HOLD_OPTIONS,
   LAUNCH_DOMAINS,
   LAUNCH_LIFESTYLE,
   LAUNCH_PRAKRITI,
   RATING_OPTIONS,
-  SCHEDULE_DATES,
 } from "../../data/launchData.js";
+import { ScheduleMeetingModal } from "./ScheduleMeetingModal.jsx";
 
 function LaunchHeader({ onSchedule }) {
   return (
@@ -240,116 +238,6 @@ function GuidanceColumn({ title, sub, tag, tone, items, addLabel, onToast }) {
   );
 }
 
-function ScheduleModal({ user, onClose, onToast }) {
-  const [selectedDate, setSelectedDate] = useState("fri");
-  const [duration, setDuration] = useState(60);
-  const [hold, setHold] = useState("7 days");
-  const [note, setNote] = useState("We will walk through your LAUNCH results together.");
-  const [fromTime, setFromTime] = useState("");
-  const [slots, setSlots] = useState([]);
-
-  const dateLabel = useMemo(() => {
-    const d = SCHEDULE_DATES.find((x) => x.id === selectedDate);
-    return d ? `${d.day} · ${d.date} Aug 2026` : "";
-  }, [selectedDate]);
-
-  function addSlot() {
-    if (!fromTime) return;
-    const [h, m] = fromTime.split(":").map(Number);
-    const endH = h + Math.floor((m + duration) / 60);
-    const endM = (m + duration) % 60;
-    const end = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
-    setSlots([{ date: selectedDate, range: `${fromTime}–${end}` }]);
-  }
-
-  return (
-    <div className="ua-cp-modal-backdrop" onClick={onClose} role="presentation">
-      <div className="ua-cp-modal ua-cp-modal--launch" onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="launch-sched-title">
-        <div className="ua-cp-launch-modal__head">
-          <div className="ua-cp-launch-modal__icon">📅</div>
-          <div>
-            <div id="launch-sched-title" className="ua-cp-modal__title">Schedule LAUNCH meeting</div>
-            <div className="ua-cp-modal__sub">With {user.name} · offer a few slots, they pick one</div>
-          </div>
-          <button type="button" className="ua-cp-modal__close" onClick={onClose} aria-label="Close">×</button>
-        </div>
-
-        <div className="ua-cp-launch-modal__section">
-          <div className="ua-cp-launch-modal__row-label">
-            <span>Date</span>
-            <span>{dateLabel.replace(" · ", " · ").replace("TUE", "Tue").replace("WED", "Wed").replace("THU", "Thu").replace("FRI", "Fri").replace("SAT", "Sat")}</span>
-          </div>
-          <div className="ua-cp-launch-modal__dates">
-            {SCHEDULE_DATES.map((d) => (
-              <button
-                key={d.id}
-                type="button"
-                className={`ua-cp-launch-modal__date${selectedDate === d.id ? " ua-cp-launch-modal__date--active" : ""}`}
-                onClick={() => setSelectedDate(d.id)}
-              >
-                <span>{d.day}</span>
-                <strong>{d.date}</strong>
-              </button>
-            ))}
-            <button type="button" className="ua-cp-launch-modal__later">Later 📅 07-08-2026</button>
-          </div>
-        </div>
-
-        <div className="ua-cp-launch-modal__section">
-          <div className="ua-cp-launch-modal__row-label">
-            <span>Slots to offer · {selectedDate.toUpperCase()} AUG</span>
-            <span className="ua-cp-launch-modal__hint">Set a start time — the end fills in from the duration</span>
-          </div>
-          <div className="ua-cp-launch-modal__slot-row">
-            <label>From<input type="time" value={fromTime} onChange={(e) => setFromTime(e.target.value)} /></label>
-            <label>to<input type="time" readOnly placeholder="--:--" /></label>
-            <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" disabled={!fromTime} onClick={addSlot}>+ Add slot</button>
-            <select value={duration} onChange={(e) => setDuration(Number(e.target.value))}>
-              {DURATION_OPTIONS.map((m) => <option key={m} value={m}>{m} min</option>)}
-            </select>
-          </div>
-          {slots.length ? (
-            <div className="ua-cp-launch-modal__offering">
-              <strong>Offering {slots.length} slot(s) across 1 date(s)</strong>
-              {slots.map((s) => (
-                <span key={s.range} className="ua-cp-launch-modal__slot-tag">
-                  07 Aug {s.range}
-                  <button type="button" onClick={() => setSlots([])} aria-label="Remove">×</button>
-                </span>
-              ))}
-            </div>
-          ) : null}
-        </div>
-
-        <div className="ua-cp-launch-modal__section">
-          <span className="ua-cp-launch-modal__label">Hold expires if no reply</span>
-          <div className="ua-cp-launch-modal__holds">
-            {HOLD_OPTIONS.map((h) => (
-              <button key={h} type="button" className={`ua-cp-launch-modal__hold${hold === h ? " ua-cp-launch-modal__hold--active" : ""}`} onClick={() => setHold(h)}>{h}</button>
-            ))}
-          </div>
-          <p className="ua-cp-launch-modal__hold-note">
-            If {user.name.split(" ")[0]} does not pick a slot within {hold}, every held slot is released and your calendar frees up.
-          </p>
-        </div>
-
-        <div className="ua-cp-launch-modal__section">
-          <span className="ua-cp-launch-modal__label">Note for the client</span>
-          <textarea className="ua-cp-launch-modal__note" value={note} onChange={(e) => setNote(e.target.value)} rows={3} />
-        </div>
-
-        <div className="ua-cp-launch-modal__foot">
-          <span>{slots.length ? `${slots.length} slot held across 1 date` : "Nothing held yet"}</span>
-          <div>
-            <button type="button" className="ua-cp-btn ua-cp-btn--outline" onClick={onClose}>Cancel</button>
-            <button type="button" className="ua-cp-btn ua-cp-btn--primary" disabled={!slots.length} onClick={() => { onToast("LAUNCH meeting slots sent"); onClose(); }}>Send slot</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function LifestyleTab({ onToast }) {
   const [historyOpen, setHistoryOpen] = useState(true);
   const [openDomain, setOpenDomain] = useState("gut");
@@ -457,7 +345,14 @@ export function LaunchSection({ user, onToast }) {
       />
       {tab === "lifestyle" ? <LifestyleTab onToast={onToast} /> : <PrakritiTab onToast={onToast} />}
       {scheduleOpen ? (
-        <ScheduleModal user={user} onClose={() => setScheduleOpen(false)} onToast={onToast} />
+        <ScheduleMeetingModal
+          user={user}
+          title="Schedule LAUNCH meeting"
+          defaultNote="We will walk through your LAUNCH results together."
+          defaultDuration={60}
+          onClose={() => setScheduleOpen(false)}
+          onSend={() => { onToast("LAUNCH meeting slots sent"); setScheduleOpen(false); }}
+        />
       ) : null}
     </div>
   );

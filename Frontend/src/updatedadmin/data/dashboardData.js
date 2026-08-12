@@ -8,25 +8,45 @@ export const UPDATED_ADMIN_PATHS = {
   teams: "/updatedadmin/teams",
   calendar: "/updatedadmin/calendar",
   configs: "/updatedadmin/configs",
+  pending: "/updatedadmin/pending",
+  sop: "/updatedadmin/sop",
 };
 
 export const NAV_ITEMS = [
   { id: "dashboard", label: "Dashboard", icon: "grid", path: UPDATED_ADMIN_PATHS.dashboard },
   { id: "users", label: "User Management", icon: "users", path: UPDATED_ADMIN_PATHS.users },
-  { id: "access", label: "Access Control", icon: "shield", path: UPDATED_ADMIN_PATHS.access },
+  { id: "access", label: "Access Control", icon: "shield", path: UPDATED_ADMIN_PATHS.access, adminOnly: true },
   { id: "teams", label: "Teams", icon: "layers", path: UPDATED_ADMIN_PATHS.teams },
   { id: "calendar", label: "Calendar", icon: "calendar", path: UPDATED_ADMIN_PATHS.calendar },
-  { id: "configs", label: "Configs", icon: "settings", path: UPDATED_ADMIN_PATHS.configs },
+  { id: "configs", label: "Configs", icon: "settings", path: UPDATED_ADMIN_PATHS.configs, adminOnly: true },
+  { id: "pending", label: "Pending Tasks", icon: "bell", path: UPDATED_ADMIN_PATHS.pending, wcOnly: true },
+  { id: "sop", label: "SOP", icon: "file", path: UPDATED_ADMIN_PATHS.sop },
 ];
 
+export const VIEW_AS_ROLES = [
+  { id: "admin", name: "Admin", color: "#5e6ad2", bg: "#eceefc", live: 2, switchable: true },
+  { id: "wc", name: "Wellness Coach", color: "#7c3aed", bg: "#f3e8ff", live: 6, switchable: true },
+  { id: "awc", name: "Assistant WC", color: "#6366f1", bg: "#eef0fc", live: 8, switchable: true },
+  { id: "trainee", name: "Trainee", color: "#b8860b", bg: "#fdf8ec", live: 3, switchable: false },
+  { id: "support", name: "Support", color: "#0d9488", bg: "#e6f6f2", live: 3, switchable: true },
+];
+
+export const VIEW_AS_STAFF_TOTAL = VIEW_AS_ROLES.reduce((sum, role) => sum + role.live, 0);
+
 export const COACH_TIERS = [
-  { label: "Seek", value: 3, pct: "8%", color: "#3d5afe", tierFilter: "Seek" },
-  { label: "PWC only", value: 5, pct: "14%", color: "#f0a91b", tierFilter: "Consultancy" },
-  { label: "Heal", value: 27, pct: "73%", color: "#2b8f5b", tierFilter: "Seek to Heal" },
-  { label: "Maintenance", value: 2, pct: "5%", color: "#5e6ad2", tierFilter: "Maintenance" },
+  { label: "SEEK", value: 3, pct: "8%", color: "#3d5afe", tierFilter: "Seek" },
+  { label: "PWC ONLY", value: 5, pct: "14%", color: "#f0a91b", tierFilter: "Consultancy" },
+  { label: "HEAL", value: 27, pct: "73%", color: "#2b8f5b", tierFilter: "Seek to Heal" },
+  { label: "MAINTENANCE", value: 2, pct: "5%", color: "#5e6ad2", tierFilter: "Maintenance" },
 ];
 
 export const COACH_TIER_TOTAL = COACH_TIERS.reduce((sum, t) => sum + t.value, 0);
+
+export const TIER_DATA = COACH_TIERS.map((t) => ({
+  label: t.label === "PWC ONLY" ? "Consultancy only" : t.label === "HEAL" ? "Heal (paid)" : t.label === "SEEK" ? "Seek (free)" : "Maintenance",
+  value: t.value,
+  color: t.color,
+}));
 
 export const APP_CLIENT_STATS = [
   { short: "Eagles", value: 3, tag: "Corporate & family", bar: "#a855f7", accent: "#9333ea", bg: "#a855f7", iconKey: "eagles", link: `${UPDATED_ADMIN_PATHS.users}?tab=team`, tierFilter: "" },
@@ -40,13 +60,38 @@ export const EXP_CARDS = [
 export const EXP_TOTAL = 4;
 export const EXP_NOTE = "Subscription renewals due within the next 15 days. Click to see who.";
 
+export const COMM_ONB_COUNT = 6;
+
+export const CLIENT_ALERTS = [
+  { name: "Bikash Sharma", severity: "serious", label: "Needs attention", msg: "Fasting glucose spiked to 168 mg/dL — 3 high readings this week", time: "3h ago", initial: "BS" },
+  { name: "Hetu Mehra", severity: "serious", label: "Needs attention", msg: "Missed check-ins for 4 days · cycle log overdue", time: "1h ago", initial: "HM" },
+  { name: "Madhupriya Bilas", severity: "watch", label: "Watch", msg: "Weight plateaued for 2 weeks — protocol review suggested", time: "2h ago", initial: "MB" },
+  { name: "Kabir Shah", severity: "watch", label: "Watch", msg: "Uploaded new blood report — awaiting AI analysis", time: "1d ago", initial: "KS" },
+  { name: "Sana Iqbal", severity: "good", label: "On track", msg: "Hit 7-day streak on all daily reflections", time: "30m ago", initial: "SI" },
+  { name: "Arjun Verma", severity: "good", label: "On track", msg: "HbA1c down to 6.4% — excellent response", time: "4h ago", initial: "AV" },
+];
+
+export const ALERT_SERIOUS_COUNT = CLIENT_ALERTS.filter((a) => a.severity === "serious").length;
+
+export const REVENUE_HERO = {
+  total: "Rs. 39.79L",
+  scope: "All time · till 25 Jul 2026",
+  monthLabel: "Jul 2026",
+  monthValue: "Rs. 3.45L",
+  delta: "+5%",
+  deltaUp: true,
+};
+
+export const FY_OPTIONS = ["FY 2026-27", "FY 2025-26"];
+
+export const FY_MONTH_OPTIONS = ["Jul 2026", "Jun 2026", "May 2026", "Apr 2026"];
+
 export const USER_STATS = [
   { label: "Total users", value: 37, sub: "All registered accounts", bar: "#4361e8", iconKey: "users", accent: "#4361e8", bg: "#4361e8", link: UPDATED_ADMIN_PATHS.users },
   { label: "Seek users", value: 9, sub: "App downloaded, no program", bar: "#f0a91b", iconKey: "seek", accent: "#c2891b", bg: "#f0a91b", link: `${UPDATED_ADMIN_PATHS.users}?tab=app` },
   { label: "Active clients", value: 19, sub: "Enrolled in a wellness program", bar: "#2e9e5f", iconKey: "active", accent: "#2b8f5b", bg: "#2e9e5f", link: `${UPDATED_ADMIN_PATHS.users}?tab=individual` },
   { label: "PWC pending", value: 7, sub: "Programme-wise consults to confirm", bar: "#ec7a45", iconKey: "pending", accent: "#c2661d", bg: "#ec7a45", link: UPDATED_ADMIN_PATHS.calendar },
 ];
-
 export const APP_USER_STATS = APP_CLIENT_STATS;
 
 export const DASH_ROLE_CARDS = [
@@ -127,12 +172,12 @@ export const A1C_METRICS = [
 ];
 
 export const PROG_CATS = [
-  { label: "Fat Loss", count: 4, icon: "🏃", animClass: "pgi-fatloss", accent: "#c2661d", bg: "#fff9f4", border: "#f6dcc4" },
-  { label: "Diabetes Reversal", count: 2, icon: "🩸", animClass: "pgi-diabetes", accent: "#2b8f5b", bg: "#f7fbf9", border: "#cdeede" },
-  { label: "Thyroid Care", count: 2, icon: "🦋", animClass: "pgi-thyroid", accent: "#0d9488", bg: "#f0fdfa", border: "#ccfbf1" },
-  { label: "PCOD / PCOS", count: 2, icon: "🌸", animClass: "pgi-pcod", accent: "#c2559a", bg: "#fdf6fb", border: "#f3d5ea" },
+  { label: "Fat Loss", count: 4, icon: "🏃", accent: "#c2661d", bg: "#fff9f4", border: "#f6dcc4" },
+  { label: "Diabetes Reversal", count: 2, icon: "🩸", accent: "#2b8f5b", bg: "#f7fbf9", border: "#cdeede" },
+  { label: "Thyroid Care", count: 2, icon: "🦋", accent: "#0d9488", bg: "#f0fdfa", border: "#ccfbf1" },
+  { label: "PCOD / PCOS", count: 2, icon: "🌸", accent: "#c2559a", bg: "#fdf6fb", border: "#f3d5ea" },
   { label: "Overall Wellbeing", count: 2, icon: "✨", accent: "#c2891b", bg: "#fffdf5", border: "#f2d675" },
-  { label: "Hypertension", count: 1, icon: "❤️", animClass: "pgi-hypertension", accent: "#e5484d", bg: "#fef2f2", border: "#fecaca" },
+  { label: "Hypertension", count: 1, icon: "❤️", accent: "#e5484d", bg: "#fef2f2", border: "#fecaca" },
 ];
 
 export const APP_USER_PROG_CARD = {
@@ -158,12 +203,11 @@ export const LEADERBOARD = [
 ];
 
 export const REVENUE_CARDS = [
-  { label: "Wellness program", value: "Rs. 32.34L", share: "81% of total", pct: 81, color: "#2b8f5b", delta: "+4%" },
-  { label: "PWC", value: "Rs. 1.83L", share: "5% of total", pct: 5, color: "#0d9488", delta: "+2%" },
-  { label: "App users", value: "Rs. 5.82L", share: "15% of total", pct: 15, color: "#ec7a45", delta: "+8%" },
-  { label: "Avg. per client", value: "Rs. 21,047", share: null, pct: 0, color: "#a855f7", delta: "+3%", isAvg: true },
+  { label: "Wellness program", value: "Rs. 32.34L", share: "81% of total", pct: 81, color: "#2b8f5b" },
+  { label: "PWC", value: "Rs. 1.63L", share: "4% of total", pct: 4, color: "#0d9488" },
+  { label: "App users", value: "Rs. 5.82L", share: "15% of total", pct: 15, color: "#ec7a45" },
+  { label: "Avg. per client", value: "Rs. 20,942", share: null, pct: 0, color: "#a855f7", isAvg: true },
 ];
-
 export const REVENUE_TREND = [
   { label: "Apr", total: "Rs. 2.54L", prog: 68, cons: 42, active: false },
   { label: "May", total: "Rs. 2.70L", prog: 72, cons: 45, active: false },
@@ -177,17 +221,13 @@ export const PRODUCT_BARS = [
   { label: "App users", value: "Rs. 0.50L", pct: 14, color: "#ec7a45" },
 ];
 
+export const ONBOARD_FY_TOTAL = 97;
+
 export const ONBOARD_DATA = [
   { label: "Apr", count: 23, active: false },
   { label: "May", count: 17, active: false },
   { label: "Jun", count: 26, active: false },
   { label: "Jul", count: 31, active: true },
-];
-
-export const TIER_DATA = [
-  { label: "Seek (free)", value: 3, color: "#5e6ad2" },
-  { label: "Heal (paid)", value: 29, color: "#34a56a" },
-  { label: "Consultancy only", value: 5, color: "#e56d34" },
 ];
 
 export const INITIAL_NOTIFICATIONS = [
@@ -203,6 +243,15 @@ export const CHAMP_MONTHS = {
   "2026-06": { label: "Jun 2026", champion: "Banita Acharya", score: 255 },
   "2026-05": { label: "May 2026", champion: "Hetu Mehra", score: 241 },
 };
+
+export function alertStyles(severity) {
+  const map = {
+    serious: { bg: "#fdeaea", border: "#f6d0d1", fg: "#c0392b", dot: "#e5484d" },
+    watch: { bg: "#fdf6e3", border: "#f2e2a8", fg: "#9a7a00", dot: "#f0a91b" },
+    good: { bg: "#e7f6ee", border: "#cdeede", fg: "#1f7a4d", dot: "#2b8f5b" },
+  };
+  return map[severity] ?? map.watch;
+}
 
 export function buildTierGradient(data) {
   const total = data.reduce((sum, item) => sum + item.value, 0);

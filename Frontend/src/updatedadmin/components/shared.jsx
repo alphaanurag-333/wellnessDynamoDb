@@ -51,15 +51,23 @@ export function PageHeader({
 
   return (
     <div className={`page-head${isSplit ? " page-head--split" : ""}`}>
+      {isSplit && autosave ? (
+        <span className="page-head__autosave">
+          <AutosaveButton onClick={onAutosave} />
+        </span>
+      ) : null}
       <div className="page-head__main">
         {backLink ? <BackLink label={backLink} /> : null}
-        <h1 className="page-head__title">{title}</h1>
-        {subtitle ? <p className="page-head__sub">{subtitle}</p> : null}
-        {meta ? <p className="page-head__sub page-head__meta">{meta}</p> : null}
+        <div className="page-head__intro">
+          <h1 className="page-head__title">{title}</h1>
+          {meta ? <div className="page-head__meta">{meta}</div> : null}
+          {!isSplit && subtitle ? <p className="page-head__sub">{subtitle}</p> : null}
+        </div>
+        {isSplit && subtitle ? <p className="page-head__sub">{subtitle}</p> : null}
       </div>
       <div className="page-head__actions">
         {actions}
-        {autosave ? <AutosaveButton onClick={onAutosave} /> : null}
+        {!isSplit && autosave ? <AutosaveButton onClick={onAutosave} /> : null}
       </div>
     </div>
   );

@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ACTIVE_SUPPLEMENTS,
   DAILY_METRICS,
   DEFAULT_REMINDERS,
   METABOLIC_SNAPSHOT,
+  ONBOARDING_INITIAL_DONE,
   ONBOARDING_STEPS,
 } from "../../data/userDetailData.js";
+import { ScheduleMeetingModal } from "./ScheduleMeetingModal.jsx";
 
 const METRIC_TONE = {
   blue: "#5e6ad2",
@@ -263,74 +265,182 @@ function OnboardingSummary({ user }) {
         <span className="ua-cp-onboard-pill__icon">🚀</span>
         <div>
           <span className="ua-cp-onboard-pill__key">Onboarding</span>
-          <strong>In progress · {user.onboardingDone || 4}/{user.onboardingTotal || 11} steps</strong>
+          <strong>In progress · {user.onboardingDone || 5}/{user.onboardingTotal || 10} steps</strong>
         </div>
       </div>
     </div>
   );
 }
 
-function stepActionLabel(action) {
-  if (action === "open") return "Open ›";
-  if (action === "undo") return "Undo";
-  if (action === "submit-rca") return "Submit RCA";
-  if (action === "schedule-briefing") return "Schedule briefing";
-  if (action === "schedule-hap") return "Schedule HAP";
-  if (action === "schedule-initiation") return "Schedule initiation";
-  return null;
+function buildInitialDone(user) {
+  const seed = { ...ONBOARDING_INITIAL_DONE };
+  if (user.n !== 1 && user.onboardingDone) {
+    ONBOARDING_STEPS.forEach((step, idx) => {
+      if (idx < user.onboardingDone) seed[step.n] = true;
+    });
+  }
+  return seed;
 }
 
-function OnboardingStatusCard({ user, onToast }) {
-  const doneCount = user.onboardingDone || ONBOARDING_STEPS.filter((s) => s.done).length;
-  const total = user.onboardingTotal || ONBOARDING_STEPS.length;
-  const pct = user.onboardingPct || Math.round((doneCount / total) * 100);
-  const nextStep = ONBOARDING_STEPS.find((s) => !s.done);
+function StepToggle({ done, current, onClick }) {
+  return (
+    <button
+      type="button"
+      className={`ua-cp-onboard-step__toggle${done ? " ua-cp-onboard-step__toggle--done" : current ? " ua-cp-onboard-step__toggle--current" : ""}`}
+      title={done ? "Mark as not done" : "Mark complete"}
+      onClick={onClick}
+      aria-label={done ? "Mark step not done" : "Mark step complete"}
+    >
+      {done ? (
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+      ) : null}
+    </button>
+  );
+}
+
+function resolveStepAction(step, done) {
+  if (done) {
+    if (step.doneAction === "schedule-hap") return { label: "Schedule HAP", tone: "green" };
+    return { label: "Undo", tone: "ghost" };
+  }
+  if (step.section) return { label: "Open ›", tone: "link" };
+  if (step.action === "submit-rca") return { label: "Submit RCA", tone: "green" };
+  if (step.action === "schedule-briefing") return { label: "Schedule briefing", tone: "green" };
+  if (step.action === "schedule-hap") return { label: "Schedule HAP", tone: "green" };
+  if (step.action === "schedule-initiation") return { label: "Schedule initiation", tone: "green" };
+  return { label: "Mark done", tone: "ghost" };
+}
+
+function OnboardingStatusCard({ user, onToast, onNavigate }) {
+  const [doneMap, setDoneMap] = useState(() => buildInitialDone(user));
+  const [scheduleModal, setScheduleModal] = useState(null);
+
+  const steps = useMemo(
+    () => ONBOARDING_STEPS.map((step) => ({ ...step, done: !!doneMap[step.n] })),
+    [doneMap],
+  );
+
+  const doneCount = steps.filter((s) => s.done).length;
+  const total = steps.length;
+  const pct = Math.round((doneCount / total) * 100);
+  const nextStep = steps.find((s) => !s.done);
+  const currentStep = nextStep || steps[steps.length - 1];
+
+  const toggleStep = (n) => {
+    setDoneMap((prev) => {
+      const next = { ...prev };
+      if (next[n]) delete next[n];
+      else next[n] = true;
+      return next;
+    });
+  };
+
+  const handleStepAction = (step) => {
+    if (step.done && step.doneAction !== "schedule-hap") {
+      toggleStep(step.n);
+      onToast(`Reopened · ${step.label}`);
+      return;
+    }
+    if (step.done && step.doneAction === "schedule-hap") {
+      setScheduleModal({
+        title: "Schedule HAP session",
+        defaultNote: "Health Action Plan session — we will set your plan together.",
+        onSend: () => onToast("HAP session slots sent"),
+      });
+      return;
+    }
+    if (step.section) {
+      onNavigate?.(step.section);
+      return;
+    }
+    if (step.action === "submit-rca") {
+      setDoneMap((prev) => ({ ...prev, [step.n]: true }));
+      onToast(`RCA submitted for ${user.name}`);
+      return;
+    }
+    if (step.action?.startsWith("schedule-")) {
+      setScheduleModal({
+        title: step.meetingTitle,
+        defaultNote: step.meetingNote,
+        onSend: () => {
+          setDoneMap((prev) => ({ ...prev, [step.n]: true }));
+          onToast(`${step.label} slots sent`);
+        },
+      });
+      return;
+    }
+    toggleStep(step.n);
+    onToast(`${step.label} completed`);
+  };
 
   return (
-    <div className="ua-cp-card ua-cp-onboard-card">
-      <div className="ua-cp-onboard-card__head">
-        <div className="ua-cp-onboard-card__title"><span>🧭</span> Onboarding status</div>
-        <div className="ua-cp-onboard-card__actions">
-          <span className="ua-cp-onboard-card__count">{doneCount} / {total} done</span>
-          <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={() => onToast("Reminder sent")}>🔔 Remind</button>
-        </div>
-      </div>
-      {nextStep ? (
-        <div className="ua-cp-onboard-next">Next step <strong>{nextStep.label}</strong></div>
-      ) : null}
-      <div className="ua-cp-onboard-stepper">
-        {ONBOARDING_STEPS.map((step) => (
-          <div key={step.n} className={`ua-cp-onboard-dot${step.done ? " ua-cp-onboard-dot--done" : step.n === nextStep?.n ? " ua-cp-onboard-dot--current" : ""}`}>
-            {step.done ? "✓" : step.n}
+    <>
+      <div className="ua-cp-card ua-cp-onboard-card">
+        <div className="ua-cp-onboard-card__head">
+          <div className="ua-cp-onboard-card__title"><span>🧭</span> Onboarding status</div>
+          <div className="ua-cp-onboard-card__actions">
+            <span className="ua-cp-onboard-card__count">{doneCount} / {total} done</span>
+            <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={() => onToast("Reminder sent")}>🔔 Remind</button>
           </div>
-        ))}
-      </div>
-      <div className="ua-cp-onboard-progress-meta">
-        <span>Step {nextStep?.n || 1} of {total} · {nextStep?.label || "Complete"}</span>
-        <strong>{pct}%</strong>
-      </div>
-      <div className="ua-cp-onboard-steps">
-        {ONBOARDING_STEPS.map((step) => {
-          const action = stepActionLabel(step.action);
-          return (
-            <div key={step.n} className="ua-cp-onboard-step">
-              <span className={`ua-cp-onboard-step__icon${step.done ? " ua-cp-onboard-step__icon--done" : ""}`}>{step.done ? "✓" : ""}</span>
-              <span className="ua-cp-onboard-step__label">{step.n}. {step.label}</span>
-              {action ? (
+        </div>
+        {nextStep ? (
+          <div className="ua-cp-onboard-next">Next step <strong>{nextStep.label}</strong></div>
+        ) : null}
+        <div className="ua-cp-onboard-stepper">
+          {steps.map((step) => (
+            <div
+              key={step.n}
+              className={`ua-cp-onboard-dot${step.done ? " ua-cp-onboard-dot--done" : step.n === currentStep.n ? " ua-cp-onboard-dot--current" : ""}`}
+            >
+              {step.done ? "✓" : step.n}
+            </div>
+          ))}
+        </div>
+        <div className="ua-cp-onboard-progress-meta">
+          <span>Step {currentStep.n} of {total} · {currentStep.label}</span>
+          <strong>{pct}%</strong>
+        </div>
+        <div className="ua-cp-onboard-steps">
+          {steps.map((step) => {
+            const action = resolveStepAction(step, step.done);
+            const isCurrent = !step.done && step.n === currentStep.n;
+            return (
+              <div key={step.n} className={`ua-cp-onboard-step${isCurrent ? " ua-cp-onboard-step--current" : ""}`}>
+                <StepToggle
+                  done={step.done}
+                  current={isCurrent}
+                  onClick={() => toggleStep(step.n)}
+                />
+                <span className={`ua-cp-onboard-step__label${step.done ? " ua-cp-onboard-step__label--done" : ""}`}>
+                  {step.n}. {step.label}
+                </span>
                 <button
                   type="button"
-                  className={`ua-cp-onboard-step__btn${step.action === "open" ? " ua-cp-onboard-step__btn--link" : step.action === "undo" ? " ua-cp-onboard-step__btn--ghost" : " ua-cp-onboard-step__btn--green"}`}
-                  onClick={() => onToast(`${action} — ${step.label}`)}
+                  className={`ua-cp-onboard-step__btn ua-cp-onboard-step__btn--${action.tone}`}
+                  onClick={() => handleStepAction(step)}
                 >
-                  {action}
+                  {action.label}
                 </button>
-              ) : <span />}
-            </div>
-          );
-        })}
+              </div>
+            );
+          })}
+        </div>
+        <p className="ua-cp-onboard-footnote">Client-side steps sync from the app. RCA, HAP, briefing, letter and initiation are yours to submit.</p>
       </div>
-      <p className="ua-cp-onboard-footnote">Client-side steps sync from the app. RCA, HAP, briefing, letter and initiation are yours to submit.</p>
-    </div>
+
+      {scheduleModal ? (
+        <ScheduleMeetingModal
+          user={user}
+          title={scheduleModal.title}
+          defaultNote={scheduleModal.defaultNote}
+          onClose={() => setScheduleModal(null)}
+          onSend={() => {
+            scheduleModal.onSend?.();
+            setScheduleModal(null);
+          }}
+        />
+      ) : null}
+    </>
   );
 }
 
@@ -364,8 +474,9 @@ function RemindersModal({ user, reminders, onClose, onDelete }) {
   );
 }
 
-export function AtAGlanceSection({ user, onToast }) {
-  const [viewMode, setViewMode] = useState("onboarded");
+export function AtAGlanceSection({ user, onToast, onNavigate }) {
+  const inProgress = (user.onboardingDone ?? 5) < (user.onboardingTotal ?? 10);
+  const [viewMode, setViewMode] = useState(inProgress ? "onboarding" : "onboarded");
   const [reminders, setReminders] = useState(DEFAULT_REMINDERS);
   const [remindersOpen, setRemindersOpen] = useState(false);
 
@@ -391,7 +502,7 @@ export function AtAGlanceSection({ user, onToast }) {
       ) : (
         <>
           <OnboardingSummary user={user} />
-          <OnboardingStatusCard user={user} onToast={onToast} />
+          <OnboardingStatusCard user={user} onToast={onToast} onNavigate={onNavigate} />
         </>
       )}
 

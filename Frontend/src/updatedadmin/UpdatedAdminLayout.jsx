@@ -8,7 +8,6 @@ import "./updatedadmin.css";
 
 export function UpdatedAdminLayout() {
   const { pathname } = useLocation();
-  const [lang, setLang] = useState("en");
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
   const [toast, setToast] = useState("");
@@ -49,11 +48,6 @@ export function UpdatedAdminLayout() {
     shell?.scrollTo(0, 0);
   }, [pathname]);
 
-  function handleLangChange(nextLang) {
-    setLang(nextLang);
-    showToast(nextLang === "hi" ? "Language switched to Hindi" : "Language switched to English");
-  }
-
   function handleNotifClick(id) {
     setNotifications((prev) =>
       prev.map((item) => (item.id === id ? { ...item, unread: false } : item)),
@@ -76,12 +70,10 @@ export function UpdatedAdminLayout() {
           notifications={notifications}
           unreadCount={unreadCount}
           notifOpen={notifOpen}
-          lang={lang}
           onToggleNotif={() => setNotifOpen((open) => !open)}
           onCloseNotif={() => setNotifOpen(false)}
           onMarkAllRead={handleMarkAllRead}
           onNotifClick={handleNotifClick}
-          onLangChange={handleLangChange}
           onLogout={() => showToast("Logout clicked")}
         />
         <div className="page-shell">

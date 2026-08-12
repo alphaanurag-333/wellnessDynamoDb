@@ -1,0 +1,84 @@
+;
+    const cpmSplit=!!cpmDef&&cpmDef[0]===cpSplit;
+    const clientProgGroups=cpmSplit?['registered','app'].map(k=>{const m=cpPlanMeta[k];const gr=cpmDef[4].filter(r=>r[3]===k);
+      return {title:m.full,price:m.price,note:m.note,count:gr.length,empty:gr.length===0,rows:gr.map(cpRow),
+        chip:{fontSize:'10px',fontWeight:700,color:cpmDef[2],background:'#fff',border:'1px solid '+cpmDef[2]+'33',borderRadius:'6px',padding:'2px 8px',whiteSpace:'nowrap'},
+        bar:{display:'flex',alignItems:'center',gap:'8px',padding:'11px 18px 9px',background:cpmDef[3],borderTop:'1px solid #eef1f6',borderBottom:'1px solid #eef1f6'}};}):[];
+
+    // Dashboard — client updates / needs attention feed
+    const allU=this.users();
+    const findU=(nm)=>allU.find(u=>u.name.split(' ')[0]===nm.split(' ')[0])||allU[0];
+    const alertDefs=[
+      ['Bikash Sharma','serious','Fasting glucose spiked to 168 mg/dL — 3 high readings this week','3h ago'],
+      ['Hetu Mehra','serious','Missed check-ins for 4 days · cycle log overdue','1h ago'],
+      ['Madhupriya Bilas','watch','Weight plateaued for 2 weeks — protocol review suggested','2h ago'],
+      ['Kabir Shah','watch','Uploaded new blood report — awaiting AI analysis','1d ago'],
+      ['Sana Iqbal','good','Hit 7-day streak on all daily reflections','30m ago'],
+      ['Arjun Verma','good','HbA1c down to 6.4% — excellent response','4h ago']
+    ];
+    // overdue supplement deliveries raise their own alert once the ETA passes
+    (()=>{const all=s.ordList||{}; const t0=new Date(); t0.setHours(0,0,0,0);
+      Object.keys(all).forEach(nm=>{(all[nm]||[]).forEach(r=>{
+        if(!r.logged||!r.eta||r.delivered)return;
+        const e=new Date(r.eta+'T00:00'); if(isNaN(e)||e>=t0)return;
+        const d=Math.round((t0-e)/86400000);
+        alertDefs.unshift([nm,'serious','Supplement delivery overdue by '+d+' day'+(d===1?'':'s')+(r.vendor?(' \u00b7 '+r.vendor):'')+' — confirm it reached them','today']);});});})();
+    const sevMeta={serious:{label:'Needs attention',dot:'#e5484d',bg:'#fdeaea',bd:'#f6d0d1',fg:'#c0392b'},watch:{label:'Watch',dot:'#f0a91b',bg:'#fdf6e3',bd:'#f2e2a8',fg:'#9a7a00'},good:{label:'On track',dot:'#2b8f5b',bg:'#e7f6ee',bd:'#cdeede',fg:'#1f7a4d'}};
+    const sevOrder={serious:0,watch:1,good:2};
+    const clientAlerts=alertDefs.slice().sort((a,b)=>sevOrder[a[1]]-sevOrder[b[1]]).map(a=>{const u=findU(a[0]);const m=sevMeta[a[1]];
+      return {name:a[0],msg:a[2],time:a[3],sevLabel:m.label,
+        initial:a[0].split(' ').map(w=>w[0]).slice(0,2).join(''),
+        avatarStyle:{width:'38px',height:'38px',borderRadius:'50%',flex:'0 0 38px',background:m.dot,color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:'13px'},
+        rowStyle:{display:'flex',alignItems:'center',gap:'13px',padding:'12px 14px',borderRadius:'12px',border:'1px solid '+m.bd,background:m.bg,cursor:'pointer'},
+        tagStyle:{fontSize:'10px',fontWeight:700,letterSpacing:'.03em',textTransform:'uppercase',color:m.fg,background:'#fff',border:'1px solid '+m.bd,borderRadius:'6px',padding:'2px 8px',whiteSpace:'nowrap'},
+        open:()=>this.setState({drawerUser:u,drawerTab:'profile',photoView:null,aiSubmitted:false,aiEdit:false,pEdit:false,nsEdit:false})};});
+    const alertSeriousCount=alertDefs.filter(a=>a[1]==='serious').length;
+
+    // Analytics — month picker, 6-month trend, onboarding MoM
+    const fyDefs={
+      'FY 2026-27':['Apr 2026','May 2026','Jun 2026','Jul 2026','Aug 2026','Sep 2026','Oct 2026','Nov 2026','Dec 2026','Jan 2027','Feb 2027','Mar 2027'],
+      'FY 2025-26':['Apr 2025','May 2025','Jun 2025','Jul 2025','Aug 2025','Sep 2025','Oct 2025','Nov 2025','Dec 2025','Jan 2026','Feb 2026','Mar 2026']
+    };
+    const anFy=s.anFy||'FY 2026-27';
+    const fyRaw={
+      'Apr 2025':[142,8,11],'May 2025':[151,9,13],'Jun 2025':[158,9,12],'Jul 2025':[166,10,15],'Aug 2025':[172,10,14],'Sep 2025':[181,11,16],
+      'Oct 2025':[188,11,18],'Nov 2025':[194,12,17],'Dec 2025':[203,12,20],'Jan 2026':[212,12,21],'Feb 2026':[198,11,14],'Mar 2026':[224,12,19],
+      'Apr 2026':[241,13,23],'May 2026':[256,14,17],'Jun 2026':[268,14,26],'Jul 2026':[280,15,31]
+    };
+    const anMons=fyDefs[anFy].filter(m=>fyRaw[m]);
+    const anData={}; Object.keys(fyRaw).forEach(m=>{anData[m]={prog:fyRaw[m][0],cons:fyRaw[m][1],onb:fyRaw[m][2]};});
+    const anMonth=(anMons.indexOf(s.anMonth)>-1)?s.anMonth:anMons[anMons.length-1];
+    const anIdx=anMons.indexOf(anMonth);
+    const cur=anData[anMonth], prev=anData[anMons[Math.max(0,anIdx-1)]];
+    const fmtL=(n)=>'Rs. '+(n/100).toFixed(2)+'L';
+    const pctDelta=(a,b)=>{const d=Math.round(((a-b)/(b||1))*100);return (d>=0?'+':'')+d+'%';};
+    const dStyle=(a,b)=>({fontSize:'10px',fontWeight:700,color:a>=b?'#2b8f5b':'#c0392b',background:a>=b?'#e7f6ee':'#fdeaea',border:'1px solid '+(a>=b?'#cdeede':'#f6d0d1'),borderRadius:'6px',padding:'2px 6px'});
+    const appRev=Math.round(cur.prog*0.18), appRevPrev=Math.round(prev.prog*0.18);
+    const monthTotal=cur.prog+cur.cons+appRev, monthTotalPrev=prev.prog+prev.cons+appRevPrev;
+    // ALL-TIME (till today) roll-up
+    const allMons=Object.keys(fyRaw);
+    const lifeProg=allMons.reduce((a,m)=>a+anData[m].prog,0);
+    const lifeCons=allMons.reduce((a,m)=>a+anData[m].cons,0);
+    const lifeApp=allMons.reduce((a,m)=>a+Math.round(anData[m].prog*0.18),0);
+    const lifeTotal=lifeProg+lifeCons+lifeApp;
+    const anRevHero={label:'Total revenue',value:fmtL(lifeTotal),scopeLabel:'All time · till 25 Jul 2026',
+      monthValue:fmtL(monthTotal), monthLabelShort:anMonth,
+      delta:pctDelta(monthTotal,monthTotalPrev),deltaStyle:dStyle(monthTotal,monthTotalPrev)};
+    const mkCards=(rows,tot,deltaOn)=>rows.map(k=>{const share=k[4]!=null?Math.round(k[4]/tot*100):null;
+      return {label:k[0],value:k[1],accent:{color:k[2]},topBar:{position:'absolute',top:0,left:0,right:0,height:'3px',background:k[2]},
+        hasDelta:deltaOn, delta:deltaOn?pctDelta(k[5],k[6]):'', deltaStyle:deltaOn?dStyle(k[5],k[6]):{},
+        hasShare:share!=null, shareLabel:share+'%'+(deltaOn?' of month':' of total'), isAvg:share==null,
+        barStyle:{display:'block',height:'100%',width:(share||0)+'%',background:k[2],borderRadius:'3px'}};});
+    const anRevCardsAll=mkCards([
+      ['Wellness program',fmtL(lifeProg),'#2b8f5b',null,lifeProg],
+      ['PWC',fmtL(lifeCons),'#0d9488',null,lifeCons],
+      ['App users',fmtL(lifeApp),'#ec7a45',null,lifeApp],
+      ['Avg. per client','Rs. '+Math.round(lifeTotal*100/19).toLocaleString(),'#a855f7',null,null]
+    ],lifeTotal,false);
+    const anRevCards=mkCards([
+      ['Wellness program',fmtL(cur.prog),'#2b8f5b',null,cur.prog,cur.prog,prev.prog],
+      ['PWC','Rs. '+(cur.cons*1000).toLocaleString(),'#0d9488',null,cur.cons,cur.cons,prev.cons],
+      ['App users',fmtL(appRev),'#ec7a45',null,appRev,appRev,appRevPrev],
+      ['Avg. per client','Rs. '+Math.round(monthTotal*100/19).toLocaleString(),'#a855f7',null,null,monthTotal,monthTotalPrev]
+    ],monthTotal,true);
+  

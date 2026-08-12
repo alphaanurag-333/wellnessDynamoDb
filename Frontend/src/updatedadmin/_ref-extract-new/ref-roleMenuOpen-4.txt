@@ -1,0 +1,10 @@
+px 9px',borderTop:'1px solid #eef1f6',display:'flex',flexDirection:'column',gap:'4px'},
+          toggleNavRail:()=>this.setState({navCollapsed:!rail,roleMenuOpen:false}),
+          navToggleTitle:rail?'Expand the sidebar':'Collapse to icons',
+          navToggleIcon:this.icon(rail?['M9 6l6 6-6 6']:['M15 6l-6 6 6 6'],15),
+          navToggleStyle:{width:rail?'100%':'24px',height:'24px',flex:'0 0 24px',display:'flex',alignItems:'center',justifyContent:'center',border:'1px solid #eef1f6',borderRadius:'7px',background:'#fff',color:'#9aa6b8',cursor:'pointer',padding:0,fontFamily:'inherit'},
+          roleMenuOpen:open, roleMenuTitle:'Viewing as '+rm.name+' \u2014 switch role',
+          toggleRoleMenu:()=>this.setState(st=>({roleMenuOpen:!st.roleMenuOpen})),
+          closeRoleMenu:()=>this.setState({roleMenuOpen:false}),
+          roleTriggerStyle:{display:'flex',alignItems:'center',gap:'9px',width:'100%',padding:rail?'9px 0':'7px 11px',border:'1px solid '+(open?'#cbd5e6':'#eef1f6'),borderRadius:'10px',background:open?'#f6f8fb':'#fbfcfe',cursor:'pointer',fontFamily:'inherit',justifyContent:rail?'center':'flex-start',transition:'all .12s'},
+          roleTriggerDot:{width:'10px',height:'10px',borderRadius:'50%',flex:'0 0 10px',background:(meta[s.viewAs]||{color:'#5e6ad2'}).color,boxShadow:'0 0 0 3px '+((meta[s.viewAs]||{bg:'#eceefc'

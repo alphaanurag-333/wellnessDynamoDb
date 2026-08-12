@@ -32,18 +32,44 @@ export const METABOLIC_SNAPSHOT = [
 ];
 
 export const ONBOARDING_STEPS = [
-  { n: 1, label: "Personal Details", done: false, action: "open" },
-  { n: 2, label: "Profile Setup", done: true, action: "undo" },
-  { n: 3, label: "Body Analytics", done: true, action: "undo" },
-  { n: 4, label: "Internal Parameters", done: true, action: "undo" },
-  { n: 5, label: "LAUNCH", done: true, action: "undo" },
-  { n: 6, label: "RCA", done: false, action: "submit-rca" },
-  { n: 7, label: "Reports Briefing", done: false, action: "schedule-briefing" },
-  { n: 8, label: "HAP", done: false, action: "schedule-hap" },
-  { n: 9, label: "Protocol Settings", done: false, action: "open" },
-  { n: 10, label: "Commitment letter", done: false, action: "none" },
-  { n: 11, label: "Program initiation", done: false, action: "schedule-initiation" },
+  { n: 1, label: "Personal Details", section: "personal" },
+  { n: 2, label: "Body Analytics", section: "body" },
+  { n: 3, label: "Internal Parameters", section: "internal" },
+  { n: 4, label: "LAUNCH", section: "launch" },
+  { n: 5, label: "RCA", action: "submit-rca" },
+  {
+    n: 6,
+    label: "Reports Briefing",
+    action: "schedule-briefing",
+    meetingTitle: "Schedule Reports briefing",
+    meetingNote: "We will walk through your reports together.",
+  },
+  {
+    n: 7,
+    label: "HAP",
+    action: "schedule-hap",
+    meetingTitle: "Schedule HAP session",
+    meetingNote: "Health Action Plan session — we will set your plan together.",
+  },
+  { n: 8, label: "Protocol Settings", section: "internal", doneAction: "schedule-hap" },
+  { n: 9, label: "Commitment letter", section: "personal" },
+  {
+    n: 10,
+    label: "Program initiation",
+    action: "schedule-initiation",
+    meetingTitle: "Schedule Program initiation",
+    meetingNote: "Program initiation call — your journey starts here.",
+  },
 ];
+
+/** Default completion for Madhupriya Bilas demo — steps 1,2,3,5,8 done; next is LAUNCH */
+export const ONBOARDING_INITIAL_DONE = {
+  1: true,
+  2: true,
+  3: true,
+  5: true,
+  8: true,
+};
 
 export const ACTIVE_SUPPLEMENTS = [
   { name: "Vitamin D Plus", note: "After breakfast", dosages: [{ label: "Morning · 1", tone: "morning" }], date: "12 Aug", daysLeft: 18, urgent: false },
@@ -114,9 +140,9 @@ const PROFILE_DETAILS = {
     joinedAgo: "3 days ago",
     lastReviewed: "4 days ago",
     lastUpdated: "22 Jul",
-    onboardingDone: 4,
-    onboardingTotal: 11,
-    onboardingPct: 36,
+    onboardingDone: 5,
+    onboardingTotal: 10,
+    onboardingPct: 50,
     lifestyleScore: 7.2,
     prakriti: "Vata",
     dailyScore: 91,

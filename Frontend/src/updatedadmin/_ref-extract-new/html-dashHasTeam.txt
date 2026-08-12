@@ -1,0 +1,34 @@
+}</span><span style="font-size:11.5px;font-weight:680;color:#16233f;white-space:nowrap;">{{ b.name }}</span></span>
+                        <span style="font-size:11px;font-weight:750;color:#c2559a;white-space:nowrap;">{{ b.when }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+
+              </div>
+
+              <sc-if value="{{ dashHasTeam }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:2px 0 10px;">
+                <div style="font-size:12px;font-weight:700;letter-spacing:.04em;color:#8a97ac;text-transform:uppercase;">{{ tTeam }}</div>
+                <span style="font-size:11px;color:#9aa6b8;">View a role's queue or send a reminder</span>
+              </div>
+              <div style="display:flex;gap:9px;flex-wrap:nowrap;margin-bottom:18px;">
+                <sc-for list="{{ dashRoleCards }}" as="k" hint-placeholder-count="4">
+                  <div class="cdact" style="position:relative;overflow:hidden;flex:1 1 0;min-width:0;background:#fff;border:1px solid #eef1f6;border-radius:12px;padding:12px 13px 11px;box-shadow:0 1px 2px rgba(16,35,63,.04);display:flex;flex-direction:column;gap:6px;transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease;" style-hover="border-color:#c5cbe8;box-shadow:0 6px 18px rgba(94,106,210,.12);transform:translateY(-2px);">
+                    <span style="{{ k.topBar }}"></span>
+                    <div style="display:flex;align-items:center;gap:8px;"><span style="{{ k.iconWrap }}">{{ k.icon }}</span><span style="flex:1;min-width:0;font-size:11px;color:#5a6b85;font-weight:650;line-height:1.25;">{{ k.label }}</span></div>
+                    <div style="font-size:22px;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.05;{{ k.accent }}">{{ k.value }}</div>
+                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                      <sc-for list="{{ k.pending }}" as="p" hint-placeholder-count="2"><span style="{{ p.style }}">{{ p.label }}</span></sc-for>
+                    </div>
+                    <div style="display:flex;gap:5px;margin-top:2px;">
+                      <button sc-camel-on-click="{{ k.open }}" style="flex:1;height:27px;border-radius:7px;border:1px solid #e6ebf2;background:#fff;color:#5e6ad2;font-weight:700;font-size:10.5px;cursor:pointer;">View</button>
+                      <button sc-camel-on-click="{{ k.remind }}" title="Send reminder" style="width:27px;height:27px;border-radius:7px;border:none;background:#eef0fc;color:#5e6ad2;font-size:12px;line-height:1;cursor:pointer;">🔔</button>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+
+              </sc-if>
+
+            <div sc-camel-on-mouse-enter="{{ 

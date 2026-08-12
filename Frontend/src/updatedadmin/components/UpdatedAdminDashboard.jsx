@@ -5,12 +5,15 @@ import { AutosaveButton } from "./shared.jsx";
 import { StatIcon } from "./DashboardIcons.jsx";
 import {
   A1C_METRICS,
+  ALERT_SERIOUS_COUNT,
   APP_CLIENT_STATS,
   APP_USER_PROG_CARD,
   BIRTHDAYS,
   CHAMP_CLIENTS,
   CHAMP_COACHES,
   CHAMP_MONTHS,
+  CLIENT_ALERTS,
+  COMM_ONB_COUNT,
   COACH_TIER_TOTAL,
   COACH_TIERS,
   DASH_ROLE_CARDS,
@@ -18,15 +21,20 @@ import {
   EXP_NOTE,
   EXP_TOTAL,
   FAT_METRICS,
+  FY_MONTH_OPTIONS,
+  FY_OPTIONS,
   GRADIENT_GREEN,
   LEADERBOARD,
   ONBOARD_DATA,
+  ONBOARD_FY_TOTAL,
   PRODUCT_BARS,
   PROG_CATS,
   REVENUE_CARDS,
+  REVENUE_HERO,
   REVENUE_TREND,
   TIER_DATA,
   UPDATED_ADMIN_PATHS,
+  alertStyles,
   buildTierGradient,
 } from "../data/dashboardData.js";
 
@@ -177,112 +185,6 @@ export function UpdatedAdminDashboard({ onToast }) {
       </section>
 
       <section className="section">
-        <div className="ua-section-label">
-          <div className="ua-section-label__title">Team</div>
-          <span className="ua-section-label__hint">View a role&apos;s queue or send a reminder</span>
-        </div>
-        <div className="team-row">
-          {DASH_ROLE_CARDS.map((team) => (
-            <div key={team.label} className="team-card cdact">
-              <span className="stat-card__bar" style={{ background: team.bar }} />
-              <div className="stat-card__top">
-                <span className="stat-card__icon" style={{ background: team.bar, color: "#fff", boxShadow: `0 2px 6px ${team.bar}55` }}>
-                  <StatIcon name="users" />
-                </span>
-                <span className="stat-card__label">{team.label}</span>
-              </div>
-              <div className="stat-card__value" style={{ color: team.accent }}>{team.value}</div>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {team.pending.map((tag) => (
-                  <span key={tag.label} className="tag" style={{ background: tag.bg, color: tag.color }}>
-                    {tag.label}
-                  </span>
-                ))}
-              </div>
-              <div className="team-card__actions">
-                <button
-                  type="button"
-                  className="team-card__view"
-                  onClick={() => navigate(`${UPDATED_ADMIN_PATHS.teams}?role=${team.roleId}`)}
-                >
-                  View
-                </button>
-                <button
-                  type="button"
-                  className="team-card__bell"
-                  title="Send reminder"
-                  onClick={() => onToast(`Reminder sent to ${team.label} team`)}
-                >
-                  🔔
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="section">
-        <div className="section__head">
-          <h2 className="section__title">Community updates</h2>
-          <span className="section__hint">Broadcasts, celebrations &amp; onboarding</span>
-        </div>
-        <div className="community-row">
-          <div className="community-card">
-            <div className="community-card__head"><span>📣</span> Community message</div>
-            <input
-              type="text"
-              className="community-card__input"
-              placeholder="Broadcast to everyone…"
-              value={broadcast}
-              onChange={(e) => setBroadcast(e.target.value)}
-            />
-            <button type="button" className="btn btn--primary" onClick={sendBroadcast}>Send broadcast</button>
-            <p className="community-card__meta">{broadcastMeta}</p>
-          </div>
-
-          <div className="community-card community-card--champion">
-            <div className="community-card__head"><span>🏆</span> Champion</div>
-            <div className="champion-split">
-              <div>
-                <div className="champion-split__label">Client</div>
-                <div className="champion-scroll">
-                  {CHAMP_CLIENTS.map((c) => (
-                    <div key={c.name} className="champion-mini">
-                      <span className="champion-mini__name">{c.name}</span>
-                      <span className="champion-mini__score">{c.score}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <div className="champion-split__label champion-split__label--muted">Wellness coach</div>
-                <div className="champion-scroll champion-scroll--plain">
-                  {CHAMP_COACHES.map((c) => (
-                    <div key={c.name} className="champion-mini champion-mini--plain">
-                      <span className="champion-mini__name">{c.name}</span>
-                      <span className="champion-mini__score">{c.score}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="community-card community-card--birthday">
-            <div className="community-card__head"><span>🎂</span> Birthdays</div>
-            <div className="birthday-scroll">
-              {BIRTHDAYS.map((b) => (
-                <div key={b.name} className={`birthday-chip${b.isCoach ? " birthday-chip--coach" : ""}`}>
-                  <span className="birthday-chip__name"><span>{b.mark}</span>{b.name}</span>
-                  <span className="birthday-chip__when">{b.when}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="section">
         <div className="section__head">
           <h2 className="section__title">Program progress</h2>
           <span className="section__hint">Tap any number to see the clients behind it</span>
@@ -292,7 +194,7 @@ export function UpdatedAdminDashboard({ onToast }) {
             <div className="prog-card__head"><span>🚀</span> Onboarding status</div>
             <div className="prog-card__inner">
               <div className="prog-card__tag">In journey</div>
-              <div className="prog-card__value prog-card__value--blue">6</div>
+              <div className="prog-card__value prog-card__value--blue">{COMM_ONB_COUNT}</div>
               <div className="prog-card__link">HEAL clients onboarding · view list ›</div>
             </div>
           </button>
@@ -345,11 +247,11 @@ export function UpdatedAdminDashboard({ onToast }) {
                 <button
                   key={p.label}
                   type="button"
-                  className="prog-cat pgcard"
+                  className="prog-cat"
                   style={{ background: p.bg, borderColor: p.border }}
                   onClick={() => onToast(`${p.count} clients in ${p.label}`)}
                 >
-                  <span className={`prog-cat__icon pgi ${p.animClass || ""}`} style={{ background: "#fff" }}>{p.icon}</span>
+                  <span className="prog-cat__icon" style={{ background: "#fff" }}>{p.icon}</span>
                   <span className="prog-cat__label">{p.label}</span>
                   <span className="prog-cat__count" style={{ color: p.accent }}>{p.count}</span>
                 </button>
@@ -363,15 +265,123 @@ export function UpdatedAdminDashboard({ onToast }) {
             </div>
             <button
               type="button"
-              className="prog-cat pgcard prog-cat--appuser"
+              className="prog-cat prog-cat--appuser"
               style={{ background: APP_USER_PROG_CARD.bg, borderColor: APP_USER_PROG_CARD.border }}
               onClick={() => onToast(`${APP_USER_PROG_CARD.count} clients in ${APP_USER_PROG_CARD.label}`)}
             >
-              <span className="prog-cat__icon pgi" style={{ background: "#fff" }}>{APP_USER_PROG_CARD.icon}</span>
+              <span className="prog-cat__icon" style={{ background: "#fff" }}>{APP_USER_PROG_CARD.icon}</span>
               <span className="prog-cat__label">{APP_USER_PROG_CARD.label}</span>
               <span className="prog-cat__count" style={{ color: APP_USER_PROG_CARD.accent }}>{APP_USER_PROG_CARD.count}</span>
             </button>
           </div>
+        </div>
+      </section>
+
+      <section className="section">
+        <div className="section__head">
+          <h2 className="section__title">Community updates</h2>
+          <span className="section__hint">Broadcasts, celebrations &amp; onboarding</span>
+        </div>
+        <div className="community-row">
+          <div className="community-card">
+            <div className="community-card__head"><span>📣</span> Community message</div>
+            <input
+              type="text"
+              className="community-card__input"
+              placeholder="Broadcast to everyone…"
+              value={broadcast}
+              onChange={(e) => setBroadcast(e.target.value)}
+            />
+            <button type="button" className="community-card__send" onClick={sendBroadcast}>
+              Send broadcast
+            </button>
+            <div className="community-card__meta">{broadcastMeta}</div>
+          </div>
+
+          <div className="community-card community-card--champion">
+            <div className="community-card__head"><span>🏆</span> Champion</div>
+            <div className="champion-split">
+              <div>
+                <div className="champion-split__label">Client</div>
+                <div className="champion-scroll">
+                  {CHAMP_CLIENTS.map((c) => (
+                    <div key={c.name} className="champion-mini">
+                      <span className="champion-mini__name">{c.name}</span>
+                      <span className="champion-mini__score">{c.score}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="champion-split__label champion-split__label--muted">Wellness coach</div>
+                <div className="champion-scroll champion-scroll--plain">
+                  {CHAMP_COACHES.map((c) => (
+                    <div key={c.name} className="champion-mini champion-mini--plain">
+                      <span className="champion-mini__name">{c.name}</span>
+                      <span className="champion-mini__score">{c.score}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="community-card community-card--birthday">
+            <div className="community-card__head"><span>🎂</span> Birthdays</div>
+            <div className="birthday-scroll">
+              {BIRTHDAYS.map((b) => (
+                <div key={b.name} className={`birthday-chip${b.isCoach ? " birthday-chip--coach" : ""}`}>
+                  <span className="birthday-chip__name"><span>{b.mark}</span>{b.name}</span>
+                  <span className="birthday-chip__when">{b.when}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="section">
+        <div className="ua-section-label">
+          <div className="ua-section-label__title">Team</div>
+          <span className="ua-section-label__hint">View a role&apos;s queue or send a reminder</span>
+        </div>
+        <div className="team-row">
+          {DASH_ROLE_CARDS.map((team) => (
+            <div key={team.label} className="team-card cdact">
+              <span className="stat-card__bar" style={{ background: team.bar }} />
+              <div className="stat-card__top">
+                <span className="stat-card__icon" style={{ background: team.bar, color: "#fff", boxShadow: `0 2px 6px ${team.bar}55` }}>
+                  <StatIcon name="users" />
+                </span>
+                <span className="stat-card__label">{team.label}</span>
+              </div>
+              <div className="stat-card__value" style={{ color: team.accent }}>{team.value}</div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {team.pending.map((tag) => (
+                  <span key={tag.label} className="tag" style={{ background: tag.bg, color: tag.color }}>
+                    {tag.label}
+                  </span>
+                ))}
+              </div>
+              <div className="team-card__actions">
+                <button
+                  type="button"
+                  className="team-card__view"
+                  onClick={() => navigate(`${UPDATED_ADMIN_PATHS.teams}?role=${team.roleId}`)}
+                >
+                  View
+                </button>
+                <button
+                  type="button"
+                  className="team-card__bell"
+                  title="Send reminder"
+                  onClick={() => onToast(`Reminder sent to ${team.label} team`)}
+                >
+                  🔔
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -461,20 +471,56 @@ export function UpdatedAdminDashboard({ onToast }) {
 
       <section className="section">
         <div className="section__head">
+          <h2 className="section__title">Client updates</h2>
+          <span className="section__hint">
+            Needs attention across your roster
+            {ALERT_SERIOUS_COUNT > 0 ? (
+              <span className="client-alerts__badge">{ALERT_SERIOUS_COUNT} urgent</span>
+            ) : null}
+          </span>
+        </div>
+        <div className="client-alerts">
+          {CLIENT_ALERTS.map((alert) => {
+            const styles = alertStyles(alert.severity);
+            return (
+              <button
+                key={`${alert.name}-${alert.time}`}
+                type="button"
+                className="client-alert cdact"
+                style={{ background: styles.bg, borderColor: styles.border }}
+                onClick={() => onToast(`Opening profile for ${alert.name}`)}
+              >
+                <span className="client-alert__avatar" style={{ background: styles.dot }}>{alert.initial}</span>
+                <span className="client-alert__body">
+                  <span className="client-alert__top">
+                    <span className="client-alert__name">{alert.name}</span>
+                    <span className="client-alert__tag" style={{ color: styles.fg, borderColor: styles.border }}>{alert.label}</span>
+                    <span className="client-alert__time">{alert.time}</span>
+                  </span>
+                  <span className="client-alert__msg">{alert.msg}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="section">
+        <div className="section__head">
           <h2 className="section__title">Revenue Analytics</h2>
           <span className="section__hint">Overall · till today</span>
         </div>
         <div className="revenue-row">
           <div className="revenue-hero">
             <div className="revenue-hero__label">Total revenue</div>
-            <div className="revenue-hero__scope">All time · till 25 Jul 2026</div>
-            <div className="revenue-hero__value">Rs. 39.99L</div>
+            <div className="revenue-hero__scope">{REVENUE_HERO.scope}</div>
+            <div className="revenue-hero__value">{REVENUE_HERO.total}</div>
             <div className="revenue-hero__foot">
               <div>
-                <div className="revenue-hero__month-label">Jul 2026</div>
-                <div className="revenue-hero__month-value">Rs. 3.45L</div>
+                <div className="revenue-hero__month-label">{REVENUE_HERO.monthLabel}</div>
+                <div className="revenue-hero__month-value">{REVENUE_HERO.monthValue}</div>
               </div>
-              <span className="revenue-hero__delta">+5%</span>
+              <span className={`revenue-hero__delta${REVENUE_HERO.deltaUp ? "" : " revenue-hero__delta--down"}`}>{REVENUE_HERO.delta}</span>
             </div>
           </div>
           <div className="revenue-cards">
@@ -488,16 +534,8 @@ export function UpdatedAdminDashboard({ onToast }) {
                     <div className="revenue-card__track">
                       <div className="revenue-card__fill" style={{ width: `${card.pct}%`, background: card.color }} />
                     </div>
-                    <div className="revenue-card__share">
-                      <span>{card.share}</span>
-                      {card.delta ? <span className="revenue-card__delta revenue-card__delta--up">{card.delta}</span> : null}
-                    </div>
+                    <div className="revenue-card__share"><span>{card.share}</span></div>
                   </>
-                ) : card.isAvg && card.delta ? (
-                  <div className="revenue-card__avg-delta">
-                    <span className="revenue-card__delta revenue-card__delta--up">{card.delta}</span>
-                    <span className="revenue-card__avg-note">vs prev month</span>
-                  </div>
                 ) : null}
               </div>
             ))}
@@ -510,9 +548,10 @@ export function UpdatedAdminDashboard({ onToast }) {
           <h2 className="section__title">Financial year · Apr → Mar</h2>
           <div className="chart-controls">
             <button type="button" className="btn btn--soft" onClick={() => onToast("Opening payments…")}>💳 View payments</button>
-            <select className="header__select" aria-label="Financial year" defaultValue="FY 2026-27">
-              <option>FY 2026-27</option>
-              <option>FY 2025-26</option>
+            <select className="header__select" aria-label="Financial year" defaultValue={FY_OPTIONS[0]}>
+              {FY_OPTIONS.map((fy) => (
+                <option key={fy}>{fy}</option>
+              ))}
             </select>
             <select
               className="header__select"
@@ -520,10 +559,9 @@ export function UpdatedAdminDashboard({ onToast }) {
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
             >
-              <option>Jul 2026</option>
-              <option>Jun 2026</option>
-              <option>May 2026</option>
-              <option>Apr 2026</option>
+              {FY_MONTH_OPTIONS.map((m) => (
+                <option key={m}>{m}</option>
+              ))}
             </select>
           </div>
         </div>
@@ -594,7 +632,7 @@ export function UpdatedAdminDashboard({ onToast }) {
                 <div className="chart-card__title">Users onboarded</div>
                 <div className="chart-card__sub">FY 2026-27 · Apr → Mar</div>
               </div>
-              <span className="badge badge--green">97 in FY 2026-27</span>
+              <span className="badge badge--green">{ONBOARD_FY_TOTAL} in FY 2026-27</span>
             </div>
             <div className="bar-chart bar-chart--single">
               {ONBOARD_DATA.map((m) => (
@@ -614,7 +652,7 @@ export function UpdatedAdminDashboard({ onToast }) {
 
           <div className="chart-card">
             <div className="chart-card__title">Users by tier</div>
-            <div className="chart-card__sub">Seek, Heal &amp; consultancy-only</div>
+            <div className="chart-card__sub">Seek, Heal, consultancy &amp; maintenance</div>
             <div className="tier-chart">
               <div className="tier-chart__donut">
                 <div className="donut" style={{ background: `conic-gradient(${tierGradient})` }}>

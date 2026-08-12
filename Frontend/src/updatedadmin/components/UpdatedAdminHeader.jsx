@@ -4,12 +4,10 @@ export function UpdatedAdminHeader({
   notifications,
   unreadCount,
   notifOpen,
-  lang,
   onToggleNotif,
   onCloseNotif,
   onMarkAllRead,
   onNotifClick,
-  onLangChange,
   onLogout,
 }) {
   const panelRef = useRef(null);
@@ -43,38 +41,6 @@ export function UpdatedAdminHeader({
       </div>
 
       <div className="header__actions">
-        <select className="header__select" aria-label="Data view" defaultValue="Data">
-          <option>Data</option>
-          <option>Loading</option>
-          <option>Empty</option>
-        </select>
-
-        <div className="header__role">
-          <select className="header__role-select" aria-label="View as role" defaultValue="Admin">
-            <option>Admin</option>
-            <option>Wellness Coach</option>
-            <option>Assistant WC</option>
-            <option>Support</option>
-          </select>
-        </div>
-
-        <div className="header__lang" role="group" aria-label="Language">
-          <button
-            type="button"
-            className={`header__lang-btn${lang === "en" ? " header__lang-btn--active" : ""}`}
-            onClick={() => onLangChange("en")}
-          >
-            EN
-          </button>
-          <button
-            type="button"
-            className={`header__lang-btn${lang === "hi" ? " header__lang-btn--active" : ""}`}
-            onClick={() => onLangChange("hi")}
-          >
-            हिं
-          </button>
-        </div>
-
         <div className="header__notif-wrap">
           <button
             ref={btnRef}

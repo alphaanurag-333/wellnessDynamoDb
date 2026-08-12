@@ -1,0 +1,18 @@
+alertDefs=[
+      ['Bikash Sharma','serious','Fasting glucose spiked to 168 mg/dL — 3 high readings this week','3h ago'],
+      ['Hetu Mehra','serious','Missed check-ins for 4 days · cycle log overdue','1h ago'],
+      ['Madhupriya Bilas','watch','Weight plateaued for 2 weeks — protocol review suggested','2h ago'],
+      ['Kabir Shah','watch','Uploaded new blood report — awaiting AI analysis','1d ago'],
+      ['Sana Iqbal','good','Hit 7-day streak on all daily reflections','30m ago'],
+      ['Arjun Verma','good','HbA1c down to 6.4% — excellent response','4h ago']
+    ];
+    // overdue supplement deliveries raise their own alert once the ETA passes
+    (()=>{const all=s.ordList||{}; const t0=new Date(); t0.setHours(0,0,0,0);
+      Object.keys(all).forEach(nm=>{(all[nm]||[]).forEach(r=>{
+        if(!r.logged||!r.eta||r.delivered)return;
+        const e=new Date(r.eta+'T00:00'); if(isNaN(e)||e>=t0)return;
+        const d=Math.round((t0-e)/86400000);
+        alertDefs.unshift([nm,'serious','Supplement delivery overdue by '+d+' day'+(d===1?'':'s')+(r.vendor?(' \u00b7 '+r.vendor):'')+' — confirm it reached them','today']);});});})();
+    const sevMeta={serious:{label:'Needs attention',dot:'#e5484d',bg:'#fdeaea',bd:'#f6d0d1',fg:'#c0392b'},watch:{label:'Watch',dot:'#f0a91b',bg:'#fdf6e3',bd:'#f2e2a8',fg:'#9a7a00'},good:{label:'On track',dot:'#2b8f5b',bg:'#e7f6ee',bd:'#cdeede',fg:'#1f7a4d'}};
+    const sevOrder={serious:0,watch:1,good:2};
+    const clientAlert

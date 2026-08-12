@@ -1,0 +1,29 @@
+nuOpen }}" hint-placeholder-val="{{ false }}">
+          <div sc-camel-on-click="{{ closeRoleMenu }}" style="position:fixed;inset:0;z-index:55;background:transparent;"></div>
+          <div style="{{ roleMenuStyle }}">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 13px 8px;border-bottom:1px solid #f1f4f9;">
+              <span style="font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#8a97ac;">Live roles</span>
+              <span style="font-size:10px;color:#b0bacb;font-variant-numeric:tabular-nums;">{{ roleMenuCount }}</span>
+            </div>
+            <sc-for list="{{ roleSwitchList }}" as="r" hint-placeholder-count="4">
+              <button sc-camel-on-click="{{ r.pick }}" style="{{ r.style }}">
+                <span style="{{ r.dot }}"></span>
+                <span style="flex:1;min-width:0;text-align:left;">
+                  <span style="display:block;font-size:12.5px;font-weight:700;color:#16233f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ r.name }}</span>
+                  <span style="display:block;font-size:10.5px;color:#9aa6b8;">{{ r.meta }}</span>
+                </span>
+                <sc-if value="{{ r.active }}" hint-placeholder-val="{{ false }}"><span style="display:flex;color:#2b8f5b;flex:0 0 auto;">{{ roleTickIcon }}</span></sc-if>
+              </button>
+            </sc-for>
+            <div style="padding:9px 13px;border-top:1px solid #f1f4f9;font-size:10.5px;color:#9aa6b8;text-wrap:pretty;">Switches the whole console to that role's sections and permissions.</div>
+          </div>
+        </sc-if>
+      </div>
+      <button title="Logout" style="{{ logoutStyle }}">
+        <span style="display:flex;">{{ logoutIcon }}</span>
+        <sc-if value="{{ navExpanded }}" hint-placeholder-val="{{ true }}"><span>Logout</span></sc-if>
+      </button>
+    </div>
+  </aside>
+
+  <div style="flex:1;display:flex;flex-direction:column;min-width

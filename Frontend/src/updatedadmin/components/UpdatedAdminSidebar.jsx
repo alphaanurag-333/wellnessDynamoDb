@@ -1,38 +1,229 @@
-import { NavLink } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
 import { NavIcon } from "./NavIcons.jsx";
-import { NAV_ITEMS, UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
+import {
+  NAV_ITEMS,
+  UPDATED_ADMIN_PATHS,
+  VIEW_AS_ROLES,
+  VIEW_AS_STAFF_TOTAL,
+} from "../data/dashboardData.js";
+
+const ADMIN_NAV = NAV_ITEMS.filter((item) => !item.wcOnly);
+
+function RoleCheckIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
+}
+
+function RoleCaretIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
+function CollapseIcon({ collapsed }) {
+  return collapsed ? (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="m9 6 6 6-6 6" />
+    </svg>
+  ) : (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="m15 6-6 6 6 6" />
+    </svg>
+  );
+}
+
+function ViewAsRolePicker({ collapsed }) {
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const [viewAs, setViewAs] = useState("admin");
+
+  const activeRole = VIEW_AS_ROLES.find((role) => role.id === viewAs) || VIEW_AS_ROLES[0];
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (event) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  useEffect(() => {
+    if (collapsed) setOpen(false);
+  }, [collapsed]);
+
+  const pickRole = (role) => {
+    setOpen(false);
+    if (!role.switchable) {
+      navigate(UPDATED_ADMIN_PATHS.access);
+      return;
+    }
+    setViewAs(role.id);
+  };
+
+  return (
+    <div className="sidebar__viewas-wrap">
+      <button
+        type="button"
+        className={`sidebar__viewas-trigger${open ? " sidebar__viewas-trigger--open" : ""}`}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        title={`Viewing as ${activeRole.name} — switch role`}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <span
+          className="sidebar__viewas-dot"
+          style={{
+            background: activeRole.color,
+            boxShadow: `0 0 0 3px ${activeRole.bg}`,
+          }}
+        />
+        {!collapsed ? (
+          <>
+            <span className="sidebar__viewas-text">
+              <span className="sidebar__viewas-kicker">Viewing as</span>
+              <span className="sidebar__viewas-name">{activeRole.name}</span>
+            </span>
+            <span className="sidebar__viewas-caret">
+              <RoleCaretIcon />
+            </span>
+          </>
+        ) : null}
+      </button>
+
+      {open ? (
+        <>
+          <button
+            type="button"
+            className="sidebar__viewas-backdrop"
+            aria-label="Close role menu"
+            onClick={() => setOpen(false)}
+          />
+          <div className={`sidebar__viewas-menu${collapsed ? " sidebar__viewas-menu--rail" : ""}`} role="menu">
+            <div className="sidebar__viewas-menu-head">
+              <span>Live roles</span>
+              <span>{VIEW_AS_STAFF_TOTAL} staff</span>
+            </div>
+            {VIEW_AS_ROLES.map((role) => {
+              const active = viewAs === role.id;
+              return (
+                <button
+                  key={role.id}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={active}
+                  className={`sidebar__viewas-option${active ? " sidebar__viewas-option--active" : ""}`}
+                  onClick={() => pickRole(role)}
+                >
+                  <span
+                    className="sidebar__viewas-option-dot"
+                    style={{ background: role.color }}
+                  />
+                  <span className="sidebar__viewas-option-copy">
+                    <span className="sidebar__viewas-option-name">{role.name}</span>
+                    <span className="sidebar__viewas-option-meta">
+                      {role.live} live
+                      {!role.switchable ? " · open in Access Control" : ""}
+                    </span>
+                  </span>
+                  {active ? (
+                    <span className="sidebar__viewas-option-check">
+                      <RoleCheckIcon />
+                    </span>
+                  ) : null}
+                </button>
+              );
+            })}
+            <div className="sidebar__viewas-menu-foot">
+              Switches the whole console to that role&apos;s sections and permissions.
+            </div>
+          </div>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+const NAV_COLLAPSED_KEY = "ua-nav-collapsed";
 
 export function UpdatedAdminSidebar({ onLogout }) {
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(NAV_COLLAPSED_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(NAV_COLLAPSED_KEY, collapsed ? "1" : "0");
+    } catch {
+      /* ignore storage errors */
+    }
+  }, [collapsed]);
+
+  function toggleCollapsed() {
+    setCollapsed((value) => !value);
+  }
+
   return (
-    <aside className="sidebar" aria-label="Main navigation">
-      <NavLink to={UPDATED_ADMIN_PATHS.dashboard} end className="sidebar__brand sidebar__brand-link">
-        <div className="sidebar__logo">IR</div>
-        <div className="sidebar__brand-text">
-          <div className="sidebar__brand-name">India Redefining Wellness</div>
-          <div className="sidebar__brand-sub">ADMIN CONSOLE</div>
-        </div>
-      </NavLink>
+    <aside className={`sidebar${collapsed ? " sidebar--rail" : ""}`} aria-label="Main navigation">
+      <div className="sidebar__brand">
+        <NavLink to={UPDATED_ADMIN_PATHS.dashboard} end className="sidebar__brand-link">
+          <div className="sidebar__logo">IR</div>
+          {!collapsed ? (
+            <div className="sidebar__brand-text">
+              <div className="sidebar__brand-name">India Redefining Wellness</div>
+              <div className="sidebar__brand-sub">ADMIN CONSOLE</div>
+            </div>
+          ) : null}
+        </NavLink>
+        <button
+          type="button"
+          className="sidebar__toggle"
+          title={collapsed ? "Expand the sidebar" : "Collapse to icons"}
+          aria-label={collapsed ? "Expand the sidebar" : "Collapse to icons"}
+          onClick={toggleCollapsed}
+        >
+          <CollapseIcon collapsed={collapsed} />
+        </button>
+      </div>
 
       <nav className="sidebar__nav">
-        {NAV_ITEMS.map((item) => (
+        {!collapsed ? <div className="sidebar__sections-label">Sections</div> : null}
+        {ADMIN_NAV.map((item) => (
           <NavLink
             key={item.id}
             to={item.path}
             end={item.id === "dashboard"}
+            title={item.label}
             className={({ isActive }) =>
               `sidebar__link${isActive ? " sidebar__link--active" : ""}`
             }
           >
             <NavIcon name={item.icon} />
-            {item.label}
+            {!collapsed ? <span className="sidebar__link-label">{item.label}</span> : null}
           </NavLink>
         ))}
       </nav>
 
       <div className="sidebar__footer">
-        <button type="button" className="sidebar__logout" onClick={onLogout}>
+        <ViewAsRolePicker collapsed={collapsed} />
+        <button
+          type="button"
+          className="sidebar__logout"
+          title="Logout"
+          onClick={onLogout}
+        >
           <NavIcon name="logout" />
-          Logout
+          {!collapsed ? <span>Logout</span> : null}
         </button>
       </div>
     </aside>

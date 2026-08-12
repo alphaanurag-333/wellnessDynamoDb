@@ -17,10 +17,10 @@ const PLACEHOLDER_META = {
   bms: { title: "Body, Mind & Soul (BMS)", subtitle: "Holistic wellness tracking." },
 };
 
-function renderSection(section, user, onToast) {
+function renderSection(section, user, onToast, onNavigate) {
   switch (section) {
     case "glance":
-      return <AtAGlanceSection user={user} onToast={onToast} />;
+      return <AtAGlanceSection user={user} onToast={onToast} onNavigate={onNavigate} />;
     case "personal":
       return <PersonalDetailsSection user={user} onToast={onToast} />;
     case "body":
@@ -96,7 +96,7 @@ export function UserDetailPage() {
         />
         <div className="ua-cp-main" data-drawer-scroll="1">
           <div className="ua-cp-main__inner">
-            {renderSection(section, user, onToast)}
+            {renderSection(section, user, onToast, setSection)}
           </div>
         </div>
       </div>
