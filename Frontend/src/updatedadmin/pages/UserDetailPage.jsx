@@ -15,6 +15,13 @@ import {
 const PLACEHOLDER_META = {
   food: { title: "Food & Water Tracking", subtitle: "Meals, hydration & nutrition logs." },
   bms: { title: "Body, Mind & Soul (BMS)", subtitle: "Holistic wellness tracking." },
+  "health-progress": { title: "Health Progress", subtitle: "Track health metrics and progress over time." },
+  reflection: { title: "Daily Reflection form", subtitle: "Daily reflection logs and consistency." },
+  prescription: { title: "Wellness Prescription", subtitle: "Wellness prescriptions and recommendations." },
+  presentable: { title: "Presentable Pics", subtitle: "Client photo requests and approvals." },
+  exchange: { title: "Energy Exchange", subtitle: "Energy Exchange program and billing." },
+  protocol: { title: "Protocol Settings", subtitle: "Client protocol and settings configuration." },
+  gut: { title: "Gut Reset", subtitle: "Gut reset program tracking." },
 };
 
 function renderSection(section, user, onToast, onNavigate) {
@@ -77,7 +84,12 @@ export function UserDetailPage() {
   const showBack = sectionHistory.current.length > 0 || section !== "glance";
 
   return (
-    <div className="ua-cp-drawer ua-page-enter" role="dialog" aria-modal="true" aria-label="Client profile">
+    <div
+      className={`ua-cp-drawer${menuHidden ? " ua-cp-drawer--menu-hidden" : ""}`}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Client profile"
+    >
       <ClientProfileTopbar
         menuHidden={menuHidden}
         onToggleMenu={() => setMenuHidden((h) => !h)}
@@ -85,7 +97,7 @@ export function UserDetailPage() {
         onBack={goBack}
         onSave={() => onToast("Profile saved")}
       />
-      <div className={`ua-cp-body${menuHidden ? " ua-cp-body--menu-hidden" : ""}`}>
+      <div className="ua-cp-body">
         <ClientProfileSidebar
           user={user}
           activeSection={section}

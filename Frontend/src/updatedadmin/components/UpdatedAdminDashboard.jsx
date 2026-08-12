@@ -2,6 +2,10 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ExportIcon } from "./NavIcons.jsx";
 import { AutosaveButton } from "./shared.jsx";
+import { ProgramCategoryModal } from "./ProgramCategoryModal.jsx";
+import { ProgramProgressModal } from "./ProgramProgressModal.jsx";
+import { TeamRemindModal } from "./TeamRemindModal.jsx";
+import { TeamRosterModal } from "./TeamRosterModal.jsx";
 import { StatIcon } from "./DashboardIcons.jsx";
 import {
   A1C_METRICS,
@@ -9,6 +13,8 @@ import {
   APP_CLIENT_STATS,
   APP_USER_PROG_CARD,
   BIRTHDAYS,
+  CHALLENGE_AUDIENCE_OPTIONS,
+  CHALLENGE_DAY_OPTIONS,
   CHAMP_CLIENTS,
   CHAMP_COACHES,
   CHAMP_MONTHS,
@@ -27,6 +33,7 @@ import {
   LEADERBOARD,
   ONBOARD_DATA,
   ONBOARD_FY_TOTAL,
+  OPS_OVERDUE,
   PRODUCT_BARS,
   PROG_CATS,
   REVENUE_CARDS,
@@ -37,6 +44,18 @@ import {
   alertStyles,
   buildTierGradient,
 } from "../data/dashboardData.js";
+import { getProgramCategoryModal } from "../data/programCategoryData.js";
+import {
+  A1C_METRIC_KEYS,
+  FAT_METRIC_KEYS,
+  getProgressModal,
+  onboardingRemindCopy,
+} from "../data/programProgressData.js";
+import {
+  TEAM_STAFF,
+  remindSubtitle,
+  staffRemindMessage,
+} from "../data/teamStaffData.js";
 
 function AppClientCard({ item, onClick }) {
   return (
@@ -61,6 +80,14 @@ export function UpdatedAdminDashboard({ onToast }) {
   const [champMonth, setChampMonth] = useState("2026-07");
   const [selectedMonth, setSelectedMonth] = useState("Jul 2026");
   const [champExpanded, setChampExpanded] = useState(false);
+  const [chName, setChName] = useState("");
+  const [chDays, setChDays] = useState("14");
+  const [chAud, setChAud] = useState("all");
+  const [chRunning, setChRunning] = useState([]);
+  const [rosterModalRole, setRosterModalRole] = useState(null);
+  const [remindModal, setRemindModal] = useState(null);
+  const [programModalLabel, setProgramModalLabel] = useState(null);
+  const [progressModalKey, setProgressModalKey] = useState(null);
 
   const champ = CHAMP_MONTHS[champMonth] ?? CHAMP_MONTHS["2026-07"];
   const maxScore = LEADERBOARD[0]?.score ?? 1;
@@ -80,12 +107,100 @@ export function UpdatedAdminDashboard({ onToast }) {
     onToast("Broadcast sent to all users");
   }
 
+  function startChallenge() {
+    const name = chName.trim();
+    if (!name) return;
+    const audience = CHALLENGE_AUDIENCE_OPTIONS.find((a) => a.value === chAud)?.label ?? "All clients";
+    setChRunning((prev) => [
+      ...prev,
+      {
+        id: `${Date.now()}`,
+        name,
+        progress: `Day 1 of ${chDays}`,
+        meta: `${audience} · started today`,
+        pct: 4,
+      },
+    ]);
+    setChName("");
+    onToast(`Challenge "${name}" started`);
+  }
+
+  function endChallenge(id) {
+    setChRunning((prev) => prev.filter((c) => c.id !== id));
+    onToast("Challenge ended");
+  }
+
   function goUsers(filters = {}) {
     const params = new URLSearchParams();
     if (filters.tab) params.set("tab", filters.tab);
     if (filters.tier) params.set("tier", filters.tier);
     const qs = params.toString();
     navigate(`${UPDATED_ADMIN_PATHS.users}${qs ? `?${qs}` : ""}`);
+  }
+
+  function openTeamRemind({ title, subtitle, recipients, defaultMessage }) {
+    setRemindModal({ title, subtitle, recipients, defaultMessage, message: defaultMessage });
+  }
+
+  function openTeamRoster(roleId) {
+    if (!TEAM_STAFF[roleId]) return;
+    setRosterModalRole(roleId);
+  }
+
+  function openRemindAll(roleId) {
+    const staff = TEAM_STAFF[roleId];
+    if (!staff) return;
+    openTeamRemind({
+      title: staff.defaultRemindAllTitle,
+      subtitle: remindSubtitle(staff.rosterTitle, staff.roster.length),
+      recipients: staff.roster.map((row) => row.name),
+      defaultMessage: staff.defaultRemindMessage,
+    });
+  }
+
+  function openRemindOne(roleId, row) {
+    openTeamRemind({
+      title: `Remind ${row.name}`,
+      subtitle: row.detail,
+      recipients: [row.name],
+      defaultMessage: staffRemindMessage(row.name),
+    });
+  }
+
+  const activeStaff = rosterModalRole ? TEAM_STAFF[rosterModalRole] : null;
+  const programModal = programModalLabel ? getProgramCategoryModal(programModalLabel) : null;
+  const progressModal = getProgressModal(progressModalKey);
+
+  function openProgramCategory(label) {
+    if (!getProgramCategoryModal(label)) return;
+    setProgramModalLabel(label);
+  }
+
+  function openProgramClient(row) {
+    if (row.userId) {
+      setProgramModalLabel(null);
+      navigate(UPDATED_ADMIN_PATHS.userDetail(row.userId));
+      return;
+    }
+    onToast(`Opening profile for ${row.name}`);
+  }
+
+  function openProgressModal(key) {
+    if (!getProgressModal(key)) return;
+    setProgressModalKey(key);
+  }
+
+  function openProgressClient(row) {
+    if (row.userId) {
+      setProgressModalKey(null);
+      navigate(UPDATED_ADMIN_PATHS.userDetail(row.userId));
+      return;
+    }
+    onToast(`Opening profile for ${row.name}`);
+  }
+
+  function openOnboardingRemind(row) {
+    openTeamRemind(onboardingRemindCopy(row));
   }
 
   return (
@@ -183,58 +298,6 @@ export function UpdatedAdminDashboard({ onToast }) {
           </div>
         </div>
       </section>
-
-      <section className="section">
-        <div className="section__head">
-          <h2 className="section__title">Program progress</h2>
-          <span className="section__hint">Tap any number to see the clients behind it</span>
-        </div>
-        <div className="prog-row">
-          <button type="button" className="prog-card prog-card--onboard" onClick={() => onToast("Opening onboarding list…")}>
-            <div className="prog-card__head"><span>🚀</span> Onboarding status</div>
-            <div className="prog-card__inner">
-              <div className="prog-card__tag">In journey</div>
-              <div className="prog-card__value prog-card__value--blue">{COMM_ONB_COUNT}</div>
-              <div className="prog-card__link">HEAL clients onboarding · view list ›</div>
-            </div>
-          </button>
-
-          <div className="prog-card prog-card--fat">
-            <div className="prog-card__head"><span>🏃</span> Fat Loss</div>
-            <div className={`prog-metrics prog-metrics--${FAT_METRICS.length}`}>
-              {FAT_METRICS.map((m) => (
-                <button
-                  key={m.label}
-                  type="button"
-                  className="metric-btn metric-btn--orange"
-                  onClick={() => onToast(`${m.count} clients in "${m.label}"`)}
-                >
-                  <span className="metric-btn__label metric-btn__label--orange">{m.label}</span>
-                  <span className="metric-btn__count metric-btn__count--orange">{m.count}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="prog-card prog-card--a1c">
-            <div className="prog-card__head"><span>🩸</span> HbA1c</div>
-            <div className={`prog-metrics prog-metrics--${A1C_METRICS.length}`}>
-              {A1C_METRICS.map((m) => (
-                <button
-                  key={m.label}
-                  type="button"
-                  className="metric-btn metric-btn--green"
-                  onClick={() => onToast(`${m.count} clients in "${m.label}"`)}
-                >
-                  <span className="metric-btn__label metric-btn__label--green">{m.label}</span>
-                  <span className="metric-btn__count metric-btn__count--green">{m.count}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
       <section className="section">
         <div className="section__head">
           <h2 className="section__title">Program categories : clients</h2>
@@ -249,7 +312,7 @@ export function UpdatedAdminDashboard({ onToast }) {
                   type="button"
                   className="prog-cat"
                   style={{ background: p.bg, borderColor: p.border }}
-                  onClick={() => onToast(`${p.count} clients in ${p.label}`)}
+                  onClick={() => openProgramCategory(p.label)}
                 >
                   <span className="prog-cat__icon" style={{ background: "#fff" }}>{p.icon}</span>
                   <span className="prog-cat__label">{p.label}</span>
@@ -267,12 +330,181 @@ export function UpdatedAdminDashboard({ onToast }) {
               type="button"
               className="prog-cat prog-cat--appuser"
               style={{ background: APP_USER_PROG_CARD.bg, borderColor: APP_USER_PROG_CARD.border }}
-              onClick={() => onToast(`${APP_USER_PROG_CARD.count} clients in ${APP_USER_PROG_CARD.label}`)}
+              onClick={() => openProgramCategory(APP_USER_PROG_CARD.label)}
             >
               <span className="prog-cat__icon" style={{ background: "#fff" }}>{APP_USER_PROG_CARD.icon}</span>
               <span className="prog-cat__label">{APP_USER_PROG_CARD.label}</span>
               <span className="prog-cat__count" style={{ color: APP_USER_PROG_CARD.accent }}>{APP_USER_PROG_CARD.count}</span>
             </button>
+          </div>
+        </div>
+      </section>
+      <section className="section">
+        <div className="section__head">
+          <h2 className="section__title">Program progress</h2>
+          <span className="section__hint">Tap any number to see the clients behind it</span>
+        </div>
+        <div className="prog-row">
+          <button type="button" className="prog-card prog-card--onboard" onClick={() => openProgressModal("onboarding")}>
+            <div className="prog-card__head"><span>🚀</span> Onboarding status</div>
+            <div className="prog-card__inner">
+              <div className="prog-card__tag">In journey</div>
+              <div className="prog-card__value prog-card__value--blue">{COMM_ONB_COUNT}</div>
+              <div className="prog-card__link">HEAL clients onboarding · view list ›</div>
+            </div>
+          </button>
+
+          <div className="prog-card prog-card--fat">
+            <div className="prog-card__head"><span>🏃</span> Fat Loss</div>
+            <div className={`prog-metrics prog-metrics--${FAT_METRICS.length}`}>
+              {FAT_METRICS.map((m) => (
+                <button
+                  key={m.label}
+                  type="button"
+                  className="metric-btn metric-btn--orange"
+                  onClick={() => openProgressModal({ kind: "fat", key: FAT_METRIC_KEYS[m.label] })}
+                >
+                  <span className="metric-btn__label metric-btn__label--orange">{m.label}</span>
+                  <span className="metric-btn__count metric-btn__count--orange">{m.count}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="prog-card prog-card--a1c">
+            <div className="prog-card__head"><span>🩸</span> HbA1c</div>
+            <div className={`prog-metrics prog-metrics--${A1C_METRICS.length}`}>
+              {A1C_METRICS.map((m) => (
+                <button
+                  key={m.label}
+                  type="button"
+                  className="metric-btn metric-btn--green"
+                  onClick={() => openProgressModal({ kind: "a1c", key: A1C_METRIC_KEYS[m.label] })}
+                >
+                  <span className="metric-btn__label metric-btn__label--green">{m.label}</span>
+                  <span className="metric-btn__count metric-btn__count--green">{m.count}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="section">
+        <div className="section__head">
+          <h2 className="section__title">Operational overview</h2>
+          <span className="section__hint">Across every coach · hover to see who</span>
+        </div>
+        <div className="ops-row">
+          <div className="ops-overdue">
+            <div className="ops-overdue__head">
+              <span className="ops-overdue__title">{OPS_OVERDUE.title}</span>
+              <span className="ops-overdue__badge">{OPS_OVERDUE.total}</span>
+            </div>
+            <div className="ops-overdue__cells">
+              {OPS_OVERDUE.cells.map((cell) => (
+                <button
+                  key={cell.id}
+                  type="button"
+                  className="ops-tile"
+                  onClick={() => onToast(`Opening ${cell.short.toLowerCase()} list…`)}
+                >
+                  <span className="ops-tile__label-row">
+                    <span className="ops-tile__dot" style={{ background: cell.color }} />
+                    <span className="ops-tile__short">{cell.short}</span>
+                  </span>
+                  <span className="ops-tile__count-row">
+                    <span className="ops-tile__count" style={{ color: cell.color }}>{cell.count}</span>
+                    <span className="ops-tile__chip">{cell.chip}</span>
+                  </span>
+                  <span className="ops-tile__tip" role="tooltip">
+                    <span className="ops-tile__tip-title">{cell.tipTitle}</span>
+                    {cell.people.map((person) => (
+                      <span key={person.name} className="ops-tile__person">
+                        <span className="ops-tile__avatar" style={{ background: person.color }}>{person.initial}</span>
+                        <span className="ops-tile__person-name">{person.name}</span>
+                        <span className="ops-tile__person-detail">{person.detail}</span>
+                      </span>
+                    ))}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="ops-challenge">
+            <div className="ops-challenge__head">
+              <span className="ops-challenge__icon" aria-hidden="true">★</span>
+              <span className="ops-challenge__title">Challenges</span>
+              <span className="ops-challenge__count">
+                {chRunning.length} RUNNING
+              </span>
+            </div>
+            <div className="ops-challenge__form">
+              <input
+                type="text"
+                className="ops-challenge__input"
+                placeholder="Challenge name"
+                value={chName}
+                onChange={(e) => setChName(e.target.value)}
+              />
+              <select
+                className="ops-challenge__select"
+                aria-label="Challenge length"
+                value={chDays}
+                onChange={(e) => setChDays(e.target.value)}
+              >
+                {CHALLENGE_DAY_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+              <select
+                className="ops-challenge__select ops-challenge__select--aud"
+                aria-label="Challenge audience"
+                value={chAud}
+                onChange={(e) => setChAud(e.target.value)}
+              >
+                {CHALLENGE_AUDIENCE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className={`ops-challenge__start${chName.trim() ? " ops-challenge__start--ready" : ""}`}
+                disabled={!chName.trim()}
+                onClick={startChallenge}
+              >
+                Start challenge
+              </button>
+            </div>
+            <div className="ops-challenge__list">
+              {chRunning.length === 0 ? (
+                <div className="ops-challenge__empty">
+                  No challenge running. Name one, pick a length and audience, then start it.
+                </div>
+              ) : (
+                chRunning.map((challenge) => (
+                  <div key={challenge.id} className="ops-challenge__item">
+                    <div className="ops-challenge__item-head">
+                      <span className="ops-challenge__item-name">{challenge.name}</span>
+                      <span className="ops-challenge__item-progress">{challenge.progress}</span>
+                      <button
+                        type="button"
+                        className="ops-challenge__end"
+                        title="End challenge"
+                        onClick={() => endChallenge(challenge.id)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                    <div className="ops-challenge__bar">
+                      <span className="ops-challenge__bar-fill" style={{ width: `${challenge.pct}%` }} />
+                    </div>
+                    <div className="ops-challenge__item-meta">{challenge.meta}</div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       </section>
@@ -301,7 +533,7 @@ export function UpdatedAdminDashboard({ onToast }) {
           <div className="community-card community-card--champion">
             <div className="community-card__head"><span>🏆</span> Champion</div>
             <div className="champion-split">
-              <div>
+              <div className="champion-split__col">
                 <div className="champion-split__label">Client</div>
                 <div className="champion-scroll">
                   {CHAMP_CLIENTS.map((c) => (
@@ -312,7 +544,7 @@ export function UpdatedAdminDashboard({ onToast }) {
                   ))}
                 </div>
               </div>
-              <div>
+              <div className="champion-split__col">
                 <div className="champion-split__label champion-split__label--muted">Wellness coach</div>
                 <div className="champion-scroll champion-scroll--plain">
                   {CHAMP_COACHES.map((c) => (
@@ -367,7 +599,7 @@ export function UpdatedAdminDashboard({ onToast }) {
                 <button
                   type="button"
                   className="team-card__view"
-                  onClick={() => navigate(`${UPDATED_ADMIN_PATHS.teams}?role=${team.roleId}`)}
+                  onClick={() => openTeamRoster(team.roleId)}
                 >
                   View
                 </button>
@@ -375,7 +607,7 @@ export function UpdatedAdminDashboard({ onToast }) {
                   type="button"
                   className="team-card__bell"
                   title="Send reminder"
-                  onClick={() => onToast(`Reminder sent to ${team.label} team`)}
+                  onClick={() => openRemindAll(team.roleId)}
                 >
                   🔔
                 </button>
@@ -469,7 +701,7 @@ export function UpdatedAdminDashboard({ onToast }) {
         )}
       </section>
 
-      <section className="section">
+      <section className="section d-none">
         <div className="section__head">
           <h2 className="section__title">Client updates</h2>
           <span className="section__hint">
@@ -675,6 +907,51 @@ export function UpdatedAdminDashboard({ onToast }) {
           </div>
         </div>
       </section>
+
+      <ProgramCategoryModal
+        open={!!programModal}
+        program={programModal}
+        onClose={() => setProgramModalLabel(null)}
+        onOpenClient={openProgramClient}
+      />
+
+      <ProgramProgressModal
+        open={!!progressModal}
+        modal={progressModal}
+        onClose={() => setProgressModalKey(null)}
+        onOpenClient={openProgressClient}
+        onRemind={openOnboardingRemind}
+      />
+
+      <TeamRosterModal
+        open={!!activeStaff}
+        title={activeStaff?.rosterTitle ?? ""}
+        sectionTitle={activeStaff?.sectionTitle ?? ""}
+        rows={activeStaff?.roster ?? []}
+        onClose={() => setRosterModalRole(null)}
+        onRemindAll={() => rosterModalRole && openRemindAll(rosterModalRole)}
+        onRemindOne={(row) => rosterModalRole && openRemindOne(rosterModalRole, row)}
+      />
+
+      <TeamRemindModal
+        open={!!remindModal}
+        title={remindModal?.title ?? ""}
+        subtitle={remindModal?.subtitle ?? ""}
+        recipients={remindModal?.recipients ?? []}
+        message={remindModal?.message ?? ""}
+        defaultMessage={remindModal?.defaultMessage ?? ""}
+        onMessageChange={(message) => setRemindModal((prev) => (prev ? { ...prev, message } : prev))}
+        onReset={() => setRemindModal((prev) => (prev ? { ...prev, message: prev.defaultMessage } : prev))}
+        onPush={() => {
+          onToast(`Push sent to ${remindModal?.recipients.length ?? 0} recipient(s)`);
+          setRemindModal(null);
+        }}
+        onWhatsApp={() => {
+          onToast(`WhatsApp sent to ${remindModal?.recipients.length ?? 0} recipient(s)`);
+          setRemindModal(null);
+        }}
+        onClose={() => setRemindModal(null)}
+      />
     </main>
   );
 }

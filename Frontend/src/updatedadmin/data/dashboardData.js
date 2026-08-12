@@ -10,6 +10,8 @@ export const UPDATED_ADMIN_PATHS = {
   configs: "/updatedadmin/configs",
   pending: "/updatedadmin/pending",
   sop: "/updatedadmin/sop",
+  myContent: "/updatedadmin/my-content",
+  commitmentLetters: (coachId = "anita-rao") => `/updatedadmin/my-content/letters/${coachId}`,
 };
 
 export const NAV_ITEMS = [
@@ -171,12 +173,57 @@ export const A1C_METRICS = [
   { label: "Below 6.5", count: 3 },
 ];
 
+export const OPS_OVERDUE = {
+  title: "Overdue",
+  total: "4 pending",
+  cells: [
+    {
+      id: "orders",
+      short: "Orders",
+      count: 2,
+      chip: "not placed",
+      color: "#2b8f5b",
+      tipTitle: "Orders not placed",
+      people: [
+        { name: "Bikash Sharma", detail: "Requested 3d ago", initial: "BS", color: "#34a56a" },
+        { name: "Hetu Mehra", detail: "Requested today", initial: "HM", color: "#5e6ad2" },
+      ],
+    },
+    {
+      id: "delivery",
+      short: "Delivery",
+      count: 2,
+      chip: "not delivered",
+      color: "#c0392b",
+      tipTitle: "Delivery overdue",
+      people: [
+        { name: "Dipti Patil", detail: "ETA passed 2d ago", initial: "DP", color: "#ec7a45" },
+        { name: "Banita Acharya", detail: "ETA passed 5d ago", initial: "BA", color: "#a855f7" },
+      ],
+    },
+  ],
+};
+
+export const CHALLENGE_DAY_OPTIONS = [
+  { value: "7", label: "7 days" },
+  { value: "14", label: "14 days" },
+  { value: "21", label: "21 days" },
+  { value: "30", label: "30 days" },
+];
+
+export const CHALLENGE_AUDIENCE_OPTIONS = [
+  { value: "all", label: "All clients" },
+  { value: "heal", label: "HEAL clients" },
+  { value: "maintenance", label: "Maintenance" },
+  { value: "app", label: "App users" },
+];
+
 export const PROG_CATS = [
   { label: "Fat Loss", count: 4, icon: "🏃", accent: "#c2661d", bg: "#fff9f4", border: "#f6dcc4" },
   { label: "Diabetes Reversal", count: 2, icon: "🩸", accent: "#2b8f5b", bg: "#f7fbf9", border: "#cdeede" },
   { label: "Thyroid Care", count: 2, icon: "🦋", accent: "#0d9488", bg: "#f0fdfa", border: "#ccfbf1" },
   { label: "PCOD / PCOS", count: 2, icon: "🌸", accent: "#c2559a", bg: "#fdf6fb", border: "#f3d5ea" },
-  { label: "Overall Wellbeing", count: 2, icon: "✨", accent: "#c2891b", bg: "#fffdf5", border: "#f2d675" },
+  { label: "Overall Wellbeing", count: 3, icon: "✨", accent: "#c2891b", bg: "#fffdf5", border: "#f2d675" },
   { label: "Hypertension", count: 1, icon: "❤️", accent: "#e5484d", bg: "#fef2f2", border: "#fecaca" },
 ];
 

@@ -7,6 +7,8 @@ import { DashboardPage } from "../pages/DashboardPage.jsx";
 import { PendingPage } from "../pages/PendingPage.jsx";
 import { SopPage } from "../pages/SopPage.jsx";
 import { TeamsPage } from "../pages/TeamsPage.jsx";
+import { MyContentPage } from "../pages/MyContentPage.jsx";
+import { CommitmentLettersPage } from "../pages/CommitmentLettersPage.jsx";
 import { UpdatedAdminNotFoundPage } from "../pages/UpdatedAdminNotFoundPage.jsx";
 import { UsersLayout } from "../pages/UsersLayout.jsx";
 import { UserDetailPage } from "../pages/UserDetailPage.jsx";
@@ -23,6 +25,8 @@ export const updatedAdminRouteTree = (
     <Route path="configs" element={<ConfigsPage />} />
     <Route path="pending" element={<PendingPage />} />
     <Route path="sop" element={<SopPage />} />
+    <Route path="my-content" element={<MyContentPage />} />
+    <Route path="my-content/letters/:coachId" element={<CommitmentLettersPage />} />
     <Route path="*" element={<UpdatedAdminNotFoundPage />} />
   </Route>
 );

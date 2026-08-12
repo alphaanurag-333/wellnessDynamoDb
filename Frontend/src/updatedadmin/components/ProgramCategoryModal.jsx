@@ -1,0 +1,86 @@
+function ClientTableHead() {
+  return (
+    <div className="ua-prog-cat-modal__table-head">
+      <div>Client</div>
+      <div>Wellness coach</div>
+      <div>Assistant WC</div>
+    </div>
+  );
+}
+
+function ClientRow({ row, onOpen }) {
+  return (
+    <button type="button" className="ua-prog-cat-modal__row" onClick={() => onOpen(row)}>
+      <span className="ua-prog-cat-modal__client">{row.name}</span>
+      <span className="ua-prog-cat-modal__staff">{row.coach}</span>
+      <span className="ua-prog-cat-modal__staff">{row.awc}</span>
+    </button>
+  );
+}
+
+export function ProgramCategoryModal({ open, program, onClose, onOpenClient }) {
+  if (!open || !program) return null;
+
+  const total = program.rows?.length ?? 0;
+  const subtitle = `${total} client${total === 1 ? "" : "s"} registered · tap a row to open their profile`;
+  const hasGroups = Array.isArray(program.groups) && program.groups.length > 0;
+
+  return (
+    <div className="ua-team-modal-backdrop" onClick={onClose} role="presentation">
+      <div
+        className="ua-team-modal ua-prog-cat-modal"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-labelledby="prog-cat-modal-title"
+      >
+        <div className="ua-team-modal__head">
+          <span className="ua-team-modal__head-icon" aria-hidden="true">👥</span>
+          <div className="ua-team-modal__head-copy">
+            <div id="prog-cat-modal-title" className="ua-team-modal__title">{program.label}</div>
+            <div className="ua-team-modal__sub">{subtitle}</div>
+          </div>
+          <button type="button" className="ua-team-modal__close" onClick={onClose} aria-label="Close">
+            ×
+          </button>
+        </div>
+
+        <div className="ua-prog-cat-modal__body">
+          {hasGroups ? (
+            program.groups.map((group) => (
+              <div key={group.title} className="ua-prog-cat-modal__group">
+                <div className="ua-prog-cat-modal__group-bar">
+                  <div className="ua-prog-cat-modal__group-copy">
+                    <span className="ua-prog-cat-modal__group-title">{group.title}</span>
+                    <span className="ua-prog-cat-modal__group-price">
+                      {group.price} · {group.note}
+                    </span>
+                  </div>
+                  <span className="ua-prog-cat-modal__group-count">
+                    {group.rows.length} client{group.rows.length === 1 ? "" : "s"}
+                  </span>
+                </div>
+                <ClientTableHead />
+                {group.rows.map((row) => (
+                  <ClientRow key={row.name} row={row} onOpen={onOpenClient} />
+                ))}
+              </div>
+            ))
+          ) : (
+            <>
+              <ClientTableHead />
+              {program.rows.map((row) => (
+                <ClientRow key={row.name} row={row} onOpen={onOpenClient} />
+              ))}
+            </>
+          )}
+        </div>
+
+        <div className="ua-team-modal__foot">
+          <button type="button" className="ua-team-modal__close-btn" onClick={onClose}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
