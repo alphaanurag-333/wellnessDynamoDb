@@ -15,13 +15,29 @@ import {
   ONBOARDING_GALLERY,
 } from "../components/OnboardingVideoSection.jsx";
 import {
-  CommitmentLetterPanel,
   HealthProgressTrackersPanel,
   MedicalQuestionnairePanel,
 } from "../components/ConfigAppRemainingSections.jsx";
+import {
+  CommitmentLetterSection,
+  COMMITMENT_COACH_SIGNOFFS,
+  COMMITMENT_LETTER_DEFAULT,
+} from "../components/CommitmentLetterSection.jsx";
 import { DietPlansSection, DIET_PLANS } from "../components/DietPlansSection.jsx";
 import { DrfBankSection, DRF_FORM_SECTIONS } from "../components/DrfBankSection.jsx";
+import { GallerySection, GALLERY_MEDIA } from "../components/GallerySection.jsx";
+import {
+  AiEnableSection,
+  AI_ENABLE_ASSISTANTS,
+  AI_ENABLE_COACHES,
+} from "../components/AiEnableSection.jsx";
+import {
+  LaunchSection,
+  LAUNCH_CONFIG_DOMAINS,
+  LAUNCH_CONFIG_RATINGS,
+} from "../components/LaunchSection.jsx";
 import { NutritionBankSection, NUTRITION_BANK } from "../components/NutritionBankSection.jsx";
+import { RxBankSection, RX_BANK_PROTOCOLS } from "../components/RxBankSection.jsx";
 import { PageHeader } from "../components/shared.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { HEALTH_TRACKERS } from "../data/healthProgressData.js";
@@ -41,7 +57,6 @@ import {
   TOS_CONTENT,
   DPA_CONTENT,
   MEDICAL_QUESTIONNAIRE,
-  COMMITMENT_LETTER_CONTENT,
 } from "../data/configDetailData.js";
 import { findConfigItem, getConfigStateLabel } from "../data/configsData.js";
 import { formatRupee } from "../data/exchangeData.js";
@@ -1008,6 +1023,10 @@ const PREVIEW_CONFIGS = new Set([
   "app-commitment-letter",
   "app-diet-plans",
   "app-nutrition-bank",
+  "app-rx-bank",
+  "app-gallery",
+  "app-launch",
+  "app-ai-enable",
 ]);
 
 function PreviewActions({ item, onOpen, onPublish, canPublish }) {
@@ -1048,9 +1067,17 @@ export function ConfigDetailPage() {
   const [medicalQuestions, setMedicalQuestions] = useState(MEDICAL_QUESTIONNAIRE);
   const [healthTrackers, setHealthTrackers] = useState(HEALTH_TRACKERS);
   const [drfFormSections, setDrfFormSections] = useState(DRF_FORM_SECTIONS);
-  const [commitmentCopy, setCommitmentCopy] = useState(COMMITMENT_LETTER_CONTENT);
+  const [commitmentText, setCommitmentText] = useState(COMMITMENT_LETTER_DEFAULT);
+  const [savedCommitmentText, setSavedCommitmentText] = useState("");
+  const [commitmentCoaches] = useState(COMMITMENT_COACH_SIGNOFFS);
   const [dietPlans, setDietPlans] = useState(DIET_PLANS);
   const [nutritionBank, setNutritionBank] = useState(NUTRITION_BANK);
+  const [rxProtocols, setRxProtocols] = useState(RX_BANK_PROTOCOLS);
+  const [galleryMedia, setGalleryMedia] = useState(GALLERY_MEDIA);
+  const [launchRatings, setLaunchRatings] = useState(LAUNCH_CONFIG_RATINGS);
+  const [launchDomains, setLaunchDomains] = useState(LAUNCH_CONFIG_DOMAINS);
+  const [aiCoaches, setAiCoaches] = useState(AI_ENABLE_COACHES);
+  const [aiAssistants, setAiAssistants] = useState(AI_ENABLE_ASSISTANTS);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
 
@@ -1086,6 +1113,18 @@ export function ConfigDetailPage() {
                 ? dietPlans.some((entry) => entry.live)
               : item.id === "app-nutrition-bank"
                 ? nutritionBank.length > 0
+              : item.id === "app-rx-bank"
+                ? rxProtocols.some((entry) => entry.live)
+              : item.id === "app-gallery"
+                ? galleryMedia.some((entry) => entry.live)
+              : item.id === "app-launch"
+                ? launchDomains.some(
+                    (domain) =>
+                      domain.live && domain.questions.some((entry) => entry.enabled),
+                  )
+              : item.id === "app-ai-enable"
+                ? aiCoaches.some((entry) => entry.enabled)
+                  || aiAssistants.some((entry) => entry.enabled)
           : item.toggleable === false
             ? Boolean(item.live)
             : Boolean(item.on);
@@ -1249,9 +1288,12 @@ export function ConfigDetailPage() {
         );
       case "app-commitment-letter":
         return (
-          <CommitmentLetterPanel
-            copy={commitmentCopy}
-            onChange={setCommitmentCopy}
+          <CommitmentLetterSection
+            text={commitmentText}
+            setText={setCommitmentText}
+            savedText={savedCommitmentText}
+            setSavedText={setSavedCommitmentText}
+            coaches={commitmentCoaches}
             onToast={onToast}
           />
         );
@@ -1268,6 +1310,42 @@ export function ConfigDetailPage() {
           <NutritionBankSection
             items={nutritionBank}
             setItems={setNutritionBank}
+            onToast={onToast}
+          />
+        );
+      case "app-rx-bank":
+        return (
+          <RxBankSection
+            protocols={rxProtocols}
+            setProtocols={setRxProtocols}
+            onToast={onToast}
+          />
+        );
+      case "app-gallery":
+        return (
+          <GallerySection
+            media={galleryMedia}
+            setMedia={setGalleryMedia}
+            onToast={onToast}
+          />
+        );
+      case "app-launch":
+        return (
+          <LaunchSection
+            ratings={launchRatings}
+            setRatings={setLaunchRatings}
+            domains={launchDomains}
+            setDomains={setLaunchDomains}
+            onToast={onToast}
+          />
+        );
+      case "app-ai-enable":
+        return (
+          <AiEnableSection
+            coaches={aiCoaches}
+            setCoaches={setAiCoaches}
+            assistants={aiAssistants}
+            setAssistants={setAiAssistants}
             onToast={onToast}
           />
         );
@@ -1317,6 +1395,13 @@ export function ConfigDetailPage() {
           dietPlans,
           nutritionBank,
           drfFormSections,
+          rxProtocols,
+          commitmentText,
+          galleryMedia,
+          launchRatings,
+          launchDomains,
+          aiCoaches,
+          aiAssistants,
         }}
       />
 
