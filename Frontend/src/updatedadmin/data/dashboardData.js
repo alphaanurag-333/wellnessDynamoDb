@@ -21,7 +21,7 @@ export const NAV_ITEMS = [
   { id: "teams", label: "Teams", icon: "layers", path: UPDATED_ADMIN_PATHS.teams },
   { id: "calendar", label: "Calendar", icon: "calendar", path: UPDATED_ADMIN_PATHS.calendar },
   { id: "configs", label: "Configs", icon: "settings", path: UPDATED_ADMIN_PATHS.configs, adminOnly: true },
-  { id: "pending", label: "Pending Tasks", icon: "bell", path: UPDATED_ADMIN_PATHS.pending, wcOnly: true },
+  { id: "pending", label: "Pending Tasks", icon: "bell", path: UPDATED_ADMIN_PATHS.pending },
   { id: "sop", label: "SOP", icon: "file", path: UPDATED_ADMIN_PATHS.sop },
 ];
 
@@ -34,6 +34,329 @@ export const VIEW_AS_ROLES = [
 ];
 
 export const VIEW_AS_STAFF_TOTAL = VIEW_AS_ROLES.reduce((sum, role) => sum + role.live, 0);
+
+export const DASH_SCOPE_LABELS = {
+  admin: "Global",
+  wc: "Your assigned clients",
+  awc: "Your team's clients",
+  support: "Content overview",
+  trainee: "Learning view",
+};
+
+export const ROLE_AVATAR_INITIALS = {
+  admin: "A",
+  wc: "W",
+  awc: "A",
+  trainee: "T",
+  support: "S",
+};
+
+/** Support role — quick insights on content dashboard */
+export const SUPPORT_QUICK_INSIGHTS = [
+  { label: "Testimonials", value: 214, sub: null, iconKey: "star", bar: "#2e9e5f", accent: "#2b8f5b", bg: "#2e9e5f" },
+  { label: "Banners live", value: 8, sub: null, iconKey: "image", bar: "#4361e8", accent: "#4361e8", bg: "#4361e8" },
+  { label: "Videos", value: 47, sub: null, iconKey: "video", bar: "#a855f7", accent: "#9333ea", bg: "#a855f7" },
+  { label: "Feedback open", value: 19, sub: "Client reviews awaiting moderation", iconKey: "bell", bar: "#f0a91b", accent: "#c2891b", bg: "#f0a91b" },
+  { label: "Published today", value: 5, sub: null, iconKey: "zap", bar: "#ec7a45", accent: "#c2661d", bg: "#ec7a45" },
+];
+
+export const WC_COACH_TIERS = [
+  { label: "PWC ONLY", value: 1, pct: "17%", color: "#f0a91b", tierFilter: "Consultancy" },
+  { label: "HEAL", value: 3, pct: "50%", color: "#2b8f5b", tierFilter: "Seek to Heal" },
+  { label: "MAINTENANCE", value: 2, pct: "33%", color: "#5e6ad2", tierFilter: "Maintenance" },
+];
+
+export const WC_COACH_TIER_TOTAL = WC_COACH_TIERS.reduce((sum, t) => sum + t.value, 0);
+
+export const WC_APP_CLIENT_STATS = [
+  { short: "Eagles", value: 4, tag: "Corporate & family", bar: "#a855f7", accent: "#9333ea", bg: "#a855f7", iconKey: "eagles", link: `${UPDATED_ADMIN_PATHS.users}?tab=team`, tierFilter: "" },
+  { short: "Maintenance", value: 8, tag: "Post-heal upkeep", bar: "#ec7a45", accent: "#c2661d", bg: "#ec7a45", iconKey: "users", link: UPDATED_ADMIN_PATHS.users, tierFilter: "Maintenance" },
+];
+
+export const WC_EXP_TOTAL = 2;
+
+export const WC_COMM_ONB_COUNT = 2;
+
+export const WC_FAT_METRICS = [
+  { label: "6–10 kg down", count: 3 },
+  { label: "Halfway to goal", count: 2 },
+  { label: "At / 2 kg short", count: 1 },
+];
+
+export const WC_A1C_METRICS = [
+  { label: "2+ points down", count: 0 },
+  { label: "Below 6.5", count: 0 },
+];
+
+export const WC_TEAM_CARDS = [
+  {
+    label: "Assistant WC",
+    roleId: "awc",
+    value: 8,
+    accent: "#6366f1",
+    bar: "#6366f1",
+    pending: [
+      { label: "4 assignments pending", bg: "#fdf3ec", color: "#c2661d" },
+      { label: "1 pwc pending", bg: "#fdf3ec", color: "#c2661d" },
+    ],
+  },
+  {
+    label: "Trainee",
+    roleId: "trainee",
+    value: 3,
+    accent: "#c2891b",
+    bar: "#e5a020",
+    pending: [
+      { label: "1 mentor pending", bg: "#fdf3ec", color: "#c2661d" },
+      { label: "4 shadow sessions", bg: "#eef0fc", color: "#5e6ad2" },
+    ],
+  },
+];
+
+export const WC_PENDING_GROUPS = [
+  {
+    title: "Reviews & approvals",
+    total: "5 pending",
+    cells: [
+      {
+        id: "counselling",
+        short: "Counselling",
+        count: 3,
+        chip: "overdue",
+        color: "#c0392b",
+        tipTitle: "Counselling overdue",
+        people: [
+          { name: "Bikash Sharma", detail: "16 days ago", initial: "BS", color: "#34a56a" },
+          { name: "Hetu Mehra", detail: "20 days ago", initial: "HM", color: "#5e6ad2" },
+          { name: "Dipti Patil", detail: "24 days ago", initial: "DP", color: "#ec7a45" },
+        ],
+      },
+      {
+        id: "blood-report",
+        short: "Blood report",
+        count: 1,
+        chip: "this week",
+        color: "#0d9488",
+        tipTitle: "Blood report pending",
+        people: [
+          { name: "Kabir Shah", detail: "Due this week", initial: "KS", color: "#0d9488" },
+        ],
+      },
+      {
+        id: "meal-pics",
+        short: "Meal pics",
+        count: 1,
+        chip: "awaiting",
+        color: "#a855f7",
+        tipTitle: "Meal pics to review",
+        people: [
+          { name: "Sana Iqbal", detail: "3 photos", initial: "SI", color: "#a855f7" },
+        ],
+      },
+    ],
+  },
+  {
+    title: "Overdue",
+    total: "3 pending",
+    cells: [
+      {
+        id: "orders",
+        short: "Orders",
+        count: 2,
+        chip: "not placed",
+        color: "#2b8f5b",
+        tipTitle: "Orders not placed",
+        people: [
+          { name: "Bikash Sharma", detail: "Requested 3d ago", initial: "BS", color: "#34a56a" },
+          { name: "Hetu Mehra", detail: "Requested today", initial: "HM", color: "#5e6ad2" },
+        ],
+      },
+      {
+        id: "delivery",
+        short: "Delivery",
+        count: 1,
+        chip: "not delivered",
+        color: "#c0392b",
+        tipTitle: "Delivery overdue",
+        people: [
+          { name: "Dipti Patil", detail: "ETA passed 2d ago", initial: "DP", color: "#ec7a45" },
+        ],
+      },
+    ],
+  },
+  {
+    title: "Schedule",
+    total: "3 pending",
+    cells: [
+      {
+        id: "meetings",
+        short: "Meetings",
+        count: 3,
+        chip: "scheduled",
+        color: "#5e6ad2",
+        tipTitle: "Upcoming meetings",
+        people: [
+          { name: "Madhupriya Bilas", detail: "Thu 11 AM", initial: "MB", color: "#a855f7" },
+          { name: "Arjun Verma", detail: "Fri 3 PM", initial: "AV", color: "#2b8f5b" },
+          { name: "Banita Acharya", detail: "Mon 10 AM", initial: "BA", color: "#6366f1" },
+        ],
+      },
+    ],
+  },
+];
+
+export const WC_STALE_RECORDS = [
+  { id: "blood-test", label: "Blood test", count: 2, note: "Older than 6 months", color: "#c0392b" },
+  { id: "gut-reset", label: "Gut reset", count: 2, note: "No reset in 60 days", color: "#f0a91b" },
+];
+
+export const WC_STALE_TOTAL = "5 due";
+
+export const WC_LEADERBOARD = [
+  { rank: 1, name: "Madhupriya Bilas", score: 279, days: 20, medal: "🥇", highlight: false },
+  { rank: 2, name: "Dipti Patil", score: 276, days: 18, medal: "🥈", highlight: false },
+  { rank: 3, name: "Banita Acharya", score: 261, days: 22, medal: "🥉", highlight: false },
+  { rank: 4, name: "Bikash Sharma", score: 258, days: 17, medal: "", highlight: false },
+  { rank: 5, name: "Hetu Mehra", score: 243, days: 21, medal: "", highlight: true },
+  { rank: 6, name: "Ananya Singh", score: 215, days: 18, medal: "", highlight: false },
+  { rank: 7, name: "Rohit Verma", score: 202, days: 17, medal: "", highlight: false },
+  { rank: 8, name: "Priya Nair", score: 198, days: 16, medal: "", highlight: false },
+  { rank: 9, name: "Karan Mehta", score: 185, days: 15, medal: "", highlight: false },
+  { rank: 10, name: "Sneha Das", score: 172, days: 14, medal: "", highlight: false },
+];
+
+/** Assistant WC — team roster tiers (no Seek) */
+export const AWC_COACH_TIERS = [
+  { label: "PWC ONLY", value: 2, pct: "18%", color: "#f0a91b", tierFilter: "Consultancy" },
+  { label: "HEAL", value: 3, pct: "27%", color: "#2b8f5b", tierFilter: "Seek to Heal" },
+  { label: "MAINTENANCE", value: 6, pct: "55%", color: "#5e6ad2", tierFilter: "Maintenance" },
+];
+
+export const AWC_COACH_TIER_TOTAL = AWC_COACH_TIERS.reduce((sum, t) => sum + t.value, 0);
+
+export const AWC_APP_CLIENT_STATS = WC_APP_CLIENT_STATS;
+
+export const AWC_EXP_TOTAL = 4;
+
+export const AWC_COMM_ONB_COUNT = 5;
+
+export const AWC_FAT_METRICS = [
+  { label: "6–10 kg down", count: 4 },
+  { label: "Halfway to goal", count: 3 },
+  { label: "At / 2 kg short", count: 1 },
+];
+
+export const AWC_A1C_METRICS = [
+  { label: "2+ points down", count: 1 },
+  { label: "Below 6.5", count: 2 },
+];
+
+export const AWC_PENDING_GROUPS = [
+  {
+    title: "Reviews & approvals",
+    total: "9 pending",
+    cells: [
+      {
+        id: "counselling",
+        short: "Counselling",
+        count: 4,
+        chip: "overdue",
+        color: "#c0392b",
+        tipTitle: "Counselling overdue",
+        people: [
+          { name: "Bikash Sharma", detail: "16 days ago", initial: "BS", color: "#34a56a" },
+          { name: "Hetu Mehra", detail: "20 days ago", initial: "HM", color: "#5e6ad2" },
+          { name: "Dipti Patil", detail: "24 days ago", initial: "DP", color: "#ec7a45" },
+          { name: "Banita Acharya", detail: "28 days ago", initial: "BA", color: "#a855f7" },
+        ],
+      },
+      {
+        id: "blood-report",
+        short: "Blood report",
+        count: 2,
+        chip: "this week",
+        color: "#0d9488",
+        tipTitle: "Blood report pending",
+        people: [
+          { name: "Kabir Shah", detail: "Due this week", initial: "KS", color: "#0d9488" },
+          { name: "Arjun Verma", detail: "Due this week", initial: "AV", color: "#2b8f5b" },
+        ],
+      },
+      {
+        id: "meal-pics",
+        short: "Meal pics",
+        count: 3,
+        chip: "awaiting",
+        color: "#a855f7",
+        tipTitle: "Meal pics to review",
+        people: [
+          { name: "Sana Iqbal", detail: "3 photos", initial: "SI", color: "#a855f7" },
+          { name: "Rhea Kapoor", detail: "2 photos", initial: "RK", color: "#6366f1" },
+          { name: "Madhupriya Bilas", detail: "4 photos", initial: "MB", color: "#ec7a45" },
+        ],
+      },
+    ],
+  },
+  {
+    title: "Overdue",
+    total: "4 pending",
+    cells: [
+      {
+        id: "orders",
+        short: "Orders",
+        count: 2,
+        chip: "not placed",
+        color: "#2b8f5b",
+        tipTitle: "Orders not placed",
+        people: [
+          { name: "Bikash Sharma", detail: "Requested 3d ago", initial: "BS", color: "#34a56a" },
+          { name: "Hetu Mehra", detail: "Requested today", initial: "HM", color: "#5e6ad2" },
+        ],
+      },
+      {
+        id: "delivery",
+        short: "Delivery",
+        count: 2,
+        chip: "not delivered",
+        color: "#c0392b",
+        tipTitle: "Delivery overdue",
+        people: [
+          { name: "Dipti Patil", detail: "ETA passed 2d ago", initial: "DP", color: "#ec7a45" },
+          { name: "Banita Acharya", detail: "ETA passed 5d ago", initial: "BA", color: "#a855f7" },
+        ],
+      },
+    ],
+  },
+  {
+    title: "Schedule",
+    total: "4 pending",
+    cells: [
+      {
+        id: "meetings",
+        short: "Meetings",
+        count: 4,
+        chip: "scheduled",
+        color: "#5e6ad2",
+        tipTitle: "Upcoming meetings",
+        people: [
+          { name: "Madhupriya Bilas", detail: "Thu 11 AM", initial: "MB", color: "#a855f7" },
+          { name: "Arjun Verma", detail: "Fri 3 PM", initial: "AV", color: "#2b8f5b" },
+          { name: "Banita Acharya", detail: "Mon 10 AM", initial: "BA", color: "#6366f1" },
+          { name: "Hetu Mehra", detail: "Tue 2 PM", initial: "HM", color: "#5e6ad2" },
+        ],
+      },
+    ],
+  },
+];
+
+export const AWC_STALE_RECORDS = [
+  { id: "blood-test", label: "Blood test", count: 4, note: "Older than 6 months", color: "#c0392b" },
+  { id: "gut-reset", label: "Gut reset", count: 3, note: "No reset in 60 days", color: "#f0a91b" },
+];
+
+export const AWC_STALE_TOTAL = "9 due";
+
+export const AWC_LEADERBOARD = WC_LEADERBOARD;
 
 export const COACH_TIERS = [
   { label: "SEEK", value: 3, pct: "8%", color: "#3d5afe", tierFilter: "Seek" },

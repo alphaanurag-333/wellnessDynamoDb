@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useViewAs } from "../context/ViewAsContext.jsx";
+import { CommunityBroadcastModal } from "./CommunityBroadcastModal.jsx";
 import { ExportIcon } from "./NavIcons.jsx";
 import { AutosaveButton } from "./shared.jsx";
 import { ProgramCategoryModal } from "./ProgramCategoryModal.jsx";
@@ -23,6 +25,7 @@ import {
   COACH_TIER_TOTAL,
   COACH_TIERS,
   DASH_ROLE_CARDS,
+  DASH_SCOPE_LABELS,
   EXP_CARDS,
   EXP_NOTE,
   EXP_TOTAL,
@@ -41,6 +44,30 @@ import {
   REVENUE_TREND,
   TIER_DATA,
   UPDATED_ADMIN_PATHS,
+  WC_A1C_METRICS,
+  WC_APP_CLIENT_STATS,
+  WC_COACH_TIER_TOTAL,
+  WC_COACH_TIERS,
+  WC_COMM_ONB_COUNT,
+  WC_EXP_TOTAL,
+  WC_FAT_METRICS,
+  WC_LEADERBOARD,
+  WC_PENDING_GROUPS,
+  WC_STALE_RECORDS,
+  WC_STALE_TOTAL,
+  WC_TEAM_CARDS,
+  AWC_A1C_METRICS,
+  AWC_APP_CLIENT_STATS,
+  AWC_COACH_TIER_TOTAL,
+  AWC_COACH_TIERS,
+  AWC_COMM_ONB_COUNT,
+  AWC_EXP_TOTAL,
+  AWC_FAT_METRICS,
+  AWC_LEADERBOARD,
+  AWC_PENDING_GROUPS,
+  AWC_STALE_RECORDS,
+  AWC_STALE_TOTAL,
+  SUPPORT_QUICK_INSIGHTS,
   alertStyles,
   buildTierGradient,
 } from "../data/dashboardData.js";
@@ -73,10 +100,113 @@ function AppClientCard({ item, onClick }) {
   );
 }
 
+function QuickInsightCard({ item, onClick }) {
+  return (
+    <button type="button" className="stat-card cdact quick-insight-card" onClick={onClick}>
+      <span className="stat-card__bar" style={{ background: item.bar }} />
+      <div className="stat-card__top">
+        <span className="stat-card__icon" style={{ background: item.bg, color: "#fff", boxShadow: `0 2px 6px ${item.bg}55` }}>
+          <StatIcon name={item.iconKey} />
+        </span>
+        <span className="stat-card__label">{item.label}</span>
+      </div>
+      <div className="stat-card__value" style={{ color: item.accent }}>{item.value}</div>
+      {item.sub ? <div className="stat-card__sub">{item.sub}</div> : null}
+    </button>
+  );
+}
+
+function NotesToRemember({ onToast }) {
+  const [text, setText] = useState("");
+  const [saved, setSaved] = useState("");
+  const [locked, setLocked] = useState(true);
+  const [savedAt, setSavedAt] = useState("");
+  const dirty = text !== saved;
+
+  function saveNote() {
+    if (!dirty) return;
+    const d = new Date();
+    const hh = String(d.getHours() % 12 || 12);
+    const mm = String(d.getMinutes()).padStart(2, "0");
+    const ap = d.getHours() >= 12 ? "PM" : "AM";
+    setSaved(text);
+    setSavedAt(`Saved ${hh}:${mm} ${ap}`);
+    onToast("Note saved");
+  }
+
+  function resetNote() {
+    if (!dirty) return;
+    setText(saved);
+    onToast("Note reset to the last save");
+  }
+
+  return (
+    <div className="coach-notes">
+      <div className="coach-notes__head">
+        <span className="coach-notes__pin" aria-hidden="true">📌</span>
+        <span className="coach-notes__title">Notes to remember</span>
+        {savedAt ? <span className="coach-notes__stamp">{savedAt}</span> : null}
+      </div>
+      <textarea
+        className="coach-notes__input"
+        placeholder="Anything to pick up later…"
+        value={text}
+        readOnly={locked}
+        onChange={(e) => {
+          if (!locked) setText(e.target.value);
+        }}
+      />
+      <div className="coach-notes__actions">
+        <button type="button" className="coach-notes__btn coach-notes__btn--edit" onClick={() => setLocked((v) => !v)}>
+          {locked ? "Edit" : "Locked"}
+        </button>
+        <button
+          type="button"
+          className={`coach-notes__btn coach-notes__btn--reset${dirty ? " coach-notes__btn--reset-dirty" : ""}`}
+          onClick={resetNote}
+        >
+          Reset
+        </button>
+        <button
+          type="button"
+          className={`coach-notes__btn coach-notes__btn--save${dirty ? " coach-notes__btn--save-dirty" : ""}`}
+          onClick={saveNote}
+        >
+          {dirty ? "Save" : "Saved"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function UpdatedAdminDashboard({ onToast }) {
   const navigate = useNavigate();
+  const { viewAs } = useViewAs();
+  const isStaffDash = viewAs === "wc" || viewAs === "awc";
+  const isSupportDash = viewAs === "support";
+  const isFullDash = viewAs === "admin" || isStaffDash;
+  const isAdminDash = viewAs === "admin";
+  const isContentCommunity = isStaffDash || isSupportDash;
+  const dashHasTeam = viewAs !== "awc";
+
+  const coachTiers = viewAs === "wc" ? WC_COACH_TIERS : viewAs === "awc" ? AWC_COACH_TIERS : COACH_TIERS;
+  const coachTierTotal = viewAs === "wc" ? WC_COACH_TIER_TOTAL : viewAs === "awc" ? AWC_COACH_TIER_TOTAL : COACH_TIER_TOTAL;
+  const tierCardTitle = isStaffDash ? "Your clients by tier" : "Clients by tier";
+  const appClientStats = viewAs === "wc" ? WC_APP_CLIENT_STATS : viewAs === "awc" ? AWC_APP_CLIENT_STATS : APP_CLIENT_STATS;
+  const expTotal = viewAs === "wc" ? WC_EXP_TOTAL : viewAs === "awc" ? AWC_EXP_TOTAL : EXP_TOTAL;
+  const commOnbCount = viewAs === "wc" ? WC_COMM_ONB_COUNT : viewAs === "awc" ? AWC_COMM_ONB_COUNT : COMM_ONB_COUNT;
+  const fatMetrics = viewAs === "wc" ? WC_FAT_METRICS : viewAs === "awc" ? AWC_FAT_METRICS : FAT_METRICS;
+  const a1cMetrics = viewAs === "wc" ? WC_A1C_METRICS : viewAs === "awc" ? AWC_A1C_METRICS : A1C_METRICS;
+  const teamCards = viewAs === "wc" ? WC_TEAM_CARDS : DASH_ROLE_CARDS;
+  const activeLeaderboard = viewAs === "wc" ? WC_LEADERBOARD : viewAs === "awc" ? AWC_LEADERBOARD : viewAs === "support" ? WC_LEADERBOARD : LEADERBOARD;
+  const pendingGroups = viewAs === "wc" ? WC_PENDING_GROUPS : viewAs === "awc" ? AWC_PENDING_GROUPS : [];
+  const staleRecords = viewAs === "wc" ? WC_STALE_RECORDS : viewAs === "awc" ? AWC_STALE_RECORDS : [];
+  const staleTotal = viewAs === "wc" ? WC_STALE_TOTAL : viewAs === "awc" ? AWC_STALE_TOTAL : "";
+  const scopeLabel = DASH_SCOPE_LABELS[viewAs] ?? "Global";
+  const canExport = viewAs === "admin" || viewAs === "wc";
   const [broadcast, setBroadcast] = useState("");
   const [broadcastMeta, setBroadcastMeta] = useState("Last sent 2 days ago");
+  const [broadcastModalOpen, setBroadcastModalOpen] = useState(false);
   const [champMonth, setChampMonth] = useState("2026-07");
   const [selectedMonth, setSelectedMonth] = useState("Jul 2026");
   const [champExpanded, setChampExpanded] = useState(false);
@@ -90,19 +220,24 @@ export function UpdatedAdminDashboard({ onToast }) {
   const [progressModalKey, setProgressModalKey] = useState(null);
 
   const champ = CHAMP_MONTHS[champMonth] ?? CHAMP_MONTHS["2026-07"];
-  const maxScore = LEADERBOARD[0]?.score ?? 1;
+  const maxScore = activeLeaderboard[0]?.score ?? 1;
   const tierTotal = useMemo(() => TIER_DATA.reduce((sum, item) => sum + item.value, 0), []);
   const tierGradient = useMemo(() => buildTierGradient(TIER_DATA), []);
   const onboardMax = useMemo(() => Math.max(...ONBOARD_DATA.map((d) => d.count)), []);
-  const champPodium = LEADERBOARD.slice(0, 3);
+  const champPodium = activeLeaderboard.slice(0, 3);
 
-  function sendBroadcast() {
+  function openBroadcastReview() {
+    setBroadcastModalOpen(true);
+  }
+
+  function confirmBroadcast() {
     const msg = broadcast.trim();
     if (!msg) {
       onToast("Enter a message to broadcast");
       return;
     }
     setBroadcast("");
+    setBroadcastModalOpen(false);
     setBroadcastMeta("Last sent just now");
     onToast("Broadcast sent to all users");
   }
@@ -199,6 +334,16 @@ export function UpdatedAdminDashboard({ onToast }) {
     onToast(`Opening profile for ${row.name}`);
   }
 
+  function goPending(focus = "") {
+    const qs = focus ? `?focus=${encodeURIComponent(focus)}` : "";
+    navigate(`${UPDATED_ADMIN_PATHS.pending}${qs}`);
+  }
+
+  function goConfigs(label) {
+    navigate(UPDATED_ADMIN_PATHS.configs);
+    onToast(`Opening ${label} in Configs…`);
+  }
+
   function openOnboardingRemind(row) {
     openTeamRemind(onboardingRemindCopy(row));
   }
@@ -209,17 +354,38 @@ export function UpdatedAdminDashboard({ onToast }) {
         <div>
           <h1 className="page-head__title">Dashboard</h1>
           <p className="page-head__sub">
-            <span className="chip chip--scope">Global</span> Updated just now
+            <span className="chip chip--scope">{scopeLabel}</span> Updated just now
           </p>
         </div>
         <div className="page-head__actions">
-          <button type="button" className="btn btn--outline" onClick={() => onToast("Exporting dashboard report…")}>
-            <ExportIcon /> Export report
-          </button>
+          {canExport ? (
+            <button type="button" className="btn btn--outline" onClick={() => onToast("Exporting dashboard report…")}>
+              <ExportIcon /> Export report
+            </button>
+          ) : null}
           <AutosaveButton onClick={() => onToast("Saved")} />
         </div>
       </div>
 
+      {isSupportDash ? (
+        <section className="section">
+          <div className="ua-section-label">
+            <div className="ua-section-label__title">Quick insights</div>
+            <span className="ua-section-label__hint">Tap a card to jump to its section</span>
+          </div>
+          <div className="insights-row">
+            {SUPPORT_QUICK_INSIGHTS.map((item) => (
+              <QuickInsightCard
+                key={item.label}
+                item={item}
+                onClick={() => goConfigs(item.label)}
+              />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {isFullDash ? (
       <section className="section">
         <div className="ua-section-label">
           <div className="ua-section-label__title">Users</div>
@@ -228,16 +394,16 @@ export function UpdatedAdminDashboard({ onToast }) {
         <div className="users-row users-row--v2">
           <div className="tier-card">
             <div className="tier-card__head">
-              <span className="tier-card__title">Clients by tier</span>
-              <span className="tier-card__total">{COACH_TIER_TOTAL} total</span>
+              <span className="tier-card__title">{tierCardTitle}</span>
+              <span className="tier-card__total">{coachTierTotal} total</span>
             </div>
             <div className="tier-card__bar">
-              {COACH_TIERS.map((t) => (
+              {coachTiers.map((t) => (
                 <span key={t.label} className="tier-card__bar-seg" style={{ flex: t.value, background: t.color, minWidth: t.value ? 3 : 0 }} />
               ))}
             </div>
             <div className="tier-card__cells">
-              {COACH_TIERS.map((t) => (
+              {coachTiers.map((t) => (
                 <button
                   key={t.label}
                   type="button"
@@ -260,7 +426,7 @@ export function UpdatedAdminDashboard({ onToast }) {
           <div className="app-users-group">
             <div className="app-users-group__title">App clients</div>
             <div className="app-users-group__inner">
-              {APP_CLIENT_STATS.map((item) => (
+              {appClientStats.map((item) => (
                 <AppClientCard
                   key={item.short}
                   item={item}
@@ -273,7 +439,7 @@ export function UpdatedAdminDashboard({ onToast }) {
           <div className="expiry-card">
             <div className="expiry-card__head">
               <span className="expiry-card__title">Expiring in 15 days</span>
-              <span className="expiry-card__total">{EXP_TOTAL} total</span>
+              <span className="expiry-card__total">{expTotal} total</span>
             </div>
             <div className="expiry-card__cells">
               {EXP_CARDS.map((e) => (
@@ -288,7 +454,7 @@ export function UpdatedAdminDashboard({ onToast }) {
                     {e.label}
                   </span>
                   <span className="expiry-cell__value">
-                    <span style={{ color: e.color }}>{e.value}</span>
+                    <span style={{ color: e.color }}>{isStaffDash ? expTotal : e.value}</span>
                     <span className="expiry-cell__sub">{e.sub}</span>
                   </span>
                 </button>
@@ -298,6 +464,82 @@ export function UpdatedAdminDashboard({ onToast }) {
           </div>
         </div>
       </section>
+      ) : null}
+
+      {isStaffDash ? (
+        <section className="section">
+          <div className="ua-section-label">
+            <div className="ua-section-label__title">Pending Tasks</div>
+            <span className="ua-section-label__hint">Hover to see who · click to open the list</span>
+          </div>
+          <div className="coach-pending-row">
+            {pendingGroups.map((group) => (
+              <div key={group.title} className="coach-pending-group">
+                <div className="coach-pending-group__head">
+                  <span className="coach-pending-group__title">{group.title}</span>
+                  <span className="coach-pending-group__total">{group.total}</span>
+                </div>
+                <div className="coach-pending-group__cells">
+                  {group.cells.map((cell) => (
+                    <button
+                      key={cell.id}
+                      type="button"
+                      className="ops-tile"
+                      onClick={() => goPending(cell.id)}
+                    >
+                      <span className="ops-tile__label-row">
+                        <span className="ops-tile__dot" style={{ background: cell.color }} />
+                        <span className="ops-tile__short">{cell.short}</span>
+                      </span>
+                      <span className="ops-tile__count-row">
+                        <span className="ops-tile__count" style={{ color: cell.color }}>{cell.count}</span>
+                        <span className="ops-tile__chip">{cell.chip}</span>
+                      </span>
+                      <span className="ops-tile__tip" role="tooltip">
+                        <span className="ops-tile__tip-title">{cell.tipTitle}</span>
+                        {cell.people.map((person) => (
+                          <span key={person.name} className="ops-tile__person">
+                            <span className="ops-tile__avatar" style={{ background: person.color }}>{person.initial}</span>
+                            <span className="ops-tile__person-name">{person.name}</span>
+                            <span className="ops-tile__person-detail">{person.detail}</span>
+                          </span>
+                        ))}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            <div className="coach-stale-records">
+              <div className="coach-stale-records__head">
+                <span className="coach-stale-records__title">Records to refresh</span>
+                <span className="coach-stale-records__total">{staleTotal}</span>
+              </div>
+              <div className="coach-stale-records__list">
+                {staleRecords.map((record) => (
+                  <button
+                    key={record.id}
+                    type="button"
+                    className="coach-stale-records__item"
+                    onClick={() => goPending(record.id)}
+                  >
+                    <span className="coach-stale-records__item-top">
+                      <span className="coach-stale-records__dot" style={{ background: record.color }} />
+                      <span className="coach-stale-records__label">{record.label}</span>
+                      <span className="coach-stale-records__count" style={{ color: record.color }}>{record.count}</span>
+                    </span>
+                    <span className="coach-stale-records__note">{record.note}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <NotesToRemember onToast={onToast} />
+          </div>
+        </section>
+      ) : null}
+      {isFullDash && !isStaffDash ? (
       <section className="section">
         <div className="section__head">
           <h2 className="section__title">Program categories : clients</h2>
@@ -339,6 +581,8 @@ export function UpdatedAdminDashboard({ onToast }) {
           </div>
         </div>
       </section>
+      ) : null}
+      {isFullDash ? (
       <section className="section">
         <div className="section__head">
           <h2 className="section__title">Program progress</h2>
@@ -349,15 +593,15 @@ export function UpdatedAdminDashboard({ onToast }) {
             <div className="prog-card__head"><span>🚀</span> Onboarding status</div>
             <div className="prog-card__inner">
               <div className="prog-card__tag">In journey</div>
-              <div className="prog-card__value prog-card__value--blue">{COMM_ONB_COUNT}</div>
+              <div className="prog-card__value prog-card__value--blue">{commOnbCount}</div>
               <div className="prog-card__link">HEAL clients onboarding · view list ›</div>
             </div>
           </button>
 
           <div className="prog-card prog-card--fat">
             <div className="prog-card__head"><span>🏃</span> Fat Loss</div>
-            <div className={`prog-metrics prog-metrics--${FAT_METRICS.length}`}>
-              {FAT_METRICS.map((m) => (
+            <div className={`prog-metrics prog-metrics--${fatMetrics.length}`}>
+              {fatMetrics.map((m) => (
                 <button
                   key={m.label}
                   type="button"
@@ -373,8 +617,8 @@ export function UpdatedAdminDashboard({ onToast }) {
 
           <div className="prog-card prog-card--a1c">
             <div className="prog-card__head"><span>🩸</span> HbA1c</div>
-            <div className={`prog-metrics prog-metrics--${A1C_METRICS.length}`}>
-              {A1C_METRICS.map((m) => (
+            <div className={`prog-metrics prog-metrics--${a1cMetrics.length}`}>
+              {a1cMetrics.map((m) => (
                 <button
                   key={m.label}
                   type="button"
@@ -389,7 +633,53 @@ export function UpdatedAdminDashboard({ onToast }) {
           </div>
         </div>
       </section>
+      ) : null}
 
+      {isStaffDash ? (
+      <section className="section">
+        <div className="section__head">
+          <h2 className="section__title">Program categories : clients</h2>
+          <span className="section__hint">Clients registered per program · tap to see who</span>
+        </div>
+        <div className="prog-cats prog-cats--v2">
+          <div className="prog-cats__main">
+            <div className="prog-cats__scroll">
+              {PROG_CATS.map((p) => (
+                <button
+                  key={p.label}
+                  type="button"
+                  className="prog-cat"
+                  style={{ background: p.bg, borderColor: p.border }}
+                  onClick={() => openProgramCategory(p.label)}
+                >
+                  <span className="prog-cat__icon" style={{ background: "#fff" }}>{p.icon}</span>
+                  <span className="prog-cat__label">{p.label}</span>
+                  <span className="prog-cat__count" style={{ color: p.accent }}>{p.count}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="prog-cats__appuser">
+            <div className="prog-cats__appuser-head">
+              <span className="prog-cats__appuser-label">AppUser</span>
+              <span className="prog-cats__appuser-tag">Fixed</span>
+            </div>
+            <button
+              type="button"
+              className="prog-cat prog-cat--appuser"
+              style={{ background: APP_USER_PROG_CARD.bg, borderColor: APP_USER_PROG_CARD.border }}
+              onClick={() => openProgramCategory(APP_USER_PROG_CARD.label)}
+            >
+              <span className="prog-cat__icon" style={{ background: "#fff" }}>{APP_USER_PROG_CARD.icon}</span>
+              <span className="prog-cat__label">{APP_USER_PROG_CARD.label}</span>
+              <span className="prog-cat__count" style={{ color: APP_USER_PROG_CARD.accent }}>{APP_USER_PROG_CARD.count}</span>
+            </button>
+          </div>
+        </div>
+      </section>
+      ) : null}
+
+      {isAdminDash ? (
       <section className="section">
         <div className="section__head">
           <h2 className="section__title">Operational overview</h2>
@@ -508,13 +798,14 @@ export function UpdatedAdminDashboard({ onToast }) {
           </div>
         </div>
       </section>
+      ) : null}
 
       <section className="section">
         <div className="section__head">
           <h2 className="section__title">Community updates</h2>
-          <span className="section__hint">Broadcasts, celebrations &amp; onboarding</span>
+          <span className="section__hint">{isContentCommunity ? "Broadcasts & celebrations" : "Broadcasts, celebrations & onboarding"}</span>
         </div>
-        <div className="community-row">
+        <div className={`community-row${isContentCommunity ? " community-row--coach" : ""}`}>
           <div className="community-card">
             <div className="community-card__head"><span>📣</span> Community message</div>
             <input
@@ -524,12 +815,13 @@ export function UpdatedAdminDashboard({ onToast }) {
               value={broadcast}
               onChange={(e) => setBroadcast(e.target.value)}
             />
-            <button type="button" className="community-card__send" onClick={sendBroadcast}>
+            <button type="button" className="community-card__send" onClick={openBroadcastReview}>
               Send broadcast
             </button>
             <div className="community-card__meta">{broadcastMeta}</div>
           </div>
 
+          {!isContentCommunity ? (
           <div className="community-card community-card--champion">
             <div className="community-card__head"><span>🏆</span> Champion</div>
             <div className="champion-split">
@@ -557,6 +849,7 @@ export function UpdatedAdminDashboard({ onToast }) {
               </div>
             </div>
           </div>
+          ) : null}
 
           <div className="community-card community-card--birthday">
             <div className="community-card__head"><span>🎂</span> Birthdays</div>
@@ -572,13 +865,14 @@ export function UpdatedAdminDashboard({ onToast }) {
         </div>
       </section>
 
+      {dashHasTeam ? (
       <section className="section">
         <div className="ua-section-label">
           <div className="ua-section-label__title">Team</div>
           <span className="ua-section-label__hint">View a role&apos;s queue or send a reminder</span>
         </div>
         <div className="team-row">
-          {DASH_ROLE_CARDS.map((team) => (
+          {teamCards.map((team) => (
             <div key={team.label} className="team-card cdact">
               <span className="stat-card__bar" style={{ background: team.bar }} />
               <div className="stat-card__top">
@@ -616,6 +910,7 @@ export function UpdatedAdminDashboard({ onToast }) {
           ))}
         </div>
       </section>
+      ) : null}
 
       <section
         className="leaderboard"
@@ -670,7 +965,7 @@ export function UpdatedAdminDashboard({ onToast }) {
               <div>#</div><div>Client</div><div>Score</div><div>Days</div>
             </div>
             <div className="leaderboard__rows leaderboard__rows--compact">
-              {LEADERBOARD.map((row) => (
+              {activeLeaderboard.map((row) => (
                 <div
                   key={row.rank}
                   className={`leaderboard__row${row.highlight ? " leaderboard__row--highlight" : ""}`}
@@ -737,6 +1032,8 @@ export function UpdatedAdminDashboard({ onToast }) {
         </div>
       </section>
 
+      {isAdminDash ? (
+      <>
       <section className="section">
         <div className="section__head">
           <h2 className="section__title">Revenue Analytics</h2>
@@ -907,6 +1204,8 @@ export function UpdatedAdminDashboard({ onToast }) {
           </div>
         </div>
       </section>
+      </>
+      ) : null}
 
       <ProgramCategoryModal
         open={!!programModal}
@@ -951,6 +1250,14 @@ export function UpdatedAdminDashboard({ onToast }) {
           setRemindModal(null);
         }}
         onClose={() => setRemindModal(null)}
+      />
+
+      <CommunityBroadcastModal
+        open={broadcastModalOpen}
+        message={broadcast}
+        onMessageChange={setBroadcast}
+        onClose={() => setBroadcastModalOpen(false)}
+        onSend={confirmBroadcast}
       />
     </main>
   );

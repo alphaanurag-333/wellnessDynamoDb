@@ -1,4 +1,7 @@
 import { useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { useViewAs } from "../context/ViewAsContext.jsx";
+import { ROLE_AVATAR_INITIALS } from "../data/dashboardData.js";
 
 export function UpdatedAdminHeader({
   notifications,
@@ -9,10 +12,11 @@ export function UpdatedAdminHeader({
   onMarkAllRead,
   onNotifClick,
   onOpenProfile,
-  onLogout,
 }) {
+  const navigate = useNavigate();
   const panelRef = useRef(null);
   const btnRef = useRef(null);
+  const { activeRole } = useViewAs();
 
   useEffect(() => {
     if (!notifOpen) return undefined;
@@ -33,6 +37,15 @@ export function UpdatedAdminHeader({
 
   return (
     <header className="header">
+      <button
+        type="button"
+        className="header__back"
+        title="Go back"
+        onClick={() => navigate(-1)}
+      >
+        ‹ Back
+      </button>
+
       <div className="header__search">
         <svg className="header__search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
           <circle cx="11" cy="11" r="8" />
@@ -94,9 +107,18 @@ export function UpdatedAdminHeader({
         </div>
 
         <div className="header__profile">
-          <span className="header__profile-badge">Admin</span>
+          <span
+            className="header__profile-badge"
+            style={{
+              color: activeRole.color,
+              background: activeRole.bg,
+              borderColor: `${activeRole.color}33`,
+            }}
+          >
+            {activeRole.name}
+          </span>
           <button type="button" className="header__avatar" aria-label="My profile" onClick={onOpenProfile}>
-            A
+            {ROLE_AVATAR_INITIALS[activeRole.id] ?? activeRole.name.charAt(0)}
           </button>
         </div>
       </div>

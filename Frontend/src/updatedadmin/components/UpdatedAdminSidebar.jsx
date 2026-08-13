@@ -1,14 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { NavIcon } from "./NavIcons.jsx";
+import { useViewAs } from "../context/ViewAsContext.jsx";
+import { DEFAULT_VIEWS } from "../data/accessData.js";
 import {
   NAV_ITEMS,
   UPDATED_ADMIN_PATHS,
   VIEW_AS_ROLES,
   VIEW_AS_STAFF_TOTAL,
 } from "../data/dashboardData.js";
-
-const ADMIN_NAV = NAV_ITEMS.filter((item) => !item.wcOnly);
 
 function RoleCheckIcon() {
   return (
@@ -40,10 +40,8 @@ function CollapseIcon({ collapsed }) {
 
 function ViewAsRolePicker({ collapsed }) {
   const navigate = useNavigate();
+  const { viewAs, setViewAs, activeRole } = useViewAs();
   const [open, setOpen] = useState(false);
-  const [viewAs, setViewAs] = useState("admin");
-
-  const activeRole = VIEW_AS_ROLES.find((role) => role.id === viewAs) || VIEW_AS_ROLES[0];
 
   useEffect(() => {
     if (!open) return undefined;
@@ -153,6 +151,7 @@ function ViewAsRolePicker({ collapsed }) {
 const NAV_COLLAPSED_KEY = "ua-nav-collapsed";
 
 export function UpdatedAdminSidebar({ onLogout }) {
+  const { viewAs } = useViewAs();
   const [collapsed, setCollapsed] = useState(() => {
     try {
       return localStorage.getItem(NAV_COLLAPSED_KEY) === "1";
@@ -172,6 +171,11 @@ export function UpdatedAdminSidebar({ onLogout }) {
   function toggleCollapsed() {
     setCollapsed((value) => !value);
   }
+
+  const visibleNav = useMemo(() => {
+    const allowed = DEFAULT_VIEWS[viewAs] ?? DEFAULT_VIEWS.admin;
+    return NAV_ITEMS.filter((item) => allowed.includes(item.id));
+  }, [viewAs]);
 
   return (
     <aside className={`sidebar${collapsed ? " sidebar--rail" : ""}`} aria-label="Main navigation">
@@ -198,7 +202,7 @@ export function UpdatedAdminSidebar({ onLogout }) {
 
       <nav className="sidebar__nav">
         {!collapsed ? <div className="sidebar__sections-label">Sections</div> : null}
-        {ADMIN_NAV.map((item) => (
+        {visibleNav.map((item) => (
           <NavLink
             key={item.id}
             to={item.path}

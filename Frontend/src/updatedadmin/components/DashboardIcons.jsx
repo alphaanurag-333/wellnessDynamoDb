@@ -66,6 +66,50 @@ export function IconEagles() {
   );
 }
 
+export function IconStar() {
+  return (
+    <svg {...stroke}>
+      <path d="M12 2l3 6.5 7 .6-5.3 4.6 1.6 6.8L12 17l-6.9 3.5 1.6-6.8L1.4 9.1l7-.6z" />
+    </svg>
+  );
+}
+
+export function IconImage() {
+  return (
+    <svg {...stroke}>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <path d="m21 15-5-5L5 21" />
+    </svg>
+  );
+}
+
+export function IconVideo() {
+  return (
+    <svg {...stroke}>
+      <path d="m16 13 5.2 3.5a1 1 0 0 0 1.5-.86V8.36a1 1 0 0 0-1.5-.86L16 11" />
+      <rect x="2" y="6" width="14" height="12" rx="2" />
+    </svg>
+  );
+}
+
+export function IconBell() {
+  return (
+    <svg {...stroke}>
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+    </svg>
+  );
+}
+
+export function IconZap() {
+  return (
+    <svg {...stroke}>
+      <path d="M13 2 3 14h9l-1 8 10-12h-9z" />
+    </svg>
+  );
+}
+
 const STAT_ICONS = {
   users: IconUsers,
   seek: IconSeek,
@@ -73,6 +117,11 @@ const STAT_ICONS = {
   pending: IconPending,
   client: IconClient,
   eagles: IconEagles,
+  star: IconStar,
+  image: IconImage,
+  video: IconVideo,
+  bell: IconBell,
+  zap: IconZap,
 };
 
 export function StatIcon({ name }) {

@@ -519,6 +519,29 @@
   z-index: 20;
 }
 
+.updated-admin .header__back {
+  flex: 0 0 auto;
+  height: 34px;
+  padding: 0 12px 0 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: #fff;
+  color: #5a6b85;
+  font-weight: 650;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.updated-admin .header__back:hover {
+  border-color: #cbd5e6;
+  color: var(--text);
+}
+
 .updated-admin .header__search  {
   position: relative;
   flex: 1 1 140px;
@@ -1270,6 +1293,28 @@
   gap: 9px;
 }
 
+.updated-admin .insights-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.updated-admin .quick-insight-card .stat-card__value {
+  font-size: 24px;
+}
+
+@media (max-width: 1100px) {
+  .updated-admin .insights-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .updated-admin .insights-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .updated-admin .stat-card  {
   position: relative;
   overflow: hidden;
@@ -1626,6 +1671,95 @@
   font-size: 13px;
   cursor: pointer;
   font-family: inherit;
+}
+
+/* Community broadcast review modal */
+.updated-admin .ua-broadcast-modal {
+  width: 440px;
+}
+
+.updated-admin .ua-broadcast-modal__body {
+  padding: 14px 18px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.updated-admin .ua-broadcast-modal__input {
+  width: 100%;
+  min-height: 132px;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text);
+  outline: none;
+  resize: vertical;
+}
+
+.updated-admin .ua-broadcast-modal__input:focus {
+  border-color: #c5cbe8;
+  box-shadow: 0 0 0 3px rgba(94, 106, 210, 0.12);
+}
+
+.updated-admin .ua-broadcast-modal__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 10.5px;
+  color: var(--muted-light);
+}
+
+.updated-admin .ua-broadcast-modal__actions {
+  display: flex;
+  gap: 10px;
+  padding: 0 18px 18px;
+}
+
+.updated-admin .ua-broadcast-modal__keep {
+  flex: 1;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: #5a6b85;
+  font-weight: 650;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.updated-admin .ua-broadcast-modal__keep:hover {
+  border-color: #cbd5e6;
+  color: var(--text);
+}
+
+.updated-admin .ua-broadcast-modal__send {
+  flex: 1;
+  height: 40px;
+  border: none;
+  border-radius: 10px;
+  background: #5e6ad2;
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: 0 2px 8px rgba(94, 106, 210, 0.35);
+}
+
+.updated-admin .ua-broadcast-modal__send:hover:not(:disabled) {
+  background: #4f59c4;
+}
+
+.updated-admin .ua-broadcast-modal__send:disabled {
+  opacity: 0.45;
+  cursor: default;
+  box-shadow: none;
 }
 
 /* Program category client modal */
@@ -2628,6 +2762,258 @@
   font-size: 10px;
   color: var(--muted-light);
   white-space: nowrap;
+}
+
+/* Wellness Coach — pending tasks row */
+.updated-admin .coach-pending-row {
+  display: flex;
+  gap: 11px;
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+.updated-admin .coach-pending-group {
+  flex: 22 1 200px;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #fff;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  padding: 11px 12px 10px;
+  box-shadow: var(--shadow);
+}
+
+.updated-admin .coach-pending-group__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.updated-admin .coach-pending-group__title {
+  font-size: 11px;
+  font-weight: 750;
+  color: var(--text);
+}
+
+.updated-admin .coach-pending-group__total {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #c2661d;
+  background: #fdf3ec;
+  padding: 2px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.updated-admin .coach-pending-group__cells {
+  flex: 1;
+  display: flex;
+  gap: 8px;
+}
+
+.updated-admin .coach-stale-records {
+  flex: 40 1 230px;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  padding: 11px 12px 10px;
+  box-shadow: var(--shadow);
+}
+
+.updated-admin .coach-stale-records__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.updated-admin .coach-stale-records__title {
+  font-size: 11px;
+  font-weight: 750;
+  color: var(--text);
+}
+
+.updated-admin .coach-stale-records__total {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #c2661d;
+  background: #fdf3ec;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.updated-admin .coach-stale-records__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 96px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.updated-admin .coach-stale-records__item {
+  text-align: left;
+  background: #fbfcfe;
+  border: 1px solid var(--border-soft);
+  border-radius: 9px;
+  padding: 8px 9px;
+  cursor: pointer;
+  font: inherit;
+  transition: border-color 0.15s ease;
+}
+
+.updated-admin .coach-stale-records__item:hover {
+  border-color: #c5cbe8;
+}
+
+.updated-admin .coach-stale-records__item-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.updated-admin .coach-stale-records__dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+}
+
+.updated-admin .coach-stale-records__label {
+  flex: 1;
+  min-width: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.updated-admin .coach-stale-records__count {
+  font-size: 14px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.updated-admin .coach-stale-records__note {
+  display: block;
+  font-size: 9px;
+  color: var(--muted-light);
+  margin-top: 3px;
+}
+
+.updated-admin .coach-notes {
+  flex: 60 1 260px;
+  min-width: 240px;
+  display: flex;
+  flex-direction: column;
+  background: #fffdf5;
+  border: 1px solid #f2e2a8;
+  border-radius: var(--radius);
+  padding: 11px 12px 10px;
+  box-shadow: var(--shadow);
+}
+
+.updated-admin .coach-notes__head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 7px;
+}
+
+.updated-admin .coach-notes__pin {
+  font-size: 13px;
+}
+
+.updated-admin .coach-notes__title {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 750;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.updated-admin .coach-notes__stamp {
+  font-size: 9px;
+  font-weight: 700;
+  color: #b0a173;
+  white-space: nowrap;
+}
+
+.updated-admin .coach-notes__input {
+  flex: 1;
+  min-height: 46px;
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid #f2e2a8;
+  border-radius: 8px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text);
+  outline: none;
+  resize: none;
+}
+
+.updated-admin .coach-notes__input:focus {
+  border-color: #e0b83a;
+}
+
+.updated-admin .coach-notes__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.updated-admin .coach-notes__btn {
+  height: 26px;
+  padding: 0 11px;
+  border-radius: 7px;
+  border: 1px solid #f0e6c8;
+  background: #fff;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 10.5px;
+  cursor: pointer;
+}
+
+.updated-admin .coach-notes__btn--edit {
+  color: #b8860b;
+}
+
+.updated-admin .coach-notes__btn--reset {
+  color: #c9bd94;
+}
+
+.updated-admin .coach-notes__btn--reset-dirty {
+  color: #c0392b;
+}
+
+.updated-admin .coach-notes__btn--save {
+  background: #f0e6c8;
+  color: #b0a173;
+  border: none;
+  padding: 0 12px;
+}
+
+.updated-admin .coach-notes__btn--save-dirty {
+  background: #b8860b;
+  color: #fff;
+}
+
+.updated-admin .community-row--coach .community-card {
+  flex: 1 1 280px;
 }
 
 .updated-admin .ops-challenge {
