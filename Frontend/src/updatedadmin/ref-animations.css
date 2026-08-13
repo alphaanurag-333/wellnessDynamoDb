@@ -5,6 +5,7 @@
 
 .updated-admin .page-shell {
   scrollbar-color: #d3dae6 transparent;
+  scrollbar-width: thin;
 }
 
 .updated-admin .page-shell::-webkit-scrollbar {
@@ -89,8 +90,8 @@
 
 .updated-admin .cdact:hover {
   border-color: #c5cbe8 !important;
-  box-shadow: 0 6px 18px rgba(94, 106, 210, 0.12) !important;
-  transform: translateY(-2px);
+  /* box-shadow: rgba(94, 106, 210, 0.12) 0px 6px 18px !important; */
+  /* transform: translateY(-2px); */
 }
 
 .updated-admin .cdact:hover .cdemoji {

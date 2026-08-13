@@ -94,7 +94,7 @@ function AppClientCard({ item, onClick }) {
         </span>
         <span className="stat-card__label">{item.short}</span>
       </div>
-      <div className="stat-card__value" style={{ color: item.accent }}>{item.value}</div>
+      <div className="stat-card__value">{item.value}</div>
       <div className="stat-card__sub">{item.tag}</div>
     </button>
   );
@@ -415,7 +415,7 @@ export function UpdatedAdminDashboard({ onToast }) {
                     {t.label}
                   </span>
                   <span className="tier-cell__value">
-                    <span style={{ color: t.color }}>{t.value}</span>
+                    <span>{t.value}</span>
                     <span className="tier-cell__pct">{t.pct}</span>
                   </span>
                 </button>
@@ -576,7 +576,7 @@ export function UpdatedAdminDashboard({ onToast }) {
             >
               <span className="prog-cat__icon" style={{ background: "#fff" }}>{APP_USER_PROG_CARD.icon}</span>
               <span className="prog-cat__label">{APP_USER_PROG_CARD.label}</span>
-              <span className="prog-cat__count" style={{ color: APP_USER_PROG_CARD.accent }}>{APP_USER_PROG_CARD.count}</span>
+              <span className="prog-cat__count">{APP_USER_PROG_CARD.count}</span>
             </button>
           </div>
         </div>
@@ -768,32 +768,35 @@ export function UpdatedAdminDashboard({ onToast }) {
               </button>
             </div>
             <div className="ops-challenge__list">
-              {chRunning.length === 0 ? (
-                <div className="ops-challenge__empty">
-                  No challenge running. Name one, pick a length and audience, then start it.
-                </div>
-              ) : (
-                chRunning.map((challenge) => (
-                  <div key={challenge.id} className="ops-challenge__item">
-                    <div className="ops-challenge__item-head">
-                      <span className="ops-challenge__item-name">{challenge.name}</span>
-                      <span className="ops-challenge__item-progress">{challenge.progress}</span>
-                      <button
-                        type="button"
-                        className="ops-challenge__end"
-                        title="End challenge"
-                        onClick={() => endChallenge(challenge.id)}
-                      >
-                        ×
-                      </button>
-                    </div>
-                    <div className="ops-challenge__bar">
-                      <span className="ops-challenge__bar-fill" style={{ width: `${challenge.pct}%` }} />
-                    </div>
-                    <div className="ops-challenge__item-meta">{challenge.meta}</div>
+              <div className="ops-challenge__list-inner" aria-hidden="true">IRW</div>
+              <div className="ops-challenge__list-items">
+                {chRunning.length === 0 ? (
+                  <div className="ops-challenge__empty">
+                    No challenge running. Name one, pick a length and audience, then start it.
                   </div>
-                ))
-              )}
+                ) : (
+                  chRunning.map((challenge) => (
+                    <div key={challenge.id} className="ops-challenge__item">
+                      <div className="ops-challenge__item-head">
+                        <span className="ops-challenge__item-name">{challenge.name}</span>
+                        <span className="ops-challenge__item-progress">{challenge.progress}</span>
+                        <button
+                          type="button"
+                          className="ops-challenge__end"
+                          title="End challenge"
+                          onClick={() => endChallenge(challenge.id)}
+                        >
+                          ×
+                        </button>
+                      </div>
+                      <div className="ops-challenge__bar">
+                        <span className="ops-challenge__bar-fill" style={{ width: `${challenge.pct}%` }} />
+                      </div>
+                      <div className="ops-challenge__item-meta">{challenge.meta}</div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -881,10 +884,10 @@ export function UpdatedAdminDashboard({ onToast }) {
                 </span>
                 <span className="stat-card__label">{team.label}</span>
               </div>
-              <div className="stat-card__value" style={{ color: team.accent }}>{team.value}</div>
+              <div className="stat-card__value" >{team.value}</div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {team.pending.map((tag) => (
-                  <span key={tag.label} className="tag" style={{ background: tag.bg, color: tag.color }}>
+                  <span key={tag.label} className="tag" style={{ background: tag.bg, color: tag.color , borderColor: tag.color}}>
                     {tag.label}
                   </span>
                 ))}
@@ -1057,7 +1060,7 @@ export function UpdatedAdminDashboard({ onToast }) {
               <div key={card.label} className="revenue-card">
                 <span className="revenue-card__bar" style={{ background: card.color }} />
                 <div className="revenue-card__label">{card.label}</div>
-                <div className="revenue-card__value" style={{ color: card.color }}>{card.value}</div>
+                <div className="revenue-card__value" >{card.value}</div>
                 {card.share ? (
                   <>
                     <div className="revenue-card__track">
@@ -1169,7 +1172,7 @@ export function UpdatedAdminDashboard({ onToast }) {
                   <span className="bar-group__total">{m.count}</span>
                   <div className="bar-group__bars">
                     <div
-                      className={`bar bar--onboard-${m.active ? "active" : "light"}`}
+                      className={`bar onboard bar--onboard-${m.active ? "active" : "light"}`}
                       style={{ height: `${Math.round((m.count / onboardMax) * 100)}%`, width: "55%" }}
                     />
                   </div>
