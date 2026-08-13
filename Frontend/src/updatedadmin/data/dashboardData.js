@@ -206,8 +206,8 @@ export const WC_PENDING_GROUPS = [
 ];
 
 export const WC_STALE_RECORDS = [
-  { id: "blood-test", label: "Blood test", count: 2, note: "Older than 6 months", color: "#c0392b" },
-  { id: "gut-reset", label: "Gut reset", count: 2, note: "No reset in 60 days", color: "#f0a91b" },
+  { id: "blood-test", label: "Blood test", count: 2, note: "Older than 6 months", color: "#0d9488" },
+  { id: "gut-reset", label: "Gut reset", count: 2, note: "No reset in 60 days", color: "#a855f7" },
 ];
 
 export const WC_STALE_TOTAL = "5 due";
@@ -350,8 +350,8 @@ export const AWC_PENDING_GROUPS = [
 ];
 
 export const AWC_STALE_RECORDS = [
-  { id: "blood-test", label: "Blood test", count: 4, note: "Older than 6 months", color: "#c0392b" },
-  { id: "gut-reset", label: "Gut reset", count: 3, note: "No reset in 60 days", color: "#f0a91b" },
+  { id: "blood-test", label: "Blood test", count: 4, note: "Older than 6 months", color: "#0d9488" },
+  { id: "gut-reset", label: "Gut reset", count: 3, note: "No reset in 60 days", color: "#a855f7" },
 ];
 
 export const AWC_STALE_TOTAL = "9 due";

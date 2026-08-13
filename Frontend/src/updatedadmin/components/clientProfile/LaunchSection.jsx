@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { PillTabs } from "../shared.jsx";
 import {
   LAUNCH_DOMAINS,
@@ -328,8 +329,25 @@ function PrakritiTab({ onToast }) {
 }
 
 export function LaunchSection({ user, onToast }) {
-  const [tab, setTab] = useState("lifestyle");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get("tab") === "prakriti" ? "prakriti" : "lifestyle";
+  const [tab, setTab] = useState(tabFromUrl);
   const [scheduleOpen, setScheduleOpen] = useState(false);
+
+  useEffect(() => {
+    setTab(tabFromUrl);
+  }, [tabFromUrl]);
+
+  function handleTabChange(next) {
+    setTab(next);
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev);
+      p.set("section", "launch");
+      if (next === "prakriti") p.set("tab", "prakriti");
+      else p.delete("tab");
+      return p;
+    }, { replace: true });
+  }
 
   return (
     <div className="ua-cp-section ua-cp-launch">
@@ -337,7 +355,7 @@ export function LaunchSection({ user, onToast }) {
       <PillTabs
         size="md"
         active={tab}
-        onChange={setTab}
+        onChange={handleTabChange}
         tabs={[
           { id: "lifestyle", label: "Lifestyle score" },
           { id: "prakriti", label: "Prakriti type" },

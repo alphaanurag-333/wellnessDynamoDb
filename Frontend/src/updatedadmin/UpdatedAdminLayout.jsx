@@ -88,6 +88,7 @@ export function UpdatedAdminLayout() {
           onLogout={handleLogout}
           accountName={account?.name}
         />
+
         <div className="page-shell">
           <Outlet context={{ showToast }} />
         </div>
@@ -100,7 +101,8 @@ export function UpdatedAdminLayout() {
       />
 
       <div className={`toast${toastVisible ? " toast--show" : ""}`} role="status" aria-live="polite">
-        {toast}
+        {toastVisible ? <span className="toast__icon" aria-hidden="true">✓</span> : null}
+        <span>{toast}</span>
       </div>
     </div>
   );

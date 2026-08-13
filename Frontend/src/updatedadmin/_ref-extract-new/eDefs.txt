@@ -1,7 +1,0 @@
-eDefs=[['Subscription',subN,'#c0392b','soonest in 4 days','sub']];
-        const expCards=eDefs.map(d=>({label:d[0],value:d[1],sub:d[3],accent:{color:d[2]},
-          dotStyle:{width:'7px',height:'7px',flex:'0 0 7px',borderRadius:'50%',background:d[2],animation:'expPulse 2s ease-in-out infinite'},
-          cellStyle:{flex:'1 1 0',minWidth:0,textAlign:'left',background:'#fbfcfe',border:'1px solid #eef1f6',borderRadius:'9px',padding:'9px 10px',display:'flex',flexDirection:'column',gap:'5px',cursor:'pointer',fontFamily:'inherit',transition:'transform .15s ease,border-color .15s ease,box-shadow .15s ease'},
-          go:()=>this.setState({view:'users',expiryFilter:d[4],userSearch:'',tierFilter:'',typeFilter:''})}));
-        const expOut={expCards, expTotal:subN,
-          expNote:'Subscriptio

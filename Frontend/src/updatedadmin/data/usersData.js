@@ -112,33 +112,67 @@ export function buildUserTypeTabs(pool, activeTab, countPool = pool) {
   });
 }
 
+const TIER_ALIASES = {
+  HEAL: "Seek to Heal",
+  MAINTENANCE: "Maintenance",
+  PWC: "Consultancy",
+  SEEK: "Seek",
+};
+
+export function normalizeTier(tier) {
+  if (!tier) return tier;
+  return TIER_ALIASES[tier] || tier;
+}
+
 export function tierStyle(tier) {
-  if (tier === "Seek to Heal") return { bg: "#e7f6ee", color: "#2b8f5b" };
-  if (tier === "Consultancy") return { bg: "#fdf3dd", color: "#c2891b" };
-  if (tier === "Maintenance") return { bg: "#eef0fc", color: "#5e6ad2" };
-  return { bg: "#eef1f7", color: "#5a6b85" };
+  const t = normalizeTier(tier);
+  if (t === "Seek to Heal") return { bg: "#e7f6ee", color: "#2b8f5b", border: "#cdeede" };
+  if (t === "Consultancy") return { bg: "#fdf3dd", color: "#c2891b", border: "#f6e2c2" };
+  if (t === "Maintenance") return { bg: "#eef0fc", color: "#5e6ad2", border: "#dcdff7" };
+  return { bg: "#eef1f7", color: "#5a6b85", border: "#e6ebf2" };
+}
+
+export function tierBadgeStyle(tier) {
+  const tone = tierStyle(tier);
+  return {
+    background: tone.bg,
+    color: tone.color,
+    border: `1px solid ${tone.border}`,
+  };
 }
 
 export function tierLabel(tier) {
-  if (tier === "Seek to Heal") return "HEAL";
-  if (tier === "Consultancy") return "PWC";
-  if (tier === "Maintenance") return "MAINTENANCE";
+  const t = normalizeTier(tier);
+  if (t === "Seek to Heal") return "HEAL";
+  if (t === "Consultancy") return "PWC";
+  if (t === "Maintenance") return "MAINTENANCE";
   return "SEEK";
 }
 
+export function tierBadgeClass(tier) {
+  const t = normalizeTier(tier);
+  if (t === "Seek to Heal") return "heal";
+  if (t === "Maintenance") return "maintenance";
+  if (t === "Consultancy") return "pwc";
+  return "seek";
+}
+
 export function nextTier(tier) {
-  if (tier === "Seek to Heal") return "Maintenance";
-  if (tier === "Seek") return "Consultancy";
+  const t = normalizeTier(tier);
+  if (t === "Seek to Heal") return "Maintenance";
+  if (t === "Seek") return "Consultancy";
   return "Seek to Heal";
 }
 
 export function prevTier(tier) {
-  if (tier === "Maintenance") return "Seek to Heal";
+  const t = normalizeTier(tier);
+  if (t === "Maintenance") return "Seek to Heal";
   return "Seek";
 }
 
 export function canDowngradeTier(tier, ageDays) {
-  return (tier === "Consultancy" && ageDays > 7) || tier === "Maintenance";
+  const t = normalizeTier(tier);
+  return (t === "Consultancy" && ageDays > 7) || t === "Maintenance";
 }
 
 export function lastActiveMinutes(value) {
