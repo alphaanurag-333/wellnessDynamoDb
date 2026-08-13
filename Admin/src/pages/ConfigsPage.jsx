@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
+import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { PageHeader, PillTabs } from "../components/shared.jsx";
 import { CONFIG_GROUPS, CONFIG_TABS } from "../data/configsData.js";
 
@@ -21,6 +22,7 @@ function buildInitialState() {
 }
 
 export function ConfigsPage() {
+  const navigate = useNavigate();
   const { showToast: onToast } = useOutletContext();
   const [tab, setTab] = useState("app");
   const [{ toggles, surfaces }, setState] = useState(buildInitialState);
@@ -93,40 +95,40 @@ export function ConfigsPage() {
                     </div>
                   </div>
 
-                  <div className="ua-config-item__controls">
-                    <div className="ua-config-item__chips">
-                      {showAppChip ? (
-                        <button
-                          type="button"
-                          className={`ua-surface-chip ua-surface-chip--app${surf.app ? " is-on" : " is-off"}`}
-                          aria-pressed={surf.app}
-                          onClick={() => flipSurface(item, "app")}
-                        >
-                          App<span className="ua-surface-chip__dot" aria-hidden="true" />
-                        </button>
-                      ) : null}
-                      {showWebChip ? (
-                        <button
-                          type="button"
-                          className={`ua-surface-chip ua-surface-chip--web${surf.web ? " is-on" : " is-off"}`}
-                          aria-pressed={surf.web}
-                          onClick={() => flipSurface(item, "web")}
-                        >
-                          Web<span className="ua-surface-chip__dot" aria-hidden="true" />
-                        </button>
-                      ) : null}
-                      {tags.map((tag) => (
-                        <span key={tag} className="ua-config-type-tag">
-                          {tag}
-                        </span>
-                      ))}
-                      {showToggle ? (
-                        <span className={`ua-config-status${isLive ? " ua-config-status--live" : " ua-config-status--hidden"}`}>
-                          {isLive ? "LIVE" : "HIDDEN"}
-                        </span>
-                      ) : null}
-                    </div>
+                  <div className="ua-config-item__chips">
+                    {showAppChip ? (
+                      <button
+                        type="button"
+                        className={`ua-surface-chip ua-surface-chip--app${surf.app ? " is-on" : " is-off"}`}
+                        aria-pressed={surf.app}
+                        onClick={() => flipSurface(item, "app")}
+                      >
+                        App<span className="ua-surface-chip__dot" aria-hidden="true" />
+                      </button>
+                    ) : null}
+                    {showWebChip ? (
+                      <button
+                        type="button"
+                        className={`ua-surface-chip ua-surface-chip--web${surf.web ? " is-on" : " is-off"}`}
+                        aria-pressed={surf.web}
+                        onClick={() => flipSurface(item, "web")}
+                      >
+                        Web<span className="ua-surface-chip__dot" aria-hidden="true" />
+                      </button>
+                    ) : null}
+                    {tags.map((tag) => (
+                      <span key={tag} className="ua-config-type-tag">
+                        {tag}
+                      </span>
+                    ))}
+                    {showToggle ? (
+                      <span className={`ua-config-status${isLive ? " ua-config-status--live" : " ua-config-status--hidden"}`}>
+                        {isLive ? "LIVE" : "HIDDEN"}
+                      </span>
+                    ) : null}
+                  </div>
 
+                  <div className="ua-config-item__toggle-slot">
                     {showToggle ? (
                       <button
                         type="button"
@@ -138,15 +140,15 @@ export function ConfigsPage() {
                         <span className="ua-toggle__knob" />
                       </button>
                     ) : null}
-
-                    <button
-                      type="button"
-                      className="ua-config-manage"
-                      onClick={() => onToast(`Manage ${item.name}`)}
-                    >
-                      Manage ›
-                    </button>
                   </div>
+
+                  <button
+                    type="button"
+                    className="ua-config-manage"
+                    onClick={() => navigate(`${UPDATED_ADMIN_PATHS.configs}/${item.id}`)}
+                  >
+                    Manage ›
+                  </button>
                 </div>
               );
             })}

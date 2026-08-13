@@ -27,7 +27,7 @@ export const CONFIG_GROUPS = {
         {
           id: "app-faq",
           name: "FAQ",
-          note: "In-app help answers",
+          note: "Question and answer list",
           owner: "Admin / Support",
           app: true,
           web: false,
@@ -43,24 +43,26 @@ export const CONFIG_GROUPS = {
         {
           id: "app-program",
           name: "Program",
-          note: "Program packs and pricing",
-          owner: "Admin / Support",
+          note: "Wellness program pricing, discount slabs and validity",
+          owner: "Admin",
           app: true,
           web: false,
           live: true,
           on: true,
           tags: ["Amount", "Discount"],
+          toggleable: false,
         },
         {
           id: "app-subscriptions",
           name: "App Subscriptions",
-          note: "Recurring plan tiers",
-          owner: "Admin / Support",
+          note: "Subscription pricing, discount slabs and validity",
+          owner: "Admin",
           app: true,
           web: false,
           live: true,
           on: true,
           tags: ["Amount", "Discount"],
+          toggleable: false,
         },
       ],
     },
@@ -70,24 +72,25 @@ export const CONFIG_GROUPS = {
         {
           id: "app-gst",
           name: "GST option",
-          note: "Tax line on invoices",
-          owner: "Admin / Support",
+          note: "On → client pays GST · Off → IRW absorbs it",
+          owner: "Admin",
           app: true,
           web: false,
           live: true,
           on: true,
-          tags: ["Amount"],
+          tags: [],
         },
         {
           id: "app-payment-gateway",
           name: "Payment gateway",
-          note: "Checkout provider keys",
-          owner: "Admin / Support",
+          note: "Pick Razorpay, Stripe, or PayU · keys managed here",
+          owner: "Admin",
           app: true,
           web: false,
-          live: true,
-          on: true,
-          tags: ["Text"],
+          live: false,
+          on: false,
+          tags: [],
+          toggleable: false,
         },
       ],
     },
@@ -97,7 +100,7 @@ export const CONFIG_GROUPS = {
         {
           id: "app-tos",
           name: "Terms of service",
-          note: "Legal copy shown at signup",
+          note: "Legal copy",
           owner: "Admin / Support",
           app: true,
           web: false,
@@ -108,7 +111,7 @@ export const CONFIG_GROUPS = {
         {
           id: "app-dpa",
           name: "Data processing agreement",
-          note: "Privacy / DPA copy",
+          note: "Legal copy",
           owner: "Admin / Support",
           app: true,
           web: false,
@@ -124,7 +127,7 @@ export const CONFIG_GROUPS = {
         {
           id: "app-measurement-video",
           name: "Measurement video",
-          note: "How-to-measure guides",
+          note: "How-to-measure guides · cover, title, description, upload or link",
           owner: "Admin / Support",
           app: true,
           web: false,
@@ -135,13 +138,36 @@ export const CONFIG_GROUPS = {
         {
           id: "app-onboarding-video",
           name: "Onboarding video",
-          note: "First-run walkthrough",
-          owner: "Admin / Support",
+          note: "One video per coach · auto-tagged and shown to that coach's clients when the journey starts",
+          owner: "Admin / WC / AWC",
           app: true,
           web: false,
           live: true,
           on: true,
           tags: ["Video", "Text"],
+          upload: true,
+        },
+        {
+          id: "app-medical-questionnaire",
+          name: "Medical conditions · questionnaire",
+          note: "Admin writes the questions and can disable any of them at any time",
+          owner: "Admin",
+          app: true,
+          web: false,
+          live: true,
+          on: true,
+          tags: ["Text"],
+        },
+        {
+          id: "app-health-progress",
+          name: "Health progress trackers",
+          note: "The master list of trackers coaches can attach to a client",
+          owner: "Admin",
+          app: true,
+          web: false,
+          live: true,
+          on: true,
+          tags: ["Text"],
         },
         {
           id: "app-diet-plans",
@@ -153,7 +179,78 @@ export const CONFIG_GROUPS = {
           live: true,
           on: true,
           tags: ["Text"],
+          upload: true,
         },
+      ],
+    },
+    {
+      name: "App · Banks",
+      items: [
+        {
+          id: "app-nutrition-bank",
+          name: "Nutrition bank",
+          note: "Capsule / bottle / per-capsule pricing; coach picks from bank",
+          owner: "Admin / Support",
+          app: true,
+          web: false,
+          live: true,
+          on: true,
+          tags: ["Amount"],
+          toggleable: false,
+          upload: true,
+        },
+        {
+          id: "app-drf-bank",
+          name: "DRF activity bank",
+          note: "Admin creates activities; coach enables and sets target count",
+          owner: "Admin / WC / AWC",
+          app: true,
+          web: false,
+          live: true,
+          on: true,
+          tags: [],
+          upload: true,
+        },
+        {
+          id: "app-rx-bank",
+          name: "Wellness prescription bank",
+          note: "Master book; WC/AWC can pick and edit",
+          owner: "Admin / WC / AWC",
+          app: true,
+          web: false,
+          live: false,
+          on: true,
+          tags: ["Text"],
+          toggleable: false,
+        },
+        {
+          id: "app-commitment-letter",
+          name: "Commitment letter",
+          note: "Onboarding letter template · Admin writes it, coaches assign it",
+          owner: "Admin",
+          app: true,
+          web: false,
+          live: false,
+          on: true,
+          tags: ["Text"],
+          toggleable: false,
+        },
+        {
+          id: "app-gallery",
+          name: "Gallery",
+          note: "Admin-only view of every client and common image",
+          owner: "Admin",
+          app: true,
+          web: false,
+          live: true,
+          on: true,
+          tags: ["Upload"],
+        },
+      ],
+    },
+    {
+      name: "App · System",
+      items: [
         {
           id: "app-launch",
           name: "LAUNCH",
@@ -175,51 +272,6 @@ export const CONFIG_GROUPS = {
           live: false,
           on: false,
           tags: ["Text"],
-        },
-      ],
-    },
-    {
-      name: "App · Banks",
-      items: [
-        {
-          id: "app-nutrition-bank",
-          name: "Nutrition bank",
-          note: "Capsule / bottle / per-capsule pricing; coach picks from bank",
-          owner: "Admin / Support",
-          app: true,
-          web: false,
-          live: false,
-          on: true,
-          tags: ["Amount"],
-          toggleable: false,
-        },
-        {
-          id: "app-rx-bank",
-          name: "Wellness prescription bank",
-          note: "Master book; WC/AWC can pick and edit",
-          owner: "Admin / WC / AWC",
-          app: true,
-          web: false,
-          live: false,
-          on: true,
-          tags: ["Text"],
-          toggleable: false,
-        },
-      ],
-    },
-    {
-      name: "App · System",
-      items: [
-        {
-          id: "app-gallery",
-          name: "Gallery",
-          note: "Admin-only view of every client and common image",
-          owner: "Admin",
-          app: true,
-          web: false,
-          live: true,
-          on: true,
-          tags: ["Upload"],
         },
       ],
     },
@@ -611,3 +663,24 @@ export const CONFIG_GROUPS = {
     },
   ],
 };
+
+export function findConfigItem(configId) {
+  for (const [tab, groups] of Object.entries(CONFIG_GROUPS)) {
+    for (const group of groups) {
+      const item = group.items.find((entry) => entry.id === configId);
+      if (item) {
+        return { item, groupName: group.name, tab };
+      }
+    }
+  }
+  return null;
+}
+
+export function getConfigStateLabel(item, on) {
+  if (item.id === "app-gst") return on ? "On" : "Off";
+  if (item.id === "app-payment-gateway") {
+    return typeof on === "string" ? on : "Not set";
+  }
+  if (item.toggleable === false) return item.live ? "Live" : "Hidden";
+  return on ? "Live" : "Hidden";
+}

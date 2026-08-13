@@ -17,6 +17,8 @@ import {
   PrescriptionSection,
   PresentableSection,
   ExchangeSection,
+  ProtocolSection,
+  GutResetSection,
   PersonalDetailsSection,
   PlaceholderSection,
 } from "../components/clientProfile/ClientProfileSections.jsx";
@@ -60,6 +62,10 @@ function renderSection(section, user, onToast, onNavigate) {
       return <PresentableSection user={user} onToast={onToast} />;
     case "exchange":
       return <ExchangeSection user={user} onToast={onToast} />;
+    case "protocol":
+      return <ProtocolSection user={user} onToast={onToast} />;
+    case "gut":
+      return <GutResetSection user={user} onToast={onToast} />;
     default: {
       const meta = PLACEHOLDER_META[section];
       return meta ? <PlaceholderSection {...meta} /> : <PlaceholderSection title="Section" />;
