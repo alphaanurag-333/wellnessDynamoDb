@@ -8,7 +8,9 @@ const {
   updateAccessRole,
   deleteAccessRole,
   listAccessMembers,
+  getAccessMember,
   setAccessMemberRole,
+  setAccessMemberPermissions,
   ensureConsoleRolesSeeded,
 } = require("../../controllers/accountController/accessController");
 const { asyncHandler } = require("../../utils/asyncHandler");
@@ -36,7 +38,9 @@ router.get(
     return listAccessMembers(req, res, next);
   })
 );
+router.get("/members/:id", getAccessMember);
 router.patch("/members/:id/role", setAccessMemberRole);
+router.patch("/members/:id/permissions", setAccessMemberPermissions);
 
 router.post(
   "/seed",

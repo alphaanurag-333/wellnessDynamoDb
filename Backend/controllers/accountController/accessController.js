@@ -17,6 +17,7 @@ const {
   countAccountsByRoleKey,
   toPublicAccount,
 } = require("../../models/accountModel");
+const { listUsersByParentCoachId } = require("../../models/userModel");
 const {
   getConsolePermissionCatalog,
   grantsMapToPermissions,
@@ -246,7 +247,8 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
     if (r.roleKey) roleByKey[r.roleKey] = r;
   }
 
-  const members = (result.accounts || []).map((acc) => {
+  const members = [];
+  for (const acc of result.accounts || []) {
     const pub = typeof acc.password === "undefined" ? acc : toPublicAccount(acc);
     const roleKeys = Array.isArray(pub.roleKeys) ? pub.roleKeys : [];
     const primaryAccountRole =
@@ -255,36 +257,264 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
       null;
     const uiRole = ACCOUNT_TO_UI_ROLE[primaryAccountRole] || primaryAccountRole;
     const consoleRole = uiRole ? roleByKey[uiRole] : null;
-    const grants = consoleRole ? permissionsToGrantsMap(consoleRole.permissions || []) : {};
+
+    const overrides =
+      getMembership(pub, primaryAccountRole)?.permissionOverrides?.consoleGrants;
+    const roleGrants = consoleRole ? permissionsToGrantsMap(consoleRole.permissions || []) : {};
+    const grants = overrides !== undefined ? overrides : roleGrants;
     const grantedCount = pub.isSuperAdmin
       ? TOTAL_PERM_SLOTS
       : grants == null
         ? TOTAL_PERM_SLOTS
         : Object.values(grants || {}).reduce((n, acts) => n + (acts?.length || 0), 0);
 
-    return {
+    let meta = pub.isSuperAdmin
+      ? "Super admin"
+      : roleKeys.map((k) => ACCOUNT_TO_UI_ROLE[k] || k).join(", ");
+    let clientCount = null;
+    let awcCount = null;
+    let parentName = null;
+
+    try {
+      if (primaryAccountRole === "wellness_coach") {
+        const clients = await listUsersByParentCoachId(pub.id, { page: 1, limit: 1, scope: "all" });
+        clientCount = clients.pagination?.total || 0;
+        const children = await listAccounts({
+          parentAccountId: pub.id,
+          roleKey: "assistant_wellness_coach",
+          page: 1,
+          limit: 1,
+        });
+        awcCount = children.pagination?.total || 0;
+        meta = `${clientCount} client${clientCount === 1 ? "" : "s"} · ${awcCount} AWC${awcCount === 1 ? "" : "s"}`;
+      } else if (
+        primaryAccountRole === "assistant_wellness_coach" ||
+        primaryAccountRole === "trainee"
+      ) {
+        const parentId =
+          pub.parentAccountId ||
+          getMembership(pub, primaryAccountRole)?.parentAccountId ||
+          null;
+        if (parentId) {
+          const parent = await getAccountById(parentId);
+          parentName = parent?.name || null;
+          meta = parentName
+            ? `under ${parentName}`
+            : primaryAccountRole === "trainee"
+              ? "Trainee"
+              : "Assistant";
+        }
+      } else if (primaryAccountRole === "support") {
+        meta = pub.designation || "Support";
+      }
+    } catch {
+      /* keep fallback meta */
+    }
+
+    const approval = String(pub.approvalStatus || "").toLowerCase();
+    const displayStatus =
+      pub.status === "inactive"
+        ? "Inactive"
+        : approval === "pending"
+          ? "Pending"
+          : "Active";
+
+    members.push({
       id: pub.id,
       name: pub.name,
       email: pub.email,
+      phone: pub.phone || null,
+      phoneCountryCode: pub.phoneCountryCode || null,
       status: pub.status,
+      displayStatus,
+      approvalStatus: pub.approvalStatus || null,
       isSuperAdmin: Boolean(pub.isSuperAdmin),
       roleKeys,
       primaryRoleKey: uiRole,
       accountRoleKey: primaryAccountRole,
       consoleRoleId: consoleRole?.id || null,
+      parentAccountId: pub.parentAccountId || null,
+      parentName,
+      clientCount,
+      awcCount,
       grantedCount,
       totalSlots: TOTAL_PERM_SLOTS,
-      meta: pub.isSuperAdmin
-        ? "Super admin"
-        : roleKeys.map((k) => ACCOUNT_TO_UI_ROLE[k] || k).join(", "),
-    };
-  });
+      meta,
+    });
+  }
 
   return res.json({
     status: true,
     members,
     pagination: result.pagination,
   });
+});
+
+exports.getAccessMember = asyncHandler(async (req, res) => {
+  assertSuperAdmin(req);
+  await exports.ensureConsoleRolesSeeded();
+  const account = await getAccountById(req.params.id);
+  if (!account) throw new AppError("Account not found", 404);
+
+  const pub = toPublicAccount(account);
+  const roleKeys = Array.isArray(pub.roleKeys) ? pub.roleKeys : [];
+  const primaryAccountRole =
+    (pub.defaultRoleKey && roleKeys.includes(pub.defaultRoleKey) && pub.defaultRoleKey) ||
+    roleKeys[0] ||
+    null;
+  const uiRole = ACCOUNT_TO_UI_ROLE[primaryAccountRole] || primaryAccountRole;
+
+  const { roles: consoleRoles } = await listRoles({
+    scope: CONSOLE_SCOPE,
+    status: "active",
+    page: 1,
+    limit: 100,
+  });
+  const consoleRole = consoleRoles.find((r) => r.roleKey === uiRole) || null;
+  const membership = getMembership(account, primaryAccountRole);
+  const roleGrants = consoleRole ? permissionsToGrantsMap(consoleRole.permissions || []) : {};
+  const overrideGrants = membership?.permissionOverrides?.consoleGrants;
+  const grants = overrideGrants !== undefined ? overrideGrants : roleGrants;
+  const grantedCount =
+    grants == null
+      ? TOTAL_PERM_SLOTS
+      : Object.values(grants || {}).reduce((n, acts) => n + (acts?.length || 0), 0);
+
+  let clientCount = 0;
+  let awcCount = 0;
+  let parentName = null;
+  const clientStats = {
+    total: 0,
+    seek: 0,
+    heal: 0,
+    consultancy_only: 0,
+    other: 0,
+  };
+  if (primaryAccountRole === "wellness_coach") {
+    try {
+      const clients = await listUsersByParentCoachId(pub.id, { page: 1, limit: 200, scope: "all" });
+      const users = clients.users || [];
+      clientCount = clients.pagination?.total || users.length;
+      clientStats.total = clientCount;
+      for (const u of users) {
+        const tier = String(u.userTier || "seek").toLowerCase();
+        if (tier === "seek") clientStats.seek += 1;
+        else if (tier === "heal") clientStats.heal += 1;
+        else if (tier === "consultancy_only") clientStats.consultancy_only += 1;
+        else clientStats.other += 1;
+      }
+      const children = await listAccounts({
+        parentAccountId: pub.id,
+        roleKey: "assistant_wellness_coach",
+        page: 1,
+        limit: 1,
+      });
+      awcCount = children.pagination?.total || 0;
+    } catch {
+      /* ignore */
+    }
+  }
+  const parentId =
+    pub.parentAccountId || membership?.parentAccountId || null;
+  if (parentId) {
+    const parent = await getAccountById(parentId);
+    parentName = parent?.name || null;
+  }
+
+  return res.json({
+    status: true,
+    member: {
+      id: pub.id,
+      name: pub.name,
+      email: pub.email,
+      phone: pub.phone || null,
+      phoneCountryCode: pub.phoneCountryCode || null,
+      status: pub.status,
+      displayStatus:
+        pub.status === "inactive"
+          ? "Inactive"
+          : String(pub.approvalStatus || "").toLowerCase() === "pending"
+            ? "Pending"
+            : "Active",
+      isSuperAdmin: Boolean(pub.isSuperAdmin),
+      primaryRoleKey: uiRole,
+      accountRoleKey: primaryAccountRole,
+      consoleRoleId: consoleRole?.id || null,
+      parentAccountId: parentId,
+      parentName,
+      clientCount,
+      awcCount,
+      clientStats,
+      meta:
+        primaryAccountRole === "wellness_coach"
+          ? `${clientCount} clients · ${awcCount} AWCs`
+          : parentName
+            ? `under ${parentName}`
+            : ROLE_KEY_META[uiRole]?.name || uiRole,
+      grants,
+      roleGrants,
+      hasOverrides: overrideGrants !== undefined,
+      grantedCount: pub.isSuperAdmin ? TOTAL_PERM_SLOTS : grantedCount,
+      totalSlots: TOTAL_PERM_SLOTS,
+      navSections: Array.isArray(consoleRole?.navSections)
+        ? consoleRole.navSections
+        : DEFAULT_NAV_SECTIONS[uiRole] || [],
+    },
+  });
+});
+
+exports.setAccessMemberPermissions = asyncHandler(async (req, res) => {
+  assertSuperAdmin(req);
+  const account = await getAccountById(req.params.id);
+  if (!account) throw new AppError("Account not found", 404);
+  if (account.isSuperAdmin) {
+    throw new AppError("Super Admin permissions cannot be overridden", 400);
+  }
+
+  const roleKeys = Array.isArray(account.roleKeys) ? account.roleKeys : [];
+  const primaryAccountRole =
+    (account.defaultRoleKey && roleKeys.includes(account.defaultRoleKey) && account.defaultRoleKey) ||
+    roleKeys[0] ||
+    null;
+  if (!primaryAccountRole) throw new AppError("Account has no role", 400);
+
+  const membership = getMembership(account, primaryAccountRole) || {
+    roleKey: primaryAccountRole,
+    roleId: null,
+    status: "active",
+    parentAccountId: account.parentAccountId || null,
+  };
+
+  const body = req.body || {};
+  let nextOverrides = membership.permissionOverrides
+    ? { ...membership.permissionOverrides }
+    : {};
+
+  if (body.reset) {
+    delete nextOverrides.consoleGrants;
+  } else if (body.grants !== undefined) {
+    nextOverrides.consoleGrants =
+      body.grants == null ? null : body.grants; // null = full access override
+  } else {
+    throw new AppError("grants or reset is required", 400);
+  }
+
+  if (Object.keys(nextOverrides).length === 0) nextOverrides = null;
+
+  const memberships = (account.memberships || []).map((m) => {
+    if (m.roleKey !== primaryAccountRole) return m;
+    return { ...m, permissionOverrides: nextOverrides };
+  });
+  if (!memberships.some((m) => m.roleKey === primaryAccountRole)) {
+    memberships.push({
+      ...membership,
+      permissionOverrides: nextOverrides,
+    });
+  }
+
+  const updated = await updateAccount(account.id, { memberships });
+  req.params.id = updated.id;
+  return exports.getAccessMember(req, res);
 });
 
 exports.setAccessMemberRole = asyncHandler(async (req, res) => {

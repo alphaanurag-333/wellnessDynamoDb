@@ -6,6 +6,7 @@ const accountAccessRoutes = require("./accountAccessRoutes");
 const {
   listAccountsHandler,
   getAccountHandler,
+  createAccountHandler,
   grantMembershipHandler,
   revokeMembershipHandler,
 } = require("../../controllers/accountController/accountAdminController");
@@ -28,6 +29,7 @@ router.use("/heal-users", accountHealUserRoutes);
 router.use("/access", accountAccessRoutes);
 
 router.get("/accounts", protectAccount, requireActiveRole("admin"), listAccountsHandler);
+router.post("/accounts", protectAccount, requireActiveRole("admin"), createAccountHandler);
 router.get("/accounts/:id", protectAccount, requireActiveRole("admin"), getAccountHandler);
 router.post(
   "/accounts/:id/memberships",
