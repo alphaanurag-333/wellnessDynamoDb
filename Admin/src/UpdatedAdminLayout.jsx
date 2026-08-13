@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { INITIAL_NOTIFICATIONS, NAV_ITEMS } from "./data/dashboardData.js";
+import { INITIAL_NOTIFICATIONS, NAV_ITEMS, UPDATED_ADMIN_PATHS } from "./data/dashboardData.js";
 import { ConfirmDialog } from "./components/ConfirmDialog.jsx";
 import { ProfileModal } from "./components/ProfileModal.jsx";
 import { UpdatedAdminHeader } from "./components/UpdatedAdminHeader.jsx";
@@ -37,7 +37,7 @@ export function UpdatedAdminLayout() {
   const confirmLogout = useCallback(() => {
     setLogoutAsk(false);
     logout();
-    navigate("/updatedadmin/login", { replace: true });
+    navigate(UPDATED_ADMIN_PATHS.login, { replace: true });
   }, [logout, navigate]);
 
   useEffect(() => {
@@ -47,7 +47,7 @@ export function UpdatedAdminLayout() {
   }, [toastVisible, toast]);
 
   useEffect(() => {
-    const clientMatch = pathname.match(/^\/updatedadmin\/users\/(\d+)/);
+    const clientMatch = pathname.match(/^\/users\/(\d+)/);
     if (clientMatch) {
       document.title = "IR Wellness Admin — Client profile";
       return;
@@ -79,7 +79,7 @@ export function UpdatedAdminLayout() {
   }
 
   return (
-    <div className={`updated-admin${pathname.match(/^\/updatedadmin\/users\/\d+/) ? " updated-admin--client-profile" : ""}`}>
+    <div className={`updated-admin${pathname.match(/^\/users\/\d+/) ? " updated-admin--client-profile" : ""}`}>
       <UpdatedAdminSidebar onLogout={requestLogout} />
 
       <div className="main">

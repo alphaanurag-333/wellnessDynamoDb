@@ -1,4 +1,4 @@
-import api, { authHeader, normalizeApiError } from "../../api.js";
+import api, { authHeader, normalizeApiError } from "../api.js";
 
 const AUTH_STORAGE_KEY = "wellness_admin_auth";
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useOutletContext } from "react-router-dom";
 import { OrangeButton, PageHeader, PillTabs, TableScroll } from "../components/shared.jsx";
+import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import {
   createAccessRole,
@@ -797,7 +798,7 @@ export function AccessPage() {
   }
 
   if (!isSuperAdmin) {
-    return <Navigate to="/updatedadmin" replace />;
+    return <Navigate to={UPDATED_ADMIN_PATHS.dashboard} replace />;
   }
 
   return (

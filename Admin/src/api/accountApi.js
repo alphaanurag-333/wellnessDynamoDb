@@ -1,4 +1,4 @@
-import api, { normalizeApiError } from "../../api.js";
+import api, { normalizeApiError } from "../api.js";
 
 export const ACCOUNT_AUTH_STORAGE_KEY = "wellness_account_auth";
 

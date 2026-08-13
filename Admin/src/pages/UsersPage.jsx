@@ -20,6 +20,7 @@ import {
   tierStyle,
   userInitials,
 } from "../data/usersData.js";
+import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 
 function SortButton({ label, active, direction, onClick }) {
   const caret = active ? (direction === "desc" ? " ↓" : " ↑") : " ⇅";
@@ -212,7 +213,7 @@ export function UsersPage() {
 
   const openUser = (name) => {
     const id = USERS.find((x) => x.name === name)?.n;
-    if (id) navigate(`/updatedadmin/users/${id}`);
+    if (id) navigate(UPDATED_ADMIN_PATHS.userDetail(id));
   };
 
   const confirmDelete = () => {

@@ -1,17 +1,18 @@
 export const GRADIENT_GREEN = "linear-gradient(135deg, rgb(52, 165, 106), rgb(75, 184, 124))";
 
 export const UPDATED_ADMIN_PATHS = {
-  dashboard: "/updatedadmin",
-  users: "/updatedadmin/users",
-  userDetail: (id) => `/updatedadmin/users/${id}`,
-  access: "/updatedadmin/access",
-  teams: "/updatedadmin/teams",
-  calendar: "/updatedadmin/calendar",
-  configs: "/updatedadmin/configs",
-  pending: "/updatedadmin/pending",
-  sop: "/updatedadmin/sop",
-  myContent: "/updatedadmin/my-content",
-  commitmentLetters: (coachId = "anita-rao") => `/updatedadmin/my-content/letters/${coachId}`,
+  login: "/login",
+  dashboard: "/dashboard",
+  users: "/users",
+  userDetail: (id) => `/users/${id}`,
+  access: "/access",
+  teams: "/teams",
+  calendar: "/calendar",
+  configs: "/configs",
+  pending: "/pending",
+  sop: "/sop",
+  myContent: "/my-content",
+  commitmentLetters: (coachId = "anita-rao") => `/my-content/letters/${coachId}`,
 };
 
 export const NAV_ITEMS = [

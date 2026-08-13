@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import defaultLogo from "../../assets/logo/defaultlogo.png";
+import defaultLogo from "../assets/logo/defaultlogo.png";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import "../updatedadmin.css";

@@ -1,4 +1,4 @@
-import api, { normalizeApiError } from "../../api.js";
+import api, { normalizeApiError } from "../api.js";
 import { getAccountToken } from "./accountApi.js";
 import {
   fetchAccessMembers,

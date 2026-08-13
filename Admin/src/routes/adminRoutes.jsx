@@ -1,6 +1,7 @@
 import { Navigate, Outlet, Route } from "react-router-dom";
 import { UpdatedAdminLayout } from "../UpdatedAdminLayout.jsx";
 import { ViewAsProvider, useViewAs } from "../context/ViewAsContext.jsx";
+import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { AccessPage } from "../pages/AccessPage.jsx";
 import { CalendarPage } from "../pages/CalendarPage.jsx";
 import { ConfigsPage } from "../pages/ConfigsPage.jsx";
@@ -16,7 +17,7 @@ import { UsersLayout } from "../pages/UsersLayout.jsx";
 import { UserDetailPage } from "../pages/UserDetailPage.jsx";
 import { UpdatedAdminLoginPage } from "../pages/UpdatedAdminLoginPage.jsx";
 
-function UpdatedAdminRoot() {
+function AdminRoot() {
   return (
     <ViewAsProvider>
       <Outlet />
@@ -36,17 +37,17 @@ function ProtectedShell() {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/updatedadmin/login" replace />;
+    return <Navigate to={UPDATED_ADMIN_PATHS.login} replace />;
   }
 
   return <UpdatedAdminLayout />;
 }
 
-export const updatedAdminRouteTree = (
-  <Route path="/updatedadmin" element={<UpdatedAdminRoot />}>
+export const adminRouteTree = (
+  <Route element={<AdminRoot />}>
     <Route path="login" element={<UpdatedAdminLoginPage />} />
     <Route element={<ProtectedShell />}>
-      <Route index element={<DashboardPage />} />
+      <Route path="dashboard" element={<DashboardPage />} />
       <Route path="users" element={<UsersLayout />}>
         <Route path=":userId" element={<UserDetailPage />} />
       </Route>

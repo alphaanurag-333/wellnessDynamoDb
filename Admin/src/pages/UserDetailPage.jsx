@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Navigate, useOutletContext, useParams, useSearchParams } from "react-router-dom";
 import { getUserProfile } from "../data/userDetailData.js";
+import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { ClientProfileSidebar, ClientProfileTopbar } from "../components/clientProfile/ClientProfileChrome.jsx";
 import {
   AtAGlanceSection,
@@ -65,7 +66,7 @@ export function UserDetailPage() {
   const section = searchParams.get("section") || "glance";
 
   if (!user) {
-    return <Navigate to="/updatedadmin/users" replace />;
+    return <Navigate to={UPDATED_ADMIN_PATHS.users} replace />;
   }
 
   function setSection(next, { fromBack = false, tab, program, mode } = {}) {
