@@ -1,16 +1,24 @@
 export const HEALTH_TRACKERS = [
-  { id: "fatloss", name: "FatLoss", category: "Fat Loss", color: "#ec7a45", enabled: true },
-  { id: "glucose", name: "Glucose Panel", category: "Diabetes Reversal", color: "#d64545", enabled: true },
-  { id: "menstrual", name: "Menstrual cycle", category: "PCOD / PCOS", color: "#c2559a", enabled: true },
-  { id: "gut", name: "Gut health", category: "Gut Health", color: "#22c55e", enabled: true },
-  { id: "thyroid", name: "Thyroid care", category: "Thyroid Care", color: "#0d9488", enabled: true },
-  { id: "cholesterol", name: "Cholesterol", category: "Cholesterol Care", color: "#eab308", enabled: true },
-  { id: "weight-gain", name: "Weight gain", category: "Weight Gain", color: "#3b82f6", enabled: true },
-  { id: "prenatal", name: "Prenatal", category: "Prenatal Wellness", color: "#ec4899", enabled: true },
-  { id: "bp", name: "BP tracking", category: "Hypertension", color: "#a16207", enabled: true },
-  { id: "fitness", name: "Fitness", category: "Fitness & Strength", color: "#5e6ad2", enabled: true },
-  { id: "condition", name: "condition tracking", category: "Skin & visible conditions", color: "#6366f1", enabled: true },
+  { id: "fatloss", name: "FatLoss", category: "Fat Loss", color: "#ec7a45", enabled: true, builtin: true },
+  { id: "menstrual", name: "Menstrual cycle", category: "PCOD / PCOS", color: "#c2559a", enabled: true, builtin: true },
+  { id: "glucose", name: "Glucose Panel", category: "Diabetes Reversal", color: "#d64545", enabled: true, builtin: true },
+  { id: "thyroid", name: "Thyroid care", category: "Thyroid Care", color: "#0d9488", enabled: true, builtin: true },
+  { id: "weight-gain", name: "Weight gain", category: "Weight Gain", color: "#3b82f6", enabled: true, builtin: true },
+  { id: "gut", name: "Gut health", category: "Gut Health", color: "#22c55e", enabled: true, builtin: true },
+  { id: "cholesterol", name: "Cholesterol", category: "Cholesterol Care", color: "#eab308", enabled: true, builtin: true },
+  { id: "bp", name: "BP tracking", category: "Hypertension", color: "#a16207", enabled: true, builtin: true },
+  { id: "fitness", name: "Fitness", category: "Fitness & Strength", color: "#5e6ad2", enabled: true, builtin: true },
+  { id: "prenatal", name: "Prenatal", category: "Prenatal Wellness", color: "#ec4899", enabled: true, builtin: true },
 ];
+
+export const CONDITION_TRACKER = {
+  id: "condition",
+  name: "condition tracking",
+  category: "Skin & visible conditions",
+  color: "#6366f1",
+  enabled: true,
+  builtin: true,
+};
 
 export const TRACKING_FILTER_OPTIONS = [
   { id: "all", name: "All tracking" },

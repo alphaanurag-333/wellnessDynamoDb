@@ -43,6 +43,7 @@ export function PageHeader({
   actions,
   meta,
   backLink,
+  backTo,
   autosave,
   onAutosave,
   layout = "default",
@@ -57,7 +58,7 @@ export function PageHeader({
         </span>
       ) : null}
       <div className="page-head__main">
-        {backLink ? <BackLink label={backLink} /> : null}
+        {backLink ? <BackLink label={backLink} to={backTo ?? UPDATED_ADMIN_PATHS.dashboard} /> : null}
         <div className="page-head__intro">
           <h1 className="page-head__title">{title}</h1>
           {meta ? <div className="page-head__meta">{meta}</div> : null}
