@@ -41,12 +41,16 @@ async function refreshAssistantToken() {
   }
 
   refreshPromise = axios
-    .post(`${getApiBase()}/api/assistant/auth/refresh-token`, { refreshToken })
+    .post(`${getApiBase()}/api/account/auth/refresh-token`, {
+      refreshToken,
+      activeRole: "assistant_wellness_coach",
+    })
     .then(({ data }) => {
       const updated = {
         ...current,
         assistantToken: data?.accessToken,
         refreshToken: data?.refreshToken || refreshToken,
+        assistant: data?.assistant || data?.account || current.assistant,
       };
       writeStoredAuth(updated);
       return updated.assistantToken;
@@ -79,6 +83,8 @@ assistantApi.interceptors.response.use(
       status === 401 &&
       originalRequest &&
       !originalRequest._retry &&
+      !requestUrl.includes("/account/auth/login") &&
+      !requestUrl.includes("/account/auth/refresh-token") &&
       !requestUrl.includes("/assistant/auth/login") &&
       !requestUrl.includes("/assistant/auth/refresh-token")
     ) {

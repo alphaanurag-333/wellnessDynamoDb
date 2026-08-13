@@ -4,13 +4,17 @@ const { comparePassword, hashPassword } = require("../../utils/password");
 const { createTokenPair, verifyRefreshToken } = require("../../utils/jwt");
 const { assertPasswordPolicy } = require("../../utils/passwordPolicy");
 const {
+  uploadFileFromRequest,
+  deleteStoredMedia,
+  parseMediaKeyFromBody,
+} = require("../../utils/s3");
+const {
   getAccountById,
   getAccountByEmail,
   getAccountByPhone,
   updateAccount,
   toPublicAccount,
   createAccount,
-  hasActiveMembership,
 } = require("../../models/accountModel");
 const { resolveAccountByEmail } = require("../../services/accountResolver");
 const {
@@ -23,6 +27,17 @@ const { normalizeRoleKey, ROLE_KEY_TO_UI } = require("../../config/accountRoles"
 const { normalizeEmail, normalizePhone, normalizeCountryCode } = require("../../models/userModel");
 const { generateOtp, getOtpExpiryDate, isOtpExpired, deliverOtp } = require("../../utils/otp");
 const config = require("../../config");
+
+const S3_FOLDER = "account";
+
+function withRoleAliases(publicAccount, activeRole) {
+  return {
+    account: publicAccount,
+    admin: activeRole === "admin" ? publicAccount : undefined,
+    coach: activeRole === "wellness_coach" ? publicAccount : undefined,
+    assistant: activeRole === "assistant_wellness_coach" ? publicAccount : undefined,
+  };
+}
 
 async function buildAuthPayload(account, activeRoleKey) {
   const roleKey = normalizeRoleKey(activeRoleKey);
@@ -58,11 +73,7 @@ async function sendAccountAuthResponse(res, statusCode, account, activeRoleKey, 
     message,
     accessToken,
     refreshToken,
-    account: publicAccount,
-    // Compat aliases for updatedadmin / legacy clients
-    admin: payload.role === "admin" ? publicAccount : undefined,
-    coach: payload.role === "wellness_coach" ? publicAccount : undefined,
-    assistant: payload.role === "assistant_wellness_coach" ? publicAccount : undefined,
+    ...withRoleAliases(publicAccount, payload.role),
   });
 }
 
@@ -152,16 +163,74 @@ exports.getAccountMe = asyncHandler(async (req, res) => {
   const account = req.account || req.user;
   const activeRole = req.auth?.role;
   const { permissions, isSuperAdmin } = await resolveAccountPermissions(account, activeRole);
+  const publicAccount = {
+    ...toPublicAccount(account),
+    activeRole,
+    activeRoleUi: ROLE_KEY_TO_UI[activeRole] || activeRole,
+    roles: listEligibleRoleKeys(account),
+    permissions,
+    isSuperAdmin: activeRole === "admin" ? Boolean(isSuperAdmin) : false,
+  };
   return res.json({
     status: true,
-    account: {
-      ...toPublicAccount(account),
-      activeRole,
-      activeRoleUi: ROLE_KEY_TO_UI[activeRole] || activeRole,
-      roles: listEligibleRoleKeys(account),
-      permissions,
-      isSuperAdmin: activeRole === "admin" ? Boolean(isSuperAdmin) : false,
-    },
+    message: "Profile fetched successfully",
+    ...withRoleAliases(publicAccount, activeRole),
+  });
+});
+
+exports.updateAccountProfile = asyncHandler(async (req, res) => {
+  const account = req.account || req.user;
+  if (!account?.id) throw new AppError("Authentication required", 401);
+
+  const { name, phone, phoneCountryCode, designation, bio, profileImage, password } = req.body || {};
+  const updates = {};
+
+  if (name !== undefined) updates.name = String(name).trim();
+  if (phone !== undefined) updates.phone = phone ? String(phone).trim() : null;
+  if (phoneCountryCode !== undefined) {
+    updates.phoneCountryCode = phoneCountryCode ? String(phoneCountryCode).trim() : null;
+  }
+  if (designation !== undefined) {
+    updates.designation = designation ? String(designation).trim() : null;
+  }
+  if (bio !== undefined) updates.bio = bio == null ? null : String(bio);
+  if (password !== undefined) {
+    assertPasswordPolicy(password);
+    updates.password = await hashPassword(password);
+  }
+
+  if (profileImage !== undefined) {
+    const key = parseMediaKeyFromBody(profileImage, "profileImage");
+    if (key === null && account.profileImage) {
+      await deleteStoredMedia(account.profileImage);
+    }
+    updates.profileImage = key;
+  }
+
+  const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
+  if (uploadedKey) {
+    if (account.profileImage && account.profileImage !== uploadedKey) {
+      await deleteStoredMedia(account.profileImage);
+    }
+    updates.profileImage = uploadedKey;
+  }
+
+  const updated = await updateAccount(account.id, updates);
+  const activeRole = req.auth?.role;
+  const { permissions, isSuperAdmin } = await resolveAccountPermissions(updated, activeRole);
+  const publicAccount = {
+    ...toPublicAccount(updated),
+    activeRole,
+    activeRoleUi: ROLE_KEY_TO_UI[activeRole] || activeRole,
+    roles: listEligibleRoleKeys(updated),
+    permissions,
+    isSuperAdmin: activeRole === "admin" ? Boolean(isSuperAdmin) : false,
+  };
+
+  return res.json({
+    status: true,
+    message: "Profile updated successfully",
+    ...withRoleAliases(publicAccount, activeRole),
   });
 });
 

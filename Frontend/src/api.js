@@ -48,12 +48,13 @@ async function refreshAdminToken() {
   }
 
   refreshPromise = axios
-    .post(`${API_BASE}/api/admin/auth/refresh-token`, { refreshToken })
+    .post(`${API_BASE}/api/account/auth/refresh-token`, { refreshToken, activeRole: "admin" })
     .then(({ data }) => {
       const updated = {
         ...current,
         adminToken: data?.accessToken,
         refreshToken: data?.refreshToken || refreshToken,
+        admin: data?.admin || data?.account || current.admin,
       };
       writeStoredAuth(updated);
       return updated.adminToken;
@@ -68,7 +69,9 @@ async function refreshAdminToken() {
 api.interceptors.request.use((config) => {
   const stored = readStoredAuth();
   const latestToken = stored?.adminToken;
-  if (latestToken) {
+  const existingAuth =
+    config.headers?.Authorization || config.headers?.authorization;
+  if (latestToken && !existingAuth) {
     config.headers = config.headers || {};
     config.headers.Authorization = `Bearer ${latestToken}`;
   }
@@ -86,6 +89,8 @@ api.interceptors.response.use(
       status === 401 &&
       originalRequest &&
       !originalRequest._retry &&
+      !requestUrl.includes("/account/auth/login") &&
+      !requestUrl.includes("/account/auth/refresh-token") &&
       !requestUrl.includes("/admin/auth/login") &&
       !requestUrl.includes("/admin/auth/refresh-token")
     ) {

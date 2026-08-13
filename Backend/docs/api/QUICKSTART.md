@@ -6,18 +6,26 @@ Set `Authorization: Bearer <token>` on protected routes.
 
 ---
 
-## Admin
+## Staff (Account) auth
 
 ```bash
-# Login
-curl -s -X POST "$BASE/api/admin/auth/login" \
+# Login (admin / coach / assistant — same endpoint; pass activeRole)
+curl -s -X POST "$BASE/api/account/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@example.com","password":"your-password"}'
+  -d '{"email":"admin@example.com","password":"your-password","activeRole":"admin"}'
 
 # Profile
-curl -s "$BASE/api/admin/auth/me" -H "Authorization: Bearer $ADMIN_TOKEN"
+curl -s "$BASE/api/account/auth/me" -H "Authorization: Bearer $TOKEN"
+```
 
-# List users
+Legacy `/admin/auth`, `/coach/auth`, `/assistant/auth` were removed.
+
+---
+
+## Admin feature APIs
+
+```bash
+# List users (requires admin-role Account token)
 curl -s "$BASE/api/admin/users?page=1&limit=10" -H "Authorization: Bearer $ADMIN_TOKEN"
 
 # Consultancy transactions
@@ -25,7 +33,7 @@ curl -s "$BASE/api/admin/consultancy/transactions?paymentStatus=all" \
   -H "Authorization: Bearer $ADMIN_TOKEN"
 ```
 
-**Postman:** Import `Wellness-Admin-API` → run `POST /admin/auth/login` → set `adminToken` from response.
+**Postman:** Use `POST /account/auth/login` with `activeRole: "admin"` → set `adminToken` from `accessToken`.
 
 ---
 
@@ -52,10 +60,10 @@ curl -s "$BASE/api/user/consultancy-payment/checkout-preview?referralCode=COACHC
 ## Wellness Coach
 
 ```bash
-# Login
-curl -s -X POST "$BASE/api/coach/auth/login" \
+# Login (Account auth)
+curl -s -X POST "$BASE/api/account/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"email":"coach@example.com","password":"your-password"}'
+  -d '{"email":"coach@example.com","password":"your-password","activeRole":"wellness_coach"}'
 
 # My Heal clients
 curl -s "$BASE/api/coach/heal-users?scope=all" -H "Authorization: Bearer $COACH_TOKEN"
@@ -70,10 +78,10 @@ curl -s "$BASE/api/coach/consultancy/transactions?paymentStatus=all" \
 ## Assistant Coach
 
 ```bash
-# Login
-curl -s -X POST "$BASE/api/assistant/auth/login" \
+# Login (Account auth)
+curl -s -X POST "$BASE/api/account/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"email":"assistant@example.com","password":"your-password"}'
+  -d '{"email":"assistant@example.com","password":"your-password","activeRole":"assistant_wellness_coach"}'
 
 # My assigned Heal clients
 curl -s "$BASE/api/assistant/heal-users" -H "Authorization: Bearer $ASSISTANT_TOKEN"

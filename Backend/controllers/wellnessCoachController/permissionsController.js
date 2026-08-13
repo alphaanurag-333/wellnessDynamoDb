@@ -4,7 +4,7 @@ const {
 } = require("../../utils/coachPermissions");
 
 /**
- * GET /coach/auth/me/permissions — resolved boolean map for the logged-in coach.
+ * GET /coach/me/permissions — resolved boolean map for the logged-in coach.
  */
 exports.getCoachPermissionsController = asyncHandler(async (req, res) => {
   const permissions = await resolveCoachPermissions(req.user, { req });

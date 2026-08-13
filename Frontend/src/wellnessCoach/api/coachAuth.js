@@ -1,8 +1,10 @@
 import coachApi, { authHeader, normalizeApiError } from "./coachApi.js";
 
+/** Staff auth is Account-only. Keep coach* response aliases for the coach portal. */
+
 export async function coachRegister(fields) {
   try {
-    const { data } = await coachApi.post("/coach/auth/register", fields);
+    const { data } = await coachApi.post("/account/auth/register/coach", fields);
     return data;
   } catch (error) {
     normalizeApiError(error);
@@ -11,8 +13,15 @@ export async function coachRegister(fields) {
 
 export async function coachLogin({ email, password }) {
   try {
-    const { data } = await coachApi.post("/coach/auth/login", { email, password });
-    return data;
+    const { data } = await coachApi.post("/account/auth/login", {
+      email,
+      password,
+      activeRole: "wellness_coach",
+    });
+    return {
+      ...data,
+      coach: data.coach || data.account,
+    };
   } catch (error) {
     normalizeApiError(error);
   }
@@ -20,7 +29,7 @@ export async function coachLogin({ email, password }) {
 
 export async function coachSendLoginOtp({ phone, phoneCountryCode }) {
   try {
-    const { data } = await coachApi.post("/coach/auth/otp/send", { phone, phoneCountryCode });
+    const { data } = await coachApi.post("/account/auth/otp/send", { phone, phoneCountryCode });
     return data;
   } catch (error) {
     normalizeApiError(error);
@@ -29,8 +38,16 @@ export async function coachSendLoginOtp({ phone, phoneCountryCode }) {
 
 export async function coachVerifyLoginOtp({ phone, phoneCountryCode, otp }) {
   try {
-    const { data } = await coachApi.post("/coach/auth/otp/verify", { phone, phoneCountryCode, otp });
-    return data;
+    const { data } = await coachApi.post("/account/auth/otp/verify", {
+      phone,
+      phoneCountryCode,
+      otp,
+      activeRole: "wellness_coach",
+    });
+    return {
+      ...data,
+      coach: data.coach || data.account,
+    };
   } catch (error) {
     normalizeApiError(error);
   }
@@ -38,8 +55,11 @@ export async function coachVerifyLoginOtp({ phone, phoneCountryCode, otp }) {
 
 export async function coachGetMe(token) {
   try {
-    const { data } = await coachApi.get("/coach/auth/me", { headers: authHeader(token) });
-    return data;
+    const { data } = await coachApi.get("/account/auth/me", { headers: authHeader(token) });
+    return {
+      ...data,
+      coach: data.coach || data.account,
+    };
   } catch (error) {
     normalizeApiError(error);
   }
@@ -47,7 +67,7 @@ export async function coachGetMe(token) {
 
 export async function coachGetPermissions(token) {
   try {
-    const { data } = await coachApi.get("/coach/auth/me/permissions", {
+    const { data } = await coachApi.get("/coach/me/permissions", {
       headers: authHeader(token),
     });
     return {
@@ -61,8 +81,11 @@ export async function coachGetPermissions(token) {
 
 export async function coachUpdateMe(token, body) {
   try {
-    const { data } = await coachApi.patch("/coach/auth/me", body, { headers: authHeader(token) });
-    return data;
+    const { data } = await coachApi.patch("/account/auth/me", body, { headers: authHeader(token) });
+    return {
+      ...data,
+      coach: data.coach || data.account,
+    };
   } catch (error) {
     normalizeApiError(error);
   }
@@ -79,8 +102,11 @@ export async function coachUpdateMeWithFile(token, { name, phone, phoneCountryCo
   if (file instanceof File) fd.append("file", file);
 
   try {
-    const { data } = await coachApi.patch("/coach/auth/me", fd, { headers: authHeader(token) });
-    return data;
+    const { data } = await coachApi.patch("/account/auth/me", fd, { headers: authHeader(token) });
+    return {
+      ...data,
+      coach: data.coach || data.account,
+    };
   } catch (error) {
     normalizeApiError(error);
   }
@@ -89,7 +115,7 @@ export async function coachUpdateMeWithFile(token, { name, phone, phoneCountryCo
 export async function coachChangePassword(token, { currentPassword, newPassword }) {
   try {
     const { data } = await coachApi.patch(
-      "/coach/auth/me/password",
+      "/account/auth/me/password",
       { currentPassword, newPassword },
       { headers: authHeader(token) },
     );

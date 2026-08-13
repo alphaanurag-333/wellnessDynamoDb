@@ -5,12 +5,14 @@ const {
   refreshAccountToken,
   switchAccountRole,
   getAccountMe,
+  updateAccountProfile,
   getAccountPermissions,
   changeAccountPassword,
   sendAccountLoginOtp,
   verifyAccountLoginOtp,
   registerCoachAccount,
 } = require("../../controllers/accountController/authController");
+const { optionalAdminFile } = require("../../middleware/authMultipart");
 
 const router = express.Router();
 
@@ -22,6 +24,7 @@ router.post("/register/coach", registerCoachAccount);
 
 router.post("/switch-role", protectAccount, switchAccountRole);
 router.get("/me", protectAccount, getAccountMe);
+router.patch("/me", protectAccount, optionalAdminFile, updateAccountProfile);
 router.get("/me/permissions", protectAccount, getAccountPermissions);
 router.patch("/me/password", protectAccount, changeAccountPassword);
 

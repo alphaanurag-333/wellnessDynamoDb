@@ -1,9 +1,18 @@
 import api, { authHeader, normalizeApiError } from "../../api.js";
 
+/** Staff auth is Account-only. Portal wrappers keep legacy response shapes. */
+
 export async function adminLogin({ email, password }) {
   try {
-    const { data } = await api.post("/admin/auth/login", { email, password });
-    return data;
+    const { data } = await api.post("/account/auth/login", {
+      email,
+      password,
+      activeRole: "admin",
+    });
+    return {
+      ...data,
+      admin: data.admin || data.account,
+    };
   } catch (error) {
     normalizeApiError(error);
   }
@@ -11,8 +20,11 @@ export async function adminLogin({ email, password }) {
 
 export async function adminGetMe(token) {
   try {
-    const { data } = await api.get("/admin/auth/me", { headers: authHeader(token) });
-    return data;
+    const { data } = await api.get("/account/auth/me", { headers: authHeader(token) });
+    return {
+      ...data,
+      admin: data.admin || data.account,
+    };
   } catch (error) {
     normalizeApiError(error);
   }
@@ -20,8 +32,11 @@ export async function adminGetMe(token) {
 
 export async function adminUpdateMe(token, body) {
   try {
-    const { data } = await api.patch("/admin/auth/me", body, { headers: authHeader(token) });
-    return data;
+    const { data } = await api.patch("/account/auth/me", body, { headers: authHeader(token) });
+    return {
+      ...data,
+      admin: data.admin || data.account,
+    };
   } catch (error) {
     normalizeApiError(error);
   }
@@ -38,8 +53,11 @@ export async function adminUpdateMeWithFile(token, { name, phone, file }) {
   if (file instanceof File) fd.append("file", file);
 
   try {
-    const { data } = await api.patch("/admin/auth/me", fd, { headers: authHeader(token) });
-    return data;
+    const { data } = await api.patch("/account/auth/me", fd, { headers: authHeader(token) });
+    return {
+      ...data,
+      admin: data.admin || data.account,
+    };
   } catch (error) {
     normalizeApiError(error);
   }
@@ -48,7 +66,7 @@ export async function adminUpdateMeWithFile(token, { name, phone, file }) {
 export async function adminChangePassword(token, { currentPassword, newPassword }) {
   try {
     const { data } = await api.patch(
-      "/admin/auth/me/password",
+      "/account/auth/me/password",
       { currentPassword, newPassword },
       { headers: authHeader(token) },
     );

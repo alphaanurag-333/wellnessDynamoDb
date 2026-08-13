@@ -1,7 +1,7 @@
 /**
  * Optional helper: when ACCOUNT_LEGACY_SHIMS=false, callers can skip mounting
- * legacy staff routers. Currently routes/index.js still mounts legacy prefixes
- * for backward compatibility; flip this helper into routes/index.js when ready.
+ * legacy staff *feature* routers (/admin|/coach|/assistant). Staff auth already
+ * lives only under /api/account/auth.
  */
 const config = require("../config");
 

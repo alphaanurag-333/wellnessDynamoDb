@@ -1,5 +1,4 @@
 const express = require("express");
-const adminAuthRoutes = require("./adminRoutes/adminAuthRoutes");
 const adminDashboardRoutes = require("./adminRoutes/adminDashboardRoutes");
 const adminAppConfigRoutes = require("./adminRoutes/adminAppConfigRoutes");
 const adminFaqRoutes = require("./adminRoutes/adminFaqRoutes");
@@ -98,7 +97,7 @@ const coachInsightRoutes = require("./userRoutes/coachInsightRoutes");
 const supplementRecommendationRoutes = require("./userRoutes/supplementRecommendationRoutes");
 const supplementDosageRoutes = require("./userRoutes/supplementDosageRoutes");
 const wellnessPrescriptionRoutes = require("./userRoutes/wellnessPrescriptionRoutes");
-const coachAuthRoutes = require("./wellnessCoachRoutes/coachAuthRoutes");
+const coachMeRoutes = require("./wellnessCoachRoutes/coachMeRoutes");
 const coachDashboardRoutes = require("./wellnessCoachRoutes/coachDashboardRoutes");
 const coachSpecializationRoutes = require("./wellnessCoachRoutes/coachSpecializationRoutes");
 const coachAssistantRoutes = require("./wellnessCoachRoutes/coachAssistantRoutes");
@@ -130,7 +129,6 @@ const assistantPrakrutiAssessmentRoutes = require("./assistantWellnessCoachRoute
 const coachConsultancyRoutes = require("./wellnessCoachRoutes/coachConsultancyRoutes");
 const coachEnergyExchangeRoutes = require("./wellnessCoachRoutes/coachEnergyExchangeRoutes");
 const coachProgramRoutes = require("./wellnessCoachRoutes/coachProgramRoutes");
-const assistantAuthRoutes = require("./assistantWellnessCoachRoutes/assistantAuthRoutes");
 const assistantDashboardRoutes = require("./assistantWellnessCoachRoutes/assistantDashboardRoutes");
 const assistantHealUserRoutes = require("./assistantWellnessCoachRoutes/assistantHealUserRoutes");
 const assistantReminderRoutes = require("./assistantWellnessCoachRoutes/assistantReminderRoutes");
@@ -162,12 +160,11 @@ router.get("/health", (req, res) => {
   res.json({ ok: true });
 });
 
-/** Unified staff Account API (new). Legacy /admin|/coach|/assistant remain as shims. */
+/** Unified staff Account auth + APIs. Staff login lives only under /account/auth. */
 router.use("/account", accountRoutes);
 
-router.use("/admin/auth", adminAuthRoutes);
 router.use("/admin/dashboard", adminDashboardRoutes);
-router.use("/coach/auth", coachAuthRoutes);
+router.use("/coach/me", coachMeRoutes);
 router.use("/coach/dashboard", coachDashboardRoutes);
 router.use("/coach/specializations", coachSpecializationRoutes);
 router.use("/coach/assistants", coachAssistantRoutes);
@@ -197,7 +194,6 @@ router.use("/coach/heal-users", coachHealUserRoutes);
 router.use("/coach/consultancy", coachConsultancyRoutes);
 router.use("/coach/energy-exchange", coachEnergyExchangeRoutes);
 router.use("/coach/programs", coachProgramRoutes);
-router.use("/assistant/auth", assistantAuthRoutes);
 router.use("/assistant/dashboard", assistantDashboardRoutes);
 router.use("/assistant/heal-users", assistantReminderRoutes);
 router.use("/assistant/heal-users", assistantTestRecommendationRoutes);

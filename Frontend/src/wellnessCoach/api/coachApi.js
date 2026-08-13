@@ -41,12 +41,16 @@ async function refreshCoachToken() {
   }
 
   refreshPromise = axios
-    .post(`${getApiBase()}/api/coach/auth/refresh-token`, { refreshToken })
+    .post(`${getApiBase()}/api/account/auth/refresh-token`, {
+      refreshToken,
+      activeRole: "wellness_coach",
+    })
     .then(({ data }) => {
       const updated = {
         ...current,
         coachToken: data?.accessToken,
         refreshToken: data?.refreshToken || refreshToken,
+        coach: data?.coach || data?.account || current.coach,
       };
       writeStoredAuth(updated);
       return updated.coachToken;
@@ -79,6 +83,8 @@ coachApi.interceptors.response.use(
       status === 401 &&
       originalRequest &&
       !originalRequest._retry &&
+      !requestUrl.includes("/account/auth/login") &&
+      !requestUrl.includes("/account/auth/refresh-token") &&
       !requestUrl.includes("/coach/auth/login") &&
       !requestUrl.includes("/coach/auth/refresh-token")
     ) {
