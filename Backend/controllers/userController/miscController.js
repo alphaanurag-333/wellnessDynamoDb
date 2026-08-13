@@ -48,6 +48,7 @@ const { getUserById } = require("../../models/userModel");
 const { todayInTimezone } = require("../../utils/birthdayTimezone");
 const { isValidDateOnly } = require("../../utils/dateOnly");
 const { createContactInquiry } = require("../../models/contactInquiryModel");
+const { emitContactInquiry } = require("../../services/adminActivityService");
 const { resolveListMedia } = require("./userMiscMedia");
 const { resolvePublicUrl } = require("../../utils/s3");
 
@@ -610,6 +611,7 @@ exports.getActiveSupplements = asyncHandler(async (req, res) => {
 exports.submitContactInquiry = asyncHandler(async (req, res) => {
   try {
     const inquiry = await createContactInquiry(req.body);
+    emitContactInquiry({ inquiry });
     return res.status(201).json({
       status: true,
       message: "Thank you for reaching out. Our team will get back to you soon.",

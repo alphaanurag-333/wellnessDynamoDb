@@ -7,6 +7,7 @@ export function UpdatedAdminHeader({
   notifications,
   unreadCount,
   notifOpen,
+  inboxLoading = false,
   onToggleNotif,
   onCloseNotif,
   onMarkAllRead,
@@ -76,10 +77,21 @@ export function UpdatedAdminHeader({
                   <div className="header__notif-title">Notifications</div>
                   <div className="header__notif-sub">Everything across the console</div>
                 </div>
-                <button type="button" className="header__notif-mark" onClick={onMarkAllRead}>
+                <button
+                  type="button"
+                  className="header__notif-mark"
+                  onClick={onMarkAllRead}
+                  disabled={unreadCount === 0}
+                >
                   Mark all read
                 </button>
               </div>
+              {inboxLoading && notifications.length === 0 ? (
+                <div className="header__notif-empty">Loading notifications…</div>
+              ) : null}
+              {!inboxLoading && notifications.length === 0 ? (
+                <div className="header__notif-empty">No console events yet</div>
+              ) : null}
               {notifications.map((n) => (
                 <button
                   key={n.id}

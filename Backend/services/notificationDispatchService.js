@@ -10,6 +10,10 @@ const { collectFcmTokensForAudience } = require("../utils/fcmAudience");
 const { sendPushToTokens } = require("../utils/pushNotification");
 const { readFcmToken } = require("../utils/parseFcmId");
 const { resolvePublicUrl } = require("../utils/s3");
+const {
+  emitMealLogged,
+  emitLabReportUploaded,
+} = require("./adminActivityService");
 
 const PUSH_TITLE_DEFAULT = "IR Wellness";
 
@@ -374,6 +378,8 @@ async function dispatchMentalWellbeingAssignedNotification({
 }
 
 async function dispatchLabReportUploadCoachNotification({ user, reportId }) {
+  emitLabReportUploaded({ user, reportId });
+
   const tokens = await collectCoachFcmTokensForUser(user);
   if (tokens.length === 0) {
     return { successCount: 0, failureCount: 0, skipped: true, reason: "no_tokens" };
@@ -402,6 +408,8 @@ function dispatchLabReportUploadCoachNotificationAsync(payload) {
 }
 
 async function dispatchMealLoggedCoachNotification({ user, mealLogId }) {
+  emitMealLogged({ user, mealLogId });
+
   const tokens = await collectCoachFcmTokensForUser(user);
   if (tokens.length === 0) {
     return { successCount: 0, failureCount: 0, skipped: true, reason: "no_tokens" };

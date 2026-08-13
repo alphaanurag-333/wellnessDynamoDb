@@ -18,6 +18,7 @@ const {
   updateProgram,
 } = require("../models/energyExchangeProgramModel");
 const { getAppConfig } = require("../models/appConfigModel");
+const { emitPendingAssignment } = require("./adminActivityService");
 
 async function resolveCatalogProgram(catalogProgramId) {
   const requestedId = String(catalogProgramId || "").trim();
@@ -187,7 +188,11 @@ async function adminConvertUserToHeal(userId, { referralCode, catalogProgramId }
     patches.consultancyPaidAt = now;
   }
 
-  return updateUser(userId, patches);
+  const updated = await updateUser(userId, patches);
+  if (String(updated.assignmentStatus || "").trim() === "pending_admin") {
+    emitPendingAssignment(updated);
+  }
+  return updated;
 }
 
 module.exports = {

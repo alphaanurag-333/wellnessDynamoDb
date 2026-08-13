@@ -601,13 +601,8 @@ export const ONBOARD_DATA = [
   { label: "Jul", count: 31, active: true },
 ];
 
-export const INITIAL_NOTIFICATIONS = [
-  { id: 1, icon: "👤", kind: "Assignment", time: "2m ago", title: "New client pending coach assignment", from: "System", unread: true },
-  { id: 2, icon: "💬", kind: "Feedback", time: "18m ago", title: "Support queue: 3 new feedback items", from: "Support bot", unread: true },
-  { id: 3, icon: "📅", kind: "Calendar", time: "1h ago", title: "Hetu Mehra's birthday is today", from: "Community", unread: true },
-  { id: 4, icon: "💰", kind: "Payment", time: "3h ago", title: "Program payment received – Rs. 12,500", from: "Billing", unread: false },
-  { id: 5, icon: "🏆", kind: "Champion", time: "5h ago", title: "Madhupriya Bilas leads Jul 2026 leaderboard", from: "Daily Reflection", unread: false },
-];
+/** @deprecated Mock feed replaced by GET /admin/inbox */
+export const INITIAL_NOTIFICATIONS = [];
 
 export const CHAMP_MONTHS = {
   "2026-07": { label: "Jul 2026", champion: "Madhupriya Bilas", score: 279 },

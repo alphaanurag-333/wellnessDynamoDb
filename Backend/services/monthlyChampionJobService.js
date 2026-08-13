@@ -7,6 +7,8 @@ const {
   monthLabel,
 } = require("../models/monthlyChampionPostModel");
 const { dispatchMonthlyChampionNotification } = require("./notificationDispatchService");
+const { emitMonthlyChampion } = require("./adminActivityService");
+const { getUserById } = require("../models/userModel");
 
 function previousMonthYear(reference = new Date()) {
   const year = reference.getUTCFullYear();
@@ -69,6 +71,13 @@ async function notifyChampion(post, { monthLbl, averageScore }) {
       postId: post.id,
     });
     await updateMonthlyChampionPost(post.id, { notifiedAt: new Date().toISOString() });
+    const user = await getUserById(post.userId);
+    emitMonthlyChampion({
+      userId: post.userId,
+      userName: user?.name,
+      monthLabel: monthLbl,
+      postId: post.id,
+    });
   } catch (err) {
     console.error("Monthly champion notification failed:", post.userId, err?.message || err);
   }
