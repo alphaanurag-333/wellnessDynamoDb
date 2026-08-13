@@ -1,6 +1,10 @@
-export const WC_OPTIONS = ["— Unassigned —", "Anita Rao", "Priya Nair", "Vikram Sethi", "Meera Joshi", "Nikhil Rao", "Sneha Kaur"];
-export const AWC_OPTIONS = ["— Unassigned —", "Ishita Sen", "Rohan Das", "Neha Pillai", "Aman Gupta", "Tara Iyer", "Zoya Khan", "Karan Mehta", "Divya Nair"];
+export const UNASSIGNED_COACH = "— Unassigned —";
 
+/** @deprecated Prefer live team members from /account/access/members */
+export const WC_OPTIONS = [UNASSIGNED_COACH, "Anita Rao", "Priya Nair", "Vikram Sethi", "Meera Joshi", "Nikhil Rao", "Sneha Kaur"];
+export const AWC_OPTIONS = [UNASSIGNED_COACH, "Ishita Sen", "Rohan Das", "Neha Pillai", "Aman Gupta", "Tara Iyer", "Zoya Khan", "Karan Mehta", "Divya Nair"];
+
+/** @deprecated Prefer assignedCoach from API / team roster */
 export const AWC_DEFAULT = {
   "Anita Rao": "Ishita Sen",
   "Priya Nair": "Neha Pillai",
@@ -68,17 +72,28 @@ export const USERS = RAW_USERS.map((row, i) => {
   };
 });
 
+export function userOverrideKey(user) {
+  return String(user?.id || user?.name || "");
+}
+
 export function enrichUser(user, overrides) {
-  const tier = overrides.tierOverrides[user.name] ?? user.tier;
-  const off = overrides.disabledUsers.includes(user.name);
-  const coach = overrides.coachOverrides[user.name] ?? user.coach;
-  const awcOverride = overrides.awcOverrides[user.name];
+  const key = userOverrideKey(user);
+  const tier = overrides.tierOverrides[key] ?? overrides.tierOverrides[user.name] ?? user.tier;
+  const off =
+    overrides.disabledUsers.includes(key) ||
+    overrides.disabledUsers.includes(user.name) ||
+    user.status === "Disabled" ||
+    String(user.rawStatus || "").toLowerCase() === "inactive";
+  const coach = overrides.coachOverrides[key] ?? overrides.coachOverrides[user.name] ?? user.coach;
+  const awcOverride = key in (overrides.awcOverrides || {})
+    ? overrides.awcOverrides[key]
+    : (user.name in (overrides.awcOverrides || {}) ? overrides.awcOverrides[user.name] : undefined);
   return {
     ...user,
     tier,
-    converted: Boolean(overrides.tierOverrides[user.name]),
+    converted: Boolean(overrides.tierOverrides[key] ?? overrides.tierOverrides[user.name]),
     coach,
-    awc: awcOverride != null ? awcOverride : (AWC_DEFAULT[coach] || user.awc || ""),
+    awc: awcOverride != null ? awcOverride : (user.awc || ""),
     off,
     status: off ? "Disabled" : user.status,
   };
@@ -176,6 +191,7 @@ export function canDowngradeTier(tier, ageDays) {
 }
 
 export function lastActiveMinutes(value) {
+  if (!value || value === "—") return 1e9;
   const match = /(\d+)\s*(m|h|d)/.exec(String(value) || "");
   if (!match) return /just/i.test(value) ? 0 : 1e9;
   const amount = Number(match[1]);
@@ -185,7 +201,13 @@ export function lastActiveMinutes(value) {
 }
 
 export function userInitials(name) {
-  return name.split(" ").map((w) => w[0]).slice(0, 2).join("");
+  return String(name || "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase() || "?";
 }
 
 export function avatarColor(index) {

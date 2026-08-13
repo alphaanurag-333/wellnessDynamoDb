@@ -73,11 +73,16 @@ function DosageBadge({ label, tone }) {
 }
 
 function GlanceHeader({ user, onOpenReview }) {
+  const joinedLabel = user.joinedAgo || (user.ageDays === 0 ? "today" : user.ageDays > 0 ? `${user.ageDays} days ago` : "");
+  const name = String(user.name || "").trim() || "Client";
   return (
     <div className="ua-cp-glance-head">
       <div>
         <h2 className="ua-cp-glance-head__title">At a Glance</h2>
-        <p className="ua-cp-glance-head__sub">{user.name} · Joined {user.joinedAgo || "recently"}</p>
+        <p className="ua-cp-glance-head__sub">
+          {name}
+          {joinedLabel ? ` · Joined ${joinedLabel}` : ""}
+        </p>
       </div>
       <div className="ua-cp-glance-head__badges">
         <button type="button" className="ua-cp-glance-badge ua-cp-glance-badge--review" onClick={onOpenReview} title="View review history">
@@ -285,20 +290,28 @@ function CommsBlock({ user, onToast, reminders, setReminders, onOpenList }) {
 }
 
 function OnboardingSummary({ user }) {
+  const joinedLabel = user.joinedAgo || (user.ageDays === 0 ? "today" : user.ageDays > 0 ? `${user.ageDays} days ago` : "—");
+  const done = user.onboardingDone;
+  const total = user.onboardingTotal || 10;
+  const onboardingLabel = done == null
+    ? "—"
+    : done >= total
+      ? `Complete · ${done}/${total} steps`
+      : `In progress · ${done}/${total} steps`;
   return (
     <div className="ua-cp-onboard-summary">
       <div className="ua-cp-onboard-pill">
         <span className="ua-cp-onboard-pill__icon">📅</span>
         <div>
           <span className="ua-cp-onboard-pill__key">Joined</span>
-          <strong>{user.joinedAgo || "3 days ago"}</strong>
+          <strong>{joinedLabel}</strong>
         </div>
       </div>
       <div className="ua-cp-onboard-pill">
         <span className="ua-cp-onboard-pill__icon">🚀</span>
         <div>
           <span className="ua-cp-onboard-pill__key">Onboarding</span>
-          <strong>In progress · {user.onboardingDone || 5}/{user.onboardingTotal || 10} steps</strong>
+          <strong>{onboardingLabel}</strong>
         </div>
       </div>
     </div>

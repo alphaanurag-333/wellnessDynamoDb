@@ -31,7 +31,6 @@ const {
   enrichUser,
   parseUserFields,
   parseFcmIdFromBody,
-  persistFcmIdIfPresent,
   assertUniqueEmail,
   assertUniquePhone,
   buildUserUpdatesFromBody,
@@ -285,7 +284,11 @@ exports.loginWithPassword = asyncHandler(async (req, res) => {
   const matched = await comparePassword(password, user.passwordHash);
   if (!matched) throw new AppError("Invalid credentials", 401);
 
-  const updated = (await persistFcmIdIfPresent(user.id, req.body)) || user;
+  const activityUpdates = { lastActiveAt: new Date().toISOString() };
+  const fcm_id = parseFcmIdFromBody(req.body);
+  if (fcm_id !== undefined) activityUpdates.fcm_id = fcm_id;
+
+  const updated = await updateUser(user.id, activityUpdates);
   return sendAuthResponse(res, 200, await enrichUser(updated));
 });
 
@@ -353,7 +356,7 @@ exports.verifyLoginOtp = asyncHandler(async (req, res) => {
     throw new AppError("Invalid OTP", 401);
   }
 
-  const otpUpdates = { otp: null, otpExpire: null };
+  const otpUpdates = { otp: null, otpExpire: null, lastActiveAt: new Date().toISOString() };
   const fcm_id = parseFcmIdFromBody(req.body);
   if (fcm_id !== undefined) otpUpdates.fcm_id = fcm_id;
 
@@ -381,6 +384,12 @@ exports.refreshUserToken = asyncHandler(async (req, res) => {
 
   const user = await getUserById(payload.sub);
   assertUserCanLogin(user);
+
+  try {
+    await updateUser(user.id, { lastActiveAt: new Date().toISOString() });
+  } catch (err) {
+    console.error("[UserAuth] lastActiveAt update failed", err.message);
+  }
 
   const tokens = createTokenPair({ sub: user.id, role: "user" });
 

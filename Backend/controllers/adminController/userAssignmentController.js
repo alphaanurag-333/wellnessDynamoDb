@@ -9,7 +9,12 @@ const {
 const { assignPendingHealUser, reassignHealUser } = require("../../models/userAssignmentModel");
 const { getWellnessCoachRecordById } = require("../../models/wellnessCoachModel");
 const { getAssistantWellnessCoachById } = require("../../models/assistantWellnessCoachModel");
+const {
+  getWellnessCoachByIdResolved,
+  getAssistantWellnessCoachByIdResolved,
+} = require("../../services/accountResolver");
 const { sendCoachAssignmentNotifications } = require("../../utils/whatsapp");
+const { emitCoachAssigned } = require("../../services/adminActivityService");
 
 const { enrichUser } = require("../userController/userProfileHelpers");
 
@@ -29,15 +34,24 @@ async function resolveParentCoachId({ assignedCoachId, assignedCoachType, parent
   const explicitParent = String(parentCoachId || "").trim();
 
   if (coachType === "wellness_coach") {
-    const coach = await getWellnessCoachRecordById(coachId);
+    const coach =
+      (await getWellnessCoachByIdResolved(coachId)) ||
+      (await getWellnessCoachRecordById(coachId));
     if (!coach) throw new AppError("Wellness coach not found", 404);
     return coach.id;
   }
 
   if (coachType === "assistant_wellness_coach") {
-    const assistant = await getAssistantWellnessCoachById(coachId);
+    const assistant =
+      (await getAssistantWellnessCoachByIdResolved(coachId)) ||
+      (await getAssistantWellnessCoachById(coachId));
     if (!assistant) throw new AppError("Assistant wellness coach not found", 404);
-    const resolvedParent = String(assistant.wellnessCoachId || "").trim();
+    const resolvedParent = String(
+      assistant.wellnessCoachId || assistant.parentAccountId || ""
+    ).trim();
+    if (!resolvedParent) {
+      throw new AppError("Assistant wellness coach has no parent coach", 400);
+    }
     if (explicitParent && explicitParent !== resolvedParent) {
       throw new AppError("parentCoachId must match the assistant's wellness coach", 400);
     }
@@ -128,9 +142,17 @@ exports.assignHealUserController = asyncHandler(async (req, res) => {
   try {
     const assignee =
       assignedCoachType === "assistant_wellness_coach"
-        ? await getAssistantWellnessCoachById(assignedCoachId)
-        : await getWellnessCoachRecordById(assignedCoachId);
+        ? (await getAssistantWellnessCoachByIdResolved(assignedCoachId)) ||
+          (await getAssistantWellnessCoachById(assignedCoachId))
+        : (await getWellnessCoachByIdResolved(assignedCoachId)) ||
+          (await getWellnessCoachRecordById(assignedCoachId));
     await sendCoachAssignmentNotifications({ user, assignee, assigneeType: assignedCoachType });
+    emitCoachAssigned({
+      user,
+      assigneeName: assignee?.name,
+      assigneeType: assignedCoachType,
+      action: "assigned",
+    });
   } catch (err) {
     console.error("[UserAssignment] assignment notification failed", err.message);
   }
@@ -160,6 +182,23 @@ exports.reassignHealUserController = asyncHandler(async (req, res) => {
     });
   } catch (err) {
     mapAssignmentError(err);
+  }
+
+  try {
+    const assignee =
+      assignedCoachType === "assistant_wellness_coach"
+        ? (await getAssistantWellnessCoachByIdResolved(assignedCoachId)) ||
+          (await getAssistantWellnessCoachById(assignedCoachId))
+        : (await getWellnessCoachByIdResolved(assignedCoachId)) ||
+          (await getWellnessCoachRecordById(assignedCoachId));
+    emitCoachAssigned({
+      user,
+      assigneeName: assignee?.name,
+      assigneeType: assignedCoachType,
+      action: "reassigned",
+    });
+  } catch (err) {
+    console.error("[UserAssignment] reassignment activity failed", err.message);
   }
 
   return res.status(200).json({

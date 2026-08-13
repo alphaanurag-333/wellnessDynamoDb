@@ -1,7 +1,8 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate, useOutletContext, useParams, useSearchParams } from "react-router-dom";
-import { getUserProfile } from "../data/userDetailData.js";
+import { getUserProfile, profileFromListUser } from "../data/userDetailData.js";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
+import { fetchUser } from "../api/usersApi.js";
 import { ClientProfileSidebar, ClientProfileTopbar } from "../components/clientProfile/ClientProfileChrome.jsx";
 import {
   AtAGlanceSection,
@@ -66,19 +67,78 @@ function renderSection(section, user, onToast, onNavigate) {
   }
 }
 
+function isMockNumericId(userId) {
+  const numeric = Number(userId);
+  return Number.isFinite(numeric) && numeric > 0 && String(numeric) === String(userId);
+}
+
 export function UserDetailPage() {
   const { userId } = useParams();
   const { showToast: onToast } = useOutletContext();
   const [searchParams, setSearchParams] = useSearchParams();
   const [menuHidden, setMenuHidden] = useState(false);
   const [showAllTags, setShowAllTags] = useState(false);
+  const [user, setUser] = useState(() => getUserProfile(userId));
+  const [loading, setLoading] = useState(() => Boolean(userId) && !isMockNumericId(userId));
+  const [loadError, setLoadError] = useState("");
   const sectionHistory = useRef([]);
 
-  const user = getUserProfile(userId);
+  useEffect(() => {
+    let cancelled = false;
+    setLoadError("");
+
+    if (!userId) {
+      setUser(null);
+      setLoading(false);
+      return undefined;
+    }
+
+    if (isMockNumericId(userId)) {
+      setUser(getUserProfile(userId));
+      setLoading(false);
+      return undefined;
+    }
+
+    setLoading(true);
+    setUser(profileFromListUser(null, userId));
+
+    fetchUser(userId)
+      .then((row) => {
+        if (cancelled) return;
+        if (!row) {
+          setLoadError("User not found");
+          setUser(null);
+          return;
+        }
+        setUser(profileFromListUser(row, userId));
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setLoadError(err?.message || "Failed to load user");
+        setUser(profileFromListUser(null, userId));
+        onToast?.(err?.message || "Failed to load user");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [onToast, userId]);
+
   const section = searchParams.get("section") || "glance";
 
-  if (!user) {
+  if (!loading && !user) {
     return <Navigate to={UPDATED_ADMIN_PATHS.users} replace />;
+  }
+
+  if (loading && !user) {
+    return (
+      <div className="ua-cp-drawer" role="status" aria-label="Loading client profile">
+        <p className="ua-page-head__sub" style={{ padding: 24 }}>Loading client…</p>
+      </div>
+    );
   }
 
   function setSection(next, { fromBack = false, tab, program, mode } = {}) {
@@ -132,6 +192,9 @@ export function UserDetailPage() {
         onBack={goBack}
         onSave={() => onToast("Profile saved")}
       />
+      {loadError ? (
+        <p className="ua-page-head__sub" style={{ padding: "8px 16px", color: "#b42318" }}>{loadError}</p>
+      ) : null}
       <div className="ua-cp-body">
         <ClientProfileSidebar
           user={user}
@@ -143,7 +206,11 @@ export function UserDetailPage() {
         />
         <div className="ua-cp-main" data-drawer-scroll="1">
           <div className="ua-cp-main__inner">
-            {renderSection(section, user, onToast, setSection)}
+            {loading ? (
+              <p className="ua-page-head__sub">Loading client…</p>
+            ) : (
+              renderSection(section, user, onToast, setSection)
+            )}
           </div>
         </div>
       </div>

@@ -5,6 +5,7 @@ import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import {
   createAccessRole,
+  deleteAccessRole,
   fetchAccessMembers,
   fetchAccessRoles,
   rolesToGrantsState,
@@ -152,6 +153,8 @@ function RolesPermissionsTab({ onToast }) {
   const [scope, setScope] = useState("All");
   const [activeSection, setActiveSection] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const [dirty, setDirty] = useState(false);
   const saveTimer = useRef(null);
   const stateRef = useRef({ grants: {}, parents: {}, views: {}, apiRoles: [], selectedRole: "admin", scope: "All" });
@@ -384,6 +387,23 @@ function RolesPermissionsTab({ onToast }) {
     }
   }
 
+  const canDeleteRole = Boolean(role && !role.system && !role.locked && !ROLE_META[role.roleKey || role.id]);
+
+  async function confirmDeleteRole() {
+    if (!deleteTarget) return;
+    setDeleteBusy(true);
+    try {
+      await deleteAccessRole(deleteTarget.dbId);
+      onToast(`Deleted role “${deleteTarget.name}”`);
+      setDeleteTarget(null);
+      await loadRoles();
+    } catch (err) {
+      onToast(err?.message || "Delete failed");
+    } finally {
+      setDeleteBusy(false);
+    }
+  }
+
   if (loading) {
     return <p className="ua-page-head__sub">Loading roles…</p>;
   }
@@ -436,7 +456,7 @@ function RolesPermissionsTab({ onToast }) {
                   <span className="ua-ac-role-card__dot" style={{ background: r.color }} />
                   <span className="ua-ac-role-card__name">{r.name}</span>
                   <span className="ua-ac-role-card__pill">
-                    {g}/{TOTAL_PERM_SLOTS}
+                    {g >= TOTAL_PERM_SLOTS ? `all ${TOTAL_PERM_SLOTS}` : `${g}/${TOTAL_PERM_SLOTS}`}
                   </span>
                 </div>
                 <div className="ua-ac-role-card__meta">
@@ -483,6 +503,15 @@ function RolesPermissionsTab({ onToast }) {
             <button type="button" className="ua-ac-btn-ghost" onClick={resetRole} disabled={role.locked}>
               Reset to default
             </button>
+            {canDeleteRole ? (
+              <button
+                type="button"
+                className="ua-ac-btn-ghost ua-ac-btn-ghost--danger"
+                onClick={() => setDeleteTarget(role)}
+              >
+                Delete role
+              </button>
+            ) : null}
           </div>
         </div>
 
@@ -663,6 +692,50 @@ function RolesPermissionsTab({ onToast }) {
           onClose={() => setCreateOpen(false)}
           onCreate={handleCreateRole}
         />
+      ) : null}
+
+      {deleteTarget ? (
+        <div
+          className="ua-dialog-backdrop"
+          onClick={() => !deleteBusy && setDeleteTarget(null)}
+          role="presentation"
+        >
+          <div
+            className="ua-dialog ua-dialog--danger"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-access-role-title"
+          >
+            <div className="ua-dialog__head">
+              <div id="delete-access-role-title" className="ua-dialog__title">
+                Delete “{deleteTarget.name}”?
+              </div>
+            </div>
+            <p className="ua-dialog__body">
+              System roles (Admin, Wellness Coach, Assistant WC, Trainee, Support) stay. This removes the
+              custom Access Control role only. Members still assigned to it must be moved first.
+            </p>
+            <div className="ua-dialog__actions">
+              <button
+                type="button"
+                className="btn btn--outline"
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleteBusy}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="ua-dialog__btn-danger"
+                onClick={confirmDeleteRole}
+                disabled={deleteBusy}
+              >
+                {deleteBusy ? "Deleting…" : "Delete role"}
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </>
   );

@@ -46,9 +46,10 @@ export function UpdatedAdminLayout() {
     return () => window.clearTimeout(timer);
   }, [toastVisible, toast]);
 
+  const isClientProfile = /^\/users\/[^/]+$/.test(pathname) && pathname !== UPDATED_ADMIN_PATHS.users;
+
   useEffect(() => {
-    const clientMatch = pathname.match(/^\/users\/(\d+)/);
-    if (clientMatch) {
+    if (isClientProfile) {
       document.title = "IR Wellness Admin — Client profile";
       return;
     }
@@ -58,7 +59,7 @@ export function UpdatedAdminLayout() {
     document.title = active
       ? `IR Wellness Admin — ${active.label}`
       : "IR Wellness Admin Console";
-  }, [pathname]);
+  }, [isClientProfile, pathname]);
 
   useEffect(() => {
     const shell = document.querySelector(".updated-admin .page-shell");
@@ -79,7 +80,7 @@ export function UpdatedAdminLayout() {
   }
 
   return (
-    <div className={`updated-admin${pathname.match(/^\/users\/\d+/) ? " updated-admin--client-profile" : ""}`}>
+    <div className={`updated-admin${isClientProfile ? " updated-admin--client-profile" : ""}`}>
       <UpdatedAdminSidebar onLogout={requestLogout} />
 
       <div className="main">

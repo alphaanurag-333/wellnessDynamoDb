@@ -20,6 +20,7 @@ const {
   listTransactionsByUserId,
   toPublicTransaction,
 } = require("../models/consultancyTransactionModel");
+const { emitPaymentReceived } = require("./adminActivityService");
 
 function logPaymentFailure({ transactionId, userId, reason, productType = "subscription" }) {
   console.error("[SubscriptionPayment] payment failed", {
@@ -194,6 +195,13 @@ async function finalizePaidSubscriptionTransaction(transaction, { paymentId, pro
   if (alreadyPaid) {
     return toPublicTransaction(paidRecord);
   }
+
+  emitPaymentReceived({
+    user,
+    amount: transaction.totalAmount,
+    productLabel: "Subscription",
+    transactionId: transaction.id,
+  });
 
   try {
     await convertSeekToHeal(user.id);

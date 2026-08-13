@@ -16,6 +16,10 @@ const {
 const { getWellnessCoachById } = require("../../models/wellnessCoachModel");
 const { getAssistantWellnessCoachById } = require("../../models/assistantWellnessCoachModel");
 const {
+  getWellnessCoachByIdResolved,
+  getAssistantWellnessCoachByIdResolved,
+} = require("../../services/accountResolver");
+const {
   getUserById,
   getUserByEmail,
   getUserByPhone,
@@ -220,7 +224,9 @@ async function enrichUser(user) {
 
   if (pub.assignedCoachId && pub.assignedCoachType) {
     if (pub.assignedCoachType === "wellness_coach") {
-      const coach = await getWellnessCoachById(pub.assignedCoachId);
+      const coach =
+        (await getWellnessCoachByIdResolved(pub.assignedCoachId)) ||
+        (await getWellnessCoachById(pub.assignedCoachId));
       pub.assignedCoach = coach
         ? {
             id: coach.id,
@@ -231,7 +237,9 @@ async function enrichUser(user) {
           }
         : null;
     } else if (pub.assignedCoachType === "assistant_wellness_coach") {
-      const assistant = await getAssistantWellnessCoachById(pub.assignedCoachId);
+      const assistant =
+        (await getAssistantWellnessCoachByIdResolved(pub.assignedCoachId)) ||
+        (await getAssistantWellnessCoachById(pub.assignedCoachId));
       pub.assignedCoach = assistant
         ? {
             id: assistant.id,
@@ -245,7 +253,9 @@ async function enrichUser(user) {
   }
 
   if (pub.parentCoachId) {
-    const parentCoach = await getWellnessCoachById(pub.parentCoachId);
+    const parentCoach =
+      (await getWellnessCoachByIdResolved(pub.parentCoachId)) ||
+      (await getWellnessCoachById(pub.parentCoachId));
     pub.parentCoach = parentCoach
       ? {
           id: parentCoach.id,

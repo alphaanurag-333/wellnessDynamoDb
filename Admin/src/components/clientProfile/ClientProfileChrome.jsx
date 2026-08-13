@@ -89,8 +89,11 @@ export function ClientProfileTopbar({
 }
 
 export function ClientProfileSidebar({ user, activeSection, onSectionChange, hidden, showAllTags, onToggleTags }) {
-  const visibleTags = showAllTags ? user.tags : user.tags.slice(0, 2);
-  const extraTags = user.tags.length - 2;
+  const tags = Array.isArray(user?.tags) ? user.tags : [];
+  const visibleTags = showAllTags ? tags : tags.slice(0, 2);
+  const extraTags = tags.length - 2;
+  const programLabel = user?.programLabel || "—";
+  const programs = user?.programs ?? 0;
 
   if (hidden) return null;
 
@@ -99,16 +102,20 @@ export function ClientProfileSidebar({ user, activeSection, onSectionChange, hid
       <div className="ua-cp-sidebar__profile">
         <div className="ua-cp-sidebar__profile-row">
           <div className="ua-cp-sidebar__avatar">
-            <span className="ua-cp-sidebar__avatar-ph">Photo</span>
+            {user?.profileImage ? (
+              <img src={user.profileImage} alt="" className="ua-cp-sidebar__avatar-img" />
+            ) : (
+              <span className="ua-cp-sidebar__avatar-ph">Photo</span>
+            )}
           </div>
           <div className="ua-cp-sidebar__info">
-            <div className="ua-cp-sidebar__name">{user.name}</div>
-            <div className="ua-cp-sidebar__sub">{user.programLabel} · {user.programs} programs</div>
+            <div className="ua-cp-sidebar__name">{user?.name || "Client"}</div>
+            <div className="ua-cp-sidebar__sub">{programLabel} · {programs} programs</div>
           </div>
         </div>
         <div className="ua-cp-sidebar__tags">
           {visibleTags.map((tag, i) => (
-            <span key={tag} className={`ua-cp-tag ua-cp-tag--${i % 3}`}>{tag}</span>
+            <span key={`${tag}-${i}`} className={`ua-cp-tag ua-cp-tag--${i % 3}`}>{tag}</span>
           ))}
           {!showAllTags && extraTags > 0 ? (
             <button type="button" className="ua-cp-tag ua-cp-tag--more" onClick={onToggleTags}>+{extraTags} more</button>
@@ -117,7 +124,7 @@ export function ClientProfileSidebar({ user, activeSection, onSectionChange, hid
       </div>
 
       <div className="ua-cp-sidebar__sub-box">
-        <strong>{user.subscriptionDays}</strong>
+        <strong>{user?.subscriptionDays ?? 0}</strong>
         <span>days left<br />on app subscription</span>
       </div>
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AtAGlanceSection } from "./AtAGlanceSection.jsx";
 import { BodyAnalyticsSection } from "./BodyAnalyticsSection.jsx";
 import { InternalParametersSection } from "./InternalParametersSection.jsx";
@@ -32,6 +32,18 @@ export function PersonalDetailsSection({ user, onToast }) {
     state: user.state,
     goal: user.goal,
   });
+
+  useEffect(() => {
+    setForm({
+      name: user.name || "",
+      dob: user.dob || "",
+      phone: user.phone || "",
+      whatsapp: user.whatsapp || "",
+      address: user.address || "",
+      state: user.state || "",
+      goal: user.goal || "",
+    });
+  }, [user]);
 
   const currentTier = normalizeTier(manualTier ?? user.tier);
   const tierActions = getTierActions(currentTier, user.ageDays ?? 30);
@@ -125,7 +137,7 @@ export function PersonalDetailsSection({ user, onToast }) {
               {editing && f.editable ? (
                 <input className="ua-cp-field__input" value={val} onChange={(e) => setForm((prev) => ({ ...prev, [f.key]: e.target.value }))} />
               ) : (
-                <span className="ua-cp-field__value">{val}</span>
+                <span className="ua-cp-field__value">{val || "—"}</span>
               )}
             </div>
           );
