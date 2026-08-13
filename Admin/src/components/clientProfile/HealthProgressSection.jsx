@@ -11,6 +11,7 @@ import {
   GLUCOSE_WEEKLY,
   HBA1C_TREND,
   HBA1C_TREND_DISPLAY,
+  CONDITION_TRACKER,
   HEALTH_TRACKERS,
   TRACKING_FILTER_OPTIONS,
   MENSTRUAL_CYCLES,
@@ -846,7 +847,7 @@ export function HealthProgressSection({ user, onToast }) {
   const focusId = searchParams.get("program");
   const scrolled = useRef(false);
 
-  const [trackers, setTrackers] = useState(HEALTH_TRACKERS);
+  const [trackers, setTrackers] = useState([...HEALTH_TRACKERS, CONDITION_TRACKER]);
   const [search, setSearch] = useState("");
   const [trackingFilter, setTrackingFilter] = useState("all");
   const [cycles, setCycles] = useState(MENSTRUAL_CYCLES);

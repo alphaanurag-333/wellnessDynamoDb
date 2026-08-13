@@ -5,6 +5,7 @@ import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { AccessPage } from "../pages/AccessPage.jsx";
 import { CalendarPage } from "../pages/CalendarPage.jsx";
 import { ConfigsPage } from "../pages/ConfigsPage.jsx";
+import { ConfigDetailPage } from "../pages/ConfigDetailPage.jsx";
 import { DashboardPage } from "../pages/DashboardPage.jsx";
 import { PendingPage } from "../pages/PendingPage.jsx";
 import { SopPage } from "../pages/SopPage.jsx";
@@ -56,6 +57,7 @@ export const adminRouteTree = (
       <Route path="teams/:memberId" element={<TeamMemberPage />} />
       <Route path="calendar" element={<CalendarPage />} />
       <Route path="configs" element={<ConfigsPage />} />
+      <Route path="configs/:configId" element={<ConfigDetailPage />} />
       <Route path="pending" element={<PendingPage />} />
       <Route path="sop" element={<SopPage />} />
       <Route path="my-content" element={<MyContentPage />} />
