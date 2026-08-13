@@ -261,49 +261,107 @@ export const ACTIVE_SUPPLEMENTS = [
 ];
 
 export const SUPPLEMENT_POOL = [
-  { id: "vitd", name: "Vitamin D Plus", pack: "60 Caps", price: 800 },
+  { id: "vitd", name: "Vitamin D Plus", pack: "60 Caps", price: 1200 },
+  { id: "whey", name: "Whey Protein Isolate", pack: "1 Kg", price: 2400 },
   { id: "omega", name: "Omega-3 Fish Oil", pack: "120 Tabs", price: 1200 },
-  { id: "mag", name: "Magnesium Glycinate", pack: "90 Caps", price: 950 },
-  { id: "prob", name: "Probiotic 20B CFU", pack: "30 Caps", price: 1400 },
+  { id: "mag", name: "Magnesium Glycinate", pack: "90 Caps", price: 900 },
   { id: "b12", name: "B12 + Folate", pack: "60 Tabs", price: 650 },
-  { id: "whey", name: "Whey Protein Isolate", pack: "1 kg", price: 3200 },
+  { id: "prob", name: "Probiotic 20B CFU", pack: "30 Caps", price: 1100 },
+  { id: "iron", name: "Iron Bisglycinate", pack: "60 Caps", price: 750 },
 ];
 
 export const TIMING_OPTIONS = [
-  "Empty stomach", "Before breakfast", "After breakfast", "Morning",
-  "After 1st Meal", "After 2nd Meal", "After 3rd Meal", "After 4th Meal",
-  "After lunch", "Evening", "Bedtime", "Night",
+  "Empty stomach",
+  "Before breakfast",
+  "After breakfast",
+  "Morning",
+  "After 1st Meal",
+  "After 2nd Meal",
+  "After 3rd Meal",
+  "After 4th Meal",
+  "Before lunch",
+  "Before dinner",
+  "Bedtime",
 ];
 
 export const UNIT_OPTIONS = ["Cap", "Tab", "Scoop", "gm", "ml", "Drop"];
 
+function buildDosageMeals(timings, qty, unit, doneLabel) {
+  return timings.map((label) => ({
+    label,
+    amount: `${qty} ${unit}`,
+    done: label === doneLabel,
+    count: qty,
+  }));
+}
+
 export const DOSAGE_CARDS = [
-  {
-    id: "vitd",
-    name: "Vitamin D Plus",
-    daily: "7 Cap",
-    range: "12 Jul – 12 Aug",
-    pct: 12,
-    meals: [
-      { label: "After 1st Meal", amount: "1 Cap", done: true },
-      { label: "After 2nd Meal", amount: "2 Cap", done: false, count: 2 },
-      { label: "After 3rd Meal", amount: "2 Cap", done: false, count: 2 },
-      { label: "After 4th Meal", amount: "2 Cap", done: false, count: 2 },
-    ],
-  },
   {
     id: "omega",
     name: "Omega-3 Fish Oil",
-    daily: "5 Tab",
+    daily: "33 Tab",
     range: "12 Jul – 12 Aug",
     pct: 12,
-    meals: [
-      { label: "After 1st Meal", amount: "1 Tab", done: true },
-      { label: "After 2nd Meal", amount: "2 Tab", done: false, count: 2 },
-      { label: "After 3rd Meal", amount: "2 Tab", done: false, count: 2 },
-    ],
+    progressTone: "purple",
+    meals: buildDosageMeals(TIMING_OPTIONS, 3, "Tab", "After 1st Meal"),
+  },
+  {
+    id: "b12",
+    name: "B12 + Folate",
+    daily: "33 Tab",
+    range: "12 Jul – 12 Aug",
+    pct: 12,
+    progressTone: "green",
+    meals: buildDosageMeals(TIMING_OPTIONS, 3, "Tab", "Empty stomach"),
+  },
+  {
+    id: "prob",
+    name: "Probiotic 20B CFU",
+    daily: "33 Tab",
+    range: "12 Jul – 12 Aug",
+    pct: 12,
+    progressTone: "orange",
+    meals: buildDosageMeals(TIMING_OPTIONS, 3, "Tab", "Empty stomach"),
   },
 ];
+
+export function formatSupplementOption(item) {
+  return `${item.name} · ${item.pack} · Rs. ${item.price.toLocaleString("en-IN")}`;
+}
+
+export function createDosageCard(name, timings, qty, unit) {
+  const poolItem = SUPPLEMENT_POOL.find((s) => s.name === name);
+  const id = poolItem?.id || `dosage-${Date.now()}`;
+  const dailyTotal = qty * timings.length;
+  return {
+    id,
+    name,
+    daily: `${dailyTotal} ${unit}`,
+    range: "12 Jul – 12 Aug",
+    pct: 0,
+    progressTone: "purple",
+    meals: timings.map((label) => ({
+      label,
+      amount: `${qty} ${unit}`,
+      done: false,
+      count: qty,
+    })),
+  };
+}
+
+export function createDraftOrder(index) {
+  return {
+    id: `order-${Date.now()}-${index}`,
+    number: index,
+    items: [],
+    placedOn: "",
+    vendor: "",
+    tracking: "",
+    expectedDelivery: "",
+    billName: "",
+    saved: false,
+  };
+}
 
 export const ORDER_HISTORY = [
   { date: "12 Jul 2026", items: "Omega-3 Fish Oil × 2 · Vitamin D Plus × 1", type: "Coach delivery", amount: 3600, status: "Delivered", tone: "green" },
