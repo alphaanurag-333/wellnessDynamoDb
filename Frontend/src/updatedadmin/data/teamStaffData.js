@@ -46,7 +46,7 @@ const TEAM_META = {
 function rosterFromStaff(roleId) {
   return (STAFF_BY_ROLE[roleId] || []).map((person) => ({
     name: person.name,
-    detail: person.meta,
+    detail: person.meta || person.detail || "",
   }));
 }
 

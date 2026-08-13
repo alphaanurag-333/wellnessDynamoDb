@@ -8,6 +8,7 @@ import { DashboardPage } from "../pages/DashboardPage.jsx";
 import { PendingPage } from "../pages/PendingPage.jsx";
 import { SopPage } from "../pages/SopPage.jsx";
 import { TeamsPage } from "../pages/TeamsPage.jsx";
+import { TeamMemberPage } from "../pages/TeamMemberPage.jsx";
 import { MyContentPage } from "../pages/MyContentPage.jsx";
 import { CommitmentLettersPage } from "../pages/CommitmentLettersPage.jsx";
 import { UpdatedAdminNotFoundPage } from "../pages/UpdatedAdminNotFoundPage.jsx";
@@ -51,6 +52,7 @@ export const updatedAdminRouteTree = (
       </Route>
       <Route path="access" element={<AccessPage />} />
       <Route path="teams" element={<TeamsPage />} />
+      <Route path="teams/:memberId" element={<TeamMemberPage />} />
       <Route path="calendar" element={<CalendarPage />} />
       <Route path="configs" element={<ConfigsPage />} />
       <Route path="pending" element={<PendingPage />} />
