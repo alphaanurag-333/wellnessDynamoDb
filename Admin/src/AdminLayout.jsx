@@ -7,9 +7,9 @@ import { UpdatedAdminHeader } from "./components/UpdatedAdminHeader.jsx";
 import { UpdatedAdminSidebar } from "./components/UpdatedAdminSidebar.jsx";
 import { useViewAs } from "./context/ViewAsContext.jsx";
 import "./ref-animations.css";
-import "./updatedadmin.css";
+import "./admin.css";
 
-export function UpdatedAdminLayout() {
+export function AdminLayout() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { logout, account } = useViewAs();

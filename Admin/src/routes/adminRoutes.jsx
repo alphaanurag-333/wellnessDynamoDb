@@ -1,5 +1,5 @@
 import { Navigate, Outlet, Route } from "react-router-dom";
-import { UpdatedAdminLayout } from "../UpdatedAdminLayout.jsx";
+import { AdminLayout } from "../AdminLayout.jsx";
 import { ViewAsProvider, useViewAs } from "../context/ViewAsContext.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { AccessPage } from "../pages/AccessPage.jsx";
@@ -40,7 +40,7 @@ function ProtectedShell() {
     return <Navigate to={UPDATED_ADMIN_PATHS.login} replace />;
   }
 
-  return <UpdatedAdminLayout />;
+  return <AdminLayout />;
 }
 
 export const adminRouteTree = (

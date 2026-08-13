@@ -17904,7 +17904,7 @@
 }
 
 .updated-admin .ua-login__password .ua-login__input {
-  padding-right: 64px;
+  padding-right: 44px;
 }
 
 .updated-admin .ua-login__eye {
@@ -17912,18 +17912,22 @@
   right: 8px;
   top: 50%;
   transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
   border: none;
+  border-radius: 8px;
   background: transparent;
   color: #5a6b62;
-  font-size: 12px;
-  font-weight: 700;
   cursor: pointer;
-  font-family: inherit;
-  padding: 6px 8px;
 }
 
 .updated-admin .ua-login__eye:hover {
   color: #1f6b45;
+  background: rgba(31, 107, 69, 0.08);
 }
 
 .updated-admin .ua-login__error {

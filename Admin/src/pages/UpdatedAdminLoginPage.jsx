@@ -3,7 +3,27 @@ import { Navigate, useNavigate } from "react-router-dom";
 import defaultLogo from "../assets/logo/defaultlogo.png";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
-import "../updatedadmin.css";
+import "../admin.css";
+
+function EyeIcon({ off = false }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {off ? (
+        <>
+          <path d="M3 3l18 18" />
+          <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
+          <path d="M9.9 5.1A9.8 9.8 0 0 1 12 5c7 0 10 7 10 7a13.4 13.4 0 0 1-3.2 3.9" />
+          <path d="M6.1 6.1C3.7 7.8 2 12 2 12s3 7 10 7c1.7 0 3.2-.4 4.5-1" />
+        </>
+      ) : (
+        <>
+          <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" />
+          <circle cx="12" cy="12" r="3" />
+        </>
+      )}
+    </svg>
+  );
+}
 
 export function UpdatedAdminLoginPage() {
   const { login, isAuthenticated, bootstrapping, authError, setAuthError } = useViewAs();
@@ -92,8 +112,9 @@ export function UpdatedAdminLoginPage() {
               className="ua-login__eye"
               onClick={() => setPasswordVisible((v) => !v)}
               aria-label={passwordVisible ? "Hide password" : "Show password"}
+              aria-pressed={passwordVisible}
             >
-              {passwordVisible ? "Hide" : "Show"}
+              <EyeIcon off={passwordVisible} />
             </button>
           </div>
         </label>
