@@ -11,6 +11,10 @@ import { tierBadgeClass, tierBadgeStyle, tierLabel, normalizeTier } from "../../
 
 export { AtAGlanceSection, BodyAnalyticsSection, InternalParametersSection, LaunchSection, FoodSection, BmsSection, NutritionsSection };
 export { HealthProgressSection } from "./HealthProgressSection.jsx";
+export { ReflectionSection } from "./ReflectionSection.jsx";
+export { PrescriptionSection } from "./PrescriptionSection.jsx";
+export { PresentableSection } from "./PresentableSection.jsx";
+export { ExchangeSection } from "./ExchangeSection.jsx";
 
 function DosageBadge({ label, tone }) {
   return <span className={`ua-cp-dosage ua-cp-dosage--${tone}`}>{label}</span>;
