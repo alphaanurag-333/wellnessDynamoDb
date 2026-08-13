@@ -11,6 +11,10 @@ import {
   FoodSection,
   BmsSection,
   NutritionsSection,
+  ReflectionSection,
+  PrescriptionSection,
+  PresentableSection,
+  ExchangeSection,
   PersonalDetailsSection,
   PlaceholderSection,
 } from "../components/clientProfile/ClientProfileSections.jsx";
@@ -46,6 +50,14 @@ function renderSection(section, user, onToast, onNavigate) {
       return <NutritionsSection onToast={onToast} />;
     case "health-progress":
       return <HealthProgressSection user={user} onToast={onToast} />;
+    case "reflection":
+      return <ReflectionSection user={user} onToast={onToast} />;
+    case "prescription":
+      return <PrescriptionSection user={user} onToast={onToast} />;
+    case "presentable":
+      return <PresentableSection user={user} onToast={onToast} />;
+    case "exchange":
+      return <ExchangeSection user={user} onToast={onToast} />;
     default: {
       const meta = PLACEHOLDER_META[section];
       return meta ? <PlaceholderSection {...meta} /> : <PlaceholderSection title="Section" />;
