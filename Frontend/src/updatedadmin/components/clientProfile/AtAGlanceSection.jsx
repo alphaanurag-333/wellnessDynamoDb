@@ -1,12 +1,18 @@
 import { useMemo, useState } from "react";
 import {
   ACTIVE_SUPPLEMENTS,
+  buildOnboardingRemindMessage,
   DAILY_METRICS,
   DEFAULT_REMINDERS,
   METABOLIC_SNAPSHOT,
   ONBOARDING_INITIAL_DONE,
+  ONBOARDING_STEP_NOTES,
   ONBOARDING_STEPS,
 } from "../../data/userDetailData.js";
+import { ClientRemindModal } from "./ClientRemindModal.jsx";
+import { ChampionCelebrationOverlay } from "./ChampionCelebrationOverlay.jsx";
+import { ReviewHistoryModal } from "./ReviewHistoryModal.jsx";
+import { HealthProgressCarousel } from "./HealthProgressCarousel.jsx";
 import { ScheduleMeetingModal } from "./ScheduleMeetingModal.jsx";
 
 const METRIC_TONE = {
@@ -66,7 +72,7 @@ function DosageBadge({ label, tone }) {
   return <span className={`ua-cp-dosage ua-cp-dosage--${tone}`}>{label}</span>;
 }
 
-function GlanceHeader({ user }) {
+function GlanceHeader({ user, onOpenReview }) {
   return (
     <div className="ua-cp-glance-head">
       <div>
@@ -74,7 +80,7 @@ function GlanceHeader({ user }) {
         <p className="ua-cp-glance-head__sub">{user.name} · Joined {user.joinedAgo || "recently"}</p>
       </div>
       <div className="ua-cp-glance-head__badges">
-        <button type="button" className="ua-cp-glance-badge ua-cp-glance-badge--review">
+        <button type="button" className="ua-cp-glance-badge ua-cp-glance-badge--review" onClick={onOpenReview} title="View review history">
           ⏱️ Last reviewed {user.lastReviewed || "—"} ›
         </button>
         <span className="ua-cp-glance-badge ua-cp-glance-badge--updated">
@@ -96,12 +102,12 @@ function PreviewToggle({ mode, onChange }) {
   );
 }
 
-function MetabolicSnapshot({ onToast }) {
+function MetabolicSnapshot({ onNavigate }) {
   return (
-    <>
+    <div className="ua-cp-glance-block">
       <div className="ua-cp-metabolic__head">
         <span className="ua-cp-metabolic__label">Metabolic snapshot</span>
-        <button type="button" className="ua-cp-metabolic__link" onClick={() => onToast("Opening full history")}>View full history ›</button>
+        <button type="button" className="ua-cp-metabolic__link" onClick={() => onNavigate?.("body")}>View full history ›</button>
       </div>
       <div className="ua-cp-metabolic-row">
         {METABOLIC_SNAPSHOT.map((m, i) => (
@@ -114,79 +120,54 @@ function MetabolicSnapshot({ onToast }) {
           </div>
         ))}
       </div>
-      <div className="ua-cp-metabolic__targets">
-        <button type="button" className="ua-cp-target-soft cdact">
-          <span className="ua-cp-target-soft__key">Water target</span>
-          <strong className="ua-cp-target-soft__val ua-cp-target-soft__val--blue">8 glasses</strong>
-          <span className="ua-cp-target-soft__sub">Client set in app</span>
-        </button>
-        <button type="button" className="ua-cp-target-soft cdact">
-          <span className="ua-cp-target-soft__key">Sleep target</span>
-          <strong className="ua-cp-target-soft__val ua-cp-target-soft__val--purple">8 h</strong>
-          <span className="ua-cp-target-soft__sub">Client set in app</span>
-        </button>
-      </div>
-    </>
+    </div>
   );
 }
 
-function HealthCardsRow({ user, onToast }) {
+function HealthCardsRow({ user, onNavigate, onCelebrate }) {
   const score = user.lifestyleScore || 7.2;
   const ringPct = Math.min(100, (score / 10) * 100);
   return (
-    <div className="ua-cp-health-band">
-      <div className="ua-cp-health-band__left">
-        <button type="button" className="ua-cp-health-stat cdact" onClick={() => onToast("Lifestyle history")}>
+    <div className="ua-cp-glance-block ua-cp-health-band">
+      <div className="ua-cp-health-band__stats">
+        <button type="button" className="ua-cp-health-stat cdact" onClick={() => onNavigate?.("launch")}>
           <span className="ua-cp-health-stat__label">Lifestyle</span>
           <div className="cdlifering" style={{ background: `conic-gradient(#5e6ad2 ${ringPct * 3.6}deg, #e8edf5 0)` }}>
             <div className="cdlifering__inner"><span>{score}</span></div>
           </div>
           <span className="ua-cp-health-stat__link">History ›</span>
         </button>
-        <button type="button" className="ua-cp-health-stat cdact" onClick={() => onToast("Prakriti history")}>
+        <button type="button" className="ua-cp-health-stat cdact" onClick={() => onNavigate?.("launch", { tab: "prakriti" })}>
           <span className="ua-cp-health-stat__label">Prakriti</span>
-          <span className="prakchip">🌿</span>
-          <strong>{user.prakriti || "Vata"}</strong>
-          <span className="ua-cp-health-stat__link">History ›</span>
+          <span className="prakchip"><span className="prakemoji">🧘</span> {user.prakriti || "Vata"}</span>
+          <span className="ua-cp-health-stat__link ua-cp-health-stat__link--purple">History ›</span>
         </button>
-        <div className="ua-cp-score-stack">
-          <div className="ua-cp-score-card">
-            <span className="ua-cp-score-card__label">Daily</span>
-            <strong>{user.dailyScore || 91}<span>/100</span></strong>
-            <button type="button" className="ua-cp-score-card__link" onClick={() => onToast("DRF details")}>from DRF ›</button>
-          </div>
-          <div className="ua-cp-score-card">
-            <span className="ua-cp-score-card__label">Monthly</span>
-            <strong>{user.monthlyScore || 291}</strong>
-            <span className="ua-cp-score-card__rank">Rank {user.monthlyRank || "1st of 24"}</span>
-          </div>
-        </div>
       </div>
-      <div className="ua-cp-health-progress">
-        <div className="ua-cp-health-progress__head">
-          <span>Health progress</span>
-          <div className="ua-cp-health-progress__nav">
-            <button type="button" aria-label="Previous">‹</button>
-            <button type="button" aria-label="Next">›</button>
-          </div>
-        </div>
-        <div className="ua-cp-health-progress__body">
-          <div className="ua-cp-health-progress__icon">🩸</div>
-          <div>
-            <div className="ua-cp-health-progress__goal">{user.healthGoal || user.goal}</div>
-            <div className="ua-cp-health-progress__metric">{user.healthMetric || "HBA1C"}</div>
-            <div className="ua-cp-health-progress__value">{user.healthValue || "6.8%"}</div>
-            <div className="ua-cp-health-progress__delta">{user.healthDelta || "▼ 1.6 since start"}</div>
-          </div>
-        </div>
+
+      <div className="ua-cp-hero-stats">
+        <button type="button" className="ua-cp-hero-stat cdact" onClick={() => onNavigate?.("reflection")}>
+          <span className="ua-cp-hero-stat__label">Daily</span>
+          <strong>{user.dailyScore || 91}<span>/100</span></strong>
+          <span className="ua-cp-hero-stat__sub">from DRF ›</span>
+        </button>
+        <span className="ua-cp-hero-stats__sep" aria-hidden="true" />
+        <button type="button" className="ua-cp-hero-stat ua-cp-hero-stat--monthly cdact" onClick={() => onCelebrate?.()}>
+          <span className="ua-cp-hero-stat__label">Monthly</span>
+          <strong>{user.monthlyScore || 291}</strong>
+          <span className="ua-cp-hero-stat__sub">Rank {user.monthlyRank || "1st of 24"}</span>
+        </button>
       </div>
+
+      <HealthProgressCarousel userId={user.n} onNavigate={onNavigate} />
     </div>
   );
 }
 
-function DailyActivityBlock({ onToast, onWaterHover }) {
+function DailyActivityBlock({ onNavigate, onWaterHover }) {
+  const [activeMetric, setActiveMetric] = useState(null);
+
   return (
-    <>
+    <div className="ua-cp-glance-block">
       <div className="ua-cp-daily-head">
         <div className="ua-section-label__title">Daily activity</div>
         <span className="ua-cp-daily-head__hint">Tap a metric for last 5 records</span>
@@ -195,12 +176,13 @@ function DailyActivityBlock({ onToast, onWaterHover }) {
         {DAILY_METRICS.map((m) => {
           const color = METRIC_TONE[m.tone] || METRIC_TONE.blue;
           const isWater = m.id === "water";
+          const pctClass = m.pct >= 100 ? " ua-cp-metric__pct--full" : "";
           return (
             <button
               key={m.id}
               type="button"
               className={`ua-cp-metric cdact${isWater ? " ua-cp-metric--water" : ""}`}
-              onClick={() => onToast(`${m.label} — last 5 records`)}
+              onClick={() => setActiveMetric(m)}
               onMouseEnter={isWater ? () => onWaterHover?.(true, waterHydrationTip(m)) : undefined}
               onMouseLeave={isWater ? () => onWaterHover?.(false, "") : undefined}
               onFocus={isWater ? () => onWaterHover?.(true, waterHydrationTip(m)) : undefined}
@@ -215,27 +197,34 @@ function DailyActivityBlock({ onToast, onWaterHover }) {
               <MiniBars values={m.bars} color={color} />
               <div className="ua-cp-metric__foot">
                 <span className="ua-cp-metric__goal">Goal {m.goal}</span>
-                <span className="ua-cp-metric__pct" style={{ color }}>{m.pct}%</span>
+                <span className={`ua-cp-metric__pct${pctClass}`} style={{ color: m.pct >= 100 ? "#2b8f5b" : color }}>{m.pct}%</span>
               </div>
-              <div className="ua-cp-metric__track"><span style={{ width: `${m.pct}%`, background: color }} /></div>
+              <div className="ua-cp-metric__track"><span style={{ width: `${Math.min(m.pct, 100)}%`, background: color }} /></div>
             </button>
           );
         })}
       </div>
-    </>
+      {activeMetric ? (
+        <DailyMetricModal
+          metric={activeMetric}
+          onClose={() => setActiveMetric(null)}
+          onNavigate={onNavigate}
+        />
+      ) : null}
+    </div>
   );
 }
 
-function SupplementsBlock({ onToast }) {
+function SupplementsBlock({ onNavigate }) {
   return (
-    <>
+    <div className="ua-cp-glance-block">
       <div className="ua-cp-supp-head">
         <span className="ua-cp-supp-head__label">Nutrition · active supplements</span>
-        <button type="button" className="ua-cp-supp-head__link" onClick={() => onToast("Opening supplement plan")}>
+        <button type="button" className="ua-cp-supp-head__link" onClick={() => onNavigate?.("nutritions")}>
           5 active · Open plan ›
         </button>
       </div>
-      <button type="button" className="ua-cp-supp-panel cdact" onClick={() => onToast("Opening supplement plan")}>
+      <button type="button" className="ua-cp-supp-panel cdact" onClick={() => onNavigate?.("nutritions")}>
         <div className="ua-cp-supp-table__head">
           <div>Supplement</div><div>Dosage</div><div>Runs out · date</div>
         </div>
@@ -258,7 +247,7 @@ function SupplementsBlock({ onToast }) {
           </div>
         ))}
       </button>
-    </>
+    </div>
   );
 }
 
@@ -269,27 +258,27 @@ function CommsBlock({ user, onToast, reminders, setReminders, onOpenList }) {
   const [reminderFreq, setReminderFreq] = useState("Daily");
 
   return (
-    <div className="ua-cp-comms ua-cp-comms--stack">
-      <div className="ua-cp-comms__bar">
+    <div className="ua-cp-comms-stack">
+      <div className="ua-cp-comms__bar ua-cp-comms__bar--message">
         <span className="ua-cp-comms__label">💬 Message {user.name}</span>
         <input className="ua-cp-comms__input" placeholder="Write a message… pops up in their app" value={message} onChange={(e) => setMessage(e.target.value)} />
-        <button type="button" className="ua-cp-btn ua-cp-btn--primary" onClick={() => { onToast("Message sent"); setMessage(""); }}>Send</button>
+        <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-comms__action" onClick={() => { onToast("Message sent"); setMessage(""); }}>Send</button>
       </div>
-      <div className="ua-cp-comms__bar">
+      <div className="ua-cp-comms__bar ua-cp-comms__bar--reminders">
         <span className="ua-cp-comms__label">⏰ Reminders</span>
-        <input className="ua-cp-comms__input" placeholder="Reminder (e.g. Take supplements)" value={reminder} onChange={(e) => setReminder(e.target.value)} />
+        <input className="ua-cp-comms__input ua-cp-comms__input--reminder" placeholder="Reminder (e.g. Take supplements)" value={reminder} onChange={(e) => setReminder(e.target.value)} />
         <input type="time" className="ua-cp-reminder-time" value={reminderTime} onChange={(e) => setReminderTime(e.target.value)} />
         <select className="ua-cp-reminder-freq" value={reminderFreq} onChange={(e) => setReminderFreq(e.target.value)}>
           <option>Daily</option><option>Weekly</option><option>After lunch</option>
         </select>
-        <button type="button" className="ua-cp-btn ua-cp-btn--primary" onClick={() => {
+        <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-comms__action" onClick={() => {
           if (reminder.trim()) {
             setReminders((r) => [...r, { id: Date.now(), text: reminder, freq: reminderFreq, time: reminderTime }]);
             setReminder("");
             onToast("Reminder set");
           }
         }}>Set</button>
-        <button type="button" className="ua-cp-btn ua-cp-btn--outline" onClick={onOpenList}>List ({reminders.length})</button>
+        <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-comms__action" onClick={onOpenList}>List ({reminders.length})</button>
       </div>
     </div>
   );
@@ -326,6 +315,25 @@ function buildInitialDone(user) {
   return seed;
 }
 
+function buildInitialStepNotes(doneMap) {
+  const notes = { ...ONBOARDING_STEP_NOTES };
+  if (!doneMap[5]) delete notes[5];
+  return notes;
+}
+
+function formatOnboardingStamp(date = new Date()) {
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+}
+
+function buildRcaSubmittedNote(by = "Admin desk") {
+  return `RCA submitted by ${by} · ${formatOnboardingStamp()}`;
+}
+
+function priorStepsDone(steps, n) {
+  return steps.filter((s) => s.n < n).every((s) => s.done);
+}
+
 function StepToggle({ done, current, onClick }) {
   return (
     <button
@@ -342,22 +350,43 @@ function StepToggle({ done, current, onClick }) {
   );
 }
 
-function resolveStepAction(step, done) {
+function resolveStepAction(step, steps) {
+  const done = step.done;
+  const ready = priorStepsDone(steps, step.n);
+
+  if (step.action === "submit-rca") {
+    if (done) return { label: "Undo", tone: "ghost" };
+    if (ready) return { label: "Submit RCA", tone: "green" };
+    return null;
+  }
+  if (step.action === "schedule-briefing") {
+    if (ready) return { label: "Schedule briefing", tone: "green" };
+    if (done) return { label: "Undo", tone: "ghost" };
+    return null;
+  }
+  if (step.action === "schedule-hap") {
+    if (ready) return { label: "Schedule HAP", tone: "green" };
+    if (done) return { label: "Undo", tone: "ghost" };
+    return null;
+  }
+  if (step.action === "schedule-initiation") {
+    if (ready) return { label: "Schedule initiation", tone: "green" };
+    if (done) return { label: "Undo", tone: "ghost" };
+    return null;
+  }
   if (done) {
     if (step.doneAction === "schedule-hap") return { label: "Schedule HAP", tone: "green" };
     return { label: "Undo", tone: "ghost" };
   }
   if (step.section) return { label: "Open ›", tone: "link" };
-  if (step.action === "submit-rca") return { label: "Submit RCA", tone: "green" };
-  if (step.action === "schedule-briefing") return { label: "Schedule briefing", tone: "green" };
-  if (step.action === "schedule-hap") return { label: "Schedule HAP", tone: "green" };
-  if (step.action === "schedule-initiation") return { label: "Schedule initiation", tone: "green" };
   return { label: "Mark done", tone: "ghost" };
 }
 
 function OnboardingStatusCard({ user, onToast, onNavigate }) {
   const [doneMap, setDoneMap] = useState(() => buildInitialDone(user));
+  const [stepNotes, setStepNotes] = useState(() => buildInitialStepNotes(buildInitialDone(user)));
   const [scheduleModal, setScheduleModal] = useState(null);
+  const [remindOpen, setRemindOpen] = useState(false);
 
   const steps = useMemo(
     () => ONBOARDING_STEPS.map((step) => ({ ...step, done: !!doneMap[step.n] })),
@@ -369,6 +398,9 @@ function OnboardingStatusCard({ user, onToast, onNavigate }) {
   const pct = Math.round((doneCount / total) * 100);
   const nextStep = steps.find((s) => !s.done);
   const currentStep = nextStep || steps[steps.length - 1];
+  const remindMessage = nextStep
+    ? buildOnboardingRemindMessage(user, nextStep.label)
+    : "";
 
   const toggleStep = (n) => {
     setDoneMap((prev) => {
@@ -377,6 +409,13 @@ function OnboardingStatusCard({ user, onToast, onNavigate }) {
       else next[n] = true;
       return next;
     });
+    if (n === 5) {
+      setStepNotes((prev) => {
+        const next = { ...prev };
+        if (doneMap[5]) delete next[5];
+        return next;
+      });
+    }
   };
 
   const handleStepAction = (step) => {
@@ -399,6 +438,7 @@ function OnboardingStatusCard({ user, onToast, onNavigate }) {
     }
     if (step.action === "submit-rca") {
       setDoneMap((prev) => ({ ...prev, [step.n]: true }));
+      setStepNotes((prev) => ({ ...prev, [step.n]: buildRcaSubmittedNote() }));
       onToast(`RCA submitted for ${user.name}`);
       return;
     }
@@ -424,7 +464,15 @@ function OnboardingStatusCard({ user, onToast, onNavigate }) {
           <div className="ua-cp-onboard-card__title"><span>🧭</span> Onboarding status</div>
           <div className="ua-cp-onboard-card__actions">
             <span className="ua-cp-onboard-card__count">{doneCount} / {total} done</span>
-            <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={() => onToast("Reminder sent")}>🔔 Remind</button>
+            {nextStep ? (
+              <button
+                type="button"
+                className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm ua-cp-onboard-card__remind"
+                onClick={() => setRemindOpen(true)}
+              >
+                🔔 Remind
+              </button>
+            ) : null}
           </div>
         </div>
         {nextStep ? (
@@ -460,25 +508,34 @@ function OnboardingStatusCard({ user, onToast, onNavigate }) {
         </div>
         <div className="ua-cp-onboard-steps">
           {steps.map((step) => {
-            const action = resolveStepAction(step, step.done);
+            const action = resolveStepAction(step, steps);
             const isCurrent = !step.done && step.n === currentStep.n;
+            const note = stepNotes[step.n];
             return (
-              <div key={step.n} className={`ua-cp-onboard-step${isCurrent ? " ua-cp-onboard-step--current" : ""}`}>
+              <div
+                key={step.n}
+                className={`ua-cp-onboard-step${isCurrent ? " ua-cp-onboard-step--current" : ""}${note ? " ua-cp-onboard-step--has-note" : ""}`}
+              >
                 <StepToggle
                   done={step.done}
                   current={isCurrent}
                   onClick={() => toggleStep(step.n)}
                 />
-                <span className={`ua-cp-onboard-step__label${step.done ? " ua-cp-onboard-step__label--done" : ""}`}>
-                  {step.n}. {step.label}
-                </span>
-                <button
-                  type="button"
-                  className={`ua-cp-onboard-step__btn ua-cp-onboard-step__btn--${action.tone}`}
-                  onClick={() => handleStepAction(step)}
-                >
-                  {action.label}
-                </button>
+                <div className="ua-cp-onboard-step__copy">
+                  <span className={`ua-cp-onboard-step__label${step.done ? " ua-cp-onboard-step__label--done" : ""}`}>
+                    {step.n}. {step.label}
+                  </span>
+                  {note ? <div className="ua-cp-onboard-step__note">{note}</div> : null}
+                </div>
+                {action ? (
+                  <button
+                    type="button"
+                    className={`ua-cp-onboard-step__btn ua-cp-onboard-step__btn--${action.tone}`}
+                    onClick={() => handleStepAction(step)}
+                  >
+                    {action.label}
+                  </button>
+                ) : null}
               </div>
             );
           })}
@@ -495,6 +552,24 @@ function OnboardingStatusCard({ user, onToast, onNavigate }) {
           onSend={() => {
             scheduleModal.onSend?.();
             setScheduleModal(null);
+          }}
+        />
+      ) : null}
+
+      {remindOpen && nextStep ? (
+        <ClientRemindModal
+          user={user}
+          nextStepLabel={nextStep.label}
+          defaultMessage={remindMessage}
+          whatsapp={user.whatsapp}
+          onClose={() => setRemindOpen(false)}
+          onPush={() => {
+            onToast(`Reminder pushed to ${user.name.split(" ")[0]}'s app`);
+            setRemindOpen(false);
+          }}
+          onWhatsApp={() => {
+            onToast(`WhatsApp sent to ${user.whatsapp}`);
+            setRemindOpen(false);
           }}
         />
       ) : null}
@@ -539,6 +614,8 @@ export function AtAGlanceSection({ user, onToast, onNavigate }) {
   const [remindersOpen, setRemindersOpen] = useState(false);
   const [rainActive, setRainActive] = useState(false);
   const [rainTip, setRainTip] = useState("");
+  const [celebrateOpen, setCelebrateOpen] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
 
   function handleWaterHover(active, tip) {
     setRainActive(active);
@@ -551,15 +628,19 @@ export function AtAGlanceSection({ user, onToast, onNavigate }) {
       {rainActive && rainTip ? (
         <div className="ua-cp-glance-rain-tip" role="status">{rainTip}</div>
       ) : null}
-      <GlanceHeader user={user} />
+      <GlanceHeader user={user} onOpenReview={() => setReviewOpen(true)} />
       <PreviewToggle mode={viewMode} onChange={setViewMode} />
 
       {viewMode === "onboarded" ? (
         <>
-          <MetabolicSnapshot onToast={onToast} />
-          <HealthCardsRow user={user} onToast={onToast} />
-          <DailyActivityBlock onToast={onToast} onWaterHover={handleWaterHover} />
-          <SupplementsBlock onToast={onToast} />
+          <MetabolicSnapshot onNavigate={onNavigate} />
+          <HealthCardsRow
+            user={user}
+            onNavigate={onNavigate}
+            onCelebrate={() => setCelebrateOpen(true)}
+          />
+          <DailyActivityBlock onNavigate={onNavigate} onWaterHover={handleWaterHover} />
+          <SupplementsBlock onNavigate={onNavigate} />
           <CommsBlock
             user={user}
             onToast={onToast}
@@ -574,6 +655,14 @@ export function AtAGlanceSection({ user, onToast, onNavigate }) {
           <OnboardingStatusCard user={user} onToast={onToast} onNavigate={onNavigate} />
         </>
       )}
+
+      {celebrateOpen ? (
+        <ChampionCelebrationOverlay user={user} onClose={() => setCelebrateOpen(false)} />
+      ) : null}
+
+      {reviewOpen ? (
+        <ReviewHistoryModal user={user} onClose={() => setReviewOpen(false)} onNavigate={onNavigate} />
+      ) : null}
 
       {remindersOpen ? (
         <RemindersModal

@@ -4,10 +4,11 @@ import { AtAGlanceSection } from "./AtAGlanceSection.jsx";
 import { BodyAnalyticsSection } from "./BodyAnalyticsSection.jsx";
 import { InternalParametersSection } from "./InternalParametersSection.jsx";
 import { LaunchSection } from "./LaunchSection.jsx";
-import { tierNeighbors } from "../../data/userDetailData.js";
-import { tierStyle } from "../../data/usersData.js";
+import { getTierActions } from "../../data/userDetailData.js";
+import { tierBadgeClass, tierBadgeStyle, tierLabel, normalizeTier } from "../../data/usersData.js";
 
 export { AtAGlanceSection, BodyAnalyticsSection, InternalParametersSection, LaunchSection };
+export { HealthProgressSection } from "./HealthProgressSection.jsx";
 import {
   DOSAGE_CARDS,
   ORDER_HISTORY,
@@ -33,10 +34,11 @@ export function PersonalDetailsSection({ user, onToast }) {
     goal: user.goal,
   });
 
-  const displayTier = manualTier ?? user.tier;
-  const tierNeighbors_ = tierNeighbors(user.tier);
-  const displayStyle = tierStyle(displayTier);
-  const tierChanged = manualTier !== null;
+  const currentTier = normalizeTier(manualTier ?? user.tier);
+  const tierActions = getTierActions(currentTier, user.ageDays ?? 30);
+  const tierBadgeTone = tierBadgeStyle(currentTier);
+  const displayTierLabel = tierLabel(currentTier);
+  const tierConverted = manualTier !== null;
 
   const fields = [
     { key: "name", label: "Full name", editable: true },
@@ -46,7 +48,7 @@ export function PersonalDetailsSection({ user, onToast }) {
     { key: "whatsapp", label: "WhatsApp", editable: true },
     { key: "address", label: "Complete address", editable: true },
     { key: "state", label: "State", editable: true },
-    { key: "tier", label: "Plan / tier", value: displayTier, editable: false },
+    { key: "tier", label: "Plan / tier", value: displayTierLabel, editable: false },
     { key: "goal", label: "Goal", editable: true },
     { key: "coach", label: "Assigned coach", value: user.coach, editable: false },
     { key: "joined", label: "Joined", value: user.joined, editable: false },
@@ -59,51 +61,63 @@ export function PersonalDetailsSection({ user, onToast }) {
     onToast("Personal details saved");
   }
 
-  function convertTier(direction) {
-    const next = direction === "up" ? tierNeighbors_.upTier : tierNeighbors_.downTier;
-    if (!next) return;
-    setManualTier(next);
-    onToast(`Tier manually set to ${next}`);
+  function convertTier() {
+    if (!tierActions.canConvert) return;
+    setManualTier(tierActions.upTier);
+    onToast(`${user.name} moved to ${tierLabel(tierActions.upTier)} by Admin`);
+  }
+
+  function downgradeTier() {
+    if (!tierActions.canDowngrade) return;
+    setManualTier(tierActions.downTier);
+    onToast(`${user.name} moved down to ${tierLabel(tierActions.downTier)} by Admin`);
+  }
+
+  function revertTier() {
+    setManualTier(null);
+    onToast(`Manual conversion undone for ${user.name}`);
   }
 
   return (
     <div className="ua-cp-section ua-cp-personal">
       <div className="ua-cp-personal__head">
-        <div>
+        <div className="ua-cp-personal__head-copy">
           <h2 className="ua-cp-personal__title">Personal details</h2>
           <p className="ua-cp-personal__email">{user.email}</p>
-          <div className="ua-cp-personal__badges">
-            <span className="ua-cp-tier-badge" style={{ background: displayStyle.bg, color: displayStyle.color }}>{displayTier}</span>
-            {!tierChanged && tierNeighbors_.canUp ? (
-              <button type="button" className="ua-cp-tier-action ua-cp-tier-action--up" title="Move this client up one tier by hand" onClick={() => convertTier("up")}>
-                {tierNeighbors_.upLabel}
-              </button>
-            ) : null}
-            {!tierChanged && tierNeighbors_.canDown ? (
-              <button type="button" className="ua-cp-tier-action ua-cp-tier-action--down" title="Move this client down one tier by hand" onClick={() => convertTier("down")}>
-                {tierNeighbors_.downLabel}
-              </button>
-            ) : null}
-            {tierChanged ? (
-              <button type="button" className="ua-cp-tier-action ua-cp-tier-action--undo" title="Undo this manual change" onClick={() => { setManualTier(null); onToast("Tier change reverted"); }}>
-                Manual · undo
-              </button>
-            ) : null}
-            <span className="ua-cp-status-badge"><span className="ua-cp-status-badge__dot" />{user.status || "Active"}</span>
-          </div>
         </div>
         <div className="ua-cp-personal__actions">
           {editing ? (
             <>
-              <button type="button" className="ua-cp-btn ua-cp-btn--outline" onClick={() => setEditing(false)}>Cancel</button>
-              <button type="button" className="ua-cp-btn ua-cp-btn--green" onClick={save}>Save changes</button>
+              <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={() => setEditing(false)}>Cancel</button>
+              <button type="button" className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm" onClick={save}>Save changes</button>
             </>
           ) : (
-            <button type="button" className="ua-cp-btn ua-cp-btn--outline" onClick={() => setEditing(true)}>✎ Edit</button>
+            <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={() => setEditing(true)}>✎ Edit</button>
           )}
         </div>
       </div>
-      <div className="ua-cp-personal__form">
+      <div className="ua-cp-personal__badges">
+        <span className={`ua-cp-tier-badge ua-cp-tier-badge--${tierBadgeClass(currentTier)}`} style={tierBadgeTone}>{displayTierLabel}</span>
+        {tierActions.canConvert ? (
+          <button type="button" className="ua-cp-tier-action ua-cp-tier-action--up" title={tierActions.convertTitle} onClick={convertTier}>
+            {tierActions.convertLabel}
+          </button>
+        ) : null}
+        {tierActions.canDowngrade ? (
+          <button type="button" className="ua-cp-tier-action ua-cp-tier-action--down" title={tierActions.downgradeTitle} onClick={downgradeTier}>
+            {tierActions.downgradeLabel}
+          </button>
+        ) : null}
+        {tierConverted ? (
+          <button type="button" className="ua-cp-tier-action ua-cp-tier-action--undo" title="Undo this manual change" onClick={revertTier}>
+            <span className="ua-cp-tier-action__manual">Manual</span>
+            <span className="ua-cp-tier-action__sep" aria-hidden="true">·</span>
+            <span className="ua-cp-tier-action__undo">undo</span>
+          </button>
+        ) : null}
+        <span className="ua-cp-status-badge"><span className="ua-cp-status-badge__dot" />{user.status || "Active"}</span>
+      </div>
+      <div className="ua-cp-personal__card">
         {fields.map((f) => {
           const val = f.value ?? form[f.key] ?? "";
           return (

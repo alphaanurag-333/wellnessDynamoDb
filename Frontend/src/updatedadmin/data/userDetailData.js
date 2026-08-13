@@ -1,4 +1,4 @@
-import { USERS, tierStyle } from "./usersData.js";
+import { USERS, canDowngradeTier, nextTier, tierLabel, tierStyle, normalizeTier } from "./usersData.js";
 
 export const CLIENT_MENU = [
   { id: "glance", label: "At a Glance" },
@@ -19,13 +19,177 @@ export const CLIENT_MENU = [
 ];
 
 export const DAILY_METRICS = [
-  { id: "protein", label: "Protein", icon: "🥄", value: "88 g", goal: "90 g", pct: 98, bars: [70, 85, 90, 88, 92], tone: "blue" },
-  { id: "water", label: "Water", icon: "💧", value: "6 gl", goal: "8 gl", pct: 75, bars: [50, 60, 55, 70, 75], tone: "blue" },
-  { id: "steps", label: "Steps", icon: "👟", value: "9,400", goal: "10,000", pct: 94, bars: [80, 88, 92, 90, 94], tone: "teal" },
-  { id: "meditation", label: "Meditation", icon: "🧘", value: "15 min", goal: "15 min", pct: 100, bars: [100, 100, 100, 100, 100], tone: "gold" },
-  { id: "pranayam", label: "Pranayam", icon: "🫁", value: "6 min", goal: "10 min", pct: 60, bars: [40, 50, 55, 58, 60], tone: "sky" },
-  { id: "exercise", label: "Exercise", icon: "🏋️", value: "45 min", goal: "45 min", pct: 100, bars: [90, 95, 100, 100, 100], tone: "orange" },
+  {
+    id: "protein",
+    label: "Protein",
+    icon: "🥄",
+    value: "88 g",
+    goal: "90 g",
+    pct: 98,
+    bars: [70, 85, 90, 88, 92],
+    tone: "blue",
+    modal: {
+      footerLabel: "Open Food & Water · full history ›",
+      footerSection: "food",
+      todayBreakdown: {
+        title: "Protein powder",
+        sub: "Today · 2 scoops ≈ 50 g",
+        pct: 57,
+        pctLabel: "of intake",
+        barPct: 57,
+        items: [
+          { icon: "🥄", label: "Powder 50 g" },
+          { icon: "🥗", label: "Food 38 g" },
+        ],
+      },
+      records: [
+        { when: "4 days ago", value: "91 g" },
+        { when: "3 days ago", value: "68 g" },
+        { when: "2 days ago", value: "75 g" },
+        { when: "Yesterday", value: "60 g" },
+        { when: "Today", value: "88 g", today: true },
+      ],
+    },
+  },
+  {
+    id: "water",
+    label: "Water",
+    icon: "💧",
+    value: "6 gl",
+    goal: "8 gl",
+    pct: 75,
+    bars: [50, 60, 55, 70, 75],
+    tone: "blue",
+    modal: {
+      footerLabel: "Open Water tracking · full history ›",
+      footerSection: "food",
+      records: [
+        { when: "4 days ago", value: "8 gl" },
+        { when: "3 days ago", value: "5 gl" },
+        { when: "2 days ago", value: "7 gl" },
+        { when: "Yesterday", value: "8 gl" },
+        { when: "Today", value: "6 gl", today: true },
+      ],
+    },
+  },
+  {
+    id: "steps",
+    label: "Steps",
+    icon: "👟",
+    value: "9,400",
+    goal: "10,000",
+    pct: 94,
+    bars: [80, 88, 92, 90, 94],
+    tone: "teal",
+    modal: {
+      footerLabel: "Open Body, Mind & Soul · full history ›",
+      footerSection: "bms",
+      records: [
+        { when: "4 days ago", value: "8,200" },
+        { when: "3 days ago", value: "7,500" },
+        { when: "2 days ago", value: "9,100" },
+        { when: "Yesterday", value: "10,200" },
+        { when: "Today", value: "9,400", today: true },
+      ],
+    },
+  },
+  {
+    id: "meditation",
+    label: "Meditation",
+    icon: "🧘",
+    value: "15 min",
+    goal: "15 min",
+    pct: 100,
+    bars: [100, 100, 100, 100, 100],
+    tone: "gold",
+    modal: {
+      footerLabel: "Open Body, Mind & Soul · full history ›",
+      footerSection: "bms",
+      records: [
+        { when: "4 days ago", value: "0 min" },
+        { when: "3 days ago", value: "0 min" },
+        { when: "2 days ago", value: "12 min" },
+        { when: "Yesterday", value: "15 min" },
+        { when: "Today", value: "15 min", today: true },
+      ],
+    },
+  },
+  {
+    id: "pranayam",
+    label: "Pranayam",
+    icon: "🫁",
+    value: "6 min",
+    goal: "10 min",
+    pct: 60,
+    bars: [40, 50, 55, 58, 60],
+    tone: "sky",
+    modal: {
+      footerLabel: "Open Body, Mind & Soul · full history ›",
+      footerSection: "bms",
+      records: [
+        { when: "4 days ago", value: "4 min" },
+        { when: "3 days ago", value: "0 min" },
+        { when: "2 days ago", value: "8 min" },
+        { when: "Yesterday", value: "5 min" },
+        { when: "Today", value: "6 min", today: true },
+      ],
+    },
+  },
+  {
+    id: "exercise",
+    label: "Exercise",
+    icon: "🏋️",
+    value: "45 min",
+    goal: "30 min",
+    pct: 150,
+    bars: [90, 95, 100, 100, 100],
+    tone: "orange",
+    modal: {
+      footerLabel: "Open Body, Mind & Soul · full history ›",
+      footerSection: "bms",
+      records: [
+        { when: "4 days ago", value: "0 min" },
+        { when: "3 days ago", value: "40 min" },
+        { when: "2 days ago", value: "25 min" },
+        { when: "Yesterday", value: "30 min" },
+        { when: "Today", value: "45 min", today: true },
+      ],
+    },
+  },
 ];
+
+export const REVIEW_HISTORY = {
+  1: [
+    {
+      date: "20 Jul 2026",
+      coach: "Anita Rao",
+      note: "Weight down 0.8 kg this week; HbA1c trending down. Continue high-protein breakfast and low-GI dinners. Client motivated — monthly score rank 1.",
+      prescription: true,
+    },
+    {
+      date: "13 Jul 2026",
+      coach: "Anita Rao",
+      note: "Onboarding progressing well — LAUNCH complete, internal parameters reviewed. Adjusted water target to 8 glasses. Schedule HAP next week.",
+      prescription: false,
+    },
+    {
+      date: "06 Jul 2026",
+      coach: "Anita Rao",
+      note: "Initial body analytics baseline captured. Fat loss goal set at 68 kg. Introduced daily reflection form — 5/7 logged first week.",
+      prescription: true,
+    },
+    {
+      date: "28 Jun 2026",
+      coach: "Anita Rao",
+      note: "Welcome call completed. Client prefers morning check-ins. Prakriti assessed as Vata — shared lifestyle recommendations.",
+      prescription: false,
+    },
+  ],
+};
+
+export function getReviewHistory(userId) {
+  return REVIEW_HISTORY[Number(userId)] || REVIEW_HISTORY[1] || [];
+}
 
 export const METABOLIC_SNAPSHOT = [
   { label: "Age", value: "34 yrs", tone: "default" },
@@ -69,14 +233,24 @@ export const ONBOARDING_STEPS = [
   },
 ];
 
-/** Default completion for Madhupriya Bilas demo — steps 1,2,3,5,8 done; next is LAUNCH */
+/** Default completion for Madhupriya Bilas demo — steps 1–5 done; next is Reports Briefing */
 export const ONBOARDING_INITIAL_DONE = {
   1: true,
   2: true,
   3: true,
+  4: true,
   5: true,
-  8: true,
 };
+
+/** Completion notes shown under a step label (e.g. RCA submission stamp) */
+export const ONBOARDING_STEP_NOTES = {
+  5: "RCA submitted by Admin desk · 13 Aug 2026",
+};
+
+export function buildOnboardingRemindMessage(user, nextStepLabel) {
+  const first = user.name.split(" ")[0];
+  return `Hi ${first}, your next onboarding step is '${nextStepLabel}'. Please complete it in the app when you get a moment.`;
+}
 
 export const ACTIVE_SUPPLEMENTS = [
   { name: "Vitamin D Plus", note: "After breakfast", dosages: [{ label: "Morning · 1", tone: "morning" }], date: "12 Aug", daysLeft: 18, urgent: false },
@@ -155,10 +329,11 @@ const PROFILE_DETAILS = {
     dailyScore: 91,
     monthlyScore: 291,
     monthlyRank: "1st of 24",
-    healthGoal: "Diabetes Reversal",
-    healthMetric: "HBA1C",
-    healthValue: "6.8%",
-    healthDelta: "▼ 1.6 since start",
+    healthGoal: "Fat Loss",
+    healthMetric: "",
+    healthValue: "76.8 kg",
+    healthDelta: "▼ 0.8 kg · trending down",
+    healthIcon: "🔥",
     termsIp: "49.43.219.121",
     termsAccepted: "19 Jul 2026, 12:50 IST",
     programs: 1,
@@ -212,16 +387,22 @@ export const CLIENT_NOTIFICATIONS = {
   ],
 };
 
-const TIER_ORDER = ["SEEK", "HEAL", "PWC"];
-
-export function tierNeighbors(tier) {
-  const idx = TIER_ORDER.indexOf(tier);
+export function getTierActions(tier, ageDays = 30) {
+  const t = normalizeTier(tier);
+  const upTier = nextTier(t);
+  const downTier = t === "Maintenance" ? "Seek to Heal" : "Seek";
   return {
-    canUp: idx >= 0 && idx < TIER_ORDER.length - 1,
-    canDown: idx > 0,
-    upLabel: idx >= 0 && idx < TIER_ORDER.length - 1 ? `Move up to ${TIER_ORDER[idx + 1]}` : null,
-    downLabel: idx > 0 ? `Move down to ${TIER_ORDER[idx - 1]}` : null,
-    upTier: idx >= 0 && idx < TIER_ORDER.length - 1 ? TIER_ORDER[idx + 1] : null,
-    downTier: idx > 0 ? TIER_ORDER[idx - 1] : null,
+    canConvert: t !== "Maintenance",
+    canDowngrade: canDowngradeTier(t, ageDays),
+    convertLabel: `Move to ${tierLabel(upTier)}`,
+    convertTitle: t === "Seek to Heal"
+      ? "Move this client into MAINTENANCE — for when every goal has been achieved"
+      : "Move this client up one tier by hand — for when the automatic upgrade did not go through",
+    downgradeLabel: t === "Maintenance" ? "Move down to HEAL" : "Move down to SEEK",
+    downgradeTitle: t === "Maintenance"
+      ? "Move this client back to HEAL — for when maintenance was entered too early"
+      : `Move this client back down to SEEK — allowed because the account is ${ageDays} days old`,
+    upTier,
+    downTier,
   };
 }

@@ -472,70 +472,74 @@ export function UpdatedAdminDashboard({ onToast }) {
             <div className="ua-section-label__title">Pending Tasks</div>
             <span className="ua-section-label__hint">Hover to see who · click to open the list</span>
           </div>
-          <div className="coach-pending-row">
-            {pendingGroups.map((group) => (
-              <div key={group.title} className="coach-pending-group">
-                <div className="coach-pending-group__head">
-                  <span className="coach-pending-group__title">{group.title}</span>
-                  <span className="coach-pending-group__total">{group.total}</span>
+          <div className="coach-pending-section">
+            <div className="coach-pending-cards">
+              {pendingGroups.map((group) => (
+                <div key={group.title} className="coach-pending-group">
+                  <div className="coach-pending-group__head">
+                    <span className="coach-pending-group__title">{group.title}</span>
+                    <span className="coach-pending-group__total">{group.total}</span>
+                  </div>
+                  <div className="coach-pending-group__cells">
+                    {group.cells.map((cell) => (
+                      <button
+                        key={cell.id}
+                        type="button"
+                        className="ptile"
+                        onClick={() => goPending(cell.id)}
+                      >
+                        <span className="ptile__label-row">
+                          <span className="ptile__dot" style={{ background: cell.color }} />
+                          <span className="ptile__short">{cell.short}</span>
+                        </span>
+                        <span className="ptile__count-row">
+                          <span className="ptile__count">{cell.count}</span>
+                          <span className="ptile__chip">{cell.chip}</span>
+                        </span>
+                        <span className="ptile__tip" role="tooltip">
+                          <span className="ptile__tip-title">{cell.tipTitle}</span>
+                          {cell.people.map((person) => (
+                            <span key={person.name} className="ptile__person">
+                              <span className="ptile__avatar" style={{ background: person.color }}>{person.initial}</span>
+                              <span className="ptile__person-name">{person.name}</span>
+                              <span className="ptile__person-detail">{person.detail}</span>
+                            </span>
+                          ))}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="coach-pending-group__cells">
-                  {group.cells.map((cell) => (
+              ))}
+
+              <div className="coach-stale-records">
+                <div className="coach-stale-records__head">
+                  <span className="coach-stale-records__title">Records to refresh</span>
+                  <span className="coach-stale-records__total">{staleTotal}</span>
+                </div>
+                <div className="coach-stale-records__list">
+                  {staleRecords.map((record) => (
                     <button
-                      key={cell.id}
+                      key={record.id}
                       type="button"
-                      className="ops-tile"
-                      onClick={() => goPending(cell.id)}
+                      className="coach-stale-records__item"
+                      onClick={() => goPending(record.id)}
                     >
-                      <span className="ops-tile__label-row">
-                        <span className="ops-tile__dot" style={{ background: cell.color }} />
-                        <span className="ops-tile__short">{cell.short}</span>
+                      <span className="coach-stale-records__item-top">
+                        <span className="coach-stale-records__dot" style={{ background: record.color }} />
+                        <span className="coach-stale-records__label">{record.label}</span>
+                        <span className="coach-stale-records__count">{record.count}</span>
                       </span>
-                      <span className="ops-tile__count-row">
-                        <span className="ops-tile__count" style={{ color: cell.color }}>{cell.count}</span>
-                        <span className="ops-tile__chip">{cell.chip}</span>
-                      </span>
-                      <span className="ops-tile__tip" role="tooltip">
-                        <span className="ops-tile__tip-title">{cell.tipTitle}</span>
-                        {cell.people.map((person) => (
-                          <span key={person.name} className="ops-tile__person">
-                            <span className="ops-tile__avatar" style={{ background: person.color }}>{person.initial}</span>
-                            <span className="ops-tile__person-name">{person.name}</span>
-                            <span className="ops-tile__person-detail">{person.detail}</span>
-                          </span>
-                        ))}
-                      </span>
+                      <span className="coach-stale-records__note">{record.note}</span>
                     </button>
                   ))}
                 </div>
               </div>
-            ))}
-
-            <div className="coach-stale-records">
-              <div className="coach-stale-records__head">
-                <span className="coach-stale-records__title">Records to refresh</span>
-                <span className="coach-stale-records__total">{staleTotal}</span>
-              </div>
-              <div className="coach-stale-records__list">
-                {staleRecords.map((record) => (
-                  <button
-                    key={record.id}
-                    type="button"
-                    className="coach-stale-records__item"
-                    onClick={() => goPending(record.id)}
-                  >
-                    <span className="coach-stale-records__item-top">
-                      <span className="coach-stale-records__dot" style={{ background: record.color }} />
-                      <span className="coach-stale-records__label">{record.label}</span>
-                      <span className="coach-stale-records__count" style={{ color: record.color }}>{record.count}</span>
-                    </span>
-                    <span className="coach-stale-records__note">{record.note}</span>
-                  </button>
-                ))}
-              </div>
             </div>
 
-            <NotesToRemember onToast={onToast} />
+            <div className="coach-pending-notes">
+              <NotesToRemember onToast={onToast} />
+            </div>
           </div>
         </section>
       ) : null}

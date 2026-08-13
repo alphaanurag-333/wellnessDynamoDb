@@ -5,6 +5,7 @@ import { ClientProfileSidebar, ClientProfileTopbar } from "../components/clientP
 import {
   AtAGlanceSection,
   BodyAnalyticsSection,
+  HealthProgressSection,
   InternalParametersSection,
   LaunchSection,
   NutritionsSection,
@@ -15,7 +16,6 @@ import {
 const PLACEHOLDER_META = {
   food: { title: "Food & Water Tracking", subtitle: "Meals, hydration & nutrition logs." },
   bms: { title: "Body, Mind & Soul (BMS)", subtitle: "Holistic wellness tracking." },
-  "health-progress": { title: "Health Progress", subtitle: "Track health metrics and progress over time." },
   reflection: { title: "Daily Reflection form", subtitle: "Daily reflection logs and consistency." },
   prescription: { title: "Wellness Prescription", subtitle: "Wellness prescriptions and recommendations." },
   presentable: { title: "Presentable Pics", subtitle: "Client photo requests and approvals." },
@@ -38,6 +38,8 @@ function renderSection(section, user, onToast, onNavigate) {
       return <LaunchSection user={user} onToast={onToast} />;
     case "nutritions":
       return <NutritionsSection onToast={onToast} />;
+    case "health-progress":
+      return <HealthProgressSection user={user} />;
     default: {
       const meta = PLACEHOLDER_META[section];
       return meta ? <PlaceholderSection {...meta} /> : <PlaceholderSection title="Section" />;
@@ -60,14 +62,23 @@ export function UserDetailPage() {
     return <Navigate to="/updatedadmin/users" replace />;
   }
 
-  function setSection(next, { fromBack = false } = {}) {
+  function setSection(next, { fromBack = false, tab, program } = {}) {
     if (!fromBack && next !== section) {
       sectionHistory.current = [...sectionHistory.current, section];
     }
     setSearchParams((prev) => {
       const p = new URLSearchParams(prev);
-      if (next === "glance") p.delete("section");
-      else p.set("section", next);
+      if (next === "glance") {
+        p.delete("section");
+        p.delete("tab");
+        p.delete("program");
+      } else {
+        p.set("section", next);
+        if (next === "launch" && tab) p.set("tab", tab);
+        else p.delete("tab");
+        if (next === "health-progress" && program) p.set("program", program);
+        else p.delete("program");
+      }
       return p;
     }, { replace: true });
   }
