@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { COMMITMENT_LETTER_DEFAULT } from "../data/commitmentLetterData.js";
 import { formatRupee } from "../data/exchangeData.js";
 import { paymentMethodsForGateway } from "../data/configDetailData.js";
 
@@ -563,6 +564,201 @@ function DietPlansPreview({ plans, surface, item }) {
   );
 }
 
+function AiEnablePreview({ coaches, assistants, surface, item }) {
+  const enabledCoaches = (coaches ?? []).filter((entry) => entry.enabled).length;
+  const enabledAssistants = (assistants ?? []).filter((entry) => entry.enabled).length;
+
+  const body = (
+    <div className="ua-cfg-preview-phone">
+      <div className="ua-cfg-preview-phone__shell">
+        <div className="ua-cfg-preview-phone__status" aria-hidden="true" />
+        <div className="ua-cfg-preview-ai ua-cfg-preview-ai--app">
+          <div className="ua-cfg-preview-ai__head">
+            <span className="ua-cfg-preview-ai__back" aria-hidden="true">‹</span>
+            <strong>Lab report</strong>
+          </div>
+          <p className="ua-cfg-preview-ai__intro">AI interpretation appears here when enabled for this coach.</p>
+          <div className="ua-cfg-preview-ai__card">
+            <span className="ua-cfg-preview-ai__spark" aria-hidden="true">✦</span>
+            <strong>AI summary</strong>
+            <p>
+              HbA1c is slightly elevated. Recommend reviewing carb timing with your coach and repeating the panel in 8 weeks.
+            </p>
+          </div>
+          <p className="ua-cfg-preview-ai__meta">
+            Enabled for {enabledCoaches} coaches and {enabledAssistants} assistants in this preview.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <PreviewStage surface={surface} item={item}>
+      {body}
+    </PreviewStage>
+  );
+}
+
+function LaunchPreview({ domains, surface, item }) {
+  const liveDomains = (domains ?? [])
+    .filter((domain) => domain.live)
+    .slice(0, 3);
+
+  const body = (
+    <div className="ua-cfg-preview-phone">
+      <div className="ua-cfg-preview-phone__shell">
+        <div className="ua-cfg-preview-phone__status" aria-hidden="true" />
+        <div className="ua-cfg-preview-launch ua-cfg-preview-launch--app">
+          <div className="ua-cfg-preview-launch__head">
+            <span className="ua-cfg-preview-launch__back" aria-hidden="true">‹</span>
+            <strong>LAUNCH assessment</strong>
+          </div>
+          <p className="ua-cfg-preview-launch__intro">Onboarding lifestyle questionnaire for new clients.</p>
+          {liveDomains.length ? (
+            <div className="ua-cfg-preview-launch__domains">
+              {liveDomains.map((domain) => (
+                <div key={domain.id} className="ua-cfg-preview-launch__domain">
+                  <div className="ua-cfg-preview-launch__domain-head">
+                    <strong>{domain.name}</strong>
+                    {domain.weight ? <span>{domain.weight}%</span> : null}
+                  </div>
+                  <ul>
+                    {domain.questions.filter((entry) => entry.enabled).slice(0, 2).map((question) => (
+                      <li key={question.id}>{question.name}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="ua-cfg-preview-launch__empty">No live domains yet.</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <PreviewStage surface={surface} item={item}>
+      {body}
+    </PreviewStage>
+  );
+}
+
+function GalleryPreview({ media, surface, item }) {
+  const live = (media ?? []).filter((entry) => entry.live).slice(0, 6);
+
+  const body = (
+    <div className="ua-cfg-preview-phone">
+      <div className="ua-cfg-preview-phone__shell">
+        <div className="ua-cfg-preview-phone__status" aria-hidden="true" />
+        <div className="ua-cfg-preview-gl ua-cfg-preview-gl--app">
+          <div className="ua-cfg-preview-gl__head">
+            <span className="ua-cfg-preview-gl__back" aria-hidden="true">‹</span>
+            <strong>Gallery</strong>
+          </div>
+          <p className="ua-cfg-preview-gl__intro">Live assets coaches and clients can reuse in the app.</p>
+          {live.length ? (
+            <div className="ua-cfg-preview-gl__grid">
+              {live.map((entry) => (
+                <div key={entry.id} className={`ua-cfg-preview-gl__item is-${entry.type}`}>
+                  <span className="ua-cfg-preview-gl__type">{entry.category}</span>
+                  <strong>{entry.title}</strong>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="ua-cfg-preview-gl__empty">No live gallery assets yet.</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <PreviewStage surface={surface} item={item}>
+      {body}
+    </PreviewStage>
+  );
+}
+
+function CommitmentLetterPreview({ text, surface, item }) {
+  const body = (
+    <div className="ua-cfg-preview-phone">
+      <div className="ua-cfg-preview-phone__shell">
+        <div className="ua-cfg-preview-phone__status" aria-hidden="true" />
+        <div className="ua-cfg-preview-cl ua-cfg-preview-cl--app">
+          <div className="ua-cfg-preview-cl__head">
+            <span className="ua-cfg-preview-cl__back" aria-hidden="true">‹</span>
+            <strong>Commitment letter</strong>
+          </div>
+          <p className="ua-cfg-preview-cl__intro">Signed by your coach at onboarding.</p>
+          <div className="ua-cfg-preview-cl__body">
+            <p>{text?.trim() || COMMITMENT_LETTER_DEFAULT}</p>
+          </div>
+          <div className="ua-cfg-preview-cl__signature">
+            <span>Coach signature</span>
+            <div className="ua-cfg-preview-cl__sign-box">Signature</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <PreviewStage surface={surface} item={item}>
+      {body}
+    </PreviewStage>
+  );
+}
+
+function RxBankPreview({ protocols, surface, item }) {
+  const live = (protocols ?? []).filter((entry) => entry.live);
+
+  const body = (
+    <div className="ua-cfg-preview-phone">
+      <div className="ua-cfg-preview-phone__shell">
+        <div className="ua-cfg-preview-phone__status" aria-hidden="true" />
+        <div className="ua-cfg-preview-rx ua-cfg-preview-rx--app">
+          <div className="ua-cfg-preview-rx__head">
+            <span className="ua-cfg-preview-rx__back" aria-hidden="true">‹</span>
+            <strong>Wellness prescription</strong>
+          </div>
+          <p className="ua-cfg-preview-rx__intro">Pick a protocol from the master book for this client.</p>
+          {live.length ? (
+            <div className="ua-cfg-preview-rx__list">
+              {live.map((entry) => (
+                <div key={entry.id} className="ua-cfg-preview-rx__item">
+                  <strong>{entry.title}</strong>
+                  <ul>
+                    {entry.pointers.slice(0, 3).map((pointer) => (
+                      <li key={pointer}>{pointer}</li>
+                    ))}
+                    {entry.pointers.length > 3 ? (
+                      <li className="ua-cfg-preview-rx__more">
+                        +{entry.pointers.length - 3} more pointer{entry.pointers.length - 3 === 1 ? "" : "s"}
+                      </li>
+                    ) : null}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="ua-cfg-preview-rx__empty">No live protocols in the book yet.</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <PreviewStage surface={surface} item={item}>
+      {body}
+    </PreviewStage>
+  );
+}
+
 function DrfBankPreview({ sections, surface, item }) {
   const liveSections = (sections ?? [])
     .filter((section) => section.live)
@@ -790,6 +986,47 @@ function renderPreviewBody(item, surface, previewState) {
       return (
         <DrfBankPreview
           sections={previewState.drfFormSections ?? []}
+          surface={surface}
+          item={item}
+        />
+      );
+    case "app-rx-bank":
+      return (
+        <RxBankPreview
+          protocols={previewState.rxProtocols ?? []}
+          surface={surface}
+          item={item}
+        />
+      );
+    case "app-commitment-letter":
+      return (
+        <CommitmentLetterPreview
+          text={previewState.commitmentText ?? COMMITMENT_LETTER_DEFAULT}
+          surface={surface}
+          item={item}
+        />
+      );
+    case "app-gallery":
+      return (
+        <GalleryPreview
+          media={previewState.galleryMedia ?? []}
+          surface={surface}
+          item={item}
+        />
+      );
+    case "app-launch":
+      return (
+        <LaunchPreview
+          domains={previewState.launchDomains ?? []}
+          surface={surface}
+          item={item}
+        />
+      );
+    case "app-ai-enable":
+      return (
+        <AiEnablePreview
+          coaches={previewState.aiCoaches ?? []}
+          assistants={previewState.aiAssistants ?? []}
           surface={surface}
           item={item}
         />
