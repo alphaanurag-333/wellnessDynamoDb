@@ -13,6 +13,7 @@ const {
   createBirthdayPost,
 } = require("../models/birthdayPostModel");
 const { ensureBirthdayReminderInbox } = require("./notificationDispatchService");
+const { emitBirthdayToday } = require("./adminActivityService");
 
 const PUSH_TITLE = "IR Wellness";
 const DEFAULT_MESSAGE = "Happy Birthday! Wishing you a wonderful day from IR Wellness.";
@@ -125,6 +126,10 @@ async function processBirthdayUser(user, dateOnly) {
   );
   const post = await ensureBirthdayPost(user, dateOnly, updated.id);
   await syncBirthdayReminderInbox(user, updated, post);
+
+  if (!isRetry && pushStatus === "sent") {
+    emitBirthdayToday(user);
+  }
 
   return {
     userId,

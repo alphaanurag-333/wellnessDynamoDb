@@ -171,6 +171,8 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: #d3dae6 transparent;
 }
 
 .updated-admin .sidebar--rail .sidebar__nav {
@@ -4627,7 +4629,8 @@
 }
 
 .updated-admin .ua-table-card--users {
-  min-width: 960px;
+  min-width: 0;
+  width: 100%;
 }
 
 .updated-admin .ua-table-scroll {
@@ -4637,6 +4640,13 @@
   margin-bottom: 4px;
 }
 
+/* Users table: fit viewport — no bottom horizontal scrollbar */
+.updated-admin .ua-users-page .ua-table-scroll {
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
+}
+
 .updated-admin .ua-table {
   display: grid;
   align-items: center;
@@ -4644,18 +4654,31 @@
 }
 
 .updated-admin .ua-table--users {
-  grid-template-columns: 48px minmax(0, 2fr) minmax(116px, 1.2fr) minmax(120px, 1.3fr) minmax(120px, 1.3fr) minmax(88px, 1.05fr) minmax(80px, 1fr) 74px;
-  padding: 14px 20px;
+  grid-template-columns:
+    36px
+    minmax(0, 2.1fr)
+    minmax(0, 1.35fr)
+    minmax(0, 1.15fr)
+    minmax(0, 1.15fr)
+    minmax(0, 0.85fr)
+    minmax(0, 0.85fr)
+    64px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
   align-items: center;
+  gap: 0 8px;
 }
 
 .updated-admin .ua-table--users.ua-table__head {
-  padding: 13px 20px;
-  gap: 0 12px;
+  padding: 12px 14px;
+  gap: 0 8px;
 }
 
 .updated-admin .ua-table--users > div {
   min-width: 0;
+  overflow: hidden;
 }
 
 .updated-admin .ua-table--users > div:has(.ua-user-cell) {
@@ -4674,7 +4697,25 @@
 }
 
 .updated-admin .ua-table--users .ua-inline-select {
+  width: 100%;
   max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.updated-admin .ua-table--users .ua-users-tier {
+  width: 100%;
+}
+
+.updated-admin .ua-table--users .ua-table__muted {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.updated-admin .ua-table-card--users .ua-table__row {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-soft);
 }
 
 .updated-admin .ua-table--teams {
@@ -4694,11 +4735,6 @@
   text-transform: uppercase;
   color: var(--muted);
   padding: 13px 20px;
-}
-
-.updated-admin .ua-table-card--users .ua-table__row {
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--border-soft);
 }
 
 .updated-admin .ua-table-card--users .ua-table__row:last-child {
@@ -4775,11 +4811,17 @@
 
 .updated-admin .ua-tier {
   display: inline-flex;
-  padding: 3px 8px;
-  border-radius: 6px;
-  font-size: 11px;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 10.5px;
   font-weight: 800;
   letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .updated-admin .ua-inline-select {
@@ -4874,28 +4916,34 @@
 }
 
 .updated-admin .ua-users-tier {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
 }
 
 .updated-admin .ua-tier-action {
-  height: 20px;
-  padding: 0 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0 9px;
   border-radius: 999px;
   background: #fff;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 750;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
   cursor: pointer;
   white-space: nowrap;
   font-family: inherit;
+  line-height: 1;
 }
 
 .updated-admin .ua-tier-action--up {
-  border: 1px dashed #cbd5e6;
+  border: 1px dashed #aeb6e8;
   color: #5e6ad2;
 }
 
@@ -4905,7 +4953,7 @@
 }
 
 .updated-admin .ua-tier-action--down {
-  border: 1px dashed #e3d4b4;
+  border: 1px dashed #e0c28a;
   color: #c2891b;
 }
 
@@ -4917,10 +4965,13 @@
 .updated-admin .ua-tier-action--undo {
   border: none;
   background: transparent;
-  padding: 0;
+  padding: 0 2px;
+  height: auto;
   color: #b6c1d1;
   font-size: 9px;
   font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 .updated-admin .ua-tier-action--undo:hover {
@@ -4956,13 +5007,13 @@
 }
 
 .updated-admin .ua-status-badge--red {
-  color: #c0392b;
-  background: #fdeaea;
-  border-color: #f6d0d1;
+  color: #b42318;
+  background: #fef3f2;
+  border-color: #fecdca;
 }
 
 .updated-admin .ua-status-badge--red .ua-status-badge__dot {
-  background: #e5484d;
+  background: #f04438;
 }
 
 .updated-admin .ua-status-badge--muted {
@@ -5051,6 +5102,79 @@
   font-size: 13px;
   color: #8a97ac;
   margin: 0 0 18px;
+}
+
+.updated-admin .ua-users-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding: 12px 4px 2px;
+}
+
+.updated-admin .ua-users-pagination__meta {
+  font-size: 12.5px;
+  color: #6b7a90;
+}
+
+.updated-admin .ua-users-pagination__meta strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.updated-admin .ua-users-pagination__sep {
+  margin: 0 6px;
+  color: #c0cad8;
+}
+
+.updated-admin .ua-users-pagination__controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.updated-admin .ua-users-pagination__btn,
+.updated-admin .ua-users-pagination__page {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  color: #4a5a72;
+  font-size: 12.5px;
+  font-weight: 650;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.updated-admin .ua-users-pagination__btn:hover:not(:disabled),
+.updated-admin .ua-users-pagination__page:hover {
+  background: #f7f9fc;
+  border-color: #cbd5e6;
+}
+
+.updated-admin .ua-users-pagination__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.updated-admin .ua-users-pagination__page--active {
+  background: #eef0fc;
+  border-color: #c5cbe8;
+  color: #5e6ad2;
+}
+
+.updated-admin .ua-users-pagination__ellipsis {
+  min-width: 24px;
+  text-align: center;
+  color: #9aa6b8;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .updated-admin .ua-dialog-backdrop {
@@ -7124,6 +7248,13 @@
   display: grid;
   place-items: center;
   border: 1px dashed #c8d2e0;
+}
+
+.updated-admin .ua-cp-sidebar__avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .updated-admin .ua-cp-sidebar__avatar-ph {
@@ -15169,6 +15300,18 @@
 .updated-admin .ua-ac-btn-ghost:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+.updated-admin .ua-ac-btn-ghost--danger {
+  color: #b42318;
+  border-color: #fecdca;
+  background: #fef3f2;
+}
+
+.updated-admin .ua-ac-btn-ghost--danger:hover:not(:disabled) {
+  color: #912018;
+  border-color: #fda29b;
+  background: #fee4e2;
 }
 
 .updated-admin .ua-ac-role-cards {

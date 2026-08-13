@@ -1,13 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 import { ExportIcon } from "../components/NavIcons.jsx";
 import { OrangeButton, PageHeader, PillTabs, ScopeChip, TableScroll } from "../components/shared.jsx";
 import {
-  AWC_DEFAULT,
-  AWC_OPTIONS,
   TIER_OPTIONS,
-  USERS,
-  WC_OPTIONS,
+  UNASSIGNED_COACH,
   avatarColor,
   buildUserTypeTabs,
   enrichUser,
@@ -19,8 +16,26 @@ import {
   tierLabel,
   tierStyle,
   userInitials,
+  userOverrideKey,
 } from "../data/usersData.js";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
+import { assignUserCoach, deleteUser, fetchUsers, reassignUserCoach, updateUserStatus } from "../api/usersApi.js";
+import { fetchTeamMembers } from "../api/teamsApi.js";
+
+function resolveWcId(user) {
+  if (user?.parentCoachId) return String(user.parentCoachId);
+  if (user?.assignedCoachType === "wellness_coach" && user?.assignedCoachId) {
+    return String(user.assignedCoachId);
+  }
+  return "";
+}
+
+function resolveAwcId(user) {
+  if (user?.assignedCoachType === "assistant_wellness_coach" && user?.assignedCoachId) {
+    return String(user.assignedCoachId);
+  }
+  return "";
+}
 
 function SortButton({ label, active, direction, onClick }) {
   const caret = active ? (direction === "desc" ? " ↓" : " ↑") : " ⇅";
@@ -62,22 +77,48 @@ function UsersEmptyIcon() {
   );
 }
 
+function userSubline(user) {
+  const parts = [user.email, user.goal].filter(Boolean);
+  return parts.length ? parts.join(" · ") : "—";
+}
+
+const PAGE_SIZE = 20;
+
+function buildPageItems(current, total) {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const items = new Set([1, total, current - 1, current, current + 1]);
+  if (current <= 3) [2, 3, 4].forEach((n) => items.add(n));
+  if (current >= total - 2) [total - 3, total - 2, total - 1].forEach((n) => items.add(n));
+  return Array.from(items)
+    .filter((n) => n >= 1 && n <= total)
+    .sort((a, b) => a - b)
+    .reduce((acc, n) => {
+      if (acc.length && n - acc[acc.length - 1] > 1) acc.push("…");
+      acc.push(n);
+      return acc;
+    }, []);
+}
+
 export function UsersPage() {
   const navigate = useNavigate();
   const { showToast: onToast } = useOutletContext();
   const [searchParams, setSearchParams] = useSearchParams();
 
+  const [users, setUsers] = useState([]);
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [sort, setSort] = useState(null);
   const [tierOverrides, setTierOverrides] = useState({});
-  const [coachOverrides, setCoachOverrides] = useState({});
-  const [awcOverrides, setAwcOverrides] = useState({});
   const [disabledUsers, setDisabledUsers] = useState([]);
   const [deletedUsers, setDeletedUsers] = useState([]);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [disableTarget, setDisableTarget] = useState(null);
   const [reassignAsk, setReassignAsk] = useState(null);
+  const [actionBusy, setActionBusy] = useState(false);
+  const [selectReset, setSelectReset] = useState(0);
 
   useEffect(() => {
     if (disableTarget || deleteTarget || reassignAsk) {
@@ -85,14 +126,44 @@ export function UsersPage() {
     }
   }, [disableTarget, deleteTarget, reassignAsk]);
 
+  const loadUsers = useCallback(async () => {
+    setLoading(true);
+    setLoadError("");
+    try {
+      const [{ users: rows }, team] = await Promise.all([
+        fetchUsers({ page: 1, limit: 200 }),
+        fetchTeamMembers({ limit: 200 }).catch(() => ({ members: [] })),
+      ]);
+      setUsers(rows);
+      setTeamMembers(
+        Array.isArray(team?.members)
+          ? team.members.filter((m) => !m.isSuperAdmin && m.primaryRoleKey !== "admin")
+          : [],
+      );
+    } catch (err) {
+      setLoadError(err?.message || "Failed to load users");
+      setUsers([]);
+      setTeamMembers([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
+
   const typeTab = searchParams.get("tab") || "all";
   const tierFilter = searchParams.get("tier") || "";
   const coachFilter = searchParams.get("coach") || "";
+  const pageParam = Number(searchParams.get("page"));
+  const currentPage = Number.isFinite(pageParam) && pageParam > 0 ? Math.floor(pageParam) : 1;
 
   const setTypeTab = (tab) => {
     const next = new URLSearchParams(searchParams);
     if (tab === "all") next.delete("tab");
     else next.set("tab", tab);
+    next.delete("page");
     setSearchParams(next, { replace: true });
   };
 
@@ -100,12 +171,21 @@ export function UsersPage() {
     const next = new URLSearchParams(searchParams);
     if (!tier) next.delete("tier");
     else next.set("tier", tier);
+    next.delete("page");
     setSearchParams(next, { replace: true });
   };
 
   const clearCoachFilter = () => {
     const next = new URLSearchParams(searchParams);
     next.delete("coach");
+    next.delete("page");
+    setSearchParams(next, { replace: true });
+  };
+
+  const setPage = (page) => {
+    const next = new URLSearchParams(searchParams);
+    if (page <= 1) next.delete("page");
+    else next.set("page", String(page));
     setSearchParams(next, { replace: true });
   };
 
@@ -116,19 +196,69 @@ export function UsersPage() {
   };
 
   const overrideState = useMemo(
-    () => ({ tierOverrides, coachOverrides, awcOverrides, disabledUsers }),
-    [awcOverrides, coachOverrides, disabledUsers, tierOverrides],
+    () => ({ tierOverrides, coachOverrides: {}, awcOverrides: {}, disabledUsers }),
+    [disabledUsers, tierOverrides],
   );
 
   const basePool = useMemo(
-    () => USERS.filter((u) => !deletedUsers.includes(u.name)),
-    [deletedUsers],
+    () => users.filter((u) => !deletedUsers.includes(userOverrideKey(u))),
+    [deletedUsers, users],
   );
 
   const enrichedPool = useMemo(
     () => basePool.map((u) => enrichUser(u, overrideState)),
     [basePool, overrideState],
   );
+
+  const wcSelectOptions = useMemo(() => {
+    const byId = new Map();
+    byId.set("", { id: "", name: UNASSIGNED_COACH });
+    for (const m of teamMembers) {
+      if (m.primaryRoleKey === "wc" && m.id) {
+        byId.set(String(m.id), {
+          id: String(m.id),
+          name: String(m.name || "").trim() || "Wellness coach",
+          parentAccountId: null,
+        });
+      }
+    }
+    for (const u of enrichedPool) {
+      const id = resolveWcId(u);
+      if (id && !byId.has(id)) {
+        byId.set(id, {
+          id,
+          name: u.coach && u.coach !== UNASSIGNED_COACH ? u.coach : id,
+          parentAccountId: null,
+        });
+      }
+    }
+    return Array.from(byId.values());
+  }, [enrichedPool, teamMembers]);
+
+  const awcSelectOptions = useMemo(() => {
+    const byId = new Map();
+    byId.set("", { id: "", name: UNASSIGNED_COACH });
+    for (const m of teamMembers) {
+      if (m.primaryRoleKey === "awc" && m.id) {
+        byId.set(String(m.id), {
+          id: String(m.id),
+          name: String(m.name || "").trim() || "Assistant WC",
+          parentAccountId: m.parentAccountId ? String(m.parentAccountId) : "",
+        });
+      }
+    }
+    for (const u of enrichedPool) {
+      const id = resolveAwcId(u);
+      if (id && !byId.has(id)) {
+        byId.set(id, {
+          id,
+          name: u.awc || id,
+          parentAccountId: u.parentCoachId ? String(u.parentCoachId) : "",
+        });
+      }
+    }
+    return Array.from(byId.values());
+  }, [enrichedPool, teamMembers]);
 
   const tabCountPool = useMemo(
     () => filterUsers(enrichedPool, {
@@ -145,7 +275,7 @@ export function UsersPage() {
     [basePool, tabCountPool, typeTab],
   );
 
-  const rows = useMemo(() => {
+  const filteredRows = useMemo(() => {
     let list = filterUsers(enrichedPool, {
       search,
       tierFilter,
@@ -163,10 +293,40 @@ export function UsersPage() {
       ));
     }
 
-    return list.map((u, i) => ({ ...u, n: i + 1 }));
+    return list;
   }, [coachFilter, enrichedPool, search, sort, statusFilter, tierFilter, typeTab]);
 
+  const totalCount = filteredRows.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+
+  useEffect(() => {
+    if (currentPage > totalPages) setPage(totalPages);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, totalPages]);
+
+  const rows = useMemo(() => {
+    const start = (safePage - 1) * PAGE_SIZE;
+    return filteredRows.slice(start, start + PAGE_SIZE).map((u, i) => ({
+      ...u,
+      n: start + i + 1,
+    }));
+  }, [filteredRows, safePage]);
+
+  const pageItems = useMemo(
+    () => buildPageItems(safePage, totalPages),
+    [safePage, totalPages],
+  );
+
+  const rangeStart = totalCount === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
+  const rangeEnd = Math.min(safePage * PAGE_SIZE, totalCount);
+
+  const goToFirstPage = () => {
+    if (currentPage > 1) setPage(1);
+  };
+
   const toggleSort = (key) => {
+    goToFirstPage();
     setSort((prev) => {
       if (!prev || prev.key !== key) return { key, dir: "asc" };
       if (prev.dir === "asc") return { key, dir: "desc" };
@@ -175,77 +335,175 @@ export function UsersPage() {
   };
 
   const convertTier = (user) => {
+    const key = userOverrideKey(user);
     const nx = nextTier(user.tier);
-    setTierOverrides((prev) => ({ ...prev, [user.name]: nx }));
+    setTierOverrides((prev) => ({ ...prev, [key]: nx }));
     onToast(`${user.name} moved to ${tierLabel(nx)} by Admin`);
   };
 
   const downgradeTier = (user) => {
+    const key = userOverrideKey(user);
     const dn = prevTier(user.tier);
-    setTierOverrides((prev) => ({ ...prev, [user.name]: dn }));
+    setTierOverrides((prev) => ({ ...prev, [key]: dn }));
     onToast(`${user.name} moved down to ${tierLabel(dn)} by Admin`);
   };
 
-  const revertTier = (name) => {
+  const revertTier = (user) => {
+    const key = userOverrideKey(user);
     setTierOverrides((prev) => {
       const next = { ...prev };
-      delete next[name];
+      delete next[key];
       return next;
     });
-    onToast(`Manual conversion undone for ${name}`);
+    onToast(`Manual conversion undone for ${user.name}`);
   };
 
-  const askDisable = (user) => {
+  const askDisable = async (user) => {
     if (user.off) {
-      setDisabledUsers((prev) => prev.filter((n) => n !== user.name));
-      onToast(`${user.name}'s account is active again`);
+      const key = userOverrideKey(user);
+      if (!key) return;
+      setActionBusy(true);
+      try {
+        await updateUserStatus(key, "active");
+        setDisabledUsers((prev) => prev.filter((n) => n !== key));
+        setUsers((prev) => prev.map((u) => (
+          userOverrideKey(u) === key ? { ...u, status: "Active", rawStatus: "active" } : u
+        )));
+        onToast(`${user.name}'s account is active again`);
+      } catch (err) {
+        onToast(err?.message || "Could not re-enable user");
+      } finally {
+        setActionBusy(false);
+      }
       return;
     }
     setDisableTarget(user);
   };
 
-  const confirmDisable = () => {
+  const confirmDisable = async () => {
     if (!disableTarget) return;
-    setDisabledUsers((prev) => [...prev, disableTarget.name]);
-    onToast(`${disableTarget.name} disabled`);
-    setDisableTarget(null);
+    const key = userOverrideKey(disableTarget);
+    setActionBusy(true);
+    try {
+      await updateUserStatus(key, "inactive");
+      setDisabledUsers((prev) => [...prev, key]);
+      setUsers((prev) => prev.map((u) => (
+        userOverrideKey(u) === key ? { ...u, status: "Disabled", rawStatus: "inactive" } : u
+      )));
+      onToast(`${disableTarget.name} disabled`);
+      setDisableTarget(null);
+    } catch (err) {
+      onToast(err?.message || "Could not disable user");
+    } finally {
+      setActionBusy(false);
+    }
   };
 
-  const openUser = (name) => {
-    const id = USERS.find((x) => x.name === name)?.n;
+  const openUser = (user) => {
+    const id = userOverrideKey(user);
     if (id) navigate(UPDATED_ADMIN_PATHS.userDetail(id));
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteTarget) return;
-    setDeletedUsers((prev) => [...prev, deleteTarget.name]);
-    setDeleteTarget(null);
-    onToast(`${deleteTarget.name} deleted`);
-  };
-
-  const askReassign = (user, kind, to) => {
-    const from = kind === "wc"
-      ? (coachOverrides[user.name] ?? user.coach)
-      : (awcOverrides[user.name] ?? user.awc ?? AWC_DEFAULT[user.coach] ?? "");
-    if (to === from) return;
-    setReassignAsk({ user: user.name, kind, from: from || "", to });
-  };
-
-  const confirmReassign = () => {
-    if (!reassignAsk) return;
-    const { user, kind, to } = reassignAsk;
-    const isWc = kind === "wc";
-    if (isWc) {
-      setCoachOverrides((prev) => ({ ...prev, [user]: to }));
-    } else {
-      setAwcOverrides((prev) => ({ ...prev, [user]: to }));
+    const key = userOverrideKey(deleteTarget);
+    setActionBusy(true);
+    try {
+      await deleteUser(key);
+      setDeletedUsers((prev) => [...prev, key]);
+      setDeleteTarget(null);
+      onToast(`${deleteTarget.name} deleted`);
+    } catch (err) {
+      onToast(err?.message || "Could not delete user");
+    } finally {
+      setActionBusy(false);
     }
-    onToast(
-      to
-        ? `${to} assigned as ${isWc ? "WC" : "AWC"} for ${user}`
-        : `${isWc ? "WC" : "AWC"} removed for ${user}`,
-    );
-    setReassignAsk(null);
+  };
+
+  const askReassign = (user, kind, toId) => {
+    const normalizedTo = String(toId || "").trim();
+    const fromId = kind === "wc" ? resolveWcId(user) : resolveAwcId(user);
+    if (normalizedTo === fromId) return;
+
+    if (!normalizedTo) {
+      setSelectReset((n) => n + 1);
+      onToast("Clearing coach assignment isn’t available from this list");
+      return;
+    }
+
+    const options = kind === "wc" ? wcSelectOptions : awcSelectOptions;
+    const member = options.find((o) => o.id === normalizedTo);
+    const toName = member?.name || "Selected coach";
+    const fromName = kind === "wc"
+      ? (user.coach === UNASSIGNED_COACH ? "" : (user.coach || ""))
+      : (user.awc || "");
+    const parentCoachId = kind === "wc"
+      ? normalizedTo
+      : (member?.parentAccountId || user.parentCoachId || "");
+
+    if (kind === "awc" && !parentCoachId) {
+      setSelectReset((n) => n + 1);
+      onToast("This assistant has no parent wellness coach");
+      return;
+    }
+
+    setReassignAsk({
+      user,
+      kind,
+      from: fromName,
+      to: toName,
+      toId: normalizedTo,
+      parentCoachId,
+    });
+  };
+
+  const confirmReassign = async () => {
+    if (!reassignAsk) return;
+    const { user, kind, to, toId, parentCoachId } = reassignAsk;
+    const key = userOverrideKey(user);
+    if (!key || !toId) return;
+
+    const isWc = kind === "wc";
+    const payload = isWc
+      ? {
+          assignedCoachId: toId,
+          assignedCoachType: "wellness_coach",
+          parentCoachId: toId,
+        }
+      : {
+          assignedCoachId: toId,
+          assignedCoachType: "assistant_wellness_coach",
+          parentCoachId,
+        };
+
+    setActionBusy(true);
+    try {
+      const isPending = String(user.assignmentStatus || "").toLowerCase() === "pending_admin";
+      const hasAssignment = Boolean(user.assignedCoachId || user.parentCoachId);
+      let updated;
+      if (isPending || !hasAssignment) {
+        try {
+          updated = await assignUserCoach(key, payload);
+        } catch (assignErr) {
+          const msg = String(assignErr?.message || "");
+          if (/pending admin assignment|use reassign/i.test(msg)) {
+            updated = await reassignUserCoach(key, payload);
+          } else {
+            throw assignErr;
+          }
+        }
+      } else {
+        updated = await reassignUserCoach(key, payload);
+      }
+      setUsers((prev) => prev.map((u) => (userOverrideKey(u) === key ? { ...u, ...updated } : u)));
+      onToast(`${to} assigned as ${isWc ? "WC" : "AWC"} for ${user.name}`);
+      setReassignAsk(null);
+    } catch (err) {
+      setSelectReset((n) => n + 1);
+      onToast(err?.message || "Could not assign coach");
+    } finally {
+      setActionBusy(false);
+    }
   };
 
   return (
@@ -258,7 +516,7 @@ export function UsersPage() {
           onAutosave={() => onToast("Saved")}
           meta={(
             <>
-              <span className="page-head__count">{rows.length}</span> clients · <ScopeChip />
+              <span className="page-head__count">{loading ? "…" : totalCount}</span> clients · <ScopeChip />
             </>
           )}
           actions={(
@@ -269,7 +527,10 @@ export function UsersPage() {
                   className="ua-search-wrap__input"
                   placeholder="Search name, email, phone"
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    goToFirstPage();
+                  }}
                 />
               </div>
               <select className="header__select ua-users-filter" value={tierFilter} onChange={(e) => setTierFilter(e.target.value)}>
@@ -277,7 +538,14 @@ export function UsersPage() {
                   <option key={opt.label} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
-              <select className="header__select ua-users-filter" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+              <select
+                className="header__select ua-users-filter"
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  goToFirstPage();
+                }}
+              >
                 <option value="">All status</option>
                 <option>Active</option>
                 <option>Disabled</option>
@@ -299,6 +567,14 @@ export function UsersPage() {
 
         <PillTabs tabs={typeTabs} active={typeTab} onChange={setTypeTab} />
       </div>
+
+      {loadError ? (
+        <div className="ua-users-empty" style={{ marginBottom: 16 }}>
+          <div className="ua-users-empty__title">Couldn’t load clients</div>
+          <p className="ua-users-empty__sub">{loadError}</p>
+          <button type="button" className="btn btn--outline" onClick={loadUsers}>Retry</button>
+        </div>
+      ) : null}
 
       <TableScroll>
         <div className="ua-table-card ua-table-card--users">
@@ -327,7 +603,12 @@ export function UsersPage() {
             <div />
           </div>
 
-          {rows.length === 0 ? (
+          {loading ? (
+            <div className="ua-users-empty">
+              <div className="ua-users-empty__title">Loading clients…</div>
+              <p className="ua-users-empty__sub">Fetching users from the server.</p>
+            </div>
+          ) : rows.length === 0 ? (
             <div className="ua-users-empty">
               <div className="ua-users-empty__icon"><UsersEmptyIcon /></div>
               <div className="ua-users-empty__title">No clients found</div>
@@ -337,22 +618,23 @@ export function UsersPage() {
           ) : (
             rows.map((u, i) => {
               const tier = tierStyle(u.tier);
-              const tone = u.off ? "red" : u.status === "Active" ? "green" : "muted";
+              const tone = u.off || u.status === "Disabled" ? "red" : u.status === "Active" ? "green" : "muted";
               const canConvert = u.tier !== "Maintenance";
               const canDowngrade = canDowngradeTier(u.tier, u.ageDays);
+              const rowKey = userOverrideKey(u) || u.name;
 
               return (
                 <div
-                  key={u.name}
+                  key={rowKey}
                   className="ua-table ua-table--users ua-table__row"
-                  onClick={() => openUser(u.name)}
+                  onClick={() => openUser(u)}
                 >
                   <div className="ua-table__muted">{u.n}</div>
                   <div className="ua-user-cell">
                     <span className="ua-avatar" style={{ background: avatarColor(i) }}>{userInitials(u.name)}</span>
                     <div>
                       <div className="ua-user-cell__name">{u.name}</div>
-                      <div className="ua-user-cell__sub">{u.email} · {u.goal}</div>
+                      <div className="ua-user-cell__sub">{userSubline(u)}</div>
                     </div>
                   </div>
                   <div className="ua-users-tier" onClick={(e) => e.stopPropagation()}>
@@ -382,28 +664,36 @@ export function UsersPage() {
                       </button>
                     ) : null}
                     {u.converted ? (
-                      <button type="button" className="ua-tier-action ua-tier-action--undo" title="Undo this manual change" onClick={() => revertTier(u.name)}>undo</button>
+                      <button type="button" className="ua-tier-action ua-tier-action--undo" title="Undo this manual change" onClick={() => revertTier(u)}>undo</button>
                     ) : null}
                   </div>
                   <div onClick={(e) => e.stopPropagation()}>
                     <select
+                      key={`${rowKey}-wc-${resolveWcId(u)}-${selectReset}`}
                       className="ua-inline-select"
-                      value={u.coach}
+                      value={resolveWcId(u)}
                       onChange={(e) => askReassign(u, "wc", e.target.value)}
+                      disabled={actionBusy}
                     >
-                      {WC_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                      {wcSelectOptions.map((o) => (
+                        <option key={o.id || "unassigned"} value={o.id}>{o.name}</option>
+                      ))}
                     </select>
                   </div>
                   <div onClick={(e) => e.stopPropagation()}>
                     <select
+                      key={`${rowKey}-awc-${resolveAwcId(u)}-${selectReset}`}
                       className="ua-inline-select"
-                      value={u.awc || AWC_OPTIONS[0]}
+                      value={resolveAwcId(u)}
                       onChange={(e) => askReassign(u, "awc", e.target.value)}
+                      disabled={actionBusy}
                     >
-                      {AWC_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                      {awcSelectOptions.map((o) => (
+                        <option key={o.id || "unassigned"} value={o.id}>{o.name}</option>
+                      ))}
                     </select>
                   </div>
-                  <div className="ua-table__muted">{u.lastActive}</div>
+                  <div className="ua-table__muted">{u.lastActive || "—"}</div>
                   <div>
                     <span className={`ua-status-badge ua-status-badge--${tone}`}>
                       <span className="ua-status-badge__dot" />
@@ -416,6 +706,7 @@ export function UsersPage() {
                       className={`ua-users-row-actions__disable${u.off ? " ua-users-row-actions__disable--on" : ""}`}
                       title={u.off ? `Re-enable ${u.name}'s account` : `Disable ${u.name}'s account — they lose app access, the record stays`}
                       onClick={() => askDisable(u)}
+                      disabled={actionBusy}
                     >
                       <DisableIcon off={u.off} />
                     </button>
@@ -424,6 +715,7 @@ export function UsersPage() {
                       className="ua-users-row-actions__delete"
                       title={`Delete ${u.name}`}
                       onClick={() => setDeleteTarget(u)}
+                      disabled={actionBusy}
                     >
                       <TrashIcon />
                     </button>
@@ -435,8 +727,59 @@ export function UsersPage() {
         </div>
       </TableScroll>
 
+      {!loading && !loadError && totalCount > 0 ? (
+        <div className="ua-users-pagination" aria-label="Users pagination">
+          <div className="ua-users-pagination__meta">
+            Showing <strong>{rangeStart}–{rangeEnd}</strong> of <strong>{totalCount}</strong>
+            <span className="ua-users-pagination__sep">·</span>
+            {PAGE_SIZE} per page
+          </div>
+          <div className="ua-users-pagination__controls">
+            <button
+              type="button"
+              className="ua-users-pagination__btn"
+              disabled={safePage <= 1}
+              onClick={() => setPage(safePage - 1)}
+            >
+              Prev
+            </button>
+            {pageItems.map((item, idx) => (
+              item === "…" ? (
+                <span key={`ellipsis-${idx}`} className="ua-users-pagination__ellipsis">…</span>
+              ) : (
+                <button
+                  key={item}
+                  type="button"
+                  className={`ua-users-pagination__page${item === safePage ? " ua-users-pagination__page--active" : ""}`}
+                  onClick={() => setPage(item)}
+                  aria-current={item === safePage ? "page" : undefined}
+                >
+                  {item}
+                </button>
+              )
+            ))}
+            <button
+              type="button"
+              className="ua-users-pagination__btn"
+              disabled={safePage >= totalPages}
+              onClick={() => setPage(safePage + 1)}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {reassignAsk ? (
-        <div className="ua-dialog-backdrop" onClick={() => setReassignAsk(null)} role="presentation">
+        <div
+          className="ua-dialog-backdrop"
+          onClick={() => {
+            if (actionBusy) return;
+            setSelectReset((n) => n + 1);
+            setReassignAsk(null);
+          }}
+          role="presentation"
+        >
           <div
             className="ua-dialog ua-dialog--confirm"
             onClick={(e) => e.stopPropagation()}
@@ -446,27 +789,42 @@ export function UsersPage() {
           >
             <div className="ua-dialog__kicker ua-dialog__kicker--blue">Coach reassignment</div>
             <div id="reassign-user-title" className="ua-dialog__title ua-dialog__title--confirm">
-              {reassignAsk.kind === "wc" ? "Reassign wellness coach" : "Reassign assistant WC"} for {reassignAsk.user}?
+              {reassignAsk.kind === "wc" ? "Assign wellness coach" : "Assign assistant WC"} for {reassignAsk.user.name}?
             </div>
             <p className="ua-dialog__body">
               <span className="ua-dialog__reassign-from">{reassignAsk.from || "Unassigned"}</span>
               {" → "}
               <span className="ua-dialog__reassign-to">{reassignAsk.to || "Unassigned"}</span>
               <br />
-              {reassignAsk.to
-                ? `This reassigns the client’s ${reassignAsk.kind === "wc" ? "wellness coach" : "assistant coach"} immediately. The change is written to the audit log.`
-                : `This leaves ${reassignAsk.user} without ${reassignAsk.kind === "wc" ? "a wellness coach" : "an assistant coach"}. The change is written to the audit log.`}
+              This assigns the client’s {reassignAsk.kind === "wc" ? "wellness coach" : "assistant coach"} after you confirm.
             </p>
             <div className="ua-dialog__actions">
-              <button type="button" className="btn btn--outline" onClick={() => setReassignAsk(null)}>Cancel</button>
-              <button type="button" className="ua-dialog__btn-primary" onClick={confirmReassign}>Confirm</button>
+              <button
+                type="button"
+                className="btn btn--outline"
+                onClick={() => {
+                  setSelectReset((n) => n + 1);
+                  setReassignAsk(null);
+                }}
+                disabled={actionBusy}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="ua-dialog__btn-primary"
+                onClick={confirmReassign}
+                disabled={actionBusy}
+              >
+                {actionBusy ? "Assigning…" : "Confirm"}
+              </button>
             </div>
           </div>
         </div>
       ) : null}
 
       {disableTarget ? (
-        <div className="ua-dialog-backdrop" onClick={() => setDisableTarget(null)} role="presentation">
+        <div className="ua-dialog-backdrop" onClick={() => !actionBusy && setDisableTarget(null)} role="presentation">
           <div
             className="ua-dialog ua-dialog--confirm ua-dialog--danger"
             onClick={(e) => e.stopPropagation()}
@@ -482,15 +840,17 @@ export function UsersPage() {
               They are signed out and cannot log in to the app. Their record, history and coach assignment all stay exactly as they are, and you can re-enable them at any time.
             </p>
             <div className="ua-dialog__actions">
-              <button type="button" className="btn btn--outline" onClick={() => setDisableTarget(null)}>Cancel</button>
-              <button type="button" className="ua-dialog__btn-danger" onClick={confirmDisable}>Yes, disable it</button>
+              <button type="button" className="btn btn--outline" onClick={() => setDisableTarget(null)} disabled={actionBusy}>Cancel</button>
+              <button type="button" className="ua-dialog__btn-danger" onClick={confirmDisable} disabled={actionBusy}>
+                {actionBusy ? "Disabling…" : "Yes, disable it"}
+              </button>
             </div>
           </div>
         </div>
       ) : null}
 
       {deleteTarget ? (
-        <div className="ua-dialog-backdrop" onClick={() => setDeleteTarget(null)} role="presentation">
+        <div className="ua-dialog-backdrop" onClick={() => !actionBusy && setDeleteTarget(null)} role="presentation">
           <div className="ua-dialog ua-dialog--danger" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="delete-user-title">
             <div className="ua-dialog__head">
               <div className="ua-dialog__icon ua-dialog__icon--danger"><TrashIcon /></div>
@@ -500,8 +860,10 @@ export function UsersPage() {
               This removes the client record, their coach assignment and all tracked history. This cannot be undone.
             </p>
             <div className="ua-dialog__actions">
-              <button type="button" className="btn btn--outline" onClick={() => setDeleteTarget(null)}>Cancel</button>
-              <button type="button" className="ua-dialog__btn-danger" onClick={confirmDelete}>Delete user</button>
+              <button type="button" className="btn btn--outline" onClick={() => setDeleteTarget(null)} disabled={actionBusy}>Cancel</button>
+              <button type="button" className="ua-dialog__btn-danger" onClick={confirmDelete} disabled={actionBusy}>
+                {actionBusy ? "Deleting…" : "Delete user"}
+              </button>
             </div>
           </div>
         </div>

@@ -5,6 +5,10 @@ const {
 } = require("./userModel");
 const { getWellnessCoachRecordById } = require("./wellnessCoachModel");
 const { getAssistantWellnessCoachById } = require("./assistantWellnessCoachModel");
+const {
+  getWellnessCoachByIdResolved,
+  getAssistantWellnessCoachByIdResolved,
+} = require("../services/accountResolver");
 const { updateReferralCodeOwnerCoachId } = require("./referralCodeModel");
 const {
   resolveReassignmentPatch,
@@ -14,15 +18,33 @@ const {
 } = require("./userAssignmentLogic");
 const { syncConsultancyAssigneeForUser } = require("../services/consultancyAssigneeSyncService");
 
+async function resolveWellnessCoachTarget(coachId) {
+  return (
+    (await getWellnessCoachByIdResolved(coachId)) ||
+    (await getWellnessCoachRecordById(coachId)) ||
+    null
+  );
+}
+
+async function resolveAssistantTarget(assistantId) {
+  return (
+    (await getAssistantWellnessCoachByIdResolved(assistantId)) ||
+    (await getAssistantWellnessCoachById(assistantId)) ||
+    null
+  );
+}
+
 async function validateReassignmentTarget({ assignedCoachId, assignedCoachType, parentCoachId, actingCoachId }) {
   const coachId = String(assignedCoachId || "").trim();
   const coachType = normalizeAssignedCoachType(assignedCoachType);
   const parentId = String(parentCoachId || "").trim();
 
   if (coachType === "wellness_coach") {
-    const coach = await getWellnessCoachRecordById(coachId);
+    const coach = await resolveWellnessCoachTarget(coachId);
     if (!coach) throw new Error("Wellness coach not found");
-    if (coach.status !== "active") throw new Error("Wellness coach is not active");
+    if (String(coach.status || "").toLowerCase() !== "active") {
+      throw new Error("Wellness coach is not active");
+    }
     if (coachId !== parentId) throw new Error("parentCoachId must match assigned wellness coach id");
     if (actingCoachId && actingCoachId !== coachId) {
       throw new Error("Coach may only assign users within their own hierarchy");
@@ -31,18 +53,25 @@ async function validateReassignmentTarget({ assignedCoachId, assignedCoachType, 
   }
 
   if (coachType === "assistant_wellness_coach") {
-    const assistant = await getAssistantWellnessCoachById(coachId);
+    const assistant = await resolveAssistantTarget(coachId);
     if (!assistant) throw new Error("Assistant wellness coach not found");
-    if (assistant.status !== "active") throw new Error("Assistant wellness coach is not active");
-    if (String(assistant.wellnessCoachId || "").trim() !== parentId) {
+    if (String(assistant.status || "").toLowerCase() !== "active") {
+      throw new Error("Assistant wellness coach is not active");
+    }
+    const assistantParent = String(
+      assistant.wellnessCoachId || assistant.parentAccountId || ""
+    ).trim();
+    if (assistantParent !== parentId) {
       throw new Error("parentCoachId must match the assistant's wellnessCoachId");
     }
     if (actingCoachId && actingCoachId !== parentId) {
       throw new Error("Coach may only assign users to assistants under their own account");
     }
-    const parentCoach = await getWellnessCoachRecordById(parentId);
+    const parentCoach = await resolveWellnessCoachTarget(parentId);
     if (!parentCoach) throw new Error("Parent wellness coach not found");
-    if (parentCoach.status !== "active") throw new Error("Parent wellness coach is not active");
+    if (String(parentCoach.status || "").toLowerCase() !== "active") {
+      throw new Error("Parent wellness coach is not active");
+    }
     return;
   }
 

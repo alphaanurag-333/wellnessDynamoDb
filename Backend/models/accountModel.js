@@ -733,24 +733,101 @@ async function listAccountsByParentAccountId(parentAccountId, opts = {}) {
   return listAccounts({ ...opts, parentAccountId: parentId });
 }
 
-async function countAccountsByRoleKey(roleKey) {
+function resolvePrimaryRoleKey(account) {
+  if (!account) return null;
+  const keys = Array.isArray(account.roleKeys)
+    ? account.roleKeys.map((k) => normalizeRoleKey(k)).filter(Boolean)
+    : Array.isArray(account.memberships)
+      ? account.memberships.map((m) => normalizeRoleKey(m?.roleKey)).filter(Boolean)
+      : [];
+  if (!keys.length) return null;
+  const preferred = normalizeRoleKey(account.defaultRoleKey);
+  if (preferred && keys.includes(preferred)) return preferred;
+  return keys[0];
+}
+
+/** Count active accounts whose primary (default) role matches. Matches Teams/Access member lists. */
+async function countAccountsByRoleKey(roleKey, { status = "active", primaryOnly = true } = {}) {
   const key = normalizeRoleKey(roleKey);
   if (!key) return 0;
 
+  const normalizedStatus = status ? normalizeStatus(status, "") : "";
   let total = 0;
   let lastKey;
   do {
-    const { Count, LastEvaluatedKey } = await docClient.send(
+    const exprNames = { "#roleKeys": "roleKeys" };
+    const exprValues = { ":roleKey": key };
+    let filterExpression = "contains(#roleKeys, :roleKey)";
+    const projection = ["#roleKeys", "defaultRoleKey", "memberships"];
+
+    if (normalizedStatus) {
+      exprNames["#status"] = "status";
+      exprValues[":status"] = normalizedStatus;
+      filterExpression += " AND #status = :status";
+      projection.push("#status");
+    }
+
+    const { Items, LastEvaluatedKey } = await docClient.send(
       new ScanCommand({
         TableName: TABLE,
-        FilterExpression: "contains(#roleKeys, :roleKey)",
-        ExpressionAttributeNames: { "#roleKeys": "roleKeys" },
-        ExpressionAttributeValues: { ":roleKey": key },
-        Select: "COUNT",
+        FilterExpression: filterExpression,
+        ExpressionAttributeNames: exprNames,
+        ExpressionAttributeValues: exprValues,
+        ProjectionExpression: projection.join(", "),
         ExclusiveStartKey: lastKey,
       })
     );
-    total += Count || 0;
+
+    for (const item of Items || []) {
+      if (primaryOnly) {
+        if (resolvePrimaryRoleKey(item) !== key) continue;
+      }
+      total += 1;
+    }
+    lastKey = LastEvaluatedKey;
+  } while (lastKey);
+
+  return total;
+}
+
+/** Count accounts whose membership points at this console Role id. */
+async function countAccountsByConsoleRoleId(consoleRoleId, { status = "active" } = {}) {
+  const id = String(consoleRoleId || "").trim();
+  if (!id) return 0;
+
+  const normalizedStatus = status ? normalizeStatus(status, "") : "";
+  let total = 0;
+  let lastKey;
+  do {
+    const exprNames = {};
+    const exprValues = {};
+    let filterExpression;
+    const projection = ["memberships"];
+
+    if (normalizedStatus) {
+      exprNames["#status"] = "status";
+      exprValues[":status"] = normalizedStatus;
+      filterExpression = "#status = :status";
+      projection.push("#status");
+    }
+
+    const { Items, LastEvaluatedKey } = await docClient.send(
+      new ScanCommand({
+        TableName: TABLE,
+        FilterExpression: filterExpression,
+        ExpressionAttributeNames: Object.keys(exprNames).length ? exprNames : undefined,
+        ExpressionAttributeValues: Object.keys(exprValues).length ? exprValues : undefined,
+        ProjectionExpression: projection.join(", "),
+        ExclusiveStartKey: lastKey,
+      })
+    );
+
+    for (const item of Items || []) {
+      const memberships = Array.isArray(item.memberships) ? item.memberships : [];
+      if (memberships.some((m) => String(m?.roleId || "").trim() === id)) {
+        total += 1;
+      }
+    }
     lastKey = LastEvaluatedKey;
   } while (lastKey);
 
@@ -783,4 +860,5 @@ module.exports = {
   getMembership,
   listAccountsByParentAccountId,
   countAccountsByRoleKey,
+  countAccountsByConsoleRoleId,
 };

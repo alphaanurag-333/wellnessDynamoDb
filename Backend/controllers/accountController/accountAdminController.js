@@ -11,11 +11,93 @@ const {
   toPublicAccount,
   getAccountByEmail,
 } = require("../../models/accountModel");
+const { getRoleById, listRoles } = require("../../models/roleModel");
 const { normalizeRoleKey, ROLE_KEY_TO_UI } = require("../../config/accountRoles");
 const { normalizeEmail, normalizePhone, normalizeCountryCode } = require("../../models/userModel");
 const { UI_TO_ACCOUNT_ROLE } = require("../../config/consolePermissionCatalog");
 
 const DEFAULT_TEMP_PASSWORD = process.env.SEED_STAFF_PASSWORD || "Admin@12345";
+const CONSOLE_SCOPE = "CONSOLE";
+
+async function resolveAccountRoleKeyFromConsoleRole(startRole) {
+  let current = startRole;
+  const seen = new Set();
+  while (current) {
+    if (seen.has(current.id)) break;
+    seen.add(current.id);
+
+    const uiKey = String(current.roleKey || "").trim().toLowerCase();
+    if (uiKey) {
+      const mapped = UI_TO_ACCOUNT_ROLE[uiKey] || normalizeRoleKey(uiKey);
+      if (mapped) return mapped;
+    }
+
+    if (!current.inheritsFromRoleId) break;
+    current = await getRoleById(current.inheritsFromRoleId);
+    if (current && current.scope !== CONSOLE_SCOPE) break;
+  }
+  return null;
+}
+
+/**
+ * Resolve Access Control role + Account membership roleKey for team create.
+ * Accepts consoleRoleId (preferred) and/or roleKey (ui or account key).
+ */
+async function resolveCreateRoleTarget({ rawRole, consoleRoleId }) {
+  const { ensureConsoleRolesSeeded } = require("./accessController");
+  const { byKey } = await ensureConsoleRolesSeeded();
+
+  let consoleRole = null;
+  const roleId = String(consoleRoleId || "").trim();
+  if (roleId) {
+    consoleRole = await getRoleById(roleId);
+    if (!consoleRole || consoleRole.scope !== CONSOLE_SCOPE) {
+      throw new AppError("Access Control role not found", 404);
+    }
+    if (consoleRole.status && consoleRole.status !== "active") {
+      throw new AppError("Access Control role is not active", 400);
+    }
+  }
+
+  const uiOrAccount = String(rawRole || "").trim().toLowerCase();
+  if (!consoleRole && uiOrAccount) {
+    consoleRole = byKey[uiOrAccount] || null;
+    if (!consoleRole) {
+      const { roles } = await listRoles({
+        scope: CONSOLE_SCOPE,
+        status: "active",
+        page: 1,
+        limit: 100,
+      });
+      consoleRole =
+        roles.find((r) => String(r.roleKey || "").toLowerCase() === uiOrAccount) ||
+        roles.find((r) => String(r.id) === uiOrAccount) ||
+        null;
+    }
+  }
+
+  let accountRoleKey = null;
+  if (consoleRole) {
+    accountRoleKey = await resolveAccountRoleKeyFromConsoleRole(consoleRole);
+  }
+  if (!accountRoleKey && uiOrAccount) {
+    accountRoleKey = UI_TO_ACCOUNT_ROLE[uiOrAccount] || normalizeRoleKey(uiOrAccount);
+  }
+
+  if (!accountRoleKey || accountRoleKey === "admin") {
+    throw new AppError(
+      "Choose a non-admin Access Control role (or a custom role that inherits from one)",
+      400
+    );
+  }
+
+  if (!consoleRole) {
+    const uiRole = ROLE_KEY_TO_UI[accountRoleKey] || uiOrAccount;
+    consoleRole = byKey[uiRole] || null;
+  }
+
+  return { accountRoleKey, consoleRole };
+}
 
 exports.listAccountsHandler = asyncHandler(async (req, res) => {
   const result = await listAccounts({
@@ -43,7 +125,9 @@ exports.getAccountHandler = asyncHandler(async (req, res) => {
 
 /**
  * Create a staff Account (Teams page).
- * Body: name, email, phone?, phoneCountryCode?, password?, roleKey (ui or account), parentAccountId?
+ * Body: name, email, phone?, phoneCountryCode?, password?,
+ *       roleKey (ui/account) and/or consoleRoleId (Access Control role id),
+ *       parentAccountId?
  */
 exports.createAccountHandler = asyncHandler(async (req, res) => {
   if (!req.auth?.isSuperAdmin) {
@@ -57,18 +141,17 @@ exports.createAccountHandler = asyncHandler(async (req, res) => {
     phoneCountryCode,
     password,
     roleKey: rawRole,
+    consoleRoleId,
     parentAccountId,
   } = req.body || {};
 
   if (!name || !String(name).trim()) throw new AppError("name is required", 400);
   if (!email || !String(email).trim()) throw new AppError("email is required", 400);
 
-  const uiOrAccount = String(rawRole || "").trim().toLowerCase();
-  const accountRoleKey =
-    UI_TO_ACCOUNT_ROLE[uiOrAccount] || normalizeRoleKey(uiOrAccount);
-  if (!accountRoleKey || accountRoleKey === "admin") {
-    throw new AppError("Choose Wellness Coach, Assistant WC, Support, or Trainee", 400);
-  }
+  const { accountRoleKey, consoleRole } = await resolveCreateRoleTarget({
+    rawRole,
+    consoleRoleId,
+  });
 
   const normalized = normalizeEmail(email);
   const existing = await getAccountByEmail(normalized);
@@ -77,11 +160,6 @@ exports.createAccountHandler = asyncHandler(async (req, res) => {
   const tempPassword = password ? String(password) : DEFAULT_TEMP_PASSWORD;
   assertPasswordPolicy(tempPassword);
   const passwordHash = await hashPassword(tempPassword);
-
-  const { ensureConsoleRolesSeeded } = require("./accessController");
-  const { byKey: consoleRoles } = await ensureConsoleRolesSeeded();
-  const uiRole = ROLE_KEY_TO_UI[accountRoleKey] || uiOrAccount;
-  const consoleRole = consoleRoles[uiRole] || null;
 
   let parentId = parentAccountId || null;
   if (

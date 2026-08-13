@@ -67,8 +67,8 @@ export const SUPER_ADMIN_VIEWS = [
 /** Role id → parent role id (null = standalone) */
 export const DEFAULT_PARENTS = {
   admin: null,
-  wc: "awc",
-  awc: null,
+  wc: null,
+  awc: "wc",
   trainee: "awc",
   support: null,
 };

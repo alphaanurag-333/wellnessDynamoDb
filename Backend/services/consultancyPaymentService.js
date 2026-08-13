@@ -23,6 +23,10 @@ const { generateConsultancyInvoicePdf } = require("../utils/invoicePdf");
 const { buildConsultancyInvoicePayload } = require("../utils/consultancyInvoiceResponse");
 const { uploadBufferToS3, resolvePublicUrl } = require("../utils/s3");
 const {
+  emitPaymentReceived,
+  emitPendingAssignment,
+} = require("./adminActivityService");
+const {
   createConsultancyTransaction,
   getConsultancyTransactionById,
   updateConsultancyTransaction,
@@ -289,6 +293,16 @@ async function finalizePaidConsultancyTransaction(transaction, { paymentId, prov
     const pub = toPublicTransaction(paidRecord);
     if (pub.invoicePdfKey) pub.invoiceUrl = resolvePublicUrl(pub.invoicePdfKey);
     return pub;
+  }
+
+  emitPaymentReceived({
+    user: freshUser,
+    amount: transaction.totalAmount,
+    productLabel: "Consultancy",
+    transactionId: transaction.id,
+  });
+  if (String(freshUser.assignmentStatus || "").trim() === "pending_admin") {
+    emitPendingAssignment(freshUser);
   }
 
   let whatsappDelivery = null;

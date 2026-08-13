@@ -3,25 +3,37 @@
   font-feature-settings: "cv01", "ss03";
 }
 
-.updated-admin .page-shell {
+.updated-admin .page-shell,
+.updated-admin .sidebar__nav,
+.updated-admin .ua-cp-sidebar {
+  scrollbar-width: thin;
   scrollbar-color: #d3dae6 transparent;
 }
 
-.updated-admin .page-shell::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+.updated-admin .page-shell::-webkit-scrollbar,
+.updated-admin .sidebar__nav::-webkit-scrollbar,
+.updated-admin .ua-cp-sidebar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
 }
 
-.updated-admin .page-shell::-webkit-scrollbar-thumb {
+.updated-admin .page-shell::-webkit-scrollbar-thumb,
+.updated-admin .sidebar__nav::-webkit-scrollbar-thumb,
+.updated-admin .ua-cp-sidebar::-webkit-scrollbar-thumb {
   background: #d3dae6;
   border-radius: 8px;
-  border: 2px solid transparent;
-  background-clip: content-box;
 }
 
-.updated-admin .page-shell::-webkit-scrollbar-thumb:hover {
+.updated-admin .page-shell::-webkit-scrollbar-thumb:hover,
+.updated-admin .sidebar__nav::-webkit-scrollbar-thumb:hover,
+.updated-admin .ua-cp-sidebar::-webkit-scrollbar-thumb:hover {
   background: #bcc6d6;
-  background-clip: content-box;
+}
+
+.updated-admin .page-shell::-webkit-scrollbar-track,
+.updated-admin .sidebar__nav::-webkit-scrollbar-track,
+.updated-admin .ua-cp-sidebar::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 @keyframes ua-fadein {

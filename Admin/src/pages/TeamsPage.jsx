@@ -10,12 +10,56 @@ import {
   staffInitials,
 } from "../data/teamsData.js";
 import { createTeamMember, fetchTeamMembers, listCoachOptions } from "../api/teamsApi.js";
+import { fetchAccessRoles } from "../api/accessApi.js";
+import { UI_TO_ROLE_KEY } from "../api/accountApi.js";
 
-function CreateMemberModal({ open, coaches, onClose, onCreated, onToast }) {
+const SYSTEM_TEAM_ROLE_KEYS = new Set(["wc", "awc", "trainee", "support"]);
+
+function isAdminAccessRole(role) {
+  const key = String(role?.roleKey || "").toLowerCase();
+  return key === "admin";
+}
+
+function isSystemTeamRole(role) {
+  const key = String(role?.roleKey || "").toLowerCase();
+  return SYSTEM_TEAM_ROLE_KEYS.has(key);
+}
+
+/** Walk inheritance to a system UI role key (wc / awc / trainee / support). */
+function resolveBaseUiRoleKey(role, allRoles) {
+  const byId = Object.fromEntries((allRoles || []).map((r) => [r.id, r]));
+  let current = role;
+  const seen = new Set();
+  while (current) {
+    if (seen.has(current.id)) break;
+    seen.add(current.id);
+    const key = String(current.roleKey || "").toLowerCase();
+    if (key && UI_TO_ROLE_KEY[key]) return key;
+    current = current.inheritsFromRoleId ? byId[current.inheritsFromRoleId] : null;
+  }
+  return null;
+}
+
+function roleChipMeta(role, fallbackKey = "wc") {
+  const key = role?.roleKey || fallbackKey;
+  const base = TEAM_ROLE_META[key] || TEAM_ROLE_META.wc;
+  return {
+    name: role?.name || base.name,
+    roleColor: role?.color || base.roleColor,
+    roleBg: role?.bg || base.roleBg,
+    roleBorder: role?.bd || base.roleBorder,
+  };
+}
+
+function CreateMemberModal({ open, roles, coaches, onClose, onCreated, onToast }) {
+  const creatableRoles = useMemo(
+    () => (roles || []).filter((r) => !isAdminAccessRole(r)),
+    [roles],
+  );
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [roleKey, setRoleKey] = useState("wc");
+  const [consoleRoleId, setConsoleRoleId] = useState("");
   const [parentAccountId, setParentAccountId] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -24,18 +68,25 @@ function CreateMemberModal({ open, coaches, onClose, onCreated, onToast }) {
     setName("");
     setPhone("");
     setEmail("");
-    setRoleKey("wc");
+    const defaultRole = creatableRoles.find((r) => r.roleKey === "wc") || creatableRoles[0];
+    setConsoleRoleId(defaultRole?.id || "");
     setParentAccountId(coaches[0]?.id || "");
-  }, [open, coaches]);
+  }, [open, coaches, creatableRoles]);
 
   if (!open) return null;
 
-  const needsParent = roleKey === "awc" || roleKey === "trainee";
+  const selectedRole = creatableRoles.find((r) => r.id === consoleRoleId) || null;
+  const baseUiKey = selectedRole ? resolveBaseUiRoleKey(selectedRole, creatableRoles) : null;
+  const needsParent = baseUiKey === "awc" || baseUiKey === "trainee";
 
   async function handleSubmit(e) {
     e.preventDefault();
     if (!name.trim() || !email.trim()) {
       onToast("Name and email are required");
+      return;
+    }
+    if (!consoleRoleId) {
+      onToast("Pick a role from Access Control");
       return;
     }
     if (needsParent && !parentAccountId) {
@@ -48,7 +99,8 @@ function CreateMemberModal({ open, coaches, onClose, onCreated, onToast }) {
         name: name.trim(),
         email: email.trim(),
         phone: phone.trim() || undefined,
-        roleKey,
+        consoleRoleId,
+        roleKey: selectedRole?.roleKey || baseUiKey || undefined,
         parentAccountId: needsParent ? parentAccountId : undefined,
       });
       onToast(
@@ -69,7 +121,9 @@ function CreateMemberModal({ open, coaches, onClose, onCreated, onToast }) {
     <div className="ua-dialog-backdrop" onClick={onClose} role="presentation">
       <div className="ua-ac-modal" onClick={(ev) => ev.stopPropagation()} role="dialog" aria-modal="true">
         <div className="ua-ac-modal__title">Create a team member</div>
-        <p className="ua-ac-modal__body">Works for every role. A temporary password is set automatically.</p>
+        <p className="ua-ac-modal__body">
+          Accepted roles: Wellness Coach, Assistant WC, Trainee, Support. A temporary password is set automatically.
+        </p>
         <form onSubmit={handleSubmit}>
           <label className="ua-ac-field">
             <span className="ua-ac-field__label">Full name</span>
@@ -85,12 +139,21 @@ function CreateMemberModal({ open, coaches, onClose, onCreated, onToast }) {
           </label>
           <label className="ua-ac-field">
             <span className="ua-ac-field__label">Role</span>
-            <select className="ua-ac-field__input" value={roleKey} onChange={(e) => setRoleKey(e.target.value)}>
-              {TEAM_ROLE_TABS_BASE.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.label}
-                </option>
-              ))}
+            <select
+              className="ua-ac-field__input"
+              value={consoleRoleId}
+              onChange={(e) => setConsoleRoleId(e.target.value)}
+              required
+            >
+              {creatableRoles.length === 0 ? (
+                <option value="">No Access Control roles found</option>
+              ) : (
+                creatableRoles.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))
+              )}
             </select>
           </label>
           {needsParent ? (
@@ -115,7 +178,7 @@ function CreateMemberModal({ open, coaches, onClose, onCreated, onToast }) {
             <button type="button" className="btn btn--outline" onClick={onClose} disabled={busy}>
               Cancel
             </button>
-            <button type="submit" className="ua-ac-modal__primary" disabled={busy}>
+            <button type="submit" className="ua-ac-modal__primary" disabled={busy || !consoleRoleId}>
               {busy ? "Creating…" : "Create member"}
             </button>
           </div>
@@ -130,15 +193,24 @@ export function TeamsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [members, setMembers] = useState([]);
+  const [accessRoles, setAccessRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [coaches, setCoaches] = useState([]);
 
-  const roleTab = searchParams.get("role") || "wc";
+  const teamRoles = useMemo(
+    () => (accessRoles || []).filter((r) => !isAdminAccessRole(r) && isSystemTeamRole(r)),
+    [accessRoles],
+  );
+
+  const createRoles = teamRoles;
+
+  const roleTab = searchParams.get("role") || teamRoles[0]?.id || "wc";
   const setRoleTab = (role) => {
     const next = new URLSearchParams(searchParams);
-    if (role === "wc") next.delete("role");
+    const defaultId = teamRoles[0]?.id;
+    if (!role || role === defaultId) next.delete("role");
     else next.set("role", role);
     setSearchParams(next, { replace: true });
   };
@@ -147,8 +219,12 @@ export function TeamsPage() {
     setLoading(true);
     setError("");
     try {
-      const { members: rows } = await fetchTeamMembers({ limit: 200 });
+      const [{ members: rows }, roles] = await Promise.all([
+        fetchTeamMembers({ limit: 200 }),
+        fetchAccessRoles().catch(() => []),
+      ]);
       setMembers(rows.filter((m) => !m.isSuperAdmin && m.primaryRoleKey !== "admin"));
+      setAccessRoles(Array.isArray(roles) ? roles : []);
     } catch (err) {
       setError(err?.message || "Failed to load team");
     } finally {
@@ -167,25 +243,60 @@ export function TeamsPage() {
       .catch(() => setCoaches([]));
   }, [createOpen]);
 
+  const roleById = useMemo(
+    () => Object.fromEntries(teamRoles.map((r) => [r.id, r])),
+    [teamRoles],
+  );
+
   const counts = useMemo(() => {
-    const c = { wc: 0, awc: 0, support: 0, trainee: 0 };
+    const c = {};
+    for (const role of teamRoles) c[role.id] = 0;
     for (const m of members) {
-      if (c[m.primaryRoleKey] != null) c[m.primaryRoleKey] += 1;
+      if (m.consoleRoleId && c[m.consoleRoleId] != null) {
+        c[m.consoleRoleId] += 1;
+        continue;
+      }
+      const matched = teamRoles.find((r) => r.roleKey && r.roleKey === m.primaryRoleKey);
+      if (matched) c[matched.id] += 1;
     }
     return c;
-  }, [members]);
+  }, [members, teamRoles]);
 
-  const tabs = useMemo(
-    () => TEAM_ROLE_TABS_BASE.map((t) => ({ ...t, count: counts[t.id] || 0 })),
-    [counts],
-  );
+  const tabs = useMemo(() => {
+    if (teamRoles.length) {
+      return teamRoles.map((r) => ({
+        id: r.id,
+        label: r.name,
+        count: counts[r.id] || 0,
+      }));
+    }
+    return TEAM_ROLE_TABS_BASE.map((t) => ({ ...t, count: 0 }));
+  }, [counts, teamRoles]);
 
-  const rows = useMemo(
-    () => members.filter((m) => m.primaryRoleKey === roleTab),
-    [members, roleTab],
-  );
+  useEffect(() => {
+    if (!teamRoles.length) return;
+    if (!teamRoles.some((r) => r.id === roleTab)) {
+      setRoleTab(teamRoles[0].id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teamRoles, roleTab]);
 
-  const col3 = STAFF_COL3[roleTab] || "Load";
+  const rows = useMemo(() => {
+    const active = roleById[roleTab];
+    if (!active) {
+      return members.filter((m) => m.primaryRoleKey === roleTab);
+    }
+    return members.filter((m) => {
+      if (m.consoleRoleId) return m.consoleRoleId === active.id;
+      return Boolean(active.roleKey) && m.primaryRoleKey === active.roleKey;
+    });
+  }, [members, roleById, roleTab]);
+
+  const activeRole = roleById[roleTab];
+  const baseUiForCol = activeRole
+    ? resolveBaseUiRoleKey(activeRole, teamRoles) || activeRole.roleKey
+    : roleTab;
+  const col3 = STAFF_COL3[baseUiForCol] || "Load";
 
   function openMember(id, focus) {
     const q = focus === "permissions" ? "?focus=permissions" : "";
@@ -204,7 +315,7 @@ export function TeamsPage() {
         }
       />
 
-      <SectionLabel hint="Filter by role">Team</SectionLabel>
+      <SectionLabel hint="Filter by Access Control role">Team</SectionLabel>
       <PillTabs tabs={tabs} active={roleTab} onChange={setRoleTab} />
 
       {loading ? <p className="ua-page-head__sub">Loading team…</p> : null}
@@ -233,7 +344,11 @@ export function TeamsPage() {
               </div>
             ) : null}
             {rows.map((s, i) => {
-              const meta = TEAM_ROLE_META[s.primaryRoleKey] || TEAM_ROLE_META.wc;
+              const accessRole =
+                (s.consoleRoleId && roleById[s.consoleRoleId]) ||
+                teamRoles.find((r) => r.roleKey && r.roleKey === s.primaryRoleKey) ||
+                null;
+              const meta = roleChipMeta(accessRole, s.primaryRoleKey);
               return (
                 <div
                   key={s.id}
@@ -305,6 +420,7 @@ export function TeamsPage() {
 
       <CreateMemberModal
         open={createOpen}
+        roles={createRoles}
         coaches={coaches}
         onClose={() => setCreateOpen(false)}
         onCreated={() => load()}

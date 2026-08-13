@@ -25,6 +25,7 @@ const {
   verifyMockPayment,
   shouldUseMockPayments,
 } = require("../utils/paymentGateway");
+const { emitPaymentReceived } = require("./adminActivityService");
 
 function logPaymentFailure({ transactionId, userId, reason }) {
   console.error("[EnergyExchangePayment] payment failed", {
@@ -246,6 +247,13 @@ async function finalizePaidEnergyExchangeTransaction(transaction, { paymentId, p
   if (alreadyPaid) {
     return toPublicTransaction(paidRecord);
   }
+
+  emitPaymentReceived({
+    user,
+    amount: transaction.totalAmount,
+    productLabel: "Energy Exchange",
+    transactionId: transaction.id,
+  });
 
   await _activateSubscriptionsForTransaction(transaction.id);
 

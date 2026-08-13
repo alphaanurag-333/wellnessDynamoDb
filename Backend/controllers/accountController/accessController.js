@@ -15,6 +15,7 @@ const {
   updateAccount,
   getMembership,
   countAccountsByRoleKey,
+  countAccountsByConsoleRoleId,
   toPublicAccount,
 } = require("../../models/accountModel");
 const { listUsersByParentCoachId } = require("../../models/userModel");
@@ -91,6 +92,19 @@ async function memberCountForRoleKey(roleKey) {
   }
 }
 
+async function memberCountForConsoleRole(role) {
+  if (!role) return 0;
+  if (role.roleKey) {
+    const byKey = await memberCountForRoleKey(role.roleKey);
+    if (byKey > 0) return byKey;
+  }
+  try {
+    return await countAccountsByConsoleRoleId(role.id);
+  } catch {
+    return 0;
+  }
+}
+
 exports.getAccessCatalog = asyncHandler(async (req, res) => {
   assertSuperAdmin(req);
   return res.json({
@@ -110,7 +124,7 @@ exports.listAccessRoles = asyncHandler(async (req, res) => {
 
   const enriched = [];
   for (const role of roles) {
-    const count = await memberCountForRoleKey(role.roleKey);
+    const count = await memberCountForConsoleRole(role);
     enriched.push(toAccessRole(role, count));
   }
 
@@ -212,10 +226,30 @@ exports.deleteAccessRole = asyncHandler(async (req, res) => {
   if (role.locked || role.system || (role.roleKey && ROLE_KEY_META[role.roleKey])) {
     throw new AppError("System roles cannot be deleted", 400);
   }
-  const count = await memberCountForRoleKey(role.roleKey);
+
+  const { roles: consoleRoles } = await listRoles({
+    scope: CONSOLE_SCOPE,
+    status: "active",
+    page: 1,
+    limit: 100,
+  });
+  const children = consoleRoles.filter(
+    (r) => String(r.inheritsFromRoleId || "").trim() === String(role.id)
+  );
+  if (children.length > 0) {
+    throw new AppError(
+      `Cannot delete — ${children.length} role(s) still inherit from “${role.name}”`,
+      409
+    );
+  }
+
+  const byKeyCount = role.roleKey ? await memberCountForRoleKey(role.roleKey) : 0;
+  const byIdCount = await countAccountsByConsoleRoleId(role.id);
+  const count = Math.max(byKeyCount, byIdCount);
   if (count > 0) {
     throw new AppError(`Cannot delete — ${count} member(s) still assigned`, 409);
   }
+
   await deleteRole(role.id);
   return res.json({ status: true, message: "Role deleted" });
 });
@@ -595,13 +629,23 @@ exports.ensureConsoleRolesSeeded = async function ensureConsoleRolesSeeded() {
     byKey[roleKey] = role;
   }
 
-  // Wire inheritance defaults: trainee → awc, wc stays standalone (UI had wc→awc in DEFAULT_PARENTS oddly)
-  // Match UI DEFAULT_PARENTS: wc→awc, trainee→awc
-  if (byKey.awc && byKey.trainee && !byKey.trainee.inheritsFromRoleId) {
-    await updateRole(byKey.trainee.id, { inheritsFromRoleId: byKey.awc.id });
+  // Inheritance: AWC ← WC, Trainee ← AWC; WC + Support + Admin standalone.
+  // Also repair the old inverted WC ← AWC link if present.
+  if (byKey.wc?.inheritsFromRoleId) {
+    await updateRole(byKey.wc.id, { inheritsFromRoleId: null });
+    byKey.wc = { ...byKey.wc, inheritsFromRoleId: null };
   }
-  if (byKey.awc && byKey.wc && !byKey.wc.inheritsFromRoleId) {
-    await updateRole(byKey.wc.id, { inheritsFromRoleId: byKey.awc.id });
+  if (byKey.wc && byKey.awc && byKey.awc.inheritsFromRoleId !== byKey.wc.id) {
+    await updateRole(byKey.awc.id, { inheritsFromRoleId: byKey.wc.id });
+    byKey.awc = { ...byKey.awc, inheritsFromRoleId: byKey.wc.id };
+  }
+  if (byKey.awc && byKey.trainee && byKey.trainee.inheritsFromRoleId !== byKey.awc.id) {
+    await updateRole(byKey.trainee.id, { inheritsFromRoleId: byKey.awc.id });
+    byKey.trainee = { ...byKey.trainee, inheritsFromRoleId: byKey.awc.id };
+  }
+  if (byKey.support?.inheritsFromRoleId) {
+    await updateRole(byKey.support.id, { inheritsFromRoleId: null });
+    byKey.support = { ...byKey.support, inheritsFromRoleId: null };
   }
 
   return { created, byKey };

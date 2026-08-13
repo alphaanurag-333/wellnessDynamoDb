@@ -23,6 +23,7 @@ const {
   shouldUseMockPayments,
 } = require("../utils/paymentGateway");
 const { getAppConfig } = require("../models/appConfigModel");
+const { emitPaymentReceived } = require("./adminActivityService");
 
 function logPaymentFailure({ transactionId, userId, reason }) {
   console.error("[ProgramPayment] payment failed", {
@@ -184,6 +185,13 @@ async function finalizePaidProgramTransaction(transaction, { paymentId, provider
   if (alreadyPaid) {
     return toPublicTransaction(paidRecord);
   }
+
+  emitPaymentReceived({
+    user,
+    amount: transaction.totalAmount,
+    productLabel: "Program",
+    transactionId: transaction.id,
+  });
 
   const programId =
     transaction.userSnapshot?.programId ||

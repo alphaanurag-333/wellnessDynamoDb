@@ -402,25 +402,83 @@ const PROFILE_DETAILS = {
   },
 };
 
-export function getUserProfile(userId) {
-  const id = Number(userId);
-  const base = USERS.find((u) => u.n === id);
-  if (!base) return null;
-  const extra = PROFILE_DETAILS[id] || {
-    dob: "—",
-    phone: "—",
-    whatsapp: "—",
-    address: "—",
-    state: "—",
-    joined: "—",
-    termsIp: "—",
-    termsAccepted: "—",
-    programs: 1,
-    programLabel: "LM",
-    subscriptionDays: 180,
-    tags: [base.goal],
-    goals: [base.goal],
+function emptyProfileExtras(goal = "") {
+  return {
+    dob: "",
+    phone: "",
+    whatsapp: "",
+    address: "",
+    state: "",
+    joined: "",
+    joinedAgo: "",
+    lastReviewed: "",
+    lastUpdated: "",
+    termsIp: "",
+    termsAccepted: "",
+    programs: 0,
+    programLabel: "",
+    subscriptionDays: 0,
+    tags: goal ? [goal] : [],
+    goals: goal ? [goal] : [],
   };
+}
+
+/** Merge list/API row into the client-profile shape; missing unique fields stay empty. */
+export function profileFromListUser(row, userId) {
+  if (!row && !userId) return null;
+  const base = row || {
+    id: String(userId),
+    n: String(userId),
+    name: "",
+    email: "",
+    phone: "",
+    tier: "Seek",
+    goal: "",
+    coach: "— Unassigned —",
+    awc: "",
+    lastActive: "",
+    status: "Active",
+    utype: "individual",
+    team: "",
+    ageDays: 0,
+    joined: "",
+    joinedAgo: "",
+    lastReviewed: "",
+    lastUpdated: "",
+  };
+  const extra = emptyProfileExtras(base.goal);
+  return {
+    ...extra,
+    ...base,
+    name: String(base.name || "").trim() || "Client",
+    phone: base.phone || extra.phone,
+    whatsapp: base.whatsapp || extra.whatsapp,
+    dob: base.dob || extra.dob,
+    address: base.address || extra.address,
+    state: base.state || extra.state,
+    joined: base.joined || extra.joined,
+    joinedAgo: base.joinedAgo || extra.joinedAgo,
+    lastReviewed: base.lastReviewed || extra.lastReviewed,
+    lastUpdated: base.lastUpdated || extra.lastUpdated,
+    tags: Array.isArray(base.tags) && base.tags.length ? base.tags : extra.tags,
+    goals: Array.isArray(base.goals) && base.goals.length ? base.goals : extra.goals,
+    programLabel: base.programLabel || extra.programLabel,
+    tierStyle: tierStyle(base.tier),
+  };
+}
+
+export function getUserProfile(userId) {
+  const raw = String(userId || "").trim();
+  if (!raw) return null;
+  const id = Number(raw);
+  const base = Number.isFinite(id) && id > 0 ? USERS.find((u) => u.n === id) : null;
+  if (!base) return profileFromListUser(null, raw);
+  const extra = PROFILE_DETAILS[id] || emptyProfileExtras(base.goal);
+  if (!PROFILE_DETAILS[id]) {
+    extra.programs = 1;
+    extra.programLabel = "LM";
+    extra.subscriptionDays = 180;
+  }
   return {
     ...base,
     ...extra,
