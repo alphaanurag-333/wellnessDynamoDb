@@ -14,6 +14,13 @@ function getModalRoot() {
     || document.querySelector(".updated-admin");
 }
 
+const BMS_METRIC_TABS = {
+  steps: "steps",
+  meditation: "mental",
+  pranayam: "mental",
+  exercise: "exercise",
+};
+
 export function DailyMetricModal({ metric, onClose, onNavigate }) {
   useEffect(() => {
     function onKeyDown(event) {
@@ -93,7 +100,11 @@ export function DailyMetricModal({ metric, onClose, onNavigate }) {
           className="ua-cp-btn ua-cp-btn--primary ua-cp-daily-modal__footer"
           onClick={() => {
             onClose?.();
-            onNavigate?.(modal.footerSection);
+            if (modal.footerSection === "bms") {
+              onNavigate?.("bms", { tab: BMS_METRIC_TABS[metric.id] || "steps" });
+            } else {
+              onNavigate?.(modal.footerSection);
+            }
           }}
         >
           {modal.footerLabel}

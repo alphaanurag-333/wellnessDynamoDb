@@ -2,9 +2,24 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { PillTabs } from "../shared.jsx";
 import {
   INTERNAL_PARAMS,
+  cloneAiPanels,
   countSelected,
   flattenTests,
 } from "../../data/internalParametersData.js";
+
+function EditActions({ editing, onEdit, onCancel, onSave }) {
+  if (editing) {
+    return (
+      <div className="ua-cp-ip-edit-actions">
+        <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={onCancel}>Cancel</button>
+        <button type="button" className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm" onClick={onSave}>Save</button>
+      </div>
+    );
+  }
+  return (
+    <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={onEdit}>✎ Edit</button>
+  );
+}
 
 function SummaryCards({ onToggleHistory, historyOpen }) {
   return (
@@ -27,17 +42,58 @@ function SummaryCards({ onToggleHistory, historyOpen }) {
   );
 }
 
-function ReportHistory() {
+function ReportHistory({ onToast }) {
+  const [range, setRange] = useState("all");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const reports = INTERNAL_PARAMS.reportHistory;
+
   return (
     <div className="ua-cp-ip-history">
-      {INTERNAL_PARAMS.reportHistory.map((r) => (
+      <div className="ua-cp-ip-history__toolbar">
+        <div className="ua-cp-ip-history__filters">
+          <span className="ua-cp-ip-history__download-label">Download</span>
+          <label className="ua-cp-ip-history__date-field">
+            <span>From</span>
+            <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+          </label>
+          <label className="ua-cp-ip-history__date-field">
+            <span>To</span>
+            <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+          </label>
+          <div className="ua-cp-ip-history__range">
+            {["6m", "1y", "all"].map((id) => (
+              <button
+                key={id}
+                type="button"
+                className={`ua-cp-ip-history__range-btn${range === id ? " ua-cp-ip-history__range-btn--active" : ""}`}
+                onClick={() => setRange(id)}
+              >
+                {id === "all" ? "All" : id}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="ua-cp-ip-history__toolbar-actions">
+          <button type="button" className="ua-cp-btn ua-cp-btn--orange ua-cp-btn--sm" onClick={() => onToast(`Downloading ${reports.length} reports`)}>
+            ↓ Download {reports.length}
+          </button>
+          <span className="ua-cp-ip-history__count">{reports.length} of {reports.length} reports</span>
+        </div>
+      </div>
+      {reports.map((r) => (
         <div key={r.date} className="ua-cp-ip-history__item">
-          <div className="ua-cp-ip-history__top">
-            <div>
+          <div className="ua-cp-ip-history__row">
+            <div className="ua-cp-ip-history__info">
               <strong>{r.date}</strong>
               <span>{r.meta}</span>
             </div>
-            <span className={`ua-cp-ip-badge ua-cp-ip-badge--${r.tone}`}>{r.status}</span>
+            <div className="ua-cp-ip-history__actions">
+              <span className={`ua-cp-ip-badge ua-cp-ip-badge--${r.tone}`}>{r.status}</span>
+              <button type="button" className="ua-cp-ip-history__dl" onClick={() => onToast(`Downloading report ${r.date}`)} aria-label={`Download report ${r.date}`}>
+                ↓
+              </button>
+            </div>
           </div>
           {r.markers.length ? (
             <div className="ua-cp-ip-history__markers">
@@ -118,9 +174,10 @@ function NamespaceSearch({ groups, onAdd, onToast }) {
 }
 
 function RecommendedTestsTab({ user, onToast }) {
-  const [preset, setPreset] = useState("Fat Loss");
-  const [published, setPublished] = useState(INTERNAL_PARAMS.publishedStatus.sent);
-  const [dirty, setDirty] = useState(false);
+  const [presets, setPresets] = useState(["Fat Loss", "Diabetes Reversal"]);
+  const [focusedPreset, setFocusedPreset] = useState("Diabetes Reversal");
+  const [published, setPublished] = useState(false);
+  const [dirty, setDirty] = useState(true);
 
   const initialSelected = useMemo(() => {
     const map = {};
@@ -140,6 +197,22 @@ function RecommendedTestsTab({ user, onToast }) {
   function markDirty() {
     setDirty(true);
     setPublished(false);
+  }
+
+  function togglePreset(goal) {
+    setFocusedPreset(goal);
+    setPresets((prev) => {
+      const next = prev.includes(goal) ? prev.filter((g) => g !== goal) : [...prev, goal];
+      onToast(next.includes(goal) ? `${goal} preset applied` : `Removed ${goal} preset`);
+      return next;
+    });
+    markDirty();
+  }
+
+  function presetClass(goal) {
+    if (focusedPreset === goal && presets.includes(goal)) return " ua-cp-ip-preset__pill--focus";
+    if (presets.includes(goal)) return " ua-cp-ip-preset__pill--applied";
+    return "";
   }
 
   function toggleTest(key) {
@@ -179,7 +252,7 @@ function RecommendedTestsTab({ user, onToast }) {
   function publish() {
     setPublished(true);
     setDirty(false);
-    onToast(`Published test list to ${user.name}`);
+    onToast(`Test list published · sent to ${user.name.split(" ")[0]} on WhatsApp and in the app`);
   }
 
   return (
@@ -216,8 +289,8 @@ function RecommendedTestsTab({ user, onToast }) {
             <button
               key={g}
               type="button"
-              className={`ua-cp-ip-preset__pill${preset === g ? " ua-cp-ip-preset__pill--active" : ""}`}
-              onClick={() => { setPreset(g); onToast(`Applied ${g} preset`); }}
+              className={`ua-cp-ip-preset__pill${presetClass(g)}`}
+              onClick={() => togglePreset(g)}
             >
               {g}
             </button>
@@ -230,33 +303,35 @@ function RecommendedTestsTab({ user, onToast }) {
       {groups.map((group) => {
         const counts = countSelected(group, selected);
         const allOn = counts.n === counts.total;
+        const partial = counts.n > 0 && !allOn;
         return (
           <div key={group.id} className="ua-cp-ip-test-group">
             <div className="ua-cp-ip-test-group__head">
-              <button type="button" className={`ua-cp-ip-check ua-cp-ip-check--head${allOn ? " ua-cp-ip-check--on" : ""}`} onClick={() => toggleGroup(group)} aria-label={`Toggle ${group.name}`}>
-                {allOn ? "✓" : ""}
+              <button
+                type="button"
+                className={`ua-cp-ip-check ua-cp-ip-check--head${allOn || partial ? " ua-cp-ip-check--on" : ""}${partial ? " ua-cp-ip-check--partial" : ""}`}
+                onClick={() => toggleGroup(group)}
+                aria-label={`Toggle ${group.name}`}
+              >
+                {allOn ? "✓" : partial ? "−" : ""}
               </button>
-              <strong>{group.name}</strong>
+              <strong className="ua-cp-ip-test-group__title">{group.name}</strong>
               <span className="ua-cp-ip-test-group__count">{counts.n}/{counts.total} selected</span>
               <button type="button" className="ua-cp-ip-test-group__remove" onClick={() => removeGroup(group.id)} aria-label="Remove group">×</button>
             </div>
             <div className="ua-cp-ip-test-group__grid">
-              {group.tests.map((row, ri) => (
-                <div key={ri} className="ua-cp-ip-test-group__row">
-                  {row.map((test) => test ? (
-                    <label key={test} className="ua-cp-ip-test-item">
-                      <input
-                        type="checkbox"
-                        checked={!!selected[`${group.id}:${test}`]}
-                        onChange={() => toggleTest(`${group.id}:${test}`)}
-                      />
-                      <span className={`ua-cp-ip-check${selected[`${group.id}:${test}`] ? " ua-cp-ip-check--on" : ""}`}>
-                        {selected[`${group.id}:${test}`] ? "✓" : ""}
-                      </span>
-                      {test}
-                    </label>
-                  ) : <span key={`empty-${ri}`} />)}
-                </div>
+              {flattenTests(group).map((test) => (
+                <label key={test} className="ua-cp-ip-test-item">
+                  <input
+                    type="checkbox"
+                    checked={!!selected[`${group.id}:${test}`]}
+                    onChange={() => toggleTest(`${group.id}:${test}`)}
+                  />
+                  <span className={`ua-cp-ip-check${selected[`${group.id}:${test}`] ? " ua-cp-ip-check--on" : ""}`}>
+                    {selected[`${group.id}:${test}`] ? "✓" : ""}
+                  </span>
+                  <span className="ua-cp-ip-test-item__label">{test}</span>
+                </label>
               ))}
             </div>
           </div>
@@ -266,7 +341,28 @@ function RecommendedTestsTab({ user, onToast }) {
   );
 }
 
-function AiReadingCell({ reading }) {
+function AiReadingCell({ reading, editing, onChange }) {
+  if (editing) {
+    return (
+      <td className="ua-cp-ip-ai__reading ua-cp-ip-ai__reading--edit">
+        <input
+          className="ua-cp-ip-ai__val-input"
+          value={reading.value}
+          onChange={(e) => onChange({ ...reading, value: e.target.value })}
+          aria-label="Parameter value"
+        />
+        <textarea
+          className="ua-cp-ip-ai__note-input"
+          value={reading.note}
+          rows={3}
+          onChange={(e) => onChange({ ...reading, note: e.target.value })}
+          placeholder="Interpretation note…"
+          aria-label="Interpretation note"
+        />
+      </td>
+    );
+  }
+
   return (
     <td className="ua-cp-ip-ai__reading">
       <div className={`ua-cp-ip-ai__val ua-cp-ip-ai__val--${reading.tone}`}>{reading.value}</div>
@@ -276,123 +372,258 @@ function AiReadingCell({ reading }) {
 }
 
 function ReportAnalysisTab({ onToast }) {
-  const { reportUpload, aiDates, aiPanels, bloodSummary, protocol, nutritionSummary } = INTERNAL_PARAMS;
-  const analysed = reportUpload.analysed;
+  const { aiDates, protocol, nutritionSummary: initialNutrition } = INTERNAL_PARAMS;
+  const [analysed, setAnalysed] = useState(INTERNAL_PARAMS.reportUpload.analysed);
+  const [aiPanels, setAiPanels] = useState(() => cloneAiPanels(INTERNAL_PARAMS.aiPanels));
+  const [aiDraft, setAiDraft] = useState(null);
+  const [aiEditing, setAiEditing] = useState(false);
+
+  const [bloodSummary, setBloodSummary] = useState(INTERNAL_PARAMS.bloodSummary);
+  const [summaryDraft, setSummaryDraft] = useState("");
+  const [summaryEditing, setSummaryEditing] = useState(false);
+
+  const [protocolItems, setProtocolItems] = useState(protocol.items);
+  const [protocolDraft, setProtocolDraft] = useState([]);
+  const [protocolEditing, setProtocolEditing] = useState(false);
+
+  const [nutritionLatest, setNutritionLatest] = useState(initialNutrition.latest.text);
+  const [nutritionDraft, setNutritionDraft] = useState("");
+  const [nutritionEditing, setNutritionEditing] = useState(false);
+
+  function updateReading(panelIdx, rowIdx, readingIdx, nextReading) {
+    setAiDraft((prev) => {
+      const panels = cloneAiPanels(prev ?? aiPanels);
+      panels[panelIdx].rows[rowIdx].readings[readingIdx] = nextReading;
+      return panels;
+    });
+  }
+
+  function startAiEdit() {
+    setAiDraft(cloneAiPanels(aiPanels));
+    setAiEditing(true);
+  }
+
+  function cancelAiEdit() {
+    setAiDraft(null);
+    setAiEditing(false);
+  }
+
+  function saveAiEdit() {
+    if (aiDraft) setAiPanels(aiDraft);
+    setAiDraft(null);
+    setAiEditing(false);
+    onToast("AI interpretation saved");
+  }
+
+  function startSummaryEdit() {
+    setSummaryDraft(bloodSummary.join("\n"));
+    setSummaryEditing(true);
+  }
+
+  function saveSummaryEdit() {
+    setBloodSummary(summaryDraft.split("\n").map((s) => s.trim()).filter(Boolean));
+    setSummaryEditing(false);
+    onToast("Blood report summary saved");
+  }
+
+  function startProtocolEdit() {
+    setProtocolDraft([...protocolItems]);
+    setProtocolEditing(true);
+  }
+
+  function saveProtocolEdit() {
+    setProtocolItems(protocolDraft.map((s) => s.trim()).filter(Boolean));
+    setProtocolEditing(false);
+    onToast("Protocol saved");
+  }
+
+  function startNutritionEdit() {
+    setNutritionDraft(nutritionLatest);
+    setNutritionEditing(true);
+  }
+
+  function saveNutritionEdit() {
+    setNutritionLatest(nutritionDraft.trim());
+    setNutritionEditing(false);
+    onToast("Nutrition summary saved");
+  }
+
+  const panels = aiEditing && aiDraft ? aiDraft : aiPanels;
 
   return (
     <div className="ua-cp-ip-report">
       <div className="ua-cp-ip-upload">
         <div className="ua-cp-ip-upload__icon">📄</div>
         <div className="ua-cp-ip-upload__body">
-          <strong>{reportUpload.title}</strong>
-          <span>{reportUpload.sub}</span>
+          <strong>{INTERNAL_PARAMS.reportUpload.title}</strong>
+          <span>{INTERNAL_PARAMS.reportUpload.sub}</span>
         </div>
         <div className="ua-cp-ip-upload__actions">
           <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={() => onToast("Downloading report")}>↓ Download</button>
           {analysed ? (
             <>
               <span className="ua-cp-ip-badge ua-cp-ip-badge--good">AI analysed</span>
-              <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm" onClick={() => onToast("Resubmitting to AI")}>⚡ Resubmit to AI</button>
+              <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm" onClick={() => { setAnalysed(true); onToast("Resubmitting to AI"); }}>⚡ Resubmit to AI</button>
             </>
           ) : (
-            <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm" onClick={() => onToast("Submitted to AI")}>⚡ Submit to AI</button>
+            <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm" onClick={() => { setAnalysed(true); onToast("Submitted to AI"); }}>⚡ Submit to AI</button>
           )}
         </div>
       </div>
 
-      <div className="ua-cp-ip-ai">
-        <div className="ua-cp-ip-ai__head">
-          <div>
-            <strong>⚡ AI interpretation</strong>
-            <span>value + interpretation per date</span>
-          </div>
-          <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={() => onToast("Edit mode")}>✎ Edit</button>
-        </div>
-        <div className="ua-cp-ip-ai__table-wrap">
-          <table className="ua-cp-ip-ai__table">
-            <thead>
-              <tr>
-                <th>Parameter</th>
-                <th>Optimal</th>
-                <th>RR · PharmEasy</th>
-                {aiDates.map((d) => <th key={d}>{d}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {aiPanels.map((panel) => (
-                <Fragment key={panel.title}>
-                  <tr className="ua-cp-ip-ai__cat">
-                    <td colSpan={3 + aiDates.length}>{panel.title}</td>
-                  </tr>
-                  {panel.rows.map((row) => (
-                    <tr key={row.name}>
-                      <td className="ua-cp-ip-ai__param">{row.name}</td>
-                      <td>{row.optimal}</td>
-                      <td>{row.rr}</td>
-                      {row.readings.map((r, i) => <AiReadingCell key={i} reading={r} />)}
-                    </tr>
-                  ))}
-                </Fragment>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="ua-cp-ip-summary-card">
-        <div className="ua-cp-ip-summary-card__head">
-          <div>
-            <strong>Blood report summary</strong>
-            <span className="ua-cp-ip-tag ua-cp-ip-tag--ai">AI GENERATED</span>
-          </div>
-          <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={() => onToast("Editing summary")}>✎ Edit</button>
-        </div>
-        <p className="ua-cp-ip-summary-card__sub">Synthesised from the latest analysed panel</p>
-        <ul className="ua-cp-ip-summary-card__list">
-          {bloodSummary.map((item) => <li key={item}>{item}</li>)}
-        </ul>
-      </div>
-
-      <div className="ua-cp-ip-protocol">
-        <div className="ua-cp-ip-protocol__head">
-          <div>
-            <strong>Protocol · nutritionist recommendation</strong>
-            <span>AI-generated · latest {protocol.latest}</span>
-          </div>
-          <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={() => onToast("Editing protocol")}>✎ Edit</button>
-        </div>
-        <div className="ua-cp-ip-protocol__items">
-          {protocol.items.map((item) => (
-            <div key={item} className="ua-cp-ip-protocol__item">
-              <span className="ua-cp-ip-protocol__check">✓</span>
-              {item}
+      {analysed ? (
+        <>
+          <div className="ua-cp-ip-ai">
+            <div className="ua-cp-ip-ai__head">
+              <div>
+                <strong>⚡ AI interpretation</strong>
+                <span>value + interpretation per date</span>
+              </div>
+              <EditActions
+                editing={aiEditing}
+                onEdit={startAiEdit}
+                onCancel={cancelAiEdit}
+                onSave={saveAiEdit}
+              />
             </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="ua-cp-ip-prev">
-        <h4 className="ua-cp-ip-prev__title">Previous protocols</h4>
-        {protocol.previous.map((p) => (
-          <div key={p.date} className="ua-cp-ip-prev__card">
-            <div className="ua-cp-ip-prev__date">{p.date}</div>
-            <ul>{p.items.map((item) => <li key={item}>{item}</li>)}</ul>
+            <div className="ua-cp-ip-ai__table-wrap">
+              <table className="ua-cp-ip-ai__table">
+                <thead>
+                  <tr>
+                    <th className="ua-cp-ip-ai__sticky ua-cp-ip-ai__sticky--1">Parameter</th>
+                    <th className="ua-cp-ip-ai__sticky ua-cp-ip-ai__sticky--2">Optimal</th>
+                    <th className="ua-cp-ip-ai__sticky ua-cp-ip-ai__sticky--3">RR · PharmEasy</th>
+                    {aiDates.map((d) => <th key={d}>{d}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {panels.map((panel, panelIdx) => (
+                    <Fragment key={panel.title}>
+                      <tr className="ua-cp-ip-ai__cat">
+                        <td colSpan={3 + aiDates.length}>{panel.title}</td>
+                      </tr>
+                      {panel.rows.map((row, rowIdx) => (
+                        <tr key={row.name}>
+                          <td className="ua-cp-ip-ai__param ua-cp-ip-ai__sticky ua-cp-ip-ai__sticky--1">{row.name}</td>
+                          <td className="ua-cp-ip-ai__sticky ua-cp-ip-ai__sticky--2">{row.optimal}</td>
+                          <td className="ua-cp-ip-ai__sticky ua-cp-ip-ai__sticky--3">{row.rr}</td>
+                          {row.readings.map((r, readingIdx) => (
+                            <AiReadingCell
+                              key={readingIdx}
+                              reading={r}
+                              editing={aiEditing}
+                              onChange={(next) => updateReading(panelIdx, rowIdx, readingIdx, next)}
+                            />
+                          ))}
+                        </tr>
+                      ))}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        ))}
-      </div>
+
+          <div className="ua-cp-ip-summary-card">
+            <div className="ua-cp-ip-summary-card__head">
+              <div>
+                <strong>Blood report summary</strong>
+                <span className="ua-cp-ip-tag ua-cp-ip-tag--ai">AI GENERATED</span>
+              </div>
+              <EditActions
+                editing={summaryEditing}
+                onEdit={startSummaryEdit}
+                onCancel={() => setSummaryEditing(false)}
+                onSave={saveSummaryEdit}
+              />
+            </div>
+            <p className="ua-cp-ip-summary-card__sub">Synthesised from the latest analysed panel</p>
+            {summaryEditing ? (
+              <textarea
+                className="ua-cp-ip-edit-textarea"
+                value={summaryDraft}
+                rows={8}
+                onChange={(e) => setSummaryDraft(e.target.value)}
+                placeholder="One bullet per line…"
+              />
+            ) : (
+              <ul className="ua-cp-ip-summary-card__list">
+                {bloodSummary.map((item) => <li key={item}>{item}</li>)}
+              </ul>
+            )}
+          </div>
+
+          <div className="ua-cp-ip-protocol">
+            <div className="ua-cp-ip-protocol__head">
+              <div>
+                <strong>Protocol · nutritionist recommendation</strong>
+                <span>AI-generated · latest {protocol.latest}</span>
+              </div>
+              <EditActions
+                editing={protocolEditing}
+                onEdit={startProtocolEdit}
+                onCancel={() => setProtocolEditing(false)}
+                onSave={saveProtocolEdit}
+              />
+            </div>
+            <div className="ua-cp-ip-protocol__items">
+              {(protocolEditing ? protocolDraft : protocolItems).map((item, idx) => (
+                <div key={idx} className="ua-cp-ip-protocol__item">
+                  <span className="ua-cp-ip-protocol__check">✓</span>
+                  {protocolEditing ? (
+                    <input
+                      className="ua-cp-ip-protocol__input"
+                      value={item}
+                      onChange={(e) => {
+                        const next = [...protocolDraft];
+                        next[idx] = e.target.value;
+                        setProtocolDraft(next);
+                      }}
+                    />
+                  ) : item}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="ua-cp-ip-prev">
+            <h4 className="ua-cp-ip-prev__title">Previous protocols</h4>
+            {protocol.previous.map((p) => (
+              <div key={p.date} className="ua-cp-ip-prev__card">
+                <div className="ua-cp-ip-prev__date">{p.date}</div>
+                <ul>{p.items.map((item) => <li key={item}>{item}</li>)}</ul>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : null}
 
       <div className="ua-cp-ip-nutrition">
         <div className="ua-cp-ip-nutrition__head">
           <h4>Nutrition summary</h4>
-          <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={() => onToast("Editing nutrition summary")}>✎ Edit</button>
+          <EditActions
+            editing={nutritionEditing}
+            onEdit={startNutritionEdit}
+            onCancel={() => setNutritionEditing(false)}
+            onSave={saveNutritionEdit}
+          />
         </div>
         <div className="ua-cp-ip-nutrition__latest">
           <span className="ua-cp-ip-tag ua-cp-ip-tag--latest">Latest</span>
-          <span className="ua-cp-ip-nutrition__date">{nutritionSummary.latest.date}</span>
-          <p>{nutritionSummary.latest.text}</p>
+          <span className="ua-cp-ip-nutrition__date">{initialNutrition.latest.date}</span>
+          {nutritionEditing ? (
+            <textarea
+              className="ua-cp-ip-edit-textarea ua-cp-ip-edit-textarea--compact"
+              value={nutritionDraft}
+              rows={4}
+              onChange={(e) => setNutritionDraft(e.target.value)}
+            />
+          ) : (
+            <p>{nutritionLatest}</p>
+          )}
         </div>
         <h4 className="ua-cp-ip-nutrition__hist-title">History</h4>
-        {nutritionSummary.history.map((h) => (
+        {initialNutrition.history.map((h) => (
           <div key={h.date} className="ua-cp-ip-nutrition__hist-card">
             <div className="ua-cp-ip-nutrition__date">{h.date}</div>
             <p>{h.text}</p>
@@ -417,7 +648,7 @@ export function InternalParametersSection({ user, onToast }) {
       </div>
 
       <SummaryCards historyOpen={historyOpen} onToggleHistory={() => setHistoryOpen((o) => !o)} />
-      {historyOpen ? <ReportHistory /> : null}
+      {historyOpen ? <ReportHistory onToast={onToast} /> : null}
 
       <PillTabs
         size="md"

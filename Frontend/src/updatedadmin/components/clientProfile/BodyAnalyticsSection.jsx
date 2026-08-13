@@ -1,5 +1,17 @@
-import { useState } from "react";
-import { BODY_ANALYTICS, PHOTO_ANGLES } from "../../data/bodyAnalyticsData.js";
+import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import {
+  BODY_ANALYTICS,
+  PHOTO_ANGLES,
+  buildMeasurementRows,
+  buildMetabolicRows,
+  formatHistoryColumns,
+  getHistoryWindow,
+} from "../../data/bodyAnalyticsData.js";
+
+function getModalRoot() {
+  return document.querySelector(".updated-admin .ua-cp-drawer") || document.querySelector(".updated-admin");
+}
 
 function SegToggle({ options, value, onChange, size = "sm" }) {
   return (
@@ -20,7 +32,14 @@ function SegToggle({ options, value, onChange, size = "sm" }) {
   );
 }
 
-function HistoryTable({ title, columns, rows, unitToggle }) {
+function DeltaCell({ value, tone }) {
+  if (tone === "bad") {
+    return <span className="ua-cp-ba-table__delta-pill ua-cp-ba-table__delta-pill--bad">{value}</span>;
+  }
+  return value;
+}
+
+function HistoryTable({ title, labelCol, columns, rows, unitToggle }) {
   return (
     <section className="ua-cp-ba-block">
       <div className="ua-cp-ba-block__head">
@@ -31,11 +50,11 @@ function HistoryTable({ title, columns, rows, unitToggle }) {
         <table className="ua-cp-ba-table">
           <thead>
             <tr>
-              <th>{columns[0]}</th>
-              {columns.slice(1).map((col) => (
+              <th className="ua-cp-ba-table__label-col">{labelCol}</th>
+              {columns.map((col) => (
                 <th key={col}>{col}</th>
               ))}
-              <th className="ua-cp-ba-table__delta">Δ</th>
+              <th className="ua-cp-ba-table__delta-col">Δ</th>
             </tr>
           </thead>
           <tbody>
@@ -43,9 +62,11 @@ function HistoryTable({ title, columns, rows, unitToggle }) {
               <tr key={row.label}>
                 <td className="ua-cp-ba-table__label">{row.label}</td>
                 {row.values.map((val, i) => (
-                  <td key={i}>{val}</td>
+                  <td key={`${row.label}-${i}`}>{val}</td>
                 ))}
-                <td className={`ua-cp-ba-table__delta ua-cp-ba-table__delta--${row.tone}`}>{row.delta}</td>
+                <td className={`ua-cp-ba-table__delta ua-cp-ba-table__delta--${row.tone}`}>
+                  <DeltaCell value={row.delta} tone={row.tone} />
+                </td>
               </tr>
             ))}
           </tbody>
@@ -57,14 +78,14 @@ function HistoryTable({ title, columns, rows, unitToggle }) {
 
 function PhotoCards({ onOpen }) {
   return (
-    <section className="ua-cp-ba-block">
+    <section className="ua-cp-ba-block ua-cp-ba-block--photos">
       <div className="ua-cp-ba-block__head">
         <h3 className="ua-cp-ba-block__title">Progress photos · 3 angles</h3>
         <span className="ua-cp-ba-block__meta">Latest: {BODY_ANALYTICS.latestPhotoDate}</span>
       </div>
       <div className="ua-cp-ba-photos">
         {PHOTO_ANGLES.map((angle) => (
-          <button key={angle} type="button" className="ua-cp-ba-photo cdact" onClick={() => onOpen(angle)}>
+          <button key={angle} type="button" className="ua-cp-ba-photo" onClick={() => onOpen(angle)}>
             <span className="ua-cp-ba-photo__icon" aria-hidden="true">📷</span>
             <span className="ua-cp-ba-photo__label">{angle}</span>
             <span className="ua-cp-ba-photo__hint">Tap to view all</span>
@@ -76,8 +97,11 @@ function PhotoCards({ onOpen }) {
 }
 
 function PhotoModal({ angle, photos, onClose, onToast }) {
-  return (
-    <div className="ua-cp-modal-backdrop" onClick={onClose} role="presentation">
+  const root = getModalRoot();
+  if (!root) return null;
+
+  return createPortal(
+    <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={onClose} role="presentation">
       <div className="ua-cp-modal ua-cp-modal--photos" onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="photo-modal-title">
         <div className="ua-cp-modal__head ua-cp-modal__head--photos">
           <div>
@@ -108,24 +132,34 @@ function PhotoModal({ angle, photos, onClose, onToast }) {
           ))}
         </div>
       </div>
-    </div>
+    </div>,
+    root,
   );
 }
 
 export function BodyAnalyticsSection({ onToast }) {
-  const [historyMode, setHistoryMode] = useState("weekly");
-  const [period, setPeriod] = useState(BODY_ANALYTICS.weeklyOptions[0]);
+  const [historyMode, setHistoryMode] = useState("monthly");
+  const [period, setPeriod] = useState(BODY_ANALYTICS.monthlyOptions[0]);
   const [unit, setUnit] = useState("cm");
   const [photoAngle, setPhotoAngle] = useState(null);
 
   const isWeekly = historyMode === "weekly";
-  const periods = isWeekly ? BODY_ANALYTICS.weeklyPeriods : BODY_ANALYTICS.monthlyPeriods;
   const periodOptions = isWeekly ? BODY_ANALYTICS.weeklyOptions : BODY_ANALYTICS.monthlyOptions;
-  const measureKey = isWeekly ? "weekly" : "monthly";
-  const measureRows = BODY_ANALYTICS.measurements[measureKey][unit];
-  const metabolicRows = BODY_ANALYTICS.metabolic[measureKey];
-  const measureCol = isWeekly ? "MEASURE" : "MEASURE";
-  const metricCol = "METRIC";
+
+  const historyColumns = useMemo(
+    () => formatHistoryColumns(historyMode, getHistoryWindow(historyMode, period)),
+    [historyMode, period],
+  );
+
+  const measureRows = useMemo(
+    () => buildMeasurementRows(historyMode, unit, period),
+    [historyMode, unit, period],
+  );
+
+  const metabolicRows = useMemo(
+    () => buildMetabolicRows(historyMode, period),
+    [historyMode, period],
+  );
 
   function onHistoryChange(mode) {
     setHistoryMode(mode);
@@ -146,7 +180,9 @@ export function BodyAnalyticsSection({ onToast }) {
       <div className="ua-cp-ba-head">
         <div>
           <h2 className="ua-cp-ba-head__title">Body analytics</h2>
-          <p className="ua-cp-ba-head__hint">{BODY_ANALYTICS.weeklyHint}</p>
+          <p className="ua-cp-ba-head__hint">
+            {isWeekly ? BODY_ANALYTICS.weeklyHint : BODY_ANALYTICS.monthlyHint}
+          </p>
         </div>
         <div className="ua-cp-ba-head__controls">
           <span className="ua-cp-ba-head__history-label">History</span>
@@ -172,14 +208,16 @@ export function BodyAnalyticsSection({ onToast }) {
 
       <HistoryTable
         title="Body measurements · history"
-        columns={[measureCol, ...periods]}
+        labelCol="Measure"
+        columns={historyColumns}
         rows={measureRows}
         unitToggle={unitToggle}
       />
 
       <HistoryTable
         title="Metabolic health metrics · history"
-        columns={[metricCol, ...periods]}
+        labelCol="Metric"
+        columns={historyColumns}
         rows={metabolicRows}
       />
 

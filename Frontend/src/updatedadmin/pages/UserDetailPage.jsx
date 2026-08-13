@@ -8,6 +8,8 @@ import {
   HealthProgressSection,
   InternalParametersSection,
   LaunchSection,
+  FoodSection,
+  BmsSection,
   NutritionsSection,
   PersonalDetailsSection,
   PlaceholderSection,
@@ -36,10 +38,14 @@ function renderSection(section, user, onToast, onNavigate) {
       return <InternalParametersSection user={user} onToast={onToast} />;
     case "launch":
       return <LaunchSection user={user} onToast={onToast} />;
+    case "food":
+      return <FoodSection onToast={onToast} />;
+    case "bms":
+      return <BmsSection onToast={onToast} />;
     case "nutritions":
       return <NutritionsSection onToast={onToast} />;
     case "health-progress":
-      return <HealthProgressSection user={user} />;
+      return <HealthProgressSection user={user} onToast={onToast} />;
     default: {
       const meta = PLACEHOLDER_META[section];
       return meta ? <PlaceholderSection {...meta} /> : <PlaceholderSection title="Section" />;
@@ -62,7 +68,7 @@ export function UserDetailPage() {
     return <Navigate to="/updatedadmin/users" replace />;
   }
 
-  function setSection(next, { fromBack = false, tab, program } = {}) {
+  function setSection(next, { fromBack = false, tab, program, mode } = {}) {
     if (!fromBack && next !== section) {
       sectionHistory.current = [...sectionHistory.current, section];
     }
@@ -72,12 +78,17 @@ export function UserDetailPage() {
         p.delete("section");
         p.delete("tab");
         p.delete("program");
+        p.delete("mode");
       } else {
         p.set("section", next);
         if (next === "launch" && tab) p.set("tab", tab);
-        else p.delete("tab");
+        else if (next === "bms" && tab) p.set("tab", tab);
+        else if (next !== "food") p.delete("tab");
         if (next === "health-progress" && program) p.set("program", program);
         else p.delete("program");
+        if (next === "bms") p.set("mode", "detailed");
+        else if (mode) p.set("mode", mode);
+        else if (next !== "food") p.delete("mode");
       }
       return p;
     }, { replace: true });

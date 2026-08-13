@@ -1,10 +1,10 @@
 export const INTERNAL_PARAMS = {
-  lastReport: { date: "03 Aug 2026", ago: "uploaded 9 days ago" },
-  nextDue: { date: "01 Nov 2026", sub: "in 81 days · 90-day cycle" },
+  lastReport: { date: "04 Aug 2026", ago: "uploaded 9 days ago" },
+  nextDue: { date: "02 Nov 2026", sub: "in 81 days · 90-day cycle" },
   outOfRangeAlert: "3 markers out of range in the latest report",
   reportHistory: [
     {
-      date: "03 Aug 2026",
+      date: "04 Aug 2026",
       meta: "Thyrocare · home collection · reviewed by Anita Rao · 22 markers",
       status: "3 OUT OF RANGE",
       tone: "bad",
@@ -99,7 +99,7 @@ export const INTERNAL_PARAMS = {
     sub: "Added by client · 20 Jul 2026 · ready for AI analysis",
     analysed: true,
   },
-  aiDates: ["14 DEC 25", "2 MAR 26"],
+  aiDates: ["14 DEC 25", "2 MAR 26", "4 MAY 26", "5 MAY 26"],
   aiPanels: [
     {
       title: "GLUCOSE PANEL",
@@ -111,6 +111,8 @@ export const INTERNAL_PARAMS = {
           readings: [
             { value: "8.4", tone: "bad", note: "Consistently in the diabetic range and rising over the last three draws. This reflects a sustained glucose load over ~3 months and points to worsening insulin resistance rather than a one-off spike. Prioritise glycemic control before addressing lipids." },
             { value: "6.5", tone: "bad", note: "Consistently in the diabetic range and rising over the last three draws. This reflects a sustained glucose load over ~3 months and points to worsening insulin resistance rather than a one-off spike. Prioritise glycemic control before addressing lipids." },
+            { value: "9.1", tone: "bad", note: "Rebound after a brief improvement — likely due to inconsistent meal timing and higher post-dinner carbs. Reinforce low-GI dinners and post-meal walks." },
+            { value: "10.2", tone: "bad", note: "Trending upward again; insulin resistance remains the primary driver. Consider tightening carb portions and reviewing sleep quality." },
           ],
         },
         {
@@ -120,6 +122,8 @@ export const INTERNAL_PARAMS = {
           readings: [
             { value: "194", tone: "bad", note: "Estimated average glucose tracks the HbA1c trend — day-to-day sugars are running high, so post-meal spikes are likely the main driver." },
             { value: "139.9", tone: "bad", note: "Estimated average glucose tracks the HbA1c trend — day-to-day sugars are running high, so post-meal spikes are likely the main driver." },
+            { value: "246.04", tone: "bad", note: "Sharp rise aligns with the HbA1c rebound — review evening meal composition and snacking patterns." },
+            { value: "214.5", tone: "bad", note: "Still elevated despite slight improvement from the prior draw; fasting and post-meal control both need attention." },
           ],
         },
         {
@@ -129,6 +133,8 @@ export const INTERNAL_PARAMS = {
           readings: [
             { value: "131.67", tone: "bad", note: "Fasting sugar is elevated, suggesting the liver is releasing glucose overnight (dawn effect / hepatic insulin resistance). A protein + fibre bedtime snack and morning walk usually help this marker first." },
             { value: "—", tone: "neutral", note: "" },
+            { value: "—", tone: "neutral", note: "" },
+            { value: "—", tone: "neutral", note: "" },
           ],
         },
         {
@@ -136,6 +142,8 @@ export const INTERNAL_PARAMS = {
           optimal: "<120 mg/dl",
           rr: "70–140 mg/dl",
           readings: [
+            { value: "—", tone: "neutral", note: "" },
+            { value: "—", tone: "neutral", note: "" },
             { value: "—", tone: "neutral", note: "" },
             { value: "—", tone: "neutral", note: "" },
           ],
@@ -147,6 +155,8 @@ export const INTERNAL_PARAMS = {
           readings: [
             { value: "13.1", tone: "neutral", note: "" },
             { value: "—", tone: "neutral", note: "" },
+            { value: "—", tone: "neutral", note: "" },
+            { value: "—", tone: "neutral", note: "" },
           ],
         },
         {
@@ -155,6 +165,8 @@ export const INTERNAL_PARAMS = {
           rr: "—",
           readings: [
             { value: "4.23", tone: "bad", note: "Markedly elevated, confirming significant insulin resistance. This is the single most important metric to bring down and should improve with weight loss, low-GI eating and activity." },
+            { value: "—", tone: "neutral", note: "" },
+            { value: "—", tone: "neutral", note: "" },
             { value: "—", tone: "neutral", note: "" },
           ],
         },
@@ -170,6 +182,8 @@ export const INTERNAL_PARAMS = {
           readings: [
             { value: "181", tone: "bad", note: "Mildly elevated and fluctuating; largely secondary to the insulin resistance above. It should trend down as glucose control improves." },
             { value: "—", tone: "neutral", note: "" },
+            { value: "—", tone: "neutral", note: "" },
+            { value: "—", tone: "neutral", note: "" },
           ],
         },
         {
@@ -178,6 +192,8 @@ export const INTERNAL_PARAMS = {
           rr: "<100 mg/dl",
           readings: [
             { value: "108", tone: "bad", note: "Above the optimal cardiovascular target. Combined with high triglycerides this raises cardiometabolic risk — emphasise soluble fibre and omega-3s." },
+            { value: "—", tone: "neutral", note: "" },
+            { value: "—", tone: "neutral", note: "" },
             { value: "—", tone: "neutral", note: "" },
           ],
         },
@@ -188,6 +204,8 @@ export const INTERNAL_PARAMS = {
           readings: [
             { value: "54", tone: "bad", note: "On the low side of optimal. Regular activity and healthy fats (nuts, fatty fish) raise this over time." },
             { value: "—", tone: "neutral", note: "" },
+            { value: "—", tone: "neutral", note: "" },
+            { value: "—", tone: "neutral", note: "" },
           ],
         },
         {
@@ -196,6 +214,8 @@ export const INTERNAL_PARAMS = {
           rr: "<150",
           readings: [
             { value: "171", tone: "bad", note: "Elevated — a classic marker of high carbohydrate intake and insulin resistance." },
+            { value: "—", tone: "neutral", note: "" },
+            { value: "—", tone: "neutral", note: "" },
             { value: "—", tone: "neutral", note: "" },
           ],
         },
@@ -211,6 +231,8 @@ export const INTERNAL_PARAMS = {
           readings: [
             { value: "3.4", tone: "bad", note: "High-normal, drifting toward subclinical hypothyroidism. Worth re-checking with free T3/T4 in 8 weeks." },
             { value: "—", tone: "neutral", note: "" },
+            { value: "—", tone: "neutral", note: "" },
+            { value: "—", tone: "neutral", note: "" },
           ],
         },
         {
@@ -220,6 +242,8 @@ export const INTERNAL_PARAMS = {
           readings: [
             { value: "18", tone: "bad", note: "Deficient. Low vitamin D worsens insulin sensitivity. Start supplementation and re-test at 12 weeks." },
             { value: "—", tone: "neutral", note: "" },
+            { value: "—", tone: "neutral", note: "" },
+            { value: "—", tone: "neutral", note: "" },
           ],
         },
         {
@@ -228,6 +252,8 @@ export const INTERNAL_PARAMS = {
           rr: "211–911 pg/ml",
           readings: [
             { value: "312", tone: "neutral", note: "" },
+            { value: "—", tone: "neutral", note: "" },
+            { value: "—", tone: "neutral", note: "" },
             { value: "—", tone: "neutral", note: "" },
           ],
         },
@@ -288,4 +314,14 @@ export function countSelected(group, selected) {
   const all = flattenTests(group);
   const n = all.filter((t) => selected[`${group.id}:${t}`]).length;
   return { n, total: all.length };
+}
+
+export function cloneAiPanels(panels) {
+  return panels.map((panel) => ({
+    ...panel,
+    rows: panel.rows.map((row) => ({
+      ...row,
+      readings: row.readings.map((reading) => ({ ...reading })),
+    })),
+  }));
 }
