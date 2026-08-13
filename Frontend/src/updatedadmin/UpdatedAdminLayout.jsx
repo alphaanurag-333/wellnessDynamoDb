@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { INITIAL_NOTIFICATIONS, NAV_ITEMS } from "./data/dashboardData.js";
+import { ConfirmDialog } from "./components/ConfirmDialog.jsx";
 import { ProfileModal } from "./components/ProfileModal.jsx";
 import { UpdatedAdminHeader } from "./components/UpdatedAdminHeader.jsx";
 import { UpdatedAdminSidebar } from "./components/UpdatedAdminSidebar.jsx";
@@ -14,6 +15,7 @@ export function UpdatedAdminLayout() {
   const { logout, account } = useViewAs();
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [logoutAsk, setLogoutAsk] = useState(false);
   const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
   const [toast, setToast] = useState("");
   const [toastVisible, setToastVisible] = useState(false);
@@ -28,7 +30,12 @@ export function UpdatedAdminLayout() {
     setToastVisible(true);
   }, []);
 
-  const handleLogout = useCallback(() => {
+  const requestLogout = useCallback(() => {
+    setLogoutAsk(true);
+  }, []);
+
+  const confirmLogout = useCallback(() => {
+    setLogoutAsk(false);
     logout();
     navigate("/updatedadmin/login", { replace: true });
   }, [logout, navigate]);
@@ -73,7 +80,7 @@ export function UpdatedAdminLayout() {
 
   return (
     <div className={`updated-admin${pathname.match(/^\/updatedadmin\/users\/\d+/) ? " updated-admin--client-profile" : ""}`}>
-      <UpdatedAdminSidebar onLogout={handleLogout} />
+      <UpdatedAdminSidebar onLogout={requestLogout} />
 
       <div className="main">
         <UpdatedAdminHeader
@@ -85,7 +92,7 @@ export function UpdatedAdminLayout() {
           onMarkAllRead={handleMarkAllRead}
           onNotifClick={handleNotifClick}
           onOpenProfile={() => setProfileOpen(true)}
-          onLogout={handleLogout}
+          onLogout={requestLogout}
           accountName={account?.name}
         />
 
@@ -98,6 +105,17 @@ export function UpdatedAdminLayout() {
         open={profileOpen}
         onClose={() => setProfileOpen(false)}
         onToast={showToast}
+      />
+
+      <ConfirmDialog
+        open={logoutAsk}
+        tag="Sign out"
+        title="Log out of the admin console?"
+        body="You’ll need to sign in again to manage teams, users, and access."
+        cancelLabel="Stay signed in"
+        confirmLabel="Log out"
+        onCancel={() => setLogoutAsk(false)}
+        onConfirm={confirmLogout}
       />
 
       <div className={`toast${toastVisible ? " toast--show" : ""}`} role="status" aria-live="polite">
