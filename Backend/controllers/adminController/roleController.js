@@ -16,6 +16,18 @@ const {
   isValidCoachPermission,
   getCoachPermissionCatalog,
 } = require("../../config/coachPermissionCatalog");
+const {
+  isValidAssistantPermission,
+  getAssistantPermissionCatalog,
+} = require("../../config/assistantPermissionCatalog");
+const {
+  isValidTraineePermission,
+  getTraineePermissionCatalog,
+} = require("../../config/traineePermissionCatalog");
+const {
+  isValidSupportPermission,
+  getSupportPermissionCatalog,
+} = require("../../config/supportPermissionCatalog");
 
 /**
  * Keep only catalog-known slugs for the given scope.
@@ -25,7 +37,11 @@ function sanitizePermissions(permissions, scope = "ADMIN") {
   if (!Array.isArray(permissions)) {
     throw new AppError("permissions must be an array of permission slugs", 400);
   }
-  const isValid = scope === "COACH" ? isValidCoachPermission : isValidPermission;
+  let isValid = isValidPermission;
+  if (scope === "COACH") isValid = isValidCoachPermission;
+  else if (scope === "ASSISTANT") isValid = isValidAssistantPermission;
+  else if (scope === "TRAINEE") isValid = isValidTraineePermission;
+  else if (scope === "SUPPORT") isValid = isValidSupportPermission;
   return [...new Set(permissions.map((slug) => String(slug)).filter(isValid))];
 }
 
@@ -194,6 +210,39 @@ exports.getPermissionCatalogController = asyncHandler(async (req, res) => {
       scope: "COACH",
       groups: catalog.groups,
       permissions: catalog.permissions,
+    });
+  }
+  if (scope === "ASSISTANT") {
+    const catalog = getAssistantPermissionCatalog();
+    return res.status(200).json({
+      status: true,
+      message: "Assistant permission catalog fetched successfully",
+      scope: "ASSISTANT",
+      permissions: catalog.permissions,
+      nav: catalog.nav,
+      clientTabs: catalog.clientTabs,
+    });
+  }
+  if (scope === "TRAINEE") {
+    const catalog = getTraineePermissionCatalog();
+    return res.status(200).json({
+      status: true,
+      message: "Trainee permission catalog fetched successfully",
+      scope: "TRAINEE",
+      permissions: catalog.permissions,
+      nav: catalog.nav,
+      clientTabs: catalog.clientTabs,
+    });
+  }
+  if (scope === "SUPPORT") {
+    const catalog = getSupportPermissionCatalog();
+    return res.status(200).json({
+      status: true,
+      message: "Support permission catalog fetched successfully",
+      scope: "SUPPORT",
+      permissions: catalog.permissions,
+      nav: catalog.nav,
+      ops: catalog.ops,
     });
   }
 

@@ -139,6 +139,15 @@ async function createAdmin({
 
   await docClient.send(new PutCommand(putParams));
 
+  try {
+    if (require("../config").accountDualWrite) {
+      const { syncAdminToAccount } = require("../services/accountDualWrite");
+      syncAdminToAccount(item).catch((err) => console.error("[accountDualWrite]", err.message));
+    }
+  } catch (err) {
+    console.error("[accountDualWrite]", err.message);
+  }
+
   return item;
 }
 
@@ -279,6 +288,15 @@ async function updateAdmin(id, updates) {
   }
 
   const { Attributes } = await docClient.send(new UpdateCommand(updateParams));
+
+  try {
+    if (require("../config").accountDualWrite) {
+      const { syncAdminToAccount } = require("../services/accountDualWrite");
+      syncAdminToAccount(Attributes).catch((err) => console.error("[accountDualWrite]", err.message));
+    }
+  } catch (err) {
+    console.error("[accountDualWrite]", err.message);
+  }
 
   return Attributes;
 }

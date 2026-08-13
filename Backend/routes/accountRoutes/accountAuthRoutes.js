@@ -1,0 +1,42 @@
+const express = require("express");
+const { protectAccount, requireActiveRole } = require("../../middleware/auth");
+const {
+  loginAccount,
+  refreshAccountToken,
+  switchAccountRole,
+  getAccountMe,
+  getAccountPermissions,
+  changeAccountPassword,
+  sendAccountLoginOtp,
+  verifyAccountLoginOtp,
+  registerCoachAccount,
+} = require("../../controllers/accountController/authController");
+
+const router = express.Router();
+
+router.post("/login", loginAccount);
+router.post("/refresh-token", refreshAccountToken);
+router.post("/otp/send", sendAccountLoginOtp);
+router.post("/otp/verify", verifyAccountLoginOtp);
+router.post("/register/coach", registerCoachAccount);
+
+router.post("/switch-role", protectAccount, switchAccountRole);
+router.get("/me", protectAccount, getAccountMe);
+router.get("/me/permissions", protectAccount, getAccountPermissions);
+router.patch("/me/password", protectAccount, changeAccountPassword);
+
+// Explicit role-gated ping for smoke tests
+router.get(
+  "/ping/admin",
+  protectAccount,
+  requireActiveRole("admin"),
+  (req, res) => res.json({ status: true, role: req.auth.role })
+);
+router.get(
+  "/ping/coach",
+  protectAccount,
+  requireActiveRole("wellness_coach"),
+  (req, res) => res.json({ status: true, role: req.auth.role })
+);
+
+module.exports = router;

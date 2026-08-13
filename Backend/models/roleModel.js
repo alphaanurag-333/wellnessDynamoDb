@@ -11,7 +11,7 @@ const { listByPartitionKey, buildContainsFilter, sortByCreatedAtDesc } = require
 
 const TABLE = "Role";
 const STATUS = new Set(["active", "inactive"]);
-const SCOPES = new Set(["ADMIN", "COACH"]);
+const SCOPES = new Set(["ADMIN", "COACH", "ASSISTANT", "TRAINEE", "SUPPORT", "CONSOLE"]);
 
 function normalizeStatus(value, fallback = "active") {
   const next = String(value || fallback).toLowerCase().trim();
@@ -44,7 +44,20 @@ function toPublicRole(role) {
   };
 }
 
-async function createRole({ name, slug, permissions = [], status = "active", scope = "ADMIN" }) {
+async function createRole({
+  name,
+  slug,
+  permissions = [],
+  status = "active",
+  scope = "ADMIN",
+  description = null,
+  roleKey = null,
+  inheritsFromRoleId = null,
+  navSections = null,
+  dataScope = null,
+  locked = false,
+  uiMeta = null,
+}) {
   const now = new Date().toISOString();
   const item = {
     id: uuidv4(),
@@ -53,9 +66,28 @@ async function createRole({ name, slug, permissions = [], status = "active", sco
     permissions: normalizePermissions(permissions),
     status: normalizeStatus(status),
     scope: normalizeScope(scope, "ADMIN"),
+    locked: Boolean(locked),
     createdAt: now,
     updatedAt: now,
   };
+  if (description != null && String(description).trim()) {
+    item.description = String(description).trim();
+  }
+  if (roleKey != null && String(roleKey).trim()) {
+    item.roleKey = String(roleKey).trim().toLowerCase();
+  }
+  if (inheritsFromRoleId != null && String(inheritsFromRoleId).trim()) {
+    item.inheritsFromRoleId = String(inheritsFromRoleId).trim();
+  }
+  if (Array.isArray(navSections)) {
+    item.navSections = navSections.map((s) => String(s || "").trim()).filter(Boolean);
+  }
+  if (dataScope != null && String(dataScope).trim()) {
+    item.dataScope = String(dataScope).trim().toLowerCase();
+  }
+  if (uiMeta && typeof uiMeta === "object") {
+    item.uiMeta = uiMeta;
+  }
 
   await docClient.send(
     new PutCommand({
@@ -114,17 +146,56 @@ async function updateRole(id, updates) {
     if (key === "status") nextValue = normalizeStatus(value);
     if (key === "scope") nextValue = normalizeScope(value, "ADMIN");
     if (key === "name") nextValue = String(value || "").trim();
+    if (key === "description") {
+      nextValue = value == null || value === "" ? null : String(value).trim();
+    }
+    if (key === "roleKey") {
+      nextValue = value == null || value === "" ? null : String(value).trim().toLowerCase();
+    }
+    if (key === "inheritsFromRoleId") {
+      nextValue = value == null || value === "" ? null : String(value).trim();
+    }
+    if (key === "navSections") {
+      nextValue = Array.isArray(value)
+        ? value.map((s) => String(s || "").trim()).filter(Boolean)
+        : [];
+    }
+    if (key === "dataScope") {
+      nextValue = value == null || value === "" ? null : String(value).trim().toLowerCase();
+    }
+    if (key === "locked") nextValue = Boolean(value);
+
+    // DynamoDB cannot SET null on all attrs cleanly for sparse — use REMOVE for nulls
+    if (nextValue === null && ["description", "roleKey", "inheritsFromRoleId", "dataScope"].includes(key)) {
+      continue; // handled below via remove list
+    }
 
     exprNames[`#${key}`] = key;
     exprValues[`:${key}`] = nextValue;
     setExpr += `, #${key} = :${key}`;
   }
 
+  const removeKeys = [];
+  for (const [key, value] of entries) {
+    if (
+      value === null &&
+      ["description", "roleKey", "inheritsFromRoleId", "dataScope"].includes(key)
+    ) {
+      exprNames[`#${key}`] = key;
+      removeKeys.push(`#${key}`);
+    }
+  }
+
+  let updateExpression = setExpr;
+  if (removeKeys.length) {
+    updateExpression += ` REMOVE ${removeKeys.join(", ")}`;
+  }
+
   const { Attributes } = await docClient.send(
     new UpdateCommand({
       TableName: TABLE,
       Key: { id },
-      UpdateExpression: setExpr,
+      UpdateExpression: updateExpression,
       ExpressionAttributeNames: exprNames,
       ExpressionAttributeValues: exprValues,
       ConditionExpression: "attribute_exists(id)",

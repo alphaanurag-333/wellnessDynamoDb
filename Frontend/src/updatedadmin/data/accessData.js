@@ -52,6 +52,18 @@ export const DEFAULT_VIEWS = {
   support: ["dashboard", "configs"],
 };
 
+/** Full console surface for Super Admin (viewing as admin). */
+export const SUPER_ADMIN_VIEWS = [
+  "dashboard",
+  "users",
+  "access",
+  "teams",
+  "calendar",
+  "configs",
+  "pending",
+  "sop",
+];
+
 /** Role id → parent role id (null = standalone) */
 export const DEFAULT_PARENTS = {
   admin: null,

@@ -301,14 +301,23 @@ async function collectCoachFcmTokensForUser(user) {
   const assignedCoachId = String(user?.assignedCoachId || "").trim();
   const assignedCoachType = String(user?.assignedCoachType || "").trim().toLowerCase();
 
+  const {
+    getWellnessCoachByIdResolved,
+    getAssistantWellnessCoachByIdResolved,
+  } = require("./accountResolver");
+
   if (parentCoachId) {
-    const coach = await getWellnessCoachById(parentCoachId);
+    const coach =
+      (await getWellnessCoachByIdResolved(parentCoachId)) ||
+      (await getWellnessCoachById(parentCoachId));
     const token = readFcmToken(coach);
     if (token) tokens.push(token);
   }
 
   if (assignedCoachType === "assistant_wellness_coach" && assignedCoachId) {
-    const assistant = await getAssistantWellnessCoachById(assignedCoachId);
+    const assistant =
+      (await getAssistantWellnessCoachByIdResolved(assignedCoachId)) ||
+      (await getAssistantWellnessCoachById(assignedCoachId));
     const token = readFcmToken(assistant);
     if (token) tokens.push(token);
   }

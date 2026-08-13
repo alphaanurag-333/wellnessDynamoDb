@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { INITIAL_NOTIFICATIONS, NAV_ITEMS } from "./data/dashboardData.js";
 import { ProfileModal } from "./components/ProfileModal.jsx";
 import { UpdatedAdminHeader } from "./components/UpdatedAdminHeader.jsx";
 import { UpdatedAdminSidebar } from "./components/UpdatedAdminSidebar.jsx";
-import { ViewAsProvider } from "./context/ViewAsContext.jsx";
+import { useViewAs } from "./context/ViewAsContext.jsx";
 import "./ref-animations.css";
 import "./updatedadmin.css";
 
 export function UpdatedAdminLayout() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const { logout, account } = useViewAs();
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
@@ -25,6 +27,11 @@ export function UpdatedAdminLayout() {
     setToast(message);
     setToastVisible(true);
   }, []);
+
+  const handleLogout = useCallback(() => {
+    logout();
+    navigate("/updatedadmin/login", { replace: true });
+  }, [logout, navigate]);
 
   useEffect(() => {
     if (!toastVisible) return undefined;
@@ -65,37 +72,36 @@ export function UpdatedAdminLayout() {
   }
 
   return (
-    <ViewAsProvider>
-      <div className={`updated-admin${pathname.match(/^\/updatedadmin\/users\/\d+/) ? " updated-admin--client-profile" : ""}`}>
-        <UpdatedAdminSidebar onLogout={() => showToast("Logout clicked")} />
+    <div className={`updated-admin${pathname.match(/^\/updatedadmin\/users\/\d+/) ? " updated-admin--client-profile" : ""}`}>
+      <UpdatedAdminSidebar onLogout={handleLogout} />
 
-        <div className="main">
-          <UpdatedAdminHeader
-            notifications={notifications}
-            unreadCount={unreadCount}
-            notifOpen={notifOpen}
-            onToggleNotif={() => setNotifOpen((open) => !open)}
-            onCloseNotif={() => setNotifOpen(false)}
-            onMarkAllRead={handleMarkAllRead}
-            onNotifClick={handleNotifClick}
-            onOpenProfile={() => setProfileOpen(true)}
-            onLogout={() => showToast("Logout clicked")}
-          />
-          <div className="page-shell">
-            <Outlet context={{ showToast }} />
-          </div>
-        </div>
-
-        <ProfileModal
-          open={profileOpen}
-          onClose={() => setProfileOpen(false)}
-          onToast={showToast}
+      <div className="main">
+        <UpdatedAdminHeader
+          notifications={notifications}
+          unreadCount={unreadCount}
+          notifOpen={notifOpen}
+          onToggleNotif={() => setNotifOpen((open) => !open)}
+          onCloseNotif={() => setNotifOpen(false)}
+          onMarkAllRead={handleMarkAllRead}
+          onNotifClick={handleNotifClick}
+          onOpenProfile={() => setProfileOpen(true)}
+          onLogout={handleLogout}
+          accountName={account?.name}
         />
-
-        <div className={`toast${toastVisible ? " toast--show" : ""}`} role="status" aria-live="polite">
-          {toast}
+        <div className="page-shell">
+          <Outlet context={{ showToast }} />
         </div>
       </div>
-    </ViewAsProvider>
+
+      <ProfileModal
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        onToast={showToast}
+      />
+
+      <div className={`toast${toastVisible ? " toast--show" : ""}`} role="status" aria-live="polite">
+        {toast}
+      </div>
+    </div>
   );
 }

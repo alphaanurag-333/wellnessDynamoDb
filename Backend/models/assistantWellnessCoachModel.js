@@ -268,6 +268,17 @@ async function createAssistantWellnessCoach(fields) {
     ownerCoachId: item.wellnessCoachId,
   });
 
+  try {
+    if (require("../config").accountDualWrite) {
+      const { syncAssistantToAccount } = require("../services/accountDualWrite");
+      syncAssistantToAccount(item).catch((err) =>
+        console.error("[accountDualWrite]", err.message)
+      );
+    }
+  } catch (err) {
+    console.error("[accountDualWrite]", err.message);
+  }
+
   return withLegacyId(item);
 }
 
@@ -335,6 +346,17 @@ async function updateAssistantWellnessCoach(id, updates) {
       ReturnValues: "ALL_NEW",
     })
   );
+
+  try {
+    if (require("../config").accountDualWrite) {
+      const { syncAssistantToAccount } = require("../services/accountDualWrite");
+      syncAssistantToAccount(Attributes).catch((err) =>
+        console.error("[accountDualWrite]", err.message)
+      );
+    }
+  } catch (err) {
+    console.error("[accountDualWrite]", err.message);
+  }
 
   return withLegacyId(Attributes || null);
 }

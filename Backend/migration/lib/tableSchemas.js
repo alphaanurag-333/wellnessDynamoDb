@@ -65,6 +65,58 @@ const TABLE_DEFINITIONS = [
     ...PAY_PER_REQUEST,
   },
   {
+    TableName: "Account",
+    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
+    AttributeDefinitions: [
+      { AttributeName: "id", AttributeType: "S" },
+      { AttributeName: "email", AttributeType: "S" },
+      { AttributeName: "phoneKey", AttributeType: "S" },
+      { AttributeName: "status", AttributeType: "S" },
+      { AttributeName: "createdAt", AttributeType: "S" },
+      { AttributeName: "specializationId", AttributeType: "S" },
+      { AttributeName: "parentAccountId", AttributeType: "S" },
+      { AttributeName: "approvalStatus", AttributeType: "S" },
+    ],
+    GlobalSecondaryIndexes: [
+      {
+        IndexName: "EmailIndex",
+        KeySchema: [{ AttributeName: "email", KeyType: "HASH" }],
+        Projection: { ProjectionType: "ALL" },
+      },
+      {
+        IndexName: "PhoneKeyIndex",
+        KeySchema: [{ AttributeName: "phoneKey", KeyType: "HASH" }],
+        Projection: { ProjectionType: "ALL" },
+      },
+      statusCreatedAtIndex(),
+      {
+        IndexName: "SpecializationIdIndex",
+        KeySchema: [
+          { AttributeName: "specializationId", KeyType: "HASH" },
+          { AttributeName: "createdAt", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+      {
+        IndexName: "ParentAccountIndex",
+        KeySchema: [
+          { AttributeName: "parentAccountId", KeyType: "HASH" },
+          { AttributeName: "createdAt", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+      {
+        IndexName: "ApprovalStatusIndex",
+        KeySchema: [
+          { AttributeName: "approvalStatus", KeyType: "HASH" },
+          { AttributeName: "createdAt", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+    ],
+    ...PAY_PER_REQUEST,
+  },
+  {
     TableName: "AppConfig",
     KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
     AttributeDefinitions: [{ AttributeName: "id", AttributeType: "S" }],

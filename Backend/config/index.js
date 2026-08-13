@@ -78,4 +78,10 @@ module.exports = {
     process.env.MONTHLY_CHAMPION_CRON_ENABLED === "true" ||
     (process.env.MONTHLY_CHAMPION_CRON_ENABLED !== "false" &&
       (process.env.NODE_ENV || "development") === "production"),
+
+  /** Staff Account consolidation — docs/domain/account-migration-design-freeze.md */
+  accountDualRead: process.env.ACCOUNT_DUAL_READ !== "false",
+  accountDualWrite: process.env.ACCOUNT_DUAL_WRITE === "true",
+  accountAuthEnabled: process.env.ACCOUNT_AUTH_ENABLED === "true",
+  accountLegacyShims: process.env.ACCOUNT_LEGACY_SHIMS !== "false",
 };

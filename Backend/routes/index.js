@@ -154,12 +154,16 @@ const assistantCoachInsightRoutes = require("./assistantWellnessCoachRoutes/assi
 const assistantHealConsultancyTrackRoutes = require("./assistantWellnessCoachRoutes/assistantHealConsultancyTrackRoutes");
 const assistantMealReviewRoutes = require("./assistantWellnessCoachRoutes/assistantMealReviewRoutes");
 const assistantConsultancyRoutes = require("./assistantWellnessCoachRoutes/assistantConsultancyRoutes");
+const accountRoutes = require("./accountRoutes");
 
 const router = express.Router();
 
 router.get("/health", (req, res) => {
   res.json({ ok: true });
 });
+
+/** Unified staff Account API (new). Legacy /admin|/coach|/assistant remain as shims. */
+router.use("/account", accountRoutes);
 
 router.use("/admin/auth", adminAuthRoutes);
 router.use("/admin/dashboard", adminDashboardRoutes);

@@ -5,6 +5,11 @@ const AUTH_STORAGE_KEY = "wellness_admin_auth";
 export function getAdminToken() {
   if (typeof window === "undefined") return null;
   try {
+    const accountRaw = window.localStorage.getItem("wellness_account_auth");
+    if (accountRaw) {
+      const accountParsed = JSON.parse(accountRaw);
+      if (accountParsed?.accessToken) return accountParsed.accessToken;
+    }
     const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
@@ -15,7 +20,8 @@ export function getAdminToken() {
 }
 
 function sopBase() {
-  return "/admin/sops";
+  // Prefer unified Account CMS mount; fall back to legacy admin path.
+  return "/account/admin/sops";
 }
 
 export async function adminListSops(token, { page = 1, limit = 50, status, category, search } = {}) {

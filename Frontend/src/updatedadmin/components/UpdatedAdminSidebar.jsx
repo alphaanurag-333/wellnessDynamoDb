@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { NavIcon } from "./NavIcons.jsx";
 import { useViewAs } from "../context/ViewAsContext.jsx";
-import { DEFAULT_VIEWS } from "../data/accessData.js";
+import { DEFAULT_VIEWS, SUPER_ADMIN_VIEWS } from "../data/accessData.js";
 import {
   NAV_ITEMS,
   UPDATED_ADMIN_PATHS,
@@ -40,8 +40,9 @@ function CollapseIcon({ collapsed }) {
 
 function ViewAsRolePicker({ collapsed }) {
   const navigate = useNavigate();
-  const { viewAs, setViewAs, activeRole } = useViewAs();
+  const { viewAs, setViewAs, activeRole, availableUiRoles } = useViewAs();
   const [open, setOpen] = useState(false);
+  const roles = availableUiRoles?.length ? availableUiRoles : VIEW_AS_ROLES;
 
   useEffect(() => {
     if (!open) return undefined;
@@ -56,13 +57,17 @@ function ViewAsRolePicker({ collapsed }) {
     if (collapsed) setOpen(false);
   }, [collapsed]);
 
-  const pickRole = (role) => {
+  const pickRole = async (role) => {
     setOpen(false);
     if (!role.switchable) {
       navigate(UPDATED_ADMIN_PATHS.access);
       return;
     }
-    setViewAs(role.id);
+    try {
+      await setViewAs(role.id);
+    } catch {
+      /* local fallback already applied in context */
+    }
   };
 
   return (
@@ -108,7 +113,7 @@ function ViewAsRolePicker({ collapsed }) {
               <span>Live roles</span>
               <span>{VIEW_AS_STAFF_TOTAL} staff</span>
             </div>
-            {VIEW_AS_ROLES.map((role) => {
+            {roles.map((role) => {
               const active = viewAs === role.id;
               return (
                 <button
@@ -151,7 +156,7 @@ function ViewAsRolePicker({ collapsed }) {
 const NAV_COLLAPSED_KEY = "ua-nav-collapsed";
 
 export function UpdatedAdminSidebar({ onLogout }) {
-  const { viewAs } = useViewAs();
+  const { viewAs, isSuperAdmin, hasFullAccess } = useViewAs();
   const [collapsed, setCollapsed] = useState(() => {
     try {
       return localStorage.getItem(NAV_COLLAPSED_KEY) === "1";
@@ -173,9 +178,13 @@ export function UpdatedAdminSidebar({ onLogout }) {
   }
 
   const visibleNav = useMemo(() => {
+    // Super Admin in admin mode: every console section.
+    if (isSuperAdmin && (viewAs === "admin" || hasFullAccess)) {
+      return NAV_ITEMS.filter((item) => SUPER_ADMIN_VIEWS.includes(item.id));
+    }
     const allowed = DEFAULT_VIEWS[viewAs] ?? DEFAULT_VIEWS.admin;
     return NAV_ITEMS.filter((item) => allowed.includes(item.id));
-  }, [viewAs]);
+  }, [viewAs, isSuperAdmin, hasFullAccess]);
 
   return (
     <aside className={`sidebar${collapsed ? " sidebar--rail" : ""}`} aria-label="Main navigation">
@@ -185,7 +194,9 @@ export function UpdatedAdminSidebar({ onLogout }) {
           {!collapsed ? (
             <div className="sidebar__brand-text">
               <div className="sidebar__brand-name">India Redefining Wellness</div>
-              <div className="sidebar__brand-sub">ADMIN CONSOLE</div>
+              <div className="sidebar__brand-sub">
+                {isSuperAdmin && viewAs === "admin" ? "SUPER ADMIN" : "ADMIN CONSOLE"}
+              </div>
             </div>
           ) : null}
         </NavLink>

@@ -237,6 +237,17 @@ async function createWellnessCoach(fields) {
     ownerCoachId: item.id,
   });
 
+  try {
+    if (require("../config").accountDualWrite) {
+      const { syncWellnessCoachToAccount } = require("../services/accountDualWrite");
+      syncWellnessCoachToAccount(item).catch((err) =>
+        console.error("[accountDualWrite]", err.message)
+      );
+    }
+  } catch (err) {
+    console.error("[accountDualWrite]", err.message);
+  }
+
   return toPublicWellnessCoach(item);
 }
 
@@ -323,6 +334,17 @@ async function updateWellnessCoach(id, updates) {
       ReturnValues: "ALL_NEW",
     })
   );
+
+  try {
+    if (require("../config").accountDualWrite) {
+      const { syncWellnessCoachToAccount } = require("../services/accountDualWrite");
+      syncWellnessCoachToAccount(Attributes).catch((err) =>
+        console.error("[accountDualWrite]", err.message)
+      );
+    }
+  } catch (err) {
+    console.error("[accountDualWrite]", err.message);
+  }
 
   return toPublicWellnessCoach(Attributes || null);
 }

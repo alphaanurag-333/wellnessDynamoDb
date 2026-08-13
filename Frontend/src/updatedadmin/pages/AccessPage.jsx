@@ -1,6 +1,17 @@
-import { useMemo, useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Navigate, useOutletContext } from "react-router-dom";
 import { OrangeButton, PageHeader, PillTabs, TableScroll } from "../components/shared.jsx";
+import { useViewAs } from "../context/ViewAsContext.jsx";
+import {
+  createAccessRole,
+  fetchAccessMembers,
+  fetchAccessRoles,
+  rolesToGrantsState,
+  rolesToParentsState,
+  rolesToViewsState,
+  setAccessMemberRole,
+  updateAccessRole,
+} from "../api/accessApi.js";
 import {
   ACCESS_TABS,
   AC_SECTIONS,
@@ -9,7 +20,6 @@ import {
   DEFAULT_GRANTS,
   DEFAULT_PARENTS,
   DEFAULT_VIEWS,
-  MEMBERS,
   PERM_ACTS,
   PERM_CATALOG,
   POLICIES,
@@ -26,6 +36,39 @@ import {
   toggleGrant,
   vsParentDelta,
 } from "../data/accessData.js";
+
+function roleUiKey(role) {
+  return role?.roleKey || role?.id;
+}
+
+function capitalizeScope(value) {
+  const v = String(value || "all").toLowerCase();
+  if (v === "all") return "All";
+  if (v === "team") return "Team";
+  if (v === "assigned") return "Assigned";
+  return v.charAt(0).toUpperCase() + v.slice(1);
+}
+
+function scopeToApi(label) {
+  return String(label || "All").toLowerCase();
+}
+
+function mapApiRolesToUi(apiRoles) {
+  return (apiRoles || []).map((r) => ({
+    id: roleUiKey(r),
+    dbId: r.id,
+    name: r.name,
+    color: r.color || "#5e6ad2",
+    bg: r.bg || "#eceefc",
+    bd: r.bd || "#dcdff7",
+    scope: capitalizeScope(r.dataScope),
+    locked: Boolean(r.locked),
+    system: Boolean(r.system),
+    memberCount: r.memberCount || 0,
+    desc: r.description || "",
+    roleKey: r.roleKey || null,
+  }));
+}
 
 function ToggleSwitch({ kind, onClick, disabled }) {
   if (kind === "na") return <span className="ua-ac-dash">—</span>;
@@ -73,7 +116,7 @@ function CreateRoleModal({ roles, onClose, onCreate }) {
           >
             <option value="">Nothing — start from zero</option>
             {roles.map((r) => (
-              <option key={r.id} value={r.id}>
+              <option key={r.dbId || r.id} value={r.dbId}>
                 Inherit from {r.name}
               </option>
             ))}
@@ -87,7 +130,7 @@ function CreateRoleModal({ roles, onClose, onCreate }) {
             type="button"
             className="ua-ac-modal__primary"
             disabled={!name.trim()}
-            onClick={() => onCreate({ name: name.trim(), inheritFrom: inheritFrom || null })}
+            onClick={() => onCreate({ name: name.trim(), inheritFromRoleId: inheritFrom || null })}
           >
             Create role
           </button>
@@ -98,33 +141,76 @@ function CreateRoleModal({ roles, onClose, onCreate }) {
 }
 
 function RolesPermissionsTab({ onToast }) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [apiRoles, setApiRoles] = useState([]);
   const [selectedRole, setSelectedRole] = useState("admin");
-  const [grants, setGrants] = useState(() => cloneGrants());
-  const [parents, setParents] = useState(() => ({ ...DEFAULT_PARENTS }));
-  const [views, setViews] = useState(() => ({
-    admin: [...DEFAULT_VIEWS.admin],
-    wc: [...DEFAULT_VIEWS.wc],
-    awc: [...DEFAULT_VIEWS.awc],
-    trainee: [...DEFAULT_VIEWS.trainee],
-    support: [...DEFAULT_VIEWS.support],
-  }));
-  const [customRoles, setCustomRoles] = useState([]);
+  const [grants, setGrants] = useState({});
+  const [parents, setParents] = useState({});
+  const [views, setViews] = useState({});
   const [scope, setScope] = useState("All");
   const [activeSection, setActiveSection] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const saveTimer = useRef(null);
+  const stateRef = useRef({ grants: {}, parents: {}, views: {}, apiRoles: [], selectedRole: "admin", scope: "All" });
 
-  const roleList = useMemo(() => {
-    const base = ROLE_ORDER.map((id) => ROLE_META[id]);
-    return [...base, ...customRoles];
-  }, [customRoles]);
+  const hydrate = useCallback((roles) => {
+    const nextGrants = rolesToGrantsState(roles);
+    const nextParents = rolesToParentsState(roles);
+    const nextViews = rolesToViewsState(roles);
+    setApiRoles(roles);
+    setGrants(nextGrants);
+    setParents(nextParents);
+    setViews(nextViews);
+    setDirty(false);
+    stateRef.current = {
+      ...stateRef.current,
+      grants: nextGrants,
+      parents: nextParents,
+      views: nextViews,
+      apiRoles: roles,
+    };
+  }, []);
 
+  const loadRoles = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const roles = await fetchAccessRoles();
+      hydrate(roles);
+      const firstKey = roles[0] ? roleUiKey(roles[0]) : "admin";
+      setSelectedRole((prev) => {
+        const stillThere = roles.some((r) => roleUiKey(r) === prev);
+        return stillThere ? prev : firstKey;
+      });
+      const first = roles.find((r) => roleUiKey(r) === firstKey) || roles[0];
+      if (first) setScope(capitalizeScope(first.dataScope));
+    } catch (err) {
+      setError(err?.message || "Failed to load roles");
+    } finally {
+      setLoading(false);
+    }
+  }, [hydrate]);
+
+  useEffect(() => {
+    loadRoles();
+  }, [loadRoles]);
+
+  useEffect(() => {
+    stateRef.current = { grants, parents, views, apiRoles, selectedRole, scope };
+  }, [grants, parents, views, apiRoles, selectedRole, scope]);
+
+  const roleList = useMemo(() => mapApiRolesToUi(apiRoles), [apiRoles]);
   const role = roleList.find((r) => r.id === selectedRole) || roleList[0];
 
-  const granted = countGranted(grants, parents, role.id);
-  const delta = vsParentDelta(grants, parents, role.id);
-  const sections = sectionStats(grants, parents, role.id, views);
+  const granted = role ? countGranted(grants, parents, role.id) : 0;
+  const delta = role ? vsParentDelta(grants, parents, role.id) : { standalone: true, added: 0, removed: 0 };
+  const sections = role ? sectionStats(grants, parents, role.id, views) : [];
   const openSections = sections.filter((s) => s.open).length;
-  const parentMeta = parents[role.id] ? ROLE_META[parents[role.id]] || roleList.find((r) => r.id === parents[role.id]) : null;
+  const parentMeta = role && parents[role.id]
+    ? ROLE_META[parents[role.id]] || roleList.find((r) => r.id === parents[role.id])
+    : null;
 
   const matrixRows = useMemo(() => {
     const rows = activeSection
@@ -142,6 +228,39 @@ function RolesPermissionsTab({ onToast }) {
     return groups;
   }, [activeSection]);
 
+  const persistSelected = useCallback(async () => {
+    const snap = stateRef.current;
+    const ui = mapApiRolesToUi(snap.apiRoles).find((r) => r.id === snap.selectedRole);
+    if (!ui || ui.locked) return;
+    const parentKey = snap.parents[ui.id] || null;
+    const parentRole = snap.apiRoles.find((r) => roleUiKey(r) === parentKey);
+    try {
+      const updated = await updateAccessRole(ui.dbId, {
+        grants: snap.grants[ui.id],
+        navSections: snap.views[ui.id] || [],
+        dataScope: scopeToApi(snap.scope),
+        inheritsFromRoleId: parentRole?.id || null,
+      });
+      setApiRoles((prev) => prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)));
+      setDirty(false);
+      onToast("Saved");
+    } catch (err) {
+      onToast(err?.message || "Save failed");
+    }
+  }, [onToast]);
+
+  const scheduleSave = useCallback(() => {
+    setDirty(true);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      persistSelected();
+    }, 500);
+  }, [persistSelected]);
+
+  useEffect(() => () => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+  }, []);
+
   function selectRole(id) {
     setSelectedRole(id);
     const meta = roleList.find((r) => r.id === id);
@@ -150,32 +269,47 @@ function RolesPermissionsTab({ onToast }) {
   }
 
   function handleToggle(featureId, action) {
-    if (role.locked || role.id === "admin") {
+    if (!role || role.locked || role.id === "admin") {
       onToast("Admin permissions are locked");
       return;
     }
-    setGrants((g) => toggleGrant(g, parents, role.id, featureId, action));
+    setGrants((g) => {
+      const next = toggleGrant(g, parents, role.id, featureId, action);
+      stateRef.current.grants = next;
+      return next;
+    });
+    scheduleSave();
   }
 
   function handleParentChange(nextParent) {
-    if (role.locked) return;
-    setParents((p) => ({ ...p, [role.id]: nextParent || null }));
+    if (!role || role.locked) return;
+    setParents((p) => {
+      const next = { ...p, [role.id]: nextParent || null };
+      stateRef.current.parents = next;
+      return next;
+    });
     if (nextParent) {
       setGrants((g) => {
         const next = cloneGrants(g);
         next[role.id] = copyRoleGrants(g, nextParent);
+        stateRef.current.grants = next;
         return next;
       });
-      setViews((v) => ({
-        ...v,
-        [role.id]: [...(v[nextParent] || DEFAULT_VIEWS[nextParent] || ["dashboard"])],
-      }));
+      setViews((v) => {
+        const next = {
+          ...v,
+          [role.id]: [...(v[nextParent] || DEFAULT_VIEWS[nextParent] || ["dashboard"])],
+        };
+        stateRef.current.views = next;
+        return next;
+      });
     }
     onToast(nextParent ? `Now inherits from ${ROLE_META[nextParent]?.name || nextParent}` : "Standalone role");
+    scheduleSave();
   }
 
   function toggleSectionNav(sectionId) {
-    if (role.locked) {
+    if (!role || role.locked) {
       onToast("Admin sections are locked");
       return;
     }
@@ -183,60 +317,87 @@ function RolesPermissionsTab({ onToast }) {
       const cur = new Set(v[role.id] || []);
       if (cur.has(sectionId)) cur.delete(sectionId);
       else cur.add(sectionId);
-      return { ...v, [role.id]: [...cur] };
-    });
-  }
-
-  function resetRole() {
-    if (role.locked) return;
-    setGrants((g) => {
-      const next = cloneGrants(g);
-      next[role.id] = DEFAULT_GRANTS[role.id] == null
-        ? null
-        : cloneGrants({ [role.id]: DEFAULT_GRANTS[role.id] })[role.id];
-      if (!(role.id in DEFAULT_GRANTS)) next[role.id] = {};
+      const next = { ...v, [role.id]: [...cur] };
+      stateRef.current.views = next;
       return next;
     });
-    setParents((p) => ({ ...p, [role.id]: DEFAULT_PARENTS[role.id] ?? null }));
-    setViews((v) => ({
-      ...v,
-      [role.id]: [...(DEFAULT_VIEWS[role.id] || [])],
-    }));
-    onToast("Reset to default");
+    scheduleSave();
   }
 
-  function handleCreateRole({ name, inheritFrom }) {
-    const id = `custom-${Date.now()}`;
-    const color = "#5e6ad2";
-    setCustomRoles((list) => [
-      ...list,
-      {
-        id,
+  function handleScopeChange(next) {
+    if (!role || role.locked) return;
+    setScope(next);
+    stateRef.current.scope = next;
+    scheduleSave();
+  }
+
+  async function resetRole() {
+    if (!role || role.locked) return;
+    const key = role.roleKey || role.id;
+    const nextGrants = cloneGrants(grants);
+    if (key in DEFAULT_GRANTS) {
+      nextGrants[role.id] =
+        DEFAULT_GRANTS[key] == null
+          ? null
+          : cloneGrants({ [key]: DEFAULT_GRANTS[key] })[key];
+    } else {
+      nextGrants[role.id] = {};
+    }
+    const nextParents = { ...parents, [role.id]: DEFAULT_PARENTS[key] ?? null };
+    const nextViews = { ...views, [role.id]: [...(DEFAULT_VIEWS[key] || [])] };
+    setGrants(nextGrants);
+    setParents(nextParents);
+    setViews(nextViews);
+    stateRef.current.grants = nextGrants;
+    stateRef.current.parents = nextParents;
+    stateRef.current.views = nextViews;
+    try {
+      const parentKey = nextParents[role.id];
+      const parentRole = apiRoles.find((r) => roleUiKey(r) === parentKey);
+      const updated = await updateAccessRole(role.dbId, {
+        grants: nextGrants[role.id],
+        navSections: nextViews[role.id],
+        inheritsFromRoleId: parentRole?.id || null,
+        dataScope: scopeToApi(ROLE_META[key]?.scope || scope),
+      });
+      setApiRoles((prev) => prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)));
+      setDirty(false);
+      onToast("Reset to default");
+    } catch (err) {
+      onToast(err?.message || "Reset failed");
+    }
+  }
+
+  async function handleCreateRole({ name, inheritFromRoleId }) {
+    try {
+      const created = await createAccessRole({
         name,
-        color,
-        bg: "#eceefc",
-        bd: "#dcdff7",
-        scope: "Team",
-        locked: false,
-        system: false,
-        memberCount: 0,
-        desc: inheritFrom
-          ? `Custom role inheriting from ${ROLE_META[inheritFrom]?.name || inheritFrom}.`
-          : "Custom role starting from zero permissions.",
-      },
-    ]);
-    setParents((p) => ({ ...p, [id]: inheritFrom }));
-    setGrants((g) => ({
-      ...g,
-      [id]: inheritFrom ? copyRoleGrants(g, inheritFrom) : {},
-    }));
-    setViews((v) => ({
-      ...v,
-      [id]: inheritFrom ? [...(v[inheritFrom] || DEFAULT_VIEWS[inheritFrom] || [])] : ["dashboard"],
-    }));
-    setCreateOpen(false);
-    setSelectedRole(id);
-    onToast(`Created role “${name}”`);
+        inheritFromRoleId: inheritFromRoleId || null,
+      });
+      await loadRoles();
+      setSelectedRole(roleUiKey(created));
+      setCreateOpen(false);
+      onToast(`Created role “${name}”`);
+    } catch (err) {
+      onToast(err?.message || "Create failed");
+    }
+  }
+
+  if (loading) {
+    return <p className="ua-page-head__sub">Loading roles…</p>;
+  }
+
+  if (error) {
+    return (
+      <div className="ua-section-bar">
+        <span>{error}</span>
+        <OrangeButton onClick={loadRoles}>Retry</OrangeButton>
+      </div>
+    );
+  }
+
+  if (!role) {
+    return <p className="ua-page-head__sub">No console roles found. Open this page again to seed baselines.</p>;
   }
 
   return (
@@ -247,6 +408,7 @@ function RolesPermissionsTab({ onToast }) {
             <div className="ua-ac-roles-bar__label">Roles</div>
             <p className="ua-ac-roles-bar__hint">
               Edits apply at once to every member holding the role, unless they carry a personal override.
+              {dirty ? " Saving…" : ""}
             </p>
           </div>
           <button type="button" className="ua-ac-btn-outline" onClick={() => setCreateOpen(true)}>
@@ -258,10 +420,12 @@ function RolesPermissionsTab({ onToast }) {
           {roleList.map((r) => {
             const g = countGranted(grants, parents, r.id);
             const active = selectedRole === r.id;
-            const p = parents[r.id] ? ROLE_META[parents[r.id]] || roleList.find((x) => x.id === parents[r.id]) : null;
+            const p = parents[r.id]
+              ? ROLE_META[parents[r.id]] || roleList.find((x) => x.id === parents[r.id])
+              : null;
             return (
               <button
-                key={r.id}
+                key={r.dbId}
                 type="button"
                 className={`ua-ac-role-card${active ? " ua-ac-role-card--active" : ""}`}
                 style={active ? { borderColor: r.color, background: r.bg } : undefined}
@@ -270,7 +434,9 @@ function RolesPermissionsTab({ onToast }) {
                 <div className="ua-ac-role-card__top">
                   <span className="ua-ac-role-card__dot" style={{ background: r.color }} />
                   <span className="ua-ac-role-card__name">{r.name}</span>
-                  <span className="ua-ac-role-card__pill">{g}/{TOTAL_PERM_SLOTS}</span>
+                  <span className="ua-ac-role-card__pill">
+                    {g}/{TOTAL_PERM_SLOTS}
+                  </span>
                 </div>
                 <div className="ua-ac-role-card__meta">
                   {r.memberCount} members · {r.scope}
@@ -306,7 +472,8 @@ function RolesPermissionsTab({ onToast }) {
                   key={s}
                   type="button"
                   className={`ua-ac-scope__btn${scope === s ? " ua-ac-scope__btn--active" : ""}`}
-                  onClick={() => setScope(s)}
+                  onClick={() => handleScopeChange(s)}
+                  disabled={role.locked}
                 >
                   {s}
                 </button>
@@ -330,7 +497,7 @@ function RolesPermissionsTab({ onToast }) {
             {roleList
               .filter((r) => r.id !== role.id)
               .map((r) => (
-                <option key={r.id} value={r.id}>
+                <option key={r.dbId} value={r.id}>
                   Inherit from {r.name}
                 </option>
               ))}
@@ -395,7 +562,12 @@ function RolesPermissionsTab({ onToast }) {
             </span>
           </button>
           {sections.map((sec) => (
-            <div key={sec.id} className={`ua-ac-section${activeSection === sec.id ? " ua-ac-section--filter" : ""}${sec.open ? " ua-ac-section--open" : ""}`}>
+            <div
+              key={sec.id}
+              className={`ua-ac-section${activeSection === sec.id ? " ua-ac-section--filter" : ""}${
+                sec.open ? " ua-ac-section--open" : ""
+              }`}
+            >
               <button type="button" className="ua-ac-section__main" onClick={() => setActiveSection(sec.id)}>
                 <span className="ua-ac-section__name">{sec.label}</span>
                 <span className="ua-ac-section__count">
@@ -421,9 +593,15 @@ function RolesPermissionsTab({ onToast }) {
               <p className="ua-ac-matrix__hint">Tap a toggle to grant or revoke. Dashes mean the action does not apply.</p>
             </div>
             <div className="ua-ac-legend">
-              <span><i className="ua-ac-legend__swatch ua-ac-legend__swatch--inherited" /> Inherited</span>
-              <span><i className="ua-ac-legend__swatch ua-ac-legend__swatch--added" /> Added here</span>
-              <span><i className="ua-ac-legend__swatch ua-ac-legend__swatch--removed" /> Removed here</span>
+              <span>
+                <i className="ua-ac-legend__swatch ua-ac-legend__swatch--inherited" /> Inherited
+              </span>
+              <span>
+                <i className="ua-ac-legend__swatch ua-ac-legend__swatch--added" /> Added here
+              </span>
+              <span>
+                <i className="ua-ac-legend__swatch ua-ac-legend__swatch--removed" /> Removed here
+              </span>
             </div>
           </div>
 
@@ -489,9 +667,138 @@ function RolesPermissionsTab({ onToast }) {
   );
 }
 
+function MembersTab({ onToast }) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [members, setMembers] = useState([]);
+  const [busyId, setBusyId] = useState(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const { members: rows } = await fetchAccessMembers({ limit: 100 });
+      setMembers(rows);
+    } catch (err) {
+      setError(err?.message || "Failed to load members");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function handleRoleChange(member, roleKey) {
+    if (member.isSuperAdmin) {
+      onToast("Super Admin role is locked");
+      return;
+    }
+    if (!roleKey || roleKey === member.primaryRoleKey) return;
+    setBusyId(member.id);
+    try {
+      await setAccessMemberRole(member.id, roleKey);
+      onToast(`Updated ${member.name}`);
+      await load();
+    } catch (err) {
+      onToast(err?.message || "Update failed");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  if (loading) return <p className="ua-page-head__sub">Loading members…</p>;
+  if (error) {
+    return (
+      <div className="ua-section-bar">
+        <span>{error}</span>
+        <OrangeButton onClick={load}>Retry</OrangeButton>
+      </div>
+    );
+  }
+
+  return (
+    <TableScroll>
+      <div className="ua-table-card">
+        <div className="ua-table ua-table--teams ua-table__head">
+          <div>Name</div>
+          <div>Role</div>
+          <div>Meta</div>
+          <div>Status</div>
+        </div>
+        {members.map((m) => {
+          const roleKey = m.primaryRoleKey || "admin";
+          const meta = ROLE_META[roleKey] || ROLE_META.admin;
+          return (
+            <div key={m.id} className="ua-table ua-table--teams ua-table__row">
+              <div>
+                <div className="ua-user-cell__name">{m.name}</div>
+                <div className="ua-user-cell__sub">{m.email}</div>
+              </div>
+              <div>
+                {m.isSuperAdmin ? (
+                  <span
+                    className="ua-role-chip"
+                    style={{ background: meta.bg, color: meta.color, borderColor: meta.bd }}
+                  >
+                    {meta.name}
+                  </span>
+                ) : (
+                  <select
+                    className="header__select"
+                    value={roleKey}
+                    disabled={busyId === m.id}
+                    onChange={(e) => handleRoleChange(m, e.target.value)}
+                    aria-label={`Role for ${m.name}`}
+                  >
+                    {ROLE_ORDER.map((id) => (
+                      <option key={id} value={id}>
+                        {ROLE_META[id]?.name || id}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+              <div className="ua-table__load">
+                {m.meta}
+                {typeof m.grantedCount === "number" ? ` · ${m.grantedCount}/${m.totalSlots}` : ""}
+              </div>
+              <div>
+                <span
+                  className={`ua-status-pill${
+                    String(m.status).toLowerCase() === "pending"
+                      ? " ua-status-pill--amber"
+                      : " ua-status-pill--green"
+                  }`}
+                >
+                  {m.status === "active" ? "Active" : m.status}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </TableScroll>
+  );
+}
+
 export function AccessPage() {
   const { showToast: onToast } = useOutletContext();
+  const { isSuperAdmin, bootstrapping } = useViewAs();
   const [tab, setTab] = useState("roles");
+
+  if (bootstrapping) {
+    return (
+      <main className="content ua-page-enter">
+        <p>Loading…</p>
+      </main>
+    );
+  }
+
+  if (!isSuperAdmin) {
+    return <Navigate to="/updatedadmin" replace />;
+  }
 
   return (
     <main className="content ua-page-enter ua-ac-page">
@@ -516,51 +823,13 @@ export function AccessPage() {
       <PillTabs tabs={ACCESS_TABS} active={tab} onChange={setTab} size="lg" />
 
       {tab === "roles" ? <RolesPermissionsTab onToast={onToast} /> : null}
-
-      {tab === "members" ? (
-        <TableScroll>
-          <div className="ua-table-card">
-            <div className="ua-table ua-table--teams ua-table__head">
-              <div>Name</div>
-              <div>Role</div>
-              <div>Meta</div>
-              <div>Status</div>
-            </div>
-            {MEMBERS.map((m) => (
-              <div key={m.email} className="ua-table ua-table--teams ua-table__row">
-                <div>
-                  <div className="ua-user-cell__name">{m.name}</div>
-                  <div className="ua-user-cell__sub">{m.email}</div>
-                </div>
-                <div>
-                  <span
-                    className="ua-role-chip"
-                    style={{
-                      background: ROLE_META[m.role]?.bg,
-                      color: ROLE_META[m.role]?.color,
-                      borderColor: ROLE_META[m.role]?.bd,
-                    }}
-                  >
-                    {ROLE_META[m.role]?.name || m.role}
-                  </span>
-                </div>
-                <div className="ua-table__load">{m.meta}</div>
-                <div>
-                  <span className={`ua-status-pill${m.status === "Pending" ? " ua-status-pill--amber" : " ua-status-pill--green"}`}>
-                    {m.status}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </TableScroll>
-      ) : null}
+      {tab === "members" ? <MembersTab onToast={onToast} /> : null}
 
       {tab === "policies" ? (
         <>
           <div className="ua-section-bar">
-            <span>Reusable allow/deny grants. Attach to a role or an individual user.</span>
-            <OrangeButton onClick={() => onToast("Create policy")}>+ Create policy</OrangeButton>
+            <span>Reusable allow/deny grants. Attach to a role or an individual user. (Coming in Phase C)</span>
+            <OrangeButton onClick={() => onToast("Policies — coming soon")}>+ Create policy</OrangeButton>
           </div>
           <div className="ua-policy-grid">
             {POLICIES.map((p) => (
@@ -585,10 +854,10 @@ export function AccessPage() {
                     Attached to <b>{p.attachedCount}</b>
                   </span>
                   <div>
-                    <button type="button" className="ua-soft-btn" onClick={() => onToast("Edit policy")}>
+                    <button type="button" className="ua-soft-btn" onClick={() => onToast("Coming soon")}>
                       Edit
                     </button>
-                    <button type="button" className="ua-green-btn" onClick={() => onToast("Attach policy")}>
+                    <button type="button" className="ua-green-btn" onClick={() => onToast("Coming soon")}>
                       Attach
                     </button>
                   </div>
@@ -612,6 +881,9 @@ export function AccessPage() {
             </select>
             <span className="chip chip--global">scope: Team</span>
           </div>
+          <p className="ua-page-head__sub" style={{ padding: "0 16px 8px" }}>
+            Live simulator lands in Phase C — preview below is illustrative.
+          </p>
           {SIMULATOR_ROWS.map((row) => (
             <div key={row.feature} className="ua-sim-row">
               <span className={`ua-sim-row__icon${row.verdict === "Visible" ? " ua-sim-row__icon--ok" : ""}`}>
@@ -652,7 +924,7 @@ export function AccessPage() {
 
       {tab === "audit" ? (
         <div className="ua-audit">
-          <p className="ua-page-head__sub">Every access change and staff activity, newest first.</p>
+          <p className="ua-page-head__sub">Every access change and staff activity, newest first. (Phase B)</p>
           <div className="ua-search-row">
             <div className="ua-search-wrap ua-search-wrap--wide">
               <svg className="ua-search-wrap__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
