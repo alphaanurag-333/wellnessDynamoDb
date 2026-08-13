@@ -15,6 +15,8 @@ export { ReflectionSection } from "./ReflectionSection.jsx";
 export { PrescriptionSection } from "./PrescriptionSection.jsx";
 export { PresentableSection } from "./PresentableSection.jsx";
 export { ExchangeSection } from "./ExchangeSection.jsx";
+export { ProtocolSection } from "./ProtocolSection.jsx";
+export { GutResetSection } from "./GutResetSection.jsx";
 
 function DosageBadge({ label, tone }) {
   return <span className={`ua-cp-dosage ua-cp-dosage--${tone}`}>{label}</span>;
