@@ -474,7 +474,8 @@ export function UpdatedAdminDashboard({ onToast }) {
           </div>
           <div className="coach-pending-row">
             {pendingGroups.map((group) => (
-              <div key={group.title} className="coach-pending-group">
+              <div key={group.title} className={`coach-pending-group ${group.title}`}>
+                {console.log(group)              }
                 <div className="coach-pending-group__head">
                   <span className="coach-pending-group__title">{group.title}</span>
                   <span className="coach-pending-group__total">{group.total}</span>

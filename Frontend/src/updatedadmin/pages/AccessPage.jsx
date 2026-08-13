@@ -243,15 +243,15 @@ function RolesPermissionsTab({ onToast }) {
     <>
       <div className="ua-ac-roles-bar">
         <div className="ua-ac-roles-bar__head">
-          <div>
             <div className="ua-ac-roles-bar__label">Roles</div>
+          <div className="ua-ac-roles-bar__actions">
             <p className="ua-ac-roles-bar__hint">
               Edits apply at once to every member holding the role, unless they carry a personal override.
             </p>
-          </div>
-          <button type="button" className="ua-ac-btn-outline" onClick={() => setCreateOpen(true)}>
+          <button type="button" className="ua-ac-btn-outline ua-ac-btn-outline--new" onClick={() => setCreateOpen(true)}>
             + New role
           </button>
+          </div>
         </div>
 
         <div className="ua-ac-role-cards">
@@ -299,8 +299,8 @@ function RolesPermissionsTab({ onToast }) {
             <p className="ua-ac-role-detail__desc">{role.desc}</p>
           </div>
           <div className="ua-ac-role-detail__controls">
+              <div style={{ fontSize: "11.5px", color: "rgb(138, 151, 172)", fontWeight: "650" }} >Data scope</div>
             <div className="ua-ac-scope">
-              <span>Data scope</span>
               {["All", "Team", "Assigned"].map((s) => (
                 <button
                   key={s}
