@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
@@ -8,6 +9,7 @@ export function UpdatedAdminLoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const [busy, setBusy] = useState(false);
 
   if (bootstrapping) {
@@ -85,14 +87,47 @@ export function UpdatedAdminLoginPage() {
 
         <label style={{ display: "grid", gap: 6, fontSize: 13 }}>
           Password
-          <input
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-            style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid #c9d5ce" }}
-          />
+          <div style={{ position: "relative" }}>
+            <input
+              type={passwordVisible ? "text" : "password"}
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "10px 42px 10px 12px",
+                borderRadius: 10,
+                border: "1px solid #c9d5ce",
+              }}
+            />
+            <button
+              type="button"
+              aria-label={passwordVisible ? "Hide password" : "Show password"}
+              aria-pressed={passwordVisible}
+              onClick={() => setPasswordVisible((v) => !v)}
+              style={{
+                position: "absolute",
+                right: 8,
+                top: "50%",
+                transform: "translateY(-50%)",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 32,
+                height: 32,
+                padding: 0,
+                border: 0,
+                borderRadius: 8,
+                background: "transparent",
+                color: "#5b6b62",
+                cursor: "pointer",
+              }}
+            >
+              {passwordVisible ? <AiOutlineEyeInvisible size={20} /> : <AiOutlineEye size={20} />}
+            </button>
+          </div>
         </label>
 
         {authError ? (
