@@ -1,27 +1,97 @@
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ADMIN_PROFILE } from "../data/profileData.js";
+import { accountUpdateMe } from "../api/accountApi.js";
+import { useViewAs } from "../context/ViewAsContext.jsx";
+import { buildProfileFromAccount } from "../data/profileData.js";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 
 function ReadOnlyField({ label, value, hint }) {
   return (
     <label className="ua-profile-modal__field">
       <span className="ua-profile-modal__label">{label}</span>
-      <input type="text" className="ua-profile-modal__input" value={value} readOnly />
+      <input type="text" className="ua-profile-modal__input" value={value || "—"} readOnly />
       {hint ? <span className="ua-profile-modal__hint">{hint}</span> : null}
     </label>
   );
 }
 
-export function ProfileModal({ open, profile = ADMIN_PROFILE, onClose, onToast }) {
+function AvatarMark({ profile, className }) {
+  if (profile.profileImage) {
+    return (
+      <span className={`${className} ${className}--image`} aria-hidden="true">
+        <img src={profile.profileImage} alt="" />
+      </span>
+    );
+  }
+  return (
+    <span className={className} aria-hidden="true">
+      {profile.initial}
+    </span>
+  );
+}
+
+export function ProfileModal({ open, onClose, onToast }) {
   const navigate = useNavigate();
+  const { account, activeRole, setAccount } = useViewAs();
+  const profile = useMemo(
+    () => buildProfileFromAccount(account, activeRole),
+    [account, activeRole],
+  );
   const [bio, setBio] = useState(profile.bio);
+  const [savingBio, setSavingBio] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef(null);
+  const bioBaseline = useRef(profile.bio);
+
+  useEffect(() => {
+    if (!open) return;
+    setBio(profile.bio);
+    bioBaseline.current = profile.bio;
+  }, [open, profile.bio, profile.id]);
 
   if (!open) return null;
 
   function openContentLibrary() {
     onClose();
     navigate(UPDATED_ADMIN_PATHS.myContent);
+  }
+
+  async function saveBioIfChanged() {
+    const next = String(bio || "").trim();
+    const prev = String(bioBaseline.current || "").trim();
+    if (next === prev) return;
+    setSavingBio(true);
+    try {
+      const updated = await accountUpdateMe({ bio: next });
+      setAccount(updated);
+      bioBaseline.current = next;
+      onToast?.("Bio saved");
+    } catch (error) {
+      onToast?.(error?.message || "Could not save bio");
+      setBio(bioBaseline.current);
+    } finally {
+      setSavingBio(false);
+    }
+  }
+
+  async function handlePhotoSelected(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      onToast?.("Please choose an image file");
+      return;
+    }
+    setUploading(true);
+    try {
+      const updated = await accountUpdateMe({}, file);
+      setAccount(updated);
+      onToast?.("Display photo updated");
+    } catch (error) {
+      onToast?.(error?.message || "Could not upload photo");
+    } finally {
+      setUploading(false);
+    }
   }
 
   return (
@@ -33,7 +103,7 @@ export function ProfileModal({ open, profile = ADMIN_PROFILE, onClose, onToast }
         aria-labelledby="profile-modal-title"
       >
         <div className="ua-profile-modal__hero">
-          <span className="ua-profile-modal__avatar" aria-hidden="true">{profile.initial}</span>
+          <AvatarMark profile={profile} className="ua-profile-modal__avatar" />
           <div className="ua-profile-modal__hero-copy">
             <div id="profile-modal-title" className="ua-profile-modal__name">{profile.name}</div>
             <div className="ua-profile-modal__role-line">
@@ -62,13 +132,25 @@ export function ProfileModal({ open, profile = ADMIN_PROFILE, onClose, onToast }
             <ReadOnlyField label="Address" value={profile.address} />
 
             <div className="ua-profile-modal__photo-row">
-              <span className="ua-profile-modal__photo-avatar">{profile.initial}</span>
+              <AvatarMark profile={profile} className="ua-profile-modal__photo-avatar" />
               <div className="ua-profile-modal__photo-copy">
                 <div className="ua-profile-modal__photo-title">Display photo</div>
                 <div className="ua-profile-modal__photo-sub">Shown to clients beside your messages</div>
               </div>
-              <button type="button" className="ua-profile-modal__upload" onClick={() => onToast?.("Upload photo — coming soon")}>
-                Upload
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={handlePhotoSelected}
+              />
+              <button
+                type="button"
+                className="ua-profile-modal__upload"
+                disabled={uploading}
+                onClick={() => fileRef.current?.click()}
+              >
+                {uploading ? "Uploading…" : "Upload"}
               </button>
             </div>
           </section>
@@ -82,7 +164,10 @@ export function ProfileModal({ open, profile = ADMIN_PROFILE, onClose, onToast }
               className="ua-profile-modal__bio"
               value={bio}
               onChange={(e) => setBio(e.target.value)}
+              onBlur={saveBioIfChanged}
               rows={3}
+              disabled={savingBio}
+              placeholder="Add a short bio…"
             />
           </section>
 
@@ -117,7 +202,11 @@ export function ProfileModal({ open, profile = ADMIN_PROFILE, onClose, onToast }
                 <span>{profile.twoFactor}</span>
               </div>
             </div>
-            <button type="button" className="ua-profile-modal__password" onClick={() => onToast?.("Change password — coming soon")}>
+            <button
+              type="button"
+              className="ua-profile-modal__password"
+              onClick={() => onToast?.("Change password — ask an admin or use the password reset flow.")}
+            >
               Change password
             </button>
           </section>

@@ -38,13 +38,13 @@ import {
 } from "../components/LaunchSection.jsx";
 import { NutritionBankSection, NUTRITION_BANK } from "../components/NutritionBankSection.jsx";
 import { RxBankSection, RX_BANK_PROTOCOLS } from "../components/RxBankSection.jsx";
+import { FaqConfigPanel } from "../components/FaqConfigPanel.jsx";
 import { PageHeader } from "../components/shared.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { HEALTH_TRACKERS } from "../data/healthProgressData.js";
 import {
   APP_HEAL_PERIODS,
   DISCOUNT_SLABS,
-  FAQ_ITEMS,
   PROGRAM_PRICING,
   PWC_COMPLETED,
   REFERRAL_LOOKUP,
@@ -145,229 +145,6 @@ function LanguagePanel({ hindiOn, onToggle, onToast }) {
             <span className="ua-toggle__knob" />
           </button>
         </div>
-      </div>
-    </Panel>
-  );
-}
-
-function FaqItemControls({ item, onToggleShown, onEdit, onSave, onMoveUp, onMoveDown, onDelete, isEditing }) {
-  return (
-    <div className="ua-cfg-faq__controls">
-      <span className={`ua-cfg-faq__shown${item.shown ? " is-on" : ""}`}>{item.shown ? "SHOWN" : "HIDDEN"}</span>
-      <button
-        type="button"
-        className={`ua-toggle ua-toggle--sm${item.shown ? " ua-toggle--on" : ""}`}
-        aria-pressed={item.shown}
-        aria-label={`Toggle ${item.question || "question"}`}
-        onClick={onToggleShown}
-      />
-      {isEditing ? (
-        <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" onClick={onSave}>
-          Save
-        </button>
-      ) : (
-        <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost" onClick={onEdit}>
-          Edit
-        </button>
-      )}
-      <button type="button" className="ua-cfg-icon-btn" aria-label="Move up" onClick={onMoveUp}>↑</button>
-      <button type="button" className="ua-cfg-icon-btn" aria-label="Move down" onClick={onMoveDown}>↓</button>
-      <button type="button" className="ua-cfg-icon-btn ua-cfg-icon-btn--danger" aria-label="Delete" onClick={onDelete}>×</button>
-    </div>
-  );
-}
-
-function FaqNewQuestionForm({ draft, onChange, onClose, onSubmit, inputRef }) {
-  return (
-    <section className="ua-cfg-faq-new">
-      <div className="ua-cfg-faq-new__head">
-        <h4 className="ua-cfg-faq-new__title">
-          <span aria-hidden="true">❓</span> New question
-        </h4>
-        <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={onClose}>×</button>
-      </div>
-      <input
-        ref={inputRef}
-        type="text"
-        className="ua-cfg-faq-new__question"
-        value={draft.question}
-        placeholder="Question · e.g. Can I switch my coach?"
-        onChange={(event) => onChange({ ...draft, question: event.target.value })}
-      />
-      <textarea
-        className="ua-cfg-faq-new__answer"
-        value={draft.answer}
-        placeholder="Answer shown in the app..."
-        rows={5}
-        onChange={(event) => onChange({ ...draft, answer: event.target.value })}
-      />
-      <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" onClick={onSubmit}>
-        Add question
-      </button>
-    </section>
-  );
-}
-
-function FaqPanel({ items, setItems, onToast }) {
-  const shownCount = items.filter((item) => item.shown).length;
-  const [editingId, setEditingId] = useState(null);
-  const [draft, setDraft] = useState({ question: "", answer: "" });
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [newDraft, setNewDraft] = useState({ question: "", answer: "" });
-  const addFormRef = useRef(null);
-  const newQuestionRef = useRef(null);
-
-  useEffect(() => {
-    if (!showAddForm) return undefined;
-    const timer = window.setTimeout(() => {
-      addFormRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      newQuestionRef.current?.focus();
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [showAddForm]);
-
-  function startEdit(item) {
-    setShowAddForm(false);
-    setEditingId(item.id);
-    setDraft({ question: item.question, answer: item.answer });
-  }
-
-  function cancelEdit() {
-    setEditingId(null);
-    setDraft({ question: "", answer: "" });
-  }
-
-  function closeAddForm() {
-    setShowAddForm(false);
-    setNewDraft({ question: "", answer: "" });
-  }
-
-  function openAddForm() {
-    cancelEdit();
-    setShowAddForm(true);
-  }
-
-  function saveEdit(id) {
-    const question = draft.question.trim();
-    const answer = draft.answer.trim();
-    if (!question || !answer) {
-      onToast("Question and answer are required");
-      return;
-    }
-    setItems((prev) =>
-      prev.map((entry) => (entry.id === id ? { ...entry, question, answer } : entry)),
-    );
-    cancelEdit();
-    onToast("FAQ saved");
-  }
-
-  function submitNewQuestion() {
-    const question = newDraft.question.trim();
-    const answer = newDraft.answer.trim();
-    if (!question || !answer) {
-      onToast("Question and answer are required");
-      return;
-    }
-    setItems((prev) => [
-      ...prev,
-      {
-        id: `faq-${Date.now()}`,
-        question,
-        answer,
-        shown: true,
-      },
-    ]);
-    closeAddForm();
-    onToast("Question added");
-  }
-
-  function moveItem(id, dir) {
-    setItems((prev) => {
-      const idx = prev.findIndex((entry) => entry.id === id);
-      const nextIdx = idx + dir;
-      if (idx < 0 || nextIdx < 0 || nextIdx >= prev.length) return prev;
-      const copy = [...prev];
-      [copy[idx], copy[nextIdx]] = [copy[nextIdx], copy[idx]];
-      return copy;
-    });
-  }
-
-  return (
-    <Panel
-      title="Questions & answers"
-      subtitle={`Drag to reorder · ${shownCount} of ${items.length} shown`}
-      actions={(
-        <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={openAddForm}>
-          + Add question
-        </button>
-      )}
-    >
-      <div className="ua-cfg-faq-list">
-        {showAddForm ? (
-          <div ref={addFormRef}>
-            <FaqNewQuestionForm
-              draft={newDraft}
-              onChange={setNewDraft}
-              onClose={closeAddForm}
-              onSubmit={submitNewQuestion}
-              inputRef={newQuestionRef}
-            />
-          </div>
-        ) : null}
-        {items.map((item, index) => {
-          const isEditing = editingId === item.id;
-
-          return (
-            <article key={item.id} className={`ua-cfg-faq${isEditing ? " ua-cfg-faq--editing" : ""}`}>
-              <div className="ua-cfg-faq__head">
-                <span className="ua-cfg-faq__drag" aria-hidden="true">⋮⋮</span>
-                <span className="ua-cfg-faq__num">Q{index + 1}</span>
-                {isEditing ? (
-                  <input
-                    type="text"
-                    className="ua-cfg-faq__question-input"
-                    value={draft.question}
-                    placeholder="Question"
-                    onChange={(event) => setDraft((prev) => ({ ...prev, question: event.target.value }))}
-                  />
-                ) : (
-                  <strong className="ua-cfg-faq__question">{item.question}</strong>
-                )}
-                <FaqItemControls
-                  item={item}
-                  isEditing={isEditing}
-                  onToggleShown={() => {
-                    setItems((prev) =>
-                      prev.map((entry) =>
-                        entry.id === item.id ? { ...entry, shown: !entry.shown } : entry,
-                      ),
-                    );
-                  }}
-                  onEdit={() => startEdit(item)}
-                  onSave={() => saveEdit(item.id)}
-                  onMoveUp={() => moveItem(item.id, -1)}
-                  onMoveDown={() => moveItem(item.id, 1)}
-                  onDelete={() => {
-                    if (editingId === item.id) cancelEdit();
-                    setItems((prev) => prev.filter((entry) => entry.id !== item.id));
-                    onToast("Question removed");
-                  }}
-                />
-              </div>
-              {isEditing ? (
-                <textarea
-                  className="ua-cfg-faq__answer-input"
-                  value={draft.answer}
-                  placeholder="Answer"
-                  rows={4}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, answer: event.target.value }))}
-                />
-              ) : (
-                <p className="ua-cfg-faq__answer">{item.answer}</p>
-              )}
-            </article>
-          );
-        })}
       </div>
     </Panel>
   );
@@ -1051,7 +828,7 @@ export function ConfigDetailPage() {
   const found = useMemo(() => findConfigItem(configId), [configId]);
 
   const [hindiOn, setHindiOn] = useState(true);
-  const [faqItems, setFaqItems] = useState(FAQ_ITEMS);
+  const [faqItems, setFaqItems] = useState([]);
   const [programRows, setProgramRows] = useState(PROGRAM_PRICING);
   const [subRows, setSubRows] = useState(SUBSCRIPTION_PRICING);
   const [gstOn, setGstOn] = useState(true);
@@ -1135,7 +912,7 @@ export function ConfigDetailPage() {
       case "app-language-disable":
         return <LanguagePanel hindiOn={hindiOn} onToggle={setHindiOn} onToast={onToast} />;
       case "app-faq":
-        return <FaqPanel items={faqItems} setItems={setFaqItems} onToast={onToast} />;
+        return <FaqConfigPanel items={faqItems} setItems={setFaqItems} onToast={onToast} />;
       case "app-program":
         return (
           <>

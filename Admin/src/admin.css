@@ -797,6 +797,17 @@
   font-size: 13px;
   cursor: pointer;
   box-shadow: 0 1px 3px rgba(16, 35, 63, 0.18);
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.updated-admin .header__avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .updated-admin .header__avatar:hover  {
@@ -14623,6 +14634,21 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.updated-admin .ua-profile-modal__avatar--image,
+.updated-admin .ua-profile-modal__photo-avatar--image {
+  background: #eef1f6;
+  padding: 0;
+}
+
+.updated-admin .ua-profile-modal__avatar img,
+.updated-admin .ua-profile-modal__photo-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .updated-admin .ua-profile-modal__hero-copy {
@@ -14753,6 +14779,7 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  overflow: hidden;
 }
 
 .updated-admin .ua-profile-modal__photo-copy {
@@ -22928,6 +22955,23 @@
   box-shadow: 0 0 0 1px rgba(94, 106, 210, 0.06);
 }
 
+.updated-admin .ua-cfg-faq--dragging {
+  opacity: 0.55;
+}
+
+.updated-admin .ua-cfg-faq--drag-over {
+  border-color: #5e6ad2;
+  box-shadow: 0 0 0 2px rgba(94, 106, 210, 0.18);
+}
+
+.updated-admin .ua-cfg-faq[draggable="true"] {
+  cursor: grab;
+}
+
+.updated-admin .ua-cfg-faq[draggable="true"]:active {
+  cursor: grabbing;
+}
+
 .updated-admin .ua-cfg-faq__head {
   display: grid;
   grid-template-columns: 18px 28px minmax(0, 1fr) auto;
@@ -23020,6 +23064,10 @@
 
 .updated-admin .ua-cfg-faq__shown.is-on {
   color: #1f7a4d;
+}
+
+.updated-admin .ua-cfg-faq__controls .ua-toggle--on {
+  background: #1f7a4d;
 }
 
 .updated-admin .ua-cfg-faq-new {

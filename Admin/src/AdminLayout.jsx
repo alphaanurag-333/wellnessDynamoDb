@@ -19,7 +19,7 @@ const INBOX_POLL_MS = 60_000;
 export function AdminLayout() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const { logout, account } = useViewAs();
+  const { logout } = useViewAs();
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [logoutAsk, setLogoutAsk] = useState(false);
@@ -147,7 +147,6 @@ export function AdminLayout() {
           onNotifClick={handleNotifClick}
           onOpenProfile={() => setProfileOpen(true)}
           onLogout={requestLogout}
-          accountName={account?.name}
         />
 
         <div className="page-shell">

@@ -127,6 +127,52 @@ export async function accountMe() {
   }
 }
 
+/** PATCH /account/auth/me — bio, name, phone, or multipart profile photo (`file`). */
+export async function accountUpdateMe(fields = {}, file) {
+  const token = getAccountToken();
+  if (!token) throw new Error("Not authenticated");
+
+  try {
+    let body;
+    let headers = authHeader(token);
+
+    if (file) {
+      const form = new FormData();
+      Object.entries(fields).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) form.append(key, String(value));
+      });
+      form.append("file", file);
+      body = form;
+    } else {
+      body = fields;
+      headers = { ...headers, "Content-Type": "application/json" };
+    }
+
+    const { data } = await api.patch("/account/auth/me", body, { headers });
+    const current = readAccountAuth() || {};
+    const account = data.account || current.account;
+    writeAccountAuth({ ...current, account });
+    return account;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function accountChangePassword({ currentPassword, newPassword }) {
+  const token = getAccountToken();
+  if (!token) throw new Error("Not authenticated");
+  try {
+    const { data } = await api.patch(
+      "/account/auth/me/password",
+      { currentPassword, newPassword },
+      { headers: authHeader(token) },
+    );
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function accountListHealUsers({ page = 1, limit = 20, search } = {}) {
   const token = getAccountToken();
   const q = new URLSearchParams();
