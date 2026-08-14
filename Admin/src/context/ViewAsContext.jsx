@@ -108,15 +108,16 @@ export function ViewAsProvider({ children }) {
         return { localOnly: true };
       }
 
-      const eligible = Array.isArray(auth.account?.roles)
-        ? auth.account.roles.map((k) => ROLE_KEY_TO_UI[k] || k)
-        : [];
-
-      // Super Admin may preview any role UI without holding that membership.
-      if (accountIsSuperAdmin(auth.account) && !eligible.includes(roleId)) {
+      // Super Admin: UI preview only — never switch JWT away from admin,
+      // otherwise Access/Teams admin APIs return Forbidden.
+      if (accountIsSuperAdmin(auth.account)) {
         setViewAsLocal(roleId);
         return { previewOnly: true };
       }
+
+      const eligible = Array.isArray(auth.account?.roles)
+        ? auth.account.roles.map((k) => ROLE_KEY_TO_UI[k] || k)
+        : [];
 
       if (eligible.length && !eligible.includes(roleId)) {
         throw new Error("You do not have this role on your account");

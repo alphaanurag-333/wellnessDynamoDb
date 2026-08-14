@@ -1,6 +1,6 @@
 const express = require("express");
 const { protectAccount, requireActiveRole } = require("../../middleware/auth");
-const { requireSuperAdmin } = require("../../middleware/authorize");
+const { requireSuperAdmin, requireTeamsReadAccess } = require("../../middleware/authorize");
 const {
   getAccessCatalog,
   listAccessRoles,
@@ -17,37 +17,43 @@ const { asyncHandler } = require("../../utils/asyncHandler");
 
 const router = express.Router();
 
-router.use(protectAccount, requireActiveRole("admin"), requireSuperAdmin);
+router.use(protectAccount);
 
-router.get("/catalog", getAccessCatalog);
-router.get(
-  "/roles",
-  asyncHandler(async (req, res, next) => {
-    await ensureConsoleRolesSeeded();
-    return listAccessRoles(req, res, next);
-  })
-);
-router.post("/roles", createAccessRole);
-router.patch("/roles/:id", updateAccessRole);
-router.delete("/roles/:id", deleteAccessRole);
+const requireAccessAdmin = [requireActiveRole("admin"), requireSuperAdmin];
 
-router.get(
-  "/members",
-  asyncHandler(async (req, res, next) => {
-    await ensureConsoleRolesSeeded();
-    return listAccessMembers(req, res, next);
-  })
-);
-router.get("/members/:id", getAccessMember);
-router.patch("/members/:id/role", setAccessMemberRole);
-router.patch("/members/:id/permissions", setAccessMemberPermissions);
-
+/** Access Control catalog / role mutations — Super Admin only */
+router.get("/catalog", ...requireAccessAdmin, getAccessCatalog);
+router.post("/roles", ...requireAccessAdmin, createAccessRole);
+router.patch("/roles/:id", ...requireAccessAdmin, updateAccessRole);
+router.delete("/roles/:id", ...requireAccessAdmin, deleteAccessRole);
+router.patch("/members/:id/role", ...requireAccessAdmin, setAccessMemberRole);
+router.patch("/members/:id/permissions", ...requireAccessAdmin, setAccessMemberPermissions);
 router.post(
   "/seed",
+  ...requireAccessAdmin,
   asyncHandler(async (req, res) => {
     const result = await ensureConsoleRolesSeeded();
     res.json({ status: true, message: "Console roles ensured", ...result, byKey: undefined });
   })
 );
+
+/** Teams directory reads — Admin + Wellness Coach (nav includes Teams) */
+router.get(
+  "/roles",
+  requireTeamsReadAccess,
+  asyncHandler(async (req, res, next) => {
+    await ensureConsoleRolesSeeded();
+    return listAccessRoles(req, res, next);
+  })
+);
+router.get(
+  "/members",
+  requireTeamsReadAccess,
+  asyncHandler(async (req, res, next) => {
+    await ensureConsoleRolesSeeded();
+    return listAccessMembers(req, res, next);
+  })
+);
+router.get("/members/:id", requireTeamsReadAccess, getAccessMember);
 
 module.exports = router;
