@@ -15,7 +15,7 @@ const {
   handleValidationError,
   DUMMY_MACROS,
   resolveAssignedCoachForUser,
-} = require("../mealTrackingControllerHelpers");
+} = require("../helpers/mealTrackingControllerHelpers");
 const {
   dispatchMealLoggedCoachNotificationAsync,
 } = require("../../services/notificationDispatchService");

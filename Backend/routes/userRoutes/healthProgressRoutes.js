@@ -7,7 +7,7 @@ const {
   optionalHealthProgressBpFile,
   optionalHealthProgressConditionPicFile,
 } = require("../../middleware/authMultipart");
-const { requireHealthProgressFeature } = require("../../controllers/healthProgressControllerHelpers");
+const { requireHealthProgressFeature } = require("../../controllers/helpers/healthProgressControllerHelpers");
 const {
   getHealthProgressSettingsController,
   createWeightLogController,

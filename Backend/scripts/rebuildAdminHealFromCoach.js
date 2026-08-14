@@ -24,8 +24,8 @@ function transformCoachController(src) {
     /await assertAdminCanAccessUser\(user, adminId\);/g,
     "await assertAdminCanAccessUser(user, adminId);"
   );
-  // Fix helper requires: coach uses ../X, admin healUser needs ../../X
-  out = out.replace(/require\("\.\.\/([A-Za-z0-9]+ControllerHelpers)"\)/g, 'require("../../$1")');
+  // Fix helper requires: coach uses ../helpers/X, admin healUser needs ../../helpers/X
+  out = out.replace(/require\("\.\.\/helpers\/([A-Za-z0-9]+ControllerHelpers)"\)/g, 'require("../../helpers/$1")');
   // Models/utils stay ../../
   return out;
 }

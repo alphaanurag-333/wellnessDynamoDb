@@ -9,7 +9,7 @@ const {
   createMyAssistantController,
   updateMyAssistantController,
   deleteMyAssistantController,
-} = require("../../controllers/staff/assistantController");
+} = require("../../controllers/adminController/assistantWellnessCoachController");
 
 const router = express.Router();
 router.use(protectAccount, requireActiveRole("admin", "wellness_coach"));

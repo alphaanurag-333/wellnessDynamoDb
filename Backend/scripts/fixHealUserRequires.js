@@ -23,8 +23,8 @@ for (const f of fs.readdirSync(dir)) {
   let s = fs.readFileSync(p, "utf8");
   let changed = false;
   for (const h of helpers) {
-    const from = `require("../${h}")`;
-    const to = `require("../../${h}")`;
+    const from = `require("../helpers/${h}")`;
+    const to = `require("../../helpers/${h}")`;
     if (s.includes(from)) {
       s = s.split(from).join(to);
       changed = true;

@@ -10,7 +10,7 @@ const {
   parseCreateBody,
   resolveCoachHierarchy,
   handleValidationError,
-} = require("../healConsultancyTrackControllerHelpers");
+} = require("../helpers/healConsultancyTrackControllerHelpers");
 
 exports.createMyHealConsultancyTrackController = asyncHandler(async (req, res) => {
   const user = req.currentUser;

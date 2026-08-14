@@ -11,7 +11,7 @@ const {
   normalizeGlucoseType,
   normalizeBodyPart,
   toIsoDateOnly,
-} = require("../healthProgressControllerHelpers");
+} = require("../helpers/healthProgressControllerHelpers");
 const {
   createWeightLog,
   listWeightLogsByUser,

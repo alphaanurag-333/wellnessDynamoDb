@@ -73,10 +73,6 @@ const coachInsightRoutes = require("./userRoutes/coachInsightRoutes");
 const supplementRecommendationRoutes = require("./userRoutes/supplementRecommendationRoutes");
 const supplementDosageRoutes = require("./userRoutes/supplementDosageRoutes");
 const wellnessPrescriptionRoutes = require("./userRoutes/wellnessPrescriptionRoutes");
-const coachSpecializationRoutes = require("./wellnessCoachRoutes/coachSpecializationRoutes");
-const coachEnergyExchangeRoutes = require("./wellnessCoachRoutes/coachEnergyExchangeRoutes");
-const coachProgramRoutes = require("./wellnessCoachRoutes/coachProgramRoutes");
-const coachClientTestimonialRoutes = require("./wellnessCoachRoutes/coachClientTestimonialRoutes");
 const accountRoutes = require("./accountRoutes");
 const {
   accountHealUserRoutes,
@@ -87,6 +83,10 @@ const {
   accountMonthlyChampionRoutes,
   accountAssistantRoutes,
   accountMeRoutes,
+  accountEnergyExchangeRoutes,
+  accountProgramRoutes,
+  accountPortalClientTestimonialRoutes,
+  accountActiveSpecializationRoutes,
 } = accountRoutes;
 
 const router = express.Router();
@@ -119,11 +119,11 @@ router.use("/coach/monthly-champions", accountMonthlyChampionRoutes);
 router.use("/assistant/monthly-champions", accountMonthlyChampionRoutes);
 router.use("/coach/me", accountMeRoutes);
 router.use("/coach/assistants", accountAssistantRoutes);
-router.use("/coach/specializations", coachSpecializationRoutes);
-router.use("/coach/energy-exchange", coachEnergyExchangeRoutes);
-router.use("/coach/programs", coachProgramRoutes);
-router.use("/coach/client-testimonials", coachClientTestimonialRoutes);
-router.use("/assistant/client-testimonials", coachClientTestimonialRoutes);
+router.use("/coach/specializations", accountActiveSpecializationRoutes);
+router.use("/coach/energy-exchange", accountEnergyExchangeRoutes);
+router.use("/coach/programs", accountProgramRoutes);
+router.use("/coach/client-testimonials", accountPortalClientTestimonialRoutes);
+router.use("/assistant/client-testimonials", accountPortalClientTestimonialRoutes);
 router.use("/admin/app-config", adminAppConfigRoutes);
 router.use("/admin/faq", adminFaqRoutes);
 router.use("/admin/sops", adminSopRoutes);

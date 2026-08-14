@@ -12,7 +12,7 @@ const {
 } = require("../../models/clientTestimonials");
 const { deleteStoredMedia, normalizeStoredMedia } = require("../../utils/s3");
 const { readProfileImageKey } = require("../../utils/mediaFieldAliases");
-const { resolveAssignedCoachForUser } = require("../mealTrackingControllerHelpers");
+const { resolveAssignedCoachForUser } = require("../helpers/mealTrackingControllerHelpers");
 
 const DESCRIPTION_MAX = 255;
 

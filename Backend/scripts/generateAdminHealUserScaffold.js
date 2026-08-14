@@ -86,7 +86,7 @@ function transformAssistantApi(src) {
 
 // --- 1) Helpers ---
 (function patchHelpers() {
-  const reminderPath = path.join(BE, "controllers/reminderControllerHelpers.js");
+  const reminderPath = path.join(BE, "controllers/helpers/reminderControllerHelpers.js");
   let rh = read(reminderPath);
   if (!rh.includes("assertAdminCanAccessUser")) {
     rh = rh.replace(
@@ -104,7 +104,7 @@ module.exports = {`
     write(reminderPath, rh);
   }
 
-  const dietPath = path.join(BE, "controllers/dietPlanControllerHelpers.js");
+  const dietPath = path.join(BE, "controllers/helpers/dietPlanControllerHelpers.js");
   let dh = read(dietPath);
   if (!dh.includes("assertAdminCanAccessUser")) {
     dh = dh.replace(
@@ -166,7 +166,7 @@ for (const name of CONTROLLERS) {
 // Launch / Prakruti — thin re-exports after we add adminHandlers (placeholder written later)
 write(
   path.join(CONTROLLER_DIR, "launchAssessmentController.js"),
-  `const { adminHandlers } = require("../../launchAssessmentControllerHelpers");
+  `const { adminHandlers } = require("../../helpers/launchAssessmentControllerHelpers");
 
 exports.listAdminUserLaunchFocusAreasController = adminHandlers.listFocusAreasController;
 exports.listAdminUserLaunchQuestionsController = adminHandlers.listQuestionsController;
@@ -181,7 +181,7 @@ exports.exportAdminUserLaunchQuestionsController = adminHandlers.exportQuestions
 
 write(
   path.join(CONTROLLER_DIR, "prakrutiAssessmentController.js"),
-  `const { adminHandlers } = require("../../prakrutiAssessmentControllerHelpers");
+  `const { adminHandlers } = require("../../helpers/prakrutiAssessmentControllerHelpers");
 
 exports.listAdminUserPrakrutiThingsToAvoidController = adminHandlers.listThingsToAvoidController;
 exports.listAdminUserPrakrutiQuestionsController = adminHandlers.listQuestionsController;

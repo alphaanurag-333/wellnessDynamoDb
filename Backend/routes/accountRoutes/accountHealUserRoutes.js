@@ -17,50 +17,50 @@ const {
   updateCoachUserReminderController,
   toggleCoachUserReminderController,
   deleteCoachUserReminderController,
-} = require("../../controllers/staff/reminderController");
+} = require("../../controllers/adminController/reminderController");
 const {
   listCoachUserTestRecommendationsController,
   createCoachUserTestRecommendationController,
   deleteCoachUserTestRecommendationController,
   listCoachUserLabReportsController,
-} = require("../../controllers/staff/testRecommendationController");
+} = require("../../controllers/adminController/testRecommendationController");
 const {
   listCoachUserWellnessPrescriptionsController,
   createCoachUserWellnessPrescriptionController,
   deleteCoachUserWellnessPrescriptionController,
-} = require("../../controllers/staff/wellnessPrescriptionController");
+} = require("../../controllers/adminController/wellnessPrescriptionController");
 const {
   listCoachUserDietPlanAssignmentsController,
   createCoachUserDietPlanAssignmentController,
   deleteCoachUserDietPlanAssignmentController,
-} = require("../../controllers/staff/dietPlanCatalogAssignmentController");
+} = require("../../controllers/adminController/dietPlanCatalogAssignmentController");
 const {
   listCoachUserPhysicalExercisesController,
   createCoachUserPhysicalExercisesController,
   deleteCoachUserPhysicalExerciseController,
-} = require("../../controllers/staff/physicalExerciseAssignmentController");
+} = require("../../controllers/adminController/physicalExerciseAssignmentController");
 const {
   listCoachUserMentalWellbeingController,
   createCoachUserMentalWellbeingController,
   deleteCoachUserMentalWellbeingController,
-} = require("../../controllers/staff/mentalWellbeingAssignmentController");
+} = require("../../controllers/adminController/mentalWellbeingAssignmentController");
 const {
   listCoachUserSupplementRecommendationsController,
   createCoachUserSupplementRecommendationController,
   deleteCoachUserSupplementRecommendationController,
-} = require("../../controllers/staff/supplementRecommendationController");
+} = require("../../controllers/adminController/supplementRecommendationController");
 const {
   listCoachUserSupplementDosagesController,
   createCoachUserSupplementDosageController,
   deleteCoachUserSupplementDosageController,
-} = require("../../controllers/staff/supplementDosageController");
+} = require("../../controllers/adminController/supplementDosageController");
 const {
   listCoachUserMealTrackingController,
   createCoachUserMealLogController,
   updateCoachUserMealLogController,
   deleteCoachUserMealLogController,
   updateCoachUserMealTrackingModeController,
-} = require("../../controllers/staff/mealTrackingController");
+} = require("../../controllers/adminController/mealTrackingController");
 const {
   listCoachUserLaunchFocusAreasController,
   listCoachUserLaunchQuestionsController,
@@ -70,14 +70,14 @@ const {
   updateCoachUserLaunchAssessmentController,
   deleteCoachUserLaunchAssessmentController,
   exportCoachUserLaunchQuestionsController,
-} = require("../../controllers/staff/launchAssessmentController");
+} = require("../../controllers/adminController/launchAssessmentController");
 const {
   listCoachUserPrakrutiThingsToAvoidController,
   listCoachUserPrakrutiQuestionsController,
   getCoachUserPrakrutiAssessmentController,
   saveCoachUserPrakrutiAssessmentController,
   exportCoachUserPrakrutiQuestionsController,
-} = require("../../controllers/staff/prakrutiAssessmentController");
+} = require("../../controllers/adminController/prakrutiAssessmentController");
 const {
   getCoachHealthProgressSettingsController,
   updateCoachHealthProgressSettingsController,
@@ -86,30 +86,30 @@ const {
   listCoachBloodPressureLogsController,
   listCoachMenstrualCycleLogsController,
   listCoachConditionLogsController,
-} = require("../../controllers/staff/healthProgressController");
+} = require("../../controllers/adminController/healthProgressController");
 const {
   getCoachMetabolicMetricsDashboardController,
   listCoachMetabolicMetricHistoryController,
   createCoachFattyLiverMetricController,
-} = require("../../controllers/staff/metabolicMetricsController");
+} = require("../../controllers/adminController/metabolicMetricsController");
 const {
   getCoachUserDailyReflectionSettingsController,
   updateCoachUserDailyReflectionSettingsController,
   getCoachUserDailyReflectionHistoryController,
-} = require("../../controllers/staff/dailyReflectionController");
+} = require("../../controllers/adminController/dailyReflectionController");
 const {
   getCoachUserCommitmentLetterController,
-} = require("../../controllers/staff/commitmentLetterController");
+} = require("../../controllers/adminController/commitmentLetterController");
 const {
   getCoachUserCoachInsightController,
   upsertCoachUserCoachInsightController,
-} = require("../../controllers/staff/coachInsightController");
+} = require("../../controllers/adminController/coachInsightController");
 const {
   listCoachHealConsultancyTracksController,
   createCoachHealConsultancyTrackController,
   updateCoachHealConsultancyTrackController,
   deleteCoachHealConsultancyTrackController,
-} = require("../../controllers/staff/healConsultancyTrackController");
+} = require("../../controllers/adminController/healConsultancyTrackController");
 const { getStaffHealUserWaterTrackingController } = require("../../controllers/waterTrackingHistoryController");
 const { getStaffHealUserStepsTrackingController } = require("../../controllers/stepsTrackingHistoryController");
 const { getStaffHealUserSleepTrackingController } = require("../../controllers/sleepTrackingHistoryController");

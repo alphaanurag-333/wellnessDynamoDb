@@ -8,7 +8,7 @@ const {
   getCoachCommitmentLetterByIdController,
   reviewCoachCommitmentLetterController,
   deleteCoachCommitmentLetterController,
-} = require("../../controllers/staff/commitmentLetterController");
+} = require("../../controllers/adminController/commitmentLetterController");
 
 const router = express.Router();
 router.use(protectAccount, requireActiveRole(...CLINICAL_ROLES));

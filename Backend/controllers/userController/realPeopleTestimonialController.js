@@ -5,7 +5,7 @@ const {
   listRealPeopleTestimonials,
 } = require("../../models/realPeopleTestimonialModel");
 const { resolveListMedia } = require("./userMiscMedia");
-const { readIdParam } = require("../realPeopleTestimonialControllerHelpers");
+const { readIdParam } = require("../helpers/realPeopleTestimonialControllerHelpers");
 
 exports.listUserRealPeopleTestimonialsController = asyncHandler(async (req, res) => {
   const userId = req.auth?.sub;

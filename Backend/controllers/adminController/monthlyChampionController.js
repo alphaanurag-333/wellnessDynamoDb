@@ -1,10 +1,12 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
+const { resolveStaffActor } = require("../staffAccess");
 const {
   listMonthlyChampionPosts,
   getMonthlyChampionPostById,
   updateMonthlyChampionPost,
   normalizeStatus,
+  findLatestMonthWithChampions,
 } = require("../../models/monthlyChampionPostModel");
 const {
   listMonthlyChampionPostComments,
@@ -32,7 +34,18 @@ async function enrichMonthlyChampionPost(post) {
 }
 
 exports.listMonthlyChampionPostsController = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, status, monthYear } = req.query;
+  const actor = resolveStaffActor(req);
+  const isAdminLike = actor.role === "admin" || actor.role === "support";
+
+  let { page = 1, limit, status, monthYear } = req.query;
+  if (!limit) limit = isAdminLike ? 10 : 20;
+  if (!isAdminLike) {
+    status = "active";
+    if (!monthYear) {
+      monthYear = (await findLatestMonthWithChampions()) || undefined;
+    }
+  }
+
   const data = await listMonthlyChampionPosts({ page, limit, status, monthYear });
 
   const monthlyChampionPosts = await Promise.all(
@@ -50,13 +63,20 @@ exports.listMonthlyChampionPostsController = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     monthlyChampionPosts,
+    ...(isAdminLike ? {} : { monthYear: monthYear || null }),
     pagination: data.pagination,
   });
 });
 
 exports.getMonthlyChampionPostByIdController = asyncHandler(async (req, res) => {
+  const actor = resolveStaffActor(req);
+  const isAdminLike = actor.role === "admin" || actor.role === "support";
+
   const post = await getMonthlyChampionPostById(req.params.id);
   if (!post) {
+    throw new AppError("Monthly champion post not found", 404);
+  }
+  if (!isAdminLike && post.status !== "active") {
     throw new AppError("Monthly champion post not found", 404);
   }
 
@@ -67,6 +87,9 @@ exports.getMonthlyChampionPostByIdController = asyncHandler(async (req, res) => 
     monthlyChampionPost: enriched,
   });
 });
+
+exports.listCoachMonthlyChampionPostsController = exports.listMonthlyChampionPostsController;
+exports.getCoachMonthlyChampionPostByIdController = exports.getMonthlyChampionPostByIdController;
 
 exports.updateMonthlyChampionPostController = asyncHandler(async (req, res) => {
   const updates = {};

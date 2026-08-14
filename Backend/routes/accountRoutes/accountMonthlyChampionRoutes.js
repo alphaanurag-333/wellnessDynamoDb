@@ -8,11 +8,6 @@ const {
   deleteMonthlyChampionPostCommentController,
   runMonthlyChampionJobController,
 } = require("../../controllers/adminController/monthlyChampionController");
-const {
-  listCoachMonthlyChampionPostsController,
-  getCoachMonthlyChampionPostByIdController,
-} = require("../../controllers/staff/monthlyChampionController");
-const { resolveStaffActor } = require("../../controllers/staffAccess");
 
 const router = express.Router();
 router.use(protectAccount);
@@ -25,37 +20,13 @@ const view = authorizeStaff("console.ct.view", {
   support: "console.ct.view",
 });
 
-function listByRole(req, res, next) {
-  try {
-    const actor = resolveStaffActor(req);
-    if (actor.role === "admin" || actor.role === "support") {
-      return listMonthlyChampionPostsController(req, res, next);
-    }
-    return listCoachMonthlyChampionPostsController(req, res, next);
-  } catch (err) {
-    return next(err);
-  }
-}
-
-function getByRole(req, res, next) {
-  try {
-    const actor = resolveStaffActor(req);
-    if (actor.role === "admin" || actor.role === "support") {
-      return getMonthlyChampionPostByIdController(req, res, next);
-    }
-    return getCoachMonthlyChampionPostByIdController(req, res, next);
-  } catch (err) {
-    return next(err);
-  }
-}
-
-router.get("/", view, listByRole);
+router.get("/", view, listMonthlyChampionPostsController);
 router.post(
   "/jobs/run",
   authorizeStaff("console.ct.create", { admin: "monthly-champions.edit" }),
   runMonthlyChampionJobController
 );
-router.get("/:id", view, getByRole);
+router.get("/:id", view, getMonthlyChampionPostByIdController);
 router.patch(
   "/:id",
   authorizeStaff("console.ct.edit", { admin: "monthly-champions.edit" }),

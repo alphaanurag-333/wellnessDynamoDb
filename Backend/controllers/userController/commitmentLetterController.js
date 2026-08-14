@@ -9,11 +9,11 @@ const {
   resubmitUserCommitmentLetter,
 } = require("../../models/userCommitmentLetterModel");
 const { uploadFileFromRequest, deleteStoredMedia } = require("../../utils/s3");
-const { resolveAssignedCoachForUser } = require("../mealTrackingControllerHelpers");
+const { resolveAssignedCoachForUser } = require("../helpers/mealTrackingControllerHelpers");
 const {
   assertPdfUpload,
   readCommitmentLetterUserId,
-} = require("../commitmentLetterControllerHelpers");
+} = require("../helpers/commitmentLetterControllerHelpers");
 
 const S3_FOLDER = "user-commitment-letters";
 

@@ -5,7 +5,7 @@ const { CLINICAL_ROLES } = require("../../controllers/staffAccess");
 const {
   listPendingMealLogsController,
   reviewMealLogController,
-} = require("../../controllers/staff/mealReviewController");
+} = require("../../controllers/adminController/mealReviewController");
 const {
   adminGetUserMealTrackingController,
   adminDeleteMealLogController,

@@ -11,7 +11,7 @@ const {
   dispatchSupplementDeliveryRequestedCoachNotificationAsync,
   dispatchSupplementBillUploadedCoachNotificationAsync,
 } = require("../../services/notificationDispatchService");
-const { loadRecommendationForUser } = require("../supplementControllerHelpers");
+const { loadRecommendationForUser } = require("../helpers/supplementControllerHelpers");
 
 const S3_FOLDER = "supplement-bills";
 

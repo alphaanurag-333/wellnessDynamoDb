@@ -6,7 +6,7 @@ const {
   handleValidationError,
   parseRecordedAt,
   toNumberOrNull,
-} = require("../healthProgressControllerHelpers");
+} = require("../helpers/healthProgressControllerHelpers");
 const {
   ageFromDob,
   normalizeMetricType,

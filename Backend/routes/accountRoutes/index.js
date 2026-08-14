@@ -10,6 +10,10 @@ const accountCommitmentLetterRoutes = require("./accountCommitmentLetterRoutes")
 const accountMonthlyChampionRoutes = require("./accountMonthlyChampionRoutes");
 const accountAssistantRoutes = require("./accountAssistantRoutes");
 const accountMeRoutes = require("./accountMeRoutes");
+const accountEnergyExchangeRoutes = require("./accountEnergyExchangeRoutes");
+const accountProgramRoutes = require("./accountProgramRoutes");
+const accountPortalClientTestimonialRoutes = require("./accountPortalClientTestimonialRoutes");
+const accountActiveSpecializationRoutes = require("./accountActiveSpecializationRoutes");
 const {
   listAccountsHandler,
   getAccountHandler,
@@ -58,8 +62,6 @@ const adminCofounderMessageRoutes = require("../adminRoutes/adminCofounderMessag
 const adminContactInquiryRoutes = require("../adminRoutes/adminContactInquiryRoutes");
 const adminEnergyExchangeRoutes = require("../adminRoutes/adminEnergyExchangeRoutes");
 const adminProgramCatalogRoutes = require("../adminRoutes/adminProgramCatalogRoutes");
-const coachEnergyExchangeRoutes = require("../wellnessCoachRoutes/coachEnergyExchangeRoutes");
-const coachProgramRoutes = require("../wellnessCoachRoutes/coachProgramRoutes");
 
 const router = express.Router();
 
@@ -73,11 +75,12 @@ router.use("/commitment-letters", accountCommitmentLetterRoutes);
 router.use("/monthly-champions", accountMonthlyChampionRoutes);
 router.use("/assistants", accountAssistantRoutes);
 router.use("/me", accountMeRoutes);
-router.use("/energy-exchange", coachEnergyExchangeRoutes);
-router.use("/programs", coachProgramRoutes);
+router.use("/energy-exchange", accountEnergyExchangeRoutes);
+router.use("/programs", accountProgramRoutes);
+router.use("/specialization-options", accountActiveSpecializationRoutes);
 router.use("/specializations", adminSpecializationRoutes);
 router.use("/client-testimonials", adminClientTestimonialsRoutes);
-router.use("/portal-client-testimonials", require("../wellnessCoachRoutes/coachClientTestimonialRoutes"));
+router.use("/portal-client-testimonials", accountPortalClientTestimonialRoutes);
 
 router.get("/accounts", protectAccount, requireActiveRole("admin"), listAccountsHandler);
 router.post("/accounts", protectAccount, requireActiveRole("admin"), createAccountHandler);
@@ -143,3 +146,7 @@ module.exports.accountCommitmentLetterRoutes = accountCommitmentLetterRoutes;
 module.exports.accountMonthlyChampionRoutes = accountMonthlyChampionRoutes;
 module.exports.accountAssistantRoutes = accountAssistantRoutes;
 module.exports.accountMeRoutes = accountMeRoutes;
+module.exports.accountEnergyExchangeRoutes = accountEnergyExchangeRoutes;
+module.exports.accountProgramRoutes = accountProgramRoutes;
+module.exports.accountPortalClientTestimonialRoutes = accountPortalClientTestimonialRoutes;
+module.exports.accountActiveSpecializationRoutes = accountActiveSpecializationRoutes;

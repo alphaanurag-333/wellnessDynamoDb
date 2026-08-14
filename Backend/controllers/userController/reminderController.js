@@ -11,7 +11,7 @@ const {
   parseReminderBody,
   handleValidationError,
   loadReminderForUser,
-} = require("../reminderControllerHelpers");
+} = require("../helpers/reminderControllerHelpers");
 
 exports.listMyRemindersController = asyncHandler(async (req, res) => {
   const userId = req.auth?.sub;

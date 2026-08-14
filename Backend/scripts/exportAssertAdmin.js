@@ -12,7 +12,7 @@ const files = [
   "commitmentLetterControllerHelpers.js",
 ];
 
-const dir = path.join(__dirname, "../controllers");
+const dir = path.join(__dirname, "../controllers/helpers");
 
 for (const f of files) {
   const p = path.join(dir, f);

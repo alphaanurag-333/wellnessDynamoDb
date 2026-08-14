@@ -25,7 +25,7 @@ const {
   validateStatus,
   validateName,
   validateHealthConcernId,
-} = require("../realPeopleTestimonialControllerHelpers");
+} = require("../helpers/realPeopleTestimonialControllerHelpers");
 
 const S3_FOLDER = "real-people-testimonials";
 
