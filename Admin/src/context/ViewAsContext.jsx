@@ -6,6 +6,7 @@ import {
   accountSwitchRole,
   clearAccountAuth,
   readAccountAuth,
+  writeAccountAuth,
   ROLE_KEY_TO_UI,
   UI_TO_ROLE_KEY,
 } from "../api/accountApi.js";
@@ -93,6 +94,24 @@ export function ViewAsProvider({ children }) {
     setAuthError("");
   }, []);
 
+  const setAccount = useCallback((account) => {
+    if (!account) return;
+    setAuth((prev) => {
+      if (!prev?.accessToken) return prev;
+      const next = { ...prev, account };
+      writeAccountAuth(next);
+      return next;
+    });
+  }, []);
+
+  const refreshAccount = useCallback(async () => {
+    const account = await accountMe();
+    if (account) {
+      setAuth(readAccountAuth());
+    }
+    return account;
+  }, []);
+
   const isSuperAdmin = accountIsSuperAdmin(auth?.account);
 
   const setViewAs = useCallback(
@@ -168,6 +187,8 @@ export function ViewAsProvider({ children }) {
       setAuthError,
       login,
       logout,
+      setAccount,
+      refreshAccount,
       UI_TO_ROLE_KEY,
     }),
     [
@@ -182,6 +203,8 @@ export function ViewAsProvider({ children }) {
       authError,
       login,
       logout,
+      setAccount,
+      refreshAccount,
     ],
   );
 

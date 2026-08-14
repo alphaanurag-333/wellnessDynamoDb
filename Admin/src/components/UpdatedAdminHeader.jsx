@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useViewAs } from "../context/ViewAsContext.jsx";
-import { ROLE_AVATAR_INITIALS } from "../data/dashboardData.js";
+import { userInitials } from "../data/usersData.js";
 
 export function UpdatedAdminHeader({
   notifications,
@@ -17,7 +17,9 @@ export function UpdatedAdminHeader({
   const navigate = useNavigate();
   const panelRef = useRef(null);
   const btnRef = useRef(null);
-  const { activeRole } = useViewAs();
+  const { activeRole, account } = useViewAs();
+  const avatarInitial = userInitials(account?.name || activeRole.name).charAt(0) || "A";
+  const profileImage = account?.profileImage || null;
 
   useEffect(() => {
     if (!notifOpen) return undefined;
@@ -130,7 +132,11 @@ export function UpdatedAdminHeader({
             {activeRole.name}
           </span>
           <button type="button" className="header__avatar" aria-label="My profile" onClick={onOpenProfile}>
-            {ROLE_AVATAR_INITIALS[activeRole.id] ?? activeRole.name.charAt(0)}
+            {profileImage ? (
+              <img className="header__avatar-img" src={profileImage} alt="" />
+            ) : (
+              avatarInitial
+            )}
           </button>
         </div>
       </div>

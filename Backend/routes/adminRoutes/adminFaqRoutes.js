@@ -7,12 +7,14 @@ const {
   getFaqByIdController,
   createFaqController,
   updateFaqController,
+  reorderFaqsController,
   deleteFaqController,
 } = require("../../controllers/adminController/faqController");
 
 const router = express.Router();
 
 router.get("/", protectAdmin, authorize("faq.view"), listFaqsController);
+router.put("/reorder", protectAdmin, authorize("faq.edit"), reorderFaqsController);
 router.get("/:id", protectAdmin, authorize("faq.view"), getFaqByIdController);
 router.post("/", protectAdmin, authorize("faq.edit"), createFaqController);
 router.patch("/:id", protectAdmin, authorize("faq.edit"), updateFaqController);

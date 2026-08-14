@@ -6,8 +6,24 @@ const {
   updateFaq,
   deleteFaq,
   listFaqs,
+  reorderFaqs,
   normalizeStatus,
+  normalizeSortOrder,
+  SORT_ORDER_MIN,
+  SORT_ORDER_MAX,
 } = require("../../models/faqModel");
+
+function validateSortOrder(value) {
+  if (value === undefined || value === null || value === "") return undefined;
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < SORT_ORDER_MIN || n > SORT_ORDER_MAX) {
+    throw new AppError(
+      `sortOrder must be a whole number between ${SORT_ORDER_MIN} and ${SORT_ORDER_MAX}`,
+      400,
+    );
+  }
+  return normalizeSortOrder(n);
+}
 
 exports.listFaqsController = asyncHandler(async (req, res) => {
   const page = Number(req.query.page) || 1;
@@ -40,12 +56,13 @@ exports.createFaqController = asyncHandler(async (req, res) => {
   const question = String(req.body.question || "").trim();
   const answer = String(req.body.answer || "").trim();
   const status = normalizeStatus(req.body.status, "active");
+  const sortOrder = validateSortOrder(req.body.sortOrder);
 
   if (!question || !answer) {
     throw new AppError("question and answer are required", 400);
   }
 
-  const faq = await createFaq({ question, answer, status });
+  const faq = await createFaq({ question, answer, status, sortOrder });
 
   return res.status(201).json({
     status: true,
@@ -77,6 +94,10 @@ exports.updateFaqController = asyncHandler(async (req, res) => {
     updates.status = status;
   }
 
+  if (req.body.sortOrder !== undefined) {
+    updates.sortOrder = validateSortOrder(req.body.sortOrder);
+  }
+
   if (Object.keys(updates).length === 0) {
     throw new AppError("At least one field is required for update", 400);
   }
@@ -95,6 +116,35 @@ exports.updateFaqController = asyncHandler(async (req, res) => {
     status: true,
     message: "FAQ updated successfully",
     faq,
+  });
+});
+
+exports.reorderFaqsController = asyncHandler(async (req, res) => {
+  const orderedIds = Array.isArray(req.body.orderedIds) ? req.body.orderedIds : null;
+  if (!orderedIds || orderedIds.length === 0) {
+    throw new AppError("orderedIds array is required", 400);
+  }
+
+  let faqs;
+  try {
+    faqs = await reorderFaqs(orderedIds);
+  } catch (err) {
+    if (err?.statusCode === 404 || String(err.message || "").startsWith("FAQ not found")) {
+      throw new AppError(err.message || "FAQ not found", 404);
+    }
+    if (err?.message === "orderedIds must be unique" || err?.message === "orderedIds is required") {
+      throw new AppError(err.message, 400);
+    }
+    if (err?.name === "ConditionalCheckFailedException") {
+      throw new AppError("FAQ not found", 404);
+    }
+    throw err;
+  }
+
+  return res.status(200).json({
+    status: true,
+    message: "FAQ order updated successfully",
+    faqs,
   });
 });
 
