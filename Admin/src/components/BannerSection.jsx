@@ -8,6 +8,7 @@ import {
   bannerCopyForHeadline,
   bannerPlacementById,
 } from "../data/bannerConfigData.js";
+import { adminListConfigDropdowns } from "../api/configDropdownApi.js";
 
 const CROP_RATIOS = ["Original", "1:1", "4:3", "3:4", "16:9"];
 
@@ -244,8 +245,26 @@ function GalleryPanel({ gallery, setGallery, onToast, onUpload }) {
 
 export function BannerSection({ editor, setEditor, items, setItems, gallery, setGallery, onToast }) {
   const [uploadKind, setUploadKind] = useState(null);
+  const [bannerTypes, setBannerTypes] = useState(BANNER_TYPES);
   const placement = bannerPlacementById(editor.placement);
   const bodyText = asCopyString(editor.body);
+
+  useEffect(() => {
+    let cancelled = false;
+    adminListConfigDropdowns(null, { limit: 50 })
+      .then(({ lists }) => {
+        if (cancelled) return;
+        const list = (lists || []).find((row) => row.slug === "banner-type");
+        const opts = (list?.options || [])
+          .filter((row) => row.on)
+          .map((row) => ({ id: row.value || row.id, label: row.label }));
+        if (opts.length) setBannerTypes(opts);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function patch(next) {
     setEditor((prev) => ({ ...prev, ...next }));
@@ -296,7 +315,7 @@ export function BannerSection({ editor, setEditor, items, setItems, gallery, set
           <label className="ua-cfg-bn-field">
             <span>Banner type</span>
             <select value={editor.type} onChange={(event) => patch({ type: event.target.value })}>
-              {BANNER_TYPES.map((entry) => (
+              {bannerTypes.map((entry) => (
                 <option key={entry.id} value={entry.id}>{entry.label}</option>
               ))}
             </select>

@@ -603,6 +603,25 @@ const TABLE_DEFINITIONS = [
     ...PAY_PER_REQUEST,
   },
   {
+    TableName: "ConfigDropdown",
+    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
+    AttributeDefinitions: [
+      { AttributeName: "id", AttributeType: "S" },
+      { AttributeName: "status", AttributeType: "S" },
+      { AttributeName: "createdAt", AttributeType: "S" },
+      { AttributeName: "slug", AttributeType: "S" },
+    ],
+    GlobalSecondaryIndexes: [
+      statusCreatedAtIndex("StatusIndex"),
+      {
+        IndexName: "SlugIndex",
+        KeySchema: [{ AttributeName: "slug", KeyType: "HASH" }],
+        Projection: { ProjectionType: "ALL" },
+      },
+    ],
+    ...PAY_PER_REQUEST,
+  },
+  {
     TableName: "HealthConcern",
     KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
     AttributeDefinitions: [

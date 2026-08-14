@@ -2,6 +2,7 @@ const express = require("express");
 const {
   getActiveBanners,
   getActiveFaqs,
+  getActiveConfigDropdowns,
   getStaticPageBySlug,
   getActiveClientTestimonials,
   getActiveProgramTestimonials,
@@ -33,6 +34,8 @@ const router = express.Router();
 
 router.get("/banners", getActiveBanners);
 router.get("/faqs", getActiveFaqs);
+router.get("/config-dropdowns", getActiveConfigDropdowns);
+router.get("/config-dropdowns/:slug", getActiveConfigDropdowns);
 router.get("/pages/:slug", getStaticPageBySlug);
 router.get("/client-testimonials", getActiveClientTestimonials);
 router.get("/program-testimonials", getActiveProgramTestimonials);

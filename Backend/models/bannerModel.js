@@ -16,7 +16,6 @@ const {
 
 const TABLE = "Banner";
 const STATUS = new Set(["active", "inactive"]);
-const BANNER_TYPES = new Set(["main", "wellnesspedia"]);
 
 function normalizeStatus(value, fallback = "active") {
   const next = String(value || fallback).toLowerCase().trim();
@@ -25,7 +24,7 @@ function normalizeStatus(value, fallback = "active") {
 
 function normalizeBannerType(value, fallback = "main") {
   const next = String(value || "").toLowerCase().trim();
-  if (BANNER_TYPES.has(next)) return next;
+  if (/^[a-z0-9_]{1,64}$/.test(next)) return next;
   return fallback === "" ? "" : "main";
 }
 
@@ -183,7 +182,6 @@ async function listBanners({ page = 1, limit = 10, status, search, bannerType } 
 }
 
 module.exports = {
-  BANNER_TYPES,
   createBanner,
   getBannerById,
   getBannerRecordById,

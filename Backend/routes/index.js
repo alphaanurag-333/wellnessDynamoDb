@@ -1,6 +1,7 @@
 const express = require("express");
 const adminAppConfigRoutes = require("./adminRoutes/adminAppConfigRoutes");
 const adminFaqRoutes = require("./adminRoutes/adminFaqRoutes");
+const adminConfigDropdownRoutes = require("./adminRoutes/adminConfigDropdownRoutes");
 const adminSopRoutes = require("./adminRoutes/adminSopRoutes");
 const adminCouponRoutes = require("./adminRoutes/adminCouponRoutes");
 const adminNotificationRoutes = require("./adminRoutes/adminNotificationRoutes");
@@ -126,6 +127,7 @@ router.use("/coach/client-testimonials", accountPortalClientTestimonialRoutes);
 router.use("/assistant/client-testimonials", accountPortalClientTestimonialRoutes);
 router.use("/admin/app-config", adminAppConfigRoutes);
 router.use("/admin/faq", adminFaqRoutes);
+router.use("/admin/config-dropdowns", adminConfigDropdownRoutes);
 router.use("/admin/sops", adminSopRoutes);
 router.use("/admin/coupons", adminCouponRoutes);
 router.use("/admin/notifications", adminNotificationRoutes);

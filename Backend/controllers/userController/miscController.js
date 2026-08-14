@@ -2,6 +2,11 @@ const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
 const { listBanners } = require("../../models/bannerModel");
 const { listFaqs } = require("../../models/faqModel");
+const {
+  listDropdowns,
+  getDropdownBySlug,
+  toPublicList,
+} = require("../../models/configDropdownModel");
 const { getPageBySlug, slugify } = require("../../models/staticPageModel");
 const { listClientTestimonials } = require("../../models/clientTestimonials");
 const { listProgramTestimonials } = require("../../models/programTestimonialModel");
@@ -101,7 +106,7 @@ function toPublicSiteMonthlyChampion(post, user) {
 exports.getActiveBanners = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
   const rawType = String(req.query.bannerType || req.query.type || "main").trim().toLowerCase();
-  const bannerType = rawType === "wellnesspedia" ? "wellnesspedia" : "main";
+  const bannerType = /^[a-z0-9_]{1,64}$/.test(rawType) ? rawType : "main";
   const data = resolveListMedia(
     await listBanners({ page, limit, status: "active", bannerType }),
     "banners",
@@ -114,6 +119,26 @@ exports.getActiveFaqs = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
   const data = await listFaqs({ page, limit, status: "active" });
   return res.status(200).json({ status: true, faqs: data.faqs, pagination: data.pagination });
+});
+
+exports.getActiveConfigDropdowns = asyncHandler(async (req, res) => {
+  const slug = String(req.query.slug || req.params.slug || "").trim();
+  if (slug) {
+    const list = await getDropdownBySlug(slug);
+    if (!list || list.status !== "active") {
+      throw new AppError("Dropdown list not found", 404);
+    }
+    return res.status(200).json({
+      status: true,
+      list: toPublicList(list, { activeOptionsOnly: true }),
+    });
+  }
+
+  const data = await listDropdowns({ page: 1, limit: 50, status: "active", seed: true });
+  return res.status(200).json({
+    status: true,
+    lists: data.lists.map((row) => toPublicList(row, { activeOptionsOnly: true })),
+  });
 });
 
 exports.getStaticPageBySlug = asyncHandler(async (req, res) => {

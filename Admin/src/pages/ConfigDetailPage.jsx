@@ -123,7 +123,6 @@ import {
   GOOGLE_REVIEW_GALLERY,
   GOOGLE_REVIEW_STATS,
 } from "../data/googleReviewConfigData.js";
-import { DROPDOWN_LISTS } from "../data/dropdownsConfigData.js";
 import {
   RECIPES_EDITOR,
   RECIPE_GALLERY,
@@ -1034,7 +1033,7 @@ export function ConfigDetailPage() {
   const [grEditor, setGrEditor] = useState(GOOGLE_REVIEW_EDITOR);
   const [grStats, setGrStats] = useState(GOOGLE_REVIEW_STATS);
   const [grGallery, setGrGallery] = useState(GOOGLE_REVIEW_GALLERY);
-  const [dropdownLists, setDropdownLists] = useState(DROPDOWN_LISTS);
+  const [dropdownLists, setDropdownLists] = useState([]);
   const [rcEditor, setRcEditor] = useState(RECIPES_EDITOR);
   const [rcItems, setRcItems] = useState(RECIPE_ITEMS);
   const [rcGallery, setRcGallery] = useState(RECIPE_GALLERY);
