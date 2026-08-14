@@ -140,19 +140,6 @@ export const navItems = [
       { to: "profile", label: "Admin Profile", icon: "profile" },
     ],
   },
-  {
-    id: "administration",
-    label: "Administration",
-    icon: "shield",
-    // Super Admin only — not permission-gated like every other group above,
-    // since sub-admin/role management is meta-admin functionality that must
-    // never be delegable via a role's permissions.
-    superAdminOnly: true,
-    children: [
-      { to: "sub-admins", label: "Sub-Admins", icon: "users" },
-      { to: "roles", label: "Roles & Permissions", icon: "clipboard-list" },
-    ],
-  },
 ];
 
 export function flattenNavLinks(items) {

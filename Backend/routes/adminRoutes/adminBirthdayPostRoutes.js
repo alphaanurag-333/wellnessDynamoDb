@@ -1,7 +1,7 @@
 const express = require("express");
 
-const { protectAdmin } = require("../../middleware/auth");
-const { authorize } = require("../../middleware/authorize");
+const { protectAccount } = require("../../middleware/auth");
+const { authorizeStaff } = require("../../middleware/authorize");
 const {
   listBirthdayPostsController,
   getBirthdayPostByIdController,
@@ -11,13 +11,13 @@ const {
 
 const router = express.Router();
 
-router.get("/", protectAdmin, authorize("birthday-posts.view"), listBirthdayPostsController);
-router.get("/:id", protectAdmin, authorize("birthday-posts.view"), getBirthdayPostByIdController);
-router.patch("/:id", protectAdmin, authorize("birthday-posts.edit"), updateBirthdayPostController);
+router.get("/", protectAccount, authorizeStaff("console.ct.view", { admin: "birthday-posts.view" }), listBirthdayPostsController);
+router.get("/:id", protectAccount, authorizeStaff("console.ct.view", { admin: "birthday-posts.view" }), getBirthdayPostByIdController);
+router.patch("/:id", protectAccount, authorizeStaff("console.ct.edit", { admin: "birthday-posts.edit" }), updateBirthdayPostController);
 router.delete(
   "/:postId/comments/:commentId",
-  protectAdmin,
-  authorize("birthday-posts.delete"),
+  protectAccount,
+  authorizeStaff("console.ct.delete", { admin: "birthday-posts.delete" }),
   deleteBirthdayPostCommentController
 );
 

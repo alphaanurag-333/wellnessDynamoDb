@@ -1,7 +1,7 @@
 const express = require("express");
 
-const { protectAdmin } = require("../../middleware/auth");
-const { authorize } = require("../../middleware/authorize");
+const { protectAccount } = require("../../middleware/auth");
+const { authorizeStaff } = require("../../middleware/authorize");
 const { optionalProgramTestimonialFile } = require("../../middleware/authMultipart");
 const {
   listProgramTestimonialsController,
@@ -13,31 +13,31 @@ const {
 
 const router = express.Router();
 
-router.get("/", protectAdmin, authorize("program-testimonials.view"), listProgramTestimonialsController);
+router.get("/", protectAccount, authorizeStaff("console.ct.view", { admin: "program-testimonials.view" }), listProgramTestimonialsController);
 router.get(
   "/:id",
-  protectAdmin,
-  authorize("program-testimonials.view"),
+  protectAccount,
+  authorizeStaff("console.ct.view", { admin: "program-testimonials.view" }),
   getProgramTestimonialByIdController
 );
 router.post(
   "/",
-  protectAdmin,
-  authorize("program-testimonials.edit"),
+  protectAccount,
+  authorizeStaff("console.ct.edit", { admin: "program-testimonials.edit" }),
   optionalProgramTestimonialFile,
   createProgramTestimonialController
 );
 router.patch(
   "/:id",
-  protectAdmin,
-  authorize("program-testimonials.edit"),
+  protectAccount,
+  authorizeStaff("console.ct.edit", { admin: "program-testimonials.edit" }),
   optionalProgramTestimonialFile,
   updateProgramTestimonialController
 );
 router.delete(
   "/:id",
-  protectAdmin,
-  authorize("program-testimonials.delete"),
+  protectAccount,
+  authorizeStaff("console.ct.delete", { admin: "program-testimonials.delete" }),
   deleteProgramTestimonialController
 );
 

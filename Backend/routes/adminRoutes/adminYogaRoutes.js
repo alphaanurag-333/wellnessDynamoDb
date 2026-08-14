@@ -1,7 +1,7 @@
 const express = require("express");
 
-const { protectAdmin } = require("../../middleware/auth");
-const { authorize } = require("../../middleware/authorize");
+const { protectAccount } = require("../../middleware/auth");
+const { authorizeStaff } = require("../../middleware/authorize");
 const { optionalYogaFile } = require("../../middleware/authMultipart");
 const {
   listYogaController,
@@ -13,10 +13,10 @@ const {
 
 const router = express.Router();
 
-router.get("/", protectAdmin, authorize("yoga.view"), listYogaController);
-router.get("/:id", protectAdmin, authorize("yoga.view"), getYogaByIdController);
-router.post("/", protectAdmin, authorize("yoga.edit"), optionalYogaFile, createYogaController);
-router.patch("/:id", protectAdmin, authorize("yoga.edit"), optionalYogaFile, updateYogaController);
-router.delete("/:id", protectAdmin, authorize("yoga.delete"), deleteYogaController);
+router.get("/", protectAccount, authorizeStaff("console.cf.view", { admin: "yoga.view" }), listYogaController);
+router.get("/:id", protectAccount, authorizeStaff("console.cf.view", { admin: "yoga.view" }), getYogaByIdController);
+router.post("/", protectAccount, authorizeStaff("console.cf.edit", { admin: "yoga.edit" }), optionalYogaFile, createYogaController);
+router.patch("/:id", protectAccount, authorizeStaff("console.cf.edit", { admin: "yoga.edit" }), optionalYogaFile, updateYogaController);
+router.delete("/:id", protectAccount, authorizeStaff("console.cf.delete", { admin: "yoga.delete" }), deleteYogaController);
 
 module.exports = router;

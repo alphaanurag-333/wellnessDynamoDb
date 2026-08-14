@@ -3,6 +3,13 @@ const { protectAccount, requireActiveRole } = require("../../middleware/auth");
 const accountAuthRoutes = require("./accountAuthRoutes");
 const accountHealUserRoutes = require("./accountHealUserRoutes");
 const accountAccessRoutes = require("./accountAccessRoutes");
+const accountDashboardRoutes = require("./accountDashboardRoutes");
+const accountMealTrackingRoutes = require("./accountMealTrackingRoutes");
+const accountConsultancyRoutes = require("./accountConsultancyRoutes");
+const accountCommitmentLetterRoutes = require("./accountCommitmentLetterRoutes");
+const accountMonthlyChampionRoutes = require("./accountMonthlyChampionRoutes");
+const accountAssistantRoutes = require("./accountAssistantRoutes");
+const accountMeRoutes = require("./accountMeRoutes");
 const {
   listAccountsHandler,
   getAccountHandler,
@@ -11,22 +18,66 @@ const {
   revokeMembershipHandler,
 } = require("../../controllers/accountController/accountAdminController");
 
-// Admin CMS modules — each already applies protectAdmin (Account-aware when dual-read/auth flags on)
-const adminRoleRoutes = require("../adminRoutes/adminRoleRoutes");
-const adminPermissionRoutes = require("../adminRoutes/adminPermissionRoutes");
-const adminSubAdminRoutes = require("../adminRoutes/adminSubAdminRoutes");
 const adminSopRoutes = require("../adminRoutes/adminSopRoutes");
 const adminAppConfigRoutes = require("../adminRoutes/adminAppConfigRoutes");
 const adminUserRoutes = require("../adminRoutes/adminUserRoutes");
 const adminWellnessCoachRoutes = require("../adminRoutes/adminWellnessCoachRoutes");
 const adminBannerRoutes = require("../adminRoutes/adminBannerRoutes");
-const adminDashboardRoutes = require("../adminRoutes/adminDashboardRoutes");
+const adminFaqRoutes = require("../adminRoutes/adminFaqRoutes");
+const adminCouponRoutes = require("../adminRoutes/adminCouponRoutes");
+const adminNotificationRoutes = require("../adminRoutes/adminNotificationRoutes");
+const adminInboxRoutes = require("../adminRoutes/adminInboxRoutes");
+const adminStaticPageRoutes = require("../adminRoutes/adminStaticPageRoutes");
+const adminTransformationRoutes = require("../adminRoutes/adminTransformationRoutes");
+const adminHealthConcernRoutes = require("../adminRoutes/adminHealthConcernRoutes");
+const adminHealthDisorderRoutes = require("../adminRoutes/adminHealthDisorderRoutes");
+const adminHealthToolRoutes = require("../adminRoutes/adminHealthToolRoutes");
+const adminHealthRecipeRoutes = require("../adminRoutes/adminHealthRecipeRoutes");
+const adminYogaRoutes = require("../adminRoutes/adminYogaRoutes");
+const adminPhysicalExerciseRoutes = require("../adminRoutes/adminPhysicalExerciseRoutes");
+const adminSupplementRoutes = require("../adminRoutes/adminSupplementRoutes");
+const adminMedicalConditionQuestionRoutes = require("../adminRoutes/adminMedicalConditionQuestionRoutes");
+const adminLaunchQuestionRoutes = require("../adminRoutes/adminLaunchQuestionRoutes");
+const adminLaunchFocusAreaRoutes = require("../adminRoutes/adminLaunchFocusAreaRoutes");
+const adminPrakrutiQuestionRoutes = require("../adminRoutes/adminPrakrutiQuestionRoutes");
+const adminPrakrutiThingToAvoidRoutes = require("../adminRoutes/adminPrakrutiThingToAvoidRoutes");
+const adminPrakrutiRecommendationRoutes = require("../adminRoutes/adminPrakrutiRecommendationRoutes");
+const adminTestCatalogRoutes = require("../adminRoutes/adminTestCatalogRoutes");
+const adminDietPlanCatalogRoutes = require("../adminRoutes/adminDietPlanCatalogRoutes");
+const adminWellnessPrescriptionCatalogRoutes = require("../adminRoutes/adminWellnessPrescriptionCatalogRoutes");
+const adminMentalWellbeingRoutes = require("../adminRoutes/adminMentalWellbeingRoutes");
+const adminSpecializationRoutes = require("../adminRoutes/adminSpecializationRoutes");
+const adminBirthdayNotificationRoutes = require("../adminRoutes/adminBirthdayNotificationRoutes");
+const adminBirthdayPostRoutes = require("../adminRoutes/adminBirthdayPostRoutes");
+const adminClientTestimonialsRoutes = require("../adminRoutes/adminClientTestimonialsRoutes");
+const adminLeadershipNoteRoutes = require("../adminRoutes/adminLeadershipNoteRoutes");
+const adminProgramTestimonialRoutes = require("../adminRoutes/adminProgramTestimonialRoutes");
+const adminVideoTestimonialsRoutes = require("../adminRoutes/adminVideoTestimonialsRoutes");
+const adminRealPeopleTestimonialRoutes = require("../adminRoutes/adminRealPeopleTestimonialRoutes");
+const adminCofounderMessageRoutes = require("../adminRoutes/adminCofounderMessageRoutes");
+const adminContactInquiryRoutes = require("../adminRoutes/adminContactInquiryRoutes");
+const adminEnergyExchangeRoutes = require("../adminRoutes/adminEnergyExchangeRoutes");
+const adminProgramCatalogRoutes = require("../adminRoutes/adminProgramCatalogRoutes");
+const coachEnergyExchangeRoutes = require("../wellnessCoachRoutes/coachEnergyExchangeRoutes");
+const coachProgramRoutes = require("../wellnessCoachRoutes/coachProgramRoutes");
 
 const router = express.Router();
 
 router.use("/auth", accountAuthRoutes);
 router.use("/heal-users", accountHealUserRoutes);
 router.use("/access", accountAccessRoutes);
+router.use("/dashboard", accountDashboardRoutes);
+router.use("/meal-tracking", accountMealTrackingRoutes);
+router.use("/consultancy", accountConsultancyRoutes);
+router.use("/commitment-letters", accountCommitmentLetterRoutes);
+router.use("/monthly-champions", accountMonthlyChampionRoutes);
+router.use("/assistants", accountAssistantRoutes);
+router.use("/me", accountMeRoutes);
+router.use("/energy-exchange", coachEnergyExchangeRoutes);
+router.use("/programs", coachProgramRoutes);
+router.use("/specializations", adminSpecializationRoutes);
+router.use("/client-testimonials", adminClientTestimonialsRoutes);
+router.use("/portal-client-testimonials", require("../wellnessCoachRoutes/coachClientTestimonialRoutes"));
 
 router.get("/accounts", protectAccount, requireActiveRole("admin"), listAccountsHandler);
 router.post("/accounts", protectAccount, requireActiveRole("admin"), createAccountHandler);
@@ -44,15 +95,51 @@ router.delete(
   revokeMembershipHandler
 );
 
-// Nested admin CMS (legacy protectAdmin still runs inside these routers)
-router.use("/admin/roles", adminRoleRoutes);
-router.use("/admin/permissions", adminPermissionRoutes);
-router.use("/admin/sub-admins", adminSubAdminRoutes);
-router.use("/admin/sops", adminSopRoutes);
-router.use("/admin/app-config", adminAppConfigRoutes);
-router.use("/admin/users", adminUserRoutes);
-router.use("/admin/wellness-coaches", adminWellnessCoachRoutes);
-router.use("/admin/banners", adminBannerRoutes);
-router.use("/admin/dashboard", adminDashboardRoutes);
+router.use("/sops", adminSopRoutes);
+router.use("/app-config", adminAppConfigRoutes);
+router.use("/users", adminUserRoutes);
+router.use("/wellness-coaches", adminWellnessCoachRoutes);
+router.use("/banners", adminBannerRoutes);
+router.use("/faq", adminFaqRoutes);
+router.use("/coupons", adminCouponRoutes);
+router.use("/notifications", adminNotificationRoutes);
+router.use("/inbox", adminInboxRoutes);
+router.use("/misc/pages", adminStaticPageRoutes);
+router.use("/transformations", adminTransformationRoutes);
+router.use("/health-concerns", adminHealthConcernRoutes);
+router.use("/health-disorders", adminHealthDisorderRoutes);
+router.use("/health-tools", adminHealthToolRoutes);
+router.use("/health-recipes", adminHealthRecipeRoutes);
+router.use("/yoga", adminYogaRoutes);
+router.use("/physical-exercises", adminPhysicalExerciseRoutes);
+router.use("/supplements", adminSupplementRoutes);
+router.use("/medical-condition-questions", adminMedicalConditionQuestionRoutes);
+router.use("/launch-questions", adminLaunchQuestionRoutes);
+router.use("/launch-focus-areas", adminLaunchFocusAreaRoutes);
+router.use("/prakruti-questions", adminPrakrutiQuestionRoutes);
+router.use("/prakruti-things-to-avoid", adminPrakrutiThingToAvoidRoutes);
+router.use("/prakruti-recommendations", adminPrakrutiRecommendationRoutes);
+router.use("/test-catalog", adminTestCatalogRoutes);
+router.use("/diet-plan-catalog", adminDietPlanCatalogRoutes);
+router.use("/wellness-prescriptions", adminWellnessPrescriptionCatalogRoutes);
+router.use("/mental-wellbeing", adminMentalWellbeingRoutes);
+router.use("/birthday-notifications", adminBirthdayNotificationRoutes);
+router.use("/birthday-posts", adminBirthdayPostRoutes);
+router.use("/leadership-notes", adminLeadershipNoteRoutes);
+router.use("/program-testimonials", adminProgramTestimonialRoutes);
+router.use("/video-testimonials", adminVideoTestimonialsRoutes);
+router.use("/real-people-testimonials", adminRealPeopleTestimonialRoutes);
+router.use("/cofounder-message", adminCofounderMessageRoutes);
+router.use("/contact-inquiries", adminContactInquiryRoutes);
+router.use("/energy-exchange-catalog", adminEnergyExchangeRoutes);
+router.use("/program-catalog", adminProgramCatalogRoutes);
 
 module.exports = router;
+module.exports.accountHealUserRoutes = accountHealUserRoutes;
+module.exports.accountDashboardRoutes = accountDashboardRoutes;
+module.exports.accountMealTrackingRoutes = accountMealTrackingRoutes;
+module.exports.accountConsultancyRoutes = accountConsultancyRoutes;
+module.exports.accountCommitmentLetterRoutes = accountCommitmentLetterRoutes;
+module.exports.accountMonthlyChampionRoutes = accountMonthlyChampionRoutes;
+module.exports.accountAssistantRoutes = accountAssistantRoutes;
+module.exports.accountMeRoutes = accountMeRoutes;

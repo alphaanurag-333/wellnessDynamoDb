@@ -1,6 +1,6 @@
 const express = require("express");
-const { protectAdmin } = require("../../middleware/auth");
-const { authorize } = require("../../middleware/authorize");
+const { protectAccount } = require("../../middleware/auth");
+const { authorizeStaff } = require("../../middleware/authorize");
 const {
   listWellnessPrescriptionCatalogController,
   getWellnessPrescriptionCatalogByIdController,
@@ -13,32 +13,32 @@ const router = express.Router();
 
 router.get(
   "/",
-  protectAdmin,
-  authorize("wellness-prescriptions.view"),
+  protectAccount,
+  authorizeStaff("console.cf.view", { admin: "wellness-prescriptions.view" }),
   listWellnessPrescriptionCatalogController
 );
 router.get(
   "/:id",
-  protectAdmin,
-  authorize("wellness-prescriptions.view"),
+  protectAccount,
+  authorizeStaff("console.cf.view", { admin: "wellness-prescriptions.view" }),
   getWellnessPrescriptionCatalogByIdController
 );
 router.post(
   "/",
-  protectAdmin,
-  authorize("wellness-prescriptions.edit"),
+  protectAccount,
+  authorizeStaff("console.cf.edit", { admin: "wellness-prescriptions.edit" }),
   createWellnessPrescriptionCatalogController
 );
 router.patch(
   "/:id",
-  protectAdmin,
-  authorize("wellness-prescriptions.edit"),
+  protectAccount,
+  authorizeStaff("console.cf.edit", { admin: "wellness-prescriptions.edit" }),
   updateWellnessPrescriptionCatalogController
 );
 router.delete(
   "/:id",
-  protectAdmin,
-  authorize("wellness-prescriptions.delete"),
+  protectAccount,
+  authorizeStaff("console.cf.delete", { admin: "wellness-prescriptions.delete" }),
   deleteWellnessPrescriptionCatalogController
 );
 

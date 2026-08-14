@@ -1,7 +1,7 @@
 const express = require("express");
 
-const { protectAdmin } = require("../../middleware/auth");
-const { authorize } = require("../../middleware/authorize");
+const { protectAccount } = require("../../middleware/auth");
+const { authorizeStaff } = require("../../middleware/authorize");
 const { optionalHealthConcernFile } = require("../../middleware/authMultipart");
 const {
   listHealthConcernsController,
@@ -13,22 +13,22 @@ const {
 
 const router = express.Router();
 
-router.get("/", protectAdmin, authorize("health-concerns.view"), listHealthConcernsController);
-router.get("/:id", protectAdmin, authorize("health-concerns.view"), getHealthConcernByIdController);
+router.get("/", protectAccount, authorizeStaff("console.cf.view", { admin: "health-concerns.view" }), listHealthConcernsController);
+router.get("/:id", protectAccount, authorizeStaff("console.cf.view", { admin: "health-concerns.view" }), getHealthConcernByIdController);
 router.post(
   "/",
-  protectAdmin,
-  authorize("health-concerns.edit"),
+  protectAccount,
+  authorizeStaff("console.cf.edit", { admin: "health-concerns.edit" }),
   optionalHealthConcernFile,
   createHealthConcernController
 );
 router.patch(
   "/:id",
-  protectAdmin,
-  authorize("health-concerns.edit"),
+  protectAccount,
+  authorizeStaff("console.cf.edit", { admin: "health-concerns.edit" }),
   optionalHealthConcernFile,
   updateHealthConcernController
 );
-router.delete("/:id", protectAdmin, authorize("health-concerns.delete"), deleteHealthConcernController);
+router.delete("/:id", protectAccount, authorizeStaff("console.cf.delete", { admin: "health-concerns.delete" }), deleteHealthConcernController);
 
 module.exports = router;

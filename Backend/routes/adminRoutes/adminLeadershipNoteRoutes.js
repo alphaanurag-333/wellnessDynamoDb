@@ -1,7 +1,7 @@
 const express = require("express");
 
-const { protectAdmin } = require("../../middleware/auth");
-const { authorize } = require("../../middleware/authorize");
+const { protectAccount } = require("../../middleware/auth");
+const { authorizeStaff } = require("../../middleware/authorize");
 const { optionalLeadershipNotesFile } = require("../../middleware/authMultipart");
 const {
   listLeadershipNotesController,
@@ -13,22 +13,22 @@ const {
 
 const router = express.Router();
 
-router.get("/", protectAdmin, authorize("leadership-notes.view"), listLeadershipNotesController);
-router.get("/:id", protectAdmin, authorize("leadership-notes.view"), getLeadershipNoteByIdController);
+router.get("/", protectAccount, authorizeStaff("console.ct.view", { admin: "leadership-notes.view" }), listLeadershipNotesController);
+router.get("/:id", protectAccount, authorizeStaff("console.ct.view", { admin: "leadership-notes.view" }), getLeadershipNoteByIdController);
 router.post(
   "/",
-  protectAdmin,
-  authorize("leadership-notes.edit"),
+  protectAccount,
+  authorizeStaff("console.ct.edit", { admin: "leadership-notes.edit" }),
   optionalLeadershipNotesFile,
   createLeadershipNoteController
 );
 router.patch(
   "/:id",
-  protectAdmin,
-  authorize("leadership-notes.edit"),
+  protectAccount,
+  authorizeStaff("console.ct.edit", { admin: "leadership-notes.edit" }),
   optionalLeadershipNotesFile,
   updateLeadershipNoteController
 );
-router.delete("/:id", protectAdmin, authorize("leadership-notes.delete"), deleteLeadershipNoteController);
+router.delete("/:id", protectAccount, authorizeStaff("console.ct.delete", { admin: "leadership-notes.delete" }), deleteLeadershipNoteController);
 
 module.exports = router;

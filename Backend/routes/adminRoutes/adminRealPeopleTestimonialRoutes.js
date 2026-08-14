@@ -1,6 +1,6 @@
 const express = require("express");
-const { protectAdmin } = require("../../middleware/auth");
-const { authorize } = require("../../middleware/authorize");
+const { protectAccount } = require("../../middleware/auth");
+const { authorizeStaff } = require("../../middleware/authorize");
 const { optionalRealPeopleTestimonialFile } = require("../../middleware/authMultipart");
 const {
   listRealPeopleTestimonialsController,
@@ -14,34 +14,34 @@ const router = express.Router();
 
 router.get(
   "/",
-  protectAdmin,
-  authorize("real-people-testimonials.view"),
+  protectAccount,
+  authorizeStaff("console.ct.view", { admin: "real-people-testimonials.view" }),
   listRealPeopleTestimonialsController
 );
 router.get(
   "/:id",
-  protectAdmin,
-  authorize("real-people-testimonials.view"),
+  protectAccount,
+  authorizeStaff("console.ct.view", { admin: "real-people-testimonials.view" }),
   getRealPeopleTestimonialByIdController
 );
 router.post(
   "/",
-  protectAdmin,
-  authorize("real-people-testimonials.edit"),
+  protectAccount,
+  authorizeStaff("console.ct.edit", { admin: "real-people-testimonials.edit" }),
   optionalRealPeopleTestimonialFile,
   createRealPeopleTestimonialController
 );
 router.patch(
   "/:id",
-  protectAdmin,
-  authorize("real-people-testimonials.edit"),
+  protectAccount,
+  authorizeStaff("console.ct.edit", { admin: "real-people-testimonials.edit" }),
   optionalRealPeopleTestimonialFile,
   updateRealPeopleTestimonialController
 );
 router.delete(
   "/:id",
-  protectAdmin,
-  authorize("real-people-testimonials.delete"),
+  protectAccount,
+  authorizeStaff("console.ct.delete", { admin: "real-people-testimonials.delete" }),
   deleteRealPeopleTestimonialController
 );
 

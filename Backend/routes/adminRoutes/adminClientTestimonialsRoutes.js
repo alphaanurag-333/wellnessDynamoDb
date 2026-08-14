@@ -1,7 +1,7 @@
 const express = require("express");
 
-const { protectAdmin } = require("../../middleware/auth");
-const { authorize } = require("../../middleware/authorize");
+const { protectAccount } = require("../../middleware/auth");
+const { authorizeStaff } = require("../../middleware/authorize");
 const {
   listClientTestimonialsController,
   getClientTestimonialByIdController,
@@ -11,23 +11,23 @@ const {
 
 const router = express.Router();
 
-router.get("/", protectAdmin, authorize("client-testimonials.view"), listClientTestimonialsController);
+router.get("/", protectAccount, authorizeStaff("console.ct.view", { admin: "client-testimonials.view" }), listClientTestimonialsController);
 router.get(
   "/:id",
-  protectAdmin,
-  authorize("client-testimonials.view"),
+  protectAccount,
+  authorizeStaff("console.ct.view", { admin: "client-testimonials.view" }),
   getClientTestimonialByIdController
 );
 router.patch(
   "/:id",
-  protectAdmin,
-  authorize("client-testimonials.edit"),
+  protectAccount,
+  authorizeStaff("console.ct.edit", { admin: "client-testimonials.edit" }),
   updateClientTestimonialController
 );
 router.delete(
   "/:id",
-  protectAdmin,
-  authorize("client-testimonials.delete"),
+  protectAccount,
+  authorizeStaff("console.ct.delete", { admin: "client-testimonials.delete" }),
   deleteClientTestimonialController
 );
 

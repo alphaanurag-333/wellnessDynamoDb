@@ -1,7 +1,7 @@
 const express = require("express");
 
-const { protectAdmin } = require("../../middleware/auth");
-const { authorize } = require("../../middleware/authorize");
+const { protectAccount } = require("../../middleware/auth");
+const { authorizeStaff } = require("../../middleware/authorize");
 const { optionalCofounderMessageFiles } = require("../../middleware/authMultipart");
 const {
   getCofounderMessageController,
@@ -11,18 +11,18 @@ const {
 
 const router = express.Router();
 
-router.get("/", protectAdmin, authorize("cofounder-message.view"), getCofounderMessageController);
+router.get("/", protectAccount, authorizeStaff("console.ct.view", { admin: "cofounder-message.view" }), getCofounderMessageController);
 router.post(
   "/",
-  protectAdmin,
-  authorize("cofounder-message.edit"),
+  protectAccount,
+  authorizeStaff("console.ct.edit", { admin: "cofounder-message.edit" }),
   optionalCofounderMessageFiles,
   createCofounderMessageController
 );
 router.patch(
   "/",
-  protectAdmin,
-  authorize("cofounder-message.edit"),
+  protectAccount,
+  authorizeStaff("console.ct.edit", { admin: "cofounder-message.edit" }),
   optionalCofounderMessageFiles,
   updateCofounderMessageController
 );

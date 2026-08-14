@@ -33,6 +33,25 @@ function assertCoachCanManageCommitmentLetter(record, { coachId, assistantId } =
   throw new AppError("Commitment letter is not under your coaching hierarchy", 403);
 }
 
+function assertStaffCanManageCommitmentLetter(req, record) {
+  const { resolveStaffActor } = require("./staffAccess");
+  const actor = resolveStaffActor(req);
+  if (actor.role === "admin") return actor;
+  if (actor.role === "wellness_coach") {
+    assertCoachCanManageCommitmentLetter(record, { coachId: actor.id });
+    return actor;
+  }
+  if (actor.role === "trainee") {
+    assertCoachCanManageCommitmentLetter(record, { coachId: actor.parentCoachId });
+    return actor;
+  }
+  if (actor.role === "assistant_wellness_coach") {
+    assertCoachCanManageCommitmentLetter(record, { assistantId: actor.id });
+    return actor;
+  }
+  throw new AppError("Forbidden", 403);
+}
+
 function readCommitmentLetterUserId(record) {
   return String(record?.userId || "").trim();
 }
@@ -48,6 +67,7 @@ module.exports = {
   readIdParam,
   assertPdfUpload,
   assertCoachCanManageCommitmentLetter,
+  assertStaffCanManageCommitmentLetter,
   readCommitmentLetterUserId,
   approvalLabel,
 };

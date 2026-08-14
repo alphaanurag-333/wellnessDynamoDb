@@ -1,7 +1,7 @@
 const express = require("express");
 
-const { protectAdmin } = require("../../middleware/auth");
-const { authorize, authorizeAny } = require("../../middleware/authorize");
+const { protectAccount } = require("../../middleware/auth");
+const { authorizeStaff } = require("../../middleware/authorize");
 const {
   listPagesController,
   getPageByIdController,
@@ -13,10 +13,10 @@ const {
 const router = express.Router();
 
 // Static Pages has no View action in the list UI — open with edit or delete.
-router.get("/", protectAdmin, authorizeAny("static-pages.edit", "static-pages.delete"), listPagesController);
-router.get("/:id", protectAdmin, authorizeAny("static-pages.edit", "static-pages.delete"), getPageByIdController);
-router.post("/", protectAdmin, authorize("static-pages.edit"), createPageController);
-router.patch("/:id", protectAdmin, authorize("static-pages.edit"), updatePageController);
-router.delete("/:id", protectAdmin, authorize("static-pages.delete"), deletePageController);
+router.get("/", protectAccount, authorizeStaff("console.cf.view", { admin: ["static-pages.edit", "static-pages.delete"] }), listPagesController);
+router.get("/:id", protectAccount, authorizeStaff("console.cf.view", { admin: ["static-pages.edit", "static-pages.delete"] }), getPageByIdController);
+router.post("/", protectAccount, authorizeStaff("console.cf.edit", { admin: "static-pages.edit" }), createPageController);
+router.patch("/:id", protectAccount, authorizeStaff("console.cf.edit", { admin: "static-pages.edit" }), updatePageController);
+router.delete("/:id", protectAccount, authorizeStaff("console.cf.delete", { admin: "static-pages.delete" }), deletePageController);
 
 module.exports = router;

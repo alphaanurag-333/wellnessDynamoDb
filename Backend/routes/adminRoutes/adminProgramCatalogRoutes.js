@@ -1,6 +1,6 @@
 const express = require("express");
-const { protectAdmin } = require("../../middleware/auth");
-const { authorize, authorizeAny } = require("../../middleware/authorize");
+const { protectAccount } = require("../../middleware/auth");
+const { authorizeStaff } = require("../../middleware/authorize");
 const {
   listProgramCatalogController,
   getProgramCatalogByIdController,
@@ -18,28 +18,28 @@ const router = express.Router();
 
 router.get(
   "/transactions",
-  protectAdmin,
-  authorize("programs.transactions.view"),
+  protectAccount,
+  authorizeStaff("console.cf.view", { admin: "programs.transactions.view" }),
   listAdminProgramTransactionsController
 );
 router.get(
   "/transactions/:id",
-  protectAdmin,
-  authorize("programs.transactions.view"),
+  protectAccount,
+  authorizeStaff("console.cf.view", { admin: "programs.transactions.view" }),
   getAdminProgramTransactionController
 );
 router.get(
   "/transactions/:id/invoice",
-  protectAdmin,
-  authorize("programs.transactions.view"),
+  protectAccount,
+  authorizeStaff("console.cf.view", { admin: "programs.transactions.view" }),
   getAdminProgramInvoiceController
 );
 
 // Catalog has no dedicated View action — list/detail allowed with edit or delete.
-router.get("/", protectAdmin, authorizeAny("programs.edit", "programs.delete"), listProgramCatalogController);
-router.post("/", protectAdmin, authorize("programs.edit"), createProgramCatalogController);
-router.get("/:id", protectAdmin, authorizeAny("programs.edit", "programs.delete"), getProgramCatalogByIdController);
-router.patch("/:id", protectAdmin, authorize("programs.edit"), updateProgramCatalogController);
-router.delete("/:id", protectAdmin, authorize("programs.delete"), deleteProgramCatalogController);
+router.get("/", protectAccount, authorizeStaff("console.cf.view", { admin: ["programs.edit", "programs.delete"] }), listProgramCatalogController);
+router.post("/", protectAccount, authorizeStaff("console.cf.edit", { admin: "programs.edit" }), createProgramCatalogController);
+router.get("/:id", protectAccount, authorizeStaff("console.cf.view", { admin: ["programs.edit", "programs.delete"] }), getProgramCatalogByIdController);
+router.patch("/:id", protectAccount, authorizeStaff("console.cf.edit", { admin: "programs.edit" }), updateProgramCatalogController);
+router.delete("/:id", protectAccount, authorizeStaff("console.cf.delete", { admin: "programs.delete" }), deleteProgramCatalogController);
 
 module.exports = router;

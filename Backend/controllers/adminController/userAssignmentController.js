@@ -17,6 +17,7 @@ const { sendCoachAssignmentNotifications } = require("../../utils/whatsapp");
 const { emitCoachAssigned } = require("../../services/adminActivityService");
 
 const { enrichUser } = require("../userController/userProfileHelpers");
+const { listHealUsersForStaff, resolveStaffActor, assertStaffCanAccessUser } = require("../staffAccess");
 
 function mapAssignmentError(err) {
   if (err?.name === "NotFoundError") throw new AppError("User not found", 404);
@@ -237,12 +238,9 @@ exports.listHealUsersByCoachController = asyncHandler(async (req, res) => {
   });
 });
 
-exports.listHealUsersForCoachPortalController = asyncHandler(async (req, res) => {
-  const coachId = req.auth?.sub || req.user?.id;
-  if (!coachId) throw new AppError("Unauthorized", 401);
-
+exports.listHealUsersForStaffController = asyncHandler(async (req, res) => {
   const { page = 1, limit = 20, search, scope = "all" } = req.query;
-  const data = await listUsersByParentCoachId(coachId, { page, limit, search, userTier: "client", scope });
+  const data = await listHealUsersForStaff(req, { page, limit, search, scope, userTier: "client" });
   const users = await Promise.all(data.users.map((u) => enrichUser(u)));
 
   return res.status(200).json({
@@ -253,44 +251,22 @@ exports.listHealUsersForCoachPortalController = asyncHandler(async (req, res) =>
   });
 });
 
-exports.listHealUsersForAssistantPortalController = asyncHandler(async (req, res) => {
-  const assistantId = req.auth?.sub || req.user?.id;
-  if (!assistantId) throw new AppError("Unauthorized", 401);
+exports.listHealUsersForCoachPortalController = exports.listHealUsersForStaffController;
+exports.listHealUsersForAssistantPortalController = exports.listHealUsersForStaffController;
 
-  const assistant = await getAssistantWellnessCoachById(assistantId);
-  if (!assistant) throw new AppError("Account not found", 401);
-
-  const parentCoachId = String(assistant.wellnessCoachId || "").trim();
-  if (!parentCoachId) throw new AppError("Assistant is not linked to a wellness coach", 400);
-
-  const { page = 1, limit = 20, search } = req.query;
-  const data = await listUsersByAssignedCoachId(assistantId, {
-    parentCoachId,
-    page,
-    limit,
-    search,
-    userTier: "client",
-  });
-  const users = await Promise.all(data.users.map((u) => enrichUser(u)));
-
-  return res.status(200).json({
-    status: true,
-    users,
-    pagination: data.pagination,
-  });
-});
-
-exports.reassignHealUserForCoachPortalController = asyncHandler(async (req, res) => {
-  const actingCoachId = req.auth?.sub || req.user?.id;
-  if (!actingCoachId) throw new AppError("Unauthorized", 401);
+exports.reassignHealUserForStaffController = asyncHandler(async (req, res) => {
+  const actor = resolveStaffActor(req);
+  if (actor.role !== "admin" && actor.role !== "wellness_coach") {
+    throw new AppError("Forbidden", 403);
+  }
 
   const current = await getUserById(req.params.id);
   if (!current) throw new AppError("User not found", 404);
   if (normalizeUserTier(current.userTier) !== "heal" && normalizeUserTier(current.userTier) !== "consultancy_only") {
     throw new AppError("Only assigned clients can be reassigned", 400);
   }
-  if (String(current.parentCoachId || "") !== String(actingCoachId)) {
-    throw new AppError("User is not under your coaching hierarchy", 403);
+  if (actor.role === "wellness_coach") {
+    await assertStaffCanAccessUser(req, current);
   }
 
   const assignedCoachId = req.body?.assignedCoachId ?? req.body?.assigned_coach_id;
@@ -298,7 +274,10 @@ exports.reassignHealUserForCoachPortalController = asyncHandler(async (req, res)
   const parentCoachId = await resolveParentCoachId({
     assignedCoachId,
     assignedCoachType,
-    parentCoachId: actingCoachId,
+    parentCoachId:
+      actor.role === "wellness_coach"
+        ? actor.id
+        : req.body?.parentCoachId ?? req.body?.parent_coach_id ?? current.parentCoachId,
   });
 
   let user;
@@ -306,7 +285,7 @@ exports.reassignHealUserForCoachPortalController = asyncHandler(async (req, res)
     user = await reassignHealUser(
       req.params.id,
       { assignedCoachId, assignedCoachType, parentCoachId },
-      { actingCoachId }
+      { actingCoachId: actor.role === "wellness_coach" ? actor.id : undefined }
     );
   } catch (err) {
     mapAssignmentError(err);
@@ -318,3 +297,5 @@ exports.reassignHealUserForCoachPortalController = asyncHandler(async (req, res)
     user: await enrichUser(user),
   });
 });
+
+exports.reassignHealUserForCoachPortalController = exports.reassignHealUserForStaffController;

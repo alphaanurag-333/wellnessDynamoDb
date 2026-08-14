@@ -1,7 +1,7 @@
 const express = require("express");
 
-const { protectAdmin } = require("../../middleware/auth");
-const { authorize } = require("../../middleware/authorize");
+const { protectAccount } = require("../../middleware/auth");
+const { authorizeStaff } = require("../../middleware/authorize");
 const { optionalBannerFile } = require("../../middleware/authMultipart");
 const {
   listBannersController,
@@ -13,10 +13,10 @@ const {
 
 const router = express.Router();
 
-router.get("/", protectAdmin, authorize("banners.view"), listBannersController);
-router.get("/:id", protectAdmin, authorize("banners.view"), getBannerByIdController);
-router.post("/", protectAdmin, authorize("banners.edit"), optionalBannerFile, createBannerController);
-router.patch("/:id", protectAdmin, authorize("banners.edit"), optionalBannerFile, updateBannerController);
-router.delete("/:id", protectAdmin, authorize("banners.delete"), deleteBannerController);
+router.get("/", protectAccount, authorizeStaff("console.bn.view", { admin: "banners.view" }), listBannersController);
+router.get("/:id", protectAccount, authorizeStaff("console.bn.view", { admin: "banners.view" }), getBannerByIdController);
+router.post("/", protectAccount, authorizeStaff("console.bn.edit", { admin: "banners.edit" }), optionalBannerFile, createBannerController);
+router.patch("/:id", protectAccount, authorizeStaff("console.bn.edit", { admin: "banners.edit" }), optionalBannerFile, updateBannerController);
+router.delete("/:id", protectAccount, authorizeStaff("console.bn.delete", { admin: "banners.delete" }), deleteBannerController);
 
 module.exports = router;

@@ -1,44 +1,43 @@
 const express = require("express");
-const { protectWellnessCoach } = require("../../middleware/auth");
-const { authorize } = require("../../middleware/authorize");
+const { protectAccount, requireActiveRole } = require("../../middleware/auth");
+const { authorizeStaff } = require("../../middleware/authorize");
+const { CLINICAL_ROLES } = require("../../controllers/staffAccess");
 const {
   listCoachClientTestimonialsController,
   listCoachPendingClientTestimonialsController,
   getCoachClientTestimonialByIdController,
   updateCoachClientTestimonialController,
   deleteCoachClientTestimonialController,
-} = require("../../controllers/wellnessCoachController/clientTestimonialController");
+} = require("../../controllers/staff/clientTestimonialController");
 
 const router = express.Router();
+router.use(protectAccount, requireActiveRole(...CLINICAL_ROLES));
 
-router.get(
-  "/pending",
-  protectWellnessCoach,
-  authorize("nav.client-testimonials"),
-  listCoachPendingClientTestimonialsController
-);
-router.get(
-  "/",
-  protectWellnessCoach,
-  authorize("nav.client-testimonials"),
-  listCoachClientTestimonialsController
-);
-router.get(
-  "/:id",
-  protectWellnessCoach,
-  authorize("nav.client-testimonials"),
-  getCoachClientTestimonialByIdController
-);
-router.patch(
-  "/:id",
-  protectWellnessCoach,
-  authorize("nav.client-testimonials"),
-  updateCoachClientTestimonialController
-);
+const view = authorizeStaff("console.ct.view", {
+  admin: "client-testimonials.view",
+  wellness_coach: "nav.client-testimonials",
+  assistant_wellness_coach: "nav.client-testimonials",
+  trainee: "nav.client-testimonials",
+  support: "console.ct.view",
+});
+const write = authorizeStaff("console.ct.edit", {
+  admin: "client-testimonials.edit",
+  wellness_coach: "nav.client-testimonials",
+  assistant_wellness_coach: "nav.client-testimonials",
+  support: "console.ct.edit",
+});
+
+router.get("/pending", view, listCoachPendingClientTestimonialsController);
+router.get("/", view, listCoachClientTestimonialsController);
+router.get("/:id", view, getCoachClientTestimonialByIdController);
+router.patch("/:id", write, updateCoachClientTestimonialController);
 router.delete(
   "/:id",
-  protectWellnessCoach,
-  authorize("nav.client-testimonials"),
+  authorizeStaff("console.ct.delete", {
+    admin: "client-testimonials.delete",
+    wellness_coach: "nav.client-testimonials",
+    support: "console.ct.delete",
+  }),
   deleteCoachClientTestimonialController
 );
 

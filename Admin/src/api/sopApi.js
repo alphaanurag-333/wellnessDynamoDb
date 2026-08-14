@@ -21,7 +21,7 @@ export function getAdminToken() {
 
 function sopBase() {
   // Prefer unified Account CMS mount; fall back to legacy admin path.
-  return "/account/admin/sops";
+  return "/account/sops";
 }
 
 export async function adminListSops(token, { page = 1, limit = 50, status, category, search } = {}) {

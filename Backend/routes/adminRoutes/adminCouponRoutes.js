@@ -1,6 +1,7 @@
 const express = require("express");
 
-const { protectAdmin } = require("../../middleware/auth");
+const { protectAccount } = require("../../middleware/auth");
+const { authorizeStaff } = require("../../middleware/authorize");
 const {
   listCouponsController,
   getCouponByIdController,
@@ -11,10 +12,10 @@ const {
 
 const router = express.Router();
 
-router.get("/", protectAdmin, listCouponsController);
-router.get("/:id", protectAdmin, getCouponByIdController);
-router.post("/", protectAdmin, createCouponController);
-router.patch("/:id", protectAdmin, updateCouponController);
-router.delete("/:id", protectAdmin, deleteCouponController);
+router.get("/", protectAccount, authorizeStaff("console.cf.view", { admin: "coupons.view" }), listCouponsController);
+router.get("/:id", protectAccount, authorizeStaff("console.cf.view", { admin: "coupons.view" }), getCouponByIdController);
+router.post("/", protectAccount, authorizeStaff("console.cf.edit", { admin: "coupons.edit" }), createCouponController);
+router.patch("/:id", protectAccount, authorizeStaff("console.cf.edit", { admin: "coupons.edit" }), updateCouponController);
+router.delete("/:id", protectAccount, authorizeStaff("console.cf.delete", { admin: "coupons.delete" }), deleteCouponController);
 
 module.exports = router;

@@ -29,7 +29,6 @@ const NAV_GROUP_PATTERNS = {
     /\/admin\/(banners|birthday-posts|birthday-notifications|monthly-champions|notifications)(\/|$)/,
   content: /\/admin\/(faq|contact-inquiries|static-pages|coupons)(\/|$)/,
   settings: /\/admin\/(settings|profile)(\/|$)/,
-  administration: /\/admin\/(sub-admins|roles)(\/|$)/,
 };
 
 function normalizePath(pathname) {

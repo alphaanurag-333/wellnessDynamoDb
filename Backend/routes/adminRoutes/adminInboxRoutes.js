@@ -1,5 +1,5 @@
 const express = require("express");
-const { protectAdmin } = require("../../middleware/auth");
+const { protectAccount, requireActiveRole } = require("../../middleware/auth");
 const {
   listAdminInboxController,
   getAdminInboxUnreadCountController,
@@ -10,7 +10,7 @@ const {
 
 const router = express.Router();
 
-router.use(protectAdmin);
+router.use(protectAccount, requireActiveRole("admin"));
 
 router.get("/", listAdminInboxController);
 router.get("/unread-count", getAdminInboxUnreadCountController);

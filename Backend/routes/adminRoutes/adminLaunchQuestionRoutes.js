@@ -1,7 +1,7 @@
 const express = require("express");
 
-const { protectAdmin } = require("../../middleware/auth");
-const { authorize } = require("../../middleware/authorize");
+const { protectAccount } = require("../../middleware/auth");
+const { authorizeStaff } = require("../../middleware/authorize");
 const {
   listLaunchQuestionsController,
   getLaunchQuestionByIdController,
@@ -12,10 +12,10 @@ const {
 
 const router = express.Router();
 
-router.get("/", protectAdmin, authorize("launch-questions.view"), listLaunchQuestionsController);
-router.get("/:id", protectAdmin, authorize("launch-questions.view"), getLaunchQuestionByIdController);
-router.post("/", protectAdmin, authorize("launch-questions.edit"), createLaunchQuestionController);
-router.patch("/:id", protectAdmin, authorize("launch-questions.edit"), updateLaunchQuestionController);
-router.delete("/:id", protectAdmin, authorize("launch-questions.delete"), deleteLaunchQuestionController);
+router.get("/", protectAccount, authorizeStaff("console.cf.view", { admin: "launch-questions.view" }), listLaunchQuestionsController);
+router.get("/:id", protectAccount, authorizeStaff("console.cf.view", { admin: "launch-questions.view" }), getLaunchQuestionByIdController);
+router.post("/", protectAccount, authorizeStaff("console.cf.edit", { admin: "launch-questions.edit" }), createLaunchQuestionController);
+router.patch("/:id", protectAccount, authorizeStaff("console.cf.edit", { admin: "launch-questions.edit" }), updateLaunchQuestionController);
+router.delete("/:id", protectAccount, authorizeStaff("console.cf.delete", { admin: "launch-questions.delete" }), deleteLaunchQuestionController);
 
 module.exports = router;

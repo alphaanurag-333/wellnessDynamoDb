@@ -147,7 +147,7 @@ function buildTags(user, goal) {
   return tags;
 }
 
-/** Map GET /admin/users item → list + profile UI shape. Missing unique fields stay empty. */
+/** Map GET /account/users item → list + profile UI shape. Missing unique fields stay empty. */
 export function mapApiUserToRow(user, index = 0) {
   const id = resolveUserId(user);
   const coach = resolveCoachName(user);
@@ -221,7 +221,7 @@ export async function fetchUsers({ page = 1, limit = 200, status, search, userTi
   if (assignmentStatus) q.set("assignmentStatus", assignmentStatus);
 
   try {
-    const { data } = await api.get(`/admin/users?${q}`, { headers: authHeader() });
+    const { data } = await api.get(`/account/users?${q}`, { headers: authHeader() });
     const users = Array.isArray(data.users) ? data.users : [];
     return {
       users: users.map((u, i) => mapApiUserToRow(u, i)),
@@ -234,7 +234,7 @@ export async function fetchUsers({ page = 1, limit = 200, status, search, userTi
 
 export async function fetchUser(id) {
   try {
-    const { data } = await api.get(`/admin/users/${encodeURIComponent(id)}`, {
+    const { data } = await api.get(`/account/users/${encodeURIComponent(id)}`, {
       headers: authHeader(),
     });
     return mapApiUserToRow(data.user);
@@ -246,7 +246,7 @@ export async function fetchUser(id) {
 export async function updateUserStatus(id, status) {
   try {
     const { data } = await api.patch(
-      `/admin/users/${encodeURIComponent(id)}`,
+      `/account/users/${encodeURIComponent(id)}`,
       { status },
       { headers: authHeader() },
     );
@@ -258,7 +258,7 @@ export async function updateUserStatus(id, status) {
 
 export async function deleteUser(id) {
   try {
-    await api.delete(`/admin/users/${encodeURIComponent(id)}`, { headers: authHeader() });
+    await api.delete(`/account/users/${encodeURIComponent(id)}`, { headers: authHeader() });
   } catch (error) {
     normalizeApiError(error);
   }
@@ -268,7 +268,7 @@ export async function deleteUser(id) {
 export async function assignUserCoach(id, payload) {
   try {
     const { data } = await api.post(
-      `/admin/users/${encodeURIComponent(id)}/assign-coach`,
+      `/account/users/${encodeURIComponent(id)}/assign-coach`,
       payload,
       { headers: authHeader() },
     );
@@ -282,7 +282,7 @@ export async function assignUserCoach(id, payload) {
 export async function reassignUserCoach(id, payload) {
   try {
     const { data } = await api.post(
-      `/admin/users/${encodeURIComponent(id)}/reassign-coach`,
+      `/account/users/${encodeURIComponent(id)}/reassign-coach`,
       payload,
       { headers: authHeader() },
     );

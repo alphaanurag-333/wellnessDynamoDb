@@ -1,6 +1,6 @@
 const express = require("express");
-const { protectAdmin } = require("../../middleware/auth");
-const { authorize } = require("../../middleware/authorize");
+const { protectAccount } = require("../../middleware/auth");
+const { authorizeStaff } = require("../../middleware/authorize");
 const {
   listPrakrutiRecommendationsController,
   getPrakrutiRecommendationByIdController,
@@ -13,32 +13,32 @@ const router = express.Router();
 
 router.get(
   "/",
-  protectAdmin,
-  authorize("prakruti-recommendations.view"),
+  protectAccount,
+  authorizeStaff("console.cf.view", { admin: "prakruti-recommendations.view" }),
   listPrakrutiRecommendationsController
 );
 router.get(
   "/:id",
-  protectAdmin,
-  authorize("prakruti-recommendations.view"),
+  protectAccount,
+  authorizeStaff("console.cf.view", { admin: "prakruti-recommendations.view" }),
   getPrakrutiRecommendationByIdController
 );
 router.post(
   "/",
-  protectAdmin,
-  authorize("prakruti-recommendations.edit"),
+  protectAccount,
+  authorizeStaff("console.cf.edit", { admin: "prakruti-recommendations.edit" }),
   createPrakrutiRecommendationController
 );
 router.patch(
   "/:id",
-  protectAdmin,
-  authorize("prakruti-recommendations.edit"),
+  protectAccount,
+  authorizeStaff("console.cf.edit", { admin: "prakruti-recommendations.edit" }),
   updatePrakrutiRecommendationController
 );
 router.delete(
   "/:id",
-  protectAdmin,
-  authorize("prakruti-recommendations.delete"),
+  protectAccount,
+  authorizeStaff("console.cf.delete", { admin: "prakruti-recommendations.delete" }),
   deletePrakrutiRecommendationController
 );
 

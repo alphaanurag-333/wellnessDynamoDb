@@ -109,8 +109,6 @@ export function emptyCoachForm() {
     state: "",
     city: "",
     status: "active",
-    roleId: "",
-    permissionOverrides: null,
   };
 }
 
@@ -144,11 +142,6 @@ export function coachToForm(coach) {
     state: stateNm,
     city: cityNm,
     status: coach.status === "inactive" ? "inactive" : "active",
-    roleId: coach.roleId != null ? String(coach.roleId) : "",
-    permissionOverrides:
-      coach.permissionOverrides && typeof coach.permissionOverrides === "object"
-        ? coach.permissionOverrides
-        : null,
   };
 }
 
@@ -235,7 +228,7 @@ export function validateCoachForm(form, { requirePassword = false } = {}) {
   }
   return "";
 }
-
+
 
 export function formatPhone(row) {
   return [row?.phoneCountryCode, row?.phone].filter(Boolean).join(" ") || "—";

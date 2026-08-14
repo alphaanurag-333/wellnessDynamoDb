@@ -1,6 +1,6 @@
 const express = require("express");
-const { protectAdmin } = require("../../middleware/auth");
-const { authorize } = require("../../middleware/authorize");
+const { protectAccount } = require("../../middleware/auth");
+const { authorizeStaff } = require("../../middleware/authorize");
 const {
   listPrakrutiThingsToAvoidController,
   getPrakrutiThingToAvoidByIdController,
@@ -13,32 +13,32 @@ const router = express.Router();
 
 router.get(
   "/",
-  protectAdmin,
-  authorize("prakruti-things-to-avoid.view"),
+  protectAccount,
+  authorizeStaff("console.cf.view", { admin: "prakruti-things-to-avoid.view" }),
   listPrakrutiThingsToAvoidController
 );
 router.get(
   "/:id",
-  protectAdmin,
-  authorize("prakruti-things-to-avoid.view"),
+  protectAccount,
+  authorizeStaff("console.cf.view", { admin: "prakruti-things-to-avoid.view" }),
   getPrakrutiThingToAvoidByIdController
 );
 router.post(
   "/",
-  protectAdmin,
-  authorize("prakruti-things-to-avoid.edit"),
+  protectAccount,
+  authorizeStaff("console.cf.edit", { admin: "prakruti-things-to-avoid.edit" }),
   createPrakrutiThingToAvoidController
 );
 router.patch(
   "/:id",
-  protectAdmin,
-  authorize("prakruti-things-to-avoid.edit"),
+  protectAccount,
+  authorizeStaff("console.cf.edit", { admin: "prakruti-things-to-avoid.edit" }),
   updatePrakrutiThingToAvoidController
 );
 router.delete(
   "/:id",
-  protectAdmin,
-  authorize("prakruti-things-to-avoid.delete"),
+  protectAccount,
+  authorizeStaff("console.cf.delete", { admin: "prakruti-things-to-avoid.delete" }),
   deletePrakrutiThingToAvoidController
 );
 

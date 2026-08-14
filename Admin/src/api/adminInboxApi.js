@@ -52,7 +52,7 @@ export async function fetchAdminInbox({ page = 1, limit = 30, unreadOnly = false
     });
     if (unreadOnly) params.set("unread", "true");
 
-    const { data } = await api.get(`/admin/inbox?${params}`, { headers: authHeader() });
+    const { data } = await api.get(`/account/inbox?${params}`, { headers: authHeader() });
     const notifications = (data.notifications || []).map(mapInboxItem).filter(Boolean);
     return {
       notifications,
@@ -66,7 +66,7 @@ export async function fetchAdminInbox({ page = 1, limit = 30, unreadOnly = false
 
 export async function fetchAdminInboxUnreadCount() {
   try {
-    const { data } = await api.get("/admin/inbox/unread-count", { headers: authHeader() });
+    const { data } = await api.get("/account/inbox/unread-count", { headers: authHeader() });
     return Number(data.unreadCount) || 0;
   } catch (error) {
     normalizeApiError(error);
@@ -75,7 +75,7 @@ export async function fetchAdminInboxUnreadCount() {
 
 export async function markAdminInboxItemRead(id) {
   try {
-    const { data } = await api.patch(`/admin/inbox/${encodeURIComponent(id)}/read`, null, {
+    const { data } = await api.patch(`/account/inbox/${encodeURIComponent(id)}/read`, null, {
       headers: authHeader(),
     });
     return mapInboxItem(data.notification);
@@ -86,7 +86,7 @@ export async function markAdminInboxItemRead(id) {
 
 export async function markAllAdminInboxRead() {
   try {
-    const { data } = await api.post("/admin/inbox/read-all", null, { headers: authHeader() });
+    const { data } = await api.post("/account/inbox/read-all", null, { headers: authHeader() });
     return data;
   } catch (error) {
     normalizeApiError(error);

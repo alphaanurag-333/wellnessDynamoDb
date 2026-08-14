@@ -1,168 +1,71 @@
 /**
  * Resolve permissions for an Account given the active roleKey.
+ * Canonical source is CONSOLE roles (Access Control). Legacy ADMIN/COACH catalogs are not used.
  */
-const { resolvePermissions } = require("./permissions");
-const {
-  resolveCoachPermissions,
-  permissionMapToList,
-  resolveCoachPermissionMap,
-} = require("./coachPermissions");
 const { getRoleById } = require("../models/roleModel");
 const { getMembership, hasActiveMembership } = require("../models/accountModel");
+const { normalizeRoleKey, DEFAULT_ROLE_PRIORITY, ROLE_KEY_TO_UI } = require("../config/accountRoles");
 const {
-  normalizeRoleKey,
-  scopeForRoleKey,
-  DEFAULT_ROLE_PRIORITY,
-} = require("../config/accountRoles");
-const {
-  ALL_ASSISTANT_PERMISSIONS,
-  isValidAssistantPermission,
-  allTrueAssistantPermissionMap,
-} = require("../config/assistantPermissionCatalog");
-const {
-  ALL_TRAINEE_PERMISSIONS,
-  isValidTraineePermission,
-  allTrueTraineePermissionMap,
-} = require("../config/traineePermissionCatalog");
-const {
-  ALL_SUPPORT_PERMISSIONS,
-  isValidSupportPermission,
-  allTrueSupportPermissionMap,
-} = require("../config/supportPermissionCatalog");
+  ALL_CONSOLE_PERMISSIONS,
+  isValidConsolePermission,
+  grantsMapToPermissions,
+  DEFAULT_CONSOLE_GRANTS,
+} = require("../config/consolePermissionCatalog");
 
-function coachLikeFromMembership(account, membership) {
-  return {
-    ...account,
-    roleId: membership?.roleId || null,
-    permissionOverrides: membership?.permissionOverrides || null,
-  };
-}
-
-function resolveScopedPermissionMap({
-  membership,
-  allKeys,
-  isValid,
-  allTrueMap,
-  role,
-}) {
-  if (!membership?.roleId) {
-    return allTrueMap();
+function consolePermissionsForRoleKey(roleKey) {
+  const uiKey = ROLE_KEY_TO_UI[roleKey];
+  if (!uiKey || !Object.prototype.hasOwnProperty.call(DEFAULT_CONSOLE_GRANTS, uiKey)) {
+    return [];
   }
-  const granted = new Set(
-    (Array.isArray(role?.permissions) ? role.permissions : []).filter(isValid)
-  );
-  const overrides =
-    membership.permissionOverrides && typeof membership.permissionOverrides === "object"
-      ? membership.permissionOverrides
-      : {};
-  const map = {};
-  for (const key of allKeys) {
-    let allowed = granted.has(key);
-    if (Object.prototype.hasOwnProperty.call(overrides, key)) {
-      allowed = Boolean(overrides[key]);
-    }
-    map[key] = allowed;
-  }
-  return map;
+  return grantsMapToPermissions(DEFAULT_CONSOLE_GRANTS[uiKey]);
 }
 
-function permissionMapToSlugList(map) {
-  return Object.entries(map || {})
-    .filter(([, v]) => Boolean(v))
-    .map(([k]) => k);
+function permissionsFromConsoleRole(role) {
+  if (!role || String(role.scope || "").toUpperCase() !== "CONSOLE") return null;
+  return (Array.isArray(role.permissions) ? role.permissions : []).filter(isValidConsolePermission);
 }
 
-async function resolveAccountPermissions(account, activeRoleKey, { req } = {}) {
+function applyConsoleOverrides(basePermissions, overrides) {
+  if (!overrides || typeof overrides !== "object") return basePermissions;
+  if (!Object.prototype.hasOwnProperty.call(overrides, "consoleGrants")) return basePermissions;
+  return grantsMapToPermissions(overrides.consoleGrants);
+}
+
+async function resolveAccountPermissions(account, activeRoleKey) {
   const roleKey = normalizeRoleKey(activeRoleKey);
   if (!account || !roleKey || !hasActiveMembership(account, roleKey)) {
     return { permissions: [], isSuperAdmin: false, roleId: null, permissionMap: null };
   }
 
   const membership = getMembership(account, roleKey);
+  const isSuperAdmin = roleKey === "admin" && Boolean(account.isSuperAdmin);
 
-  if (roleKey === "admin") {
-    const isSuperAdmin = Boolean(account.isSuperAdmin);
-    const role = !isSuperAdmin && membership?.roleId ? await getRoleById(membership.roleId) : null;
-    const adminView = {
-      ...account,
-      isSuperAdmin,
-      roleId: membership?.roleId || null,
-    };
-    const permissions = resolvePermissions(adminView, role);
+  if (isSuperAdmin) {
     return {
-      permissions,
-      isSuperAdmin,
+      permissions: [...ALL_CONSOLE_PERMISSIONS],
+      isSuperAdmin: true,
       roleId: membership?.roleId || null,
       permissionMap: null,
     };
   }
 
-  if (roleKey === "wellness_coach") {
-    const coachView = coachLikeFromMembership(account, membership);
-    const permissionMap = await resolveCoachPermissions(coachView, { req });
-    return {
-      permissions: permissionMapToList(permissionMap),
-      isSuperAdmin: false,
-      roleId: membership?.roleId || null,
-      permissionMap,
-    };
+  let role = null;
+  if (membership?.roleId) {
+    role = await getRoleById(membership.roleId);
   }
 
-  const scope = scopeForRoleKey(roleKey);
-  const role = membership?.roleId ? await getRoleById(membership.roleId) : null;
-  if (role && scope && String(role.scope || "").toUpperCase() !== scope) {
-    // Ignore mismatched template
+  let permissions = permissionsFromConsoleRole(role);
+  if (permissions == null) {
+    permissions = consolePermissionsForRoleKey(roleKey);
   }
+  permissions = applyConsoleOverrides(permissions, membership?.permissionOverrides);
 
-  if (roleKey === "assistant_wellness_coach") {
-    const map = resolveScopedPermissionMap({
-      membership,
-      allKeys: ALL_ASSISTANT_PERMISSIONS,
-      isValid: isValidAssistantPermission,
-      allTrueMap: allTrueAssistantPermissionMap,
-      role: role && String(role.scope || "").toUpperCase() === "ASSISTANT" ? role : null,
-    });
-    return {
-      permissions: permissionMapToSlugList(map),
-      isSuperAdmin: false,
-      roleId: membership?.roleId || null,
-      permissionMap: map,
-    };
-  }
-
-  if (roleKey === "trainee") {
-    const map = resolveScopedPermissionMap({
-      membership,
-      allKeys: ALL_TRAINEE_PERMISSIONS,
-      isValid: isValidTraineePermission,
-      allTrueMap: allTrueTraineePermissionMap,
-      role: role && String(role.scope || "").toUpperCase() === "TRAINEE" ? role : null,
-    });
-    return {
-      permissions: permissionMapToSlugList(map),
-      isSuperAdmin: false,
-      roleId: membership?.roleId || null,
-      permissionMap: map,
-    };
-  }
-
-  if (roleKey === "support") {
-    const map = resolveScopedPermissionMap({
-      membership,
-      allKeys: ALL_SUPPORT_PERMISSIONS,
-      isValid: isValidSupportPermission,
-      allTrueMap: allTrueSupportPermissionMap,
-      role: role && String(role.scope || "").toUpperCase() === "SUPPORT" ? role : null,
-    });
-    return {
-      permissions: permissionMapToSlugList(map),
-      isSuperAdmin: false,
-      roleId: membership?.roleId || null,
-      permissionMap: map,
-    };
-  }
-
-  return { permissions: [], isSuperAdmin: false, roleId: null, permissionMap: null };
+  return {
+    permissions,
+    isSuperAdmin: false,
+    roleId: membership?.roleId || null,
+    permissionMap: null,
+  };
 }
 
 function isRoleEligibleForActivation(account, roleKey) {
@@ -200,5 +103,4 @@ module.exports = {
   isRoleEligibleForActivation,
   pickDefaultActiveRole,
   listEligibleRoleKeys,
-  resolveCoachPermissionMap,
 };

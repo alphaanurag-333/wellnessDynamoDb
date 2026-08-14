@@ -4,6 +4,7 @@ const { getUserById } = require("../models/userModel");
 const { getUserStepsHistory } = require("../models/stepsTrackingModel");
 const { enrichUser } = require("./userController/userProfileHelpers");
 const { normalizeUserTier } = require("../models/userAssignmentLogic");
+const { assertStaffCanAccessUser } = require("./staffAccess");
 
 function toHistoryUser(user) {
   return {
@@ -47,17 +48,11 @@ exports.getUserStepsTrackingHistoryController = asyncHandler(async (req, res) =>
   });
 });
 
-exports.getCoachHealUserStepsTrackingController = asyncHandler(async (req, res) => {
-  const actingCoachId = req.auth?.sub || req.user?.id;
-  if (!actingCoachId) throw new AppError("Unauthorized", 401);
-
+exports.getStaffHealUserStepsTrackingController = asyncHandler(async (req, res) => {
   const userId = req.params.id || req.params.userId;
   const user = await getUserById(userId);
   if (!user) throw new AppError("User not found", 404);
-
-  if (String(user.parentCoachId || "") !== String(actingCoachId)) {
-    throw new AppError("User is not under your coaching hierarchy", 403);
-  }
+  await assertStaffCanAccessUser(req, user);
 
   const data = await fetchStepsHistory(userId, req.query);
   const enriched = await enrichUser(user);
@@ -70,25 +65,5 @@ exports.getCoachHealUserStepsTrackingController = asyncHandler(async (req, res) 
   });
 });
 
-exports.getAssistantHealUserStepsTrackingController = asyncHandler(async (req, res) => {
-  const assistantId = req.auth?.sub || req.user?.id;
-  if (!assistantId) throw new AppError("Unauthorized", 401);
-
-  const userId = req.params.id || req.params.userId;
-  const user = await getUserById(userId);
-  if (!user) throw new AppError("User not found", 404);
-
-  if (String(user.assignedCoachId || "") !== String(assistantId)) {
-    throw new AppError("User is not assigned to you", 403);
-  }
-
-  const data = await fetchStepsHistory(userId, req.query);
-  const enriched = await enrichUser(user);
-
-  return res.status(200).json({
-    status: true,
-    message: "Steps tracking history fetched",
-    user: toHistoryUser(enriched),
-    data,
-  });
-});
+exports.getCoachHealUserStepsTrackingController = exports.getStaffHealUserStepsTrackingController;
+exports.getAssistantHealUserStepsTrackingController = exports.getStaffHealUserStepsTrackingController;

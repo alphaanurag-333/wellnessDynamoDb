@@ -14,6 +14,7 @@ const {
   assertCoachCanAccessUser,
   assertAssistantCanAccessUser,
   assertAdminCanAccessUser,
+  assertStaffHealUserAccess,
   assertHealTierUser,
   handleValidationError,
   resolveCoachIdForUser,
@@ -147,7 +148,7 @@ function createPrakrutiAssessmentPortalHandlers({ assertHealUserAccess, createdB
           coachId: resolveCoachIdForUser(user),
           prakrutiType,
           thingToAvoidIds: parseThingToAvoidIds(req.body) ?? [],
-          createdByRole,
+          createdByRole: req.auth?.role || createdByRole,
           createdById: actingId,
         });
       } catch (err) {
@@ -176,25 +177,19 @@ function createPrakrutiAssessmentPortalHandlers({ assertHealUserAccess, createdB
   };
 }
 
-const coachHandlers = createPrakrutiAssessmentPortalHandlers({
-  assertHealUserAccess: assertCoachHealUserAccess,
-  createdByRole: "wellness_coach",
+const staffHandlers = createPrakrutiAssessmentPortalHandlers({
+  assertHealUserAccess: (req) => assertStaffHealUserAccess(req, { requireHealTier: true }),
+  createdByRole: "staff",
 });
-
-const assistantHandlers = createPrakrutiAssessmentPortalHandlers({
-  assertHealUserAccess: assertAssistantHealUserAccess,
-  createdByRole: "assistant_wellness_coach",
-});
-
-const adminHandlers = createPrakrutiAssessmentPortalHandlers({
-  assertHealUserAccess: assertAdminHealUserAccess,
-  createdByRole: "admin",
-});
+const coachHandlers = staffHandlers;
+const assistantHandlers = staffHandlers;
+const adminHandlers = staffHandlers;
 
 module.exports = {
   handlePrakrutiValidationError,
   parseThingToAvoidIds,
   createPrakrutiAssessmentPortalHandlers,
+  staffHandlers,
   coachHandlers,
   assistantHandlers,
   adminHandlers,

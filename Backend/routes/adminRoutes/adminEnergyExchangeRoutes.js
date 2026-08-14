@@ -1,6 +1,6 @@
 const express = require("express");
-const { protectAdmin } = require("../../middleware/auth");
-const { authorize } = require("../../middleware/authorize");
+const { protectAccount } = require("../../middleware/auth");
+const { authorizeStaff } = require("../../middleware/authorize");
 const {
   listAdminEnergyExchangeTransactionsController,
   getAdminEnergyExchangeTransactionController,
@@ -11,20 +11,20 @@ const router = express.Router();
 
 router.get(
   "/transactions",
-  protectAdmin,
-  authorize("energy-exchange.transactions.view"),
+  protectAccount,
+  authorizeStaff("console.cf.view", { admin: "energy-exchange.transactions.view" }),
   listAdminEnergyExchangeTransactionsController
 );
 router.get(
   "/transactions/:id",
-  protectAdmin,
-  authorize("energy-exchange.transactions.view"),
+  protectAccount,
+  authorizeStaff("console.cf.view", { admin: "energy-exchange.transactions.view" }),
   getAdminEnergyExchangeTransactionController
 );
 router.get(
   "/transactions/:id/invoice",
-  protectAdmin,
-  authorize("energy-exchange.transactions.view"),
+  protectAccount,
+  authorizeStaff("console.cf.view", { admin: "energy-exchange.transactions.view" }),
   getAdminEnergyExchangeInvoiceController
 );
 

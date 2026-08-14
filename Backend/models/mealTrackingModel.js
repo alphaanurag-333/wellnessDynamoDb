@@ -4,6 +4,7 @@ const {
   DeleteCommand,
   QueryCommand,
   UpdateCommand,
+  ScanCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require("uuid");
 const { docClient } = require("../config/db");
@@ -573,6 +574,28 @@ async function queryMealLogsByCoachId(coachId, { status } = {}) {
   return items;
 }
 
+async function queryPendingMealLogs({ limit = 200 } = {}) {
+  const items = [];
+  let lastKey;
+  const max = Math.min(500, Math.max(1, Number(limit) || 200));
+
+  do {
+    const params = {
+      TableName: TABLE,
+      FilterExpression: "#status = :status",
+      ExpressionAttributeNames: { "#status": "status" },
+      ExpressionAttributeValues: { ":status": "pending_review" },
+    };
+    if (lastKey) params.ExclusiveStartKey = lastKey;
+
+    const { Items = [], LastEvaluatedKey } = await docClient.send(new ScanCommand(params));
+    items.push(...Items);
+    lastKey = LastEvaluatedKey;
+  } while (lastKey && items.length < max);
+
+  return items.slice(0, max);
+}
+
 function computeDailyMacroSummary(mealLogs, rangeDates) {
   const byDate = new Map();
   for (const log of mealLogs) {
@@ -650,6 +673,7 @@ module.exports = {
   queryMealLogsByUserId,
   queryMealLogsByUserAndDateRange,
   queryMealLogsByCoachId,
+  queryPendingMealLogs,
   computeDailyMacroSummary,
   getUserMealSummary,
 };

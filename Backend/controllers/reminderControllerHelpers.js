@@ -78,6 +78,12 @@ async function assertAdminCanAccessUser(_user, _adminId) {
   // Admins may manage any user; existence is enforced by loadTargetUser.
 }
 
+const {
+  assertStaffCanAccessUser,
+  resolveStaffActor,
+  assertStaffCanMutate,
+} = require("./staffAccess");
+
 module.exports = {
   readUserIdParam,
   readReminderIdParam,
@@ -87,5 +93,8 @@ module.exports = {
   assertCoachCanAccessUser,
   assertAssistantCanAccessUser,
   assertAdminCanAccessUser,
+  assertStaffCanAccessUser,
+  resolveStaffActor,
+  assertStaffCanMutate,
   loadReminderForUser,
 };

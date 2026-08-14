@@ -1,7 +1,7 @@
 const express = require("express");
 
-const { protectAdmin } = require("../../middleware/auth");
-const { authorize } = require("../../middleware/authorize");
+const { protectAccount } = require("../../middleware/auth");
+const { authorizeStaff } = require("../../middleware/authorize");
 const { optionalMentalWellbeingFile } = require("../../middleware/authMultipart");
 const {
   listMentalWellbeingController,
@@ -13,22 +13,22 @@ const {
 
 const router = express.Router();
 
-router.get("/", protectAdmin, authorize("mental-wellbeing.view"), listMentalWellbeingController);
-router.get("/:id", protectAdmin, authorize("mental-wellbeing.view"), getMentalWellbeingByIdController);
+router.get("/", protectAccount, authorizeStaff("console.cf.view", { admin: "mental-wellbeing.view" }), listMentalWellbeingController);
+router.get("/:id", protectAccount, authorizeStaff("console.cf.view", { admin: "mental-wellbeing.view" }), getMentalWellbeingByIdController);
 router.post(
   "/",
-  protectAdmin,
-  authorize("mental-wellbeing.edit"),
+  protectAccount,
+  authorizeStaff("console.cf.edit", { admin: "mental-wellbeing.edit" }),
   optionalMentalWellbeingFile,
   createMentalWellbeingController
 );
 router.patch(
   "/:id",
-  protectAdmin,
-  authorize("mental-wellbeing.edit"),
+  protectAccount,
+  authorizeStaff("console.cf.edit", { admin: "mental-wellbeing.edit" }),
   optionalMentalWellbeingFile,
   updateMentalWellbeingController
 );
-router.delete("/:id", protectAdmin, authorize("mental-wellbeing.delete"), deleteMentalWellbeingController);
+router.delete("/:id", protectAccount, authorizeStaff("console.cf.delete", { admin: "mental-wellbeing.delete" }), deleteMentalWellbeingController);
 
 module.exports = router;

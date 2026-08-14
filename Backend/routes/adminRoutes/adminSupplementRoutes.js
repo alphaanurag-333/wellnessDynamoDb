@@ -1,7 +1,7 @@
 const express = require("express");
 
-const { protectAdmin } = require("../../middleware/auth");
-const { authorize } = require("../../middleware/authorize");
+const { protectAccount } = require("../../middleware/auth");
+const { authorizeStaff } = require("../../middleware/authorize");
 const { optionalSupplementFile } = require("../../middleware/authMultipart");
 const {
   listSupplementsController,
@@ -13,22 +13,22 @@ const {
 
 const router = express.Router();
 
-router.get("/", protectAdmin, authorize("supplements.view"), listSupplementsController);
-router.get("/:id", protectAdmin, authorize("supplements.view"), getSupplementByIdController);
+router.get("/", protectAccount, authorizeStaff("console.cf.view", { admin: "supplements.view" }), listSupplementsController);
+router.get("/:id", protectAccount, authorizeStaff("console.cf.view", { admin: "supplements.view" }), getSupplementByIdController);
 router.post(
   "/",
-  protectAdmin,
-  authorize("supplements.edit"),
+  protectAccount,
+  authorizeStaff("console.cf.edit", { admin: "supplements.edit" }),
   optionalSupplementFile,
   createSupplementController
 );
 router.patch(
   "/:id",
-  protectAdmin,
-  authorize("supplements.edit"),
+  protectAccount,
+  authorizeStaff("console.cf.edit", { admin: "supplements.edit" }),
   optionalSupplementFile,
   updateSupplementController
 );
-router.delete("/:id", protectAdmin, authorize("supplements.delete"), deleteSupplementController);
+router.delete("/:id", protectAccount, authorizeStaff("console.cf.delete", { admin: "supplements.delete" }), deleteSupplementController);
 
 module.exports = router;

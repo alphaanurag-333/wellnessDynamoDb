@@ -1,7 +1,7 @@
 const express = require("express");
 
-const { protectAdmin } = require("../../middleware/auth");
-const { authorize } = require("../../middleware/authorize");
+const { protectAccount } = require("../../middleware/auth");
+const { authorizeStaff } = require("../../middleware/authorize");
 const {
   listFaqsController,
   getFaqByIdController,
@@ -12,10 +12,10 @@ const {
 
 const router = express.Router();
 
-router.get("/", protectAdmin, authorize("faq.view"), listFaqsController);
-router.get("/:id", protectAdmin, authorize("faq.view"), getFaqByIdController);
-router.post("/", protectAdmin, authorize("faq.edit"), createFaqController);
-router.patch("/:id", protectAdmin, authorize("faq.edit"), updateFaqController);
-router.delete("/:id", protectAdmin, authorize("faq.delete"), deleteFaqController);
+router.get("/", protectAccount, authorizeStaff("console.cf.view", { admin: "faq.view" }), listFaqsController);
+router.get("/:id", protectAccount, authorizeStaff("console.cf.view", { admin: "faq.view" }), getFaqByIdController);
+router.post("/", protectAccount, authorizeStaff("console.cf.edit", { admin: "faq.edit" }), createFaqController);
+router.patch("/:id", protectAccount, authorizeStaff("console.cf.edit", { admin: "faq.edit" }), updateFaqController);
+router.delete("/:id", protectAccount, authorizeStaff("console.cf.delete", { admin: "faq.delete" }), deleteFaqController);
 
 module.exports = router;

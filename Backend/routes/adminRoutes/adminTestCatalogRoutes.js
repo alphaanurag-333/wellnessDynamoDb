@@ -1,6 +1,6 @@
 const express = require("express");
-const { protectAdmin } = require("../../middleware/auth");
-const { authorize } = require("../../middleware/authorize");
+const { protectAccount } = require("../../middleware/auth");
+const { authorizeStaff } = require("../../middleware/authorize");
 const {
   listTestCatalogController,
   getTestCatalogByIdController,
@@ -11,10 +11,10 @@ const {
 
 const router = express.Router();
 
-router.get("/", protectAdmin, authorize("test-catalog.view"), listTestCatalogController);
-router.get("/:id", protectAdmin, authorize("test-catalog.view"), getTestCatalogByIdController);
-router.post("/", protectAdmin, authorize("test-catalog.edit"), createTestCatalogController);
-router.patch("/:id", protectAdmin, authorize("test-catalog.edit"), updateTestCatalogController);
-router.delete("/:id", protectAdmin, authorize("test-catalog.delete"), deleteTestCatalogController);
+router.get("/", protectAccount, authorizeStaff("console.cf.view", { admin: "test-catalog.view" }), listTestCatalogController);
+router.get("/:id", protectAccount, authorizeStaff("console.cf.view", { admin: "test-catalog.view" }), getTestCatalogByIdController);
+router.post("/", protectAccount, authorizeStaff("console.cf.edit", { admin: "test-catalog.edit" }), createTestCatalogController);
+router.patch("/:id", protectAccount, authorizeStaff("console.cf.edit", { admin: "test-catalog.edit" }), updateTestCatalogController);
+router.delete("/:id", protectAccount, authorizeStaff("console.cf.delete", { admin: "test-catalog.delete" }), deleteTestCatalogController);
 
 module.exports = router;

@@ -1,7 +1,7 @@
 const express = require("express");
 
-const { protectAdmin } = require("../../middleware/auth");
-const { authorize } = require("../../middleware/authorize");
+const { protectAccount } = require("../../middleware/auth");
+const { authorizeStaff } = require("../../middleware/authorize");
 const {
   listMedicalConditionQuestionsController,
   getMedicalConditionQuestionByIdController,
@@ -14,32 +14,32 @@ const router = express.Router();
 
 router.get(
   "/",
-  protectAdmin,
-  authorize("medical-condition-questions.view"),
+  protectAccount,
+  authorizeStaff("console.cf.view", { admin: "medical-condition-questions.view" }),
   listMedicalConditionQuestionsController
 );
 router.get(
   "/:id",
-  protectAdmin,
-  authorize("medical-condition-questions.view"),
+  protectAccount,
+  authorizeStaff("console.cf.view", { admin: "medical-condition-questions.view" }),
   getMedicalConditionQuestionByIdController
 );
 router.post(
   "/",
-  protectAdmin,
-  authorize("medical-condition-questions.edit"),
+  protectAccount,
+  authorizeStaff("console.cf.edit", { admin: "medical-condition-questions.edit" }),
   createMedicalConditionQuestionController
 );
 router.patch(
   "/:id",
-  protectAdmin,
-  authorize("medical-condition-questions.edit"),
+  protectAccount,
+  authorizeStaff("console.cf.edit", { admin: "medical-condition-questions.edit" }),
   updateMedicalConditionQuestionController
 );
 router.delete(
   "/:id",
-  protectAdmin,
-  authorize("medical-condition-questions.delete"),
+  protectAccount,
+  authorizeStaff("console.cf.delete", { admin: "medical-condition-questions.delete" }),
   deleteMedicalConditionQuestionController
 );
 

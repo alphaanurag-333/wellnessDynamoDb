@@ -18,6 +18,7 @@ const {
   assertCoachCanAccessUser,
   assertAssistantCanAccessUser,
   assertAdminCanAccessUser,
+  assertStaffHealUserAccess,
   assertHealTierUser,
   handleValidationError,
   resolveCoachIdForUser,
@@ -185,7 +186,7 @@ function createLaunchAssessmentPortalHandlers({ assertHealUserAccess, createdByR
           assessmentDate,
           totalScore: parseTotalScore(req.body),
           focusAreaIds: parseFocusAreaIds(req.body) ?? [],
-          createdByRole,
+          createdByRole: req.auth?.role || createdByRole,
           createdById: actingId,
         });
       } catch (err) {
@@ -282,26 +283,20 @@ function createLaunchAssessmentPortalHandlers({ assertHealUserAccess, createdByR
   };
 }
 
-const coachHandlers = createLaunchAssessmentPortalHandlers({
-  assertHealUserAccess: assertCoachHealUserAccess,
-  createdByRole: "wellness_coach",
+const staffHandlers = createLaunchAssessmentPortalHandlers({
+  assertHealUserAccess: (req) => assertStaffHealUserAccess(req, { requireHealTier: true }),
+  createdByRole: "staff",
 });
-
-const assistantHandlers = createLaunchAssessmentPortalHandlers({
-  assertHealUserAccess: assertAssistantHealUserAccess,
-  createdByRole: "assistant_wellness_coach",
-});
-
-const adminHandlers = createLaunchAssessmentPortalHandlers({
-  assertHealUserAccess: assertAdminHealUserAccess,
-  createdByRole: "admin",
-});
+const coachHandlers = staffHandlers;
+const assistantHandlers = staffHandlers;
+const adminHandlers = staffHandlers;
 
 module.exports = {
   handleLaunchValidationError,
   parseTotalScore,
   parseFocusAreaIds,
   createLaunchAssessmentPortalHandlers,
+  staffHandlers,
   coachHandlers,
   assistantHandlers,
   adminHandlers,

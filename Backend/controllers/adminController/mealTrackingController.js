@@ -10,11 +10,13 @@ const {
   readLogIdParam,
   loadTargetUser,
 } = require("../mealTrackingControllerHelpers");
+const { assertStaffCanAccessUser } = require("../staffAccess");
 const { isValidDateOnly } = require("../../utils/dateOnly");
 
 exports.adminGetUserMealTrackingController = asyncHandler(async (req, res) => {
   const userId = readUserIdParam(req);
   const user = await loadTargetUser(userId);
+  await assertStaffCanAccessUser(req, user);
 
   const date = req.query.date && isValidDateOnly(req.query.date)
     ? req.query.date
@@ -42,7 +44,8 @@ exports.adminDeleteMealLogController = asyncHandler(async (req, res) => {
   const userId = readUserIdParam(req);
   const logId = readLogIdParam(req);
 
-  await loadTargetUser(userId);
+  const user = await loadTargetUser(userId);
+  await assertStaffCanAccessUser(req, user);
 
   const record = await getMealLogRecordById(logId);
   if (!record || String(record.userId || "") !== String(userId)) {

@@ -1,5 +1,6 @@
 const express = require("express");
-const { protectWellnessCoach } = require("../../middleware/auth");
+const { protectAccount, requireActiveRole } = require("../../middleware/auth");
+const { authorizeStaff } = require("../../middleware/authorize");
 const {
   listProgramsForUserController,
   createProgramController,
@@ -9,11 +10,18 @@ const {
   disableProgramController,
   previewProgramController,
   getEnergyExchangeForUserController,
-} = require("../../controllers/wellnessCoachController/energyExchangeProgramController");
+} = require("../../controllers/staff/energyExchangeProgramController");
 
 const router = express.Router();
 
-router.use(protectWellnessCoach);
+router.use(
+  protectAccount,
+  requireActiveRole("admin", "wellness_coach"),
+  authorizeStaff("console.pg.view", {
+    admin: "energy-exchange.transactions.view",
+    wellness_coach: "nav.my-users",
+  })
+);
 
 router.get("/programs", listProgramsForUserController);
 router.post("/programs", createProgramController);

@@ -1,7 +1,7 @@
 const express = require("express");
 
-const { protectAdmin } = require("../../middleware/auth");
-const { authorize } = require("../../middleware/authorize");
+const { protectAccount } = require("../../middleware/auth");
+const { authorizeStaff } = require("../../middleware/authorize");
 const {
   listSpecializationsController,
   getSpecializationByIdController,
@@ -12,10 +12,10 @@ const {
 
 const router = express.Router();
 
-router.get("/", protectAdmin, authorize("specializations.view"), listSpecializationsController);
-router.get("/:id", protectAdmin, authorize("specializations.view"), getSpecializationByIdController);
-router.post("/", protectAdmin, authorize("specializations.edit"), createSpecializationController);
-router.patch("/:id", protectAdmin, authorize("specializations.edit"), updateSpecializationController);
-router.delete("/:id", protectAdmin, authorize("specializations.delete"), deleteSpecializationController);
+router.get("/", protectAccount, authorizeStaff("console.cf.view", { admin: "specializations.view" }), listSpecializationsController);
+router.get("/:id", protectAccount, authorizeStaff("console.cf.view", { admin: "specializations.view" }), getSpecializationByIdController);
+router.post("/", protectAccount, authorizeStaff("console.cf.edit", { admin: "specializations.edit" }), createSpecializationController);
+router.patch("/:id", protectAccount, authorizeStaff("console.cf.edit", { admin: "specializations.edit" }), updateSpecializationController);
+router.delete("/:id", protectAccount, authorizeStaff("console.cf.delete", { admin: "specializations.delete" }), deleteSpecializationController);
 
 module.exports = router;

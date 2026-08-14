@@ -1,7 +1,7 @@
 const express = require("express");
 const {
   listActiveSpecializations,
-} = require("../../controllers/wellnessCoachController/specializationController");
+} = require("../../controllers/staff/specializationController");
 
 const router = express.Router();
 

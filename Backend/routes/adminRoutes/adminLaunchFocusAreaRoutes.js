@@ -1,6 +1,6 @@
 const express = require("express");
-const { protectAdmin } = require("../../middleware/auth");
-const { authorize } = require("../../middleware/authorize");
+const { protectAccount } = require("../../middleware/auth");
+const { authorizeStaff } = require("../../middleware/authorize");
 const {
   listLaunchFocusAreasController,
   getLaunchFocusAreaByIdController,
@@ -11,19 +11,19 @@ const {
 
 const router = express.Router();
 
-router.get("/", protectAdmin, authorize("launch-focus-areas.view"), listLaunchFocusAreasController);
-router.get("/:id", protectAdmin, authorize("launch-focus-areas.view"), getLaunchFocusAreaByIdController);
-router.post("/", protectAdmin, authorize("launch-focus-areas.edit"), createLaunchFocusAreaController);
+router.get("/", protectAccount, authorizeStaff("console.cf.view", { admin: "launch-focus-areas.view" }), listLaunchFocusAreasController);
+router.get("/:id", protectAccount, authorizeStaff("console.cf.view", { admin: "launch-focus-areas.view" }), getLaunchFocusAreaByIdController);
+router.post("/", protectAccount, authorizeStaff("console.cf.edit", { admin: "launch-focus-areas.edit" }), createLaunchFocusAreaController);
 router.patch(
   "/:id",
-  protectAdmin,
-  authorize("launch-focus-areas.edit"),
+  protectAccount,
+  authorizeStaff("console.cf.edit", { admin: "launch-focus-areas.edit" }),
   updateLaunchFocusAreaController
 );
 router.delete(
   "/:id",
-  protectAdmin,
-  authorize("launch-focus-areas.delete"),
+  protectAccount,
+  authorizeStaff("console.cf.delete", { admin: "launch-focus-areas.delete" }),
   deleteLaunchFocusAreaController
 );
 
