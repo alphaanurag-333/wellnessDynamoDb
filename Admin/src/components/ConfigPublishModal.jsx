@@ -5,7 +5,7 @@ function publishBody(item) {
     return "Every change on this page goes live to the app and web immediately.";
   }
   if (item.web) {
-    return "Every change on this page goes live to the web immediately.";
+    return "Every change on this page goes live to the website immediately.";
   }
   return "Every change on this page goes live to the app immediately.";
 }

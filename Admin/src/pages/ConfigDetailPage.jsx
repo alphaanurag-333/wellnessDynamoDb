@@ -37,7 +37,109 @@ import {
   LAUNCH_CONFIG_RATINGS,
 } from "../components/LaunchSection.jsx";
 import { NutritionBankSection, NUTRITION_BANK } from "../components/NutritionBankSection.jsx";
+import { FeatureFlagsSection } from "../components/FeatureFlagsSection.jsx";
+import { ProgramTestimonialsSection } from "../components/ProgramTestimonialsSection.jsx";
+import { FooterSettingSection } from "../components/FooterSettingSection.jsx";
+import { SocialLinksSection } from "../components/SocialLinksSection.jsx";
+import { LegalBlocksSection } from "../components/LegalBlocksSection.jsx";
+import { ContactDetailsSection } from "../components/ContactDetailsSection.jsx";
+import { LogoSlotsSection } from "../components/LogoSlotsSection.jsx";
+import { LocationsSection } from "../components/LocationsSection.jsx";
+import { BannerSection } from "../components/BannerSection.jsx";
+import { ChampionSection } from "../components/ChampionSection.jsx";
+import { BirthdaySection } from "../components/BirthdaySection.jsx";
+import { TransformationSection } from "../components/TransformationSection.jsx";
+import { ClientReviewSection } from "../components/ClientReviewSection.jsx";
+import { RealPeopleSection } from "../components/RealPeopleSection.jsx";
+import { VoiceOfHealingSection } from "../components/VoiceOfHealingSection.jsx";
+import { CofounderSection } from "../components/CofounderSection.jsx";
+import { AboutSection } from "../components/AboutSection.jsx";
+import { GoogleReviewSection } from "../components/GoogleReviewSection.jsx";
+import { DropdownsSection } from "../components/DropdownsSection.jsx";
+import { RecipesSection } from "../components/RecipesSection.jsx";
+import { BlogsSection } from "../components/BlogsSection.jsx";
 import { RxBankSection, RX_BANK_PROTOCOLS } from "../components/RxBankSection.jsx";
+import { FEATURE_FLAGS } from "../data/featureFlagsData.js";
+import {
+  PROGRAM_TESTIMONIAL_GALLERY,
+  PROGRAM_TESTIMONIAL_STORIES,
+} from "../data/programTestimonialsConfigData.js";
+import { FOOTER_BOTTOM_LINE, FOOTER_COLUMNS } from "../data/footerConfigData.js";
+import { SOCIAL_FOOTER_LINKS } from "../data/socialLinksConfigData.js";
+import { WEBSITE_FOOTER_LINKS } from "../data/websiteLinksConfigData.js";
+import { PRIVACY_BLOCKS } from "../data/privacyConfigData.js";
+import { TOS_BLOCKS } from "../data/tosConfigData.js";
+import { GUIDELINE_BLOCKS } from "../data/guidelinesConfigData.js";
+import { CONTACT_DETAILS } from "../data/contactConfigData.js";
+import { FOOTER_TEXT_BLOCKS } from "../data/footerTextConfigData.js";
+import { LOGO_SLOTS } from "../data/logoConfigData.js";
+import { LOCATIONS } from "../data/locationConfigData.js";
+import { BANNER_EDITOR, BANNER_GALLERY, BANNER_LIVE_ITEMS } from "../data/bannerConfigData.js";
+import { CHAMPION_EDITOR, CHAMPION_GALLERY } from "../data/championConfigData.js";
+import { BIRTHDAY_EDITOR, BIRTHDAY_GALLERY, BIRTHDAY_QUEUE } from "../data/birthdayConfigData.js";
+import {
+  TRANSFORMATION_EDITOR,
+  TRANSFORMATION_GALLERY,
+  TRANSFORMATION_POINTS,
+  TRANSFORMATION_PRIORITY,
+} from "../data/transformationConfigData.js";
+import {
+  CLIENT_REVIEW_EDITOR,
+  CLIENT_REVIEW_GALLERY,
+  CLIENT_REVIEW_LIVE,
+  CLIENT_REVIEW_QUEUE,
+} from "../data/clientReviewConfigData.js";
+import {
+  REAL_PEOPLE_EDITOR,
+  REAL_PEOPLE_GALLERY,
+  REAL_PEOPLE_POINTS,
+  REAL_PEOPLE_PRIORITY,
+} from "../data/realPeopleConfigData.js";
+import {
+  VOICE_EDITOR,
+  VOICE_GALLERY,
+  VOICE_ITEMS,
+} from "../data/voiceConfigData.js";
+import {
+  COFOUNDER_EDITOR,
+  COFOUNDER_MESSAGES,
+  COFOUNDER_PHOTOS,
+} from "../data/cofounderConfigData.js";
+import {
+  LEADERSHIP_EDITOR,
+  LEADERSHIP_MESSAGES,
+  LEADERSHIP_TITLES,
+} from "../data/leadershipConfigData.js";
+import {
+  WELLNESS_TEAM_EDITOR,
+  WELLNESS_TEAM_MESSAGES,
+  WELLNESS_TEAM_PHOTOS,
+  WELLNESS_TEAM_TITLES,
+} from "../data/wellnessTeamConfigData.js";
+import { ABOUT_BLOCKS, ABOUT_EDITOR } from "../data/aboutConfigData.js";
+import {
+  GOOGLE_REVIEW_EDITOR,
+  GOOGLE_REVIEW_GALLERY,
+  GOOGLE_REVIEW_STATS,
+} from "../data/googleReviewConfigData.js";
+import { DROPDOWN_LISTS } from "../data/dropdownsConfigData.js";
+import {
+  RECIPES_EDITOR,
+  RECIPE_GALLERY,
+  RECIPE_ITEMS,
+} from "../data/recipesConfigData.js";
+import {
+  YOGA_CATEGORIES,
+  YOGA_EDITOR,
+  YOGA_GALLERY,
+  YOGA_GALLERY_OWNERS,
+  YOGA_ITEMS,
+} from "../data/yogaConfigData.js";
+import {
+  BLOGS_EDITOR,
+  BLOG_GALLERY,
+  BLOG_POSTS,
+} from "../data/blogsConfigData.js";
 import { PageHeader } from "../components/shared.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { HEALTH_TRACKERS } from "../data/healthProgressData.js";
@@ -1027,6 +1129,34 @@ const PREVIEW_CONFIGS = new Set([
   "app-gallery",
   "app-launch",
   "app-ai-enable",
+  "feature-flags",
+  "web-program-testimonials",
+  "web-footer",
+  "web-fs-social",
+  "web-fs-links",
+  "web-fs-privacy",
+  "web-fs-tos",
+  "web-fs-guidelines",
+  "web-fs-contact",
+  "web-fs-text",
+  "web-logo",
+  "web-location",
+  "common-banner",
+  "common-champion",
+  "common-birthday",
+  "common-transformation",
+  "common-client-review",
+  "common-real-people",
+  "common-voice",
+  "common-cofounder",
+  "common-leadership",
+  "common-wellness-team",
+  "common-about",
+  "common-google-review",
+  "common-dropdowns",
+  "common-recipes",
+  "common-yoga",
+  "common-blogs",
 ]);
 
 function PreviewActions({ item, onOpen, onPublish, canPublish }) {
@@ -1078,6 +1208,66 @@ export function ConfigDetailPage() {
   const [launchDomains, setLaunchDomains] = useState(LAUNCH_CONFIG_DOMAINS);
   const [aiCoaches, setAiCoaches] = useState(AI_ENABLE_COACHES);
   const [aiAssistants, setAiAssistants] = useState(AI_ENABLE_ASSISTANTS);
+  const [programStories, setProgramStories] = useState(PROGRAM_TESTIMONIAL_STORIES);
+  const [programGallery, setProgramGallery] = useState(PROGRAM_TESTIMONIAL_GALLERY);
+  const [footerColumns, setFooterColumns] = useState(FOOTER_COLUMNS);
+  const [footerBottomLine, setFooterBottomLine] = useState(FOOTER_BOTTOM_LINE);
+  const [socialLinks, setSocialLinks] = useState(SOCIAL_FOOTER_LINKS);
+  const [websiteLinks, setWebsiteLinks] = useState(WEBSITE_FOOTER_LINKS);
+  const [privacyBlocks, setPrivacyBlocks] = useState(PRIVACY_BLOCKS);
+  const [tosBlocks, setTosBlocks] = useState(TOS_BLOCKS);
+  const [guidelineBlocks, setGuidelineBlocks] = useState(GUIDELINE_BLOCKS);
+  const [contactDetails, setContactDetails] = useState(CONTACT_DETAILS);
+  const [footerTextBlocks, setFooterTextBlocks] = useState(FOOTER_TEXT_BLOCKS);
+  const [logoSlots, setLogoSlots] = useState(LOGO_SLOTS);
+  const [locations, setLocations] = useState(LOCATIONS);
+  const [bannerEditor, setBannerEditor] = useState(BANNER_EDITOR);
+  const [bannerItems, setBannerItems] = useState(BANNER_LIVE_ITEMS);
+  const [bannerGallery, setBannerGallery] = useState(BANNER_GALLERY);
+  const [championEditor, setChampionEditor] = useState(CHAMPION_EDITOR);
+  const [championGallery, setChampionGallery] = useState(CHAMPION_GALLERY);
+  const [birthdayEditor, setBirthdayEditor] = useState(BIRTHDAY_EDITOR);
+  const [birthdayGallery, setBirthdayGallery] = useState(BIRTHDAY_GALLERY);
+  const [birthdayQueue, setBirthdayQueue] = useState(BIRTHDAY_QUEUE);
+  const [tfEditor, setTfEditor] = useState(TRANSFORMATION_EDITOR);
+  const [tfPoints, setTfPoints] = useState(TRANSFORMATION_POINTS);
+  const [tfPriority, setTfPriority] = useState(TRANSFORMATION_PRIORITY);
+  const [tfGallery, setTfGallery] = useState(TRANSFORMATION_GALLERY);
+  const [crEditor, setCrEditor] = useState(CLIENT_REVIEW_EDITOR);
+  const [crQueue, setCrQueue] = useState(CLIENT_REVIEW_QUEUE);
+  const [crPublished, setCrPublished] = useState(CLIENT_REVIEW_LIVE);
+  const [crGallery, setCrGallery] = useState(CLIENT_REVIEW_GALLERY);
+  const [rpEditor, setRpEditor] = useState(REAL_PEOPLE_EDITOR);
+  const [rpPoints, setRpPoints] = useState(REAL_PEOPLE_POINTS);
+  const [rpPriority, setRpPriority] = useState(REAL_PEOPLE_PRIORITY);
+  const [rpGallery, setRpGallery] = useState(REAL_PEOPLE_GALLERY);
+  const [voiceEditor, setVoiceEditor] = useState(VOICE_EDITOR);
+  const [voiceItems, setVoiceItems] = useState(VOICE_ITEMS);
+  const [voiceGallery, setVoiceGallery] = useState(VOICE_GALLERY);
+  const [cfEditor, setCfEditor] = useState(COFOUNDER_EDITOR);
+  const [cfPhotos, setCfPhotos] = useState(COFOUNDER_PHOTOS);
+  const [cfMessages, setCfMessages] = useState(COFOUNDER_MESSAGES);
+  const [ldEditor, setLdEditor] = useState(LEADERSHIP_EDITOR);
+  const [ldMessages, setLdMessages] = useState(LEADERSHIP_MESSAGES);
+  const [wtEditor, setWtEditor] = useState(WELLNESS_TEAM_EDITOR);
+  const [wtPhotos, setWtPhotos] = useState(WELLNESS_TEAM_PHOTOS);
+  const [wtMessages, setWtMessages] = useState(WELLNESS_TEAM_MESSAGES);
+  const [aboutEditor, setAboutEditor] = useState(ABOUT_EDITOR);
+  const [aboutBlocks, setAboutBlocks] = useState(ABOUT_BLOCKS);
+  const [grEditor, setGrEditor] = useState(GOOGLE_REVIEW_EDITOR);
+  const [grStats, setGrStats] = useState(GOOGLE_REVIEW_STATS);
+  const [grGallery, setGrGallery] = useState(GOOGLE_REVIEW_GALLERY);
+  const [dropdownLists, setDropdownLists] = useState(DROPDOWN_LISTS);
+  const [rcEditor, setRcEditor] = useState(RECIPES_EDITOR);
+  const [rcItems, setRcItems] = useState(RECIPE_ITEMS);
+  const [rcGallery, setRcGallery] = useState(RECIPE_GALLERY);
+  const [ygEditor, setYgEditor] = useState(YOGA_EDITOR);
+  const [ygItems, setYgItems] = useState(YOGA_ITEMS);
+  const [ygGallery, setYgGallery] = useState(YOGA_GALLERY);
+  const [blEditor, setBlEditor] = useState(BLOGS_EDITOR);
+  const [blPosts, setBlPosts] = useState(BLOG_POSTS);
+  const [blGallery, setBlGallery] = useState(BLOG_GALLERY);
+  const [featureFlags, setFeatureFlags] = useState(FEATURE_FLAGS);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
 
@@ -1125,6 +1315,62 @@ export function ConfigDetailPage() {
               : item.id === "app-ai-enable"
                 ? aiCoaches.some((entry) => entry.enabled)
                   || aiAssistants.some((entry) => entry.enabled)
+              : item.id === "web-program-testimonials"
+                ? programStories.some((entry) => entry.live)
+              : item.id === "web-footer"
+                ? footerColumns.some((entry) => entry.live)
+              : item.id === "web-fs-social"
+                ? socialLinks.length > 0
+              : item.id === "web-fs-links"
+                ? websiteLinks.length > 0
+              : item.id === "web-fs-privacy"
+                ? privacyBlocks.some((entry) => entry.shown)
+              : item.id === "web-fs-tos"
+                ? tosBlocks.some((entry) => entry.shown)
+              : item.id === "web-fs-guidelines"
+                ? guidelineBlocks.some((entry) => entry.shown)
+              : item.id === "web-fs-contact"
+                ? contactDetails.some((entry) => entry.live)
+              : item.id === "web-fs-text"
+                ? footerTextBlocks.some((entry) => entry.shown)
+              : item.id === "web-logo"
+                ? logoSlots.some((entry) => entry.uploaded)
+              : item.id === "web-location"
+                ? locations.some((entry) => entry.live)
+              : item.id === "common-banner"
+                ? bannerEditor.appOn || bannerEditor.webOn
+              : item.id === "common-champion"
+                ? championEditor.appOn || championEditor.webOn
+              : item.id === "common-birthday"
+                ? birthdayEditor.appOn || birthdayEditor.webOn
+              : item.id === "common-transformation"
+                ? tfEditor.appOn || tfEditor.webOn
+              : item.id === "common-client-review"
+                ? crEditor.appOn || crEditor.webOn
+              : item.id === "common-real-people"
+                ? rpEditor.appOn || rpEditor.webOn
+              : item.id === "common-voice"
+                ? voiceEditor.appOn || voiceEditor.webOn
+              : item.id === "common-cofounder"
+                ? cfEditor.appOn || cfEditor.webOn
+              : item.id === "common-leadership"
+                ? ldEditor.appOn || ldEditor.webOn
+              : item.id === "common-wellness-team"
+                ? wtEditor.appOn || wtEditor.webOn
+              : item.id === "common-about"
+                ? aboutEditor.appOn || aboutEditor.webOn
+              : item.id === "common-google-review"
+                ? grEditor.appOn || grEditor.webOn
+              : item.id === "common-dropdowns"
+                ? dropdownLists.some((list) => list.options.some((entry) => entry.on))
+              : item.id === "common-recipes"
+                ? rcEditor.appOn || rcEditor.webOn
+              : item.id === "common-yoga"
+                ? ygEditor.appOn || ygEditor.webOn
+              : item.id === "common-blogs"
+                ? blEditor.appOn || blEditor.webOn
+              : item.id === "feature-flags"
+                ? featureFlags.some((entry) => entry.on)
           : item.toggleable === false
             ? Boolean(item.live)
             : Boolean(item.on);
@@ -1349,13 +1595,328 @@ export function ConfigDetailPage() {
             onToast={onToast}
           />
         );
+      case "feature-flags":
+        return (
+          <FeatureFlagsSection
+            flags={featureFlags}
+            setFlags={setFeatureFlags}
+            onToast={onToast}
+          />
+        );
+      case "web-program-testimonials":
+        return (
+          <ProgramTestimonialsSection
+            stories={programStories}
+            setStories={setProgramStories}
+            gallery={programGallery}
+            setGallery={setProgramGallery}
+            onToast={onToast}
+          />
+        );
+      case "web-footer":
+        return (
+          <FooterSettingSection
+            columns={footerColumns}
+            setColumns={setFooterColumns}
+            bottomLine={footerBottomLine}
+            setBottomLine={setFooterBottomLine}
+            onToast={onToast}
+          />
+        );
+      case "web-fs-social":
+        return (
+          <SocialLinksSection
+            links={socialLinks}
+            setLinks={setSocialLinks}
+            onToast={onToast}
+          />
+        );
+      case "web-fs-links":
+        return (
+          <SocialLinksSection
+            links={websiteLinks}
+            setLinks={setWebsiteLinks}
+            onToast={onToast}
+            defaultIcon="globe"
+          />
+        );
+      case "web-fs-privacy":
+        return (
+          <LegalBlocksSection
+            blocks={privacyBlocks}
+            setBlocks={setPrivacyBlocks}
+            onToast={onToast}
+          />
+        );
+      case "web-fs-tos":
+        return (
+          <LegalBlocksSection
+            blocks={tosBlocks}
+            setBlocks={setTosBlocks}
+            onToast={onToast}
+          />
+        );
+      case "web-fs-guidelines":
+        return (
+          <LegalBlocksSection
+            blocks={guidelineBlocks}
+            setBlocks={setGuidelineBlocks}
+            onToast={onToast}
+          />
+        );
+      case "web-fs-contact":
+        return (
+          <ContactDetailsSection
+            details={contactDetails}
+            setDetails={setContactDetails}
+            onToast={onToast}
+          />
+        );
+      case "web-fs-text":
+        return (
+          <LegalBlocksSection
+            blocks={footerTextBlocks}
+            setBlocks={setFooterTextBlocks}
+            onToast={onToast}
+          />
+        );
+      case "web-logo":
+        return (
+          <LogoSlotsSection
+            slots={logoSlots}
+            setSlots={setLogoSlots}
+            onToast={onToast}
+          />
+        );
+      case "web-location":
+        return (
+          <LocationsSection
+            locations={locations}
+            setLocations={setLocations}
+            onToast={onToast}
+          />
+        );
+      case "common-banner":
+        return (
+          <BannerSection
+            editor={bannerEditor}
+            setEditor={setBannerEditor}
+            items={bannerItems}
+            setItems={setBannerItems}
+            gallery={bannerGallery}
+            setGallery={setBannerGallery}
+            onToast={onToast}
+          />
+        );
+      case "common-champion":
+        return (
+          <ChampionSection
+            editor={championEditor}
+            setEditor={setChampionEditor}
+            gallery={championGallery}
+            setGallery={setChampionGallery}
+            onToast={onToast}
+          />
+        );
+      case "common-birthday":
+        return (
+          <BirthdaySection
+            editor={birthdayEditor}
+            setEditor={setBirthdayEditor}
+            gallery={birthdayGallery}
+            setGallery={setBirthdayGallery}
+            queue={birthdayQueue}
+            setQueue={setBirthdayQueue}
+            onToast={onToast}
+          />
+        );
+      case "common-transformation":
+        return (
+          <TransformationSection
+            editor={tfEditor}
+            setEditor={setTfEditor}
+            points={tfPoints}
+            setPoints={setTfPoints}
+            priority={tfPriority}
+            setPriority={setTfPriority}
+            gallery={tfGallery}
+            setGallery={setTfGallery}
+            onToast={onToast}
+            onOpenPreview={() => setPreviewOpen(true)}
+          />
+        );
+      case "common-client-review":
+        return (
+          <ClientReviewSection
+            editor={crEditor}
+            setEditor={setCrEditor}
+            queue={crQueue}
+            setQueue={setCrQueue}
+            published={crPublished}
+            setPublished={setCrPublished}
+            gallery={crGallery}
+            setGallery={setCrGallery}
+            onToast={onToast}
+          />
+        );
+      case "common-real-people":
+        return (
+          <RealPeopleSection
+            editor={rpEditor}
+            setEditor={setRpEditor}
+            points={rpPoints}
+            setPoints={setRpPoints}
+            priority={rpPriority}
+            setPriority={setRpPriority}
+            gallery={rpGallery}
+            setGallery={setRpGallery}
+            onToast={onToast}
+            onOpenPreview={() => setPreviewOpen(true)}
+          />
+        );
+      case "common-voice":
+        return (
+          <VoiceOfHealingSection
+            editor={voiceEditor}
+            setEditor={setVoiceEditor}
+            items={voiceItems}
+            setItems={setVoiceItems}
+            gallery={voiceGallery}
+            setGallery={setVoiceGallery}
+            onToast={onToast}
+          />
+        );
+      case "common-cofounder":
+        return (
+          <CofounderSection
+            editor={cfEditor}
+            setEditor={setCfEditor}
+            photos={cfPhotos}
+            setPhotos={setCfPhotos}
+            messages={cfMessages}
+            setMessages={setCfMessages}
+            onToast={onToast}
+            onOpenPreview={() => setPreviewOpen(true)}
+          />
+        );
+      case "common-leadership":
+        return (
+          <CofounderSection
+            editor={ldEditor}
+            setEditor={setLdEditor}
+            photos={[]}
+            messages={ldMessages}
+            setMessages={setLdMessages}
+            onToast={onToast}
+            onOpenPreview={() => setPreviewOpen(true)}
+            titleOptions={LEADERSHIP_TITLES}
+            showPhotoHistory={false}
+            cropLabel="leader"
+          />
+        );
+      case "common-wellness-team":
+        return (
+          <CofounderSection
+            editor={wtEditor}
+            setEditor={setWtEditor}
+            photos={wtPhotos}
+            setPhotos={setWtPhotos}
+            messages={wtMessages}
+            setMessages={setWtMessages}
+            onToast={onToast}
+            onOpenPreview={() => setPreviewOpen(true)}
+            titleOptions={WELLNESS_TEAM_TITLES}
+            showPhotoHistory
+            cropLabel="team"
+            photoHint="Upload a portrait for this team member — cropping and zoom are set in the upload dialog."
+            liveTitle="Live team profiles"
+            liveSubtitle="Who is live, their designation and where they show."
+          />
+        );
+      case "common-about":
+        return (
+          <AboutSection
+            editor={aboutEditor}
+            setEditor={setAboutEditor}
+            blocks={aboutBlocks}
+            setBlocks={setAboutBlocks}
+            onToast={onToast}
+          />
+        );
+      case "common-google-review":
+        return (
+          <GoogleReviewSection
+            editor={grEditor}
+            setEditor={setGrEditor}
+            stats={grStats}
+            setStats={setGrStats}
+            gallery={grGallery}
+            setGallery={setGrGallery}
+            onToast={onToast}
+          />
+        );
+      case "common-dropdowns":
+        return (
+          <DropdownsSection
+            lists={dropdownLists}
+            setLists={setDropdownLists}
+            onToast={onToast}
+          />
+        );
+      case "common-recipes":
+        return (
+          <RecipesSection
+            editor={rcEditor}
+            setEditor={setRcEditor}
+            items={rcItems}
+            setItems={setRcItems}
+            gallery={rcGallery}
+            setGallery={setRcGallery}
+            onToast={onToast}
+          />
+        );
+      case "common-yoga":
+        return (
+          <RecipesSection
+            editor={ygEditor}
+            setEditor={setYgEditor}
+            items={ygItems}
+            setItems={setYgItems}
+            gallery={ygGallery}
+            setGallery={setYgGallery}
+            onToast={onToast}
+            categories={YOGA_CATEGORIES}
+            galleryOwners={YOGA_GALLERY_OWNERS}
+            titlePlaceholder="Title · e.g. Morning vinyasa flow"
+            descriptionPlaceholder="Yoga sequence description shown in the app..."
+            galleryBadge="Yoga"
+            galleryPlaceholder="Yoga media"
+            itemNoun="Practice"
+            videoCropLabel="libvideo"
+            coverCropLabel="libcover"
+            galleryCropLabel="yoga"
+            coverCropRatio="16:9"
+          />
+        );
+      case "common-blogs":
+        return (
+          <BlogsSection
+            editor={blEditor}
+            setEditor={setBlEditor}
+            posts={blPosts}
+            setPosts={setBlPosts}
+            gallery={blGallery}
+            setGallery={setBlGallery}
+            onToast={onToast}
+          />
+        );
       default:
         return <GenericPanel item={item} />;
     }
   }
 
   return (
-    <main className="content ua-page-enter ua-cfg-detail">
+    <main className={`content ua-page-enter ua-cfg-detail${item.id === "common-banner" || item.id === "common-champion" || item.id === "common-birthday" || item.id === "common-transformation" || item.id === "common-client-review" || item.id === "common-real-people" || item.id === "common-voice" || item.id === "common-cofounder" || item.id === "common-leadership" || item.id === "common-wellness-team" || item.id === "common-about" || item.id === "common-google-review" || item.id === "common-dropdowns" || item.id === "common-recipes" || item.id === "common-yoga" || item.id === "common-blogs" || item.id === "web-program-testimonials" || item.id === "web-footer" || item.id === "web-fs-social" || item.id === "web-fs-links" || item.id === "feature-flags" ? " ua-cfg-detail--wide" : ""}`}>
       <Link to={UPDATED_ADMIN_PATHS.configs} className="ua-cfg-detail__back">
         ← Configs
       </Link>
@@ -1402,6 +1963,47 @@ export function ConfigDetailPage() {
           launchDomains,
           aiCoaches,
           aiAssistants,
+          programStories,
+          footerColumns,
+          footerBottomLine,
+          socialLinks,
+          websiteLinks,
+          privacyBlocks,
+          tosBlocks,
+          guidelineBlocks,
+          contactDetails,
+          footerTextBlocks,
+          logoSlots,
+          locations,
+          bannerEditor,
+          bannerItems,
+          championEditor,
+          birthdayEditor,
+          tfEditor,
+          tfPoints,
+          crEditor,
+          crPublished,
+          rpEditor,
+          rpPoints,
+          voiceEditor,
+          voiceItems,
+          cfEditor,
+          cfMessages,
+          ldEditor,
+          ldMessages,
+          wtEditor,
+          wtMessages,
+          aboutBlocks,
+          grEditor,
+          grStats,
+          dropdownLists,
+          rcEditor,
+          rcItems,
+          ygEditor,
+          ygItems,
+          blEditor,
+          blPosts,
+          featureFlags,
         }}
       />
 
