@@ -2,29 +2,56 @@ import { useEffect, useMemo, useState } from "react";
 import { COMMITMENT_LETTER_DEFAULT } from "../data/commitmentLetterData.js";
 import { formatRupee } from "../data/exchangeData.js";
 import { paymentMethodsForGateway } from "../data/configDetailData.js";
+import { programTestimonialLabel } from "../data/programTestimonialsConfigData.js";
+import { liveVersionText } from "../data/privacyConfigData.js";
+import { asCopyString, bannerPlacementById } from "../data/bannerConfigData.js";
+import { FeatureFlagsPreview } from "./FeatureFlagsSection.jsx";
 
 function previewSurfaces(item) {
   const surfaces = [];
+  if (item.id === "common-transformation" || item.id === "common-real-people") {
+    if (item.app) surfaces.push({ id: "app", label: "App", ratio: "3:4" });
+    if (item.web) surfaces.push({ id: "web", label: "Web", ratio: "3:4" });
+    return surfaces;
+  }
+  if (item.id === "common-voice" || item.id === "common-cofounder" || item.id === "common-leadership" || item.id === "common-wellness-team" || item.id === "common-google-review" || item.id === "common-recipes" || item.id === "common-yoga" || item.id === "common-blogs") {
+    if (item.app) surfaces.push({ id: "app", label: "App", ratio: "16:9" });
+    if (item.web) surfaces.push({ id: "web", label: "Web", ratio: "16:9" });
+    return surfaces;
+  }
+  const webRatio = item.id === "web-program-testimonials" || item.id === "common-client-review" ? "3:4" : "16:9";
   if (item.app) surfaces.push({ id: "app", label: "App", ratio: "9:16" });
-  if (item.web) surfaces.push({ id: "web", label: "Web", ratio: "16:9" });
+  if (item.web) surfaces.push({ id: "web", label: "Web", ratio: webRatio });
   return surfaces;
 }
 
 function surfaceSubtitle(surfaces, activeId, item) {
+  if (item?.id === "common-transformation" || item?.id === "common-real-people") {
+    return "Common asset · renders on both surfaces · 3:4";
+  }
+  if (item?.id === "common-voice" || item?.id === "common-cofounder" || item?.id === "common-leadership" || item?.id === "common-wellness-team" || item?.id === "common-google-review" || item?.id === "common-recipes" || item?.id === "common-yoga" || item?.id === "common-blogs") {
+    return "Common asset · renders on both surfaces · 16:9";
+  }
+  if (item?.id === "common-client-review") {
+    return "Common asset · renders on both surfaces · 3:4";
+  }
   if (!surfaces.length) return "No surfaces enabled · 16:9";
   const active = surfaces.find((entry) => entry.id === activeId) ?? surfaces[0];
-  if (active.id === "app" && item?.app && !item?.web) return "App only · 16:9";
-  if (active.id === "web" && item?.web && !item?.app) return "Web only · 16:9";
+  if (active.id === "app" && item?.app && !item?.web) return `App only · ${active.ratio}`;
+  if (active.id === "web" && item?.web && !item?.app) return `Web only · ${active.ratio}`;
   return `${active.label} · ${active.ratio}`;
 }
 
 function PreviewStage({ surface, item, children }) {
+  const surfaces = previewSurfaces(item);
+  const active = surfaces.find((entry) => entry.id === surface) ?? surfaces[0];
+  const ratio = active?.ratio || (surface === "app" ? "9:16" : "16:9");
   const stageSub =
     surface === "app" && item.app && !item.web
-      ? "App only · 16:9"
+      ? `App only · ${ratio}`
       : surface === "web" && item.web && !item.app
-        ? "Web only · 16:9"
-        : `${surface === "app" ? "App" : "Web"} · ${surface === "app" ? "9:16" : "16:9"}`;
+        ? `Web only · ${ratio}`
+        : `${surface === "app" ? "App" : "Web"} · ${ratio}`;
 
   return (
     <div className="ua-cfg-preview-stage">
@@ -894,6 +921,605 @@ function GenericPreview({ item, surface }) {
   );
 }
 
+function ChampionPreview({ editor = {}, surface, item }) {
+  const design = editor.design || "gold";
+  const icons = { gold: "🏆", navy: "🏆", confetti: "🏆", program: "🏆", balloons: "🎈", botanical: "🌿", typo: "✨", coach: "💌" };
+  const body = (
+    <div className="ua-cfg-ch-preview">
+      <div className={`ua-cfg-ch-preview__card ua-cfg-ch-design--${design}`}>
+        <span aria-hidden="true">{icons[design] || "🎂"}</span>
+        <strong>{typeof editor.headline === "string" ? editor.headline : "Card"}</strong>
+        <span>{typeof editor.subline === "string" ? editor.subline : ""}</span>
+        <p>{typeof editor.description === "string" ? editor.description : ""}</p>
+        <span>{typeof editor.footer === "string" ? editor.footer : ""}</span>
+      </div>
+    </div>
+  );
+
+  return (
+    <PreviewStage surface={surface} item={item}>
+      {body}
+    </PreviewStage>
+  );
+}
+
+function TransformationPreview({ editor = {}, points = [], title = "Transformation" }) {
+  const uploaded = Boolean(editor.uploaded || editor.beforeUploaded || editor.afterUploaded);
+  const name = points.find((entry) => entry.field === "name")?.value || "Client story";
+  const story =
+    typeof editor.story === "string" && editor.story.trim()
+      ? editor.story
+      : "Story / caption shown with the photo…";
+  const extras = points.filter((entry) => entry.field !== "name");
+  const webOn = editor.webOn !== false;
+  const appOn = editor.appOn !== false;
+
+  function imageBox(className = "") {
+    return (
+      <div className={`ua-cfg-tf-live__image${uploaded ? " is-on" : ""}${className ? ` ${className}` : ""}`}>
+        IMAGE
+      </div>
+    );
+  }
+
+  return (
+    <div className="ua-cfg-tf-live">
+      {webOn ? (
+        <div className="ua-cfg-tf-live__pane">
+          <span className="ua-cfg-bn-preview__label is-web">Website</span>
+          <div className="ua-cfg-pt-live-preview">
+            <div className="ua-cfg-pt-live-preview__bar">
+              <span className="ua-cfg-pt-live-preview__brand">IR</span>
+              <strong>{title}</strong>
+              <span className="ua-cfg-pt-live-preview__url">irwellness.in</span>
+            </div>
+            <div className="ua-cfg-pt-live-preview__layout">
+              {imageBox()}
+              <div className="ua-cfg-pt-live-preview__copy">
+                <strong>{name}</strong>
+                <p>{story}</p>
+                {extras.map((entry) => (
+                  <span key={entry.id}>{entry.label}: {entry.value}</span>
+                ))}
+                <em className="ua-cfg-tf-cta">Read story</em>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {appOn ? (
+        <div className="ua-cfg-tf-live__pane ua-cfg-tf-live__pane--app">
+          <span className="ua-cfg-bn-preview__label is-app">App</span>
+          <div className="ua-cfg-bn-preview__phone ua-cfg-tf-live__phone">
+            <div className="ua-cfg-bn-preview__phone-bar">
+              <span>9:41</span>
+              <strong>{title}</strong>
+              <span aria-hidden="true">🔔</span>
+            </div>
+            <div className="ua-cfg-tf-live__app-body">
+              <div className="ua-cfg-tf-live__app-head">
+                <span className="ua-cfg-pt-live-preview__brand">IR</span>
+                <strong>{title}</strong>
+              </div>
+              {imageBox("ua-cfg-tf-live__image--app")}
+              <p>{story}</p>
+              <div className="ua-cfg-preview-content__nav" aria-hidden="true">
+                <span className="is-active">⌂</span>
+                <span>▦</span>
+                <span>☑</span>
+                <span>👤</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {!webOn && !appOn ? (
+        <div className="ua-cfg-preview-modal__empty">
+          <p>Turn on App or Web to preview this asset.</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ClientReviewPreview({ editor = {}, published = [] }) {
+  const live = published.filter((entry) => entry.live).slice(0, 3);
+  const webOn = editor.webOn !== false;
+  const appOn = editor.appOn !== false;
+
+  function quoteList(compact = false) {
+    if (!live.length) {
+      return <p className="ua-cfg-panel__sub">No live reviews yet.</p>;
+    }
+    return live.map((entry) => (
+      <article key={entry.id} className={`ua-cfg-cr-preview-card${compact ? " is-compact" : ""}`}>
+        <strong>{entry.name}</strong>
+        <span className="ua-cfg-cr-stars">★★★★★</span>
+        <p>{entry.quote}</p>
+      </article>
+    ));
+  }
+
+  return (
+    <div className="ua-cfg-tf-live">
+      {webOn ? (
+        <div className="ua-cfg-tf-live__pane">
+          <span className="ua-cfg-bn-preview__label is-web">Website</span>
+          <div className="ua-cfg-pt-live-preview">
+            <div className="ua-cfg-pt-live-preview__bar">
+              <span className="ua-cfg-pt-live-preview__brand">IR</span>
+              <strong>Client reviews</strong>
+              <span className="ua-cfg-pt-live-preview__url">irwellness.in</span>
+            </div>
+            <div className="ua-cfg-cr-preview-list">{quoteList()}</div>
+          </div>
+        </div>
+      ) : null}
+      {appOn ? (
+        <div className="ua-cfg-tf-live__pane ua-cfg-tf-live__pane--app">
+          <span className="ua-cfg-bn-preview__label is-app">App</span>
+          <div className="ua-cfg-bn-preview__phone ua-cfg-tf-live__phone">
+            <div className="ua-cfg-bn-preview__phone-bar">
+              <span>9:41</span>
+              <strong>Reviews</strong>
+              <span aria-hidden="true">🔔</span>
+            </div>
+            <div className="ua-cfg-tf-live__app-body">
+              <div className="ua-cfg-tf-live__app-head">
+                <span className="ua-cfg-pt-live-preview__brand">IR</span>
+                <strong>Client reviews</strong>
+              </div>
+              <div className="ua-cfg-cr-preview-list ua-cfg-cr-preview-list--app">{quoteList(true)}</div>
+              <div className="ua-cfg-preview-content__nav" aria-hidden="true">
+                <span className="is-active">⌂</span>
+                <span>▦</span>
+                <span>☑</span>
+                <span>👤</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {!webOn && !appOn ? (
+        <div className="ua-cfg-preview-modal__empty">
+          <p>Turn on App or Web to preview this asset.</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function VoicePreview({ editor = {}, items = [], heading = "Voice of Healing" }) {
+  const live = items.filter((entry) => entry.live);
+  const featured = live[0];
+  const uploaded = Boolean(editor.videoUploaded || editor.coverUploaded || (typeof editor.videoLink === "string" && editor.videoLink.trim()));
+  const title = featured?.title || (typeof editor.clientName === "string" && editor.clientName.trim() ? `${editor.clientName}'s story` : heading);
+  const webOn = editor.webOn !== false;
+  const appOn = editor.appOn !== false;
+
+  return (
+    <div className="ua-cfg-tf-live">
+      {webOn ? (
+        <div className="ua-cfg-tf-live__pane">
+          <span className="ua-cfg-bn-preview__label is-web">Website</span>
+          <div className="ua-cfg-pt-live-preview">
+            <div className="ua-cfg-pt-live-preview__bar">
+              <span className="ua-cfg-pt-live-preview__brand">IR</span>
+              <strong>{heading}</strong>
+              <span className="ua-cfg-pt-live-preview__url">irwellness.in</span>
+            </div>
+            <div className={`ua-cfg-vh-preview-video${uploaded ? " is-on" : ""}`}>▶ VIDEO</div>
+            <p className="ua-cfg-ft-preview__copy">{title}</p>
+          </div>
+        </div>
+      ) : null}
+      {appOn ? (
+        <div className="ua-cfg-tf-live__pane ua-cfg-tf-live__pane--app">
+          <span className="ua-cfg-bn-preview__label is-app">App</span>
+          <div className="ua-cfg-bn-preview__phone ua-cfg-tf-live__phone">
+            <div className="ua-cfg-bn-preview__phone-bar">
+              <span>9:41</span>
+              <strong>Voice</strong>
+              <span aria-hidden="true">🔔</span>
+            </div>
+            <div className="ua-cfg-tf-live__app-body">
+              <div className="ua-cfg-tf-live__app-head">
+                <span className="ua-cfg-pt-live-preview__brand">IR</span>
+                <strong>{heading}</strong>
+              </div>
+              <div className={`ua-cfg-vh-preview-video ua-cfg-vh-preview-video--app${uploaded ? " is-on" : ""}`}>▶</div>
+              <p>{title}</p>
+              <div className="ua-cfg-preview-content__nav" aria-hidden="true">
+                <span className="is-active">⌂</span>
+                <span>▦</span>
+                <span>☑</span>
+                <span>👤</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {!webOn && !appOn ? (
+        <div className="ua-cfg-preview-modal__empty">
+          <p>Turn on App or Web to preview this asset.</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function BannerPreview({ editor = {}, surface, item }) {
+  const placement = bannerPlacementById(editor.placement);
+  const uploaded = surface === "app" ? editor.uploaded || editor.mobileUploaded : editor.uploaded || editor.webUploaded;
+  const headline = typeof editor.headline === "string" ? editor.headline : "Banner";
+  const body = asCopyString(editor.body);
+
+  const bodyNode = (
+    <div className="ua-cfg-ft-preview">
+      <div className="ua-cfg-ft-preview__bar">
+        <span className="ua-cfg-pt-live-preview__brand">IR</span>
+        <strong>{headline}</strong>
+        <span className="ua-cfg-pt-live-preview__url">{placement.label}</span>
+      </div>
+      <div className={`ua-cfg-bn-preview__banner${uploaded ? " is-on" : ""}`}>BANNER</div>
+      {body ? <p className="ua-cfg-ft-preview__copy">{body}</p> : null}
+    </div>
+  );
+
+  return (
+    <PreviewStage surface={surface} item={item}>
+      {bodyNode}
+    </PreviewStage>
+  );
+}
+
+function LocationsPreview({ locations = [], surface, item }) {
+  const live = locations.filter((entry) => entry.live);
+
+  const body = (
+    <div className="ua-cfg-ft-preview">
+      <div className="ua-cfg-ft-preview__bar">
+        <span className="ua-cfg-pt-live-preview__brand">IR</span>
+        <strong>Locations</strong>
+        <span className="ua-cfg-pt-live-preview__url">irwellness.in/contact</span>
+      </div>
+      {live.length ? (
+        <div className="ua-cfg-loc-preview">
+          {live.map((entry) => (
+            <div key={entry.id} className="ua-cfg-loc-preview__row">
+              <span aria-hidden="true">📍</span>
+              <div>
+                <strong>{entry.name}</strong>
+                <p>{entry.address}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="ua-cfg-pt-preview__empty">No live locations yet.</div>
+      )}
+    </div>
+  );
+
+  return (
+    <PreviewStage surface={surface} item={item}>
+      {body}
+    </PreviewStage>
+  );
+}
+
+function LogoSlotsPreview({ slots = [], surface, item }) {
+  const header = slots.find((entry) => entry.id === "header");
+
+  const body = (
+    <div className="ua-cfg-pt-live-preview">
+      <div className="ua-cfg-pt-live-preview__bar">
+        <span className={`ua-cfg-pt-live-preview__brand${header?.uploaded ? "" : " is-empty"}`}>IR</span>
+        <strong>Logo edit</strong>
+        <span className="ua-cfg-pt-live-preview__url">irwellness.in</span>
+      </div>
+      <div className="ua-cfg-lg-preview">
+        <div className="ua-cfg-lg-preview__slots">
+          {slots.map((slot) => (
+            <span key={slot.id} className={`ua-cfg-lg-preview__chip${slot.uploaded ? " is-on" : ""}`}>
+              {slot.title}
+              {slot.uploaded ? " · on" : " · empty"}
+            </span>
+          ))}
+        </div>
+        <div className="ua-cfg-pt-live-preview__layout">
+          <div className={`ua-cfg-pt-live-preview__image${header?.uploaded ? " has-image" : ""}`}>IMAGE</div>
+          <div className="ua-cfg-pt-live-preview__copy">
+            <span>Header</span>
+            <strong>{header?.uploaded ? "Logo attached" : "Upload a header logo"}</strong>
+            <p>{header?.size ?? "240 × 64"}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <PreviewStage surface={surface} item={item}>
+      {body}
+    </PreviewStage>
+  );
+}
+
+function ProgramTestimonialsPreview({ stories = [], surface, item }) {
+  const live = stories.filter((entry) => entry.live);
+  const story = live[0] ?? stories[0] ?? null;
+
+  const body = (
+    <div className="ua-cfg-pt-live-preview">
+      <div className="ua-cfg-pt-live-preview__bar">
+        <span className="ua-cfg-pt-live-preview__brand">IR</span>
+        <strong>Program Testimonials</strong>
+        <span className="ua-cfg-pt-live-preview__url">irwellness.in</span>
+      </div>
+      {story ? (
+        <div className="ua-cfg-pt-live-preview__layout">
+          <div className={`ua-cfg-pt-live-preview__image${story.hasPhoto ? " has-image" : ""}`}>
+            IMAGE
+          </div>
+          <div className="ua-cfg-pt-live-preview__copy">
+            <span>{programTestimonialLabel(story.program)}</span>
+            <strong>{asCopyString(story.headline) || asCopyString(story.name)}</strong>
+            <p>{asCopyString(story.description) || "Program-specific story…"}</p>
+            <em>{asCopyString(story.name)}</em>
+          </div>
+        </div>
+      ) : (
+        <div className="ua-cfg-pt-preview__empty">No live stories yet.</div>
+      )}
+    </div>
+  );
+
+  return (
+    <PreviewStage surface={surface} item={item}>
+      {body}
+    </PreviewStage>
+  );
+}
+
+function FooterSettingPreview({ columns = [], bottomLine, surface, item }) {
+  const live = columns.filter((entry) => entry.live);
+
+  const body = (
+    <div className="ua-cfg-ft-preview">
+      <div className="ua-cfg-ft-preview__bar">
+        <span className="ua-cfg-pt-live-preview__brand">IR</span>
+        <strong>Footer</strong>
+        <span className="ua-cfg-pt-live-preview__url">irwellness.in</span>
+      </div>
+      {live.length ? (
+        <div className="ua-cfg-ft-preview__cols">
+          {live.map((column) => (
+            <div key={column.id} className="ua-cfg-ft-preview__col">
+              <strong>{asCopyString(column.heading)}</strong>
+              {column.links.map((link) => (
+                <span key={link}>{asCopyString(link)}</span>
+              ))}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="ua-cfg-pt-preview__empty">No live footer columns yet.</div>
+      )}
+      {bottomLine ? <p className="ua-cfg-ft-preview__copy">{asCopyString(bottomLine)}</p> : null}
+    </div>
+  );
+
+  return (
+    <PreviewStage surface={surface} item={item}>
+      {body}
+    </PreviewStage>
+  );
+}
+
+function SocialLinksPreview({ links = [], surface, item }) {
+  const isWebsite = item?.id === "web-fs-links";
+  const body = (
+    <div className="ua-cfg-ft-preview">
+      <div className="ua-cfg-ft-preview__bar">
+        <span className="ua-cfg-pt-live-preview__brand">IR</span>
+        <strong>{isWebsite ? "Website links" : "Footer"}</strong>
+        <span className="ua-cfg-pt-live-preview__url">irwellness.in</span>
+      </div>
+      {links.length ? (
+        <div className="ua-cfg-sm-preview">
+          {links.map((entry) => (
+            <span key={entry.id} className="ua-cfg-sm-preview__chip">
+              {asCopyString(entry.label)}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <div className="ua-cfg-pt-preview__empty">{isWebsite ? "No website links yet." : "No social links yet."}</div>
+      )}
+    </div>
+  );
+
+  return (
+    <PreviewStage surface={surface} item={item}>
+      {body}
+    </PreviewStage>
+  );
+}
+
+function ContactDetailsPreview({ details = [], surface, item }) {
+  const live = details.filter((entry) => entry.live);
+
+  const body = (
+    <div className="ua-cfg-ft-preview">
+      <div className="ua-cfg-ft-preview__bar">
+        <span className="ua-cfg-pt-live-preview__brand">IR</span>
+        <strong>Contact us</strong>
+        <span className="ua-cfg-pt-live-preview__url">irwellness.in</span>
+      </div>
+      {live.length ? (
+        <div className="ua-cfg-ct-preview">
+          {live.map((entry) => (
+            <div key={entry.id} className="ua-cfg-ct-preview__row">
+              <span>{entry.label}</span>
+              <strong>{entry.value}</strong>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="ua-cfg-pt-preview__empty">No live contact details yet.</div>
+      )}
+    </div>
+  );
+
+  return (
+    <PreviewStage surface={surface} item={item}>
+      {body}
+    </PreviewStage>
+  );
+}
+
+function GoogleReviewPreview({ editor = {}, stats = [] }) {
+  const webOn = editor.webOn !== false;
+  const appOn = editor.appOn !== false;
+
+  function visible(surface) {
+    return stats.filter((entry) => {
+      if (!entry.shown) return false;
+      if (entry.surface === "both") return true;
+      return entry.surface === surface;
+    });
+  }
+
+  function statRow(surface) {
+    const rows = visible(surface);
+    if (!rows.length) return <div className="ua-cfg-pt-preview__empty">No stats shown on this surface.</div>;
+    return (
+      <div className="ua-cfg-gr-preview">
+        {rows.map((entry) => (
+          <div key={entry.id} className={`ua-cfg-gr-preview__stat ua-cfg-gr-preview__stat--${entry.tone}`}>
+            <span>{asCopyString(entry.label)}</span>
+            <strong>{asCopyString(entry.value)}</strong>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="ua-cfg-tf-live">
+      {webOn ? (
+        <div className="ua-cfg-tf-live__pane">
+          <span className="ua-cfg-bn-preview__label is-web">Website</span>
+          <div className="ua-cfg-pt-live-preview">
+            <div className="ua-cfg-pt-live-preview__bar">
+              <span className="ua-cfg-pt-live-preview__brand">IR</span>
+              <strong>Google Review & Followers</strong>
+              <span className="ua-cfg-pt-live-preview__url">irwellness.in</span>
+            </div>
+            {statRow("web")}
+          </div>
+        </div>
+      ) : null}
+      {appOn ? (
+        <div className="ua-cfg-tf-live__pane ua-cfg-tf-live__pane--app">
+          <span className="ua-cfg-bn-preview__label is-app">App</span>
+          <div className="ua-cfg-bn-preview__phone ua-cfg-tf-live__phone">
+            <div className="ua-cfg-bn-preview__phone-bar">
+              <span>9:41</span>
+              <strong>About</strong>
+              <span aria-hidden="true">🔔</span>
+            </div>
+            <div className="ua-cfg-tf-live__app-body">
+              <div className="ua-cfg-tf-live__app-head">
+                <span className="ua-cfg-pt-live-preview__brand">IR</span>
+                <strong>Reviews</strong>
+              </div>
+              {statRow("app")}
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function DropdownsPreview({ lists = [], surface, item }) {
+  const shown = lists
+    .map((list) => ({
+      ...list,
+      options: list.options.filter((entry) => entry.on),
+    }))
+    .filter((list) => list.options.length);
+
+  const body = (
+    <div className="ua-cfg-ft-preview">
+      <div className="ua-cfg-ft-preview__bar">
+        <span className="ua-cfg-pt-live-preview__brand">IR</span>
+        <strong>Dropdown options</strong>
+        <span className="ua-cfg-pt-live-preview__url">panel lists</span>
+      </div>
+      {shown.length ? (
+        <div className="ua-cfg-dd-preview">
+          {shown.map((list) => (
+            <div key={list.id}>
+              <strong>{asCopyString(list.title)}</strong>
+              <p>{list.options.map((entry) => asCopyString(entry.label)).join(" · ")}</p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="ua-cfg-pt-preview__empty">No dropdown options are on yet.</div>
+      )}
+    </div>
+  );
+
+  return (
+    <PreviewStage surface={surface} item={item}>
+      {body}
+    </PreviewStage>
+  );
+}
+
+function LegalBlocksPreview({
+  blocks = [],
+  surface,
+  item,
+  title = "Privacy policy",
+  url = "irwellness.in/privacy-policy",
+  empty = "No sections are shown yet.",
+}) {
+  const shown = blocks.filter((entry) => entry.shown);
+
+  const body = (
+    <div className="ua-cfg-ft-preview">
+      <div className="ua-cfg-ft-preview__bar">
+        <span className="ua-cfg-pt-live-preview__brand">IR</span>
+        <strong>{title}</strong>
+        <span className="ua-cfg-pt-live-preview__url">{url}</span>
+      </div>
+      {shown.length ? (
+        <div className="ua-cfg-lb-preview">
+          {shown.map((block) => (
+            <div key={block.id}>
+              <strong>{block.title}</strong>
+              <p>{liveVersionText(block, surface === "app" ? "app" : "web")}</p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="ua-cfg-pt-preview__empty">{empty}</div>
+      )}
+    </div>
+  );
+
+  return (
+    <PreviewStage surface={surface} item={item}>
+      {body}
+    </PreviewStage>
+  );
+}
+
 function renderPreviewBody(item, surface, previewState) {
   switch (item.id) {
     case "app-language-disable":
@@ -1031,6 +1657,279 @@ function renderPreviewBody(item, surface, previewState) {
           item={item}
         />
       );
+    case "web-program-testimonials":
+      return (
+        <ProgramTestimonialsPreview
+          stories={previewState.programStories ?? []}
+          surface={surface}
+          item={item}
+        />
+      );
+    case "web-footer":
+      return (
+        <FooterSettingPreview
+          columns={previewState.footerColumns ?? []}
+          bottomLine={previewState.footerBottomLine ?? ""}
+          surface={surface}
+          item={item}
+        />
+      );
+    case "web-fs-social":
+      return (
+        <SocialLinksPreview
+          links={previewState.socialLinks ?? []}
+          surface={surface}
+          item={item}
+        />
+      );
+    case "web-fs-links":
+      return (
+        <SocialLinksPreview
+          links={previewState.websiteLinks ?? []}
+          surface={surface}
+          item={item}
+        />
+      );
+    case "web-fs-privacy":
+      return (
+        <LegalBlocksPreview
+          blocks={previewState.privacyBlocks ?? []}
+          surface={surface}
+          item={item}
+        />
+      );
+    case "web-fs-tos":
+      return (
+        <LegalBlocksPreview
+          blocks={previewState.tosBlocks ?? []}
+          surface={surface}
+          item={item}
+          title="Terms of service"
+          url="irwellness.in/terms"
+          empty="No terms sections are shown yet."
+        />
+      );
+    case "web-fs-guidelines":
+      return (
+        <LegalBlocksPreview
+          blocks={previewState.guidelineBlocks ?? []}
+          surface={surface}
+          item={item}
+          title="Community guidelines"
+          url="irwellness.in/community-guidelines"
+          empty="No guidelines are shown yet."
+        />
+      );
+    case "web-fs-contact":
+      return (
+        <ContactDetailsPreview
+          details={previewState.contactDetails ?? []}
+          surface={surface}
+          item={item}
+        />
+      );
+    case "web-fs-text":
+      return (
+        <LegalBlocksPreview
+          blocks={previewState.footerTextBlocks ?? []}
+          surface={surface}
+          item={item}
+          title="Footer text"
+          url="irwellness.in"
+          empty="No footer lines are shown yet."
+        />
+      );
+    case "web-logo":
+      return (
+        <LogoSlotsPreview
+          slots={previewState.logoSlots ?? []}
+          surface={surface}
+          item={item}
+        />
+      );
+    case "web-location":
+      return (
+        <LocationsPreview
+          locations={previewState.locations ?? []}
+          surface={surface}
+          item={item}
+        />
+      );
+    case "common-banner":
+      return (
+        <BannerPreview
+          editor={previewState.bannerEditor}
+          surface={surface}
+          item={item}
+        />
+      );
+    case "common-champion":
+      return (
+        <ChampionPreview
+          editor={previewState.championEditor}
+          surface={surface}
+          item={item}
+        />
+      );
+    case "common-birthday":
+      return (
+        <ChampionPreview
+          editor={previewState.birthdayEditor}
+          surface={surface}
+          item={item}
+        />
+      );
+    case "common-transformation":
+      return (
+        <TransformationPreview
+          editor={previewState.tfEditor}
+          points={previewState.tfPoints ?? []}
+        />
+      );
+    case "common-client-review":
+      return (
+        <ClientReviewPreview
+          editor={previewState.crEditor}
+          published={previewState.crPublished ?? []}
+        />
+      );
+    case "common-real-people":
+      return (
+        <TransformationPreview
+          editor={previewState.rpEditor}
+          points={previewState.rpPoints ?? []}
+          title="Real People Real Healing"
+        />
+      );
+    case "common-voice":
+      return (
+        <VoicePreview
+          editor={previewState.voiceEditor}
+          items={previewState.voiceItems ?? []}
+        />
+      );
+    case "common-cofounder":
+      return (
+        <VoicePreview
+          editor={{
+            ...previewState.cfEditor,
+            videoUploaded: previewState.cfEditor?.videoUploaded || previewState.cfEditor?.appVideo || previewState.cfEditor?.webVideo,
+            clientName: asCopyString(previewState.cfEditor?.name),
+          }}
+          items={(previewState.cfMessages ?? []).map((entry) => ({
+            ...entry,
+            title: asCopyString(entry.title),
+          }))}
+          heading="Co-Founder Message"
+        />
+      );
+    case "common-leadership":
+      return (
+        <VoicePreview
+          editor={{
+            ...previewState.ldEditor,
+            videoUploaded: previewState.ldEditor?.videoUploaded || previewState.ldEditor?.appVideo || previewState.ldEditor?.webVideo,
+            clientName: asCopyString(previewState.ldEditor?.name),
+          }}
+          items={(previewState.ldMessages ?? []).map((entry) => ({
+            ...entry,
+            title: asCopyString(entry.title),
+          }))}
+          heading="Leadership Profile"
+        />
+      );
+    case "common-wellness-team":
+      return (
+        <VoicePreview
+          editor={{
+            ...previewState.wtEditor,
+            videoUploaded: previewState.wtEditor?.videoUploaded || previewState.wtEditor?.appVideo || previewState.wtEditor?.webVideo,
+            clientName: asCopyString(previewState.wtEditor?.name),
+          }}
+          items={(previewState.wtMessages ?? []).map((entry) => ({
+            ...entry,
+            title: asCopyString(entry.title),
+          }))}
+          heading="Wellness Team Profile"
+        />
+      );
+    case "common-about":
+      return (
+        <LegalBlocksPreview
+          blocks={previewState.aboutBlocks ?? []}
+          surface={surface}
+          item={item}
+          title="About"
+          url="irwellness.in/about"
+          empty="No about blocks are shown yet."
+        />
+      );
+    case "common-google-review":
+      return (
+        <GoogleReviewPreview
+          editor={previewState.grEditor}
+          stats={previewState.grStats ?? []}
+        />
+      );
+    case "common-dropdowns":
+      return (
+        <DropdownsPreview
+          lists={previewState.dropdownLists ?? []}
+          surface={surface}
+          item={item}
+        />
+      );
+    case "common-recipes":
+      return (
+        <VoicePreview
+          editor={{
+            ...previewState.rcEditor,
+            videoUploaded: (previewState.rcItems ?? []).some((entry) => entry.type === "VIDEO" || entry.cover),
+            clientName: asCopyString(previewState.rcItems?.find((entry) => entry.live)?.title),
+          }}
+          items={(previewState.rcItems ?? []).map((entry) => ({
+            ...entry,
+            title: asCopyString(entry.title),
+          }))}
+          heading="Healthy recipes"
+        />
+      );
+    case "common-yoga":
+      return (
+        <VoicePreview
+          editor={{
+            ...previewState.ygEditor,
+            videoUploaded: (previewState.ygItems ?? []).some((entry) => entry.type === "VIDEO" || entry.cover),
+            clientName: asCopyString(previewState.ygItems?.find((entry) => entry.live)?.title),
+          }}
+          items={(previewState.ygItems ?? []).map((entry) => ({
+            ...entry,
+            title: asCopyString(entry.title),
+          }))}
+          heading="Yoga & Pranayam"
+        />
+      );
+    case "common-blogs":
+      return (
+        <VoicePreview
+          editor={{
+            ...previewState.blEditor,
+            videoUploaded: (previewState.blPosts ?? []).some((entry) => entry.cover),
+            clientName: asCopyString(previewState.blPosts?.find((entry) => entry.live)?.title),
+          }}
+          items={(previewState.blPosts ?? []).map((entry) => ({
+            ...entry,
+            title: asCopyString(entry.title),
+          }))}
+          heading="Blogs"
+        />
+      );
+    case "feature-flags":
+      return (
+        <PreviewStage surface={surface} item={item}>
+          <FeatureFlagsPreview flags={previewState.featureFlags ?? []} />
+        </PreviewStage>
+      );
     default:
       return <GenericPreview item={item} surface={surface} />;
   }
@@ -1080,7 +1979,7 @@ export function ConfigPreviewModal({ open, onClose, item, previewState = {} }) {
           </button>
         </div>
 
-        {surfaces.length > 1 ? (
+        {surfaces.length > 1 && item.id !== "common-transformation" && item.id !== "common-client-review" && item.id !== "common-real-people" && item.id !== "common-voice" && item.id !== "common-cofounder" && item.id !== "common-leadership" && item.id !== "common-wellness-team" && item.id !== "common-google-review" && item.id !== "common-recipes" && item.id !== "common-yoga" && item.id !== "common-blogs" ? (
           <div className="ua-cfg-preview-modal__tabs" role="tablist">
             {surfaces.map((surface) => (
               <button
@@ -1097,7 +1996,7 @@ export function ConfigPreviewModal({ open, onClose, item, previewState = {} }) {
           </div>
         ) : null}
 
-        <div className={`ua-cfg-preview-modal__frame ua-cfg-preview-modal__frame--${activeSurface}`}>
+        <div className={`ua-cfg-preview-modal__frame ua-cfg-preview-modal__frame--${item.id === "common-transformation" || item.id === "common-client-review" || item.id === "common-real-people" || item.id === "common-voice" || item.id === "common-cofounder" || item.id === "common-leadership" || item.id === "common-wellness-team" || item.id === "common-google-review" || item.id === "common-recipes" || item.id === "common-yoga" || item.id === "common-blogs" ? "dual" : activeSurface}`}>
           {surfaces.length ? (
             renderPreviewBody(item, activeSurface, previewState)
           ) : (
@@ -1132,6 +2031,30 @@ export function previewHintForItem(item) {
   }
   if (item.id === "app-health-progress") {
     return "Add or toggle trackers, then open Preview";
+  }
+  if (item.id === "feature-flags") {
+    return "Toggle flags, then open Preview";
+  }
+  if (item.id === "web-program-testimonials" || item.id === "web-logo" || item.id === "common-banner" || item.id === "common-champion" || item.id === "common-birthday" || item.id === "common-transformation" || item.id === "common-client-review" || item.id === "common-real-people" || item.id === "common-voice" || item.id === "common-cofounder" || item.id === "common-leadership" || item.id === "common-wellness-team" || item.id === "common-about" || item.id === "common-google-review" || item.id === "common-dropdowns" || item.id === "common-recipes" || item.id === "common-yoga" || item.id === "common-blogs") {
+    return "Upload something, then open Preview";
+  }
+  if (item.id === "web-footer") {
+    return "Edit the columns, then open Preview";
+  }
+  if (item.id === "web-fs-social") {
+    return "Edit the links, then open Preview";
+  }
+  if (item.id === "web-fs-links") {
+    return "Edit the links, then open Preview";
+  }
+  if (item.id === "web-fs-privacy" || item.id === "web-fs-tos" || item.id === "web-fs-guidelines" || item.id === "web-fs-text") {
+    return "Edit the copy, then open Preview";
+  }
+  if (item.id === "web-fs-contact") {
+    return "Edit the details, then open Preview";
+  }
+  if (item.id === "web-location") {
+    return "Edit the locations, then open Preview";
   }
   if (item.id === "app-tos" || item.id === "app-dpa" || item.tags?.includes("Text")) {
     return "Edit the copy, then open Preview";
