@@ -65,7 +65,8 @@ async function sendAccountAuthResponse(res, statusCode, account, activeRoleKey, 
     activeRoleUi: ROLE_KEY_TO_UI[payload.role] || payload.role,
     roles: payload.roles,
     permissions: payload.permissions,
-    isSuperAdmin: payload.isSuperAdmin,
+    // Account-level flag (for UI / View As). Session powers follow JWT active role.
+    isSuperAdmin: Boolean(account.isSuperAdmin),
   };
 
   return res.status(statusCode).json({
@@ -169,7 +170,7 @@ exports.getAccountMe = asyncHandler(async (req, res) => {
     activeRoleUi: ROLE_KEY_TO_UI[activeRole] || activeRole,
     roles: listEligibleRoleKeys(account),
     permissions,
-    isSuperAdmin: activeRole === "admin" ? Boolean(isSuperAdmin) : false,
+    isSuperAdmin: Boolean(account.isSuperAdmin || (activeRole === "admin" && isSuperAdmin)),
   };
   return res.json({
     status: true,
@@ -224,7 +225,7 @@ exports.updateAccountProfile = asyncHandler(async (req, res) => {
     activeRoleUi: ROLE_KEY_TO_UI[activeRole] || activeRole,
     roles: listEligibleRoleKeys(updated),
     permissions,
-    isSuperAdmin: activeRole === "admin" ? Boolean(isSuperAdmin) : false,
+    isSuperAdmin: Boolean(updated.isSuperAdmin || (activeRole === "admin" && isSuperAdmin)),
   };
 
   return res.json({

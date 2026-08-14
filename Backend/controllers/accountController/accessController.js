@@ -40,6 +40,14 @@ function assertSuperAdmin(req) {
   }
 }
 
+/** Teams page + member directory — Super Admin, Admin, or Wellness Coach. */
+function assertTeamsReadAccess(req) {
+  if (req.auth?.isSuperAdmin) return;
+  const role = String(req.auth?.role || "");
+  if (role === "admin" || role === "wellness_coach") return;
+  throw new AppError("Forbidden", 403);
+}
+
 function sanitizeConsolePermissions(permissions) {
   if (!Array.isArray(permissions)) {
     throw new AppError("permissions must be an array", 400);
@@ -114,7 +122,7 @@ exports.getAccessCatalog = asyncHandler(async (req, res) => {
 });
 
 exports.listAccessRoles = asyncHandler(async (req, res) => {
-  assertSuperAdmin(req);
+  assertTeamsReadAccess(req);
   const { roles } = await listRoles({
     scope: CONSOLE_SCOPE,
     status: "active",
@@ -255,7 +263,7 @@ exports.deleteAccessRole = asyncHandler(async (req, res) => {
 });
 
 exports.listAccessMembers = asyncHandler(async (req, res) => {
-  assertSuperAdmin(req);
+  assertTeamsReadAccess(req);
   const search = req.query.search || req.query.q;
   const roleFilter = req.query.roleKey || req.query.role;
   const accountRoleFilter = roleFilter
@@ -385,7 +393,7 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
 });
 
 exports.getAccessMember = asyncHandler(async (req, res) => {
-  assertSuperAdmin(req);
+  assertTeamsReadAccess(req);
   await exports.ensureConsoleRolesSeeded();
   const account = await getAccountById(req.params.id);
   if (!account) throw new AppError("Account not found", 404);

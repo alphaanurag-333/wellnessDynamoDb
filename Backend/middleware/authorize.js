@@ -1,5 +1,7 @@
 const AppError = require("../utils/AppError");
 const { hasPermission } = require("../utils/permissions");
+const { normalizeRoleKey } = require("../config/accountRoles");
+const { DEFAULT_NAV_SECTIONS } = require("../config/consolePermissionCatalog");
 
 /**
  * Gate a route behind a permission slug.
@@ -54,4 +56,39 @@ function requireSuperAdmin(req, res, next) {
   return next(new AppError("Only the Super Admin can perform this action", 403));
 }
 
-module.exports = { authorize, authorizeAny, requireSuperAdmin };
+/** UI role keys that include the Teams section by default. */
+const TEAMS_NAV_ACCOUNT_ROLES = new Set(
+  Object.entries(DEFAULT_NAV_SECTIONS)
+    .filter(([, sections]) => Array.isArray(sections) && sections.includes("teams"))
+    .map(([uiKey]) => {
+      if (uiKey === "wc") return "wellness_coach";
+      if (uiKey === "awc") return "assistant_wellness_coach";
+      return uiKey;
+    })
+);
+
+/**
+ * Read access for Teams / Access member directory.
+ * Matches console nav: Admin + Wellness Coach (and Super Admin).
+ * Must run after `protectAccount`.
+ */
+function requireTeamsReadAccess(req, res, next) {
+  if (!req.auth) {
+    return next(new AppError("Authentication required", 401));
+  }
+  if (req.auth.isSuperAdmin) {
+    return next();
+  }
+  const role = normalizeRoleKey(req.auth.role);
+  if (role && TEAMS_NAV_ACCOUNT_ROLES.has(role)) {
+    return next();
+  }
+  return next(new AppError("Forbidden", 403));
+}
+
+module.exports = {
+  authorize,
+  authorizeAny,
+  requireSuperAdmin,
+  requireTeamsReadAccess,
+};
