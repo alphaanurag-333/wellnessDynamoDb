@@ -1003,7 +1003,7 @@ export function UpdatedAdminDashboard({ onToast }) {
         )}
       </section>
 
-      <section className="section d-none">
+      <section className="section d-none" style={{ display: "none" }}>
         <div className="section__head">
           <h2 className="section__title">Client updates</h2>
           <span className="section__hint">

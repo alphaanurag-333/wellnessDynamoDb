@@ -3,8 +3,10 @@ import { createPortal } from "react-dom";
 import { DURATION_OPTIONS, HOLD_OPTIONS, SCHEDULE_DATES } from "../../data/launchData.js";
 
 const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const DEMO_TODAY = new Date(2026, 7, 13);
+const MONTH_FULL = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const WEEKDAY_FROM_SUN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const CAL_DOW = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+const DEMO_TODAY = new Date(2026, 7, 14);
 
 function getModalRoot() {
   return document.querySelector(".updated-admin .ua-cp-drawer")
@@ -26,7 +28,7 @@ function formatDdMmYyyy(date) {
 }
 
 function formatDateLabel(date) {
-  const day = DAY_LABELS[date.getDay()];
+  const day = WEEKDAY_FROM_SUN[date.getDay()];
   return `${day} · ${String(date.getDate()).padStart(2, "0")} ${MONTH_LABELS[date.getMonth()]} ${date.getFullYear()}`;
 }
 
@@ -34,18 +36,26 @@ function formatShortDate(date) {
   return `${String(date.getDate()).padStart(2, "0")} ${MONTH_LABELS[date.getMonth()].toUpperCase()}`;
 }
 
-function MiniCalendar({ value, onChange, onClear, onToday }) {
+export function MiniCalendar({ value, onChange, onClear, onToday }) {
   const [viewMonth, setViewMonth] = useState(value.getMonth());
   const [viewYear, setViewYear] = useState(value.getFullYear());
 
   const cells = useMemo(() => {
     const first = new Date(viewYear, viewMonth, 1);
-    const startPad = first.getDay();
+    const startPad = (first.getDay() + 6) % 7;
     const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+    const prevMonthDays = new Date(viewYear, viewMonth, 0).getDate();
     const items = [];
-    for (let i = 0; i < startPad; i += 1) items.push(null);
+    for (let i = startPad; i > 0; i -= 1) {
+      items.push({ date: new Date(viewYear, viewMonth - 1, prevMonthDays - i + 1), outside: true });
+    }
     for (let day = 1; day <= daysInMonth; day += 1) {
-      items.push(new Date(viewYear, viewMonth, day));
+      items.push({ date: new Date(viewYear, viewMonth, day), outside: false });
+    }
+    let nextDay = 1;
+    while (items.length % 7 !== 0) {
+      items.push({ date: new Date(viewYear, viewMonth + 1, nextDay), outside: true });
+      nextDay += 1;
     }
     return items;
   }, [viewMonth, viewYear]);
@@ -65,22 +75,22 @@ function MiniCalendar({ value, onChange, onClear, onToday }) {
     <div className="ua-cp-launch-modal__calendar" role="dialog" aria-label="Pick a date">
       <div className="ua-cp-launch-modal__calendar-head">
         <button type="button" className="ua-cp-launch-modal__calendar-nav" onClick={() => shiftMonth(-1)} aria-label="Previous month">‹</button>
-        <span>{MONTH_LABELS[viewMonth]} {viewYear}</span>
+        <span>{MONTH_FULL[viewMonth]}, {viewYear}</span>
         <button type="button" className="ua-cp-launch-modal__calendar-nav" onClick={() => shiftMonth(1)} aria-label="Next month">›</button>
       </div>
       <div className="ua-cp-launch-modal__calendar-grid">
-        {DAY_LABELS.map((label) => (
-          <span key={label} className="ua-cp-launch-modal__calendar-dow">{label.slice(0, 2)}</span>
+        {CAL_DOW.map((label) => (
+          <span key={label} className="ua-cp-launch-modal__calendar-dow">{label}</span>
         ))}
-        {cells.map((date, index) => {
-          if (!date) return <span key={`pad-${index}`} className="ua-cp-launch-modal__calendar-day ua-cp-launch-modal__calendar-day--empty" />;
+        {cells.map((cell, index) => {
+          const { date, outside } = cell;
           const selected = sameDay(date, value);
           const today = sameDay(date, DEMO_TODAY);
           return (
             <button
-              key={date.toISOString()}
+              key={`${date.toISOString()}-${index}`}
               type="button"
-              className={`ua-cp-launch-modal__calendar-day${selected ? " ua-cp-launch-modal__calendar-day--selected" : ""}${today ? " ua-cp-launch-modal__calendar-day--today" : ""}`}
+              className={`ua-cp-launch-modal__calendar-day${selected ? " ua-cp-launch-modal__calendar-day--selected" : ""}${today ? " ua-cp-launch-modal__calendar-day--today" : ""}${outside ? " ua-cp-launch-modal__calendar-day--outside" : ""}`}
               onClick={() => onChange(date)}
             >
               {date.getDate()}
@@ -265,7 +275,8 @@ export function ScheduleMeetingModal({
                 <input
                   type="time"
                   value={toTime}
-                  onChange={(e) => setToTime(e.target.value)}
+                  readOnly
+                  tabIndex={-1}
                 />
               </label>
               <button
@@ -278,7 +289,14 @@ export function ScheduleMeetingModal({
               </button>
               <label className="ua-cp-launch-modal__duration-field">
                 Duration
-                <select value={duration} onChange={(e) => setDuration(Number(e.target.value))}>
+                <select
+                  value={duration}
+                  onChange={(e) => {
+                    const next = Number(e.target.value);
+                    setDuration(next);
+                    if (fromTime) setToTime(formatSlotEnd(fromTime, next));
+                  }}
+                >
                   {DURATION_OPTIONS.map((m) => <option key={m} value={m}>{m} min</option>)}
                 </select>
               </label>
