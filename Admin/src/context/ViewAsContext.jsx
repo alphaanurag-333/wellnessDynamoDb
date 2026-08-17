@@ -6,9 +6,16 @@ import {
   accountSwitchRole,
   clearAccountAuth,
   readAccountAuth,
+  writeAccountAuth,
   ROLE_KEY_TO_UI,
   UI_TO_ROLE_KEY,
 } from "../api/accountApi.js";
+import {
+  baselineDataScopeForRole,
+  baselinePermissionsForRole,
+  hasConsolePermission,
+  sectionsFromPermissions,
+} from "../utils/permissions.js";
 
 const VIEW_AS_STORAGE_KEY = "ua-view-as";
 
@@ -32,6 +39,18 @@ function uiFromAccount(account) {
 
 function accountIsSuperAdmin(account) {
   return Boolean(account?.isSuperAdmin);
+}
+
+/**
+ * Slugs the current session may actually use.
+ * Accounts whose role template predates the console catalog fall back to the
+ * role baseline, matching the same fallback the API applies.
+ */
+function sessionPermissions(account) {
+  if (!account) return [];
+  const granted = Array.isArray(account.permissions) ? account.permissions : [];
+  if (granted.some((slug) => String(slug).startsWith("console."))) return granted;
+  return baselinePermissionsForRole(ROLE_KEY_TO_UI[account.activeRole] || account.activeRoleUi);
 }
 
 export function ViewAsProvider({ children }) {
@@ -169,6 +188,34 @@ export function ViewAsProvider({ children }) {
 
   const hasFullAccess = isSuperAdmin && viewAs === "admin";
 
+  /**
+   * Live grants for the console. While previewing another role the session is
+   * narrowed to that role's baseline so the preview can never show more than
+   * the signed-in account is allowed to do.
+   */
+  const sessionUi = auth?.account
+    ? ROLE_KEY_TO_UI[auth.account.activeRole] || auth.account.activeRoleUi
+    : null;
+
+  const permissions = useMemo(() => {
+    const granted = sessionPermissions(auth?.account);
+    if (!sessionUi || sessionUi === viewAs) return granted;
+    const preview = new Set(baselinePermissionsForRole(viewAs));
+    return granted.filter((slug) => preview.has(slug));
+  }, [auth, sessionUi, viewAs]);
+
+  const can = useCallback((slug) => hasConsolePermission(permissions, slug), [permissions]);
+
+  const navSections = useMemo(() => {
+    const sections = sectionsFromPermissions(permissions);
+    if (hasFullAccess) sections.add("access");
+    return sections;
+  }, [permissions, hasFullAccess]);
+
+  /** "all" | "team" | "assigned" — how wide the role's client roster is. */
+  const dataScope =
+    String(auth?.account?.dataScope || "").toLowerCase() || baselineDataScopeForRole(sessionUi);
+
   const value = useMemo(
     () => ({
       viewAs,
@@ -181,6 +228,10 @@ export function ViewAsProvider({ children }) {
       isAuthenticated: Boolean(auth?.accessToken),
       isSuperAdmin,
       hasFullAccess,
+      permissions,
+      can,
+      navSections,
+      dataScope,
       bootstrapping,
       authError,
       setAuthError,
@@ -196,6 +247,10 @@ export function ViewAsProvider({ children }) {
       auth,
       isSuperAdmin,
       hasFullAccess,
+      permissions,
+      can,
+      navSections,
+      dataScope,
       bootstrapping,
       authError,
       login,

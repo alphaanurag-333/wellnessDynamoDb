@@ -1,5 +1,6 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
+const { hasPermission } = require("../../utils/permissions");
 const {
   createRole,
   getRoleById,
@@ -76,6 +77,7 @@ async function canViewTeamAccount(req, account, primaryRole) {
 /** Teams page + member directory — scoped to roles below the signed-in member. */
 function assertTeamsReadAccess(req) {
   if (req.auth?.isSuperAdmin) return;
+  if (hasPermission(req.auth, "console.tm.view")) return;
   const role = String(req.auth?.role || "");
   if (role === "admin" || TEAM_DESCENDANT_ROLES[role]) return;
   throw new AppError("Forbidden", 403);

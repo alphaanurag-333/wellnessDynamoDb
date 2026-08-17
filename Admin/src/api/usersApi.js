@@ -75,6 +75,31 @@ function ageDaysFrom(iso) {
   return Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000));
 }
 
+/** Relative date label suitable for profile activity badges. */
+export function formatRelativeDate(iso) {
+  const d = parseIso(iso);
+  if (!d) return "";
+
+  const elapsed = Date.now() - d.getTime();
+  if (elapsed < 0) return "";
+
+  const minutes = Math.floor(elapsed / 60000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} min${minutes === 1 ? "" : "s"} ago`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days} day${days === 1 ? "" : "s"} ago`;
+
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months} month${months === 1 ? "" : "s"} ago`;
+
+  const years = Math.floor(days / 365);
+  return `${years} year${years === 1 ? "" : "s"} ago`;
+}
+
 /** Relative label like "3 days ago" / "today". Empty when no date. */
 export function formatJoinedAgo(iso) {
   const d = parseIso(iso);
@@ -203,7 +228,21 @@ function normalizeOnboardingStepStatus(raw) {
 }
 
 function countOnboardingDone(stepStatus) {
-  return PAID_ONBOARDING_STATUS_KEYS.filter((key) => stepStatus[key] === "done").length;
+  return PAID_ONBOARDING_STATUS_KEYS.filter(
+    (key) => stepStatus[key] === "done" || stepStatus[key] === "skipped",
+  ).length;
+}
+
+/** Next incomplete paid-onboarding step label, or empty when complete/unknown. */
+export function getNextOnboardingStepLabel(stepStatus) {
+  if (!stepStatus || typeof stepStatus !== "object") return "";
+  for (const key of PAID_ONBOARDING_STATUS_KEYS) {
+    const value = stepStatus[key];
+    if (value !== "done" && value !== "skipped") {
+      return PAID_ONBOARDING_STEP_LABELS[key] || key;
+    }
+  }
+  return "";
 }
 
 function hasOnboardingValue(value) {
@@ -274,6 +313,9 @@ export function mapApiUserToRow(user, index = 0) {
   const createdAt = user?.createdAt || "";
   const updatedAt = user?.updatedAt || createdAt;
   const lastActiveAt = user?.lastActiveAt || "";
+  // Prefer a purpose-built review timestamp when the API provides one. Existing
+  // users still get a meaningful value from their latest persisted update.
+  const lastReviewedAt = user?.lastReviewedAt || updatedAt;
   const tier = mapApiTierToUi(user?.userTier);
   const address = formatAddress(user);
   const stateRaw = String(user?.state || "").trim();
@@ -322,8 +364,7 @@ export function mapApiUserToRow(user, index = 0) {
     joined: formatLongDate(createdAt),
     joinedAgo: formatJoinedAgo(createdAt),
     lastUpdated: formatShortDate(updatedAt),
-    // No dedicated review timestamp on user — leave empty so UI shows "—"
-    lastReviewed: "",
+    lastReviewed: formatRelativeDate(lastReviewedAt),
     termsIp: "",
     termsAccepted: termsAcceptedLabel,
     termsAcceptedBool: Boolean(user?.termsAccepted),
@@ -343,6 +384,7 @@ export function mapApiUserToRow(user, index = 0) {
     createdAt,
     updatedAt,
     lastActiveAt,
+    lastReviewedAt,
     paidOnboardingCompleted: Boolean(user?.paidOnboardingCompleted),
     paidOnboardingStep: String(user?.paidOnboardingStep || "").trim(),
     paidOnboardingStepStatus,

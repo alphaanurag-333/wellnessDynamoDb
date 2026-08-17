@@ -1,6 +1,7 @@
 const AppError = require("../utils/AppError");
 const { normalizeRoleKey } = require("../config/accountRoles");
 const {
+  getUserById,
   listUsers,
   listUsersByParentCoachId,
   listUsersByAssignedCoachId,
@@ -95,6 +96,26 @@ async function assertStaffCanAccessUser(req, user) {
   throw new AppError("Forbidden", 403);
 }
 
+/**
+ * Coaches may only re-point clients already on their roster, and only onto an
+ * assistant beneath them. Handing a client to a different wellness coach stays
+ * with roles that can see every roster.
+ */
+async function assertStaffCanAssignCoach(req, userId, { assignedCoachId, assignedCoachType } = {}) {
+  const actor = resolveStaffActor(req);
+  if (actor.role === "admin") return actor;
+
+  const user = await getUserById(userId);
+  if (!user) throw new AppError("User not found", 404);
+  await assertStaffCanAccessUser(req, user);
+
+  const coachType = String(assignedCoachType || "").trim().toLowerCase();
+  if (coachType === "wellness_coach" && String(assignedCoachId || "") !== String(actor.id)) {
+    throw new AppError("You cannot move a client to another wellness coach", 403);
+  }
+  return actor;
+}
+
 async function listHealUsersForStaff(req, { page = 1, limit = 20, search, scope = "all", userTier = "client" } = {}) {
   const actor = resolveStaffActor(req);
 
@@ -146,5 +167,6 @@ module.exports = {
   getStaffScopeCoachId,
   assertStaffCanMutate,
   assertStaffCanAccessUser,
+  assertStaffCanAssignCoach,
   listHealUsersForStaff,
 };

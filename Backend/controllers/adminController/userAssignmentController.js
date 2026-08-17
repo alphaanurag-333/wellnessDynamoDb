@@ -17,7 +17,12 @@ const { sendCoachAssignmentNotifications } = require("../../utils/whatsapp");
 const { emitCoachAssigned } = require("../../services/adminActivityService");
 
 const { enrichUser } = require("../userController/userProfileHelpers");
-const { listHealUsersForStaff, resolveStaffActor, assertStaffCanAccessUser } = require("../staffAccess");
+const {
+  listHealUsersForStaff,
+  resolveStaffActor,
+  assertStaffCanAccessUser,
+  assertStaffCanAssignCoach,
+} = require("../staffAccess");
 
 function mapAssignmentError(err) {
   if (err?.name === "NotFoundError") throw new AppError("User not found", 404);
@@ -98,6 +103,7 @@ exports.convertUserToHealController = asyncHandler(async (req, res) => {
 exports.assignHealUserController = asyncHandler(async (req, res) => {
   const assignedCoachId = req.body?.assignedCoachId ?? req.body?.assigned_coach_id;
   const assignedCoachType = req.body?.assignedCoachType ?? req.body?.assigned_coach_type;
+  await assertStaffCanAssignCoach(req, req.params.id, { assignedCoachId, assignedCoachType });
   const parentCoachId = await resolveParentCoachId({
     assignedCoachId,
     assignedCoachType,
@@ -168,6 +174,7 @@ exports.assignHealUserController = asyncHandler(async (req, res) => {
 exports.reassignHealUserController = asyncHandler(async (req, res) => {
   const assignedCoachId = req.body?.assignedCoachId ?? req.body?.assigned_coach_id;
   const assignedCoachType = req.body?.assignedCoachType ?? req.body?.assigned_coach_type;
+  await assertStaffCanAssignCoach(req, req.params.id, { assignedCoachId, assignedCoachType });
   const parentCoachId = await resolveParentCoachId({
     assignedCoachId,
     assignedCoachType,

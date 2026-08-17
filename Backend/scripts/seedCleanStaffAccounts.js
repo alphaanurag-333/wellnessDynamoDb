@@ -149,6 +149,19 @@ async function seedRoleTemplates() {
   return out;
 }
 
+/** Access Control CONSOLE templates keyed by Account roleKey. */
+async function loadConsoleRolesByAccountKey() {
+  const { ROLE_KEY_META, UI_TO_ACCOUNT_ROLE } = require("../config/consolePermissionCatalog");
+  const out = {};
+  for (const [uiKey, meta] of Object.entries(ROLE_KEY_META)) {
+    const role = await getRoleBySlug(meta.slug, { scope: "CONSOLE" });
+    if (!role) continue;
+    const accountKey = UI_TO_ACCOUNT_ROLE[uiKey];
+    if (accountKey) out[accountKey] = role;
+  }
+  return out;
+}
+
 async function pickSpecializationId() {
   try {
     const { specializations } = await listSpecializations({
@@ -314,7 +327,7 @@ async function run() {
   await clearUserCoachAssignments();
 
   console.log("\n2) Role templates...");
-  const roles = await seedRoleTemplates();
+  await seedRoleTemplates();
   const { ensureConsoleRolesSeeded } = require("../controllers/accountController/accessController");
   const consoleSeed = await ensureConsoleRolesSeeded();
   console.log(
@@ -322,6 +335,7 @@ async function run() {
       consoleSeed.created.length ? `created: ${consoleSeed.created.join(", ")}` : "already present"
     }`
   );
+  const consoleRoles = await loadConsoleRolesByAccountKey();
 
   console.log("\n3) Seeding accounts...");
   const passwordHash = await hashPassword(DEFAULT_PASSWORD);
@@ -337,7 +351,14 @@ async function run() {
     isSuperAdmin: true,
     defaultRoleKey: "admin",
     sourceLegacyType: "admin",
-    memberships: [{ roleKey: "admin", roleId: null, status: "active", parentAccountId: null }],
+    memberships: [
+      {
+        roleKey: "admin",
+        roleId: consoleRoles.admin?.id || null,
+        status: "active",
+        parentAccountId: null,
+      },
+    ],
   });
   await putAdminMirror(superAdmin, passwordHash);
 
@@ -359,7 +380,12 @@ async function run() {
     defaultRoleKey: "wellness_coach",
     sourceLegacyType: "wellness_coach",
     memberships: [
-      { roleKey: "wellness_coach", roleId: null, status: "active", parentAccountId: null },
+      {
+        roleKey: "wellness_coach",
+        roleId: consoleRoles.wellness_coach?.id || null,
+        status: "active",
+        parentAccountId: null,
+      },
     ],
   });
   await putCoachMirror(coachAnita, passwordHash, await generateUniqueReferralCode({ entityType: "wellness_coach" }));
@@ -382,7 +408,12 @@ async function run() {
     defaultRoleKey: "wellness_coach",
     sourceLegacyType: "wellness_coach",
     memberships: [
-      { roleKey: "wellness_coach", roleId: null, status: "active", parentAccountId: null },
+      {
+        roleKey: "wellness_coach",
+        roleId: consoleRoles.wellness_coach?.id || null,
+        status: "active",
+        parentAccountId: null,
+      },
     ],
   });
   await putCoachMirror(coachRahul, passwordHash, await generateUniqueReferralCode({ entityType: "wellness_coach" }));
@@ -401,7 +432,7 @@ async function run() {
     memberships: [
       {
         roleKey: "assistant_wellness_coach",
-        roleId: roles.ASSISTANT?.id || null,
+        roleId: consoleRoles.assistant_wellness_coach?.id || null,
         status: "active",
         parentAccountId: coachAnita.id,
       },
@@ -428,7 +459,7 @@ async function run() {
     memberships: [
       {
         roleKey: "assistant_wellness_coach",
-        roleId: roles.ASSISTANT?.id || null,
+        roleId: consoleRoles.assistant_wellness_coach?.id || null,
         status: "active",
         parentAccountId: coachRahul.id,
       },
@@ -453,7 +484,7 @@ async function run() {
     memberships: [
       {
         roleKey: "trainee",
-        roleId: roles.TRAINEE?.id || null,
+        roleId: consoleRoles.trainee?.id || null,
         status: "active",
         parentAccountId: coachAnita.id,
       },
@@ -471,7 +502,7 @@ async function run() {
     memberships: [
       {
         roleKey: "support",
-        roleId: roles.SUPPORT?.id || null,
+        roleId: consoleRoles.support?.id || null,
         status: "active",
         parentAccountId: null,
       },

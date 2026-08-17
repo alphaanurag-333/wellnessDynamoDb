@@ -43,7 +43,11 @@ export const AC_SECTIONS = [
 
 export const TOTAL_PERM_SLOTS = PERM_CATALOG.reduce((n, row) => n + row[3].length, 0);
 
-/** Role id → list of section ids openable in left nav */
+/**
+ * Role id → section ids openable in left nav.
+ * Access Control defaults only; the live console derives nav from granted
+ * permissions (see utils/permissions.js).
+ */
 export const DEFAULT_VIEWS = {
   admin: ["dashboard", "users", "teams", "calendar", "pending", "sop", "configs"],
   wc: ["dashboard", "users", "teams", "calendar", "pending", "sop"],
@@ -51,18 +55,6 @@ export const DEFAULT_VIEWS = {
   trainee: ["dashboard", "users", "pending", "sop"],
   support: ["dashboard", "pending", "configs"],
 };
-
-/** Full console surface for Super Admin (viewing as admin). */
-export const SUPER_ADMIN_VIEWS = [
-  "dashboard",
-  "users",
-  "access",
-  "teams",
-  "calendar",
-  "configs",
-  "pending",
-  "sop",
-];
 
 /** Role id → parent role id (null = standalone) */
 export const DEFAULT_PARENTS = {

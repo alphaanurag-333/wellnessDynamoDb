@@ -110,11 +110,22 @@ function buildPageItems(current, total) {
 export function UsersPage() {
   const navigate = useNavigate();
   const { showToast: onToast } = useOutletContext();
-  const { viewAs, activeRole, account } = useViewAs();
+  const { activeRole, can, dataScope } = useViewAs();
   const [searchParams, setSearchParams] = useSearchParams();
-  const isReadOnly = viewAs !== "admin";
-  const sessionRole = account?.activeRole || account?.defaultRoleKey || "admin";
-  const useScopedUsers = sessionRole !== "admin";
+
+  const canCreate = can("console.cl.create");
+  const canEdit = can("console.cl.edit");
+  const canDelete = can("console.cl.delete");
+  const canExport = can("console.cl.export");
+  // Reassignment needs both the Teams feature and write access on the client record.
+  const canReassignAwc = can("console.ra.edit") && canEdit;
+  // Moving a client between wellness coaches is only meaningful for roles that
+  // can see every roster — a coach may only pick assistants from their own team.
+  const canReassignWc = canReassignAwc && dataScope === "all";
+  const showRowActions = canEdit || canDelete;
+  const isReadOnly = !canEdit && !canDelete && !canCreate;
+  // Roles scoped to their own roster read through the hierarchy-aware endpoint.
+  const useScopedUsers = dataScope !== "all";
 
   const [users, setUsers] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
@@ -145,9 +156,9 @@ export function UsersPage() {
       const userResult = useScopedUsers
         ? await fetchScopedUsers({ page: 1, limit: 200 })
         : await fetchUsers({ page: 1, limit: 200 });
-      const team = isReadOnly
-        ? { members: [] }
-        : await fetchTeamMembers({ limit: 200 }).catch(() => ({ members: [] }));
+      const team = canReassignAwc
+        ? await fetchTeamMembers({ limit: 200 }).catch(() => ({ members: [] }))
+        : { members: [] };
       const rows = userResult?.users || [];
       setUsers(rows);
       setTeamMembers(
@@ -162,7 +173,7 @@ export function UsersPage() {
     } finally {
       setLoading(false);
     }
-  }, [isReadOnly, useScopedUsers]);
+  }, [canReassignAwc, useScopedUsers]);
 
   useEffect(() => {
     loadUsers();
@@ -415,7 +426,6 @@ export function UsersPage() {
   };
 
   const openUser = (user) => {
-    if (isReadOnly) return;
     const id = userOverrideKey(user);
     if (id) navigate(UPDATED_ADMIN_PATHS.userDetail(id));
   };
@@ -533,7 +543,7 @@ export function UsersPage() {
           meta={(
             <>
               <span className="page-head__count">{loading ? "…" : totalCount}</span> clients ·{" "}
-              {isReadOnly ? <span>Your assigned clients</span> : <ScopeChip />}
+              {useScopedUsers ? <span>Your assigned clients</span> : <ScopeChip />}
             </>
           )}
           actions={(
@@ -567,10 +577,12 @@ export function UsersPage() {
                 <option>Active</option>
                 <option>Disabled</option>
               </select>
-              <button type="button" className="btn btn--outline ua-users-export" onClick={() => onToast("Exporting CSV…")}>
-                <ExportIcon /> Export CSV
-              </button>
-              {!isReadOnly ? (
+              {canExport ? (
+                <button type="button" className="btn btn--outline ua-users-export" onClick={() => onToast("Exporting CSV…")}>
+                  <ExportIcon /> Export CSV
+                </button>
+              ) : null}
+              {canCreate ? (
                 <OrangeButton onClick={() => onToast("Add user — coming soon")}>+ Add user</OrangeButton>
               ) : null}
             </>
@@ -607,7 +619,7 @@ export function UsersPage() {
 
       <TableScroll>
         <div className="ua-table-card ua-table-card--users">
-          <div className={`ua-table ua-table--users${isReadOnly ? " ua-table--users-readonly" : ""} ua-table__head`}>
+          <div className={`ua-table ua-table--users${showRowActions ? "" : " ua-table--users-readonly"} ua-table__head`}>
             <div>#</div>
             <div>
               <SortButton
@@ -629,7 +641,7 @@ export function UsersPage() {
               />
             </div>
             <div>Status</div>
-            {!isReadOnly ? <div /> : null}
+            {showRowActions ? <div /> : null}
           </div>
 
           {loading ? (
@@ -655,7 +667,7 @@ export function UsersPage() {
               return (
                 <div
                   key={rowKey}
-                  className={`ua-table ua-table--users${isReadOnly ? " ua-table--users-readonly ua-table__row--readonly" : ""} ua-table__row`}
+                  className={`ua-table ua-table--users${showRowActions ? "" : " ua-table--users-readonly"} ua-table__row`}
                   onClick={() => openUser(u)}
                 >
                   <div className="ua-table__muted">{u.n}</div>
@@ -668,7 +680,7 @@ export function UsersPage() {
                   </div>
                   <div className="ua-users-tier" onClick={(e) => e.stopPropagation()}>
                     <span className="ua-tier" style={{ background: tier.bg, color: tier.color }}>{tierLabel(u.tier)}</span>
-                    {!isReadOnly && canConvert ? (
+                    {canEdit && canConvert ? (
                       <button
                         type="button"
                         className="ua-tier-action ua-tier-action--up"
@@ -680,7 +692,7 @@ export function UsersPage() {
                         → {tierLabel(nextTier(u.tier))}
                       </button>
                     ) : null}
-                    {!isReadOnly && canDowngrade ? (
+                    {canEdit && canDowngrade ? (
                       <button
                         type="button"
                         className="ua-tier-action ua-tier-action--down"
@@ -692,12 +704,12 @@ export function UsersPage() {
                         ↓ {tierLabel(prevTier(u.tier))}
                       </button>
                     ) : null}
-                    {!isReadOnly && u.converted ? (
+                    {canEdit && u.converted ? (
                       <button type="button" className="ua-tier-action ua-tier-action--undo" title="Undo this manual change" onClick={() => revertTier(u)}>undo</button>
                     ) : null}
                   </div>
                   <div onClick={(e) => e.stopPropagation()}>
-                    {isReadOnly ? (
+                    {!canReassignWc ? (
                       <span>{u.coach || UNASSIGNED_COACH}</span>
                     ) : (
                       <select
@@ -714,7 +726,7 @@ export function UsersPage() {
                     )}
                   </div>
                   <div onClick={(e) => e.stopPropagation()}>
-                    {isReadOnly ? (
+                    {!canReassignAwc ? (
                       <span>{u.awc || "—"}</span>
                     ) : (
                       <select
@@ -737,26 +749,30 @@ export function UsersPage() {
                       {u.status}
                     </span>
                   </div>
-                  {!isReadOnly ? (
+                  {showRowActions ? (
                     <div className="ua-users-row-actions" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      type="button"
-                      className={`ua-users-row-actions__disable${u.off ? " ua-users-row-actions__disable--on" : ""}`}
-                      title={u.off ? `Re-enable ${u.name}'s account` : `Disable ${u.name}'s account — they lose app access, the record stays`}
-                      onClick={() => askDisable(u)}
-                      disabled={actionBusy}
-                    >
-                      <DisableIcon off={u.off} />
-                    </button>
-                    <button
-                      type="button"
-                      className="ua-users-row-actions__delete"
-                      title={`Delete ${u.name}`}
-                      onClick={() => setDeleteTarget(u)}
-                      disabled={actionBusy}
-                    >
-                      <TrashIcon />
-                    </button>
+                      {canEdit ? (
+                        <button
+                          type="button"
+                          className={`ua-users-row-actions__disable${u.off ? " ua-users-row-actions__disable--on" : ""}`}
+                          title={u.off ? `Re-enable ${u.name}'s account` : `Disable ${u.name}'s account — they lose app access, the record stays`}
+                          onClick={() => askDisable(u)}
+                          disabled={actionBusy}
+                        >
+                          <DisableIcon off={u.off} />
+                        </button>
+                      ) : null}
+                      {canDelete ? (
+                        <button
+                          type="button"
+                          className="ua-users-row-actions__delete"
+                          title={`Delete ${u.name}`}
+                          onClick={() => setDeleteTarget(u)}
+                          disabled={actionBusy}
+                        >
+                          <TrashIcon />
+                        </button>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>

@@ -2,7 +2,7 @@
  * Resolve permissions for an Account given the active roleKey.
  * Canonical source is CONSOLE roles (Access Control). Legacy ADMIN/COACH catalogs are not used.
  */
-const { getRoleById } = require("../models/roleModel");
+const { getRoleById, getRoleBySlug } = require("../models/roleModel");
 const { getMembership, hasActiveMembership } = require("../models/accountModel");
 const { normalizeRoleKey, DEFAULT_ROLE_PRIORITY, ROLE_KEY_TO_UI } = require("../config/accountRoles");
 const {
@@ -10,7 +10,13 @@ const {
   isValidConsolePermission,
   grantsMapToPermissions,
   DEFAULT_CONSOLE_GRANTS,
+  ROLE_KEY_META,
 } = require("../config/consolePermissionCatalog");
+
+function consoleDataScopeForRoleKey(roleKey) {
+  const uiKey = ROLE_KEY_TO_UI[roleKey];
+  return ROLE_KEY_META[uiKey]?.dataScope || "assigned";
+}
 
 function consolePermissionsForRoleKey(roleKey) {
   const uiKey = ROLE_KEY_TO_UI[roleKey];
@@ -20,9 +26,24 @@ function consolePermissionsForRoleKey(roleKey) {
   return grantsMapToPermissions(DEFAULT_CONSOLE_GRANTS[uiKey]);
 }
 
+function isConsoleRole(role) {
+  return Boolean(role) && String(role.scope || "").toUpperCase() === "CONSOLE";
+}
+
 function permissionsFromConsoleRole(role) {
-  if (!role || String(role.scope || "").toUpperCase() !== "CONSOLE") return null;
+  if (!isConsoleRole(role)) return null;
   return (Array.isArray(role.permissions) ? role.permissions : []).filter(isValidConsolePermission);
+}
+
+/** The Access Control template every account of this role key follows. */
+async function getConsoleRoleForRoleKey(roleKey) {
+  const slug = ROLE_KEY_META[ROLE_KEY_TO_UI[roleKey]]?.slug;
+  if (!slug) return null;
+  try {
+    return await getRoleBySlug(slug, { scope: "CONSOLE" });
+  } catch {
+    return null;
+  }
 }
 
 function applyConsoleOverrides(basePermissions, overrides) {
@@ -34,7 +55,13 @@ function applyConsoleOverrides(basePermissions, overrides) {
 async function resolveAccountPermissions(account, activeRoleKey) {
   const roleKey = normalizeRoleKey(activeRoleKey);
   if (!account || !roleKey || !hasActiveMembership(account, roleKey)) {
-    return { permissions: [], isSuperAdmin: false, roleId: null, permissionMap: null };
+    return {
+      permissions: [],
+      isSuperAdmin: false,
+      roleId: null,
+      permissionMap: null,
+      dataScope: "assigned",
+    };
   }
 
   const membership = getMembership(account, roleKey);
@@ -46,12 +73,19 @@ async function resolveAccountPermissions(account, activeRoleKey) {
       isSuperAdmin: true,
       roleId: membership?.roleId || null,
       permissionMap: null,
+      dataScope: "all",
     };
   }
 
   let role = null;
   if (membership?.roleId) {
     role = await getRoleById(membership.roleId);
+  }
+  // Memberships seeded before Access Control (roleId null) or pointing at a
+  // legacy-scope template must still follow their role key's console template,
+  // otherwise permission edits made in Access Control never reach the account.
+  if (!isConsoleRole(role)) {
+    role = await getConsoleRoleForRoleKey(roleKey);
   }
 
   let permissions = permissionsFromConsoleRole(role);
@@ -65,6 +99,7 @@ async function resolveAccountPermissions(account, activeRoleKey) {
     isSuperAdmin: false,
     roleId: membership?.roleId || null,
     permissionMap: null,
+    dataScope: String(role?.dataScope || consoleDataScopeForRoleKey(roleKey)).toLowerCase(),
   };
 }
 
