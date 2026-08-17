@@ -1,38 +1,23 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { IoChevronDown, IoClose, IoMenu } from "react-icons/io5";
 import defaultLogo from "../../assets/logo/defaultlogo.png";
 import {
   selectAppDisplayName,
   selectLoginBrandLogoUrl,
 } from "../../store/appConfigSelectors.js";
-import { LOGIN_PORTAL_LINKS, SITE_NAV_LINKS } from "../data/siteNav.js";
-import { useSiteConfig } from "../hooks/useSiteConfig.js";
-import { SiteButton } from "./SiteButton.jsx";
 import { ChevronDown } from "lucide-react";
-
-function isNavActive(pathname, to) {
-  if (to === "/") return pathname === "/";
-  return pathname === to;
-}
 
 export function SiteHeader() {
   const location = useLocation();
   const brandLogoUrl = useSelector(selectLoginBrandLogoUrl);
   const appDisplayName = useSelector(selectAppDisplayName);
-  const { mobileApp } = useSiteConfig();
   const logoSrc = brandLogoUrl || defaultLogo;
 
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [loginOpen, setLoginOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const loginRef = useRef(null);
 
   useEffect(() => {
-    setMobileOpen(false);
-    setLoginOpen(false);
     setMobileMenuOpen(false);
   }, [location.pathname]);
 
@@ -52,24 +37,6 @@ export function SiteHeader() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  useEffect(() => {
-    if (!loginOpen) return;
-    const onDocClick = (e) => {
-      if (loginRef.current && !loginRef.current.contains(e.target)) {
-        setLoginOpen(false);
-      }
-    };
-    const onKey = (e) => {
-      if (e.key === "Escape") setLoginOpen(false);
-    };
-    document.addEventListener("mousedown", onDocClick);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDocClick);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [loginOpen]);
-
   const healthRoutes = [
     "/fat-loss",
     "/diabetes-reversal",
@@ -79,8 +46,6 @@ export function SiteHeader() {
   ];
 
   const isHealthActive = healthRoutes.includes(location.pathname);
-
-  const handleNavClick = () => setMobileOpen(false);
 
   return (
     <>

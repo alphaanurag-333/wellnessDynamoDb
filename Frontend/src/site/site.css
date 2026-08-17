@@ -8402,6 +8402,11 @@ flex-shrink: 0;
   color: #b42318;
 }
 
+.site-not-found .site-header__cta {
+  display: inline-flex;
+  margin-top: 1.25rem;
+}
+
 .static-page-content {
   color: var(--text-body);
   font-size: 1rem;

@@ -1,5 +1,14 @@
 import api, { normalizeApiError } from "../../api.js";
 
+export async function getPublicAppConfig() {
+  try {
+    const { data: body } = await api.get("/public/app-config");
+    return body;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function fetchClientTestimonials(params = {}) {
   try {
     const { data } = await api.get("/public/misc/client-testimonials", { params });

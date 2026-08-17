@@ -1,6 +1,19 @@
 import { getApiBase } from "./api.js";
+import defaultImageAsset from "./assets/defaultImg/defaultImg.png";
 
-export { DEFAULT_IMAGE_SRC, handleMediaImageError, resolveMediaImageSrc } from "./admin/components/AdminMediaImage.jsx";
+export const DEFAULT_IMAGE_SRC =
+  typeof defaultImageAsset === "string" ? defaultImageAsset : defaultImageAsset?.src || String(defaultImageAsset);
+
+export function resolveMediaImageSrc(path, directSrc) {
+  if (directSrc) return directSrc;
+  if (!path) return DEFAULT_IMAGE_SRC;
+  return mediaUrl(path) || DEFAULT_IMAGE_SRC;
+}
+
+export function handleMediaImageError(e) {
+  e.currentTarget.onerror = null;
+  e.currentTarget.src = DEFAULT_IMAGE_SRC;
+}
 
 function getS3PublicBaseUrl() {
   const fromEnv =

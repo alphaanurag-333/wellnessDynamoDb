@@ -1,9 +1,8 @@
-import { NotFoundPage } from "../../admin/pages/NotFoundPage.jsx";
+import { Link } from "react-router-dom";
 import { SiteFooter } from "../components/SiteFooter.jsx";
 import { SiteHeader } from "../components/SiteHeader.jsx";
 import "../site.css";
 
-/** Public-site 404 with website header/footer (not admin dashboard chrome). */
 export function SiteNotFoundPage() {
   return (
     <div>
@@ -12,7 +11,21 @@ export function SiteNotFoundPage() {
       </a>
       <SiteHeader />
       <main id="main-content" className="site-main">
-        <NotFoundPage />
+        <section className="static-page-section site-not-found">
+          <div className="static-page-hero">
+            <div className="site-container static-page-hero__inner paddingmanages">
+              <h1 className="static-page-title">Page not found</h1>
+            </div>
+          </div>
+          <div className="site-container static-page-body">
+            <p className="static-page-message">
+              That page does not exist, or it may have been moved. Check the address or return to the home page.
+            </p>
+            <Link to="/" className="site-header__cta">
+              Back to home
+            </Link>
+          </div>
+        </section>
       </main>
       <SiteFooter />
     </div>

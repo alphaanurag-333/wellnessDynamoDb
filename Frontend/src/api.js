@@ -1,10 +1,8 @@
 import axios from "axios";
 
-const API_BASE = "http://localhost:5000"; 
+const API_BASE = "http://localhost:5000";
 //  const API_BASE = "https://wellness.developmentalphawizz.com:5005";
   // const API_BASE = "https://wellness-aws.developmentalphawizz.com:5001";
-const AUTH_STORAGE_KEY = "wellness_admin_auth";
-
 
 export function getApiBase() {
   return API_BASE;
@@ -13,110 +11,6 @@ export function getApiBase() {
 const api = axios.create({
   baseURL: `${API_BASE}/api`,
 });
-
-function readStoredAuth() {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-function writeStoredAuth(nextAuth) {
-  if (typeof window === "undefined") return;
-  if (!nextAuth?.adminToken || !nextAuth?.refreshToken || !nextAuth?.admin) {
-    window.localStorage.removeItem(AUTH_STORAGE_KEY);
-    return;
-  }
-  window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextAuth));
-}
-
-let refreshPromise = null;
-
-async function refreshAdminToken() {
-  if (refreshPromise) return refreshPromise;
-
-  const current = readStoredAuth();
-  const refreshToken = current?.refreshToken;
-  if (!refreshToken) {
-    throw new Error("Missing refresh token");
-  }
-
-  refreshPromise = axios
-    .post(`${API_BASE}/api/account/auth/refresh-token`, { refreshToken, activeRole: "admin" })
-    .then(({ data }) => {
-      const updated = {
-        ...current,
-        adminToken: data?.accessToken,
-        refreshToken: data?.refreshToken || refreshToken,
-        admin: data?.admin || data?.account || current.admin,
-      };
-      writeStoredAuth(updated);
-      return updated.adminToken;
-    })
-    .finally(() => {
-      refreshPromise = null;
-    });
-
-  return refreshPromise;
-}
-
-api.interceptors.request.use((config) => {
-  const stored = readStoredAuth();
-  const latestToken = stored?.adminToken;
-  const existingAuth =
-    config.headers?.Authorization || config.headers?.authorization;
-  if (latestToken && !existingAuth) {
-    config.headers = config.headers || {};
-    config.headers.Authorization = `Bearer ${latestToken}`;
-  }
-  return config;
-});
-
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const status = error?.response?.status;
-    const originalRequest = error?.config;
-    const requestUrl = String(originalRequest?.url || "");
-
-    if (
-      status === 401 &&
-      originalRequest &&
-      !originalRequest._retry &&
-      !requestUrl.includes("/account/auth/login") &&
-      !requestUrl.includes("/account/auth/refresh-token") &&
-      !requestUrl.includes("/admin/auth/login") &&
-      !requestUrl.includes("/admin/auth/refresh-token")
-    ) {
-      originalRequest._retry = true;
-      try {
-        const newToken = await refreshAdminToken();
-        originalRequest.headers = originalRequest.headers || {};
-        originalRequest.headers.Authorization = `Bearer ${newToken}`;
-        return api(originalRequest);
-      } catch {
-        writeStoredAuth(null);
-      }
-    }
-
-    if (status === 403 && typeof window !== "undefined") {
-      const message = error?.response?.data?.message || "You don't have permission to do that.";
-      window.dispatchEvent(new CustomEvent("admin:forbidden", { detail: { message, url: requestUrl } }));
-    }
-
-    return Promise.reject(error);
-  }
-);
-
-export function authHeader(token) {
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
 
 export function normalizeApiError(error) {
   const data = error?.response?.data;
