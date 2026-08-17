@@ -1,9 +1,18 @@
-export const NUTRITION_BANK = [
-  { id: "nb-vitd", name: "Vitamin D Plus", pack: "60 caps", price: 1200 },
-  { id: "nb-whey", name: "Whey Protein Isolate", pack: "1 kg", price: 2400 },
-  { id: "nb-omega", name: "Omega-3 Fish Oil", pack: "120 tabs", price: 1200 },
-  { id: "nb-mag", name: "Magnesium Glycinate", pack: "90 caps", price: 900 },
-];
+export const NUTRITION_BANK = [];
+
+export const NUTRITION_BANK_PAGE_SIZE = 20;
+
+export const NUTRITION_BANK_UNITS = ["Caps", "Tablets", "Softgels", "Sachets", "ml", "g", "mg", "Drops"];
+
+export function emptyNutritionDraft() {
+  return {
+    name: "",
+    description: "",
+    packSize: "",
+    unit: "Caps",
+    price: "",
+  };
+}
 
 export function formatBottlePrice(value) {
   const amount = Number(value);
@@ -14,4 +23,26 @@ export function formatBottlePrice(value) {
 export function parseBottlePrice(value) {
   const digits = String(value).replace(/[^\d]/g, "");
   return digits ? Number(digits) : 0;
+}
+
+export function parsePackSize(value) {
+  const digits = String(value).replace(/[^\d]/g, "");
+  return digits ? Number(digits) : 0;
+}
+
+export function formatPack(packSize, unit) {
+  const size = Number(packSize);
+  const label = String(unit || "").trim();
+  if (Number.isFinite(size) && size > 0 && label) return `${size} ${label}`;
+  if (label) return label;
+  if (Number.isFinite(size) && size > 0) return String(size);
+  return "";
+}
+
+export function unitOptionsFor(unit) {
+  const current = String(unit || "").trim();
+  if (current && !NUTRITION_BANK_UNITS.includes(current)) {
+    return [current, ...NUTRITION_BANK_UNITS];
+  }
+  return NUTRITION_BANK_UNITS;
 }

@@ -5,6 +5,7 @@ import { paymentMethodsForGateway } from "../data/configDetailData.js";
 import { programTestimonialLabel } from "../data/programTestimonialsConfigData.js";
 import { liveVersionText } from "../data/privacyConfigData.js";
 import { asCopyString, bannerPlacementById } from "../data/bannerConfigData.js";
+import { formatPack } from "../data/nutritionBankData.js";
 import { FeatureFlagsPreview } from "./FeatureFlagsSection.jsx";
 
 function previewSurfaces(item) {
@@ -849,6 +850,7 @@ function DrfBankPreview({ sections, surface, item }) {
 }
 
 function NutritionBankPreview({ items, surface, item }) {
+  const liveItems = (items || []).filter((entry) => entry.live !== false);
   const body = (
     <div className="ua-cfg-preview-phone">
       <div className="ua-cfg-preview-phone__shell">
@@ -859,15 +861,18 @@ function NutritionBankPreview({ items, surface, item }) {
             <strong>Nutrition bank</strong>
           </div>
           <p className="ua-cfg-preview-nb__intro">Pick supplements from the bank for this client.</p>
-          {items?.length ? (
+          {liveItems.length ? (
             <div className="ua-cfg-preview-nb__list">
-              {items.map((entry) => (
+              {liveItems.map((entry) => (
                 <div key={entry.id} className="ua-cfg-preview-nb__item">
-                  <div>
-                    <strong>{entry.name}</strong>
-                    <span>{entry.pack}</span>
+                  <div className="ua-cfg-preview-nb__item-main">
+                    {entry.image ? <img src={entry.image} alt="" /> : null}
+                    <div>
+                      <strong>{entry.name}</strong>
+                      <span>{entry.pack || formatPack(entry.packSize, entry.unit)}</span>
+                    </div>
                   </div>
-                  <span>Rs. {entry.price.toLocaleString("en-IN")}</span>
+                  <span>Rs. {Number(entry.price || 0).toLocaleString("en-IN")}</span>
                 </div>
               ))}
             </div>

@@ -36,12 +36,11 @@ exports.createWellnessPrescriptionCatalogController = asyncHandler(async (req, r
   const prescriptionId = req.body.prescriptionId
     ? normalizePrescriptionId(req.body.prescriptionId)
     : normalizePrescriptionId(title);
-  const category = String(req.body.category || "").trim();
+  const category = String(req.body.category || "General").trim() || "General";
   const status = String(req.body.status || "active").toLowerCase();
   const sequence = Number(req.body.sequence) || 0;
 
   if (!title) throw new AppError("title is required", 400);
-  if (!category) throw new AppError("category is required", 400);
   if (!ALLOWED_STATUS.includes(status)) {
     throw new AppError("status must be active or inactive", 400);
   }

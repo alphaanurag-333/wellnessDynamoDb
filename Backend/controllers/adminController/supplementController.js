@@ -41,11 +41,11 @@ exports.getSupplementByIdController = asyncHandler(async (req, res) => {
 
 exports.createSupplementController = asyncHandler(async (req, res) => {
   const name = String(req.body.name || "").trim();
-  const description = String(req.body.description || "").trim();
+  const description = String(req.body.description || "").trim() || name;
   const unit = String(req.body.unit || "").trim();
   const status = String(req.body.status || "active").trim().toLowerCase();
   const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
-  const image = uploadedKey ?? parseMediaKeyFromBody(req.body.image, "image");
+  const image = uploadedKey ?? parseMediaKeyFromBody(req.body.image, "image") ?? "";
 
   if (!name) throw new AppError("name is required", 400);
   if (name.length > NAME_MAX_LEN) throw new AppError(`name cannot exceed ${NAME_MAX_LEN} characters`, 400);
@@ -55,7 +55,6 @@ exports.createSupplementController = asyncHandler(async (req, res) => {
   if (unit.length > UNIT_MAX_LEN) throw new AppError(`unit cannot exceed ${UNIT_MAX_LEN} characters`, 400);
   const packSize = parsePositiveNumber(req.body.packSize, "packSize");
   const price = parsePositiveNumber(req.body.price, "price");
-  if (!image) throw new AppError("image is required", 400);
   if (!SUPPLEMENT_ALLOWED_STATUS.includes(status)) throw new AppError("status must be active or inactive", 400);
 
   const supplement = await createSupplement({ name, description, packSize, unit, price, image, status });

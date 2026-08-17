@@ -1,167 +1,117 @@
 require("dotenv").config();
 
+const { ScanCommand } = require("@aws-sdk/lib-dynamodb");
+const { docClient } = require("../config/db");
 const {
+  TABLE,
   createWellnessPrescriptionCatalog,
-  getWellnessPrescriptionCatalogByPrescriptionId,
+  deleteWellnessPrescriptionCatalog,
 } = require("../models/wellnessPrescriptionCatalogModel");
 
 const PRESCRIPTIONS = [
   {
-    prescriptionId: "morning-routine-vata",
-    title: "Morning Routine for Vata Balance",
-    category: "Ayurveda",
+    prescriptionId: "gut-reset-day-1-7",
+    title: "Gut Reset · Day 1-7",
+    category: "General",
     status: "active",
     sequence: 1,
     points: [
-      "Wake before 6:30 AM and drink warm water with a pinch of ginger.",
-      "Practice 10 minutes of gentle stretching or sun salutations.",
-      "Eat a warm, cooked breakfast within one hour of waking.",
-      "Avoid cold beverages and raw foods in the first half of the day.",
+      "Warm lemon water on waking (500 ml)",
+      "No dairy, gluten or refined sugar",
+      "1 cup bone broth or veg stock at lunch",
+      "Cooked, easily digestible dinner before 7 PM",
+      "Probiotic-rich food once daily (curd / kanji)",
+      "10-min walk after every meal",
     ],
   },
   {
-    prescriptionId: "pitta-cooling-diet",
-    title: "Pitta Cooling Diet Guidelines",
-    category: "Diet & Nutrition",
+    prescriptionId: "water-fasting-24h",
+    title: "Water Fasting · 24h",
+    category: "General",
     status: "active",
     sequence: 2,
     points: [
-      "Favor cooling foods: cucumber, coconut, leafy greens, and sweet fruits.",
-      "Reduce spicy, fried, and overly salty meals during peak afternoon heat.",
-      "Eat meals at regular times; avoid skipping lunch.",
-      "Drink room-temperature water; limit caffeine after 2 PM.",
+      "Only water for the full 24h window",
+      "Target 3–4 L water through the day",
+      "No tea, coffee or supplements unless prescribed",
+      "Rest and avoid strenuous exercise",
+      "Break fast gently with warm lemon water",
+      "Light cooked food 30 min after breaking fast",
     ],
   },
   {
-    prescriptionId: "kapha-energizing-lifestyle",
-    title: "Kapha Energizing Lifestyle",
-    category: "Lifestyle",
+    prescriptionId: "intermittent-fasting-16-8",
+    title: "Intermittent Fasting 16:8",
+    category: "General",
     status: "active",
     sequence: 3,
     points: [
-      "Start the day with brisk walking or light cardio for 20–30 minutes.",
-      "Use warming spices such as black pepper, ginger, and turmeric in meals.",
-      "Keep daytime naps under 20 minutes or avoid them entirely.",
-      "Declutter your workspace to support mental lightness and motivation.",
+      "Eating window 12 PM – 8 PM",
+      "Black coffee / green tea allowed while fasting",
+      "Protein-forward first meal",
+      "No snacking after 8 PM",
+      "Hydrate well during fasting hours",
     ],
   },
   {
-    prescriptionId: "digestive-fire-support",
-    title: "Digestive Fire (Agni) Support",
-    category: "Ayurveda",
+    prescriptionId: "liver-detox-day-1-5",
+    title: "Liver Detox · Day 1-5",
+    category: "General",
     status: "active",
     sequence: 4,
     points: [
-      "Eat your largest meal at midday when digestion is strongest.",
-      "Chew each bite thoroughly and avoid screens while eating.",
-      "Take a short walk for 10 minutes after lunch.",
-      "Sip warm cumin or fennel tea after meals if you feel bloated.",
-    ],
-  },
-  {
-    prescriptionId: "quality-sleep-protocol",
-    title: "Quality Sleep Protocol",
-    category: "Sleep & Rest",
-    status: "active",
-    sequence: 5,
-    points: [
-      "Dim lights and stop screen use 60 minutes before bed.",
-      "Keep bedroom temperature cool and consistent each night.",
-      "Practice 5 minutes of slow breathing or body scan before sleep.",
-      "Maintain a fixed wake time, including on weekends.",
-    ],
-  },
-  {
-    prescriptionId: "daily-movement-plan",
-    title: "Daily Movement Plan",
-    category: "Exercise & Movement",
-    status: "active",
-    sequence: 6,
-    points: [
-      "Aim for 8,000–10,000 steps spread across the day.",
-      "Include 2 strength sessions per week focusing on major muscle groups.",
-      "Stretch hips, shoulders, and spine for 5 minutes after long sitting.",
-      "Take a movement break every 60–90 minutes during work hours.",
-    ],
-  },
-  {
-    prescriptionId: "stress-resilience-practices",
-    title: "Stress Resilience Practices",
-    category: "Stress & Mental Health",
-    status: "active",
-    sequence: 7,
-    points: [
-      "Practice box breathing (4-4-4-4) for 3 minutes when stress rises.",
-      "Journal one gratitude note and one priority each morning.",
-      "Limit news and social media to two fixed windows per day.",
-      "Schedule one screen-free restorative activity weekly.",
-    ],
-  },
-  {
-    prescriptionId: "hydration-electrolyte-balance",
-    title: "Hydration & Electrolyte Balance",
-    category: "Diet & Nutrition",
-    status: "active",
-    sequence: 8,
-    points: [
-      "Drink water consistently; target roughly 2–2.5 liters unless advised otherwise.",
-      "Add electrolytes after intense workouts or heavy sweating.",
-      "Include water-rich foods such as citrus, melons, and soups.",
-      "Monitor urine color as a simple hydration check.",
-    ],
-  },
-  {
-    prescriptionId: "post-meal-walk-routine",
-    title: "Post-Meal Walk Routine",
-    category: "Lifestyle",
-    status: "active",
-    sequence: 9,
-    points: [
-      "Walk at a comfortable pace for 10–15 minutes after main meals.",
-      "Keep posture upright and breathe through the nose when possible.",
-      "Avoid vigorous exercise immediately after eating.",
-      "Track consistency rather than speed or distance.",
-    ],
-  },
-  {
-    prescriptionId: "evening-wind-down",
-    title: "Evening Wind-Down Routine",
-    category: "Sleep & Rest",
-    status: "inactive",
-    sequence: 10,
-    points: [
-      "Finish dinner at least 2–3 hours before bedtime.",
-      "Use warm lighting and calming music in the last hour of the day.",
-      "Prepare clothes and essentials for the next morning to reduce mental load.",
-      "Practice light reading or meditation instead of stimulating content.",
+      "Beetroot-carrot-amla juice each morning",
+      "No fried or processed food",
+      "Warm lemon water on waking",
+      "Light dinner before 7 PM",
+      "10-min walk after meals",
     ],
   },
 ];
 
-async function main() {
-  console.log("Seeding WellnessPrescriptionCatalog...\n");
-  let created = 0;
-  let skipped = 0;
-
-  for (const prescription of PRESCRIPTIONS) {
-    const existing = await getWellnessPrescriptionCatalogByPrescriptionId(
-      prescription.prescriptionId
+async function scanAllIds() {
+  const ids = [];
+  let lastKey;
+  do {
+    const { Items, LastEvaluatedKey } = await docClient.send(
+      new ScanCommand({
+        TableName: TABLE,
+        ProjectionExpression: "id",
+        ExclusiveStartKey: lastKey,
+      }),
     );
-    if (existing) {
-      console.log(`  - skipped (exists): ${prescription.title}`);
-      skipped++;
-      continue;
+    for (const item of Items || []) {
+      if (item?.id) ids.push(item.id);
     }
+    lastKey = LastEvaluatedKey;
+  } while (lastKey);
+  return ids;
+}
 
+async function clearCatalog() {
+  const ids = await scanAllIds();
+  for (const id of ids) {
+    await deleteWellnessPrescriptionCatalog(id);
+  }
+  return ids.length;
+}
+
+async function main() {
+  console.log("Resetting WellnessPrescriptionCatalog...\n");
+  const removed = await clearCatalog();
+  console.log(`  removed ${removed} existing protocol${removed === 1 ? "" : "s"}\n`);
+
+  let created = 0;
+  for (const prescription of PRESCRIPTIONS) {
     await createWellnessPrescriptionCatalog({
       ...prescription,
       createdBy: "seed-script",
     });
     console.log(`  ✓ ${prescription.title}`);
-    created++;
+    created += 1;
   }
 
-  console.log(`\nWellnessPrescriptionCatalog: ${created} created, ${skipped} skipped.`);
+  console.log(`\nWellnessPrescriptionCatalog: ${removed} cleared, ${created} seeded.`);
 }
 
 main().catch((err) => {

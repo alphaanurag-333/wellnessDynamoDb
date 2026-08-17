@@ -1735,6 +1735,17 @@ const TABLE_DEFINITIONS = [
     ],
     ...PAY_PER_REQUEST,
   },
+  {
+    TableName: "DietPlanBook",
+    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
+    AttributeDefinitions: [
+      { AttributeName: "id", AttributeType: "S" },
+      { AttributeName: "status", AttributeType: "S" },
+      { AttributeName: "createdAt", AttributeType: "S" },
+    ],
+    GlobalSecondaryIndexes: [statusCreatedAtIndex("StatusIndex")],
+    ...PAY_PER_REQUEST,
+  },
 ];
 
 const TABLE_NAMES = TABLE_DEFINITIONS.map((t) => t.TableName);

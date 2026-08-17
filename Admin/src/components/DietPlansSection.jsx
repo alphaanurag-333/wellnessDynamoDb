@@ -1,5 +1,13 @@
-import { useState } from "react";
-import { dietPlanWordCount } from "../data/dietPlansData.js";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  adminCreateDietPlan,
+  adminDeleteDietPlan,
+  adminListDietPlans,
+  adminUpdateDietPlan,
+} from "../api/dietPlanCatalogApi.js";
+import { DIET_PLANS_PAGE_SIZE, dietPlanWordCount } from "../data/dietPlansData.js";
+import { ListPagination } from "./shared.jsx";
+import { ConfirmDialog } from "./ConfirmDialog.jsx";
 
 function Panel({ title, subtitle, actions, children, className = "" }) {
   const hasHead = Boolean(title || subtitle || actions);
@@ -19,13 +27,17 @@ function Panel({ title, subtitle, actions, children, className = "" }) {
   );
 }
 
-function DietPlanEditModal({ plan, onClose, onChange, onDelete, onToast }) {
+function DietPlanEditModal({ plan, busy, onClose, onChange, onDelete, onToast }) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(plan.content);
+  const [draft, setDraft] = useState(plan?.content || "");
+
+  useEffect(() => {
+    setDraft(plan.content);
+  }, [plan.id, plan.content]);
 
   if (!plan) return null;
 
-  function saveContent() {
+  async function saveContent() {
     const content = draft.trim();
     if (!content) {
       onToast("Plan content cannot be empty");
@@ -33,9 +45,13 @@ function DietPlanEditModal({ plan, onClose, onChange, onDelete, onToast }) {
       setEditing(false);
       return;
     }
-    onChange({ ...plan, content });
-    setEditing(false);
-    onToast("Diet plan saved");
+    if (content === plan.content) {
+      setEditing(false);
+      return;
+    }
+    const saved = await onChange({ content });
+    if (saved) setEditing(false);
+    else setDraft(plan.content);
   }
 
   return (
@@ -52,17 +68,16 @@ function DietPlanEditModal({ plan, onClose, onChange, onDelete, onToast }) {
               type="button"
               className={`ua-toggle ua-toggle--sm${plan.live ? " ua-toggle--on" : ""}`}
               aria-pressed={plan.live}
-              onClick={() => onChange({ ...plan, live: !plan.live })}
+              disabled={busy}
+              onClick={() => onChange({ live: !plan.live })}
             >
               <span className="ua-toggle__knob" />
             </button>
             <button
               type="button"
               className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-dp-modal__delete"
-              onClick={() => {
-                onDelete(plan.id);
-                onClose();
-              }}
+              disabled={busy}
+              onClick={() => onDelete(plan)}
             >
               Delete
             </button>
@@ -77,6 +92,7 @@ function DietPlanEditModal({ plan, onClose, onChange, onDelete, onToast }) {
               rows={8}
               value={draft}
               autoFocus
+              disabled={busy}
               onChange={(event) => setDraft(event.target.value)}
               onBlur={saveContent}
               onKeyDown={(event) => {
@@ -87,7 +103,7 @@ function DietPlanEditModal({ plan, onClose, onChange, onDelete, onToast }) {
               }}
             />
           ) : (
-            <button type="button" className="ua-cfg-dp-modal__content" onClick={() => setEditing(true)}>
+            <button type="button" className="ua-cfg-dp-modal__content" disabled={busy} onClick={() => setEditing(true)}>
               {plan.content}
             </button>
           )}
@@ -105,64 +121,179 @@ export function DietPlansSection({ plans, setPlans, onToast }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newContent, setNewContent] = useState("");
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: DIET_PLANS_PAGE_SIZE,
+    total: 0,
+    pages: 1,
+  });
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const plansRef = useRef(plans);
 
   const selectedPlan = plans.find((entry) => entry.id === selectedId) ?? null;
 
-  function updatePlan(nextPlan) {
-    setPlans(plans.map((entry) => (entry.id === nextPlan.id ? nextPlan : entry)));
+  const loadPlans = useCallback(async (pageOverride) => {
+    const nextPage = pageOverride ?? page;
+    setLoading(true);
+    try {
+      const { plans: rows, pagination: nextPagination } = await adminListDietPlans(null, {
+        page: nextPage,
+        limit: DIET_PLANS_PAGE_SIZE,
+      });
+      const next = rows || [];
+      setPlans(next);
+      plansRef.current = next;
+      setPagination({
+        page: Number(nextPagination?.page) || nextPage,
+        limit: Number(nextPagination?.limit) || DIET_PLANS_PAGE_SIZE,
+        total: Number(nextPagination?.total) || next.length,
+        pages: Number(nextPagination?.pages) || 1,
+      });
+    } catch (error) {
+      onToast(error?.message || "Failed to load diet plans");
+      setPlans([]);
+      plansRef.current = [];
+      setPagination({ page: 1, limit: DIET_PLANS_PAGE_SIZE, total: 0, pages: 1 });
+    } finally {
+      setLoading(false);
+    }
+  }, [onToast, page, setPlans]);
+
+  useEffect(() => {
+    loadPlans();
+  }, [loadPlans]);
+
+  useEffect(() => {
+    if (!loading && page > pagination.pages) setPage(pagination.pages);
+  }, [loading, page, pagination.pages]);
+
+  useEffect(() => {
+    plansRef.current = plans;
+  }, [plans]);
+
+  async function persistPlan(id, fields, successMessage) {
+    setBusy(true);
+    try {
+      const updated = await adminUpdateDietPlan(null, id, fields);
+      if (!updated) throw new Error("Failed to save diet plan");
+      setPlans((prev) => prev.map((entry) => (entry.id === id ? { ...entry, ...updated } : entry)));
+      if (successMessage) onToast(successMessage);
+      return true;
+    } catch (error) {
+      onToast(error?.message || "Failed to save diet plan");
+      return false;
+    } finally {
+      setBusy(false);
+    }
   }
 
-  function deletePlan(id) {
-    setPlans(plans.filter((entry) => entry.id !== id));
-    onToast("Diet plan removed");
-  }
-
-  function addPlan() {
+  async function addPlan() {
     const title = newTitle.trim();
     const content = newContent.trim();
     if (!title || !content) {
       onToast("Name and content are required");
       return;
     }
-    setPlans([
-      ...plans,
-      {
-        id: `dp-${Date.now()}`,
-        title,
-        content,
-        live: true,
-      },
-    ]);
-    setNewTitle("");
-    setNewContent("");
-    setShowAddForm(false);
-    onToast(`${title} added to the book`);
+    if (title.length < 2) {
+      onToast("Plan name must be at least 2 characters");
+      return;
+    }
+    setBusy(true);
+    try {
+      const created = await adminCreateDietPlan(null, { title, content, live: true });
+      if (!created) throw new Error("Failed to add diet plan");
+      setNewTitle("");
+      setNewContent("");
+      setShowAddForm(false);
+      onToast(`${title} added to the book`);
+      const lastPage = Math.max(1, Math.ceil((pagination.total + 1) / DIET_PLANS_PAGE_SIZE));
+      setPage(lastPage);
+      await loadPlans(lastPage);
+    } catch (error) {
+      onToast(error?.message || "Failed to add diet plan");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmDelete() {
+    if (!pendingDelete || busy) return;
+    const plan = pendingDelete;
+    setPendingDelete(null);
+    if (selectedId === plan.id) setSelectedId(null);
+    setBusy(true);
+    try {
+      await adminDeleteDietPlan(null, plan.id);
+      onToast("Diet plan removed");
+      const remaining = plansRef.current.filter((entry) => entry.id !== plan.id).length;
+      if (remaining === 0 && page > 1) {
+        const nextPage = page - 1;
+        setPage(nextPage);
+        await loadPlans(nextPage);
+      } else {
+        await loadPlans(page);
+      }
+    } catch (error) {
+      onToast(error?.message || "Failed to delete diet plan");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
     <>
       <Panel
         title="Diet plan book"
-        subtitle="Add a plan, name it and write it out. Coaches can read every live plan and apply it to a client, but cannot change the book."
-        actions={<span className="ua-cfg-dp__count">{liveCount} of {plans.length} live</span>}
+        subtitle={
+          loading
+            ? "Loading diet plans…"
+            : "Add a plan, name it and write it out. Coaches can read every live plan and apply it to a client, but cannot change the book."
+        }
+        actions={
+          loading ? null : (
+            <span className="ua-cfg-dp__count">
+              {liveCount} live on this page · {pagination.total} in book
+            </span>
+          )
+        }
       >
-        <div className="ua-cfg-dp-grid">
-          {plans.map((plan) => (
-            <button
-              key={plan.id}
-              type="button"
-              className={`ua-cfg-dp-card${selectedId === plan.id ? " is-selected" : ""}`}
-              onClick={() => setSelectedId(plan.id)}
-            >
-              <div className="ua-cfg-dp-card__top">
-                <strong>{plan.title}</strong>
-                {plan.live ? <span className="ua-cfg-dp-card__live">Live</span> : null}
-              </div>
-              <p className="ua-cfg-dp-card__excerpt">{plan.content}</p>
-              <span className="ua-cfg-dp-card__words">{dietPlanWordCount(plan.content)} words</span>
-            </button>
-          ))}
-        </div>
+        {loading ? (
+          <p className="ua-cfg-panel__sub">Fetching diet plans from the server…</p>
+        ) : plans.length ? (
+          <div className="ua-cfg-dp-grid">
+            {plans.map((plan) => (
+              <button
+                key={plan.id}
+                type="button"
+                className={`ua-cfg-dp-card${selectedId === plan.id ? " is-selected" : ""}`}
+                onClick={() => setSelectedId(plan.id)}
+              >
+                <div className="ua-cfg-dp-card__top">
+                  <strong>{plan.title}</strong>
+                  {plan.live ? <span className="ua-cfg-dp-card__live">Live</span> : null}
+                </div>
+                <p className="ua-cfg-dp-card__excerpt">{plan.content}</p>
+                <span className="ua-cfg-dp-card__words">{dietPlanWordCount(plan.content)} words</span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="ua-cfg-panel__sub">No diet plans in the book yet. Add one below.</p>
+        )}
+
+        {!loading && pagination.total > 0 ? (
+          <ListPagination
+            page={pagination.page}
+            pages={pagination.pages}
+            total={pagination.total}
+            pageSize={DIET_PLANS_PAGE_SIZE}
+            onPageChange={setPage}
+            label="Diet plan pagination"
+          />
+        ) : null}
       </Panel>
 
       <Panel
@@ -170,7 +301,12 @@ export function DietPlansSection({ plans, setPlans, onToast }) {
         subtitle="Name it, write it out, and it joins the book for every coach."
         actions={
           !showAddForm ? (
-            <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={() => setShowAddForm(true)}>
+            <button
+              type="button"
+              className="ua-cfg-btn ua-cfg-btn--outline"
+              disabled={busy || loading}
+              onClick={() => setShowAddForm(true)}
+            >
               + New diet plan
             </button>
           ) : null
@@ -183,6 +319,7 @@ export function DietPlansSection({ plans, setPlans, onToast }) {
               className="ua-cfg-dp-add__title"
               placeholder="Plan name · e.g. Thyroid care · 14 day"
               value={newTitle}
+              disabled={busy}
               onChange={(event) => setNewTitle(event.target.value)}
             />
             <textarea
@@ -190,15 +327,17 @@ export function DietPlansSection({ plans, setPlans, onToast }) {
               rows={6}
               placeholder="Write the full plan here…"
               value={newContent}
+              disabled={busy}
               onChange={(event) => setNewContent(event.target.value)}
             />
             <div className="ua-cfg-dp-add__actions">
-              <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" onClick={addPlan}>
-                Add to book
+              <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={addPlan}>
+                {busy ? "Adding…" : "Add to book"}
               </button>
               <button
                 type="button"
                 className="ua-cfg-btn ua-cfg-btn--outline"
+                disabled={busy}
                 onClick={() => {
                   setShowAddForm(false);
                   setNewTitle("");
@@ -215,12 +354,32 @@ export function DietPlansSection({ plans, setPlans, onToast }) {
       {selectedPlan ? (
         <DietPlanEditModal
           plan={selectedPlan}
+          busy={busy}
           onClose={() => setSelectedId(null)}
-          onChange={updatePlan}
-          onDelete={deletePlan}
+          onChange={(fields) => {
+            const message = fields.content !== undefined
+              ? "Diet plan saved"
+              : fields.live
+                ? "Diet plan is live"
+                : "Diet plan hidden";
+            return persistPlan(selectedPlan.id, fields, message);
+          }}
+          onDelete={(plan) => setPendingDelete(plan)}
           onToast={onToast}
         />
       ) : null}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        tag="Delete diet plan"
+        title={pendingDelete ? `Remove “${pendingDelete.title}”?` : ""}
+        body="This will permanently remove the plan from the book. You can’t undo this."
+        cancelLabel="Keep plan"
+        confirmLabel="Delete"
+        confirmTone="danger"
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={confirmDelete}
+      />
     </>
   );
 }

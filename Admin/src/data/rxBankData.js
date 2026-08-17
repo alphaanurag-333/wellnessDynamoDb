@@ -1,3 +1,5 @@
+export const RX_BANK_PAGE_SIZE = 20;
+
 export const RX_BANK_PROTOCOLS = [
   {
     id: "rx-gut-reset",

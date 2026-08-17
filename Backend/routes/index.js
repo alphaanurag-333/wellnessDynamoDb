@@ -26,6 +26,7 @@ const adminPrakrutiThingToAvoidRoutes = require("./adminRoutes/adminPrakrutiThin
 const adminPrakrutiRecommendationRoutes = require("./adminRoutes/adminPrakrutiRecommendationRoutes");
 const adminTestCatalogRoutes = require("./adminRoutes/adminTestCatalogRoutes");
 const adminDietPlanCatalogRoutes = require("./adminRoutes/adminDietPlanCatalogRoutes");
+const adminDietPlanBookRoutes = require("./adminRoutes/adminDietPlanBookRoutes");
 const adminWellnessPrescriptionCatalogRoutes = require("./adminRoutes/adminWellnessPrescriptionCatalogRoutes");
 const adminMentalWellbeingRoutes = require("./adminRoutes/adminMentalWellbeingRoutes");
 const adminUserRoutes = require("./adminRoutes/adminUserRoutes");
@@ -164,6 +165,7 @@ router.use("/admin/prakruti-things-to-avoid", adminPrakrutiThingToAvoidRoutes);
 router.use("/admin/prakruti-recommendations", adminPrakrutiRecommendationRoutes);
 router.use("/admin/test-catalog", adminTestCatalogRoutes);
 router.use("/admin/diet-plan-catalog", adminDietPlanCatalogRoutes);
+router.use("/admin/diet-plan-book", adminDietPlanBookRoutes);
 router.use("/admin/wellness-prescriptions", adminWellnessPrescriptionCatalogRoutes);
 router.use("/admin/mental-wellbeing", adminMentalWellbeingRoutes);
 router.use("/admin/users", adminUserRoutes);

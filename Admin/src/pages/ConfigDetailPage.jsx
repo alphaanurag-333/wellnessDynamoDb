@@ -21,7 +21,7 @@ import {
   COMMITMENT_COACH_SIGNOFFS,
   COMMITMENT_LETTER_DEFAULT,
 } from "../components/CommitmentLetterSection.jsx";
-import { DietPlansSection, DIET_PLANS } from "../components/DietPlansSection.jsx";
+import { DietPlansSection } from "../components/DietPlansSection.jsx";
 import { DrfBankSection } from "../components/DrfBankSection.jsx";
 import { GallerySection, GALLERY_MEDIA } from "../components/GallerySection.jsx";
 import {
@@ -30,7 +30,7 @@ import {
   AI_ENABLE_COACHES,
 } from "../components/AiEnableSection.jsx";
 import { LaunchSection } from "../components/LaunchSection.jsx";
-import { NutritionBankSection, NUTRITION_BANK } from "../components/NutritionBankSection.jsx";
+import { NutritionBankSection } from "../components/NutritionBankSection.jsx";
 import { FeatureFlagsSection } from "../components/FeatureFlagsSection.jsx";
 import { ProgramTestimonialsSection } from "../components/ProgramTestimonialsSection.jsx";
 import { FooterSettingSection } from "../components/FooterSettingSection.jsx";
@@ -52,7 +52,7 @@ import { GoogleReviewSection } from "../components/GoogleReviewSection.jsx";
 import { DropdownsSection } from "../components/DropdownsSection.jsx";
 import { RecipesSection } from "../components/RecipesSection.jsx";
 import { BlogsSection } from "../components/BlogsSection.jsx";
-import { RxBankSection, RX_BANK_PROTOCOLS } from "../components/RxBankSection.jsx";
+import { RxBankSection } from "../components/RxBankSection.jsx";
 import { FaqConfigPanel } from "../components/FaqConfigPanel.jsx";
 import { FEATURE_FLAGS } from "../data/featureFlagsData.js";
 import {
@@ -1041,9 +1041,9 @@ export function ConfigDetailPage() {
   const [commitmentText, setCommitmentText] = useState(COMMITMENT_LETTER_DEFAULT);
   const [savedCommitmentText, setSavedCommitmentText] = useState("");
   const [commitmentCoaches] = useState(COMMITMENT_COACH_SIGNOFFS);
-  const [dietPlans, setDietPlans] = useState(DIET_PLANS);
-  const [nutritionBank, setNutritionBank] = useState(NUTRITION_BANK);
-  const [rxProtocols, setRxProtocols] = useState(RX_BANK_PROTOCOLS);
+  const [dietPlans, setDietPlans] = useState([]);
+  const [nutritionBank, setNutritionBank] = useState([]);
+  const [rxProtocols, setRxProtocols] = useState([]);
   const [galleryMedia, setGalleryMedia] = useState(GALLERY_MEDIA);
   const [launchRatings, setLaunchRatings] = useState([]);
   const [launchDomains, setLaunchDomains] = useState([]);

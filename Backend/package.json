@@ -20,6 +20,7 @@
                        "seed:programs": "node --use-system-ca scripts/seedProgramCatalog.js",
     "delete:static-pages": "node --use-system-ca scripts/deleteStaticPages.js",
     "seed:diet-plan-catalog": "node scripts/seedDietPlanCatalog.js",
+    "seed:diet-plan-book": "node scripts/seedDietPlanBook.js",
     "seed:wellness-prescriptions": "node --use-system-ca scripts/seedWellnessPrescriptionCatalog.js",
     "seed:launch-questions": "node scripts/seedLaunchQuestions.js",
     "seed:launch-focus-areas": "node scripts/seedLaunchFocusAreas.js",
