@@ -27,43 +27,114 @@ export const BANNER_COPY = [
   },
 ];
 
-export const BANNER_EDITOR = {
-  type: "main",
-  split: false,
-  placement: "home-hero-web",
-  headline: BANNER_COPY[0].headline,
-  body: BANNER_COPY[0].body,
-  cta: BANNER_COPY[0].cta,
-  uploaded: false,
-  webUploaded: false,
-  mobileUploaded: false,
-  appOn: true,
-  webOn: true,
-};
-
-export const BANNER_LIVE_ITEMS = [
-  { id: "bn-1", title: "Madhupriya B. · -18 kg", shown: true },
-  { id: "bn-2", title: "Bikash S. · HbA1c 8.9 → 6.4", shown: true },
-  { id: "bn-3", title: "Hetu M. · cycle regular", shown: true },
-];
-
-export const BANNER_GALLERY_OWNERS = ["All owners", "Vishal Chaurasia", "Anita Rao", "Admin", "Marketing"];
-
-export const BANNER_GALLERY = [
-  { id: "bg-1", title: "Home hero — reverse it", owner: "Vishal Chaurasia", date: "14 Feb 2026", size: "420 KB", versions: 2, live: true },
-  { id: "bg-2", title: "Home hero — dark crop", owner: "Vishal Chaurasia", date: "14 Feb 2026", size: "388 KB", versions: 3, live: false },
-  { id: "bg-3", title: "App strip — consult CTA", owner: "Anita Rao", date: "03 Mar 2026", size: "210 KB", versions: 1, live: true },
-  { id: "bg-4", title: "Programs banner — summer", owner: "Marketing", date: "22 Mar 2026", size: "512 KB", versions: 2, live: false },
-  { id: "bg-5", title: "Wellnesspedia hero", owner: "Admin", date: "08 Apr 2026", size: "460 KB", versions: 1, live: false },
-  { id: "bg-6", title: "Home hero — labs", owner: "Admin", date: "18 Apr 2026", size: "401 KB", versions: 4, live: false },
-];
-
-export function bannerCopyForHeadline(headline) {
-  return BANNER_COPY.find((entry) => entry.headline === headline) ?? BANNER_COPY[0];
+export function emptyBannerEditor() {
+  return {
+    id: "",
+    type: "main",
+    split: false,
+    placement: "",
+    headline: "",
+    body: "",
+    cta: "",
+    ctaLink: "",
+    image: "",
+    mobileImage: "",
+    uploaded: false,
+    webUploaded: false,
+    mobileUploaded: false,
+    appOn: true,
+    webOn: true,
+    imageFile: null,
+    mobileFile: null,
+    imagePreview: "",
+    mobilePreview: "",
+  };
 }
 
-export function bannerPlacementById(id) {
-  return BANNER_PLACEMENTS.find((entry) => entry.id === id) ?? BANNER_PLACEMENTS[0];
+export const BANNER_EDITOR = emptyBannerEditor();
+
+export const BANNER_LIVE_ITEMS = [];
+
+export const BANNER_GALLERY_OWNERS = ["All owners"];
+
+export const BANNER_GALLERY = [];
+
+export function mapDropdownOptions(list, fallback = []) {
+  const options = (Array.isArray(list?.options) ? list.options : [])
+    .filter((row) => row && row.on !== false)
+    .sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0))
+    .map((row) => {
+      const label = String(row.label || row.value || "").trim();
+      const value = String(row.value || "").trim() || slugifyOption(label);
+      return {
+        id: row.id || value,
+        label: label || value,
+        value,
+      };
+    })
+    .filter((row) => row.value && row.label);
+  return options.length ? options : fallback.map((entry) => ({
+    id: entry.id,
+    label: entry.label,
+    value: entry.id,
+    ratio: entry.ratio,
+  }));
+}
+
+export function slugifyOption(value) {
+  return String(value || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 80);
+}
+
+export function optionLabel(value, options = [], fallbacks = []) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const match =
+    options.find((row) => row.value === raw || row.id === raw || row.label === raw) ||
+    fallbacks.find((row) => row.id === raw || row.label === raw);
+  return match?.label || raw;
+}
+
+export function preserveOption(value, options, fallbacks = []) {
+  const raw = String(value || "").trim();
+  if (!raw) return options;
+  const known = options.some((row) => row.value === raw || row.id === raw || row.label === raw);
+  if (known) return options;
+  const fallback = fallbacks.find((row) => row.id === raw || row.label === raw);
+  return [...options, { id: raw, value: raw, label: fallback?.label || raw, ratio: fallback?.ratio }];
+}
+
+export function bannerCopyForHeadline(headline, headlines = BANNER_COPY) {
+  return headlines.find((entry) => entry.headline === headline || entry.value === headline) ?? headlines[0] ?? {
+    headline: "",
+    body: "",
+    cta: "",
+  };
+}
+
+export function placementRatio(placement, options = []) {
+  const raw = String(placement || "").toLowerCase();
+  const match = options.find((row) => row.value === placement || row.id === placement);
+  if (match?.ratio) return match.ratio;
+  if (raw.includes("21")) return "21:9";
+  if (raw.includes("app") || raw.includes("16")) return "16:9";
+  return "16:9";
+}
+
+export function bannerPlacementById(id, options = BANNER_PLACEMENTS) {
+  const raw = String(id || "").trim();
+  const match =
+    options.find((row) => row.id === raw || row.value === raw || row.label === raw) ||
+    BANNER_PLACEMENTS.find((row) => row.id === raw);
+  return {
+    id: match?.id || match?.value || raw || BANNER_PLACEMENTS[0].id,
+    label: match?.label || raw || BANNER_PLACEMENTS[0].label,
+    ratio: match?.ratio || placementRatio(raw, options),
+  };
 }
 
 export function asCopyString(value) {

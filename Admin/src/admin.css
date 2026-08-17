@@ -33288,6 +33288,8 @@
 }
 
 .updated-admin .ua-cfg-bn-drop {
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -33304,6 +33306,26 @@
 .updated-admin .ua-cfg-bn-drop.is-filled {
   border-style: solid;
   background: linear-gradient(135deg, #dbeafe 0%, #fed7aa 100%);
+}
+
+.updated-admin .ua-cfg-bn-drop__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.updated-admin .ua-cfg-bn-drop.is-filled p,
+.updated-admin .ua-cfg-bn-drop.is-filled .ua-cfg-btn {
+  position: relative;
+  z-index: 1;
+}
+
+.updated-admin .ua-cfg-bn-drop.is-filled p {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
 }
 
 .updated-admin .ua-cfg-bn-drop__icon {
@@ -33339,13 +33361,18 @@
 
 .updated-admin .ua-cfg-bn-live__row {
   display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) auto auto auto auto auto;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto auto auto auto auto;
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
   border: 1px solid #edf1f7;
   border-radius: 10px;
   background: #fff;
+}
+
+.updated-admin .ua-cfg-bn-live__row.is-selected {
+  border-color: #c9d0f5;
+  background: #f7f8ff;
 }
 
 .updated-admin .ua-cfg-bn-live__handle {
@@ -33356,8 +33383,20 @@
 .updated-admin .ua-cfg-bn-live__thumb {
   width: 36px;
   height: 22px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
   border-radius: 4px;
   background: #e8eef6;
+  cursor: pointer;
+}
+
+.updated-admin .ua-cfg-bn-live__thumb img,
+.updated-admin .ua-cfg-bn-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .updated-admin .ua-cfg-bn-live__row strong {
@@ -33414,6 +33453,8 @@
 }
 
 .updated-admin .ua-cfg-bn-preview__banner {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -33423,6 +33464,14 @@
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.12em;
+}
+
+.updated-admin .ua-cfg-bn-preview__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .updated-admin .ua-cfg-bn-preview__banner.is-on {
@@ -33452,6 +33501,8 @@
 }
 
 .updated-admin .ua-cfg-bn-thumb {
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;

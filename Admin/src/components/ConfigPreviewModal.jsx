@@ -1163,7 +1163,9 @@ function VoicePreview({ editor = {}, items = [], heading = "Voice of Healing" })
 
 function BannerPreview({ editor = {}, surface, item }) {
   const placement = bannerPlacementById(editor.placement);
-  const uploaded = surface === "app" ? editor.uploaded || editor.mobileUploaded : editor.uploaded || editor.webUploaded;
+  const image = surface === "app"
+    ? (editor.mobilePreview || editor.mobileImage || editor.imagePreview || editor.image)
+    : (editor.imagePreview || editor.image);
   const headline = typeof editor.headline === "string" ? editor.headline : "Banner";
   const body = asCopyString(editor.body);
 
@@ -1174,7 +1176,9 @@ function BannerPreview({ editor = {}, surface, item }) {
         <strong>{headline}</strong>
         <span className="ua-cfg-pt-live-preview__url">{placement.label}</span>
       </div>
-      <div className={`ua-cfg-bn-preview__banner${uploaded ? " is-on" : ""}`}>BANNER</div>
+      <div className={`ua-cfg-bn-preview__banner${image ? " is-on" : ""}`}>
+        {image ? <img className="ua-cfg-bn-preview__img" src={image} alt="" /> : "BANNER"}
+      </div>
       {body ? <p className="ua-cfg-ft-preview__copy">{body}</p> : null}
     </div>
   );

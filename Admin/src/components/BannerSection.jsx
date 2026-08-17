@@ -1,16 +1,25 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  adminCreateBanner,
+  adminDeleteBanner,
+  adminListBanners,
+  adminReorderBanners,
+  adminUpdateBanner,
+  editorFromBanner,
+} from "../api/bannerApi.js";
+import { adminListConfigDropdowns } from "../api/configDropdownApi.js";
 import {
   BANNER_COPY,
-  BANNER_GALLERY_OWNERS,
   BANNER_PLACEMENTS,
   BANNER_TYPES,
   asCopyString,
-  bannerCopyForHeadline,
   bannerPlacementById,
+  emptyBannerEditor,
+  mapDropdownOptions,
+  preserveOption,
 } from "../data/bannerConfigData.js";
-import { adminListConfigDropdowns } from "../api/configDropdownApi.js";
-
-const CROP_RATIOS = ["Original", "1:1", "4:3", "3:4", "16:9"];
+import { ConfirmDialog } from "./ConfirmDialog.jsx";
+import { ImageCropModal } from "./ImageCropModal.jsx";
 
 function Panel({ title, subtitle, actions, children, className = "" }) {
   return (
@@ -27,81 +36,15 @@ function Panel({ title, subtitle, actions, children, className = "" }) {
   );
 }
 
-function UploadConfirmModal({ open, label, onClose, onConfirm }) {
-  const [ratio, setRatio] = useState("Original");
-  const [zoom, setZoom] = useState(100);
-
-  useEffect(() => {
-    if (!open) return undefined;
-    setRatio("Original");
-    setZoom(100);
-    return undefined;
-  }, [open]);
-
-  if (!open) return null;
-
-  return (
-    <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={onClose} role="presentation">
-      <div className="ua-cfg-mv-upload-modal ua-cfg-pt-upload-modal" onClick={(event) => event.stopPropagation()} role="dialog">
-        <div className="ua-cfg-mv-upload-modal__head">
-          <div>
-            <h3 className="ua-cfg-mv-upload-modal__title">
-              <span aria-hidden="true">✂</span> Confirm upload
-            </h3>
-            <p className="ua-cfg-mv-upload-modal__sub">{label} · set the crop, ratio and zoom before it is attached</p>
-          </div>
-          <button type="button" className="ua-cfg-mv-upload-modal__close" aria-label="Close" onClick={onClose}>×</button>
-        </div>
-        <div className="ua-cfg-mv-upload-modal__ratios">
-          {CROP_RATIOS.map((entry) => (
-            <button
-              key={entry}
-              type="button"
-              className={`ua-cfg-mv-upload-modal__ratio${ratio === entry ? " is-active" : ""}`}
-              onClick={() => setRatio(entry)}
-            >
-              {entry}
-            </button>
-          ))}
-        </div>
-        <div className="ua-cfg-mv-upload-modal__crop">
-          <div className="ua-cfg-mv-upload-modal__crop-inner ua-cfg-pt-crop" style={{ transform: `scale(${zoom / 100})` }}>
-            <span className="ua-cfg-mv-upload-modal__grid" aria-hidden="true" />
-          </div>
-        </div>
-        <div className="ua-cfg-mv-upload-modal__frameworks">
-          <span className="ua-cfg-mv-upload-modal__frameworks-label">How it will sit in your frameworks</span>
-          <div className="ua-cfg-mv-upload-modal__frameworks-row">
-            <div className="ua-cfg-mv-upload-modal__framework ua-cfg-mv-upload-modal__framework--web">
-              <span>Web</span>
-              <div />
-            </div>
-            <div className="ua-cfg-mv-upload-modal__framework ua-cfg-mv-upload-modal__framework--app is-active">
-              <span>App</span>
-              <div />
-            </div>
-          </div>
-        </div>
-        <div className="ua-cfg-mv-upload-modal__zoom">
-          <button type="button" className="ua-cfg-mv-upload-modal__zoom-btn" onClick={() => setZoom((value) => Math.max(50, value - 10))}>−</button>
-          <input type="range" min={50} max={150} value={zoom} onChange={(event) => setZoom(Number(event.target.value))} />
-          <button type="button" className="ua-cfg-mv-upload-modal__zoom-btn" onClick={() => setZoom((value) => Math.min(150, value + 10))}>+</button>
-          <span className="ua-cfg-mv-upload-modal__zoom-value">{zoom}%</span>
-          <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm" onClick={() => { setRatio("Original"); setZoom(100); }}>Reset</button>
-        </div>
-        <div className="ua-cfg-mv-upload-modal__foot">
-          <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose}>Discard</button>
-          <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" onClick={onConfirm}>Confirm &amp; attach</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function DropZone({ label, hint, uploaded, onUpload }) {
+function DropZone({ label, hint, previewUrl, onUpload }) {
+  const uploaded = Boolean(previewUrl);
   return (
     <div className={`ua-cfg-bn-drop${uploaded ? " is-filled" : ""}`}>
-      <span className="ua-cfg-bn-drop__icon" aria-hidden="true">{uploaded ? "🖼" : "▢"}</span>
+      {uploaded ? (
+        <img className="ua-cfg-bn-drop__img" src={previewUrl} alt="" />
+      ) : (
+        <span className="ua-cfg-bn-drop__icon" aria-hidden="true">▢</span>
+      )}
       <p>{uploaded ? "Banner attached" : hint}</p>
       <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm" onClick={onUpload}>
         {uploaded ? "Replace" : label}
@@ -110,176 +53,326 @@ function DropZone({ label, hint, uploaded, onUpload }) {
   );
 }
 
-function GalleryPanel({ gallery, setGallery, onToast, onUpload }) {
-  const [search, setSearch] = useState("");
-  const [owner, setOwner] = useState("All owners");
-  const [selected, setSelected] = useState([]);
-
-  const filtered = useMemo(() => {
-    return gallery.filter((entry) => {
-      const matchesSearch = entry.title.toLowerCase().includes(search.trim().toLowerCase());
-      const matchesOwner = owner === "All owners" || entry.owner === owner;
-      return matchesSearch && matchesOwner;
-    });
-  }, [gallery, owner, search]);
-
-  const selectedLive = selected.some((id) => gallery.find((entry) => entry.id === id)?.live);
-
-  return (
-    <Panel
-      title="Gallery"
-      subtitle="Assets uploaded for this section — filter by owner or date, reuse, download or delete. Live assets must be unmarked first."
-      actions={
-        <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" onClick={onUpload}>
-          + Upload media
-        </button>
-      }
-    >
-      <div className="ua-cfg-mv-gallery__filters">
-        <input
-          type="search"
-          className="ua-cfg-mv-gallery__search"
-          placeholder="Search media by name"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
-        <select className="ua-cfg-mv-gallery__select" value={owner} onChange={(event) => setOwner(event.target.value)}>
-          {BANNER_GALLERY_OWNERS.map((entry) => (
-            <option key={entry} value={entry}>{entry}</option>
-          ))}
-        </select>
-        <input type="date" className="ua-cfg-mv-gallery__date" aria-label="From date" />
-        <input type="date" className="ua-cfg-mv-gallery__date" aria-label="To date" />
-      </div>
-
-      <div className="ua-cfg-mv-gallery__bar">
-        <span>{filtered.length} of {gallery.length} items</span>
-        {selected.length ? (
-          <div className="ua-cfg-mv-gallery__selection">
-            <span>{selected.length} selected</span>
-            <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" onClick={() => onToast("Download started")}>
-              Download
-            </button>
-            <button
-              type="button"
-              className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm"
-              disabled={selectedLive}
-              onClick={() => {
-                if (selectedLive) {
-                  onToast("Unmark live assets first");
-                  return;
-                }
-                setGallery((prev) => prev.filter((entry) => !selected.includes(entry.id)));
-                setSelected([]);
-                onToast("Deleted selected items");
-              }}
-            >
-              Delete
-            </button>
-            <button type="button" className="ua-cfg-icon-btn" aria-label="Clear selection" onClick={() => setSelected([])}>×</button>
-          </div>
-        ) : null}
-      </div>
-
-      <div className="ua-cfg-mv-gallery__grid">
-        {filtered.map((entry) => {
-          const isSelected = selected.includes(entry.id);
-          return (
-            <article key={entry.id} className={`ua-cfg-mv-gallery-card${isSelected ? " is-selected" : ""}`}>
-              <div className="ua-cfg-mv-gallery-card__thumb ua-cfg-bn-thumb">
-                <label className="ua-cfg-mv-gallery-card__check">
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => setSelected((prev) => (prev.includes(entry.id) ? prev.filter((id) => id !== entry.id) : [...prev, entry.id]))}
-                  />
-                </label>
-                <span className="ua-cfg-mv-gallery-card__type ua-cfg-bn-badge">Banner</span>
-                <span className="ua-cfg-bn-thumb__mark" aria-hidden="true">🖼</span>
-                <span className="ua-cfg-gl-card__placeholder">Banner image</span>
-              </div>
-              <div className="ua-cfg-mv-gallery-card__body">
-                <strong>{entry.title}</strong>
-                <span>{entry.owner} · {entry.date}</span>
-                <span>{entry.size} · {entry.versions} versions</span>
-              </div>
-              <div className="ua-cfg-mv-gallery-card__live">
-                <span className={`ua-cfg-mv-gallery-card__status${entry.live ? " is-live" : ""}`}>
-                  {entry.live ? "Live" : "Not live"}
-                </span>
-                <button
-                  type="button"
-                  className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
-                  aria-pressed={entry.live}
-                  onClick={() => setGallery((prev) => prev.map((row) => (row.id === entry.id ? { ...row, live: !row.live } : row)))}
-                >
-                  <span className="ua-toggle__knob" />
-                </button>
-              </div>
-              <div className="ua-cfg-mv-gallery-card__actions">
-                <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" onClick={() => onToast("History opened")}>
-                  History
-                </button>
-                <button type="button" className="ua-cfg-icon-btn" aria-label="Download" onClick={() => onToast("Download started")}>↓</button>
-                <button
-                  type="button"
-                  className={`ua-cfg-icon-btn${entry.live ? "" : " ua-cfg-icon-btn--danger"}`}
-                  aria-label="Delete"
-                  disabled={entry.live}
-                  onClick={() => {
-                    setGallery((prev) => prev.filter((row) => row.id !== entry.id));
-                    setSelected((prev) => prev.filter((id) => id !== entry.id));
-                    onToast("Asset deleted");
-                  }}
-                >
-                  🗑
-                </button>
-              </div>
-            </article>
-          );
-        })}
-      </div>
-    </Panel>
-  );
+function BannerImage({ src, className }) {
+  if (!src) return null;
+  return <img className={className} src={src} alt="" />;
 }
 
-export function BannerSection({ editor, setEditor, items, setItems, gallery, setGallery, onToast }) {
-  const [uploadKind, setUploadKind] = useState(null);
-  const [bannerTypes, setBannerTypes] = useState(BANNER_TYPES);
-  const placement = bannerPlacementById(editor.placement);
+export function BannerSection({ editor, setEditor, items, setItems, onToast }) {
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [bannerTypes, setBannerTypes] = useState(BANNER_TYPES.map((row) => ({ ...row, value: row.id })));
+  const [placements, setPlacements] = useState(BANNER_PLACEMENTS.map((row) => ({ ...row, value: row.id })));
+  const [headlines, setHeadlines] = useState(BANNER_COPY.map((row) => ({
+    id: row.headline,
+    value: row.headline,
+    label: row.headline,
+    body: row.body,
+    cta: row.cta,
+  })));
+  const [cropPending, setCropPending] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const [galleryQuery, setGalleryQuery] = useState("");
+  const fileInputRef = useRef(null);
+  const cropKindRef = useRef("banner");
+  const creatingRef = useRef(false);
+  creatingRef.current = creating;
+
   const bodyText = asCopyString(editor.body);
+  const typeOptions = preserveOption(editor.type, bannerTypes, BANNER_TYPES);
+  const placementOptions = preserveOption(editor.placement, placements, BANNER_PLACEMENTS);
+  const placement = bannerPlacementById(editor.placement, placementOptions);
+  const webPreview = editor.imagePreview || editor.image;
+  const mobilePreview = editor.mobilePreview || editor.mobileImage || webPreview;
+  const headlineOptions = useMemo(() => {
+    const current = String(editor.headline || "").trim();
+    if (!current || headlines.some((row) => row.label === current || row.value === current)) return headlines;
+    return [...headlines, { id: current, value: current, label: current }];
+  }, [editor.headline, headlines]);
+  const headlineValue = headlines.find((row) => row.label === editor.headline || row.value === editor.headline)?.value
+    || editor.headline
+    || "";
+
+  const loadDropdowns = useCallback(async () => {
+    try {
+      const { lists } = await adminListConfigDropdowns(null, { limit: 80 });
+      const bySlug = new Map((lists || []).map((row) => [row.slug, row]));
+      const types = mapDropdownOptions(bySlug.get("banner-type"), BANNER_TYPES);
+      const places = mapDropdownOptions(bySlug.get("banner-placement"), BANNER_PLACEMENTS);
+      const copy = mapDropdownOptions(bySlug.get("banner-headline"), BANNER_COPY.map((row) => ({
+        id: row.headline,
+        label: row.headline,
+      })));
+      if (types.length) setBannerTypes(types);
+      if (places.length) setPlacements(places);
+      if (copy.length) {
+        setHeadlines(copy.map((row) => ({
+          ...row,
+          body: BANNER_COPY.find((entry) => entry.headline === row.label)?.body || "",
+          cta: BANNER_COPY.find((entry) => entry.headline === row.label)?.cta || "",
+        })));
+      }
+      setEditor((prev) => ({
+        ...prev,
+        type: prev.type || types[0]?.value || "main",
+        placement: prev.placement || places[0]?.value || "",
+      }));
+    } catch {
+      /* keep static fallbacks */
+    }
+  }, [setEditor]);
+
+  const loadItems = useCallback(async () => {
+    setLoading(true);
+    try {
+      const result = await adminListBanners(null, { page: 1, limit: 100 });
+      const next = result.items || [];
+      setItems(next);
+      setEditor((prev) => {
+        if (creatingRef.current) return prev;
+        const selected = next.find((row) => row.id === prev.id) || next[0];
+        if (!selected) return { ...emptyBannerEditor(), type: prev.type, placement: prev.placement };
+        return editorFromBanner(selected, emptyBannerEditor());
+      });
+    } catch (error) {
+      setItems([]);
+      onToast(error?.message || "Could not load banners");
+    } finally {
+      setLoading(false);
+    }
+  }, [onToast, setEditor, setItems]);
 
   useEffect(() => {
-    let cancelled = false;
-    adminListConfigDropdowns(null, { limit: 50 })
-      .then(({ lists }) => {
-        if (cancelled) return;
-        const list = (lists || []).find((row) => row.slug === "banner-type");
-        const opts = (list?.options || [])
-          .filter((row) => row.on)
-          .map((row) => ({ id: row.value || row.id, label: row.label }));
-        if (opts.length) setBannerTypes(opts);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    loadDropdowns();
+  }, [loadDropdowns]);
+
+  useEffect(() => {
+    loadItems();
+  }, [loadItems]);
+
+  useEffect(() => () => {
+    if (cropPending?.previewUrl) URL.revokeObjectURL(cropPending.previewUrl);
+  }, [cropPending?.previewUrl]);
 
   function patch(next) {
     setEditor((prev) => ({ ...prev, ...next }));
   }
 
-  function moveItem(index, direction) {
-    const next = index + direction;
-    if (next < 0 || next >= items.length) return;
-    setItems((prev) => {
-      const copy = [...prev];
-      const [row] = copy.splice(index, 1);
-      copy.splice(next, 0, row);
-      return copy;
+  function startCreate() {
+    setCreating(true);
+    setEditor({
+      ...emptyBannerEditor(),
+      type: bannerTypes[0]?.value || "main",
+      placement: placements[0]?.value || "",
     });
   }
+
+  function selectItem(item) {
+    setCreating(false);
+    setEditor(editorFromBanner(item, emptyBannerEditor()));
+  }
+
+  function openFilePicker(kind) {
+    cropKindRef.current = kind;
+    fileInputRef.current?.click();
+  }
+
+  function onPickFile(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!String(file.type || "").startsWith("image/")) {
+      onToast("Choose an image file");
+      return;
+    }
+    if (cropPending?.previewUrl) URL.revokeObjectURL(cropPending.previewUrl);
+    setCropPending({
+      kind: cropKindRef.current,
+      file,
+      previewUrl: URL.createObjectURL(file),
+    });
+  }
+
+  function closeCrop() {
+    if (cropPending?.previewUrl) URL.revokeObjectURL(cropPending.previewUrl);
+    setCropPending(null);
+  }
+
+  async function confirmCrop(croppedFile, cropError) {
+    if (cropError) {
+      onToast(cropError.message || "Failed to crop image");
+      return;
+    }
+    if (!croppedFile || !cropPending) return;
+    const kind = cropPending.kind;
+    closeCrop();
+    const preview = URL.createObjectURL(croppedFile);
+    if (!editor.id) {
+      if (kind === "mobile") {
+        if (editor.mobilePreview?.startsWith("blob:")) URL.revokeObjectURL(editor.mobilePreview);
+        patch({ mobileFile: croppedFile, mobilePreview: preview, mobileUploaded: true });
+      } else if (kind === "web") {
+        if (editor.imagePreview?.startsWith("blob:")) URL.revokeObjectURL(editor.imagePreview);
+        patch({ imageFile: croppedFile, imagePreview: preview, webUploaded: true, uploaded: true });
+      } else {
+        if (editor.imagePreview?.startsWith("blob:")) URL.revokeObjectURL(editor.imagePreview);
+        if (editor.mobilePreview?.startsWith("blob:")) URL.revokeObjectURL(editor.mobilePreview);
+        patch({
+          imageFile: croppedFile,
+          mobileFile: null,
+          imagePreview: preview,
+          mobilePreview: "",
+          uploaded: true,
+          webUploaded: true,
+          mobileUploaded: true,
+        });
+      }
+      onToast("Banner attached");
+      return;
+    }
+    setBusy(true);
+    try {
+      const files = kind === "mobile" ? { mobileFile: croppedFile } : { imageFile: croppedFile };
+      const saved = await adminUpdateBanner(null, editor.id, {}, files);
+      selectItem(saved);
+      setItems((prev) => prev.map((row) => (row.id === saved.id ? saved : row)));
+      onToast(kind === "mobile" ? "Mobile banner updated" : "Banner image updated");
+    } catch (error) {
+      URL.revokeObjectURL(preview);
+      onToast(error?.message || "Could not update the banner image");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function editorPayload() {
+    return {
+      title: String(editor.headline || "").trim(),
+      description: String(bodyText || "").trim(),
+      type: editor.type,
+      placement: editor.placement,
+      cta: editor.cta,
+      ctaLink: editor.ctaLink,
+      split: editor.split,
+      appOn: editor.appOn,
+      webOn: editor.webOn,
+    };
+  }
+
+  async function saveEditor() {
+    const payload = editorPayload();
+    if (!payload.title || !payload.description) {
+      onToast("Add the headline and body copy");
+      return;
+    }
+    if (!payload.type) {
+      onToast("Pick a banner type from Configs → Dropdowns");
+      return;
+    }
+    if (!editor.id && !(editor.imageFile instanceof File) && !editor.image) {
+      onToast("Add a banner image");
+      return;
+    }
+    if (!editor.id && editor.split && !(editor.mobileFile instanceof File) && !editor.mobileImage) {
+      onToast("Add a mobile banner image");
+      return;
+    }
+    setBusy(true);
+    try {
+      if (!editor.id) {
+        const created = await adminCreateBanner(null, payload, {
+          imageFile: editor.imageFile,
+          mobileFile: editor.split ? editor.mobileFile : editor.imageFile,
+        });
+        setCreating(false);
+        onToast("Banner added");
+        await loadItems();
+        if (created?.id) selectItem(created);
+      } else {
+        const saved = await adminUpdateBanner(null, editor.id, payload);
+        setItems((prev) => prev.map((row) => (row.id === saved.id ? saved : row)));
+        selectItem(saved);
+        onToast("Banner saved");
+      }
+    } catch (error) {
+      onToast(error?.message || "Could not save banner");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function persistPatch(item, fields) {
+    if (!item?.id || busy) return;
+    const previous = items;
+    setItems((prev) => prev.map((row) => (row.id === item.id ? { ...row, ...fields } : row)));
+    if (editor.id === item.id) patch(fields);
+    try {
+      const saved = await adminUpdateBanner(null, item.id, fields);
+      setItems((prev) => prev.map((row) => (row.id === saved.id ? saved : row)));
+      if (editor.id === saved.id) {
+        patch({
+          appOn: saved.appOn,
+          webOn: saved.webOn,
+          image: saved.image,
+          mobileImage: saved.mobileImage,
+          uploaded: saved.uploaded,
+          webUploaded: saved.webUploaded,
+          mobileUploaded: saved.mobileUploaded,
+        });
+      }
+    } catch (error) {
+      setItems(previous);
+      onToast(error?.message || "Could not update banner");
+    }
+  }
+
+  async function moveItem(index, direction) {
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= items.length) return;
+    const ordered = [...items];
+    const [row] = ordered.splice(index, 1);
+    ordered.splice(nextIndex, 0, row);
+    setItems(ordered);
+    try {
+      const saved = await adminReorderBanners(null, ordered.map((entry) => entry.id));
+      if (saved?.length) setItems(saved);
+    } catch (error) {
+      onToast(error?.message || "Could not reorder banners");
+      loadItems();
+    }
+  }
+
+  async function deleteItem() {
+    if (!pendingDelete) return;
+    const item = pendingDelete;
+    setPendingDelete(null);
+    setBusy(true);
+    try {
+      await adminDeleteBanner(null, item.id);
+      onToast("Banner deleted");
+      await loadItems();
+    } catch (error) {
+      onToast(error?.message || "Could not delete banner");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const gallery = useMemo(() => (
+    items.map((entry) => ({
+      id: entry.id,
+      title: entry.title,
+      type: entry.type,
+      date: entry.updatedAt || entry.createdAt,
+      url: entry.image || entry.mobileImage,
+      live: entry.shown,
+    })).filter((entry) => entry.url)
+  ), [items]);
+
+  const filteredGallery = gallery.filter((entry) => (
+    entry.title.toLowerCase().includes(galleryQuery.trim().toLowerCase())
+  ));
 
   return (
     <div className="ua-cfg-bn">
@@ -291,7 +384,12 @@ export function BannerSection({ editor, setEditor, items, setItems, gallery, set
               type="button"
               className={`ua-toggle ua-toggle--sm${editor.appOn ? " ua-toggle--on" : ""}`}
               aria-pressed={editor.appOn}
-              onClick={() => patch({ appOn: !editor.appOn })}
+              disabled={busy}
+              onClick={() => {
+                const appOn = !editor.appOn;
+                if (editor.id) persistPatch({ id: editor.id }, { appOn });
+                else patch({ appOn });
+              }}
             >
               <span className="ua-toggle__knob" />
             </button>
@@ -302,7 +400,12 @@ export function BannerSection({ editor, setEditor, items, setItems, gallery, set
               type="button"
               className={`ua-toggle ua-toggle--sm${editor.webOn ? " ua-toggle--on" : ""}`}
               aria-pressed={editor.webOn}
-              onClick={() => patch({ webOn: !editor.webOn })}
+              disabled={busy}
+              onClick={() => {
+                const webOn = !editor.webOn;
+                if (editor.id) persistPatch({ id: editor.id }, { webOn });
+                else patch({ webOn });
+              }}
             >
               <span className="ua-toggle__knob" />
             </button>
@@ -314,12 +417,21 @@ export function BannerSection({ editor, setEditor, items, setItems, gallery, set
         <div className="ua-cfg-bn-editor">
           <label className="ua-cfg-bn-field">
             <span>Banner type</span>
-            <select value={editor.type} onChange={(event) => patch({ type: event.target.value })}>
-              {bannerTypes.map((entry) => (
-                <option key={entry.id} value={entry.id}>{entry.label}</option>
+            <select
+              className="ua-cfg-rc-cat"
+              value={editor.type}
+              disabled={busy}
+              onChange={(event) => patch({ type: event.target.value })}
+            >
+              {!typeOptions.length ? <option value="">No banner types</option> : null}
+              {typeOptions.map((entry) => (
+                <option key={entry.id || entry.value} value={entry.value}>{entry.label}</option>
               ))}
             </select>
           </label>
+          {!bannerTypes.length ? (
+            <p className="ua-cfg-panel__sub">Add banner types in Configs → Dropdowns first.</p>
+          ) : null}
 
           <div className="ua-cfg-bn-split">
             <span className="ua-cfg-bn-split__icon" aria-hidden="true">🖥</span>
@@ -331,6 +443,7 @@ export function BannerSection({ editor, setEditor, items, setItems, gallery, set
               type="button"
               className={`ua-toggle ua-toggle--sm${editor.split ? " ua-toggle--on" : ""}`}
               aria-pressed={editor.split}
+              disabled={busy}
               onClick={() => patch({ split: !editor.split })}
             >
               <span className="ua-toggle__knob" />
@@ -344,14 +457,14 @@ export function BannerSection({ editor, setEditor, items, setItems, gallery, set
                   <strong className="is-web">WEB</strong>
                   <span>Desktop · wide crop</span>
                 </div>
-                <DropZone label="Upload Web" hint="Web artwork" uploaded={editor.webUploaded} onUpload={() => setUploadKind("web")} />
+                <DropZone label="Upload Web" hint="Web artwork" previewUrl={webPreview} onUpload={() => openFilePicker("web")} />
               </div>
               <div>
                 <div className="ua-cfg-bn-split-drops__label">
                   <strong className="is-app">MOBILE</strong>
                   <span>Portrait · app crop</span>
                 </div>
-                <DropZone label="Upload Mobile" hint="Mobile artwork" uploaded={editor.mobileUploaded} onUpload={() => setUploadKind("mobile")} />
+                <DropZone label="Upload Mobile" hint="Mobile artwork" previewUrl={mobilePreview} onUpload={() => openFilePicker("mobile")} />
               </div>
             </div>
           ) : null}
@@ -361,9 +474,15 @@ export function BannerSection({ editor, setEditor, items, setItems, gallery, set
               Placement
               <em className="ua-cfg-bn-ratio">{placement.ratio}</em>
             </span>
-            <select value={editor.placement} onChange={(event) => patch({ placement: event.target.value })}>
-              {BANNER_PLACEMENTS.map((entry) => (
-                <option key={entry.id} value={entry.id}>{entry.label}</option>
+            <select
+              className="ua-cfg-rc-cat"
+              value={editor.placement}
+              disabled={busy}
+              onChange={(event) => patch({ placement: event.target.value })}
+            >
+              {!placementOptions.length ? <option value="">No placements</option> : null}
+              {placementOptions.map((entry) => (
+                <option key={entry.id || entry.value} value={entry.value}>{entry.label}</option>
               ))}
             </select>
           </label>
@@ -372,59 +491,97 @@ export function BannerSection({ editor, setEditor, items, setItems, gallery, set
             <DropZone
               label="Upload banner"
               hint={`Drop banner · ${placement.ratio}`}
-              uploaded={editor.uploaded}
-              onUpload={() => setUploadKind("banner")}
+              previewUrl={webPreview}
+              onUpload={() => openFilePicker("banner")}
             />
           ) : null}
 
           <div className="ua-cfg-bn-copy">
             <span>Banner copy</span>
             <select
-              value={editor.headline}
+              className="ua-cfg-rc-cat"
+              value={headlineValue}
+              disabled={busy}
               onChange={(event) => {
-                const copy = bannerCopyForHeadline(event.target.value);
-                patch({ headline: copy.headline, body: copy.body, cta: copy.cta });
+                const copy = headlineOptions.find((row) => row.value === event.target.value || row.label === event.target.value);
+                patch({
+                  headline: copy?.label || event.target.value,
+                  body: copy?.body || editor.body,
+                  cta: copy?.cta || editor.cta,
+                });
               }}
             >
-              {BANNER_COPY.map((entry) => (
-                <option key={entry.headline} value={entry.headline}>{entry.headline}</option>
+              {!headlineOptions.length ? <option value="">No headlines</option> : null}
+              {headlineOptions.map((entry) => (
+                <option key={entry.id || entry.value} value={entry.value}>{entry.label}</option>
               ))}
             </select>
+            <input
+              className="ua-cfg-vh-input"
+              type="text"
+              placeholder="Headline"
+              value={typeof editor.headline === "string" ? editor.headline : ""}
+              disabled={busy}
+              onChange={(event) => patch({ headline: event.target.value })}
+            />
             <textarea
+              className="ua-cfg-tf-story"
               rows={4}
+              placeholder="Banner body copy"
               value={bodyText}
+              disabled={busy}
               onChange={(event) => patch({ body: event.target.value })}
             />
             <input
+              className="ua-cfg-vh-input"
               type="text"
               value={typeof editor.cta === "string" ? editor.cta : ""}
+              disabled={busy}
               onChange={(event) => patch({ cta: event.target.value })}
               placeholder="Call to action"
             />
+            <input
+              className="ua-cfg-vh-input"
+              type="text"
+              value={typeof editor.ctaLink === "string" ? editor.ctaLink : ""}
+              disabled={busy}
+              onChange={(event) => patch({ ctaLink: event.target.value })}
+              placeholder="CTA link · https://…"
+            />
             <div className="ua-cfg-bn-copy__actions">
-              <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={() => setUploadKind("banner")}>
+              <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" disabled={busy} onClick={() => openFilePicker(editor.split ? "web" : "banner")}>
                 Upload image
               </button>
               <button
                 type="button"
                 className="ua-cfg-btn ua-cfg-btn--primary"
-                onClick={() => {
-                  patch({ uploaded: true });
-                  onToast("Banner image replaced");
-                }}
+                disabled={busy}
+                onClick={saveEditor}
               >
-                Replace
+                {busy ? "Saving…" : editor.id ? "Save banner" : "Add banner"}
               </button>
             </div>
           </div>
         </div>
 
-        <Panel title="Live in this placement">
+        <Panel
+          title="Live in this placement"
+          subtitle={loading ? "Loading banners…" : `${items.length} banners`}
+          actions={(
+            <button type="button" className="ua-cfg-rc-add" disabled={busy} onClick={startCreate}>
+              + Add banner
+            </button>
+          )}
+        >
           <div className="ua-cfg-bn-live">
             {items.map((entry, index) => (
-              <article key={entry.id} className="ua-cfg-bn-live__row">
+              <article key={entry.id} className={`ua-cfg-bn-live__row${entry.id === editor.id ? " is-selected" : ""}`}>
                 <span className="ua-cfg-bn-live__handle" aria-hidden="true">⠿</span>
-                <span className="ua-cfg-bn-live__thumb" aria-hidden="true" />
+                <button type="button" className="ua-cfg-bn-live__thumb" onClick={() => selectItem(entry)}>
+                  {entry.image || entry.mobileImage ? (
+                    <img src={entry.image || entry.mobileImage} alt="" />
+                  ) : null}
+                </button>
                 <strong>{entry.title}</strong>
                 <span className={`ua-cfg-faq__shown${entry.shown ? " is-on" : ""}`}>
                   {entry.shown ? "Shown" : "Hidden"}
@@ -433,15 +590,18 @@ export function BannerSection({ editor, setEditor, items, setItems, gallery, set
                   type="button"
                   className={`ua-toggle ua-toggle--sm${entry.shown ? " ua-toggle--on" : ""}`}
                   aria-pressed={entry.shown}
-                  onClick={() => setItems((prev) => prev.map((row) => (row.id === entry.id ? { ...row, shown: !row.shown } : row)))}
+                  disabled={busy}
+                  onClick={() => persistPatch(entry, { shown: !entry.shown })}
                 >
                   <span className="ua-toggle__knob" />
                 </button>
                 <span className="ua-cfg-bn-live__rank">#{index + 1}</span>
-                <button type="button" className="ua-cfg-icon-btn" aria-label="Move up" onClick={() => moveItem(index, -1)}>↑</button>
-                <button type="button" className="ua-cfg-icon-btn" aria-label="Move down" onClick={() => moveItem(index, 1)}>↓</button>
+                <button type="button" className="ua-cfg-icon-btn" aria-label="Move up" disabled={index === 0 || busy} onClick={() => moveItem(index, -1)}>↑</button>
+                <button type="button" className="ua-cfg-icon-btn" aria-label="Move down" disabled={index === items.length - 1 || busy} onClick={() => moveItem(index, 1)}>↓</button>
+                <button type="button" className="ua-cfg-icon-btn" aria-label={`Delete ${entry.title}`} disabled={busy} onClick={() => setPendingDelete(entry)}>×</button>
               </article>
             ))}
+            {!loading && !items.length ? <p className="ua-cfg-panel__sub">No banners yet.</p> : null}
           </div>
         </Panel>
       </div>
@@ -460,7 +620,9 @@ export function BannerSection({ editor, setEditor, items, setItems, gallery, set
                 <strong>India Redefining Wellness</strong>
                 <em>irwellness.in</em>
               </div>
-              <div className={`ua-cfg-bn-preview__banner${editor.uploaded || editor.webUploaded ? " is-on" : ""}`}>BANNER</div>
+              <div className={`ua-cfg-bn-preview__banner${webPreview ? " is-on" : ""}`}>
+                {webPreview ? <BannerImage src={webPreview} className="ua-cfg-bn-preview__img" /> : "BANNER"}
+              </div>
             </div>
           </div>
           <div className="ua-cfg-bn-preview__app">
@@ -471,30 +633,98 @@ export function BannerSection({ editor, setEditor, items, setItems, gallery, set
                 <strong>Good morning</strong>
                 <span aria-hidden="true">🔔</span>
               </div>
-              <div className={`ua-cfg-bn-preview__banner ua-cfg-bn-preview__banner--app${editor.uploaded || editor.mobileUploaded ? " is-on" : ""}`}>BANNER</div>
+              <div className={`ua-cfg-bn-preview__banner ua-cfg-bn-preview__banner--app${mobilePreview ? " is-on" : ""}`}>
+                {mobilePreview ? <BannerImage src={mobilePreview} className="ua-cfg-bn-preview__img" /> : "BANNER"}
+              </div>
             </div>
           </div>
         </div>
       </Panel>
 
-      <GalleryPanel
-        gallery={gallery}
-        setGallery={setGallery}
-        onToast={onToast}
-        onUpload={() => setUploadKind("gallery")}
+      <Panel
+        title="Gallery"
+        subtitle="Images attached to banners in this section. Live banners must be unmarked first."
+      >
+        <div className="ua-cfg-mv-gallery__filters">
+          <input
+            type="search"
+            className="ua-cfg-mv-gallery__search"
+            placeholder="Search media by name"
+            value={galleryQuery}
+            onChange={(event) => setGalleryQuery(event.target.value)}
+          />
+        </div>
+        <div className="ua-cfg-mv-gallery__bar">
+          <span>{filteredGallery.length} of {gallery.length} items</span>
+        </div>
+        <div className="ua-cfg-mv-gallery__grid">
+          {filteredGallery.map((entry) => (
+            <article key={entry.id} className="ua-cfg-mv-gallery-card">
+              <div className="ua-cfg-mv-gallery-card__thumb ua-cfg-bn-thumb">
+                {entry.url ? <img src={entry.url} alt="" /> : <span className="ua-cfg-bn-thumb__mark" aria-hidden="true">🖼</span>}
+                <span className="ua-cfg-mv-gallery-card__type ua-cfg-bn-badge">Banner</span>
+              </div>
+              <div className="ua-cfg-mv-gallery-card__body">
+                <strong>{entry.title}</strong>
+                <span>{entry.date ? new Date(entry.date).toLocaleDateString("en-IN") : "—"}</span>
+              </div>
+              <div className="ua-cfg-mv-gallery-card__live">
+                <span className={`ua-cfg-mv-gallery-card__status${entry.live ? " is-live" : ""}`}>
+                  {entry.live ? "Live" : "Not live"}
+                </span>
+                <button
+                  type="button"
+                  className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
+                  aria-pressed={entry.live}
+                  disabled={busy}
+                  onClick={() => persistPatch({ id: entry.id }, { shown: !entry.live })}
+                >
+                  <span className="ua-toggle__knob" />
+                </button>
+              </div>
+              <div className="ua-cfg-mv-gallery-card__actions">
+                <a className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" href={entry.url} target="_blank" rel="noreferrer">
+                  Open
+                </a>
+                <button
+                  type="button"
+                  className={`ua-cfg-icon-btn${entry.live ? "" : " ua-cfg-icon-btn--danger"}`}
+                  aria-label="Delete"
+                  disabled={entry.live || busy}
+                  onClick={() => setPendingDelete(items.find((row) => row.id === entry.id))}
+                >
+                  🗑
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </Panel>
+
+      <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={onPickFile} />
+
+      <ImageCropModal
+        open={Boolean(cropPending)}
+        label="banner"
+        file={cropPending?.file}
+        previewUrl={cropPending?.previewUrl || ""}
+        busy={busy}
+        defaultRatio="Original"
+        originalAspectCss="16 / 9"
+        originalAspectNumber={16 / 9}
+        onClose={closeCrop}
+        onConfirm={confirmCrop}
       />
 
-      <UploadConfirmModal
-        open={Boolean(uploadKind)}
-        label="banner"
-        onClose={() => setUploadKind(null)}
-        onConfirm={() => {
-          if (uploadKind === "web") patch({ webUploaded: true });
-          else if (uploadKind === "mobile") patch({ mobileUploaded: true });
-          else patch({ uploaded: true });
-          setUploadKind(null);
-          onToast("Banner attached");
-        }}
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        tag="Banner"
+        title={`Delete ${pendingDelete?.title || "this banner"}?`}
+        body="This permanently removes the banner and its uploaded images."
+        confirmLabel="Delete"
+        confirmTone="danger"
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={deleteItem}
       />
     </div>
   );

@@ -63,7 +63,7 @@ import { CONTACT_DETAILS } from "../data/contactConfigData.js";
 import { FOOTER_TEXT_BLOCKS } from "../data/footerTextConfigData.js";
 import { createDefaultLogoSlots } from "../data/logoConfigData.js";
 import { LOCATIONS } from "../data/locationConfigData.js";
-import { BANNER_EDITOR, BANNER_GALLERY, BANNER_LIVE_ITEMS } from "../data/bannerConfigData.js";
+import { emptyBannerEditor } from "../data/bannerConfigData.js";
 import { CHAMPION_EDITOR, CHAMPION_GALLERY } from "../data/championConfigData.js";
 import { BIRTHDAY_EDITOR, BIRTHDAY_GALLERY, BIRTHDAY_QUEUE } from "../data/birthdayConfigData.js";
 import {
@@ -880,9 +880,8 @@ export function ConfigDetailPage() {
   const [footerTextBlocks, setFooterTextBlocks] = useState(FOOTER_TEXT_BLOCKS);
   const [logoSlots, setLogoSlots] = useState(createDefaultLogoSlots);
   const [locations, setLocations] = useState(LOCATIONS);
-  const [bannerEditor, setBannerEditor] = useState(BANNER_EDITOR);
-  const [bannerItems, setBannerItems] = useState(BANNER_LIVE_ITEMS);
-  const [bannerGallery, setBannerGallery] = useState(BANNER_GALLERY);
+  const [bannerEditor, setBannerEditor] = useState(() => emptyBannerEditor());
+  const [bannerItems, setBannerItems] = useState([]);
   const [championEditor, setChampionEditor] = useState(CHAMPION_EDITOR);
   const [championGallery, setChampionGallery] = useState(CHAMPION_GALLERY);
   const [birthdayEditor, setBirthdayEditor] = useState(BIRTHDAY_EDITOR);
@@ -1027,7 +1026,7 @@ export function ConfigDetailPage() {
               : item.id === "web-location"
                 ? locations.some((entry) => entry.live)
               : item.id === "common-banner"
-                ? bannerEditor.appOn || bannerEditor.webOn
+                ? bannerItems.some((entry) => entry.shown && (entry.appOn || entry.webOn))
               : item.id === "common-champion"
                 ? championEditor.appOn || championEditor.webOn
               : item.id === "common-birthday"
@@ -1402,8 +1401,6 @@ export function ConfigDetailPage() {
             setEditor={setBannerEditor}
             items={bannerItems}
             setItems={setBannerItems}
-            gallery={bannerGallery}
-            setGallery={setBannerGallery}
             onToast={onToast}
           />
         );

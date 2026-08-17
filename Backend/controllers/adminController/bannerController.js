@@ -12,6 +12,10 @@ const {
   updateBanner,
   deleteBanner,
   listBanners,
+  reorderBanners,
+  parseBool,
+  normalizePlacement,
+  normalizeCtaLink,
 } = require("../../models/bannerModel");
 const { getActiveDropdownValues } = require("../../models/configDropdownModel");
 
@@ -78,24 +82,29 @@ exports.createBannerController = asyncHandler(async (req, res) => {
   }
   if (!title) throw new AppError("title is required", 400);
   if (!description) throw new AppError("description is required", 400);
-  if (!mobileImage) throw new AppError("mobileImage is required", 400);
-  // Wellnesspedia banners are mobile-only; desktop image is optional and falls back to mobile
-  if (bannerType !== "wellnesspedia" && !image) {
-    throw new AppError("image is required", 400);
-  }
+  if (!image && !mobileImage) throw new AppError("image is required", 400);
   if (!["active", "inactive"].includes(status)) {
     throw new AppError("status must be active or inactive", 400);
   }
 
   const resolvedImage = image || mobileImage;
+  const resolvedMobile = mobileImage || image;
+  const placement = normalizePlacement(req.body.placement, "");
 
   const banner = await createBanner({
     title,
     description,
     image: resolvedImage,
-    mobileImage,
+    mobileImage: resolvedMobile,
     status,
     bannerType,
+    placement,
+    ctaLabel: String(req.body.ctaLabel || req.body.cta || "").trim(),
+    ctaLink: normalizeCtaLink(req.body.ctaLink),
+    split: parseBool(req.body.split, Boolean(image && mobileImage && image !== mobileImage)),
+    appOn: req.body.appOn === undefined ? true : parseBool(req.body.appOn, true),
+    webOn: req.body.webOn === undefined ? true : parseBool(req.body.webOn, true),
+    sortOrder: req.body.sortOrder,
   });
   return res.status(201).json({ status: true, message: "Banner created successfully", banner });
 });
@@ -129,6 +138,19 @@ exports.updateBannerController = asyncHandler(async (req, res) => {
     }
     updates.bannerType = bannerType;
   }
+  if (req.body.placement !== undefined) {
+    updates.placement = normalizePlacement(req.body.placement, "");
+  }
+  if (req.body.ctaLabel !== undefined || req.body.cta !== undefined) {
+    updates.ctaLabel = String(req.body.ctaLabel ?? req.body.cta ?? "").trim();
+  }
+  if (req.body.ctaLink !== undefined) {
+    updates.ctaLink = normalizeCtaLink(req.body.ctaLink);
+  }
+  if (req.body.split !== undefined) updates.split = parseBool(req.body.split, false);
+  if (req.body.appOn !== undefined) updates.appOn = parseBool(req.body.appOn, true);
+  if (req.body.webOn !== undefined) updates.webOn = parseBool(req.body.webOn, true);
+  if (req.body.sortOrder !== undefined) updates.sortOrder = req.body.sortOrder;
   if (req.body.image !== undefined) {
     const image = parseMediaKeyFromBody(req.body.image, "image");
     if (image === null && current.image) {
@@ -172,6 +194,24 @@ exports.updateBannerController = asyncHandler(async (req, res) => {
     throw err;
   }
   return res.status(200).json({ status: true, message: "Banner updated successfully", banner });
+});
+
+exports.reorderBannersController = asyncHandler(async (req, res) => {
+  const orderedIds = Array.isArray(req.body.orderedIds) ? req.body.orderedIds : null;
+  if (!orderedIds || orderedIds.length === 0) {
+    throw new AppError("orderedIds array is required", 400);
+  }
+  let banners;
+  try {
+    banners = await reorderBanners(orderedIds);
+  } catch (err) {
+    if (err?.message === "orderedIds must be unique" || err?.message === "orderedIds is required") {
+      throw new AppError(err.message, 400);
+    }
+    if (err?.statusCode === 404) throw new AppError(err.message, 404);
+    throw err;
+  }
+  return res.status(200).json({ status: true, message: "Banners reordered successfully", banners });
 });
 
 exports.deleteBannerController = asyncHandler(async (req, res) => {

@@ -10,16 +10,56 @@ const { normalizeStoredMedia, resolvePublicUrl } = require("../utils/s3");
 const {
   listByPartitionKey,
   buildContainsFilter,
-  sortByCreatedAtDesc,
   fieldMatchesTerm,
 } = require("../utils/dynamoList");
 
 const TABLE = "Banner";
 const STATUS = new Set(["active", "inactive"]);
+const SORT_ORDER_MIN = 0;
+const SORT_ORDER_MAX = 100000;
 
 function normalizeStatus(value, fallback = "active") {
   const next = String(value || fallback).toLowerCase().trim();
   return STATUS.has(next) ? next : fallback;
+}
+
+function normalizeSortOrder(value, fallback = 0) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < SORT_ORDER_MIN) return fallback;
+  return Math.min(Math.floor(n), SORT_ORDER_MAX);
+}
+
+function parseBool(value, fallback = false) {
+  if (value === true || value === false) return value;
+  const next = String(value ?? "").trim().toLowerCase();
+  if (["true", "1", "yes", "on"].includes(next)) return true;
+  if (["false", "0", "no", "off"].includes(next)) return false;
+  return fallback;
+}
+
+function normalizePlacement(value, fallback = "") {
+  const next = String(value || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9_-]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 80);
+  if (/^[a-z0-9_][a-z0-9_-]{0,79}$/.test(next)) return next;
+  return fallback;
+}
+
+function normalizeCtaLink(value) {
+  const next = String(value || "").trim();
+  if (!next) return "";
+  if (/^https?:\/\//i.test(next) || next.startsWith("/")) return next.slice(0, 500);
+  return next.slice(0, 500);
+}
+
+function sortBannersByOrder(a, b) {
+  const orderA = normalizeSortOrder(a.sortOrder, 9999);
+  const orderB = normalizeSortOrder(b.sortOrder, 9999);
+  if (orderA !== orderB) return orderA - orderB;
+  return String(b.createdAt || "").localeCompare(String(a.createdAt || ""));
 }
 
 function normalizeBannerType(value, fallback = "main") {
@@ -54,9 +94,40 @@ function toPublicBanner(banner) {
   const item = withLegacyId(banner);
   if (!item) return null;
   item.bannerType = resolveBannerType(item);
+  item.placement = normalizePlacement(item.placement, "");
+  item.ctaLabel = String(item.ctaLabel || "").trim();
+  item.ctaLink = String(item.ctaLink || "").trim();
+  item.split = parseBool(item.split, Boolean(item.image && item.mobileImage && item.image !== item.mobileImage));
+  item.appOn = parseBool(item.appOn, true);
+  item.webOn = parseBool(item.webOn, true);
+  item.sortOrder = normalizeSortOrder(item.sortOrder, 9999);
   if (item.image) item.image = resolvePublicUrl(item.image);
   if (item.mobileImage) item.mobileImage = resolvePublicUrl(item.mobileImage);
   return item;
+}
+
+async function listAllBannersUnpaged() {
+  const result = await listByPartitionKey({
+    tableName: TABLE,
+    indexName: "StatusCreatedAtIndex",
+    partitionKeyValue: undefined,
+    scanIndexForward: false,
+    page: 1,
+    limit: Number.MAX_SAFE_INTEGER,
+    maxLimit: Number.MAX_SAFE_INTEGER,
+    sortFn: sortBannersByOrder,
+  });
+  return result.items || [];
+}
+
+async function nextSortOrder() {
+  const items = await listAllBannersUnpaged();
+  if (!items.length) return 1;
+  const max = items.reduce((acc, item) => {
+    const order = normalizeSortOrder(item.sortOrder, 0);
+    return order > acc ? order : acc;
+  }, 0);
+  return Math.min(max + 1, SORT_ORDER_MAX);
 }
 
 async function createBanner({
@@ -66,8 +137,19 @@ async function createBanner({
   mobileImage = "",
   status = "active",
   bannerType = "main",
+  placement = "",
+  ctaLabel = "",
+  ctaLink = "",
+  split = false,
+  appOn = true,
+  webOn = true,
+  sortOrder,
 }) {
   const now = new Date().toISOString();
+  const resolvedOrder =
+    sortOrder === undefined || sortOrder === null || sortOrder === ""
+      ? await nextSortOrder()
+      : normalizeSortOrder(sortOrder);
   const item = {
     id: uuidv4(),
     title: String(title || "").trim(),
@@ -76,6 +158,13 @@ async function createBanner({
     mobileImage: normalizeImageField(mobileImage, "mobileImage"),
     status: normalizeStatus(status),
     bannerType: normalizeBannerType(bannerType, "main"),
+    placement: normalizePlacement(placement, ""),
+    ctaLabel: String(ctaLabel || "").trim(),
+    ctaLink: normalizeCtaLink(ctaLink),
+    split: parseBool(split, false),
+    appOn: parseBool(appOn, true),
+    webOn: parseBool(webOn, true),
+    sortOrder: resolvedOrder,
     createdAt: now,
     updatedAt: now,
   };
@@ -119,6 +208,18 @@ async function updateBanner(id, updates) {
       value = normalizeBannerType(v, "main");
     } else if (k === "status") {
       value = normalizeStatus(v);
+    } else if (k === "placement") {
+      value = normalizePlacement(v, "");
+    } else if (k === "ctaLabel") {
+      value = String(v || "").trim();
+    } else if (k === "ctaLink") {
+      value = normalizeCtaLink(v);
+    } else if (k === "sortOrder") {
+      value = normalizeSortOrder(v);
+    } else if (k === "split" || k === "appOn" || k === "webOn") {
+      value = parseBool(v, k === "split" ? false : true);
+    } else if (k === "title" || k === "description") {
+      value = String(v || "").trim();
     }
     exprNames[`#${k}`] = k;
     exprValues[`:${k}`] = value;
@@ -135,6 +236,38 @@ async function updateBanner(id, updates) {
     ReturnValues: "ALL_NEW",
   }));
   return toPublicBanner(Attributes || null);
+}
+
+async function reorderBanners(orderedIds = []) {
+  const ids = Array.isArray(orderedIds)
+    ? orderedIds.map((id) => String(id || "").trim()).filter(Boolean)
+    : [];
+
+  if (!ids.length) {
+    throw new Error("orderedIds is required");
+  }
+
+  const unique = new Set(ids);
+  if (unique.size !== ids.length) {
+    throw new Error("orderedIds must be unique");
+  }
+
+  const existing = await listAllBannersUnpaged();
+  const byId = new Map(existing.map((item) => [item.id, item]));
+
+  for (const id of ids) {
+    if (!byId.has(id)) {
+      const err = new Error(`Banner not found: ${id}`);
+      err.statusCode = 404;
+      throw err;
+    }
+  }
+
+  const updated = await Promise.all(
+    ids.map((id, index) => updateBanner(id, { sortOrder: index + 1 })),
+  );
+
+  return updated.sort(sortBannersByOrder);
 }
 
 async function deleteBanner(id) {
@@ -172,7 +305,7 @@ async function listBanners({ page = 1, limit = 10, status, search, bannerType } 
     page,
     limit,
     maxLimit: 200,
-    sortFn: sortByCreatedAtDesc,
+    sortFn: sortBannersByOrder,
   });
 
   return {
@@ -188,7 +321,11 @@ module.exports = {
   updateBanner,
   deleteBanner,
   listBanners,
+  reorderBanners,
   toPublicBanner,
   normalizeBannerType,
+  normalizePlacement,
+  normalizeCtaLink,
+  parseBool,
   resolveBannerType,
 };
