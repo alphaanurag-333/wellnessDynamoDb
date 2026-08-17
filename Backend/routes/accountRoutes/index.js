@@ -12,6 +12,7 @@ const accountAssistantRoutes = require("./accountAssistantRoutes");
 const accountMeRoutes = require("./accountMeRoutes");
 const accountEnergyExchangeRoutes = require("./accountEnergyExchangeRoutes");
 const accountProgramRoutes = require("./accountProgramRoutes");
+const accountCoachCheckoutRoutes = require("./accountCoachCheckoutRoutes");
 const accountPortalClientTestimonialRoutes = require("./accountPortalClientTestimonialRoutes");
 const accountActiveSpecializationRoutes = require("./accountActiveSpecializationRoutes");
 const {
@@ -105,6 +106,7 @@ router.delete(
 
 router.use("/sops", adminSopRoutes);
 router.use("/app-config", adminAppConfigRoutes);
+router.use("/coach-checkout", accountCoachCheckoutRoutes);
 router.use("/users", adminUserRoutes);
 router.use("/wellness-coaches", adminWellnessCoachRoutes);
 router.use("/banners", adminBannerRoutes);

@@ -1,116 +1,45 @@
-export const PHOTO_ANGLES = ["Front", "Side", "Back"];
+export const PHOTO_ANGLES = [
+  { label: "Front", urlKey: "frontPicUrl" },
+  { label: "Right", urlKey: "rightPicUrl" },
+  { label: "Left", urlKey: "leftPicUrl" },
+];
 
 export const BODY_ANALYTICS = {
-  latestPhotoDate: "18 Jul 2026",
-  weeklyHint: "Weekly data covers the last 8 weeks — for older history, switch to Monthly. Empty periods are skipped.",
-  monthlyHint: "Monthly data shows the last 3 months for each selected anchor month.",
-  weeklyOptions: ["15 Jul", "08 Jul", "01 Jul", "24 Jun", "17 Jun", "10 Jun", "03 Jun", "27 May"],
-  monthlyOptions: ["Jul", "Jun", "May", "Apr", "Mar", "Feb", "Jan", "Dec"],
-  photos: {
-    Front: [
-      { date: "18 Jul 2026" },
-      { date: "18 Jun 2026" },
-      { date: "18 May 2026" },
-      { date: "18 Apr 2026" },
-      { date: "18 Mar 2026" },
-      { date: "18 Feb 2026" },
-    ],
-    Side: [
-      { date: "18 Jul 2026" },
-      { date: "18 Jun 2026" },
-      { date: "18 May 2026" },
-      { date: "18 Apr 2026" },
-      { date: "18 Mar 2026" },
-      { date: "18 Feb 2026" },
-    ],
-    Back: [
-      { date: "18 Jul 2026" },
-      { date: "18 Jun 2026" },
-      { date: "18 May 2026" },
-      { date: "18 Apr 2026" },
-      { date: "18 Mar 2026" },
-      { date: "18 Feb 2026" },
-    ],
-  },
+  weeklyHint: "Weekly data is grouped from the client's saved body records. Empty periods are skipped.",
+  monthlyHint: "Monthly data uses the latest saved value in each month.",
 };
 
-const MEASURE_HISTORY = {
-  weekly: {
-    cm: {
-      Neck: { "15 Jul": "38.0", "08 Jul": "38.1", "01 Jul": "38.3", "24 Jun": "38.4", "17 Jun": "38.5", "10 Jun": "38.6", "03 Jun": "38.8", "27 May": "39.0" },
-      Shoulder: { "15 Jul": "112.0", "08 Jul": "111.9", "01 Jul": "111.8", "24 Jun": "111.7", "17 Jun": "111.6", "10 Jun": "111.5", "03 Jun": "111.3", "27 May": "111.0" },
-      Chest: { "15 Jul": "96.0", "08 Jul": "96.5", "01 Jul": "97.0", "24 Jun": "97.5", "17 Jun": "98.0", "10 Jun": "98.5", "03 Jun": "99.0", "27 May": "99.5" },
-      Waist: { "15 Jul": "82.0", "08 Jul": "83.0", "01 Jul": "84.0", "24 Jun": "85.0", "17 Jun": "86.0", "10 Jun": "87.0", "03 Jun": "88.0", "27 May": "89.0" },
-      Hip: { "15 Jul": "98.0", "08 Jul": "98.5", "01 Jul": "99.0", "24 Jun": "99.5", "17 Jun": "100.0", "10 Jun": "100.5", "03 Jun": "101.0", "27 May": "101.5" },
-      Thighs: { "15 Jul": "56.0", "08 Jul": "56.3", "01 Jul": "56.5", "24 Jun": "56.8", "17 Jun": "57.0", "10 Jun": "57.2", "03 Jun": "57.5", "27 May": "57.8" },
-    },
-    inch: {
-      Neck: { "15 Jul": "15.0", "08 Jul": "15.0", "01 Jul": "15.1", "24 Jun": "15.1", "17 Jun": "15.2", "10 Jun": "15.2", "03 Jun": "15.3", "27 May": "15.4" },
-      Shoulder: { "15 Jul": "44.1", "08 Jul": "44.1", "01 Jul": "44.0", "24 Jun": "44.0", "17 Jun": "43.9", "10 Jun": "43.9", "03 Jun": "43.8", "27 May": "43.7" },
-      Chest: { "15 Jul": "37.8", "08 Jul": "38.0", "01 Jul": "38.2", "24 Jun": "38.4", "17 Jun": "38.6", "10 Jun": "38.8", "03 Jun": "39.0", "27 May": "39.2" },
-      Waist: { "15 Jul": "32.3", "08 Jul": "32.7", "01 Jul": "33.1", "24 Jun": "33.5", "17 Jun": "33.9", "10 Jun": "34.3", "03 Jun": "34.6", "27 May": "35.0" },
-      Hip: { "15 Jul": "38.6", "08 Jul": "38.8", "01 Jul": "39.0", "24 Jun": "39.2", "17 Jun": "39.4", "10 Jun": "39.6", "03 Jun": "39.8", "27 May": "40.0" },
-      Thighs: { "15 Jul": "22.0", "08 Jul": "22.2", "01 Jul": "22.2", "24 Jun": "22.4", "17 Jun": "22.4", "10 Jun": "22.5", "03 Jun": "22.6", "27 May": "22.8" },
-    },
-  },
-  monthly: {
-    cm: {
-      Neck: { Jul: "38.0", Jun: "38.5", May: "39.0", Apr: "39.5", Mar: "40.0", Feb: "40.5", Jan: "41.0", Dec: "41.5" },
-      Shoulder: { Jul: "112.0", Jun: "111.5", May: "111.0", Apr: "110.5", Mar: "110.0", Feb: "109.5", Jan: "109.0", Dec: "108.5" },
-      Chest: { Jul: "96.0", Jun: "98.0", May: "100.0", Apr: "101.0", Mar: "102.0", Feb: "103.0", Jan: "104.0", Dec: "105.0" },
-      Waist: { Jul: "82.0", Jun: "86.0", May: "90.0", Apr: "92.0", Mar: "94.0", Feb: "96.0", Jan: "98.0", Dec: "100.0" },
-      Hip: { Jul: "98.0", Jun: "100.0", May: "102.0", Apr: "103.0", Mar: "104.0", Feb: "105.0", Jan: "106.0", Dec: "107.0" },
-      Thighs: { Jul: "56.0", Jun: "57.0", May: "58.0", Apr: "58.5", Mar: "59.0", Feb: "59.5", Jan: "60.0", Dec: "60.5" },
-    },
-    inch: {
-      Neck: { Jul: "15.0", Jun: "15.2", May: "15.4", Apr: "15.6", Mar: "15.7", Feb: "15.9", Jan: "16.1", Dec: "16.3" },
-      Shoulder: { Jul: "44.1", Jun: "43.9", May: "43.7", Apr: "43.5", Mar: "43.3", Feb: "43.1", Jan: "42.9", Dec: "42.7" },
-      Chest: { Jul: "37.8", Jun: "38.6", May: "39.4", Apr: "39.8", Mar: "40.2", Feb: "40.6", Jan: "40.9", Dec: "41.3" },
-      Waist: { Jul: "32.3", Jun: "33.9", May: "35.4", Apr: "36.2", Mar: "37.0", Feb: "37.8", Jan: "38.6", Dec: "39.4" },
-      Hip: { Jul: "38.6", Jun: "39.4", May: "40.2", Apr: "40.6", Mar: "40.9", Feb: "41.3", Jan: "41.7", Dec: "42.1" },
-      Thighs: { Jul: "22.0", Jun: "22.4", May: "22.8", Apr: "23.0", Mar: "23.2", Feb: "23.4", Jan: "23.6", Dec: "23.8" },
-    },
-  },
-};
+const MEASURE_FIELDS = [
+  { label: "Neck", field: "neckCm" },
+  { label: "Shoulder", field: "shoulderCm" },
+  { label: "Chest", field: "chestCm" },
+  { label: "Waist", field: "waistCm" },
+  { label: "Hip", field: "hipCm" },
+  { label: "Thighs", field: "thighsCm" },
+];
 
-const METABOLIC_HISTORY = {
-  weekly: {
-    BMI: { "15 Jul": "27.4", "08 Jul": "27.6", "01 Jul": "27.8", "24 Jun": "28.0", "17 Jun": "28.1", "10 Jun": "28.2", "03 Jun": "28.4", "27 May": "28.6" },
-    BMR: { "15 Jul": "1420 kcal", "08 Jul": "1416 kcal", "01 Jul": "1412 kcal", "24 Jun": "1408 kcal", "17 Jun": "1405 kcal", "10 Jun": "1402 kcal", "03 Jun": "1398 kcal", "27 May": "1394 kcal" },
-    TDEE: { "15 Jul": "2050 kcal", "08 Jul": "2042 kcal", "01 Jul": "2035 kcal", "24 Jun": "2028 kcal", "17 Jun": "2020 kcal", "10 Jun": "2014 kcal", "03 Jun": "2008 kcal", "27 May": "2000 kcal" },
-    "Body fat %": { "15 Jul": "31.2%", "08 Jul": "31.6%", "01 Jul": "32.0%", "24 Jun": "32.2%", "17 Jun": "32.4%", "10 Jun": "32.6%", "03 Jun": "32.8%", "27 May": "33.0%" },
-    "Lean muscle %": { "15 Jul": "27.8%", "08 Jul": "27.6%", "01 Jul": "27.4%", "24 Jun": "27.2%", "17 Jun": "27.0%", "10 Jun": "26.8%", "03 Jun": "26.6%", "27 May": "26.4%" },
-    "Visceral fat": { "15 Jul": "9", "08 Jul": "9", "01 Jul": "10", "24 Jun": "10", "17 Jun": "10", "10 Jun": "11", "03 Jun": "11", "27 May": "11" },
-    "Fatty liver idx": { "15 Jul": "1.8", "08 Jul": "1.9", "01 Jul": "1.9", "24 Jun": "2.0", "17 Jun": "2.0", "10 Jun": "2.1", "03 Jun": "2.1", "27 May": "2.2" },
-  },
-  monthly: {
-    BMI: { Jul: "27.4", Jun: "28.1", May: "28.8", Apr: "29.1", Mar: "29.4", Feb: "29.7", Jan: "30.0", Dec: "30.2" },
-    BMR: { Jul: "1420 kcal", Jun: "1405 kcal", May: "1390 kcal", Apr: "1382 kcal", Mar: "1374 kcal", Feb: "1366 kcal", Jan: "1358 kcal", Dec: "1350 kcal" },
-    TDEE: { Jul: "2050 kcal", Jun: "2020 kcal", May: "1990 kcal", Apr: "1975 kcal", Mar: "1960 kcal", Feb: "1945 kcal", Jan: "1930 kcal", Dec: "1915 kcal" },
-    "Body fat %": { Jul: "31.2%", Jun: "32.8%", May: "34.4%", Apr: "35.0%", Mar: "35.6%", Feb: "36.2%", Jan: "36.8%", Dec: "37.4%" },
-    "Lean muscle %": { Jul: "27.8%", Jun: "26.9%", May: "26.1%", Apr: "25.8%", Mar: "25.5%", Feb: "25.2%", Jan: "24.9%", Dec: "24.6%" },
-    "Visceral fat": { Jul: "9", Jun: "10", May: "11", Apr: "11", Mar: "12", Feb: "12", Jan: "13", Dec: "13" },
-    "Fatty liver idx": { Jul: "1.8", Jun: "2.1", May: "2.4", Apr: "2.5", Mar: "2.6", Feb: "2.7", Jan: "2.8", Dec: "2.9" },
-  },
-};
+const METABOLIC_FIELDS = [
+  { label: "BMI", field: "bmi" },
+  { label: "BMR", field: "bmr", suffix: " kcal" },
+  { label: "TDEE", field: "tdee", suffix: " kcal" },
+  { label: "Body fat %", field: "bodyFatPercent", suffix: "%" },
+  { label: "Lean muscle %", field: "leanMuscleMassPercent", suffix: "%" },
+  { label: "Visceral fat", field: "estimatedVisceralFat" },
+  { label: "Fatty liver idx", field: "fli" },
+];
 
-const MEASURE_LABELS = ["Neck", "Shoulder", "Chest", "Waist", "Hip", "Thighs"];
-const METABOLIC_LABELS = ["BMI", "BMR", "TDEE", "Body fat %", "Lean muscle %", "Visceral fat", "Fatty liver idx"];
-
-function parseNum(val) {
-  const n = Number.parseFloat(String(val).replace(/[^\d.-]/g, ""));
-  return Number.isFinite(n) ? n : null;
+function parseNum(value) {
+  const number = Number.parseFloat(String(value).replace(/[^\d.-]/g, ""));
+  return Number.isFinite(number) ? number : null;
 }
 
 function formatDelta(current, previous, unitSuffix = "") {
-  const a = parseNum(current);
-  const b = parseNum(previous);
-  if (a == null || b == null) return "—";
-  const diff = Math.round((a - b) * 10) / 10;
-  if (diff === 0) return unitSuffix ? `0 ${unitSuffix}` : "0";
-  const sign = diff > 0 ? "+" : "";
+  const currentNumber = parseNum(current);
+  const previousNumber = parseNum(previous);
+  if (currentNumber == null || previousNumber == null) return "—";
+  const diff = Math.round((currentNumber - previousNumber) * 10) / 10;
   const suffix = unitSuffix ? ` ${unitSuffix}` : "";
-  return `${sign}${diff}${suffix}`;
+  return `${diff > 0 ? "+" : ""}${diff}${suffix}`;
 }
 
 function deltaTone(label, diffText) {
@@ -123,36 +52,121 @@ function deltaTone(label, diffText) {
   return isPositive ? "bad" : "good";
 }
 
-export function getHistoryWindow(mode, anchor, count = 3) {
-  const options = mode === "weekly" ? BODY_ANALYTICS.weeklyOptions : BODY_ANALYTICS.monthlyOptions;
-  const idx = Math.max(0, options.indexOf(anchor));
-  return options.slice(idx, idx + count);
+function validDate(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
-export function buildMeasurementRows(mode, unit, anchor) {
-  const columns = getHistoryWindow(mode, anchor);
-  const history = MEASURE_HISTORY[mode][unit];
-  const unitSuffix = unit === "cm" ? "cm" : "in";
+function periodKey(value, mode) {
+  const date = validDate(value);
+  if (!date) return "";
+  if (mode === "monthly") {
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+  }
+  const day = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() - day + 1);
+  return date.toISOString().slice(0, 10);
+}
 
-  return MEASURE_LABELS.map((label) => {
-    const values = columns.map((col) => history[label][col] ?? "—");
+export function getPeriodOptions(bodyAnalytics, mode) {
+  const records = [
+    ...(bodyAnalytics?.measurements || []),
+    ...(bodyAnalytics?.metabolicMetrics || []),
+  ];
+  return [...new Set(records.map((row) => periodKey(row.recordedAt, mode)).filter(Boolean))]
+    .sort((a, b) => b.localeCompare(a));
+}
+
+export function getHistoryWindow(options, anchor, count = 3) {
+  const index = Math.max(0, options.indexOf(anchor));
+  return options.slice(index, index + count);
+}
+
+function latestByPeriod(records, mode) {
+  const byPeriod = {};
+  const sorted = [...(records || [])].sort((a, b) =>
+    String(b.recordedAt || "").localeCompare(String(a.recordedAt || "")),
+  );
+  for (const row of sorted) {
+    const key = periodKey(row.recordedAt, mode);
+    if (key && !byPeriod[key]) byPeriod[key] = row;
+  }
+  return byPeriod;
+}
+
+function formatValue(value, suffix = "") {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "—";
+  return `${Math.round(number * 10) / 10}${suffix}`;
+}
+
+export function buildMeasurementRows(records, mode, unit, columns) {
+  const history = latestByPeriod(records, mode);
+  const unitSuffix = unit === "cm" ? "cm" : "in";
+  const divisor = unit === "cm" ? 1 : 2.54;
+
+  return MEASURE_FIELDS.map(({ label, field }) => {
+    const values = columns.map((column) => {
+      const raw = history[column]?.[field];
+      return Number.isFinite(Number(raw)) ? formatValue(Number(raw) / divisor) : "—";
+    });
     const delta = columns.length >= 2 ? formatDelta(values[0], values[1], unitSuffix) : "—";
     return { label, values, delta, tone: deltaTone(label, delta) };
   });
 }
 
-export function buildMetabolicRows(mode, anchor) {
-  const columns = getHistoryWindow(mode, anchor);
-  const history = METABOLIC_HISTORY[mode];
+function latestMetricValueByPeriod(records, mode, field) {
+  const values = {};
+  const sorted = [...(records || [])].sort((a, b) =>
+    String(b.recordedAt || "").localeCompare(String(a.recordedAt || "")),
+  );
+  for (const row of sorted) {
+    const key = periodKey(row.recordedAt, mode);
+    if (key && values[key] == null && Number.isFinite(Number(row[field]))) {
+      values[key] = row[field];
+    }
+  }
+  return values;
+}
 
-  return METABOLIC_LABELS.map((label) => {
-    const values = columns.map((col) => history[label][col] ?? "—");
+export function buildMetabolicRows(records, mode, columns) {
+  return METABOLIC_FIELDS.map(({ label, field, suffix = "" }) => {
+    const history = latestMetricValueByPeriod(records, mode, field);
+    const values = columns.map((column) => formatValue(history[column], suffix));
     const delta = columns.length >= 2 ? formatDelta(values[0], values[1]) : "—";
     return { label, values, delta, tone: deltaTone(label, delta) };
   });
 }
 
 export function formatHistoryColumns(mode, columns) {
-  if (mode === "monthly") return columns.map((c) => c.toUpperCase());
-  return columns;
+  return columns.map((key) => {
+    const date = validDate(mode === "monthly" ? `${key}-01T00:00:00.000Z` : `${key}T00:00:00.000Z`);
+    if (!date) return key;
+    return date.toLocaleDateString("en-GB", mode === "monthly"
+      ? { month: "short", year: "numeric", timeZone: "UTC" }
+      : { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+  });
+}
+
+export function formatPhotoDate(value) {
+  const date = validDate(value);
+  if (!date) return "—";
+  return date.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+export function buildPhotosByAngle(photos) {
+  return Object.fromEntries(PHOTO_ANGLES.map((angle) => [
+    angle.label,
+    (photos || [])
+      .filter((photo) => photo[angle.urlKey])
+      .map((photo) => ({
+        id: `${photo.id || photo._id}-${angle.label}`,
+        date: formatPhotoDate(photo.recordedAt),
+        url: photo[angle.urlKey],
+      })),
+  ]));
 }

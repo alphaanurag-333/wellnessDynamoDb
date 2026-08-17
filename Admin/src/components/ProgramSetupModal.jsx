@@ -5,7 +5,6 @@ import {
   VALIDITY_PERIODS,
 } from "../data/configDetailData.js";
 import { discountedPrice, formatRupee } from "../data/exchangeData.js";
-import { AWC_DEFAULT, WC_OPTIONS } from "../data/usersData.js";
 
 function slabLabel(slab) {
   return `${slab.pct}% · ${slab.label}`;
@@ -18,63 +17,73 @@ export function ProgramSetupModal({
   program,
   client,
   showAppHeal = true,
+  discountSlabs = DISCOUNT_SLABS,
+  appHealPeriods = APP_HEAL_PERIODS,
+  validityPeriods = VALIDITY_PERIODS,
+  coaches = [],
+  assistants = [],
+  saving = false,
 }) {
-  const coaches = useMemo(
-    () => WC_OPTIONS.filter((name) => name !== "— Unassigned —"),
-    [],
-  );
-
-  const [wellnessCoach, setWellnessCoach] = useState("Anita Rao");
-  const [assistantWc, setAssistantWc] = useState("Not involved");
+  const [wellnessCoachId, setWellnessCoachId] = useState("");
+  const [assistantWcId, setAssistantWcId] = useState("");
   const [discountIdx, setDiscountIdx] = useState(0);
   const [appHealIdx, setAppHealIdx] = useState(0);
   const [linkValidityIdx, setLinkValidityIdx] = useState(0);
 
+  const coachAssistants = useMemo(
+    () => assistants.filter((row) => String(row.wellnessCoachId) === String(wellnessCoachId)),
+    [assistants, wellnessCoachId],
+  );
+
   useEffect(() => {
     if (!open) return;
-    setWellnessCoach("Anita Rao");
-    setAssistantWc("Not involved");
+    const preferredCoach =
+      coaches.find((row) => String(row.id) === String(client?.parentCoachId)) || coaches[0];
+    setWellnessCoachId(preferredCoach?.id || "");
+    const preferredAssistant =
+      assistants.find((row) => String(row.id) === String(client?.assignedCoachId)) || null;
+    setAssistantWcId(preferredAssistant?.id || "");
     setDiscountIdx(0);
     setAppHealIdx(0);
     setLinkValidityIdx(0);
-  }, [open, program?.id]);
+  }, [open, program?.id, client?.id, client?.parentCoachId, client?.assignedCoachId, coaches, assistants]);
 
   useEffect(() => {
     function onKeyDown(event) {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape" && !saving) onClose();
     }
     if (open) document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [open, onClose]);
+  }, [open, onClose, saving]);
 
   if (!open || !program || !client) return null;
 
-  const discount = DISCOUNT_SLABS[discountIdx] ?? DISCOUNT_SLABS[0];
+  const discount = discountSlabs[discountIdx] ?? discountSlabs[0] ?? { pct: 0, label: "none" };
   const netPayable = discountedPrice(program.amount, discount.pct);
 
-  function handleCoachChange(name) {
-    setWellnessCoach(name);
-    setAssistantWc(AWC_DEFAULT[name] || "Not involved");
+  function handleCoachChange(id) {
+    setWellnessCoachId(id);
+    setAssistantWcId("");
   }
 
-  function handleSave() {
-    onSave({
+  async function handleSave() {
+    if (!wellnessCoachId) return;
+    await onSave({
       program,
       client,
-      wellnessCoach,
-      assistantWc,
+      wellnessCoachId,
+      assistantCoachId: assistantWcId || null,
       discount,
-      appHealValidity: showAppHeal ? APP_HEAL_PERIODS[appHealIdx] : null,
-      linkValidity: VALIDITY_PERIODS[linkValidityIdx],
+      appHealValidity: showAppHeal ? appHealPeriods[appHealIdx] : null,
+      linkValidity: validityPeriods[linkValidityIdx],
       netPayable,
     });
-    onClose();
   }
 
   return (
     <div
       className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer"
-      onClick={onClose}
+      onClick={saving ? undefined : onClose}
       role="presentation"
     >
       <div
@@ -101,6 +110,7 @@ export function ProgramSetupModal({
             className="ua-cfg-setup-modal__close"
             aria-label="Close setup"
             onClick={onClose}
+            disabled={saving}
           >
             ×
           </button>
@@ -121,12 +131,13 @@ export function ProgramSetupModal({
               <span className="ua-cfg-setup-modal__label">Wellness Coach</span>
               <select
                 className="ua-cfg-setup-modal__select"
-                value={wellnessCoach}
+                value={wellnessCoachId}
                 onChange={(event) => handleCoachChange(event.target.value)}
               >
-                {coaches.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
+                <option value="">Choose a coach…</option>
+                {coaches.map((coach) => (
+                  <option key={coach.id} value={coach.id}>
+                    {coach.name}
                   </option>
                 ))}
               </select>
@@ -135,13 +146,13 @@ export function ProgramSetupModal({
               <span className="ua-cfg-setup-modal__label">Assistant WC</span>
               <select
                 className="ua-cfg-setup-modal__select"
-                value={assistantWc}
-                onChange={(event) => setAssistantWc(event.target.value)}
+                value={assistantWcId}
+                onChange={(event) => setAssistantWcId(event.target.value)}
               >
-                <option value="Not involved">Not involved</option>
-                {Object.values(AWC_DEFAULT).map((name) => (
-                  <option key={name} value={name}>
-                    {name}
+                <option value="">Not involved</option>
+                {coachAssistants.map((assistant) => (
+                  <option key={assistant.id} value={assistant.id}>
+                    {assistant.name}
                   </option>
                 ))}
               </select>
@@ -159,7 +170,7 @@ export function ProgramSetupModal({
             value={discountIdx}
             onChange={(event) => setDiscountIdx(Number(event.target.value))}
           >
-            {DISCOUNT_SLABS.map((slab, index) => (
+            {discountSlabs.map((slab, index) => (
               <option key={`${slab.pct}-${slab.label}`} value={index}>
                 {slabLabel(slab)}
               </option>
@@ -175,7 +186,7 @@ export function ProgramSetupModal({
               value={appHealIdx}
               onChange={(event) => setAppHealIdx(Number(event.target.value))}
             >
-              {APP_HEAL_PERIODS.map((period, index) => (
+              {appHealPeriods.map((period, index) => (
                 <option key={period} value={index}>
                   {period}
                 </option>
@@ -194,7 +205,7 @@ export function ProgramSetupModal({
             value={linkValidityIdx}
             onChange={(event) => setLinkValidityIdx(Number(event.target.value))}
           >
-            {VALIDITY_PERIODS.map((period, index) => (
+            {validityPeriods.map((period, index) => (
               <option key={period} value={index}>
                 {period}
               </option>
@@ -208,11 +219,16 @@ export function ProgramSetupModal({
         </div>
 
         <div className="ua-cfg-setup-modal__foot">
-          <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose}>
+          <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose} disabled={saving}>
             Cancel
           </button>
-          <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" onClick={handleSave}>
-            Save &amp; trigger in app
+          <button
+            type="button"
+            className="ua-cfg-btn ua-cfg-btn--primary"
+            onClick={handleSave}
+            disabled={saving || !wellnessCoachId}
+          >
+            {saving ? "Triggering…" : "Save & trigger in app"}
           </button>
         </div>
       </div>

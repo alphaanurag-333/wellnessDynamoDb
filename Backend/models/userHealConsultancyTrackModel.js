@@ -103,6 +103,42 @@ async function getHealConsultancyTrackById(id) {
   return Item || null;
 }
 
+async function listHealConsultancyTracksByParentCoachId(
+  parentCoachId,
+  { page = 1, limit = 50, status, since } = {}
+) {
+  if (!parentCoachId) {
+    return { items: [], pagination: { page: 1, limit, total: 0, pages: 1 } };
+  }
+
+  const filterParts = [];
+  const extraNames = {};
+  const extraValues = {};
+
+  if (status) {
+    filterParts.push("#status = :status");
+    extraNames["#status"] = "status";
+    extraValues[":status"] = normalizeTrackStatus(status);
+  }
+  if (since) {
+    filterParts.push("updatedAt >= :since");
+    extraValues[":since"] = String(since);
+  }
+
+  return queryPartition({
+    tableName: TABLE,
+    indexName: "ParentCoachIdCreatedAtIndex",
+    partitionKeyName: "parentCoachId",
+    partitionKeyValue: String(parentCoachId),
+    filterExpression: filterParts.length ? filterParts.join(" AND ") : undefined,
+    exprNames: extraNames,
+    exprValues: extraValues,
+    page,
+    limit,
+    scanIndexForward: false,
+  });
+}
+
 async function listHealConsultancyTracksByUserId(userId, { page = 1, limit = 20, status } = {}) {
   if (!userId) {
     return { items: [], pagination: { page: 1, limit, total: 0, pages: 1 } };
@@ -191,6 +227,7 @@ module.exports = {
   createHealConsultancyTrack,
   getHealConsultancyTrackById,
   listHealConsultancyTracksByUserId,
+  listHealConsultancyTracksByParentCoachId,
   updateHealConsultancyTrack,
   deleteHealConsultancyTrack,
 };

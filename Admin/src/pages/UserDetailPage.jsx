@@ -45,7 +45,7 @@ function renderSection(section, user, onToast, onNavigate, onUserUpdated) {
     case "personal":
       return <PersonalDetailsSection user={user} onToast={onToast} onUserUpdated={onUserUpdated} />;
     case "body":
-      return <BodyAnalyticsSection onToast={onToast} />;
+      return <BodyAnalyticsSection user={user} onToast={onToast} />;
     case "internal":
       return <InternalParametersSection user={user} onToast={onToast} />;
     case "launch":

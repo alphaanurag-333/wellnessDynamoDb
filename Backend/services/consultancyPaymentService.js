@@ -86,26 +86,74 @@ async function createConsultancyOrder(userId, { referralCode, paymentMethod = "u
     const appConfig = await getAppConfig();
     const gateway = getActiveRazorpayGateway(appConfig);
     const useMock = shouldUseMockPayments(gateway);
+
+    let reusablePending = existingPending;
+    let mockOrder = null;
+    if (useMock && !verifyMockPayment({ orderId: existingPending.paymentGatewayOrderId })) {
+      mockOrder = createMockOrder({
+        amountInRupees: existingPending.totalAmount,
+        receipt: existingPending.referenceNumber,
+      });
+      reusablePending = await updateConsultancyTransaction(existingPending.id, {
+        paymentGatewayOrderId: mockOrder.id,
+        paymentProvider: "mock",
+        failureReason: null,
+        failedAt: null,
+      });
+    }
+
+    if (useMock && config.autoConfirmMockPayments) {
+      const paidTransaction = await finalizePaidConsultancyTransaction(reusablePending, {
+        paymentId: `pay_mock_${Date.now()}`,
+        provider: "mock",
+      });
+      return {
+        transaction: paidTransaction,
+        pricing: {
+          baseAmount: reusablePending.baseAmount,
+          discountAmount: reusablePending.discountAmount,
+          discountedBase: reusablePending.discountedBase,
+          taxAmount: reusablePending.taxAmount,
+          taxPercent: reusablePending.taxPercent,
+          taxType: reusablePending.taxType,
+          totalAmount: reusablePending.totalAmount,
+          currency: reusablePending.currency || "INR",
+        },
+        payment: {
+          provider: "mock",
+          orderId: reusablePending.paymentGatewayOrderId,
+          amount: Math.round(Number(reusablePending.totalAmount) * 100),
+          currency: reusablePending.currency || "INR",
+          keyId: gateway?.keyId || null,
+          mockPayment: true,
+          reusedPendingOrder: true,
+          repairedPendingOrder: Boolean(mockOrder),
+          autoConfirmed: true,
+        },
+      };
+    }
+
     return {
-      transaction: toPublicTransaction(existingPending),
+      transaction: toPublicTransaction(reusablePending),
       pricing: {
-        baseAmount: existingPending.baseAmount,
-        discountAmount: existingPending.discountAmount,
-        discountedBase: existingPending.discountedBase,
-        taxAmount: existingPending.taxAmount,
-        taxPercent: existingPending.taxPercent,
-        taxType: existingPending.taxType,
-        totalAmount: existingPending.totalAmount,
-        currency: existingPending.currency || "INR",
+        baseAmount: reusablePending.baseAmount,
+        discountAmount: reusablePending.discountAmount,
+        discountedBase: reusablePending.discountedBase,
+        taxAmount: reusablePending.taxAmount,
+        taxPercent: reusablePending.taxPercent,
+        taxType: reusablePending.taxType,
+        totalAmount: reusablePending.totalAmount,
+        currency: reusablePending.currency || "INR",
       },
       payment: {
         provider: useMock ? "mock" : "razorpay",
-        orderId: existingPending.paymentGatewayOrderId,
-        amount: Math.round(Number(existingPending.totalAmount) * 100),
-        currency: existingPending.currency || "INR",
+        orderId: reusablePending.paymentGatewayOrderId,
+        amount: Math.round(Number(reusablePending.totalAmount) * 100),
+        currency: reusablePending.currency || "INR",
         keyId: gateway?.keyId || null,
         mockPayment: useMock,
         reusedPendingOrder: true,
+        repairedPendingOrder: Boolean(mockOrder),
       },
     };
   }

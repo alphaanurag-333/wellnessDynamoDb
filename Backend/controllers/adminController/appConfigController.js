@@ -139,6 +139,81 @@ function normalizeAppProgramPricing(value) {
   });
 }
 
+function normalizeAppSubscriptionPricing(value) {
+  const parsed = parseJSON(value, null);
+  if (!Array.isArray(parsed)) {
+    throw new AppError("app_subscription_pricing must be an array", 400);
+  }
+
+  const ids = new Set();
+  return parsed.map((row, index) => {
+    const name = String(row?.name ?? "").trim();
+    const amount = Number(row?.amount);
+    const id = String(row?.id || `subscription-${index + 1}`).trim();
+
+    if (!id || ids.has(id)) {
+      throw new AppError("Each subscription must have a unique id", 400);
+    }
+    if (!name) {
+      throw new AppError(`Subscription ${index + 1} name is required`, 400);
+    }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new AppError(`Subscription ${index + 1} amount must be greater than 0`, 400);
+    }
+
+    ids.add(id);
+    return { id, name, amount };
+  });
+}
+
+function normalizeNamedOptions(value, fieldName) {
+  const parsed = parseJSON(value, null);
+  if (!Array.isArray(parsed) || parsed.length === 0) {
+    throw new AppError(`${fieldName} must be a non-empty array`, 400);
+  }
+
+  const seen = new Set();
+  return parsed.map((item, index) => {
+    const option = String(item ?? "").trim();
+    const key = option.toLowerCase();
+    if (!option) {
+      throw new AppError(`${fieldName} option ${index + 1} is required`, 400);
+    }
+    if (seen.has(key)) {
+      throw new AppError(`${fieldName} options must be unique`, 400);
+    }
+    seen.add(key);
+    return option;
+  });
+}
+
+function normalizeDiscountSlabs(value) {
+  const parsed = parseJSON(value, null);
+  if (!Array.isArray(parsed) || parsed.length === 0) {
+    throw new AppError("coach_discount_slabs must be a non-empty array", 400);
+  }
+
+  const percentages = new Set();
+  return parsed.map((item, index) => {
+    const pct = Number(item?.pct);
+    const label = String(item?.label ?? "").trim();
+    if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
+      throw new AppError(
+        `Discount slab ${index + 1} percentage must be between 0 and 100`,
+        400
+      );
+    }
+    if (!label) {
+      throw new AppError(`Discount slab ${index + 1} label is required`, 400);
+    }
+    if (percentages.has(pct)) {
+      throw new AppError("Discount slab percentages must be unique", 400);
+    }
+    percentages.add(pct);
+    return { pct, label };
+  });
+}
+
 function isVideoMime(mimetype = "") {
   return String(mimetype).toLowerCase().startsWith("video/");
 }
@@ -290,6 +365,12 @@ exports.createAppConfigController = asyncHandler(async (req, res) => {
     consultancy_amount,
     subscription_amount,
     app_program_pricing,
+    app_subscription_pricing,
+    coach_validity_periods,
+    coach_discount_slabs,
+    app_heal_validity_periods,
+    coaches_can_add_validity,
+    coaches_can_add_app_heal,
     energy_exchange_monthly_amount,
     fy_start_month,
     energy_exchange_default_fy_discounts,
@@ -334,6 +415,30 @@ exports.createAppConfigController = asyncHandler(async (req, res) => {
       app_program_pricing === undefined
         ? config.app_program_pricing
         : normalizeAppProgramPricing(app_program_pricing),
+    app_subscription_pricing:
+      app_subscription_pricing === undefined
+        ? config.app_subscription_pricing
+        : normalizeAppSubscriptionPricing(app_subscription_pricing),
+    coach_validity_periods:
+      coach_validity_periods === undefined
+        ? config.coach_validity_periods
+        : normalizeNamedOptions(coach_validity_periods, "coach_validity_periods"),
+    coach_discount_slabs:
+      coach_discount_slabs === undefined
+        ? config.coach_discount_slabs
+        : normalizeDiscountSlabs(coach_discount_slabs),
+    app_heal_validity_periods:
+      app_heal_validity_periods === undefined
+        ? config.app_heal_validity_periods
+        : normalizeNamedOptions(app_heal_validity_periods, "app_heal_validity_periods"),
+    coaches_can_add_validity: normalizeBooleanFlag(
+      coaches_can_add_validity,
+      config.coaches_can_add_validity
+    ),
+    coaches_can_add_app_heal: normalizeBooleanFlag(
+      coaches_can_add_app_heal,
+      config.coaches_can_add_app_heal
+    ),
     energy_exchange_monthly_amount: energy_exchange_monthly_amount ?? "",
     fy_start_month: fy_start_month != null && String(fy_start_month) !== "" ? String(fy_start_month) : "4",
     energy_exchange_default_fy_discounts: parseJSON(
@@ -431,6 +536,44 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
 
   if (req.body.app_program_pricing !== undefined) {
     updates.app_program_pricing = normalizeAppProgramPricing(req.body.app_program_pricing);
+  }
+
+  if (req.body.app_subscription_pricing !== undefined) {
+    updates.app_subscription_pricing = normalizeAppSubscriptionPricing(
+      req.body.app_subscription_pricing
+    );
+  }
+
+  if (req.body.coach_validity_periods !== undefined) {
+    updates.coach_validity_periods = normalizeNamedOptions(
+      req.body.coach_validity_periods,
+      "coach_validity_periods"
+    );
+  }
+
+  if (req.body.coach_discount_slabs !== undefined) {
+    updates.coach_discount_slabs = normalizeDiscountSlabs(req.body.coach_discount_slabs);
+  }
+
+  if (req.body.app_heal_validity_periods !== undefined) {
+    updates.app_heal_validity_periods = normalizeNamedOptions(
+      req.body.app_heal_validity_periods,
+      "app_heal_validity_periods"
+    );
+  }
+
+  if (req.body.coaches_can_add_validity !== undefined) {
+    updates.coaches_can_add_validity = normalizeBooleanFlag(
+      req.body.coaches_can_add_validity,
+      config.coaches_can_add_validity
+    );
+  }
+
+  if (req.body.coaches_can_add_app_heal !== undefined) {
+    updates.coaches_can_add_app_heal = normalizeBooleanFlag(
+      req.body.coaches_can_add_app_heal,
+      config.coaches_can_add_app_heal
+    );
   }
 
   if (req.body.energy_exchange_default_fy_discounts !== undefined) {

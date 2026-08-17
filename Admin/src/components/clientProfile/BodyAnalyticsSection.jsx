@@ -1,12 +1,16 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import { fetchUserBodyAnalytics } from "../../api/usersApi.js";
 import {
   BODY_ANALYTICS,
   PHOTO_ANGLES,
+  buildPhotosByAngle,
   buildMeasurementRows,
   buildMetabolicRows,
   formatHistoryColumns,
+  formatPhotoDate,
   getHistoryWindow,
+  getPeriodOptions,
 } from "../../data/bodyAnalyticsData.js";
 
 function getModalRoot() {
@@ -76,19 +80,29 @@ function HistoryTable({ title, labelCol, columns, rows, unitToggle }) {
   );
 }
 
-function PhotoCards({ onOpen }) {
+function PhotoCards({ photosByAngle, latestPhotoDate, onOpen }) {
   return (
     <section className="ua-cp-ba-block ua-cp-ba-block--photos">
       <div className="ua-cp-ba-block__head">
         <h3 className="ua-cp-ba-block__title">Progress photos · 3 angles</h3>
-        <span className="ua-cp-ba-block__meta">Latest: {BODY_ANALYTICS.latestPhotoDate}</span>
+        <span className="ua-cp-ba-block__meta">Latest: {latestPhotoDate}</span>
       </div>
       <div className="ua-cp-ba-photos">
         {PHOTO_ANGLES.map((angle) => (
-          <button key={angle} type="button" className="ua-cp-ba-photo" onClick={() => onOpen(angle)}>
+          <button
+            key={angle.label}
+            type="button"
+            className="ua-cp-ba-photo"
+            onClick={() => onOpen(angle.label)}
+            disabled={!photosByAngle[angle.label]?.length}
+          >
             <span className="ua-cp-ba-photo__icon" aria-hidden="true">📷</span>
-            <span className="ua-cp-ba-photo__label">{angle}</span>
-            <span className="ua-cp-ba-photo__hint">Tap to view all</span>
+            <span className="ua-cp-ba-photo__label">{angle.label}</span>
+            <span className="ua-cp-ba-photo__hint">
+              {photosByAngle[angle.label]?.length
+                ? `${photosByAngle[angle.label].length} photo${photosByAngle[angle.label].length === 1 ? "" : "s"} · tap to view`
+                : "No photo uploaded"}
+            </span>
           </button>
         ))}
       </div>
@@ -117,16 +131,22 @@ function PhotoModal({ angle, photos, onClose, onToast }) {
         </div>
         <div className="ua-cp-ba-photo-grid">
           {photos.map((p) => (
-            <div key={p.date} className="ua-cp-ba-photo-card">
+            <div key={p.id} className="ua-cp-ba-photo-card">
               <div className="ua-cp-ba-photo-card__img">
-                <span aria-hidden="true">📷</span>
-                <span>{angle}</span>
+                <img src={p.url} alt={`${angle} progress from ${p.date}`} />
               </div>
               <div className="ua-cp-ba-photo-card__foot">
                 <span>{p.date}</span>
-                <button type="button" className="ua-cp-ba-photo-card__save" onClick={() => onToast(`Saved ${angle} photo (${p.date})`)}>
+                <a
+                  className="ua-cp-ba-photo-card__save"
+                  href={p.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  download
+                  onClick={() => onToast(`Opened ${angle} photo (${p.date})`)}
+                >
                   ↓ Save
-                </button>
+                </a>
               </div>
             </div>
           ))}
@@ -137,34 +157,76 @@ function PhotoModal({ angle, photos, onClose, onToast }) {
   );
 }
 
-export function BodyAnalyticsSection({ onToast }) {
+export function BodyAnalyticsSection({ user, onToast }) {
   const [historyMode, setHistoryMode] = useState("monthly");
-  const [period, setPeriod] = useState(BODY_ANALYTICS.monthlyOptions[0]);
+  const [period, setPeriod] = useState("");
   const [unit, setUnit] = useState("cm");
   const [photoAngle, setPhotoAngle] = useState(null);
+  const [bodyAnalytics, setBodyAnalytics] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   const isWeekly = historyMode === "weekly";
-  const periodOptions = isWeekly ? BODY_ANALYTICS.weeklyOptions : BODY_ANALYTICS.monthlyOptions;
+  const periodOptions = useMemo(
+    () => getPeriodOptions(bodyAnalytics, historyMode),
+    [bodyAnalytics, historyMode],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setLoadError("");
+    fetchUserBodyAnalytics(user?.id)
+      .then((data) => {
+        if (!cancelled) setBodyAnalytics(data);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        const message = error?.message || "Failed to load body analytics";
+        setLoadError(message);
+        onToast?.(message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [onToast, user?.id]);
+
+  useEffect(() => {
+    setPeriod(periodOptions[0] || "");
+  }, [periodOptions]);
+
+  const historyWindow = useMemo(
+    () => getHistoryWindow(periodOptions, period),
+    [period, periodOptions],
+  );
 
   const historyColumns = useMemo(
-    () => formatHistoryColumns(historyMode, getHistoryWindow(historyMode, period)),
-    [historyMode, period],
+    () => formatHistoryColumns(historyMode, historyWindow),
+    [historyMode, historyWindow],
   );
 
   const measureRows = useMemo(
-    () => buildMeasurementRows(historyMode, unit, period),
-    [historyMode, unit, period],
+    () => buildMeasurementRows(bodyAnalytics?.measurements, historyMode, unit, historyWindow),
+    [bodyAnalytics?.measurements, historyMode, historyWindow, unit],
   );
 
   const metabolicRows = useMemo(
-    () => buildMetabolicRows(historyMode, period),
-    [historyMode, period],
+    () => buildMetabolicRows(bodyAnalytics?.metabolicMetrics, historyMode, historyWindow),
+    [bodyAnalytics?.metabolicMetrics, historyMode, historyWindow],
   );
 
   function onHistoryChange(mode) {
     setHistoryMode(mode);
-    setPeriod(mode === "weekly" ? BODY_ANALYTICS.weeklyOptions[0] : BODY_ANALYTICS.monthlyOptions[0]);
   }
+
+  const photosByAngle = useMemo(
+    () => buildPhotosByAngle(bodyAnalytics?.photos),
+    [bodyAnalytics?.photos],
+  );
+  const latestPhotoDate = formatPhotoDate(bodyAnalytics?.photos?.[0]?.recordedAt);
 
   const unitToggle = (
     <SegToggle
@@ -174,6 +236,14 @@ export function BodyAnalyticsSection({ onToast }) {
       options={[{ id: "cm", label: "cm" }, { id: "inch", label: "inch" }]}
     />
   );
+
+  if (loading) {
+    return <div className="ua-cp-section ua-cp-body-analytics"><p className="ua-page-head__sub">Loading body analytics…</p></div>;
+  }
+
+  if (loadError) {
+    return <div className="ua-cp-section ua-cp-body-analytics"><p className="ua-page-head__sub" style={{ color: "#b42318" }}>{loadError}</p></div>;
+  }
 
   return (
     <div className="ua-cp-section ua-cp-body-analytics">
@@ -196,15 +266,21 @@ export function BodyAnalyticsSection({ onToast }) {
             value={period}
             onChange={(e) => setPeriod(e.target.value)}
             aria-label="History period"
+            disabled={!periodOptions.length}
           >
+            {!periodOptions.length ? <option value="">No records</option> : null}
             {periodOptions.map((opt) => (
-              <option key={opt} value={opt}>{opt}</option>
+              <option key={opt} value={opt}>{formatHistoryColumns(historyMode, [opt])[0]}</option>
             ))}
           </select>
         </div>
       </div>
 
-      <PhotoCards onOpen={setPhotoAngle} />
+      <PhotoCards
+        photosByAngle={photosByAngle}
+        latestPhotoDate={latestPhotoDate}
+        onOpen={setPhotoAngle}
+      />
 
       <HistoryTable
         title="Body measurements · history"
@@ -224,7 +300,7 @@ export function BodyAnalyticsSection({ onToast }) {
       {photoAngle ? (
         <PhotoModal
           angle={photoAngle}
-          photos={BODY_ANALYTICS.photos[photoAngle]}
+          photos={photosByAngle[photoAngle] || []}
           onClose={() => setPhotoAngle(null)}
           onToast={onToast}
         />
