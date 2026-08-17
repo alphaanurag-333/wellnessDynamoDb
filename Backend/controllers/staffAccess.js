@@ -73,7 +73,12 @@ async function assertStaffCanAccessUser(req, user) {
   }
 
   if (actor.role === "assistant_wellness_coach") {
-    if (String(user?.assignedCoachId || "") !== String(actor.id)) {
+    if (
+      String(user?.assignedCoachId || "") !== String(actor.id) ||
+      String(user?.assignedCoachType || "").toLowerCase() !== "assistant_wellness_coach" ||
+      !actor.parentCoachId ||
+      String(user?.parentCoachId || "") !== String(actor.parentCoachId)
+    ) {
       throw new AppError("User is not assigned to you", 403);
     }
     return actor;

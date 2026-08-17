@@ -1,7 +1,7 @@
 const {
-  getAssistantWellnessCoachById,
-  populateWellnessCoach,
-} = require("../models/assistantWellnessCoachModel");
+  getAssistantWellnessCoachByIdResolved,
+  getWellnessCoachByIdResolved,
+} = require("./accountResolver");
 const { listUsersByAssignedCoachId, toPublicUser } = require("../models/userModel");
 const { queryMealLogsByCoachId } = require("../models/mealTrackingModel");
 const { listUserCommitmentLetters } = require("../models/userCommitmentLetterModel");
@@ -60,7 +60,7 @@ function toDashboardClient(user) {
 }
 
 async function getAssistantDashboardStats(assistantId) {
-  const assistant = await getAssistantWellnessCoachById(assistantId);
+  const assistant = await getAssistantWellnessCoachByIdResolved(assistantId);
   if (!assistant) {
     throw new Error("Assistant account not found");
   }
@@ -110,7 +110,11 @@ async function getAssistantDashboardStats(assistantId) {
 
   const recentClients = takeRecent(clients).map(toDashboardClient).filter(Boolean);
 
-  const assistantProfile = await populateWellnessCoach(assistant);
+  const parentCoach = await getWellnessCoachByIdResolved(parentCoachId);
+  const assistantProfile = {
+    ...assistant,
+    wellnessCoachName: parentCoach?.name || null,
+  };
 
   const charts = {
     clientOverview: [

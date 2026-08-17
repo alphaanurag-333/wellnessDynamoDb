@@ -161,6 +161,7 @@ import {
 } from "../data/configDetailData.js";
 import { findConfigItem, getConfigStateLabel } from "../data/configsData.js";
 import { formatRupee } from "../data/exchangeData.js";
+import { getAppProgramPricing, saveAppProgramPricing } from "../api/appProgramApi.js";
 
 function surfacesLabel(item) {
   if (item.app && item.web) return "App & web";
@@ -399,7 +400,16 @@ function ClientLookupPanel({
   );
 }
 
-function PricingNewForm({ draft, onChange, onClose, onSubmit, formTitle, namePlaceholder, inputRef }) {
+function PricingNewForm({
+  draft,
+  onChange,
+  onClose,
+  onSubmit,
+  formTitle,
+  namePlaceholder,
+  inputRef,
+  includeDiscount,
+}) {
   return (
     <section className="ua-cfg-pricing-new">
       <div className="ua-cfg-pricing-new__head">
@@ -409,7 +419,7 @@ function PricingNewForm({ draft, onChange, onClose, onSubmit, formTitle, namePla
         </h4>
         <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={onClose}>×</button>
       </div>
-      <div className="ua-cfg-pricing-new__row">
+      <div className={`ua-cfg-pricing-new__row${includeDiscount ? " ua-cfg-pricing-new__row--discount" : ""}`}>
         <input
           ref={inputRef}
           type="text"
@@ -429,6 +439,36 @@ function PricingNewForm({ draft, onChange, onClose, onSubmit, formTitle, namePla
           />
           <span className="ua-cfg-pricing-new__amount-label">Amount</span>
         </label>
+        {includeDiscount ? (
+          <>
+            <label className="ua-cfg-pricing-new__amount">
+              <input
+                type="text"
+                inputMode="numeric"
+                value={draft.discountPercent}
+                aria-label="Discount percentage"
+                onChange={(event) => onChange({
+                  ...draft,
+                  discountPercent: event.target.value.replace(/[^\d]/g, ""),
+                })}
+              />
+              <span className="ua-cfg-pricing-new__amount-label">Discount %</span>
+            </label>
+            <label className="ua-cfg-pricing-new__amount">
+              <input
+                type="text"
+                inputMode="numeric"
+                value={draft.validityHours}
+                aria-label="Discount validity in hours"
+                onChange={(event) => onChange({
+                  ...draft,
+                  validityHours: event.target.value.replace(/[^\d]/g, ""),
+                })}
+              />
+              <span className="ua-cfg-pricing-new__amount-label">Hours</span>
+            </label>
+          </>
+        ) : null}
         <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" onClick={onSubmit}>
           Add
         </button>
@@ -445,9 +485,15 @@ function PricingPanel({
   addLabel = "+ Add program",
   formTitle = "New program",
   namePlaceholder = "Program name",
+  includeDiscount = false,
 }) {
   const [showAddForm, setShowAddForm] = useState(false);
-  const [draft, setDraft] = useState({ name: "", amount: "" });
+  const [draft, setDraft] = useState({
+    name: "",
+    amount: "",
+    discountPercent: "",
+    validityHours: "",
+  });
   const addFormRef = useRef(null);
   const nameInputRef = useRef(null);
 
@@ -462,12 +508,14 @@ function PricingPanel({
 
   function closeAddForm() {
     setShowAddForm(false);
-    setDraft({ name: "", amount: "" });
+    setDraft({ name: "", amount: "", discountPercent: "", validityHours: "" });
   }
 
   function submitNewRow() {
     const name = draft.name.trim();
     const amount = Number(draft.amount);
+    const discountPercent = Number(draft.discountPercent);
+    const validityHours = Number(draft.validityHours);
     if (!name) {
       onToast("Program name is required");
       return;
@@ -476,7 +524,23 @@ function PricingPanel({
       onToast("Enter a valid amount");
       return;
     }
-    setRows((prev) => [...prev, { id: `program-${Date.now()}`, name, amount }]);
+    if (includeDiscount && (!Number.isFinite(discountPercent) || discountPercent < 0 || discountPercent > 100)) {
+      onToast("Discount must be between 0% and 100%");
+      return;
+    }
+    if (includeDiscount && (!Number.isInteger(validityHours) || validityHours <= 0)) {
+      onToast("Enter discount validity in whole hours");
+      return;
+    }
+    setRows((prev) => [
+      ...prev,
+      {
+        id: `program-${Date.now()}`,
+        name,
+        amount,
+        ...(includeDiscount ? { discountPercent, validityHours } : {}),
+      },
+    ]);
     closeAddForm();
     onToast(`${name} added`);
   }
@@ -501,19 +565,27 @@ function PricingPanel({
             formTitle={formTitle}
             namePlaceholder={namePlaceholder}
             inputRef={nameInputRef}
+            includeDiscount={includeDiscount}
           />
         </div>
       ) : null}
       <div className="ua-cfg-pricing">
-        <div className="ua-cfg-pricing__head">
+        <div className={`ua-cfg-pricing__head${includeDiscount ? " ua-cfg-pricing__head--discount" : ""}`}>
           <span>Program</span>
           <span>Amount (Rs.)</span>
+          {includeDiscount ? <span>Discount</span> : null}
+          {includeDiscount ? <span>Valid for</span> : null}
           <span aria-hidden="true" />
         </div>
         {rows.map((row) => (
-          <div key={row.id} className="ua-cfg-pricing__row">
+          <div
+            key={row.id}
+            className={`ua-cfg-pricing__row${includeDiscount ? " ua-cfg-pricing__row--discount" : ""}`}
+          >
             <span>{row.name}</span>
             <strong>{formatRupee(row.amount)}</strong>
+            {includeDiscount ? <strong>{row.discountPercent}%</strong> : null}
+            {includeDiscount ? <span>{row.validityHours} hours</span> : null}
             <button
               type="button"
               className="ua-cfg-icon-btn"
@@ -1047,6 +1119,38 @@ export function ConfigDetailPage() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
 
+  useEffect(() => {
+    if (configId !== "app-program") return undefined;
+    let active = true;
+
+    getAppProgramPricing()
+      .then((rows) => {
+        if (active && rows !== null) setProgramRows(rows);
+      })
+      .catch((error) => {
+        if (active) onToast(error.message || "Could not load program pricing");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [configId]);
+
+  async function publishConfig() {
+    if (item.id !== "app-program") {
+      onToast(`${item.name} published`);
+      return;
+    }
+
+    try {
+      const savedRows = await saveAppProgramPricing(programRows);
+      setProgramRows(savedRows);
+      onToast("Program pricing published");
+    } catch (error) {
+      onToast(error.message || "Could not publish program pricing");
+    }
+  }
+
   if (!found) {
     return <Navigate to={UPDATED_ADMIN_PATHS.configs} replace />;
   }
@@ -1167,6 +1271,7 @@ export function ConfigDetailPage() {
               rows={programRows}
               setRows={setProgramRows}
               onToast={onToast}
+              includeDiscount
             />
             <TagCreatePanel
               title="App Heal feature validity"
@@ -1787,7 +1892,7 @@ export function ConfigDetailPage() {
         open={publishOpen}
         onClose={() => setPublishOpen(false)}
         item={item}
-        onConfirm={() => onToast(`${item.name} published`)}
+        onConfirm={publishConfig}
       />
 
       <div className="ua-cfg-detail__body">

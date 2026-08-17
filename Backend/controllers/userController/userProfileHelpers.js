@@ -271,14 +271,14 @@ async function enrichUser(user) {
 
 async function assertUniqueEmail(email, excludeUserId) {
   const existing = await getUserByEmail(email);
-  if (existing && existing.id !== excludeUserId) {
+  if (existing && existing.status !== "deleted" && existing.id !== excludeUserId) {
     throw new AppError("A user already exists with this email", 409);
   }
 }
 
 async function assertUniquePhone(phoneCountryCode, phone, excludeUserId) {
   const existing = await getUserByPhone(phoneCountryCode, phone);
-  if (existing && existing.id !== excludeUserId) {
+  if (existing && existing.status !== "deleted" && existing.id !== excludeUserId) {
     throw new AppError("A user already exists with this phone number", 409);
   }
 }

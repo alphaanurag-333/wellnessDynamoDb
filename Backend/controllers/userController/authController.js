@@ -61,6 +61,9 @@ function assertUserCanLogin(user) {
   if (!user) {
     throw new AppError("Whatsapp Number Not Found", 401);
   }
+  if (user.status === "deleted") {
+    throw new AppError("Account has been deleted", 401);
+  }
   if (user.status === "blocked") {
     throw new AppError("Account is blocked", 403);
   }

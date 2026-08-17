@@ -244,7 +244,9 @@ async function countAssistantsByWellnessCoachId(wellnessCoachId) {
 
 async function createAssistantWellnessCoach(fields) {
   const now = new Date().toISOString();
-  const referralCode = fields.referralCode || (await generateUniqueReferralCode());
+  const referralCode =
+    fields.referralCode ||
+    (await generateUniqueReferralCode({ entityType: "assistant_wellness_coach" }));
   const item = buildAssistantItem({ ...fields, referralCode }, { now });
 
   if (!item.wellnessCoachId) throw new Error("wellnessCoachId is required");

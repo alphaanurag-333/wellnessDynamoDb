@@ -85,18 +85,18 @@ export function UserList() {
 
   const handleDelete = async (u) => {
     const { isConfirmed } = await Swal.fire({
-      title: "Delete user?",
-      html: `This will remove <strong>${u.name || u.email}</strong> permanently.`,
+      title: "Archive user?",
+      html: `This will archive <strong>${u.name || u.email}</strong>. They can register again with the same email and phone number.`,
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: "Yes, delete",
+      confirmButtonText: "Yes, archive",
       cancelButtonText: "Cancel",
       confirmButtonColor: "#dc2626",
     });
     if (!isConfirmed || !adminToken) return;
     try {
       await adminDeleteUser(adminToken, resolveUserId(u));
-      await Swal.fire({ icon: "success", title: "User deleted", timer: 1500 });
+      await Swal.fire({ icon: "success", title: "User archived", timer: 1500 });
       loadUsers();
     } catch (e) {
       if (e?.status === 401) {

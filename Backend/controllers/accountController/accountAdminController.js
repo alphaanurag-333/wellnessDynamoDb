@@ -15,9 +15,14 @@ const { getRoleById, listRoles } = require("../../models/roleModel");
 const { normalizeRoleKey, ROLE_KEY_TO_UI } = require("../../config/accountRoles");
 const { normalizeEmail, normalizePhone, normalizeCountryCode } = require("../../models/userModel");
 const { UI_TO_ACCOUNT_ROLE } = require("../../config/consolePermissionCatalog");
+const {
+  generateUniqueReferralCode,
+  registerReferralCode,
+} = require("../../models/referralCodeModel");
 
 const DEFAULT_TEMP_PASSWORD = process.env.SEED_STAFF_PASSWORD || "Admin@12345";
 const CONSOLE_SCOPE = "CONSOLE";
+const REFERRAL_STAFF_ROLES = new Set(["wellness_coach", "assistant_wellness_coach"]);
 
 async function resolveAccountRoleKeyFromConsoleRole(startRole) {
   let current = startRole;
@@ -166,11 +171,30 @@ exports.createAccountHandler = asyncHandler(async (req, res) => {
     (accountRoleKey === "assistant_wellness_coach" || accountRoleKey === "trainee") &&
     !parentId
   ) {
-    throw new AppError("parentAccountId (coach) is required for assistants and trainees", 400);
+    throw new AppError("parentAccountId is required for assistants and trainees", 400);
   }
   if (parentId) {
     const parent = await getAccountById(parentId);
-    if (!parent) throw new AppError("Parent coach not found", 404);
+    if (!parent) throw new AppError("Parent team member not found", 404);
+    const requiredParentRole =
+      accountRoleKey === "assistant_wellness_coach"
+        ? "wellness_coach"
+        : accountRoleKey === "trainee"
+          ? "assistant_wellness_coach"
+          : null;
+    if (requiredParentRole && !parent.roleKeys?.includes(requiredParentRole)) {
+      throw new AppError(
+        accountRoleKey === "trainee"
+          ? "A trainee must report to an Assistant WC"
+          : "An Assistant WC must report to a Wellness Coach",
+        400
+      );
+    }
+  }
+
+  let referralCode = null;
+  if (REFERRAL_STAFF_ROLES.has(accountRoleKey)) {
+    referralCode = await generateUniqueReferralCode({ entityType: accountRoleKey });
   }
 
   const account = await createAccount({
@@ -183,6 +207,7 @@ exports.createAccountHandler = asyncHandler(async (req, res) => {
     approvalStatus: accountRoleKey === "wellness_coach" ? "approved" : undefined,
     defaultRoleKey: accountRoleKey,
     parentAccountId: parentId,
+    referralCode,
     memberships: [
       {
         roleKey: accountRoleKey,
@@ -195,6 +220,15 @@ exports.createAccountHandler = asyncHandler(async (req, res) => {
       },
     ],
   });
+
+  if (referralCode) {
+    await registerReferralCode({
+      referralCode,
+      entityType: accountRoleKey,
+      entityId: account.id,
+      ownerCoachId: accountRoleKey === "wellness_coach" ? account.id : parentId,
+    });
+  }
 
   return res.status(201).json({
     status: true,

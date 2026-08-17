@@ -543,12 +543,12 @@ export const CHALLENGE_AUDIENCE_OPTIONS = [
 ];
 
 export const PROG_CATS = [
-  { label: "Fat Loss", count: 4, icon: "🏃", accent: "#c2661d", bg: "#fff9f4", border: "#f6dcc4" },
-  { label: "Diabetes Reversal", count: 2, icon: "🩸", accent: "#2b8f5b", bg: "#f7fbf9", border: "#cdeede" },
-  { label: "Thyroid Care", count: 2, icon: "🦋", accent: "#0d9488", bg: "#f0fdfa", border: "#ccfbf1" },
-  { label: "PCOD / PCOS", count: 2, icon: "🌸", accent: "#c2559a", bg: "#fdf6fb", border: "#f3d5ea" },
-  { label: "Overall Wellbeing", count: 3, icon: "✨", accent: "#c2891b", bg: "#fffdf5", border: "#f2d675" },
-  { label: "Hypertension", count: 1, icon: "❤️", accent: "#e5484d", bg: "#fef2f2", border: "#fecaca" },
+  { value: "fat_loss", label: "Fat Loss", count: 4, icon: "🏃", accent: "#c2661d", bg: "#fff9f4", border: "#f6dcc4" },
+  { value: "diabetes_reversal", label: "Diabetes Reversal", count: 2, icon: "🩸", accent: "#2b8f5b", bg: "#f7fbf9", border: "#cdeede" },
+  { value: "thyroid_care", label: "Thyroid Care", count: 2, icon: "🦋", accent: "#0d9488", bg: "#f0fdfa", border: "#ccfbf1" },
+  { value: "pcod_pcos", label: "PCOD / PCOS", count: 2, icon: "🌸", accent: "#c2559a", bg: "#fdf6fb", border: "#f3d5ea" },
+  { value: "overall_wellbeing", label: "Overall Wellbeing", count: 3, icon: "✨", accent: "#c2891b", bg: "#fffdf5", border: "#f2d675" },
+  { value: "hypertension", label: "Hypertension", count: 1, icon: "❤️", accent: "#e5484d", bg: "#fef2f2", border: "#fecaca" },
 ];
 
 export const APP_USER_PROG_CARD = {

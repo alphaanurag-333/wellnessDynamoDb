@@ -9,9 +9,10 @@ import {
   TEAM_ROLE_TABS_BASE,
   staffInitials,
 } from "../data/teamsData.js";
-import { createTeamMember, fetchTeamMembers, listCoachOptions } from "../api/teamsApi.js";
+import { createTeamMember, fetchTeamMembers, listTeamParentOptions } from "../api/teamsApi.js";
 import { fetchAccessRoles } from "../api/accessApi.js";
 import { UI_TO_ROLE_KEY } from "../api/accountApi.js";
+import { useViewAs } from "../context/ViewAsContext.jsx";
 
 const SYSTEM_TEAM_ROLE_KEYS = new Set(["wc", "awc", "trainee", "support"]);
 
@@ -51,7 +52,7 @@ function roleChipMeta(role, fallbackKey = "wc") {
   };
 }
 
-function CreateMemberModal({ open, roles, coaches, onClose, onCreated, onToast }) {
+function CreateMemberModal({ open, roles, parentOptions, onClose, onCreated, onToast }) {
   const creatableRoles = useMemo(
     () => (roles || []).filter((r) => !isAdminAccessRole(r)),
     [roles],
@@ -70,14 +71,32 @@ function CreateMemberModal({ open, roles, coaches, onClose, onCreated, onToast }
     setEmail("");
     const defaultRole = creatableRoles.find((r) => r.roleKey === "wc") || creatableRoles[0];
     setConsoleRoleId(defaultRole?.id || "");
-    setParentAccountId(coaches[0]?.id || "");
-  }, [open, coaches, creatableRoles]);
-
-  if (!open) return null;
+    setParentAccountId("");
+  }, [open, creatableRoles]);
 
   const selectedRole = creatableRoles.find((r) => r.id === consoleRoleId) || null;
   const baseUiKey = selectedRole ? resolveBaseUiRoleKey(selectedRole, creatableRoles) : null;
   const needsParent = baseUiKey === "awc" || baseUiKey === "trainee";
+  const parentRoleKey =
+    baseUiKey === "trainee" ? "assistant_wellness_coach" : "wellness_coach";
+  const eligibleParents = useMemo(
+    () =>
+      (parentOptions || []).filter((account) =>
+        account.roleKeys?.includes(parentRoleKey),
+      ),
+    [parentOptions, parentRoleKey],
+  );
+
+  useEffect(() => {
+    if (!open || !needsParent) return;
+    setParentAccountId((current) =>
+      eligibleParents.some((parent) => parent.id === current)
+        ? current
+        : eligibleParents[0]?.id || "",
+    );
+  }, [open, needsParent, parentRoleKey, eligibleParents]);
+
+  if (!open) return null;
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -158,7 +177,9 @@ function CreateMemberModal({ open, roles, coaches, onClose, onCreated, onToast }
           </label>
           {needsParent ? (
             <label className="ua-ac-field">
-              <span className="ua-ac-field__label">Reports to (Wellness Coach)</span>
+              <span className="ua-ac-field__label">
+                Reports to ({baseUiKey === "trainee" ? "Assistant WC" : "Wellness Coach"})
+              </span>
               <select
                 className="ua-ac-field__input"
                 value={parentAccountId}
@@ -166,7 +187,7 @@ function CreateMemberModal({ open, roles, coaches, onClose, onCreated, onToast }
                 required
               >
                 <option value="">Choose coach…</option>
-                {coaches.map((c) => (
+                {eligibleParents.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name} · {c.email}
                   </option>
@@ -190,6 +211,7 @@ function CreateMemberModal({ open, roles, coaches, onClose, onCreated, onToast }
 
 export function TeamsPage() {
   const { showToast: onToast } = useOutletContext();
+  const { isSuperAdmin, viewAs } = useViewAs();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [members, setMembers] = useState([]);
@@ -197,7 +219,7 @@ export function TeamsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
-  const [coaches, setCoaches] = useState([]);
+  const [parentOptions, setParentOptions] = useState([]);
 
   const teamRoles = useMemo(
     () => (accessRoles || []).filter((r) => !isAdminAccessRole(r) && isSystemTeamRole(r)),
@@ -238,9 +260,9 @@ export function TeamsPage() {
 
   useEffect(() => {
     if (!createOpen) return;
-    listCoachOptions()
-      .then(setCoaches)
-      .catch(() => setCoaches([]));
+    listTeamParentOptions()
+      .then(setParentOptions)
+      .catch(() => setParentOptions([]));
   }, [createOpen]);
 
   const roleById = useMemo(
@@ -307,12 +329,18 @@ export function TeamsPage() {
     <main className="content ua-page-enter">
       <PageHeader
         title="Teams & roles"
-        subtitle="Each team = 1 Wellness Coach + N assistants + assigned clients. Manage every staff role below."
+        subtitle={
+          viewAs === "wc"
+            ? "Your Assistant WCs and the trainees below them."
+            : viewAs === "awc"
+              ? "Trainees assigned below you."
+              : "Each team = 1 Wellness Coach + N assistants + assigned clients. Manage every staff role below."
+        }
         autosave
         onAutosave={() => onToast("Saved")}
-        actions={
+        actions={isSuperAdmin ? (
           <OrangeButton onClick={() => setCreateOpen(true)}>+ Create team member</OrangeButton>
-        }
+        ) : null}
       />
 
       <SectionLabel hint="Filter by Access Control role">Team</SectionLabel>
@@ -397,18 +425,10 @@ export function TeamsPage() {
                   <div className="ua-team-actions" onClick={(e) => e.stopPropagation()}>
                     <button
                       type="button"
-                      className="ua-team-actions__bell"
-                      title="Send reminder"
-                      onClick={() => onToast(`Reminder queued for ${s.name}`)}
-                    >
-                      🔔
-                    </button>
-                    <button
-                      type="button"
                       className="ua-team-actions__perm"
-                      onClick={() => openMember(s.id, "permissions")}
+                      onClick={() => openMember(s.id, isSuperAdmin ? "permissions" : undefined)}
                     >
-                      Permissions ›
+                      {isSuperAdmin ? "Permissions" : "View members"} ›
                     </button>
                   </div>
                 </div>
@@ -421,7 +441,7 @@ export function TeamsPage() {
       <CreateMemberModal
         open={createOpen}
         roles={createRoles}
-        coaches={coaches}
+        parentOptions={parentOptions}
         onClose={() => setCreateOpen(false)}
         onCreated={() => load()}
         onToast={onToast}

@@ -10,8 +10,10 @@ const {
   generateUniqueReferralCode,
   updateReferralCodeOwnerCoachId,
 } = require("./referralCodeModel");
-const { getWellnessCoachRecordById } = require("./wellnessCoachModel");
-const { getAssistantWellnessCoachById } = require("./assistantWellnessCoachModel");
+const {
+  getWellnessCoachByIdResolved,
+  getAssistantWellnessCoachByIdResolved,
+} = require("../services/accountResolver");
 const {
   resolveConversionAssignment,
   assertHealUserAssignment,
@@ -43,12 +45,14 @@ async function loadReferralContext(referralRecord) {
   if (!referralRecord) return {};
 
   if (referralRecord.entityType === "wellness_coach") {
-    const wellnessCoach = await getWellnessCoachRecordById(referralRecord.entityId);
+    const wellnessCoach = await getWellnessCoachByIdResolved(referralRecord.entityId);
     return { wellnessCoach };
   }
 
   if (referralRecord.entityType === "assistant_wellness_coach") {
-    const assistantWellnessCoach = await getAssistantWellnessCoachById(referralRecord.entityId);
+    const assistantWellnessCoach = await getAssistantWellnessCoachByIdResolved(
+      referralRecord.entityId
+    );
     return { assistantWellnessCoach };
   }
 

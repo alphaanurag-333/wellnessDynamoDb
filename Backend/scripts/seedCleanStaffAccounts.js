@@ -362,7 +362,7 @@ async function run() {
       { roleKey: "wellness_coach", roleId: null, status: "active", parentAccountId: null },
     ],
   });
-  await putCoachMirror(coachAnita, passwordHash, await generateUniqueReferralCode());
+  await putCoachMirror(coachAnita, passwordHash, await generateUniqueReferralCode({ entityType: "wellness_coach" }));
 
   const coachRahul = await ensureAccount({
     name: "Rahul Mehta",
@@ -385,7 +385,7 @@ async function run() {
       { roleKey: "wellness_coach", roleId: null, status: "active", parentAccountId: null },
     ],
   });
-  await putCoachMirror(coachRahul, passwordHash, await generateUniqueReferralCode());
+  await putCoachMirror(coachRahul, passwordHash, await generateUniqueReferralCode({ entityType: "wellness_coach" }));
 
   const awcNeha = await ensureAccount({
     name: "Neha Kapoor",
@@ -407,7 +407,12 @@ async function run() {
       },
     ],
   });
-  await putAssistantMirror(awcNeha, passwordHash, coachAnita.id, await generateUniqueReferralCode());
+  await putAssistantMirror(
+    awcNeha,
+    passwordHash,
+    coachAnita.id,
+    await generateUniqueReferralCode({ entityType: "assistant_wellness_coach" })
+  );
 
   const awcVikram = await ensureAccount({
     name: "Vikram Singh",
@@ -433,7 +438,7 @@ async function run() {
     awcVikram,
     passwordHash,
     coachRahul.id,
-    await generateUniqueReferralCode()
+    await generateUniqueReferralCode({ entityType: "assistant_wellness_coach" })
   );
 
   await ensureAccount({

@@ -214,7 +214,7 @@ async function getWellnessCoachByPhone(phoneCountryCode, phone) {
 
 async function createWellnessCoach(fields) {
   const now = new Date().toISOString();
-  const referralCode = fields.referralCode || (await generateUniqueReferralCode());
+  const referralCode = fields.referralCode || (await generateUniqueReferralCode({ entityType: "wellness_coach" }));
   const item = buildCoachItem({ ...fields, referralCode }, { now });
 
   if (!item.name) throw new Error("name is required");

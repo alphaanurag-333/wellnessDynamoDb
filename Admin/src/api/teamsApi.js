@@ -45,13 +45,20 @@ export async function createTeamMember(payload) {
   }
 }
 
-export async function listCoachOptions() {
+export async function listTeamParentOptions() {
   try {
-    const { data } = await api.get("/account/accounts", {
-      headers: authHeader(),
-      params: { roleKey: "wellness_coach", status: "active", limit: 100 },
-    });
-    return Array.isArray(data.accounts) ? data.accounts : [];
+    const roles = ["wellness_coach", "assistant_wellness_coach"];
+    const responses = await Promise.all(
+      roles.map((roleKey) =>
+        api.get("/account/accounts", {
+          headers: authHeader(),
+          params: { roleKey, status: "active", limit: 100 },
+        }),
+      ),
+    );
+    return responses.flatMap(({ data }) =>
+      Array.isArray(data.accounts) ? data.accounts : [],
+    );
   } catch (error) {
     normalizeApiError(error);
   }

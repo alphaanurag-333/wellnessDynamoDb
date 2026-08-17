@@ -51,6 +51,19 @@ const SEED_LISTS = [
     ],
   },
   {
+    slug: "program-category",
+    title: "Program categories",
+    wide: true,
+    options: [
+      { label: "Fat Loss", value: "fat_loss", icon: "🏃" },
+      { label: "Diabetes Reversal", value: "diabetes_reversal", icon: "🩸" },
+      { label: "Thyroid Care", value: "thyroid_care", icon: "🦋" },
+      { label: "PCOD / PCOS", value: "pcod_pcos", icon: "🌸" },
+      { label: "Overall Wellbeing", value: "overall_wellbeing", icon: "✨" },
+      { label: "Hypertension", value: "hypertension", icon: "❤️" },
+    ],
+  },
+  {
     slug: "testimonial-point",
     title: "Testimonial data point",
     options: [
@@ -182,6 +195,7 @@ function normalizeOption(raw, index = 0) {
     id,
     label,
     value,
+    icon: String(raw?.icon || "").trim(),
     on: raw?.on === false ? false : true,
     sortOrder: Number.isFinite(Number(raw?.sortOrder)) ? Number(raw.sortOrder) : index + 1,
   };
@@ -264,19 +278,24 @@ async function persistList(item) {
 
 async function ensureSeeded() {
   const existing = await listAllUnpaged();
-  if (existing.length) return existing;
+  const seeds = existing.length
+    ? SEED_LISTS.filter((seed) => seed.slug === "program-category"
+      && !existing.some((list) => list.slug === seed.slug))
+    : SEED_LISTS;
+  if (!seeds.length) return existing;
 
   const now = new Date().toISOString();
   const created = [];
-  for (let i = 0; i < SEED_LISTS.length; i += 1) {
-    const seed = SEED_LISTS[i];
+  for (let i = 0; i < seeds.length; i += 1) {
+    const seed = seeds[i];
+    const seedIndex = SEED_LISTS.findIndex((row) => row.slug === seed.slug);
     const item = {
       id: uuidv4(),
       slug: seed.slug,
       title: seed.title,
       wide: Boolean(seed.wide),
       status: "active",
-      sortOrder: i + 1,
+      sortOrder: seedIndex + 1,
       options: normalizeOptions(seed.options),
       createdAt: now,
       updatedAt: now,
@@ -284,7 +303,7 @@ async function ensureSeeded() {
     await persistList(item);
     created.push(withLegacyId(item));
   }
-  return created;
+  return [...existing, ...created].sort(sortLists);
 }
 
 async function listDropdowns({ page = 1, limit = 50, status, search, seed = true } = {}) {
@@ -482,6 +501,7 @@ function toPublicList(list, { activeOptionsOnly = false } = {}) {
       id: row.id,
       label: row.label,
       value: row.value,
+      icon: row.icon || "",
       on: row.on,
       sortOrder: row.sortOrder,
     })),

@@ -3,8 +3,9 @@ import { useState } from "react";
 export function sanitizeReferralCodeInput(value) {
   return String(value ?? "")
     .toUpperCase()
-    .replace(/[^A-Z0-9]/g, "")
-    .slice(0, 12);
+    .replace(/[^A-Z0-9-]/g, "")
+    .replace(/-{2,}/g, "-")
+    .slice(0, 16);
 }
 
 export function CopyReferralCode({ code, label = "Referral code" }) {

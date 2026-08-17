@@ -26,9 +26,15 @@ const {
 const { normalizeRoleKey, ROLE_KEY_TO_UI } = require("../../config/accountRoles");
 const { normalizeEmail, normalizePhone, normalizeCountryCode } = require("../../models/userModel");
 const { generateOtp, getOtpExpiryDate, isOtpExpired, deliverOtp } = require("../../utils/otp");
+const {
+  generateUniqueReferralCode,
+  registerReferralCode,
+  ensureEntityReferralCode,
+} = require("../../models/referralCodeModel");
 const config = require("../../config");
 
 const S3_FOLDER = "account";
+const REFERRAL_STAFF_ROLES = new Set(["wellness_coach", "assistant_wellness_coach"]);
 
 function withRoleAliases(publicAccount, activeRole) {
   return {
@@ -161,8 +167,26 @@ exports.switchAccountRole = asyncHandler(async (req, res) => {
 });
 
 exports.getAccountMe = asyncHandler(async (req, res) => {
-  const account = req.account || req.user;
+  let account = req.account || req.user;
   const activeRole = req.auth?.role;
+
+  // Backfill codes for staff created before role-prefixed referral codes existed.
+  if (REFERRAL_STAFF_ROLES.has(activeRole) && account?.id && !account.referralCode) {
+    try {
+      const code = await ensureEntityReferralCode({
+        tableName: "Account",
+        entityType: activeRole,
+        entityId: account.id,
+        ownerCoachId:
+          activeRole === "wellness_coach" ? account.id : account.parentAccountId || "pending",
+        referralCode: null,
+      });
+      if (code) account = { ...account, referralCode: code };
+    } catch (err) {
+      console.error("[getAccountMe] ensure referral code failed", err.message);
+    }
+  }
+
   const { permissions, isSuperAdmin } = await resolveAccountPermissions(account, activeRole);
   const publicAccount = {
     ...toPublicAccount(account),
@@ -355,6 +379,7 @@ exports.registerCoachAccount = asyncHandler(async (req, res) => {
   }
 
   const passwordHash = await hashPassword(password);
+  const referralCode = await generateUniqueReferralCode({ entityType: "wellness_coach" });
   const account = await createAccount({
     name,
     email: normalizeEmail(email),
@@ -367,6 +392,7 @@ exports.registerCoachAccount = asyncHandler(async (req, res) => {
     approvalStatus: "pending",
     defaultRoleKey: "wellness_coach",
     sourceLegacyType: "wellness_coach",
+    referralCode,
     memberships: [
       {
         roleKey: "wellness_coach",
@@ -376,6 +402,13 @@ exports.registerCoachAccount = asyncHandler(async (req, res) => {
         parentAccountId: null,
       },
     ],
+  });
+
+  await registerReferralCode({
+    referralCode,
+    entityType: "wellness_coach",
+    entityId: account.id,
+    ownerCoachId: account.id,
   });
 
   return res.status(201).json({

@@ -1,8 +1,9 @@
 const { isReferralCodeValidForDiscount } = require("./consultancyPricingService");
 const { loadReferralContext } = require("../models/userConversionModel");
+const { resolveConversionAssignment } = require("../models/userAssignmentLogic");
 
 /**
- * Resolve referral history fields for new Seek user registration.
+ * Resolve referral history and staff assignment for new Seek user registration.
  * Only returns fields when the code is valid; invalid codes are ignored silently.
  */
 async function resolveRegistrationReferralFields(referralCodeInput) {
@@ -15,43 +16,23 @@ async function resolveRegistrationReferralFields(referralCodeInput) {
   if (!referral.valid || !referral.record) return {};
 
   const context = await loadReferralContext(referral.record);
-  const record = referral.record;
-  const referredByCode = record.referralCode;
-
-  if (record.entityType === "wellness_coach") {
-    const coach = context.wellnessCoach;
-    if (!coach || coach.status !== "active") return {};
+  try {
+    const assignment = resolveConversionAssignment(
+      referral.record,
+      context,
+      normalizedInput
+    );
     return {
-      referredByUserId: null,
-      referredByCode,
-      referredByEntityType: "wellness_coach",
-      referredByEntityId: coach.id,
+      ...assignment,
+      assignedAt:
+        assignment.assignmentStatus === "assigned"
+          ? new Date().toISOString()
+          : null,
     };
+  } catch (err) {
+    if (err?.name === "InvalidReferralCodeError") return {};
+    throw err;
   }
-
-  if (record.entityType === "assistant_wellness_coach") {
-    const assistant = context.assistantWellnessCoach;
-    if (!assistant || assistant.status !== "active") return {};
-    return {
-      referredByUserId: null,
-      referredByCode,
-      referredByEntityType: "assistant_wellness_coach",
-      referredByEntityId: assistant.id,
-    };
-  }
-
-  if (record.entityType === "user") {
-    const referer = context.refererUser;
-    if (!referer) return {};
-    return {
-      referredByUserId: referer.id,
-      referredByCode,
-      referredByEntityType: "user",
-      referredByEntityId: referer.id,
-    };
-  }
-
-  return {};
 }
 
 module.exports = {

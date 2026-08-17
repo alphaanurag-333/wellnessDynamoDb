@@ -55,6 +55,41 @@ function normalizeBooleanFlag(value, fallback = false) {
   return Boolean(fallback);
 }
 
+function normalizeAppProgramPricing(value) {
+  const parsed = parseJSON(value, null);
+  if (!Array.isArray(parsed)) {
+    throw new AppError("app_program_pricing must be an array", 400);
+  }
+
+  const ids = new Set();
+  return parsed.map((row, index) => {
+    const name = String(row?.name ?? "").trim();
+    const amount = Number(row?.amount);
+    const discountPercent = Number(row?.discountPercent);
+    const validityHours = Number(row?.validityHours);
+    const id = String(row?.id || `program-${index + 1}`).trim();
+
+    if (!id || ids.has(id)) {
+      throw new AppError("Each program must have a unique id", 400);
+    }
+    if (!name) {
+      throw new AppError(`Program ${index + 1} name is required`, 400);
+    }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new AppError(`Program ${index + 1} amount must be greater than 0`, 400);
+    }
+    if (!Number.isFinite(discountPercent) || discountPercent < 0 || discountPercent > 100) {
+      throw new AppError(`Program ${index + 1} discountPercent must be between 0 and 100`, 400);
+    }
+    if (!Number.isInteger(validityHours) || validityHours <= 0) {
+      throw new AppError(`Program ${index + 1} validityHours must be a positive whole number`, 400);
+    }
+
+    ids.add(id);
+    return { id, name, amount, discountPercent, validityHours };
+  });
+}
+
 function isVideoMime(mimetype = "") {
   return String(mimetype).toLowerCase().startsWith("video/");
 }
@@ -205,6 +240,7 @@ exports.createAppConfigController = asyncHandler(async (req, res) => {
     referral_discount,
     consultancy_amount,
     subscription_amount,
+    app_program_pricing,
     energy_exchange_monthly_amount,
     fy_start_month,
     energy_exchange_default_fy_discounts,
@@ -245,6 +281,10 @@ exports.createAppConfigController = asyncHandler(async (req, res) => {
     referral_discount: referral_discount ?? "",
     consultancy_amount: consultancy_amount ?? "",
     subscription_amount: subscription_amount ?? "",
+    app_program_pricing:
+      app_program_pricing === undefined
+        ? config.app_program_pricing
+        : normalizeAppProgramPricing(app_program_pricing),
     energy_exchange_monthly_amount: energy_exchange_monthly_amount ?? "",
     fy_start_month: fy_start_month != null && String(fy_start_month) !== "" ? String(fy_start_month) : "4",
     energy_exchange_default_fy_discounts: parseJSON(
@@ -335,6 +375,10 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
 
   if (req.body.payment_gateways !== undefined) {
     updates.payment_gateways = parseJSON(req.body.payment_gateways, config.payment_gateways);
+  }
+
+  if (req.body.app_program_pricing !== undefined) {
+    updates.app_program_pricing = normalizeAppProgramPricing(req.body.app_program_pricing);
   }
 
   if (req.body.energy_exchange_default_fy_discounts !== undefined) {

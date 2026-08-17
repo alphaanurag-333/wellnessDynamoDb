@@ -59,6 +59,27 @@ function pct(part, total) {
   return Math.round((part / total) * 100);
 }
 
+function formatProfileDate(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+}
+
+function memberLocation(member) {
+  return [member.city, member.state, member.country].filter(Boolean).join(", ") || "—";
+}
+
+function memberPhone(member) {
+  if (!member.phone) return "—";
+  const prefix = member.phoneCountryCode ? `+${String(member.phoneCountryCode).replace(/^\+/, "")} ` : "";
+  return `${prefix}${member.phone}`;
+}
+
 function ToggleSwitch({ on, disabled, onClick }) {
   return (
     <button
@@ -134,6 +155,7 @@ export function TeamMemberPage() {
   const [grants, setGrants] = useState({});
   const [dirtyPerms, setDirtyPerms] = useState(false);
   const [savingPerms, setSavingPerms] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -265,7 +287,7 @@ export function TeamMemberPage() {
         <div className="ua-tm-profile__row">
           <div className="ua-tm-profile__identity">
             <span className="ua-tm-avatar" style={{ background: avatarColor }}>
-              {staffInitials(member.name)}
+              {member.profileImage ? <img src={member.profileImage} alt="" /> : staffInitials(member.name)}
             </span>
             <div className="ua-tm-profile__copy">
               <div className="ua-tm-profile__name-row">
@@ -297,9 +319,11 @@ export function TeamMemberPage() {
           <button
             type="button"
             className="ua-tm-profile__view"
-            onClick={() => onToast("Profile editor coming soon")}
+            onClick={() => setProfileOpen((open) => !open)}
+            aria-expanded={profileOpen}
           >
-            View profile <span aria-hidden="true">›</span>
+            {profileOpen ? "Hide profile" : "View profile"}{" "}
+            <span className={profileOpen ? "ua-tm-profile__chevron ua-tm-profile__chevron--open" : "ua-tm-profile__chevron"} aria-hidden="true">›</span>
           </button>
         </div>
 
@@ -332,6 +356,31 @@ export function TeamMemberPage() {
             Admin — applies at once. Current role: {roleMeta.name}
           </p>
         </div>
+
+        {profileOpen ? (
+          <div className="ua-tm-profile-details">
+            <div className="ua-tm-profile-panel">
+              <div className="ua-tm-profile-panel__title">Personal details</div>
+              <dl className="ua-tm-profile-panel__rows">
+                <div><dt>Full name</dt><dd>{member.name || "—"}</dd></div>
+                <div><dt>Email</dt><dd>{member.email || "—"}</dd></div>
+                <div><dt>Mobile</dt><dd>{memberPhone(member)}</dd></div>
+                <div><dt>Date of birth</dt><dd>{formatProfileDate(member.dateOfBirth)}</dd></div>
+                <div><dt>Location</dt><dd>{memberLocation(member)}</dd></div>
+              </dl>
+            </div>
+            <div className="ua-tm-profile-panel">
+              <div className="ua-tm-profile-panel__title">Role &amp; engagement</div>
+              <dl className="ua-tm-profile-panel__rows">
+                <div><dt>Role</dt><dd>{roleMeta.name}</dd></div>
+                <div><dt>Status</dt><dd>{member.displayStatus || "—"}</dd></div>
+                <div><dt>Detail</dt><dd>{member.meta || "—"}</dd></div>
+                <div><dt>Joined</dt><dd>{formatProfileDate(member.joinedAt)}</dd></div>
+                <div><dt>Referral code</dt><dd>{member.referralCode || "—"}</dd></div>
+              </dl>
+            </div>
+          </div>
+        ) : null}
       </section>
 
       {showClients ? (

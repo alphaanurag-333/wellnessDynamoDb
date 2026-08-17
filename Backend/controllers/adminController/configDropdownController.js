@@ -134,6 +134,7 @@ exports.addConfigDropdownOptionController = asyncHandler(async (req, res) => {
     result = await addOption(current.id, {
       label,
       value: req.body.value,
+      icon: req.body.icon,
       on: req.body.on,
     });
   } catch (err) {
@@ -159,6 +160,7 @@ exports.updateConfigDropdownOptionController = asyncHandler(async (req, res) => 
     patch.label = label;
   }
   if (req.body.value !== undefined) patch.value = req.body.value;
+  if (req.body.icon !== undefined) patch.icon = String(req.body.icon).trim();
   if (req.body.on !== undefined) patch.on = Boolean(req.body.on);
   if (req.body.sortOrder !== undefined) patch.sortOrder = req.body.sortOrder;
   if (Object.keys(patch).length === 0) {

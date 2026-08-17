@@ -6,6 +6,7 @@ import {
   adminListConfigDropdowns,
   adminUpdateConfigDropdownOption,
 } from "../api/configDropdownApi.js";
+import { ConfirmDialog } from "./ConfirmDialog.jsx";
 
 const FILTERS = ["All options", "On", "Hidden"];
 
@@ -19,10 +20,13 @@ export function DropdownsSection({ lists, setLists, onToast }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All options");
   const [drafts, setDrafts] = useState({});
+  const [iconDrafts, setIconDrafts] = useState({});
   const [editing, setEditing] = useState(null);
   const [editValue, setEditValue] = useState("");
+  const [editIcon, setEditIcon] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(null);
 
   const query = search.trim().toLowerCase();
 
@@ -71,9 +75,14 @@ export function DropdownsSection({ lists, setLists, onToast }) {
     if (!label || busy) return;
     setBusy(true);
     try {
-      const { list } = await adminAddConfigDropdownOption(null, listId, { label, on: true });
+      const { list } = await adminAddConfigDropdownOption(null, listId, {
+        label,
+        icon: asCopyString(iconDrafts[listId]).trim(),
+        on: true,
+      });
       replaceList(list);
       setDrafts((prev) => ({ ...prev, [listId]: "" }));
+      setIconDrafts((prev) => ({ ...prev, [listId]: "" }));
       onToast("Option added");
     } catch (error) {
       onToast(error?.message || "Failed to add option");
@@ -87,10 +96,14 @@ export function DropdownsSection({ lists, setLists, onToast }) {
     if (!label || busy) return;
     setBusy(true);
     try {
-      const { list } = await adminUpdateConfigDropdownOption(null, listId, optionId, { label });
+      const { list } = await adminUpdateConfigDropdownOption(null, listId, optionId, {
+        label,
+        icon: editIcon,
+      });
       replaceList(list);
       setEditing(null);
       setEditValue("");
+      setEditIcon("");
       onToast("Option saved");
     } catch (error) {
       onToast(error?.message || "Failed to save option");
@@ -134,25 +147,39 @@ export function DropdownsSection({ lists, setLists, onToast }) {
     }
   }
 
-  async function removeOption(listId, option) {
+  function askRemoveOption(listId, option, listTitle) {
     if (busy) return;
+    setPendingDelete({
+      listId,
+      optionId: option.id,
+      label: asCopyString(option.label),
+      listTitle: asCopyString(listTitle),
+      icon: asCopyString(option.icon),
+    });
+  }
+
+  async function confirmRemoveOption() {
+    if (!pendingDelete || busy) return;
+    const { listId, optionId, label } = pendingDelete;
     const previous = lists;
+    setPendingDelete(null);
     setLists((prev) =>
       prev.map((list) =>
         list.id === listId
-          ? { ...list, options: list.options.filter((row) => row.id !== option.id) }
+          ? { ...list, options: list.options.filter((row) => row.id !== optionId) }
           : list,
       ),
     );
-    if (editing === `${listId}:${option.id}`) {
+    if (editing === `${listId}:${optionId}`) {
       setEditing(null);
       setEditValue("");
+      setEditIcon("");
     }
     setBusy(true);
     try {
-      const list = await adminDeleteConfigDropdownOption(null, listId, option.id);
+      const list = await adminDeleteConfigDropdownOption(null, listId, optionId);
       replaceList(list);
-      onToast("Option removed");
+      onToast(`Removed “${label}”`);
     } catch (error) {
       setLists(previous);
       onToast(error?.message || "Failed to remove option");
@@ -192,6 +219,7 @@ export function DropdownsSection({ lists, setLists, onToast }) {
           {visible.map((list) => {
             const source = lists.find((entry) => entry.id === list.id) ?? list;
             const onCount = source.options.filter((entry) => entry.on).length;
+            const supportsIcons = list.slug === "program-category";
             return (
               <section key={list.id} className={`ua-cfg-dd-card${list.wide ? " ua-cfg-dd-card--wide" : ""}`}>
                 <div className="ua-cfg-dd-card__head">
@@ -205,17 +233,32 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                       <div key={entry.id} className={`ua-cfg-dd-row${entry.on ? "" : " is-off"}`}>
                         <i aria-hidden="true" />
                         {isEditing ? (
-                          <input
-                            className="ua-cfg-dd-row__input"
-                            value={asCopyString(editValue)}
-                            disabled={busy}
-                            onChange={(event) => setEditValue(event.target.value)}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter") saveEdit(list.id, entry.id);
-                            }}
-                          />
+                          <div className={`ua-cfg-dd-row__fields${supportsIcons ? " has-icon" : ""}`}>
+                            {supportsIcons ? (
+                              <input
+                                className="ua-cfg-dd-row__input ua-cfg-dd-row__input--icon"
+                                aria-label="Category emoji"
+                                placeholder="Emoji"
+                                value={asCopyString(editIcon)}
+                                disabled={busy}
+                                onChange={(event) => setEditIcon(event.target.value)}
+                              />
+                            ) : null}
+                            <input
+                              className="ua-cfg-dd-row__input"
+                              value={asCopyString(editValue)}
+                              disabled={busy}
+                              onChange={(event) => setEditValue(event.target.value)}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") saveEdit(list.id, entry.id);
+                              }}
+                            />
+                          </div>
                         ) : (
-                          <strong>{asCopyString(entry.label)}</strong>
+                          <strong>
+                            {entry.icon ? <span className="ua-cfg-dd-row__emoji">{entry.icon}</span> : null}
+                            {asCopyString(entry.label)}
+                          </strong>
                         )}
                         {isEditing ? (
                           <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={busy} onClick={() => saveEdit(list.id, entry.id)}>
@@ -229,6 +272,7 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                             onClick={() => {
                               setEditing(`${list.id}:${entry.id}`);
                               setEditValue(asCopyString(entry.label));
+                              setEditIcon(asCopyString(entry.icon));
                             }}
                           >
                             Edit
@@ -248,7 +292,7 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                           className="ua-cfg-icon-btn"
                           aria-label={`Remove ${asCopyString(entry.label)}`}
                           disabled={busy}
-                          onClick={() => removeOption(list.id, entry)}
+                          onClick={() => askRemoveOption(list.id, entry, list.title)}
                         >
                           ×
                         </button>
@@ -256,7 +300,17 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                     );
                   })}
                 </div>
-                <div className="ua-cfg-dd-add">
+                <div className={`ua-cfg-dd-add${supportsIcons ? " has-icon" : ""}`}>
+                  {supportsIcons ? (
+                    <input
+                      className="ua-cfg-vh-input ua-cfg-dd-add__icon"
+                      aria-label="New category emoji"
+                      placeholder="Emoji"
+                      value={asCopyString(iconDrafts[list.id])}
+                      disabled={busy}
+                      onChange={(event) => setIconDrafts((prev) => ({ ...prev, [list.id]: event.target.value }))}
+                    />
+                  ) : null}
                   <input
                     className="ua-cfg-vh-input"
                     placeholder="Add an option..."
@@ -276,6 +330,26 @@ export function DropdownsSection({ lists, setLists, onToast }) {
           })}
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        tag="Delete option"
+        title={
+          pendingDelete
+            ? `Remove ${pendingDelete.icon ? `${pendingDelete.icon} ` : ""}“${pendingDelete.label}”?`
+            : ""
+        }
+        body={
+          pendingDelete
+            ? `This will permanently remove the option from “${pendingDelete.listTitle}”. You can’t undo this.`
+            : ""
+        }
+        cancelLabel="Keep option"
+        confirmLabel="Delete"
+        confirmTone="danger"
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={confirmRemoveOption}
+      />
     </div>
   );
 }

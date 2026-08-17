@@ -122,6 +122,7 @@ const DEFAULT_CONSOLE_GRANTS = {
     body: ["view"],
     rep: ["view"],
     diet: ["view"],
+    tm: ["view"],
     cal: ["view", "create", "edit"],
     avail: ["view"],
     pt: ["view", "edit", "toggle"],
@@ -130,11 +131,13 @@ const DEFAULT_CONSOLE_GRANTS = {
   trainee: {
     dash: ["view"],
     cl: ["view"],
+    pt: ["view"],
     sop: ["view"],
     body: ["view"],
   },
   support: {
     dash: ["view"],
+    pt: ["view"],
     ct: ["view", "create", "upload", "delete"],
     bn: ["view", "create", "edit", "toggle"],
     cf: ["view", "edit"],
@@ -144,9 +147,9 @@ const DEFAULT_CONSOLE_GRANTS = {
 const DEFAULT_NAV_SECTIONS = {
   admin: ["dashboard", "users", "access", "teams", "calendar", "pending", "sop", "configs"],
   wc: ["dashboard", "users", "teams", "calendar", "pending", "sop"],
-  awc: ["dashboard", "users", "calendar", "pending", "sop"],
-  trainee: ["dashboard", "users", "sop"],
-  support: ["dashboard", "configs"],
+  awc: ["dashboard", "users", "teams", "calendar", "pending", "sop"],
+  trainee: ["dashboard", "users", "pending", "sop"],
+  support: ["dashboard", "pending", "configs"],
 };
 
 const ROLE_KEY_META = {

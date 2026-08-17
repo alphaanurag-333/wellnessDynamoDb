@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AtAGlanceSection } from "./AtAGlanceSection.jsx";
 import { BodyAnalyticsSection } from "./BodyAnalyticsSection.jsx";
 import { InternalParametersSection } from "./InternalParametersSection.jsx";
@@ -8,6 +8,11 @@ import { BmsSection } from "./BmsSection.jsx";
 import { NutritionsSection } from "./NutritionsSection.jsx";
 import { getTierActions } from "../../data/userDetailData.js";
 import { tierBadgeClass, tierBadgeStyle, tierLabel, normalizeTier } from "../../data/usersData.js";
+import {
+  buildOnboardingAvailability,
+  PAID_ONBOARDING_STATUS_KEYS,
+  PAID_ONBOARDING_STEP_LABELS,
+} from "../../api/usersApi.js";
 
 export { AtAGlanceSection, BodyAnalyticsSection, InternalParametersSection, LaunchSection, FoodSection, BmsSection, NutritionsSection };
 export { HealthProgressSection } from "./HealthProgressSection.jsx";
@@ -20,6 +25,13 @@ export { GutResetSection } from "./GutResetSection.jsx";
 
 function DosageBadge({ label, tone }) {
   return <span className={`ua-cp-dosage ua-cp-dosage--${tone}`}>{label}</span>;
+}
+
+function formatStepStatus(value) {
+  const raw = String(value || "pending").toLowerCase();
+  if (raw === "done") return "Done";
+  if (raw === "skipped") return "Skipped";
+  return "Pending";
 }
 
 export function PersonalDetailsSection({ user, onToast }) {
@@ -52,21 +64,44 @@ export function PersonalDetailsSection({ user, onToast }) {
   const tierBadgeTone = tierBadgeStyle(currentTier);
   const displayTierLabel = tierLabel(currentTier);
   const tierConverted = manualTier !== null;
+  const availability = useMemo(() => buildOnboardingAvailability(user), [user]);
+  const stepStatus = user?.paidOnboardingStepStatus || {};
+
+  function titleCaseOnboardingStep(step) {
+    return String(step || "")
+      .split(/[_\s]+/)
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+      .join(" ");
+  }
+
+  const paidOnboardingLabel = user.paidOnboardingCompleted
+    ? "Completed"
+    : user.paidOnboardingStep
+      ? titleCaseOnboardingStep(user.paidOnboardingStep)
+      : "Pending";
 
   const fields = [
     { key: "name", label: "Full name", editable: true },
     { key: "dob", label: "Date of birth", editable: true },
+    { key: "gender", label: "Gender", value: user.gender, editable: false },
     { key: "email", label: "Email", value: user.email, editable: false },
     { key: "phone", label: "Phone", editable: true },
     { key: "whatsapp", label: "WhatsApp", editable: true },
     { key: "address", label: "Complete address", editable: true },
+    { key: "city", label: "City", value: user.city, editable: false },
     { key: "state", label: "State", editable: true },
+    { key: "country", label: "Country", value: user.country, editable: false },
+    { key: "pincode", label: "Pincode", value: user.pincode, editable: false },
     { key: "tier", label: "Plan / tier", value: displayTierLabel, editable: false },
-    { key: "goal", label: "Goal", editable: true },
+    { key: "goal", label: "Primary health concern", editable: true },
+    { key: "dietaryPreference", label: "Dietary preference", value: user.dietaryPreference, editable: false },
+    { key: "wellnessJourneyFor", label: "Wellness journey for", value: user.wellnessJourneyFor, editable: false },
+    { key: "referralCode", label: "Referral code", value: user.referralCode, editable: false },
     { key: "coach", label: "Assigned coach", value: user.coach, editable: false },
     { key: "joined", label: "Joined", value: user.joined, editable: false },
-    { key: "termsIp", label: "Terms & conditions IP", value: user.termsIp, editable: false },
     { key: "termsAccepted", label: "Terms & conditions accepted", value: user.termsAccepted, editable: false },
+    { key: "paidOnboarding", label: "Paid onboarding", value: paidOnboardingLabel, editable: false },
   ];
 
   function save() {
@@ -97,6 +132,9 @@ export function PersonalDetailsSection({ user, onToast }) {
         <div className="ua-cp-personal__head-copy">
           <h2 className="ua-cp-personal__title">Personal details</h2>
           <p className="ua-cp-personal__email">{user.email}</p>
+          <p className="ua-cp-personal__avail">
+            Onboarding data from User table · {availability.availableCount} of {availability.totalCount} fields available
+          </p>
         </div>
         <div className="ua-cp-personal__actions">
           {editing ? (
@@ -130,16 +168,58 @@ export function PersonalDetailsSection({ user, onToast }) {
         ) : null}
         <span className="ua-cp-status-badge"><span className="ua-cp-status-badge__dot" />{user.status || "Active"}</span>
       </div>
+
+      <div className="ua-cp-personal__avail-card">
+        <div className="ua-cp-personal__avail-head">
+          <h3 className="ua-cp-personal__avail-title">Submitted at onboarding</h3>
+          <span className="ua-cp-personal__avail-count">
+            {availability.availableCount}/{availability.totalCount} available
+          </span>
+        </div>
+        <div className="ua-cp-personal__avail-grid">
+          {availability.items.map((item) => (
+            <div
+              key={item.key}
+              className={`ua-cp-avail-chip${item.available ? " ua-cp-avail-chip--yes" : " ua-cp-avail-chip--no"}`}
+              title={item.available ? item.display : "Not submitted"}
+            >
+              <span className="ua-cp-avail-chip__mark" aria-hidden="true">{item.available ? "✓" : "–"}</span>
+              <span className="ua-cp-avail-chip__label">{item.label}</span>
+            </div>
+          ))}
+        </div>
+        {user?.paidOnboardingStepStatus ? (
+          <div className="ua-cp-personal__steps">
+            <div className="ua-cp-personal__steps-label">Paid onboarding steps</div>
+            <div className="ua-cp-personal__steps-grid">
+              {PAID_ONBOARDING_STATUS_KEYS.map((key) => {
+                const status = stepStatus[key] || "pending";
+                return (
+                  <div
+                    key={key}
+                    className={`ua-cp-step-chip ua-cp-step-chip--${status}`}
+                  >
+                    <span>{PAID_ONBOARDING_STEP_LABELS[key] || key}</span>
+                    <strong>{formatStepStatus(status)}</strong>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+      </div>
+
       <div className="ua-cp-personal__card">
         {fields.map((f) => {
           const val = f.value ?? form[f.key] ?? "";
+          const empty = !String(val || "").trim();
           return (
-            <div key={f.label} className="ua-cp-field">
+            <div key={f.label} className={`ua-cp-field${empty ? " ua-cp-field--empty" : ""}`}>
               <span className="ua-cp-field__label">{f.label}</span>
               {editing && f.editable ? (
                 <input className="ua-cp-field__input" value={val} onChange={(e) => setForm((prev) => ({ ...prev, [f.key]: e.target.value }))} />
               ) : (
-                <span className="ua-cp-field__value">{val || "—"}</span>
+                <span className="ua-cp-field__value">{val || "Not submitted"}</span>
               )}
             </div>
           );

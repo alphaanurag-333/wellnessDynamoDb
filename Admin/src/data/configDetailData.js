@@ -26,10 +26,10 @@ export const FAQ_ITEMS = [
 ];
 
 export const PROGRAM_PRICING = [
-  { id: "fat-loss", name: "Fat Loss", amount: 24999 },
-  { id: "diabetes", name: "Diabetes Reversal", amount: 29999 },
-  { id: "thyroid", name: "Thyroid Care", amount: 22999 },
-  { id: "pcod", name: "PCOD / PCOS", amount: 26999 },
+  { id: "fat-loss", name: "Fat Loss", amount: 24999, discountPercent: 0, validityHours: 24 },
+  { id: "diabetes", name: "Diabetes Reversal", amount: 29999, discountPercent: 0, validityHours: 24 },
+  { id: "thyroid", name: "Thyroid Care", amount: 22999, discountPercent: 0, validityHours: 24 },
+  { id: "pcod", name: "PCOD / PCOS", amount: 26999, discountPercent: 0, validityHours: 24 },
 ];
 
 export const SUBSCRIPTION_PRICING = [
