@@ -1907,7 +1907,7 @@ function renderPreviewBody(item, surface, previewState) {
         <VoicePreview
           editor={{
             ...previewState.ygEditor,
-            videoUploaded: (previewState.ygItems ?? []).some((entry) => entry.type === "VIDEO" || entry.cover),
+            videoUploaded: (previewState.ygItems ?? []).some((entry) => entry.type === "VIDEO" || entry.type === "YT" || entry.cover || entry.thumbnail),
             clientName: asCopyString(previewState.ygItems?.find((entry) => entry.live)?.title),
           }}
           items={(previewState.ygItems ?? []).map((entry) => ({

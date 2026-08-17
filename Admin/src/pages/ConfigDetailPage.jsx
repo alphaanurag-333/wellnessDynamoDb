@@ -50,6 +50,7 @@ import { AboutSection } from "../components/AboutSection.jsx";
 import { GoogleReviewSection } from "../components/GoogleReviewSection.jsx";
 import { DropdownsSection } from "../components/DropdownsSection.jsx";
 import { RecipesSection } from "../components/RecipesSection.jsx";
+import { YogaSection } from "../components/YogaSection.jsx";
 import { BlogsSection } from "../components/BlogsSection.jsx";
 import { RxBankSection } from "../components/RxBankSection.jsx";
 import { FaqConfigPanel } from "../components/FaqConfigPanel.jsx";
@@ -118,11 +119,7 @@ import {
   RECIPES_EDITOR,
 } from "../data/recipesConfigData.js";
 import {
-  YOGA_CATEGORIES,
   YOGA_EDITOR,
-  YOGA_GALLERY,
-  YOGA_GALLERY_OWNERS,
-  YOGA_ITEMS,
 } from "../data/yogaConfigData.js";
 import {
   BLOGS_EDITOR,
@@ -928,8 +925,7 @@ export function ConfigDetailPage() {
   const [rcEditor, setRcEditor] = useState(RECIPES_EDITOR);
   const [rcItems, setRcItems] = useState([]);
   const [ygEditor, setYgEditor] = useState(YOGA_EDITOR);
-  const [ygItems, setYgItems] = useState(YOGA_ITEMS);
-  const [ygGallery, setYgGallery] = useState(YOGA_GALLERY);
+  const [ygItems, setYgItems] = useState([]);
   const [blEditor, setBlEditor] = useState(BLOGS_EDITOR);
   const [blPosts, setBlPosts] = useState(BLOG_POSTS);
   const [blGallery, setBlGallery] = useState(BLOG_GALLERY);
@@ -1064,7 +1060,7 @@ export function ConfigDetailPage() {
               : item.id === "common-recipes"
                 ? rcItems.some((entry) => entry.live)
               : item.id === "common-yoga"
-                ? ygEditor.appOn || ygEditor.webOn
+                ? ygItems.some((entry) => entry.live)
               : item.id === "common-blogs"
                 ? blEditor.appOn || blEditor.webOn
               : item.id === "feature-flags"
@@ -1587,25 +1583,12 @@ export function ConfigDetailPage() {
         );
       case "common-yoga":
         return (
-          <RecipesSection
+          <YogaSection
             editor={ygEditor}
             setEditor={setYgEditor}
             items={ygItems}
             setItems={setYgItems}
-            gallery={ygGallery}
-            setGallery={setYgGallery}
             onToast={onToast}
-            categories={YOGA_CATEGORIES}
-            galleryOwners={YOGA_GALLERY_OWNERS}
-            titlePlaceholder="Title · e.g. Morning vinyasa flow"
-            descriptionPlaceholder="Yoga sequence description shown in the app..."
-            galleryBadge="Yoga"
-            galleryPlaceholder="Yoga media"
-            itemNoun="Practice"
-            videoCropLabel="libvideo"
-            coverCropLabel="libcover"
-            galleryCropLabel="yoga"
-            coverCropRatio="16:9"
           />
         );
       case "common-blogs":

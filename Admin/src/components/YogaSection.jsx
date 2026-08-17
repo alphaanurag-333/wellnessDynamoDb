@@ -2,19 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { asCopyString } from "../data/bannerConfigData.js";
 import { adminGetConfigDropdown, adminListConfigDropdowns } from "../api/configDropdownApi.js";
 import {
-  adminCreateHealthRecipe,
-  adminDeleteHealthRecipe,
-  adminListHealthRecipes,
-  adminUpdateHealthRecipe,
-} from "../api/healthRecipeApi.js";
+  adminCreateYoga,
+  adminDeleteYoga,
+  adminListYoga,
+  adminUpdateYoga,
+} from "../api/yogaApi.js";
 import {
   emptyRecipeDraft,
   mapDropdownCategoryOptions,
-  RECIPE_CATEGORIES,
-  RECIPE_CATEGORY_SLUG,
-  RECIPE_GALLERY_OWNERS,
-  RECIPE_PAGE_SIZE,
-  formatRecipeDate,
   persistRecipeCategory,
   recipeCategoryLabel,
   resolveCategorySelectValue,
@@ -22,7 +17,9 @@ import {
   validateRecipeVideo,
   withCategoryLabels,
   youtubeEmbedUrl,
+  formatRecipeDate,
 } from "../data/recipesConfigData.js";
+import { YOGA_CATEGORIES, YOGA_CATEGORY_SLUG, YOGA_PAGE_SIZE } from "../data/yogaConfigData.js";
 import { ListPagination } from "./shared.jsx";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
@@ -290,7 +287,7 @@ function SpecChips({ specs }) {
   );
 }
 
-function RecipeViewModal({ entry, onClose, onEdit, viewTag = "Health recipe", itemNoun = "Recipe", showSpecs = true }) {
+function RecipeViewModal({ entry, onClose, onEdit, viewTag = "Yoga & Pranayam", itemNoun = "Practice", showSpecs = false }) {
   if (!entry) return null;
   const embed = youtubeEmbedUrl(entry.videoLink);
   const isVideo = entry.apiType === "video" || entry.type === "VIDEO";
@@ -501,58 +498,55 @@ function VideoDrop({ previewUrl, embedUrl, fileName, disabled, onPick, onRemove 
   );
 }
 
-const RECIPE_COPY = {
-  categorySlug: RECIPE_CATEGORY_SLUG,
-  pageSize: RECIPE_PAGE_SIZE,
-  showSpecs: true,
-  loading: "Loading recipes…",
-  subtitle: "Health recipes from the catalog. Cover photo plus a YouTube link or video file.",
-  search: "Search recipes by title or description…",
-  fetching: "Fetching recipes…",
-  none: "No recipes yet.",
-  noneMatch: "No recipes match your search.",
-  noun: "recipe",
-  nouns: "recipes",
-  viewTag: "Health recipe",
-  cropLabel: "recipe cover",
-  deleteBody: "This removes it from the health recipe catalog.",
-  dropdownHint: "Add recipe categories in Configs → Dropdowns first.",
-  categoryRequired: "Choose a recipe category",
-  failLoad: "Failed to load recipes",
-  failAdd: "Failed to add recipe",
-  failSave: "Failed to save recipe",
-  failDelete: "Failed to delete recipe",
-  failCats: "Failed to load recipe categories",
-  pagination: "Recipe pagination",
+const YOGA_COPY = {
+  categorySlug: YOGA_CATEGORY_SLUG,
+  pageSize: YOGA_PAGE_SIZE,
+  loading: "Loading yoga…",
+  subtitle: "Yoga sessions from the catalog. Cover photo plus a YouTube link or video file.",
+  search: "Search yoga by title or description…",
+  fetching: "Fetching yoga…",
+  none: "No yoga sessions yet.",
+  noneMatch: "No yoga sessions match your search.",
+  noun: "practice",
+  nouns: "practices",
+  viewTag: "Yoga & Pranayam",
+  cropLabel: "yoga cover",
+  deleteBody: "This removes it from the yoga catalog.",
+  dropdownHint: "Add yoga categories in Configs → Dropdowns first.",
+  categoryRequired: "Choose a yoga category",
+  failLoad: "Failed to load yoga",
+  failAdd: "Failed to add yoga",
+  failSave: "Failed to save yoga",
+  failDelete: "Failed to delete yoga",
+  failCats: "Failed to load yoga categories",
+  pagination: "Yoga pagination",
 };
 
-export function RecipesSection({
+export function YogaSection({
   editor,
   setEditor,
   items,
   setItems,
-  gallery,
-  setGallery,
   onToast,
-  persistToHealthRecipes = false,
-  hideGallery = false,
-  categories = RECIPE_CATEGORIES,
-  galleryOwners = RECIPE_GALLERY_OWNERS,
-  titlePlaceholder = "Title · e.g. Ragi dosa · high fibre",
-  descriptionPlaceholder = "Recipe description shown in the app...",
-  galleryBadge = "Recipe",
-  galleryPlaceholder = "Recipe media",
-  itemNoun = "Recipe",
-  videoCropLabel = "libvideo",
-  coverCropLabel = "cover",
-  galleryCropLabel = "recipe",
-  coverCropRatio = "3:4",
+  categories = YOGA_CATEGORIES,
+  titlePlaceholder = "Title · e.g. Morning vinyasa flow",
+  descriptionPlaceholder = "Yoga sequence description shown in the app...",
+  itemNoun = "Practice",
 }) {
-  const persist = persistToHealthRecipes;
-  const copy = persist ? RECIPE_COPY : null;
-  const showSpecs = persist;
-  const pageSize = RECIPE_PAGE_SIZE;
-  const showGallery = !hideGallery && !persist;
+  const persist = true;
+  const copy = YOGA_COPY;
+  const showSpecs = false;
+  const pageSize = YOGA_PAGE_SIZE;
+  const showGallery = false;
+  const gallery = [];
+  const setGallery = () => {};
+  const galleryOwners = [];
+  const galleryBadge = "Yoga";
+  const galleryPlaceholder = "Yoga media";
+  const videoCropLabel = "libvideo";
+  const coverCropLabel = "libcover";
+  const galleryCropLabel = "yoga";
+  const coverCropRatio = "16:9";
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [viewingId, setViewingId] = useState(null);
@@ -610,7 +604,7 @@ export function RecipesSection({
 
   const loadCategories = useCallback(async () => {
     if (!persist) return;
-    const slug = copy?.categorySlug || RECIPE_CATEGORY_SLUG;
+    const slug = copy.categorySlug;
     try {
       let list = null;
       try {
@@ -640,7 +634,7 @@ export function RecipesSection({
       : "";
     setLoading(true);
     try {
-      const { items: rows, pagination: nextPagination } = await adminListHealthRecipes(null, {
+      const { items: rows, pagination: nextPagination } = await adminListYoga(null, {
         page: nextPage,
         limit: pageSize,
         search: debouncedQuery || undefined,
@@ -797,7 +791,7 @@ export function RecipesSection({
   async function persistItem(id, fields, files, successMessage) {
     setBusy(true);
     try {
-      const updated = await adminUpdateHealthRecipe(null, id, fields, files);
+      const updated = await adminUpdateYoga(null, id, fields, files);
       if (!updated) throw new Error(copy?.failSave || "Failed to save");
       const labelled = {
         ...updated,
@@ -840,7 +834,7 @@ export function RecipesSection({
       }
       setBusy(true);
       try {
-        const created = await adminCreateHealthRecipe(
+        const created = await adminCreateYoga(
           null,
           {
             category,
@@ -849,7 +843,6 @@ export function RecipesSection({
             type: draft.videoFile ? "video" : "ytlink",
             ytLink: draft.videoFile ? "" : videoLink,
             live: true,
-            videoSpecification: Array.isArray(draft.videoSpecification) ? draft.videoSpecification : [],
           },
           { thumbnailFile: draft.coverFile, videoFile: draft.videoFile },
         );
@@ -919,7 +912,6 @@ export function RecipesSection({
       title,
       description,
       category,
-      videoSpecification: Array.isArray(entry.videoSpecification) ? entry.videoSpecification : [],
       type: hasUploadedVideo && !videoLink ? "video" : "ytlink",
       ytLink: hasUploadedVideo && !videoLink ? "" : videoLink,
       ...(hasUploadedVideo ? {} : { video: "" }),
@@ -1050,7 +1042,7 @@ export function RecipesSection({
     }
     setBusy(true);
     try {
-      await adminDeleteHealthRecipe(null, entry.id);
+      await adminDeleteYoga(null, entry.id);
       onToast(`${itemNoun} removed`);
       const remaining = itemsRef.current.filter((row) => row.id !== entry.id).length;
       if (remaining === 0 && page > 1) {

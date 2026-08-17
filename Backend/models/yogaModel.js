@@ -49,14 +49,16 @@ function sanitizeUpdateField(key, value) {
     if (value == null || String(value).trim() === "") return "";
     return normalizeMediaField(value, key);
   }
-  if (["title", "ytLink"].includes(key)) {
+  if (["category", "title", "description", "ytLink"].includes(key)) {
     return String(value || "").trim();
   }
   return value;
 }
 
 async function createYoga({
+  category = "",
   title,
+  description = "",
   thumbnail,
   type = "ytlink",
   ytLink = "",
@@ -66,7 +68,9 @@ async function createYoga({
   const now = new Date().toISOString();
   const item = {
     id: uuidv4(),
+    category: String(category || "").trim(),
     title: String(title || "").trim(),
+    description: String(description || "").trim(),
     thumbnail: normalizeMediaField(thumbnail, "thumbnail"),
     type: normalizeType(type),
     ytLink: String(ytLink || "").trim(),
@@ -133,10 +137,11 @@ async function deleteYoga(id) {
   }));
 }
 
-async function listYoga({ page = 1, limit = 10, status, type, search } = {}) {
+async function listYoga({ page = 1, limit = 10, status, type, category, search } = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const normalizedType = type ? String(type).toLowerCase().trim() : "";
-  const searchFilter = buildContainsFilter(["title"], search);
+  const normalizedCategory = String(category || "").trim();
+  const searchFilter = buildContainsFilter(["title", "description", "category"], search);
   let filterExpression = searchFilter.filterExpression;
   const exprNames = { ...searchFilter.exprNames };
   const exprValues = { ...searchFilter.exprValues };
@@ -145,6 +150,12 @@ async function listYoga({ page = 1, limit = 10, status, type, search } = {}) {
     exprNames["#type"] = "type";
     exprValues[":type"] = normalizedType;
     filterExpression = appendFilter(filterExpression, "#type = :type");
+  }
+
+  if (normalizedCategory) {
+    exprNames["#category"] = "category";
+    exprValues[":category"] = normalizedCategory;
+    filterExpression = appendFilter(filterExpression, "#category = :category");
   }
 
   const { items, pagination } = await listByPartitionKey({

@@ -13,6 +13,7 @@
     "docs:api": "node scripts/buildApiCatalog.js",
     "seed:medical-questions": "node scripts/seedMedicalConditionQuestions.js",
     "seed:wellness-content": "node scripts/seedWellnessContent.js",
+    "seed:health-recipes-yoga": "node --use-system-ca scripts/seedHealthRecipesAndYoga.js --confirm",
     "seed:test-catalog": "node scripts/seedTestCatalog.js",
     "seed:video-testimonials": "node --use-system-ca scripts/seedVideoTestimonials.js",
     "seed:static-pages": "node --use-system-ca scripts/seedStaticPages.js",
