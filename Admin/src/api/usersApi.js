@@ -470,6 +470,18 @@ export async function fetchUser(id) {
   }
 }
 
+export async function fetchUserAtAGlance(id) {
+  try {
+    const { data } = await api.get(
+      `/account/users/${encodeURIComponent(id)}/at-a-glance`,
+      { headers: authHeader() },
+    );
+    return data.glance || null;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function updateUserStatus(id, status) {
   try {
     const { data } = await api.patch(
@@ -495,6 +507,19 @@ export async function moveUserToMaintenance(id) {
   try {
     const { data } = await api.post(
       `/account/users/${encodeURIComponent(id)}/convert-to-maintenance`,
+      {},
+      { headers: authHeader() },
+    );
+    return mapApiUserToRow(data.user);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function moveUserToSeek(id) {
+  try {
+    const { data } = await api.post(
+      `/account/users/${encodeURIComponent(id)}/convert-to-seek`,
       {},
       { headers: authHeader() },
     );

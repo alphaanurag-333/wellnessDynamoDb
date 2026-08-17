@@ -26,6 +26,9 @@ const { getUserHeartRateTrackingHistoryController } = require("../../controllers
 const {
   getUserEnergyExchangeAdminController,
 } = require("../../controllers/adminController/userEnergyExchangeController");
+const {
+  getUserAtAGlanceController,
+} = require("../../controllers/adminController/atAGlanceController");
 
 const router = express.Router();
 
@@ -38,6 +41,7 @@ router.get(
 );
 
 router.get("/", protectAccount, authorizeStaff("console.cl.view", { admin: "users.view" }), listUsersController);
+router.get("/:id/at-a-glance", protectAccount, authorizeStaff("console.cl.view", { admin: "users.view" }), getUserAtAGlanceController);
 router.get("/:id/water-tracking", protectAccount, authorizeStaff("console.cl.view", { admin: "users.view" }), getUserWaterTrackingHistoryController);
 router.get("/:id/steps-tracking", protectAccount, authorizeStaff("console.cl.view", { admin: "users.view" }), getUserStepsTrackingHistoryController);
 router.get(

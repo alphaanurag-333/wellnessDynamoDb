@@ -26,6 +26,7 @@ import {
   fetchUsers,
   moveMaintenanceUserToHeal,
   moveUserToMaintenance,
+  moveUserToSeek,
   reassignUserCoach,
   updateUserStatus,
 } from "../api/usersApi.js";
@@ -88,8 +89,7 @@ function UsersEmptyIcon() {
 }
 
 function userSubline(user) {
-  const parts = [user.email].filter(Boolean);
-  return parts.length ? parts.join(" · ") : "—";
+  return user.email || "—";
 }
 
 const PAGE_SIZE = 20;
@@ -401,6 +401,21 @@ export function UsersPage() {
       }
       return;
     }
+    if (user.tier === "Seek to Heal") {
+      setActionBusy(true);
+      try {
+        const updated = await moveUserToSeek(key);
+        setUsers((prev) => prev.map((row) => (
+          userOverrideKey(row) === key ? { ...row, ...updated } : row
+        )));
+        onToast(`${user.name} moved down to SEEK`);
+      } catch (err) {
+        onToast(err?.message || "Could not move user to Seek");
+      } finally {
+        setActionBusy(false);
+      }
+      return;
+    }
     const dn = prevTier(user.tier);
     setTierOverrides((prev) => ({ ...prev, [key]: dn }));
     onToast(`${user.name} moved down to ${tierLabel(dn)} by Admin`);
@@ -662,7 +677,6 @@ export function UsersPage() {
               />
             </div>
             <div>Tier</div>
-            <div>Concern / program</div>
             <div>Wellness coach</div>
             <div>Assistant WC</div>
             <div>
@@ -706,9 +720,14 @@ export function UsersPage() {
                   <div className="ua-table__muted">{u.n}</div>
                   <div className="ua-user-cell">
                     <span className="ua-avatar" style={{ background: avatarColor(i) }}>{userInitials(u.name)}</span>
-                    <div>
+                    <div className="ua-user-cell__meta">
                       <div className="ua-user-cell__name">{u.name}</div>
-                      <div className="ua-user-cell__sub">{userSubline(u)}</div>
+                      <div className="ua-user-cell__sub">
+                        <span className="ua-user-cell__email">{userSubline(u)}</span>
+                        {u.goal ? (
+                          <span className="ua-user-cell__concern" title={u.goal}>{u.goal}</span>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
                   <div className="ua-users-tier" onClick={(e) => e.stopPropagation()}>
@@ -732,7 +751,7 @@ export function UsersPage() {
                         className="ua-tier-action ua-tier-action--down"
                         title={u.tier === "Maintenance"
                           ? `Move ${u.name} back to HEAL — for when maintenance was entered too early`
-                          : `Move ${u.name} back down to SEEK — allowed because the account is ${u.ageDays} days old`}
+                          : `Move ${u.name} back down to SEEK — ends paid coaching entitlements`}
                         onClick={() => downgradeTier(u)}
                         disabled={actionBusy}
                       >
@@ -742,12 +761,6 @@ export function UsersPage() {
                     {canEdit && u.converted ? (
                       <button type="button" className="ua-tier-action ua-tier-action--undo" title="Undo this manual change" onClick={() => revertTier(u)}>undo</button>
                     ) : null}
-                  </div>
-                  <div className="ua-users-program-cell">
-                    <span title={u.goal || "Health concern not selected"}>{u.goal || "Not selected"}</span>
-                    <small title={u.assignedProgramTitle || "Program not assigned"}>
-                      {u.assignedProgramTitle || "Program pending"}
-                    </small>
                   </div>
                   <div onClick={(e) => e.stopPropagation()}>
                     {!canReassignWc ? (

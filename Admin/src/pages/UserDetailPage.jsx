@@ -38,12 +38,12 @@ const PLACEHOLDER_META = {
   gut: { title: "Gut Reset", subtitle: "Gut reset program tracking." },
 };
 
-function renderSection(section, user, onToast, onNavigate) {
+function renderSection(section, user, onToast, onNavigate, onUserUpdated) {
   switch (section) {
     case "glance":
       return <AtAGlanceSection user={user} onToast={onToast} onNavigate={onNavigate} />;
     case "personal":
-      return <PersonalDetailsSection user={user} onToast={onToast} />;
+      return <PersonalDetailsSection user={user} onToast={onToast} onUserUpdated={onUserUpdated} />;
     case "body":
       return <BodyAnalyticsSection onToast={onToast} />;
     case "internal":
@@ -252,7 +252,9 @@ export function UserDetailPage() {
             {loading ? (
               <p className="ua-page-head__sub">Loading client…</p>
             ) : (
-              renderSection(section, user, onToast, setSection)
+              renderSection(section, user, onToast, setSection, (updatedRow) => {
+                setUser(profileFromListUser(updatedRow, userId));
+              })
             )}
           </div>
         </div>

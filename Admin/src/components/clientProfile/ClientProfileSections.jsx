@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { AtAGlanceSection } from "./AtAGlanceSection.jsx";
 import { BodyAnalyticsSection } from "./BodyAnalyticsSection.jsx";
 import { InternalParametersSection } from "./InternalParametersSection.jsx";
@@ -9,9 +9,11 @@ import { NutritionsSection } from "./NutritionsSection.jsx";
 import { getTierActions } from "../../data/userDetailData.js";
 import { tierBadgeClass, tierBadgeStyle, tierLabel, normalizeTier } from "../../data/usersData.js";
 import {
-  buildOnboardingAvailability,
   PAID_ONBOARDING_STATUS_KEYS,
   PAID_ONBOARDING_STEP_LABELS,
+  moveUserToMaintenance,
+  moveUserToSeek,
+  moveMaintenanceUserToHeal,
 } from "../../api/usersApi.js";
 
 export { AtAGlanceSection, BodyAnalyticsSection, InternalParametersSection, LaunchSection, FoodSection, BmsSection, NutritionsSection };
@@ -34,9 +36,9 @@ function formatStepStatus(value) {
   return "Pending";
 }
 
-export function PersonalDetailsSection({ user, onToast }) {
+export function PersonalDetailsSection({ user, onToast, onUserUpdated }) {
   const [editing, setEditing] = useState(false);
-  const [manualTier, setManualTier] = useState(null);
+  const [tierBusy, setTierBusy] = useState(false);
   const [form, setForm] = useState({
     name: user.name,
     dob: user.dob,
@@ -59,13 +61,12 @@ export function PersonalDetailsSection({ user, onToast }) {
     });
   }, [user]);
 
-  const currentTier = normalizeTier(manualTier ?? user.tier);
+  const currentTier = normalizeTier(user.tier);
   const tierActions = getTierActions(currentTier, user.ageDays ?? 30);
   const tierBadgeTone = tierBadgeStyle(currentTier);
   const displayTierLabel = tierLabel(currentTier);
-  const tierConverted = manualTier !== null;
-  const availability = useMemo(() => buildOnboardingAvailability(user), [user]);
   const stepStatus = user?.paidOnboardingStepStatus || {};
+  const userId = String(user?.id || "").trim();
 
   function titleCaseOnboardingStep(step) {
     return String(step || "")
@@ -109,21 +110,46 @@ export function PersonalDetailsSection({ user, onToast }) {
     onToast("Personal details saved");
   }
 
-  function convertTier() {
-    if (!tierActions.canConvert) return;
-    setManualTier(tierActions.upTier);
-    onToast(`${user.name} moved to ${tierLabel(tierActions.upTier)} by Admin`);
+  async function convertTier() {
+    if (!tierActions.canConvert || !userId || tierBusy) return;
+    if (currentTier !== "Seek to Heal") {
+      onToast("Upgrade this client from the users list conversion flow");
+      return;
+    }
+    setTierBusy(true);
+    try {
+      const updated = await moveUserToMaintenance(userId);
+      onUserUpdated?.(updated);
+      onToast(`${user.name} moved to MAINTENANCE`);
+    } catch (err) {
+      onToast(err?.message || "Could not move user to maintenance");
+    } finally {
+      setTierBusy(false);
+    }
   }
 
-  function downgradeTier() {
-    if (!tierActions.canDowngrade) return;
-    setManualTier(tierActions.downTier);
-    onToast(`${user.name} moved down to ${tierLabel(tierActions.downTier)} by Admin`);
-  }
-
-  function revertTier() {
-    setManualTier(null);
-    onToast(`Manual conversion undone for ${user.name}`);
+  async function downgradeTier() {
+    if (!tierActions.canDowngrade || !userId || tierBusy) return;
+    setTierBusy(true);
+    try {
+      if (currentTier === "Maintenance") {
+        const updated = await moveMaintenanceUserToHeal(userId);
+        onUserUpdated?.(updated);
+        onToast(`${user.name} moved back to HEAL`);
+        return;
+      }
+      if (currentTier === "Seek to Heal") {
+        const updated = await moveUserToSeek(userId);
+        onUserUpdated?.(updated);
+        onToast(`${user.name} moved down to SEEK`);
+        return;
+      }
+      onToast("Downgrade is not available for this tier");
+    } catch (err) {
+      onToast(err?.message || "Could not downgrade user");
+    } finally {
+      setTierBusy(false);
+    }
   }
 
   return (
@@ -132,9 +158,6 @@ export function PersonalDetailsSection({ user, onToast }) {
         <div className="ua-cp-personal__head-copy">
           <h2 className="ua-cp-personal__title">Personal details</h2>
           <p className="ua-cp-personal__email">{user.email}</p>
-          <p className="ua-cp-personal__avail">
-            Onboarding data from User table · {availability.availableCount} of {availability.totalCount} fields available
-          </p>
         </div>
         <div className="ua-cp-personal__actions">
           {editing ? (
@@ -150,45 +173,32 @@ export function PersonalDetailsSection({ user, onToast }) {
       <div className="ua-cp-personal__badges">
         <span className={`ua-cp-tier-badge ua-cp-tier-badge--${tierBadgeClass(currentTier)}`} style={tierBadgeTone}>{displayTierLabel}</span>
         {tierActions.canConvert ? (
-          <button type="button" className="ua-cp-tier-action ua-cp-tier-action--up" title={tierActions.convertTitle} onClick={convertTier}>
+          <button
+            type="button"
+            className="ua-cp-tier-action ua-cp-tier-action--up"
+            title={tierActions.convertTitle}
+            onClick={convertTier}
+            disabled={tierBusy}
+          >
             {tierActions.convertLabel}
           </button>
         ) : null}
         {tierActions.canDowngrade ? (
-          <button type="button" className="ua-cp-tier-action ua-cp-tier-action--down" title={tierActions.downgradeTitle} onClick={downgradeTier}>
+          <button
+            type="button"
+            className="ua-cp-tier-action ua-cp-tier-action--down"
+            title={tierActions.downgradeTitle}
+            onClick={downgradeTier}
+            disabled={tierBusy}
+          >
             {tierActions.downgradeLabel}
-          </button>
-        ) : null}
-        {tierConverted ? (
-          <button type="button" className="ua-cp-tier-action ua-cp-tier-action--undo" title="Undo this manual change" onClick={revertTier}>
-            <span className="ua-cp-tier-action__manual">Manual</span>
-            <span className="ua-cp-tier-action__sep" aria-hidden="true">·</span>
-            <span className="ua-cp-tier-action__undo">undo</span>
           </button>
         ) : null}
         <span className="ua-cp-status-badge"><span className="ua-cp-status-badge__dot" />{user.status || "Active"}</span>
       </div>
 
-      <div className="ua-cp-personal__avail-card">
-        <div className="ua-cp-personal__avail-head">
-          <h3 className="ua-cp-personal__avail-title">Submitted at onboarding</h3>
-          <span className="ua-cp-personal__avail-count">
-            {availability.availableCount}/{availability.totalCount} available
-          </span>
-        </div>
-        <div className="ua-cp-personal__avail-grid">
-          {availability.items.map((item) => (
-            <div
-              key={item.key}
-              className={`ua-cp-avail-chip${item.available ? " ua-cp-avail-chip--yes" : " ua-cp-avail-chip--no"}`}
-              title={item.available ? item.display : "Not submitted"}
-            >
-              <span className="ua-cp-avail-chip__mark" aria-hidden="true">{item.available ? "✓" : "–"}</span>
-              <span className="ua-cp-avail-chip__label">{item.label}</span>
-            </div>
-          ))}
-        </div>
-        {user?.paidOnboardingStepStatus ? (
+      {user?.paidOnboardingStepStatus ? (
+        <div className="ua-cp-personal__avail-card">
           <div className="ua-cp-personal__steps">
             <div className="ua-cp-personal__steps-label">Paid onboarding steps</div>
             <div className="ua-cp-personal__steps-grid">
@@ -206,8 +216,8 @@ export function PersonalDetailsSection({ user, onToast }) {
               })}
             </div>
           </div>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
       <div className="ua-cp-personal__card">
         {fields.map((f) => {

@@ -6,10 +6,12 @@ const {
   sumPaidTransactionTotals,
   listPaidTransactionsForAnalytics,
 } = require("../models/consultancyTransactionModel");
+const { ScanCommand } = require("@aws-sdk/lib-dynamodb");
+const { docClient } = require("../config/db");
 const { countAcrossPartitions } = require("../utils/dynamoCount");
 
 const STATUS_INDEX = "StatusCreatedAtIndex";
-const USER_TIERS = ["seek", "heal", "consultancy_only"];
+const USER_TIERS = ["seek", "heal", "consultancy_only", "maintenance"];
 const PRODUCT_LABELS = {
   consultancy: "Consultancy",
   program: "Programs",
@@ -78,6 +80,36 @@ async function countUsersByTier(tier) {
   });
 }
 
+async function countUsersByHealthConcern() {
+  const counts = new Map();
+  let lastKey;
+
+  do {
+    const { Items = [], LastEvaluatedKey } = await docClient.send(
+      new ScanCommand({
+        TableName: USER_TABLE,
+        ProjectionExpression: "primaryHealthConcern, #status",
+        FilterExpression: "#status IN (:active, :inactive, :blocked)",
+        ExpressionAttributeNames: { "#status": "status" },
+        ExpressionAttributeValues: {
+          ":active": "active",
+          ":inactive": "inactive",
+          ":blocked": "blocked",
+        },
+        ExclusiveStartKey: lastKey,
+      })
+    );
+
+    for (const user of Items) {
+      const concernId = String(user.primaryHealthConcern || "").trim();
+      if (concernId) counts.set(concernId, (counts.get(concernId) || 0) + 1);
+    }
+    lastKey = LastEvaluatedKey;
+  } while (lastKey);
+
+  return Object.fromEntries(counts);
+}
+
 async function getAdminDashboardStats() {
   const monthKeys = lastNMonthKeys(6);
 
@@ -93,6 +125,8 @@ async function getAdminDashboardStats() {
     seekUsers,
     healUsers,
     consultancyUsers,
+    maintenanceUsers,
+    healthConcernCounts,
   ] = await Promise.all([
     countAcrossPartitions({
       tableName: USER_TABLE,
@@ -141,12 +175,15 @@ async function getAdminDashboardStats() {
     countUsersByTier("seek"),
     countUsersByTier("heal"),
     countUsersByTier("consultancy_only"),
+    countUsersByTier("maintenance"),
+    countUsersByHealthConcern(),
   ]);
 
   const userTiers = [
     { key: "seek", name: "Seek (free)", value: seekUsers },
     { key: "heal", name: "Heal (paid)", value: healUsers },
     { key: "consultancy_only", name: "Consultancy only", value: consultancyUsers },
+    { key: "maintenance", name: "Maintenance", value: maintenanceUsers },
   ];
 
   const platformOverview = [
@@ -167,6 +204,7 @@ async function getAdminDashboardStats() {
     pendingApprovals: pendingCoachApprovals + pendingUserAssignments,
     pendingCoachApprovals,
     pendingUserAssignments,
+    healthConcernCounts,
     revenueAndPayouts: revenue.totalAmount,
     consultancyRevenue: productRevenueMap.consultancy ?? 0,
     programRevenue: productRevenueMap.program ?? 0,

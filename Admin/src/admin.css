@@ -1885,6 +1885,14 @@
   color: var(--muted-light);
 }
 
+.updated-admin .ua-prog-cat-modal__empty {
+  padding: 22px 18px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--muted-light);
+  background: #fff;
+}
+
 .updated-admin .ua-prog-cat-modal__group+.ua-prog-cat-modal__group {
   border-top: 1px solid var(--border-soft);
 }
@@ -3813,6 +3821,14 @@
   display: grid;
   place-items: center;
   font-size: 15px;
+  overflow: hidden;
+}
+
+.updated-admin .prog-cat__icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 .updated-admin .prog-cat__label {
@@ -4941,9 +4957,8 @@
 .updated-admin .ua-table--users {
   grid-template-columns:
     36px
-    minmax(0, 1.8fr)
+    minmax(0, 2.2fr)
     minmax(0, 0.9fr)
-    minmax(0, 1.45fr)
     minmax(0, 1.05fr)
     minmax(0, 1.05fr)
     minmax(0, 0.7fr)
@@ -4960,9 +4975,8 @@
 .updated-admin .ua-table--users-readonly {
   grid-template-columns:
     36px
-    minmax(0, 1.8fr)
+    minmax(0, 2.2fr)
     minmax(0, 0.9fr)
-    minmax(0, 1.45fr)
     minmax(0, 1.05fr)
     minmax(0, 1.05fr)
     minmax(0, 0.7fr)
@@ -5007,31 +5021,6 @@
 
 .updated-admin .ua-table--users .ua-users-tier {
   width: 100%;
-}
-
-.updated-admin .ua-users-program-cell {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.updated-admin .ua-users-program-cell > span,
-.updated-admin .ua-users-program-cell > small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.updated-admin .ua-users-program-cell > span {
-  color: var(--text);
-  font-size: 11.5px;
-  font-weight: 650;
-}
-
-.updated-admin .ua-users-program-cell > small {
-  color: var(--muted-light);
-  font-size: 9.5px;
 }
 
 .updated-admin .ua-table--users .ua-table__muted {
@@ -5095,6 +5084,12 @@
   min-width: 0;
 }
 
+.updated-admin .ua-user-cell__meta {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
 .updated-admin .ua-avatar {
   width: 34px;
   height: 34px;
@@ -5129,8 +5124,27 @@
 }
 
 .updated-admin .ua-user-cell__sub {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
   font-size: 11.5px;
   color: var(--muted);
+}
+
+.updated-admin .ua-user-cell__email {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.updated-admin .ua-user-cell__concern {
+  flex: 0 1 auto;
+  max-width: 50%;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

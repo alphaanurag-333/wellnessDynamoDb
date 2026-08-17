@@ -21,7 +21,8 @@ function ClientRow({ row, onOpen }) {
 export function ProgramCategoryModal({ open, program, onClose, onOpenClient }) {
   if (!open || !program) return null;
 
-  const total = program.rows?.length ?? 0;
+  const rows = program.rows ?? [];
+  const total = rows.length;
   const subtitle = `${total} client${total === 1 ? "" : "s"} registered · tap a row to open their profile`;
   const hasGroups = Array.isArray(program.groups) && program.groups.length > 0;
 
@@ -61,15 +62,17 @@ export function ProgramCategoryModal({ open, program, onClose, onOpenClient }) {
                 </div>
                 <ClientTableHead />
                 {group.rows.map((row) => (
-                  <ClientRow key={row.name} row={row} onOpen={onOpenClient} />
+                  <ClientRow key={row.userId || row.name} row={row} onOpen={onOpenClient} />
                 ))}
               </div>
             ))
+          ) : total === 0 ? (
+            <div className="ua-prog-cat-modal__empty">No clients registered for this health concern yet.</div>
           ) : (
             <>
               <ClientTableHead />
-              {program.rows.map((row) => (
-                <ClientRow key={row.name} row={row} onOpen={onOpenClient} />
+              {rows.map((row) => (
+                <ClientRow key={row.userId || row.name} row={row} onOpen={onOpenClient} />
               ))}
             </>
           )}
