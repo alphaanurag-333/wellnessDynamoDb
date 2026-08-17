@@ -535,11 +535,13 @@ export function UpdatedAdminDashboard({ onToast }) {
                   ))}
                 </div>
               </div>
-            </div>
-
-            <div className="coach-pending-notes">
+              <div className="coach-pending-notes">
               <NotesToRemember onToast={onToast} />
             </div>
+
+            </div>
+
+            
           </div>
         </section>
       ) : null}
@@ -1003,7 +1005,7 @@ export function UpdatedAdminDashboard({ onToast }) {
         )}
       </section>
 
-      <section className="section d-none">
+      <section className="section d-none" style={{display:"none"}}>
         <div className="section__head">
           <h2 className="section__title">Client updates</h2>
           <span className="section__hint">

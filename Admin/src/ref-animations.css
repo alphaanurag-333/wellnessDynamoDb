@@ -169,6 +169,11 @@
   to { opacity: 1; }
 }
 
+@keyframes ua-cp-sidebar-slide {
+  from { transform: translateX(-105%); }
+  to { transform: translateX(0); }
+}
+
 @keyframes ua-raindrop {
   0% { transform: translateY(-14vh) scaleY(0.7); opacity: 0; }
   12% { opacity: 0.85; }
