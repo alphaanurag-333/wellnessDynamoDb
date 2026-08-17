@@ -18,6 +18,24 @@ export const CLIENT_MENU = [
   { id: "gut", label: "Gut Reset" },
 ];
 
+export const COMPACT_CLIENT_MENU = CLIENT_MENU.filter((item) =>
+  ["personal", "internal", "nutritions"].includes(item.id)
+);
+
+/**
+ * HEAL clients receive the complete coaching workspace. SEEK, consultancy,
+ * and maintenance clients use the reduced profile shown in the maintenance UI.
+ */
+export function getClientProfileDefinition(user) {
+  const tier = normalizeTier(user?.tier);
+  const isFullProfile = tier === "Seek to Heal";
+  return {
+    mode: isFullProfile ? "full" : "compact",
+    menu: isFullProfile ? CLIENT_MENU : COMPACT_CLIENT_MENU,
+    defaultSection: isFullProfile ? "glance" : "personal",
+  };
+}
+
 export const DAILY_METRICS = [
   {
     id: "protein",

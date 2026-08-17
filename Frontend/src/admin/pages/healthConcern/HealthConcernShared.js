@@ -12,7 +12,12 @@ export { IMAGE_MAX_SIZE_BYTES };
 export const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/jpg"]);
 
 export function emptyForm() {
-  return { title: "", description: "", status: "active" };
+  return {
+    title: "",
+    description: "",
+    status: "active",
+    recommendedCatalogProgramId: "",
+  };
 }
 
 export function sanitizeTitle(value) {
@@ -39,7 +44,7 @@ export function truncate(str, max) {
   if (s.length <= max) return s;
   return `${s.slice(0, max)}…`;
 }
-
+
 
 export function validateForm(form, { editId, iconFile, hasExistingIcon }) {
   const title = form.title.trim();

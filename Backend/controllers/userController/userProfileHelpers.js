@@ -10,6 +10,10 @@ const {
 } = require("../../utils/s3");
 const { getHealthConcernById } = require("../../models/healthConcernModel");
 const {
+  getUserProgramById,
+  toPublicUserProgram,
+} = require("../../models/userProgramModel");
+const {
   parseHealthConcernOtherFromBody,
   MAX_HEALTH_CONCERN_OTHER_LENGTH,
 } = require("../../services/consultancyHealthConcern");
@@ -218,8 +222,23 @@ async function enrichUser(user) {
         description: concern.description || "",
         icon: concern.icon || "",
         status: concern.status || "",
+        recommendedCatalogProgramId: concern.recommendedCatalogProgramId || null,
       };
     }
+  }
+
+  if (pub.assignedProgramId) {
+    try {
+      const assignedProgram = await getUserProgramById(pub.assignedProgramId);
+      pub.assignedProgram = assignedProgram
+        ? toPublicUserProgram(assignedProgram)
+        : null;
+    } catch (err) {
+      console.error("[enrichUser] assigned program lookup failed", err.message);
+      pub.assignedProgram = null;
+    }
+  } else {
+    pub.assignedProgram = null;
   }
 
   if (pub.assignedCoachId && pub.assignedCoachType) {

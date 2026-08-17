@@ -146,18 +146,22 @@ const TEAMS_NAV_ACCOUNT_ROLES = new Set(
 
 /**
  * Read access for Teams / Access member directory.
- * Matches console nav: Admin + Wellness Coach (and Super Admin).
+ * Driven by the granted Team members permission, with the console nav default
+ * (Admin + Wellness Coach + Assistant WC) as a fallback for accounts whose role
+ * template predates the console catalog.
  * Must run after `protectAccount`.
  */
 function requireTeamsReadAccess(req, res, next) {
   if (!req.auth) {
     return next(new AppError("Authentication required", 401));
   }
-  if (req.auth.isSuperAdmin) {
+  if (req.auth.isSuperAdmin || hasPermission(req.auth, "console.tm.view")) {
     return next();
   }
+  const perms = Array.isArray(req.auth.permissions) ? req.auth.permissions : [];
+  const hasConsole = perms.some((p) => String(p || "").startsWith("console."));
   const role = normalizeRoleKey(req.auth.role);
-  if (role && TEAMS_NAV_ACCOUNT_ROLES.has(role)) {
+  if (!hasConsole && role && TEAMS_NAV_ACCOUNT_ROLES.has(role)) {
     return next();
   }
   return next(new AppError("Forbidden", 403));

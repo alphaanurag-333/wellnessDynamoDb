@@ -36,6 +36,10 @@ export async function adminCreateHealthConcern(token, fields, file) {
     fd.append("title", String(fields.title ?? "").trim());
     fd.append("description", String(fields.description ?? "").trim());
     fd.append("status", String(fields.status || "active"));
+    fd.append(
+      "recommendedCatalogProgramId",
+      String(fields.recommendedCatalogProgramId || "").trim()
+    );
     fd.append("file", file);
     try {
       const { data: body } = await api.post(base(), fd, { headers: authHeader(token) });
@@ -52,6 +56,9 @@ export async function adminCreateHealthConcern(token, fields, file) {
         description: String(fields.description ?? "").trim(),
         icon: String(fields.icon ?? "").trim(),
         status: String(fields.status || "active"),
+        recommendedCatalogProgramId: String(
+          fields.recommendedCatalogProgramId || ""
+        ).trim(),
       },
       { headers: authHeader(token) }
     );
@@ -67,6 +74,12 @@ export async function adminUpdateHealthConcern(token, id, fields, file) {
     if (fields.title !== undefined) fd.append("title", String(fields.title).trim());
     if (fields.description !== undefined) fd.append("description", String(fields.description).trim());
     if (fields.status !== undefined) fd.append("status", String(fields.status));
+    if (fields.recommendedCatalogProgramId !== undefined) {
+      fd.append(
+        "recommendedCatalogProgramId",
+        String(fields.recommendedCatalogProgramId || "").trim()
+      );
+    }
     fd.append("file", file);
     try {
       const { data: body } = await api.patch(`${base()}/${encodeURIComponent(id)}`, fd, { headers: authHeader(token) });
@@ -80,6 +93,11 @@ export async function adminUpdateHealthConcern(token, id, fields, file) {
   if (fields.description !== undefined) payload.description = String(fields.description).trim();
   if (fields.icon !== undefined) payload.icon = String(fields.icon).trim();
   if (fields.status !== undefined) payload.status = String(fields.status);
+  if (fields.recommendedCatalogProgramId !== undefined) {
+    payload.recommendedCatalogProgramId = String(
+      fields.recommendedCatalogProgramId || ""
+    ).trim();
+  }
   try {
     const { data: body } = await api.patch(`${base()}/${encodeURIComponent(id)}`, payload, { headers: authHeader(token) });
     return body.healthConcern;

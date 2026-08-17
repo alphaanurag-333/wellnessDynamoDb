@@ -50,7 +50,10 @@ async function buildAuthPayload(account, activeRoleKey) {
   if (!roleKey || !isRoleEligibleForActivation(account, roleKey)) {
     throw new AppError("Selected role is not available for this account", 403);
   }
-  const { permissions, isSuperAdmin, roleId } = await resolveAccountPermissions(account, roleKey);
+  const { permissions, isSuperAdmin, roleId, dataScope } = await resolveAccountPermissions(
+    account,
+    roleKey
+  );
   const roles = listEligibleRoleKeys(account);
   return {
     sub: account.id,
@@ -59,6 +62,7 @@ async function buildAuthPayload(account, activeRoleKey) {
     isSuperAdmin: roleKey === "admin" ? Boolean(isSuperAdmin) : false,
     roleId: roleId || null,
     permissions,
+    dataScope,
   };
 }
 
@@ -71,6 +75,7 @@ async function sendAccountAuthResponse(res, statusCode, account, activeRoleKey, 
     activeRoleUi: ROLE_KEY_TO_UI[payload.role] || payload.role,
     roles: payload.roles,
     permissions: payload.permissions,
+    dataScope: payload.dataScope,
     // Account-level flag (for UI / View As). Session powers follow JWT active role.
     isSuperAdmin: Boolean(account.isSuperAdmin),
   };
@@ -187,13 +192,17 @@ exports.getAccountMe = asyncHandler(async (req, res) => {
     }
   }
 
-  const { permissions, isSuperAdmin } = await resolveAccountPermissions(account, activeRole);
+  const { permissions, isSuperAdmin, dataScope } = await resolveAccountPermissions(
+    account,
+    activeRole
+  );
   const publicAccount = {
     ...toPublicAccount(account),
     activeRole,
     activeRoleUi: ROLE_KEY_TO_UI[activeRole] || activeRole,
     roles: listEligibleRoleKeys(account),
     permissions,
+    dataScope,
     isSuperAdmin: Boolean(account.isSuperAdmin || (activeRole === "admin" && isSuperAdmin)),
   };
   return res.json({
@@ -242,13 +251,17 @@ exports.updateAccountProfile = asyncHandler(async (req, res) => {
 
   const updated = await updateAccount(account.id, updates);
   const activeRole = req.auth?.role;
-  const { permissions, isSuperAdmin } = await resolveAccountPermissions(updated, activeRole);
+  const { permissions, isSuperAdmin, dataScope } = await resolveAccountPermissions(
+    updated,
+    activeRole
+  );
   const publicAccount = {
     ...toPublicAccount(updated),
     activeRole,
     activeRoleUi: ROLE_KEY_TO_UI[activeRole] || activeRole,
     roles: listEligibleRoleKeys(updated),
     permissions,
+    dataScope,
     isSuperAdmin: Boolean(updated.isSuperAdmin || (activeRole === "admin" && isSuperAdmin)),
   };
 

@@ -308,10 +308,45 @@ async function convertHealToSeek(userId) {
   return updateUser(userId, updates);
 }
 
+async function convertHealToMaintenance(userId) {
+  const user = await getUserById(userId);
+  if (!user) {
+    const err = new Error("User not found");
+    err.name = "NotFoundError";
+    throw err;
+  }
+  if (normalizeTier(user.userTier) !== "heal") {
+    const err = new Error("Only a Heal client can move to maintenance");
+    err.name = "InvalidTierError";
+    throw err;
+  }
+  return updateUser(userId, {
+    userTier: "maintenance",
+    paidOnboardingCompleted: true,
+  });
+}
+
+async function convertMaintenanceToHeal(userId) {
+  const user = await getUserById(userId);
+  if (!user) {
+    const err = new Error("User not found");
+    err.name = "NotFoundError";
+    throw err;
+  }
+  if (normalizeTier(user.userTier) !== "maintenance") {
+    const err = new Error("User is not in maintenance");
+    err.name = "InvalidTierError";
+    throw err;
+  }
+  return updateUser(userId, { userTier: "heal" });
+}
+
 module.exports = {
   loadReferralContext,
   completeConsultancyEnrollment,
   convertSeekToHeal,
   convertHealToSeek,
+  convertHealToMaintenance,
+  convertMaintenanceToHeal,
   omitExistingHistoryFields,
 };

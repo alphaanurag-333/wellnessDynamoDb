@@ -190,6 +190,9 @@ exports.sendRegisterOtp = asyncHandler(async (req, res) => {
 exports.registerUser = asyncHandler(async (req, res) => {
   const otp = req.body.otp;
   const { fields, password } = parseUserFields(req.body, { requirePassword: false });
+  if (!fields.primaryHealthConcern) {
+    throw new AppError("primaryHealthConcern is required", 400);
+  }
 
   const delivery = resolveRegistrationWhatsappDelivery({
     phone: fields.phone,

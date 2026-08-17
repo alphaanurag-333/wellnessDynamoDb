@@ -9,6 +9,7 @@ import {
   ONBOARDING_STEP_NOTES,
   ONBOARDING_STEPS,
 } from "../../data/userDetailData.js";
+import { getNextOnboardingStepLabel } from "../../api/usersApi.js";
 import { ClientRemindModal } from "./ClientRemindModal.jsx";
 import { ChampionCelebrationOverlay } from "./ChampionCelebrationOverlay.jsx";
 import { ReviewHistoryModal } from "./ReviewHistoryModal.jsx";
@@ -289,15 +290,43 @@ function CommsBlock({ user, onToast, reminders, setReminders, onOpenList }) {
   );
 }
 
-function OnboardingSummary({ user }) {
+function resolveOnboardingProgress(user, liveProgress) {
+  if (liveProgress && Number.isFinite(liveProgress.done) && Number.isFinite(liveProgress.total)) {
+    return {
+      done: liveProgress.done,
+      total: liveProgress.total,
+      nextLabel: liveProgress.nextLabel || "",
+      completed: Boolean(liveProgress.completed),
+    };
+  }
+
+  const total = user?.onboardingTotal || 7;
+  const done = user?.onboardingDone;
+  if (done == null) {
+    return { done: null, total, nextLabel: "", completed: false };
+  }
+
+  const completed = Boolean(user?.paidOnboardingCompleted) || done >= total;
+  const nextLabel = completed
+    ? ""
+    : getNextOnboardingStepLabel(user?.paidOnboardingStepStatus)
+      || String(user?.paidOnboardingStep || "").trim();
+
+  return { done, total, nextLabel, completed };
+}
+
+function formatOnboardingLabel({ done, total, nextLabel, completed }) {
+  if (done == null) return "—";
+  if (completed) return `Complete · ${done}/${total} steps`;
+  if (done === 0 && nextLabel) return `Not started · Next: ${nextLabel}`;
+  if (done === 0) return `Not started · 0/${total} steps`;
+  if (nextLabel) return `In progress · ${done}/${total} · Next: ${nextLabel}`;
+  return `In progress · ${done}/${total} steps`;
+}
+
+function OnboardingSummary({ user, progress }) {
   const joinedLabel = user.joinedAgo || (user.ageDays === 0 ? "today" : user.ageDays > 0 ? `${user.ageDays} days ago` : "—");
-  const done = user.onboardingDone;
-  const total = user.onboardingTotal || 7;
-  const onboardingLabel = done == null
-    ? "—"
-    : user.paidOnboardingCompleted || done >= total
-      ? `Complete · ${done}/${total} steps`
-      : `In progress · ${done}/${total} steps`;
+  const onboardingLabel = formatOnboardingLabel(resolveOnboardingProgress(user, progress));
   return (
     <div className="ua-cp-onboard-summary">
       <div className="ua-cp-onboard-pill">
@@ -422,7 +451,7 @@ function resolveStepAction(step, steps) {
   return { label: "Mark done", tone: "ghost" };
 }
 
-function OnboardingStatusCard({ user, onToast, onNavigate }) {
+function OnboardingStatusCard({ user, onToast, onNavigate, onProgressChange }) {
   const [doneMap, setDoneMap] = useState(() => buildInitialDone(user));
   const [stepNotes, setStepNotes] = useState(() => buildInitialStepNotes(buildInitialDone(user)));
   const [scheduleModal, setScheduleModal] = useState(null);
@@ -447,6 +476,15 @@ function OnboardingStatusCard({ user, onToast, onNavigate }) {
   const remindMessage = nextStep
     ? buildOnboardingRemindMessage(user, nextStep.label)
     : "";
+
+  useEffect(() => {
+    onProgressChange?.({
+      done: doneCount,
+      total,
+      nextLabel: nextStep?.label || "",
+      completed: Boolean(user?.paidOnboardingCompleted) || doneCount >= total,
+    });
+  }, [doneCount, total, nextStep?.label, onProgressChange, user?.paidOnboardingCompleted]);
 
   const toggleStep = (n) => {
     setDoneMap((prev) => {
@@ -667,6 +705,11 @@ export function AtAGlanceSection({ user, onToast, onNavigate }) {
   const [rainTip, setRainTip] = useState("");
   const [celebrateOpen, setCelebrateOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [onboardingProgress, setOnboardingProgress] = useState(null);
+
+  useEffect(() => {
+    setOnboardingProgress(null);
+  }, [user?.id]);
 
   function handleWaterHover(active, tip) {
     setRainActive(active);
@@ -702,8 +745,13 @@ export function AtAGlanceSection({ user, onToast, onNavigate }) {
         </>
       ) : (
         <>
-          <OnboardingSummary user={user} />
-          <OnboardingStatusCard user={user} onToast={onToast} onNavigate={onNavigate} />
+          <OnboardingSummary user={user} progress={onboardingProgress} />
+          <OnboardingStatusCard
+            user={user}
+            onToast={onToast}
+            onNavigate={onNavigate}
+            onProgressChange={setOnboardingProgress}
+          />
         </>
       )}
 

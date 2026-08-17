@@ -1,8 +1,9 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { adminCreateHealthConcern, adminUpdateHealthConcern } from "../../api/adminHealthConcerns.js";
+import { adminListProgramCatalog } from "../../api/adminProgramCatalog.js";
 import { logout } from "../../../store/authSlice.js";
 import { AdminPageHeader } from "../../components/AdminCrud.jsx";
 import { AdminImagePicker, ADMIN_IMAGE_PRESETS } from "../../components/AdminImagePicker.jsx";
@@ -25,12 +26,16 @@ export function HealthConcernForm({ mode = "create", initialConcern = null }) {
   const adminToken = useSelector((s) => s.auth.adminToken);
 
   const [saving, setSaving] = useState(false);
+  const [programs, setPrograms] = useState([]);
+  const [programsLoading, setProgramsLoading] = useState(true);
   const [form, setForm] = useState(() => {
     if (!initialConcern) return emptyForm();
     return {
       title: initialConcern.title || "",
       description: initialConcern.description || "",
       status: initialConcern.status || "active",
+      recommendedCatalogProgramId:
+        initialConcern.recommendedCatalogProgramId || "",
     };
   });
   const editId = isEditMode && initialConcern ? initialConcern._id || initialConcern.id || "" : "";
@@ -40,6 +45,25 @@ export function HealthConcernForm({ mode = "create", initialConcern = null }) {
     isEditMode && initialConcern?.icon ? mediaUrl(initialConcern.icon) : ""
   );
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    if (!adminToken) return;
+    let cancelled = false;
+    setProgramsLoading(true);
+    adminListProgramCatalog(adminToken, { limit: 200, status: "active" })
+      .then((result) => {
+        if (!cancelled) setPrograms(result?.programs || []);
+      })
+      .catch((err) => {
+        if (!cancelled && err?.status === 401) dispatch(logout());
+      })
+      .finally(() => {
+        if (!cancelled) setProgramsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [adminToken, dispatch]);
 
   const resetForm = () => {
     setForm(emptyForm());
@@ -66,6 +90,8 @@ export function HealthConcernForm({ mode = "create", initialConcern = null }) {
       title: form.title.trim(),
       description: form.description.trim(),
       status: form.status || "active",
+      recommendedCatalogProgramId:
+        form.recommendedCatalogProgramId || "",
     };
 
     setSaving(true);
@@ -127,6 +153,32 @@ export function HealthConcernForm({ mode = "create", initialConcern = null }) {
           />
           <small className="data-table__muted">
             {form.description.trim().length}/{DESCRIPTION_MAX_LEN} (min {DESCRIPTION_MIN_LEN})
+          </small>
+        </label>
+        <label className="user-field col-12 col-md-6">
+          <span className="user-field__label">Program assigned after HEAL conversion</span>
+          <select
+            className="user-field__input"
+            value={form.recommendedCatalogProgramId}
+            onChange={(e) =>
+              setForm((p) => ({
+                ...p,
+                recommendedCatalogProgramId: e.target.value,
+              }))
+            }
+            disabled={programsLoading}
+          >
+            <option value="">
+              {programsLoading ? "Loading programs…" : "Automatic title match"}
+            </option>
+            {programs.map((program) => (
+              <option key={program.id || program._id} value={program.id || program._id}>
+                {program.title}
+              </option>
+            ))}
+          </select>
+          <small className="data-table__muted">
+            The program is assigned after payment/conversion, not during registration.
           </small>
         </label>
         <div className="user-field col-12 col-md-6">

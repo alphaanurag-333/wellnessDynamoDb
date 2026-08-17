@@ -1,4 +1,4 @@
-const USER_TIERS = new Set(["seek", "consultancy_only", "heal"]);
+const USER_TIERS = new Set(["seek", "consultancy_only", "heal", "maintenance"]);
 const ASSIGNMENT_STATUSES = new Set(["assigned", "pending_admin"]);
 const ASSIGNED_COACH_TYPES = new Set(["wellness_coach", "assistant_wellness_coach"]);
 const ASSIGNMENT_SOURCES = new Set(["referral", "admin_manual", "coach_reassign"]);
@@ -43,7 +43,7 @@ function isConsultancyOnlyTier(value) {
 /** Users with a paid consultancy relationship (consultancy or full subscription). */
 function isPaidClientTier(value) {
   const tier = normalizeUserTier(value);
-  return tier === "consultancy_only" || tier === "heal";
+  return tier === "consultancy_only" || tier === "heal" || tier === "maintenance";
 }
 
 /** Seek, consultancy, and Heal users can use water/steps tracking in the mobile app. */

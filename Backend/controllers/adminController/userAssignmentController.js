@@ -1,7 +1,11 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
 const { getUserById, updateUser, listUsersByParentCoachId, listUsersByAssignedCoachId, listPendingAssignmentUsers, normalizeUserTier } = require("../../models/userModel");
-const { convertHealToSeek } = require("../../models/userConversionModel");
+const {
+  convertHealToSeek,
+  convertHealToMaintenance,
+  convertMaintenanceToHeal,
+} = require("../../models/userConversionModel");
 const {
   adminConvertUserToHeal,
   setupPaidClientEntitlements,
@@ -17,7 +21,12 @@ const { sendCoachAssignmentNotifications } = require("../../utils/whatsapp");
 const { emitCoachAssigned } = require("../../services/adminActivityService");
 
 const { enrichUser } = require("../userController/userProfileHelpers");
-const { listHealUsersForStaff, resolveStaffActor, assertStaffCanAccessUser } = require("../staffAccess");
+const {
+  listHealUsersForStaff,
+  resolveStaffActor,
+  assertStaffCanAccessUser,
+  assertStaffCanAssignCoach,
+} = require("../staffAccess");
 
 function mapAssignmentError(err) {
   if (err?.name === "NotFoundError") throw new AppError("User not found", 404);
@@ -77,6 +86,34 @@ exports.convertUserToSeekController = asyncHandler(async (req, res) => {
   });
 });
 
+exports.convertUserToMaintenanceController = asyncHandler(async (req, res) => {
+  let user;
+  try {
+    user = await convertHealToMaintenance(req.params.id);
+  } catch (err) {
+    mapAssignmentError(err);
+  }
+  return res.status(200).json({
+    status: true,
+    message: "User moved to maintenance successfully",
+    user: await enrichUser(user),
+  });
+});
+
+exports.convertMaintenanceUserToHealController = asyncHandler(async (req, res) => {
+  let user;
+  try {
+    user = await convertMaintenanceToHeal(req.params.id);
+  } catch (err) {
+    mapAssignmentError(err);
+  }
+  return res.status(200).json({
+    status: true,
+    message: "Maintenance user moved back to Heal successfully",
+    user: await enrichUser(user),
+  });
+});
+
 exports.convertUserToHealController = asyncHandler(async (req, res) => {
   const referralCode = req.body?.referralCode ?? req.body?.referral_code ?? null;
   const catalogProgramId = req.body?.catalogProgramId ?? req.body?.catalog_program_id ?? null;
@@ -98,6 +135,7 @@ exports.convertUserToHealController = asyncHandler(async (req, res) => {
 exports.assignHealUserController = asyncHandler(async (req, res) => {
   const assignedCoachId = req.body?.assignedCoachId ?? req.body?.assigned_coach_id;
   const assignedCoachType = req.body?.assignedCoachType ?? req.body?.assigned_coach_type;
+  await assertStaffCanAssignCoach(req, req.params.id, { assignedCoachId, assignedCoachType });
   const parentCoachId = await resolveParentCoachId({
     assignedCoachId,
     assignedCoachType,
@@ -168,6 +206,7 @@ exports.assignHealUserController = asyncHandler(async (req, res) => {
 exports.reassignHealUserController = asyncHandler(async (req, res) => {
   const assignedCoachId = req.body?.assignedCoachId ?? req.body?.assigned_coach_id;
   const assignedCoachType = req.body?.assignedCoachType ?? req.body?.assigned_coach_type;
+  await assertStaffCanAssignCoach(req, req.params.id, { assignedCoachId, assignedCoachType });
   const parentCoachId = await resolveParentCoachId({
     assignedCoachId,
     assignedCoachType,

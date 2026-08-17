@@ -26,6 +26,11 @@ function withLegacyId(item) {
   return { ...item, _id: item.id };
 }
 
+function normalizeRecommendedCatalogProgramId(value) {
+  if (value == null) return null;
+  return String(value).trim() || null;
+}
+
 function toPublicHealthConcern(item) {
   const row = withLegacyId(item);
   if (!row) return null;
@@ -33,7 +38,13 @@ function toPublicHealthConcern(item) {
   return row;
 }
 
-async function createHealthConcern({ title, description, icon, status = "active" }) {
+async function createHealthConcern({
+  title,
+  description,
+  icon,
+  status = "active",
+  recommendedCatalogProgramId,
+}) {
   const now = new Date().toISOString();
   const item = {
     id: uuidv4(),
@@ -41,6 +52,9 @@ async function createHealthConcern({ title, description, icon, status = "active"
     description: String(description || "").trim(),
     icon: normalizeMediaField(icon, "icon"),
     status: normalizeStatus(status),
+    recommendedCatalogProgramId: normalizeRecommendedCatalogProgramId(
+      recommendedCatalogProgramId
+    ),
     createdAt: now,
     updatedAt: now,
   };
@@ -75,7 +89,12 @@ async function updateHealthConcern(id, updates) {
 
   for (const [k, v] of entries) {
     exprNames[`#${k}`] = k;
-    exprValues[`:${k}`] = k === "icon" ? normalizeMediaField(v, "icon") : v;
+    exprValues[`:${k}`] =
+      k === "icon"
+        ? normalizeMediaField(v, "icon")
+        : k === "recommendedCatalogProgramId"
+          ? normalizeRecommendedCatalogProgramId(v)
+          : v;
     setExpr += `, #${k} = :${k}`;
   }
 
@@ -166,4 +185,5 @@ module.exports = {
   findOtherHealthConcern,
   ensureOtherHealthConcern,
   isOtherHealthConcernTitle,
+  normalizeRecommendedCatalogProgramId,
 };

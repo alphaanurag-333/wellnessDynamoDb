@@ -41,6 +41,14 @@ function resolveGoal(user) {
   return other;
 }
 
+function resolveHealthConcernId(user) {
+  const concern = user?.primaryHealthConcern;
+  if (concern && typeof concern === "object") {
+    return String(concern.id || concern._id || "").trim();
+  }
+  return String(concern || "").trim();
+}
+
 function resolveCoachName(user) {
   if (user?.parentCoach?.name) return String(user.parentCoach.name).trim();
   if (user?.assignedCoachType === "wellness_coach" && user?.assignedCoach?.name) {
@@ -73,6 +81,31 @@ function ageDaysFrom(iso) {
   const d = parseIso(iso);
   if (!d) return 0;
   return Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000));
+}
+
+/** Relative date label suitable for profile activity badges. */
+export function formatRelativeDate(iso) {
+  const d = parseIso(iso);
+  if (!d) return "";
+
+  const elapsed = Date.now() - d.getTime();
+  if (elapsed < 0) return "";
+
+  const minutes = Math.floor(elapsed / 60000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} min${minutes === 1 ? "" : "s"} ago`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days} day${days === 1 ? "" : "s"} ago`;
+
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months} month${months === 1 ? "" : "s"} ago`;
+
+  const years = Math.floor(days / 365);
+  return `${years} year${years === 1 ? "" : "s"} ago`;
 }
 
 /** Relative label like "3 days ago" / "today". Empty when no date. */
@@ -203,7 +236,21 @@ function normalizeOnboardingStepStatus(raw) {
 }
 
 function countOnboardingDone(stepStatus) {
-  return PAID_ONBOARDING_STATUS_KEYS.filter((key) => stepStatus[key] === "done").length;
+  return PAID_ONBOARDING_STATUS_KEYS.filter(
+    (key) => stepStatus[key] === "done" || stepStatus[key] === "skipped",
+  ).length;
+}
+
+/** Next incomplete paid-onboarding step label, or empty when complete/unknown. */
+export function getNextOnboardingStepLabel(stepStatus) {
+  if (!stepStatus || typeof stepStatus !== "object") return "";
+  for (const key of PAID_ONBOARDING_STATUS_KEYS) {
+    const value = stepStatus[key];
+    if (value !== "done" && value !== "skipped") {
+      return PAID_ONBOARDING_STEP_LABELS[key] || key;
+    }
+  }
+  return "";
 }
 
 function hasOnboardingValue(value) {
@@ -274,6 +321,9 @@ export function mapApiUserToRow(user, index = 0) {
   const createdAt = user?.createdAt || "";
   const updatedAt = user?.updatedAt || createdAt;
   const lastActiveAt = user?.lastActiveAt || "";
+  // Prefer a purpose-built review timestamp when the API provides one. Existing
+  // users still get a meaningful value from their latest persisted update.
+  const lastReviewedAt = user?.lastReviewedAt || updatedAt;
   const tier = mapApiTierToUi(user?.userTier);
   const address = formatAddress(user);
   const stateRaw = String(user?.state || "").trim();
@@ -290,6 +340,11 @@ export function mapApiUserToRow(user, index = 0) {
   const addressLine2 = String(user?.addressLine2 || "").trim();
   const pincode = String(user?.pincode || "").trim();
   const termsAcceptedLabel = formatTermsAccepted(user);
+  const assignedProgram = user?.assignedProgram && typeof user.assignedProgram === "object"
+    ? user.assignedProgram
+    : null;
+  const assignedProgramTitle = String(assignedProgram?.title || "").trim();
+  const assignedProgramStatus = String(assignedProgram?.status || "").trim().toLowerCase();
 
   return {
     id,
@@ -310,6 +365,7 @@ export function mapApiUserToRow(user, index = 0) {
     stateRaw,
     tier,
     goal,
+    healthConcernId: resolveHealthConcernId(user),
     dietaryPreference,
     wellnessJourneyFor,
     coach: coach || UNASSIGNED_COACH,
@@ -322,13 +378,17 @@ export function mapApiUserToRow(user, index = 0) {
     joined: formatLongDate(createdAt),
     joinedAgo: formatJoinedAgo(createdAt),
     lastUpdated: formatShortDate(updatedAt),
-    // No dedicated review timestamp on user — leave empty so UI shows "—"
-    lastReviewed: "",
+    lastReviewed: formatRelativeDate(lastReviewedAt),
     termsIp: "",
     termsAccepted: termsAcceptedLabel,
     termsAcceptedBool: Boolean(user?.termsAccepted),
-    programs: 0,
-    programLabel: tierLabel(tier) || "",
+    programs: assignedProgram ? 1 : 0,
+    programLabel: assignedProgramTitle || tierLabel(tier) || "",
+    assignedProgram,
+    assignedProgramId: String(user?.assignedProgramId || assignedProgram?.id || "").trim(),
+    assignedProgramTitle,
+    assignedProgramStatus,
+    assignedCatalogProgramId: String(assignedProgram?.catalogProgramId || "").trim(),
     subscriptionDays: 0,
     tags: buildTags(user, goal),
     goals: goal ? [goal] : [],
@@ -343,6 +403,7 @@ export function mapApiUserToRow(user, index = 0) {
     createdAt,
     updatedAt,
     lastActiveAt,
+    lastReviewedAt,
     paidOnboardingCompleted: Boolean(user?.paidOnboardingCompleted),
     paidOnboardingStep: String(user?.paidOnboardingStep || "").trim(),
     paidOnboardingStepStatus,
@@ -425,6 +486,32 @@ export async function updateUserStatus(id, status) {
 export async function deleteUser(id) {
   try {
     await api.delete(`/account/users/${encodeURIComponent(id)}`, { headers: authHeader() });
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function moveUserToMaintenance(id) {
+  try {
+    const { data } = await api.post(
+      `/account/users/${encodeURIComponent(id)}/convert-to-maintenance`,
+      {},
+      { headers: authHeader() },
+    );
+    return mapApiUserToRow(data.user);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function moveMaintenanceUserToHeal(id) {
+  try {
+    const { data } = await api.post(
+      `/account/users/${encodeURIComponent(id)}/maintenance-to-heal`,
+      {},
+      { headers: authHeader() },
+    );
+    return mapApiUserToRow(data.user);
   } catch (error) {
     normalizeApiError(error);
   }

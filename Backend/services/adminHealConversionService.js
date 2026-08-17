@@ -5,6 +5,7 @@ const {
   listActiveProgramCatalog,
   getProgramCatalogRecordById,
 } = require("../models/programCatalogModel");
+const { getHealthConcernRecordById } = require("../models/healthConcernModel");
 const {
   createUserProgram,
   cancelAssignedProgramsForUser,
@@ -20,7 +21,47 @@ const {
 const { getAppConfig } = require("../models/appConfigModel");
 const { emitPendingAssignment } = require("./adminActivityService");
 
-async function resolveCatalogProgram(catalogProgramId) {
+function normalizeProgramLookupText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function findProgramForConcern(programs, concernTitle) {
+  const concern = normalizeProgramLookupText(concernTitle);
+  if (!concern) return null;
+
+  const matchers = [
+    { concern: /\bdiabetes\b/, program: /\bdiabetes\b/ },
+    { concern: /\b(fat loss|weight loss)\b/, program: /\b(fat loss|weight loss)\b/ },
+    { concern: /\bthyroid\b/, program: /\bthyroid\b/ },
+    { concern: /\b(pcod|pcos)\b/, program: /\b(pcod|pcos|hormonal)\b/ },
+    { concern: /\bhypertension\b|\bblood pressure\b/, program: /\b(heart|hypertension|blood pressure)\b/ },
+    { concern: /\bgut\b|\bdigest/, program: /\b(gut|digest)\w*/ },
+    { concern: /\boverall wellbeing\b|\beveryday wellness\b/, program: /\bseek to heal\b/ },
+  ];
+  const matcher = matchers.find((entry) => entry.concern.test(concern));
+  if (matcher) {
+    const matched = programs.find((program) =>
+      matcher.program.test(normalizeProgramLookupText(program.title))
+    );
+    if (matched) return matched;
+  }
+
+  const meaningfulTokens = concern
+    .split(" ")
+    .filter((token) => token.length > 3 && !["care", "health", "wellness"].includes(token));
+  if (!meaningfulTokens.length) return null;
+  return (
+    programs.find((program) => {
+      const title = normalizeProgramLookupText(program.title);
+      return meaningfulTokens.every((token) => title.includes(token));
+    }) || null
+  );
+}
+
+async function resolveCatalogProgram(catalogProgramId, user) {
   const requestedId = String(catalogProgramId || "").trim();
   if (requestedId) {
     const catalog = await getProgramCatalogRecordById(requestedId);
@@ -32,10 +73,28 @@ async function resolveCatalogProgram(catalogProgramId) {
     return catalog;
   }
 
+  const concernId = String(user?.primaryHealthConcern || "").trim();
+  const concern = concernId ? await getHealthConcernRecordById(concernId) : null;
+  const recommendedId = String(concern?.recommendedCatalogProgramId || "").trim();
+  if (recommendedId) {
+    const recommended = await getProgramCatalogRecordById(recommendedId);
+    if (!recommended || recommended.status !== "active") {
+      const err = new Error(
+        `The program configured for ${concern.title || "this health concern"} is inactive or missing`
+      );
+      err.name = "ValidationError";
+      throw err;
+    }
+    return recommended;
+  }
+
   const programs = await listActiveProgramCatalog();
-  const catalog = programs[0] || null;
+  const catalog = findProgramForConcern(programs, concern?.title);
   if (!catalog) {
-    const err = new Error("No active Wellness Program is configured in the catalog");
+    const concernLabel = concern?.title || "the selected health concern";
+    const err = new Error(
+      `No active Wellness Program is mapped to ${concernLabel}. Configure a recommended program on the health concern.`
+    );
     err.name = "ValidationError";
     throw err;
   }
@@ -80,7 +139,7 @@ async function ensureWellnessProgramForPaidClient(user, { catalogProgramId, now 
     });
   }
 
-  const catalog = await resolveCatalogProgram(catalogProgramId);
+  const catalog = await resolveCatalogProgram(catalogProgramId, user);
   const purchasedAt = now || new Date().toISOString();
 
   await cancelAssignedProgramsForUser(userId);
@@ -200,4 +259,6 @@ module.exports = {
   setupPaidClientEntitlements,
   ensureWellnessProgramForPaidClient,
   ensureEnergyExchangeForPaidClient,
+  findProgramForConcern,
+  resolveCatalogProgram,
 };

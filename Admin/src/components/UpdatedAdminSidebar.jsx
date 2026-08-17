@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { NavIcon } from "./NavIcons.jsx";
 import { useViewAs } from "../context/ViewAsContext.jsx";
-import { DEFAULT_VIEWS, SUPER_ADMIN_VIEWS } from "../data/accessData.js";
 import {
   NAV_ITEMS,
   UPDATED_ADMIN_PATHS,
@@ -156,7 +155,7 @@ function ViewAsRolePicker({ collapsed }) {
 const NAV_COLLAPSED_KEY = "ua-nav-collapsed";
 
 export function UpdatedAdminSidebar({ onLogout }) {
-  const { viewAs, isSuperAdmin, hasFullAccess } = useViewAs();
+  const { viewAs, isSuperAdmin, navSections } = useViewAs();
   const [collapsed, setCollapsed] = useState(() => {
     try {
       return localStorage.getItem(NAV_COLLAPSED_KEY) === "1";
@@ -177,14 +176,11 @@ export function UpdatedAdminSidebar({ onLogout }) {
     setCollapsed((value) => !value);
   }
 
-  const visibleNav = useMemo(() => {
-    // Super Admin in admin mode: every console section.
-    if (isSuperAdmin && (viewAs === "admin" || hasFullAccess)) {
-      return NAV_ITEMS.filter((item) => SUPER_ADMIN_VIEWS.includes(item.id));
-    }
-    const allowed = DEFAULT_VIEWS[viewAs] ?? DEFAULT_VIEWS.admin;
-    return NAV_ITEMS.filter((item) => allowed.includes(item.id));
-  }, [viewAs, isSuperAdmin, hasFullAccess]);
+  // A section appears as soon as Access Control grants any permission inside it.
+  const visibleNav = useMemo(
+    () => NAV_ITEMS.filter((item) => navSections.has(item.id)),
+    [navSections],
+  );
 
   return (
     <aside className={`sidebar${collapsed ? " sidebar--rail" : ""}`} aria-label="Main navigation">
