@@ -118,14 +118,16 @@ function DomainAccordion({
   return (
     <div className={`ua-cp-launch-domain${open ? " ua-cp-launch-domain--open" : ""}`}>
       <button type="button" className="ua-cp-launch-domain__head" onClick={onToggle}>
-        <span className="ua-cp-launch-domain__chev">{open ? "▾" : "▸"}</span>
-        <span className="ua-cp-launch-domain__num">{domain.num}</span>
-        <strong className="ua-cp-launch-domain__title">{domain.title}</strong>
-        <span className="ua-cp-launch-domain__meta">{domain.questions} questions</span>
-        <div className="ua-cp-launch-domain__bar-wrap">
-          <div className="ua-cp-launch-domain__bar"><span style={{ width: `${pct}%` }} /></div>
-        </div>
-        <span className="ua-cp-launch-domain__score">{domain.score} / {domain.max}</span>
+        <div className="ua-cp-launch-domain__subhead"> <span className="ua-cp-launch-domain__chev">{open ? "▾" : "▸"}</span>
+          <span className="ua-cp-launch-domain__num">{domain.num}</span>
+          <strong className="ua-cp-launch-domain__title">{domain.title}</strong></div>
+
+        <div className="ua-cp-launch-domain__subhead">
+          <span className="ua-cp-launch-domain__meta">{domain.questions} questions</span>
+          <div className="ua-cp-launch-domain__bar-wrap">
+            <div className="ua-cp-launch-domain__bar"><span style={{ width: `${pct}%` }} /></div>
+          </div>
+          <span className="ua-cp-launch-domain__score">{domain.score} / {domain.max}</span> </div>
       </button>
       {open && domain.items.length ? (
         <div className="ua-cp-launch-questions">

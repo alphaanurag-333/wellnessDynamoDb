@@ -357,50 +357,50 @@ export function UpdatedAdminDashboard({
     : 0;
   const revenueHero = statisticsForView && hasAdminStatistics
     ? {
-        total: formatInr(revenueTotal),
-        scope: "All paid transactions · till today",
-        monthLabel: latestRevenue?.label || "Latest month",
-        monthValue: formatInr(latestRevenue?.revenue),
-        delta: `${revenueDelta >= 0 ? "+" : ""}${revenueDelta}%`,
-        deltaUp: revenueDelta >= 0,
-      }
+      total: formatInr(revenueTotal),
+      scope: "All paid transactions · till today",
+      monthLabel: latestRevenue?.label || "Latest month",
+      monthValue: formatInr(latestRevenue?.revenue),
+      delta: `${revenueDelta >= 0 ? "+" : ""}${revenueDelta}%`,
+      deltaUp: revenueDelta >= 0,
+    }
     : REVENUE_HERO;
   const revenueProducts = statisticsForView?.charts?.revenueByProduct;
   const dynamicRevenueCards = Array.isArray(revenueProducts)
     ? [
-        ...revenueProducts.map((row, index) => ({
-          label: row.name,
-          value: formatInr(row.value),
-          share: revenueTotal ? `${Math.round((asNumber(row.value) / revenueTotal) * 100)}% of total` : "0% of total",
-          pct: revenueTotal ? Math.round((asNumber(row.value) / revenueTotal) * 100) : 0,
-          color: ["#2b8f5b", "#0d9488", "#ec7a45", "#5e6ad2"][index % 4],
-        })),
-        {
-          label: "Avg. per client",
-          value: formatInr(statistics.totalUsers ? revenueTotal / statistics.totalUsers : 0),
-          share: null,
-          pct: 0,
-          color: "#a855f7",
-          isAvg: true,
-        },
-      ]
+      ...revenueProducts.map((row, index) => ({
+        label: row.name,
+        value: formatInr(row.value),
+        share: revenueTotal ? `${Math.round((asNumber(row.value) / revenueTotal) * 100)}% of total` : "0% of total",
+        pct: revenueTotal ? Math.round((asNumber(row.value) / revenueTotal) * 100) : 0,
+        color: ["#2b8f5b", "#0d9488", "#ec7a45", "#5e6ad2"][index % 4],
+      })),
+      {
+        label: "Avg. per client",
+        value: formatInr(statistics.totalUsers ? revenueTotal / statistics.totalUsers : 0),
+        share: null,
+        pct: 0,
+        color: "#a855f7",
+        isAvg: true,
+      },
+    ]
     : REVENUE_CARDS;
   const revenueTrendMax = Math.max(1, ...(revenueByMonth || []).map((row) => asNumber(row.revenue)));
   const revenueTrend = Array.isArray(revenueByMonth)
     ? revenueByMonth.map((row, index) => ({
-        label: row.label,
-        total: formatInr(row.revenue),
-        height: Math.round((asNumber(row.revenue) / revenueTrendMax) * 100),
-        active: index === revenueByMonth.length - 1,
-      }))
+      label: row.label,
+      total: formatInr(row.revenue),
+      height: Math.round((asNumber(row.revenue) / revenueTrendMax) * 100),
+      active: index === revenueByMonth.length - 1,
+    }))
     : REVENUE_TREND.map((row) => ({ ...row, height: row.prog }));
   const productBars = Array.isArray(revenueProducts)
     ? dynamicRevenueCards.filter((card) => !card.isAvg).map((card) => ({
-        label: card.label,
-        value: card.value,
-        pct: card.pct,
-        color: card.color,
-      }))
+      label: card.label,
+      value: card.value,
+      pct: card.pct,
+      color: card.color,
+    }))
     : PRODUCT_BARS;
   const onboardMax = useMemo(() => Math.max(...ONBOARD_DATA.map((d) => d.count)), []);
   const champPodium = activeLeaderboard.slice(0, 3);
@@ -572,84 +572,84 @@ export function UpdatedAdminDashboard({
       ) : null}
 
       {isFullDash ? (
-      <section className="section">
-        <div className="ua-section-label">
-          <div className="ua-section-label__title">Users</div>
-          <span className="ua-section-label__hint">Tap a card to jump to its section</span>
-        </div>
-        <div className="users-row users-row--v2">
-          <div className="tier-card">
-            <div className="tier-card__head">
-              <span className="tier-card__title">{tierCardTitle}</span>
-              <span className="tier-card__total">{coachTierTotal} total</span>
-            </div>
-            <div className="tier-card__bar">
-              {coachTiers.map((t) => (
-                <span key={t.label} className="tier-card__bar-seg" style={{ flex: t.value, background: t.color, minWidth: t.value ? 3 : 0 }} />
-              ))}
-            </div>
-            <div className="tier-card__cells">
-              {coachTiers.map((t) => (
-                <button
-                  key={t.label}
-                  type="button"
-                  className="tier-cell cdact"
-                  onClick={() => goUsers({ tier: t.tierFilter })}
-                >
-                  <span className="tier-cell__label">
-                    <span className="tier-cell__dot" style={{ background: t.color }} />
-                    {t.label}
-                  </span>
-                  <span className="tier-cell__value">
-                    <span>{t.value}</span>
-                    <span className="tier-cell__pct">{t.pct}</span>
-                  </span>
-                </button>
-              ))}
-            </div>
+        <section className="section">
+          <div className="ua-section-label">
+            <div className="ua-section-label__title">Users</div>
+            <span className="ua-section-label__hint">Tap a card to jump to its section</span>
           </div>
+          <div className="users-row users-row--v2">
+            <div className="tier-card">
+              <div className="tier-card__head">
+                <span className="tier-card__title">{tierCardTitle}</span>
+                <span className="tier-card__total">{coachTierTotal} total</span>
+              </div>
+              <div className="tier-card__bar">
+                {coachTiers.map((t) => (
+                  <span key={t.label} className="tier-card__bar-seg" style={{ flex: t.value, background: t.color, minWidth: t.value ? 3 : 0 }} />
+                ))}
+              </div>
+              <div className="tier-card__cells">
+                {coachTiers.map((t) => (
+                  <button
+                    key={t.label}
+                    type="button"
+                    className="tier-cell cdact"
+                    onClick={() => goUsers({ tier: t.tierFilter })}
+                  >
+                    <span className="tier-cell__label">
+                      <span className="tier-cell__dot" style={{ background: t.color }} />
+                      {t.label}
+                    </span>
+                    <span className="tier-cell__value">
+                      <span>{t.value}</span>
+                      <span className="tier-cell__pct">{t.pct}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
 
-          <div className="app-users-group">
-            <div className="app-users-group__title">App clients</div>
-            <div className="app-users-group__inner">
-              {appClientStats.map((item) => (
-                <AppClientCard
-                  key={item.short}
-                  item={item}
-                  onClick={() => goUsers({ tab: item.tierFilter ? undefined : "team", tier: item.tierFilter || undefined })}
-                />
-              ))}
+            <div className="app-users-group">
+              <div className="app-users-group__title">App clients</div>
+              <div className="app-users-group__inner">
+                {appClientStats.map((item) => (
+                  <AppClientCard
+                    key={item.short}
+                    item={item}
+                    onClick={() => goUsers({ tab: item.tierFilter ? undefined : "team", tier: item.tierFilter || undefined })}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
 
-          <div className="expiry-card">
-            <div className="expiry-card__head">
-              <span className="expiry-card__title">Expiring in 15 days</span>
-              <span className="expiry-card__total">{expTotal} total</span>
+            <div className="expiry-card">
+              <div className="expiry-card__head">
+                <span className="expiry-card__title">Expiring in 15 days</span>
+                <span className="expiry-card__total">{expTotal} total</span>
+              </div>
+              <div className="expiry-card__cells">
+                {EXP_CARDS.map((e) => (
+                  <button
+                    key={e.label}
+                    type="button"
+                    className="expiry-cell cdact"
+                    onClick={() => goUsers()}
+                  >
+                    <span className="expiry-cell__label">
+                      <span className="expiry-cell__dot expiry-cell__dot--pulse" style={{ background: e.color }} />
+                      {e.label}
+                    </span>
+                    <span className="expiry-cell__value">
+                      <span>{isStaffDash ? expTotal : e.value}</span>
+                      <span className="expiry-cell__sub">{e.sub}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <p className="expiry-card__note">{EXP_NOTE}</p>
             </div>
-            <div className="expiry-card__cells">
-              {EXP_CARDS.map((e) => (
-                <button
-                  key={e.label}
-                  type="button"
-                  className="expiry-cell cdact"
-                  onClick={() => goUsers()}
-                >
-                  <span className="expiry-cell__label">
-                    <span className="expiry-cell__dot expiry-cell__dot--pulse" style={{ background: e.color }} />
-                    {e.label}
-                  </span>
-                  <span className="expiry-cell__value">
-                    <span style={{ color: e.color }}>{isStaffDash ? expTotal : e.value}</span>
-                    <span className="expiry-cell__sub">{e.sub}</span>
-                  </span>
-                </button>
-              ))}
-            </div>
-            <p className="expiry-card__note">{EXP_NOTE}</p>
           </div>
-        </div>
-      </section>
+        </section>
       ) : null}
 
       {isStaffDash ? (
@@ -722,277 +722,277 @@ export function UpdatedAdminDashboard({
                 </div>
               </div>
               <div className="coach-pending-notes">
-              <NotesToRemember onToast={onToast} />
-            </div>
+                <NotesToRemember onToast={onToast} />
+              </div>
 
             </div>
 
-            
+
           </div>
         </section>
       ) : null}
       {isFullDash && !isStaffDash ? (
-      <section className="section">
-        <div className="section__head">
-          <h2 className="section__title">Program categories : clients</h2>
-          <span className="section__hint">Clients registered per program · tap to see who</span>
-        </div>
-        <div className="prog-cats prog-cats--v2">
-          <div className="prog-cats__main">
-            <div className="prog-cats__scroll">
-              {programCards.map((p) => (
-                <button
-                  key={p.id || p.value || p.label}
-                  type="button"
-                  className="prog-cat"
-                  style={{ background: p.bg, borderColor: p.border }}
-                  onClick={() => openProgramCategory(p.modalLabel)}
-                >
-                  <span className="prog-cat__icon" style={{ background: "#fff" }}>{p.icon}</span>
-                  <span className="prog-cat__label">{p.label}</span>
-                  <span className="prog-cat__count" style={{ color: p.accent }}>{p.count}</span>
-                </button>
-              ))}
-            </div>
+        <section className="section">
+          <div className="section__head">
+            <h2 className="section__title">Program categories : clients</h2>
+            <span className="section__hint">Clients registered per program · tap to see who</span>
           </div>
-          <div className="prog-cats__appuser">
-            <div className="prog-cats__appuser-head">
-              <span className="prog-cats__appuser-label">AppUser</span>
-              <span className="prog-cats__appuser-tag">Fixed</span>
-            </div>
-            <button
-              type="button"
-              className="prog-cat prog-cat--appuser"
-              style={{ background: APP_USER_PROG_CARD.bg, borderColor: APP_USER_PROG_CARD.border }}
-              onClick={() => openProgramCategory(APP_USER_PROG_CARD.label)}
-            >
-              <span className="prog-cat__icon" style={{ background: "#fff" }}>{APP_USER_PROG_CARD.icon}</span>
-              <span className="prog-cat__label">{APP_USER_PROG_CARD.label}</span>
-              <span className="prog-cat__count">{APP_USER_PROG_CARD.count}</span>
-            </button>
-          </div>
-        </div>
-      </section>
-      ) : null}
-      {isFullDash ? (
-      <section className="section">
-        <div className="section__head">
-          <h2 className="section__title">Program progress</h2>
-          <span className="section__hint">Tap any number to see the clients behind it</span>
-        </div>
-        <div className="prog-row">
-          <button type="button" className="prog-card prog-card--onboard" onClick={() => openProgressModal("onboarding")}>
-            <div className="prog-card__head"><span>🚀</span> Onboarding status</div>
-            <div className="prog-card__inner">
-              <div className="prog-card__tag">In journey</div>
-              <div className="prog-card__value prog-card__value--blue">{commOnbCount}</div>
-              <div className="prog-card__link">HEAL clients onboarding · view list ›</div>
-            </div>
-          </button>
-
-          <div className="prog-card prog-card--fat">
-            <div className="prog-card__head"><span>🏃</span> Fat Loss</div>
-            <div className={`prog-metrics prog-metrics--${fatMetrics.length}`}>
-              {fatMetrics.map((m) => (
-                <button
-                  key={m.label}
-                  type="button"
-                  className="metric-btn metric-btn--orange"
-                  onClick={() => openProgressModal({ kind: "fat", key: FAT_METRIC_KEYS[m.label] })}
-                >
-                  <span className="metric-btn__label metric-btn__label--orange">{m.label}</span>
-                  <span className="metric-btn__count metric-btn__count--orange">{m.count}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="prog-card prog-card--a1c">
-            <div className="prog-card__head"><span>🩸</span> HbA1c</div>
-            <div className={`prog-metrics prog-metrics--${a1cMetrics.length}`}>
-              {a1cMetrics.map((m) => (
-                <button
-                  key={m.label}
-                  type="button"
-                  className="metric-btn metric-btn--green"
-                  onClick={() => openProgressModal({ kind: "a1c", key: A1C_METRIC_KEYS[m.label] })}
-                >
-                  <span className="metric-btn__label metric-btn__label--green">{m.label}</span>
-                  <span className="metric-btn__count metric-btn__count--green">{m.count}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-      ) : null}
-
-      {isStaffDash ? (
-      <section className="section">
-        <div className="section__head">
-          <h2 className="section__title">Program categories : clients</h2>
-          <span className="section__hint">Clients registered per program · tap to see who</span>
-        </div>
-        <div className="prog-cats prog-cats--v2">
-          <div className="prog-cats__main">
-            <div className="prog-cats__scroll">
-              {programCards.map((p) => (
-                <button
-                  key={p.id || p.value || p.label}
-                  type="button"
-                  className="prog-cat"
-                  style={{ background: p.bg, borderColor: p.border }}
-                  onClick={() => openProgramCategory(p.modalLabel)}
-                >
-                  <span className="prog-cat__icon" style={{ background: "#fff" }}>{p.icon}</span>
-                  <span className="prog-cat__label">{p.label}</span>
-                  <span className="prog-cat__count" style={{ color: p.accent }}>{p.count}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="prog-cats__appuser">
-            <div className="prog-cats__appuser-head">
-              <span className="prog-cats__appuser-label">AppUser</span>
-              <span className="prog-cats__appuser-tag">Fixed</span>
-            </div>
-            <button
-              type="button"
-              className="prog-cat prog-cat--appuser"
-              style={{ background: APP_USER_PROG_CARD.bg, borderColor: APP_USER_PROG_CARD.border }}
-              onClick={() => openProgramCategory(APP_USER_PROG_CARD.label)}
-            >
-              <span className="prog-cat__icon" style={{ background: "#fff" }}>{APP_USER_PROG_CARD.icon}</span>
-              <span className="prog-cat__label">{APP_USER_PROG_CARD.label}</span>
-              <span className="prog-cat__count" style={{ color: APP_USER_PROG_CARD.accent }}>{APP_USER_PROG_CARD.count}</span>
-            </button>
-          </div>
-        </div>
-      </section>
-      ) : null}
-
-      {isAdminDash ? (
-      <section className="section">
-        <div className="section__head">
-          <h2 className="section__title">Operational overview</h2>
-          <span className="section__hint">Across every coach · hover to see who</span>
-        </div>
-        <div className="ops-row">
-          <div className="ops-overdue">
-            <div className="ops-overdue__head">
-              <span className="ops-overdue__title">{OPS_OVERDUE.title}</span>
-              <span className="ops-overdue__badge">{OPS_OVERDUE.total}</span>
-            </div>
-            <div className="ops-overdue__cells">
-              {OPS_OVERDUE.cells.map((cell) => (
-                <button
-                  key={cell.id}
-                  type="button"
-                  className="ops-tile"
-                  onClick={() => goPending(cell.id)}
-                >
-                  <span className="ops-tile__label-row">
-                    <span className="ops-tile__dot" style={{ background: cell.color }} />
-                    <span className="ops-tile__short">{cell.short}</span>
-                  </span>
-                  <span className="ops-tile__count-row">
-                    <span className="ops-tile__count" style={{ color: cell.color }}>{cell.count}</span>
-                    <span className="ops-tile__chip">{cell.chip}</span>
-                  </span>
-                  <span className="ops-tile__tip" role="tooltip">
-                    <span className="ops-tile__tip-title">{cell.tipTitle}</span>
-                    {cell.people.map((person) => (
-                      <span key={person.name} className="ops-tile__person">
-                        <span className="ops-tile__avatar" style={{ background: person.color }}>{person.initial}</span>
-                        <span className="ops-tile__person-name">{person.name}</span>
-                        <span className="ops-tile__person-detail">{person.detail}</span>
-                      </span>
-                    ))}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="ops-challenge">
-            <div className="ops-challenge__head">
-              <span className="ops-challenge__icon" aria-hidden="true">★</span>
-              <span className="ops-challenge__title">Challenges</span>
-              <span className="ops-challenge__count">
-                {chRunning.length} RUNNING
-              </span>
-            </div>
-            <div className="ops-challenge__form">
-              <input
-                type="text"
-                className="ops-challenge__input"
-                placeholder="Challenge name"
-                value={chName}
-                onChange={(e) => setChName(e.target.value)}
-              />
-              <select
-                className="ops-challenge__select"
-                aria-label="Challenge length"
-                value={chDays}
-                onChange={(e) => setChDays(e.target.value)}
-              >
-                {CHALLENGE_DAY_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+          <div className="prog-cats prog-cats--v2">
+            <div className="prog-cats__main">
+              <div className="prog-cats__scroll">
+                {programCards.map((p) => (
+                  <button
+                    key={p.id || p.value || p.label}
+                    type="button"
+                    className="prog-cat"
+                    style={{ background: p.bg, borderColor: p.border }}
+                    onClick={() => openProgramCategory(p.modalLabel)}
+                  >
+                    <span className="prog-cat__icon" style={{ background: "#fff" }}>{p.icon}</span>
+                    <span className="prog-cat__label">{p.label}</span>
+                    <span className="prog-cat__count">{p.count}</span>
+                  </button>
                 ))}
-              </select>
-              <select
-                className="ops-challenge__select ops-challenge__select--aud"
-                aria-label="Challenge audience"
-                value={chAud}
-                onChange={(e) => setChAud(e.target.value)}
-              >
-                {CHALLENGE_AUDIENCE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
+              </div>
+            </div>
+            <div className="prog-cats__appuser">
+              <div className="prog-cats__appuser-head">
+                <span className="prog-cats__appuser-label">AppUser</span>
+                <span className="prog-cats__appuser-tag">Fixed</span>
+              </div>
               <button
                 type="button"
-                className={`ops-challenge__start${chName.trim() ? " ops-challenge__start--ready" : ""}`}
-                disabled={!chName.trim()}
-                onClick={startChallenge}
+                className="prog-cat prog-cat--appuser"
+                style={{ borderColor: APP_USER_PROG_CARD.border }}
+                onClick={() => openProgramCategory(APP_USER_PROG_CARD.label)}
               >
-                Start challenge
+                <span className="prog-cat__icon">{APP_USER_PROG_CARD.icon}</span>
+                <span className="prog-cat__label">{APP_USER_PROG_CARD.label}</span>
+                <span className="prog-cat__count">{APP_USER_PROG_CARD.count}</span>
               </button>
             </div>
-            <div className="ops-challenge__list">
-              <div className="ops-challenge__list-inner" aria-hidden="true">IRW</div>
-              <div className="ops-challenge__list-items">
-                {chRunning.length === 0 ? (
-                  <div className="ops-challenge__empty">
-                    No challenge running. Name one, pick a length and audience, then start it.
-                  </div>
-                ) : (
-                  chRunning.map((challenge) => (
-                    <div key={challenge.id} className="ops-challenge__item">
-                      <div className="ops-challenge__item-head">
-                        <span className="ops-challenge__item-name">{challenge.name}</span>
-                        <span className="ops-challenge__item-progress">{challenge.progress}</span>
-                        <button
-                          type="button"
-                          className="ops-challenge__end"
-                          title="End challenge"
-                          onClick={() => endChallenge(challenge.id)}
-                        >
-                          ×
-                        </button>
-                      </div>
-                      <div className="ops-challenge__bar">
-                        <span className="ops-challenge__bar-fill" style={{ width: `${challenge.pct}%` }} />
-                      </div>
-                      <div className="ops-challenge__item-meta">{challenge.meta}</div>
-                    </div>
-                  ))
-                )}
+          </div>
+        </section>
+      ) : null}
+      {isFullDash ? (
+        <section className="section">
+          <div className="section__head">
+            <h2 className="section__title">Program progress</h2>
+            <span className="section__hint">Tap any number to see the clients behind it</span>
+          </div>
+          <div className="prog-row">
+            <button type="button" className="prog-card prog-card--onboard" onClick={() => openProgressModal("onboarding")}>
+              <div className="prog-card__head"><span>🚀</span> Onboarding status</div>
+              <div className="prog-card__inner">
+                <div className="prog-card__tag">In journey</div>
+                <div className="prog-card__value prog-card__value--blue">{commOnbCount}</div>
+                <div className="prog-card__link">HEAL clients onboarding · view list ›</div>
+              </div>
+            </button>
+
+            <div className="prog-card prog-card--fat">
+              <div className="prog-card__head"><span>🏃</span> Fat Loss</div>
+              <div className={`prog-metrics prog-metrics--${fatMetrics.length}`}>
+                {fatMetrics.map((m) => (
+                  <button
+                    key={m.label}
+                    type="button"
+                    className="metric-btn metric-btn--orange"
+                    onClick={() => openProgressModal({ kind: "fat", key: FAT_METRIC_KEYS[m.label] })}
+                  >
+                    <span className="metric-btn__label metric-btn__label--orange">{m.label}</span>
+                    <span className="metric-btn__count metric-btn__count--orange">{m.count}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="prog-card prog-card--a1c">
+              <div className="prog-card__head"><span>🩸</span> HbA1c</div>
+              <div className={`prog-metrics prog-metrics--${a1cMetrics.length}`}>
+                {a1cMetrics.map((m) => (
+                  <button
+                    key={m.label}
+                    type="button"
+                    className="metric-btn metric-btn--green"
+                    onClick={() => openProgressModal({ kind: "a1c", key: A1C_METRIC_KEYS[m.label] })}
+                  >
+                    <span className="metric-btn__label metric-btn__label--green">{m.label}</span>
+                    <span className="metric-btn__count metric-btn__count--green">{m.count}</span>
+                  </button>
+                ))}
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
+
+      {isStaffDash ? (
+        <section className="section">
+          <div className="section__head">
+            <h2 className="section__title">Program categories : clients</h2>
+            <span className="section__hint">Clients registered per program · tap to see who</span>
+          </div>
+          <div className="prog-cats prog-cats--v2">
+            <div className="prog-cats__main">
+              <div className="prog-cats__scroll">
+                {programCards.map((p) => (
+                  <button
+                    key={p.id || p.value || p.label}
+                    type="button"
+                    className="prog-cat"
+                    style={{ background: p.bg, borderColor: p.border }}
+                    onClick={() => openProgramCategory(p.modalLabel)}
+                  >
+                    <span className="prog-cat__icon" style={{ background: "#fff" }}>{p.icon}</span>
+                    <span className="prog-cat__label">{p.label}</span>
+                    <span className="prog-cat__count" style={{ color: p.accent }}>{p.count}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="prog-cats__appuser">
+              <div className="prog-cats__appuser-head">
+                <span className="prog-cats__appuser-label">AppUser</span>
+                <span className="prog-cats__appuser-tag">Fixed</span>
+              </div>
+              <button
+                type="button"
+                className="prog-cat prog-cat--appuser"
+                style={{ background: APP_USER_PROG_CARD.bg, borderColor: APP_USER_PROG_CARD.border }}
+                onClick={() => openProgramCategory(APP_USER_PROG_CARD.label)}
+              >
+                <span className="prog-cat__icon" style={{ background: "#fff" }}>{APP_USER_PROG_CARD.icon}</span>
+                <span className="prog-cat__label">{APP_USER_PROG_CARD.label}</span>
+                <span className="prog-cat__count" style={{ color: APP_USER_PROG_CARD.accent }}>{APP_USER_PROG_CARD.count}</span>
+              </button>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {isAdminDash ? (
+        <section className="section">
+          <div className="section__head">
+            <h2 className="section__title">Operational overview</h2>
+            <span className="section__hint">Across every coach · hover to see who</span>
+          </div>
+          <div className="ops-row">
+            <div className="ops-overdue">
+              <div className="ops-overdue__head">
+                <span className="ops-overdue__title">{OPS_OVERDUE.title}</span>
+                <span className="ops-overdue__badge">{OPS_OVERDUE.total}</span>
+              </div>
+              <div className="ops-overdue__cells">
+                {OPS_OVERDUE.cells.map((cell) => (
+                  <button
+                    key={cell.id}
+                    type="button"
+                    className="ops-tile"
+                    onClick={() => goPending(cell.id)}
+                  >
+                    <span className="ops-tile__label-row">
+                      <span className="ops-tile__dot" style={{ background: cell.color }} />
+                      <span className="ops-tile__short">{cell.short}</span>
+                    </span>
+                    <span className="ops-tile__count-row">
+                      <span className="ops-tile__count" style={{ color: cell.color }}>{cell.count}</span>
+                      <span className="ops-tile__chip">{cell.chip}</span>
+                    </span>
+                    <span className="ops-tile__tip" role="tooltip">
+                      <span className="ops-tile__tip-title">{cell.tipTitle}</span>
+                      {cell.people.map((person) => (
+                        <span key={person.name} className="ops-tile__person">
+                          <span className="ops-tile__avatar" style={{ background: person.color }}>{person.initial}</span>
+                          <span className="ops-tile__person-name">{person.name}</span>
+                          <span className="ops-tile__person-detail">{person.detail}</span>
+                        </span>
+                      ))}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="ops-challenge">
+              <div className="ops-challenge__head">
+                <span className="ops-challenge__icon" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 6.5 7 .6-5.3 4.6 1.6 6.8L12 17l-6.9 3.5 1.6-6.8L1.4 9.1l7-.6z"></path></svg></span>
+                <span className="ops-challenge__title">Challenges</span>
+                <span className="ops-challenge__count">
+                  {chRunning.length} RUNNING
+                </span>
+              </div>
+              <div className="ops-challenge__form">
+                <input
+                  type="text"
+                  className="ops-challenge__input"
+                  placeholder="Challenge name"
+                  value={chName}
+                  onChange={(e) => setChName(e.target.value)}
+                />
+                <select
+                  className="ops-challenge__select"
+                  aria-label="Challenge length"
+                  value={chDays}
+                  onChange={(e) => setChDays(e.target.value)}
+                >
+                  {CHALLENGE_DAY_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+                <select
+                  className="ops-challenge__select ops-challenge__select--aud"
+                  aria-label="Challenge audience"
+                  value={chAud}
+                  onChange={(e) => setChAud(e.target.value)}
+                >
+                  {CHALLENGE_AUDIENCE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className={`ops-challenge__start${chName.trim() ? " ops-challenge__start--ready" : ""}`}
+                  disabled={!chName.trim()}
+                  onClick={startChallenge}
+                >
+                  Start challenge
+                </button>
+              </div>
+              <div className="ops-challenge__list">
+                <div className="ops-challenge__list-inner" aria-hidden="true">IRW</div>
+                <div className="ops-challenge__list-items">
+                  {chRunning.length === 0 ? (
+                    <div className="ops-challenge__empty">
+                      No challenge running. Name one, pick a length and audience, then start it.
+                    </div>
+                  ) : (
+                    chRunning.map((challenge) => (
+                      <div key={challenge.id} className="ops-challenge__item">
+                        <div className="ops-challenge__item-head">
+                          <span className="ops-challenge__item-name">{challenge.name}</span>
+                          <span className="ops-challenge__item-progress">{challenge.progress}</span>
+                          <button
+                            type="button"
+                            className="ops-challenge__end"
+                            title="End challenge"
+                            onClick={() => endChallenge(challenge.id)}
+                          >
+                            ×
+                          </button>
+                        </div>
+                        <div className="ops-challenge__bar">
+                          <span className="ops-challenge__bar-fill" style={{ width: `${challenge.pct}%` }} />
+                        </div>
+                        <div className="ops-challenge__item-meta">{challenge.meta}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
       ) : null}
 
       <section className="section">
@@ -1017,33 +1017,33 @@ export function UpdatedAdminDashboard({
           </div>
 
           {!isContentCommunity ? (
-          <div className="community-card community-card--champion">
-            <div className="community-card__head"><span>🏆</span> Champion</div>
-            <div className="champion-split">
-              <div className="champion-split__col">
-                <div className="champion-split__label">Client</div>
-                <div className="champion-scroll">
-                  {CHAMP_CLIENTS.map((c) => (
-                    <div key={c.name} className="champion-mini">
-                      <span className="champion-mini__name">{c.name}</span>
-                      <span className="champion-mini__score">{c.score}</span>
-                    </div>
-                  ))}
+            <div className="community-card community-card--champion">
+              <div className="community-card__head"><span>🏆</span> Champion</div>
+              <div className="champion-split">
+                <div className="champion-split__col">
+                  <div className="champion-split__label">Client</div>
+                  <div className="champion-scroll">
+                    {CHAMP_CLIENTS.map((c) => (
+                      <div key={c.name} className="champion-mini">
+                        <span className="champion-mini__name">{c.name}</span>
+                        <span className="champion-mini__score">{c.score}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-              <div className="champion-split__col">
-                <div className="champion-split__label champion-split__label--muted">Wellness coach</div>
-                <div className="champion-scroll champion-scroll--plain">
-                  {CHAMP_COACHES.map((c) => (
-                    <div key={c.name} className="champion-mini champion-mini--plain">
-                      <span className="champion-mini__name">{c.name}</span>
-                      <span className="champion-mini__score">{c.score}</span>
-                    </div>
-                  ))}
+                <div className="champion-split__col">
+                  <div className="champion-split__label champion-split__label--muted">Wellness coach</div>
+                  <div className="champion-scroll champion-scroll--plain">
+                    {CHAMP_COACHES.map((c) => (
+                      <div key={c.name} className="champion-mini champion-mini--plain">
+                        <span className="champion-mini__name">{c.name}</span>
+                        <span className="champion-mini__score">{c.score}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
           ) : null}
 
           <div className="community-card community-card--birthday">
@@ -1061,50 +1061,50 @@ export function UpdatedAdminDashboard({
       </section>
 
       {dashHasTeam ? (
-      <section className="section">
-        <div className="ua-section-label">
-          <div className="ua-section-label__title">Team</div>
-          <span className="ua-section-label__hint">View a role&apos;s queue or send a reminder</span>
-        </div>
-        <div className="team-row">
-          {teamCards.map((team) => (
-            <div key={team.label} className="team-card cdact">
-              <span className="stat-card__bar" style={{ background: team.bar }} />
-              <div className="stat-card__top">
-                <span className="stat-card__icon" style={{ background: team.bar, color: "#fff", boxShadow: `0 2px 6px ${team.bar}55` }}>
-                  <StatIcon name="users" />
-                </span>
-                <span className="stat-card__label">{team.label}</span>
-              </div>
-              <div className="stat-card__value" >{team.value}</div>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {team.pending.map((tag) => (
-                  <span key={tag.label} className="tag" style={{ background: tag.bg, color: tag.color , borderColor: tag.color}}>
-                    {tag.label}
+        <section className="section">
+          <div className="ua-section-label">
+            <div className="ua-section-label__title">Team</div>
+            <span className="ua-section-label__hint">View a role&apos;s queue or send a reminder</span>
+          </div>
+          <div className="team-row">
+            {teamCards.map((team) => (
+              <div key={team.label} className="team-card cdact">
+                <span className="stat-card__bar" style={{ background: team.bar }} />
+                <div className="stat-card__top">
+                  <span className="stat-card__icon" style={{ background: team.bar, color: "#fff", boxShadow: `0 2px 6px ${team.bar}55` }}>
+                    <StatIcon name="users" />
                   </span>
-                ))}
+                  <span className="stat-card__label">{team.label}</span>
+                </div>
+                <div className="stat-card__value" >{team.value}</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {team.pending.map((tag) => (
+                    <span key={tag.label} className="tag" style={{ background: tag.bg, color: tag.color, borderColor: tag.color }}>
+                      {tag.label}
+                    </span>
+                  ))}
+                </div>
+                <div className="team-card__actions">
+                  <button
+                    type="button"
+                    className="team-card__view"
+                    onClick={() => navigate(UPDATED_ADMIN_PATHS.teams)}
+                  >
+                    View
+                  </button>
+                  <button
+                    type="button"
+                    className="team-card__bell"
+                    title="Send reminder"
+                    onClick={() => openRemindAll(team.roleId)}
+                  >
+                    🔔
+                  </button>
+                </div>
               </div>
-              <div className="team-card__actions">
-                <button
-                  type="button"
-                  className="team-card__view"
-                  onClick={() => navigate(UPDATED_ADMIN_PATHS.teams)}
-                >
-                  View
-                </button>
-                <button
-                  type="button"
-                  className="team-card__bell"
-                  title="Send reminder"
-                  onClick={() => openRemindAll(team.roleId)}
-                >
-                  🔔
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+            ))}
+          </div>
+        </section>
       ) : null}
 
       <section
@@ -1115,7 +1115,7 @@ export function UpdatedAdminDashboard({
         <div className="leaderboard__head">
           <div className="leaderboard__title">
             <span>🏆</span> Champion leaderboard
-            {!champExpanded ? <span className="leaderboard__hint">Hover to expand</span> : null}
+            {!champExpanded ? <span className="leaderboard__hint">hover to see the full board</span> : null}
           </div>
           <select
             className="header__select"
@@ -1133,7 +1133,7 @@ export function UpdatedAdminDashboard({
           <div className="leaderboard__podium">
             {champPodium.map((row, i) => (
               <div key={row.rank} className={`podium-card podium-card--${i + 1}`}>
-                <span className="podium-card__rank">{row.rank === 1 ? "🥇" : row.rank === 2 ? "🥈" : "🥉"}</span>
+                <span className={`podium-card__rank ${row.rank === 1 ? "rank--1" : row.rank === 2 ? "rank--2" : "rank--3"}`}>{row.rank === 1 ? "1" : row.rank === 2 ? "2" : "3"}</span>
                 <div className="podium-card__info">
                   <div className="podium-card__name">{row.name}</div>
                   <div className="podium-card__sub">{row.days} days active</div>
@@ -1191,7 +1191,7 @@ export function UpdatedAdminDashboard({
         )}
       </section>
 
-      <section className="section d-none" style={{display:"none"}}>
+      <section className="section d-none" style={{ display: "none" }}>
         <div className="section__head">
           <h2 className="section__title">Client updates</h2>
           <span className="section__hint">
@@ -1228,176 +1228,176 @@ export function UpdatedAdminDashboard({
       </section>
 
       {isAdminDash ? (
-      <>
-      <section className="section">
-        <div className="section__head">
-          <h2 className="section__title">Revenue Analytics</h2>
-          <span className="section__hint">Overall · till today</span>
-        </div>
-        <div className="revenue-row">
-          <div className="revenue-hero">
-            <div className="revenue-hero__label">Total revenue</div>
-            <div className="revenue-hero__scope">{revenueHero.scope}</div>
-            <div className="revenue-hero__value">{revenueHero.total}</div>
-            <div className="revenue-hero__foot">
-              <div>
-                <div className="revenue-hero__month-label">{revenueHero.monthLabel}</div>
-                <div className="revenue-hero__month-value">{revenueHero.monthValue}</div>
-              </div>
-              <span className={`revenue-hero__delta${revenueHero.deltaUp ? "" : " revenue-hero__delta--down"}`}>{revenueHero.delta}</span>
+        <>
+          <section className="section">
+            <div className="section__head">
+              <h2 className="section__title">Revenue Analytics</h2>
+              <span className="section__hint">Overall · till today</span>
             </div>
-          </div>
-          <div className="revenue-cards">
-            {dynamicRevenueCards.map((card) => (
-              <div key={card.label} className="revenue-card">
-                <span className="revenue-card__bar" style={{ background: card.color }} />
-                <div className="revenue-card__label">{card.label}</div>
-                <div className="revenue-card__value" >{card.value}</div>
-                {card.share ? (
-                  <>
-                    <div className="revenue-card__track">
-                      <div className="revenue-card__fill" style={{ width: `${card.pct}%`, background: card.color }} />
-                    </div>
-                    <div className="revenue-card__share"><span>{card.share}</span></div>
-                  </>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="section">
-        <div className="section__head section__head--charts">
-          <h2 className="section__title">{statisticsForView ? "Revenue history" : "Financial year · Apr → Mar"}</h2>
-          {!statisticsForView ? <div className="chart-controls">
-            <button type="button" className="btn btn--soft" onClick={() => onToast("Opening payments…")}>💳 View payments</button>
-            <select className="header__select" aria-label="Financial year" defaultValue={FY_OPTIONS[0]}>
-              {FY_OPTIONS.map((fy) => (
-                <option key={fy}>{fy}</option>
-              ))}
-            </select>
-            <select
-              className="header__select"
-              aria-label="Month"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-            >
-              {FY_MONTH_OPTIONS.map((m) => (
-                <option key={m}>{m}</option>
-              ))}
-            </select>
-          </div> : null}
-        </div>
-
-        <div className="charts-grid">
-          <div className="chart-card">
-            <div className="chart-card__head">
-              <div>
-                <div className="chart-card__title">Revenue trend</div>
-                <div className="chart-card__sub">{statisticsForView ? "Last 6 months · tap a month" : "FY 2026-27 · Apr → Mar · tap a month"}</div>
-              </div>
-              <div className="chart-legend">
-                <span><i className="dot dot--green" /> Revenue</span>
-              </div>
-            </div>
-            <div className="bar-chart bar-chart--dual">
-              {revenueTrend.map((m) => (
-                <button
-                  key={m.label}
-                  type="button"
-                  className="bar-group"
-                  style={{ border: "none", background: "transparent", cursor: "pointer", padding: 0 }}
-                  onClick={() => {
-                    setSelectedMonth(`${m.label} 2026`);
-                    onToast(`Selected ${m.label} 2026 revenue`);
-                  }}
-                >
-                  <span className="bar-group__total">{m.total}</span>
-                  <div className="bar-group__bars">
-                    <div className={`bar bar--prog-${m.active ? "active" : "light"}`} style={{ height: `${m.height}%` }} />
+            <div className="revenue-row">
+              <div className="revenue-hero">
+                <div className="revenue-hero__label">Total revenue</div>
+                <div className="revenue-hero__scope">{revenueHero.scope}</div>
+                <div className="revenue-hero__value">{revenueHero.total}</div>
+                <div className="revenue-hero__foot">
+                  <div>
+                    <div className="revenue-hero__month-label">{revenueHero.monthLabel}</div>
+                    <div className="revenue-hero__month-value">{revenueHero.monthValue}</div>
                   </div>
-                  <span className={`bar-group__label${m.active ? " bar-group__label--active" : ""}`}>{m.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="chart-card">
-            <div className="chart-card__title">Revenue by product</div>
-            <div className="chart-card__sub">{statisticsForView ? "All paid transactions" : selectedMonth}</div>
-            <div className="product-bars">
-              {productBars.map((p) => (
-                <div key={p.label}>
-                  <div className="product-bar__head">
-                    <span className="product-bar__label">{p.label}</span>
-                    <span className="product-bar__value">{p.value}</span>
-                  </div>
-                  <div className="product-bar__track">
-                    <div
-                      className="product-bar__fill"
-                      style={{
-                        width: `${p.pct}%`,
-                        background: p.color === "#2b8f5b" ? GRADIENT_GREEN : p.color,
-                      }}
-                    />
-                  </div>
-                  <div className="product-bar__pct">{p.pct}% of month</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="chart-card">
-            <div className="chart-card__head">
-              <div>
-                <div className="chart-card__title">Users onboarded</div>
-                <div className="chart-card__sub">FY 2026-27 · Apr → Mar</div>
-              </div>
-              <span className="badge badge--green">{ONBOARD_FY_TOTAL} in FY 2026-27</span>
-            </div>
-            <div className="bar-chart bar-chart--single">
-              {ONBOARD_DATA.map((m) => (
-                <div key={m.label} className="bar-group">
-                  <span className="bar-group__total">{m.count}</span>
-                  <div className="bar-group__bars">
-                    <div
-                      className={`bar onboard bar--onboard-${m.active ? "active" : "light"}`}
-                      style={{ height: `${Math.round((m.count / onboardMax) * 100)}%`, width: "55%" }}
-                    />
-                  </div>
-                  <span className={`bar-group__label${m.active ? " bar-group__label--active" : ""}`}>{m.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="chart-card">
-            <div className="chart-card__title">Users by tier</div>
-            <div className="chart-card__sub">Seek, Heal, consultancy &amp; maintenance</div>
-            <div className="tier-chart">
-              <div className="tier-chart__donut">
-                <div className="donut" style={{ background: `conic-gradient(${tierGradient})` }}>
-                  <div className="donut__hole">
-                    <div className="donut__total">{tierTotal}</div>
-                    <div className="donut__label">clients</div>
-                  </div>
+                  <span className={`revenue-hero__delta${revenueHero.deltaUp ? "" : " revenue-hero__delta--down"}`}>{revenueHero.delta}</span>
                 </div>
               </div>
-              <div className="tier-chart__legend">
-                {tierData.map((t) => (
-                  <div key={t.label} className="tier-legend-item">
-                    <span className="tier-legend-item__dot" style={{ background: t.color }} />
-                    <span className="tier-legend-item__label">{t.label}</span>
-                    <span className="tier-legend-item__value">{t.value}</span>
+              <div className="revenue-cards">
+                {dynamicRevenueCards.map((card) => (
+                  <div key={card.label} className="revenue-card">
+                    <span className="revenue-card__bar" style={{ background: card.color }} />
+                    <div className="revenue-card__label">{card.label}</div>
+                    <div className="revenue-card__value" >{card.value}</div>
+                    {card.share ? (
+                      <>
+                        <div className="revenue-card__track">
+                          <div className="revenue-card__fill" style={{ width: `${card.pct}%`, background: card.color }} />
+                        </div>
+                        <div className="revenue-card__share"><span>{card.share}</span></div>
+                      </>
+                    ) : null}
                   </div>
                 ))}
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-      </>
+          </section>
+
+          <section className="section">
+            <div className="section__head section__head--charts">
+              <h2 className="section__title">{statisticsForView ? "Revenue history" : "Financial year · Apr → Mar"}</h2>
+              {!statisticsForView ? <div className="chart-controls">
+                <button type="button" className="btn btn--soft" onClick={() => onToast("Opening payments…")}>💳 View payments</button>
+                <select className="header__select" aria-label="Financial year" defaultValue={FY_OPTIONS[0]}>
+                  {FY_OPTIONS.map((fy) => (
+                    <option key={fy}>{fy}</option>
+                  ))}
+                </select>
+                <select
+                  className="header__select"
+                  aria-label="Month"
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                >
+                  {FY_MONTH_OPTIONS.map((m) => (
+                    <option key={m}>{m}</option>
+                  ))}
+                </select>
+              </div> : null}
+            </div>
+
+            <div className="charts-grid">
+              <div className="chart-card">
+                <div className="chart-card__head">
+                  <div>
+                    <div className="chart-card__title">Revenue trend</div>
+                    <div className="chart-card__sub">{statisticsForView ? "Last 6 months · tap a month" : "FY 2026-27 · Apr → Mar · tap a month"}</div>
+                  </div>
+                  <div className="chart-legend">
+                    <span><i className="dot dot--green" /> Revenue</span>
+                  </div>
+                </div>
+                <div className="bar-chart bar-chart--dual">
+                  {revenueTrend.map((m) => (
+                    <button
+                      key={m.label}
+                      type="button"
+                      className="bar-group"
+                      style={{ border: "none", background: "transparent", cursor: "pointer", padding: 0 }}
+                      onClick={() => {
+                        setSelectedMonth(`${m.label} 2026`);
+                        onToast(`Selected ${m.label} 2026 revenue`);
+                      }}
+                    >
+                      <span className="bar-group__total">{m.total}</span>
+                      <div className="bar-group__bars">
+                        <div className={`bar bar--prog-${m.active ? "active" : "light"}`} style={{ height: `${m.height}%` }} />
+                      </div>
+                      <span className={`bar-group__label${m.active ? " bar-group__label--active" : ""}`}>{m.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="chart-card">
+                <div className="chart-card__title">Revenue by product</div>
+                <div className="chart-card__sub">{statisticsForView ? "All paid transactions" : selectedMonth}</div>
+                <div className="product-bars">
+                  {productBars.map((p) => (
+                    <div key={p.label}>
+                      <div className="product-bar__head">
+                        <span className="product-bar__label">{p.label}</span>
+                        <span className="product-bar__value">{p.value}</span>
+                      </div>
+                      <div className="product-bar__track">
+                        <div
+                          className="product-bar__fill"
+                          style={{
+                            width: `${p.pct}%`,
+                            background: p.color === "#2b8f5b" ? GRADIENT_GREEN : p.color,
+                          }}
+                        />
+                      </div>
+                      <div className="product-bar__pct">{p.pct}% of month</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="chart-card">
+                <div className="chart-card__head">
+                  <div>
+                    <div className="chart-card__title">Users onboarded</div>
+                    <div className="chart-card__sub">FY 2026-27 · Apr → Mar</div>
+                  </div>
+                  <span className="badge badge--green">{ONBOARD_FY_TOTAL} in FY 2026-27</span>
+                </div>
+                <div className="bar-chart bar-chart--single">
+                  {ONBOARD_DATA.map((m) => (
+                    <div key={m.label} className="bar-group">
+                      <span className="bar-group__total">{m.count}</span>
+                      <div className="bar-group__bars">
+                        <div
+                          className={`bar onboard bar--onboard-${m.active ? "active" : "light"}`}
+                          style={{ height: `${Math.round((m.count / onboardMax) * 100)}%`, width: "55%" }}
+                        />
+                      </div>
+                      <span className={`bar-group__label${m.active ? " bar-group__label--active" : ""}`}>{m.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="chart-card">
+                <div className="chart-card__title">Users by tier</div>
+                <div className="chart-card__sub">Seek, Heal, consultancy &amp; maintenance</div>
+                <div className="tier-chart">
+                  <div className="tier-chart__donut">
+                    <div className="donut" style={{ background: `conic-gradient(${tierGradient})` }}>
+                      <div className="donut__hole">
+                        <div className="donut__total">{tierTotal}</div>
+                        <div className="donut__label">clients</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="tier-chart__legend">
+                    {tierData.map((t) => (
+                      <div key={t.label} className="tier-legend-item">
+                        <span className="tier-legend-item__dot" style={{ background: t.color }} />
+                        <span className="tier-legend-item__label">{t.label}</span>
+                        <span className="tier-legend-item__value">{t.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </>
       ) : null}
 
       <ProgramCategoryModal

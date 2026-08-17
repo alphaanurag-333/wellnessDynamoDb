@@ -155,7 +155,7 @@ function ViewAsRolePicker({ collapsed }) {
 
 const NAV_COLLAPSED_KEY = "ua-nav-collapsed";
 
-export function UpdatedAdminSidebar({ onLogout }) {
+export function UpdatedAdminSidebar({ onLogout, mobileOpen = false, onCloseMobile }) {
   const { viewAs, isSuperAdmin, hasFullAccess } = useViewAs();
   const [collapsed, setCollapsed] = useState(() => {
     try {
@@ -173,6 +173,10 @@ export function UpdatedAdminSidebar({ onLogout }) {
     }
   }, [collapsed]);
 
+  useEffect(() => {
+    if (mobileOpen) setCollapsed(false);
+  }, [mobileOpen]);
+
   function toggleCollapsed() {
     setCollapsed((value) => !value);
   }
@@ -187,7 +191,18 @@ export function UpdatedAdminSidebar({ onLogout }) {
   }, [viewAs, isSuperAdmin, hasFullAccess]);
 
   return (
-    <aside className={`sidebar${collapsed ? " sidebar--rail" : ""}`} aria-label="Main navigation">
+    <>
+      <button
+        type="button"
+        className={`sidebar__backdrop${mobileOpen ? " sidebar__backdrop--open" : ""}`}
+        tabIndex={-1}
+        aria-hidden="true"
+        onClick={onCloseMobile}
+      />
+      <aside
+        className={`sidebar${collapsed ? " sidebar--rail" : ""}${mobileOpen ? " sidebar--mobile-open" : ""}`}
+        aria-label="Main navigation"
+      >
       <div className="sidebar__brand">
         <NavLink to={UPDATED_ADMIN_PATHS.dashboard} end className="sidebar__brand-link">
           <div className="sidebar__logo">IR</div>
@@ -209,6 +224,14 @@ export function UpdatedAdminSidebar({ onLogout }) {
         >
           <CollapseIcon collapsed={collapsed} />
         </button>
+        <button
+          type="button"
+          className="sidebar__close"
+          aria-label="Close menu"
+          onClick={onCloseMobile}
+        >
+          ×
+        </button>
       </div>
 
       <nav className="sidebar__nav">
@@ -222,6 +245,7 @@ export function UpdatedAdminSidebar({ onLogout }) {
             className={({ isActive }) =>
               `sidebar__link${isActive ? " sidebar__link--active" : ""}`
             }
+            onClick={onCloseMobile}
           >
             <NavIcon name={item.icon} />
             {!collapsed ? <span className="sidebar__link-label">{item.label}</span> : null}
@@ -242,5 +266,6 @@ export function UpdatedAdminSidebar({ onLogout }) {
         </button>
       </div>
     </aside>
+    </>
   );
 }

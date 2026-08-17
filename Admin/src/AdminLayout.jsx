@@ -28,6 +28,8 @@ export function AdminLayout() {
   const [toast, setToast] = useState("");
   const [toastVisible, setToastVisible] = useState(false);
 
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
   const unreadCount = useMemo(
     () => notifications.filter((item) => item.unread).length,
     [notifications],
@@ -98,7 +100,17 @@ export function AdminLayout() {
   useEffect(() => {
     const shell = document.querySelector(".updated-admin .page-shell");
     shell?.scrollTo(0, 0);
+    setMobileNavOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    if (!mobileNavOpen) return undefined;
+    function onKeyDown(e) {
+      if (e.key === "Escape") setMobileNavOpen(false);
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [mobileNavOpen]);
 
   async function handleNotifClick(id) {
     const note = notifications.find((item) => item.id === id);
@@ -133,7 +145,11 @@ export function AdminLayout() {
 
   return (
     <div className={`updated-admin${isClientProfile ? " updated-admin--client-profile" : ""}`}>
-      <UpdatedAdminSidebar onLogout={requestLogout} />
+      <UpdatedAdminSidebar
+        onLogout={requestLogout}
+        mobileOpen={mobileNavOpen}
+        onCloseMobile={() => setMobileNavOpen(false)}
+      />
 
       <div className="main">
         <UpdatedAdminHeader
@@ -147,6 +163,7 @@ export function AdminLayout() {
           onNotifClick={handleNotifClick}
           onOpenProfile={() => setProfileOpen(true)}
           onLogout={requestLogout}
+          onOpenMobileNav={() => setMobileNavOpen(true)}
         />
 
         <div className="page-shell">

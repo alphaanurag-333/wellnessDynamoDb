@@ -2,7 +2,29 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { CLIENT_MENU, CLIENT_NOTIFICATIONS } from "../../data/userDetailData.js";
 import { UPDATED_ADMIN_PATHS } from "../../data/dashboardData.js";
-import { FaChevronDown } from "react-icons/fa6";
+
+function clientInitials(name) {
+  const parts = String(name || "Client").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "C";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
+
+function ClientAvatar({ user, className = "" }) {
+  const src = user?.profileImage;
+  const name = user?.name || "Client";
+  return (
+    <div className={`ua-cp-sidebar__avatar${src ? "" : " ua-cp-sidebar__avatar--initials"} ${className}`.trim()}>
+      {src ? (
+        <img src={src} alt={name} className="ua-cp-sidebar__avatar-img" />
+      ) : (
+        <span className="ua-cp-sidebar__avatar-ph" aria-hidden="true">
+          {clientInitials(name)}
+        </span>
+      )}
+    </div>
+  );
+}
 
 
 export function ClientProfileTopbar({
@@ -122,24 +144,23 @@ export function ClientProfileSidebar({ user, activeSection, onSectionChange, hid
       ref={sidebarRef}
       className={`ua-cp-sidebar${hidden ? " ua-cp-sidebar--hidden" : ""}${mobileOpen ? " ua-cp-sidebar--mobile-open" : ""}`}
     >
-      <button
-        type="button"
-        className="ua-cp-sidebar__mobile-toggle"
-        aria-expanded={mobileOpen}
-        aria-controls="ua-cp-sidebar-panel"
-        aria-label={mobileOpen ? "Close client menu" : "Open client menu"}
-        onClick={() => setMobileOpen((open) => !open)}
-      >
-        <div className="ua-cp-sidebar__avatar">
-          {user?.profileImage ? (
-            <img src={user.profileImage} alt="" className="ua-cp-sidebar__avatar-img" />
-          ) : (
-            <span className="ua-cp-sidebar__avatar-ph">Photo</span>
-          )}
+      <div className="ua-cp-sidebar__mobile-card">
+        <ClientAvatar user={user} />
+        <div className="ua-cp-sidebar__mobile-meta">
+          <div className="ua-cp-sidebar__mobile-name">{user?.name || "Client"}</div>
+          <div className="ua-cp-sidebar__mobile-sub">{programLabel} · {programs} programs</div>
+          <button
+            type="button"
+            className="ua-cp-sidebar__view-btn"
+            aria-expanded={mobileOpen}
+            aria-controls="ua-cp-sidebar-panel"
+            aria-label={`View ${user?.name || "client"} menu`}
+            onClick={() => setMobileOpen(true)}
+          >
+            View
+          </button>
         </div>
-        <span className="ua-cp-sidebar__mobile-chev" aria-hidden="true"><FaChevronDown />
-        </span>
-      </button>
+      </div>
 
       <button
         type="button"
@@ -163,13 +184,7 @@ export function ClientProfileSidebar({ user, activeSection, onSectionChange, hid
         </div>
         <div className="ua-cp-sidebar__profile">
           <div className="ua-cp-sidebar__profile-row">
-            <div className="ua-cp-sidebar__avatar ua-cp-sidebar__avatar--desktop">
-              {user?.profileImage ? (
-                <img src={user.profileImage} alt="" className="ua-cp-sidebar__avatar-img" />
-              ) : (
-                <span className="ua-cp-sidebar__avatar-ph">Photo</span>
-              )}
-            </div>
+            <ClientAvatar user={user} className="ua-cp-sidebar__avatar--desktop" />
             <div className="ua-cp-sidebar__info">
               <div className="ua-cp-sidebar__name">{user?.name || "Client"}</div>
               <div className="ua-cp-sidebar__sub">{programLabel} · {programs} programs</div>

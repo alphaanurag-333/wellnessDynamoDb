@@ -526,7 +526,10 @@ function OnboardingStatusCard({ user, onToast, onNavigate }) {
         ) : null}
         <div className="ua-cp-onboard-stepper">
           {steps.map((step, index) => (
-            <div key={step.n} className="ua-cp-onboard-seg">
+            <div
+              key={step.n}
+              className={`ua-cp-onboard-seg${index > 0 && steps[index - 1].done ? " ua-cp-onboard-seg--prev-done" : ""}`}
+            >
               {index > 0 ? (
                 <span
                   className={`ua-cp-onboard-seg__bar${steps[index - 1].done ? " ua-cp-onboard-seg__bar--done" : ""}`}
