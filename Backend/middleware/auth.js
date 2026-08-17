@@ -39,6 +39,9 @@ function resolveSubjectFromPayload(payload) {
 }
 
 function assertActiveAccount(doc) {
+  if (doc.status === "deleted") {
+    throw new AppError("Account has been deleted", 401);
+  }
   if (doc.status === "blocked") {
     throw new AppError("Account is blocked", 403);
   }

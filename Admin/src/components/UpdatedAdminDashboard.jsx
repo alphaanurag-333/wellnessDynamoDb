@@ -7,7 +7,6 @@ import { AutosaveButton } from "./shared.jsx";
 import { ProgramCategoryModal } from "./ProgramCategoryModal.jsx";
 import { ProgramProgressModal } from "./ProgramProgressModal.jsx";
 import { TeamRemindModal } from "./TeamRemindModal.jsx";
-import { TeamRosterModal } from "./TeamRosterModal.jsx";
 import { StatIcon } from "./DashboardIcons.jsx";
 import {
   A1C_METRICS,
@@ -22,7 +21,6 @@ import {
   CHAMP_MONTHS,
   CLIENT_ALERTS,
   COMM_ONB_COUNT,
-  COACH_TIER_TOTAL,
   COACH_TIERS,
   DASH_ROLE_CARDS,
   DASH_SCOPE_LABELS,
@@ -42,11 +40,9 @@ import {
   REVENUE_CARDS,
   REVENUE_HERO,
   REVENUE_TREND,
-  TIER_DATA,
   UPDATED_ADMIN_PATHS,
   WC_A1C_METRICS,
   WC_APP_CLIENT_STATS,
-  WC_COACH_TIER_TOTAL,
   WC_COACH_TIERS,
   WC_COMM_ONB_COUNT,
   WC_EXP_TOTAL,
@@ -58,7 +54,6 @@ import {
   WC_TEAM_CARDS,
   AWC_A1C_METRICS,
   AWC_APP_CLIENT_STATS,
-  AWC_COACH_TIER_TOTAL,
   AWC_COACH_TIERS,
   AWC_COMM_ONB_COUNT,
   AWC_EXP_TOTAL,
@@ -81,8 +76,82 @@ import {
 import {
   TEAM_STAFF,
   remindSubtitle,
-  staffRemindMessage,
 } from "../data/teamStaffData.js";
+
+function asNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function formatInr(value) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(asNumber(value));
+}
+
+function dynamicTiers(baseTiers, rows) {
+  if (!Array.isArray(rows)) return baseTiers;
+  const values = new Map(rows.map((row) => [row.key, asNumber(row.value)]));
+  const keyByFilter = {
+    Seek: "seek",
+    Consultancy: "consultancy_only",
+    "Seek to Heal": "heal",
+    Maintenance: "maintenance",
+  };
+  const next = baseTiers.map((tier) => ({
+    ...tier,
+    value: values.get(keyByFilter[tier.tierFilter]) ?? 0,
+  }));
+  const total = next.reduce((sum, tier) => sum + tier.value, 0);
+  return next.map((tier) => ({
+    ...tier,
+    pct: total ? `${Math.round((tier.value / total) * 100)}%` : "0%",
+  }));
+}
+
+function dynamicPendingGroups(baseGroups, statistics) {
+  if (!statistics || !Array.isArray(baseGroups) || baseGroups.length === 0) return baseGroups;
+  const first = baseGroups[0];
+  const cells = [
+    {
+      id: "meal-pics",
+      short: "Meal logs",
+      count: asNumber(statistics.pendingMealApprovals),
+      chip: "awaiting",
+      color: "#a855f7",
+      tipTitle: "Meal logs to review",
+      people: [],
+    },
+    {
+      id: "testimonials",
+      short: "Reviews",
+      count: asNumber(statistics.pendingTestimonials),
+      chip: "pending",
+      color: "#2b8f5b",
+      tipTitle: "Client reviews to approve",
+      people: [],
+    },
+    {
+      id: "commitment-letters",
+      short: "Letters",
+      count: asNumber(statistics.pendingCommitmentLetters),
+      chip: "pending",
+      color: "#5e6ad2",
+      tipTitle: "Commitment letters to approve",
+      people: [],
+    },
+  ];
+  return [
+    {
+      ...first,
+      total: `${asNumber(statistics.pendingApprovals)} pending`,
+      cells,
+    },
+    ...baseGroups.slice(1),
+  ];
+}
 
 function AppClientCard({ item, onClick }) {
   return (
@@ -179,7 +248,14 @@ function NotesToRemember({ onToast }) {
   );
 }
 
-export function UpdatedAdminDashboard({ onToast }) {
+export function UpdatedAdminDashboard({
+  onToast,
+  statistics,
+  programCategories,
+  loading,
+  loadError,
+  onRetry,
+}) {
   const navigate = useNavigate();
   const { viewAs } = useViewAs();
   const isStaffDash = viewAs === "wc" || viewAs === "awc";
@@ -188,18 +264,63 @@ export function UpdatedAdminDashboard({ onToast }) {
   const isAdminDash = viewAs === "admin";
   const isContentCommunity = isStaffDash || isSupportDash;
   const dashHasTeam = viewAs !== "awc";
+  const programCards = useMemo(() => {
+    if (!Array.isArray(programCategories)) {
+      return PROG_CATS.map((category) => ({ ...category, modalLabel: category.label }));
+    }
+    return programCategories
+      .filter((option) => option.on)
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((option, index) => {
+        const fallback = PROG_CATS.find((category) => category.value === option.value);
+        const palette = fallback ?? PROG_CATS[index % PROG_CATS.length];
+        return {
+          ...palette,
+          id: option.id,
+          value: option.value,
+          label: option.label,
+          icon: option.icon || fallback?.icon || "🌿",
+          count: fallback?.count ?? 0,
+          modalLabel: fallback?.label ?? option.label,
+        };
+      });
+  }, [programCategories]);
 
-  const coachTiers = viewAs === "wc" ? WC_COACH_TIERS : viewAs === "awc" ? AWC_COACH_TIERS : COACH_TIERS;
-  const coachTierTotal = viewAs === "wc" ? WC_COACH_TIER_TOTAL : viewAs === "awc" ? AWC_COACH_TIER_TOTAL : COACH_TIER_TOTAL;
+  const hasAdminStatistics = statistics && Object.hasOwn(statistics, "totalUsers");
+  const hasStaffStatistics = statistics && Object.hasOwn(statistics, "totalClients");
+  const statisticsForView = isStaffDash
+    ? (hasStaffStatistics ? statistics : null)
+    : (hasAdminStatistics ? statistics : null);
+  const baseCoachTiers = viewAs === "wc" ? WC_COACH_TIERS : viewAs === "awc" ? AWC_COACH_TIERS : COACH_TIERS;
+  const tierRows = statisticsForView?.charts?.clientTiers ?? statisticsForView?.charts?.userTiers;
+  const coachTiers = dynamicTiers(baseCoachTiers, tierRows);
+  const coachTierTotal = coachTiers.reduce((sum, tier) => sum + tier.value, 0);
   const tierCardTitle = isStaffDash ? "Your clients by tier" : "Clients by tier";
-  const appClientStats = viewAs === "wc" ? WC_APP_CLIENT_STATS : viewAs === "awc" ? AWC_APP_CLIENT_STATS : APP_CLIENT_STATS;
+  const baseAppClientStats = viewAs === "wc" ? WC_APP_CLIENT_STATS : viewAs === "awc" ? AWC_APP_CLIENT_STATS : APP_CLIENT_STATS;
+  const appClientStats = baseAppClientStats.map((item) => (
+    item.tierFilter === "Maintenance" && tierRows?.some((row) => row.key === "maintenance")
+      ? { ...item, value: asNumber(tierRows.find((row) => row.key === "maintenance")?.value) }
+      : item
+  ));
   const expTotal = viewAs === "wc" ? WC_EXP_TOTAL : viewAs === "awc" ? AWC_EXP_TOTAL : EXP_TOTAL;
   const commOnbCount = viewAs === "wc" ? WC_COMM_ONB_COUNT : viewAs === "awc" ? AWC_COMM_ONB_COUNT : COMM_ONB_COUNT;
   const fatMetrics = viewAs === "wc" ? WC_FAT_METRICS : viewAs === "awc" ? AWC_FAT_METRICS : FAT_METRICS;
   const a1cMetrics = viewAs === "wc" ? WC_A1C_METRICS : viewAs === "awc" ? AWC_A1C_METRICS : A1C_METRICS;
-  const teamCards = viewAs === "wc" ? WC_TEAM_CARDS : DASH_ROLE_CARDS;
+  const baseTeamCards = viewAs === "wc" ? WC_TEAM_CARDS : DASH_ROLE_CARDS;
+  const teamCards = baseTeamCards.map((team) => {
+    if (!statisticsForView) return team;
+    if (team.roleId === "wc" && hasAdminStatistics) {
+      return { ...team, value: asNumber(statistics.activeWellnessCoaches) };
+    }
+    if (team.roleId === "awc") {
+      const value = hasStaffStatistics ? statistics.totalAssistants : statistics.activeAssistants;
+      return { ...team, value: asNumber(value) };
+    }
+    return team;
+  });
   const activeLeaderboard = viewAs === "wc" ? WC_LEADERBOARD : viewAs === "awc" ? AWC_LEADERBOARD : viewAs === "support" ? WC_LEADERBOARD : LEADERBOARD;
-  const pendingGroups = viewAs === "wc" ? WC_PENDING_GROUPS : viewAs === "awc" ? AWC_PENDING_GROUPS : [];
+  const basePendingGroups = viewAs === "wc" ? WC_PENDING_GROUPS : viewAs === "awc" ? AWC_PENDING_GROUPS : [];
+  const pendingGroups = dynamicPendingGroups(basePendingGroups, statisticsForView);
   const staleRecords = viewAs === "wc" ? WC_STALE_RECORDS : viewAs === "awc" ? AWC_STALE_RECORDS : [];
   const staleTotal = viewAs === "wc" ? WC_STALE_TOTAL : viewAs === "awc" ? AWC_STALE_TOTAL : "";
   const scopeLabel = DASH_SCOPE_LABELS[viewAs] ?? "Global";
@@ -214,15 +335,73 @@ export function UpdatedAdminDashboard({ onToast }) {
   const [chDays, setChDays] = useState("14");
   const [chAud, setChAud] = useState("all");
   const [chRunning, setChRunning] = useState([]);
-  const [rosterModalRole, setRosterModalRole] = useState(null);
   const [remindModal, setRemindModal] = useState(null);
   const [programModalLabel, setProgramModalLabel] = useState(null);
   const [progressModalKey, setProgressModalKey] = useState(null);
 
   const champ = CHAMP_MONTHS[champMonth] ?? CHAMP_MONTHS["2026-07"];
   const maxScore = activeLeaderboard[0]?.score ?? 1;
-  const tierTotal = useMemo(() => TIER_DATA.reduce((sum, item) => sum + item.value, 0), []);
-  const tierGradient = useMemo(() => buildTierGradient(TIER_DATA), []);
+  const tierData = coachTiers.map((tier) => ({
+    label: tier.label === "PWC ONLY" ? "Consultancy only" : tier.label === "HEAL" ? "Heal (paid)" : tier.label === "SEEK" ? "Seek (free)" : "Maintenance",
+    value: tier.value,
+    color: tier.color,
+  }));
+  const tierTotal = tierData.reduce((sum, item) => sum + item.value, 0);
+  const tierGradient = buildTierGradient(tierData);
+  const revenueTotal = asNumber(statisticsForView?.revenueAndPayouts);
+  const revenueByMonth = statisticsForView?.charts?.revenueByMonth;
+  const latestRevenue = Array.isArray(revenueByMonth) ? revenueByMonth.at(-1) : null;
+  const previousRevenue = Array.isArray(revenueByMonth) ? revenueByMonth.at(-2) : null;
+  const revenueDelta = previousRevenue?.revenue
+    ? Math.round(((asNumber(latestRevenue?.revenue) - asNumber(previousRevenue.revenue)) / asNumber(previousRevenue.revenue)) * 100)
+    : 0;
+  const revenueHero = statisticsForView && hasAdminStatistics
+    ? {
+        total: formatInr(revenueTotal),
+        scope: "All paid transactions · till today",
+        monthLabel: latestRevenue?.label || "Latest month",
+        monthValue: formatInr(latestRevenue?.revenue),
+        delta: `${revenueDelta >= 0 ? "+" : ""}${revenueDelta}%`,
+        deltaUp: revenueDelta >= 0,
+      }
+    : REVENUE_HERO;
+  const revenueProducts = statisticsForView?.charts?.revenueByProduct;
+  const dynamicRevenueCards = Array.isArray(revenueProducts)
+    ? [
+        ...revenueProducts.map((row, index) => ({
+          label: row.name,
+          value: formatInr(row.value),
+          share: revenueTotal ? `${Math.round((asNumber(row.value) / revenueTotal) * 100)}% of total` : "0% of total",
+          pct: revenueTotal ? Math.round((asNumber(row.value) / revenueTotal) * 100) : 0,
+          color: ["#2b8f5b", "#0d9488", "#ec7a45", "#5e6ad2"][index % 4],
+        })),
+        {
+          label: "Avg. per client",
+          value: formatInr(statistics.totalUsers ? revenueTotal / statistics.totalUsers : 0),
+          share: null,
+          pct: 0,
+          color: "#a855f7",
+          isAvg: true,
+        },
+      ]
+    : REVENUE_CARDS;
+  const revenueTrendMax = Math.max(1, ...(revenueByMonth || []).map((row) => asNumber(row.revenue)));
+  const revenueTrend = Array.isArray(revenueByMonth)
+    ? revenueByMonth.map((row, index) => ({
+        label: row.label,
+        total: formatInr(row.revenue),
+        height: Math.round((asNumber(row.revenue) / revenueTrendMax) * 100),
+        active: index === revenueByMonth.length - 1,
+      }))
+    : REVENUE_TREND.map((row) => ({ ...row, height: row.prog }));
+  const productBars = Array.isArray(revenueProducts)
+    ? dynamicRevenueCards.filter((card) => !card.isAvg).map((card) => ({
+        label: card.label,
+        value: card.value,
+        pct: card.pct,
+        color: card.color,
+      }))
+    : PRODUCT_BARS;
   const onboardMax = useMemo(() => Math.max(...ONBOARD_DATA.map((d) => d.count)), []);
   const champPodium = activeLeaderboard.slice(0, 3);
 
@@ -277,11 +456,6 @@ export function UpdatedAdminDashboard({ onToast }) {
     setRemindModal({ title, subtitle, recipients, defaultMessage, message: defaultMessage });
   }
 
-  function openTeamRoster(roleId) {
-    if (!TEAM_STAFF[roleId]) return;
-    setRosterModalRole(roleId);
-  }
-
   function openRemindAll(roleId) {
     const staff = TEAM_STAFF[roleId];
     if (!staff) return;
@@ -293,16 +467,6 @@ export function UpdatedAdminDashboard({ onToast }) {
     });
   }
 
-  function openRemindOne(roleId, row) {
-    openTeamRemind({
-      title: `Remind ${row.name}`,
-      subtitle: row.detail,
-      recipients: [row.name],
-      defaultMessage: staffRemindMessage(row.name),
-    });
-  }
-
-  const activeStaff = rosterModalRole ? TEAM_STAFF[rosterModalRole] : null;
   const programModal = programModalLabel ? getProgramCategoryModal(programModalLabel) : null;
   const progressModal = getProgressModal(progressModalKey);
 
@@ -346,6 +510,28 @@ export function UpdatedAdminDashboard({ onToast }) {
 
   function openOnboardingRemind(row) {
     openTeamRemind(onboardingRemindCopy(row));
+  }
+
+  if (loading || loadError) {
+    return (
+      <main className="content ua-page-enter">
+        <div className="page-head">
+          <div>
+            <h1 className="page-head__title">Dashboard</h1>
+            <p className="page-head__sub"><span className="chip chip--scope">{scopeLabel}</span></p>
+          </div>
+        </div>
+        <div className="ua-users-empty">
+          <div className="ua-users-empty__title">
+            {loading ? "Loading dashboard…" : "Couldn’t load dashboard"}
+          </div>
+          {loadError ? <p className="ua-users-empty__sub">{loadError}</p> : null}
+          {loadError ? (
+            <button type="button" className="btn btn--outline" onClick={onRetry}>Retry</button>
+          ) : null}
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -447,7 +633,7 @@ export function UpdatedAdminDashboard({ onToast }) {
                   key={e.label}
                   type="button"
                   className="expiry-cell cdact"
-                  onClick={() => onToast("Opening expiring subscriptions…")}
+                  onClick={() => goUsers()}
                 >
                   <span className="expiry-cell__label">
                     <span className="expiry-cell__dot expiry-cell__dot--pulse" style={{ background: e.color }} />
@@ -552,13 +738,13 @@ export function UpdatedAdminDashboard({ onToast }) {
         <div className="prog-cats prog-cats--v2">
           <div className="prog-cats__main">
             <div className="prog-cats__scroll">
-              {PROG_CATS.map((p) => (
+              {programCards.map((p) => (
                 <button
-                  key={p.label}
+                  key={p.id || p.value || p.label}
                   type="button"
                   className="prog-cat"
                   style={{ background: p.bg, borderColor: p.border }}
-                  onClick={() => openProgramCategory(p.label)}
+                  onClick={() => openProgramCategory(p.modalLabel)}
                 >
                   <span className="prog-cat__icon" style={{ background: "#fff" }}>{p.icon}</span>
                   <span className="prog-cat__label">{p.label}</span>
@@ -648,13 +834,13 @@ export function UpdatedAdminDashboard({ onToast }) {
         <div className="prog-cats prog-cats--v2">
           <div className="prog-cats__main">
             <div className="prog-cats__scroll">
-              {PROG_CATS.map((p) => (
+              {programCards.map((p) => (
                 <button
-                  key={p.label}
+                  key={p.id || p.value || p.label}
                   type="button"
                   className="prog-cat"
                   style={{ background: p.bg, borderColor: p.border }}
-                  onClick={() => openProgramCategory(p.label)}
+                  onClick={() => openProgramCategory(p.modalLabel)}
                 >
                   <span className="prog-cat__icon" style={{ background: "#fff" }}>{p.icon}</span>
                   <span className="prog-cat__label">{p.label}</span>
@@ -701,7 +887,7 @@ export function UpdatedAdminDashboard({ onToast }) {
                   key={cell.id}
                   type="button"
                   className="ops-tile"
-                  onClick={() => onToast(`Opening ${cell.short.toLowerCase()} list…`)}
+                  onClick={() => goPending(cell.id)}
                 >
                   <span className="ops-tile__label-row">
                     <span className="ops-tile__dot" style={{ background: cell.color }} />
@@ -900,7 +1086,7 @@ export function UpdatedAdminDashboard({ onToast }) {
                 <button
                   type="button"
                   className="team-card__view"
-                  onClick={() => openTeamRoster(team.roleId)}
+                  onClick={() => navigate(UPDATED_ADMIN_PATHS.teams)}
                 >
                   View
                 </button>
@@ -1049,18 +1235,18 @@ export function UpdatedAdminDashboard({ onToast }) {
         <div className="revenue-row">
           <div className="revenue-hero">
             <div className="revenue-hero__label">Total revenue</div>
-            <div className="revenue-hero__scope">{REVENUE_HERO.scope}</div>
-            <div className="revenue-hero__value">{REVENUE_HERO.total}</div>
+            <div className="revenue-hero__scope">{revenueHero.scope}</div>
+            <div className="revenue-hero__value">{revenueHero.total}</div>
             <div className="revenue-hero__foot">
               <div>
-                <div className="revenue-hero__month-label">{REVENUE_HERO.monthLabel}</div>
-                <div className="revenue-hero__month-value">{REVENUE_HERO.monthValue}</div>
+                <div className="revenue-hero__month-label">{revenueHero.monthLabel}</div>
+                <div className="revenue-hero__month-value">{revenueHero.monthValue}</div>
               </div>
-              <span className={`revenue-hero__delta${REVENUE_HERO.deltaUp ? "" : " revenue-hero__delta--down"}`}>{REVENUE_HERO.delta}</span>
+              <span className={`revenue-hero__delta${revenueHero.deltaUp ? "" : " revenue-hero__delta--down"}`}>{revenueHero.delta}</span>
             </div>
           </div>
           <div className="revenue-cards">
-            {REVENUE_CARDS.map((card) => (
+            {dynamicRevenueCards.map((card) => (
               <div key={card.label} className="revenue-card">
                 <span className="revenue-card__bar" style={{ background: card.color }} />
                 <div className="revenue-card__label">{card.label}</div>
@@ -1081,8 +1267,8 @@ export function UpdatedAdminDashboard({ onToast }) {
 
       <section className="section">
         <div className="section__head section__head--charts">
-          <h2 className="section__title">Financial year · Apr → Mar</h2>
-          <div className="chart-controls">
+          <h2 className="section__title">{statisticsForView ? "Revenue history" : "Financial year · Apr → Mar"}</h2>
+          {!statisticsForView ? <div className="chart-controls">
             <button type="button" className="btn btn--soft" onClick={() => onToast("Opening payments…")}>💳 View payments</button>
             <select className="header__select" aria-label="Financial year" defaultValue={FY_OPTIONS[0]}>
               {FY_OPTIONS.map((fy) => (
@@ -1099,7 +1285,7 @@ export function UpdatedAdminDashboard({ onToast }) {
                 <option key={m}>{m}</option>
               ))}
             </select>
-          </div>
+          </div> : null}
         </div>
 
         <div className="charts-grid">
@@ -1107,15 +1293,14 @@ export function UpdatedAdminDashboard({ onToast }) {
             <div className="chart-card__head">
               <div>
                 <div className="chart-card__title">Revenue trend</div>
-                <div className="chart-card__sub">FY 2026-27 · Apr → Mar · tap a month</div>
+                <div className="chart-card__sub">{statisticsForView ? "Last 6 months · tap a month" : "FY 2026-27 · Apr → Mar · tap a month"}</div>
               </div>
               <div className="chart-legend">
-                <span><i className="dot dot--green" /> Program</span>
-                <span><i className="dot dot--blue" /> Consultancy</span>
+                <span><i className="dot dot--green" /> Revenue</span>
               </div>
             </div>
             <div className="bar-chart bar-chart--dual">
-              {REVENUE_TREND.map((m) => (
+              {revenueTrend.map((m) => (
                 <button
                   key={m.label}
                   type="button"
@@ -1128,8 +1313,7 @@ export function UpdatedAdminDashboard({ onToast }) {
                 >
                   <span className="bar-group__total">{m.total}</span>
                   <div className="bar-group__bars">
-                    <div className={`bar bar--prog-${m.active ? "active" : "light"}`} style={{ height: `${m.prog}%` }} />
-                    <div className={`bar bar--cons-${m.active ? "active" : "light"}`} style={{ height: `${m.cons}%` }} />
+                    <div className={`bar bar--prog-${m.active ? "active" : "light"}`} style={{ height: `${m.height}%` }} />
                   </div>
                   <span className={`bar-group__label${m.active ? " bar-group__label--active" : ""}`}>{m.label}</span>
                 </button>
@@ -1139,9 +1323,9 @@ export function UpdatedAdminDashboard({ onToast }) {
 
           <div className="chart-card">
             <div className="chart-card__title">Revenue by product</div>
-            <div className="chart-card__sub">{selectedMonth}</div>
+            <div className="chart-card__sub">{statisticsForView ? "All paid transactions" : selectedMonth}</div>
             <div className="product-bars">
-              {PRODUCT_BARS.map((p) => (
+              {productBars.map((p) => (
                 <div key={p.label}>
                   <div className="product-bar__head">
                     <span className="product-bar__label">{p.label}</span>
@@ -1199,7 +1383,7 @@ export function UpdatedAdminDashboard({ onToast }) {
                 </div>
               </div>
               <div className="tier-chart__legend">
-                {TIER_DATA.map((t) => (
+                {tierData.map((t) => (
                   <div key={t.label} className="tier-legend-item">
                     <span className="tier-legend-item__dot" style={{ background: t.color }} />
                     <span className="tier-legend-item__label">{t.label}</span>
@@ -1227,16 +1411,6 @@ export function UpdatedAdminDashboard({ onToast }) {
         onClose={() => setProgressModalKey(null)}
         onOpenClient={openProgressClient}
         onRemind={openOnboardingRemind}
-      />
-
-      <TeamRosterModal
-        open={!!activeStaff}
-        title={activeStaff?.rosterTitle ?? ""}
-        sectionTitle={activeStaff?.sectionTitle ?? ""}
-        rows={activeStaff?.roster ?? []}
-        onClose={() => setRosterModalRole(null)}
-        onRemindAll={() => rosterModalRole && openRemindAll(rosterModalRole)}
-        onRemindOne={(row) => rosterModalRole && openRemindOne(rosterModalRole, row)}
       />
 
       <TeamRemindModal

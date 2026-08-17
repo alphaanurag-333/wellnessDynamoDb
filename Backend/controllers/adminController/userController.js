@@ -106,7 +106,7 @@ exports.deleteUserController = asyncHandler(async (req, res) => {
     throw err;
   }
 
-  return res.status(200).json({ status: true, message: "User deleted successfully" });
+  return res.status(200).json({ status: true, message: "User archived successfully" });
 });
 
 exports.parseUserFields = parseUserFields;

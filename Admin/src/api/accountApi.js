@@ -127,7 +127,6 @@ export async function accountMe() {
   }
 }
 
-/** PATCH /account/auth/me — bio, name, phone, or multipart profile photo (`file`). */
 export async function accountUpdateMe(fields = {}, file) {
   const token = getAccountToken();
   if (!token) throw new Error("Not authenticated");
@@ -138,21 +137,31 @@ export async function accountUpdateMe(fields = {}, file) {
 
     if (file) {
       const form = new FormData();
-      Object.entries(fields).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) form.append(key, String(value));
-      });
+      if (fields.bio !== undefined) form.append("bio", fields.bio ?? "");
+      if (fields.name !== undefined) form.append("name", fields.name ?? "");
+      if (fields.phone !== undefined) form.append("phone", fields.phone ?? "");
+      if (fields.phoneCountryCode !== undefined) {
+        form.append("phoneCountryCode", fields.phoneCountryCode ?? "");
+      }
+      if (fields.designation !== undefined) form.append("designation", fields.designation ?? "");
       form.append("file", file);
       body = form;
     } else {
-      body = fields;
+      body = {};
+      if (fields.bio !== undefined) body.bio = fields.bio;
+      if (fields.name !== undefined) body.name = fields.name;
+      if (fields.phone !== undefined) body.phone = fields.phone;
+      if (fields.phoneCountryCode !== undefined) body.phoneCountryCode = fields.phoneCountryCode;
+      if (fields.designation !== undefined) body.designation = fields.designation;
+      if (fields.profileImage !== undefined) body.profileImage = fields.profileImage;
       headers = { ...headers, "Content-Type": "application/json" };
     }
 
     const { data } = await api.patch("/account/auth/me", body, { headers });
     const current = readAccountAuth() || {};
-    const account = data.account || current.account;
-    writeAccountAuth({ ...current, account });
-    return account;
+    const stored = { ...current, account: data.account };
+    writeAccountAuth(stored);
+    return data.account;
   } catch (error) {
     normalizeApiError(error);
   }

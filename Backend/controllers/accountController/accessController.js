@@ -19,6 +19,7 @@ const {
   toPublicAccount,
 } = require("../../models/accountModel");
 const { listUsersByParentCoachId } = require("../../models/userModel");
+const { ensureEntityReferralCode } = require("../../models/referralCodeModel");
 const {
   getConsolePermissionCatalog,
   grantsMapToPermissions,
@@ -33,6 +34,7 @@ const {
 } = require("../../config/consolePermissionCatalog");
 
 const CONSOLE_SCOPE = "CONSOLE";
+const REFERRAL_STAFF_ROLES = new Set(["wellness_coach", "assistant_wellness_coach"]);
 
 function assertSuperAdmin(req) {
   if (!req.auth?.isSuperAdmin) {
@@ -40,11 +42,42 @@ function assertSuperAdmin(req) {
   }
 }
 
-/** Teams page + member directory — Super Admin, Admin, or Wellness Coach. */
+const TEAM_DESCENDANT_ROLES = {
+  wellness_coach: new Set(["assistant_wellness_coach", "trainee"]),
+  assistant_wellness_coach: new Set(["trainee"]),
+};
+
+function visibleTeamRoleKeys(req) {
+  if (req.auth?.isSuperAdmin || req.auth?.role === "admin") return null;
+  return TEAM_DESCENDANT_ROLES[String(req.auth?.role || "")] || new Set();
+}
+
+async function canViewTeamAccount(req, account, primaryRole) {
+  const visibleRoles = visibleTeamRoleKeys(req);
+  if (visibleRoles === null) return true;
+  if (!visibleRoles.has(primaryRole)) return false;
+
+  const viewerId = String(req.auth?.sub || "");
+  const parentId = String(account?.parentAccountId || "");
+  if (parentId === viewerId) return true;
+
+  // A WC also sees trainees attached beneath one of their direct AWCs.
+  if (req.auth?.role === "wellness_coach" && primaryRole === "trainee" && parentId) {
+    const parent = await getAccountById(parentId);
+    return (
+      Array.isArray(parent?.roleKeys) &&
+      parent.roleKeys.includes("assistant_wellness_coach") &&
+      String(parent.parentAccountId || "") === viewerId
+    );
+  }
+  return false;
+}
+
+/** Teams page + member directory — scoped to roles below the signed-in member. */
 function assertTeamsReadAccess(req) {
   if (req.auth?.isSuperAdmin) return;
   const role = String(req.auth?.role || "");
-  if (role === "admin" || role === "wellness_coach") return;
+  if (role === "admin" || TEAM_DESCENDANT_ROLES[role]) return;
   throw new AppError("Forbidden", 403);
 }
 
@@ -130,8 +163,17 @@ exports.listAccessRoles = asyncHandler(async (req, res) => {
     limit: 100,
   });
 
+  const visibleRoles = visibleTeamRoleKeys(req);
+  const scopedRoles =
+    visibleRoles === null
+      ? roles
+      : roles.filter((role) => {
+          const accountRole = UI_TO_ACCOUNT_ROLE[role.roleKey] || role.roleKey;
+          return visibleRoles.has(accountRole);
+        });
+
   const enriched = [];
-  for (const role of roles) {
+  for (const role of scopedRoles) {
     const count = await memberCountForConsoleRole(role);
     enriched.push(toAccessRole(role, count));
   }
@@ -270,13 +312,61 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
     ? UI_TO_ACCOUNT_ROLE[roleFilter] || roleFilter
     : undefined;
 
-  const result = await listAccounts({
-    status: "active",
-    search,
-    roleKey: accountRoleFilter,
-    page: req.query.page || 1,
-    limit: req.query.limit || 100,
-  });
+  const visibleRoles = visibleTeamRoleKeys(req);
+  let result;
+  if (visibleRoles === null) {
+    result = await listAccounts({
+      status: "active",
+      search,
+      roleKey: accountRoleFilter,
+      page: req.query.page || 1,
+      limit: req.query.limit || 100,
+    });
+  } else {
+    const direct = await listAccounts({
+      status: "active",
+      search,
+      roleKey: accountRoleFilter,
+      parentAccountId: req.auth.sub,
+      page: 1,
+      limit: 200,
+    });
+    const scopedAccounts = [...(direct.accounts || [])];
+
+    if (
+      req.auth.role === "wellness_coach" &&
+      (!accountRoleFilter || accountRoleFilter === "trainee")
+    ) {
+      const directAssistants = await listAccounts({
+        status: "active",
+        parentAccountId: req.auth.sub,
+        roleKey: "assistant_wellness_coach",
+        page: 1,
+        limit: 200,
+      });
+      for (const assistant of directAssistants.accounts || []) {
+        const trainees = await listAccounts({
+          status: "active",
+          search,
+          parentAccountId: assistant.id,
+          roleKey: "trainee",
+          page: 1,
+          limit: 200,
+        });
+        scopedAccounts.push(...(trainees.accounts || []));
+      }
+    }
+
+    result = {
+      accounts: scopedAccounts,
+      pagination: {
+        page: 1,
+        limit: 200,
+        total: scopedAccounts.length,
+        pages: 1,
+      },
+    };
+  }
 
   const { roles: consoleRoles } = await listRoles({
     scope: CONSOLE_SCOPE,
@@ -297,6 +387,7 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
       (pub.defaultRoleKey && roleKeys.includes(pub.defaultRoleKey) && pub.defaultRoleKey) ||
       roleKeys[0] ||
       null;
+    if (!(await canViewTeamAccount(req, pub, primaryAccountRole))) continue;
     const uiRole = ACCOUNT_TO_UI_ROLE[primaryAccountRole] || primaryAccountRole;
     const consoleRole = uiRole ? roleByKey[uiRole] : null;
 
@@ -404,6 +495,9 @@ exports.getAccessMember = asyncHandler(async (req, res) => {
     (pub.defaultRoleKey && roleKeys.includes(pub.defaultRoleKey) && pub.defaultRoleKey) ||
     roleKeys[0] ||
     null;
+  if (!(await canViewTeamAccount(req, pub, primaryAccountRole))) {
+    throw new AppError("Team member not found", 404);
+  }
   const uiRole = ACCOUNT_TO_UI_ROLE[primaryAccountRole] || primaryAccountRole;
 
   const { roles: consoleRoles } = await listRoles({
@@ -463,6 +557,23 @@ exports.getAccessMember = asyncHandler(async (req, res) => {
     parentName = parent?.name || null;
   }
 
+  // Backfill codes for staff created before role-prefixed referral codes existed.
+  let referralCode = pub.referralCode || null;
+  if (!referralCode && REFERRAL_STAFF_ROLES.has(primaryAccountRole)) {
+    try {
+      referralCode = await ensureEntityReferralCode({
+        tableName: "Account",
+        entityType: primaryAccountRole,
+        entityId: pub.id,
+        ownerCoachId:
+          primaryAccountRole === "wellness_coach" ? pub.id : parentId || "pending",
+        referralCode: null,
+      });
+    } catch (err) {
+      console.error("[getAccessMember] ensure referral code failed", err.message);
+    }
+  }
+
   return res.json({
     status: true,
     member: {
@@ -471,6 +582,13 @@ exports.getAccessMember = asyncHandler(async (req, res) => {
       email: pub.email,
       phone: pub.phone || null,
       phoneCountryCode: pub.phoneCountryCode || null,
+      profileImage: pub.profileImage || null,
+      dateOfBirth: pub.dateOfBirth || pub.dob || null,
+      country: pub.country || null,
+      state: pub.state || null,
+      city: pub.city || null,
+      referralCode,
+      joinedAt: pub.createdAt || null,
       status: pub.status,
       displayStatus:
         pub.status === "inactive"

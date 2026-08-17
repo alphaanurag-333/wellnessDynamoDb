@@ -15,6 +15,7 @@ function mapOption(row) {
     id: row.id,
     label: row.label || "",
     value: row.value || "",
+    icon: row.icon || "",
     on: row.on !== false,
     sortOrder: Number.isFinite(Number(row.sortOrder)) ? Number(row.sortOrder) : 0,
   };
@@ -60,6 +61,7 @@ export async function adminAddConfigDropdownOption(token, listId, fields) {
       {
         label: String(fields.label ?? "").trim(),
         ...(fields.value ? { value: fields.value } : {}),
+        ...(fields.icon ? { icon: String(fields.icon).trim() } : {}),
         ...(fields.on !== undefined ? { on: fields.on } : {}),
       },
       { headers: authHeader(tokenOrStored(token)) },
@@ -74,6 +76,7 @@ export async function adminUpdateConfigDropdownOption(token, listId, optionId, f
   const payload = {};
   if (fields.label !== undefined) payload.label = String(fields.label).trim();
   if (fields.value !== undefined) payload.value = String(fields.value).trim();
+  if (fields.icon !== undefined) payload.icon = String(fields.icon).trim();
   if (fields.on !== undefined) payload.on = Boolean(fields.on);
   try {
     const { data } = await api.patch(

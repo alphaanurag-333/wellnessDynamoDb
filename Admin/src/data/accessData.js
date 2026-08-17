@@ -47,9 +47,9 @@ export const TOTAL_PERM_SLOTS = PERM_CATALOG.reduce((n, row) => n + row[3].lengt
 export const DEFAULT_VIEWS = {
   admin: ["dashboard", "users", "teams", "calendar", "pending", "sop", "configs"],
   wc: ["dashboard", "users", "teams", "calendar", "pending", "sop"],
-  awc: ["dashboard", "users", "calendar", "pending", "sop"],
-  trainee: ["dashboard", "users", "sop"],
-  support: ["dashboard", "configs"],
+  awc: ["dashboard", "users", "teams", "calendar", "pending", "sop"],
+  trainee: ["dashboard", "users", "pending", "sop"],
+  support: ["dashboard", "pending", "configs"],
 };
 
 /** Full console surface for Super Admin (viewing as admin). */
@@ -85,6 +85,7 @@ export const DEFAULT_GRANTS = {
     body: ["view"],
     rep: ["view"],
     diet: ["view"],
+    tm: ["view"],
     cal: ["view", "create", "edit"],
     avail: ["view"],
     pt: ["view", "edit", "toggle"],
@@ -109,11 +110,13 @@ export const DEFAULT_GRANTS = {
   trainee: {
     dash: ["view"],
     cl: ["view"],
+    pt: ["view"],
     sop: ["view"],
     body: ["view"],
   },
   support: {
     dash: ["view"],
+    pt: ["view"],
     ct: ["view", "create", "upload", "delete"],
     bn: ["view", "create", "edit", "toggle"],
     cf: ["view", "edit"],

@@ -1,7 +1,7 @@
 const {
-  getWellnessCoachById,
   toPublicWellnessCoach,
 } = require("../models/wellnessCoachModel");
+const { getWellnessCoachByIdResolved } = require("./accountResolver");
 const {
   listAssistantsByWellnessCoachId,
   countAssistantsByWellnessCoachId,
@@ -80,7 +80,7 @@ function toDashboardAssistant(assistant) {
 }
 
 async function getCoachDashboardStats(coachId) {
-  const coach = await getWellnessCoachById(coachId);
+  const coach = await getWellnessCoachByIdResolved(coachId);
   if (!coach) {
     throw new Error("Coach account not found");
   }

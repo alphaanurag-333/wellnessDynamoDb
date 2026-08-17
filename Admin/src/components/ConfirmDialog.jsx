@@ -5,6 +5,7 @@ export function ConfirmDialog({
   body,
   cancelLabel = "Cancel",
   confirmLabel,
+  confirmTone = "primary",
   onCancel,
   onConfirm,
 }) {
@@ -25,7 +26,11 @@ export function ConfirmDialog({
           <button type="button" className="ua-confirm-dialog__cancel" onClick={onCancel}>
             {cancelLabel}
           </button>
-          <button type="button" className="ua-confirm-dialog__confirm" onClick={onConfirm}>
+          <button
+            type="button"
+            className={`ua-confirm-dialog__confirm${confirmTone === "danger" ? " ua-confirm-dialog__confirm--danger" : ""}`}
+            onClick={onConfirm}
+          >
             {confirmLabel}
           </button>
         </div>

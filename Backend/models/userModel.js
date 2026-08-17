@@ -2,7 +2,6 @@ const {
   PutCommand,
   GetCommand,
   UpdateCommand,
-  DeleteCommand,
   QueryCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require("uuid");
@@ -535,13 +534,30 @@ async function updateUser(id, updates) {
 }
 
 async function deleteUser(id) {
-  await docClient.send(
-    new DeleteCommand({
+  const now = new Date().toISOString();
+  const { Attributes } = await docClient.send(
+    new UpdateCommand({
       TableName: TABLE,
       Key: { id },
-      ConditionExpression: "attribute_exists(id)",
+      UpdateExpression:
+        "SET #status = :deleted, deletedAt = :deletedAt, updatedAt = :updatedAt, " +
+        "deletedEmail = if_not_exists(email, :empty), " +
+        "deletedPhoneKey = if_not_exists(phoneKey, :empty) " +
+        "REMOVE email, phoneKey, passwordHash, otp, otpExpire, resetPasswordToken, " +
+        "resetPasswordExpire, fcm_id, profileImage, presentablePic",
+      ExpressionAttributeNames: { "#status": "status" },
+      ExpressionAttributeValues: {
+        ":deleted": "deleted",
+        ":deletedAt": now,
+        ":updatedAt": now,
+        ":empty": "",
+      },
+      ConditionExpression:
+        "attribute_exists(id) AND (attribute_not_exists(#status) OR #status <> :deleted)",
+      ReturnValues: "ALL_NEW",
     })
   );
+  return withLegacyId(Attributes || null);
 }
 
 async function listUsersByParentCoachId(
@@ -569,8 +585,10 @@ async function listUsersByParentCoachId(
     })
   );
 
-  let rows = Items.map(withLegacyId).filter((row) =>
-    matchesAssignedClientTier(row.userTier, normalizedTier)
+  let rows = Items.map(withLegacyId).filter(
+    (row) =>
+      row.status !== "deleted" &&
+      matchesAssignedClientTier(row.userTier, normalizedTier)
   );
 
   if (normalizedScope === "direct") {
@@ -630,6 +648,7 @@ async function listUsersByAssignedCoachId(
   );
 
   let rows = Items.map(withLegacyId).filter((row) => {
+    if (row.status === "deleted") return false;
     if (String(row.assignedCoachId || "") !== assigneeId) return false;
     if (normalizeAssignedCoachType(row.assignedCoachType) !== "assistant_wellness_coach") return false;
     return matchesAssignedClientTier(row.userTier, normalizedTier);

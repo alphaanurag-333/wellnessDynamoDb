@@ -147,6 +147,119 @@ function buildTags(user, goal) {
   return tags;
 }
 
+function titleCaseToken(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  return raw
+    .split(/[_\s]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function formatGender(value) {
+  return titleCaseToken(value);
+}
+
+function formatDietaryPreference(value) {
+  return titleCaseToken(value);
+}
+
+function formatWellnessJourney(value) {
+  if (Array.isArray(value)) {
+    return value.map((v) => titleCaseToken(v)).filter(Boolean).join(", ");
+  }
+  return titleCaseToken(value);
+}
+
+/** Paid-onboarding step keys stored on User.paidOnboardingStepStatus */
+export const PAID_ONBOARDING_STATUS_KEYS = [
+  "personalDetails",
+  "profileSetup",
+  "bodyMeasurement",
+  "progressPhotos180",
+  "medicalConditions",
+  "internalParameter",
+  "launch",
+];
+
+export const PAID_ONBOARDING_STEP_LABELS = {
+  personalDetails: "Personal details",
+  profileSetup: "Profile setup",
+  bodyMeasurement: "Body measurements",
+  progressPhotos180: "180° progress photos",
+  medicalConditions: "Medical conditions",
+  internalParameter: "Internal parameters",
+  launch: "LAUNCH",
+};
+
+function normalizeOnboardingStepStatus(raw) {
+  const out = {};
+  for (const key of PAID_ONBOARDING_STATUS_KEYS) {
+    const value = String(raw?.[key] || "pending").toLowerCase().trim();
+    out[key] = value === "done" || value === "skipped" ? value : "pending";
+  }
+  return out;
+}
+
+function countOnboardingDone(stepStatus) {
+  return PAID_ONBOARDING_STATUS_KEYS.filter((key) => stepStatus[key] === "done").length;
+}
+
+function hasOnboardingValue(value) {
+  if (value == null) return false;
+  if (typeof value === "boolean") return true;
+  if (Array.isArray(value)) return value.length > 0;
+  return String(value).trim() !== "";
+}
+
+/** Fields users submit during register + paid onboarding (User table). */
+export function buildOnboardingAvailability(userRow) {
+  const fields = [
+    { key: "name", label: "Full name", value: userRow?.name },
+    { key: "email", label: "Email", value: userRow?.email },
+    { key: "phone", label: "Phone", value: userRow?.phone },
+    { key: "whatsapp", label: "WhatsApp", value: userRow?.whatsapp },
+    { key: "dob", label: "Date of birth", value: userRow?.dob },
+    { key: "gender", label: "Gender", value: userRow?.gender },
+    { key: "country", label: "Country", value: userRow?.country },
+    { key: "state", label: "State", value: userRow?.stateRaw || userRow?.state },
+    { key: "city", label: "City", value: userRow?.city },
+    { key: "addressLine1", label: "Address line 1", value: userRow?.addressLine1 },
+    { key: "addressLine2", label: "Address line 2", value: userRow?.addressLine2 },
+    { key: "pincode", label: "Pincode", value: userRow?.pincode },
+    { key: "goal", label: "Primary health concern", value: userRow?.goal },
+    { key: "dietaryPreference", label: "Dietary preference", value: userRow?.dietaryPreference },
+    { key: "wellnessJourneyFor", label: "Wellness journey for", value: userRow?.wellnessJourneyFor },
+    { key: "profileImage", label: "Profile photo", value: userRow?.profileImage },
+    { key: "presentablePic", label: "Presentable pic", value: userRow?.presentablePic },
+    { key: "termsAccepted", label: "Terms accepted", value: userRow?.termsAcceptedBool ? (userRow?.termsAccepted || "Yes") : "" },
+    { key: "referralCode", label: "Referral code", value: userRow?.referralCode },
+  ];
+
+  const items = fields.map((field) => {
+    const available = hasOnboardingValue(field.value);
+    return {
+      ...field,
+      available,
+      display: available
+        ? typeof field.value === "boolean"
+          ? field.value
+            ? "Yes"
+            : "No"
+          : String(field.value)
+        : "",
+    };
+  });
+
+  const availableCount = items.filter((item) => item.available).length;
+  return {
+    items,
+    availableCount,
+    totalCount: items.length,
+  };
+}
+
 /** Map GET /account/users item → list + profile UI shape. Missing unique fields stay empty. */
 export function mapApiUserToRow(user, index = 0) {
   const id = resolveUserId(user);
@@ -163,7 +276,20 @@ export function mapApiUserToRow(user, index = 0) {
   const lastActiveAt = user?.lastActiveAt || "";
   const tier = mapApiTierToUi(user?.userTier);
   const address = formatAddress(user);
-  const state = [user?.state, user?.country].filter(Boolean).join(" · ") || String(user?.state || "").trim();
+  const stateRaw = String(user?.state || "").trim();
+  const country = String(user?.country || "").trim();
+  const city = String(user?.city || "").trim();
+  const state = [stateRaw, country].filter(Boolean).join(" · ") || stateRaw;
+  const paidOnboardingStepStatus = normalizeOnboardingStepStatus(user?.paidOnboardingStepStatus);
+  const onboardingDone = countOnboardingDone(paidOnboardingStepStatus);
+  const onboardingTotal = PAID_ONBOARDING_STATUS_KEYS.length;
+  const dietaryPreference = formatDietaryPreference(user?.dietaryPreference);
+  const wellnessJourneyFor = formatWellnessJourney(user?.wellnessJourneyFor);
+  const gender = formatGender(user?.gender);
+  const addressLine1 = String(user?.addressLine1 || "").trim();
+  const addressLine2 = String(user?.addressLine2 || "").trim();
+  const pincode = String(user?.pincode || "").trim();
+  const termsAcceptedLabel = formatTermsAccepted(user);
 
   return {
     id,
@@ -173,10 +299,19 @@ export function mapApiUserToRow(user, index = 0) {
     phone,
     whatsapp: whatsapp || "",
     dob: formatDob(user?.dob),
+    gender,
+    country,
+    city,
+    addressLine1,
+    addressLine2,
+    pincode,
     address,
     state,
+    stateRaw,
     tier,
     goal,
+    dietaryPreference,
+    wellnessJourneyFor,
     coach: coach || UNASSIGNED_COACH,
     awc: resolveAwcName(user),
     lastActive: formatLastActive(lastActiveAt),
@@ -190,13 +325,16 @@ export function mapApiUserToRow(user, index = 0) {
     // No dedicated review timestamp on user — leave empty so UI shows "—"
     lastReviewed: "",
     termsIp: "",
-    termsAccepted: formatTermsAccepted(user),
+    termsAccepted: termsAcceptedLabel,
+    termsAcceptedBool: Boolean(user?.termsAccepted),
     programs: 0,
     programLabel: tierLabel(tier) || "",
     subscriptionDays: 0,
     tags: buildTags(user, goal),
     goals: goal ? [goal] : [],
     profileImage: user?.profileImage || "",
+    presentablePic: user?.presentablePic || "",
+    referralCode: String(user?.referralCode || "").trim(),
     parentCoachId: user?.parentCoachId || user?.parentCoach?.id || "",
     assignedCoachId: user?.assignedCoachId || user?.assignedCoach?.id || "",
     assignedCoachType: user?.assignedCoachType || "",
@@ -206,8 +344,14 @@ export function mapApiUserToRow(user, index = 0) {
     updatedAt,
     lastActiveAt,
     paidOnboardingCompleted: Boolean(user?.paidOnboardingCompleted),
-    onboardingDone: user?.paidOnboardingCompleted ? 10 : undefined,
-    onboardingTotal: 10,
+    paidOnboardingStep: String(user?.paidOnboardingStep || "").trim(),
+    paidOnboardingStepStatus,
+    onboardingDone,
+    onboardingTotal,
+    onboardingPct: Math.round((onboardingDone / onboardingTotal) * 100),
+    energyExchangeEnabled: Boolean(user?.energyExchangeEnabled),
+    healPaidAt: user?.healPaidAt || "",
+    whatsappSameAsMobile: Boolean(user?.whatsappSameAsMobile),
   };
 }
 
@@ -222,6 +366,28 @@ export async function fetchUsers({ page = 1, limit = 200, status, search, userTi
 
   try {
     const { data } = await api.get(`/account/users?${q}`, { headers: authHeader() });
+    const users = Array.isArray(data.users) ? data.users : [];
+    return {
+      users: users.map((u, i) => mapApiUserToRow(u, i)),
+      pagination: data.pagination ?? { page, limit, total: users.length, pages: 1 },
+    };
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+/** Role-scoped clients for WC/AWC/trainee console sessions. */
+export async function fetchScopedUsers({ page = 1, limit = 200, search, scope = "all" } = {}) {
+  const q = new URLSearchParams();
+  q.set("page", String(page));
+  q.set("limit", String(limit));
+  if (search && String(search).trim()) q.set("search", String(search).trim());
+  if (scope) q.set("scope", String(scope));
+
+  try {
+    const { data } = await api.get(`/account/heal-users?${q}`, {
+      headers: authHeader(),
+    });
     const users = Array.isArray(data.users) ? data.users : [];
     return {
       users: users.map((u, i) => mapApiUserToRow(u, i)),

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ACTIVE_SUPPLEMENTS,
   buildOnboardingRemindMessage,
@@ -292,10 +292,10 @@ function CommsBlock({ user, onToast, reminders, setReminders, onOpenList }) {
 function OnboardingSummary({ user }) {
   const joinedLabel = user.joinedAgo || (user.ageDays === 0 ? "today" : user.ageDays > 0 ? `${user.ageDays} days ago` : "—");
   const done = user.onboardingDone;
-  const total = user.onboardingTotal || 10;
+  const total = user.onboardingTotal || 7;
   const onboardingLabel = done == null
     ? "—"
-    : done >= total
+    : user.paidOnboardingCompleted || done >= total
       ? `Complete · ${done}/${total} steps`
       : `In progress · ${done}/${total} steps`;
   return (
@@ -318,7 +318,34 @@ function OnboardingSummary({ user }) {
   );
 }
 
+/** Map User.paidOnboardingStepStatus keys → admin UI onboarding step numbers. */
+const PAID_STATUS_TO_UI_STEP = {
+  personalDetails: 1,
+  profileSetup: 1,
+  bodyMeasurement: 2,
+  progressPhotos180: 2,
+  medicalConditions: 3,
+  internalParameter: 3,
+  launch: 4,
+};
+
 function buildInitialDone(user) {
+  const status = user?.paidOnboardingStepStatus;
+  if (status && typeof status === "object") {
+    const seed = {};
+    Object.entries(PAID_STATUS_TO_UI_STEP).forEach(([key, stepN]) => {
+      if (status[key] === "done" || status[key] === "skipped") {
+        seed[stepN] = true;
+      }
+    });
+    if (user.paidOnboardingCompleted) {
+      ONBOARDING_STEPS.forEach((step) => {
+        seed[step.n] = true;
+      });
+    }
+    return seed;
+  }
+
   const seed = { ...ONBOARDING_INITIAL_DONE };
   if (user.n !== 1 && user.onboardingDone) {
     ONBOARDING_STEPS.forEach((step, idx) => {
@@ -400,6 +427,12 @@ function OnboardingStatusCard({ user, onToast, onNavigate }) {
   const [stepNotes, setStepNotes] = useState(() => buildInitialStepNotes(buildInitialDone(user)));
   const [scheduleModal, setScheduleModal] = useState(null);
   const [remindOpen, setRemindOpen] = useState(false);
+
+  useEffect(() => {
+    const next = buildInitialDone(user);
+    setDoneMap(next);
+    setStepNotes(buildInitialStepNotes(next));
+  }, [user?.id, user?.paidOnboardingCompleted, user?.onboardingDone, user?.paidOnboardingStepStatus]);
 
   const steps = useMemo(
     () => ONBOARDING_STEPS.map((step) => ({ ...step, done: !!doneMap[step.n] })),
@@ -621,8 +654,13 @@ function RemindersModal({ user, reminders, onClose, onDelete }) {
 }
 
 export function AtAGlanceSection({ user, onToast, onNavigate }) {
-  const inProgress = (user.onboardingDone ?? 5) < (user.onboardingTotal ?? 10);
+  const inProgress = user.paidOnboardingCompleted
+    ? false
+    : (user.onboardingDone ?? 0) < (user.onboardingTotal ?? 7);
   const [viewMode, setViewMode] = useState(inProgress ? "onboarding" : "onboarded");
+  useEffect(() => {
+    setViewMode(inProgress ? "onboarding" : "onboarded");
+  }, [inProgress, user?.id]);
   const [reminders, setReminders] = useState(DEFAULT_REMINDERS);
   const [remindersOpen, setRemindersOpen] = useState(false);
   const [rainActive, setRainActive] = useState(false);

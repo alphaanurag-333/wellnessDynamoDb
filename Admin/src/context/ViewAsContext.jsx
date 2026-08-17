@@ -6,7 +6,6 @@ import {
   accountSwitchRole,
   clearAccountAuth,
   readAccountAuth,
-  writeAccountAuth,
   ROLE_KEY_TO_UI,
   UI_TO_ROLE_KEY,
 } from "../api/accountApi.js";
@@ -187,8 +186,6 @@ export function ViewAsProvider({ children }) {
       setAuthError,
       login,
       logout,
-      setAccount,
-      refreshAccount,
       UI_TO_ROLE_KEY,
     }),
     [
@@ -203,8 +200,6 @@ export function ViewAsProvider({ children }) {
       authError,
       login,
       logout,
-      setAccount,
-      refreshAccount,
     ],
   );
 

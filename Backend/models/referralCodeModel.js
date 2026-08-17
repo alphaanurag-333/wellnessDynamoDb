@@ -1,6 +1,9 @@
 const { PutCommand, GetCommand, UpdateCommand, DeleteCommand } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../config/db");
-const { generateReferralCode, normalizeReferralCode } = require("../utils/referralCode");
+const {
+  generateReferralCodeForEntity,
+  normalizeReferralCode,
+} = require("../utils/referralCode");
 
 const TABLE = "ReferralCode";
 
@@ -95,9 +98,20 @@ async function deleteReferralCodeRecord(referralCode) {
   );
 }
 
-async function generateUniqueReferralCode(maxAttempts = 12) {
+/**
+ * Generate a unique referral code.
+ * @param {{ entityType?: string, maxAttempts?: number }} [options]
+ *   entityType wellness_coach → IRW-WC-NNN; assistant_wellness_coach → IRW-AWC-NNN; else random.
+ */
+async function generateUniqueReferralCode(options = {}) {
+  const maxAttempts = options.maxAttempts ?? 12;
+  const entityType = options.entityType || null;
+
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    const candidate = generateReferralCode();
+    // Widen the staff numeric suffix as attempts fail — the 3-digit space is small.
+    const candidate = generateReferralCodeForEntity(entityType, {
+      digits: 3 + Math.floor(attempt / 4),
+    });
     const existing = await getReferralCodeRecord(candidate);
     if (!existing) return candidate;
   }
@@ -124,7 +138,7 @@ async function ensureEntityReferralCode({
   let code = normalizeReferralCode(referralCode);
 
   if (!code) {
-    code = await generateUniqueReferralCode();
+    code = await generateUniqueReferralCode({ entityType });
     await docClient.send(
       new UpdateCommand({
         TableName: tableName,

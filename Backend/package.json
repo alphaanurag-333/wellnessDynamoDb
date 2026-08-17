@@ -37,7 +37,9 @@
     "table:sops": "node --use-system-ca tables/createSopTable.js",
     "migrate:contact-inquiries": "node --use-system-ca migration/migrateAll.js --only=26-contact-inquiries",
     "job:monthly-champions:run": "node --use-system-ca scripts/runMonthlyChampionJob.js",
-    "seed:staff-accounts": "node --use-system-ca scripts/seedCleanStaffAccounts.js --confirm"
+    "seed:staff-accounts": "node --use-system-ca scripts/seedCleanStaffAccounts.js --confirm",
+    "backfill:staff-referral-codes": "node --use-system-ca scripts/backfillStaffReferralCodes.js",
+    "backfill:referral-user-assignments": "node --use-system-ca scripts/backfillReferralUserAssignments.js"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1041.0",

@@ -8,6 +8,7 @@ const {
   getConsultancyTransactionById,
   listAllTransactionsAcrossStatuses,
   listTransactionsForCoach,
+  listTransactionsForAssistant,
   transactionVisibleToCoach,
   transactionVisibleToAssistant,
   buildEnrolledUsersFromTransactions,
@@ -166,13 +167,21 @@ exports.listCoachConsultancyTransactionsController = asyncHandler(async (req, re
   if (!coachId) throw new AppError("Unauthorized", 401);
 
   const { page = 1, limit = 20, paymentStatus = "paid", search, scope = "all" } = req.query;
-  const data = await listTransactionsForCoach(coachId, {
-    page,
-    limit,
-    paymentStatus,
-    search,
-    scope,
-  });
+  const data =
+    actor.role === "assistant_wellness_coach"
+      ? await listTransactionsForAssistant(actor.id, {
+          page,
+          limit,
+          paymentStatus,
+          search,
+        })
+      : await listTransactionsForCoach(coachId, {
+          page,
+          limit,
+          paymentStatus,
+          search,
+          scope,
+        });
 
   const transactions = data.transactions.map((row) => enrichTransactionPublic(row));
 
@@ -191,16 +200,29 @@ exports.listCoachConsultancyEnrolledUsersController = asyncHandler(async (req, r
   if (!coachId) throw new AppError("Unauthorized", 401);
 
   const { page = 1, limit = 20, search, scope = "all" } = req.query;
-  const data = await listTransactionsForCoach(coachId, {
-    page: 1,
-    limit: 500,
-    paymentStatus: "paid",
-    search,
-    scope,
-  });
+  const data =
+    actor.role === "assistant_wellness_coach"
+      ? await listTransactionsForAssistant(actor.id, {
+          page: 1,
+          limit: 500,
+          paymentStatus: "paid",
+          search,
+        })
+      : await listTransactionsForCoach(coachId, {
+          page: 1,
+          limit: 500,
+          paymentStatus: "paid",
+          search,
+          scope,
+        });
 
   let enrolled = buildEnrolledUsersFromTransactions(data.transactions);
-  enrolled = await supplementEnrolledUsersFromAssignedClients(coachId, enrolled, { search, scope });
+  if (actor.role !== "assistant_wellness_coach") {
+    enrolled = await supplementEnrolledUsersFromAssignedClients(coachId, enrolled, {
+      search,
+      scope,
+    });
+  }
   const normalizedSearch = String(search || "").trim().toLowerCase();
   if (normalizedSearch) {
     enrolled = enrolled.filter((row) => {

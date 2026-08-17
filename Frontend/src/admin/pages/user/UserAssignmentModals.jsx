@@ -313,10 +313,12 @@ export function ConvertToHealModal({ user, open, onClose, onSuccess }) {
                 setReferralCode(
                   String(e.target.value || "")
                     .toUpperCase()
-                    .replace(/[^A-Z0-9]/g, "")
+                    .replace(/[^A-Z0-9-]/g, "")
+                    .replace(/-{2,}/g, "-")
+                    .slice(0, 16)
                 )
               }
-              placeholder="Leave empty for pending admin assignment"
+              placeholder="e.g. IRW-WC-470"
               autoComplete="off"
             />
           </label>
