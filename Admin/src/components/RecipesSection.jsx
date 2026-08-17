@@ -14,15 +14,20 @@ import {
   RECIPE_CATEGORY_SLUG,
   RECIPE_GALLERY_OWNERS,
   RECIPE_PAGE_SIZE,
+  formatRecipeDate,
+  persistRecipeCategory,
   recipeCategoryLabel,
+  resolveCategorySelectValue,
   validateRecipeImage,
   validateRecipeVideo,
   withCategoryLabels,
+  youtubeEmbedUrl,
 } from "../data/recipesConfigData.js";
 import { ListPagination } from "./shared.jsx";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
 
+const RECIPE_SEARCH_DEBOUNCE_MS = 400;
 const CROP_RATIOS = ["Original", "1:1", "4:3", "3:4", "16:9"];
 const CROP_ASPECT = {
   Original: [16, 9],
@@ -117,12 +122,12 @@ function UploadConfirmModal({ open, label, defaultRatio = "Original", onClose, o
   );
 }
 
-function LinkModal({ open, title, onClose, onSave }) {
+function LinkModal({ open, title, initialUrl = "", onClose, onSave }) {
   const [url, setUrl] = useState("");
 
   useEffect(() => {
-    if (!open) setUrl("");
-  }, [open]);
+    setUrl(open ? asCopyString(initialUrl) : "");
+  }, [initialUrl, open]);
 
   if (!open) return null;
 
@@ -189,39 +194,212 @@ function HistoryModal({ entry, onClose, onToast }) {
 }
 
 function CategorySelect({ options, value, disabled, onChange }) {
+  const selected = resolveCategorySelectValue(value, options);
+  const known = options.some((entry) => entry.value === selected);
   return (
     <select
       className="ua-cfg-rc-cat"
-      value={value}
+      value={known ? selected : value || ""}
       disabled={disabled}
       onChange={(event) => onChange(event.target.value)}
     >
       {!options.length ? <option value="">No categories</option> : null}
+      {!known && value ? <option value={value}>{recipeCategoryLabel(value, options)}</option> : null}
       {options.map((entry) => (
-        <option key={entry.value} value={entry.value}>{entry.label}</option>
+        <option key={entry.id || entry.value} value={entry.value}>{entry.label}</option>
       ))}
     </select>
   );
 }
 
-function CoverDrop({ previewUrl, disabled, label = "Cover", onPick }) {
+function SpecsEditor({ value, disabled, onChange }) {
+  const incoming = Array.isArray(value) ? value.map((row) => String(row || "")) : [];
+  const incomingKey = incoming.join("\n");
+  const [rows, setRows] = useState(() => (incoming.length ? incoming : [""]));
+  const syncedKey = useRef(incomingKey);
+
+  useEffect(() => {
+    if (incomingKey === syncedKey.current) return;
+    syncedKey.current = incomingKey;
+    setRows(incomingKey ? incomingKey.split("\n") : [""]);
+  }, [incomingKey]);
+
+  function emit(nextRows) {
+    const normalized = nextRows.length ? nextRows : [""];
+    setRows(normalized);
+    const cleaned = normalized.map((row) => String(row || "").trim()).filter(Boolean);
+    syncedKey.current = cleaned.join("\n");
+    onChange(cleaned);
+  }
+
+  function addBullet() {
+    emit([...rows, ""]);
+  }
+
+  return (
+    <div className="ua-cfg-rc-specs-editor">
+      {rows.map((row, index) => (
+        <div className="ua-cfg-rc-specs-editor__row" key={`spec-${index}`}>
+          <span className="ua-cfg-rc-specs-editor__bullet" aria-hidden="true">•</span>
+          <input
+            className="ua-cfg-vh-input"
+            value={row}
+            disabled={disabled}
+            placeholder={index === 0 ? "e.g. 50 g Protein" : "Add another spec"}
+            onChange={(event) => emit(rows.map((entry, i) => (i === index ? event.target.value : entry)))}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter") return;
+              event.preventDefault();
+              addBullet();
+            }}
+          />
+          {rows.length > 1 || String(row).trim() ? (
+            <button
+              type="button"
+              className="ua-cfg-icon-btn"
+              aria-label="Remove spec"
+              disabled={disabled}
+              onClick={() => emit(rows.filter((_, i) => i !== index))}
+            >
+              ×
+            </button>
+          ) : null}
+        </div>
+      ))}
+      <button
+        type="button"
+        className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+        disabled={disabled}
+        onClick={addBullet}
+      >
+        + Add bullet
+      </button>
+    </div>
+  );
+}
+
+function SpecChips({ specs }) {
+  const items = Array.isArray(specs) ? specs.filter(Boolean) : [];
+  if (!items.length) return null;
+  return (
+    <div className="ua-cfg-rc-specs">
+      {items.map((spec) => (
+        <span key={spec} className="ua-cfg-rc-spec">{spec}</span>
+      ))}
+    </div>
+  );
+}
+
+function RecipeViewModal({ entry, onClose, onEdit }) {
+  if (!entry) return null;
+  const embed = youtubeEmbedUrl(entry.videoLink);
+  const isVideo = entry.apiType === "video" || entry.type === "VIDEO";
+  return (
+    <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={onClose} role="presentation">
+      <div className="ua-cfg-rc-view" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="recipe-view-title">
+        <div className="ua-cfg-rc-view__head">
+          <div>
+            <p className="ua-cfg-rc-view__tag">Health recipe</p>
+            <h3 id="recipe-view-title">{asCopyString(entry.title) || "Untitled recipe"}</h3>
+            <p>{asCopyString(entry.categoryLabel || entry.category) || "Uncategorized"} · {entry.live ? "Live" : "Hidden"}</p>
+          </div>
+          <button type="button" className="ua-cfg-mv-upload-modal__close" aria-label="Close" onClick={onClose}>×</button>
+        </div>
+        <div className="ua-cfg-rc-view__media">
+          {entry.thumbnail ? <img src={entry.thumbnail} alt="" /> : <div className="ua-cfg-rc-view__media-empty">No cover</div>}
+        </div>
+        {asCopyString(entry.description) ? <p className="ua-cfg-rc-view__copy">{asCopyString(entry.description)}</p> : null}
+        <SpecChips specs={entry.videoSpecification} />
+        <dl className="ua-cfg-rc-view__meta">
+          <div>
+            <dt>Type</dt>
+            <dd>{isVideo ? "Uploaded video" : "YouTube link"}</dd>
+          </div>
+          <div>
+            <dt>{isVideo ? "Video" : "YouTube"}</dt>
+            <dd>
+              {isVideo && entry.video ? (
+                <a href={entry.video} target="_blank" rel="noreferrer">{entry.video}</a>
+              ) : entry.videoLink ? (
+                <a href={entry.videoLink} target="_blank" rel="noreferrer">{entry.videoLink}</a>
+              ) : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt>Created</dt>
+            <dd>{formatRecipeDate(entry.createdAt)}</dd>
+          </div>
+          <div>
+            <dt>Updated</dt>
+            <dd>{formatRecipeDate(entry.updatedAt)}</dd>
+          </div>
+        </dl>
+        {embed ? (
+          <div className="ua-cfg-rc-view__embed">
+            <iframe title={asCopyString(entry.title) || "Recipe video"} src={embed} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+          </div>
+        ) : isVideo && entry.video ? (
+          <video className="ua-cfg-rc-view__player" src={entry.video} controls preload="metadata" />
+        ) : null}
+        <div className="ua-cfg-rc-view__foot">
+          <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose}>Close</button>
+          <button
+            type="button"
+            className="ua-cfg-btn ua-cfg-btn--primary"
+            onClick={() => {
+              onEdit(entry.id);
+              onClose();
+            }}
+          >
+            Edit recipe
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CoverDrop({ previewUrl, disabled, label = "Cover", onPick, onRemove }) {
   const inputRef = useRef(null);
   return (
     <div className="ua-cfg-rc-cover-drop-wrap">
-      <button
-        type="button"
-        className={`ua-cfg-rc-cover-drop${previewUrl ? " is-on" : ""}`}
-        disabled={disabled}
-        aria-label={previewUrl ? "Replace cover" : "Add cover"}
-        onClick={() => inputRef.current?.click()}
-      >
-        {previewUrl ? (
-          <img className="ua-cfg-rc-drop-preview" src={previewUrl} alt="" />
-        ) : (
-          <span aria-hidden="true">🖼</span>
-        )}
-        <em>{previewUrl ? "Replace" : label}</em>
-      </button>
+      <div className="ua-cfg-rc-cover-drop-frame">
+        <button
+          type="button"
+          className={`ua-cfg-rc-cover-drop${previewUrl ? " is-on" : ""}`}
+          disabled={disabled}
+          aria-label={previewUrl ? "Replace cover" : "Add cover"}
+          onClick={() => inputRef.current?.click()}
+        >
+          {previewUrl ? (
+            <img className="ua-cfg-rc-drop-preview" src={previewUrl} alt="" />
+          ) : (
+            <span aria-hidden="true">🖼</span>
+          )}
+          <em>{previewUrl ? "Replace" : label}</em>
+        </button>
+        {previewUrl && onRemove ? (
+          <button
+            type="button"
+            className="ua-cfg-rc-media-x"
+            aria-label="Remove cover"
+            disabled={disabled}
+            onClick={onRemove}
+          >
+            ×
+          </button>
+        ) : null}
+      </div>
+      {previewUrl && onRemove ? (
+        <button
+          type="button"
+          className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm ua-cfg-rc-media-remove"
+          disabled={disabled}
+          onClick={onRemove}
+        >
+          Remove
+        </button>
+      ) : null}
       <input
         ref={inputRef}
         type="file"
@@ -267,6 +445,62 @@ function FileButton({ accept, disabled, label, onPick }) {
   );
 }
 
+function revokeBlobUrl(url) {
+  if (url && String(url).startsWith("blob:")) URL.revokeObjectURL(url);
+}
+
+function VideoDrop({ previewUrl, embedUrl, fileName, disabled, onPick, onRemove }) {
+  const hasPreview = Boolean(previewUrl || embedUrl);
+  return (
+    <div className="ua-cfg-rc-video-drop-wrap">
+      <div className={`ua-cfg-vh-drop ua-cfg-rc-video-drop${hasPreview ? " is-on" : ""}`}>
+        {previewUrl ? (
+          <video className="ua-cfg-rc-video-preview" src={previewUrl} controls preload="metadata" />
+        ) : embedUrl ? (
+          <iframe
+            className="ua-cfg-rc-video-preview"
+            title="YouTube preview"
+            src={embedUrl}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        ) : (
+          <span className="ua-cfg-vh-drop__play" aria-hidden="true">▶</span>
+        )}
+        {hasPreview && onRemove ? (
+          <button
+            type="button"
+            className="ua-cfg-rc-media-x"
+            aria-label="Remove video"
+            disabled={disabled}
+            onClick={onRemove}
+          >
+            ×
+          </button>
+        ) : null}
+      </div>
+      <div className="ua-cfg-rc-video-drop__actions">
+        <FileButton
+          accept="video/mp4,video/webm,video/ogg,video/quicktime,.mp4,.webm,.ogg,.mov,.m4v"
+          disabled={disabled}
+          label={previewUrl ? (fileName || "Replace video") : "Upload video"}
+          onPick={onPick}
+        />
+        {hasPreview && onRemove ? (
+          <button
+            type="button"
+            className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm ua-cfg-rc-media-remove"
+            disabled={disabled}
+            onClick={onRemove}
+          >
+            Remove
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export function RecipesSection({
   editor,
   setEditor,
@@ -293,6 +527,7 @@ export function RecipesSection({
   const showGallery = !hideGallery && !persist;
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [viewingId, setViewingId] = useState(null);
   const [upload, setUpload] = useState(null);
   const [linkFor, setLinkFor] = useState(null);
   const [categoryOptions, setCategoryOptions] = useState(
@@ -300,6 +535,9 @@ export function RecipesSection({
   );
   const [draft, setDraft] = useState(emptyRecipeDraft(persist ? "" : (categories[0] || "")));
   const [search, setSearch] = useState("");
+  const [listQuery, setListQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
   const [owner, setOwner] = useState("All owners");
   const [selected, setSelected] = useState([]);
   const [history, setHistory] = useState(null);
@@ -318,6 +556,9 @@ export function RecipesSection({
   const categoryOptionsRef = useRef(categoryOptions);
   const coverInputRefs = useRef({});
   const videoInputRefs = useRef({});
+  const loadSeq = useRef(0);
+  const filtersKey = `${debouncedQuery}|${categoryFilter}`;
+  const filtersKeyRef = useRef(filtersKey);
 
   useEffect(() => {
     itemsRef.current = items;
@@ -330,6 +571,10 @@ export function RecipesSection({
   useEffect(() => () => {
     if (draft.coverPreview.startsWith("blob:")) URL.revokeObjectURL(draft.coverPreview);
   }, [draft.coverPreview]);
+
+  useEffect(() => () => {
+    revokeBlobUrl(draft.videoPreview);
+  }, [draft.videoPreview]);
 
   useEffect(() => () => {
     if (cropPending?.previewUrl) URL.revokeObjectURL(cropPending.previewUrl);
@@ -360,12 +605,19 @@ export function RecipesSection({
   const loadItems = useCallback(async (pageOverride) => {
     if (!persist) return;
     const nextPage = pageOverride ?? page;
+    const seq = ++loadSeq.current;
+    const categoryValue = categoryFilter
+      ? persistRecipeCategory(categoryFilter, categoryOptionsRef.current) || categoryFilter
+      : "";
     setLoading(true);
     try {
       const { items: rows, pagination: nextPagination } = await adminListHealthRecipes(null, {
         page: nextPage,
         limit: RECIPE_PAGE_SIZE,
+        search: debouncedQuery || undefined,
+        category: categoryValue || undefined,
       });
+      if (seq !== loadSeq.current) return;
       const next = withCategoryLabels(rows || [], categoryOptionsRef.current);
       setItems(next);
       itemsRef.current = next;
@@ -376,14 +628,15 @@ export function RecipesSection({
         pages: Number(nextPagination?.pages) || 1,
       });
     } catch (error) {
+      if (seq !== loadSeq.current) return;
       onToast(error?.message || "Failed to load recipes");
       setItems([]);
       itemsRef.current = [];
       setPagination({ page: 1, limit: RECIPE_PAGE_SIZE, total: 0, pages: 1 });
     } finally {
-      setLoading(false);
+      if (seq === loadSeq.current) setLoading(false);
     }
-  }, [onToast, page, persist, setItems]);
+  }, [categoryFilter, debouncedQuery, onToast, page, persist, setItems]);
 
   useEffect(() => {
     loadCategories();
@@ -391,9 +644,24 @@ export function RecipesSection({
 
   useEffect(() => {
     if (!persist) return undefined;
+    const timer = window.setTimeout(() => {
+      setDebouncedQuery(listQuery.trim());
+    }, RECIPE_SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [listQuery, persist]);
+
+  useEffect(() => {
+    if (!persist) return undefined;
+    if (filtersKeyRef.current !== filtersKey) {
+      filtersKeyRef.current = filtersKey;
+      if (page !== 1) {
+        setPage(1);
+        return undefined;
+      }
+    }
     loadItems();
     return undefined;
-  }, [loadItems, persist]);
+  }, [filtersKey, loadItems, page, persist]);
 
   useEffect(() => {
     if (!persist || loading) return undefined;
@@ -460,7 +728,41 @@ export function RecipesSection({
       onToast(error);
       return;
     }
-    setDraft((prev) => ({ ...prev, videoFile: file, videoName: file.name }));
+    setDraft((prev) => {
+      revokeBlobUrl(prev.videoPreview);
+      return {
+        ...prev,
+        video: true,
+        videoFile: file,
+        videoName: file.name,
+        videoPreview: URL.createObjectURL(file),
+        videoLink: "",
+      };
+    });
+  }
+
+  function clearDraftCover() {
+    if (draft.coverPreview.startsWith("blob:")) URL.revokeObjectURL(draft.coverPreview);
+    setDraft((prev) => ({
+      ...prev,
+      cover: false,
+      coverFile: null,
+      coverPreview: "",
+    }));
+  }
+
+  function clearDraftVideo() {
+    setDraft((prev) => {
+      revokeBlobUrl(prev.videoPreview);
+      return {
+        ...prev,
+        video: false,
+        videoFile: null,
+        videoName: "",
+        videoPreview: "",
+        videoLink: "",
+      };
+    });
   }
 
   async function persistItem(id, fields, files, successMessage) {
@@ -493,6 +795,7 @@ export function RecipesSection({
     }
 
     if (persist) {
+      const category = persistRecipeCategory(asCopyString(draft.category).trim(), categoryOptions);
       if (!category) {
         onToast("Choose a recipe category");
         return;
@@ -517,11 +820,13 @@ export function RecipesSection({
             type: draft.videoFile ? "video" : "ytlink",
             ytLink: draft.videoFile ? "" : videoLink,
             live: true,
+            videoSpecification: Array.isArray(draft.videoSpecification) ? draft.videoSpecification : [],
           },
           { thumbnailFile: draft.coverFile, videoFile: draft.videoFile },
         );
         if (!created) throw new Error("Failed to add recipe");
         if (draft.coverPreview.startsWith("blob:")) URL.revokeObjectURL(draft.coverPreview);
+        revokeBlobUrl(draft.videoPreview);
         setDraft(emptyRecipeDraft(categoryOptions[0]?.value || ""));
         setCreating(false);
         onToast(`${itemNoun} added`);
@@ -563,7 +868,9 @@ export function RecipesSection({
     }
     const title = asCopyString(entry.title).trim();
     const description = asCopyString(entry.description).trim();
-    const category = asCopyString(entry.category).trim();
+    const category = persist
+      ? persistRecipeCategory(asCopyString(entry.category).trim(), categoryOptions)
+      : asCopyString(entry.category).trim();
     if (!title || !description) {
       onToast("Add a title and description");
       return;
@@ -572,7 +879,27 @@ export function RecipesSection({
       onToast("Choose a recipe category");
       return;
     }
-    const saved = await persistItem(entry.id, { title, description, category }, {}, `${itemNoun} saved`);
+    const videoLink = asCopyString(entry.videoLink).trim();
+    const hasNewVideo = entry.videoFile instanceof File;
+    const hasUploadedVideo = hasNewVideo || Boolean(entry.video);
+    if (!hasUploadedVideo && !videoLink) {
+      onToast("Add a YouTube link or upload a video");
+      return;
+    }
+    const saved = await persistItem(
+      entry.id,
+      {
+        title,
+        description,
+        category,
+        videoSpecification: Array.isArray(entry.videoSpecification) ? entry.videoSpecification : [],
+        type: hasUploadedVideo && !videoLink ? "video" : "ytlink",
+        ytLink: hasUploadedVideo && !videoLink ? "" : videoLink,
+        ...(hasUploadedVideo ? {} : { video: "" }),
+      },
+      hasNewVideo ? { videoFile: entry.videoFile } : {},
+      `${itemNoun} saved`,
+    );
     if (saved) setEditingId(null);
   }
 
@@ -591,7 +918,17 @@ export function RecipesSection({
   async function saveLink(url) {
     if (!url) return;
     if (linkFor === "draft") {
-      setDraft((prev) => ({ ...prev, videoLink: url, videoFile: null, videoName: "" }));
+      setDraft((prev) => {
+        revokeBlobUrl(prev.videoPreview);
+        return {
+          ...prev,
+          videoLink: url,
+          videoFile: null,
+          videoName: "",
+          videoPreview: "",
+          video: false,
+        };
+      });
       setLinkFor(null);
       onToast("Link saved");
       return;
@@ -628,18 +965,48 @@ export function RecipesSection({
     await persistItem(target, {}, { thumbnailFile: croppedFile }, "Cover updated");
   }
 
+  function clearItemVideo(id) {
+    const current = itemsRef.current.find((row) => row.id === id);
+    revokeBlobUrl(current?.videoPreview);
+    const hasLink = Boolean(asCopyString(current?.videoLink).trim());
+    updateItem(id, {
+      video: "",
+      videoFile: null,
+      videoPreview: "",
+      videoName: "",
+      type: hasLink ? "YT" : "VIDEO",
+      apiType: hasLink ? "ytlink" : "video",
+      duration: hasLink ? "YouTube" : "Video",
+    });
+  }
+
   async function replaceVideo(id, file) {
     const error = validateRecipeVideo(file);
     if (error) {
       onToast(error);
       return;
     }
+    const preview = URL.createObjectURL(file);
+    const current = itemsRef.current.find((row) => row.id === id);
+    revokeBlobUrl(current?.videoPreview);
+    updateItem(id, {
+      type: "VIDEO",
+      apiType: "video",
+      duration: "Video",
+      videoFile: file,
+      videoPreview: preview,
+      videoName: file.name,
+      videoLink: "",
+    });
     if (!persist) {
-      updateItem(id, { type: "VIDEO", duration: "2:40" });
       onToast("Video attached");
       return;
     }
-    await persistItem(id, { type: "video", ytLink: "" }, { videoFile: file }, "Video updated");
+    const saved = await persistItem(id, { type: "video", ytLink: "" }, { videoFile: file }, "Video updated");
+    if (saved) {
+      revokeBlobUrl(preview);
+      updateItem(id, { videoPreview: "", videoFile: null, videoName: file.name });
+    }
   }
 
   async function confirmDelete() {
@@ -671,6 +1038,7 @@ export function RecipesSection({
   }
 
   const liveCount = items.filter((entry) => entry.live).length;
+  const hasListFilters = Boolean(debouncedQuery || categoryFilter);
   const filtered = useMemo(() => {
     return (gallery || []).filter((entry) => {
       const matchesSearch = asCopyString(entry.title).toLowerCase().includes(search.trim().toLowerCase());
@@ -680,7 +1048,18 @@ export function RecipesSection({
   }, [gallery, owner, search]);
   const selectedLive = selected.some((id) => gallery?.find((entry) => entry.id === id)?.live);
   const linkTitle = linkFor === "draft" ? "New library item" : asCopyString(items.find((entry) => entry.id === linkFor)?.title);
-  const disabled = busy || loading;
+  const linkInitialUrl = linkFor === "draft"
+    ? asCopyString(draft.videoLink)
+    : asCopyString(items.find((entry) => entry.id === linkFor)?.videoLink);
+  const viewingEntry = items.find((entry) => entry.id === viewingId) || null;
+  const disabled = busy;
+  const listBusy = persist && loading && !items.length;
+
+  function clearListFilters() {
+    setListQuery("");
+    setDebouncedQuery("");
+    setCategoryFilter("");
+  }
 
   return (
     <div className="ua-cfg-rc">
@@ -731,6 +1110,7 @@ export function RecipesSection({
                     previewUrl={draft.coverPreview}
                     disabled={disabled}
                     onPick={pickDraftCover}
+                    onRemove={clearDraftCover}
                   />
                 ) : (
                   <div className={`ua-cfg-vh-drop ua-cfg-vh-drop--cover${draft.cover ? " is-on" : ""}`}>
@@ -738,23 +1118,35 @@ export function RecipesSection({
                     <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm" onClick={() => setUpload({ kind: "cover", target: "draft" })}>
                       {draft.cover ? "Replace cover" : "Cover photo"}
                     </button>
+                    {draft.cover ? (
+                      <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm ua-cfg-rc-media-remove" onClick={clearDraftCover}>
+                        Remove
+                      </button>
+                    ) : null}
                   </div>
                 )}
-                <div className={`ua-cfg-vh-drop ua-cfg-rc-video-drop${draft.videoFile || draft.video ? " is-on" : ""}`}>
-                  <span className="ua-cfg-vh-drop__play" aria-hidden="true">▶</span>
-                  {persist ? (
-                    <FileButton
-                      accept="video/mp4,video/webm,video/ogg,video/quicktime,.mp4,.webm,.ogg,.mov,.m4v"
-                      disabled={disabled}
-                      label={draft.videoName || "Upload video"}
-                      onPick={pickDraftVideo}
-                    />
-                  ) : (
+                {persist ? (
+                  <VideoDrop
+                    previewUrl={draft.videoPreview}
+                    embedUrl={draft.videoFile ? "" : youtubeEmbedUrl(draft.videoLink)}
+                    fileName={draft.videoName}
+                    disabled={disabled}
+                    onPick={pickDraftVideo}
+                    onRemove={clearDraftVideo}
+                  />
+                ) : (
+                  <div className={`ua-cfg-vh-drop ua-cfg-rc-video-drop${draft.videoFile || draft.video ? " is-on" : ""}`}>
+                    <span className="ua-cfg-vh-drop__play" aria-hidden="true">▶</span>
                     <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm" onClick={() => setUpload({ kind: "video", target: "draft" })}>
-                      Upload video
+                      {draft.video ? "Replace video" : "Upload video"}
                     </button>
-                  )}
-                </div>
+                    {draft.video ? (
+                      <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm ua-cfg-rc-media-remove" onClick={clearDraftVideo}>
+                        Remove
+                      </button>
+                    ) : null}
+                  </div>
+                )}
               </div>
               <div className="ua-cfg-rc-new__fields">
                 <CategorySelect
@@ -781,12 +1173,29 @@ export function RecipesSection({
                   disabled={disabled}
                   onChange={(event) => setDraft((prev) => ({ ...prev, description: event.target.value }))}
                 />
+                {persist ? (
+                  <SpecsEditor
+                    value={draft.videoSpecification}
+                    disabled={disabled}
+                    onChange={(videoSpecification) => setDraft((prev) => ({ ...prev, videoSpecification }))}
+                  />
+                ) : null}
                 <input
                   className="ua-cfg-vh-input"
                   placeholder="Or paste a video link · youtube.com/..."
                   value={asCopyString(draft.videoLink)}
                   disabled={disabled}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, videoLink: event.target.value, videoFile: null, videoName: "" }))}
+                  onChange={(event) => setDraft((prev) => {
+                    revokeBlobUrl(prev.videoPreview);
+                    return {
+                      ...prev,
+                      videoLink: event.target.value,
+                      videoFile: null,
+                      videoName: "",
+                      videoPreview: "",
+                      video: false,
+                    };
+                  })}
                 />
                 <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={disabled} onClick={addItem}>
                   {busy && creating ? "Saving…" : "Add item"}
@@ -796,16 +1205,51 @@ export function RecipesSection({
           </section>
         ) : null}
 
+        {persist ? (
+          <div className="ua-cfg-rc-toolbar">
+            <input
+              type="search"
+              className="ua-cfg-dd-search"
+              placeholder="Search recipes by title or description…"
+              value={listQuery}
+              onChange={(event) => setListQuery(event.target.value)}
+              aria-label="Search recipes"
+            />
+            <select
+              className="ua-cfg-rc-cat ua-cfg-rc-filter"
+              value={categoryFilter}
+              onChange={(event) => setCategoryFilter(event.target.value)}
+              aria-label="Filter by category"
+            >
+              <option value="">All categories</option>
+              {categoryOptions.map((entry) => (
+                <option key={entry.id || entry.value} value={entry.value}>{entry.label}</option>
+              ))}
+            </select>
+            {listQuery || categoryFilter ? (
+              <button
+                type="button"
+                className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm"
+                onClick={clearListFilters}
+              >
+                Clear
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
         <p className="ua-cfg-panel__sub">
           {persist
-            ? `${liveCount} of ${pagination.total || items.length} live`
+            ? loading && hasListFilters
+              ? "Updating results…"
+              : `${pagination.total || items.length} recipe${(pagination.total || items.length) === 1 ? "" : "s"}${hasListFilters ? " found" : ""} · ${liveCount} live on this page`
             : `Drag to reorder · ${liveCount} of ${items.length} live`}
         </p>
 
-        {loading && persist ? (
+        {listBusy ? (
           <p className="ua-cfg-panel__sub">Fetching recipes…</p>
         ) : items.length ? (
-          <div className="ua-cfg-rc-list">
+          <div className={`ua-cfg-rc-list${loading && persist ? " is-loading" : ""}`}>
             {items.map((entry, index) => {
               const editing = editingId === entry.id;
               return (
@@ -867,7 +1311,10 @@ export function RecipesSection({
                           options={categoryOptions}
                           value={asCopyString(entry.category)}
                           disabled={disabled}
-                          onChange={(value) => updateItem(entry.id, { category: value, categoryLabel: recipeCategoryLabel(value, categoryOptions) })}
+                          onChange={(value) => updateItem(entry.id, {
+                            category: persist ? persistRecipeCategory(value, categoryOptions) : value,
+                            categoryLabel: recipeCategoryLabel(value, categoryOptions),
+                          })}
                         />
                       ) : (
                         <span className="ua-cfg-rc-pill ua-cfg-rc-pill--cat">
@@ -916,10 +1363,23 @@ export function RecipesSection({
                         <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" onClick={() => setUpload({ kind: "video", target: entry.id })}>Video</button>
                       )}
                       <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={disabled} onClick={() => setLinkFor(entry.id)}>Link</button>
+                      {persist ? (
+                        <button
+                          type="button"
+                          className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                          disabled={disabled}
+                          onClick={() => setViewingId(entry.id)}
+                        >
+                          View
+                        </button>
+                      ) : null}
                       {editing ? (
-                        <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={disabled} onClick={() => saveEditedItem(entry)}>Save</button>
+                        <>
+                          <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={disabled} onClick={() => saveEditedItem(entry)}>Save</button>
+                          <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm" disabled={disabled} onClick={() => setEditingId(null)}>Cancel</button>
+                        </>
                       ) : (
-                        <button type="button" className="ua-cfg-cr-link ua-cfg-cr-link--modify" disabled={disabled} onClick={() => setEditingId(entry.id)}>Edit</button>
+                        <button type="button" className="ua-cfg-cr-link ua-cfg-cr-link--modify" disabled={disabled} onClick={() => { setViewingId(null); setEditingId(entry.id); }}>Edit</button>
                       )}
                       {!persist ? (
                         <>
@@ -938,15 +1398,64 @@ export function RecipesSection({
                       </button>
                     </div>
                     {editing ? (
-                      <textarea
-                        className="ua-cfg-tf-story"
-                        rows={2}
-                        value={asCopyString(entry.description)}
-                        disabled={disabled}
-                        onChange={(event) => updateItem(entry.id, { description: event.target.value })}
-                      />
+                      <>
+                        <textarea
+                          className="ua-cfg-tf-story"
+                          rows={2}
+                          value={asCopyString(entry.description)}
+                          disabled={disabled}
+                          onChange={(event) => updateItem(entry.id, { description: event.target.value })}
+                        />
+                        {persist ? (
+                          <>
+                            <VideoDrop
+                              previewUrl={entry.videoPreview || entry.video || ""}
+                              embedUrl={(entry.videoPreview || entry.video) ? "" : youtubeEmbedUrl(entry.videoLink)}
+                              fileName={entry.videoName}
+                              disabled={disabled}
+                              onPick={(file) => replaceVideo(entry.id, file)}
+                              onRemove={() => clearItemVideo(entry.id)}
+                            />
+                            <input
+                              className="ua-cfg-vh-input"
+                              placeholder="YouTube link · youtube.com/watch?v=…"
+                              value={asCopyString(entry.videoLink)}
+                              disabled={disabled}
+                              onChange={(event) => {
+                                const videoLink = event.target.value;
+                                if (videoLink.trim()) {
+                                  revokeBlobUrl(entry.videoPreview);
+                                  updateItem(entry.id, {
+                                    videoLink,
+                                    videoPreview: "",
+                                    videoFile: null,
+                                    apiType: "ytlink",
+                                    type: "YT",
+                                    duration: "YouTube",
+                                  });
+                                  return;
+                                }
+                                updateItem(entry.id, { videoLink, apiType: entry.video ? "video" : entry.apiType, type: entry.video ? "VIDEO" : entry.type });
+                              }}
+                            />
+                            <SpecsEditor
+                              value={entry.videoSpecification}
+                              disabled={disabled}
+                              onChange={(videoSpecification) => updateItem(entry.id, { videoSpecification })}
+                            />
+                          </>
+                        ) : null}
+                      </>
                     ) : (
-                      <p>{asCopyString(entry.description)}</p>
+                      <>
+                        <p>{asCopyString(entry.description)}</p>
+                        {persist ? <SpecChips specs={entry.videoSpecification} /> : null}
+                        {persist && entry.videoLink ? (
+                          <a className="ua-cfg-rc-link" href={entry.videoLink} target="_blank" rel="noreferrer">
+                            {entry.videoLink}
+                          </a>
+                        ) : null}
+                      </>
                     )}
                   </div>
                 </article>
@@ -954,7 +1463,9 @@ export function RecipesSection({
             })}
           </div>
         ) : (
-          <p className="ua-cfg-panel__sub">{persist ? "No recipes yet." : "No items yet."}</p>
+          <p className="ua-cfg-panel__sub">
+            {persist && hasListFilters ? "No recipes match your search." : persist ? "No recipes yet." : "No items yet."}
+          </p>
         )}
 
         {persist ? (
@@ -1094,9 +1605,18 @@ export function RecipesSection({
       <LinkModal
         open={Boolean(linkFor)}
         title={linkTitle}
+        initialUrl={linkInitialUrl}
         onClose={() => setLinkFor(null)}
         onSave={saveLink}
       />
+
+      {persist ? (
+        <RecipeViewModal
+          entry={viewingEntry}
+          onClose={() => setViewingId(null)}
+          onEdit={(id) => setEditingId(id)}
+        />
+      ) : null}
 
       {!persist ? <HistoryModal entry={history} onClose={() => setHistory(null)} onToast={onToast} /> : null}
 
@@ -1106,7 +1626,7 @@ export function RecipesSection({
         file={cropPending?.file}
         previewUrl={cropPending?.previewUrl || ""}
         busy={busy}
-        defaultRatio="16:9"
+        defaultRatio="Original"
         originalAspectCss="16 / 9"
         originalAspectNumber={16 / 9}
         onClose={closeCoverCrop}

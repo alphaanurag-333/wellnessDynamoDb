@@ -99,6 +99,10 @@ export function ImageCropModal({
 
   if (!open) return null;
   const disabled = busy || cropping;
+  const naturalAspectCss =
+    imageSize.width && imageSize.height ? `${imageSize.width} / ${imageSize.height}` : originalAspectCss;
+  const naturalAspectNumber =
+    imageSize.width && imageSize.height ? imageSize.width / imageSize.height : originalAspectNumber;
 
   return (
     <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={onClose} role="presentation">
@@ -141,7 +145,7 @@ export function ImageCropModal({
           <div
             ref={viewportRef}
             className="ua-cfg-mv-upload-modal__crop-inner ua-cfg-lg-crop-viewport"
-            style={{ aspectRatio: cropAspectCss(ratio, originalAspectCss) }}
+            style={{ aspectRatio: cropAspectCss(ratio, naturalAspectCss) }}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={endDrag}
@@ -172,7 +176,7 @@ export function ImageCropModal({
           <span className="ua-cfg-mv-upload-modal__frameworks-label">How it will sit in your frameworks</span>
           <div
             className="ua-cfg-mv-upload-modal__frameworks-row"
-            style={{ "--fw-ratio": String(ratioNumber(ratio, originalAspectNumber)) }}
+            style={{ "--fw-ratio": String(ratioNumber(ratio, naturalAspectNumber)) }}
           >
             <div className="ua-cfg-mv-upload-modal__framework ua-cfg-mv-upload-modal__framework--web">
               <span>Web</span>

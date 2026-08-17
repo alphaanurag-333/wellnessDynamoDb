@@ -27,17 +27,110 @@ export const RECIPE_GALLERY_OWNERS = ["All owners", "Anita Rao", "Ishita Sen", "
 
 export const RECIPE_GALLERY = [];
 
+export function categorySlug(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+export function categoryTitle(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (!/[_-]/.test(raw) && /[A-Z]/.test(raw)) return raw;
+  return raw
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (ch) => ch.toUpperCase());
+}
+
+export function findCategoryOption(value, options = []) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  const slug = categorySlug(raw);
+  return (
+    options.find((row) => row.value === raw || row.label === raw) ||
+    options.find((row) => categorySlug(row.value) === slug || categorySlug(row.label) === slug) ||
+    null
+  );
+}
+
+export function recipeCategoryLabel(value, options = []) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  return findCategoryOption(raw, options)?.label || categoryTitle(raw);
+}
+
+export function resolveCategorySelectValue(value, options = []) {
+  const match = findCategoryOption(value, options);
+  return match?.value || String(value || "");
+}
+
+export function persistRecipeCategory(value, options = []) {
+  const match = findCategoryOption(value, options);
+  const source = match?.label || match?.value || value;
+  return categorySlug(source) || String(value || "").trim();
+}
+
+export function parseRecipeSpecs(value) {
+  if (Array.isArray(value)) {
+    return value.map((entry) => String(entry || "").trim()).filter(Boolean);
+  }
+  if (typeof value !== "string") return [];
+  const raw = value.trim();
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parseRecipeSpecs(parsed);
+  } catch {
+    /* comma / newline separated */
+  }
+  return raw.split(/\r?\n|,/).map((entry) => entry.trim()).filter(Boolean);
+}
+
+export function youtubeEmbedUrl(url) {
+  const raw = String(url || "").trim();
+  if (!raw) return "";
+  if (raw.includes("/embed/")) return raw;
+  try {
+    const parsed = new URL(raw);
+    if (parsed.hostname.includes("youtube.com")) {
+      const videoId = parsed.searchParams.get("v");
+      if (videoId) return `https://www.youtube.com/embed/${videoId}`;
+    }
+    if (parsed.hostname === "youtu.be") {
+      const videoId = parsed.pathname.replace(/^\//, "").split("/")[0];
+      if (videoId) return `https://www.youtube.com/embed/${videoId}`;
+    }
+  } catch {
+    return "";
+  }
+  return "";
+}
+
+export function formatRecipeDate(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
+}
+
 export function emptyRecipeDraft(category = "") {
   return {
     title: "",
     category,
     description: "",
     videoLink: "",
+    videoSpecification: [],
     cover: false,
     video: false,
     coverFile: null,
     coverPreview: "",
     videoFile: null,
+    videoPreview: "",
     videoName: "",
   };
 }
@@ -46,19 +139,16 @@ export function mapDropdownCategoryOptions(list) {
   return (Array.isArray(list?.options) ? list.options : [])
     .filter((row) => row && row.on !== false)
     .sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0))
-    .map((row) => ({
-      id: row.id,
-      value: String(row.value || row.label || "").trim(),
-      label: String(row.label || row.value || "").trim(),
-    }))
+    .map((row) => {
+      const label = String(row.label || row.value || "").trim();
+      const value = String(row.value || "").trim() || categorySlug(label);
+      return {
+        id: row.id,
+        value,
+        label: label || categoryTitle(value),
+      };
+    })
     .filter((row) => row.value && row.label);
-}
-
-export function recipeCategoryLabel(value, options = []) {
-  const raw = String(value || "").trim();
-  if (!raw) return "";
-  const match = options.find((row) => row.value === raw || row.label === raw);
-  return match?.label || raw;
 }
 
 export function mapHealthRecipe(row, categoryOptions = []) {
@@ -82,7 +172,7 @@ export function mapHealthRecipe(row, categoryOptions = []) {
     thumbnail: row.thumbnail || "",
     videoLink: String(row.ytLink || "").trim(),
     video: row.video || "",
-    videoSpecification: Array.isArray(row.videoSpecification) ? row.videoSpecification : [],
+    videoSpecification: parseRecipeSpecs(row.videoSpecification),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
