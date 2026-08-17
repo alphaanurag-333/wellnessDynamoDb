@@ -3,7 +3,7 @@
  *
  * Clears:
  *   User (hard delete)
- *   UserProgram
+ *   All user-owned data tables (tracking, assessments, assignments, posts, etc.)
  *   ReferralCode rows for entityType=user
  *
  * Seeds HEAL users with distinct primary health concerns + purchased programs
@@ -15,8 +15,9 @@
  */
 require("dotenv").config();
 
+const { DescribeTableCommand } = require("@aws-sdk/client-dynamodb");
 const { DeleteCommand } = require("@aws-sdk/lib-dynamodb");
-const { docClient } = require("../config/db");
+const { client, docClient } = require("../config/db");
 const { tableExists, scanTable } = require("../migration/lib/helpers");
 const { hashPassword } = require("../utils/password");
 const { createUser } = require("../models/userModel");
@@ -33,6 +34,55 @@ const {
 } = require("../models/referralCodeModel");
 
 const DEFAULT_PASSWORD = process.env.SEED_USER_PASSWORD || "User@12345";
+const USER_DATA_TABLES = [
+  "AdminActivityRead",
+  "AdminActivity",
+  "AssignedMentalWellbeing",
+  "AssignedPhysicalExercise",
+  "BirthdayPostComment",
+  "BirthdayPost",
+  "BirthdayNotification",
+  "ClientTestimonials",
+  "CoachAssignedDietPlan",
+  "CoachAssignedWellnessPrescription",
+  "CoachRecommendedSupplement",
+  "CoachRecommendedTest",
+  "ConsultancyTransaction",
+  "DailyReflection",
+  "EnergyExchangeProgram",
+  "EnergyExchangeSubscription",
+  "HealthProgressBloodPressure",
+  "HealthProgressCondition",
+  "HealthProgressGlucose",
+  "HealthProgressMenstrualCycle",
+  "HealthProgressMetabolicMetric",
+  "HealthProgressWeight",
+  "HeartRateTracking",
+  "MealTracking",
+  "MonthlyChampionPostComment",
+  "MonthlyChampionPost",
+  "Notification",
+  "RealPeopleTestimonial",
+  "RegistrationOtp",
+  "Reminder",
+  "SleepTracking",
+  "StepsTracking",
+  "Transformation",
+  "UserBodyMeasurement",
+  "UserCoachInsight",
+  "UserCommitmentLetter",
+  "UserHealConsultancyTrack",
+  "UserLabReport",
+  "UserLaunchAssessment",
+  "UserMedicalCondition",
+  "UserNotificationRead",
+  "UserPrakrutiAssessment",
+  "UserProgressPhoto",
+  "UserProgram",
+  "UserSupplementDosageLog",
+  "UserSupplementDosage",
+  "WaterTracking",
+];
 
 const CONCERN_SEEDS = [
   {
@@ -144,11 +194,19 @@ async function deleteAllItems(tableName) {
     console.log(`  [${tableName}] missing — skip`);
     return 0;
   }
+  const { Table } = await client.send(new DescribeTableCommand({ TableName: tableName }));
+  const keyNames = (Table?.KeySchema || []).map(({ AttributeName }) => AttributeName);
+  if (!keyNames.length) {
+    throw new Error(`Unable to determine key schema for ${tableName}`);
+  }
   const items = await scanTable(tableName);
   let deleted = 0;
   for (const item of items) {
-    if (item?.id == null) continue;
-    await docClient.send(new DeleteCommand({ TableName: tableName, Key: { id: item.id } }));
+    const key = Object.fromEntries(keyNames.map((name) => [name, item?.[name]]));
+    if (Object.values(key).some((value) => value == null)) {
+      throw new Error(`Missing key field while deleting from ${tableName}`);
+    }
+    await docClient.send(new DeleteCommand({ TableName: tableName, Key: key }));
     deleted += 1;
   }
   console.log(`  [${tableName}] deleted ${deleted} row(s)`);
@@ -362,11 +420,11 @@ async function run() {
 
   if (dryRun) {
     const userCount = (await tableExists("User")) ? (await scanTable("User")).length : 0;
-    const programCount = (await tableExists("UserProgram"))
-      ? (await scanTable("UserProgram")).length
-      : 0;
     console.log(`  would delete User: ${userCount}`);
-    console.log(`  would delete UserProgram: ${programCount}`);
+    for (const tableName of USER_DATA_TABLES) {
+      const count = (await tableExists(tableName)) ? (await scanTable(tableName)).length : 0;
+      console.log(`  would delete ${tableName}: ${count}`);
+    }
     console.log("  would wipe user ReferralCodes");
     console.log(`  would seed ${TEST_USERS.length} test users`);
     return;
@@ -374,7 +432,9 @@ async function run() {
 
   console.log("\n1) Wiping...");
   await wipeUserReferralCodes();
-  await deleteAllItems("UserProgram");
+  for (const tableName of USER_DATA_TABLES) {
+    await deleteAllItems(tableName);
+  }
   await deleteAllItems("User");
 
   console.log("\n2) Ensuring health concerns + program links...");
