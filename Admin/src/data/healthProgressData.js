@@ -178,7 +178,7 @@ const PROGRAM_META = {
     id: "fat-loss",
     name: "Fat Loss",
     metric: "WEIGHT",
-    icon: "🔥",
+    icon: "🏃",
     iconClass: "pgi-fatloss",
     iconBg: "#fff4ed",
     accent: "#c2661d",

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { CLIENT_MENU, CLIENT_NOTIFICATIONS } from "../../data/userDetailData.js";
 import { UPDATED_ADMIN_PATHS } from "../../data/dashboardData.js";
+import { FaChevronDown } from "react-icons/fa6";
+
 
 export function ClientProfileTopbar({
   menuHidden,
@@ -32,7 +34,7 @@ export function ClientProfileTopbar({
           ‹ Back
         </button>
       ) : null}
-      <button type="button" className="ua-cp-topbar__btn" onClick={onToggleMenu} title="Toggle menu">
+      <button type="button" className="ua-cp-topbar__btn ua-cp-topbar__btn--menu" onClick={onToggleMenu} title="Toggle menu">
         {menuHidden ? "▥ Show menu" : "▤ Hide menu"}
       </button>
       <div className="ua-cp-topbar__title">Client profile</div>
@@ -94,54 +96,115 @@ export function ClientProfileSidebar({ user, activeSection, onSectionChange, hid
   const extraTags = tags.length - 2;
   const programLabel = user?.programLabel || "—";
   const programs = user?.programs ?? 0;
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const sidebarRef = useRef(null);
 
-  if (hidden) return null;
+  useEffect(() => {
+    if (!mobileOpen) return undefined;
+    function onKeyDown(e) {
+      if (e.key === "Escape") setMobileOpen(false);
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [mobileOpen]);
+
+  function closeMobileSidebar() {
+    setMobileOpen(false);
+  }
+
+  function handleSectionChange(id) {
+    onSectionChange(id);
+    closeMobileSidebar();
+  }
 
   return (
-    <aside className="ua-cp-sidebar">
-      <div className="ua-cp-sidebar__profile">
-        <div className="ua-cp-sidebar__profile-row">
-          <div className="ua-cp-sidebar__avatar">
-            {user?.profileImage ? (
-              <img src={user.profileImage} alt="" className="ua-cp-sidebar__avatar-img" />
-            ) : (
-              <span className="ua-cp-sidebar__avatar-ph">Photo</span>
-            )}
-          </div>
-          <div className="ua-cp-sidebar__info">
-            <div className="ua-cp-sidebar__name">{user?.name || "Client"}</div>
-            <div className="ua-cp-sidebar__sub">{programLabel} · {programs} programs</div>
-          </div>
+    <aside
+      ref={sidebarRef}
+      className={`ua-cp-sidebar${hidden ? " ua-cp-sidebar--hidden" : ""}${mobileOpen ? " ua-cp-sidebar--mobile-open" : ""}`}
+    >
+      <button
+        type="button"
+        className="ua-cp-sidebar__mobile-toggle"
+        aria-expanded={mobileOpen}
+        aria-controls="ua-cp-sidebar-panel"
+        aria-label={mobileOpen ? "Close client menu" : "Open client menu"}
+        onClick={() => setMobileOpen((open) => !open)}
+      >
+        <div className="ua-cp-sidebar__avatar">
+          {user?.profileImage ? (
+            <img src={user.profileImage} alt="" className="ua-cp-sidebar__avatar-img" />
+          ) : (
+            <span className="ua-cp-sidebar__avatar-ph">Photo</span>
+          )}
         </div>
-        <div className="ua-cp-sidebar__tags">
-          {visibleTags.map((tag, i) => (
-            <span key={`${tag}-${i}`} className={`ua-cp-tag ua-cp-tag--${i % 3}`}>{tag}</span>
-          ))}
-          {!showAllTags && extraTags > 0 ? (
-            <button type="button" className="ua-cp-tag ua-cp-tag--more" onClick={onToggleTags}>+{extraTags} more</button>
-          ) : null}
-        </div>
-      </div>
+        <span className="ua-cp-sidebar__mobile-chev" aria-hidden="true"><FaChevronDown />
+        </span>
+      </button>
 
-      <div className="ua-cp-sidebar__sub-box">
-        <strong>{user?.subscriptionDays ?? 0}</strong>
-        <span>days left<br />on app subscription</span>
-      </div>
+      <button
+        type="button"
+        className="ua-cp-sidebar__backdrop"
+        tabIndex={-1}
+        aria-hidden="true"
+        onClick={closeMobileSidebar}
+      />
 
-      <div className="ua-cp-sidebar__menu-label">Menu list</div>
-      <nav className="ua-cp-sidebar__nav">
-        {CLIENT_MENU.map((item) => (
+      <div id="ua-cp-sidebar-panel" className="ua-cp-sidebar__panel">
+        <div className="ua-cp-sidebar__panel-head">
+          <span className="ua-cp-sidebar__panel-title">Client menu</span>
           <button
-            key={item.id}
             type="button"
-            className={`ua-cp-sidebar__link${activeSection === item.id ? " ua-cp-sidebar__link--active" : ""}${item.accent ? " ua-cp-sidebar__link--accent" : ""}`}
-            onClick={() => onSectionChange(item.id)}
+            className="ua-cp-sidebar__close"
+            onClick={closeMobileSidebar}
+            aria-label="Close menu"
           >
-            <span>{item.label}</span>
-            <span className="ua-cp-sidebar__caret">›</span>
+            ×
           </button>
-        ))}
-      </nav>
+        </div>
+        <div className="ua-cp-sidebar__profile">
+          <div className="ua-cp-sidebar__profile-row">
+            <div className="ua-cp-sidebar__avatar ua-cp-sidebar__avatar--desktop">
+              {user?.profileImage ? (
+                <img src={user.profileImage} alt="" className="ua-cp-sidebar__avatar-img" />
+              ) : (
+                <span className="ua-cp-sidebar__avatar-ph">Photo</span>
+              )}
+            </div>
+            <div className="ua-cp-sidebar__info">
+              <div className="ua-cp-sidebar__name">{user?.name || "Client"}</div>
+              <div className="ua-cp-sidebar__sub">{programLabel} · {programs} programs</div>
+            </div>
+          </div>
+          <div className="ua-cp-sidebar__tags">
+            {visibleTags.map((tag, i) => (
+              <span key={`${tag}-${i}`} className={`ua-cp-tag ua-cp-tag--${i % 3}`}>{tag}</span>
+            ))}
+            {!showAllTags && extraTags > 0 ? (
+              <button type="button" className="ua-cp-tag ua-cp-tag--more" onClick={onToggleTags}>+{extraTags} more</button>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="ua-cp-sidebar__sub-box">
+          <strong>{user?.subscriptionDays ?? 0}</strong>
+          <span>days left<br />on app subscription</span>
+        </div>
+
+        <div className="ua-cp-sidebar__menu-label">Menu list</div>
+        <nav className="ua-cp-sidebar__nav">
+          {CLIENT_MENU.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={`ua-cp-sidebar__link${activeSection === item.id ? " ua-cp-sidebar__link--active" : ""}${item.accent ? " ua-cp-sidebar__link--accent" : ""}`}
+              onClick={() => handleSectionChange(item.id)}
+            >
+              <span>{item.label}</span>
+              <span className="ua-cp-sidebar__caret">›</span>
+            </button>
+          ))}
+        </nav>
+      </div>
     </aside>
   );
 }
