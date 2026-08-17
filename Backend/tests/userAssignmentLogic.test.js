@@ -301,16 +301,18 @@ describe("resolveReassignmentPatch", () => {
 });
 
 describe("wellness tracking tiers", () => {
-  it("treats seek, consultancy_only, and heal as tracking-eligible", () => {
+  it("treats seek, consultancy_only, heal, and maintenance as tracking-eligible", () => {
     assert.equal(isWellnessTrackingTier("seek"), true);
     assert.equal(isWellnessTrackingTier("consultancy_only"), true);
     assert.equal(isWellnessTrackingTier("heal"), true);
+    assert.equal(isWellnessTrackingTier("maintenance"), true);
   });
 
   it("includes seek users in coach client list filter", () => {
     assert.equal(matchesAssignedClientTier("seek", "client"), true);
     assert.equal(matchesAssignedClientTier("consultancy_only", "client"), true);
     assert.equal(matchesAssignedClientTier("heal", "client"), true);
+    assert.equal(matchesAssignedClientTier("maintenance", "client"), true);
     assert.equal(matchesAssignedClientTier("heal", "seek"), false);
     assert.equal(matchesAssignedClientTier("seek", "all"), true);
   });

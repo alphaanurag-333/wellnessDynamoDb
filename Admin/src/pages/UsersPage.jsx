@@ -24,6 +24,8 @@ import {
   deleteUser,
   fetchScopedUsers,
   fetchUsers,
+  moveMaintenanceUserToHeal,
+  moveUserToMaintenance,
   reassignUserCoach,
   updateUserStatus,
 } from "../api/usersApi.js";
@@ -86,7 +88,7 @@ function UsersEmptyIcon() {
 }
 
 function userSubline(user) {
-  const parts = [user.email, user.goal].filter(Boolean);
+  const parts = [user.email].filter(Boolean);
   return parts.length ? parts.join(" · ") : "—";
 }
 
@@ -360,15 +362,45 @@ export function UsersPage() {
     });
   };
 
-  const convertTier = (user) => {
+  const convertTier = async (user) => {
     const key = userOverrideKey(user);
+    if (user.tier === "Seek to Heal") {
+      setActionBusy(true);
+      try {
+        const updated = await moveUserToMaintenance(key);
+        setUsers((prev) => prev.map((row) => (
+          userOverrideKey(row) === key ? { ...row, ...updated } : row
+        )));
+        onToast(`${user.name} moved to MAINTENANCE`);
+      } catch (err) {
+        onToast(err?.message || "Could not move user to maintenance");
+      } finally {
+        setActionBusy(false);
+      }
+      return;
+    }
     const nx = nextTier(user.tier);
     setTierOverrides((prev) => ({ ...prev, [key]: nx }));
     onToast(`${user.name} moved to ${tierLabel(nx)} by Admin`);
   };
 
-  const downgradeTier = (user) => {
+  const downgradeTier = async (user) => {
     const key = userOverrideKey(user);
+    if (user.tier === "Maintenance") {
+      setActionBusy(true);
+      try {
+        const updated = await moveMaintenanceUserToHeal(key);
+        setUsers((prev) => prev.map((row) => (
+          userOverrideKey(row) === key ? { ...row, ...updated } : row
+        )));
+        onToast(`${user.name} moved back to HEAL`);
+      } catch (err) {
+        onToast(err?.message || "Could not move user back to Heal");
+      } finally {
+        setActionBusy(false);
+      }
+      return;
+    }
     const dn = prevTier(user.tier);
     setTierOverrides((prev) => ({ ...prev, [key]: dn }));
     onToast(`${user.name} moved down to ${tierLabel(dn)} by Admin`);
@@ -630,6 +662,7 @@ export function UsersPage() {
               />
             </div>
             <div>Tier</div>
+            <div>Concern / program</div>
             <div>Wellness coach</div>
             <div>Assistant WC</div>
             <div>
@@ -688,6 +721,7 @@ export function UsersPage() {
                           ? `Move ${u.name} into MAINTENANCE — for when every goal has been achieved`
                           : `Move ${u.name} up to ${u.tier === "Seek" ? "PWC" : "HEAL"} by hand — for when the automatic upgrade did not go through`}
                         onClick={() => convertTier(u)}
+                        disabled={actionBusy}
                       >
                         → {tierLabel(nextTier(u.tier))}
                       </button>
@@ -700,6 +734,7 @@ export function UsersPage() {
                           ? `Move ${u.name} back to HEAL — for when maintenance was entered too early`
                           : `Move ${u.name} back down to SEEK — allowed because the account is ${u.ageDays} days old`}
                         onClick={() => downgradeTier(u)}
+                        disabled={actionBusy}
                       >
                         ↓ {tierLabel(prevTier(u.tier))}
                       </button>
@@ -707,6 +742,12 @@ export function UsersPage() {
                     {canEdit && u.converted ? (
                       <button type="button" className="ua-tier-action ua-tier-action--undo" title="Undo this manual change" onClick={() => revertTier(u)}>undo</button>
                     ) : null}
+                  </div>
+                  <div className="ua-users-program-cell">
+                    <span title={u.goal || "Health concern not selected"}>{u.goal || "Not selected"}</span>
+                    <small title={u.assignedProgramTitle || "Program not assigned"}>
+                      {u.assignedProgramTitle || "Program pending"}
+                    </small>
                   </div>
                   <div onClick={(e) => e.stopPropagation()}>
                     {!canReassignWc ? (

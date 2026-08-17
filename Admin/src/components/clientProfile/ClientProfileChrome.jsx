@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { CLIENT_MENU, CLIENT_NOTIFICATIONS } from "../../data/userDetailData.js";
+import { CLIENT_NOTIFICATIONS } from "../../data/userDetailData.js";
 import { UPDATED_ADMIN_PATHS } from "../../data/dashboardData.js";
 
 export function ClientProfileTopbar({
@@ -88,7 +88,15 @@ export function ClientProfileTopbar({
   );
 }
 
-export function ClientProfileSidebar({ user, activeSection, onSectionChange, hidden, showAllTags, onToggleTags }) {
+export function ClientProfileSidebar({
+  user,
+  menu = [],
+  activeSection,
+  onSectionChange,
+  hidden,
+  showAllTags,
+  onToggleTags,
+}) {
   const tags = Array.isArray(user?.tags) ? user.tags : [];
   const visibleTags = showAllTags ? tags : tags.slice(0, 2);
   const extraTags = tags.length - 2;
@@ -110,7 +118,9 @@ export function ClientProfileSidebar({ user, activeSection, onSectionChange, hid
           </div>
           <div className="ua-cp-sidebar__info">
             <div className="ua-cp-sidebar__name">{user?.name || "Client"}</div>
-            <div className="ua-cp-sidebar__sub">{programLabel} · {programs} programs</div>
+            <div className="ua-cp-sidebar__sub">
+              {programLabel} · {programs} {programs === 1 ? "program" : "programs"}
+            </div>
           </div>
         </div>
         <div className="ua-cp-sidebar__tags">
@@ -130,7 +140,7 @@ export function ClientProfileSidebar({ user, activeSection, onSectionChange, hid
 
       <div className="ua-cp-sidebar__menu-label">Menu list</div>
       <nav className="ua-cp-sidebar__nav">
-        {CLIENT_MENU.map((item) => (
+        {menu.map((item) => (
           <button
             key={item.id}
             type="button"

@@ -13,6 +13,8 @@ const {
 const {
   convertUserToHealController,
   convertUserToSeekController,
+  convertUserToMaintenanceController,
+  convertMaintenanceUserToHealController,
   assignHealUserController,
   reassignHealUserController,
   listPendingAssignmentUsersController,
@@ -60,6 +62,8 @@ router.get("/:id", protectAccount, authorizeStaff("console.cl.view", { admin: "u
 router.post("/", protectAccount, authorizeStaff("console.cl.edit", { admin: "users.edit" }), optionalUserFile, createUserController);
 router.post("/:id/convert-to-heal", protectAccount, authorizeStaff("console.cl.edit", { admin: "users.edit" }), convertUserToHealController);
 router.post("/:id/convert-to-seek", protectAccount, authorizeStaff("console.cl.edit", { admin: "users.edit" }), convertUserToSeekController);
+router.post("/:id/convert-to-maintenance", protectAccount, authorizeStaff("console.cl.edit", { admin: "users.edit" }), convertUserToMaintenanceController);
+router.post("/:id/maintenance-to-heal", protectAccount, authorizeStaff("console.cl.edit", { admin: "users.edit" }), convertMaintenanceUserToHealController);
 router.post("/:id/assign-coach", protectAccount, authorizeStaff("console.cl.edit", { admin: "users.edit" }), assignHealUserController);
 router.post("/:id/reassign-coach", protectAccount, authorizeStaff("console.cl.edit", { admin: "users.edit" }), reassignHealUserController);
 router.patch("/:id", protectAccount, authorizeStaff("console.cl.edit", { admin: "users.edit" }), optionalUserFile, updateUserController);

@@ -41,6 +41,14 @@ function resolveGoal(user) {
   return other;
 }
 
+function resolveHealthConcernId(user) {
+  const concern = user?.primaryHealthConcern;
+  if (concern && typeof concern === "object") {
+    return String(concern.id || concern._id || "").trim();
+  }
+  return String(concern || "").trim();
+}
+
 function resolveCoachName(user) {
   if (user?.parentCoach?.name) return String(user.parentCoach.name).trim();
   if (user?.assignedCoachType === "wellness_coach" && user?.assignedCoach?.name) {
@@ -332,6 +340,11 @@ export function mapApiUserToRow(user, index = 0) {
   const addressLine2 = String(user?.addressLine2 || "").trim();
   const pincode = String(user?.pincode || "").trim();
   const termsAcceptedLabel = formatTermsAccepted(user);
+  const assignedProgram = user?.assignedProgram && typeof user.assignedProgram === "object"
+    ? user.assignedProgram
+    : null;
+  const assignedProgramTitle = String(assignedProgram?.title || "").trim();
+  const assignedProgramStatus = String(assignedProgram?.status || "").trim().toLowerCase();
 
   return {
     id,
@@ -352,6 +365,7 @@ export function mapApiUserToRow(user, index = 0) {
     stateRaw,
     tier,
     goal,
+    healthConcernId: resolveHealthConcernId(user),
     dietaryPreference,
     wellnessJourneyFor,
     coach: coach || UNASSIGNED_COACH,
@@ -368,8 +382,13 @@ export function mapApiUserToRow(user, index = 0) {
     termsIp: "",
     termsAccepted: termsAcceptedLabel,
     termsAcceptedBool: Boolean(user?.termsAccepted),
-    programs: 0,
-    programLabel: tierLabel(tier) || "",
+    programs: assignedProgram ? 1 : 0,
+    programLabel: assignedProgramTitle || tierLabel(tier) || "",
+    assignedProgram,
+    assignedProgramId: String(user?.assignedProgramId || assignedProgram?.id || "").trim(),
+    assignedProgramTitle,
+    assignedProgramStatus,
+    assignedCatalogProgramId: String(assignedProgram?.catalogProgramId || "").trim(),
     subscriptionDays: 0,
     tags: buildTags(user, goal),
     goals: goal ? [goal] : [],
@@ -467,6 +486,32 @@ export async function updateUserStatus(id, status) {
 export async function deleteUser(id) {
   try {
     await api.delete(`/account/users/${encodeURIComponent(id)}`, { headers: authHeader() });
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function moveUserToMaintenance(id) {
+  try {
+    const { data } = await api.post(
+      `/account/users/${encodeURIComponent(id)}/convert-to-maintenance`,
+      {},
+      { headers: authHeader() },
+    );
+    return mapApiUserToRow(data.user);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function moveMaintenanceUserToHeal(id) {
+  try {
+    const { data } = await api.post(
+      `/account/users/${encodeURIComponent(id)}/maintenance-to-heal`,
+      {},
+      { headers: authHeader() },
+    );
+    return mapApiUserToRow(data.user);
   } catch (error) {
     normalizeApiError(error);
   }

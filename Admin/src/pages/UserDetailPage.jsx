@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Navigate, useOutletContext, useParams, useSearchParams } from "react-router-dom";
-import { getUserProfile, profileFromListUser } from "../data/userDetailData.js";
+import {
+  getClientProfileDefinition,
+  getUserProfile,
+  profileFromListUser,
+} from "../data/userDetailData.js";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { fetchUser } from "../api/usersApi.js";
 import { ClientProfileSidebar, ClientProfileTopbar } from "../components/clientProfile/ClientProfileChrome.jsx";
@@ -133,7 +137,34 @@ export function UserDetailPage() {
     };
   }, [onToast, userId]);
 
-  const section = searchParams.get("section") || "glance";
+  const profileDefinition = getClientProfileDefinition(user);
+  const requestedSection = searchParams.get("section");
+  const allowedSectionIds = profileDefinition.menu.map((item) => item.id);
+  const section = requestedSection && allowedSectionIds.includes(requestedSection)
+    ? requestedSection
+    : profileDefinition.defaultSection;
+
+  useEffect(() => {
+    if (loading || !user || !requestedSection || allowedSectionIds.includes(requestedSection)) {
+      return;
+    }
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (profileDefinition.defaultSection === "glance") next.delete("section");
+      else next.set("section", profileDefinition.defaultSection);
+      next.delete("tab");
+      next.delete("program");
+      next.delete("mode");
+      return next;
+    }, { replace: true });
+  }, [
+    allowedSectionIds,
+    loading,
+    profileDefinition.defaultSection,
+    requestedSection,
+    setSearchParams,
+    user,
+  ]);
 
   if (!loading && !user) {
     return <Navigate to={UPDATED_ADMIN_PATHS.users} replace />;
@@ -148,26 +179,29 @@ export function UserDetailPage() {
   }
 
   function setSection(next, { fromBack = false, tab, program, mode } = {}) {
-    if (!fromBack && next !== section) {
+    const safeNext = allowedSectionIds.includes(next)
+      ? next
+      : profileDefinition.defaultSection;
+    if (!fromBack && safeNext !== section) {
       sectionHistory.current = [...sectionHistory.current, section];
     }
     setSearchParams((prev) => {
       const p = new URLSearchParams(prev);
-      if (next === "glance") {
+      if (safeNext === "glance") {
         p.delete("section");
         p.delete("tab");
         p.delete("program");
         p.delete("mode");
       } else {
-        p.set("section", next);
-        if (next === "launch" && tab) p.set("tab", tab);
-        else if (next === "bms" && tab) p.set("tab", tab);
-        else if (next !== "food") p.delete("tab");
-        if (next === "health-progress" && program) p.set("program", program);
+        p.set("section", safeNext);
+        if (safeNext === "launch" && tab) p.set("tab", tab);
+        else if (safeNext === "bms" && tab) p.set("tab", tab);
+        else if (safeNext !== "food") p.delete("tab");
+        if (safeNext === "health-progress" && program) p.set("program", program);
         else p.delete("program");
-        if (next === "bms") p.set("mode", "detailed");
+        if (safeNext === "bms") p.set("mode", "detailed");
         else if (mode) p.set("mode", mode);
-        else if (next !== "food") p.delete("mode");
+        else if (safeNext !== "food") p.delete("mode");
       }
       return p;
     }, { replace: true });
@@ -177,12 +211,14 @@ export function UserDetailPage() {
     const prev = sectionHistory.current.pop();
     if (prev) {
       setSection(prev, { fromBack: true });
-    } else if (section !== "glance") {
-      setSection("glance", { fromBack: true });
+    } else if (section !== profileDefinition.defaultSection) {
+      setSection(profileDefinition.defaultSection, { fromBack: true });
     }
   }
 
-  const showBack = sectionHistory.current.length > 0 || section !== "glance";
+  const showBack =
+    sectionHistory.current.length > 0 ||
+    section !== profileDefinition.defaultSection;
 
   return (
     <div
@@ -204,6 +240,7 @@ export function UserDetailPage() {
       <div className="ua-cp-body">
         <ClientProfileSidebar
           user={user}
+          menu={profileDefinition.menu}
           activeSection={section}
           onSectionChange={(id) => setSection(id)}
           hidden={menuHidden}

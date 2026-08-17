@@ -13,8 +13,25 @@ const {
   deleteHealthConcern,
   listHealthConcerns,
 } = require("../../models/healthConcernModel");
+const { getProgramCatalogRecordById } = require("../../models/programCatalogModel");
 
 const S3_FOLDER = "health-concern";
+
+function parseRecommendedCatalogProgramId(body = {}) {
+  const value =
+    body.recommendedCatalogProgramId ??
+    body.recommended_catalog_program_id;
+  if (value === undefined) return undefined;
+  return String(value || "").trim() || null;
+}
+
+async function assertRecommendedProgramIsActive(programId) {
+  if (!programId) return;
+  const program = await getProgramCatalogRecordById(programId);
+  if (!program || program.status !== "active") {
+    throw new AppError("recommendedCatalogProgramId must reference an active program", 400);
+  }
+}
 
 exports.listHealthConcernsController = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, status, search } = req.query;
@@ -34,13 +51,21 @@ exports.createHealthConcernController = asyncHandler(async (req, res) => {
   const status = String(req.body.status || "active").trim().toLowerCase();
   const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
   const icon = uploadedKey ?? parseMediaKeyFromBody(req.body.icon, "icon");
+  const recommendedCatalogProgramId = parseRecommendedCatalogProgramId(req.body);
 
   if (!title) throw new AppError("title is required", 400);
   if (!description) throw new AppError("description is required", 400);
   if (!icon) throw new AppError("icon is required", 400);
   if (!["active", "inactive"].includes(status)) throw new AppError("status must be active or inactive", 400);
+  await assertRecommendedProgramIsActive(recommendedCatalogProgramId);
 
-  const healthConcern = await createHealthConcern({ title, description, icon, status });
+  const healthConcern = await createHealthConcern({
+    title,
+    description,
+    icon,
+    status,
+    recommendedCatalogProgramId,
+  });
   return res.status(201).json({ status: true, message: "Health concern created successfully", healthConcern });
 });
 
@@ -66,6 +91,11 @@ exports.updateHealthConcernController = asyncHandler(async (req, res) => {
   }
   if (req.body.icon !== undefined) {
     updates.icon = parseMediaKeyFromBody(req.body.icon, "icon") ?? "";
+  }
+  const recommendedCatalogProgramId = parseRecommendedCatalogProgramId(req.body);
+  if (recommendedCatalogProgramId !== undefined) {
+    await assertRecommendedProgramIsActive(recommendedCatalogProgramId);
+    updates.recommendedCatalogProgramId = recommendedCatalogProgramId;
   }
 
   const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);

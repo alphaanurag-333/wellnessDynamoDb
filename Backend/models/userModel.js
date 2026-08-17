@@ -31,7 +31,7 @@ const SPARSE_GSI_ATTRIBUTES = new Set(["parentCoachId", "dobMonthDay"]);
 
 const USER_ALLOWED_STATUS = ["active", "inactive", "blocked"];
 const USER_ALLOWED_GENDERS = ["male", "female", "other", "boy", "girl", "guess"];
-const USER_ALLOWED_TIERS = ["seek", "consultancy_only", "heal"];
+const USER_ALLOWED_TIERS = ["seek", "consultancy_only", "heal", "maintenance"];
 const USER_ALLOWED_ASSIGNMENT_STATUSES = ["assigned", "pending_admin"];
 const USER_ALLOWED_ASSIGNED_COACH_TYPES = ["wellness_coach", "assistant_wellness_coach"];
 const USER_ALLOWED_ASSIGNMENT_SOURCES = ["referral", "admin_manual", "coach_reassign"];

@@ -1,7 +1,11 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
 const { getUserById, updateUser, listUsersByParentCoachId, listUsersByAssignedCoachId, listPendingAssignmentUsers, normalizeUserTier } = require("../../models/userModel");
-const { convertHealToSeek } = require("../../models/userConversionModel");
+const {
+  convertHealToSeek,
+  convertHealToMaintenance,
+  convertMaintenanceToHeal,
+} = require("../../models/userConversionModel");
 const {
   adminConvertUserToHeal,
   setupPaidClientEntitlements,
@@ -78,6 +82,34 @@ exports.convertUserToSeekController = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     message: "User downgraded to Seek successfully",
+    user: await enrichUser(user),
+  });
+});
+
+exports.convertUserToMaintenanceController = asyncHandler(async (req, res) => {
+  let user;
+  try {
+    user = await convertHealToMaintenance(req.params.id);
+  } catch (err) {
+    mapAssignmentError(err);
+  }
+  return res.status(200).json({
+    status: true,
+    message: "User moved to maintenance successfully",
+    user: await enrichUser(user),
+  });
+});
+
+exports.convertMaintenanceUserToHealController = asyncHandler(async (req, res) => {
+  let user;
+  try {
+    user = await convertMaintenanceToHeal(req.params.id);
+  } catch (err) {
+    mapAssignmentError(err);
+  }
+  return res.status(200).json({
+    status: true,
+    message: "Maintenance user moved back to Heal successfully",
     user: await enrichUser(user),
   });
 });
