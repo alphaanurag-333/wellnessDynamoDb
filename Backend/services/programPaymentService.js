@@ -8,6 +8,7 @@ const {
   getConsultancyTransactionById,
   updateConsultancyTransaction,
   markTransactionPaidIfPending,
+  listTransactionsByUserId,
   toPublicTransaction,
 } = require("../models/consultancyTransactionModel");
 const {
@@ -24,6 +25,7 @@ const {
 } = require("../utils/paymentGateway");
 const { getAppConfig } = require("../models/appConfigModel");
 const { emitPaymentReceived } = require("./adminActivityService");
+const { getActiveCoachCheckoutOffer } = require("./coachCheckoutService");
 
 function logPaymentFailure({ transactionId, userId, reason }) {
   console.error("[ProgramPayment] payment failed", {
@@ -35,6 +37,16 @@ function logPaymentFailure({ transactionId, userId, reason }) {
   });
 }
 
+async function getPendingProgramOrderForUser(userId) {
+  const result = await listTransactionsByUserId(userId, {
+    page: 1,
+    limit: 20,
+    paymentStatus: "pending",
+    productType: "program",
+  });
+  return result.items[0] || null;
+}
+
 async function createProgramOrder(userId, { paymentMethod = "upi" } = {}) {
   const user = await getUserById(userId);
   if (!user) {
@@ -43,7 +55,8 @@ async function createProgramOrder(userId, { paymentMethod = "upi" } = {}) {
     throw err;
   }
 
-  if (!isConsultancyOnlyTier(user.userTier)) {
+  const offer = getActiveCoachCheckoutOffer(user, "program");
+  if (!offer && !isConsultancyOnlyTier(user.userTier)) {
     const err = new Error("Complete consultancy payment before purchasing a Wellness Program");
     err.name = "ConsultancyRequiredError";
     throw err;
@@ -53,6 +66,40 @@ async function createProgramOrder(userId, { paymentMethod = "upi" } = {}) {
     const err = new Error("Wellness Program already purchased");
     err.name = "AlreadyPurchasedError";
     throw err;
+  }
+
+  const existingPending = await getPendingProgramOrderForUser(userId);
+  if (existingPending && (!existingPending.linkExpiresAt || new Date(existingPending.linkExpiresAt).getTime() > Date.now())) {
+    const appConfig = await getAppConfig();
+    const gateway = getActiveRazorpayGateway(appConfig);
+    const useMock = shouldUseMockPayments(gateway);
+    return {
+      transaction: toPublicTransaction(existingPending),
+      pricing: {
+        baseAmount: existingPending.baseAmount,
+        discountAmount: existingPending.discountAmount,
+        discountedBase: existingPending.discountedBase,
+        taxAmount: existingPending.taxAmount,
+        taxPercent: existingPending.taxPercent,
+        taxType: existingPending.taxType,
+        totalAmount: existingPending.totalAmount,
+        currency: existingPending.currency || "INR",
+      },
+      program: {
+        id: existingPending.userSnapshot?.programId || offer?.itemId || null,
+        title: existingPending.userSnapshot?.programTitle || existingPending.userSnapshot?.catalogItemName || offer?.itemName || "",
+        price: existingPending.baseAmount,
+      },
+      payment: {
+        provider: useMock ? "mock" : "razorpay",
+        orderId: existingPending.paymentGatewayOrderId,
+        amount: Math.round(Number(existingPending.totalAmount) * 100),
+        currency: existingPending.currency || "INR",
+        keyId: gateway?.keyId || null,
+        mockPayment: useMock,
+        reusedPendingOrder: true,
+      },
+    };
   }
 
   const preview = await previewProgramCheckout(userId);
@@ -211,6 +258,7 @@ async function finalizePaidProgramTransaction(transaction, { paymentId, provider
     programPurchased: true,
     programPurchasedAt: paidAt,
     assignedProgramId: programId || user.assignedProgramId || null,
+    pendingCoachCheckout: {},
   });
 
   const fresh = await getConsultancyTransactionById(transaction.id);

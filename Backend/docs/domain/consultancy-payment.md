@@ -12,6 +12,40 @@ End-to-end consultancy checkout: pricing, Razorpay/mock payment, meeting assignm
 
 In development, mock payments may auto-confirm when `AUTO_CONFIRM_MOCK_PAYMENT` is not `false`.
 
+### Manual mock purchase (development)
+
+Use the following local settings and restart the backend:
+
+```env
+NODE_ENV=development
+MOCK_PAYMENTS=true
+AUTO_CONFIRM_MOCK_PAYMENT=false
+```
+
+Create the order with a user access token and an active health concern UUID:
+
+```bash
+curl -X POST "http://localhost:5000/api/user/consultancy-payment/orders" \
+  -H "Authorization: Bearer USER_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"healthConcernId":"ACTIVE_HEALTH_CONCERN_UUID","referralCode":"","paymentMethod":"upi"}'
+```
+
+Copy `data.transaction.id` and `data.payment.orderId` from the response. A valid
+development response has `mockPayment: true` and an order id beginning with
+`order_mock_`. Confirm it with:
+
+```bash
+curl -X POST "http://localhost:5000/api/user/consultancy-payment/verify" \
+  -H "Authorization: Bearer USER_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"transactionId":"TRANSACTION_UUID","razorpay_order_id":"order_mock_FROM_CREATE_RESPONSE","razorpay_payment_id":"pay_mock_dev","razorpay_signature":"mock"}'
+```
+
+The verify response changes the transaction to `paid` and the user tier to
+`consultancy_only`. Mock payment is disabled unconditionally when
+`NODE_ENV=production`.
+
 ## Transaction fields
 
 Each `ConsultancyTransaction` stores `healthConcernId` and `healthConcernSnapshot` (title/description at checkout). The user's `primaryHealthConcern` is updated when the order is created.

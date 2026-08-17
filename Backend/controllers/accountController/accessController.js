@@ -478,6 +478,8 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
       awcCount,
       grantedCount,
       totalSlots: TOTAL_PERM_SLOTS,
+      hasOverrides: overrides !== undefined,
+      policyBundleCount: 0,
       meta,
     });
   }

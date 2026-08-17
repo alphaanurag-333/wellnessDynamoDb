@@ -129,8 +129,6 @@ import {
   APP_HEAL_PERIODS,
   DISCOUNT_SLABS,
   PROGRAM_PRICING,
-  PWC_COMPLETED,
-  REFERRAL_LOOKUP,
   SUBSCRIPTION_PRICING,
   VALIDITY_PERIODS,
   activePaymentGateway,
@@ -140,7 +138,14 @@ import {
 } from "../data/configDetailData.js";
 import { findConfigItem, getConfigStateLabel } from "../data/configsData.js";
 import { formatRupee } from "../data/exchangeData.js";
-import { getAppProgramPricing, saveAppProgramPricing } from "../api/appProgramApi.js";
+import {
+  getCoachCheckoutOptions,
+  listCoachCheckoutStaff,
+  listRecentPwc,
+  lookupCoachCheckoutClient,
+  saveCoachCheckoutOptions,
+  triggerCoachCheckout,
+} from "../api/appProgramApi.js";
 
 function surfacesLabel(item) {
   if (item.app && item.web) return "App & web";
@@ -199,47 +204,67 @@ function ClientLookupPanel({
   programOptions,
   programLabel = "Program",
   showAppHeal = true,
+  discountSlabs,
+  appHealPeriods,
+  validityPeriods,
+  productType = "program",
+  coaches,
+  assistants,
 }) {
   const [code, setCode] = useState("");
   const [client, setClient] = useState(null);
   const [programId, setProgramId] = useState("");
   const [setupOpen, setSetupOpen] = useState(false);
+  const [lookingUp, setLookingUp] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  function performLookup(rawCode) {
-    const key = rawCode.trim().toUpperCase();
+  async function performLookup(rawCode) {
+    const key = rawCode.trim();
     if (!key) {
       setClient(null);
       setProgramId("");
       return false;
     }
-    const hit = REFERRAL_LOOKUP[key];
-    if (hit) {
+    setLookingUp(true);
+    try {
+      const hit = await lookupCoachCheckoutClient(key);
       setClient(hit);
       setProgramId("");
       return true;
+    } catch (error) {
+      setClient(null);
+      setProgramId("");
+      throw error;
+    } finally {
+      setLookingUp(false);
     }
-    setClient(null);
-    setProgramId("");
-    return false;
   }
 
   useEffect(() => {
-    if (!externalCode) return;
+    if (!externalCode) return undefined;
+    let active = true;
     setCode(externalCode);
-    const key = externalCode.trim().toUpperCase();
-    const hit = REFERRAL_LOOKUP[key];
-    if (hit) {
-      setClient(hit);
-      setProgramId("");
-      onToast("Client loaded");
-    }
+    lookupCoachCheckoutClient(externalCode)
+      .then((hit) => {
+        if (!active) return;
+        setClient(hit);
+        setProgramId("");
+        onToast("Client loaded");
+      })
+      .catch((error) => {
+        if (active) onToast(error.message || "No client found for that code");
+      });
+    return () => {
+      active = false;
+    };
   }, [externalCode, onToast]);
 
-  function lookup() {
-    if (performLookup(code)) {
-      onToast("Client loaded");
-    } else {
-      onToast("No client found for that code");
+  async function lookup() {
+    try {
+      const found = await performLookup(code);
+      onToast(found ? "Client loaded" : "Enter a referral code");
+    } catch (error) {
+      onToast(error.message || "No client found for that code");
     }
   }
 
@@ -267,15 +292,15 @@ function ClientLookupPanel({
         <input
           type="text"
           className="ua-cfg-lookup__input"
-          placeholder="Referral code · e.g. IRW-WC-544"
+          placeholder="Client referral code"
           value={code}
           onChange={(event) => setCode(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter") lookup();
           }}
         />
-        <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" onClick={lookup}>
-          Look up
+        <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" onClick={lookup} disabled={lookingUp}>
+          {lookingUp ? "Looking up…" : "Look up"}
         </button>
         <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={clear}>
           Clear
@@ -306,7 +331,7 @@ function ClientLookupPanel({
               value={programId}
               onChange={(event) => setProgramId(event.target.value)}
             >
-              <option value="">Choose a program…</option>
+              <option value="">Choose a {programLabel.toLowerCase()}…</option>
               {programOptions.map((option) => (
                 <option key={option.id} value={option.id}>
                   {option.name}
@@ -330,12 +355,37 @@ function ClientLookupPanel({
     <ProgramSetupModal
       open={setupOpen}
       onClose={() => setSetupOpen(false)}
-      onSave={() => {
-        onToast(`${selectedProgram?.name} triggered for ${client?.name}`);
+      saving={saving}
+      onSave={async (setup) => {
+        setSaving(true);
+        try {
+          const result = await triggerCoachCheckout({
+            userId: client.id,
+            productType,
+            itemId: setup.program.id,
+            discountPercent: setup.discount.pct,
+            discountLabel: setup.discount.label,
+            linkValidity: setup.linkValidity,
+            appHealValidity: setup.appHealValidity,
+            wellnessCoachId: setup.wellnessCoachId,
+            assistantCoachId: setup.assistantCoachId,
+          });
+          onToast(result.message || `${setup.program.name} triggered for ${client.name}`);
+          setSetupOpen(false);
+        } catch (error) {
+          onToast(error.message || "Could not trigger checkout");
+        } finally {
+          setSaving(false);
+        }
       }}
       program={selectedProgram}
       client={client}
       showAppHeal={showAppHeal}
+      discountSlabs={discountSlabs}
+      appHealPeriods={appHealPeriods}
+      validityPeriods={validityPeriods}
+      coaches={coaches}
+      assistants={assistants}
     />
     </>
   );
@@ -418,25 +468,109 @@ function PricingNewForm({
   );
 }
 
+function emptyPricingDraft() {
+  return { name: "", amount: "", discountPercent: "", validityHours: "" };
+}
+
+function validatePricingDraft(draft, { includeDiscount, onToast }) {
+  const name = draft.name.trim();
+  const amount = Number(draft.amount);
+  const discountPercent = Number(draft.discountPercent);
+  const validityHours = Number(draft.validityHours);
+  if (!name) {
+    onToast("Program name is required");
+    return null;
+  }
+  if (!amount || amount <= 0) {
+    onToast("Enter a valid amount");
+    return null;
+  }
+  if (includeDiscount && (!Number.isFinite(discountPercent) || discountPercent < 0 || discountPercent > 100)) {
+    onToast("Discount must be between 0% and 100%");
+    return null;
+  }
+  if (includeDiscount && (!Number.isInteger(validityHours) || validityHours <= 0)) {
+    onToast("Enter discount validity in whole hours");
+    return null;
+  }
+  return {
+    name,
+    amount,
+    ...(includeDiscount ? { discountPercent, validityHours } : {}),
+  };
+}
+
+function PricingAmountCell({
+  row,
+  field,
+  display,
+  editing,
+  value,
+  onStart,
+  onChange,
+  onSave,
+  onCancel,
+  inputRef,
+  disabled = false,
+}) {
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        type="text"
+        inputMode="numeric"
+        className="ua-cfg-pricing__amount-input"
+        value={value}
+        aria-label={`Edit ${field} for ${row.name}`}
+        onChange={(event) => onChange(event.target.value.replace(/[^\d]/g, ""))}
+        onBlur={onSave}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            event.currentTarget.blur();
+          }
+          if (event.key === "Escape") {
+            event.preventDefault();
+            onCancel();
+          }
+        }}
+      />
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      className="ua-cfg-pricing__amount-btn"
+      onClick={onStart}
+      disabled={disabled}
+      aria-label={`Edit ${field} for ${row.name}`}
+    >
+      {display}
+    </button>
+  );
+}
+
 function PricingPanel({
   title,
   rows,
   setRows,
   onToast,
+  onPersist,
   addLabel = "+ Add program",
   formTitle = "New program",
   namePlaceholder = "Program name",
   includeDiscount = false,
 }) {
   const [showAddForm, setShowAddForm] = useState(false);
-  const [draft, setDraft] = useState({
-    name: "",
-    amount: "",
-    discountPercent: "",
-    validityHours: "",
-  });
+  const [draft, setDraft] = useState(emptyPricingDraft);
+  const [editingCell, setEditingCell] = useState(null);
+  const [editValue, setEditValue] = useState("");
+  const [saving, setSaving] = useState(false);
   const addFormRef = useRef(null);
   const nameInputRef = useRef(null);
+  const amountInputRef = useRef(null);
+  const skipSaveRef = useRef(false);
 
   useEffect(() => {
     if (!showAddForm) return undefined;
@@ -447,43 +581,115 @@ function PricingPanel({
     return () => window.clearTimeout(timer);
   }, [showAddForm]);
 
+  useEffect(() => {
+    if (!editingCell) return undefined;
+    const timer = window.setTimeout(() => {
+      const input = amountInputRef.current;
+      if (!input) return;
+      input.focus();
+      input.select();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [editingCell]);
+
   function closeAddForm() {
     setShowAddForm(false);
-    setDraft({ name: "", amount: "", discountPercent: "", validityHours: "" });
+    setDraft(emptyPricingDraft());
+  }
+
+  function cancelEdit() {
+    skipSaveRef.current = true;
+    setEditingCell(null);
+    setEditValue("");
+  }
+
+  function startEdit(row, field) {
+    if (saving) return;
+    skipSaveRef.current = false;
+    setShowAddForm(false);
+    setDraft(emptyPricingDraft());
+    setEditingCell({ id: row.id, field });
+    setEditValue(String(row[field] ?? ""));
+  }
+
+  async function commitRows(nextRows, successMessage) {
+    const previousRows = rows;
+    setRows(nextRows);
+    if (!onPersist) {
+      onToast(successMessage);
+      return;
+    }
+    setSaving(true);
+    try {
+      const saved = await onPersist(nextRows);
+      if (Array.isArray(saved)) setRows(saved);
+      onToast(successMessage);
+    } catch (error) {
+      setRows(previousRows);
+      onToast(error.message || "Could not save pricing");
+    } finally {
+      setSaving(false);
+    }
   }
 
   function submitNewRow() {
-    const name = draft.name.trim();
-    const amount = Number(draft.amount);
-    const discountPercent = Number(draft.discountPercent);
-    const validityHours = Number(draft.validityHours);
-    if (!name) {
-      onToast("Program name is required");
-      return;
-    }
-    if (!amount || amount <= 0) {
-      onToast("Enter a valid amount");
-      return;
-    }
-    if (includeDiscount && (!Number.isFinite(discountPercent) || discountPercent < 0 || discountPercent > 100)) {
-      onToast("Discount must be between 0% and 100%");
-      return;
-    }
-    if (includeDiscount && (!Number.isInteger(validityHours) || validityHours <= 0)) {
-      onToast("Enter discount validity in whole hours");
-      return;
-    }
-    setRows((prev) => [
-      ...prev,
+    const next = validatePricingDraft(draft, { includeDiscount, onToast });
+    if (!next) return;
+    const nextRows = [
+      ...rows,
       {
         id: `program-${Date.now()}`,
-        name,
-        amount,
-        ...(includeDiscount ? { discountPercent, validityHours } : {}),
+        ...next,
       },
-    ]);
+    ];
     closeAddForm();
-    onToast(`${name} added`);
+    commitRows(nextRows, `${next.name} added`);
+  }
+
+  function saveEdit() {
+    if (skipSaveRef.current) {
+      skipSaveRef.current = false;
+      return;
+    }
+    if (!editingCell) return;
+    const { id, field } = editingCell;
+    const row = rows.find((entry) => entry.id === id);
+    if (!row) {
+      cancelEdit();
+      return;
+    }
+
+    const nextValue = Number(editValue);
+    if (field === "amount") {
+      if (!nextValue || nextValue <= 0) {
+        onToast("Enter a valid amount");
+        cancelEdit();
+        return;
+      }
+    } else if (field === "discountPercent") {
+      if (!Number.isFinite(nextValue) || nextValue < 0 || nextValue > 100) {
+        onToast("Discount must be between 0% and 100%");
+        cancelEdit();
+        return;
+      }
+    } else if (field === "validityHours") {
+      if (!Number.isInteger(nextValue) || nextValue <= 0) {
+        onToast("Enter discount validity in whole hours");
+        cancelEdit();
+        return;
+      }
+    }
+
+    if (Number(row[field]) === nextValue) {
+      cancelEdit();
+      return;
+    }
+
+    const nextRows = rows.map((entry) => (
+      entry.id === id ? { ...entry, [field]: nextValue } : entry
+    ));
+    cancelEdit();
+    commitRows(nextRows, `${row.name} updated`);
   }
 
   return (
@@ -491,7 +697,15 @@ function PricingPanel({
       title={title}
       subtitle="Admin sets the amount, the discount %, and how long that discount stays valid."
       actions={(
-        <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={() => setShowAddForm(true)}>
+        <button
+          type="button"
+          className="ua-cfg-btn ua-cfg-btn--outline"
+          disabled={saving}
+          onClick={() => {
+            cancelEdit();
+            setShowAddForm(true);
+          }}
+        >
           {addLabel}
         </button>
       )}
@@ -524,16 +738,60 @@ function PricingPanel({
             className={`ua-cfg-pricing__row${includeDiscount ? " ua-cfg-pricing__row--discount" : ""}`}
           >
             <span>{row.name}</span>
-            <strong>{formatRupee(row.amount)}</strong>
-            {includeDiscount ? <strong>{row.discountPercent}%</strong> : null}
-            {includeDiscount ? <span>{row.validityHours} hours</span> : null}
+            <PricingAmountCell
+              row={row}
+              field="amount"
+              display={formatRupee(row.amount)}
+              editing={editingCell?.id === row.id && editingCell?.field === "amount"}
+              value={editValue}
+              onStart={() => startEdit(row, "amount")}
+              onChange={setEditValue}
+              onSave={saveEdit}
+              onCancel={cancelEdit}
+              inputRef={editingCell?.id === row.id && editingCell?.field === "amount" ? amountInputRef : null}
+              disabled={saving}
+            />
+            {includeDiscount ? (
+              <PricingAmountCell
+                row={row}
+                field="discountPercent"
+                display={`${row.discountPercent}%`}
+                editing={editingCell?.id === row.id && editingCell?.field === "discountPercent"}
+                value={editValue}
+                onStart={() => startEdit(row, "discountPercent")}
+                onChange={setEditValue}
+                onSave={saveEdit}
+                onCancel={cancelEdit}
+                inputRef={editingCell?.id === row.id && editingCell?.field === "discountPercent" ? amountInputRef : null}
+                disabled={saving}
+              />
+            ) : null}
+            {includeDiscount ? (
+              <PricingAmountCell
+                row={row}
+                field="validityHours"
+                display={`${row.validityHours} hours`}
+                editing={editingCell?.id === row.id && editingCell?.field === "validityHours"}
+                value={editValue}
+                onStart={() => startEdit(row, "validityHours")}
+                onChange={setEditValue}
+                onSave={saveEdit}
+                onCancel={cancelEdit}
+                inputRef={editingCell?.id === row.id && editingCell?.field === "validityHours" ? amountInputRef : null}
+                disabled={saving}
+              />
+            ) : null}
             <button
               type="button"
               className="ua-cfg-icon-btn"
               aria-label={`Remove ${row.name}`}
+              disabled={saving}
               onClick={() => {
-                setRows((prev) => prev.filter((entry) => entry.id !== row.id));
-                onToast(`${row.name} removed`);
+                if (editingCell?.id === row.id) cancelEdit();
+                commitRows(
+                  rows.filter((entry) => entry.id !== row.id),
+                  `${row.name} removed`,
+                );
               }}
             >
               ×
@@ -545,17 +803,67 @@ function PricingPanel({
   );
 }
 
-function TagCreatePanel({ title, subtitle, tags, placeholder, createLabel, coachesToggle, onToast }) {
+function itemLabel(item) {
+  return typeof item === "string" ? item : `${item.pct}% · ${item.label}`;
+}
+
+function parseDiscountSlab(value) {
+  const match = value.match(/^(\d+(?:\.\d+)?)\s*%?\s*(?:[·:—–-]\s*)?(.+)$/);
+  if (!match) return null;
+  const pct = Number(match[1]);
+  const label = match[2].trim();
+  if (!Number.isFinite(pct) || pct < 0 || pct > 100 || !label) return null;
+  return { pct, label };
+}
+
+function TagCreatePanel({
+  title,
+  subtitle,
+  items,
+  setItems,
+  placeholder,
+  createLabel,
+  coachesToggle,
+  coachAdd,
+  setCoachAdd,
+  parseItem,
+  onToast,
+}) {
   const [draft, setDraft] = useState("");
-  const [coachAdd, setCoachAdd] = useState(true);
-  const [items, setItems] = useState(tags);
 
   function createItem() {
     const value = draft.trim();
     if (!value) return;
-    setItems((prev) => [...prev, value]);
+    const nextItem = parseItem ? parseItem(value) : value;
+    if (!nextItem) {
+      onToast("Use a percentage and label, for example 30% · launch");
+      return;
+    }
+    const label = itemLabel(nextItem);
+    if (items.some((item) => itemLabel(item).toLowerCase() === label.toLowerCase())) {
+      onToast(`${label} already exists`);
+      return;
+    }
+    if (
+      typeof nextItem !== "string"
+      && items.some((item) => typeof item !== "string" && item.pct === nextItem.pct)
+    ) {
+      onToast(`${nextItem.pct}% already has a discount slab`);
+      return;
+    }
+    setItems((prev) => [...prev, nextItem]);
     setDraft("");
-    onToast(`${value} added`);
+    onToast(`${label} added`);
+  }
+
+  function removeItem(item) {
+    const label = itemLabel(item);
+    if (items.length === 1) {
+      onToast(`${title} must keep at least one option`);
+      return;
+    }
+    setItems((prev) => prev.filter((entry) => itemLabel(entry) !== label));
+    onToast(`${label} removed`);
   }
 
   return (
@@ -580,8 +888,16 @@ function TagCreatePanel({ title, subtitle, tags, placeholder, createLabel, coach
     >
       <div className="ua-cfg-tags">
         {items.map((tag) => (
-          <span key={tag} className="ua-cfg-tag">
-            {typeof tag === "string" ? tag : `${tag.pct}% · ${tag.label}`}
+          <span key={itemLabel(tag)} className="ua-cfg-tag">
+            {itemLabel(tag)}
+            <button
+              type="button"
+              className="ua-cfg-tag__remove"
+              aria-label={`Remove ${itemLabel(tag)}`}
+              onClick={() => removeItem(tag)}
+            >
+              ×
+            </button>
           </span>
         ))}
         <input
@@ -602,7 +918,29 @@ function TagCreatePanel({ title, subtitle, tags, placeholder, createLabel, coach
   );
 }
 
-function PwcPanel({ onToast, onUseCode }) {
+function PwcPanel({ onToast, onUseCode, coaches }) {
+  const [coachId, setCoachId] = useState("");
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    listRecentPwc(coachId)
+      .then((items) => {
+        if (active) setRows(items);
+      })
+      .catch((error) => {
+        if (active) onToast(error.message || "Could not load recent PWC completions");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [coachId, onToast]);
+
   return (
     <Panel
       title="PWC completed · last 24 hours"
@@ -612,20 +950,34 @@ function PwcPanel({ onToast, onUseCode }) {
         </>
       )}
       actions={(
-        <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--caps">
-          All coaches
-        </button>
+        <select
+          className="ua-cfg-lookup__select"
+          value={coachId}
+          onChange={(event) => setCoachId(event.target.value)}
+          aria-label="Filter by coach"
+        >
+          <option value="">All coaches</option>
+          {coaches.map((coach) => (
+            <option key={coach.id} value={coach.id}>
+              {coach.name}
+            </option>
+          ))}
+        </select>
       )}
     >
       <div className="ua-cfg-pwc-list">
-        {PWC_COMPLETED.map((row) => (
+        {loading ? (
+          <div className="ua-cfg-lookup__empty">Loading recent completions…</div>
+        ) : rows.length === 0 ? (
+          <div className="ua-cfg-lookup__empty">No programme-wise consults completed in the last 24 hours.</div>
+        ) : rows.map((row) => (
           <div key={row.id} className="ua-cfg-pwc">
             <span className="ua-cfg-pwc__avatar">{row.initials}</span>
             <div className="ua-cfg-pwc__main">
               <strong>{row.name}</strong>
               <span>{row.consult} · {row.code}</span>
             </div>
-            <span className="ua-cfg-pwc__coach">{row.coach.toUpperCase()}</span>
+            <span className="ua-cfg-pwc__coach">{row.coach || "Unassigned"}</span>
             <span className="ua-cfg-pwc__ago">{row.ago}</span>
             <button
               type="button"
@@ -649,18 +1001,46 @@ function ExchangeClientSection({
   programOptions,
   programLabel = "Program",
   showAppHeal = true,
+  discountSlabs,
+  appHealPeriods,
+  validityPeriods,
+  productType = "program",
 }) {
   const [referralCode, setReferralCode] = useState(null);
+  const [coaches, setCoaches] = useState([]);
+  const [assistants, setAssistants] = useState([]);
+
+  useEffect(() => {
+    let active = true;
+    listCoachCheckoutStaff()
+      .then((staff) => {
+        if (!active) return;
+        setCoaches(staff.coaches);
+        setAssistants(staff.assistants);
+      })
+      .catch((error) => {
+        if (active) onToast(error.message || "Could not load coaches");
+      });
+    return () => {
+      active = false;
+    };
+  }, [onToast]);
 
   return (
     <>
-      <PwcPanel onToast={onToast} onUseCode={setReferralCode} />
+      <PwcPanel onToast={onToast} onUseCode={setReferralCode} coaches={coaches} />
       <ClientLookupPanel
         onToast={onToast}
         externalCode={referralCode}
         programOptions={programOptions}
         programLabel={programLabel}
         showAppHeal={showAppHeal}
+        discountSlabs={discountSlabs}
+        appHealPeriods={appHealPeriods}
+        validityPeriods={validityPeriods}
+        productType={productType}
+        coaches={coaches}
+        assistants={assistants}
       />
     </>
   );
@@ -845,6 +1225,11 @@ export function ConfigDetailPage() {
   const [faqItems, setFaqItems] = useState([]);
   const [programRows, setProgramRows] = useState(PROGRAM_PRICING);
   const [subRows, setSubRows] = useState(SUBSCRIPTION_PRICING);
+  const [validityPeriods, setValidityPeriods] = useState(VALIDITY_PERIODS);
+  const [discountSlabs, setDiscountSlabs] = useState(DISCOUNT_SLABS);
+  const [appHealPeriods, setAppHealPeriods] = useState(APP_HEAL_PERIODS);
+  const [coachesCanAddValidity, setCoachesCanAddValidity] = useState(true);
+  const [coachesCanAddAppHeal, setCoachesCanAddAppHeal] = useState(true);
   const [gstOn, setGstOn] = useState(false);
   const [gateways, setGateways] = useState(createDefaultGateways);
   const [tosCopy, setTosCopy] = useState(TOS_CONTENT);
@@ -928,15 +1313,26 @@ export function ConfigDetailPage() {
   const [publishOpen, setPublishOpen] = useState(false);
 
   useEffect(() => {
-    if (configId !== "app-program") return undefined;
+    if (configId !== "app-program" && configId !== "app-subscriptions") return undefined;
     let active = true;
 
-    getAppProgramPricing()
-      .then((rows) => {
-        if (active && rows !== null) setProgramRows(rows);
+    getCoachCheckoutOptions({
+      validityPeriods: VALIDITY_PERIODS,
+      discountSlabs: DISCOUNT_SLABS,
+      appHealPeriods: APP_HEAL_PERIODS,
+    })
+      .then((options) => {
+        if (!active) return;
+        if (options.programPricing !== null) setProgramRows(options.programPricing);
+        if (options.subscriptionPricing !== null) setSubRows(options.subscriptionPricing);
+        setValidityPeriods(options.validityPeriods);
+        setDiscountSlabs(options.discountSlabs);
+        setAppHealPeriods(options.appHealPeriods);
+        setCoachesCanAddValidity(options.coachesCanAddValidity);
+        setCoachesCanAddAppHeal(options.coachesCanAddAppHeal);
       })
       .catch((error) => {
-        if (active) onToast(error.message || "Could not load program pricing");
+        if (active) onToast(error.message || "Could not load coach checkout options");
       });
 
     return () => {
@@ -944,18 +1340,53 @@ export function ConfigDetailPage() {
     };
   }, [configId]);
 
+  async function persistPricingRows(kind, nextRows) {
+    const saved = await saveCoachCheckoutOptions(
+      {
+        validityPeriods,
+        discountSlabs,
+        appHealPeriods,
+        coachesCanAddValidity,
+        coachesCanAddAppHeal,
+      },
+      {
+        programPricing: kind === "program" ? nextRows : null,
+        subscriptionPricing: kind === "subscription" ? nextRows : null,
+      },
+    );
+    return kind === "program" ? saved.programPricing : saved.subscriptionPricing;
+  }
+
   async function publishConfig() {
-    if (item.id !== "app-program") {
+    if (item.id !== "app-program" && item.id !== "app-subscriptions") {
       onToast(`${item.name} published`);
       return;
     }
 
     try {
-      const savedRows = await saveAppProgramPricing(programRows);
-      setProgramRows(savedRows);
-      onToast("Program pricing published");
+      const saved = await saveCoachCheckoutOptions(
+        {
+          validityPeriods,
+          discountSlabs,
+          appHealPeriods,
+          coachesCanAddValidity,
+          coachesCanAddAppHeal,
+        },
+        {
+          programPricing: item.id === "app-program" ? programRows : null,
+          subscriptionPricing: item.id === "app-subscriptions" ? subRows : null,
+        },
+      );
+      if (item.id === "app-program") setProgramRows(saved.programPricing);
+      if (item.id === "app-subscriptions") setSubRows(saved.subscriptionPricing);
+      setValidityPeriods(saved.validityPeriods);
+      setDiscountSlabs(saved.discountSlabs);
+      setAppHealPeriods(saved.appHealPeriods);
+      setCoachesCanAddValidity(saved.coachesCanAddValidity);
+      setCoachesCanAddAppHeal(saved.coachesCanAddAppHeal);
+      onToast(item.id === "app-program" ? "Program config published" : "Subscription config published");
     } catch (error) {
-      onToast(error.message || "Could not publish program pricing");
+      onToast(error.message || "Could not publish coach checkout options");
     }
   }
 
@@ -1079,38 +1510,54 @@ export function ConfigDetailPage() {
       case "app-program":
         return (
           <>
-            <ExchangeClientSection onToast={onToast} programOptions={programRows} showAppHeal />
+            <ExchangeClientSection
+              onToast={onToast}
+              programOptions={programRows}
+              showAppHeal
+              discountSlabs={discountSlabs}
+              appHealPeriods={appHealPeriods}
+              validityPeriods={validityPeriods}
+            />
             <PricingPanel
               title="Program pricing & discount validity"
               rows={programRows}
               setRows={setProgramRows}
               onToast={onToast}
+              onPersist={(nextRows) => persistPricingRows("program", nextRows)}
               includeDiscount
             />
             <TagCreatePanel
               title="App Heal feature validity"
               subtitle="These appear in the coach's App Heal validity dropdown."
-              tags={APP_HEAL_PERIODS}
+              items={appHealPeriods}
+              setItems={setAppHealPeriods}
               placeholder="e.g. 3 years"
               createLabel="+ Create period"
               coachesToggle
+              coachAdd={coachesCanAddAppHeal}
+              setCoachAdd={setCoachesCanAddAppHeal}
               onToast={onToast}
             />
             <TagCreatePanel
               title="Validity periods available to coaches"
               subtitle="These appear in the coach's validity dropdown at checkout."
-              tags={VALIDITY_PERIODS}
+              items={validityPeriods}
+              setItems={setValidityPeriods}
               placeholder="e.g. 96 hours"
               createLabel="+ Create period"
               coachesToggle
+              coachAdd={coachesCanAddValidity}
+              setCoachAdd={setCoachesCanAddValidity}
               onToast={onToast}
             />
             <TagCreatePanel
               title="Discount slabs available to coaches"
               subtitle="These appear in the coach's discount dropdown."
-              tags={DISCOUNT_SLABS}
+              items={discountSlabs}
+              setItems={setDiscountSlabs}
               placeholder="e.g. 30% · launch"
               createLabel="+ Create slab"
+              parseItem={parseDiscountSlab}
               onToast={onToast}
             />
           </>
@@ -1123,30 +1570,41 @@ export function ConfigDetailPage() {
               programOptions={subRows}
               programLabel="Subscription"
               showAppHeal={false}
+              productType="subscription"
+              discountSlabs={discountSlabs}
+              appHealPeriods={appHealPeriods}
+              validityPeriods={validityPeriods}
             />
             <PricingPanel
               title="Subscription pricing & discount validity"
               rows={subRows}
               setRows={setSubRows}
               onToast={onToast}
+              onPersist={(nextRows) => persistPricingRows("subscription", nextRows)}
+              addLabel="+ Add subscription"
               formTitle="New subscription"
               namePlaceholder="Subscription name"
             />
             <TagCreatePanel
               title="Validity periods available to coaches"
               subtitle="These appear in the coach's validity dropdown at checkout."
-              tags={VALIDITY_PERIODS}
+              items={validityPeriods}
+              setItems={setValidityPeriods}
               placeholder="e.g. 96 hours"
               createLabel="+ Create period"
               coachesToggle
+              coachAdd={coachesCanAddValidity}
+              setCoachAdd={setCoachesCanAddValidity}
               onToast={onToast}
             />
             <TagCreatePanel
               title="Discount slabs available to coaches"
               subtitle="These appear in the coach's discount dropdown."
-              tags={DISCOUNT_SLABS}
+              items={discountSlabs}
+              setItems={setDiscountSlabs}
               placeholder="e.g. 30% · launch"
               createLabel="+ Create slab"
+              parseItem={parseDiscountSlab}
               onToast={onToast}
             />
           </>

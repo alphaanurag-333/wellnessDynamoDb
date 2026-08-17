@@ -1,6 +1,6 @@
 const { getAppConfig } = require("../models/appConfigModel");
 const config = require("../config");
-const { getUserById } = require("../models/userModel");
+const { getUserById, updateUser } = require("../models/userModel");
 const { convertSeekToHeal } = require("../models/userConversionModel");
 const { isConsultancyOnlyTier, isHealTier } = require("../models/userAssignmentLogic");
 const { buildSubscriptionCheckoutPreview } = require("../services/subscriptionPricingService");
@@ -63,7 +63,7 @@ async function createSubscriptionOrder(userId, { paymentMethod = "upi" } = {}) {
   }
 
   const existingPending = await getPendingSubscriptionOrderForUser(userId);
-  if (existingPending) {
+  if (existingPending && (!existingPending.linkExpiresAt || new Date(existingPending.linkExpiresAt).getTime() > Date.now())) {
     const appConfig = await getAppConfig();
     const gateway = getActiveRazorpayGateway(appConfig);
     const useMock = shouldUseMockPayments(gateway);
@@ -211,6 +211,8 @@ async function finalizePaidSubscriptionTransaction(transaction, { paymentId, pro
       throw err;
     }
   }
+
+  await updateUser(user.id, { pendingCoachCheckout: {} });
 
   const fresh = await getConsultancyTransactionById(transaction.id);
   return toPublicTransaction(fresh);

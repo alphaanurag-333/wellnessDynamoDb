@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "wellness-user-api-collection",
     "name": "Wellness Dynamo — User API",
-    "description": "Mobile / user-facing API collection.\n\nBase path: `/api`\n\n**Auth flow**\n1. Send registration OTP → Register (or Login OTP / Password login)\n2. `accessToken` and `refreshToken` are saved automatically on successful auth responses.\n3. Protected routes use Bearer `{{accessToken}}`.\n\n**Water tracking**\nPass `date` as `YYYY-MM-DD` in the user's local timezone when logging intake.",
+    "description": "Mobile / user-facing API collection.\n\nBase path: `/api`\n\n**Auth flow (updated)**\n1. Send registration OTP (delivered to WhatsApp when `whatsappSameAsMobile` is false) → Register with `primaryHealthConcern` + optional `referralCode`\n2. Or Login (password / OTP)\n3. `accessToken`, `refreshToken`, and `userId` are saved automatically on successful auth responses.\n4. Protected routes use Bearer `{{accessToken}}`.\n5. Phone / WhatsApp number changes use the dedicated OTP endpoints under Auth → Profile.\n\n**Water tracking**\nPass `date` as `YYYY-MM-DD` in the user's local timezone when logging intake.\n\n**Tip:** Run Public → Health Concerns first and copy an id into `primaryHealthConcernId` before Register.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -30,18 +30,23 @@
     { "key": "baseUrl", "value": "http://localhost:5000/api" },
     { "key": "accessToken", "value": "" },
     { "key": "refreshToken", "value": "" },
+    { "key": "userId", "value": "" },
+    { "key": "userName", "value": "Test User" },
     { "key": "userEmail", "value": "user@example.com" },
     { "key": "userPhone", "value": "9876543210" },
     { "key": "userPhoneCountryCode", "value": "+91" },
-    { "key": "userPassword", "value": "password123" },
+    { "key": "userWhatsapp", "value": "9876543211" },
+    { "key": "userPassword", "value": "User@12345" },
     { "key": "userOtp", "value": "123456" },
-    { "key": "todayDate", "value": "2026-06-23" },
+    { "key": "referralCode", "value": "" },
+    { "key": "todayDate", "value": "2026-08-17" },
     { "key": "primaryHealthConcernId", "value": "" },
     { "key": "fcmId", "value": "sample-fcm-device-token" },
     { "key": "notificationId", "value": "" },
     { "key": "transactionId", "value": "" },
     { "key": "razorpayOrderId", "value": "" },
-    { "key": "notificationId", "value": "" }
+    { "key": "newPhone", "value": "9876500001" },
+    { "key": "newWhatsapp", "value": "9876500002" }
   ],
   "item": [
     {
@@ -61,7 +66,7 @@
     },
     {
       "name": "Auth",
-      "description": "User authentication and profile (`/api/user/auth`).",
+      "description": "User authentication and profile (`/api/user/auth`).\n\nRegistration OTP is keyed by the WhatsApp delivery number when `whatsappSameAsMobile` is false — use the same WhatsApp fields on Send OTP and Register.\n\nGender values: `male` | `female` | `other` | `boy` | `girl` | `guess`.\nOptional `referralCode` at register assigns coach hierarchy when valid (invalid codes are ignored).",
       "item": [
         {
           "name": "Registration",
@@ -74,10 +79,10 @@
                 "header": [{ "key": "Content-Type", "value": "application/json" }],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"phone\": \"{{userPhone}}\",\n  \"phoneCountryCode\": \"{{userPhoneCountryCode}}\"\n}"
+                  "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"phone\": \"{{userPhone}}\",\n  \"phoneCountryCode\": \"{{userPhoneCountryCode}}\",\n  \"whatsappSameAsMobile\": false,\n  \"whatsappCountryCode\": \"{{userPhoneCountryCode}}\",\n  \"whatsappPhone\": \"{{userWhatsapp}}\"\n}"
                 },
                 "url": "{{baseUrl}}/user/auth/register/otp/send",
-                "description": "Send OTP before self-registration. In dev, response may include `debugOtp` when `EXPOSE_OTP_IN_RESPONSE=true`."
+                "description": "Send OTP before self-registration. OTP is delivered to WhatsApp when `whatsappSameAsMobile` is false (must match Register). In local/dev with `EXPOSE_OTP_IN_RESPONSE=true`, response may include `debugOtp`."
               },
               "event": [
                 {
@@ -87,8 +92,10 @@
                     "exec": [
                       "const json = pm.response.json();",
                       "if (json.debugOtp) {",
-                      "  pm.collectionVariables.set('userOtp', json.debugOtp);",
+                      "  pm.collectionVariables.set('userOtp', String(json.debugOtp));",
                       "  console.log('Saved userOtp from debugOtp');",
+                      "} else {",
+                      "  console.warn('No debugOtp — set EXPOSE_OTP_IN_RESPONSE=true or paste OTP into userOtp');",
                       "}"
                     ]
                   }
@@ -104,10 +111,10 @@
                 "header": [{ "key": "Content-Type", "value": "application/json" }],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"otp\": \"{{userOtp}}\",\n  \"name\": \"Test User\",\n  \"email\": \"{{userEmail}}\",\n  \"phone\": \"{{userPhone}}\",\n  \"phoneCountryCode\": \"{{userPhoneCountryCode}}\",\n  \"password\": \"{{userPassword}}\",\n  \"gender\": \"boy\",\n  \"country\": \"India\",\n  \"state\": \"Maharashtra\",\n  \"city\": \"Mumbai\",\n  \"primaryHealthConcern\": \"{{primaryHealthConcernId}}\",\n  \"termsAccepted\": true,\n  \"fcm_id\": \"{{fcmId}}\"\n}"
+                  "raw": "{\n  \"otp\": \"{{userOtp}}\",\n  \"name\": \"{{userName}}\",\n  \"email\": \"{{userEmail}}\",\n  \"phone\": \"{{userPhone}}\",\n  \"phoneCountryCode\": \"{{userPhoneCountryCode}}\",\n  \"password\": \"{{userPassword}}\",\n  \"gender\": \"female\",\n  \"dob\": \"1991-03-12\",\n  \"country\": \"India\",\n  \"state\": \"Maharashtra\",\n  \"city\": \"Pune\",\n  \"primaryHealthConcern\": \"{{primaryHealthConcernId}}\",\n  \"termsAccepted\": true,\n  \"whatsappSameAsMobile\": false,\n  \"whatsappCountryCode\": \"{{userPhoneCountryCode}}\",\n  \"whatsappPhone\": \"{{userWhatsapp}}\",\n  \"referralCode\": \"{{referralCode}}\",\n  \"fcm_id\": \"{{fcmId}}\"\n}"
                 },
                 "url": "{{baseUrl}}/user/auth/register",
-                "description": "Verify registration OTP and create account. Set `primaryHealthConcern` to a valid HealthConcern id or leave empty string."
+                "description": "`primaryHealthConcern` is required (HealthConcern id). Optional `referralCode` / `primaryHealthConcernOther` (when concern is Other). WhatsApp fields must match Send Registration OTP."
               },
               "event": [
                 {
@@ -119,6 +126,8 @@
                       "  const json = pm.response.json();",
                       "  if (json.accessToken) pm.collectionVariables.set('accessToken', json.accessToken);",
                       "  if (json.refreshToken) pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                      "  const uid = json.user && (json.user.id || json.user._id);",
+                      "  if (uid) pm.collectionVariables.set('userId', String(uid));",
                       "}"
                     ]
                   }
@@ -136,14 +145,24 @@
                   "mode": "formdata",
                   "formdata": [
                     { "key": "otp", "value": "{{userOtp}}", "type": "text" },
-                    { "key": "name", "value": "Test User", "type": "text" },
+                    { "key": "name", "value": "{{userName}}", "type": "text" },
                     { "key": "email", "value": "{{userEmail}}", "type": "text" },
                     { "key": "phone", "value": "{{userPhone}}", "type": "text" },
                     { "key": "phoneCountryCode", "value": "{{userPhoneCountryCode}}", "type": "text" },
                     { "key": "password", "value": "{{userPassword}}", "type": "text" },
+                    { "key": "gender", "value": "female", "type": "text" },
+                    { "key": "dob", "value": "1991-03-12", "type": "text" },
+                    { "key": "country", "value": "India", "type": "text" },
+                    { "key": "state", "value": "Maharashtra", "type": "text" },
+                    { "key": "city", "value": "Pune", "type": "text" },
+                    { "key": "primaryHealthConcern", "value": "{{primaryHealthConcernId}}", "type": "text" },
                     { "key": "termsAccepted", "value": "true", "type": "text" },
+                    { "key": "whatsappSameAsMobile", "value": "false", "type": "text" },
+                    { "key": "whatsappCountryCode", "value": "{{userPhoneCountryCode}}", "type": "text" },
+                    { "key": "whatsappPhone", "value": "{{userWhatsapp}}", "type": "text" },
+                    { "key": "referralCode", "value": "{{referralCode}}", "type": "text" },
                     { "key": "fcm_id", "value": "{{fcmId}}", "type": "text" },
-                    { "key": "file", "type": "file", "src": [], "description": "Optional profile image" }
+                    { "key": "file", "type": "file", "src": [], "description": "Optional profile image (field name: file)" }
                   ]
                 },
                 "url": "{{baseUrl}}/user/auth/register"
@@ -158,6 +177,8 @@
                       "  const json = pm.response.json();",
                       "  if (json.accessToken) pm.collectionVariables.set('accessToken', json.accessToken);",
                       "  if (json.refreshToken) pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                      "  const uid = json.user && (json.user.id || json.user._id);",
+                      "  if (uid) pm.collectionVariables.set('userId', String(uid));",
                       "}"
                     ]
                   }
@@ -192,6 +213,8 @@
                       "  const json = pm.response.json();",
                       "  if (json.accessToken) pm.collectionVariables.set('accessToken', json.accessToken);",
                       "  if (json.refreshToken) pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                      "  const uid = json.user && (json.user.id || json.user._id);",
+                      "  if (uid) pm.collectionVariables.set('userId', String(uid));",
                       "}"
                     ]
                   }
@@ -209,7 +232,8 @@
                   "mode": "raw",
                   "raw": "{\n  \"phone\": \"{{userPhone}}\",\n  \"phoneCountryCode\": \"{{userPhoneCountryCode}}\",\n  \"password\": \"{{userPassword}}\",\n  \"fcm_id\": \"{{fcmId}}\"\n}"
                 },
-                "url": "{{baseUrl}}/user/auth/login"
+                "url": "{{baseUrl}}/user/auth/login/password",
+                "description": "`POST /user/auth/login` is an alias for the same password-login handler."
               },
               "event": [
                 {
@@ -221,6 +245,8 @@
                       "  const json = pm.response.json();",
                       "  if (json.accessToken) pm.collectionVariables.set('accessToken', json.accessToken);",
                       "  if (json.refreshToken) pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                      "  const uid = json.user && (json.user.id || json.user._id);",
+                      "  if (uid) pm.collectionVariables.set('userId', String(uid));",
                       "}"
                     ]
                   }
@@ -238,7 +264,8 @@
                   "mode": "raw",
                   "raw": "{\n  \"phone\": \"{{userPhone}}\",\n  \"phoneCountryCode\": \"{{userPhoneCountryCode}}\"\n}"
                 },
-                "url": "{{baseUrl}}/user/auth/otp/send"
+                "url": "{{baseUrl}}/user/auth/otp/send",
+                "description": "Also accepts `email` instead of phone."
               },
               "event": [
                 {
@@ -248,7 +275,7 @@
                     "exec": [
                       "const json = pm.response.json();",
                       "if (json.debugOtp) {",
-                      "  pm.collectionVariables.set('userOtp', json.debugOtp);",
+                      "  pm.collectionVariables.set('userOtp', String(json.debugOtp));",
                       "}"
                     ]
                   }
@@ -278,6 +305,8 @@
                       "  const json = pm.response.json();",
                       "  if (json.accessToken) pm.collectionVariables.set('accessToken', json.accessToken);",
                       "  if (json.refreshToken) pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                      "  const uid = json.user && (json.user.id || json.user._id);",
+                      "  if (uid) pm.collectionVariables.set('userId', String(uid));",
                       "}"
                     ]
                   }
@@ -318,6 +347,7 @@
         },
         {
           "name": "Profile",
+          "description": "Get / update own profile. Changing WhatsApp to a **different** number requires the WhatsApp OTP flow below. Dedicated phone OTP endpoints are preferred for mobile number changes.",
           "item": [
             {
               "name": "Get My Profile",
@@ -326,6 +356,21 @@
                 "header": [],
                 "url": "{{baseUrl}}/user/auth/me"
               },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "  const json = pm.response.json();",
+                      "  const uid = json.user && (json.user.id || json.user._id);",
+                      "  if (uid) pm.collectionVariables.set('userId', String(uid));",
+                      "}"
+                    ]
+                  }
+                }
+              ],
               "response": []
             },
             {
@@ -335,9 +380,10 @@
                 "header": [{ "key": "Content-Type", "value": "application/json" }],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"name\": \"Updated Name\",\n  \"city\": \"Pune\",\n  \"fcm_id\": \"{{fcmId}}\"\n}"
+                  "raw": "{\n  \"name\": \"{{userName}}\",\n  \"dob\": \"1991-03-12\",\n  \"gender\": \"female\",\n  \"country\": \"India\",\n  \"state\": \"Maharashtra\",\n  \"city\": \"Pune\",\n  \"addressLine1\": \"Flat 101, Green Meadows\",\n  \"addressLine2\": \"Baner Road\",\n  \"pincode\": \"411000\",\n  \"primaryHealthConcern\": \"{{primaryHealthConcernId}}\",\n  \"fcm_id\": \"{{fcmId}}\"\n}"
                 },
-                "url": "{{baseUrl}}/user/auth/me"
+                "url": "{{baseUrl}}/user/auth/me",
+                "description": "Updatable fields include name, email, dob, gender, address*, city/state/country, primaryHealthConcern, fcm_id, password/newPassword, profileImage. Do not send `status`. WhatsApp number changes to a different value must use the OTP endpoints."
               },
               "response": []
             },
@@ -349,14 +395,130 @@
                 "body": {
                   "mode": "formdata",
                   "formdata": [
-                    { "key": "name", "value": "Updated Name", "type": "text" },
+                    { "key": "name", "value": "{{userName}}", "type": "text" },
                     { "key": "city", "value": "Pune", "type": "text" },
+                    { "key": "addressLine1", "value": "Flat 101, Green Meadows", "type": "text" },
+                    { "key": "pincode", "value": "411000", "type": "text" },
                     { "key": "file", "type": "file", "src": [], "description": "Profile image upload field name: file" }
                   ]
                 },
                 "url": "{{baseUrl}}/user/auth/me"
               },
               "response": []
+            },
+            {
+              "name": "Change Phone (OTP)",
+              "item": [
+                {
+                  "name": "Send Phone Change OTP",
+                  "request": {
+                    "method": "POST",
+                    "header": [{ "key": "Content-Type", "value": "application/json" }],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"phone\": \"{{newPhone}}\",\n  \"phoneCountryCode\": \"{{userPhoneCountryCode}}\"\n}"
+                    },
+                    "url": "{{baseUrl}}/user/auth/profile/phone/otp/send",
+                    "description": "Sends OTP to the **new** phone number before updating profile phone."
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "const json = pm.response.json();",
+                          "if (json.debugOtp) pm.collectionVariables.set('userOtp', String(json.debugOtp));"
+                        ]
+                      }
+                    }
+                  ],
+                  "response": []
+                },
+                {
+                  "name": "Verify Phone Change OTP",
+                  "request": {
+                    "method": "POST",
+                    "header": [{ "key": "Content-Type", "value": "application/json" }],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"phone\": \"{{newPhone}}\",\n  \"phoneCountryCode\": \"{{userPhoneCountryCode}}\",\n  \"otp\": \"{{userOtp}}\"\n}"
+                    },
+                    "url": "{{baseUrl}}/user/auth/profile/phone/otp/verify"
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "if (pm.response.code === 200) {",
+                          "  pm.collectionVariables.set('userPhone', pm.collectionVariables.get('newPhone'));",
+                          "}"
+                        ]
+                      }
+                    }
+                  ],
+                  "response": []
+                }
+              ]
+            },
+            {
+              "name": "Change WhatsApp (OTP)",
+              "item": [
+                {
+                  "name": "Send WhatsApp Change OTP",
+                  "request": {
+                    "method": "POST",
+                    "header": [{ "key": "Content-Type", "value": "application/json" }],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"whatsappPhone\": \"{{newWhatsapp}}\",\n  \"whatsappCountryCode\": \"{{userPhoneCountryCode}}\"\n}"
+                    },
+                    "url": "{{baseUrl}}/user/auth/profile/whatsapp/otp/send",
+                    "description": "Required when changing WhatsApp to a different number. PATCH /me rejects unverified WhatsApp number changes."
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "const json = pm.response.json();",
+                          "if (json.debugOtp) pm.collectionVariables.set('userOtp', String(json.debugOtp));"
+                        ]
+                      }
+                    }
+                  ],
+                  "response": []
+                },
+                {
+                  "name": "Verify WhatsApp Change OTP",
+                  "request": {
+                    "method": "POST",
+                    "header": [{ "key": "Content-Type", "value": "application/json" }],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"whatsappPhone\": \"{{newWhatsapp}}\",\n  \"whatsappCountryCode\": \"{{userPhoneCountryCode}}\",\n  \"otp\": \"{{userOtp}}\"\n}"
+                    },
+                    "url": "{{baseUrl}}/user/auth/profile/whatsapp/otp/verify"
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "if (pm.response.code === 200) {",
+                          "  pm.collectionVariables.set('userWhatsapp', pm.collectionVariables.get('newWhatsapp'));",
+                          "}"
+                        ]
+                      }
+                    }
+                  ],
+                  "response": []
+                }
+              ]
             }
           ]
         },
@@ -382,7 +544,7 @@
                     "type": "text/javascript",
                     "exec": [
                       "const json = pm.response.json();",
-                      "if (json.debugOtp) pm.collectionVariables.set('userOtp', json.debugOtp);"
+                      "if (json.debugOtp) pm.collectionVariables.set('userOtp', String(json.debugOtp));"
                     ]
                   }
                 }
@@ -562,7 +724,7 @@
     },
     {
       "name": "Consultancy Payment",
-      "description": "Checkout, Razorpay/mock payment, and transaction history.",
+      "description": "Checkout, Razorpay/mock payment, and transaction history. Optional referral code applies coach discount when valid.\n\nManual development flow requires `NODE_ENV=development`, `MOCK_PAYMENTS=true`, and `AUTO_CONFIRM_MOCK_PAYMENT=false`; restart Backend after changing environment values. Run Create Payment Order, then Verify Payment (mock dev).",
       "item": [
         {
           "name": "Checkout Preview",
@@ -570,10 +732,10 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/user/consultancy-payment/checkout-preview?referralCode=",
+              "raw": "{{baseUrl}}/user/consultancy-payment/checkout-preview?referralCode={{referralCode}}",
               "host": ["{{baseUrl}}"],
               "path": ["user", "consultancy-payment", "checkout-preview"],
-              "query": [{ "key": "referralCode", "value": "", "description": "Optional valid referral code" }]
+              "query": [{ "key": "referralCode", "value": "{{referralCode}}", "description": "Optional valid referral code" }]
             }
           },
           "response": []
@@ -592,6 +754,10 @@
                   "  const orderId = json?.data?.payment?.orderId;",
                   "  if (txnId) pm.collectionVariables.set('transactionId', txnId);",
                   "  if (orderId) pm.collectionVariables.set('razorpayOrderId', orderId);",
+                  "  pm.test('Development mock order returned', function () {",
+                  "    pm.expect(json?.data?.payment?.mockPayment).to.eql(true);",
+                  "    pm.expect(orderId).to.match(/^order_mock_/);",
+                  "  });",
                   "}"
                 ]
               }
@@ -602,7 +768,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"healthConcernId\": \"PASTE_HEALTH_CONCERN_UUID\",\n  \"referralCode\": \"\",\n  \"paymentMethod\": \"upi\"\n}"
+              "raw": "{\n  \"healthConcernId\": \"{{primaryHealthConcernId}}\",\n  \"referralCode\": \"{{referralCode}}\",\n  \"paymentMethod\": \"upi\"\n}"
             },
             "url": "{{baseUrl}}/user/consultancy-payment/orders"
           },
@@ -618,7 +784,7 @@
               "raw": "{\n  \"transactionId\": \"{{transactionId}}\",\n  \"razorpay_order_id\": \"{{razorpayOrderId}}\",\n  \"razorpay_payment_id\": \"pay_mock_test\",\n  \"razorpay_signature\": \"mock\"\n}"
             },
             "url": "{{baseUrl}}/user/consultancy-payment/verify",
-            "description": "In dev without Razorpay, mock orders verify with order id starting with order_mock_."
+            "description": "Manual development confirmation. Requires `NODE_ENV=development`, `MOCK_PAYMENTS=true`, and `AUTO_CONFIRM_MOCK_PAYMENT=false`. Uses the transaction/order ids saved by Create Payment Order. The order id must start with `order_mock_`."
           },
           "response": []
         },
@@ -637,6 +803,16 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/user/consultancy-payment/transactions/{{transactionId}}"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Invoice PDF",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/user/consultancy-payment/transactions/{{transactionId}}/invoice",
+            "description": "Returns invoice PDF for a paid consultancy transaction."
           },
           "response": []
         }
@@ -704,7 +880,7 @@
     },
     {
       "name": "Public (App)",
-      "description": "Unauthenticated reads used by the mobile app.",
+      "description": "Unauthenticated reads used by the mobile app (`/api/public` and `/api/public/misc`).",
       "auth": { "type": "noauth" },
       "item": [
         {
@@ -735,8 +911,64 @@
               "response": []
             },
             {
+              "name": "Config Dropdowns (all active)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/public/misc/config-dropdowns",
+                "description": "Dynamic dropdown lists (program categories, health concerns options, etc.)."
+              },
+              "response": []
+            },
+            {
+              "name": "Config Dropdown by Slug",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/public/misc/config-dropdowns/program-category"
+              },
+              "response": []
+            },
+            {
+              "name": "Validate Referral Code",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/public/misc/referral/validate?referralCode={{referralCode}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["public", "misc", "referral", "validate"],
+                  "query": [
+                    { "key": "referralCode", "value": "{{referralCode}}", "description": "Also accepts referral_code or ref" }
+                  ]
+                },
+                "description": "Returns `{ valid, referralCode }`. Use before register / consultancy checkout."
+              },
+              "response": []
+            },
+            {
               "name": "Health Concerns",
               "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/public/misc/health-concerns" },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "  const json = pm.response.json();",
+                      "  const rows = json.healthConcerns || json.data || json.items || [];",
+                      "  const first = Array.isArray(rows) ? rows[0] : null;",
+                      "  const id = first && (first.id || first._id);",
+                      "  if (id) {",
+                      "    pm.collectionVariables.set('primaryHealthConcernId', String(id));",
+                      "    console.log('Saved primaryHealthConcernId', id);",
+                      "  }",
+                      "}"
+                    ]
+                  }
+                }
+              ],
               "response": []
             },
             {
@@ -770,8 +1002,78 @@
               "response": []
             },
             {
+              "name": "Program Testimonials",
+              "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/public/misc/program-testimonials" },
+              "response": []
+            },
+            {
+              "name": "Real People Testimonials",
+              "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/public/misc/real-people-testimonials" },
+              "response": []
+            },
+            {
               "name": "Video Testimonials",
               "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/public/misc/video-testimonials" },
+              "response": []
+            },
+            {
+              "name": "Cofounder Message",
+              "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/public/misc/cofounder-message" },
+              "response": []
+            },
+            {
+              "name": "Wellness Coaches",
+              "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/public/misc/wellness-coaches" },
+              "response": []
+            },
+            {
+              "name": "Assistant Wellness Coaches",
+              "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/public/misc/assistant-wellness-coaches" },
+              "response": []
+            },
+            {
+              "name": "Leadership Notes",
+              "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/public/misc/leadership-notes" },
+              "response": []
+            },
+            {
+              "name": "Birthday Posts",
+              "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/public/misc/birthday-posts" },
+              "response": []
+            },
+            {
+              "name": "Monthly Champions",
+              "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/public/misc/monthly-champions" },
+              "response": []
+            },
+            {
+              "name": "Test Catalog",
+              "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/public/misc/test-catalog" },
+              "response": []
+            },
+            {
+              "name": "Diet Plan Catalog",
+              "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/public/misc/diet-plan-catalog" },
+              "response": []
+            },
+            {
+              "name": "Wellness Prescription Catalog",
+              "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/public/misc/wellness-prescription-catalog" },
+              "response": []
+            },
+            {
+              "name": "Physical Exercises",
+              "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/public/misc/physical-exercises" },
+              "response": []
+            },
+            {
+              "name": "Mental Wellbeing",
+              "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/public/misc/mental-wellbeing" },
+              "response": []
+            },
+            {
+              "name": "Supplements",
+              "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/public/misc/supplements" },
               "response": []
             },
             {
@@ -780,6 +1082,19 @@
                 "method": "GET",
                 "header": [],
                 "url": "{{baseUrl}}/public/misc/pages/about-us"
+              },
+              "response": []
+            },
+            {
+              "name": "Submit Contact Inquiry",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"{{userName}}\",\n  \"email\": \"{{userEmail}}\",\n  \"phone\": \"{{userPhone}}\",\n  \"phoneCountryCode\": \"{{userPhoneCountryCode}}\",\n  \"message\": \"I would like more information about the Heal program.\"\n}"
+                },
+                "url": "{{baseUrl}}/public/misc/contact-inquiries"
               },
               "response": []
             }

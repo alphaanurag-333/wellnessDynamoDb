@@ -97,6 +97,8 @@ async function createConsultancyTransaction(payload) {
     fyEndsAt: payload.fyEndsAt || null,
     paidAt: payload.paidAt || null,
     failureReason: payload.failureReason || null,
+    checkoutOffer: Boolean(payload.checkoutOffer),
+    linkExpiresAt: payload.linkExpiresAt || null,
     createdAt: now,
     updatedAt: now,
   };

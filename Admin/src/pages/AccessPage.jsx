@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Navigate, useOutletContext } from "react-router-dom";
+import { Navigate, useNavigate, useOutletContext } from "react-router-dom";
 import { OrangeButton, PageHeader, PillTabs, TableScroll, ListPagination } from "../components/shared.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
+import { staffInitials } from "../data/teamsData.js";
 import {
   createAccessRole,
   deleteAccessRole,
@@ -741,11 +742,36 @@ function RolesPermissionsTab({ onToast }) {
   );
 }
 
+function memberRoleMeta(roleKey, rolesByKey) {
+  const live = rolesByKey?.[roleKey];
+  const fallback = ROLE_META[roleKey] || ROLE_META.admin;
+  return {
+    name: live?.name || fallback.name,
+    color: live?.color || fallback.color,
+    bg: live?.bg || fallback.bg,
+    bd: live?.bd || fallback.bd,
+  };
+}
+
+function effectivePermSubtext(member) {
+  const bundles = Number(member.policyBundleCount) || 0;
+  if (bundles === 1) return "1 policy bundle applied";
+  if (bundles > 1) return `${bundles} policy bundles applied`;
+  if (member.hasOverrides) return "personal overrides";
+  return "role baseline only";
+}
+
 function MembersTab({ onToast }) {
+  const navigate = useNavigate();
   const PAGE_SIZE = 20;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [members, setMembers] = useState([]);
+  const [roleOptions, setRoleOptions] = useState([]);
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
+  const [baseTotal, setBaseTotal] = useState(0);
   const [pagination, setPagination] = useState({
     page: 1,
     limit: PAGE_SIZE,
@@ -755,6 +781,54 @@ function MembersTab({ onToast }) {
   const [page, setPage] = useState(1);
   const [busyId, setBusyId] = useState(null);
 
+  const rolesByKey = useMemo(() => {
+    const map = {};
+    for (const r of roleOptions) {
+      const key = r.roleKey || r.id;
+      if (key) map[key] = r;
+    }
+    return map;
+  }, [roleOptions]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(searchInput.trim()), 280);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, roleFilter]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const roles = await fetchAccessRoles();
+        if (!cancelled) setRoleOptions(Array.isArray(roles) ? roles : []);
+      } catch {
+        if (!cancelled) setRoleOptions([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { pagination: p } = await fetchAccessMembers({ page: 1, limit: 1 });
+        if (!cancelled) setBaseTotal(Number(p?.total) || 0);
+      } catch {
+        if (!cancelled) setBaseTotal(0);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const load = useCallback(async (nextPage = page) => {
     setLoading(true);
     setError("");
@@ -762,6 +836,8 @@ function MembersTab({ onToast }) {
       const { members: rows, pagination: nextPagination } = await fetchAccessMembers({
         page: nextPage,
         limit: PAGE_SIZE,
+        search: search || undefined,
+        roleKey: roleFilter || undefined,
       });
       setMembers(rows || []);
       setPagination({
@@ -770,6 +846,9 @@ function MembersTab({ onToast }) {
         total: Number(nextPagination?.total) || 0,
         pages: Math.max(1, Number(nextPagination?.pages) || 1),
       });
+      if (!search && !roleFilter) {
+        setBaseTotal(Number(nextPagination?.total) || 0);
+      }
     } catch (err) {
       setError(err?.message || "Failed to load members");
       setMembers([]);
@@ -777,7 +856,7 @@ function MembersTab({ onToast }) {
     } finally {
       setLoading(false);
     }
-  }, [page]);
+  }, [page, search, roleFilter]);
 
   useEffect(() => {
     load(page);
@@ -787,6 +866,18 @@ function MembersTab({ onToast }) {
     if (loading || error) return;
     if (page > pagination.pages) setPage(pagination.pages);
   }, [error, loading, page, pagination.pages]);
+
+  const assignableRoles = useMemo(() => {
+    if (roleOptions.length) {
+      return roleOptions
+        .map((r) => ({
+          id: r.roleKey || r.id,
+          name: r.name || ROLE_META[r.roleKey]?.name || r.roleKey || r.id,
+        }))
+        .filter((r) => r.id);
+    }
+    return ROLE_ORDER.map((id) => ({ id, name: ROLE_META[id]?.name || id }));
+  }, [roleOptions]);
 
   async function handleRoleChange(member, roleKey) {
     if (member.isSuperAdmin) {
@@ -806,87 +897,165 @@ function MembersTab({ onToast }) {
     }
   }
 
-  if (loading) return <p className="ua-page-head__sub">Loading members…</p>;
-  if (error) {
-    return (
-      <div className="ua-section-bar">
-        <span>{error}</span>
-        <OrangeButton onClick={() => load(page)}>Retry</OrangeButton>
-      </div>
-    );
+  function openPermissions(memberId) {
+    navigate(`${UPDATED_ADMIN_PATHS.teams}/${memberId}?focus=permissions`);
   }
+
+  const totalLabel = `${pagination.total} of ${baseTotal || pagination.total} members`;
 
   return (
     <>
-    <TableScroll>
-      <div className="ua-table-card">
-        <div className="ua-table ua-table--teams ua-table__head">
-          <div>Name</div>
-          <div>Role</div>
-          <div>Meta</div>
-          <div>Status</div>
+      <div className="ua-ac-members-toolbar">
+        <div className="ua-search-wrap">
+          <svg className="ua-search-wrap__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+          <input
+            className="ua-search-wrap__input"
+            placeholder="Search a member by name or email"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            aria-label="Search members"
+          />
         </div>
-        {members.map((m) => {
-          const roleKey = m.primaryRoleKey || "admin";
-          const meta = ROLE_META[roleKey] || ROLE_META.admin;
-          return (
-            <div key={m.id} className="ua-table ua-table--teams ua-table__row">
-              <div>
-                <div className="ua-user-cell__name">{m.name}</div>
-                <div className="ua-user-cell__sub">{m.email}</div>
-              </div>
-              <div>
-                {m.isSuperAdmin ? (
-                  <span
-                    className="ua-role-chip"
-                    style={{ background: meta.bg, color: meta.color, borderColor: meta.bd }}
-                  >
-                    {meta.name}
-                  </span>
-                ) : (
-                  <select
-                    className="header__select"
-                    value={roleKey}
-                    disabled={busyId === m.id}
-                    onChange={(e) => handleRoleChange(m, e.target.value)}
-                    aria-label={`Role for ${m.name}`}
-                  >
-                    {ROLE_ORDER.map((id) => (
-                      <option key={id} value={id}>
-                        {ROLE_META[id]?.name || id}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-              <div className="ua-table__load">
-                {m.meta}
-                {typeof m.grantedCount === "number" ? ` · ${m.grantedCount}/${m.totalSlots}` : ""}
-              </div>
-              <div>
-                <span
-                  className={`ua-status-pill${
-                    String(m.status).toLowerCase() === "pending"
-                      ? " ua-status-pill--amber"
-                      : " ua-status-pill--green"
-                  }`}
-                >
-                  {m.status === "active" ? "Active" : m.status}
-                </span>
-              </div>
-            </div>
-          );
-        })}
+        <select
+          className="ua-ac-members-toolbar__select"
+          value={roleFilter}
+          onChange={(e) => setRoleFilter(e.target.value)}
+          aria-label="Filter by role"
+        >
+          <option value="">All roles</option>
+          {assignableRoles.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.name}
+            </option>
+          ))}
+        </select>
+        <div className="ua-ac-members-toolbar__count">{totalLabel}</div>
       </div>
-    </TableScroll>
-    <ListPagination
-      page={page}
-      pages={pagination.pages}
-      total={pagination.total}
-      pageSize={PAGE_SIZE}
-      onPageChange={setPage}
-      label="Access members pagination"
-    />
+
+      {loading ? <p className="ua-page-head__sub">Loading members…</p> : null}
+      {error ? (
+        <div className="ua-section-bar">
+          <span>{error}</span>
+          <OrangeButton onClick={() => load(page)}>Retry</OrangeButton>
+        </div>
+      ) : null}
+
+      {!loading && !error ? (
+        <TableScroll>
+          <div className="ua-table-card">
+            <div className="ua-table ua-table--ac-members ua-table__head">
+              <div>Member</div>
+              <div>Assigned role</div>
+              <div>Effective permissions</div>
+              <div>Overrides</div>
+              <div>Fine-tune</div>
+            </div>
+            {members.length === 0 ? (
+              <div className="ua-table ua-table--ac-members ua-table__row">
+                <div className="ua-table__muted" style={{ gridColumn: "1 / -1" }}>
+                  No members match this filter.
+                </div>
+              </div>
+            ) : null}
+            {members.map((m) => {
+              const roleKey = m.primaryRoleKey || "admin";
+              const meta = memberRoleMeta(roleKey, rolesByKey);
+              const granted = typeof m.grantedCount === "number" ? m.grantedCount : 0;
+              const total = typeof m.totalSlots === "number" && m.totalSlots > 0 ? m.totalSlots : TOTAL_PERM_SLOTS;
+              const pct = Math.max(0, Math.min(100, Math.round((granted / total) * 100)));
+              return (
+                <div key={m.id} className="ua-table ua-table--ac-members ua-table__row">
+                  <div className="ua-user-cell">
+                    <span
+                      className="ua-avatar ua-avatar--staff"
+                      style={{
+                        background: meta.bg,
+                        color: meta.color,
+                        borderColor: meta.bd,
+                      }}
+                    >
+                      {staffInitials(m.name)}
+                    </span>
+                    <div className="ua-user-cell__meta">
+                      <div className="ua-user-cell__name">{m.name}</div>
+                      <div className="ua-user-cell__sub ua-user-cell__email">{m.email}</div>
+                    </div>
+                  </div>
+                  <div>
+                    {m.isSuperAdmin ? (
+                      <span
+                        className="ua-role-chip"
+                        style={{ background: meta.bg, color: meta.color, borderColor: meta.bd }}
+                      >
+                        {meta.name}
+                      </span>
+                    ) : (
+                      <select
+                        className="ua-ac-role-select"
+                        value={roleKey}
+                        disabled={busyId === m.id}
+                        onChange={(e) => handleRoleChange(m, e.target.value)}
+                        aria-label={`Role for ${m.name}`}
+                      >
+                        {!assignableRoles.some((r) => r.id === roleKey) ? (
+                          <option value={roleKey}>{meta.name}</option>
+                        ) : null}
+                        {assignableRoles.map((r) => (
+                          <option key={r.id} value={r.id}>
+                            {r.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                  <div>
+                    <div className="ua-ac-eff">
+                      <div className="ua-ac-eff__count">
+                        {granted}/{total}
+                      </div>
+                      <div className="ua-ac-eff__track" aria-hidden="true">
+                        <div
+                          className="ua-ac-eff__fill"
+                          style={{ width: `${pct}%`, background: meta.color }}
+                        />
+                      </div>
+                      <div className="ua-ac-eff__sub">{effectivePermSubtext(m)}</div>
+                    </div>
+                  </div>
+                  <div>
+                    <span className={`ua-ac-override${m.hasOverrides ? " ua-ac-override--custom" : ""}`}>
+                      {m.hasOverrides ? "personal" : "role default"}
+                    </span>
+                  </div>
+                  <div>
+                    <button
+                      type="button"
+                      className="ua-ac-fine-tune"
+                      onClick={() => openPermissions(m.id)}
+                    >
+                      Permissions ›
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </TableScroll>
+      ) : null}
+
+      {!loading && !error ? (
+        <ListPagination
+          page={page}
+          pages={pagination.pages}
+          total={pagination.total}
+          pageSize={PAGE_SIZE}
+          onPageChange={setPage}
+          label="Access members pagination"
+        />
+      ) : null}
     </>
   );
 }

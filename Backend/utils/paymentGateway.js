@@ -71,9 +71,11 @@ function verifyMockPayment({ orderId }) {
 }
 
 function shouldUseMockPayments(gateway) {
-  if (!gateway) return true;
+  // Never fall back to mock payments in production, even when gateway
+  // configuration is missing or MOCK_PAYMENTS was set accidentally.
+  if (config.nodeEnv === "production") return false;
   if (config.mockPayments === true) return true;
-  return config.nodeEnv !== "production" && process.env.MOCK_PAYMENTS === "true";
+  return !gateway;
 }
 
 module.exports = {

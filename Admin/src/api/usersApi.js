@@ -505,6 +505,22 @@ export async function fetchUserAtAGlance(id) {
   }
 }
 
+export async function fetchUserBodyAnalytics(id) {
+  try {
+    const { data } = await api.get(
+      `/account/users/${encodeURIComponent(id)}/body-analytics`,
+      { headers: authHeader() },
+    );
+    return data.bodyAnalytics || {
+      measurements: [],
+      metabolicMetrics: [],
+      photos: [],
+    };
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function updateUserStatus(id, status) {
   try {
     const { data } = await api.patch(
