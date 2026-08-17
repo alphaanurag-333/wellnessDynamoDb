@@ -1,0 +1,1961 @@
+{
+  "info": {
+    "_postman_id": "wellness-seed-user-data-for-admin",
+    "name": "Wellness Dynamo — Seed User Data for Admin",
+    "description": "Feed one example client through Postman (no mobile app) so the Admin client profile has live data.\n\nImport this collection **and** `Wellness-API.postman_environment.json`. Select **Wellness API — Local**.\n\n**Run order (folder 0 → 9).** Tokens and IDs are saved automatically.\n\n### Example client (matches Admin Personal Details)\n- Name: Madhupriya Postman\n- Email: `{{userEmail}}` (default `postman.madhupriya@example.com`)\n- Phone: `+91 9000010000`\n- DOB: 12 Mar 1991\n- Gender: female\n- Address: Flat 101, Green Meadows, Baner Road, Pune, Maharashtra 411000\n- Dietary preference: vegetarian\n- Wellness journey for: self\n- Primary concern: Fat Loss (captured from public health-concerns)\n- Password: `User@12345`\n\n### Admin login (seeded staff)\n- Email: `admin@irwellness.local`\n- Password: `Admin@12345`\n- Requires `npm run seed:staff-accounts -- --confirm` in Backend.\n\n### What Admin actually shows from APIs\nLive: Users list, Personal Details, paid-onboarding status, At a Glance (metrics, metabolic snapshot, prakriti, lifestyle, supplements, weight).\nStill fixture/demo in Admin UI (data is still stored if you POST it): Body Analytics page, Internal Parameters page, Food page, BMS charts, Nutritions page, Health Progress page, Reflection page, Prescription, Presentable, Energy Exchange, Protocol, Gut Reset.\n\nOpen the created user at `/users/{{userId}}` (UUID). Numeric `/users/1` is mock-only.\n\nDev OTP: set `EXPOSE_OTP_IN_RESPONSE=true` so Send OTP responses include `debugOtp`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
+      "key": "adminToken",
+      "value": ""
+    },
+    {
+      "key": "adminRefreshToken",
+      "value": ""
+    },
+    {
+      "key": "adminEmail",
+      "value": "admin@irwellness.local"
+    },
+    {
+      "key": "adminPassword",
+      "value": "Admin@12345"
+    },
+    {
+      "key": "userId",
+      "value": ""
+    },
+    {
+      "key": "userName",
+      "value": "Madhupriya Postman"
+    },
+    {
+      "key": "userEmail",
+      "value": "postman.madhupriya@example.com"
+    },
+    {
+      "key": "userPhone",
+      "value": "9000010000"
+    },
+    {
+      "key": "userPhoneCountryCode",
+      "value": "+91"
+    },
+    {
+      "key": "userWhatsapp",
+      "value": "9000020000"
+    },
+    {
+      "key": "userPassword",
+      "value": "User@12345"
+    },
+    {
+      "key": "userOtp",
+      "value": "123456"
+    },
+    {
+      "key": "todayDate",
+      "value": "2026-08-17"
+    },
+    {
+      "key": "healthConcernId",
+      "value": ""
+    },
+    {
+      "key": "coachId",
+      "value": ""
+    },
+    {
+      "key": "supplementId",
+      "value": ""
+    },
+    {
+      "key": "launchFocusAreaId",
+      "value": ""
+    },
+    {
+      "key": "medicalAnswersJson",
+      "value": "[]"
+    },
+    {
+      "key": "mealLogId",
+      "value": ""
+    },
+    {
+      "key": "reminderId",
+      "value": ""
+    },
+    {
+      "key": "fcmId",
+      "value": "postman-sample-fcm-token"
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Health",
+      "description": "Confirm the API is running before seeding.",
+      "item": [
+        {
+          "name": "Server Health",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health",
+            "description": "Expected `{ ok: true }`."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "1. Catalog lookups (no auth)",
+      "description": "Capture IDs used later. Run Health Concerns and Supplements before register / dosage.",
+      "item": [
+        {
+          "name": "List Health Concerns",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/public/misc/health-concerns?page=1&limit=50",
+            "description": "Saves `healthConcernId`. Prefers a concern titled Fat Loss (Admin example goal)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const list = json.healthConcerns || json.data?.healthConcerns || [];",
+                  "const fat = list.find((x) => /fat\\s*loss/i.test(String(x.title || '')));",
+                  "const pick = fat || list[0];",
+                  "if (pick) pm.collectionVariables.set('healthConcernId', String(pick.id || pick._id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Active Supplements",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/public/misc/supplements",
+            "description": "Saves `supplementId` for staff dosage assignment (At a Glance supplements)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const list = json.supplements || json.data?.supplements || json.data || [];",
+                  "const rows = Array.isArray(list) ? list : [];",
+                  "const pick = rows[0];",
+                  "if (pick) pm.collectionVariables.set('supplementId', String(pick.id || pick._id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "App Config",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/public/app-config"
+          },
+          "response": []
+        },
+        {
+          "name": "Validate Referral Code (optional)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/public/misc/referral/validate?code=IRW-WC-001"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Staff login (Admin)",
+      "description": "Uses `/account/auth` (legacy `/admin/auth` is removed). Saves `adminToken`.",
+      "item": [
+        {
+          "name": "Admin Login",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/account/auth/login",
+            "description": "Example: admin@irwellness.local / Admin@12345 after staff seed.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\",\n  \"activeRole\": \"admin\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) return;",
+                  "const json = pm.response.json();",
+                  "const token = json.accessToken || json.data?.accessToken;",
+                  "const refresh = json.refreshToken || json.data?.refreshToken;",
+                  "if (token) {",
+                  "  pm.collectionVariables.set('adminToken', token);",
+                  "  pm.environment.set('adminToken', token);",
+                  "}",
+                  "if (refresh) {",
+                  "  pm.collectionVariables.set('adminRefreshToken', refresh);",
+                  "  pm.environment.set('adminRefreshToken', refresh);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Staff Me",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/account/auth/me"
+          },
+          "response": []
+        },
+        {
+          "name": "List Wellness Coaches",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/account/wellness-coaches?page=1&limit=20&status=active",
+            "description": "Saves `coachId` (first coach, prefers Anita)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const list = json.wellnessCoaches || [];",
+                  "const anita = list.find((x) => /anita/i.test(String(x.name || '')));",
+                  "const pick = anita || list[0];",
+                  "if (pick) pm.collectionVariables.set('coachId', String(pick.id || pick._id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Users (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/account/users?page=1&limit=20&search={{userEmail}}",
+            "description": "Same endpoint Admin Users page calls."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Register example user",
+      "description": "Creates a SEEK client. `primaryHealthConcern` is required. OTP is sent to WhatsApp/phone.",
+      "item": [
+        {
+          "name": "Send Registration OTP",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/auth/register/otp/send",
+            "description": "Must use the same email + WhatsApp delivery number as Register. OTP is keyed by WhatsApp phone when whatsappSameAsMobile is false. In local/dev with EXPOSE_OTP_IN_RESPONSE=true, `debugOtp` is auto-saved to `userOtp`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"phone\": \"{{userPhone}}\",\n  \"phoneCountryCode\": \"{{userPhoneCountryCode}}\",\n  \"whatsappSameAsMobile\": false,\n  \"whatsappCountryCode\": \"+91\",\n  \"whatsappPhone\": \"{{userWhatsapp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.debugOtp) pm.collectionVariables.set('userOtp', String(json.debugOtp));",
+                  "if (!json.debugOtp) console.warn('No debugOtp — set EXPOSE_OTP_IN_RESPONSE=true or paste OTP into userOtp');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register (full example JSON)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/auth/register",
+            "description": "Register fields stored on User. Address / diet / journey are filled in paid-onboarding profile next. Gender values: male, female, other, boy, girl, guess.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"otp\": \"{{userOtp}}\",\n  \"name\": \"{{userName}}\",\n  \"email\": \"{{userEmail}}\",\n  \"phone\": \"{{userPhone}}\",\n  \"phoneCountryCode\": \"{{userPhoneCountryCode}}\",\n  \"password\": \"{{userPassword}}\",\n  \"gender\": \"female\",\n  \"dob\": \"1991-03-12\",\n  \"country\": \"India\",\n  \"state\": \"Maharashtra\",\n  \"city\": \"Pune\",\n  \"primaryHealthConcern\": \"{{healthConcernId}}\",\n  \"termsAccepted\": true,\n  \"whatsappSameAsMobile\": false,\n  \"whatsappCountryCode\": \"+91\",\n  \"whatsappPhone\": \"{{userWhatsapp}}\",\n  \"fcm_id\": \"{{fcmId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.debugOtp) pm.collectionVariables.set('userOtp', String(json.debugOtp));",
+                  "const token = json.accessToken || json.data?.accessToken;",
+                  "const refresh = json.refreshToken || json.data?.refreshToken;",
+                  "const user = json.user || json.data?.user || {};",
+                  "if (token) pm.collectionVariables.set('accessToken', token);",
+                  "if (refresh) pm.collectionVariables.set('refreshToken', refresh);",
+                  "const id = user.id || user._id || json.userId;",
+                  "if (id) pm.collectionVariables.set('userId', String(id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login with Password (email)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/auth/login/password",
+            "description": "Use if the user already exists.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\",\n  \"fcm_id\": \"{{fcmId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.debugOtp) pm.collectionVariables.set('userOtp', String(json.debugOtp));",
+                  "const token = json.accessToken || json.data?.accessToken;",
+                  "const refresh = json.refreshToken || json.data?.refreshToken;",
+                  "const user = json.user || json.data?.user || {};",
+                  "if (token) pm.collectionVariables.set('accessToken', token);",
+                  "if (refresh) pm.collectionVariables.set('refreshToken', refresh);",
+                  "const id = user.id || user._id || json.userId;",
+                  "if (id) pm.collectionVariables.set('userId', String(id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get My Profile",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/user/auth/me",
+            "description": "Confirms tokens. Saves `userId`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const user = json.user || json.data?.user || {};",
+                  "const id = user.id || user._id;",
+                  "if (id) pm.collectionVariables.set('userId', String(id));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Convert to Heal + assign coach",
+      "description": "Heal tier is required for onboarding, meals, reflection, metabolic, health-progress. Assign a WC so meal logs and dosages have a coach hierarchy.",
+      "item": [
+        {
+          "name": "Convert User to Heal",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/account/users/{{userId}}/convert-to-heal",
+            "description": "Optional `referralCode` / `catalogProgramId`. After this, Admin list shows HEAL (Seek to Heal).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"referralCode\": \"\",\n  \"catalogProgramId\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const user = json.user || json.data?.user || {};",
+                  "const id = user.id || user._id;",
+                  "if (id) pm.collectionVariables.set('userId', String(id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Assign Wellness Coach",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/account/users/{{userId}}/assign-coach",
+            "description": "`assignedCoachType`: wellness_coach | assistant_wellness_coach. For AWC also send parentCoachId.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assignedCoachId\": \"{{coachId}}\",\n  \"assignedCoachType\": \"wellness_coach\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const user = json.user || json.data?.user || {};",
+                  "const id = user.id || user._id;",
+                  "if (id) pm.collectionVariables.set('userId', String(id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Enable Health Progress features",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/account/heal-users/{{userId}}/health-progress-settings",
+            "description": "User POSTs to /user/health-progress/* are blocked until these flags are on. menstrualCycle only sticks for female users.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weightPic\": true,\n  \"glucose\": true,\n  \"bloodPressure\": true,\n  \"menstrualCycle\": true,\n  \"conditionComparison\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Enable Daily Reflection activities",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/account/heal-users/{{userId}}/daily-reflection-settings",
+            "description": "Enables At a Glance meditation / pranayam / exercise from DRF logs.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"activities\": {\n    \"yogaNamaskar\": {\n      \"enabled\": true,\n      \"goal\": 12\n    },\n    \"suryaNamaskar\": {\n      \"enabled\": true,\n      \"goal\": 12\n    },\n    \"bhramari\": {\n      \"enabled\": true,\n      \"goal\": 10\n    },\n    \"meditation\": {\n      \"enabled\": true,\n      \"goal\": 15\n    },\n    \"nadiSuddhi\": {\n      \"enabled\": true,\n      \"goal\": 10\n    },\n    \"lnb\": {\n      \"enabled\": true,\n      \"goal\": 10\n    },\n    \"pranayam\": {\n      \"enabled\": true,\n      \"goal\": 10\n    },\n    \"blessingsFromSun\": {\n      \"enabled\": true,\n      \"goal\": 10\n    },\n    \"physicalExercise\": {\n      \"enabled\": true,\n      \"goal\": 30\n    },\n    \"grounding\": {\n      \"enabled\": true,\n      \"goal\": 10\n    },\n    \"gratitudeJournal\": {\n      \"enabled\": true,\n      \"goal\": 1\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. Paid onboarding (fills Personal Details + onboarding grid)",
+      "description": "Maps to Admin paid-onboarding keys: personalDetails, profileSetup, bodyMeasurement, progressPhotos180, medicalConditions, internalParameter, launch.",
+      "item": [
+        {
+          "name": "Get Onboarding State",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/user/paid-onboarding/state"
+          },
+          "response": []
+        },
+        {
+          "name": "Submit Profile (personal + diet + address)",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/paid-onboarding/profile",
+            "description": "dietaryPreference: vegetarian | eggetarian | vegan | non_vegetarian | jain. wellnessJourneyFor is an array of strings. Marks personalDetails + profileSetup done.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{userName}}\",\n  \"dob\": \"1991-03-12\",\n  \"gender\": \"female\",\n  \"country\": \"India\",\n  \"state\": \"Maharashtra\",\n  \"city\": \"Pune\",\n  \"addressLine1\": \"Flat 101, Green Meadows\",\n  \"addressLine2\": \"Baner Road\",\n  \"pincode\": \"411000\",\n  \"dietaryPreference\": \"vegetarian\",\n  \"wellnessJourneyFor\": [\n    \"self\"\n  ],\n  \"whatsappSameAsMobile\": false,\n  \"whatsappCountryCode\": \"+91\",\n  \"whatsappPhone\": \"{{userWhatsapp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Submit Body Measurements",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/paid-onboarding/body-measurements",
+            "description": "Feeds At a Glance metabolic snapshot (height/weight). activityLevel: sedentary | lightly_active | moderately_active | highly_active. Optional multipart field `weight_pic`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"heightCm\": 163,\n  \"heightUnit\": \"cm\",\n  \"weightKg\": 68,\n  \"weightUnit\": \"kg\",\n  \"neckCm\": 32,\n  \"shoulderCm\": 38,\n  \"chestCm\": 90,\n  \"waistCm\": 78,\n  \"hipCm\": 98,\n  \"thighsCm\": 54,\n  \"activityLevel\": \"moderately_active\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Skip Progress Photos (no files)",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/paid-onboarding/skip-step",
+            "description": "Skippable steps: bodyMeasurement, progressPhotos180, medicalConditions.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"step\": \"progressPhotos180\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Upload Progress Photos (optional files)",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/user/paid-onboarding/progress-photos",
+            "description": "Use instead of skip if you have 3 photos. Field names: front_pic, right_pic, left_pic.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "front_pic",
+                  "type": "file",
+                  "src": [],
+                  "description": "Required JPEG/PNG/WebP"
+                },
+                {
+                  "key": "right_pic",
+                  "type": "file",
+                  "src": [],
+                  "description": "Required"
+                },
+                {
+                  "key": "left_pic",
+                  "type": "file",
+                  "src": [],
+                  "description": "Required"
+                },
+                {
+                  "key": "heightCm",
+                  "value": "163",
+                  "type": "text"
+                },
+                {
+                  "key": "weightKg",
+                  "value": "68",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Medical Questions",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/user/paid-onboarding/medical-questions",
+            "description": "Builds `medicalAnswersJson` for the next request."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const questions = json.data?.questions || json.questions || [];",
+                  "const answers = questions.map((q) => {",
+                  "  const type = String(q.answerType || 'text').toLowerCase();",
+                  "  if (type === 'yes_no') return { questionId: q.id, answer: false };",
+                  "  if (type === 'yes_no_text') return { questionId: q.id, answer: true, details: 'No current medication' };",
+                  "  if (type === 'date') return { questionId: q.id, date: '2020-01-15' };",
+                  "  return { questionId: q.id, text: 'No known issues' };",
+                  "});",
+                  "pm.collectionVariables.set('medicalAnswersJson', JSON.stringify(answers));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Submit Medical Conditions",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/paid-onboarding/medical-conditions",
+            "description": "Must include every active question. yes_no uses `answer` boolean; yes_no_text needs `details` when true; text uses `text`; date uses `date`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"answers\": {{medicalAnswersJson}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Upload Lab Report (internal parameters)",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/user/internal-parameters/reports",
+            "description": "Marks paidOnboardingStepStatus.internalParameter = done. Field name: file (PDF only).",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "Required PDF"
+                },
+                {
+                  "key": "reportDate",
+                  "value": "{{todayDate}}",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Complete LAUNCH onboarding step",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/paid-onboarding/launch/complete",
+            "description": "Marks launch done. Lifestyle score still needs a staff LAUNCH assessment (folder 8).",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "6. Daily tracking (At a Glance metrics)",
+      "description": "Water, steps, meals, daily reflection. Admin At a Glance reads the last ~5 days.",
+      "item": [
+        {
+          "name": "Set Water Goal (8 glasses)",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/water-tracking/goal",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"goalGlasses\": 8\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Set Water Day Count",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/water-tracking/day",
+            "description": "Example: 6 / 8 glasses (Admin water card).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{todayDate}}\",\n  \"glassCount\": 6\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Increment Water (+1 glass)",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/water-tracking/increment",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{todayDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Set Steps Goal",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/steps-tracking/goal",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"goalSteps\": 10000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Set Steps Day Count (manual)",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/steps-tracking/day",
+            "description": "Example: 9,400 / 10,000 (Admin steps card).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{todayDate}}\",\n  \"stepCount\": 9400\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Sync Steps (Health Connect example)",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/steps-tracking/sync",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"platform\": \"android\",\n  \"source\": \"health_connect\",\n  \"records\": [\n    {\n      \"date\": \"{{todayDate}}\",\n      \"platform\": \"android\",\n      \"source\": \"health_connect\",\n      \"stepCount\": 9400,\n      \"distanceMeters\": 7200,\n      \"caloriesKcal\": 280,\n      \"dataOrigin\": \"com.samsung.health\",\n      \"externalIds\": [\n        \"postman-steps-1\"\n      ],\n      \"syncedAt\": \"2026-08-17T09:15:00.000Z\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Log Meal (protein breakfast)",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/meal-tracking",
+            "description": "category: functional_juice | salad | meal | beverage | snacks | protein. Requires Heal + assigned coach. User logs get dummy macros server-side; still send example macros.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{todayDate}}\",\n  \"entryTime\": \"08:30\",\n  \"category\": \"meal\",\n  \"mealType\": \"First\",\n  \"description\": \"High-protein breakfast — paneer bhurji + 2 eggs\",\n  \"items\": [\n    {\n      \"name\": \"Paneer bhurji\",\n      \"quantityGm\": 120\n    },\n    {\n      \"name\": \"Eggs\",\n      \"quantityGm\": 100\n    }\n  ],\n  \"proteinGm\": 38,\n  \"fatsGm\": 22,\n  \"carbsGm\": 12,\n  \"caloriesKcal\": 420\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  const id = json.mealLog?.id || json.mealLog?._id;",
+                  "  if (id) pm.collectionVariables.set('mealLogId', String(id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Log Meal (protein snack)",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/meal-tracking",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{todayDate}}\",\n  \"entryTime\": \"16:00\",\n  \"category\": \"protein\",\n  \"mealType\": \"Snack\",\n  \"description\": \"Whey protein shake — 2 scoops\",\n  \"items\": [\n    {\n      \"name\": \"Whey isolate\",\n      \"quantityGm\": 50\n    }\n  ],\n  \"proteinGm\": 50,\n  \"fatsGm\": 2,\n  \"carbsGm\": 4,\n  \"caloriesKcal\": 230\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Daily Reflection Form",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/user/daily-reflection?date={{todayDate}}"
+          },
+          "response": []
+        },
+        {
+          "name": "Submit Daily Reflection",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/daily-reflection",
+            "description": "`honestConfirmed` must be true. Values are minutes/cycles per activity. Example matches Admin cards: meditation 15 min, pranayam 6 min, exercise 45 min.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{todayDate}}\",\n  \"honestConfirmed\": true,\n  \"gratitudeYes\": true,\n  \"activityValues\": {\n    \"yogaNamaskar\": 12,\n    \"suryaNamaskar\": 12,\n    \"bhramari\": 10,\n    \"meditation\": 15,\n    \"nadiSuddhi\": 10,\n    \"lnb\": 10,\n    \"pranayam\": 6,\n    \"blessingsFromSun\": 10,\n    \"physicalExercise\": 45,\n    \"grounding\": 10\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Record Plugged Headphones",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/daily-reflection/plugged-headphones",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"{{todayDate}}\",\n  \"pluggedHeadphones\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "7. Metabolic + health progress",
+      "description": "Body analytics snapshot + weight card on At a Glance. Health-progress POSTs need folder 4 settings first.",
+      "item": [
+        {
+          "name": "Save BMI",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/metabolic-metrics/bmi",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gender\": \"female\",\n  \"age\": 34,\n  \"heightCm\": 163,\n  \"weightKg\": 68,\n  \"date\": \"{{todayDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Save BMR / TDEE",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/metabolic-metrics/bmr",
+            "description": "activityLevel: sedentary | lightly_active | moderately_active | highly_active | very_active | extra_active",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gender\": \"female\",\n  \"age\": 34,\n  \"heightCm\": 163,\n  \"weightKg\": 68,\n  \"activityLevel\": \"moderately_active\",\n  \"date\": \"{{todayDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Save Body Fat % (female example)",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/metabolic-metrics/body_fat",
+            "description": "Female users must send hipCm (US Navy method).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gender\": \"female\",\n  \"age\": 34,\n  \"heightCm\": 163,\n  \"weightKg\": 68,\n  \"neckCm\": 32,\n  \"waistCm\": 78,\n  \"hipCm\": 98,\n  \"bodyFatGoal\": 28,\n  \"date\": \"{{todayDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Save Visceral Fat",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/metabolic-metrics/visceral_fat",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gender\": \"female\",\n  \"age\": 34,\n  \"heightCm\": 163,\n  \"waistCm\": 78,\n  \"date\": \"{{todayDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Log Weight (health progress)",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/health-progress/weight",
+            "description": "Optional multipart `weight_pic`. Feeds At a Glance healthProgressPrograms.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weightKg\": 68,\n  \"date\": \"{{todayDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Log Glucose (FBS)",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/health-progress/glucose",
+            "description": "type: fbs | ppbs",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"fbs\",\n  \"value\": 102,\n  \"date\": \"{{todayDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Log Blood Pressure",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/health-progress/blood-pressure",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sys\": 118,\n  \"dia\": 76,\n  \"date\": \"{{todayDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Log Menstrual Cycle",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/health-progress/menstrual-cycle",
+            "description": "Only for female users with menstrualCycle feature enabled.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"startDate\": \"2026-08-01\",\n  \"endDate\": \"2026-08-05\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "8. Staff data Admin At a Glance also reads",
+      "description": "LAUNCH lifestyle score, prakriti label, and supplement cards are written by staff APIs, not the mobile user.",
+      "item": [
+        {
+          "name": "List LAUNCH Focus Areas",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/account/heal-users/{{userId}}/launch-assessment/focus-areas"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const list = json.focusAreas || [];",
+                  "if (list[0]) pm.collectionVariables.set('launchFocusAreaId', String(list[0].id || list[0]._id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create LAUNCH Assessment",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/account/heal-users/{{userId}}/launch-assessment",
+            "description": "totalScore 0–750. 540 → lifestyle ~7.2 / 10 (Admin example).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assessmentDate\": \"{{todayDate}}\",\n  \"totalScore\": 540,\n  \"focusAreaIds\": [\n    \"{{launchFocusAreaId}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Save Prakruti Assessment",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/account/heal-users/{{userId}}/prakruti-assessment",
+            "description": "prakrutiType: vata | pitta | kapha | vata_pitta | pitta_kapha | kapha_vata | sama_prakriti. Admin example: Vata.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prakrutiType\": \"vata\",\n  \"thingToAvoidIds\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Assign Supplement Dosage",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/account/heal-users/{{userId}}/supplement-dosages",
+            "description": "Each period needs period (morning|afternoon|evening), quantity > 0, mealRelation (before|after). Requires an active catalog supplement.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supplementId\": \"{{supplementId}}\",\n  \"startDate\": \"{{todayDate}}\",\n  \"periods\": [\n    {\n      \"period\": \"morning\",\n      \"quantity\": 1,\n      \"mealRelation\": \"after\"\n    },\n    {\n      \"period\": \"evening\",\n      \"quantity\": 1,\n      \"mealRelation\": \"after\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "9. Verify in Admin",
+      "description": "These are the reads Admin uses. After this, open Admin → Users → the UUID profile.",
+      "item": [
+        {
+          "name": "Get User (Personal Details)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/account/users/{{userId}}",
+            "description": "Admin profile shell + Personal Details."
+          },
+          "response": []
+        },
+        {
+          "name": "Get At a Glance",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/account/users/{{userId}}/at-a-glance",
+            "description": "Live glance: metabolicSnapshot, dailyMetrics (protein/water/steps/meditation/pranayam/exercise), supplements, lifestyleScore, prakriti, dailyScore, healthProgressPrograms."
+          },
+          "response": []
+        },
+        {
+          "name": "Admin Water History",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/account/users/{{userId}}/water-tracking?days=7"
+          },
+          "response": []
+        },
+        {
+          "name": "Admin Steps History",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/account/users/{{userId}}/steps-tracking?days=7"
+          },
+          "response": []
+        },
+        {
+          "name": "Admin Sleep History",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/account/users/{{userId}}/sleep-tracking"
+          },
+          "response": []
+        },
+        {
+          "name": "Admin Heart Rate History",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/account/users/{{userId}}/heart-rate-tracking"
+          },
+          "response": []
+        },
+        {
+          "name": "Search User in Admin List",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/account/users?search={{userEmail}}&page=1&limit=10"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "10. Extra user writes (optional)",
+      "description": "Stored in DynamoDB. New Admin section pages mostly still show fixtures, but these APIs work without the mobile app.",
+      "item": [
+        {
+          "name": "Sync Sleep",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/sleep-tracking/sync",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"platform\": \"android\",\n  \"source\": \"health_connect\",\n  \"records\": [\n    {\n      \"date\": \"{{todayDate}}\",\n      \"platform\": \"android\",\n      \"source\": \"health_connect\",\n      \"bedTime\": \"23:10\",\n      \"wakeTime\": \"06:40\",\n      \"durationMinutes\": 450,\n      \"dataOrigin\": \"com.samsung.health\",\n      \"externalIds\": [\n        \"postman-sleep-1\"\n      ],\n      \"syncedAt\": \"2026-08-17T06:45:00.000Z\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Sync Heart Rate",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/heart-rate-tracking/sync",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"platform\": \"android\",\n  \"source\": \"health_connect\",\n  \"records\": [\n    {\n      \"date\": \"{{todayDate}}\",\n      \"platform\": \"android\",\n      \"source\": \"health_connect\",\n      \"latestBpm\": 72,\n      \"latestRecordedAt\": \"2026-08-17T09:00:00.000Z\",\n      \"restingBpm\": 62,\n      \"averageBpm\": 78,\n      \"maxBpm\": 142,\n      \"sampleCount\": 1200,\n      \"dataOrigin\": \"com.samsung.health\",\n      \"externalIds\": [\n        \"postman-hr-1\"\n      ],\n      \"syncedAt\": \"2026-08-17T09:05:00.000Z\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Reminder",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/reminders",
+            "description": "time HH:mm. days: 0=Sun … 6=Sat. Admin reminders UI is still local.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Morning gym session\",\n  \"time\": \"06:30\",\n  \"days\": [\n    1,\n    2,\n    3,\n    4,\n    5\n  ],\n  \"isActive\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  const id = json.reminder?.id || json.reminder?._id;",
+                  "  if (id) pm.collectionVariables.set('reminderId', String(id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Reminder (supplements)",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/reminders",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Take supplements\",\n  \"time\": \"13:30\",\n  \"days\": [\n    0,\n    1,\n    2,\n    3,\n    4,\n    5,\n    6\n  ],\n  \"isActive\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Reminder (evening walk)",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/reminders",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Evening walk\",\n  \"time\": \"18:00\",\n  \"days\": [\n    0,\n    1,\n    2,\n    3,\n    4,\n    5,\n    6\n  ],\n  \"isActive\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Book Heal Consultancy Track",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/heal-consultancy-tracks",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"concern\": \"Need follow-up on fat-loss plan and protein intake\",\n  \"scheduledAt\": \"2026-08-24T10:00:00.000Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Consultancy Checkout Preview",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/user/consultancy-payment/checkout-preview"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Client Testimonial",
+          "request": {
+            "auth": {
+              "type": "inherit"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/client-testimonials",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Feeling lighter already\",\n  \"message\": \"Down 0.8 kg this week and sleeping better. Grateful for the coaching.\",\n  \"rating\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
