@@ -41,11 +41,21 @@ function normalizeStatus(value, fallback = "active") {
 }
 
 function normalizeType(value) {
-  const next = String(value || "").toLowerCase().trim();
-  if (!TYPES.has(next)) {
-    throw new Error(
-      `type must be one of: ${[...TYPES].join(", ")}`
-    );
+  const raw = String(value || "").trim();
+  if (!raw) {
+    throw new Error("type is required");
+  }
+  // Prefer slug form (health-concern titles); keep uuid-like ids intact.
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(raw)) {
+    return raw;
+  }
+  const next = raw
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  if (!next || next.length > 120) {
+    throw new Error("type is required");
   }
   return next;
 }

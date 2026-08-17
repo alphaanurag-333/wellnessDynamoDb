@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { coverLayout, cropImageToFile, ratioNumber } from "../utils/cropImage.js";
+import { coverLayout, cropImageToFile } from "../utils/cropImage.js";
 
 const CROP_RATIOS = ["Original", "1:1", "4:3", "3:4", "16:9"];
 
@@ -101,8 +101,6 @@ export function ImageCropModal({
   const disabled = busy || cropping;
   const naturalAspectCss =
     imageSize.width && imageSize.height ? `${imageSize.width} / ${imageSize.height}` : originalAspectCss;
-  const naturalAspectNumber =
-    imageSize.width && imageSize.height ? imageSize.width / imageSize.height : originalAspectNumber;
 
   return (
     <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={onClose} role="presentation">
@@ -169,23 +167,6 @@ export function ImageCropModal({
               />
             ) : null}
             <span className="ua-cfg-mv-upload-modal__grid" aria-hidden="true" />
-          </div>
-        </div>
-
-        <div className="ua-cfg-mv-upload-modal__frameworks">
-          <span className="ua-cfg-mv-upload-modal__frameworks-label">How it will sit in your frameworks</span>
-          <div
-            className="ua-cfg-mv-upload-modal__frameworks-row"
-            style={{ "--fw-ratio": String(ratioNumber(ratio, naturalAspectNumber)) }}
-          >
-            <div className="ua-cfg-mv-upload-modal__framework ua-cfg-mv-upload-modal__framework--web">
-              <span>Web</span>
-              <div />
-            </div>
-            <div className="ua-cfg-mv-upload-modal__framework ua-cfg-mv-upload-modal__framework--app is-active">
-              <span>App</span>
-              <div />
-            </div>
           </div>
         </div>
 

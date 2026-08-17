@@ -36028,6 +36028,22 @@
   margin-bottom: 14px;
 }
 
+.updated-admin .ua-cfg-rc-view__media--photo {
+  aspect-ratio: auto;
+  min-height: 180px;
+  max-height: min(56vh, 420px);
+  display: grid;
+  place-items: center;
+}
+
+.updated-admin .ua-cfg-rc-view__media--photo img {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: min(56vh, 420px);
+  object-fit: contain;
+}
+
 .updated-admin .ua-cfg-rc-view__media img,
 .updated-admin .ua-cfg-rc-view__player,
 .updated-admin .ua-cfg-rc-view__embed iframe {

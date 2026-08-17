@@ -326,7 +326,7 @@ export const CONFIG_GROUPS = {
         },
         {
           id: "web-fs-links",
-          name: "FS · Website links",
+          name: "FS · Website links (Coming soon)",
           note: "Primary site navigation links",
           owner: "Admin / Support",
           app: false,

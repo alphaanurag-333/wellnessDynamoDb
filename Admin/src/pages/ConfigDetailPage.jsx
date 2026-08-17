@@ -31,7 +31,7 @@ import { GstSection } from "../components/GstSection.jsx";
 import { LaunchSection } from "../components/LaunchSection.jsx";
 import { NutritionBankSection } from "../components/NutritionBankSection.jsx";
 import { FeatureFlagsSection } from "../components/FeatureFlagsSection.jsx";
-import { ProgramTestimonialsSection } from "../components/ProgramTestimonialsSection.jsx";
+import { DynamicProgramTestimonialsSection } from "../components/DynamicProgramTestimonialsSection.jsx";
 import { FooterSettingSection } from "../components/FooterSettingSection.jsx";
 import { SocialLinksSection } from "../components/SocialLinksSection.jsx";
 import { LegalBlocksSection } from "../components/LegalBlocksSection.jsx";
@@ -55,10 +55,6 @@ import { BlogsSection } from "../components/BlogsSection.jsx";
 import { RxBankSection } from "../components/RxBankSection.jsx";
 import { FaqConfigPanel } from "../components/FaqConfigPanel.jsx";
 import { FEATURE_FLAGS } from "../data/featureFlagsData.js";
-import {
-  PROGRAM_TESTIMONIAL_GALLERY,
-  PROGRAM_TESTIMONIAL_STORIES,
-} from "../data/programTestimonialsConfigData.js";
 import { WEBSITE_FOOTER_LINKS } from "../data/websiteLinksConfigData.js";
 import { PRIVACY_BLOCKS } from "../data/privacyConfigData.js";
 import { TOS_BLOCKS } from "../data/tosConfigData.js";
@@ -873,8 +869,7 @@ export function ConfigDetailPage() {
   const [launchDomains, setLaunchDomains] = useState([]);
   const [aiCoaches, setAiCoaches] = useState([]);
   const [aiAssistants, setAiAssistants] = useState([]);
-  const [programStories, setProgramStories] = useState(PROGRAM_TESTIMONIAL_STORIES);
-  const [programGallery, setProgramGallery] = useState(PROGRAM_TESTIMONIAL_GALLERY);
+  const [programStories, setProgramStories] = useState([]);
   const [footerBottomLine, setFooterBottomLine] = useState("");
   const [socialLinks, setSocialLinks] = useState([]);
   const [websiteLinks, setWebsiteLinks] = useState(WEBSITE_FOOTER_LINKS);
@@ -1312,11 +1307,9 @@ export function ConfigDetailPage() {
         );
       case "web-program-testimonials":
         return (
-          <ProgramTestimonialsSection
+          <DynamicProgramTestimonialsSection
             stories={programStories}
             setStories={setProgramStories}
-            gallery={programGallery}
-            setGallery={setProgramGallery}
             onToast={onToast}
           />
         );

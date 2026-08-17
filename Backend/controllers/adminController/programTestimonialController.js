@@ -18,7 +18,6 @@ const {
   listProgramTestimonials,
   normalizeStatus,
   normalizeType,
-  TYPES,
 } = require("../../models/programTestimonialModel");
 
 const ALLOWED_STATUS = ["active", "inactive"];
@@ -54,7 +53,7 @@ exports.createProgramTestimonialController = asyncHandler(async (req, res) => {
   try {
     type = normalizeType(req.body.type);
   } catch (err) {
-    throw new AppError(err.message || `type must be one of: ${[...TYPES].join(", ")}`, 400);
+    throw new AppError(err.message || "type is required", 400);
   }
 
   const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
@@ -108,7 +107,7 @@ exports.updateProgramTestimonialController = asyncHandler(async (req, res) => {
     try {
       updates.type = normalizeType(req.body.type);
     } catch (err) {
-      throw new AppError(err.message || `type must be one of: ${[...TYPES].join(", ")}`, 400);
+      throw new AppError(err.message || "type is required", 400);
     }
   }
 
