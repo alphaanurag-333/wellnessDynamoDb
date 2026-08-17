@@ -1656,6 +1656,85 @@ const TABLE_DEFINITIONS = [
     ],
     ...PAY_PER_REQUEST,
   },
+  {
+    TableName: "LaunchRating",
+    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
+    AttributeDefinitions: [
+      { AttributeName: "id", AttributeType: "S" },
+      { AttributeName: "status", AttributeType: "S" },
+      { AttributeName: "createdAt", AttributeType: "S" },
+    ],
+    GlobalSecondaryIndexes: [statusCreatedAtIndex()],
+    ...PAY_PER_REQUEST,
+  },
+  {
+    TableName: "LaunchDomain",
+    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
+    AttributeDefinitions: [
+      { AttributeName: "id", AttributeType: "S" },
+      { AttributeName: "status", AttributeType: "S" },
+      { AttributeName: "createdAt", AttributeType: "S" },
+    ],
+    GlobalSecondaryIndexes: [statusCreatedAtIndex()],
+    ...PAY_PER_REQUEST,
+  },
+  {
+    TableName: "LaunchDomainQuestion",
+    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
+    AttributeDefinitions: [
+      { AttributeName: "id", AttributeType: "S" },
+      { AttributeName: "status", AttributeType: "S" },
+      { AttributeName: "createdAt", AttributeType: "S" },
+      { AttributeName: "domainId", AttributeType: "S" },
+      { AttributeName: "sortOrder", AttributeType: "N" },
+    ],
+    GlobalSecondaryIndexes: [
+      statusCreatedAtIndex(),
+      {
+        IndexName: "DomainIdIndex",
+        KeySchema: [
+          { AttributeName: "domainId", KeyType: "HASH" },
+          { AttributeName: "sortOrder", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+    ],
+    ...PAY_PER_REQUEST,
+  },
+  {
+    TableName: "DrfSection",
+    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
+    AttributeDefinitions: [
+      { AttributeName: "id", AttributeType: "S" },
+      { AttributeName: "status", AttributeType: "S" },
+      { AttributeName: "createdAt", AttributeType: "S" },
+    ],
+    GlobalSecondaryIndexes: [statusCreatedAtIndex()],
+    ...PAY_PER_REQUEST,
+  },
+  {
+    TableName: "DrfSectionQuestion",
+    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
+    AttributeDefinitions: [
+      { AttributeName: "id", AttributeType: "S" },
+      { AttributeName: "status", AttributeType: "S" },
+      { AttributeName: "createdAt", AttributeType: "S" },
+      { AttributeName: "sectionId", AttributeType: "S" },
+      { AttributeName: "sortOrder", AttributeType: "N" },
+    ],
+    GlobalSecondaryIndexes: [
+      statusCreatedAtIndex(),
+      {
+        IndexName: "SectionIdIndex",
+        KeySchema: [
+          { AttributeName: "sectionId", KeyType: "HASH" },
+          { AttributeName: "sortOrder", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+    ],
+    ...PAY_PER_REQUEST,
+  },
 ];
 
 const TABLE_NAMES = TABLE_DEFINITIONS.map((t) => t.TableName);

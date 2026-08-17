@@ -39,31 +39,6 @@ const SEED_LISTS = [
     ],
   },
   {
-    slug: "health-concern",
-    title: "Health concern",
-    options: [
-      { label: "Fat loss" },
-      { label: "Diabetes reversal" },
-      { label: "Thyroid" },
-      { label: "PCOD / PCOS" },
-      { label: "Hypertension" },
-      { label: "Gut health" },
-    ],
-  },
-  {
-    slug: "program-category",
-    title: "Program categories",
-    wide: true,
-    options: [
-      { label: "Fat Loss", value: "fat_loss", icon: "🏃" },
-      { label: "Diabetes Reversal", value: "diabetes_reversal", icon: "🩸" },
-      { label: "Thyroid Care", value: "thyroid_care", icon: "🦋" },
-      { label: "PCOD / PCOS", value: "pcod_pcos", icon: "🌸" },
-      { label: "Overall Wellbeing", value: "overall_wellbeing", icon: "✨" },
-      { label: "Hypertension", value: "hypertension", icon: "❤️" },
-    ],
-  },
-  {
     slug: "testimonial-point",
     title: "Testimonial data point",
     options: [
@@ -111,19 +86,6 @@ const SEED_LISTS = [
       { label: "PCOD friendly" },
       { label: "Thyroid friendly" },
       { label: "High fibre" },
-    ],
-  },
-  {
-    slug: "medical-questions",
-    title: "Medical condition questions",
-    wide: true,
-    options: [
-      { label: "Do you currently have any diagnosed medical conditions?" },
-      { label: "Are you currently taking any medications?" },
-      { label: "Have you had any surgeries in the past?" },
-      { label: "Do you have any physical activity restrictions or injuries?" },
-      { label: "Do you have any known allergies (food, medication, environmental)?" },
-      { label: "Is there any family history of chronic illness?" },
     ],
   },
   {
@@ -276,12 +238,27 @@ async function persistList(item) {
   return withLegacyId(item);
 }
 
+const REMOVED_DROPDOWN_SLUGS = new Set(["program-category", "health-concern", "medical-questions"]);
+
+async function removeRetiredDropdownLists(lists) {
+  const remaining = [];
+  for (const list of lists || []) {
+    if (REMOVED_DROPDOWN_SLUGS.has(list.slug)) {
+      try {
+        await deleteDropdown(list.id);
+      } catch (err) {
+        if (err?.name !== "ConditionalCheckFailedException") throw err;
+      }
+      continue;
+    }
+    remaining.push(list);
+  }
+  return remaining;
+}
+
 async function ensureSeeded() {
-  const existing = await listAllUnpaged();
-  const seeds = existing.length
-    ? SEED_LISTS.filter((seed) => seed.slug === "program-category"
-      && !existing.some((list) => list.slug === seed.slug))
-    : SEED_LISTS;
+  const existing = await removeRetiredDropdownLists(await listAllUnpaged());
+  const seeds = existing.length ? [] : SEED_LISTS;
   if (!seeds.length) return existing;
 
   const now = new Date().toISOString();
@@ -324,7 +301,7 @@ async function listDropdowns({ page = 1, limit = 50, status, search, seed = true
     sortFn: sortLists,
   });
 
-  let items = (result.items || []).map(withLegacyId);
+  let items = (result.items || []).map(withLegacyId).filter((row) => !REMOVED_DROPDOWN_SLUGS.has(row.slug));
   if (searching) {
     items = filterItemsBySearch(items, {
       search: searchTerm,
@@ -345,6 +322,9 @@ async function createDropdown({ slug, title, wide = false, status = "active", op
   const now = new Date().toISOString();
   const resolvedSlug = slugify(slug || title);
   if (!resolvedSlug) throw new Error("slug is required");
+  if (REMOVED_DROPDOWN_SLUGS.has(resolvedSlug)) {
+    throw Object.assign(new Error("This dropdown list has been removed"), { statusCode: 400 });
+  }
   const existing = await getDropdownBySlug(resolvedSlug);
   if (existing) throw Object.assign(new Error("A dropdown list already exists with this slug"), { statusCode: 409 });
 

@@ -1,13 +1,12 @@
 require("dotenv").config();
 
 const { v4: uuidv4 } = require("uuid");
-const { PutCommand, ScanCommand } = require("@aws-sdk/lib-dynamodb");
+const { PutCommand, ScanCommand, UpdateCommand } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../config/db");
 
 const TABLE = "MedicalConditionQuestion";
 
-// Real onboarding medical-condition questions. Order here is the order users see
-// them (createdAt is staggered below so the active list stays stable).
+// Real onboarding medical-condition questions. Order here is the order users see.
 const QUESTIONS = [
   { question: "Do you currently have any diagnosed medical conditions?", answerType: "yes_no_text" },
   { question: "Are you currently taking any medications?", answerType: "yes_no_text" },
@@ -21,48 +20,68 @@ const QUESTIONS = [
   { question: "Briefly describe your current health goals.", answerType: "text" },
 ];
 
-async function existingQuestionTexts() {
-  const texts = new Set();
+async function existingQuestions() {
+  const items = [];
   let lastKey;
   do {
     const { Items, LastEvaluatedKey } = await docClient.send(
       new ScanCommand({
         TableName: TABLE,
-        ProjectionExpression: "question",
+        ProjectionExpression: "id, question, sortOrder",
         ExclusiveStartKey: lastKey,
       })
     );
-    for (const item of Items || []) {
-      if (item.question) texts.add(String(item.question).trim().toLowerCase());
-    }
+    items.push(...(Items || []));
     lastKey = LastEvaluatedKey;
   } while (lastKey);
-  return texts;
+  return items;
 }
 
 async function main() {
   console.log(`Seeding ${TABLE} with real onboarding questions...\n`);
 
-  const seen = await existingQuestionTexts();
+  const existing = await existingQuestions();
+  const byText = new Map(
+    existing
+      .filter((item) => item.question)
+      .map((item) => [String(item.question).trim().toLowerCase(), item]),
+  );
   const base = Date.now();
   let created = 0;
   let skipped = 0;
+  let ordered = 0;
 
   for (let i = 0; i < QUESTIONS.length; i++) {
     const { question, answerType } = QUESTIONS[i];
-    if (seen.has(question.trim().toLowerCase())) {
-      console.log(`  - skipped (exists): ${question}`);
-      skipped++;
+    const sortOrder = i + 1;
+    const current = byText.get(question.trim().toLowerCase());
+    if (current) {
+      if (current.sortOrder === undefined || current.sortOrder === null) {
+        await docClient.send(new UpdateCommand({
+          TableName: TABLE,
+          Key: { id: current.id },
+          UpdateExpression: "SET sortOrder = :sortOrder, updatedAt = :updatedAt",
+          ExpressionAttributeValues: {
+            ":sortOrder": sortOrder,
+            ":updatedAt": new Date().toISOString(),
+          },
+        }));
+        console.log(`  ~ order ${sortOrder}: ${question}`);
+        ordered++;
+      } else {
+        console.log(`  - skipped (exists): ${question}`);
+        skipped++;
+      }
       continue;
     }
 
-    // Stagger createdAt by 1s each so the active list keeps a deterministic order.
     const now = new Date(base + i * 1000).toISOString();
     const item = {
       id: uuidv4(),
       question: question.trim(),
       answerType,
       status: "active",
+      sortOrder,
       createdAt: now,
       updatedAt: now,
     };
@@ -72,7 +91,7 @@ async function main() {
     created++;
   }
 
-  console.log(`\nDone! ${created} created, ${skipped} skipped.`);
+  console.log(`\nDone! ${created} created, ${ordered} ordered, ${skipped} skipped.`);
 }
 
 main().catch((err) => {

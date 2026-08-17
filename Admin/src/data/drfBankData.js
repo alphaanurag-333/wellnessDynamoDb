@@ -51,25 +51,40 @@ export const DRF_FORM_SECTIONS = [
   },
 ];
 
-export function drfSectionPointsTotal(section) {
-  return (section.questions ?? []).reduce((sum, entry) => sum + (Number(entry.points) || 0), 0);
+export function drfSectionPointsTotal(section, { enabledOnly = false } = {}) {
+  return (section.questions ?? []).reduce((sum, entry) => {
+    if (enabledOnly && !entry.enabled) return sum;
+    return sum + (Number(entry.points) || 0);
+  }, 0);
 }
 
 export function drfLiveQuestionCount(sections) {
   return sections.reduce(
-    (sum, section) => sum + section.questions.filter((entry) => entry.enabled).length,
+    (sum, section) => sum + (section.questions ?? []).filter((entry) => entry.enabled).length,
     0,
   );
 }
 
 export function drfTotalQuestionCount(sections) {
-  return sections.reduce((sum, section) => sum + section.questions.length, 0);
+  return sections.reduce((sum, section) => sum + (section.questions ?? []).length, 0);
 }
 
 export function drfWeightTotal(sections) {
-  return sections.reduce((sum, section) => sum + (Number(section.weight) || 0), 0);
+  return sections.reduce((sum, section) => {
+    if (section.live === false) return sum;
+    return sum + (Number(section.weight) || 0);
+  }, 0);
 }
 
 export function drfRemainingWeight(sections) {
   return Math.max(0, 100 - drfWeightTotal(sections));
+}
+
+export function drfRemainingSectionPoints(section, { excludeId } = {}) {
+  const used = (section.questions ?? []).reduce((sum, entry) => {
+    if (!entry.enabled) return sum;
+    if (excludeId && entry.id === excludeId) return sum;
+    return sum + (Number(entry.points) || 0);
+  }, 0);
+  return Math.max(0, 100 - used);
 }

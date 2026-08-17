@@ -14,28 +14,22 @@ import {
   ONBOARDING_COACHES,
   ONBOARDING_GALLERY,
 } from "../components/OnboardingVideoSection.jsx";
-import {
-  HealthProgressTrackersPanel,
-  MedicalQuestionnairePanel,
-} from "../components/ConfigAppRemainingSections.jsx";
+import { HealthProgressTrackersPanel } from "../components/ConfigAppRemainingSections.jsx";
+import { MedicalQuestionnairePanel } from "../components/MedicalQuestionnairePanel.jsx";
 import {
   CommitmentLetterSection,
   COMMITMENT_COACH_SIGNOFFS,
   COMMITMENT_LETTER_DEFAULT,
 } from "../components/CommitmentLetterSection.jsx";
 import { DietPlansSection, DIET_PLANS } from "../components/DietPlansSection.jsx";
-import { DrfBankSection, DRF_FORM_SECTIONS } from "../components/DrfBankSection.jsx";
+import { DrfBankSection } from "../components/DrfBankSection.jsx";
 import { GallerySection, GALLERY_MEDIA } from "../components/GallerySection.jsx";
 import {
   AiEnableSection,
   AI_ENABLE_ASSISTANTS,
   AI_ENABLE_COACHES,
 } from "../components/AiEnableSection.jsx";
-import {
-  LaunchSection,
-  LAUNCH_CONFIG_DOMAINS,
-  LAUNCH_CONFIG_RATINGS,
-} from "../components/LaunchSection.jsx";
+import { LaunchSection } from "../components/LaunchSection.jsx";
 import { NutritionBankSection, NUTRITION_BANK } from "../components/NutritionBankSection.jsx";
 import { FeatureFlagsSection } from "../components/FeatureFlagsSection.jsx";
 import { ProgramTestimonialsSection } from "../components/ProgramTestimonialsSection.jsx";
@@ -157,7 +151,6 @@ import {
   paymentMethodsForGateway,
   TOS_CONTENT,
   DPA_CONTENT,
-  MEDICAL_QUESTIONNAIRE,
 } from "../data/configDetailData.js";
 import { findConfigItem, getConfigStateLabel } from "../data/configsData.js";
 import { formatRupee } from "../data/exchangeData.js";
@@ -1042,9 +1035,9 @@ export function ConfigDetailPage() {
   const [onboardingCoaches, setOnboardingCoaches] = useState(ONBOARDING_COACHES);
   const [onboardingSelectedCoachId, setOnboardingSelectedCoachId] = useState("wc01");
   const [onboardingGallery, setOnboardingGallery] = useState(ONBOARDING_GALLERY);
-  const [medicalQuestions, setMedicalQuestions] = useState(MEDICAL_QUESTIONNAIRE);
+  const [medicalQuestions, setMedicalQuestions] = useState([]);
   const [healthTrackers, setHealthTrackers] = useState(HEALTH_TRACKERS);
-  const [drfFormSections, setDrfFormSections] = useState(DRF_FORM_SECTIONS);
+  const [drfFormSections, setDrfFormSections] = useState([]);
   const [commitmentText, setCommitmentText] = useState(COMMITMENT_LETTER_DEFAULT);
   const [savedCommitmentText, setSavedCommitmentText] = useState("");
   const [commitmentCoaches] = useState(COMMITMENT_COACH_SIGNOFFS);
@@ -1052,8 +1045,8 @@ export function ConfigDetailPage() {
   const [nutritionBank, setNutritionBank] = useState(NUTRITION_BANK);
   const [rxProtocols, setRxProtocols] = useState(RX_BANK_PROTOCOLS);
   const [galleryMedia, setGalleryMedia] = useState(GALLERY_MEDIA);
-  const [launchRatings, setLaunchRatings] = useState(LAUNCH_CONFIG_RATINGS);
-  const [launchDomains, setLaunchDomains] = useState(LAUNCH_CONFIG_DOMAINS);
+  const [launchRatings, setLaunchRatings] = useState([]);
+  const [launchDomains, setLaunchDomains] = useState([]);
   const [aiCoaches, setAiCoaches] = useState(AI_ENABLE_COACHES);
   const [aiAssistants, setAiAssistants] = useState(AI_ENABLE_ASSISTANTS);
   const [programStories, setProgramStories] = useState(PROGRAM_TESTIMONIAL_STORIES);

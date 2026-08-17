@@ -182,19 +182,22 @@ export const LAUNCH_CONFIG_DOMAINS = [
   },
 ];
 
-export function launchDomainPointsTotal(domain) {
-  return (domain.questions ?? []).reduce((sum, entry) => sum + (Number(entry.points) || 0), 0);
+export function launchDomainPointsTotal(domain, { enabledOnly = false } = {}) {
+  return (domain.questions ?? []).reduce((sum, entry) => {
+    if (enabledOnly && !entry.enabled) return sum;
+    return sum + (Number(entry.points) || 0);
+  }, 0);
 }
 
 export function launchLiveQuestionCount(domains) {
   return domains.reduce(
-    (sum, domain) => sum + domain.questions.filter((entry) => entry.enabled).length,
+    (sum, domain) => sum + (domain.questions ?? []).filter((entry) => entry.enabled).length,
     0,
   );
 }
 
 export function launchTotalQuestionCount(domains) {
-  return domains.reduce((sum, domain) => sum + domain.questions.length, 0);
+  return domains.reduce((sum, domain) => sum + (domain.questions ?? []).length, 0);
 }
 
 export function launchScoredWeightTotal(domains) {
@@ -211,3 +214,32 @@ export function launchRemainingWeight(domains) {
 export function launchDomainIsGeneral(domain) {
   return !Number(domain.weight);
 }
+
+export function launchRemainingDomainPoints(domain, { excludeId } = {}) {
+  if (launchDomainIsGeneral(domain)) return 100;
+  const used = (domain.questions ?? []).reduce((sum, entry) => {
+    if (!entry.enabled) return sum;
+    if (excludeId && entry.id === excludeId) return sum;
+    return sum + (Number(entry.points) || 0);
+  }, 0);
+  return Math.max(0, 100 - used);
+}
+
+export function launchMaxRatingPoints(ratings = []) {
+  if (!ratings.length) return 0;
+  return ratings.reduce((max, row) => Math.max(max, Number(row.points) || 0), 0);
+}
+
+export function launchQuestionEarned(question, rating, maxRating) {
+  const points = Number(question?.points) || 0;
+  const ratingPoints = Number(rating?.points) || 0;
+  const cap = Number(maxRating) || 0;
+  if (!points || !cap) return 0;
+  return Math.round(((ratingPoints / cap) * points) * 100) / 100;
+}
+
+export function launchScoringHint(ratings = []) {
+  const maxRating = launchMaxRatingPoints(ratings) || 100;
+  return `Coaches pick one rating per question. Earned = (rating pts ÷ ${maxRating}) × question pts. Domain scores sum to 100 when question pts total 100. Overall = Σ (domain score × domain weight ÷ 100).`;
+}
+

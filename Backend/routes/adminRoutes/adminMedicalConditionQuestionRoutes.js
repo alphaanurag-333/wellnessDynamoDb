@@ -7,6 +7,7 @@ const {
   getMedicalConditionQuestionByIdController,
   createMedicalConditionQuestionController,
   updateMedicalConditionQuestionController,
+  reorderMedicalConditionQuestionsController,
   deleteMedicalConditionQuestionController,
 } = require("../../controllers/adminController/medicalConditionQuestionController");
 
@@ -17,6 +18,12 @@ router.get(
   protectAccount,
   authorizeStaff("console.cf.view", { admin: "medical-condition-questions.view" }),
   listMedicalConditionQuestionsController
+);
+router.put(
+  "/reorder",
+  protectAccount,
+  authorizeStaff("console.cf.edit", { admin: "medical-condition-questions.edit" }),
+  reorderMedicalConditionQuestionsController
 );
 router.get(
   "/:id",
@@ -39,7 +46,7 @@ router.patch(
 router.delete(
   "/:id",
   protectAccount,
-  authorizeStaff("console.cf.delete", { admin: "medical-condition-questions.delete" }),
+  authorizeStaff("console.cf.edit", { admin: "medical-condition-questions.delete" }),
   deleteMedicalConditionQuestionController
 );
 

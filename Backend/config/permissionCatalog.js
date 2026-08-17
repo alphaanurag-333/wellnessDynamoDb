@@ -91,6 +91,7 @@ const PERMISSION_GROUPS_RAW = [
     items: [
       { to: "launch-questions", label: "Questions", actions: [VIEW, EDIT, DELETE] },
       { to: "launch-focus-areas", label: "Area to Focus", actions: [VIEW, EDIT, DELETE] },
+      { to: "launch-config", label: "LAUNCH Config", actions: [VIEW, EDIT, DELETE] },
     ],
   },
   {
@@ -108,6 +109,7 @@ const PERMISSION_GROUPS_RAW = [
     items: [
       { to: "test-catalog", label: "Test Catalog", actions: [VIEW, EDIT, DELETE] },
       { to: "diet-plan-catalog", label: "Diet Plan Catalog", actions: [VIEW, EDIT, DELETE] },
+      { to: "drf-config", label: "DRF Activity Bank", actions: [VIEW, EDIT, DELETE] },
       {
         to: "wellness-prescriptions",
         label: "Wellness Prescriptions",

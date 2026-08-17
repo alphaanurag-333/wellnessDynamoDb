@@ -25,18 +25,6 @@ export const DROPDOWN_LISTS = [
     ],
   },
   {
-    id: "health-concern",
-    title: "Health concern",
-    options: [
-      option("hc-1", "Fat loss"),
-      option("hc-2", "Diabetes reversal"),
-      option("hc-3", "Thyroid"),
-      option("hc-4", "PCOD / PCOS"),
-      option("hc-5", "Hypertension"),
-      option("hc-6", "Gut health"),
-    ],
-  },
-  {
     id: "testimonial-point",
     title: "Testimonial data point",
     options: [
@@ -84,19 +72,6 @@ export const DROPDOWN_LISTS = [
       option("rc-6", "PCOD friendly"),
       option("rc-7", "Thyroid friendly"),
       option("rc-8", "High fibre"),
-    ],
-  },
-  {
-    id: "medical-questions",
-    title: "Medical condition questions",
-    wide: true,
-    options: [
-      option("mq-1", "Do you currently have any diagnosed medical conditions?"),
-      option("mq-2", "Are you currently taking any medications?"),
-      option("mq-3", "Have you had any surgeries in the past?"),
-      option("mq-4", "Do you have any physical activity restrictions or injuries?"),
-      option("mq-5", "Do you have any known allergies (food, medication, environmental)?"),
-      option("mq-6", "Is there any family history of chronic illness?"),
     ],
   },
   {

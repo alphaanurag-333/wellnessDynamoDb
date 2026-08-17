@@ -23,6 +23,8 @@
     "seed:wellness-prescriptions": "node --use-system-ca scripts/seedWellnessPrescriptionCatalog.js",
     "seed:launch-questions": "node scripts/seedLaunchQuestions.js",
     "seed:launch-focus-areas": "node scripts/seedLaunchFocusAreas.js",
+    "seed:launch-config": "node scripts/seedLaunchConfig.js",
+    "seed:drf-config": "node scripts/seedDrfConfig.js",
     "seed:prakruti-assessment": "node scripts/seedPrakrutiAssessment.js",
     "migrate": "node migration/migrateAll.js",
     "migrate:meal-tracking-review": "node migration/migrateAll.js --only=17-meal-tracking-review",

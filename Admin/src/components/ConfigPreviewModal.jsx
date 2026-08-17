@@ -493,7 +493,15 @@ function MedicalQuestionnairePreview({ items, surface, item }) {
               {shown.map((entry, index) => (
                 <div key={entry.id} className="ua-cfg-preview-mq__item">
                   <label>{index + 1}. {entry.question}</label>
-                  <div className="ua-cfg-preview-mq__field">Your answer</div>
+                  <div className="ua-cfg-preview-mq__field">
+                    {entry.answerType === "yes_no"
+                      ? "Yes / No"
+                      : entry.answerType === "yes_no_text"
+                        ? "Yes / No + details"
+                        : entry.answerType === "date"
+                          ? "Date"
+                          : "Your answer"}
+                  </div>
                 </div>
               ))}
             </div>

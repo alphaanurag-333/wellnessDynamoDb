@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { asCopyString } from "../data/bannerConfigData.js";
 import {
   adminAddConfigDropdownOption,
@@ -6,9 +6,25 @@ import {
   adminListConfigDropdowns,
   adminUpdateConfigDropdownOption,
 } from "../api/configDropdownApi.js";
+import {
+  adminCreateHealthConcern,
+  adminDeleteHealthConcern,
+  adminListHealthConcerns,
+  adminUpdateHealthConcern,
+  mapConcernsToDropdownList,
+} from "../api/healthConcernApi.js";
+import {
+  adminCreateMedicalConditionQuestion,
+  adminDeleteMedicalConditionQuestion,
+  adminListMedicalConditionQuestions,
+  adminUpdateMedicalConditionQuestion,
+  mapQuestionsToDropdownList,
+} from "../api/medicalConditionQuestionApi.js";
+import { MEDICAL_ANSWER_TYPES } from "../data/configDetailData.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 
 const FILTERS = ["All options", "On", "Hidden"];
+const ICON_ACCEPT = "image/jpeg,image/png,image/gif,image/webp,image/jpg";
 
 function matchesQuery(list, query) {
   if (!query) return true;
@@ -16,14 +32,69 @@ function matchesQuery(list, query) {
   return list.options.some((entry) => asCopyString(entry.label).toLowerCase().includes(query));
 }
 
+function isImageIcon(icon) {
+  const value = String(icon || "").trim();
+  if (!value) return false;
+  return /^https?:\/\//i.test(value) || value.startsWith("blob:") || value.includes("/");
+}
+
+function IconPicker({ previewUrl, disabled, onPick, label = "Upload icon" }) {
+  const inputRef = useRef(null);
+
+  return (
+    <button
+      type="button"
+      className={`ua-cfg-dd-icon-pick${previewUrl ? " has-image" : ""}`}
+      disabled={disabled}
+      aria-label={label}
+      onClick={() => inputRef.current?.click()}
+    >
+      {previewUrl ? <img src={previewUrl} alt="" /> : <span>+</span>}
+      <input
+        ref={inputRef}
+        type="file"
+        accept={ICON_ACCEPT}
+        hidden
+        disabled={disabled}
+        onChange={(event) => {
+          const file = event.target.files?.[0] || null;
+          event.target.value = "";
+          onPick(file);
+        }}
+      />
+    </button>
+  );
+}
+
+function answerTypeLabel(value) {
+  return MEDICAL_ANSWER_TYPES.find((entry) => entry.id === value)?.label || "Text";
+}
+
+function OptionIcon({ icon }) {
+  const value = asCopyString(icon);
+  if (!value) return <span className="ua-cfg-dd-row__thumb ua-cfg-dd-row__thumb--empty" aria-hidden="true" />;
+  if (isImageIcon(value)) {
+    return (
+      <span className="ua-cfg-dd-row__thumb">
+        <img src={value} alt="" />
+      </span>
+    );
+  }
+  return <span className="ua-cfg-dd-row__emoji">{value}</span>;
+}
+
 export function DropdownsSection({ lists, setLists, onToast }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All options");
   const [drafts, setDrafts] = useState({});
-  const [iconDrafts, setIconDrafts] = useState({});
+  const [iconFiles, setIconFiles] = useState({});
+  const [iconPreviews, setIconPreviews] = useState({});
   const [editing, setEditing] = useState(null);
   const [editValue, setEditValue] = useState("");
-  const [editIcon, setEditIcon] = useState("");
+  const [editAnswerType, setEditAnswerType] = useState("yes_no_text");
+  const [answerTypeDrafts, setAnswerTypeDrafts] = useState({});
+  const [editIconFile, setEditIconFile] = useState(null);
+  const [editIconPreview, setEditIconPreview] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(null);
@@ -33,8 +104,21 @@ export function DropdownsSection({ lists, setLists, onToast }) {
   const loadLists = useCallback(async () => {
     setLoading(true);
     try {
-      const { lists: rows } = await adminListConfigDropdowns(null, { limit: 50 });
-      setLists(rows);
+      const [{ lists: rows }, concernsResult, questionsResult] = await Promise.all([
+        adminListConfigDropdowns(null, { limit: 50 }),
+        adminListHealthConcerns(null, { limit: 200 }).catch(() => ({ healthConcerns: [] })),
+        adminListMedicalConditionQuestions(null, { limit: 200 }).catch(() => ({ questions: [] })),
+      ]);
+      const filtered = (rows || []).filter(
+        (list) => !["program-category", "health-concern", "medical-questions"].includes(list.slug),
+      );
+      const concerns = concernsResult?.healthConcerns || [];
+      const questions = questionsResult?.questions || [];
+      setLists([
+        mapConcernsToDropdownList(concerns),
+        mapQuestionsToDropdownList(questions),
+        ...filtered,
+      ]);
     } catch (error) {
       onToast(error?.message || "Failed to load dropdowns");
       setLists([]);
@@ -47,6 +131,12 @@ export function DropdownsSection({ lists, setLists, onToast }) {
     loadLists();
   }, [loadLists]);
 
+  useEffect(() => () => {
+    Object.values(iconPreviews).forEach((url) => {
+      if (String(url).startsWith("blob:")) URL.revokeObjectURL(url);
+    });
+  }, [iconPreviews]);
+
   const visible = useMemo(() => {
     return lists
       .map((list) => {
@@ -57,7 +147,7 @@ export function DropdownsSection({ lists, setLists, onToast }) {
         });
         return { ...list, options };
       })
-      .filter((list) => list.options.length > 0 && matchesQuery(list, query));
+      .filter((list) => (list.slug === "health-concern" || list.slug === "medical-questions" || list.options.length > 0) && matchesQuery(list, query));
   }, [lists, filter, query]);
 
   const optionCount = lists.reduce((sum, list) => sum + list.options.length, 0);
@@ -70,19 +160,108 @@ export function DropdownsSection({ lists, setLists, onToast }) {
     setLists((prev) => prev.map((list) => (list.id === nextList.id ? nextList : list)));
   }
 
-  async function addOption(listId) {
-    const label = asCopyString(drafts[listId]).trim();
+  function pickAddIcon(listId, file) {
+    setIconPreviews((prev) => {
+      const previous = prev[listId];
+      if (String(previous).startsWith("blob:")) URL.revokeObjectURL(previous);
+      return { ...prev, [listId]: file ? URL.createObjectURL(file) : "" };
+    });
+    setIconFiles((prev) => ({ ...prev, [listId]: file || null }));
+  }
+
+  function clearAddIcon(listId) {
+    pickAddIcon(listId, null);
+  }
+
+  function startEdit(list, entry) {
+    setEditing(`${list.id}:${entry.id}`);
+    setEditValue(asCopyString(entry.label));
+    setEditAnswerType(entry.answerType || "yes_no_text");
+    setEditIconFile(null);
+    setEditIconPreview(asCopyString(entry.icon));
+  }
+
+  function cancelEdit() {
+    if (String(editIconPreview).startsWith("blob:")) URL.revokeObjectURL(editIconPreview);
+    setEditing(null);
+    setEditValue("");
+    setEditAnswerType("yes_no_text");
+    setEditIconFile(null);
+    setEditIconPreview("");
+  }
+
+  async function addOption(list) {
+    const label = asCopyString(drafts[list.id]).trim();
     if (!label || busy) return;
+    if (list.slug === "health-concern" && !(iconFiles[list.id] instanceof File)) {
+      onToast("Upload an icon image first");
+      return;
+    }
     setBusy(true);
     try {
-      const { list } = await adminAddConfigDropdownOption(null, listId, {
-        label,
-        icon: asCopyString(iconDrafts[listId]).trim(),
-        on: true,
-      });
-      replaceList(list);
-      setDrafts((prev) => ({ ...prev, [listId]: "" }));
-      setIconDrafts((prev) => ({ ...prev, [listId]: "" }));
+      if (list.slug === "health-concern") {
+        const created = await adminCreateHealthConcern(
+          null,
+          { title: label, description: label },
+          iconFiles[list.id],
+        );
+        setLists((prev) =>
+          prev.map((row) =>
+            row.slug === "health-concern"
+              ? {
+                  ...row,
+                  options: [
+                    ...row.options,
+                    {
+                      id: created.id,
+                      label: created.title,
+                      value: created.id,
+                      icon: created.icon,
+                      description: created.description,
+                      on: created.status !== "inactive",
+                      sortOrder: row.options.length + 1,
+                    },
+                  ],
+                }
+              : row,
+          ),
+        );
+        clearAddIcon(list.id);
+      } else if (list.slug === "medical-questions") {
+        const created = await adminCreateMedicalConditionQuestion(null, {
+          question: label,
+          answerType: answerTypeDrafts[list.id] || "yes_no_text",
+          shown: true,
+        });
+        setLists((prev) =>
+          prev.map((row) =>
+            row.slug === "medical-questions"
+              ? {
+                  ...row,
+                  options: [
+                    ...row.options,
+                    {
+                      id: created.id,
+                      label: created.question,
+                      value: created.id,
+                      answerType: created.answerType,
+                      on: created.shown,
+                      sortOrder: created.sortOrder,
+                    },
+                  ],
+                }
+              : row,
+          ),
+        );
+        setAnswerTypeDrafts((prev) => ({ ...prev, [list.id]: "yes_no_text" }));
+      } else {
+        const { list: nextList } = await adminAddConfigDropdownOption(null, list.id, {
+          label,
+          on: true,
+        });
+        replaceList(nextList);
+      }
+      setDrafts((prev) => ({ ...prev, [list.id]: "" }));
       onToast("Option added");
     } catch (error) {
       onToast(error?.message || "Failed to add option");
@@ -91,19 +270,67 @@ export function DropdownsSection({ lists, setLists, onToast }) {
     }
   }
 
-  async function saveEdit(listId, optionId) {
+  async function saveEdit(list, optionId) {
     const label = asCopyString(editValue).trim();
     if (!label || busy) return;
     setBusy(true);
     try {
-      const { list } = await adminUpdateConfigDropdownOption(null, listId, optionId, {
-        label,
-        icon: editIcon,
-      });
-      replaceList(list);
-      setEditing(null);
-      setEditValue("");
-      setEditIcon("");
+      if (list.slug === "health-concern") {
+        const updated = await adminUpdateHealthConcern(
+          null,
+          optionId,
+          { title: label },
+          editIconFile instanceof File ? editIconFile : undefined,
+        );
+        setLists((prev) =>
+          prev.map((row) =>
+            row.slug === "health-concern"
+              ? {
+                  ...row,
+                  options: row.options.map((option) =>
+                    option.id === optionId
+                      ? {
+                          ...option,
+                          label: updated.title,
+                          icon: updated.icon,
+                          description: updated.description,
+                          on: updated.status !== "inactive",
+                        }
+                      : option,
+                  ),
+                }
+              : row,
+          ),
+        );
+      } else if (list.slug === "medical-questions") {
+        const updated = await adminUpdateMedicalConditionQuestion(null, optionId, {
+          question: label,
+          answerType: editAnswerType,
+        });
+        setLists((prev) =>
+          prev.map((row) =>
+            row.slug === "medical-questions"
+              ? {
+                  ...row,
+                  options: row.options.map((option) =>
+                    option.id === optionId
+                      ? {
+                          ...option,
+                          label: updated.question,
+                          answerType: updated.answerType,
+                          on: updated.shown,
+                        }
+                      : option,
+                  ),
+                }
+              : row,
+          ),
+        );
+      } else {
+        const { list: nextList } = await adminUpdateConfigDropdownOption(null, list.id, optionId, { label });
+        replaceList(nextList);
+      }
+      cancelEdit();
       onToast("Option saved");
     } catch (error) {
       onToast(error?.message || "Failed to save option");
@@ -112,33 +339,67 @@ export function DropdownsSection({ lists, setLists, onToast }) {
     }
   }
 
-  async function toggleOption(listId, option) {
+  async function toggleOption(list, option) {
     if (busy) return;
     const nextOn = !option.on;
     setLists((prev) =>
-      prev.map((list) =>
-        list.id === listId
+      prev.map((row) =>
+        row.id === list.id
           ? {
-              ...list,
-              options: list.options.map((row) => (row.id === option.id ? { ...row, on: nextOn } : row)),
+              ...row,
+              options: row.options.map((entry) => (entry.id === option.id ? { ...entry, on: nextOn } : entry)),
             }
-          : list,
+          : row,
       ),
     );
     setBusy(true);
     try {
-      const { list } = await adminUpdateConfigDropdownOption(null, listId, option.id, { on: nextOn });
-      replaceList(list);
+      if (list.slug === "health-concern") {
+        const updated = await adminUpdateHealthConcern(null, option.id, { on: nextOn });
+        setLists((prev) =>
+          prev.map((row) =>
+            row.slug === "health-concern"
+              ? {
+                  ...row,
+                  options: row.options.map((entry) =>
+                    entry.id === option.id
+                      ? { ...entry, on: updated.status !== "inactive", icon: updated.icon, label: updated.title }
+                      : entry,
+                  ),
+                }
+              : row,
+          ),
+        );
+      } else if (list.slug === "medical-questions") {
+        const updated = await adminUpdateMedicalConditionQuestion(null, option.id, { shown: nextOn });
+        setLists((prev) =>
+          prev.map((row) =>
+            row.slug === "medical-questions"
+              ? {
+                  ...row,
+                  options: row.options.map((entry) =>
+                    entry.id === option.id
+                      ? { ...entry, on: updated.shown, label: updated.question, answerType: updated.answerType }
+                      : entry,
+                  ),
+                }
+              : row,
+          ),
+        );
+      } else {
+        const { list: nextList } = await adminUpdateConfigDropdownOption(null, list.id, option.id, { on: nextOn });
+        replaceList(nextList);
+      }
       onToast(nextOn ? "Option shown" : "Option hidden");
     } catch (error) {
       setLists((prev) =>
-        prev.map((list) =>
-          list.id === listId
+        prev.map((row) =>
+          row.id === list.id
             ? {
-                ...list,
-                options: list.options.map((row) => (row.id === option.id ? { ...row, on: option.on } : row)),
+                ...row,
+                options: row.options.map((entry) => (entry.id === option.id ? { ...entry, on: option.on } : entry)),
               }
-            : list,
+            : row,
         ),
       );
       onToast(error?.message || "Failed to update option");
@@ -147,20 +408,21 @@ export function DropdownsSection({ lists, setLists, onToast }) {
     }
   }
 
-  function askRemoveOption(listId, option, listTitle) {
+  function askRemoveOption(list, option) {
     if (busy) return;
     setPendingDelete({
-      listId,
+      listId: list.id,
+      listSlug: list.slug,
       optionId: option.id,
       label: asCopyString(option.label),
-      listTitle: asCopyString(listTitle),
+      listTitle: asCopyString(list.title),
       icon: asCopyString(option.icon),
     });
   }
 
   async function confirmRemoveOption() {
     if (!pendingDelete || busy) return;
-    const { listId, optionId, label } = pendingDelete;
+    const { listId, listSlug, optionId, label } = pendingDelete;
     const previous = lists;
     setPendingDelete(null);
     setLists((prev) =>
@@ -170,15 +432,17 @@ export function DropdownsSection({ lists, setLists, onToast }) {
           : list,
       ),
     );
-    if (editing === `${listId}:${optionId}`) {
-      setEditing(null);
-      setEditValue("");
-      setEditIcon("");
-    }
+    if (editing === `${listId}:${optionId}`) cancelEdit();
     setBusy(true);
     try {
-      const list = await adminDeleteConfigDropdownOption(null, listId, optionId);
-      replaceList(list);
+      if (listSlug === "health-concern") {
+        await adminDeleteHealthConcern(null, optionId);
+      } else if (listSlug === "medical-questions") {
+        await adminDeleteMedicalConditionQuestion(null, optionId);
+      } else {
+        const nextList = await adminDeleteConfigDropdownOption(null, listId, optionId);
+        replaceList(nextList);
+      }
       onToast(`Removed “${label}”`);
     } catch (error) {
       setLists(previous);
@@ -219,9 +483,10 @@ export function DropdownsSection({ lists, setLists, onToast }) {
           {visible.map((list) => {
             const source = lists.find((entry) => entry.id === list.id) ?? list;
             const onCount = source.options.filter((entry) => entry.on).length;
-            const supportsIcons = list.slug === "program-category";
+            const supportsIcons = list.slug === "health-concern";
+            const supportsAnswerType = list.slug === "medical-questions";
             return (
-              <section key={list.id} className={`ua-cfg-dd-card${list.wide ? " ua-cfg-dd-card--wide" : ""}`}>
+              <section key={list.id} className={`ua-cfg-dd-card${list.wide || supportsIcons || supportsAnswerType ? " ua-cfg-dd-card--wide" : ""}`}>
                 <div className="ua-cfg-dd-card__head">
                   <h3>{asCopyString(list.title)}</h3>
                   <span>{onCount}/{source.options.length} on</span>
@@ -230,18 +495,21 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                   {list.options.map((entry) => {
                     const isEditing = editing === `${list.id}:${entry.id}`;
                     return (
-                      <div key={entry.id} className={`ua-cfg-dd-row${entry.on ? "" : " is-off"}`}>
+                      <div key={entry.id} className={`ua-cfg-dd-row${supportsIcons ? " has-icon" : ""}${supportsAnswerType ? " has-type" : ""}${entry.on ? "" : " is-off"}`}>
                         <i aria-hidden="true" />
                         {isEditing ? (
-                          <div className={`ua-cfg-dd-row__fields${supportsIcons ? " has-icon" : ""}`}>
+                          <div className={`ua-cfg-dd-row__fields${supportsIcons ? " has-icon" : ""}${supportsAnswerType ? " has-type" : ""}`}>
                             {supportsIcons ? (
-                              <input
-                                className="ua-cfg-dd-row__input ua-cfg-dd-row__input--icon"
-                                aria-label="Category emoji"
-                                placeholder="Emoji"
-                                value={asCopyString(editIcon)}
+                              <IconPicker
+                                previewUrl={editIconPreview}
                                 disabled={busy}
-                                onChange={(event) => setEditIcon(event.target.value)}
+                                label="Change icon"
+                                onPick={(file) => {
+                                  if (!file) return;
+                                  if (String(editIconPreview).startsWith("blob:")) URL.revokeObjectURL(editIconPreview);
+                                  setEditIconFile(file);
+                                  setEditIconPreview(URL.createObjectURL(file));
+                                }}
                               />
                             ) : null}
                             <input
@@ -250,18 +518,37 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                               disabled={busy}
                               onChange={(event) => setEditValue(event.target.value)}
                               onKeyDown={(event) => {
-                                if (event.key === "Enter") saveEdit(list.id, entry.id);
+                                if (event.key === "Enter") saveEdit(list, entry.id);
+                                if (event.key === "Escape") cancelEdit();
                               }}
                             />
+                            {supportsAnswerType ? (
+                              <select
+                                className="ua-cfg-dd-row__type"
+                                value={editAnswerType}
+                                disabled={busy}
+                                aria-label="Answer type"
+                                onChange={(event) => setEditAnswerType(event.target.value)}
+                              >
+                                {MEDICAL_ANSWER_TYPES.map((option) => (
+                                  <option key={option.id} value={option.id}>
+                                    {option.label}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : null}
                           </div>
                         ) : (
                           <strong>
-                            {entry.icon ? <span className="ua-cfg-dd-row__emoji">{entry.icon}</span> : null}
-                            {asCopyString(entry.label)}
+                            {supportsIcons ? <OptionIcon icon={entry.icon} /> : null}
+                            <span className="ua-cfg-dd-row__label">{asCopyString(entry.label)}</span>
+                            {supportsAnswerType ? (
+                              <span className="ua-cfg-dd-row__type-badge">{answerTypeLabel(entry.answerType)}</span>
+                            ) : null}
                           </strong>
                         )}
                         {isEditing ? (
-                          <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={busy} onClick={() => saveEdit(list.id, entry.id)}>
+                          <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={busy} onClick={() => saveEdit(list, entry.id)}>
                             Save
                           </button>
                         ) : (
@@ -269,11 +556,7 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                             type="button"
                             className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm"
                             disabled={busy}
-                            onClick={() => {
-                              setEditing(`${list.id}:${entry.id}`);
-                              setEditValue(asCopyString(entry.label));
-                              setEditIcon(asCopyString(entry.icon));
-                            }}
+                            onClick={() => startEdit(list, entry)}
                           >
                             Edit
                           </button>
@@ -283,7 +566,7 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                           className={`ua-toggle ua-toggle--sm${entry.on ? " ua-toggle--on" : ""}`}
                           aria-pressed={entry.on}
                           disabled={busy}
-                          onClick={() => toggleOption(list.id, entry)}
+                          onClick={() => toggleOption(list, entry)}
                         >
                           <span className="ua-toggle__knob" />
                         </button>
@@ -292,7 +575,7 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                           className="ua-cfg-icon-btn"
                           aria-label={`Remove ${asCopyString(entry.label)}`}
                           disabled={busy}
-                          onClick={() => askRemoveOption(list.id, entry, list.title)}
+                          onClick={() => askRemoveOption(list, entry)}
                         >
                           ×
                         </button>
@@ -300,28 +583,47 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                     );
                   })}
                 </div>
-                <div className={`ua-cfg-dd-add${supportsIcons ? " has-icon" : ""}`}>
+                <div className={`ua-cfg-dd-add${supportsIcons ? " has-icon" : ""}${supportsAnswerType ? " has-type" : ""}`}>
                   {supportsIcons ? (
-                    <input
-                      className="ua-cfg-vh-input ua-cfg-dd-add__icon"
-                      aria-label="New category emoji"
-                      placeholder="Emoji"
-                      value={asCopyString(iconDrafts[list.id])}
+                    <IconPicker
+                      previewUrl={asCopyString(iconPreviews[list.id])}
                       disabled={busy}
-                      onChange={(event) => setIconDrafts((prev) => ({ ...prev, [list.id]: event.target.value }))}
+                      label="New health concern icon"
+                      onPick={(file) => pickAddIcon(list.id, file)}
                     />
                   ) : null}
                   <input
                     className="ua-cfg-vh-input"
-                    placeholder="Add an option..."
+                    placeholder={
+                      supportsIcons
+                        ? "Add a health concern..."
+                        : supportsAnswerType
+                          ? "Add a medical question..."
+                          : "Add an option..."
+                    }
                     value={asCopyString(drafts[list.id])}
                     disabled={busy}
                     onChange={(event) => setDrafts((prev) => ({ ...prev, [list.id]: event.target.value }))}
                     onKeyDown={(event) => {
-                      if (event.key === "Enter") addOption(list.id);
+                      if (event.key === "Enter") addOption(list);
                     }}
                   />
-                  <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={() => addOption(list.id)}>
+                  {supportsAnswerType ? (
+                    <select
+                      className="ua-cfg-dd-add__type"
+                      value={answerTypeDrafts[list.id] || "yes_no_text"}
+                      disabled={busy}
+                      aria-label="Answer type"
+                      onChange={(event) => setAnswerTypeDrafts((prev) => ({ ...prev, [list.id]: event.target.value }))}
+                    >
+                      {MEDICAL_ANSWER_TYPES.map((option) => (
+                        <option key={option.id} value={option.id}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : null}
+                  <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={() => addOption(list)}>
                     Add
                   </button>
                 </div>
@@ -334,11 +636,7 @@ export function DropdownsSection({ lists, setLists, onToast }) {
       <ConfirmDialog
         open={!!pendingDelete}
         tag="Delete option"
-        title={
-          pendingDelete
-            ? `Remove ${pendingDelete.icon ? `${pendingDelete.icon} ` : ""}“${pendingDelete.label}”?`
-            : ""
-        }
+        title={pendingDelete ? `Remove “${pendingDelete.label}”?` : ""}
         body={
           pendingDelete
             ? `This will permanently remove the option from “${pendingDelete.listTitle}”. You can’t undo this.`
