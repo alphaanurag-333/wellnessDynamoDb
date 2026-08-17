@@ -116,8 +116,6 @@ import {
 } from "../data/googleReviewConfigData.js";
 import {
   RECIPES_EDITOR,
-  RECIPE_GALLERY,
-  RECIPE_ITEMS,
 } from "../data/recipesConfigData.js";
 import {
   YOGA_CATEGORIES,
@@ -928,8 +926,7 @@ export function ConfigDetailPage() {
   const [grGallery, setGrGallery] = useState(GOOGLE_REVIEW_GALLERY);
   const [dropdownLists, setDropdownLists] = useState([]);
   const [rcEditor, setRcEditor] = useState(RECIPES_EDITOR);
-  const [rcItems, setRcItems] = useState(RECIPE_ITEMS);
-  const [rcGallery, setRcGallery] = useState(RECIPE_GALLERY);
+  const [rcItems, setRcItems] = useState([]);
   const [ygEditor, setYgEditor] = useState(YOGA_EDITOR);
   const [ygItems, setYgItems] = useState(YOGA_ITEMS);
   const [ygGallery, setYgGallery] = useState(YOGA_GALLERY);
@@ -1065,7 +1062,7 @@ export function ConfigDetailPage() {
               : item.id === "common-dropdowns"
                 ? dropdownLists.some((list) => list.options.some((entry) => entry.on))
               : item.id === "common-recipes"
-                ? rcEditor.appOn || rcEditor.webOn
+                ? rcItems.some((entry) => entry.live)
               : item.id === "common-yoga"
                 ? ygEditor.appOn || ygEditor.webOn
               : item.id === "common-blogs"
@@ -1583,8 +1580,8 @@ export function ConfigDetailPage() {
             setEditor={setRcEditor}
             items={rcItems}
             setItems={setRcItems}
-            gallery={rcGallery}
-            setGallery={setRcGallery}
+            persistToHealthRecipes
+            hideGallery
             onToast={onToast}
           />
         );

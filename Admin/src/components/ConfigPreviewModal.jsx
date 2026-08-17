@@ -1892,7 +1892,7 @@ function renderPreviewBody(item, surface, previewState) {
         <VoicePreview
           editor={{
             ...previewState.rcEditor,
-            videoUploaded: (previewState.rcItems ?? []).some((entry) => entry.type === "VIDEO" || entry.cover),
+            videoUploaded: (previewState.rcItems ?? []).some((entry) => entry.type === "VIDEO" || entry.type === "YT" || entry.cover || entry.thumbnail),
             clientName: asCopyString(previewState.rcItems?.find((entry) => entry.live)?.title),
           }}
           items={(previewState.rcItems ?? []).map((entry) => ({

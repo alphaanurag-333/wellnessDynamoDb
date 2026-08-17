@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { AdminPageLoadingState } from "../../components/AdminLoader.jsx";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -8,7 +8,7 @@ import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { mediaUrl } from "../../../media.js";
 import { NotFoundPage } from "../NotFoundPage.jsx";
 import { AdminPageHeader, AdminStatusBadge } from "../../components/AdminCrud.jsx";
-import { formatDate, useHealthConcerns, buildConcernTitleMap, healthConcernLabel } from "./HealthRecipeShared.js";
+import { formatDate, useRecipeCategories, recipeCategoryLabel } from "./HealthRecipeShared.js";
 
 function DetailRow({ label, value }) {
   return (
@@ -24,12 +24,10 @@ export function HealthRecipeView() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const adminToken = useSelector((s) => s.auth.adminToken);
-  const healthConcerns = useHealthConcerns(adminToken, dispatch);
+  const categories = useRecipeCategories(adminToken, dispatch);
   const [recipe, setRecipe] = useState(null);
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState("");
-
-  const concernMap = useMemo(() => buildConcernTitleMap(healthConcerns), [healthConcerns]);
 
   useEffect(() => {
     if (!adminToken || !recipeId) return;
@@ -109,7 +107,7 @@ export function HealthRecipeView() {
         </div>
         <div className="user-view-grid">
           <DetailRow label="Title" value={recipe.title} />
-          <DetailRow label="Health concern" value={healthConcernLabel(recipe, concernMap)} />
+          <DetailRow label="Category" value={recipeCategoryLabel(recipe, categories)} />
           <DetailRow label="Type" value={recipe.type === "video" ? "Video" : recipe.type === "ytlink" ? "YT Link" : recipe.type} />
           <div className="user-detail-row">
             <span className="user-detail-row__label">Status</span>

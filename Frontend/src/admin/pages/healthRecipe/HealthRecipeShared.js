@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
-import { adminListHealthConcerns } from "../../api/adminHealthConcerns.js";
+import { adminGetConfigDropdown } from "../../api/adminConfigDropdowns.js";
 import { logout } from "../../../store/authSlice.js";
 
 import {
@@ -22,25 +22,30 @@ export const LIST_SEARCH_MAX_LEN = 50;
 export { IMAGE_MAX_SIZE_BYTES, VIDEO_MAX_SIZE_BYTES, validateVideoFileSize };
 export const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/jpg"]);
 export const ALLOWED_VIDEO_TYPES = new Set(["video/mp4", "video/webm", "video/ogg", "video/quicktime", "video/x-m4v"]);
+export const RECIPE_CATEGORY_SLUG = "recipe-category";
 export const LIST_LIMIT = 10;
 
-export function buildConcernTitleMap(concerns) {
-  const map = {};
-  for (const concern of concerns) {
-    const title = concern.title || "";
-    const id = concern.id || concern._id;
-    if (id) map[id] = title;
-  }
-  return map;
+export function mapRecipeCategoryOptions(list) {
+  return (Array.isArray(list?.options) ? list.options : [])
+    .filter((row) => row && row.on !== false)
+    .sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0))
+    .map((row) => ({
+      value: String(row.value || row.label || "").trim(),
+      label: String(row.label || row.value || "").trim(),
+    }))
+    .filter((row) => row.value && row.label);
 }
 
-export function healthConcernLabel(row, concernMap = {}) {
-  return row?.healthConcern?.title || concernMap[row?.healthConcernId] || row?.healthConcernId || "—";
+export function recipeCategoryLabel(row, options = []) {
+  const raw = String(row?.category || "").trim();
+  if (!raw) return "—";
+  const match = options.find((entry) => entry.value === raw || entry.label === raw);
+  return match?.label || raw;
 }
 
 export function emptyForm() {
   return {
-    healthConcernId: "",
+    category: "",
     title: "",
     description: "",
     type: "ytlink",
@@ -96,10 +101,10 @@ export function truncate(str, max) {
   if (s.length <= max) return s;
   return `${s.slice(0, max)}…`;
 }
-
+
 
 export function validateForm(form, { editId, thumbnailFile, hasExistingThumbnail, videoFile, hasExistingVideo }) {
-  const concernId = form.healthConcernId.trim();
+  const category = form.category.trim();
   const title = form.title.trim();
   const description = form.description.trim();
   const type = String(form.type || "").trim();
@@ -107,7 +112,7 @@ export function validateForm(form, { editId, thumbnailFile, hasExistingThumbnail
   const video = form.video.trim();
   const status = String(form.status || "").trim();
 
-  if (!concernId) return "Health concern is required.";
+  if (!category) return "Recipe category is required.";
   if (!title) return "Title is required.";
   if (title.length < TITLE_MIN_LEN) return `Title must be at least ${TITLE_MIN_LEN} characters.`;
   if (title.length > TITLE_MAX_LEN) return `Title cannot exceed ${TITLE_MAX_LEN} characters.`;
@@ -155,23 +160,23 @@ export function validateForm(form, { editId, thumbnailFile, hasExistingThumbnail
   return "";
 }
 
-export function useHealthConcerns(adminToken, dispatch) {
-  const [healthConcerns, setHealthConcerns] = useState([]);
+export function useRecipeCategories(adminToken, dispatch) {
+  const [categories, setCategories] = useState([]);
 
   useEffect(() => {
     if (!adminToken) return;
     let cancelled = false;
     (async () => {
       try {
-        const { healthConcerns: rowsData } = await adminListHealthConcerns(adminToken, { limit: 200 });
-        if (!cancelled) setHealthConcerns(Array.isArray(rowsData) ? rowsData : []);
+        const list = await adminGetConfigDropdown(adminToken, RECIPE_CATEGORY_SLUG);
+        if (!cancelled) setCategories(mapRecipeCategoryOptions(list));
       } catch (e) {
         if (e?.status === 401) {
           if (!cancelled) dispatch(logout());
           return;
         }
         if (!cancelled) {
-          void Swal.fire({ icon: "error", title: "Load failed", text: e.message || "Failed to load health concerns." });
+          void Swal.fire({ icon: "error", title: "Load failed", text: e.message || "Failed to load recipe categories." });
         }
       }
     })();
@@ -180,5 +185,5 @@ export function useHealthConcerns(adminToken, dispatch) {
     };
   }, [adminToken, dispatch]);
 
-  return healthConcerns;
+  return categories;
 }

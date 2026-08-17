@@ -650,18 +650,9 @@ const TABLE_DEFINITIONS = [
       { AttributeName: "id", AttributeType: "S" },
       { AttributeName: "status", AttributeType: "S" },
       { AttributeName: "createdAt", AttributeType: "S" },
-      { AttributeName: "healthConcernId", AttributeType: "S" },
     ],
     GlobalSecondaryIndexes: [
       statusCreatedAtIndex(),
-      {
-        IndexName: "HealthConcernCreatedAtIndex",
-        KeySchema: [
-          { AttributeName: "healthConcernId", KeyType: "HASH" },
-          { AttributeName: "createdAt", KeyType: "RANGE" },
-        ],
-        Projection: { ProjectionType: "ALL" },
-      },
     ],
     ...PAY_PER_REQUEST,
   },

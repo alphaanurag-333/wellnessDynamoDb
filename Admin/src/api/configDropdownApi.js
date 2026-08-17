@@ -54,6 +54,17 @@ export async function adminListConfigDropdowns(token, { page = 1, limit = 50, st
   }
 }
 
+export async function adminGetConfigDropdown(token, idOrSlug) {
+  try {
+    const { data } = await api.get(`${dropdownBase()}/${encodeURIComponent(idOrSlug)}`, {
+      headers: authHeader(tokenOrStored(token)),
+    });
+    return mapList(data.list);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function adminAddConfigDropdownOption(token, listId, fields) {
   try {
     const { data } = await api.post(

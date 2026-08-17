@@ -8,13 +8,13 @@ function appendVideoSpecs(fd, specs) {
   fd.append("videoSpecification", JSON.stringify(Array.isArray(specs) ? specs : []));
 }
 
-export async function adminListHealthRecipes(token, { page = 1, limit = 50, status, type, healthConcernId, search } = {}) {
+export async function adminListHealthRecipes(token, { page = 1, limit = 50, status, type, category, search } = {}) {
   const q = new URLSearchParams();
   q.set("page", String(page));
   q.set("limit", String(limit));
   if (status) q.set("status", status);
   if (type) q.set("type", type);
-  if (healthConcernId) q.set("healthConcernId", String(healthConcernId));
+  if (category) q.set("category", String(category));
   if (search && String(search).trim()) q.set("search", String(search).trim());
   try {
     const { data: body } = await api.get(`${base()}?${q}`, { headers: authHeader(token) });
@@ -32,7 +32,7 @@ export async function adminCreateHealthRecipe(token, fields, file) {
   const videoFile = file?.videoFile instanceof File ? file.videoFile : null;
   if (thumbnailFile || videoFile) {
     const fd = new FormData();
-    fd.append("healthConcernId", String(fields.healthConcernId ?? "").trim());
+    if (fields.category !== undefined) fd.append("category", String(fields.category).trim());
     fd.append("title", String(fields.title ?? "").trim());
     fd.append("description", String(fields.description ?? "").trim());
     fd.append("type", String(fields.type || "ytlink"));
@@ -53,7 +53,7 @@ export async function adminCreateHealthRecipe(token, fields, file) {
     const { data: body } = await api.post(
       base(),
       {
-        healthConcernId: String(fields.healthConcernId ?? "").trim(),
+        category: String(fields.category ?? "").trim(),
         title: String(fields.title ?? "").trim(),
         description: String(fields.description ?? "").trim(),
         thumbnail: String(fields.thumbnail ?? "").trim(),
@@ -76,7 +76,7 @@ export async function adminUpdateHealthRecipe(token, id, fields, file) {
   const videoFile = file?.videoFile instanceof File ? file.videoFile : null;
   if (thumbnailFile || videoFile) {
     const fd = new FormData();
-    if (fields.healthConcernId !== undefined) fd.append("healthConcernId", String(fields.healthConcernId).trim());
+    if (fields.category !== undefined) fd.append("category", String(fields.category).trim());
     if (fields.title !== undefined) fd.append("title", String(fields.title).trim());
     if (fields.description !== undefined) fd.append("description", String(fields.description).trim());
     if (fields.type !== undefined) fd.append("type", String(fields.type));
@@ -94,7 +94,7 @@ export async function adminUpdateHealthRecipe(token, id, fields, file) {
     }
   }
   const payload = {};
-  if (fields.healthConcernId !== undefined) payload.healthConcernId = String(fields.healthConcernId).trim();
+  if (fields.category !== undefined) payload.category = String(fields.category).trim();
   if (fields.title !== undefined) payload.title = String(fields.title).trim();
   if (fields.description !== undefined) payload.description = String(fields.description).trim();
   if (fields.thumbnail !== undefined) payload.thumbnail = String(fields.thumbnail).trim();

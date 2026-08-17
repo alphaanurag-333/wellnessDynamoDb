@@ -86,10 +86,25 @@ async function waitForGsiActive(tableName, indexName, { timeoutMs = 15 * 60 * 10
   throw new Error(`Timed out waiting for ${indexName} on ${tableName} to become ACTIVE`);
 }
 
+async function waitForGsiDeleted(tableName, indexName, { timeoutMs = 15 * 60 * 1000, pollMs = 5000 } = {}) {
+  const started = Date.now();
+
+  while (Date.now() - started < timeoutMs) {
+    const { Table } = await client.send(new DescribeTableCommand({ TableName: tableName }));
+    const gsi = (Table.GlobalSecondaryIndexes || []).find((g) => g.IndexName === indexName);
+    if (!gsi) return;
+    console.log(`  [${tableName}] waiting for ${indexName} to delete (${gsi.IndexStatus})...`);
+    await sleep(pollMs);
+  }
+
+  throw new Error(`Timed out waiting for ${indexName} on ${tableName} to be deleted`);
+}
+
 module.exports = {
   backupTable,
   createAllTables,
   scanTable,
   tableExists,
   waitForGsiActive,
+  waitForGsiDeleted,
 };

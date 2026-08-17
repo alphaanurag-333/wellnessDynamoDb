@@ -12,14 +12,14 @@ import { useResourcePermissions } from "../../hooks/useHasPermission.js";
 import { AdminMediaImage } from "../../components/AdminMediaImage.jsx";
 import { AdminListHeader, AdminStatusBadge, listCountSubtitle, TableCellText } from "../../components/AdminCrud.jsx";
 import { mediaUrl } from "../../../media.js";
-import { formatDate, LIST_LIMIT, LIST_SEARCH_MAX_LEN, useHealthConcerns, buildConcernTitleMap, healthConcernLabel } from "./HealthRecipeShared.js";
+import { formatDate, LIST_LIMIT, LIST_SEARCH_MAX_LEN, useRecipeCategories, recipeCategoryLabel } from "./HealthRecipeShared.js";
 
 export function HealthRecipeList() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const adminToken = useSelector((s) => s.auth.adminToken);
   const { canEdit, canDelete } = useResourcePermissions("health-recipes");
-  const healthConcerns = useHealthConcerns(adminToken, dispatch);
+  const categories = useRecipeCategories(adminToken, dispatch);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [togglingId, setTogglingId] = useState("");
@@ -31,8 +31,7 @@ export function HealthRecipeList() {
   });
   const [listStatus, setListStatus] = useState("");
   const [listType, setListType] = useState("");
-  const [listConcern, setListConcern] = useState("");
-  const concernMap = useMemo(() => buildConcernTitleMap(healthConcerns), [healthConcerns]);
+  const [listCategory, setListCategory] = useState("");
 
   const loadRows = useCallback(async () => {
     if (!adminToken) return;
@@ -44,7 +43,7 @@ export function HealthRecipeList() {
         ...(debouncedSearch ? { search: debouncedSearch } : {}),
         ...(listStatus ? { status: listStatus } : {}),
         ...(listType ? { type: listType } : {}),
-        ...(listConcern ? { healthConcernId: listConcern } : {}),
+        ...(listCategory ? { category: listCategory } : {}),
       });
       setRows(healthRecipes);
       setPages(pagination?.pages ?? 1);
@@ -55,7 +54,7 @@ export function HealthRecipeList() {
     } finally {
       setLoading(false);
     }
-  }, [adminToken, dispatch, listConcern, debouncedSearch, listStatus, listType, page]);
+  }, [adminToken, dispatch, listCategory, debouncedSearch, listStatus, listType, page]);
 
   useEffect(() => {
     loadRows();
@@ -63,7 +62,7 @@ export function HealthRecipeList() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, listStatus, listType, listConcern]);
+  }, [debouncedSearch, listStatus, listType, listCategory]);
 
   const onDelete = async (row) => {
     const { isConfirmed } = await Swal.fire({
@@ -103,13 +102,13 @@ export function HealthRecipeList() {
 
   const pageInfo = useMemo(() => `Page ${page} of ${pages} · ${total} items`, [page, pages, total]);
   const subtitle = listCountSubtitle(loading, total, "health recipe", "health recipes");
-  const hasFilters = Boolean(listSearch.trim() || listStatus || listType || listConcern);
+  const hasFilters = Boolean(listSearch.trim() || listStatus || listType || listCategory);
 
   const clearFilters = () => {
     setSearchInput("");
     setListStatus("");
     setListType("");
-    setListConcern("");
+    setListCategory("");
   };
 
   return (
@@ -154,12 +153,12 @@ export function HealthRecipeList() {
             </select>
           </label>
           <label className="user-field admin-crud-filters__select">
-            <span className="user-field__label">Health concern</span>
-            <select className="user-field__input" value={listConcern} onChange={(e) => setListConcern(e.target.value)}>
+            <span className="user-field__label">Category</span>
+            <select className="user-field__input" value={listCategory} onChange={(e) => setListCategory(e.target.value)}>
               <option value="">All</option>
-              {healthConcerns.map((c) => (
-                <option key={c.id || c._id} value={c.id || c._id}>
-                  {c.title || c.id || c._id}
+              {categories.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
                 </option>
               ))}
             </select>
@@ -177,7 +176,7 @@ export function HealthRecipeList() {
                 <th>S No.</th>
                 <th>Thumbnail</th>
                 <th>Title</th>
-                <th>Concern</th>
+                <th>Category</th>
                 <th>Type</th>
                 <th>YT Link</th>
                 <th>Video</th>
@@ -206,7 +205,7 @@ export function HealthRecipeList() {
                       )}
                     </td>
                     <td><TableCellText value={row.title} /></td>
-                    <td className="data-table__muted">{healthConcernLabel(row, concernMap)}</td>
+                    <td className="data-table__muted">{recipeCategoryLabel(row, categories)}</td>
                     <td className="data-table__muted">{row.type || "—"}</td>
                     <td>
                       {row.type === "ytlink" ? (

@@ -35347,16 +35347,112 @@
   background: #fff;
 }
 
+.updated-admin .ua-cfg-rc-cover-wrap {
+  width: 72px;
+  height: 72px;
+}
+
+.updated-admin .ua-cfg-rc-cover-drop-wrap {
+  width: 100%;
+}
+
 .updated-admin .ua-cfg-rc-cover {
+  position: relative;
+  overflow: hidden;
   display: grid;
   place-items: center;
-  align-content: center;
-  gap: 4px;
+  width: 72px;
+  height: 72px;
+  min-height: 72px;
+  padding: 0;
+  border: 0;
   border-radius: 10px;
   background: #ecfdf5;
   color: #16a34a;
+  font: inherit;
   font-size: 11px;
   font-weight: 700;
+}
+
+.updated-admin .ua-cfg-rc-cover--pick {
+  cursor: pointer;
+}
+
+.updated-admin .ua-cfg-rc-cover--pick em {
+  position: absolute;
+  left: 6px;
+  bottom: 4px;
+  z-index: 1;
+  font-style: normal;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(15, 23, 42, 0.45);
+}
+
+.updated-admin .ua-cfg-rc-cover__img,
+.updated-admin .ua-cfg-rc-drop-preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+.updated-admin .ua-cfg-rc-cover-drop {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  min-height: 0;
+  height: auto;
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+  border: 1.5px dashed #93c5fd;
+  border-radius: 14px;
+  background: #eff6ff;
+  color: #3b82f6;
+  font: inherit;
+}
+
+.updated-admin .ua-cfg-rc-cover-drop.is-on {
+  border-style: solid;
+  background: linear-gradient(135deg, #dbeafe 0%, #fed7aa 100%);
+}
+
+.updated-admin .ua-cfg-rc-cover-drop em {
+  position: absolute;
+  left: 8px;
+  bottom: 6px;
+  z-index: 1;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+  color: #3b82f6;
+}
+
+.updated-admin .ua-cfg-rc-cover-drop.is-on em {
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(15, 23, 42, 0.45);
+}
+
+.updated-admin .ua-cfg-rc-video-drop {
+  min-height: 110px;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.updated-admin .ua-cfg-rc-file-btn {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.updated-admin .ua-cfg-vh-drop--cover {
+  position: relative;
+  overflow: hidden;
 }
 
 .updated-admin .ua-cfg-rc-cover.is-video {

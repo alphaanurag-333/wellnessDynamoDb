@@ -11,21 +11,12 @@ async function createHealthRecipeTable() {
       { AttributeName: "id", AttributeType: "S" },
       { AttributeName: "status", AttributeType: "S" },
       { AttributeName: "createdAt", AttributeType: "S" },
-      { AttributeName: "healthConcernId", AttributeType: "S" },
     ],
     GlobalSecondaryIndexes: [
       {
         IndexName: "StatusCreatedAtIndex",
         KeySchema: [
           { AttributeName: "status", KeyType: "HASH" },
-          { AttributeName: "createdAt", KeyType: "RANGE" },
-        ],
-        Projection: { ProjectionType: "ALL" },
-      },
-      {
-        IndexName: "HealthConcernCreatedAtIndex",
-        KeySchema: [
-          { AttributeName: "healthConcernId", KeyType: "HASH" },
           { AttributeName: "createdAt", KeyType: "RANGE" },
         ],
         Projection: { ProjectionType: "ALL" },

@@ -20,7 +20,7 @@ import {
   sanitizeDescription,
   sanitizeTitle,
   sanitizeVideoSpecItem,
-  useHealthConcerns,
+  useRecipeCategories,
   validateForm,
   validateVideoFileSize,
   videoSpecsFromApi,
@@ -101,13 +101,13 @@ export function HealthRecipeForm({ mode = "create", initialRecipe = null }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const adminToken = useSelector((s) => s.auth.adminToken);
-  const healthConcerns = useHealthConcerns(adminToken, dispatch);
+  const categories = useRecipeCategories(adminToken, dispatch);
 
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(() => {
     if (!initialRecipe) return emptyForm();
     return {
-      healthConcernId: initialRecipe.healthConcernId || "",
+      category: initialRecipe.category || "",
       title: initialRecipe.title || "",
       description: initialRecipe.description || "",
       type: initialRecipe.type || "ytlink",
@@ -190,7 +190,7 @@ export function HealthRecipeForm({ mode = "create", initialRecipe = null }) {
       return;
     }
     const payload = {
-      healthConcernId: form.healthConcernId.trim(),
+      category: form.category.trim(),
       title: form.title.trim(),
       description: form.description.trim(),
       type: form.type || "ytlink",
@@ -228,18 +228,18 @@ export function HealthRecipeForm({ mode = "create", initialRecipe = null }) {
       <div className="row g-3">
         <label className="user-field col-12 col-md-6">
           <span className="user-field__label">
-            Health concern <span className="required-dot">*</span>
+            Recipe category <span className="required-dot">*</span>
           </span>
           <select
             className="user-field__input"
-            value={form.healthConcernId}
-            onChange={(e) => setForm((p) => ({ ...p, healthConcernId: e.target.value }))}
+            value={form.category}
+            onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))}
             required
           >
-            <option value="">Select concern</option>
-            {healthConcerns.map((c) => (
-              <option key={c.id || c._id} value={c.id || c._id}>
-                {c.title || c.id || c._id}
+            <option value="">Select category</option>
+            {categories.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
               </option>
             ))}
           </select>

@@ -49,7 +49,9 @@ function withLegacyId(item) {
 
 function toPublicHealthRecipe(item) {
   const row = withLegacyId(normalizeMediaItemFromStorage(item));
-  return row ? resolveMediaFields(row, RECIPE_MEDIA_FIELDS) : null;
+  if (!row) return null;
+  const { healthConcernId: _healthConcernId, healthConcern: _healthConcern, ...rest } = row;
+  return resolveMediaFields(rest, RECIPE_MEDIA_FIELDS);
 }
 
 function sanitizeUpdateField(key, value) {
@@ -61,14 +63,14 @@ function sanitizeUpdateField(key, value) {
     if (value == null || String(value).trim() === "") return "";
     return normalizeMediaField(value, field);
   }
-  if (["healthConcernId", "title", "description", "ytLink"].includes(field)) {
+  if (["category", "title", "description", "ytLink"].includes(field)) {
     return String(value || "").trim();
   }
   return value;
 }
 
 async function createHealthRecipe({
-  healthConcernId,
+  category = "",
   title,
   description,
   thumbnail,
@@ -82,7 +84,7 @@ async function createHealthRecipe({
   const now = new Date().toISOString();
   const item = {
     id: uuidv4(),
-    healthConcernId: String(healthConcernId || "").trim(),
+    category: String(category || "").trim(),
     title: String(title || "").trim(),
     description: String(description || "").trim(),
     thumbnail: normalizeMediaField(thumbnail, "thumbnail"),
@@ -116,10 +118,11 @@ async function getHealthRecipeById(id) {
 }
 
 async function updateHealthRecipe(id, updates) {
-  const blockedFields = new Set(["id", "_id", "createdAt"]);
+  const blockedFields = new Set(["id", "_id", "createdAt", "healthConcernId", "healthConcern"]);
   const entries = Object.entries(updates || {})
     .filter(([k, v]) => !blockedFields.has(k) && v !== undefined)
-    .map(([k, v]) => [normalizeUpdateFieldName(k), sanitizeUpdateField(k, v)]);
+    .map(([k, v]) => [normalizeUpdateFieldName(k), sanitizeUpdateField(k, v)])
+    .filter(([k]) => !blockedFields.has(k));
 
   if (entries.length === 0) throw new Error("No valid fields provided for update");
 
@@ -133,7 +136,11 @@ async function updateHealthRecipe(id, updates) {
     setExpr += `, #${k} = :${k}`;
   }
 
-  const removeFields = legacyFieldsToRemoveOnUpdate(Object.fromEntries(entries));
+  const removeFields = [
+    ...legacyFieldsToRemoveOnUpdate(Object.fromEntries(entries)),
+    "healthConcernId",
+    "healthConcern",
+  ].filter((field, index, all) => all.indexOf(field) === index);
   let updateExpression = setExpr;
   if (removeFields.length > 0) {
     updateExpression += ` REMOVE ${removeFields.join(", ")}`;
@@ -163,11 +170,11 @@ async function deleteHealthRecipe(id) {
   );
 }
 
-async function listHealthRecipes({ page = 1, limit = 10, status, type, healthConcernId, search } = {}) {
+async function listHealthRecipes({ page = 1, limit = 10, status, type, category, search } = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const normalizedType = type ? normalizeType(type, "") : "";
-  const normalizedHealthConcernId = String(healthConcernId || "").trim();
-  const searchFilter = buildContainsFilter(["title", "description"], search);
+  const normalizedCategory = String(category || "").trim();
+  const searchFilter = buildContainsFilter(["title", "description", "category"], search);
   let filterExpression = searchFilter.filterExpression;
   const exprNames = { ...searchFilter.exprNames };
   const exprValues = { ...searchFilter.exprValues };
@@ -178,24 +185,17 @@ async function listHealthRecipes({ page = 1, limit = 10, status, type, healthCon
     filterExpression = appendFilter(filterExpression, "#type = :type");
   }
 
-  const useHealthConcernIndex = Boolean(normalizedHealthConcernId);
-  const indexName = useHealthConcernIndex ? "HealthConcernCreatedAtIndex" : "StatusCreatedAtIndex";
-  const partitionKeyName = useHealthConcernIndex ? "healthConcernId" : "status";
-  const partitionKeyValue = useHealthConcernIndex
-    ? normalizedHealthConcernId
-    : normalizedStatus || undefined;
-
-  if (normalizedStatus && partitionKeyName !== "status") {
-    exprNames["#status"] = "status";
-    exprValues[":status"] = normalizedStatus;
-    filterExpression = appendFilter(filterExpression, "#status = :status");
+  if (normalizedCategory) {
+    exprNames["#category"] = "category";
+    exprValues[":category"] = normalizedCategory;
+    filterExpression = appendFilter(filterExpression, "#category = :category");
   }
 
   const { items, pagination } = await listByPartitionKey({
     tableName: TABLE,
-    indexName,
-    partitionKeyName,
-    partitionKeyValue,
+    indexName: "StatusCreatedAtIndex",
+    partitionKeyName: "status",
+    partitionKeyValue: normalizedStatus || undefined,
     filterExpression,
     exprNames,
     exprValues,

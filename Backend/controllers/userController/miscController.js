@@ -306,15 +306,15 @@ exports.getActiveYoga = asyncHandler(async (req, res) => {
 
 exports.getActiveHealthRecipes = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
-  const healthConcernId = String(req.query.healthConcernId || "").trim() || undefined;
   const type = String(req.query.type || "").trim().toLowerCase() || undefined;
+  const category = String(req.query.category || "").trim() || undefined;
   const data = resolveListMedia(
     await listHealthRecipes({
       page,
       limit,
       status: "active",
-      healthConcernId,
       type,
+      category,
       search: readSearch(req.query),
     }),
     "healthRecipes",

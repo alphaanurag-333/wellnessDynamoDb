@@ -1,3 +1,10 @@
+export const RECIPE_PAGE_SIZE = 20;
+export const RECIPE_CATEGORY_SLUG = "recipe-category";
+export const RECIPE_IMAGE_MAX_MB = 25;
+export const RECIPE_VIDEO_MAX_MB = 25;
+export const RECIPE_IMAGE_MAX_BYTES = RECIPE_IMAGE_MAX_MB * 1024 * 1024;
+export const RECIPE_VIDEO_MAX_BYTES = RECIPE_VIDEO_MAX_MB * 1024 * 1024;
+
 export const RECIPE_CATEGORIES = [
   "Fat loss",
   "Protein rich",
@@ -14,58 +21,90 @@ export const RECIPES_EDITOR = {
   webOn: true,
 };
 
-export const RECIPE_ITEMS = [
-  {
-    id: "rc-1",
-    title: "Gut-reset khichdi",
-    category: "Gut reset",
-    type: "TEXT",
-    duration: "4 min read",
-    description: "A one-pot moong dal khichdi that settles digestion — low spice, high fibre, ready in 25 minutes.",
-    live: true,
-    cover: true,
-    videoLink: "",
-  },
-  {
-    id: "rc-2",
-    title: "Overnight oats · high protein",
-    category: "Protein rich",
-    type: "TEXT",
-    duration: "3 min read",
-    description: "Rolled oats soaked with curd and chia, topped with soaked almonds. 22 g protein per bowl.",
-    live: true,
-    cover: true,
-    videoLink: "",
-  },
-  {
-    id: "rc-3",
-    title: "Beetroot detox juice",
-    category: "Fat loss",
-    type: "VIDEO",
-    duration: "2:40",
-    description: "Beetroot, carrot and amla pressed cold — the functional juice used in the morning protocol.",
-    live: true,
-    cover: true,
-    videoLink: "",
-  },
-  {
-    id: "rc-4",
-    title: "Paneer bhurji · low oil",
-    category: "Protein rich",
-    type: "VIDEO",
-    duration: "6:15",
-    description: "A five-ingredient bhurji cooked in one teaspoon of ghee. Works for lunch or dinner.",
-    live: true,
-    cover: true,
-    videoLink: "",
-  },
-];
+export const RECIPE_ITEMS = [];
 
 export const RECIPE_GALLERY_OWNERS = ["All owners", "Anita Rao", "Ishita Sen", "Rohan Das", "Priya Nair", "Admin"];
 
-export const RECIPE_GALLERY = [
-  { id: "rc-g1", title: "Gut-reset khichdi cover", owner: "Anita Rao", date: "18 Jul 2026", size: "1.2 MB", versions: 2, live: true },
-  { id: "rc-g2", title: "Overnight oats cover", owner: "Ishita Sen", date: "12 Jul 2026", size: "980 KB", versions: 1, live: true },
-  { id: "rc-g3", title: "Beetroot juice — method", owner: "Rohan Das", date: "05 Jul 2026", size: "48 MB", versions: 3, live: false },
-  { id: "rc-g4", title: "Paneer bhurji — stove top", owner: "Priya Nair", date: "28 Jun 2026", size: "62 MB", versions: 2, live: false },
-];
+export const RECIPE_GALLERY = [];
+
+export function emptyRecipeDraft(category = "") {
+  return {
+    title: "",
+    category,
+    description: "",
+    videoLink: "",
+    cover: false,
+    video: false,
+    coverFile: null,
+    coverPreview: "",
+    videoFile: null,
+    videoName: "",
+  };
+}
+
+export function mapDropdownCategoryOptions(list) {
+  return (Array.isArray(list?.options) ? list.options : [])
+    .filter((row) => row && row.on !== false)
+    .sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0))
+    .map((row) => ({
+      id: row.id,
+      value: String(row.value || row.label || "").trim(),
+      label: String(row.label || row.value || "").trim(),
+    }))
+    .filter((row) => row.value && row.label);
+}
+
+export function recipeCategoryLabel(value, options = []) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const match = options.find((row) => row.value === raw || row.label === raw);
+  return match?.label || raw;
+}
+
+export function mapHealthRecipe(row, categoryOptions = []) {
+  if (!row) return null;
+  const id = row.id || row._id;
+  if (!id) return null;
+  const apiType = String(row.type || "ytlink").toLowerCase() === "video" ? "video" : "ytlink";
+  const category = String(row.category || "").trim();
+  return {
+    id,
+    title: String(row.title || "").trim(),
+    category,
+    categoryLabel: recipeCategoryLabel(category, categoryOptions),
+    type: apiType === "video" ? "VIDEO" : "YT",
+    apiType,
+    duration: apiType === "video" ? "Video" : "YouTube",
+    description: String(row.description || "").trim(),
+    live: row.status !== "inactive",
+    status: row.status === "inactive" ? "inactive" : "active",
+    cover: Boolean(row.thumbnail),
+    thumbnail: row.thumbnail || "",
+    videoLink: String(row.ytLink || "").trim(),
+    video: row.video || "",
+    videoSpecification: Array.isArray(row.videoSpecification) ? row.videoSpecification : [],
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+export function withCategoryLabels(items, categoryOptions) {
+  return (items || []).map((row) => ({
+    ...row,
+    categoryLabel: recipeCategoryLabel(row.category, categoryOptions),
+  }));
+}
+
+export function validateRecipeImage(file) {
+  if (!(file instanceof File)) return "Choose a cover image";
+  if (!String(file.type || "").startsWith("image/")) return "Cover must be an image";
+  if (file.size > RECIPE_IMAGE_MAX_BYTES) return `Cover image must be ${RECIPE_IMAGE_MAX_MB} MB or smaller`;
+  return "";
+}
+
+export function validateRecipeVideo(file) {
+  if (!(file instanceof File)) return "Choose a video file";
+  if (!String(file.type || "").startsWith("video/")) return "Upload a video file";
+  if (file.size > RECIPE_VIDEO_MAX_BYTES) return `Video must be ${RECIPE_VIDEO_MAX_MB} MB or smaller`;
+  return "";
+}
