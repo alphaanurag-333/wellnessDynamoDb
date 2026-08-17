@@ -1,213 +1,128 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { getAppFooterText, saveAppFooterText, normalizeFooterText } from "../api/footerApi.js";
 import { asCopyString } from "../data/bannerConfigData.js";
-import { joinFooterLinks, parseFooterLinks } from "../data/footerConfigData.js";
 
-function Panel({ title, subtitle, actions, children }) {
-  const hasHead = Boolean(title || subtitle || actions);
+function Panel({ title, subtitle, children }) {
   return (
     <section className="ua-cfg-panel">
-      {hasHead ? (
-        <div className="ua-cfg-panel__head">
-          <div>
-            {title ? <h3 className="ua-cfg-panel__title">{title}</h3> : null}
-            {subtitle ? <p className="ua-cfg-panel__sub">{subtitle}</p> : null}
-          </div>
-          {actions ? <div className="ua-cfg-panel__actions">{actions}</div> : null}
+      <div className="ua-cfg-panel__head">
+        <div>
+          {title ? <h3 className="ua-cfg-panel__title">{title}</h3> : null}
+          {subtitle ? <p className="ua-cfg-panel__sub">{subtitle}</p> : null}
         </div>
-      ) : null}
+      </div>
       {children}
     </section>
   );
 }
 
-function ColumnCard({ column, editing, draft, onToggle, onEdit, onSave, onDelete, onDraftChange }) {
-  const isEditing = Boolean(editing);
-  const heading = asCopyString(column.heading);
+export function FooterSettingSection({ bottomLine, setBottomLine, onToast }) {
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
 
-  return (
-    <article className={`ua-cfg-ft-col${isEditing ? " is-editing" : ""}`}>
-      <div className="ua-cfg-ft-col__head">
-        <strong className="ua-cfg-ft-col__heading">{heading}</strong>
-        <span className={`ua-cfg-faq__shown${column.live ? " is-on" : ""}`}>
-          {column.live ? "LIVE" : "HIDDEN"}
-        </span>
-        <button
-          type="button"
-          className={`ua-toggle ua-toggle--sm${column.live ? " ua-toggle--on" : ""}`}
-          aria-pressed={column.live}
-          aria-label={`${heading} ${column.live ? "on" : "off"}`}
-          onClick={onToggle}
-        >
-          <span className="ua-toggle__knob" />
-        </button>
-        {isEditing ? (
-          <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" onClick={onSave}>
-            Save
-          </button>
-        ) : (
-          <button type="button" className="ua-cfg-cr-link ua-cfg-cr-link--modify" onClick={onEdit}>
-            Edit
-          </button>
-        )}
-        <button type="button" className="ua-cfg-icon-btn" aria-label={`Remove ${heading}`} onClick={onDelete}>
-          ×
-        </button>
-      </div>
-      {isEditing ? (
-        <input
-          type="text"
-          className="ua-cfg-ft-col__links-input"
-          value={asCopyString(draft.links)}
-          placeholder="Links · separate with ·"
-          onChange={(event) => onDraftChange({ ...draft, links: event.target.value })}
-        />
-      ) : (
-        <p className="ua-cfg-ft-col__links">{joinFooterLinks(column.links) || "No links yet"}</p>
-      )}
-    </article>
-  );
-}
+  const loadFooter = useCallback(async () => {
+    setLoading(true);
+    try {
+      const next = await getAppFooterText();
+      setBottomLine(next || "");
+    } catch (error) {
+      onToast(error?.message || "Failed to load footer text");
+      setBottomLine("");
+    } finally {
+      setLoading(false);
+    }
+  }, [onToast, setBottomLine]);
 
-export function FooterSettingSection({ columns, setColumns, bottomLine, setBottomLine, onToast }) {
-  const [editingId, setEditingId] = useState(null);
-  const [draft, setDraft] = useState({ heading: "", links: "" });
-  const [showAdd, setShowAdd] = useState(false);
-  const [newDraft, setNewDraft] = useState({ heading: "", links: "" });
+  useEffect(() => {
+    loadFooter();
+  }, [loadFooter]);
 
-  function startEdit(column) {
-    setShowAdd(false);
-    setEditingId(column.id);
-    setDraft({ heading: asCopyString(column.heading), links: joinFooterLinks(column.links) });
+  function startEdit() {
+    setDraft(asCopyString(bottomLine));
+    setEditing(true);
   }
 
   function cancelEdit() {
-    setEditingId(null);
-    setDraft({ heading: "", links: "" });
+    setDraft(asCopyString(bottomLine));
+    setEditing(false);
   }
 
-  function saveEdit(id) {
-    const links = parseFooterLinks(asCopyString(draft.links));
-    if (!links.length) {
-      onToast("Add at least one link");
+  async function saveEdit() {
+    const next = normalizeFooterText(draft);
+    if (!next) {
+      onToast("Footer text is required");
       return;
     }
-    setColumns((prev) =>
-      prev.map((entry) => (entry.id === id ? { ...entry, links } : entry)),
-    );
-    cancelEdit();
-    onToast("Column saved");
+    setBusy(true);
+    try {
+      const saved = await saveAppFooterText(next);
+      setBottomLine(saved);
+      setEditing(false);
+      onToast("Footer text saved");
+    } catch (error) {
+      onToast(error?.message || "Failed to save footer text");
+    } finally {
+      setBusy(false);
+    }
   }
 
-  function addColumn() {
-    const heading = asCopyString(newDraft.heading).trim();
-    const links = parseFooterLinks(asCopyString(newDraft.links));
-    if (!heading) {
-      onToast("Column heading is required");
-      return;
-    }
-    if (!links.length) {
-      onToast("Add at least one link");
-      return;
-    }
-    setColumns((prev) => [
-      ...prev,
-      { id: `ft-${Date.now()}`, heading, links, live: true },
-    ]);
-    setNewDraft({ heading: "", links: "" });
-    setShowAdd(false);
-    onToast(`${heading} column added`);
-  }
+  const text = asCopyString(bottomLine);
 
   return (
     <div className="ua-cfg-ft">
       <Panel
-        title="Footer columns"
-        subtitle="Edit the heading and the links inside each column."
-        actions={
-          <button
-            type="button"
-            className="ua-cfg-rc-add"
-            onClick={() => {
-              cancelEdit();
-              setShowAdd(true);
-            }}
-          >
-            + Add column
-          </button>
+        title="Bottom line"
+        subtitle={
+          loading
+            ? "Loading footer text…"
+            : "Copyright line shown on the website footer. Saved to App Config."
         }
       >
-        {showAdd ? (
-          <section className="ua-cfg-ft-add">
-            <div className="ua-cfg-ft-add__head">
-              <strong><span aria-hidden="true">📦</span> New footer column</strong>
+        {loading ? (
+          <p className="ua-cfg-panel__sub">Fetching footer text from App Config…</p>
+        ) : (
+          <article className={`ua-cfg-sm-row${editing ? " is-editing" : ""}`}>
+            <strong className="ua-cfg-sm-row__label">Copyright</strong>
+            {editing ? (
+              <input
+                type="text"
+                className="ua-cfg-sm-row__input"
+                value={asCopyString(draft)}
+                maxLength={100}
+                disabled={busy}
+                placeholder="© 2026 Company name. All rights reserved."
+                onChange={(event) => setDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") saveEdit();
+                  if (event.key === "Escape") cancelEdit();
+                }}
+              />
+            ) : (
+              <span className="ua-cfg-sm-row__url">{text || "Not set"}</span>
+            )}
+            {editing ? (
               <button
                 type="button"
-                className="ua-cfg-icon-btn"
-                aria-label="Close"
-                onClick={() => {
-                  setShowAdd(false);
-                  setNewDraft({ heading: "", links: "" });
-                }}
+                className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
+                disabled={busy}
+                onClick={saveEdit}
               >
-                ×
+                Save
               </button>
-            </div>
-            <div className="ua-cfg-ft-add__row">
-              <input
-                type="text"
-                className="ua-cfg-vh-input"
-                placeholder="Heading · e.g. Resources"
-                value={asCopyString(newDraft.heading)}
-                onChange={(event) => setNewDraft((prev) => ({ ...prev, heading: event.target.value }))}
-              />
-              <input
-                type="text"
-                className="ua-cfg-vh-input"
-                placeholder="Links · separate with ·"
-                value={asCopyString(newDraft.links)}
-                onChange={(event) => setNewDraft((prev) => ({ ...prev, links: event.target.value }))}
-              />
-              <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" onClick={addColumn}>
-                Add column
+            ) : (
+              <button
+                type="button"
+                className="ua-cfg-cr-link ua-cfg-cr-link--modify"
+                disabled={busy}
+                onClick={startEdit}
+              >
+                Edit
               </button>
-            </div>
-          </section>
-        ) : null}
-
-        <div className="ua-cfg-ft-grid">
-          {columns.map((column) => (
-            <ColumnCard
-              key={column.id}
-              column={column}
-              editing={editingId === column.id}
-              draft={draft}
-              onDraftChange={setDraft}
-              onToggle={() => {
-                setColumns((prev) =>
-                  prev.map((entry) =>
-                    entry.id === column.id ? { ...entry, live: !entry.live } : entry,
-                  ),
-                );
-              }}
-              onEdit={() => startEdit(column)}
-              onSave={() => saveEdit(column.id)}
-              onDelete={() => {
-                setColumns((prev) => prev.filter((entry) => entry.id !== column.id));
-                if (editingId === column.id) cancelEdit();
-                onToast(`${asCopyString(column.heading)} removed`);
-              }}
-            />
-          ))}
-        </div>
-      </Panel>
-
-      <Panel title="Bottom line">
-        <input
-          type="text"
-          className="ua-cfg-ft-bottom"
-          value={asCopyString(bottomLine)}
-          onChange={(event) => setBottomLine(event.target.value)}
-        />
+            )}
+          </article>
+        )}
       </Panel>
     </div>
   );

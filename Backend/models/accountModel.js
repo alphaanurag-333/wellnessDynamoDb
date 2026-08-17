@@ -209,6 +209,7 @@ function buildAccountItem(input, { id, now } = {}) {
         : null,
     webVisible: normalizeVisibleFlag(input.webVisible, true),
     appVisible: normalizeVisibleFlag(input.appVisible, true),
+    aiEnabled: normalizeVisibleFlag(input.aiEnabled, true),
     referralCode:
       input.referralCode != null
         ? String(input.referralCode).trim().toUpperCase() || null
@@ -249,6 +250,7 @@ function toPublicAccount(account) {
       .map((m) => normalizeRoleKey(m?.roleKey))
       .filter(Boolean);
   }
+  pub.aiEnabled = normalizeVisibleFlag(account.aiEnabled, true);
   return pub;
 }
 
@@ -273,7 +275,7 @@ function sanitizeUpdateField(key, value) {
     if (value == null || value === "") return null;
     return normalizeApprovalStatus(value);
   }
-  if (key === "webVisible" || key === "appVisible") return normalizeVisibleFlag(value, true);
+  if (key === "webVisible" || key === "appVisible" || key === "aiEnabled") return normalizeVisibleFlag(value, true);
   if (key === "isSuperAdmin") return Boolean(value);
   if (key === "defaultRoleKey") {
     if (value == null || value === "") return null;

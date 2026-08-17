@@ -24,11 +24,10 @@ import {
 import { DietPlansSection } from "../components/DietPlansSection.jsx";
 import { DrfBankSection } from "../components/DrfBankSection.jsx";
 import { GallerySection, GALLERY_MEDIA } from "../components/GallerySection.jsx";
-import {
-  AiEnableSection,
-  AI_ENABLE_ASSISTANTS,
-  AI_ENABLE_COACHES,
-} from "../components/AiEnableSection.jsx";
+import { AiEnableSection } from "../components/AiEnableSection.jsx";
+import { PaymentGatewaySection } from "../components/PaymentGatewaySection.jsx";
+import { LanguageDisableSection } from "../components/LanguageDisableSection.jsx";
+import { GstSection } from "../components/GstSection.jsx";
 import { LaunchSection } from "../components/LaunchSection.jsx";
 import { NutritionBankSection } from "../components/NutritionBankSection.jsx";
 import { FeatureFlagsSection } from "../components/FeatureFlagsSection.jsx";
@@ -59,15 +58,13 @@ import {
   PROGRAM_TESTIMONIAL_GALLERY,
   PROGRAM_TESTIMONIAL_STORIES,
 } from "../data/programTestimonialsConfigData.js";
-import { FOOTER_BOTTOM_LINE, FOOTER_COLUMNS } from "../data/footerConfigData.js";
-import { SOCIAL_FOOTER_LINKS } from "../data/socialLinksConfigData.js";
 import { WEBSITE_FOOTER_LINKS } from "../data/websiteLinksConfigData.js";
 import { PRIVACY_BLOCKS } from "../data/privacyConfigData.js";
 import { TOS_BLOCKS } from "../data/tosConfigData.js";
 import { GUIDELINE_BLOCKS } from "../data/guidelinesConfigData.js";
 import { CONTACT_DETAILS } from "../data/contactConfigData.js";
 import { FOOTER_TEXT_BLOCKS } from "../data/footerTextConfigData.js";
-import { LOGO_SLOTS } from "../data/logoConfigData.js";
+import { createDefaultLogoSlots } from "../data/logoConfigData.js";
 import { LOCATIONS } from "../data/locationConfigData.js";
 import { BANNER_EDITOR, BANNER_GALLERY, BANNER_LIVE_ITEMS } from "../data/bannerConfigData.js";
 import { CHAMPION_EDITOR, CHAMPION_GALLERY } from "../data/championConfigData.js";
@@ -145,10 +142,8 @@ import {
   REFERRAL_LOOKUP,
   SUBSCRIPTION_PRICING,
   VALIDITY_PERIODS,
-  PAYMENT_GATEWAY_OPTIONS,
   activePaymentGateway,
   createDefaultGateways,
-  paymentMethodsForGateway,
   TOS_CONTENT,
   DPA_CONTENT,
 } from "../data/configDetailData.js";
@@ -204,44 +199,6 @@ function Panel({ title, subtitle, actions, children, className = "" }) {
       </div>
       {children}
     </section>
-  );
-}
-
-function LanguagePanel({ hindiOn, onToggle, onToast }) {
-  return (
-    <Panel title="Languages">
-      <div className="ua-cfg-lang-row">
-        <div>
-          <div className="ua-cfg-lang-row__name">English</div>
-          <div className="ua-cfg-lang-row__note">Always on</div>
-        </div>
-        <div className="ua-cfg-lang-row__side">
-          <span className="ua-cfg-lang-row__state">Enabled</span>
-          <span className="ua-cfg-lang-row__lock" title="Locked" aria-hidden="true">🔒</span>
-        </div>
-      </div>
-      <div className="ua-cfg-lang-row">
-        <div>
-          <div className="ua-cfg-lang-row__name">Hindi</div>
-          <div className="ua-cfg-lang-row__note">Can be disabled</div>
-        </div>
-        <div className="ua-cfg-lang-row__side">
-          <span className="ua-cfg-lang-row__state">{hindiOn ? "Enabled" : "Disabled"}</span>
-          <button
-            type="button"
-            className={`ua-toggle${hindiOn ? " ua-toggle--on" : ""}`}
-            aria-pressed={hindiOn}
-            aria-label="Hindi language"
-            onClick={() => {
-              onToggle(!hindiOn);
-              onToast(`Hindi ${!hindiOn ? "enabled" : "disabled"}`);
-            }}
-          >
-            <span className="ua-toggle__knob" />
-          </button>
-        </div>
-      </div>
-    </Panel>
   );
 }
 
@@ -718,35 +675,6 @@ function ExchangeClientSection({
   );
 }
 
-function GstPanel({ on, onToggle, onToast }) {
-  const note = on
-    ? "Client pays GST at checkout"
-    : "IRW absorbs GST · price shown is final";
-
-  return (
-    <Panel title="GST collection">
-      <div className="ua-cfg-gst-row">
-        <span className="ua-cfg-gst-row__icon" aria-hidden="true">📜</span>
-        <div>
-          <div className="ua-cfg-gst-row__name">GST collection</div>
-          <div className="ua-cfg-gst-row__note">{note}</div>
-        </div>
-        <button
-          type="button"
-          className={`ua-toggle${on ? " ua-toggle--on" : ""}`}
-          aria-pressed={on}
-          onClick={() => {
-            onToggle(!on);
-            onToast(`GST collection ${!on ? "enabled" : "disabled"}`);
-          }}
-        >
-          <span className="ua-toggle__knob" />
-        </button>
-      </div>
-    </Panel>
-  );
-}
-
 function LegalTextPanel({ title, copy, onChange, onToast }) {
   const [editing, setEditing] = useState(false);
   const [draftIntro, setDraftIntro] = useState(copy.intro);
@@ -840,105 +768,6 @@ function LegalTextPanel({ title, copy, onChange, onToast }) {
   );
 }
 
-function PaymentGatewayPanel({ gateways, setGateways, onToast }) {
-  function updateGateway(id, patch) {
-    setGateways((prev) => ({
-      ...prev,
-      [id]: { ...prev[id], ...patch },
-    }));
-  }
-
-  function toggleGateway(id) {
-    const turningOn = !gateways[id].active;
-    setGateways((prev) => {
-      const next = { ...prev };
-      PAYMENT_GATEWAY_OPTIONS.forEach((option) => {
-        next[option.id] = {
-          ...next[option.id],
-          active: option.id === id ? turningOn : false,
-        };
-      });
-      return next;
-    });
-    const option = PAYMENT_GATEWAY_OPTIONS.find((entry) => entry.id === id);
-    onToast(`${option?.name ?? "Gateway"} ${turningOn ? "enabled" : "disabled"}`);
-  }
-
-  return (
-    <Panel
-      title="Payment gateways"
-      subtitle="Turn a gateway on only when credentials are correct. One active gateway at a time."
-    >
-      <div className="ua-cfg-pgw-grid">
-        {PAYMENT_GATEWAY_OPTIONS.map((option) => {
-          const entry = gateways[option.id];
-          const active = entry.active;
-
-          return (
-            <div key={option.id} className={`ua-cfg-pgw-card${active ? " ua-cfg-pgw-card--active" : ""}`}>
-              <div className="ua-cfg-pgw-card__head">
-                <div>
-                  <div className="ua-cfg-pgw-card__name">{option.name}</div>
-                  <div className="ua-cfg-pgw-card__note">{option.note}</div>
-                </div>
-                <button
-                  type="button"
-                  className={`ua-toggle${active ? " ua-toggle--on" : ""}`}
-                  aria-pressed={active}
-                  aria-label={`${option.name} ${active ? "on" : "off"}`}
-                  onClick={() => toggleGateway(option.id)}
-                >
-                  <span className="ua-toggle__knob" />
-                </button>
-              </div>
-
-              <div className="ua-cfg-pgw-card__fields">
-                <label className="ua-cfg-pgw-field">
-                  <span className="ua-cfg-pgw-field__label">
-                    Key ID{active ? " *" : ""}
-                  </span>
-                  <input
-                    type="text"
-                    className="ua-cfg-pgw-field__input"
-                    value={entry.keyId}
-                    autoComplete="off"
-                    placeholder="pk_… / rzp_… / client id"
-                    onChange={(event) => updateGateway(option.id, { keyId: event.target.value })}
-                  />
-                </label>
-                <label className="ua-cfg-pgw-field">
-                  <span className="ua-cfg-pgw-field__label">
-                    Key secret{active ? " *" : ""}
-                  </span>
-                  <input
-                    type="password"
-                    className="ua-cfg-pgw-field__input"
-                    value={entry.keySecret}
-                    autoComplete="new-password"
-                    placeholder="••••••••"
-                    onChange={(event) => updateGateway(option.id, { keySecret: event.target.value })}
-                  />
-                </label>
-                <label className="ua-cfg-pgw-field ua-cfg-pgw-field--full">
-                  <span className="ua-cfg-pgw-field__label">Webhook secret (optional)</span>
-                  <input
-                    type="password"
-                    className="ua-cfg-pgw-field__input"
-                    value={entry.webhookSecret}
-                    autoComplete="new-password"
-                    placeholder="whsec_…"
-                    onChange={(event) => updateGateway(option.id, { webhookSecret: event.target.value })}
-                  />
-                </label>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </Panel>
-  );
-}
-
 function GenericPanel({ item }) {
   return (
     <section className="ua-cfg-empty">
@@ -1021,11 +850,11 @@ export function ConfigDetailPage() {
   const { showToast: onToast } = useOutletContext();
   const found = useMemo(() => findConfigItem(configId), [configId]);
 
-  const [hindiOn, setHindiOn] = useState(true);
+  const [hindiOn, setHindiOn] = useState(false);
   const [faqItems, setFaqItems] = useState([]);
   const [programRows, setProgramRows] = useState(PROGRAM_PRICING);
   const [subRows, setSubRows] = useState(SUBSCRIPTION_PRICING);
-  const [gstOn, setGstOn] = useState(true);
+  const [gstOn, setGstOn] = useState(false);
   const [gateways, setGateways] = useState(createDefaultGateways);
   const [tosCopy, setTosCopy] = useState(TOS_CONTENT);
   const [dpaCopy, setDpaCopy] = useState(DPA_CONTENT);
@@ -1047,20 +876,19 @@ export function ConfigDetailPage() {
   const [galleryMedia, setGalleryMedia] = useState(GALLERY_MEDIA);
   const [launchRatings, setLaunchRatings] = useState([]);
   const [launchDomains, setLaunchDomains] = useState([]);
-  const [aiCoaches, setAiCoaches] = useState(AI_ENABLE_COACHES);
-  const [aiAssistants, setAiAssistants] = useState(AI_ENABLE_ASSISTANTS);
+  const [aiCoaches, setAiCoaches] = useState([]);
+  const [aiAssistants, setAiAssistants] = useState([]);
   const [programStories, setProgramStories] = useState(PROGRAM_TESTIMONIAL_STORIES);
   const [programGallery, setProgramGallery] = useState(PROGRAM_TESTIMONIAL_GALLERY);
-  const [footerColumns, setFooterColumns] = useState(FOOTER_COLUMNS);
-  const [footerBottomLine, setFooterBottomLine] = useState(FOOTER_BOTTOM_LINE);
-  const [socialLinks, setSocialLinks] = useState(SOCIAL_FOOTER_LINKS);
+  const [footerBottomLine, setFooterBottomLine] = useState("");
+  const [socialLinks, setSocialLinks] = useState([]);
   const [websiteLinks, setWebsiteLinks] = useState(WEBSITE_FOOTER_LINKS);
   const [privacyBlocks, setPrivacyBlocks] = useState(PRIVACY_BLOCKS);
   const [tosBlocks, setTosBlocks] = useState(TOS_BLOCKS);
   const [guidelineBlocks, setGuidelineBlocks] = useState(GUIDELINE_BLOCKS);
   const [contactDetails, setContactDetails] = useState(CONTACT_DETAILS);
   const [footerTextBlocks, setFooterTextBlocks] = useState(FOOTER_TEXT_BLOCKS);
-  const [logoSlots, setLogoSlots] = useState(LOGO_SLOTS);
+  const [logoSlots, setLogoSlots] = useState(createDefaultLogoSlots);
   const [locations, setLocations] = useState(LOCATIONS);
   const [bannerEditor, setBannerEditor] = useState(BANNER_EDITOR);
   const [bannerItems, setBannerItems] = useState(BANNER_LIVE_ITEMS);
@@ -1191,9 +1019,9 @@ export function ConfigDetailPage() {
               : item.id === "web-program-testimonials"
                 ? programStories.some((entry) => entry.live)
               : item.id === "web-footer"
-                ? footerColumns.some((entry) => entry.live)
+                ? Boolean(String(footerBottomLine || "").trim())
               : item.id === "web-fs-social"
-                ? socialLinks.length > 0
+                ? socialLinks.some((entry) => String(entry.url || "").trim())
               : item.id === "web-fs-links"
                 ? websiteLinks.length > 0
               : item.id === "web-fs-privacy"
@@ -1252,7 +1080,13 @@ export function ConfigDetailPage() {
   function renderBody() {
     switch (item.id) {
       case "app-language-disable":
-        return <LanguagePanel hindiOn={hindiOn} onToggle={setHindiOn} onToast={onToast} />;
+        return (
+          <LanguageDisableSection
+            hindiOn={hindiOn}
+            setHindiOn={setHindiOn}
+            onToast={onToast}
+          />
+        );
       case "app-faq":
         return <FaqConfigPanel items={faqItems} setItems={setFaqItems} onToast={onToast} />;
       case "app-program":
@@ -1331,10 +1165,16 @@ export function ConfigDetailPage() {
           </>
         );
       case "app-gst":
-        return <GstPanel on={gstOn} onToggle={setGstOn} onToast={onToast} />;
+        return (
+          <GstSection
+            gstOn={gstOn}
+            setGstOn={setGstOn}
+            onToast={onToast}
+          />
+        );
       case "app-payment-gateway":
         return (
-          <PaymentGatewayPanel
+          <PaymentGatewaySection
             gateways={gateways}
             setGateways={setGateways}
             onToast={onToast}
@@ -1490,8 +1330,6 @@ export function ConfigDetailPage() {
       case "web-footer":
         return (
           <FooterSettingSection
-            columns={footerColumns}
-            setColumns={setFooterColumns}
             bottomLine={footerBottomLine}
             setBottomLine={setFooterBottomLine}
             onToast={onToast}
@@ -1503,6 +1341,7 @@ export function ConfigDetailPage() {
             links={socialLinks}
             setLinks={setSocialLinks}
             onToast={onToast}
+            persistToAppConfig
           />
         );
       case "web-fs-links":
@@ -1838,7 +1677,6 @@ export function ConfigDetailPage() {
           aiCoaches,
           aiAssistants,
           programStories,
-          footerColumns,
           footerBottomLine,
           socialLinks,
           websiteLinks,

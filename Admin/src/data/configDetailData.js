@@ -87,9 +87,58 @@ export function createDefaultGateways() {
   return Object.fromEntries(
     PAYMENT_GATEWAY_OPTIONS.map((option) => [
       option.id,
-      { active: false, keyId: "", keySecret: "", webhookSecret: "" },
+      { active: false, keyId: "", keySecret: "", webhookSecret: "", merchantId: "" },
     ]),
   );
+}
+
+function credentialsFromRow(row) {
+  const creds = row?.credentials && typeof row.credentials === "object" ? row.credentials : {};
+  return {
+    keyId: String(creds.key_id ?? creds.keyId ?? ""),
+    keySecret: String(creds.key_secret ?? creds.keySecret ?? ""),
+    webhookSecret: String(creds.webhook_secret ?? creds.webhookSecret ?? ""),
+    merchantId: String(creds.merchant_id ?? creds.merchantId ?? ""),
+  };
+}
+
+export function mapPaymentGatewaysFromConfig(rows) {
+  const gateways = createDefaultGateways();
+  const known = new Set(PAYMENT_GATEWAY_OPTIONS.map((option) => option.id));
+  const extras = [];
+  for (const row of Array.isArray(rows) ? rows : []) {
+    const id = String(row?.provider || "").trim().toLowerCase();
+    if (!id) continue;
+    const mapped = {
+      active: Boolean(row.isActive ?? row.active),
+      ...credentialsFromRow(row),
+    };
+    if (known.has(id)) gateways[id] = mapped;
+    else extras.push(row);
+  }
+  return { gateways, extras };
+}
+
+export function mapPaymentGatewaysToConfig(gateways, extras = []) {
+  const uiActive = PAYMENT_GATEWAY_OPTIONS.some((option) => gateways[option.id]?.active);
+  const uiRows = PAYMENT_GATEWAY_OPTIONS.map((option) => {
+    const entry = gateways[option.id] || {};
+    return {
+      provider: option.id,
+      isActive: Boolean(entry.active),
+      credentials: {
+        key_id: String(entry.keyId || "").trim(),
+        key_secret: String(entry.keySecret || "").trim(),
+        webhook_secret: String(entry.webhookSecret || "").trim(),
+        merchant_id: String(entry.merchantId || "").trim(),
+      },
+    };
+  });
+  const extraRows = extras.map((row) => ({
+    ...row,
+    isActive: uiActive ? false : Boolean(row.isActive),
+  }));
+  return [...uiRows, ...extraRows];
 }
 
 export function activePaymentGateway(gateways) {

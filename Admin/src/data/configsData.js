@@ -316,7 +316,7 @@ export const CONFIG_GROUPS = {
         {
           id: "web-fs-social",
           name: "FS · Social media links",
-          note: "Instagram, YouTube, LinkedIn, X",
+          note: "Facebook, Instagram, YouTube, LinkedIn",
           owner: "Admin / Support",
           app: false,
           web: true,
@@ -398,7 +398,7 @@ export const CONFIG_GROUPS = {
         {
           id: "web-logo",
           name: "Logo edit",
-          note: "Header, footer, favicon and app icon slots",
+          note: "Website, admin, and favicon from App Config",
           owner: "Admin / Support",
           app: false,
           web: true,
@@ -663,7 +663,7 @@ export const CONFIG_GROUPS = {
         {
           id: "web-fs-social",
           name: "FS · Social media links",
-          note: "Instagram, YouTube, LinkedIn, X",
+          note: "Facebook, Instagram, YouTube, LinkedIn",
           owner: "Admin / Support",
           app: false,
           web: true,
@@ -745,7 +745,7 @@ export const CONFIG_GROUPS = {
         {
           id: "web-logo",
           name: "Logo edit",
-          note: "Header, footer, favicon and app icon slots",
+          note: "Website, admin, and favicon from App Config",
           owner: "Admin / Support",
           app: false,
           web: true,

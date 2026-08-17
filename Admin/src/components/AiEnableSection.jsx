@@ -1,4 +1,11 @@
-import { aiEnabledCount } from "../data/aiEnableData.js";
+import { useCallback, useEffect, useState } from "react";
+import {
+  adminBulkUpdateAiEnable,
+  adminListAiEnable,
+  adminUpdateAiEnable,
+} from "../api/aiEnableApi.js";
+import { AI_ENABLE_PAGE_SIZE, aiEnabledCount } from "../data/aiEnableData.js";
+import { ListPagination } from "./shared.jsx";
 
 function Panel({ title, subtitle, actions, children, className = "" }) {
   const hasHead = Boolean(title || subtitle || actions);
@@ -22,12 +29,22 @@ function AccessGroup({
   label,
   tone,
   people,
+  busy,
+  emptyLabel,
   onToggle,
   onEnableAll,
   onDisableAll,
   renderMeta,
 }) {
+  const [page, setPage] = useState(1);
   const enabledCount = aiEnabledCount(people);
+  const pages = Math.max(1, Math.ceil(people.length / AI_ENABLE_PAGE_SIZE) || 1);
+  const safePage = Math.min(page, pages);
+  const visible = people.slice((safePage - 1) * AI_ENABLE_PAGE_SIZE, safePage * AI_ENABLE_PAGE_SIZE);
+
+  useEffect(() => {
+    if (page > pages) setPage(pages);
+  }, [page, pages]);
 
   return (
     <section className={`ua-cfg-ai-group is-${tone}`}>
@@ -39,55 +56,131 @@ function AccessGroup({
           </span>
         </div>
         <div className="ua-cfg-ai-group__bulk">
-          <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" onClick={onEnableAll}>
+          <button
+            type="button"
+            className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+            disabled={busy || !people.length || enabledCount === people.length}
+            onClick={onEnableAll}
+          >
             Enable all
           </button>
-          <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" onClick={onDisableAll}>
+          <button
+            type="button"
+            className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+            disabled={busy || !people.length || enabledCount === 0}
+            onClick={onDisableAll}
+          >
             Disable all
           </button>
         </div>
       </div>
 
-      <div className="ua-cfg-ai-group__grid">
-        {people.map((person) => (
-          <article key={person.id} className={`ua-cfg-ai-person${person.enabled ? " is-on" : ""}`}>
-            <span
-              className="ua-cfg-ai-person__avatar"
-              style={{ backgroundColor: person.color }}
-              aria-hidden="true"
-            >
-              {person.initials}
-            </span>
-            <div className="ua-cfg-ai-person__meta">
-              <strong>{person.name}</strong>
-              <span>{renderMeta(person)}</span>
-            </div>
-            <button
-              type="button"
-              className={`ua-toggle ua-toggle--sm${person.enabled ? " ua-toggle--on" : ""}`}
-              aria-pressed={person.enabled}
-              aria-label={`${person.enabled ? "Disable" : "Enable"} AI for ${person.name}`}
-              onClick={() => onToggle(person.id)}
-            >
-              <span className="ua-toggle__knob" />
-            </button>
-          </article>
-        ))}
-      </div>
+      {people.length ? (
+        <div className="ua-cfg-ai-group__grid">
+          {visible.map((person) => (
+            <article key={person.id} className={`ua-cfg-ai-person${person.enabled ? " is-on" : ""}`}>
+              <span
+                className="ua-cfg-ai-person__avatar"
+                style={{ backgroundColor: person.color }}
+                aria-hidden="true"
+              >
+                {person.initials}
+              </span>
+              <div className="ua-cfg-ai-person__meta">
+                <strong>{person.name}</strong>
+                <span>{renderMeta(person)}</span>
+              </div>
+              <button
+                type="button"
+                className={`ua-toggle ua-toggle--sm${person.enabled ? " ua-toggle--on" : ""}`}
+                aria-pressed={person.enabled}
+                aria-label={`${person.enabled ? "Disable" : "Enable"} AI for ${person.name}`}
+                disabled={busy}
+                onClick={() => onToggle(person)}
+              >
+                <span className="ua-toggle__knob" />
+              </button>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <p className="ua-cfg-panel__sub">{emptyLabel}</p>
+      )}
+
+      {people.length > AI_ENABLE_PAGE_SIZE ? (
+        <ListPagination
+          page={safePage}
+          pages={pages}
+          total={people.length}
+          pageSize={AI_ENABLE_PAGE_SIZE}
+          onPageChange={setPage}
+          label={`${label} pagination`}
+        />
+      ) : null}
     </section>
   );
 }
 
 export function AiEnableSection({ coaches, setCoaches, assistants, setAssistants, onToast }) {
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
   const coachEnabled = aiEnabledCount(coaches);
   const assistantEnabled = aiEnabledCount(assistants);
 
-  function toggleCoach(id) {
-    setCoaches(coaches.map((entry) => (entry.id === id ? { ...entry, enabled: !entry.enabled } : entry)));
+  const loadPeople = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { coaches: nextCoaches, assistants: nextAssistants } = await adminListAiEnable();
+      setCoaches(nextCoaches);
+      setAssistants(nextAssistants);
+    } catch (error) {
+      onToast(error?.message || "Failed to load AI access");
+      setCoaches([]);
+      setAssistants([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [onToast, setAssistants, setCoaches]);
+
+  useEffect(() => {
+    loadPeople();
+  }, [loadPeople]);
+
+  async function togglePerson(person, group) {
+    if (busy) return;
+    const nextEnabled = !person.enabled;
+    const setGroup = group === "coach" ? setCoaches : setAssistants;
+    setBusy(true);
+    setGroup((prev) => prev.map((entry) => (entry.id === person.id ? { ...entry, enabled: nextEnabled } : entry)));
+    try {
+      const saved = await adminUpdateAiEnable(null, person.id, nextEnabled);
+      if (saved) {
+        setGroup((prev) => prev.map((entry) => (entry.id === person.id ? { ...entry, ...saved } : entry)));
+      }
+      onToast(nextEnabled ? `AI enabled for ${person.name}` : `AI disabled for ${person.name}`);
+    } catch (error) {
+      setGroup((prev) => prev.map((entry) => (entry.id === person.id ? { ...entry, enabled: person.enabled } : entry)));
+      onToast(error?.message || "Failed to update AI access");
+    } finally {
+      setBusy(false);
+    }
   }
 
-  function toggleAssistant(id) {
-    setAssistants(assistants.map((entry) => (entry.id === id ? { ...entry, enabled: !entry.enabled } : entry)));
+  async function bulkUpdate(group, enabled) {
+    if (busy) return;
+    const setGroup = group === "coach" ? setCoaches : setAssistants;
+    const label = group === "coach" ? "coaches" : "assistants";
+    setBusy(true);
+    setGroup((prev) => prev.map((entry) => ({ ...entry, enabled })));
+    try {
+      await adminBulkUpdateAiEnable(null, group, enabled);
+      onToast(enabled ? `All ${label} enabled` : `All ${label} disabled`);
+    } catch (error) {
+      onToast(error?.message || "Failed to update AI access");
+      await loadPeople();
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -99,52 +192,52 @@ export function AiEnableSection({ coaches, setCoaches, assistants, setAssistants
           AI enable
         </span>
       )}
-      subtitle="AI report interpretation and summaries"
+      subtitle={
+        loading
+          ? "Loading coach AI access…"
+          : "AI report interpretation and summaries"
+      }
     >
-      <div className="ua-cfg-ai__who">
-        <h4 className="ua-cfg-ai__who-title">Who gets it</h4>
-        <p className="ua-cfg-ai__who-sub">
-          Admin always has access. Switch it on or off per person — off means the feature is hidden for that coach and their clients.
-        </p>
-      </div>
+      {loading ? (
+        <p className="ua-cfg-panel__sub">Fetching wellness coaches and assistants…</p>
+      ) : (
+        <>
+          <div className="ua-cfg-ai__who">
+            <h4 className="ua-cfg-ai__who-title">Who gets it</h4>
+            <p className="ua-cfg-ai__who-sub">
+              Admin always has access. Switch it on or off per person — off means the feature is hidden for that coach and their clients.
+            </p>
+          </div>
 
-      <AccessGroup
-        label="Wellness coach"
-        tone="coach"
-        people={coaches}
-        onToggle={toggleCoach}
-        onEnableAll={() => {
-          setCoaches(coaches.map((entry) => ({ ...entry, enabled: true })));
-          onToast("All coaches enabled");
-        }}
-        onDisableAll={() => {
-          setCoaches(coaches.map((entry) => ({ ...entry, enabled: false })));
-          onToast("All coaches disabled");
-        }}
-        renderMeta={(person) => person.role}
-      />
+          <AccessGroup
+            label="Wellness coach"
+            tone="coach"
+            people={coaches}
+            busy={busy}
+            emptyLabel="No active wellness coaches yet."
+            onToggle={(person) => togglePerson(person, "coach")}
+            onEnableAll={() => bulkUpdate("coach", true)}
+            onDisableAll={() => bulkUpdate("coach", false)}
+            renderMeta={(person) => person.role || "Wellness Coach"}
+          />
 
-      <AccessGroup
-        label="Assistant WC"
-        tone="assistant"
-        people={assistants}
-        onToggle={toggleAssistant}
-        onEnableAll={() => {
-          setAssistants(assistants.map((entry) => ({ ...entry, enabled: true })));
-          onToast("All assistants enabled");
-        }}
-        onDisableAll={() => {
-          setAssistants(assistants.map((entry) => ({ ...entry, enabled: false })));
-          onToast("All assistants disabled");
-        }}
-        renderMeta={(person) => `under ${person.reportsTo}`}
-      />
+          <AccessGroup
+            label="Assistant WC"
+            tone="assistant"
+            people={assistants}
+            busy={busy}
+            emptyLabel="No active assistant coaches yet."
+            onToggle={(person) => togglePerson(person, "assistant")}
+            onEnableAll={() => bulkUpdate("assistant", true)}
+            onDisableAll={() => bulkUpdate("assistant", false)}
+            renderMeta={(person) => (person.reportsTo ? `under ${person.reportsTo}` : "unassigned")}
+          />
 
-      <p className="ua-cfg-ai__foot">
-        {coachEnabled} of {coaches.length} coaches and {assistantEnabled} of {assistants.length} assistants have it.
-      </p>
+          <p className="ua-cfg-ai__foot">
+            {coachEnabled} of {coaches.length} coaches and {assistantEnabled} of {assistants.length} assistants have it.
+          </p>
+        </>
+      )}
     </Panel>
   );
 }
-
-export { AI_ENABLE_ASSISTANTS, AI_ENABLE_COACHES } from "../data/aiEnableData.js";

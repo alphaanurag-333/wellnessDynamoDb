@@ -55,6 +55,55 @@ function normalizeBooleanFlag(value, fallback = false) {
   return Boolean(fallback);
 }
 
+function normalizePaymentGateways(value) {
+  const parsed = parseJSON(value, null);
+  if (!Array.isArray(parsed)) {
+    throw new AppError("payment_gateways must be an array", 400);
+  }
+
+  const seen = new Set();
+  const rows = parsed.map((row, index) => {
+    const provider = String(row?.provider || "").trim().toLowerCase();
+    if (!provider) {
+      throw new AppError(`Payment gateway ${index + 1} provider is required`, 400);
+    }
+    if (seen.has(provider)) {
+      throw new AppError(`Duplicate payment gateway provider: ${provider}`, 400);
+    }
+    seen.add(provider);
+
+    const credentials = row?.credentials && typeof row.credentials === "object" ? row.credentials : {};
+    const isActive = normalizeBooleanFlag(row?.isActive ?? row?.active, false);
+    const keyId = String(credentials.key_id ?? credentials.keyId ?? "").trim();
+    const keySecret = String(credentials.key_secret ?? credentials.keySecret ?? "").trim();
+    const webhookSecret = String(credentials.webhook_secret ?? credentials.webhookSecret ?? "").trim();
+    const merchantId = String(credentials.merchant_id ?? credentials.merchantId ?? "").trim();
+
+    if (isActive && (!keyId || !keySecret)) {
+      throw new AppError(`Key ID and key secret are required when ${provider} is active`, 400);
+    }
+
+    return {
+      provider,
+      isActive,
+      credentials: {
+        key_id: keyId,
+        key_secret: keySecret,
+        webhook_secret: webhookSecret,
+        merchant_id: merchantId,
+      },
+    };
+  });
+
+  let activeSeen = false;
+  return rows.map((row) => {
+    if (!row.isActive) return row;
+    if (activeSeen) return { ...row, isActive: false };
+    activeSeen = true;
+    return row;
+  });
+}
+
 function normalizeAppProgramPricing(value) {
   const parsed = parseJSON(value, null);
   if (!Array.isArray(parsed)) {
@@ -301,7 +350,10 @@ exports.createAppConfigController = asyncHandler(async (req, res) => {
       )
     ),
     multilang: normalizeBooleanFlag(multilang, false),
-    payment_gateways: parseJSON(payment_gateways, config.payment_gateways),
+    payment_gateways:
+      payment_gateways === undefined
+        ? config.payment_gateways
+        : normalizePaymentGateways(payment_gateways),
     admin_logo: (await s3KeyFromUploadedFile(req, "admin_logo")) ?? "",
     user_logo: (await s3KeyFromUploadedFile(req, "user_logo")) ?? "",
     favicon: (await s3KeyFromUploadedFile(req, "favicon")) ?? "",
@@ -374,7 +426,7 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
   }
 
   if (req.body.payment_gateways !== undefined) {
-    updates.payment_gateways = parseJSON(req.body.payment_gateways, config.payment_gateways);
+    updates.payment_gateways = normalizePaymentGateways(req.body.payment_gateways);
   }
 
   if (req.body.app_program_pricing !== undefined) {

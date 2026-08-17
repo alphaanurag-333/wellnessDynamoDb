@@ -1222,12 +1222,16 @@ function LocationsPreview({ locations = [], surface, item }) {
 }
 
 function LogoSlotsPreview({ slots = [], surface, item }) {
-  const header = slots.find((entry) => entry.id === "header");
+  const header = slots.find((entry) => entry.id === "user_logo") ?? slots.find((entry) => entry.uploaded);
 
   const body = (
     <div className="ua-cfg-pt-live-preview">
       <div className="ua-cfg-pt-live-preview__bar">
-        <span className={`ua-cfg-pt-live-preview__brand${header?.uploaded ? "" : " is-empty"}`}>IR</span>
+        {header?.url ? (
+          <img className="ua-cfg-lg-preview__brand-img" src={header.url} alt="" />
+        ) : (
+          <span className={`ua-cfg-pt-live-preview__brand${header?.uploaded ? "" : " is-empty"}`}>IR</span>
+        )}
         <strong>Logo edit</strong>
         <span className="ua-cfg-pt-live-preview__url">irwellness.in</span>
       </div>
@@ -1241,10 +1245,12 @@ function LogoSlotsPreview({ slots = [], surface, item }) {
           ))}
         </div>
         <div className="ua-cfg-pt-live-preview__layout">
-          <div className={`ua-cfg-pt-live-preview__image${header?.uploaded ? " has-image" : ""}`}>IMAGE</div>
+          <div className={`ua-cfg-pt-live-preview__image${header?.uploaded ? " has-image" : ""}`}>
+            {header?.url ? <img src={header.url} alt="" /> : "IMAGE"}
+          </div>
           <div className="ua-cfg-pt-live-preview__copy">
-            <span>Header</span>
-            <strong>{header?.uploaded ? "Logo attached" : "Upload a header logo"}</strong>
+            <span>Website</span>
+            <strong>{header?.uploaded ? "Logo attached" : "Upload a website logo"}</strong>
             <p>{header?.size ?? "240 × 64"}</p>
           </div>
         </div>
@@ -1295,8 +1301,8 @@ function ProgramTestimonialsPreview({ stories = [], surface, item }) {
   );
 }
 
-function FooterSettingPreview({ columns = [], bottomLine, surface, item }) {
-  const live = columns.filter((entry) => entry.live);
+function FooterSettingPreview({ bottomLine, surface, item }) {
+  const copy = asCopyString(bottomLine);
 
   const body = (
     <div className="ua-cfg-ft-preview">
@@ -1305,21 +1311,11 @@ function FooterSettingPreview({ columns = [], bottomLine, surface, item }) {
         <strong>Footer</strong>
         <span className="ua-cfg-pt-live-preview__url">irwellness.in</span>
       </div>
-      {live.length ? (
-        <div className="ua-cfg-ft-preview__cols">
-          {live.map((column) => (
-            <div key={column.id} className="ua-cfg-ft-preview__col">
-              <strong>{asCopyString(column.heading)}</strong>
-              {column.links.map((link) => (
-                <span key={link}>{asCopyString(link)}</span>
-              ))}
-            </div>
-          ))}
-        </div>
+      {copy ? (
+        <p className="ua-cfg-ft-preview__copy">{copy}</p>
       ) : (
-        <div className="ua-cfg-pt-preview__empty">No live footer columns yet.</div>
+        <div className="ua-cfg-pt-preview__empty">No footer text yet.</div>
       )}
-      {bottomLine ? <p className="ua-cfg-ft-preview__copy">{asCopyString(bottomLine)}</p> : null}
     </div>
   );
 
@@ -1681,7 +1677,6 @@ function renderPreviewBody(item, surface, previewState) {
     case "web-footer":
       return (
         <FooterSettingPreview
-          columns={previewState.footerColumns ?? []}
           bottomLine={previewState.footerBottomLine ?? ""}
           surface={surface}
           item={item}
@@ -2052,7 +2047,7 @@ export function previewHintForItem(item) {
     return "Upload something, then open Preview";
   }
   if (item.id === "web-footer") {
-    return "Edit the columns, then open Preview";
+    return "Edit the footer text, then open Preview";
   }
   if (item.id === "web-fs-social") {
     return "Edit the links, then open Preview";
