@@ -278,9 +278,11 @@ exports.listHealUsersByCoachController = asyncHandler(async (req, res) => {
 });
 
 exports.listHealUsersForStaffController = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 20, search, scope = "all" } = req.query;
+  const { search, scope = "all" } = req.query;
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 20));
   const data = await listHealUsersForStaff(req, { page, limit, search, scope, userTier: "client" });
-  const users = await Promise.all(data.users.map((u) => enrichUser(u)));
+  const users = await Promise.all(data.users.map((u) => enrichUser(u, { ensureReferral: false })));
 
   return res.status(200).json({
     status: true,

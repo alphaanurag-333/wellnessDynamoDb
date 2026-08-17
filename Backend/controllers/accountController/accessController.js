@@ -313,6 +313,8 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
   const accountRoleFilter = roleFilter
     ? UI_TO_ACCOUNT_ROLE[roleFilter] || roleFilter
     : undefined;
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 20));
 
   const visibleRoles = visibleTeamRoleKeys(req);
   let result;
@@ -321,8 +323,8 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
       status: "active",
       search,
       roleKey: accountRoleFilter,
-      page: req.query.page || 1,
-      limit: req.query.limit || 100,
+      page,
+      limit,
     });
   } else {
     const direct = await listAccounts({
@@ -359,13 +361,15 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
       }
     }
 
+    const total = scopedAccounts.length;
+    const start = (page - 1) * limit;
     result = {
-      accounts: scopedAccounts,
+      accounts: scopedAccounts.slice(start, start + limit),
       pagination: {
-        page: 1,
-        limit: 200,
-        total: scopedAccounts.length,
-        pages: 1,
+        page,
+        limit,
+        total,
+        pages: Math.max(1, Math.ceil(total / limit)),
       },
     };
   }

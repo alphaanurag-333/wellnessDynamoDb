@@ -26,6 +26,20 @@ function mapApiStatusToUi(status) {
   return String(status || "").toLowerCase() === "active" ? "Active" : "Disabled";
 }
 
+export function mapUiStatusToApi(statusFilter) {
+  if (statusFilter === "Active") return "active";
+  if (statusFilter === "Disabled") return "inactive";
+  return undefined;
+}
+
+export function mapUiTierToApi(tierFilter) {
+  if (tierFilter === "Seek to Heal") return "heal";
+  if (tierFilter === "Consultancy") return "consultancy_only";
+  if (tierFilter === "Seek") return "seek";
+  if (tierFilter === "Maintenance") return "maintenance";
+  return undefined;
+}
+
 function mapUtype(userTier) {
   const t = String(userTier || "").toLowerCase().trim();
   if (t === "seek") return "app";
@@ -416,7 +430,15 @@ export function mapApiUserToRow(user, index = 0) {
   };
 }
 
-export async function fetchUsers({ page = 1, limit = 200, status, search, userTier, assignmentStatus } = {}) {
+export async function fetchUsers({
+  page = 1,
+  limit = 20,
+  status,
+  search,
+  userTier,
+  assignmentStatus,
+  parentCoachId,
+} = {}) {
   const q = new URLSearchParams();
   q.set("page", String(page));
   q.set("limit", String(limit));
@@ -424,6 +446,7 @@ export async function fetchUsers({ page = 1, limit = 200, status, search, userTi
   if (search && String(search).trim()) q.set("search", String(search).trim());
   if (userTier) q.set("userTier", userTier);
   if (assignmentStatus) q.set("assignmentStatus", assignmentStatus);
+  if (parentCoachId) q.set("parentCoachId", String(parentCoachId).trim());
 
   try {
     const { data } = await api.get(`/account/users?${q}`, { headers: authHeader() });
@@ -438,7 +461,7 @@ export async function fetchUsers({ page = 1, limit = 200, status, search, userTi
 }
 
 /** Role-scoped clients for WC/AWC/trainee console sessions. */
-export async function fetchScopedUsers({ page = 1, limit = 200, search, scope = "all" } = {}) {
+export async function fetchScopedUsers({ page = 1, limit = 20, search, scope = "all" } = {}) {
   const q = new URLSearchParams();
   q.set("page", String(page));
   q.set("limit", String(limit));

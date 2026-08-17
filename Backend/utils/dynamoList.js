@@ -100,22 +100,52 @@ async function queryPartition({
 
 async function mergePartitionResults(partitions, { page, limit, maxLimit, sortFn }) {
   const { safePage, safeLimit, skip } = normalizePageLimit(page, limit, maxLimit);
-  const rows = [];
 
-  for (const partitionValue of partitions) {
-    const part = await queryPartition({ ...partitionValue, page: 1, limit: Number.MAX_SAFE_INTEGER, maxLimit: Number.MAX_SAFE_INTEGER });
-    rows.push(...part.items);
-  }
-
+  // Custom sort needs the full merged set. createdAt-desc can page from a
+  // per-partition window: the newest N overall are among the newest N of each status.
   if (typeof sortFn === "function") {
+    const rows = [];
+    for (const partitionValue of partitions) {
+      const part = await queryPartition({
+        ...partitionValue,
+        page: 1,
+        limit: Number.MAX_SAFE_INTEGER,
+        maxLimit: Number.MAX_SAFE_INTEGER,
+      });
+      rows.push(...part.items);
+    }
     rows.sort(sortFn);
+    const total = rows.length;
+    return {
+      items: rows.slice(skip, skip + safeLimit),
+      pagination: {
+        page: safePage,
+        limit: safeLimit,
+        total,
+        pages: Math.max(1, Math.ceil(total / safeLimit)),
+      },
+    };
   }
 
-  const total = rows.length;
-  const items = rows.slice(skip, skip + safeLimit);
+  const windowSize = skip + safeLimit;
+  const parts = [];
+  for (const partitionValue of partitions) {
+    parts.push(
+      await queryPartition({
+        ...partitionValue,
+        page: 1,
+        limit: windowSize,
+        maxLimit: Number.MAX_SAFE_INTEGER,
+      }),
+    );
+  }
+
+  const rows = parts.flatMap((part) => part.items);
+  rows.sort(sortByCreatedAtDesc);
+  const total = parts.reduce((sum, part) => sum + (part.pagination?.total || 0), 0);
 
   return {
-    items,
+    items: rows.slice(skip, skip + safeLimit),
     pagination: {
       page: safePage,
       limit: safeLimit,

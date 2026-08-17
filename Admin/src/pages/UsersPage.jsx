@@ -5,10 +5,9 @@ import { OrangeButton, PageHeader, PillTabs, ScopeChip, TableScroll } from "../c
 import {
   TIER_OPTIONS,
   UNASSIGNED_COACH,
+  USER_TYPE_TAB_DEFS,
   avatarColor,
-  buildUserTypeTabs,
   enrichUser,
-  filterUsers,
   canDowngradeTier,
   lastActiveMinutes,
   nextTier,
@@ -24,6 +23,8 @@ import {
   deleteUser,
   fetchScopedUsers,
   fetchUsers,
+  mapUiStatusToApi,
+  mapUiTierToApi,
   moveMaintenanceUserToHeal,
   moveUserToMaintenance,
   reassignUserCoach,
@@ -130,10 +131,17 @@ export function UsersPage() {
   const useScopedUsers = dataScope !== "all";
 
   const [users, setUsers] = useState([]);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: PAGE_SIZE,
+    total: 0,
+    pages: 1,
+  });
   const [teamMembers, setTeamMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [sort, setSort] = useState(null);
   const [tierOverrides, setTierOverrides] = useState({});
@@ -144,6 +152,18 @@ export function UsersPage() {
   const [reassignAsk, setReassignAsk] = useState(null);
   const [actionBusy, setActionBusy] = useState(false);
   const [selectReset, setSelectReset] = useState(0);
+  const [reloadNonce, setReloadNonce] = useState(0);
+
+  const typeTab = searchParams.get("tab") || "all";
+  const tierFilter = searchParams.get("tier") || "";
+  const coachFilter = searchParams.get("coach") || "";
+  const pageParam = Number(searchParams.get("page"));
+  const currentPage = Number.isFinite(pageParam) && pageParam > 0 ? Math.floor(pageParam) : 1;
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   useEffect(() => {
     if (disableTarget || deleteTarget || reassignAsk) {
@@ -151,41 +171,93 @@ export function UsersPage() {
     }
   }, [disableTarget, deleteTarget, reassignAsk]);
 
-  const loadUsers = useCallback(async () => {
-    setLoading(true);
-    setLoadError("");
-    try {
-      const userResult = useScopedUsers
-        ? await fetchScopedUsers({ page: 1, limit: 200 })
-        : await fetchUsers({ page: 1, limit: 200 });
-      const team = canReassignAwc
-        ? await fetchTeamMembers({ limit: 200 }).catch(() => ({ members: [] }))
-        : { members: [] };
-      const rows = userResult?.users || [];
-      setUsers(rows);
-      setTeamMembers(
-        Array.isArray(team?.members)
-          ? team.members.filter((m) => !m.isSuperAdmin && m.primaryRoleKey !== "admin")
-          : [],
-      );
-    } catch (err) {
-      setLoadError(err?.message || "Failed to load users");
-      setUsers([]);
+  useEffect(() => {
+    if (!canReassignAwc) {
       setTeamMembers([]);
-    } finally {
-      setLoading(false);
+      return undefined;
     }
-  }, [canReassignAwc, useScopedUsers]);
+    let cancelled = false;
+    fetchTeamMembers({ limit: 200 })
+      .then((team) => {
+        if (cancelled) return;
+        setTeamMembers(
+          Array.isArray(team?.members)
+            ? team.members.filter((m) => !m.isSuperAdmin && m.primaryRoleKey !== "admin")
+            : [],
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setTeamMembers([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [canReassignAwc]);
+
+  const refreshUsers = useCallback(() => {
+    setReloadNonce((n) => n + 1);
+  }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    async function loadUsers() {
+      setLoading(true);
+      setLoadError("");
+      try {
+        const tabTier = typeTab === "app" ? "seek" : undefined;
+        const params = {
+          page: currentPage,
+          limit: PAGE_SIZE,
+          search: debouncedSearch || undefined,
+          status: mapUiStatusToApi(statusFilter),
+          userTier: mapUiTierToApi(tierFilter) || tabTier,
+          parentCoachId: coachFilter || undefined,
+        };
+        const userResult = useScopedUsers
+          ? await fetchScopedUsers({
+              page: params.page,
+              limit: params.limit,
+              search: params.search,
+            })
+          : await fetchUsers(params);
+        if (cancelled) return;
+        const rows = userResult?.users || [];
+        const nextPagination = userResult?.pagination || {
+          page: currentPage,
+          limit: PAGE_SIZE,
+          total: rows.length,
+          pages: 1,
+        };
+        setUsers(rows);
+        setPagination({
+          page: Number(nextPagination.page) || currentPage,
+          limit: Number(nextPagination.limit) || PAGE_SIZE,
+          total: Number(nextPagination.total) || 0,
+          pages: Math.max(1, Number(nextPagination.pages) || 1),
+        });
+      } catch (err) {
+        if (cancelled) return;
+        setLoadError(err?.message || "Failed to load users");
+        setUsers([]);
+        setPagination({ page: 1, limit: PAGE_SIZE, total: 0, pages: 1 });
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
     loadUsers();
-  }, [loadUsers]);
-
-  const typeTab = searchParams.get("tab") || "all";
-  const tierFilter = searchParams.get("tier") || "";
-  const coachFilter = searchParams.get("coach") || "";
-  const pageParam = Number(searchParams.get("page"));
-  const currentPage = Number.isFinite(pageParam) && pageParam > 0 ? Math.floor(pageParam) : 1;
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    coachFilter,
+    currentPage,
+    debouncedSearch,
+    reloadNonce,
+    statusFilter,
+    tierFilter,
+    typeTab,
+    useScopedUsers,
+  ]);
 
   const setTypeTab = (tab) => {
     const next = new URLSearchParams(searchParams);
@@ -288,58 +360,45 @@ export function UsersPage() {
     return Array.from(byId.values());
   }, [enrichedPool, teamMembers]);
 
-  const tabCountPool = useMemo(
-    () => filterUsers(enrichedPool, {
-      search,
-      tierFilter,
-      statusFilter,
-      coachFilter,
-    }),
-    [coachFilter, enrichedPool, search, statusFilter, tierFilter],
-  );
-
   const typeTabs = useMemo(
-    () => buildUserTypeTabs(basePool, typeTab === "all" ? "" : typeTab, tabCountPool),
-    [basePool, tabCountPool, typeTab],
+    () => USER_TYPE_TAB_DEFS.map((def) => ({
+      id: def.id || "all",
+      label: def.label,
+      count: def.id ? undefined : pagination.total,
+    })),
+    [pagination.total],
   );
 
-  const filteredRows = useMemo(() => {
-    let list = filterUsers(enrichedPool, {
-      search,
-      tierFilter,
-      statusFilter,
-      typeTab,
-      coachFilter,
-    });
-
+  const pageRows = useMemo(() => {
+    let list = enrichedPool;
     if (sort) {
       const dir = sort.dir === "desc" ? -1 : 1;
       list = [...list].sort((a, b) => (
         sort.key === "name"
-          ? dir * a.name.localeCompare(b.name)
+          ? dir * String(a.name || "").localeCompare(String(b.name || ""))
           : dir * (lastActiveMinutes(a.lastActive) - lastActiveMinutes(b.lastActive))
       ));
     }
-
     return list;
-  }, [coachFilter, enrichedPool, search, sort, statusFilter, tierFilter, typeTab]);
+  }, [enrichedPool, sort]);
 
-  const totalCount = filteredRows.length;
-  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
-  const safePage = Math.min(currentPage, totalPages);
+  const totalCount = pagination.total;
+  const totalPages = Math.max(1, pagination.pages || 1);
+  const safePage = currentPage;
 
   useEffect(() => {
+    if (loading || loadError) return;
     if (currentPage > totalPages) setPage(totalPages);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, totalPages]);
+  }, [currentPage, loading, loadError, totalPages]);
 
   const rows = useMemo(() => {
     const start = (safePage - 1) * PAGE_SIZE;
-    return filteredRows.slice(start, start + PAGE_SIZE).map((u, i) => ({
+    return pageRows.map((u, i) => ({
       ...u,
       n: start + i + 1,
     }));
-  }, [filteredRows, safePage]);
+  }, [pageRows, safePage]);
 
   const pageItems = useMemo(
     () => buildPageItems(safePage, totalPages),
@@ -347,14 +406,13 @@ export function UsersPage() {
   );
 
   const rangeStart = totalCount === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
-  const rangeEnd = Math.min(safePage * PAGE_SIZE, totalCount);
+  const rangeEnd = totalCount === 0 ? 0 : rangeStart + pageRows.length - 1;
 
   const goToFirstPage = () => {
     if (currentPage > 1) setPage(1);
   };
 
   const toggleSort = (key) => {
-    goToFirstPage();
     setSort((prev) => {
       if (!prev || prev.key !== key) return { key, dir: "asc" };
       if (prev.dir === "asc") return { key, dir: "desc" };
@@ -471,6 +529,7 @@ export function UsersPage() {
       setDeletedUsers((prev) => [...prev, key]);
       setDeleteTarget(null);
       onToast(`${deleteTarget.name} archived`);
+      refreshUsers();
     } catch (err) {
       onToast(err?.message || "Could not delete user");
     } finally {
@@ -623,7 +682,9 @@ export function UsersPage() {
 
         {coachFilter ? (
           <div className="ua-coach-filter">
-            <span className="ua-coach-filter__label">Coach: {coachFilter}</span>
+            <span className="ua-coach-filter__label">
+              Coach: {teamMembers.find((m) => String(m.id) === String(coachFilter))?.name || coachFilter}
+            </span>
             <button type="button" className="ua-coach-filter__clear" title="Clear coach filter" onClick={clearCoachFilter}>×</button>
           </div>
         ) : null}
@@ -645,7 +706,7 @@ export function UsersPage() {
         <div className="ua-users-empty" style={{ marginBottom: 16 }}>
           <div className="ua-users-empty__title">Couldn’t load clients</div>
           <p className="ua-users-empty__sub">{loadError}</p>
-          <button type="button" className="btn btn--outline" onClick={loadUsers}>Retry</button>
+          <button type="button" className="btn btn--outline" onClick={refreshUsers}>Retry</button>
         </div>
       ) : null}
 

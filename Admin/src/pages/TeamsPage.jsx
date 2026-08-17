@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
-import { OrangeButton, PageHeader, PillTabs, SectionLabel, TableScroll } from "../components/shared.jsx";
+import { OrangeButton, PageHeader, PillTabs, SectionLabel, TableScroll, ListPagination } from "../components/shared.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import {
   STAFF_AVATARS,
@@ -15,6 +15,7 @@ import { UI_TO_ROLE_KEY } from "../api/accountApi.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 
 const SYSTEM_TEAM_ROLE_KEYS = new Set(["wc", "awc", "trainee", "support"]);
+const PAGE_SIZE = 20;
 
 function isAdminAccessRole(role) {
   const key = String(role?.roleKey || "").toLowerCase();
@@ -215,11 +216,18 @@ export function TeamsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [members, setMembers] = useState([]);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: PAGE_SIZE,
+    total: 0,
+    pages: 1,
+  });
   const [accessRoles, setAccessRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [parentOptions, setParentOptions] = useState([]);
+  const [reloadNonce, setReloadNonce] = useState(0);
 
   const teamRoles = useMemo(
     () => (accessRoles || []).filter((r) => !isAdminAccessRole(r) && isSystemTeamRole(r)),
@@ -228,35 +236,92 @@ export function TeamsPage() {
 
   const createRoles = teamRoles;
 
+  const pageParam = Number(searchParams.get("page"));
+  const currentPage = Number.isFinite(pageParam) && pageParam > 0 ? Math.floor(pageParam) : 1;
   const roleTab = searchParams.get("role") || teamRoles[0]?.id || "wc";
+
+  const setPage = (page) => {
+    const next = new URLSearchParams(searchParams);
+    if (page <= 1) next.delete("page");
+    else next.set("page", String(page));
+    setSearchParams(next, { replace: true });
+  };
+
   const setRoleTab = (role) => {
     const next = new URLSearchParams(searchParams);
     const defaultId = teamRoles[0]?.id;
     if (!role || role === defaultId) next.delete("role");
     else next.set("role", role);
+    next.delete("page");
     setSearchParams(next, { replace: true });
   };
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  const roleById = useMemo(
+    () => Object.fromEntries(teamRoles.map((r) => [r.id, r])),
+    [teamRoles],
+  );
+
+  const activeRole = roleById[roleTab];
+  const apiRoleKey = activeRole?.roleKey || (TEAM_ROLE_META[roleTab] ? roleTab : undefined);
+
+  const loadRoles = useCallback(async () => {
     try {
-      const [{ members: rows }, roles] = await Promise.all([
-        fetchTeamMembers({ limit: 200 }),
-        fetchAccessRoles().catch(() => []),
-      ]);
-      setMembers(rows.filter((m) => !m.isSuperAdmin && m.primaryRoleKey !== "admin"));
+      const roles = await fetchAccessRoles();
       setAccessRoles(Array.isArray(roles) ? roles : []);
-    } catch (err) {
-      setError(err?.message || "Failed to load team");
-    } finally {
-      setLoading(false);
+    } catch {
+      setAccessRoles([]);
     }
   }, []);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    loadRoles();
+  }, [loadRoles]);
+
+  const load = useCallback(() => {
+    setReloadNonce((n) => n + 1);
+    loadRoles();
+  }, [loadRoles]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadMembers() {
+      setLoading(true);
+      setError("");
+      try {
+        const { members: rows, pagination: nextPagination } = await fetchTeamMembers({
+          page: currentPage,
+          limit: PAGE_SIZE,
+          roleKey: apiRoleKey,
+        });
+        if (cancelled) return;
+        const list = (rows || []).filter((m) => !m.isSuperAdmin && m.primaryRoleKey !== "admin");
+        setMembers(list);
+        setPagination({
+          page: Number(nextPagination?.page) || currentPage,
+          limit: Number(nextPagination?.limit) || PAGE_SIZE,
+          total: Number(nextPagination?.total) || 0,
+          pages: Math.max(1, Number(nextPagination?.pages) || 1),
+        });
+      } catch (err) {
+        if (cancelled) return;
+        setError(err?.message || "Failed to load team");
+        setMembers([]);
+        setPagination({ page: 1, limit: PAGE_SIZE, total: 0, pages: 1 });
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    loadMembers();
+    return () => {
+      cancelled = true;
+    };
+  }, [apiRoleKey, currentPage, reloadNonce]);
+
+  useEffect(() => {
+    if (loading || error) return;
+    if (currentPage > pagination.pages) setPage(pagination.pages);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, error, loading, pagination.pages]);
 
   useEffect(() => {
     if (!createOpen) return;
@@ -265,35 +330,16 @@ export function TeamsPage() {
       .catch(() => setParentOptions([]));
   }, [createOpen]);
 
-  const roleById = useMemo(
-    () => Object.fromEntries(teamRoles.map((r) => [r.id, r])),
-    [teamRoles],
-  );
-
-  const counts = useMemo(() => {
-    const c = {};
-    for (const role of teamRoles) c[role.id] = 0;
-    for (const m of members) {
-      if (m.consoleRoleId && c[m.consoleRoleId] != null) {
-        c[m.consoleRoleId] += 1;
-        continue;
-      }
-      const matched = teamRoles.find((r) => r.roleKey && r.roleKey === m.primaryRoleKey);
-      if (matched) c[matched.id] += 1;
-    }
-    return c;
-  }, [members, teamRoles]);
-
   const tabs = useMemo(() => {
     if (teamRoles.length) {
       return teamRoles.map((r) => ({
         id: r.id,
         label: r.name,
-        count: counts[r.id] || 0,
+        count: r.memberCount || 0,
       }));
     }
     return TEAM_ROLE_TABS_BASE.map((t) => ({ ...t, count: 0 }));
-  }, [counts, teamRoles]);
+  }, [teamRoles]);
 
   useEffect(() => {
     if (!teamRoles.length) return;
@@ -303,18 +349,8 @@ export function TeamsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamRoles, roleTab]);
 
-  const rows = useMemo(() => {
-    const active = roleById[roleTab];
-    if (!active) {
-      return members.filter((m) => m.primaryRoleKey === roleTab);
-    }
-    return members.filter((m) => {
-      if (m.consoleRoleId) return m.consoleRoleId === active.id;
-      return Boolean(active.roleKey) && m.primaryRoleKey === active.roleKey;
-    });
-  }, [members, roleById, roleTab]);
+  const rows = members;
 
-  const activeRole = roleById[roleTab];
   const baseUiForCol = activeRole
     ? resolveBaseUiRoleKey(activeRole, teamRoles) || activeRole.roleKey
     : roleTab;
@@ -436,6 +472,17 @@ export function TeamsPage() {
             })}
           </div>
         </TableScroll>
+      ) : null}
+
+      {!loading && !error ? (
+        <ListPagination
+          page={currentPage}
+          pages={pagination.pages}
+          total={pagination.total}
+          pageSize={PAGE_SIZE}
+          onPageChange={setPage}
+          label="Team members pagination"
+        />
       ) : null}
 
       <CreateMemberModal

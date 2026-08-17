@@ -122,3 +122,77 @@ export function SectionLink({ to, children }) {
 export function TableScroll({ children }) {
   return <div className="ua-table-scroll">{children}</div>;
 }
+
+export function buildPageItems(current, total) {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const items = new Set([1, total, current - 1, current, current + 1]);
+  if (current <= 3) [2, 3, 4].forEach((n) => items.add(n));
+  if (current >= total - 2) [total - 3, total - 2, total - 1].forEach((n) => items.add(n));
+  return Array.from(items)
+    .filter((n) => n >= 1 && n <= total)
+    .sort((a, b) => a - b)
+    .reduce((acc, n) => {
+      if (acc.length && n - acc[acc.length - 1] > 1) acc.push("…");
+      acc.push(n);
+      return acc;
+    }, []);
+}
+
+export function ListPagination({
+  page,
+  pages,
+  total,
+  pageSize,
+  onPageChange,
+  label = "Pagination",
+}) {
+  if (!total) return null;
+  const safePage = Math.max(1, page || 1);
+  const totalPages = Math.max(1, pages || 1);
+  const rangeStart = (safePage - 1) * pageSize + 1;
+  const rangeEnd = Math.min(safePage * pageSize, total);
+  const pageItems = buildPageItems(safePage, totalPages);
+
+  return (
+    <div className="ua-users-pagination" aria-label={label}>
+      <div className="ua-users-pagination__meta">
+        Showing <strong>{rangeStart}–{rangeEnd}</strong> of <strong>{total}</strong>
+        <span className="ua-users-pagination__sep">·</span>
+        {pageSize} per page
+      </div>
+      <div className="ua-users-pagination__controls">
+        <button
+          type="button"
+          className="ua-users-pagination__btn"
+          disabled={safePage <= 1}
+          onClick={() => onPageChange(safePage - 1)}
+        >
+          Prev
+        </button>
+        {pageItems.map((item, idx) => (
+          item === "…" ? (
+            <span key={`ellipsis-${idx}`} className="ua-users-pagination__ellipsis">…</span>
+          ) : (
+            <button
+              key={item}
+              type="button"
+              className={`ua-users-pagination__page${item === safePage ? " ua-users-pagination__page--active" : ""}`}
+              onClick={() => onPageChange(item)}
+              aria-current={item === safePage ? "page" : undefined}
+            >
+              {item}
+            </button>
+          )
+        ))}
+        <button
+          type="button"
+          className="ua-users-pagination__btn"
+          disabled={safePage >= totalPages}
+          onClick={() => onPageChange(safePage + 1)}
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  );
+}

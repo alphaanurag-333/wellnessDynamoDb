@@ -52,7 +52,7 @@ export async function deleteAccessRole(id) {
   }
 }
 
-export async function fetchAccessMembers({ search, roleKey, page = 1, limit = 100 } = {}) {
+export async function fetchAccessMembers({ search, roleKey, page = 1, limit = 20 } = {}) {
   const q = new URLSearchParams();
   q.set("page", String(page));
   q.set("limit", String(limit));

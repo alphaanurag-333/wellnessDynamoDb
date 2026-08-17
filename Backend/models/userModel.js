@@ -14,7 +14,6 @@ const {
 const {
   listByPartitionKey,
   buildContainsFilter,
-  sortByCreatedAtDesc,
   paginateItems,
 } = require("../utils/dynamoList");
 const { matchesAssignedClientTier } = require("./userAssignmentLogic");
@@ -763,7 +762,6 @@ async function listUsers({ page = 1, limit = 20, status, search, userTier, assig
     page: needsPostFilter ? 1 : page,
     limit: needsPostFilter ? Number.MAX_SAFE_INTEGER : limit,
     maxLimit: needsPostFilter ? Number.MAX_SAFE_INTEGER : 200,
-    sortFn: sortByCreatedAtDesc,
   });
 
   let users = items.map(withLegacyId);

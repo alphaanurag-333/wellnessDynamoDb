@@ -9,6 +9,7 @@ const {
   updateUser,
   deleteUser,
   listUsers,
+  listUsersByParentCoachId,
 } = require("../../models/userModel");
 const {
   parseUserFields,
@@ -19,9 +20,18 @@ const {
 } = require("../userController/userProfileHelpers");
 
 exports.listUsersController = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 20, status, search, userTier, assignmentStatus } = req.query;
-  const data = await listUsers({ page, limit, status, search, userTier, assignmentStatus });
-  const users = await Promise.all(data.users.map((u) => enrichUser(u)));
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 20));
+  const { status, search, userTier, assignmentStatus, parentCoachId } = req.query;
+  const data = parentCoachId
+    ? await listUsersByParentCoachId(parentCoachId, {
+        page,
+        limit,
+        search,
+        userTier: userTier || "all",
+      })
+    : await listUsers({ page, limit, status, search, userTier, assignmentStatus });
+  const users = await Promise.all(data.users.map((u) => enrichUser(u, { ensureReferral: false })));
   return res.status(200).json({ status: true, users, pagination: data.pagination });
 });
 

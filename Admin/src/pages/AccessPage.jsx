@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useOutletContext } from "react-router-dom";
-import { OrangeButton, PageHeader, PillTabs, TableScroll } from "../components/shared.jsx";
+import { OrangeButton, PageHeader, PillTabs, TableScroll, ListPagination } from "../components/shared.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import {
@@ -742,27 +742,51 @@ function RolesPermissionsTab({ onToast }) {
 }
 
 function MembersTab({ onToast }) {
+  const PAGE_SIZE = 20;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [members, setMembers] = useState([]);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: PAGE_SIZE,
+    total: 0,
+    pages: 1,
+  });
+  const [page, setPage] = useState(1);
   const [busyId, setBusyId] = useState(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (nextPage = page) => {
     setLoading(true);
     setError("");
     try {
-      const { members: rows } = await fetchAccessMembers({ limit: 100 });
-      setMembers(rows);
+      const { members: rows, pagination: nextPagination } = await fetchAccessMembers({
+        page: nextPage,
+        limit: PAGE_SIZE,
+      });
+      setMembers(rows || []);
+      setPagination({
+        page: Number(nextPagination?.page) || nextPage,
+        limit: Number(nextPagination?.limit) || PAGE_SIZE,
+        total: Number(nextPagination?.total) || 0,
+        pages: Math.max(1, Number(nextPagination?.pages) || 1),
+      });
     } catch (err) {
       setError(err?.message || "Failed to load members");
+      setMembers([]);
+      setPagination({ page: 1, limit: PAGE_SIZE, total: 0, pages: 1 });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    load(page);
+  }, [load, page]);
+
+  useEffect(() => {
+    if (loading || error) return;
+    if (page > pagination.pages) setPage(pagination.pages);
+  }, [error, loading, page, pagination.pages]);
 
   async function handleRoleChange(member, roleKey) {
     if (member.isSuperAdmin) {
@@ -774,7 +798,7 @@ function MembersTab({ onToast }) {
     try {
       await setAccessMemberRole(member.id, roleKey);
       onToast(`Updated ${member.name}`);
-      await load();
+      await load(page);
     } catch (err) {
       onToast(err?.message || "Update failed");
     } finally {
@@ -787,12 +811,13 @@ function MembersTab({ onToast }) {
     return (
       <div className="ua-section-bar">
         <span>{error}</span>
-        <OrangeButton onClick={load}>Retry</OrangeButton>
+        <OrangeButton onClick={() => load(page)}>Retry</OrangeButton>
       </div>
     );
   }
 
   return (
+    <>
     <TableScroll>
       <div className="ua-table-card">
         <div className="ua-table ua-table--teams ua-table__head">
@@ -854,6 +879,15 @@ function MembersTab({ onToast }) {
         })}
       </div>
     </TableScroll>
+    <ListPagination
+      page={page}
+      pages={pagination.pages}
+      total={pagination.total}
+      pageSize={PAGE_SIZE}
+      onPageChange={setPage}
+      label="Access members pagination"
+    />
+    </>
   );
 }
 

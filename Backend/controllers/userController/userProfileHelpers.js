@@ -182,24 +182,26 @@ function parseUserFields(body, { requirePassword = false } = {}) {
   return { fields, password };
 }
 
-async function enrichUser(user) {
+async function enrichUser(user, { ensureReferral = true } = {}) {
   if (!user) return null;
 
   let source = user;
-  try {
-    const code = await ensureEntityReferralCode({
-      tableName: "User",
-      entityType: "user",
-      entityId: user.id,
-      ownerCoachId: String(user.parentCoachId || "").trim() || "pending",
-      referralCode: user.referralCode,
-    });
-    if (code && code !== user.referralCode) {
-      source = { ...user, referralCode: code };
+  if (ensureReferral) {
+    try {
+      const code = await ensureEntityReferralCode({
+        tableName: "User",
+        entityType: "user",
+        entityId: user.id,
+        ownerCoachId: String(user.parentCoachId || "").trim() || "pending",
+        referralCode: user.referralCode,
+      });
+      if (code && code !== user.referralCode) {
+        source = { ...user, referralCode: code };
+      }
+    } catch (err) {
+      // Non-fatal: profile still returns without blocking on registry issues.
+      console.error("[enrichUser] ensure referral code failed", err.message);
     }
-  } catch (err) {
-    // Non-fatal: profile still returns without blocking on registry issues.
-    console.error("[enrichUser] ensure referral code failed", err.message);
   }
 
   const pub = toPublicUser(source);
