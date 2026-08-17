@@ -41,6 +41,7 @@
     "migrate:contact-inquiries": "node --use-system-ca migration/migrateAll.js --only=26-contact-inquiries",
     "job:monthly-champions:run": "node --use-system-ca scripts/runMonthlyChampionJob.js",
     "seed:staff-accounts": "node --use-system-ca scripts/seedCleanStaffAccounts.js --confirm",
+    "seed:test-users": "node --use-system-ca scripts/seedTestUsers.js --confirm",
     "backfill:staff-referral-codes": "node --use-system-ca scripts/backfillStaffReferralCodes.js",
     "backfill:referral-user-assignments": "node --use-system-ca scripts/backfillReferralUserAssignments.js"
   },

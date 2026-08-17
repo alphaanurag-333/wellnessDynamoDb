@@ -187,7 +187,9 @@ export function prevTier(tier) {
 
 export function canDowngradeTier(tier, ageDays) {
   const t = normalizeTier(tier);
-  return (t === "Consultancy" && ageDays > 7) || t === "Maintenance";
+  // Heal → Seek and Maintenance → Heal are backed by account conversion APIs.
+  void ageDays;
+  return t === "Seek to Heal" || t === "Maintenance";
 }
 
 export function lastActiveMinutes(value) {

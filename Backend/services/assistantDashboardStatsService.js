@@ -31,16 +31,28 @@ function filterForAssistant(rows, assistantId) {
 }
 
 function countClientsByTier(users) {
-  let healClients = 0;
-  let consultancyClients = 0;
+  const counts = {
+    seek: 0,
+    consultancy_only: 0,
+    heal: 0,
+    maintenance: 0,
+  };
 
   for (const user of users) {
     const tier = normalizeUserTier(user?.userTier);
-    if (tier === "heal") healClients += 1;
-    else if (tier === "consultancy_only") consultancyClients += 1;
+    if (Object.hasOwn(counts, tier)) counts[tier] += 1;
   }
 
-  return { healClients, consultancyClients };
+  return counts;
+}
+
+function countClientsByHealthConcern(users) {
+  const counts = new Map();
+  for (const user of users) {
+    const concernId = String(user?.primaryHealthConcern || "").trim();
+    if (concernId) counts.set(concernId, (counts.get(concernId) || 0) + 1);
+  }
+  return Object.fromEntries(counts);
 }
 
 function toDashboardClient(user) {
@@ -73,9 +85,8 @@ async function getAssistantDashboardStats(assistantId) {
   const [clientData, mealLogs, commitmentData, testimonialData] = await Promise.all([
     listUsersByAssignedCoachId(assistantId, {
       parentCoachId,
-      page: 1,
-      limit: 200,
       userTier: "client",
+      unpaginated: true,
     }),
     queryMealLogsByCoachId(parentCoachId, { status: "pending_review" }),
     listUserCommitmentLetters({
@@ -93,7 +104,10 @@ async function getAssistantDashboardStats(assistantId) {
   ]);
 
   const clients = clientData.users || [];
-  const { healClients, consultancyClients } = countClientsByTier(clients);
+  const tierCounts = countClientsByTier(clients);
+  const healClients = tierCounts.heal;
+  const consultancyClients = tierCounts.consultancy_only;
+  const healthConcernCounts = countClientsByHealthConcern(clients);
   const totalClients = clientData.pagination?.total ?? clients.length;
 
   const pendingMealApprovals = filterForAssistant(mealLogs, assistantId).length;
@@ -132,8 +146,10 @@ async function getAssistantDashboardStats(assistantId) {
       },
     ],
     clientTiers: [
-      { key: "heal", name: "Heal (paid)", value: healClients },
-      { key: "consultancy_only", name: "Consultancy only", value: consultancyClients },
+      { key: "seek", name: "Seek (free)", value: tierCounts.seek },
+      { key: "consultancy_only", name: "Consultancy only", value: tierCounts.consultancy_only },
+      { key: "heal", name: "Heal (paid)", value: tierCounts.heal },
+      { key: "maintenance", name: "Maintenance", value: tierCounts.maintenance },
     ],
   };
 
@@ -141,6 +157,7 @@ async function getAssistantDashboardStats(assistantId) {
     totalClients,
     healClients,
     consultancyClients,
+    healthConcernCounts,
     pendingApprovals,
     pendingMealApprovals,
     pendingTestimonials,

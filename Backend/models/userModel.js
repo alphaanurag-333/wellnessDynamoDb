@@ -561,7 +561,7 @@ async function deleteUser(id) {
 
 async function listUsersByParentCoachId(
   parentCoachId,
-  { page = 1, limit = 20, search, userTier = "client", scope = "all" } = {}
+  { page = 1, limit = 20, search, userTier = "client", scope = "all", unpaginated = false } = {}
 ) {
   const coachId = String(parentCoachId || "").trim();
   if (!coachId) {
@@ -616,14 +616,14 @@ async function listUsersByParentCoachId(
   const start = (safePage - 1) * safeLimit;
 
   return {
-    users: rows.slice(start, start + safeLimit),
+    users: unpaginated ? rows : rows.slice(start, start + safeLimit),
     pagination: { page: safePage, limit: safeLimit, total, pages },
   };
 }
 
 async function listUsersByAssignedCoachId(
   assignedCoachId,
-  { parentCoachId, page = 1, limit = 20, search, userTier = "client" } = {}
+  { parentCoachId, page = 1, limit = 20, search, userTier = "client", unpaginated = false } = {}
 ) {
   const assigneeId = String(assignedCoachId || "").trim();
   const ownerCoachId = String(parentCoachId || "").trim();
@@ -667,7 +667,7 @@ async function listUsersByAssignedCoachId(
   const start = (safePage - 1) * safeLimit;
 
   return {
-    users: rows.slice(start, start + safeLimit),
+    users: unpaginated ? rows : rows.slice(start, start + safeLimit),
     pagination: { page: safePage, limit: safeLimit, total, pages },
   };
 }

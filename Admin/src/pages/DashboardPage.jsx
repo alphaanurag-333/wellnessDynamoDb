@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
-import { adminListConfigDropdowns } from "../api/configDropdownApi.js";
 import { fetchDashboardStatistics } from "../api/dashboardApi.js";
+import { adminListHealthConcerns, mapConcernsToDropdownList } from "../api/healthConcernApi.js";
+import { fetchScopedUsers, fetchUsers } from "../api/usersApi.js";
 import { UpdatedAdminDashboard } from "../components/UpdatedAdminDashboard.jsx";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 
 export function DashboardPage() {
   const { showToast } = useOutletContext();
-  const { token, viewAs } = useViewAs();
+  const { token, viewAs, dataScope } = useViewAs();
   const [statistics, setStatistics] = useState(null);
-  const [programCategories, setProgramCategories] = useState(null);
+  const [healthConcerns, setHealthConcerns] = useState(null);
+  const [clients, setClients] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
@@ -17,28 +19,35 @@ export function DashboardPage() {
     setLoading(true);
     setLoadError("");
     try {
-      const [statisticsResult, categoriesResult] = await Promise.allSettled([
+      const [statisticsResult, concernsResult, clientsResult] = await Promise.allSettled([
         fetchDashboardStatistics(),
-        adminListConfigDropdowns(token, { limit: 50 }),
+        adminListHealthConcerns(token, { limit: 200 }),
+        dataScope === "all"
+          ? fetchUsers({ page: 1, limit: 200 })
+          : fetchScopedUsers({ page: 1, limit: 200 }),
       ]);
       if (statisticsResult.status === "rejected") throw statisticsResult.reason;
       setStatistics(statisticsResult.value);
-      if (categoriesResult.status === "fulfilled") {
-        const categoryList = categoriesResult.value.lists.find(
-          (list) => list.slug === "program-category" && list.status === "active",
-        );
-        setProgramCategories(categoryList?.options ?? null);
+      if (concernsResult.status === "fulfilled") {
+        const concernList = mapConcernsToDropdownList(concernsResult.value.healthConcerns || []);
+        setHealthConcerns(concernList.options ?? null);
       } else {
-        setProgramCategories(null);
+        setHealthConcerns(null);
       }
+      setClients(
+        clientsResult.status === "fulfilled" && Array.isArray(clientsResult.value?.users)
+          ? clientsResult.value.users
+          : null,
+      );
     } catch (error) {
       setStatistics(null);
-      setProgramCategories(null);
+      setHealthConcerns(null);
+      setClients(null);
       setLoadError(error?.message || "Couldn’t load dashboard data.");
     } finally {
       setLoading(false);
     }
-  }, [token, viewAs]);
+  }, [token, viewAs, dataScope]);
 
   useEffect(() => {
     loadDashboard();
@@ -48,7 +57,8 @@ export function DashboardPage() {
     <UpdatedAdminDashboard
       onToast={showToast}
       statistics={statistics}
-      programCategories={programCategories}
+      healthConcerns={healthConcerns}
+      clients={clients}
       loading={loading}
       loadError={loadError}
       onRetry={loadDashboard}

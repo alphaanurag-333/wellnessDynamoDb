@@ -67,6 +67,7 @@ import {
   buildTierGradient,
 } from "../data/dashboardData.js";
 import { getProgramCategoryModal } from "../data/programCategoryData.js";
+import { UNASSIGNED_COACH } from "../data/usersData.js";
 import {
   A1C_METRIC_KEYS,
   FAT_METRIC_KEYS,
@@ -248,10 +249,54 @@ function NotesToRemember({ onToast }) {
   );
 }
 
+function isImageIcon(icon) {
+  const value = String(icon || "").trim();
+  return /^(https?:|blob:|data:|\/)/i.test(value);
+}
+
+function CategoryIcon({ icon }) {
+  if (isImageIcon(icon)) {
+    return <img src={icon} alt="" />;
+  }
+  return icon || "🌿";
+}
+
+function concernKey(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function clientRowFromUser(user) {
+  const coach = String(user.coach || "").trim();
+  return {
+    name: user.name,
+    coach: coach && coach !== UNASSIGNED_COACH ? coach : "Not assigned",
+    awc: String(user.awc || "").trim() || "Not assigned",
+    userId: user.id || null,
+  };
+}
+
+/** Live clients grouped under both their concern id and concern title. */
+function groupClientsByConcern(clients) {
+  if (!Array.isArray(clients)) return null;
+  const groups = new Map();
+  for (const user of clients) {
+    const row = clientRowFromUser(user);
+    const keys = new Set([concernKey(user.healthConcernId), concernKey(user.goal)]);
+    for (const key of keys) {
+      if (!key) continue;
+      const rows = groups.get(key);
+      if (rows) rows.push(row);
+      else groups.set(key, [row]);
+    }
+  }
+  return groups;
+}
+
 export function UpdatedAdminDashboard({
   onToast,
   statistics,
-  programCategories,
+  healthConcerns,
+  clients,
   loading,
   loadError,
   onRetry,
@@ -264,15 +309,30 @@ export function UpdatedAdminDashboard({
   const isAdminDash = viewAs === "admin";
   const isContentCommunity = isStaffDash || isSupportDash;
   const dashHasTeam = viewAs !== "awc";
+  const clientsByConcern = useMemo(() => groupClientsByConcern(clients), [clients]);
   const programCards = useMemo(() => {
-    if (!Array.isArray(programCategories)) {
-      return PROG_CATS.map((category) => ({ ...category, modalLabel: category.label }));
+    if (!Array.isArray(healthConcerns)) {
+      return PROG_CATS.map((category) => ({
+        ...category,
+        count: statistics ? 0 : category.count,
+        modalKey: category.label,
+        modalLabel: category.label,
+      }));
     }
-    return programCategories
-      .filter((option) => option.on)
-      .sort((a, b) => a.sortOrder - b.sortOrder)
+    const concernCounts = statistics?.healthConcernCounts ?? {};
+    return healthConcerns
+      .filter(
+        (option) =>
+          option.on &&
+          String(option.label || "").trim().toLowerCase() !== "everyday wellness",
+      )
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
       .map((option, index) => {
-        const fallback = PROG_CATS.find((category) => category.value === option.value);
+        const fallback = PROG_CATS.find(
+          (category) =>
+            category.value === option.value ||
+            category.label.toLowerCase() === String(option.label || "").toLowerCase(),
+        );
         const palette = fallback ?? PROG_CATS[index % PROG_CATS.length];
         return {
           ...palette,
@@ -280,11 +340,12 @@ export function UpdatedAdminDashboard({
           value: option.value,
           label: option.label,
           icon: option.icon || fallback?.icon || "🌿",
-          count: fallback?.count ?? 0,
-          modalLabel: fallback?.label ?? option.label,
+          count: asNumber(concernCounts[option.id] ?? concernCounts[option.value]),
+          modalKey: option.id || option.value || option.label,
+          modalLabel: option.label || fallback?.label,
         };
       });
-  }, [programCategories]);
+  }, [healthConcerns, statistics]);
 
   const hasAdminStatistics = statistics && Object.hasOwn(statistics, "totalUsers");
   const hasStaffStatistics = statistics && Object.hasOwn(statistics, "totalClients");
@@ -300,9 +361,26 @@ export function UpdatedAdminDashboard({
   const appClientStats = baseAppClientStats.map((item) => (
     item.tierFilter === "Maintenance" && tierRows?.some((row) => row.key === "maintenance")
       ? { ...item, value: asNumber(tierRows.find((row) => row.key === "maintenance")?.value) }
-      : item
+      : statisticsForView && !item.tierFilter
+        ? { ...item, value: "—", tag: "No live source configured" }
+        : item
   ));
-  const expTotal = viewAs === "wc" ? WC_EXP_TOTAL : viewAs === "awc" ? AWC_EXP_TOTAL : EXP_TOTAL;
+  const fallbackExpTotal = viewAs === "wc" ? WC_EXP_TOTAL : viewAs === "awc" ? AWC_EXP_TOTAL : EXP_TOTAL;
+  const expTotal = statisticsForView ? null : fallbackExpTotal;
+  const everydayWellnessConcern = healthConcerns?.find(
+    (option) => String(option.label || "").trim().toLowerCase() === "everyday wellness",
+  );
+  const everydayWellnessCount = asNumber(
+    statisticsForView?.healthConcernCounts?.[
+      everydayWellnessConcern?.id ?? everydayWellnessConcern?.value
+    ],
+  );
+  const appUserProgramCard = {
+    ...APP_USER_PROG_CARD,
+    ...(statisticsForView ? { count: everydayWellnessCount } : null),
+    modalKey: everydayWellnessConcern?.id || APP_USER_PROG_CARD.label,
+    modalLabel: everydayWellnessConcern?.label || APP_USER_PROG_CARD.label,
+  };
   const commOnbCount = viewAs === "wc" ? WC_COMM_ONB_COUNT : viewAs === "awc" ? AWC_COMM_ONB_COUNT : COMM_ONB_COUNT;
   const fatMetrics = viewAs === "wc" ? WC_FAT_METRICS : viewAs === "awc" ? AWC_FAT_METRICS : FAT_METRICS;
   const a1cMetrics = viewAs === "wc" ? WC_A1C_METRICS : viewAs === "awc" ? AWC_A1C_METRICS : A1C_METRICS;
@@ -336,7 +414,7 @@ export function UpdatedAdminDashboard({
   const [chAud, setChAud] = useState("all");
   const [chRunning, setChRunning] = useState([]);
   const [remindModal, setRemindModal] = useState(null);
-  const [programModalLabel, setProgramModalLabel] = useState(null);
+  const [programModalTarget, setProgramModalTarget] = useState(null);
   const [progressModalKey, setProgressModalKey] = useState(null);
 
   const champ = CHAMP_MONTHS[champMonth] ?? CHAMP_MONTHS["2026-07"];
@@ -366,6 +444,10 @@ export function UpdatedAdminDashboard({
       }
     : REVENUE_HERO;
   const revenueProducts = statisticsForView?.charts?.revenueByProduct;
+  const payingClientCount = ["consultancy_only", "heal", "maintenance"].reduce(
+    (total, key) => total + asNumber(tierRows?.find((row) => row.key === key)?.value),
+    0,
+  );
   const dynamicRevenueCards = Array.isArray(revenueProducts)
     ? [
         ...revenueProducts.map((row, index) => ({
@@ -377,7 +459,7 @@ export function UpdatedAdminDashboard({
         })),
         {
           label: "Avg. per client",
-          value: formatInr(statistics.totalUsers ? revenueTotal / statistics.totalUsers : 0),
+          value: formatInr(payingClientCount ? revenueTotal / payingClientCount : 0),
           share: null,
           pct: 0,
           color: "#a855f7",
@@ -467,17 +549,26 @@ export function UpdatedAdminDashboard({
     });
   }
 
-  const programModal = programModalLabel ? getProgramCategoryModal(programModalLabel) : null;
+  const programModal = useMemo(() => {
+    if (!programModalTarget) return null;
+    const { key, label } = programModalTarget;
+    if (!clientsByConcern) return getProgramCategoryModal(label);
+    const rows = clientsByConcern.get(concernKey(key)) ?? clientsByConcern.get(concernKey(label)) ?? [];
+    return { label, rows };
+  }, [clientsByConcern, programModalTarget]);
   const progressModal = getProgressModal(progressModalKey);
 
-  function openProgramCategory(label) {
-    if (!getProgramCategoryModal(label)) return;
-    setProgramModalLabel(label);
+  function openProgramCategory(card) {
+    const key = card?.modalKey || card?.label;
+    const label = card?.modalLabel || card?.label;
+    if (!key && !label) return;
+    if (!clientsByConcern && !getProgramCategoryModal(label)) return;
+    setProgramModalTarget({ key, label });
   }
 
   function openProgramClient(row) {
     if (row.userId) {
-      setProgramModalLabel(null);
+      setProgramModalTarget(null);
       navigate(UPDATED_ADMIN_PATHS.userDetail(row.userId));
       return;
     }
@@ -625,7 +716,9 @@ export function UpdatedAdminDashboard({
           <div className="expiry-card">
             <div className="expiry-card__head">
               <span className="expiry-card__title">Expiring in 15 days</span>
-              <span className="expiry-card__total">{expTotal} total</span>
+              <span className="expiry-card__total">
+                {expTotal == null ? "Not available" : `${expTotal} total`}
+              </span>
             </div>
             <div className="expiry-card__cells">
               {EXP_CARDS.map((e) => (
@@ -640,8 +733,10 @@ export function UpdatedAdminDashboard({
                     {e.label}
                   </span>
                   <span className="expiry-cell__value">
-                    <span style={{ color: e.color }}>{isStaffDash ? expTotal : e.value}</span>
-                    <span className="expiry-cell__sub">{e.sub}</span>
+                    <span style={{ color: e.color }}>{expTotal ?? "—"}</span>
+                    <span className="expiry-cell__sub">
+                      {expTotal == null ? "No renewal date source configured" : e.sub}
+                    </span>
                   </span>
                 </button>
               ))}
@@ -734,8 +829,8 @@ export function UpdatedAdminDashboard({
       {isFullDash && !isStaffDash ? (
       <section className="section">
         <div className="section__head">
-          <h2 className="section__title">Program categories : clients</h2>
-          <span className="section__hint">Clients registered per program · tap to see who</span>
+          <h2 className="section__title">Health concern : clients</h2>
+          <span className="section__hint">Clients registered per health concern · tap to see who</span>
         </div>
         <div className="prog-cats prog-cats--v2">
           <div className="prog-cats__main">
@@ -746,9 +841,9 @@ export function UpdatedAdminDashboard({
                   type="button"
                   className="prog-cat"
                   style={{ background: p.bg, borderColor: p.border }}
-                  onClick={() => openProgramCategory(p.modalLabel)}
+                  onClick={() => openProgramCategory(p)}
                 >
-                  <span className="prog-cat__icon" style={{ background: "#fff" }}>{p.icon}</span>
+                  <span className="prog-cat__icon" style={{ background: "#fff" }}><CategoryIcon icon={p.icon} /></span>
                   <span className="prog-cat__label">{p.label}</span>
                   <span className="prog-cat__count" style={{ color: p.accent }}>{p.count}</span>
                 </button>
@@ -763,12 +858,12 @@ export function UpdatedAdminDashboard({
             <button
               type="button"
               className="prog-cat prog-cat--appuser"
-              style={{ background: APP_USER_PROG_CARD.bg, borderColor: APP_USER_PROG_CARD.border }}
-              onClick={() => openProgramCategory(APP_USER_PROG_CARD.label)}
+              style={{ background: appUserProgramCard.bg, borderColor: appUserProgramCard.border }}
+              onClick={() => openProgramCategory(appUserProgramCard)}
             >
-              <span className="prog-cat__icon" style={{ background: "#fff" }}>{APP_USER_PROG_CARD.icon}</span>
-              <span className="prog-cat__label">{APP_USER_PROG_CARD.label}</span>
-              <span className="prog-cat__count">{APP_USER_PROG_CARD.count}</span>
+              <span className="prog-cat__icon" style={{ background: "#fff" }}>{appUserProgramCard.icon}</span>
+              <span className="prog-cat__label">{appUserProgramCard.label}</span>
+              <span className="prog-cat__count">{appUserProgramCard.count}</span>
             </button>
           </div>
         </div>
@@ -830,8 +925,8 @@ export function UpdatedAdminDashboard({
       {isStaffDash ? (
       <section className="section">
         <div className="section__head">
-          <h2 className="section__title">Program categories : clients</h2>
-          <span className="section__hint">Clients registered per program · tap to see who</span>
+          <h2 className="section__title">Health concern : clients</h2>
+          <span className="section__hint">Clients registered per health concern · tap to see who</span>
         </div>
         <div className="prog-cats prog-cats--v2">
           <div className="prog-cats__main">
@@ -842,9 +937,9 @@ export function UpdatedAdminDashboard({
                   type="button"
                   className="prog-cat"
                   style={{ background: p.bg, borderColor: p.border }}
-                  onClick={() => openProgramCategory(p.modalLabel)}
+                  onClick={() => openProgramCategory(p)}
                 >
-                  <span className="prog-cat__icon" style={{ background: "#fff" }}>{p.icon}</span>
+                  <span className="prog-cat__icon" style={{ background: "#fff" }}><CategoryIcon icon={p.icon} /></span>
                   <span className="prog-cat__label">{p.label}</span>
                   <span className="prog-cat__count" style={{ color: p.accent }}>{p.count}</span>
                 </button>
@@ -859,12 +954,12 @@ export function UpdatedAdminDashboard({
             <button
               type="button"
               className="prog-cat prog-cat--appuser"
-              style={{ background: APP_USER_PROG_CARD.bg, borderColor: APP_USER_PROG_CARD.border }}
-              onClick={() => openProgramCategory(APP_USER_PROG_CARD.label)}
+              style={{ background: appUserProgramCard.bg, borderColor: appUserProgramCard.border }}
+              onClick={() => openProgramCategory(appUserProgramCard)}
             >
-              <span className="prog-cat__icon" style={{ background: "#fff" }}>{APP_USER_PROG_CARD.icon}</span>
-              <span className="prog-cat__label">{APP_USER_PROG_CARD.label}</span>
-              <span className="prog-cat__count" style={{ color: APP_USER_PROG_CARD.accent }}>{APP_USER_PROG_CARD.count}</span>
+              <span className="prog-cat__icon" style={{ background: "#fff" }}>{appUserProgramCard.icon}</span>
+              <span className="prog-cat__label">{appUserProgramCard.label}</span>
+              <span className="prog-cat__count" style={{ color: appUserProgramCard.accent }}>{appUserProgramCard.count}</span>
             </button>
           </div>
         </div>
@@ -1403,7 +1498,7 @@ export function UpdatedAdminDashboard({
       <ProgramCategoryModal
         open={!!programModal}
         program={programModal}
-        onClose={() => setProgramModalLabel(null)}
+        onClose={() => setProgramModalTarget(null)}
         onOpenClient={openProgramClient}
       />
 

@@ -1,20 +1,38 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  ACTIVE_SUPPLEMENTS,
   buildOnboardingRemindMessage,
-  DAILY_METRICS,
   DEFAULT_REMINDERS,
-  METABOLIC_SNAPSHOT,
   ONBOARDING_INITIAL_DONE,
   ONBOARDING_STEP_NOTES,
   ONBOARDING_STEPS,
 } from "../../data/userDetailData.js";
-import { getNextOnboardingStepLabel } from "../../api/usersApi.js";
+import { fetchUserAtAGlance, getNextOnboardingStepLabel } from "../../api/usersApi.js";
 import { ClientRemindModal } from "./ClientRemindModal.jsx";
 import { ChampionCelebrationOverlay } from "./ChampionCelebrationOverlay.jsx";
 import { ReviewHistoryModal } from "./ReviewHistoryModal.jsx";
 import { HealthProgressCarousel } from "./HealthProgressCarousel.jsx";
 import { ScheduleMeetingModal } from "./ScheduleMeetingModal.jsx";
+import { DailyMetricModal } from "./DailyMetricModal.jsx";
+
+const EMPTY_SNAPSHOT = [
+  { label: "Age", value: "—", tone: "default" },
+  { label: "Height", value: "—", tone: "default" },
+  { label: "Weight", value: "—", tone: "default" },
+  { label: "BMR", value: "—", tone: "blue" },
+  { label: "TDEE", value: "—", tone: "green" },
+  { label: "Body fat", value: "—", tone: "gold" },
+  { label: "Lean mass", value: "—", tone: "green" },
+  { label: "Visceral", value: "—", tone: "default" },
+];
+
+const EMPTY_METRICS = [
+  { id: "protein", label: "Protein", icon: "🥄", value: "—", goal: "—", pct: 0, bars: [0, 0, 0, 0, 0], tone: "blue", modal: { footerLabel: "Open Food & Water · full history ›", footerSection: "food", records: [] } },
+  { id: "water", label: "Water", icon: "💧", value: "—", goal: "—", pct: 0, bars: [0, 0, 0, 0, 0], tone: "blue", modal: { footerLabel: "Open Water tracking · full history ›", footerSection: "food", records: [] } },
+  { id: "steps", label: "Steps", icon: "👟", value: "—", goal: "—", pct: 0, bars: [0, 0, 0, 0, 0], tone: "teal", modal: { footerLabel: "Open BMS · steps history ›", footerSection: "bms", records: [] } },
+  { id: "meditation", label: "Meditation", icon: "🧘", value: "—", goal: "—", pct: 0, bars: [0, 0, 0, 0, 0], tone: "gold", modal: { footerLabel: "Open Body, Mind & Soul · full history ›", footerSection: "bms", records: [] } },
+  { id: "pranayam", label: "Pranayam", icon: "🌬️", value: "—", goal: "—", pct: 0, bars: [0, 0, 0, 0, 0], tone: "sky", modal: { footerLabel: "Open Body, Mind & Soul · full history ›", footerSection: "bms", records: [] } },
+  { id: "exercise", label: "Exercise", icon: "🏃", value: "—", goal: "—", pct: 0, bars: [0, 0, 0, 0, 0], tone: "orange", modal: { footerLabel: "Open Body, Mind & Soul · full history ›", footerSection: "bms", records: [] } },
+];
 
 const METRIC_TONE = {
   blue: "#5e6ad2",
@@ -53,8 +71,11 @@ function GlanceRainOverlay() {
 }
 
 function waterHydrationTip(metric) {
-  const current = parseInt(metric.value, 10) || 6;
-  const goal = parseInt(metric.goal, 10) || 8;
+  const current = parseInt(String(metric.value).replace(/[^\d]/g, ""), 10);
+  const goal = parseInt(String(metric.goal).replace(/[^\d]/g, ""), 10);
+  if (!Number.isFinite(current) || !Number.isFinite(goal) || goal <= 0) {
+    return "Hydration — no glasses logged today";
+  }
   return `Hydration — ${current} of ${goal} glasses today`;
 }
 
@@ -108,7 +129,8 @@ function PreviewToggle({ mode, onChange }) {
   );
 }
 
-function MetabolicSnapshot({ onNavigate }) {
+function MetabolicSnapshot({ snapshot, onNavigate }) {
+  const rows = Array.isArray(snapshot) && snapshot.length ? snapshot : EMPTY_SNAPSHOT;
   return (
     <div className="ua-cp-glance-block">
       <div className="ua-cp-metabolic__head">
@@ -116,7 +138,7 @@ function MetabolicSnapshot({ onNavigate }) {
         <button type="button" className="ua-cp-metabolic__link" onClick={() => onNavigate?.("body")}>View full history ›</button>
       </div>
       <div className="ua-cp-metabolic-row">
-        {METABOLIC_SNAPSHOT.map((m, i) => (
+        {rows.map((m, i) => (
           <div key={m.label} className="ua-cp-metabolic-row__group">
             {i > 0 ? <div className="ua-cp-metabolic-row__sep" aria-hidden="true" /> : null}
             <div className="ua-cp-metabolic-row__col metcol">
@@ -130,22 +152,26 @@ function MetabolicSnapshot({ onNavigate }) {
   );
 }
 
-function HealthCardsRow({ user, onNavigate, onCelebrate }) {
-  const score = user.lifestyleScore || 7.2;
-  const ringPct = Math.min(100, (score / 10) * 100);
+function HealthCardsRow({ user, glance, onNavigate, onCelebrate }) {
+  const score = glance?.lifestyleScore != null ? glance.lifestyleScore : (user.lifestyleScore ?? null);
+  const ringPct = score != null ? Math.min(100, (Number(score) / 10) * 100) : 0;
+  const prakriti = glance?.prakriti || user.prakriti || "—";
+  const dailyScore = glance?.dailyScore != null ? glance.dailyScore : (user.dailyScore ?? null);
+  const monthlyScore = glance?.monthlyScore != null ? glance.monthlyScore : (user.monthlyScore ?? null);
+  const monthlyRank = glance?.monthlyRank || user.monthlyRank || null;
   return (
     <div className="ua-cp-glance-block ua-cp-health-band">
       <div className="ua-cp-health-band__stats">
         <button type="button" className="ua-cp-health-stat cdact" onClick={() => onNavigate?.("launch")}>
           <span className="ua-cp-health-stat__label">Lifestyle</span>
           <div className="cdlifering" style={{ background: `conic-gradient(#5e6ad2 ${ringPct * 3.6}deg, #e8edf5 0)` }}>
-            <div className="cdlifering__inner"><span>{score}</span></div>
+            <div className="cdlifering__inner"><span>{score != null ? score : "—"}</span></div>
           </div>
           <span className="ua-cp-health-stat__link">History ›</span>
         </button>
         <button type="button" className="ua-cp-health-stat cdact" onClick={() => onNavigate?.("launch", { tab: "prakriti" })}>
           <span className="ua-cp-health-stat__label">Prakriti</span>
-          <span className="prakchip"><span className="prakemoji">🧘</span> {user.prakriti || "Vata"}</span>
+          <span className="prakchip"><span className="prakemoji">🧘</span> {prakriti}</span>
           <span className="ua-cp-health-stat__link ua-cp-health-stat__link--purple">History ›</span>
         </button>
       </div>
@@ -153,24 +179,33 @@ function HealthCardsRow({ user, onNavigate, onCelebrate }) {
       <div className="ua-cp-hero-stats">
         <button type="button" className="ua-cp-hero-stat cdact" onClick={() => onNavigate?.("reflection")}>
           <span className="ua-cp-hero-stat__label">Daily</span>
-          <strong>{user.dailyScore || 91}<span>/100</span></strong>
+          <strong>{dailyScore != null ? dailyScore : "—"}{dailyScore != null ? <span>/100</span> : null}</strong>
           <span className="ua-cp-hero-stat__sub">from DRF ›</span>
         </button>
         <span className="ua-cp-hero-stats__sep" aria-hidden="true" />
         <button type="button" className="ua-cp-hero-stat ua-cp-hero-stat--monthly cdact" onClick={() => onCelebrate?.()}>
           <span className="ua-cp-hero-stat__label">Monthly</span>
-          <strong>{user.monthlyScore || 291}</strong>
-          <span className="ua-cp-hero-stat__sub">Rank {user.monthlyRank || "1st of 24"}</span>
+          <strong>{monthlyScore != null ? monthlyScore : "—"}</strong>
+          <span className="ua-cp-hero-stat__sub">{monthlyRank || "No rank yet"}</span>
         </button>
       </div>
 
-      <HealthProgressCarousel userId={user.n} onNavigate={onNavigate} />
+      <HealthProgressCarousel
+        userId={user.id || user.n}
+        programs={
+          isMockNumericId(user?.id || user?.n)
+            ? undefined
+            : (glance?.healthProgressPrograms || [])
+        }
+        onNavigate={onNavigate}
+      />
     </div>
   );
 }
 
-function DailyActivityBlock({ onNavigate, onWaterHover }) {
+function DailyActivityBlock({ metrics, onNavigate, onWaterHover }) {
   const [activeMetric, setActiveMetric] = useState(null);
+  const list = Array.isArray(metrics) && metrics.length ? metrics : EMPTY_METRICS;
 
   return (
     <div className="ua-cp-glance-block">
@@ -179,7 +214,7 @@ function DailyActivityBlock({ onNavigate, onWaterHover }) {
         <span className="ua-cp-daily-head__hint">Tap a metric for last 5 records</span>
       </div>
       <div className="ua-cp-metrics">
-        {DAILY_METRICS.map((m) => {
+        {list.map((m) => {
           const color = METRIC_TONE[m.tone] || METRIC_TONE.blue;
           const isWater = m.id === "water";
           const pctClass = m.pct >= 100 ? " ua-cp-metric__pct--full" : "";
@@ -200,12 +235,12 @@ function DailyActivityBlock({ onNavigate, onWaterHover }) {
                 <span className="ua-cp-metric__name">{m.label}</span>
               </div>
               <div className="ua-cp-metric__value" style={{ color }}>{m.value}</div>
-              <MiniBars values={m.bars} color={color} />
+              <MiniBars values={m.bars || [0, 0, 0, 0, 0]} color={color} />
               <div className="ua-cp-metric__foot">
                 <span className="ua-cp-metric__goal">Goal {m.goal}</span>
-                <span className={`ua-cp-metric__pct${pctClass}`} style={{ color: m.pct >= 100 ? "#2b8f5b" : color }}>{m.pct}%</span>
+                <span className={`ua-cp-metric__pct${pctClass}`} style={{ color: m.pct >= 100 ? "#2b8f5b" : color }}>{m.pct || 0}%</span>
               </div>
-              <div className="ua-cp-metric__track"><span style={{ width: `${Math.min(m.pct, 100)}%`, background: color }} /></div>
+              <div className="ua-cp-metric__track"><span style={{ width: `${Math.min(m.pct || 0, 100)}%`, background: color }} /></div>
             </button>
           );
         })}
@@ -221,37 +256,52 @@ function DailyActivityBlock({ onNavigate, onWaterHover }) {
   );
 }
 
-function SupplementsBlock({ onNavigate }) {
+function SupplementsBlock({ supplements, onNavigate }) {
+  const items = Array.isArray(supplements?.items) ? supplements.items : [];
+  const activeCount = supplements?.activeCount ?? items.length;
   return (
     <div className="ua-cp-glance-block">
       <div className="ua-cp-supp-head">
         <span className="ua-cp-supp-head__label">Nutrition · active supplements</span>
         <button type="button" className="ua-cp-supp-head__link" onClick={() => onNavigate?.("nutritions")}>
-          5 active · Open plan ›
+          {activeCount} active · Open plan ›
         </button>
       </div>
       <button type="button" className="ua-cp-supp-panel cdact" onClick={() => onNavigate?.("nutritions")}>
         <div className="ua-cp-supp-table__head">
           <div>Supplement</div><div>Dosage</div><div>Runs out · date</div>
         </div>
-        {ACTIVE_SUPPLEMENTS.map((s) => (
+        {items.length ? items.map((s) => (
           <div key={s.name} className="ua-cp-supp-table__row">
             <div className="ua-cp-supp-name">
-              <span className={`ua-cp-supp-dot ua-cp-supp-dot--${s.dosages[0]?.tone || "morning"}`} />
+              <span className={`ua-cp-supp-dot ua-cp-supp-dot--${s.dosages?.[0]?.tone || "morning"}`} />
               <div>
                 <div className="ua-cp-supp-name__title">{s.name}</div>
                 <div className="ua-cp-supp-name__sub">{s.note}</div>
               </div>
             </div>
             <div className="ua-cp-supp-dosages">
-              {s.dosages.map((d) => <DosageBadge key={d.label} {...d} />)}
+              {(s.dosages || []).map((d) => <DosageBadge key={d.label} {...d} />)}
             </div>
             <div className="ua-cp-supp-expiry">
               <span>{s.date}</span>
-              <span className={`ua-cp-days-left${s.urgent ? " ua-cp-days-left--urgent" : ""}`}>{s.daysLeft}d left</span>
+              {s.daysLeft != null ? (
+                <span className={`ua-cp-days-left${s.urgent ? " ua-cp-days-left--urgent" : ""}`}>{s.daysLeft}d left</span>
+              ) : null}
             </div>
           </div>
-        ))}
+        )) : (
+          <div className="ua-cp-supp-table__row">
+            <div className="ua-cp-supp-name">
+              <div>
+                <div className="ua-cp-supp-name__title">No active supplements</div>
+                <div className="ua-cp-supp-name__sub">Assign dosages from Nutritions</div>
+              </div>
+            </div>
+            <div className="ua-cp-supp-dosages" />
+            <div className="ua-cp-supp-expiry"><span>—</span></div>
+          </div>
+        )}
       </button>
     </div>
   );
@@ -706,10 +756,41 @@ export function AtAGlanceSection({ user, onToast, onNavigate }) {
   const [celebrateOpen, setCelebrateOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [onboardingProgress, setOnboardingProgress] = useState(null);
+  const [glance, setGlance] = useState(null);
+  const [glanceLoading, setGlanceLoading] = useState(false);
 
   useEffect(() => {
     setOnboardingProgress(null);
   }, [user?.id]);
+
+  useEffect(() => {
+    const userId = user?.id;
+    if (!userId || isMockNumericId(userId)) {
+      setGlance(null);
+      setGlanceLoading(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+    setGlanceLoading(true);
+    fetchUserAtAGlance(userId)
+      .then((payload) => {
+        if (!cancelled) setGlance(payload);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setGlance(null);
+          onToast?.(err?.message || "Failed to load At a Glance");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setGlanceLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [onToast, user?.id]);
 
   function handleWaterHover(active, tip) {
     setRainActive(active);
@@ -727,14 +808,22 @@ export function AtAGlanceSection({ user, onToast, onNavigate }) {
 
       {viewMode === "onboarded" ? (
         <>
-          <MetabolicSnapshot onNavigate={onNavigate} />
+          {glanceLoading ? (
+            <p className="ua-page-head__sub" style={{ padding: "8px 0" }}>Loading live metrics…</p>
+          ) : null}
+          <MetabolicSnapshot snapshot={glance?.metabolicSnapshot} onNavigate={onNavigate} />
           <HealthCardsRow
             user={user}
+            glance={glance}
             onNavigate={onNavigate}
             onCelebrate={() => setCelebrateOpen(true)}
           />
-          <DailyActivityBlock onNavigate={onNavigate} onWaterHover={handleWaterHover} />
-          <SupplementsBlock onNavigate={onNavigate} />
+          <DailyActivityBlock
+            metrics={glance?.dailyMetrics}
+            onNavigate={onNavigate}
+            onWaterHover={handleWaterHover}
+          />
+          <SupplementsBlock supplements={glance?.supplements} onNavigate={onNavigate} />
           <CommsBlock
             user={user}
             onToast={onToast}
@@ -773,4 +862,9 @@ export function AtAGlanceSection({ user, onToast, onNavigate }) {
       ) : null}
     </div>
   );
+}
+
+function isMockNumericId(userId) {
+  const numeric = Number(userId);
+  return Number.isFinite(numeric) && numeric > 0 && String(numeric) === String(userId);
 }

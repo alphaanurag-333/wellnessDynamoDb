@@ -80,13 +80,31 @@ function ProgramCard({ program, onOpen }) {
   );
 }
 
-export function HealthProgressCarousel({ userId, onNavigate, initialIndex = 0 }) {
-  const programs = getHealthPrograms(userId);
+export function HealthProgressCarousel({ userId, programs: programsProp, onNavigate, initialIndex = 0 }) {
+  const programs = Array.isArray(programsProp)
+    ? programsProp
+    : getHealthPrograms(userId);
   const [index, setIndex] = useState(initialIndex);
   const hasMany = programs.length > 1;
   const active = programs[index] ?? programs[0];
 
-  if (!active) return null;
+  if (!active) {
+    return (
+      <div className="ua-cp-health-progress">
+        <div className="ua-cp-health-progress__head">
+          <span>Health progress</span>
+        </div>
+        <div className="ua-cp-prog-card" style={{ background: "#f8fafc", cursor: "default" }}>
+          <div className="ua-cp-prog-card__copy">
+            <span className="ua-cp-prog-card__name">No progress logs yet</span>
+            <div className="ua-cp-prog-card__values">
+              <span className="ua-cp-prog-card__current" style={{ color: "#64748b" }}>—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   function prev() {
     setIndex((i) => (i - 1 + programs.length) % programs.length);

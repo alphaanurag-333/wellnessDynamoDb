@@ -22,13 +22,27 @@ export const COMPACT_CLIENT_MENU = CLIENT_MENU.filter((item) =>
   ["personal", "internal", "nutritions"].includes(item.id)
 );
 
+const DIABETES_REVERSAL_CONCERN = "diabetes reversal";
+
+function normalizeConcern(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/g, " ");
+}
+
+/** True when the client registered with Diabetes Reversal as primary concern. */
+export function isDiabetesReversalClient(user) {
+  return normalizeConcern(user?.goal) === DIABETES_REVERSAL_CONCERN;
+}
+
 /**
- * HEAL clients receive the complete coaching workspace. SEEK, consultancy,
- * and maintenance clients use the reduced profile shown in the maintenance UI.
+ * The reduced profile is reserved for Diabetes Reversal clients; every other
+ * health concern keeps the complete coaching workspace. Tier still applies, so
+ * SEEK, consultancy, and maintenance clients stay on the reduced profile.
  */
 export function getClientProfileDefinition(user) {
-  const tier = normalizeTier(user?.tier);
-  const isFullProfile = tier === "Seek to Heal";
+  const isFullProfile = !isDiabetesReversalClient(user);
   return {
     mode: isFullProfile ? "full" : "compact",
     menu: isFullProfile ? CLIENT_MENU : COMPACT_CLIENT_MENU,
@@ -562,7 +576,7 @@ export function getTierActions(tier, ageDays = 30) {
   const upTier = nextTier(t);
   const downTier = t === "Maintenance" ? "Seek to Heal" : "Seek";
   return {
-    canConvert: t !== "Maintenance",
+    canConvert: t === "Seek to Heal",
     canDowngrade: canDowngradeTier(t, ageDays),
     convertLabel: `Move to ${tierLabel(upTier)}`,
     convertTitle: t === "Seek to Heal"
@@ -571,7 +585,9 @@ export function getTierActions(tier, ageDays = 30) {
     downgradeLabel: t === "Maintenance" ? "Move down to HEAL" : "Move down to SEEK",
     downgradeTitle: t === "Maintenance"
       ? "Move this client back to HEAL — for when maintenance was entered too early"
-      : `Move this client back down to SEEK — allowed because the account is ${ageDays} days old`,
+      : t === "Seek to Heal"
+        ? "Move this client back down to SEEK — ends paid coaching entitlements"
+        : `Move this client back down to SEEK — allowed because the account is ${ageDays} days old`,
     upTier,
     downTier,
   };
