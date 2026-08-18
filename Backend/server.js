@@ -38,8 +38,8 @@ async function start() {
     const { startMonthlyChampionCron } = require("./jobs/monthlyChampionCron");
     startMonthlyChampionCron();
 
-    app.listen(config.port, host, () => {
-      console.log(`Server is running on port ${config.port} on host ${host}`);
+    app.listen(config.port, () => {
+      console.log(`Server is running on port ${config.port}`);
     });
   } catch (err) {
     console.error("Error starting server:", err.message);
