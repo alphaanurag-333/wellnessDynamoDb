@@ -110,38 +110,45 @@ function TestimonialViewModal({ entry, options, onClose, onEdit }) {
   if (!entry) return null;
   const photo = entry.imagePreview || entry.profileImage;
   return (
-    <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={onClose} role="presentation">
-      <div className="ua-cfg-rc-view" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="pt-view-title">
+    <div className="ua-cp-modal-backdrop" onClick={onClose} role="presentation">
+      <div className="ua-cfg-rc-view ua-cfg-pt-view" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="pt-view-title">
         <div className="ua-cfg-rc-view__head">
           <div>
             <p className="ua-cfg-rc-view__tag">Program testimonial</p>
             <h3 id="pt-view-title">{entry.name || "Untitled client"}</h3>
-            <p>{programTestimonialLabel(entry.program, options) || "Uncategorized"} · {entry.live ? "Live" : "Hidden"}</p>
+            <p>
+              {programTestimonialLabel(entry.program, options) || "Uncategorized"}
+              <span className={`ua-cfg-pt-view__status${entry.live ? " is-live" : ""}`}>
+                {entry.live ? "Live" : "Hidden"}
+              </span>
+            </p>
           </div>
           <button type="button" className="ua-cfg-mv-upload-modal__close" aria-label="Close" onClick={onClose}>×</button>
         </div>
-        <div className="ua-cfg-rc-view__media ua-cfg-rc-view__media--photo">
-          {photo ? <img src={photo} alt="" /> : <div className="ua-cfg-rc-view__media-empty">No photo</div>}
+        <div className="ua-cfg-pt-view__body">
+          <div className="ua-cfg-rc-view__media ua-cfg-rc-view__media--photo">
+            {photo ? <img src={photo} alt="" /> : <div className="ua-cfg-rc-view__media-empty">No photo</div>}
+          </div>
+          {entry.description ? <p className="ua-cfg-rc-view__copy">{entry.description}</p> : null}
+          <dl className="ua-cfg-rc-view__meta">
+            <div>
+              <dt>Health concern</dt>
+              <dd>{programTestimonialLabel(entry.program, options) || "—"}</dd>
+            </div>
+            <div>
+              <dt>Status</dt>
+              <dd>{entry.live ? "Live" : "Hidden"}</dd>
+            </div>
+            <div>
+              <dt>Created</dt>
+              <dd>{formatRecipeDate(entry.createdAt)}</dd>
+            </div>
+            <div>
+              <dt>Updated</dt>
+              <dd>{formatRecipeDate(entry.updatedAt)}</dd>
+            </div>
+          </dl>
         </div>
-        {entry.description ? <p className="ua-cfg-rc-view__copy">{entry.description}</p> : null}
-        <dl className="ua-cfg-rc-view__meta">
-          <div>
-            <dt>Health concern</dt>
-            <dd>{programTestimonialLabel(entry.program, options) || "—"}</dd>
-          </div>
-          <div>
-            <dt>Status</dt>
-            <dd>{entry.live ? "Live" : "Hidden"}</dd>
-          </div>
-          <div>
-            <dt>Created</dt>
-            <dd>{formatRecipeDate(entry.createdAt)}</dd>
-          </div>
-          <div>
-            <dt>Updated</dt>
-            <dd>{formatRecipeDate(entry.updatedAt)}</dd>
-          </div>
-        </dl>
         <div className="ua-cfg-rc-view__foot">
           <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose}>Close</button>
           <button
@@ -420,7 +427,7 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
         actions={(
           <button
             type="button"
-            className="ua-cfg-rc-add"
+            className="ua-cfg-rc-add ua-cfg-pt-add"
             disabled={busy}
             onClick={() => {
               setCreating(true);
@@ -465,15 +472,17 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
                   disabled={busy}
                   onChange={(event) => setDraft((prev) => ({ ...prev, name: event.target.value }))}
                 />
-                <textarea
-                  className="ua-cfg-tf-story"
-                  rows={3}
-                  placeholder="Client success story…"
-                  value={draft.description}
-                  disabled={busy}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, description: event.target.value }))}
-                />
-                <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={addItem}>
+              </div>
+              <textarea
+                className="ua-cfg-tf-story ua-cfg-pt-new-story"
+                rows={4}
+                placeholder="Client success story…"
+                value={draft.description}
+                disabled={busy}
+                onChange={(event) => setDraft((prev) => ({ ...prev, description: event.target.value }))}
+              />
+              <div className="ua-cfg-pt-new-foot">
+                <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-pt-new-submit" disabled={busy} onClick={addItem}>
                   {busy ? "Saving…" : "Add testimonial"}
                 </button>
               </div>
@@ -505,7 +514,7 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
               const isEditing = editingId === entry.id;
               const photo = entry.imagePreview || entry.profileImage;
               return (
-                <article key={entry.id} className="ua-cfg-rc-item is-text">
+                <article key={entry.id} className={`ua-cfg-rc-item ua-cfg-pt-item${isEditing ? " is-editing" : ""}`}>
                   <div className="ua-cfg-rc-cover-wrap">
                     <button
                       type="button"
@@ -536,75 +545,17 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
                       }}
                     />
                   </div>
-                  <div className="ua-cfg-rc-item__body">
-                    <div className="ua-cfg-rc-item__row">
-                      {isEditing ? (
-                        <input
-                          className="ua-cfg-vh-input ua-cfg-rc-title"
-                          value={entry.name}
-                          disabled={busy}
-                          onChange={(event) => patchItem(entry.id, { name: event.target.value })}
-                        />
-                      ) : (
-                        <strong>{entry.name}</strong>
-                      )}
-                      {isEditing ? (
-                        <ProgramSelect
-                          options={concernOptions}
-                          value={entry.program}
-                          disabled={busy}
-                          onChange={(value) => patchItem(entry.id, { program: value })}
-                        />
-                      ) : (
-                        <span className="ua-cfg-rc-pill ua-cfg-rc-pill--cat">
-                          {programTestimonialLabel(entry.program, concernOptions)}
-                        </span>
-                      )}
-                      <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>
-                        {entry.live ? "LIVE" : "HIDDEN"}
-                      </span>
-                      <button
-                        type="button"
-                        className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
-                        aria-pressed={entry.live}
+                  <div className="ua-cfg-pt-item__copy">
+                    {isEditing ? (
+                      <input
+                        className="ua-cfg-vh-input ua-cfg-rc-title"
+                        value={entry.name}
                         disabled={busy}
-                        onClick={() => toggleLive(entry)}
-                      >
-                        <span className="ua-toggle__knob" />
-                      </button>
-                      <button
-                        type="button"
-                        className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
-                        disabled={busy}
-                        onClick={() => setViewingId(entry.id)}
-                      >
-                        View
-                      </button>
-                      {isEditing ? (
-                        <>
-                          <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={busy} onClick={() => saveItem(entry)}>Save</button>
-                          <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm" disabled={busy} onClick={() => { setEditingId(null); loadItems(); }}>Cancel</button>
-                        </>
-                      ) : (
-                        <button
-                          type="button"
-                          className="ua-cfg-cr-link ua-cfg-cr-link--modify"
-                          disabled={busy}
-                          onClick={() => { setViewingId(null); setEditingId(entry.id); setCreating(false); }}
-                        >
-                          Edit
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        className="ua-cfg-icon-btn"
-                        aria-label={`Delete ${entry.name}`}
-                        disabled={busy}
-                        onClick={() => setPendingDelete(entry)}
-                      >
-                        ×
-                      </button>
-                    </div>
+                        onChange={(event) => patchItem(entry.id, { name: event.target.value })}
+                      />
+                    ) : (
+                      <strong>{entry.name}</strong>
+                    )}
                     {isEditing ? (
                       <textarea
                         className="ua-cfg-tf-story"
@@ -616,6 +567,66 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
                     ) : (
                       <p>{entry.description}</p>
                     )}
+                  </div>
+                  <div className="ua-cfg-pt-item__actions">
+                    {isEditing ? (
+                      <ProgramSelect
+                        options={concernOptions}
+                        value={entry.program}
+                        disabled={busy}
+                        onChange={(value) => patchItem(entry.id, { program: value })}
+                      />
+                    ) : (
+                      <span className="ua-cfg-rc-pill ua-cfg-rc-pill--cat">
+                        {programTestimonialLabel(entry.program, concernOptions)}
+                      </span>
+                    )}
+                    <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>
+                      {entry.live ? "LIVE" : "HIDDEN"}
+                    </span>
+                    <button
+                      type="button"
+                      className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
+                      aria-pressed={entry.live}
+                      disabled={busy}
+                      onClick={() => toggleLive(entry)}
+                    >
+                      <span className="ua-toggle__knob" />
+                    </button>
+                    {isEditing ? (
+                      <>
+                        <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={busy} onClick={() => saveItem(entry)}>Save</button>
+                        <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm" disabled={busy} onClick={() => { setEditingId(null); loadItems(); }}>Cancel</button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                          disabled={busy}
+                          onClick={() => setViewingId(entry.id)}
+                        >
+                          View
+                        </button>
+                        <button
+                          type="button"
+                          className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                          disabled={busy}
+                          onClick={() => { setViewingId(null); setEditingId(entry.id); setCreating(false); }}
+                        >
+                          Edit
+                        </button>
+                      </>
+                    )}
+                    <button
+                      type="button"
+                      className="ua-cfg-icon-btn"
+                      aria-label={`Delete ${entry.name}`}
+                      disabled={busy}
+                      onClick={() => setPendingDelete(entry)}
+                    >
+                      ×
+                    </button>
                   </div>
                 </article>
               );
