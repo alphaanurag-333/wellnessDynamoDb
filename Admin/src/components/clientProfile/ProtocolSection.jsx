@@ -164,7 +164,7 @@ export function ProtocolSection({ user, onToast }) {
           <input
             type="text"
             className="ua-cp-proto-add__input"
-            placeholder="Add a protocol point and press Enter"
+            placeholder="Add a protocol point"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") addPoint(); }}
