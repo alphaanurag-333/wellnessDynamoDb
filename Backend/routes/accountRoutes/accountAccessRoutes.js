@@ -5,12 +5,21 @@ const {
   getAccessCatalog,
   listAccessRoles,
   createAccessRole,
+  listAccessPolicies,
+  createAccessPolicy,
+  updateAccessPolicy,
+  deleteAccessPolicy,
+  attachAccessPolicy,
   updateAccessRole,
   deleteAccessRole,
   listAccessMembers,
   getAccessMember,
   setAccessMemberRole,
   setAccessMemberPermissions,
+  listAccessApprovals,
+  approveAccessRequest,
+  rejectAccessRequest,
+  listAccessAuditLog,
   ensureConsoleRolesSeeded,
 } = require("../../controllers/accountController/accessController");
 const { asyncHandler } = require("../../utils/asyncHandler");
@@ -24,10 +33,19 @@ const requireAccessAdmin = [requireActiveRole("admin"), requireSuperAdmin];
 /** Access Control catalog / role mutations — Super Admin only */
 router.get("/catalog", ...requireAccessAdmin, getAccessCatalog);
 router.post("/roles", ...requireAccessAdmin, createAccessRole);
+router.get("/policies", ...requireAccessAdmin, listAccessPolicies);
+router.post("/policies", ...requireAccessAdmin, createAccessPolicy);
+router.patch("/policies/:id", ...requireAccessAdmin, updateAccessPolicy);
+router.delete("/policies/:id", ...requireAccessAdmin, deleteAccessPolicy);
+router.post("/policies/:id/attachments", ...requireAccessAdmin, attachAccessPolicy);
 router.patch("/roles/:id", ...requireAccessAdmin, updateAccessRole);
 router.delete("/roles/:id", ...requireAccessAdmin, deleteAccessRole);
 router.patch("/members/:id/role", ...requireAccessAdmin, setAccessMemberRole);
-router.patch("/members/:id/permissions", ...requireAccessAdmin, setAccessMemberPermissions);
+router.patch("/members/:id/permissions", requireTeamsReadAccess, setAccessMemberPermissions);
+router.get("/audit-log", ...requireAccessAdmin, listAccessAuditLog);
+router.get("/approvals", ...requireAccessAdmin, listAccessApprovals);
+router.post("/approvals/:id/approve", ...requireAccessAdmin, approveAccessRequest);
+router.post("/approvals/:id/reject", ...requireAccessAdmin, rejectAccessRequest);
 router.post(
   "/seed",
   ...requireAccessAdmin,

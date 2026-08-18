@@ -481,7 +481,7 @@ function validatePricingDraft(draft, { includeDiscount, onToast }) {
   };
 }
 
-function PricingAmountCell({
+function PricingEditableCell({
   row,
   field,
   display,
@@ -493,17 +493,22 @@ function PricingAmountCell({
   onCancel,
   inputRef,
   disabled = false,
+  numeric = false,
 }) {
+  const classPrefix = numeric ? "ua-cfg-pricing__amount" : "ua-cfg-pricing__name";
   if (editing) {
     return (
       <input
         ref={inputRef}
         type="text"
-        inputMode="numeric"
-        className="ua-cfg-pricing__amount-input"
+        inputMode={numeric ? "numeric" : "text"}
+        className={`${classPrefix}-input`}
         value={value}
         aria-label={`Edit ${field} for ${row.name}`}
-        onChange={(event) => onChange(event.target.value.replace(/[^\d]/g, ""))}
+        onChange={(event) => {
+          const next = event.target.value;
+          onChange(numeric ? next.replace(/[^\d]/g, "") : next);
+        }}
         onBlur={onSave}
         onKeyDown={(event) => {
           if (event.key === "Enter") {
@@ -522,7 +527,7 @@ function PricingAmountCell({
   return (
     <button
       type="button"
-      className="ua-cfg-pricing__amount-btn"
+      className={`${classPrefix}-btn`}
       onClick={onStart}
       disabled={disabled}
       aria-label={`Edit ${field} for ${row.name}`}
@@ -640,28 +645,46 @@ function PricingPanel({
       return;
     }
 
-    const nextValue = Number(editValue);
-    if (field === "amount") {
-      if (!nextValue || nextValue <= 0) {
-        onToast("Enter a valid amount");
+    let nextValue;
+    if (field === "name") {
+      nextValue = editValue.trim();
+      if (!nextValue) {
+        onToast("Program name is required");
         cancelEdit();
         return;
       }
-    } else if (field === "discountPercent") {
-      if (!Number.isFinite(nextValue) || nextValue < 0 || nextValue > 100) {
-        onToast("Discount must be between 0% and 100%");
+      const duplicate = rows.some(
+        (entry) => entry.id !== id && entry.name.trim().toLowerCase() === nextValue.toLowerCase(),
+      );
+      if (duplicate) {
+        onToast(`${nextValue} already exists`);
         cancelEdit();
         return;
       }
-    } else if (field === "validityHours") {
-      if (!Number.isInteger(nextValue) || nextValue <= 0) {
-        onToast("Enter discount validity in whole hours");
-        cancelEdit();
-        return;
+    } else {
+      nextValue = Number(editValue);
+      if (field === "amount") {
+        if (!nextValue || nextValue <= 0) {
+          onToast("Enter a valid amount");
+          cancelEdit();
+          return;
+        }
+      } else if (field === "discountPercent") {
+        if (!Number.isFinite(nextValue) || nextValue < 0 || nextValue > 100) {
+          onToast("Discount must be between 0% and 100%");
+          cancelEdit();
+          return;
+        }
+      } else if (field === "validityHours") {
+        if (!Number.isInteger(nextValue) || nextValue <= 0) {
+          onToast("Enter discount validity in whole hours");
+          cancelEdit();
+          return;
+        }
       }
     }
 
-    if (Number(row[field]) === nextValue) {
+    if (row[field] === nextValue || (field !== "name" && Number(row[field]) === nextValue)) {
       cancelEdit();
       return;
     }
@@ -670,7 +693,7 @@ function PricingPanel({
       entry.id === id ? { ...entry, [field]: nextValue } : entry
     ));
     cancelEdit();
-    commitRows(nextRows, `${row.name} updated`);
+    commitRows(nextRows, `${field === "name" ? nextValue : row.name} updated`);
   }
 
   return (
@@ -718,8 +741,20 @@ function PricingPanel({
             key={row.id}
             className={`ua-cfg-pricing__row${includeDiscount ? " ua-cfg-pricing__row--discount" : ""}`}
           >
-            <span>{row.name}</span>
-            <PricingAmountCell
+            <PricingEditableCell
+              row={row}
+              field="name"
+              display={row.name}
+              editing={editingCell?.id === row.id && editingCell?.field === "name"}
+              value={editValue}
+              onStart={() => startEdit(row, "name")}
+              onChange={setEditValue}
+              onSave={saveEdit}
+              onCancel={cancelEdit}
+              inputRef={editingCell?.id === row.id && editingCell?.field === "name" ? amountInputRef : null}
+              disabled={saving}
+            />
+            <PricingEditableCell
               row={row}
               field="amount"
               display={formatRupee(row.amount)}
@@ -731,9 +766,10 @@ function PricingPanel({
               onCancel={cancelEdit}
               inputRef={editingCell?.id === row.id && editingCell?.field === "amount" ? amountInputRef : null}
               disabled={saving}
+              numeric
             />
             {includeDiscount ? (
-              <PricingAmountCell
+              <PricingEditableCell
                 row={row}
                 field="discountPercent"
                 display={`${row.discountPercent}%`}
@@ -745,10 +781,11 @@ function PricingPanel({
                 onCancel={cancelEdit}
                 inputRef={editingCell?.id === row.id && editingCell?.field === "discountPercent" ? amountInputRef : null}
                 disabled={saving}
+                numeric
               />
             ) : null}
             {includeDiscount ? (
-              <PricingAmountCell
+              <PricingEditableCell
                 row={row}
                 field="validityHours"
                 display={`${row.validityHours} hours`}
@@ -760,6 +797,7 @@ function PricingPanel({
                 onCancel={cancelEdit}
                 inputRef={editingCell?.id === row.id && editingCell?.field === "validityHours" ? amountInputRef : null}
                 disabled={saving}
+                numeric
               />
             ) : null}
             <button

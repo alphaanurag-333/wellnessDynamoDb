@@ -462,9 +462,9 @@ export function TeamsPage() {
                     <button
                       type="button"
                       className="ua-team-actions__perm"
-                      onClick={() => openMember(s.id, isSuperAdmin ? "permissions" : undefined)}
+                      onClick={() => openMember(s.id, isSuperAdmin || viewAs === "wc" ? "permissions" : undefined)}
                     >
-                      {isSuperAdmin ? "Permissions" : "View members"} ›
+                      {isSuperAdmin || viewAs === "wc" ? "Permissions" : "View members"} ›
                     </button>
                   </div>
                 </div>

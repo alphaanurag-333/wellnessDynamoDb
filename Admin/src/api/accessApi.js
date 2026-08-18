@@ -24,6 +24,56 @@ export async function fetchAccessRoles() {
   }
 }
 
+export async function fetchAccessPolicies() {
+  try {
+    const { data } = await api.get("/account/access/policies", { headers: authHeader() });
+    return Array.isArray(data.policies) ? data.policies : [];
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function createAccessPolicy(payload) {
+  try {
+    const { data } = await api.post("/account/access/policies", payload, { headers: authHeader() });
+    return data.policy;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function updateAccessPolicy(id, payload) {
+  try {
+    const { data } = await api.patch(`/account/access/policies/${encodeURIComponent(id)}`, payload, {
+      headers: authHeader(),
+    });
+    return data.policy;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function deleteAccessPolicy(id) {
+  try {
+    await api.delete(`/account/access/policies/${encodeURIComponent(id)}`, { headers: authHeader() });
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function attachAccessPolicy(id, payload) {
+  try {
+    const { data } = await api.post(
+      `/account/access/policies/${encodeURIComponent(id)}/attachments`,
+      payload,
+      { headers: authHeader() },
+    );
+    return data.policy;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function createAccessRole(payload) {
   try {
     const { data } = await api.post("/account/access/roles", payload, { headers: authHeader() });
@@ -77,6 +127,65 @@ export async function setAccessMemberRole(accountId, roleKey) {
       { headers: authHeader() },
     );
     return data.account;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function fetchAccessApprovals({ status = "pending", page = 1, limit = 50 } = {}) {
+  const q = new URLSearchParams();
+  q.set("status", status);
+  q.set("page", String(page));
+  q.set("limit", String(limit));
+  try {
+    const { data } = await api.get(`/account/access/approvals?${q}`, { headers: authHeader() });
+    return {
+      requests: Array.isArray(data.requests) ? data.requests : [],
+      pagination: data.pagination,
+    };
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function approveAccessRequest(id) {
+  try {
+    const { data } = await api.post(
+      `/account/access/approvals/${encodeURIComponent(id)}/approve`,
+      {},
+      { headers: authHeader() },
+    );
+    return data.request;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function rejectAccessRequest(id) {
+  try {
+    const { data } = await api.post(
+      `/account/access/approvals/${encodeURIComponent(id)}/reject`,
+      {},
+      { headers: authHeader() },
+    );
+    return data.request;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function fetchAccessAuditLog({ search, kind, page = 1, limit = 50 } = {}) {
+  const q = new URLSearchParams();
+  q.set("page", String(page));
+  q.set("limit", String(limit));
+  if (search) q.set("search", search);
+  if (kind) q.set("kind", kind);
+  try {
+    const { data } = await api.get(`/account/access/audit-log?${q}`, { headers: authHeader() });
+    return {
+      entries: Array.isArray(data.entries) ? data.entries : [],
+      pagination: data.pagination,
+    };
   } catch (error) {
     normalizeApiError(error);
   }
