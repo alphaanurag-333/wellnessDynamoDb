@@ -11,18 +11,15 @@ const {
 
 const router = express.Router();
 
-router.get(
-  "/",
-  protectAccount,
-  authorizeStaff("console.cf.view", { admin: "wellness-prescriptions.view" }),
-  listWellnessPrescriptionCatalogController
-);
-router.get(
-  "/:id",
-  protectAccount,
-  authorizeStaff("console.cf.view", { admin: "wellness-prescriptions.view" }),
-  getWellnessPrescriptionCatalogByIdController
-);
+const catalogRead = authorizeStaff(["console.cf.view", "console.diet.view"], {
+  admin: ["wellness-prescriptions.view", "users.clientHub.care.wellness-prescriptions"],
+  wellness_coach: "clientTab.care.wellness-prescriptions",
+  assistant_wellness_coach: "clientTab.care.wellness-prescriptions",
+  trainee: "clientTab.care.wellness-prescriptions",
+});
+
+router.get("/", protectAccount, catalogRead, listWellnessPrescriptionCatalogController);
+router.get("/:id", protectAccount, catalogRead, getWellnessPrescriptionCatalogByIdController);
 router.post(
   "/",
   protectAccount,

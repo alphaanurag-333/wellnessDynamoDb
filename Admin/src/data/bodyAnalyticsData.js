@@ -5,9 +5,26 @@ export const PHOTO_ANGLES = [
 ];
 
 export const BODY_ANALYTICS = {
-  weeklyHint: "Weekly data is grouped from the client's saved body records. Empty periods are skipped.",
-  monthlyHint: "Monthly data uses the latest saved value in each month.",
+  weeklyHint: "Weekly data uses the latest saved value in each week. Empty weeks still appear in the last 3 columns.",
+  monthlyHint: "Δ = latest month − previous month (JUL − JUN). May is shown for reference only.",
 };
+
+const DUMMY_HISTORY_YEAR = 2026;
+export const DUMMY_JULY_PERIOD = `${DUMMY_HISTORY_YEAR}-07`;
+
+const DUMMY_MEASUREMENTS_BY_MONTH = {
+  "07": { neckCm: 38, shoulderCm: 112, chestCm: 96, waistCm: 82, hipCm: 98, thighsCm: 56 },
+  "06": { neckCm: 38.5, shoulderCm: 111.5, chestCm: 98, waistCm: 86, hipCm: 100, thighsCm: 57 },
+  "05": { neckCm: 39, shoulderCm: 111, chestCm: 100, waistCm: 90, hipCm: 102, thighsCm: 58 },
+};
+
+const DUMMY_METABOLIC_BY_MONTH = {
+  "07": { bmi: 27.4, bmr: 1420, tdee: 2050, bodyFatPercent: 31.2 },
+  "06": { bmi: 28.1, bmr: 1405, tdee: 2020, bodyFatPercent: 32.8 },
+  "05": { bmi: 28.8, bmr: 1390, tdee: 1990, bodyFatPercent: 34.4 },
+};
+
+const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 
 const MEASURE_FIELDS = [
   { label: "Neck", field: "neckCm" },
@@ -19,18 +36,81 @@ const MEASURE_FIELDS = [
 ];
 
 const METABOLIC_FIELDS = [
-  { label: "BMI", field: "bmi" },
-  { label: "BMR", field: "bmr", suffix: " kcal" },
-  { label: "TDEE", field: "tdee", suffix: " kcal" },
-  { label: "Body fat %", field: "bodyFatPercent", suffix: "%" },
-  { label: "Lean muscle %", field: "leanMuscleMassPercent", suffix: "%" },
-  { label: "Visceral fat", field: "estimatedVisceralFat" },
-  { label: "Fatty liver idx", field: "fli" },
+  { label: "BMI", field: "bmi", decimals: 1 },
+  { label: "BMR", field: "bmr", suffix: " kcal", decimals: 0 },
+  { label: "TDEE", field: "tdee", suffix: " kcal", decimals: 0 },
+  { label: "Body fat %", field: "bodyFatPercent", suffix: "%", decimals: 1 },
 ];
 
 function parseNum(value) {
   const number = Number.parseFloat(String(value).replace(/[^\d.-]/g, ""));
   return Number.isFinite(number) ? number : null;
+}
+
+function dummyRecordedAt(month) {
+  return `${DUMMY_HISTORY_YEAR}-${month}-15T12:00:00.000Z`;
+}
+
+function withoutPeriod(records, mode, monthKey) {
+  return (records || []).filter((row) => periodKey(row.recordedAt, mode) !== monthKey);
+}
+
+function hasPeriod(records, mode, monthKey) {
+  return (records || []).some((row) => periodKey(row.recordedAt, mode) === monthKey);
+}
+
+export function withDummyJulyHistory(bodyAnalytics) {
+  const measurements = [...(bodyAnalytics?.measurements || [])];
+  const metabolicMetrics = [...(bodyAnalytics?.metabolicMetrics || [])];
+
+  const julyMeasurements = withoutPeriod(measurements, "monthly", DUMMY_JULY_PERIOD);
+  julyMeasurements.unshift({
+    id: "dummy-july-measurement",
+    recordedAt: dummyRecordedAt("07"),
+    ...DUMMY_MEASUREMENTS_BY_MONTH["07"],
+  });
+
+  const julyMetabolic = withoutPeriod(metabolicMetrics, "monthly", DUMMY_JULY_PERIOD);
+  julyMetabolic.unshift({
+    id: "dummy-july-metabolic",
+    recordedAt: dummyRecordedAt("07"),
+    ...DUMMY_METABOLIC_BY_MONTH["07"],
+  });
+
+  if (!hasPeriod(julyMeasurements, "monthly", `${DUMMY_HISTORY_YEAR}-06`)) {
+    julyMeasurements.push({
+      id: "dummy-june-measurement",
+      recordedAt: dummyRecordedAt("06"),
+      ...DUMMY_MEASUREMENTS_BY_MONTH["06"],
+    });
+  }
+  if (!hasPeriod(julyMetabolic, "monthly", `${DUMMY_HISTORY_YEAR}-06`)) {
+    julyMetabolic.push({
+      id: "dummy-june-metabolic",
+      recordedAt: dummyRecordedAt("06"),
+      ...DUMMY_METABOLIC_BY_MONTH["06"],
+    });
+  }
+  if (!hasPeriod(julyMeasurements, "monthly", `${DUMMY_HISTORY_YEAR}-05`)) {
+    julyMeasurements.push({
+      id: "dummy-may-measurement",
+      recordedAt: dummyRecordedAt("05"),
+      ...DUMMY_MEASUREMENTS_BY_MONTH["05"],
+    });
+  }
+  if (!hasPeriod(julyMetabolic, "monthly", `${DUMMY_HISTORY_YEAR}-05`)) {
+    julyMetabolic.push({
+      id: "dummy-may-metabolic",
+      recordedAt: dummyRecordedAt("05"),
+      ...DUMMY_METABOLIC_BY_MONTH["05"],
+    });
+  }
+
+  return {
+    ...bodyAnalytics,
+    measurements: julyMeasurements,
+    metabolicMetrics: julyMetabolic,
+  };
 }
 
 function formatDelta(current, previous, unitSuffix = "") {
@@ -42,14 +122,9 @@ function formatDelta(current, previous, unitSuffix = "") {
   return `${diff > 0 ? "+" : ""}${diff}${suffix}`;
 }
 
-function deltaTone(label, diffText) {
+function deltaTone(diffText) {
   if (diffText === "—" || diffText === "0" || diffText.startsWith("0 ")) return "neutral";
-  const isPositive = diffText.startsWith("+");
-  const decreaseIsGood = ["Waist", "Hip", "Chest", "Thighs", "Neck", "Body fat %", "Visceral fat", "Fatty liver idx", "BMI"].includes(label);
-  const increaseIsGood = ["BMR", "TDEE", "Lean muscle %"].includes(label);
-  if (increaseIsGood) return isPositive ? "good" : "bad";
-  if (decreaseIsGood) return isPositive ? "bad" : "good";
-  return isPositive ? "bad" : "good";
+  return diffText.startsWith("+") ? "bad" : "good";
 }
 
 function validDate(value) {
@@ -57,15 +132,33 @@ function validDate(value) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function pad2(value) {
+  return String(value).padStart(2, "0");
+}
+
 function periodKey(value, mode) {
   const date = validDate(value);
   if (!date) return "";
   if (mode === "monthly") {
-    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+    return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}`;
   }
-  const day = date.getUTCDay() || 7;
-  date.setUTCDate(date.getUTCDate() - day + 1);
-  return date.toISOString().slice(0, 10);
+  const copy = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const day = copy.getDay() || 7;
+  copy.setDate(copy.getDate() - day + 1);
+  return `${copy.getFullYear()}-${pad2(copy.getMonth() + 1)}-${pad2(copy.getDate())}`;
+}
+
+function previousPeriodKey(key, mode) {
+  if (mode === "monthly") {
+    const [year, month] = String(key).split("-").map(Number);
+    if (!year || !month) return "";
+    const date = new Date(year, month - 2, 1);
+    return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}`;
+  }
+  const date = validDate(`${key}T12:00:00`);
+  if (!date) return "";
+  date.setDate(date.getDate() - 7);
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
 }
 
 export function getPeriodOptions(bodyAnalytics, mode) {
@@ -77,9 +170,16 @@ export function getPeriodOptions(bodyAnalytics, mode) {
     .sort((a, b) => b.localeCompare(a));
 }
 
-export function getHistoryWindow(options, anchor, count = 3) {
-  const index = Math.max(0, options.indexOf(anchor));
-  return options.slice(index, index + count);
+export function getHistoryWindow(mode, anchor, count = 3) {
+  if (!anchor) return [];
+  const keys = [anchor];
+  let current = anchor;
+  for (let i = 1; i < count; i += 1) {
+    current = previousPeriodKey(current, mode);
+    if (!current) break;
+    keys.push(current);
+  }
+  return keys;
 }
 
 function latestByPeriod(records, mode) {
@@ -94,10 +194,10 @@ function latestByPeriod(records, mode) {
   return byPeriod;
 }
 
-function formatValue(value, suffix = "") {
+function formatValue(value, suffix = "", decimals = 1) {
   const number = Number(value);
   if (!Number.isFinite(number)) return "—";
-  return `${Math.round(number * 10) / 10}${suffix}`;
+  return `${number.toFixed(decimals)}${suffix}`;
 }
 
 export function buildMeasurementRows(records, mode, unit, columns) {
@@ -108,10 +208,12 @@ export function buildMeasurementRows(records, mode, unit, columns) {
   return MEASURE_FIELDS.map(({ label, field }) => {
     const values = columns.map((column) => {
       const raw = history[column]?.[field];
-      return Number.isFinite(Number(raw)) ? formatValue(Number(raw) / divisor) : "—";
+      return Number.isFinite(Number(raw)) ? formatValue(Number(raw) / divisor, "", 1) : "—";
     });
-    const delta = columns.length >= 2 ? formatDelta(values[0], values[1], unitSuffix) : "—";
-    return { label, values, delta, tone: deltaTone(label, delta) };
+    const latest = values[0];
+    const previous = values[1];
+    const delta = columns.length >= 2 ? formatDelta(latest, previous, unitSuffix) : "—";
+    return { label, values, delta, tone: deltaTone(delta) };
   });
 }
 
@@ -130,22 +232,42 @@ function latestMetricValueByPeriod(records, mode, field) {
 }
 
 export function buildMetabolicRows(records, mode, columns) {
-  return METABOLIC_FIELDS.map(({ label, field, suffix = "" }) => {
+  return METABOLIC_FIELDS.map(({ label, field, suffix = "", decimals = 1 }) => {
     const history = latestMetricValueByPeriod(records, mode, field);
-    const values = columns.map((column) => formatValue(history[column], suffix));
-    const delta = columns.length >= 2 ? formatDelta(values[0], values[1]) : "—";
-    return { label, values, delta, tone: deltaTone(label, delta) };
+    const values = columns.map((column) => formatValue(history[column], suffix, decimals));
+    const latest = values[0];
+    const previous = values[1];
+    const delta = columns.length >= 2 ? formatDelta(latest, previous) : "—";
+    return { label, values, delta, tone: deltaTone(delta) };
   });
+}
+
+function parsePeriodDate(mode, key) {
+  if (mode === "monthly") {
+    const [year, month] = String(key).split("-").map(Number);
+    if (!year || !month) return null;
+    return new Date(year, month - 1, 1);
+  }
+  return validDate(`${key}T12:00:00`);
 }
 
 export function formatHistoryColumns(mode, columns) {
   return columns.map((key) => {
-    const date = validDate(mode === "monthly" ? `${key}-01T00:00:00.000Z` : `${key}T00:00:00.000Z`);
+    const date = parsePeriodDate(mode, key);
     if (!date) return key;
-    return date.toLocaleDateString("en-GB", mode === "monthly"
-      ? { month: "short", year: "numeric", timeZone: "UTC" }
-      : { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+    const month = MONTHS[date.getMonth()];
+    if (mode === "monthly") return month;
+    return `${date.getDate()} ${month}`;
   });
+}
+
+export function formatPeriodOption(mode, key) {
+  const date = parsePeriodDate(mode, key);
+  if (!date) return key;
+  const month = MONTHS[date.getMonth()];
+  const year = date.getFullYear();
+  if (mode === "monthly") return `${month} ${year}`;
+  return `${date.getDate()} ${month} ${year}`;
 }
 
 export function formatPhotoDate(value) {

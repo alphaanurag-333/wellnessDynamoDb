@@ -71,6 +71,7 @@ import { UNASSIGNED_COACH } from "../data/usersData.js";
 import {
   A1C_METRIC_KEYS,
   FAT_METRIC_KEYS,
+  buildLiveProgressModal,
   getProgressModal,
   onboardingRemindCopy,
 } from "../data/programProgressData.js";
@@ -144,7 +145,7 @@ function dynamicPendingGroups(baseGroups, statistics) {
       people: [],
     },
   ];
-  return [
+  const next = [
     {
       ...first,
       total: `${asNumber(statistics.pendingApprovals)} pending`,
@@ -152,6 +153,29 @@ function dynamicPendingGroups(baseGroups, statistics) {
     },
     ...baseGroups.slice(1),
   ];
+  const overdue = statistics.opsOverdue;
+  if (!overdue?.cells?.length) return next;
+  return next.map((group) => {
+    if (String(group.title || "").toLowerCase() !== "overdue") return group;
+    return {
+      ...group,
+      total: overdue.total || `${asNumber(overdue.cells.reduce((sum, cell) => sum + asNumber(cell.count), 0))} pending`,
+      cells: overdue.cells.map((cell) => ({
+        id: cell.id,
+        short: cell.short,
+        count: asNumber(cell.count),
+        chip: cell.chip,
+        color: cell.color,
+        tipTitle: cell.tipTitle,
+        people: (cell.people || []).map((person) => ({
+          name: person.name,
+          detail: person.detail,
+          initial: person.initial || person.initials,
+          color: person.color,
+        })),
+      })),
+    };
+  });
 }
 
 function AppClientCard({ item, onClick }) {
@@ -381,9 +405,38 @@ export function AdminDashboard({
     modalKey: everydayWellnessConcern?.id || APP_USER_PROG_CARD.label,
     modalLabel: everydayWellnessConcern?.label || APP_USER_PROG_CARD.label,
   };
-  const commOnbCount = viewAs === "wc" ? WC_COMM_ONB_COUNT : viewAs === "awc" ? AWC_COMM_ONB_COUNT : COMM_ONB_COUNT;
-  const fatMetrics = viewAs === "wc" ? WC_FAT_METRICS : viewAs === "awc" ? AWC_FAT_METRICS : FAT_METRICS;
-  const a1cMetrics = viewAs === "wc" ? WC_A1C_METRICS : viewAs === "awc" ? AWC_A1C_METRICS : A1C_METRICS;
+  const fallbackOnbCount = viewAs === "wc" ? WC_COMM_ONB_COUNT : viewAs === "awc" ? AWC_COMM_ONB_COUNT : COMM_ONB_COUNT;
+  const fallbackFatMetrics = viewAs === "wc" ? WC_FAT_METRICS : viewAs === "awc" ? AWC_FAT_METRICS : FAT_METRICS;
+  const fallbackA1cMetrics = viewAs === "wc" ? WC_A1C_METRICS : viewAs === "awc" ? AWC_A1C_METRICS : A1C_METRICS;
+  const liveProgress = statisticsForView?.programProgress || null;
+  const commOnbCount = liveProgress
+    ? asNumber(liveProgress.onboarding?.count)
+    : statisticsForView
+      ? 0
+      : fallbackOnbCount;
+  const fatMetrics = fallbackFatMetrics.map((metric) => ({
+    ...metric,
+    count: liveProgress
+      ? asNumber(liveProgress.fatLoss?.[FAT_METRIC_KEYS[metric.label]]?.count)
+      : statisticsForView
+        ? 0
+        : metric.count,
+  }));
+  const a1cMetrics = fallbackA1cMetrics.map((metric) => ({
+    ...metric,
+    count: liveProgress
+      ? asNumber(liveProgress.hba1c?.[A1C_METRIC_KEYS[metric.label]]?.count)
+      : statisticsForView
+        ? 0
+        : metric.count,
+  }));
+  const opsOverdue = statisticsForView?.opsOverdue || (statisticsForView
+    ? {
+      title: OPS_OVERDUE.title,
+      total: "0 pending",
+      cells: OPS_OVERDUE.cells.map((cell) => ({ ...cell, count: 0, people: [] })),
+    }
+    : OPS_OVERDUE);
   const baseTeamCards = viewAs === "wc" ? WC_TEAM_CARDS : DASH_ROLE_CARDS;
   const teamCards = baseTeamCards.map((team) => {
     if (!statisticsForView) return team;
@@ -556,7 +609,9 @@ export function AdminDashboard({
     const rows = clientsByConcern.get(concernKey(key)) ?? clientsByConcern.get(concernKey(label)) ?? [];
     return { label, rows };
   }, [clientsByConcern, programModalTarget]);
-  const progressModal = getProgressModal(progressModalKey);
+  const progressModal = liveProgress
+    ? buildLiveProgressModal(progressModalKey, liveProgress)
+    : getProgressModal(progressModalKey);
 
   function openProgramCategory(card) {
     const key = card?.modalKey || card?.label;
@@ -576,6 +631,10 @@ export function AdminDashboard({
   }
 
   function openProgressModal(key) {
+    if (liveProgress) {
+      setProgressModalKey(key);
+      return;
+    }
     if (!getProgressModal(key)) return;
     setProgressModalKey(key);
   }
@@ -975,11 +1034,11 @@ export function AdminDashboard({
           <div className="ops-row">
             <div className="ops-overdue">
               <div className="ops-overdue__head">
-                <span className="ops-overdue__title">{OPS_OVERDUE.title}</span>
-                <span className="ops-overdue__badge">{OPS_OVERDUE.total}</span>
+                <span className="ops-overdue__title">{opsOverdue.title}</span>
+                <span className="ops-overdue__badge">{opsOverdue.total}</span>
               </div>
               <div className="ops-overdue__cells">
-                {OPS_OVERDUE.cells.map((cell) => (
+                {(opsOverdue.cells || []).map((cell) => (
                   <button
                     key={cell.id}
                     type="button"
@@ -996,8 +1055,8 @@ export function AdminDashboard({
                     </span>
                     <span className="ops-tile__tip" role="tooltip">
                       <span className="ops-tile__tip-title">{cell.tipTitle}</span>
-                      {cell.people.map((person) => (
-                        <span key={person.name} className="ops-tile__person">
+                      {(cell.people || []).map((person) => (
+                        <span key={person.userId || person.name} className="ops-tile__person">
                           <span className="ops-tile__avatar" style={{ background: person.color }}>{person.initial}</span>
                           <span className="ops-tile__person-name">{person.name}</span>
                           <span className="ops-tile__person-detail">{person.detail}</span>

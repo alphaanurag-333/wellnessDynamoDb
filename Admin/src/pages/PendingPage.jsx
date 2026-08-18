@@ -3,63 +3,52 @@ import { useNavigate, useOutletContext } from "react-router-dom";
 import { PageHeader } from "../components/shared.jsx";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
+import { fetchPendingTasks } from "../api/pendingApi.js";
 
-const QUEUES = [
+const QUEUE_META = [
   {
     id: "counselling-reports",
+    key: "counsellingReports",
     title: "Counselling & reports",
     subtitle: "Overdue counselling and blood reports waiting on analysis",
     icon: "♟",
     tone: "red",
     action: "Open client list",
     destination: UPDATED_ADMIN_PATHS.users,
-    items: [
-      { name: "Madhupriya Bilas", initials: "MB", color: "#34a56a", tag: "COUNSELLING", detail: "Last session 16 days ago", link: "Schedule" },
-      { name: "Ananya Rao", initials: "AR", color: "#5e6ad2", tag: "COUNSELLING", detail: "Last session 20 days ago", link: "Schedule" },
-      { name: "Sana Iqbal", initials: "SI", color: "#0d9488", tag: "BLOOD REPORT", detail: "Analysis due this week", link: "Analyse" },
-      { name: "Rohit Ambekar", initials: "RA", color: "#ec7a45", tag: "BLOOD REPORT", detail: "Report uploaded 2 days ago", link: "Analyse" },
-    ],
+    empty: "No overdue counselling or blood reports right now.",
   },
   {
     id: "meal-review",
+    key: "mealReview",
     title: "Meal review",
     subtitle: "Photos your clients logged, waiting on your feedback",
     icon: "▣",
     tone: "purple",
     action: "Open client list",
     destination: UPDATED_ADMIN_PATHS.users,
-    items: [
-      { name: "Dipti Patil", initials: "DP", color: "#34a56a", tag: "MEAL PICS", detail: "2 photos · logged today", link: "Review" },
-      { name: "Trisha Menon", initials: "TM", color: "#5e6ad2", tag: "MEAL PICS", detail: "3 photos · logged yesterday", link: "Review" },
-    ],
+    empty: "No meal photos waiting for review.",
   },
   {
     id: "orders",
+    key: "orders",
     title: "Orders Pending",
     subtitle: "Supplement orders you have not placed yet, and placed orders not delivered",
     icon: "☆",
     tone: "orange",
     action: "Open Energy Exchange",
     destination: UPDATED_ADMIN_PATHS.users,
-    items: [
-      { name: "Madhupriya Bilas", initials: "MB", color: "#34a56a", tag: "NOT PLACED", detail: "Client asked you to order · 3 days ago", link: "Place order" },
-      { name: "Ananya Rao", initials: "AR", color: "#5e6ad2", tag: "NOT PLACED", detail: "Client asked you to order · today", link: "Place order" },
-      { name: "Sana Iqbal", initials: "SI", color: "#0d9488", tag: "NOT DELIVERED", detail: "Placed 8 Aug · ETA passed", link: "Update log" },
-      { name: "Rohit Ambekar", initials: "RA", color: "#ec7a45", tag: "NOT DELIVERED", detail: "Placed 12 Aug · in transit", link: "Update log" },
-    ],
+    empty: "No supplement orders waiting on you.",
   },
   {
     id: "meetings",
+    key: "meetings",
     title: "Meetings this week",
     subtitle: "Confirmed slots on your calendar",
     icon: "▦",
     tone: "blue",
     action: "Open Calendar",
     destination: UPDATED_ADMIN_PATHS.calendar,
-    items: [
-      { name: "Dipti Patil", initials: "DP", color: "#34a56a", tag: "TUE", detail: "Tue 11:00 · LAUNCH review", link: "Details" },
-      { name: "Trisha Menon", initials: "TM", color: "#5e6ad2", tag: "WED", detail: "Wed 16:30 · Diet check-in", link: "Details" },
-    ],
+    empty: "No meetings scheduled this week.",
   },
 ];
 
@@ -78,24 +67,28 @@ function PendingQueue({ queue, onOpen, onItem }) {
         </button>
       </header>
       <div className="pending-queue__items">
-        {queue.items.map((item) => (
-          <button
-            key={`${queue.id}-${item.name}`}
-            type="button"
-            className="pending-task-card"
-            onClick={() => onItem(item, queue)}
-          >
-            <span className="pending-task-card__top">
-              <span className="pending-task-card__avatar" style={{ background: item.color }}>{item.initials}</span>
-              <span className="pending-task-card__identity">
-                <strong>{item.name}</strong>
-                <span>{item.tag}</span>
+        {queue.items.length === 0 ? (
+          <p className="pending-queue__empty">{queue.empty}</p>
+        ) : (
+          queue.items.map((item) => (
+            <button
+              key={`${queue.id}-${item.id || item.userId || item.name}`}
+              type="button"
+              className="pending-task-card"
+              onClick={() => onItem(item, queue)}
+            >
+              <span className="pending-task-card__top">
+                <span className="pending-task-card__avatar" style={{ background: item.color }}>{item.initials}</span>
+                <span className="pending-task-card__identity">
+                  <strong>{item.name}</strong>
+                  <span>{item.tag}</span>
+                </span>
               </span>
-            </span>
-            <span className="pending-task-card__detail">{item.detail}</span>
-            <span className="pending-task-card__link">{item.link} →</span>
-          </button>
-        ))}
+              <span className="pending-task-card__detail">{item.detail}</span>
+              <span className="pending-task-card__link">{item.link} →</span>
+            </button>
+          ))
+        )}
       </div>
     </section>
   );
@@ -104,7 +97,7 @@ function PendingQueue({ queue, onOpen, onItem }) {
 export function PendingPage() {
   const { showToast } = useOutletContext();
   const navigate = useNavigate();
-  const { viewAs, account } = useViewAs();
+  const { viewAs, account, dataScope } = useViewAs();
   const noteKey = useMemo(
     () => `ua-pending-note:${account?.id || viewAs || "staff"}`,
     [account?.id, viewAs],
@@ -112,6 +105,14 @@ export function PendingPage() {
   const [note, setNote] = useState("");
   const [savedNote, setSavedNote] = useState("");
   const [locked, setLocked] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [taskQueues, setTaskQueues] = useState({
+    counsellingReports: [],
+    mealReview: [],
+    orders: [],
+    meetings: [],
+  });
 
   useEffect(() => {
     try {
@@ -124,6 +125,42 @@ export function PendingPage() {
     }
     setLocked(true);
   }, [noteKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadTasks() {
+      setLoading(true);
+      setLoadError("");
+      try {
+        const queues = await fetchPendingTasks();
+        if (cancelled) return;
+        setTaskQueues(queues);
+      } catch (err) {
+        if (cancelled) return;
+        setLoadError(err?.message || "Couldn’t load pending tasks");
+        setTaskQueues({
+          counsellingReports: [],
+          mealReview: [],
+          orders: [],
+          meetings: [],
+        });
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    loadTasks();
+    return () => {
+      cancelled = true;
+    };
+  }, [account?.id, dataScope, viewAs]);
+
+  const queues = useMemo(
+    () => QUEUE_META.map((meta) => ({
+      ...meta,
+      items: taskQueues[meta.key] || [],
+    })),
+    [taskQueues],
+  );
 
   const dirty = note !== savedNote;
 
@@ -138,6 +175,15 @@ export function PendingPage() {
     showToast("Note saved");
   }
 
+  function openItem(item) {
+    if (!item?.userId) {
+      showToast(`${item?.link || "Open"}: ${item?.name || "client"}`);
+      return;
+    }
+    const section = item.section ? `?section=${encodeURIComponent(item.section)}` : "";
+    navigate(`${UPDATED_ADMIN_PATHS.userDetail(item.userId)}${section}`);
+  }
+
   return (
     <main className="content ua-page-enter pending-page">
       <PageHeader
@@ -147,24 +193,35 @@ export function PendingPage() {
         onAutosave={() => showToast("Saved")}
       />
 
+      {loadError ? (
+        <div className="pending-page__status" role="alert">
+          <strong>Couldn’t load pending tasks</strong>
+          <p>{loadError}</p>
+        </div>
+      ) : null}
+
       <div className="pending-summary" aria-label="Pending task summary">
-        {QUEUES.map((queue) => (
+        {queues.map((queue) => (
           <button key={queue.id} type="button" onClick={() => document.querySelector(`[data-pending-section="${queue.id}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" })}>
-            {queue.title} · {queue.items.length}
+            {queue.title} · {loading ? "…" : queue.items.length}
           </button>
         ))}
       </div>
 
-      <div className="pending-queues">
-        {QUEUES.map((queue) => (
-          <PendingQueue
-            key={queue.id}
-            queue={queue}
-            onOpen={(selected) => navigate(selected.destination)}
-            onItem={(item) => showToast(`${item.link}: ${item.name}`)}
-          />
-        ))}
-      </div>
+      {loading ? (
+        <div className="pending-page__status" role="status">Loading live client tasks…</div>
+      ) : (
+        <div className="pending-queues">
+          {queues.map((queue) => (
+            <PendingQueue
+              key={queue.id}
+              queue={queue}
+              onOpen={(selected) => navigate(selected.destination)}
+              onItem={openItem}
+            />
+          ))}
+        </div>
+      )}
 
       <section className="pending-notes" data-pending-section="notes">
         <div className="pending-notes__head">

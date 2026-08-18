@@ -4,6 +4,7 @@ const {
   DeleteCommand,
   QueryCommand,
   UpdateCommand,
+  ScanCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require("uuid");
 const { docClient } = require("../config/db");
@@ -115,6 +116,47 @@ async function queryCoachRecommendedSupplementsByUserId(userId) {
 async function listCoachRecommendedSupplementsByUserId(userId) {
   const items = await queryCoachRecommendedSupplementsByUserId(userId);
   return items.map((row) => toCoachRecommendedSupplementPublic(row)).filter(Boolean);
+}
+
+async function queryCoachRecommendedSupplementsByCoachId(coachId) {
+  const cid = String(coachId || "").trim();
+  if (!cid) return [];
+
+  const items = [];
+  let lastKey;
+
+  do {
+    const { Items = [], LastEvaluatedKey } = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE,
+        IndexName: "CoachCreatedAtIndex",
+        KeyConditionExpression: "coachId = :coachId",
+        ExpressionAttributeValues: { ":coachId": cid },
+        ScanIndexForward: false,
+        ExclusiveStartKey: lastKey,
+      })
+    );
+    items.push(...Items);
+    lastKey = LastEvaluatedKey;
+  } while (lastKey);
+
+  return items.map((row) => toCoachRecommendedSupplementPublic(row)).filter(Boolean);
+}
+
+async function scanCoachRecommendedSupplements({ limit = 500 } = {}) {
+  const items = [];
+  let lastKey;
+  const max = Math.min(800, Math.max(1, Number(limit) || 500));
+
+  do {
+    const params = { TableName: TABLE };
+    if (lastKey) params.ExclusiveStartKey = lastKey;
+    const { Items = [], LastEvaluatedKey } = await docClient.send(new ScanCommand(params));
+    items.push(...Items);
+    lastKey = LastEvaluatedKey;
+  } while (lastKey && items.length < max);
+
+  return items.slice(0, max).map((row) => toCoachRecommendedSupplementPublic(row)).filter(Boolean);
 }
 
 async function getCoachRecommendedSupplementRecordById(id) {
@@ -284,6 +326,8 @@ module.exports = {
   getCoachRecommendedSupplementById,
   getCoachRecommendedSupplementRecordById,
   listCoachRecommendedSupplementsByUserId,
+  queryCoachRecommendedSupplementsByCoachId,
+  scanCoachRecommendedSupplements,
   markDeliveryRequested,
   saveBillPdf,
   deleteCoachRecommendedSupplement,

@@ -120,6 +120,68 @@ export function getProgressModal(modalKey) {
   return null;
 }
 
+function liveBucket(bucket, fallback = { count: 0, rows: [] }) {
+  const rows = Array.isArray(bucket?.rows) ? bucket.rows : fallback.rows;
+  return {
+    count: Number.isFinite(Number(bucket?.count)) ? Number(bucket.count) : rows.length,
+    rows,
+  };
+}
+
+/** Live dashboard lists from GET /account/dashboard/statistics.programProgress */
+export function buildLiveProgressModal(modalKey, programProgress) {
+  if (!modalKey || !programProgress) return null;
+
+  if (modalKey === "onboarding") {
+    const data = liveBucket(programProgress.onboarding);
+    const n = data.count;
+    return {
+      type: "onboarding",
+      icon: "🚀",
+      title: "Onboarding status",
+      subtitle: `${n} HEAL client${n === 1 ? "" : "s"} in their onboarding journey`,
+      rows: data.rows,
+    };
+  }
+
+  if (modalKey?.kind === "fat") {
+    const source = programProgress.fatLoss?.[modalKey.key];
+    const data = liveBucket(source);
+    const titles = {
+      down610: "Fat Loss · 6–10 kg down",
+      halfway: "Fat Loss · Halfway to goal",
+      neartarget: "Fat Loss · At / 2 kg short",
+    };
+    if (!titles[modalKey.key]) return null;
+    return {
+      type: "fat",
+      icon: "📊",
+      title: titles[modalKey.key],
+      metricKind: "weight",
+      rows: data.rows,
+    };
+  }
+
+  if (modalKey?.kind === "a1c") {
+    const source = programProgress.hba1c?.[modalKey.key];
+    const data = liveBucket(source);
+    const titles = {
+      down2: "HbA1c · 2+ points down",
+      under65: "HbA1c · Below 6.5",
+    };
+    if (!titles[modalKey.key]) return null;
+    return {
+      type: "a1c",
+      icon: "📊",
+      title: titles[modalKey.key],
+      metricKind: "a1c",
+      rows: data.rows,
+    };
+  }
+
+  return null;
+}
+
 export function onboardingRemindCopy(row) {
   const first = row.name.split(" ")[0];
   return {
