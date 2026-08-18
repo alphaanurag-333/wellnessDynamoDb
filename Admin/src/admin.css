@@ -716,7 +716,7 @@
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  width: 392px;
+  width: min(392px, calc(100vw - 24px));
   max-height: min(440px, calc(100vh - 88px));
   overflow-y: auto;
   background: #fff;
@@ -7803,12 +7803,19 @@
 
 .updated-admin--client-profile .main {
   width: 100%;
+  min-width: 0;
+}
+
+.updated-admin--client-profile .page-shell {
+  overflow: hidden;
 }
 
 .updated-admin .ua-cp-drawer {
   --ua-cp-sidebar-w: 272px;
   position: fixed;
   inset: 0;
+  width: 100%;
+  max-width: 100%;
   z-index: 200;
   display: flex;
   flex-direction: column;
@@ -8190,6 +8197,7 @@
   max-width: 1180px;
   margin: 0 auto;
   padding: 20px 22px 40px;
+  min-width: 0;
 }
 
 .updated-admin .ua-cp-sidebar__tags {
@@ -8614,6 +8622,7 @@
   color: #16233f;
   font-variant-numeric: tabular-nums;
   line-height: 1.05;
+  overflow-wrap: anywhere;
 }
 
 .updated-admin .ua-cp-metabolic-row__val--blue {
@@ -13616,6 +13625,9 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .updated-admin .ua-cp-launch--prakriti {
@@ -13655,6 +13667,10 @@
 
 .updated-admin .ua-cp-launch-top .ua-pill-tabs--md {
   margin-bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 100%;
 }
 
 .updated-admin .ua-cp-launch-top .ua-cp-launch-schedule-wrap {
@@ -14036,7 +14052,7 @@
 .updated-admin .ua-cp-launch-domain__title {
   font-size: 13px;
   color: #16233f;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .updated-admin .ua-cp-launch-domain__meta {
@@ -18095,6 +18111,7 @@
   flex-direction: column;
   gap: 14px;
   padding: 4px 0 24px;
+  min-width: 0;
 }
 
 .updated-admin .ua-cp-food__head {
@@ -18134,8 +18151,13 @@
 }
 
 .updated-admin .ua-cp-food .ua-pill-tabs--md {
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 100%;
   margin-bottom: 0;
-  align-self: flex-start;
+  align-self: stretch;
+  box-sizing: border-box;
 }
 
 .updated-admin .ua-cp-food-date-row {
@@ -18800,6 +18822,8 @@
   border: 1px solid #e6ebf2;
   border-radius: 14px;
   background: #fff;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .updated-admin .ua-cp-food-water-card__head {
@@ -18856,11 +18880,21 @@
   color: #5e6ad2 !important;
 }
 
+.updated-admin .ua-cp-food-water-chart-scroll {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 2px;
+}
+
 .updated-admin .ua-cp-food-water-chart {
   display: grid;
   gap: 8px;
   align-items: end;
   min-height: 160px;
+  width: 100%;
+  min-width: 0;
 }
 
 .updated-admin .ua-cp-food-water-chart__col {
@@ -22661,6 +22695,7 @@
   flex-direction: column;
   gap: 16px;
   width: 100%;
+  min-width: 0;
 }
 
 .updated-admin .ua-cp-rx__head {
@@ -22685,14 +22720,17 @@
 }
 
 .updated-admin .ua-cp-rx-toolbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: stretch;
   gap: 10px;
 }
 
 .updated-admin .ua-cp-rx-pool {
   position: relative;
-  flex: 0 0 auto;
+  min-width: 0;
+  width: max-content;
+  max-width: 100%;
 }
 
 .updated-admin .ua-cp-rx-pool__trigger {
@@ -22701,7 +22739,8 @@
   justify-content: space-between;
   gap: 10px;
   height: 40px;
-  min-width: 220px;
+  min-width: 0;
+  width: 100%;
   padding: 0 14px;
   border: 1px dashed #86d4a8;
   border-radius: 10px;
@@ -22712,6 +22751,7 @@
   cursor: pointer;
   font-family: inherit;
   white-space: nowrap;
+  box-sizing: border-box;
 }
 
 .updated-admin .ua-cp-rx-pool__trigger--open {
@@ -22728,7 +22768,10 @@
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
+  right: 0;
   min-width: 100%;
+  max-height: min(280px, 50vh);
+  overflow-y: auto;
   margin: 0;
   padding: 6px;
   list-style: none;
@@ -22737,6 +22780,7 @@
   background: #fff;
   box-shadow: 0 8px 24px rgba(22, 35, 63, 0.12);
   z-index: 30;
+  box-sizing: border-box;
 }
 
 .updated-admin .ua-cp-rx-pool__option {
@@ -22785,9 +22829,11 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-width: 0;
 }
 
 .updated-admin .ua-cp-rx-card {
+  min-width: 0;
   border-radius: 14px;
   background: #fff;
   border: 1px solid #d7f0e0;
@@ -22926,9 +22972,11 @@
 }
 
 .updated-admin .ua-cp-rx-save {
-  width: 100%;
-  height: 44px;
-  font-size: 14px;
+  width: auto;
+  align-self: flex-start;
+  height: 40px;
+  padding: 0 18px;
+  font-size: 13px;
   font-weight: 700;
 }
 
@@ -22937,6 +22985,7 @@
   border-radius: 14px;
   background: #fff;
   border: 1px solid #e3e9f2;
+  min-width: 0;
 }
 
 .updated-admin .ua-cp-rx-history__heading {
@@ -22968,13 +23017,19 @@
 
 .updated-admin .ua-cp-rx-history__row {
   display: grid;
-  grid-template-columns: 118px 148px minmax(0, 1fr) 190px 148px;
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "date actions"
+    "badges badges"
+    "title title"
+    "meta meta";
+  gap: 6px 12px;
   align-items: center;
   padding: 12px 14px;
 }
 
 .updated-admin .ua-cp-rx-history__date {
+  grid-area: date;
   font-size: 13px;
   font-weight: 800;
   color: #16233f;
@@ -22982,6 +23037,7 @@
 }
 
 .updated-admin .ua-cp-rx-history__badges {
+  grid-area: badges;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -23016,28 +23072,30 @@
 }
 
 .updated-admin .ua-cp-rx-history__title {
+  grid-area: title;
   font-size: 13px;
   font-weight: 600;
   color: #16233f;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .updated-admin .ua-cp-rx-history__meta {
+  grid-area: meta;
   font-size: 12px;
   font-weight: 600;
   color: #8a97ac;
-  white-space: nowrap;
-  text-align: right;
+  white-space: normal;
+  text-align: left;
 }
 
 .updated-admin .ua-cp-rx-history__actions {
+  grid-area: actions;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .updated-admin .ua-cp-rx-history__action-spacer {
@@ -23094,6 +23152,12 @@
   font-size: 13px;
   font-weight: 800;
   color: #166534;
+  min-width: 0;
+}
+
+.updated-admin .ua-cp-rx-history-detail__head strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .updated-admin .ua-cp-rx-history-detail__list {
@@ -23116,6 +23180,7 @@
   flex-direction: column;
   gap: 16px;
   width: 100%;
+  min-width: 0;
 }
 
 .updated-admin .ua-cp-present__head {
@@ -23151,6 +23216,8 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-width: 0;
+  width: 100%;
 }
 
 .updated-admin .ua-cp-present-panel {
@@ -23166,6 +23233,10 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+}
+
+.updated-admin .ua-cp-present-panel__copy {
+  min-width: 0;
 }
 
 .updated-admin .ua-cp-present-panel__copy strong {
@@ -23330,11 +23401,14 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
+  width: 100%;
+  min-width: 0;
 }
 
 .updated-admin .ua-cp-present-photo {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   border-radius: 14px;
   background: #fff;
   border: 1px solid #e3e9f2;
@@ -23413,6 +23487,7 @@
   justify-content: space-between;
   gap: 10px;
   min-height: 32px;
+  flex-wrap: wrap;
 }
 
 .updated-admin .ua-cp-present-photo__actions {
@@ -23420,7 +23495,8 @@
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
-  flex-shrink: 0;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 
 .updated-admin .ua-cp-present-photo__locked {
@@ -23442,16 +23518,21 @@
 
 .updated-admin .ua-cp-present-modal {
   width: min(440px, calc(100vw - 32px));
+  max-width: 100%;
   padding: 22px 24px 20px;
   border-radius: 16px;
   background: #fff;
   box-shadow: 0 20px 50px rgba(22, 35, 63, 0.18);
+  box-sizing: border-box;
 }
 
 .updated-admin .ua-cp-present-modal--letter {
   width: min(860px, calc(100vw - 32px));
   padding: 0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: min(92vh, 900px);
 }
 
 .updated-admin .ua-cp-present-modal__eyebrow {
@@ -23503,6 +23584,8 @@
 
 .updated-admin .ua-cp-present-request__field select,
 .updated-admin .ua-cp-present-request__field textarea {
+  width: 100%;
+  max-width: 100%;
   padding: 0 12px;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -23510,6 +23593,7 @@
   font-size: 13px;
   color: #16233f;
   background: #fff;
+  box-sizing: border-box;
 }
 
 .updated-admin .ua-cp-present-request__field select {
@@ -23529,6 +23613,11 @@
   gap: 16px;
   padding: 18px 20px;
   border-bottom: 1px solid #f1f4f8;
+  flex-shrink: 0;
+}
+
+.updated-admin .ua-cp-present-letter__head-copy {
+  min-width: 0;
 }
 
 .updated-admin .ua-cp-present-letter__title {
@@ -23567,6 +23656,9 @@
 .updated-admin .ua-cp-present-letter__doc {
   padding: 24px 28px 22px;
   background: #fff;
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1;
 }
 
 .updated-admin .ua-cp-present-letter__frame {
@@ -23712,6 +23804,7 @@
   margin: 18px 0 0;
   font-size: 11px;
   color: #8a97ac;
+  overflow-wrap: anywhere;
 }
 
 
@@ -23722,6 +23815,7 @@
   flex-direction: column;
   gap: 16px;
   width: 100%;
+  min-width: 0;
 }
 
 .updated-admin .ua-cp-ex__head {
@@ -24109,6 +24203,7 @@
   flex-direction: column;
   gap: 16px;
   width: 100%;
+  min-width: 0;
 }
 
 .updated-admin .ua-cp-proto__head {
@@ -39945,6 +40040,30 @@
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
+  .updated-admin .ua-cp-metabolic-row {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .updated-admin .ua-cp-metabolic-row__group {
+    display: block;
+    min-width: 0;
+    border-right: 1px solid #f1f4f8;
+    border-bottom: 1px solid #f1f4f8;
+  }
+
+  .updated-admin .ua-cp-metabolic-row__group:nth-child(4n) {
+    border-right: none;
+  }
+
+  .updated-admin .ua-cp-metabolic-row__group:nth-last-child(-n + 4) {
+    border-bottom: none;
+  }
+
+  .updated-admin .ua-cp-metabolic-row__sep {
+    display: none;
+  }
+
   .updated-admin .ua-cp-health-band {
     flex-direction: column;
   }
@@ -39979,9 +40098,25 @@
   }
 
 
+  .updated-admin .ua-cp-rx-toolbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .updated-admin .ua-cp-rx-pool {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .updated-admin .ua-cp-rx-pool__trigger {
+    width: 100%;
+    white-space: normal;
+    height: auto;
+    min-height: 40px;
+    padding: 8px 14px;
+  }
+
   .updated-admin .ua-cp-rx-history__row {
-    grid-template-columns: 1fr;
-    gap: 8px;
+    gap: 8px 12px;
   }
 
   .updated-admin .ua-cp-rx-history__meta {
@@ -39989,21 +40124,20 @@
   }
 
   .updated-admin .ua-cp-rx-history__actions {
-    justify-content: flex-start;
+    justify-content: flex-end;
   }
 
-  .updated-admin .ua-cp-rx-toolbar {
+  .updated-admin .ua-cp-rx-card__head {
     flex-wrap: wrap;
   }
 
-  .updated-admin .ua-cp-rx-pool,
-  .updated-admin .ua-cp-rx-pool__trigger {
-    width: 100%;
+  .updated-admin .ua-cp-rx-add-point {
+    justify-content: center;
   }
 
 
   .updated-admin .ua-cp-present-photos__grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .updated-admin .ua-cp-present-letter-card {
@@ -40012,11 +40146,23 @@
   }
 
   .updated-admin .ua-cp-present-letter-card__actions {
-    justify-content: flex-end;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    justify-content: stretch;
+  }
+
+  .updated-admin .ua-cp-present-letter-card__actions .ua-cp-btn {
+    width: 100%;
   }
 
   .updated-admin .ua-cp-present__head {
     flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .updated-admin .ua-cp-present__request {
+    width: 100%;
   }
 
   .updated-admin .ua-cp-present-letter__signatures {
@@ -40026,6 +40172,61 @@
   .updated-admin .ua-cp-present-letter__sign-block--date {
     align-items: flex-start;
     text-align: left;
+  }
+
+  .updated-admin .ua-cp-present-letter__head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .updated-admin .ua-cp-present-letter__head-actions {
+    width: 100%;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .updated-admin .ua-cp-present-photo__foot {
+    flex-wrap: wrap;
+  }
+
+  .updated-admin .ua-cp-present-photo__actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .updated-admin .ua-cp-present-photo__actions .ua-cp-btn,
+  .updated-admin .ua-cp-present-photo__foot > .ua-cp-btn {
+    flex: 1 1 auto;
+  }
+
+  .updated-admin .ua-cp-present-modal__foot {
+    flex-wrap: wrap;
+  }
+
+  .updated-admin .ua-cp-present-modal__foot .ua-cp-btn {
+    flex: 1 1 auto;
+  }
+
+  .updated-admin .ua-cp-present-photo__foot {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .updated-admin .ua-cp-present-photo__actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+
+  .updated-admin .ua-cp-present-photo__foot > .ua-cp-btn,
+  .updated-admin .ua-cp-present-photo__actions .ua-cp-btn {
+    width: 100%;
+  }
+
+  .updated-admin .ua-cp-present-photo__locked {
+    white-space: normal;
+    justify-self: start;
   }
 
 
@@ -40040,10 +40241,29 @@
   .updated-admin .ua-cp-ex-pay__side {
     justify-content: space-between;
     width: 100%;
+    flex-wrap: wrap;
+    gap: 10px;
   }
 
   .updated-admin .ua-cp-ex-history__head {
     flex-direction: column;
+    gap: 8px;
+  }
+
+  .updated-admin .ua-cp-ex-history__summary {
+    white-space: normal;
+  }
+
+  .updated-admin .ua-cp-ex-panel {
+    padding: 16px 14px;
+  }
+
+  .updated-admin .ua-cp-ex-trigger {
+    width: 100%;
+  }
+
+  .updated-admin .ua-cp-ex-form__note {
+    max-width: none;
   }
 
 
@@ -40271,6 +40491,27 @@
     background: #f7f8fb;
   }
 
+  .updated-admin .header {
+    position: relative;
+    z-index: 40;
+  }
+
+  .updated-admin .header__actions {
+    position: static;
+  }
+
+  .updated-admin .header__notif-wrap {
+    position: static;
+  }
+
+  .updated-admin .header__notif-panel {
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: none;
+    max-height: min(70vh, calc(100dvh - 80px));
+  }
+
   .updated-admin .sidebar__toggle {
     display: none;
   }
@@ -40412,6 +40653,15 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .updated-admin .ua-cp-food-water-goal {
+    width: 100%;
+    border-radius: 12px;
+  }
+
+  .updated-admin .ua-cp-food-water-history {
+    max-width: 100%;
+  }
+
   .updated-admin .ua-cp-food-meal__main {
     grid-template-columns: auto 1fr;
     grid-template-areas:
@@ -40434,8 +40684,8 @@
   }
 
   .updated-admin .ua-cp-food-water-chart {
-    overflow-x: auto;
-    grid-template-columns: repeat(14, 36px);
+    overflow-x: visible;
+    min-width: max(100%, 420px);
   }
 
   .updated-admin .ua-cp-food-diet-row {
@@ -40546,21 +40796,46 @@
   }
 
 
+  .updated-admin .ua-cp-proto-panel {
+    padding: 16px 14px;
+  }
+
   .updated-admin .ua-cp-proto-work__head {
     flex-direction: column;
+    gap: 12px;
   }
 
   .updated-admin .ua-cp-proto-work__actions {
     width: 100%;
-    justify-content: flex-end;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .updated-admin .ua-cp-proto-work__actions .ua-cp-btn {
+    width: 100%;
   }
 
   .updated-admin .ua-cp-proto-add {
-    flex-direction: column;
+    flex-direction: row;
+    align-items: stretch;
   }
 
   .updated-admin .ua-cp-proto-add .ua-cp-btn {
-    width: 100%;
+    width: auto;
+    flex: 0 0 auto;
+  }
+
+  .updated-admin .ua-cp-proto-add__input {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+  }
+
+  .updated-admin .ua-cp-proto-history__head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
   }
 
 
@@ -40956,6 +41231,38 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .updated-admin .ua-cp-metabolic-row {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .updated-admin .ua-cp-metabolic-row__group {
+    display: block;
+    min-width: 0;
+    border-right: 1px solid #f1f4f8;
+    border-bottom: 1px solid #f1f4f8;
+  }
+
+  .updated-admin .ua-cp-metabolic-row__group:nth-child(4n) {
+    border-right: none;
+  }
+
+  .updated-admin .ua-cp-metabolic-row__group:nth-last-child(-n + 4) {
+    border-bottom: none;
+  }
+
+  .updated-admin .ua-cp-metabolic-row__sep {
+    display: none;
+  }
+
+  .updated-admin .ua-cp-metabolic-row__col {
+    padding: 12px 8px;
+  }
+
+  .updated-admin .ua-cp-metabolic__head {
+    flex-wrap: wrap;
+  }
+
   .updated-admin .ua-cp-health-row {
     grid-template-columns: 1fr;
   }
@@ -40993,17 +41300,84 @@
 
   .updated-admin .ua-cp-body {
     flex-direction: column;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .updated-admin .ua-cp-main {
+    flex: 1;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .updated-admin .ua-cp-main__inner {
+    padding: 16px 14px 36px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .updated-admin .ua-cp-launch-domain__head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .updated-admin .ua-cp-launch-domain__subhead {
+    width: 100%;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  .updated-admin .ua-cp-launch-qtable__rating {
+    min-width: 0;
+  }
+
+  .updated-admin .ua-cp-launch-ratings {
+    flex-wrap: wrap;
   }
 
   .updated-admin .ua-cp-topbar {
     height: auto;
     flex: 0 0 auto;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     padding: 10px 16px;
-    gap: 10px;
+    gap: 8px;
+  }
+
+  .updated-admin .ua-cp-topbar__btn--back {
+    display: none;
+  }
+
+  .updated-admin .ua-cp-topbar__title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .updated-admin .ua-cp-topbar__btn--menu {
+    display: none;
+  }
+
+  .updated-admin--client-profile .sidebar,
+  .updated-admin--client-profile .header {
+    display: none !important;
+  }
+
+  .updated-admin--client-profile .main {
+    width: 100%;
+    max-width: 100%;
+    flex: 1 1 100%;
+  }
+
+  .updated-admin .ua-cp-drawer {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .updated-admin--client-profile .header__back {
     display: none;
   }
 
@@ -41263,12 +41637,39 @@
     grid-template-columns: 1fr;
   }
 
-  .updated-admin .ua-cp-launch-history__row {
-    grid-template-columns: 1fr 1fr;
+  .updated-admin .ua-cp-launch-history__row,
+  .updated-admin .ua-cp-launch-history--prakriti .ua-cp-launch-history__row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "attempt date"
+      "score pts"
+      "role by";
+    gap: 6px 10px;
   }
 
+  .updated-admin .ua-cp-launch-history__attempt { grid-area: attempt; }
+  .updated-admin .ua-cp-launch-history__score,
+  .updated-admin .ua-cp-launch-history__type { grid-area: score; }
+  .updated-admin .ua-cp-launch-history__pts {
+    grid-area: pts;
+    white-space: normal;
+    text-align: right;
+  }
+  .updated-admin .ua-cp-launch-history__role {
+    grid-area: role;
+    width: auto;
+    justify-self: start;
+  }
+  .updated-admin .ua-cp-launch-history__by {
+    grid-area: by;
+    text-align: right;
+  }
+  .updated-admin .ua-cp-launch-history__date { grid-area: date; }
+
   .updated-admin .ua-cp-launch-controls {
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
     align-items: center;
     gap: 8px;
   }
@@ -41711,6 +42112,29 @@
     grid-template-columns: 1fr;
   }
 
+  .updated-admin .ua-cp-ex-pay {
+    padding: 14px;
+  }
+
+  .updated-admin .ua-cp-ex-pay__side {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .updated-admin .ua-cp-ex-pay__amounts {
+    align-items: flex-start;
+    min-width: 0;
+  }
+
+  .updated-admin .ua-cp-ex-pay__amounts strong,
+  .updated-admin .ua-cp-ex-pay__amounts span {
+    white-space: normal;
+  }
+
+  .updated-admin .ua-cp-ex-pay__btn {
+    width: 100%;
+  }
+
 
 
   .updated-admin .ua-cp-gut-stats,
@@ -41724,10 +42148,113 @@
   .updated-admin .ua-cfg-gr-new__row {
     grid-template-columns: 1fr;
   }
+
+  .updated-admin .ua-cp-present-photos__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .updated-admin .ua-cp-present-letter-card__actions {
+    grid-template-columns: 1fr;
+  }
+
+  .updated-admin .ua-cp-present-panel {
+    padding: 14px;
+  }
+
+  .updated-admin .ua-cp-present-modal {
+    width: 100%;
+    padding: 18px 16px 16px;
+  }
+
+  .updated-admin .ua-cp-present-modal--letter {
+    width: 100%;
+    max-height: calc(100dvh - 24px);
+  }
+
+  .updated-admin .ua-cp-present-letter__head {
+    padding: 14px 16px;
+  }
+
+  .updated-admin .ua-cp-present-letter__head-actions {
+    justify-content: stretch;
+  }
+
+  .updated-admin .ua-cp-present-letter__head-actions .ua-cp-btn {
+    flex: 1 1 auto;
+  }
+
+  .updated-admin .ua-cp-present-letter__doc {
+    padding: 16px 16px 18px;
+  }
+
+  .updated-admin .ua-cp-present-modal__foot {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .updated-admin .ua-cp-present-modal__foot .ua-cp-btn {
+    width: 100%;
+  }
+
+  .updated-admin .ua-cp-rx-card__head {
+    padding: 10px 12px;
+  }
+
+  .updated-admin .ua-cp-rx-point {
+    padding: 8px 12px;
+  }
+
+  .updated-admin .ua-cp-rx-add-point {
+    width: calc(100% - 24px);
+    margin-left: 12px;
+    margin-right: 12px;
+    justify-content: center;
+  }
+
+  .updated-admin .ua-cp-rx-history {
+    padding: 14px 12px 12px;
+  }
+
+  .updated-admin .ua-cp-rx-history__row {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "date"
+      "badges"
+      "title"
+      "meta"
+      "actions";
+  }
+
+  .updated-admin .ua-cp-rx-history__actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .updated-admin .ua-cp-rx-history__action-spacer {
+    display: none;
+  }
+
+  .updated-admin .ua-cp-rx-btn {
+    width: 100%;
+  }
+
+  .updated-admin .ua-cp-rx-history-detail {
+    padding: 0 12px 12px;
+  }
 }
 
 /* Large phone */
 @media (max-width: 640px) {
+
+  .updated-admin .ua-cp-rx-card__title {
+    font-size: 13px;
+  }
+
+  .updated-admin .ua-cp-rx-history__date {
+    white-space: normal;
+  }
 
   .updated-admin .ua-cal-nav {
     justify-content: space-between;
@@ -41744,6 +42271,56 @@
 
   .updated-admin .tier-card__cells {
     flex-wrap: wrap !important;
+  }
+
+  .updated-admin .ua-cp-metabolic-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .updated-admin .ua-cp-metabolic-row__group:nth-child(4n) {
+    border-right: 1px solid #f1f4f8;
+  }
+
+  .updated-admin .ua-cp-metabolic-row__group:nth-child(2n) {
+    border-right: none;
+  }
+
+  .updated-admin .ua-cp-metabolic-row__group:nth-last-child(-n + 4) {
+    border-bottom: 1px solid #f1f4f8;
+  }
+
+  .updated-admin .ua-cp-metabolic-row__group:nth-last-child(-n + 2) {
+    border-bottom: none;
+  }
+
+  .updated-admin .ua-cp-metabolic-row__val {
+    font-size: 14px;
+  }
+
+  .updated-admin .ua-cp-notif-panel {
+    position: fixed;
+    top: 70px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: none;
+  }
+
+  .updated-admin .ua-cp-main__inner {
+    padding: 14px 12px 32px;
+  }
+
+  .updated-admin .ua-cp-food__title {
+    font-size: 18px;
+  }
+
+  .updated-admin .ua-cp-food .ua-pill-tabs--md .ua-pill-tabs__btn {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .updated-admin .ua-cp-food-water-card {
+    padding: 14px 12px 16px;
   }
 
   .updated-admin .tier-cell {
@@ -41874,6 +42451,26 @@
     display: none;
   }
 
+  .updated-admin .header {
+    position: relative;
+  }
+
+  .updated-admin .header__actions {
+    position: static;
+  }
+
+  .updated-admin .header__notif-wrap {
+    position: static;
+  }
+
+  .updated-admin .header__notif-panel {
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: none;
+    max-height: min(70vh, calc(100dvh - 80px));
+  }
+
 
   .updated-admin .ua-ac-stats {
     grid-template-columns: 1fr;
@@ -41962,18 +42559,75 @@
   }
 
   .updated-admin .ua-cp-launch-controls {
-    align-items: start;
+    align-items: center;
+  }
+
+  .updated-admin .ua-cp-launch-domain__head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .updated-admin .ua-cp-launch-domain__subhead {
+    width: 100%;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  .updated-admin .ua-cp-launch-domain__bar-wrap {
+    flex: 1 1 80px;
+  }
+
+  .updated-admin .ua-cp-launch-qtable {
+    min-width: 680px;
+  }
+
+  .updated-admin .ua-cp-launch-qtable__rating {
+    min-width: 0;
+  }
+
+  .updated-admin .ua-cp-launch-ratings {
+    flex-wrap: wrap;
+  }
+
+  .updated-admin .ua-cp-launch-score {
+    padding: 16px 18px;
+    gap: 12px;
+  }
+
+  .updated-admin .ua-cp-launch-score__val strong {
+    font-size: 32px;
+  }
+
+  .updated-admin .ua-cp-launch-prakriti-card {
+    padding: 16px 18px;
+  }
+
+  .updated-admin .ua-cp-launch-prakriti-card__top {
+    flex-wrap: wrap;
+  }
+
+  .updated-admin .ua-cp-launch-prakriti-card__elements {
+    white-space: normal;
+    padding-top: 0;
+  }
+
+  .updated-admin .ua-cp-launch-focus__add {
+    flex-wrap: wrap;
+  }
+
+  .updated-admin .ua-cp-launch-focus__add-btn {
+    width: 100%;
   }
 }
 
 /* Small phone */
 @media (max-width: 480px) {
   .updated-admin .ua-cp-ex-pay__amounts {
-    align-items: center;
+    align-items: flex-start;
   }
 
   .updated-admin .ua-cp-ex-pay__side {
-    justify-content: center;
+    justify-content: stretch;
   }
 
 
