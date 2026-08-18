@@ -156,7 +156,7 @@ function DomainAccordion({
                   const reply = replies[key] ?? item.reply;
                   return (
                     <tr key={key}>
-                      <td className="ua-cp-launch-qtable__q">
+                      <td className="ua-cp-launch-qtable__q" data-label="Question">
                         <span className="ua-cp-launch-qtable__n">{i + 1}.</span>
                         <span className="ua-cp-launch-qtable__q-text">{item.q}</span>
                         <button
@@ -172,7 +172,7 @@ function DomainAccordion({
                           i
                         </button>
                       </td>
-                      <td className="ua-cp-launch-qtable__reply">
+                      <td className="ua-cp-launch-qtable__reply" data-label="User reply · coach notes">
                         <input
                           className="ua-cp-launch-qtable__input"
                           value={reply}
@@ -184,7 +184,7 @@ function DomainAccordion({
                           <span className="ua-cp-launch-qtable__reply-note">Noted by coach</span>
                         ) : null}
                       </td>
-                      <td className="ua-cp-launch-qtable__rating">
+                      <td className="ua-cp-launch-qtable__rating" data-label="Coach rating">
                         <div className="ua-cp-launch-ratings">
                           {RATING_OPTIONS.map((opt) => (
                             <button
@@ -208,7 +208,7 @@ function DomainAccordion({
                           <span className="ua-cp-launch-qtable__score-max">/ 100</span>
                         </div>
                       </td>
-                      <td className="ua-cp-launch-qtable__weight">
+                      <td className="ua-cp-launch-qtable__weight" data-label="Weightage">
                         <span>{item.weight}</span>
                       </td>
                     </tr>
@@ -631,44 +631,45 @@ export function LaunchSection({ user, onToast }) {
       </div>
       {tab === "lifestyle" ? (
         <div>
-          <div className="ua-cp-launch-score" style={{ marginBottom: 16 }}>
-            <div>
+          <div className="ua-cp-launch-score ua-cp-launch-score--save">
+            <div className="ua-cp-launch-score__copy">
               <span className="ua-cp-launch-score__label">Save LAUNCH score from this meeting</span>
               {latestScore != null ? <span className="ua-cp-launch-score__pts">Latest {latestScore}</span> : null}
             </div>
-            <input
-              type="number"
-              min="0"
-              max="750"
-              value={score}
-              onChange={(e) => setScore(e.target.value)}
-              placeholder="Total score"
-              className="ua-cp-proto-point__text"
-              style={{ width: 140 }}
-            />
-            <button
-              type="button"
-              className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm"
-              disabled={savingScore || score === ""}
-              onClick={async () => {
-                try {
-                  setSavingScore(true);
-                  await saveUserLaunchAssessment(user.id, {
-                    assessmentDate: new Date().toISOString().slice(0, 10),
-                    totalScore: Number(score),
-                    focusAreaIds: selectedFocus,
-                  });
-                  setLatestScore(Number(score));
-                  onToast("LAUNCH score saved");
-                } catch (err) {
-                  onToast(err?.message || "Failed to save LAUNCH score");
-                } finally {
-                  setSavingScore(false);
-                }
-              }}
-            >
-              Save score
-            </button>
+            <div className="ua-cp-launch-score__actions">
+              <input
+                type="number"
+                min="0"
+                max="750"
+                value={score}
+                onChange={(e) => setScore(e.target.value)}
+                placeholder="Total score"
+                className="ua-cp-launch-score__input"
+              />
+              <button
+                type="button"
+                className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm"
+                disabled={savingScore || score === ""}
+                onClick={async () => {
+                  try {
+                    setSavingScore(true);
+                    await saveUserLaunchAssessment(user.id, {
+                      assessmentDate: new Date().toISOString().slice(0, 10),
+                      totalScore: Number(score),
+                      focusAreaIds: selectedFocus,
+                    });
+                    setLatestScore(Number(score));
+                    onToast("LAUNCH score saved");
+                  } catch (err) {
+                    onToast(err?.message || "Failed to save LAUNCH score");
+                  } finally {
+                    setSavingScore(false);
+                  }
+                }}
+              >
+                Save score
+              </button>
+            </div>
           </div>
           {focusAreas.length ? (
             <div className="ua-cp-ip-history__markers" style={{ marginBottom: 16 }}>

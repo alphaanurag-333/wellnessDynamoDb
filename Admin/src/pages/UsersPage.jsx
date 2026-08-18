@@ -93,6 +93,13 @@ function userSubline(user) {
   return user.email || "—";
 }
 
+function clipDisplay(text, limit = 10) {
+  const value = String(text || "").trim();
+  if (!value || value === "—") return value || "—";
+  if (value.length <= limit) return value;
+  return `${value.slice(0, limit)}…`;
+}
+
 const PAGE_SIZE = 20;
 
 function buildPageItems(current, total) {
@@ -153,6 +160,7 @@ export function UsersPage() {
   const [actionBusy, setActionBusy] = useState(false);
   const [selectReset, setSelectReset] = useState(0);
   const [reloadNonce, setReloadNonce] = useState(0);
+  const [openTierMore, setOpenTierMore] = useState(null);
 
   const typeTab = searchParams.get("tab") || "all";
   const tierFilter = searchParams.get("tier") || "";
@@ -773,6 +781,8 @@ export function UsersPage() {
               const canConvert = u.tier !== "Maintenance";
               const canDowngrade = canDowngradeTier(u.tier, u.ageDays);
               const rowKey = userOverrideKey(u) || u.name;
+              const extraCount = Number(canEdit && canConvert) + Number(canEdit && canDowngrade) + Number(canEdit && u.converted);
+              const tierOpen = openTierMore === rowKey;
 
               return (
                 <div
@@ -784,45 +794,59 @@ export function UsersPage() {
                   <div className="ua-user-cell">
                     <span className="ua-avatar" style={{ background: avatarColor(i) }}>{userInitials(u.name)}</span>
                     <div className="ua-user-cell__meta">
-                      <div className="ua-user-cell__name">{u.name}</div>
+                      <div className="ua-user-cell__name" title={u.name}>{clipDisplay(u.name)}</div>
                       <div className="ua-user-cell__sub">
-                        <span className="ua-user-cell__email">{userSubline(u)}</span>
+                        <span className="ua-user-cell__email" title={userSubline(u)}>{clipDisplay(userSubline(u))}</span>
                         {u.goal ? (
                           <span className="ua-user-cell__concern" title={u.goal}>{u.goal}</span>
                         ) : null}
                       </div>
                     </div>
                   </div>
-                  <div className="ua-users-tier" onClick={(e) => e.stopPropagation()}>
+                  <div className={`ua-users-tier${tierOpen ? " is-open" : ""}`} onClick={(e) => e.stopPropagation()}>
                     <span className="ua-tier" style={{ background: tier.bg, color: tier.color }}>{tierLabel(u.tier)}</span>
-                    {canEdit && canConvert ? (
+                    {extraCount > 0 ? (
                       <button
                         type="button"
-                        className="ua-tier-action ua-tier-action--up"
-                        title={u.tier === "Seek to Heal"
-                          ? `Move ${u.name} into MAINTENANCE — for when every goal has been achieved`
-                          : `Move ${u.name} up to ${u.tier === "Seek" ? "PWC" : "HEAL"} by hand — for when the automatic upgrade did not go through`}
-                        onClick={() => convertTier(u)}
-                        disabled={actionBusy}
+                        className="ua-tier-more"
+                        aria-expanded={tierOpen}
+                        onClick={() => setOpenTierMore(tierOpen ? null : rowKey)}
                       >
-                        → {tierLabel(nextTier(u.tier))}
+                        {tierOpen ? "Hide" : `+${extraCount} more`}
                       </button>
                     ) : null}
-                    {canEdit && canDowngrade ? (
-                      <button
-                        type="button"
-                        className="ua-tier-action ua-tier-action--down"
-                        title={u.tier === "Maintenance"
-                          ? `Move ${u.name} back to HEAL — for when maintenance was entered too early`
-                          : `Move ${u.name} back down to SEEK — ends paid coaching entitlements`}
-                        onClick={() => downgradeTier(u)}
-                        disabled={actionBusy}
-                      >
-                        ↓ {tierLabel(prevTier(u.tier))}
-                      </button>
-                    ) : null}
-                    {canEdit && u.converted ? (
-                      <button type="button" className="ua-tier-action ua-tier-action--undo" title="Undo this manual change" onClick={() => revertTier(u)}>undo</button>
+                    {tierOpen ? (
+                      <>
+                        {canEdit && canConvert ? (
+                          <button
+                            type="button"
+                            className="ua-tier-action ua-tier-action--up"
+                            title={u.tier === "Seek to Heal"
+                              ? `Move ${u.name} into MAINTENANCE — for when every goal has been achieved`
+                              : `Move ${u.name} up to ${u.tier === "Seek" ? "PWC" : "HEAL"} by hand — for when the automatic upgrade did not go through`}
+                            onClick={() => convertTier(u)}
+                            disabled={actionBusy}
+                          >
+                            → {tierLabel(nextTier(u.tier))}
+                          </button>
+                        ) : null}
+                        {canEdit && canDowngrade ? (
+                          <button
+                            type="button"
+                            className="ua-tier-action ua-tier-action--down"
+                            title={u.tier === "Maintenance"
+                              ? `Move ${u.name} back to HEAL — for when maintenance was entered too early`
+                              : `Move ${u.name} back down to SEEK — ends paid coaching entitlements`}
+                            onClick={() => downgradeTier(u)}
+                            disabled={actionBusy}
+                          >
+                            ↓ {tierLabel(prevTier(u.tier))}
+                          </button>
+                        ) : null}
+                        {canEdit && u.converted ? (
+                          <button type="button" className="ua-tier-action ua-tier-action--undo" title="Undo this manual change" onClick={() => revertTier(u)}>undo</button>
+                        ) : null}
+                      </>
                     ) : null}
                   </div>
                   <div onClick={(e) => e.stopPropagation()}>

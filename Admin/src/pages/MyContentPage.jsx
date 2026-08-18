@@ -28,7 +28,7 @@ export function MyContentPage() {
   }
 
   return (
-    <main className="content ua-page-enter">
+    <main className="content ua-page-enter ua-my-content">
       <BackLink label="Dashboard" />
       <div className="ua-my-content__head">
         <div>
