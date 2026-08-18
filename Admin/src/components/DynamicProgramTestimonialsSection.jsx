@@ -16,7 +16,7 @@ import {
 import { formatRecipeDate } from "../data/recipesConfigData.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
-import { ListPagination } from "./shared.jsx";
+import { CfgSelect, ListPagination } from "./shared.jsx";
 
 const PAGE_SIZE = 20;
 
@@ -93,20 +93,16 @@ function CoverDrop({ previewUrl, disabled, label = "Photo", onPick, onRemove }) 
 function ProgramSelect({ options, value, disabled, onChange }) {
   const selected = resolveProgramSelectValue(value, options);
   const known = options.some((entry) => entry.value === selected);
+  const extra = !known && value ? [{ value, label: programTestimonialLabel(value, options) }] : [];
   return (
-    <select
-      className="ua-cfg-rc-cat"
+    <CfgSelect
+      options={options.length ? [...extra, ...options] : [{ value: "", label: "No health concerns" }]}
       value={known ? selected : value || ""}
-      disabled={disabled}
-      aria-label="Health concern"
-      onChange={(event) => onChange(event.target.value)}
-    >
-      {!options.length ? <option value="">No health concerns</option> : null}
-      {!known && value ? <option value={value}>{programTestimonialLabel(value, options)}</option> : null}
-      {options.map((entry) => (
-        <option key={entry.id || entry.value} value={entry.value}>{entry.label}</option>
-      ))}
-    </select>
+      disabled={disabled || !options.length}
+      ariaLabel="Health concern"
+      placeholder="Health concern"
+      onChange={onChange}
+    />
   );
 }
 
@@ -494,17 +490,13 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
             onChange={(event) => setSearch(event.target.value)}
             aria-label="Search testimonials"
           />
-          <select
-            className="ua-cfg-rc-cat ua-cfg-rc-filter"
+          <CfgSelect
+            className="ua-cfg-select--filter"
+            options={[{ value: "", label: "All health concerns" }, ...concernOptions]}
             value={programFilter}
-            onChange={(event) => setProgramFilter(event.target.value)}
-            aria-label="Filter by health concern"
-          >
-            <option value="">All health concerns</option>
-            {concernOptions.map((program) => (
-              <option key={program.id || program.value} value={program.value}>{program.label}</option>
-            ))}
-          </select>
+            onChange={setProgramFilter}
+            ariaLabel="Filter by health concern"
+          />
         </div>
 
         {stories.length ? (

@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 
@@ -136,6 +137,79 @@ export function buildPageItems(current, total) {
       acc.push(n);
       return acc;
     }, []);
+}
+
+export function CfgSelect({
+  options = [],
+  value,
+  disabled,
+  onChange,
+  ariaLabel,
+  className = "",
+  placeholder = "Select…",
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const selected = options.find((row) => String(row.value) === String(value));
+  const label = selected?.label || placeholder;
+
+  useEffect(() => {
+    if (!open) return undefined;
+    function onPointerDown(event) {
+      if (ref.current && !ref.current.contains(event.target)) setOpen(false);
+    }
+    function onKey(event) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div className={`ua-cfg-select${open ? " is-open" : ""}${className ? ` ${className}` : ""}`} ref={ref}>
+      <button
+        type="button"
+        className="ua-cfg-select__trigger"
+        disabled={disabled}
+        aria-label={ariaLabel}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        onClick={() => !disabled && setOpen((current) => !current)}
+      >
+        <span className="ua-cfg-select__value">{label}</span>
+        <span className="ua-cfg-select__chev" aria-hidden="true">▾</span>
+      </button>
+      {open ? (
+        <ul className="ua-cfg-select__menu" role="listbox">
+          {options.length ? options.map((entry) => {
+            const isOn = String(entry.value) === String(value);
+            return (
+              <li key={entry.id || String(entry.value)}>
+                <button
+                  type="button"
+                  className={`ua-cfg-select__option${isOn ? " is-on" : ""}`}
+                  role="option"
+                  aria-selected={isOn}
+                  onClick={() => {
+                    onChange(entry.value);
+                    setOpen(false);
+                  }}
+                >
+                  {entry.label}
+                </button>
+              </li>
+            );
+          }) : (
+            <li><span className="ua-cfg-select__empty">No options</span></li>
+          )}
+        </ul>
+      ) : null}
+    </div>
+  );
 }
 
 export function ListPagination({

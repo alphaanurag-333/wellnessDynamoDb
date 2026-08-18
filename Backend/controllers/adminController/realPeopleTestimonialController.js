@@ -26,8 +26,18 @@ const {
   validateName,
   validateHealthConcernId,
 } = require("../helpers/realPeopleTestimonialControllerHelpers");
+const { normalizeDataPoints } = require("../../utils/testimonialDataPoints");
 
 const S3_FOLDER = "real-people-testimonials";
+
+function parseDataPoints(raw) {
+  if (raw === undefined) return undefined;
+  try {
+    return normalizeDataPoints(raw);
+  } catch (err) {
+    throw new AppError(err.message || "dataPoints must be an array", 400);
+  }
+}
 
 async function assertHealthConcernExists(healthConcernId) {
   const id = validateHealthConcernId(healthConcernId);
@@ -64,6 +74,7 @@ exports.createRealPeopleTestimonialController = asyncHandler(async (req, res) =>
   const stars = validateStars(req.body.stars ?? req.body.rating);
   const status = validateStatus(req.body.status || "active");
   const healthConcernId = await assertHealthConcernExists(req.body.healthConcernId);
+  const dataPoints = parseDataPoints(req.body.dataPoints ?? []);
 
   const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
   const profileImageRaw = parseProfileImageFromBody(req.body);
@@ -81,6 +92,7 @@ exports.createRealPeopleTestimonialController = asyncHandler(async (req, res) =>
     stars,
     healthConcernId,
     profileImage,
+    dataPoints,
     status,
   });
 
@@ -109,6 +121,9 @@ exports.updateRealPeopleTestimonialController = asyncHandler(async (req, res) =>
   if (req.body.status !== undefined) updates.status = validateStatus(req.body.status);
   if (req.body.healthConcernId !== undefined) {
     updates.healthConcernId = await assertHealthConcernExists(req.body.healthConcernId);
+  }
+  if (req.body.dataPoints !== undefined) {
+    updates.dataPoints = parseDataPoints(req.body.dataPoints);
   }
 
   const profileImageRaw = parseProfileImageFromBody(req.body);

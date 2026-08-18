@@ -41,10 +41,10 @@ import { LocationsSection } from "../components/LocationsSection.jsx";
 import { BannerSection } from "../components/BannerSection.jsx";
 import { ChampionSection } from "../components/ChampionSection.jsx";
 import { BirthdaySection } from "../components/BirthdaySection.jsx";
-import { TransformationSection } from "../components/TransformationSection.jsx";
-import { ClientReviewSection } from "../components/ClientReviewSection.jsx";
-import { RealPeopleSection } from "../components/RealPeopleSection.jsx";
-import { VoiceOfHealingSection } from "../components/VoiceOfHealingSection.jsx";
+import { DynamicTransformationSection } from "../components/DynamicTransformationSection.jsx";
+import { DynamicClientReviewSection } from "../components/DynamicClientReviewSection.jsx";
+import { DynamicRealPeopleSection } from "../components/DynamicRealPeopleSection.jsx";
+import { DynamicVoiceOfHealingSection } from "../components/DynamicVoiceOfHealingSection.jsx";
 import { CofounderSection } from "../components/CofounderSection.jsx";
 import { AboutSection } from "../components/AboutSection.jsx";
 import { GoogleReviewSection } from "../components/GoogleReviewSection.jsx";
@@ -66,29 +66,10 @@ import { LOCATIONS } from "../data/locationConfigData.js";
 import { emptyBannerEditor } from "../data/bannerConfigData.js";
 import { CHAMPION_EDITOR, CHAMPION_GALLERY } from "../data/championConfigData.js";
 import { BIRTHDAY_EDITOR, BIRTHDAY_GALLERY, BIRTHDAY_QUEUE } from "../data/birthdayConfigData.js";
-import {
-  TRANSFORMATION_EDITOR,
-  TRANSFORMATION_GALLERY,
-  TRANSFORMATION_POINTS,
-  TRANSFORMATION_PRIORITY,
-} from "../data/transformationConfigData.js";
-import {
-  CLIENT_REVIEW_EDITOR,
-  CLIENT_REVIEW_GALLERY,
-  CLIENT_REVIEW_LIVE,
-  CLIENT_REVIEW_QUEUE,
-} from "../data/clientReviewConfigData.js";
-import {
-  REAL_PEOPLE_EDITOR,
-  REAL_PEOPLE_GALLERY,
-  REAL_PEOPLE_POINTS,
-  REAL_PEOPLE_PRIORITY,
-} from "../data/realPeopleConfigData.js";
-import {
-  VOICE_EDITOR,
-  VOICE_GALLERY,
-  VOICE_ITEMS,
-} from "../data/voiceConfigData.js";
+import { TRANSFORMATION_EDITOR } from "../data/transformationConfigData.js";
+import { CLIENT_REVIEW_EDITOR } from "../data/clientReviewConfigData.js";
+import { REAL_PEOPLE_EDITOR } from "../data/realPeopleConfigData.js";
+import { VOICE_EDITOR } from "../data/voiceConfigData.js";
 import {
   COFOUNDER_EDITOR,
   COFOUNDER_MESSAGES,
@@ -1275,21 +1256,15 @@ export function ConfigDetailPage() {
   const [birthdayEditor, setBirthdayEditor] = useState(BIRTHDAY_EDITOR);
   const [birthdayGallery, setBirthdayGallery] = useState(BIRTHDAY_GALLERY);
   const [birthdayQueue, setBirthdayQueue] = useState(BIRTHDAY_QUEUE);
-  const [tfEditor, setTfEditor] = useState(TRANSFORMATION_EDITOR);
-  const [tfPoints, setTfPoints] = useState(TRANSFORMATION_POINTS);
-  const [tfPriority, setTfPriority] = useState(TRANSFORMATION_PRIORITY);
-  const [tfGallery, setTfGallery] = useState(TRANSFORMATION_GALLERY);
-  const [crEditor, setCrEditor] = useState(CLIENT_REVIEW_EDITOR);
-  const [crQueue, setCrQueue] = useState(CLIENT_REVIEW_QUEUE);
-  const [crPublished, setCrPublished] = useState(CLIENT_REVIEW_LIVE);
-  const [crGallery, setCrGallery] = useState(CLIENT_REVIEW_GALLERY);
-  const [rpEditor, setRpEditor] = useState(REAL_PEOPLE_EDITOR);
-  const [rpPoints, setRpPoints] = useState(REAL_PEOPLE_POINTS);
-  const [rpPriority, setRpPriority] = useState(REAL_PEOPLE_PRIORITY);
-  const [rpGallery, setRpGallery] = useState(REAL_PEOPLE_GALLERY);
-  const [voiceEditor, setVoiceEditor] = useState(VOICE_EDITOR);
-  const [voiceItems, setVoiceItems] = useState(VOICE_ITEMS);
-  const [voiceGallery, setVoiceGallery] = useState(VOICE_GALLERY);
+  const [tfEditor] = useState(TRANSFORMATION_EDITOR);
+  const [tfItems, setTfItems] = useState([]);
+  const [crEditor] = useState(CLIENT_REVIEW_EDITOR);
+  const [crQueue, setCrQueue] = useState([]);
+  const [crPublished, setCrPublished] = useState([]);
+  const [rpEditor] = useState(REAL_PEOPLE_EDITOR);
+  const [rpItems, setRpItems] = useState([]);
+  const [voiceEditor] = useState(VOICE_EDITOR);
+  const [voiceItems, setVoiceItems] = useState([]);
   const [cfEditor, setCfEditor] = useState(COFOUNDER_EDITOR);
   const [cfPhotos, setCfPhotos] = useState(COFOUNDER_PHOTOS);
   const [cfMessages, setCfMessages] = useState(COFOUNDER_MESSAGES);
@@ -1488,13 +1463,13 @@ export function ConfigDetailPage() {
               : item.id === "common-birthday"
                 ? birthdayEditor.appOn || birthdayEditor.webOn
               : item.id === "common-transformation"
-                ? tfEditor.appOn || tfEditor.webOn
+                ? tfItems.some((entry) => entry.live)
               : item.id === "common-client-review"
-                ? crEditor.appOn || crEditor.webOn
+                ? crPublished.some((entry) => entry.live)
               : item.id === "common-real-people"
-                ? rpEditor.appOn || rpEditor.webOn
+                ? rpItems.some((entry) => entry.live)
               : item.id === "common-voice"
-                ? voiceEditor.appOn || voiceEditor.webOn
+                ? voiceItems.some((entry) => entry.live)
               : item.id === "common-cofounder"
                 ? cfEditor.appOn || cfEditor.webOn
               : item.id === "common-leadership"
@@ -1911,57 +1886,35 @@ export function ConfigDetailPage() {
         );
       case "common-transformation":
         return (
-          <TransformationSection
-            editor={tfEditor}
-            setEditor={setTfEditor}
-            points={tfPoints}
-            setPoints={setTfPoints}
-            priority={tfPriority}
-            setPriority={setTfPriority}
-            gallery={tfGallery}
-            setGallery={setTfGallery}
+          <DynamicTransformationSection
+            items={tfItems}
+            setItems={setTfItems}
             onToast={onToast}
-            onOpenPreview={() => setPreviewOpen(true)}
           />
         );
       case "common-client-review":
         return (
-          <ClientReviewSection
-            editor={crEditor}
-            setEditor={setCrEditor}
+          <DynamicClientReviewSection
             queue={crQueue}
             setQueue={setCrQueue}
             published={crPublished}
             setPublished={setCrPublished}
-            gallery={crGallery}
-            setGallery={setCrGallery}
             onToast={onToast}
           />
         );
       case "common-real-people":
         return (
-          <RealPeopleSection
-            editor={rpEditor}
-            setEditor={setRpEditor}
-            points={rpPoints}
-            setPoints={setRpPoints}
-            priority={rpPriority}
-            setPriority={setRpPriority}
-            gallery={rpGallery}
-            setGallery={setRpGallery}
+          <DynamicRealPeopleSection
+            items={rpItems}
+            setItems={setRpItems}
             onToast={onToast}
-            onOpenPreview={() => setPreviewOpen(true)}
           />
         );
       case "common-voice":
         return (
-          <VoiceOfHealingSection
-            editor={voiceEditor}
-            setEditor={setVoiceEditor}
+          <DynamicVoiceOfHealingSection
             items={voiceItems}
             setItems={setVoiceItems}
-            gallery={voiceGallery}
-            setGallery={setVoiceGallery}
             onToast={onToast}
           />
         );
@@ -2145,11 +2098,11 @@ export function ConfigDetailPage() {
           championEditor,
           birthdayEditor,
           tfEditor,
-          tfPoints,
+          tfItems,
           crEditor,
           crPublished,
           rpEditor,
-          rpPoints,
+          rpItems,
           voiceEditor,
           voiceItems,
           cfEditor,

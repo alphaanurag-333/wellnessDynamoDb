@@ -8,6 +8,7 @@ const { v4: uuidv4 } = require("uuid");
 
 const { docClient } = require("../config/db");
 const { normalizeMediaField, resolveMediaFields } = require("../utils/s3");
+const { normalizeDataPoints } = require("../utils/testimonialDataPoints");
 const {
   listByPartitionKey,
   buildContainsFilter,
@@ -43,6 +44,13 @@ function toPublicTransformation(item) {
   return {
     ...resolved,
     order: normalizeOrder(resolved.order, 9999),
+    dataPoints: (() => {
+      try {
+        return normalizeDataPoints(resolved.dataPoints);
+      } catch {
+        return [];
+      }
+    })(),
   };
 }
 
@@ -69,6 +77,7 @@ async function createTransformation({
   oldImage,
   newImage,
   description,
+  dataPoints = [],
   order = 0,
   status = "active",
 }) {
@@ -84,6 +93,7 @@ async function createTransformation({
     oldImage: normalizeImageField(oldImage, "oldImage"),
     newImage: normalizeImageField(newImage, "newImage"),
     description: String(description || "").trim(),
+    dataPoints: normalizeDataPoints(dataPoints),
     order: normalizeOrder(order),
     status: normalizeStatus(status),
     createdAt: now,
@@ -131,6 +141,8 @@ async function updateTransformation(id, updates) {
       exprValues[v] = normalizeOrder(value);
     } else if (key === "status") {
       exprValues[v] = normalizeStatus(value);
+    } else if (key === "dataPoints") {
+      exprValues[v] = normalizeDataPoints(value);
     } else {
       exprValues[v] = value;
     }

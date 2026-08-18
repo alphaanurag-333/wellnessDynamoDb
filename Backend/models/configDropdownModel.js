@@ -258,7 +258,8 @@ async function removeRetiredDropdownLists(lists) {
 
 async function ensureSeeded() {
   const existing = await removeRetiredDropdownLists(await listAllUnpaged());
-  const seeds = existing.length ? [] : SEED_LISTS;
+  const have = new Set(existing.map((row) => row.slug));
+  const seeds = SEED_LISTS.filter((seed) => !have.has(seed.slug));
   if (!seeds.length) return existing;
 
   const now = new Date().toISOString();

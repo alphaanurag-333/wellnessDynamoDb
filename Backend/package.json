@@ -16,6 +16,7 @@
     "seed:health-recipes-yoga": "node --use-system-ca scripts/seedHealthRecipesAndYoga.js --confirm",
     "seed:test-catalog": "node scripts/seedTestCatalog.js",
     "seed:video-testimonials": "node --use-system-ca scripts/seedVideoTestimonials.js",
+    "seed:testimonials": "node --use-system-ca scripts/seedTestimonials.js --confirm",
     "seed:static-pages": "node --use-system-ca scripts/seedStaticPages.js",
     "seed:specializations": "node --use-system-ca scripts/seedSpecializations.js",
                        "seed:programs": "node --use-system-ca scripts/seedProgramCatalog.js",

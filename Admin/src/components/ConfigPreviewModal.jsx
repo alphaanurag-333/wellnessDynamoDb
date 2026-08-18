@@ -958,12 +958,13 @@ function ChampionPreview({ editor = {}, surface, item }) {
 
 function TransformationPreview({ editor = {}, points = [], title = "Transformation" }) {
   const uploaded = Boolean(editor.uploaded || editor.beforeUploaded || editor.afterUploaded);
-  const name = points.find((entry) => entry.field === "name")?.value || "Client story";
+  const namePoint = points.find((entry) => ["name", "client_name"].includes(String(entry.field || "")));
+  const name = namePoint?.value || editor.clientName || "Client story";
   const story =
     typeof editor.story === "string" && editor.story.trim()
       ? editor.story
       : "Story / caption shown with the photo…";
-  const extras = points.filter((entry) => entry.field !== "name");
+  const extras = points.filter((entry) => !["name", "client_name"].includes(String(entry.field || "")));
   const webOn = editor.webOn !== false;
   const appOn = editor.appOn !== false;
 
@@ -1794,8 +1795,14 @@ function renderPreviewBody(item, surface, previewState) {
     case "common-transformation":
       return (
         <TransformationPreview
-          editor={previewState.tfEditor}
-          points={previewState.tfPoints ?? []}
+          editor={{
+            ...previewState.tfEditor,
+            story: previewState.tfItems?.find((row) => row.live)?.description || previewState.tfEditor?.story,
+            clientName: previewState.tfItems?.find((row) => row.live)?.name || "",
+            beforeUploaded: Boolean(previewState.tfItems?.some((row) => row.oldImage)),
+            afterUploaded: Boolean(previewState.tfItems?.some((row) => row.newImage)),
+          }}
+          points={previewState.tfItems?.find((row) => row.live)?.dataPoints || []}
         />
       );
     case "common-client-review":
@@ -1808,8 +1815,13 @@ function renderPreviewBody(item, surface, previewState) {
     case "common-real-people":
       return (
         <TransformationPreview
-          editor={previewState.rpEditor}
-          points={previewState.rpPoints ?? []}
+          editor={{
+            ...previewState.rpEditor,
+            story: previewState.rpItems?.find((row) => row.live)?.review || previewState.rpEditor?.story,
+            clientName: previewState.rpItems?.find((row) => row.live)?.name || "",
+            uploaded: Boolean(previewState.rpItems?.some((row) => row.profileImage)),
+          }}
+          points={previewState.rpItems?.find((row) => row.live)?.dataPoints || []}
           title="Real People Real Healing"
         />
       );

@@ -7,6 +7,7 @@ const {
 const { v4: uuidv4 } = require("uuid");
 const { docClient } = require("../config/db");
 const { normalizeStoredMedia, resolvePublicUrl } = require("../utils/s3");
+const { normalizeDataPoints } = require("../utils/testimonialDataPoints");
 const {
   normalizeMediaItemFromStorage,
   legacyFieldsToRemoveOnUpdate,
@@ -85,6 +86,11 @@ function toPublicRealPeopleTestimonial(item) {
   row.rating = row.stars;
   row.review = String(row.review ?? row.content ?? "").trim();
   row.content = row.review;
+  try {
+    row.dataPoints = normalizeDataPoints(row.dataPoints);
+  } catch {
+    row.dataPoints = [];
+  }
   return row;
 }
 
@@ -96,6 +102,7 @@ function sanitizeUpdateField(key, value) {
   if (field === "stars" || field === "rating") return sanitizeStars(value);
   if (field === "healthConcernId") return sanitizeHealthConcernId(value);
   if (field === "status") return normalizeStatus(value);
+  if (field === "dataPoints") return normalizeDataPoints(value);
   return value;
 }
 
@@ -108,6 +115,7 @@ async function createRealPeopleTestimonial({
   profileImage,
   profile_image,
   healthConcernId,
+  dataPoints = [],
   status = "active",
 }) {
   const now = new Date().toISOString();
@@ -121,6 +129,7 @@ async function createRealPeopleTestimonial({
     review: sanitizeReview(review ?? content),
     profileImage: imageKey,
     healthConcernId: sanitizeHealthConcernId(healthConcernId),
+    dataPoints: normalizeDataPoints(dataPoints),
     status: normalizeStatus(status, "active"),
     createdAt: now,
     updatedAt: now,

@@ -16,6 +16,7 @@ const {
   ORDER_MIN,
   ORDER_MAX,
 } = require("../../models/transformationModel");
+const { normalizeDataPoints } = require("../../utils/testimonialDataPoints");
 
 const S3_FOLDER = "transformation";
 const TIME_TAKEN_MIN = 1;
@@ -46,6 +47,15 @@ function normalizeInchesLost(value) {
     );
   }
   return Math.round(num * 10) / 10;
+}
+
+function parseDataPoints(raw) {
+  if (raw === undefined) return undefined;
+  try {
+    return normalizeDataPoints(raw);
+  } catch (err) {
+    throw new AppError(err.message || "dataPoints must be an array", 400);
+  }
 }
 
 function normalizeOrderValue(value) {
@@ -88,6 +98,7 @@ exports.createTransformationController = asyncHandler(async (req, res) => {
     req.body.order !== undefined && req.body.order !== ""
       ? normalizeOrderValue(req.body.order)
       : 0;
+  const dataPoints = parseDataPoints(req.body.dataPoints ?? []);
   const uploadedOld = await uploadMulterField(req, "oldImage", S3_FOLDER);
   const uploadedNew = await uploadMulterField(req, "newImage", S3_FOLDER);
   const oldImage = uploadedOld ?? parseMediaKeyFromBody(req.body.oldImage, "oldImage");
@@ -107,6 +118,7 @@ exports.createTransformationController = asyncHandler(async (req, res) => {
     oldImage,
     newImage,
     description,
+    dataPoints,
     order,
     status,
   });
@@ -146,6 +158,10 @@ exports.updateTransformationController = asyncHandler(async (req, res) => {
     const description = String(req.body.description || "").trim();
     if (!description) throw new AppError("description cannot be empty", 400);
     updates.description = description;
+  }
+
+  if (req.body.dataPoints !== undefined) {
+    updates.dataPoints = parseDataPoints(req.body.dataPoints);
   }
 
   if (req.body.status !== undefined) {
