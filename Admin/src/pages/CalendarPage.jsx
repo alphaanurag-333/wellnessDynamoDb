@@ -4,17 +4,17 @@ import { PageHeader } from "../components/shared.jsx";
 import { BlockTimeModal } from "../components/clientProfile/BlockTimeModal.jsx";
 import { MiniCalendar, ScheduleMeetingModal } from "../components/clientProfile/ScheduleMeetingModal.jsx";
 import {
-  CAL_AWAITING,
-  CAL_CHANGES,
-  CAL_CONFIRMED,
-  CAL_DEFAULT_DATE,
-  CAL_DEMO_TODAY,
-  CAL_EVENTS,
+  acceptOnboardingMeetingRequest,
+  cancelOnboardingMeeting,
+  createOnboardingMeetingSlots,
+  fetchCalendarOnboardingMeetings,
+  rejectOnboardingMeetingRequest,
+} from "../api/onboardingApi.js";
+import {
   CAL_HOUR_END,
   CAL_HOUR_PX,
   CAL_HOUR_START,
   CAL_LEGEND,
-  CAL_OFFERS,
   addDays,
   addMinutesToTime,
   dayTag,
@@ -64,23 +64,142 @@ function formatBlockDate(date) {
   return `${String(date.getDate()).padStart(2, "0")} ${months[date.getMonth()]} ${date.getFullYear()}`;
 }
 
+const STEP_LABELS = {
+  launch: "LAUNCH",
+  reportsBriefing: "Reports Briefing",
+  hap: "HAP",
+  programInitiation: "Program Initiation",
+};
+
+function initialsFromName(name) {
+  return String(name || "")
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || "")
+    .join("") || "?";
+}
+
+function padTime(date) {
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}
+
+function formatSlotLabel(startIso, endIso) {
+  const start = new Date(startIso);
+  if (Number.isNaN(start.getTime())) return "";
+  const end = endIso ? new Date(endIso) : null;
+  const date = `${String(start.getDate()).padStart(2, "0")} ${start.toLocaleString("en-GB", { month: "short" })}`;
+  const range = end && !Number.isNaN(end.getTime())
+    ? `${padTime(start)}-${padTime(end)}`
+    : padTime(start);
+  return `${date} · ${range}`;
+}
+
+function releaseLabel(iso) {
+  if (!iso) return "—";
+  const ms = new Date(iso).getTime() - Date.now();
+  if (Number.isNaN(ms) || ms <= 0) return "expired";
+  const hours = Math.floor(ms / 3600000);
+  const mins = Math.floor((ms % 3600000) / 60000);
+  return `${hours} h ${mins} min`;
+}
+
+function mapCalendarMeetings(meetings) {
+  const events = [];
+  const confirmed = [];
+  const offers = [];
+  const changes = [];
+
+  (meetings || []).forEach((meeting) => {
+    if (!meeting || meeting.status === "cancelled" || meeting.status === "expired") return;
+    const name = meeting.userName || meeting.userId || "Client";
+    const kind = STEP_LABELS[meeting.stepKey] || meeting.stepKey;
+    const slot = (meeting.slots || []).find((s) => s.id === meeting.selectedSlotId) || meeting.slots?.[0];
+    const startIso = meeting.status === "time_requested" ? meeting.requestedStartAt : slot?.startAt;
+    const endIso = meeting.status === "time_requested" ? meeting.requestedEndAt : slot?.endAt;
+    if (startIso) {
+      const start = new Date(startIso);
+      const end = endIso ? new Date(endIso) : start;
+      events.push({
+        id: meeting.id,
+        date: ymd(start),
+        start: padTime(start),
+        end: padTime(end),
+        label: `${name} · ${kind}`,
+        type: meeting.status === "confirmed" ? "confirmed" : meeting.status === "slots_offered" ? "held" : "blocked",
+        canDelete: false,
+        status: meeting.status,
+      });
+    }
+
+    const row = {
+      id: meeting.id,
+      userId: meeting.userId,
+      stepKey: meeting.stepKey,
+      name,
+      initial: initialsFromName(name),
+      kind,
+      duration: `${meeting.durationMinutes || 45} min`,
+      mode: "Video call",
+      date: startIso ? formatSlotLabel(startIso, endIso) : "—",
+      time: startIso ? padTime(new Date(startIso)) : "—",
+      release: releaseLabel(meeting.holdExpiresAt),
+      slots: (meeting.slots || []).map((s) => formatSlotLabel(s.startAt, s.endAt)).filter(Boolean),
+      wants: meeting.requestedStartAt
+        ? [formatSlotLabel(meeting.requestedStartAt, meeting.requestedEndAt)]
+        : [],
+      meta: `${kind} · ${meeting.status.replace("_", " ")}`,
+      reason: meeting.coachNote || "Client requested another time",
+      meeting,
+    };
+
+    if (meeting.status === "confirmed") confirmed.push(row);
+    if (meeting.status === "slots_offered") offers.push(row);
+    if (meeting.status === "time_requested") changes.push(row);
+  });
+
+  return { events, confirmed, offers, changes };
+}
+
 export function CalendarPage() {
   const { showToast: onToast } = useOutletContext();
   const jumpRef = useRef(null);
   const gridColRef = useRef(null);
-  const [weekStart, setWeekStart] = useState(CAL_DEFAULT_DATE);
-  const [selectedDate, setSelectedDate] = useState(CAL_DEFAULT_DATE);
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+  const [weekStart, setWeekStart] = useState(today);
+  const [selectedDate, setSelectedDate] = useState(today);
   const [jumpOpen, setJumpOpen] = useState(false);
   const [view, setView] = useState("day");
   const [fullDay, setFullDay] = useState(false);
-  const [events, setEvents] = useState(CAL_EVENTS);
-  const [confirmed, setConfirmed] = useState(CAL_CONFIRMED);
-  const [offers, setOffers] = useState(CAL_OFFERS);
+  const [events, setEvents] = useState([]);
+  const [confirmed, setConfirmed] = useState([]);
+  const [offers, setOffers] = useState([]);
+  const [changes, setChanges] = useState([]);
   const [awaitingOpen, setAwaitingOpen] = useState(false);
   const [changesOpen, setChangesOpen] = useState(false);
   const [scheduleFor, setScheduleFor] = useState(null);
   const [drag, setDrag] = useState(null);
   const [blockDraft, setBlockDraft] = useState(null);
+
+  const loadMeetings = () => {
+    fetchCalendarOnboardingMeetings()
+      .then((meetings) => {
+        const mapped = mapCalendarMeetings(meetings);
+        setEvents(mapped.events);
+        setConfirmed(mapped.confirmed);
+        setOffers(mapped.offers);
+        setChanges(mapped.changes);
+      })
+      .catch((err) => onToast?.(err?.message || "Failed to load meetings"));
+  };
+
+  useEffect(() => {
+    loadMeetings();
+  }, []);
 
   const days = useMemo(
     () => Array.from({ length: 7 }, (_, index) => addDays(weekStart, index)),
@@ -104,8 +223,9 @@ export function CalendarPage() {
       canDelete: Boolean(blockDraft.id),
       preview: !blockDraft.id,
     }] : []);
-  const showNow = sameDay(selectedDate, CAL_DEFAULT_DATE) || sameDay(selectedDate, CAL_DEMO_TODAY);
-  const nowTop = ((12 * 60 + 45) - hourStart * 60) / 60 * hourPx;
+  const showNow = sameDay(selectedDate, today);
+  const now = new Date();
+  const nowTop = ((now.getHours() * 60 + now.getMinutes()) - hourStart * 60) / 60 * hourPx;
 
   useEffect(() => {
     function onPointerDown(event) {
@@ -123,8 +243,8 @@ export function CalendarPage() {
   }, []);
 
   function goToday() {
-    setWeekStart(CAL_DEMO_TODAY);
-    setSelectedDate(CAL_DEMO_TODAY);
+    setWeekStart(today);
+    setSelectedDate(today);
     setJumpOpen(false);
     onToast("Jumped to today");
   }
@@ -255,7 +375,7 @@ export function CalendarPage() {
           <div className="ua-cal-day-toolbar">
             <div className="ua-section-label__title">
               {String(selectedDate.getDate()).padStart(2, "0")} {selectedDate.toLocaleString("en-GB", { month: "short" }).toUpperCase()} {selectedDate.getFullYear()}
-              {sameDay(selectedDate, CAL_DEMO_TODAY) ? " · TODAY" : ""}
+              {sameDay(selectedDate, today) ? " · TODAY" : ""}
             </div>
             <div className="ua-cal-day-toolbar__right">
               <div className="ua-mini-tabs">
@@ -379,10 +499,14 @@ export function CalendarPage() {
                 <button
                   type="button"
                   className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
-                  onClick={() => {
-                    setConfirmed((prev) => prev.filter((row) => row.id !== entry.id));
-                    setEvents((prev) => prev.filter((row) => row.label !== entry.name));
-                    onToast(`${entry.name} cancelled`);
+                  onClick={async () => {
+                    try {
+                      await cancelOnboardingMeeting(entry.userId, entry.id);
+                      onToast(`${entry.name} cancelled`);
+                      loadMeetings();
+                    } catch (err) {
+                      onToast(err?.message || "Failed to cancel");
+                    }
                   }}
                 >
                   Cancel
@@ -403,31 +527,23 @@ export function CalendarPage() {
               </div>
               <div className="ua-cal-held__slots">
                 {entry.slots.map((slot) => (
-                  <span key={slot} className="ua-cal-held__slot">
-                    {slot}
-                    <button
-                      type="button"
-                      aria-label="Remove slot"
-                      onClick={() => {
-                        setOffers((prev) => prev.map((row) => (
-                          row.id === entry.id ? { ...row, slots: row.slots.filter((item) => item !== slot) } : row
-                        )));
-                      }}
-                    >
-                      ×
-                    </button>
-                  </span>
+                  <span key={slot} className="ua-cal-held__slot">{slot}</span>
                 ))}
               </div>
-              <div className="ua-cal-offer__hint">Only {entry.name.split(" ")[0]} can confirm · remove any slot with ×</div>
+              <div className="ua-cal-offer__hint">Only {entry.name.split(" ")[0]} can confirm these slots</div>
               <div className="ua-cal-offer__actions">
                 <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" onClick={() => setScheduleFor({ ...entry, kind: "offer" })}>Offer more</button>
                 <button
                   type="button"
                   className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm"
-                  onClick={() => {
-                    setOffers((prev) => prev.filter((row) => row.id !== entry.id));
-                    onToast("Offer released");
+                  onClick={async () => {
+                    try {
+                      await cancelOnboardingMeeting(entry.userId, entry.id);
+                      onToast("Offer released");
+                      loadMeetings();
+                    } catch (err) {
+                      onToast(err?.message || "Failed to release offer");
+                    }
                   }}
                 >
                   Release all
@@ -437,10 +553,10 @@ export function CalendarPage() {
           ))}
 
           <button type="button" className="ua-cal-collapse" onClick={() => setAwaitingOpen((open) => !open)}>
-            Awaiting confirmation · {CAL_AWAITING.length}
+            Awaiting confirmation · {offers.length}
           </button>
-          {awaitingOpen ? CAL_AWAITING.map((entry) => (
-            <div key={entry.id} className="ua-cal-panel">
+          {awaitingOpen ? (offers.length ? offers.map((entry) => (
+            <div key={`await-${entry.id}`} className="ua-cal-panel">
               <div className="ua-cal-slot">
                 <span className="ua-avatar ua-avatar--sm">{entry.initial}</span>
                 <div>
@@ -449,12 +565,12 @@ export function CalendarPage() {
                 </div>
               </div>
             </div>
-          )) : null}
+          )) : <div className="ua-cal-empty">No held slots</div>) : null}
 
           <button type="button" className="ua-cal-collapse" onClick={() => setChangesOpen((open) => !open)}>
-            Change requests · {CAL_CHANGES.length}
+            Change requests · {changes.length}
           </button>
-          {changesOpen ? CAL_CHANGES.map((entry) => (
+          {changesOpen ? (changes.length ? changes.map((entry) => (
             <section key={entry.id} className="ua-cal-panel">
               <div className="ua-cal-slot">
                 <span className="ua-avatar ua-avatar--sm">{entry.initial}</span>
@@ -470,11 +586,40 @@ export function CalendarPage() {
                 ))}
               </div>
               <div className="ua-cal-offer__actions">
+                <button
+                  type="button"
+                  className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                  onClick={async () => {
+                    try {
+                      await acceptOnboardingMeetingRequest(entry.userId, entry.id);
+                      onToast(`Accepted ${entry.name}'s requested time`);
+                      loadMeetings();
+                    } catch (err) {
+                      onToast(err?.message || "Failed to accept request");
+                    }
+                  }}
+                >
+                  Accept
+                </button>
+                <button
+                  type="button"
+                  className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm"
+                  onClick={async () => {
+                    try {
+                      await rejectOnboardingMeetingRequest(entry.userId, entry.id);
+                      onToast("Request rejected. Existing slots remain.");
+                      loadMeetings();
+                    } catch (err) {
+                      onToast(err?.message || "Failed to reject request");
+                    }
+                  }}
+                >
+                  Reject
+                </button>
                 <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" onClick={() => setScheduleFor({ ...entry, kind: "change" })}>Offer other slots</button>
-                <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm" onClick={() => onToast("Kept as is")}>Keep as is</button>
               </div>
             </section>
-          )) : null}
+          )) : <div className="ua-cal-empty">No change requests</div>) : null}
         </aside>
       </div>
 
@@ -509,19 +654,29 @@ export function CalendarPage() {
       {scheduleFor ? (
         <ScheduleMeetingModal
           user={{ name: scheduleFor.name }}
-          title="Schedule LAUNCH meeting"
-          defaultNote={scheduleFor.kind === "change" ? "New slots after your change request" : ""}
-          defaultDuration={30}
+          title={`Schedule ${STEP_LABELS[scheduleFor.stepKey] || "meeting"}`}
+          defaultNote={scheduleFor.kind === "change" ? "New slots after your change request" : (scheduleFor.meeting?.coachNote || "")}
+          defaultDuration={scheduleFor.duration ? Number(String(scheduleFor.duration).replace(/\D/g, "")) || 45 : 45}
+          existingMeeting={scheduleFor.meeting}
           onClose={() => setScheduleFor(null)}
-          onSend={(payload) => {
-            const extra = (payload?.slots || []).map((slot) => `${slot.dateLabel} · ${slot.range}`);
-            if (scheduleFor.kind === "offer" && extra.length) {
-              setOffers((prev) => prev.map((row) => (
-                row.id === scheduleFor.id ? { ...row, slots: [...row.slots, ...extra] } : row
-              )));
+          onSend={async (payload) => {
+            try {
+              await createOnboardingMeetingSlots(scheduleFor.userId, {
+                stepKey: scheduleFor.stepKey,
+                slots: (payload?.slots || []).map((s) => ({
+                  startAt: s.startAt,
+                  endAt: s.endAt,
+                })),
+                note: payload?.note || "",
+                hold: payload?.hold || "24 hours",
+                durationMinutes: payload?.duration,
+              });
+              onToast(`Slots sent to ${scheduleFor.name}`);
+              setScheduleFor(null);
+              loadMeetings();
+            } catch (err) {
+              onToast(err?.message || "Failed to send slots");
             }
-            onToast(`Slots sent to ${scheduleFor.name}`);
-            setScheduleFor(null);
           }}
         />
       ) : null}

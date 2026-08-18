@@ -265,22 +265,28 @@ function formatWellnessJourney(value) {
 /** Paid-onboarding step keys stored on User.paidOnboardingStepStatus */
 export const PAID_ONBOARDING_STATUS_KEYS = [
   "personalDetails",
-  "profileSetup",
-  "bodyMeasurement",
-  "progressPhotos180",
-  "medicalConditions",
+  "bodyAnalytics",
   "internalParameter",
   "launch",
+  "rca",
+  "reportsBriefing",
+  "hap",
+  "protocolSettings",
+  "commitmentLetter",
+  "programInitiation",
 ];
 
 export const PAID_ONBOARDING_STEP_LABELS = {
   personalDetails: "Personal details",
-  profileSetup: "Profile setup",
-  bodyMeasurement: "Body measurements",
-  progressPhotos180: "180° progress photos",
-  medicalConditions: "Medical conditions",
+  bodyAnalytics: "Body analytics",
   internalParameter: "Internal parameters",
   launch: "LAUNCH",
+  rca: "RCA",
+  reportsBriefing: "Reports briefing",
+  hap: "HAP",
+  protocolSettings: "Protocol settings",
+  commitmentLetter: "Commitment letter",
+  programInitiation: "Program initiation",
 };
 
 function normalizeOnboardingStepStatus(raw) {

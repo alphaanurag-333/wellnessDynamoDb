@@ -41,7 +41,7 @@ const PLACEHOLDER_META = {
 function renderSection(section, user, onToast, onNavigate, onUserUpdated) {
   switch (section) {
     case "glance":
-      return <AtAGlanceSection user={user} onToast={onToast} onNavigate={onNavigate} />;
+      return <AtAGlanceSection user={user} onToast={onToast} onNavigate={onNavigate} onUserUpdated={onUserUpdated} />;
     case "personal":
       return <PersonalDetailsSection user={user} onToast={onToast} onUserUpdated={onUserUpdated} />;
     case "body":
@@ -63,7 +63,7 @@ function renderSection(section, user, onToast, onNavigate, onUserUpdated) {
     case "prescription":
       return <PrescriptionSection user={user} onToast={onToast} />;
     case "presentable":
-      return <PresentableSection user={user} onToast={onToast} />;
+      return <PresentableSection user={user} onToast={onToast} onUserUpdated={onUserUpdated} />;
     case "exchange":
       return <ExchangeSection user={user} onToast={onToast} />;
     case "protocol":

@@ -1,19 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  FOOD_DEMO_TODAY,
   formatFoodDateInput,
   formatFoodDateLabel,
   formatWaterRangeLabel,
+  localToday,
   parseFoodDateInput,
 } from "../../data/foodData.js";
 
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const DOW = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
-export function FoodDateRow({ selectedDate, onDateChange, onToday }) {
+export function FoodDateRow({ selectedDate, onDateChange, onToday, today = localToday() }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
-  const label = formatFoodDateLabel(selectedDate);
+  const label = formatFoodDateLabel(selectedDate, today);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -40,6 +40,7 @@ export function FoodDateRow({ selectedDate, onDateChange, onToday }) {
         {open ? (
           <FoodDateCalendar
             value={selectedDate}
+            today={today}
             onSelect={pickDate}
             onClose={() => setOpen(false)}
           />
@@ -56,7 +57,7 @@ export function FoodDateRow({ selectedDate, onDateChange, onToday }) {
   );
 }
 
-function FoodDateCalendar({ value, onSelect, onClose }) {
+function FoodDateCalendar({ value, today = localToday(), onSelect, onClose }) {
   const [viewMonth, setViewMonth] = useState(value.getMonth());
   const [viewYear, setViewYear] = useState(value.getFullYear());
 
@@ -96,12 +97,12 @@ function FoodDateCalendar({ value, onSelect, onClose }) {
         {cells.map((date, index) => {
           if (!date) return <span key={`pad-${index}`} className="ua-cp-food-date-cal__day ua-cp-food-date-cal__day--empty" />;
           const selected = date.toDateString() === value.toDateString();
-          const today = date.toDateString() === FOOD_DEMO_TODAY.toDateString();
+          const isToday = date.toDateString() === today.toDateString();
           return (
             <button
               key={date.toISOString()}
               type="button"
-              className={`ua-cp-food-date-cal__day${selected ? " ua-cp-food-date-cal__day--selected" : ""}${today ? " ua-cp-food-date-cal__day--today" : ""}`}
+              className={`ua-cp-food-date-cal__day${selected ? " ua-cp-food-date-cal__day--selected" : ""}${isToday ? " ua-cp-food-date-cal__day--today" : ""}`}
               onClick={() => onSelect(date)}
             >
               {date.getDate()}
@@ -125,7 +126,7 @@ function FoodDateCalendar({ value, onSelect, onClose }) {
   );
 }
 
-export function FoodWaterHistoryPicker({ range, onApply }) {
+export function FoodWaterHistoryPicker({ range, onApply, today = localToday() }) {
   const [open, setOpen] = useState(false);
   const [draftFrom, setDraftFrom] = useState(range.from);
   const [draftTo, setDraftTo] = useState(range.to);
@@ -160,8 +161,8 @@ export function FoodWaterHistoryPicker({ range, onApply }) {
   }
 
   function setPreset(days) {
-    const to = new Date(FOOD_DEMO_TODAY);
-    const from = new Date(FOOD_DEMO_TODAY);
+    const to = new Date(today);
+    const from = new Date(today);
     from.setDate(from.getDate() - (days - 1));
     setDraftFrom(from);
     setDraftTo(to);

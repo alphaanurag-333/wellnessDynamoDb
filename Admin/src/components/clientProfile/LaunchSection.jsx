@@ -11,6 +11,13 @@ import {
 } from "../../data/launchData.js";
 import { ScheduleMeetingModal } from "./ScheduleMeetingModal.jsx";
 import { ScoringReferenceModal } from "./ScoringReferenceModal.jsx";
+import {
+  createOnboardingMeetingSlots,
+  fetchLaunchFocusAreas,
+  fetchOnboardingMeetings,
+  fetchUserLaunchAssessments,
+  saveUserLaunchAssessment,
+} from "../../api/onboardingApi.js";
 
 function LaunchHeader() {
   return (
@@ -556,10 +563,41 @@ export function LaunchSection({ user, onToast }) {
   const tabFromUrl = searchParams.get("tab") === "prakriti" ? "prakriti" : "lifestyle";
   const [tab, setTab] = useState(tabFromUrl);
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [launchMeeting, setLaunchMeeting] = useState(null);
+  const [score, setScore] = useState("");
+  const [focusAreas, setFocusAreas] = useState([]);
+  const [selectedFocus, setSelectedFocus] = useState([]);
+  const [latestScore, setLatestScore] = useState(null);
+  const [savingScore, setSavingScore] = useState(false);
 
   useEffect(() => {
     setTab(tabFromUrl);
   }, [tabFromUrl]);
+
+  useEffect(() => {
+    const userId = user?.id;
+    if (!userId || /^\d+$/.test(String(userId))) return undefined;
+    fetchLaunchFocusAreas(userId)
+      .then((rows) => setFocusAreas(Array.isArray(rows) ? rows : rows?.focusAreas || []))
+      .catch(() => {});
+    fetchUserLaunchAssessments(userId)
+      .then((data) => {
+        const list = data?.assessments || data?.items || [];
+        const latest = list[0];
+        if (latest) setLatestScore(latest.totalScore);
+      })
+      .catch(() => {});
+    fetchOnboardingMeetings(userId)
+      .then((rows) => {
+        const meeting = (rows || []).find((row) => (
+          row.stepKey === "launch"
+          && ["slots_offered", "time_requested"].includes(row.status)
+        ));
+        setLaunchMeeting(meeting || null);
+      })
+      .catch(() => {});
+    return undefined;
+  }, [user?.id]);
 
   function handleTabChange(next) {
     setTab(next);
@@ -591,15 +629,94 @@ export function LaunchSection({ user, onToast }) {
           </button>
         </div>
       </div>
-      {tab === "lifestyle" ? <LifestyleTab onToast={onToast} /> : <PrakritiTab onToast={onToast} />}
+      {tab === "lifestyle" ? (
+        <div>
+          <div className="ua-cp-launch-score" style={{ marginBottom: 16 }}>
+            <div>
+              <span className="ua-cp-launch-score__label">Save LAUNCH score from this meeting</span>
+              {latestScore != null ? <span className="ua-cp-launch-score__pts">Latest {latestScore}</span> : null}
+            </div>
+            <input
+              type="number"
+              min="0"
+              max="750"
+              value={score}
+              onChange={(e) => setScore(e.target.value)}
+              placeholder="Total score"
+              className="ua-cp-proto-point__text"
+              style={{ width: 140 }}
+            />
+            <button
+              type="button"
+              className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm"
+              disabled={savingScore || score === ""}
+              onClick={async () => {
+                try {
+                  setSavingScore(true);
+                  await saveUserLaunchAssessment(user.id, {
+                    assessmentDate: new Date().toISOString().slice(0, 10),
+                    totalScore: Number(score),
+                    focusAreaIds: selectedFocus,
+                  });
+                  setLatestScore(Number(score));
+                  onToast("LAUNCH score saved");
+                } catch (err) {
+                  onToast(err?.message || "Failed to save LAUNCH score");
+                } finally {
+                  setSavingScore(false);
+                }
+              }}
+            >
+              Save score
+            </button>
+          </div>
+          {focusAreas.length ? (
+            <div className="ua-cp-ip-history__markers" style={{ marginBottom: 16 }}>
+              {focusAreas.map((area) => {
+                const id = area.id || area._id;
+                const active = selectedFocus.includes(id);
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    className={`ua-cp-ip-marker${active ? " ua-cp-ip-badge--green" : ""}`}
+                    onClick={() => setSelectedFocus((prev) => (
+                      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+                    ))}
+                  >
+                    {area.title || area.name || id}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+          <LifestyleTab onToast={onToast} />
+        </div>
+      ) : <PrakritiTab onToast={onToast} />}
       {scheduleOpen ? (
         <ScheduleMeetingModal
           user={user}
           title="Schedule LAUNCH meeting"
           defaultNote="We will walk through your LAUNCH results together."
           defaultDuration={60}
+          existingMeeting={launchMeeting}
           onClose={() => setScheduleOpen(false)}
-          onSend={() => { onToast("LAUNCH meeting slots sent"); setScheduleOpen(false); }}
+          onSend={async (payload) => {
+            try {
+              const meeting = await createOnboardingMeetingSlots(user.id, {
+                stepKey: "launch",
+                slots: (payload?.slots || []).map((s) => ({ startAt: s.startAt, endAt: s.endAt })),
+                note: payload?.note,
+                hold: payload?.hold,
+                durationMinutes: payload?.duration,
+              });
+              setLaunchMeeting(meeting || null);
+              onToast("LAUNCH meeting slots sent");
+              setScheduleOpen(false);
+            } catch (err) {
+              onToast(err?.message || "Failed to send slots");
+            }
+          }}
         />
       ) : null}
     </div>

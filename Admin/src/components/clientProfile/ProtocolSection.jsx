@@ -183,7 +183,7 @@ export function ProtocolSection({ user, onToast }) {
               Discard changes
             </button>
             {canSave ? (
-              <button type="button" className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm" onClick={saveVersion}>
+              <button type="button" className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm" onClick={saveVersion} disabled={saving}>
                 {saving ? "Saving…" : "Save version"}
               </button>
             ) : (

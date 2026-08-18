@@ -42,6 +42,7 @@ const {
 } = require("./userProfileHelpers");
 const { uploadFileFromRequest } = require("../../utils/s3");
 const { getClientIp } = require("../../utils/clientIp");
+const { ensureHealIfProgramPurchased } = require("../../models/userConversionModel");
 const { resolveRegistrationReferralFields } = require("../../services/registrationReferralService");
 
 function sendAuthResponse(res, statusCode, user, message = "Authentication successful") {
@@ -412,9 +413,10 @@ exports.refreshUserToken = asyncHandler(async (req, res) => {
 
 /** GET /user/auth/me */
 exports.getUserProfile = asyncHandler(async (req, res) => {
-  const user = await getUserById(req.auth?.sub);
+  let user = await getUserById(req.auth?.sub);
   if (!user) throw new AppError("User not found", 404);
   assertUserCanLogin(user);
+  user = (await ensureHealIfProgramPurchased(user)) || user;
 
   return res.status(200).json({
     status: true,

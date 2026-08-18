@@ -19,6 +19,7 @@ import {
   COMMITMENT_LETTER_DEFAULT,
 } from "../components/CommitmentLetterSection.jsx";
 import { DietPlansSection } from "../components/DietPlansSection.jsx";
+import { TestCatalogSection } from "../components/TestCatalogSection.jsx";
 import { DrfBankSection } from "../components/DrfBankSection.jsx";
 import { GallerySection, GALLERY_MEDIA } from "../components/GallerySection.jsx";
 import { AiEnableSection } from "../components/AiEnableSection.jsx";
@@ -1087,6 +1088,7 @@ const PREVIEW_CONFIGS = new Set([
   "app-drf-bank",
   "app-commitment-letter",
   "app-diet-plans",
+  "app-test-catalog",
   "app-nutrition-bank",
   "app-rx-bank",
   "app-gallery",
@@ -1197,6 +1199,7 @@ export function ConfigDetailPage() {
   const [commitmentCoaches, setCommitmentCoaches] = useState([]);
   const [commitmentVersion, setCommitmentVersion] = useState(1);
   const [dietPlans, setDietPlans] = useState([]);
+  const [testCatalog, setTestCatalog] = useState([]);
   const [nutritionBank, setNutritionBank] = useState([]);
   const [rxProtocols, setRxProtocols] = useState([]);
   const [galleryMedia, setGalleryMedia] = useState(GALLERY_MEDIA);
@@ -1415,6 +1418,8 @@ export function ConfigDetailPage() {
                   )
               : item.id === "app-diet-plans"
                 ? dietPlans.some((entry) => entry.live)
+              : item.id === "app-test-catalog"
+                ? testCatalog.some((entry) => entry.live)
               : item.id === "app-nutrition-bank"
                 ? nutritionBank.length > 0
               : item.id === "app-rx-bank"
@@ -1709,6 +1714,14 @@ export function ConfigDetailPage() {
           <DietPlansSection
             plans={dietPlans}
             setPlans={setDietPlans}
+            onToast={onToast}
+          />
+        );
+      case "app-test-catalog":
+        return (
+          <TestCatalogSection
+            tests={testCatalog}
+            setTests={setTestCatalog}
             onToast={onToast}
           />
         );
@@ -2099,6 +2112,7 @@ export function ConfigDetailPage() {
           medicalQuestions,
           healthTrackers,
           dietPlans,
+          testCatalog,
           nutritionBank,
           drfFormSections,
           rxProtocols,

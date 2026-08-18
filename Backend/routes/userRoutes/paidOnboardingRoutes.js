@@ -36,24 +36,24 @@ router.post(
 );
 router.post(
   "/body-measurements",
-  requireHealTier,
+  requirePaidOnboardingPending,
   optionalWeightPicFile,
   submitBodyMeasurementsController
 );
 router.post(
   "/progress-photos",
-  requireHealTier,
+  requirePaidOnboardingPending,
   optionalProgressPhotoFiles,
   createProgressPhotoController
 );
-router.get("/progress-photos", requireHealTier, listProgressPhotosController);
+router.get("/progress-photos", requirePaidOnboardingPending, listProgressPhotosController);
 router.get("/medical-questions", getMedicalQuestionsController);
 router.post(
   "/medical-conditions",
-  requireHealTier,
+  requirePaidOnboardingPending,
   submitMedicalConditionsController
 );
-router.post("/skip-step", requireHealTier, skipOnboardingStepController);
+router.post("/skip-step", requirePaidOnboardingPending, skipOnboardingStepController);
 router.post("/launch/complete", requireHealTier, completeLaunchController);
 
 module.exports = router;

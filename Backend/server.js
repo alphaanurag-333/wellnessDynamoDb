@@ -11,7 +11,6 @@ const { notFound } = require("./middleware/notFound");
 const { errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
-const host = '192.168.1.43';
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

@@ -36,11 +36,8 @@ const {
   getNextIncompleteStep,
   countCompletedSteps,
   SKIPPABLE_ONBOARDING_STATUS_KEYS,
-  buildLaunchStepCompletionUpdates,
+  PAID_ONBOARDING_STATUS_KEYS,
 } = require("../../utils/paidOnboardingHelpers");
-const {
-  listUserLaunchAssessmentsByUserId,
-} = require("../../models/userLaunchAssessmentModel");
 const {
   ageFromDob,
   buildMetricSnapshot,
@@ -49,9 +46,18 @@ const {
   upsertMetabolicMetricLog,
 } = require("../../models/healthProgressMetabolicMetricModel");
 const { toNumberOrNull } = require("../../utils/healthProgressHelpers");
+const { listMeetingsByStepForUser } = require("../../models/onboardingMeetingModel");
 
 function authedUserId(req) {
   return req.auth?.sub || req.user?.id;
+}
+
+async function loadMeetingsByStep(userId) {
+  try {
+    return await listMeetingsByStepForUser(userId);
+  } catch {
+    return {};
+  }
 }
 
 /**
@@ -174,17 +180,7 @@ function normalizeAnswerForQuestion(question, raw) {
   throw new AppError(`Unsupported answer type for: "${question.question}"`, 400);
 }
 
-async function syncLaunchOnboardingIfScored(user) {
-  const updates = buildLaunchStepCompletionUpdates(user.paidOnboardingStepStatus);
-  if (!updates) return user;
-
-  const assessments = await listUserLaunchAssessmentsByUserId(user.id);
-  if (!assessments.length) return user;
-
-  return updateUser(user.id, updates);
-}
-
-function buildStatePayload(user, bodyMeasurement, medicalCondition) {
+function buildStatePayload(user, bodyMeasurement, medicalCondition, meetingsByStep = {}) {
   const stepStatus = normalizePaidOnboardingStepStatus(user.paidOnboardingStepStatus);
   return {
     paidOnboardingCompleted: Boolean(user.paidOnboardingCompleted),
@@ -192,10 +188,11 @@ function buildStatePayload(user, bodyMeasurement, medicalCondition) {
       user.paidOnboardingStep || (user.paidOnboardingCompleted ? "done" : "register"),
     paidOnboardingStepStatus: stepStatus,
     completedStepsCount: countCompletedSteps(stepStatus),
-    totalStepsCount: 7,
+    totalStepsCount: PAID_ONBOARDING_STATUS_KEYS.length,
     nextIncompleteStep: getNextIncompleteStep(stepStatus),
     energyExchangeEnabled: Boolean(user.energyExchangeEnabled),
     healPaidAt: user.healPaidAt || null,
+    meetingsByStep,
     prefill: {
       user: null,
       bodyMeasurement: toPublicBodyMeasurement(bodyMeasurement),
@@ -209,15 +206,14 @@ exports.getStateController = asyncHandler(async (req, res) => {
   let user = await getUserById(userId);
   if (!user) throw new AppError("User not found", 404);
 
-  user = await syncLaunchOnboardingIfScored(user);
-
-  const [bodyMeasurement, medicalCondition] = await Promise.all([
+  const [bodyMeasurement, medicalCondition, meetingsByStep] = await Promise.all([
     getLatestBodyMeasurementForUser(userId),
     getLatestMedicalConditionForUser(userId),
+    loadMeetingsByStep(userId),
   ]);
 
   const enriched = await enrichUser(user);
-  const data = buildStatePayload(user, bodyMeasurement, medicalCondition);
+  const data = buildStatePayload(user, bodyMeasurement, medicalCondition, meetingsByStep);
   data.prefill.user = enriched;
 
   return res.status(200).json({
@@ -434,21 +430,8 @@ exports.completeLaunchController = asyncHandler(async (req, res) => {
   const user = req.currentUser || (await getUserById(userId));
   if (!user) throw new AppError("User not found", 404);
 
-  const currentStatus = normalizePaidOnboardingStepStatus(user.paidOnboardingStepStatus);
-  const nextStatus = markStepDone(currentStatus, "launch");
-
-  const updated = await updateUser(userId, {
-    paidOnboardingStepStatus: nextStatus,
-    paidOnboardingCompleted: computePaidOnboardingCompleted(nextStatus),
-  });
-
-  return res.status(200).json({
-    status: true,
-    message: "Launch step completed",
-    data: {
-      paidOnboardingStepStatus: updated.paidOnboardingStepStatus,
-      paidOnboardingCompleted: Boolean(updated.paidOnboardingCompleted),
-      user: await enrichUser(updated),
-    },
-  });
+  throw new AppError(
+    "LAUNCH is completed by your coach after the scheduled meeting",
+    400
+  );
 });

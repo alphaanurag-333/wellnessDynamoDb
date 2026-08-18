@@ -18,6 +18,11 @@ const {
   readUserIdParam,
 } = require("../helpers/reminderControllerHelpers");
 const { resolveStaffActor, getStaffScopeCoachId, assertStaffCanMutate } = require("../staffAccess");
+const { getUserById, updateUser } = require("../../models/userModel");
+const {
+  markStepDone,
+  computePaidOnboardingCompleted,
+} = require("../../utils/paidOnboardingHelpers");
 
 exports.listAdminCommitmentLettersController = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, approvalStatus, search, userId } = req.query;
@@ -69,6 +74,17 @@ exports.reviewAdminCommitmentLetterController = asyncHandler(async (req, res) =>
     reviewedById: adminId,
     rejectionReason: req.body.rejectionReason,
   });
+
+  if (action === "approved") {
+    const user = await getUserById(record.userId);
+    if (user) {
+      const nextStatus = markStepDone(user.paidOnboardingStepStatus, "commitmentLetter");
+      await updateUser(user.id, {
+        paidOnboardingStepStatus: nextStatus,
+        paidOnboardingCompleted: computePaidOnboardingCompleted(nextStatus),
+      });
+    }
+  }
 
   return res.status(200).json({
     status: true,
@@ -174,6 +190,17 @@ exports.reviewCoachCommitmentLetterController = asyncHandler(async (req, res) =>
     reviewedById: actor.id,
     rejectionReason: req.body.rejectionReason,
   });
+
+  if (action === "approved") {
+    const user = await getUserById(record.userId);
+    if (user) {
+      const nextStatus = markStepDone(user.paidOnboardingStepStatus, "commitmentLetter");
+      await updateUser(user.id, {
+        paidOnboardingStepStatus: nextStatus,
+        paidOnboardingCompleted: computePaidOnboardingCompleted(nextStatus),
+      });
+    }
+  }
 
   return res.status(200).json({
     status: true,

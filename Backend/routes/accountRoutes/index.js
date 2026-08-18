@@ -13,6 +13,9 @@ const accountMeRoutes = require("./accountMeRoutes");
 const accountEnergyExchangeRoutes = require("./accountEnergyExchangeRoutes");
 const accountProgramRoutes = require("./accountProgramRoutes");
 const accountCoachCheckoutRoutes = require("./accountCoachCheckoutRoutes");
+const {
+  listStaffCalendarOnboardingMeetingsController,
+} = require("../../controllers/adminController/onboardingMeetingController");
 const accountPortalClientTestimonialRoutes = require("./accountPortalClientTestimonialRoutes");
 const accountActiveSpecializationRoutes = require("./accountActiveSpecializationRoutes");
 const {
@@ -78,6 +81,12 @@ const router = express.Router();
 
 router.use("/auth", accountAuthRoutes);
 router.use("/heal-users", accountHealUserRoutes);
+router.get(
+  "/onboarding-meetings",
+  protectAccount,
+  requireActiveRole("admin", "wellness_coach", "assistant_wellness_coach", "trainee"),
+  listStaffCalendarOnboardingMeetingsController
+);
 router.use("/access", accountAccessRoutes);
 router.use("/dashboard", accountDashboardRoutes);
 router.use("/meal-tracking", accountMealTrackingRoutes);

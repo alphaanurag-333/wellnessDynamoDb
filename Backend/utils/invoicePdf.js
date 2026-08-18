@@ -80,6 +80,11 @@ function generateConsultancyInvoicePdf({
   paymentMethod,
   paymentProvider,
   currency = "INR",
+  documentTitle = "Consultancy Invoice",
+  detailsTitle = "Consultation Details",
+  serviceLabel = "Consultancy service fee",
+  discountLabel = "Referral discount",
+  detailsRows = null,
 }) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: "A4", margin: PAGE.margin });
@@ -99,7 +104,7 @@ function generateConsultancyInvoicePdf({
     doc.fillColor(COLORS.white).fontSize(22).font("Helvetica-Bold").text(appName, PAGE.margin, 28, {
       width: contentWidth * 0.55,
     });
-    doc.fontSize(11).font("Helvetica").text("Consultancy Invoice", PAGE.margin, 56);
+    doc.fontSize(11).font("Helvetica").text(documentTitle, PAGE.margin, 56);
     doc.fontSize(9).text(`Ref: ${referenceNumber || "—"}`, contentRight - 190, 32, { width: 190, align: "right" });
     doc.text(`Paid on: ${formatPaidAt(paidAt)}`, contentRight - 190, 48, { width: 190, align: "right" });
     doc.text(`Status: PAID`, contentRight - 190, 64, { width: 190, align: "right" });
@@ -136,31 +141,41 @@ function generateConsultancyInvoicePdf({
     drawDivider(doc, y);
     y += 14;
 
-    // Consultation details
-    doc.fillColor(COLORS.text).font("Helvetica-Bold").fontSize(11).text("Consultation Details", PAGE.margin, y);
-    y += 18;
-    const concernTitle =
-      healthConcern?.title || healthConcern?.name || (typeof healthConcern === "string" ? healthConcern : null);
-    drawLabelValue(doc, PAGE.margin, y, "Health concern", concernTitle || "—");
-    y += 16;
-    if (assignee) {
-      const assigneeName = assignee.name || "—";
-      const assigneeRole = formatAssigneeRole(assignee.type);
-      drawLabelValue(doc, PAGE.margin, y, "Meeting with", `${assigneeName} (${assigneeRole})`);
+    const customDetails = Array.isArray(detailsRows) ? detailsRows.filter((row) => row?.label) : [];
+    if (customDetails.length) {
+      doc.fillColor(COLORS.text).font("Helvetica-Bold").fontSize(11).text(detailsTitle, PAGE.margin, y);
+      y += 18;
+      for (const row of customDetails) {
+        drawLabelValue(doc, PAGE.margin, y, row.label, row.value || "—");
+        y += 16;
+      }
+    } else {
+      // Consultation details
+      doc.fillColor(COLORS.text).font("Helvetica-Bold").fontSize(11).text(detailsTitle, PAGE.margin, y);
+      y += 18;
+      const concernTitle =
+        healthConcern?.title || healthConcern?.name || (typeof healthConcern === "string" ? healthConcern : null);
+      drawLabelValue(doc, PAGE.margin, y, "Health concern", concernTitle || "—");
       y += 16;
-    }
+      if (assignee) {
+        const assigneeName = assignee.name || "—";
+        const assigneeRole = formatAssigneeRole(assignee.type);
+        drawLabelValue(doc, PAGE.margin, y, "Meeting with", `${assigneeName} (${assigneeRole})`);
+        y += 16;
+      }
 
-    if (healthConcern?.description) {
-      doc.fillColor(COLORS.muted).fontSize(9).text("Notes", PAGE.margin, y);
-      doc
-        .fillColor(COLORS.text)
-        .fontSize(9)
-        .text(String(healthConcern.description).trim(), PAGE.margin + 110, y, {
+      if (healthConcern?.description) {
+        doc.fillColor(COLORS.muted).fontSize(9).text("Notes", PAGE.margin, y);
+        doc
+          .fillColor(COLORS.text)
+          .fontSize(9)
+          .text(String(healthConcern.description).trim(), PAGE.margin + 110, y, {
+            width: contentWidth - 110,
+          });
+        y += doc.heightOfString(String(healthConcern.description).trim(), {
           width: contentWidth - 110,
-        });
-      y += doc.heightOfString(String(healthConcern.description).trim(), {
-        width: contentWidth - 110,
-      }) + 8;
+        }) + 8;
+      }
     }
     y += 8;
     drawDivider(doc, y);
@@ -188,9 +203,9 @@ function generateConsultancyInvoicePdf({
     const totalAmount = Number(pricing?.totalAmount) || 0;
 
     const rows = [
-      { label: "Consultancy service fee", amount: baseAmount },
+      { label: serviceLabel, amount: baseAmount },
       ...(discountAmount > 0
-        ? [{ label: "Referral discount", amount: -discountAmount, muted: true }]
+        ? [{ label: discountLabel, amount: -discountAmount, muted: true }]
         : []),
       {
         label: formatTaxLabel(pricing?.taxType, pricing?.taxPercent),

@@ -1,7 +1,10 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
 const { resolvePublicUrl } = require("../../utils/s3");
-const { sendConsultancyInvoicePdf } = require("../../utils/consultancyInvoiceResponse");
+const {
+  sendConsultancyInvoicePdf,
+  ensureTransactionInvoice,
+} = require("../../utils/consultancyInvoiceResponse");
 const {
   previewCheckout,
   createConsultancyOrder,
@@ -116,10 +119,11 @@ exports.getMyConsultancyTransactionController = asyncHandler(async (req, res) =>
   if (!transaction) throw new AppError("Transaction not found", 404);
   if (transaction.userId !== userId) throw new AppError("Forbidden", 403);
 
+  const withInvoice = await ensureTransactionInvoice(transaction);
   return res.status(200).json({
     status: true,
     message: "Transaction fetched",
-    transaction: enrichTransactionPublic(transaction),
+    transaction: enrichTransactionPublic(withInvoice),
   });
 });
 

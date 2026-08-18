@@ -7,6 +7,14 @@ import {
   ONBOARDING_STEPS,
 } from "../../data/userDetailData.js";
 import { fetchUserAtAGlance, getNextOnboardingStepLabel } from "../../api/usersApi.js";
+import {
+  acceptOnboardingMeetingRequest,
+  createOnboardingMeetingSlots,
+  fetchOnboardingMeetings,
+  patchOnboardingStep,
+  rejectOnboardingMeetingRequest,
+  submitUserRca,
+} from "../../api/onboardingApi.js";
 import { ClientRemindModal } from "./ClientRemindModal.jsx";
 import { ChampionCelebrationOverlay } from "./ChampionCelebrationOverlay.jsx";
 import { ReviewHistoryModal } from "./ReviewHistoryModal.jsx";
@@ -400,12 +408,15 @@ function OnboardingSummary({ user, progress }) {
 /** Map User.paidOnboardingStepStatus keys → admin UI onboarding step numbers. */
 const PAID_STATUS_TO_UI_STEP = {
   personalDetails: 1,
-  profileSetup: 1,
-  bodyMeasurement: 2,
-  progressPhotos180: 2,
-  medicalConditions: 3,
+  bodyAnalytics: 2,
   internalParameter: 3,
   launch: 4,
+  rca: 5,
+  reportsBriefing: 6,
+  hap: 7,
+  protocolSettings: 8,
+  commitmentLetter: 9,
+  programInitiation: 10,
 };
 
 function buildInitialDone(user) {
@@ -478,6 +489,11 @@ function resolveStepAction(step, steps) {
     if (ready) return { label: "Submit RCA", tone: "green" };
     return null;
   }
+  if (step.action === "schedule-launch") {
+    if (ready) return { label: "Schedule LAUNCH", tone: "green" };
+    if (done) return { label: "Undo", tone: "ghost" };
+    return null;
+  }
   if (step.action === "schedule-briefing") {
     if (ready) return { label: "Schedule briefing", tone: "green" };
     if (done) return { label: "Undo", tone: "ghost" };
@@ -494,18 +510,32 @@ function resolveStepAction(step, steps) {
     return null;
   }
   if (done) {
-    if (step.doneAction === "schedule-hap") return { label: "Schedule HAP", tone: "green" };
     return { label: "Undo", tone: "ghost" };
   }
   if (step.section) return { label: "Open ›", tone: "link" };
   return { label: "Mark done", tone: "ghost" };
 }
 
-function OnboardingStatusCard({ user, onToast, onNavigate, onProgressChange }) {
+function OnboardingStatusCard({ user, onToast, onNavigate, onProgressChange, onUserUpdated }) {
   const [doneMap, setDoneMap] = useState(() => buildInitialDone(user));
   const [stepNotes, setStepNotes] = useState(() => buildInitialStepNotes(buildInitialDone(user)));
   const [scheduleModal, setScheduleModal] = useState(null);
+  const [rcaOpen, setRcaOpen] = useState(false);
+  const [rcaNotes, setRcaNotes] = useState("");
+  const [busy, setBusy] = useState(false);
   const [remindOpen, setRemindOpen] = useState(false);
+  const [meetings, setMeetings] = useState([]);
+
+  const loadMeetings = () => {
+    if (!user?.id || String(user.id).match(/^\d+$/)) return;
+    fetchOnboardingMeetings(user.id)
+      .then((rows) => setMeetings(rows || []))
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    loadMeetings();
+  }, [user?.id]);
 
   useEffect(() => {
     const next = buildInitialDone(user);
@@ -536,54 +566,74 @@ function OnboardingStatusCard({ user, onToast, onNavigate, onProgressChange }) {
     });
   }, [doneCount, total, nextStep?.label, onProgressChange, user?.paidOnboardingCompleted]);
 
+  const persistStep = async (stepKey, status) => {
+    if (!user?.id || String(user.id).match(/^\d+$/)) {
+      setDoneMap((prev) => {
+        const next = { ...prev };
+        const n = PAID_STATUS_TO_UI_STEP[stepKey];
+        if (status === "done") next[n] = true;
+        else delete next[n];
+        return next;
+      });
+      return;
+    }
+    setBusy(true);
+    try {
+      const data = await patchOnboardingStep(user.id, stepKey, status);
+      const nextStatus = data?.paidOnboardingStepStatus || {
+        ...user.paidOnboardingStepStatus,
+        [stepKey]: status,
+      };
+      onUserUpdated?.({
+        ...user,
+        paidOnboardingStepStatus: nextStatus,
+        paidOnboardingCompleted: Boolean(data?.paidOnboardingCompleted),
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const toggleStep = (n) => {
-    setDoneMap((prev) => {
-      const next = { ...prev };
-      if (next[n]) delete next[n];
-      else next[n] = true;
-      return next;
+    const step = ONBOARDING_STEPS.find((s) => s.n === n);
+    if (!step?.key) return;
+    const currentlyDone = !!doneMap[n];
+    persistStep(step.key, currentlyDone ? "pending" : "done").catch((err) => {
+      onToast(err?.message || "Failed to update step");
     });
-    if (n === 5) {
+    if (n === 5 && currentlyDone) {
       setStepNotes((prev) => {
         const next = { ...prev };
-        if (doneMap[5]) delete next[5];
+        delete next[5];
         return next;
       });
     }
   };
 
   const handleStepAction = (step) => {
-    if (step.done && step.doneAction !== "schedule-hap") {
+    if (step.done && !step.action?.startsWith("schedule-")) {
       toggleStep(step.n);
       onToast(`Reopened · ${step.label}`);
       return;
     }
-    if (step.done && step.doneAction === "schedule-hap") {
-      setScheduleModal({
-        title: "Schedule HAP session",
-        defaultNote: "Health Action Plan session — we will set your plan together.",
-        onSend: () => onToast("HAP session slots sent"),
-      });
-      return;
-    }
-    if (step.section) {
+    if (step.section && !step.action) {
       onNavigate?.(step.section);
       return;
     }
     if (step.action === "submit-rca") {
-      setDoneMap((prev) => ({ ...prev, [step.n]: true }));
-      setStepNotes((prev) => ({ ...prev, [step.n]: buildRcaSubmittedNote() }));
-      onToast(`RCA submitted for ${user.name}`);
+      setRcaOpen(true);
       return;
     }
     if (step.action?.startsWith("schedule-")) {
+      const existing = meetings.find((row) => (
+        row.stepKey === step.key
+        && ["slots_offered", "time_requested"].includes(row.status)
+      ));
       setScheduleModal({
         title: step.meetingTitle,
         defaultNote: step.meetingNote,
-        onSend: () => {
-          setDoneMap((prev) => ({ ...prev, [step.n]: true }));
-          onToast(`${step.label} slots sent`);
-        },
+        stepKey: step.key,
+        meeting: existing || null,
       });
       return;
     }
@@ -648,10 +698,18 @@ function OnboardingStatusCard({ user, onToast, onNavigate, onProgressChange }) {
             const action = resolveStepAction(step, steps);
             const isCurrent = !step.done && step.n === currentStep.n;
             const note = stepNotes[step.n];
+            const meeting = meetings.find((row) => row.stepKey === step.key && ["slots_offered", "time_requested", "confirmed"].includes(row.status));
+            const meetingNote = meeting?.status === "slots_offered"
+              ? "Slots offered — waiting for client"
+              : meeting?.status === "time_requested"
+                ? "Client requested another time"
+                : meeting?.status === "confirmed"
+                  ? "Meeting confirmed"
+                  : null;
             return (
               <div
                 key={step.n}
-                className={`ua-cp-onboard-step${isCurrent ? " ua-cp-onboard-step--current" : ""}${note ? " ua-cp-onboard-step--has-note" : ""}`}
+                className={`ua-cp-onboard-step${isCurrent ? " ua-cp-onboard-step--current" : ""}${note || meetingNote ? " ua-cp-onboard-step--has-note" : ""}`}
               >
                 <StepToggle
                   done={step.done}
@@ -663,8 +721,50 @@ function OnboardingStatusCard({ user, onToast, onNavigate, onProgressChange }) {
                     {step.n}. {step.label}
                   </span>
                   {note ? <div className="ua-cp-onboard-step__note">{note}</div> : null}
+                  {meetingNote ? <div className="ua-cp-onboard-step__note">{meetingNote}</div> : null}
                 </div>
-                {action ? (
+                {meeting?.status === "time_requested" ? (
+                  <div className="ua-cp-onboard-step__btns">
+                    <button
+                      type="button"
+                      className="ua-cp-onboard-step__btn ua-cp-onboard-step__btn--green"
+                      disabled={busy}
+                      onClick={async () => {
+                        try {
+                          setBusy(true);
+                          await acceptOnboardingMeetingRequest(user.id, meeting.id);
+                          onToast("Requested time accepted");
+                          loadMeetings();
+                        } catch (err) {
+                          onToast(err?.message || "Failed to accept request");
+                        } finally {
+                          setBusy(false);
+                        }
+                      }}
+                    >
+                      Accept time
+                    </button>
+                    <button
+                      type="button"
+                      className="ua-cp-onboard-step__btn ua-cp-onboard-step__btn--ghost"
+                      disabled={busy}
+                      onClick={async () => {
+                        try {
+                          setBusy(true);
+                          await rejectOnboardingMeetingRequest(user.id, meeting.id);
+                          onToast("Request rejected");
+                          loadMeetings();
+                        } catch (err) {
+                          onToast(err?.message || "Failed to reject request");
+                        } finally {
+                          setBusy(false);
+                        }
+                      }}
+                    >
+                      Reject
+                    </button>
+                  </div>
+                ) : action ? (
                   <button
                     type="button"
                     className={`ua-cp-onboard-step__btn ua-cp-onboard-step__btn--${action.tone}`}
@@ -685,12 +785,84 @@ function OnboardingStatusCard({ user, onToast, onNavigate, onProgressChange }) {
           user={user}
           title={scheduleModal.title}
           defaultNote={scheduleModal.defaultNote}
+          existingMeeting={
+            meetings.find((row) => (
+              row.stepKey === scheduleModal.stepKey
+              && ["slots_offered", "time_requested"].includes(row.status)
+            )) || scheduleModal.meeting || null
+          }
           onClose={() => setScheduleModal(null)}
-          onSend={() => {
-            scheduleModal.onSend?.();
-            setScheduleModal(null);
+          onSend={async (payload) => {
+            try {
+              setBusy(true);
+              await createOnboardingMeetingSlots(user.id, {
+                stepKey: scheduleModal.stepKey,
+                slots: (payload?.slots || []).map((s) => ({
+                  startAt: s.startAt,
+                  endAt: s.endAt,
+                })),
+                note: payload?.note || scheduleModal.defaultNote,
+                hold: payload?.hold || "24 hours",
+                durationMinutes: payload?.duration,
+              });
+              onToast(`${scheduleModal.title.replace("Schedule ", "")} slots sent`);
+              setScheduleModal(null);
+              loadMeetings();
+            } catch (err) {
+              onToast(err?.message || "Failed to send slots");
+            } finally {
+              setBusy(false);
+            }
           }}
         />
+      ) : null}
+
+      {rcaOpen ? (
+        <div className="ua-cp-modal-backdrop" onClick={() => setRcaOpen(false)} role="presentation">
+          <div className="ua-cp-modal" onClick={(e) => e.stopPropagation()} role="dialog">
+            <div className="ua-cp-modal__head">
+              <div className="ua-cp-modal__title">Submit RCA</div>
+              <button type="button" className="ua-cp-modal__close" onClick={() => setRcaOpen(false)}>×</button>
+            </div>
+            <div className="ua-cp-modal__body">
+              <textarea
+                className="ua-cp-launch-modal__note"
+                rows={6}
+                value={rcaNotes}
+                onChange={(e) => setRcaNotes(e.target.value)}
+                placeholder="Root cause analysis notes"
+              />
+            </div>
+            <button
+              type="button"
+              className="ua-cp-btn ua-cp-btn--primary"
+              disabled={busy || !rcaNotes.trim()}
+              onClick={async () => {
+                try {
+                  setBusy(true);
+                  await submitUserRca(user.id, { notes: rcaNotes.trim() });
+                  setStepNotes((prev) => ({ ...prev, 5: buildRcaSubmittedNote() }));
+                  onToast(`RCA submitted for ${user.name}`);
+                  setRcaOpen(false);
+                  setRcaNotes("");
+                  onUserUpdated?.({
+                    ...user,
+                    paidOnboardingStepStatus: {
+                      ...(user.paidOnboardingStepStatus || {}),
+                      rca: "done",
+                    },
+                  });
+                } catch (err) {
+                  onToast(err?.message || "Failed to submit RCA");
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              Submit RCA
+            </button>
+          </div>
+        </div>
       ) : null}
 
       {remindOpen && nextStep ? (
@@ -744,7 +916,7 @@ function RemindersModal({ user, reminders, onClose, onDelete }) {
   );
 }
 
-export function AtAGlanceSection({ user, onToast, onNavigate }) {
+export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
   const inProgress = user.paidOnboardingCompleted
     ? false
     : (user.onboardingDone ?? 0) < (user.onboardingTotal ?? 7);
@@ -843,6 +1015,7 @@ export function AtAGlanceSection({ user, onToast, onNavigate }) {
             onToast={onToast}
             onNavigate={onNavigate}
             onProgressChange={setOnboardingProgress}
+            onUserUpdated={onUserUpdated}
           />
         </>
       )}

@@ -19,9 +19,7 @@ const {
 } = require("../utils/paymentGateway");
 const { createZoomMeeting } = require("../utils/zoom");
 const { sendConsultancyWhatsAppNotifications } = require("../utils/whatsapp");
-const { generateConsultancyInvoicePdf } = require("../utils/invoicePdf");
-const { buildConsultancyInvoicePayload } = require("../utils/consultancyInvoiceResponse");
-const { uploadBufferToS3, resolvePublicUrl } = require("../utils/s3");
+const { toPublicTransactionWithInvoice } = require("../utils/consultancyInvoiceResponse");
 const {
   emitPaymentReceived,
   emitPendingAssignment,
@@ -338,9 +336,7 @@ async function finalizePaidConsultancyTransaction(transaction, { paymentId, prov
   const { item: paidRecord, alreadyPaid } = await markTransactionPaidIfPending(transaction.id, paidPayload);
 
   if (alreadyPaid) {
-    const pub = toPublicTransaction(paidRecord);
-    if (pub.invoicePdfKey) pub.invoiceUrl = resolvePublicUrl(pub.invoicePdfKey);
-    return pub;
+    return toPublicTransactionWithInvoice(paidRecord);
   }
 
   emitPaymentReceived({
@@ -368,34 +364,11 @@ async function finalizePaidConsultancyTransaction(transaction, { paymentId, prov
     whatsappDelivery = { error: err.message };
   }
 
-  const appConfig = await getAppConfig();
-  let invoicePdfKey = null;
-  try {
-    const pdfBuffer = await generateConsultancyInvoicePdf({
-      ...(await buildConsultancyInvoicePayload({
-        ...transaction,
-        ...paidPayload,
-        paymentStatus: "paid",
-      })),
-    });
-    invoicePdfKey = await uploadBufferToS3({
-      buffer: pdfBuffer,
-      contentType: "application/pdf",
-      folder: "invoices",
-      originalName: `${transaction.referenceNumber}.pdf`,
-    });
-  } catch (err) {
-    console.error("[ConsultancyPayment] Invoice PDF failed", err.message);
-  }
-
   const updated = await updateConsultancyTransaction(transaction.id, {
-    invoicePdfKey,
     whatsappDelivery,
   });
 
-  const pub = toPublicTransaction(updated);
-  if (pub.invoicePdfKey) pub.invoiceUrl = resolvePublicUrl(pub.invoicePdfKey);
-  return pub;
+  return toPublicTransactionWithInvoice(updated);
 }
 
 async function verifyConsultancyPayment(userId, {
@@ -416,9 +389,7 @@ async function verifyConsultancyPayment(userId, {
     throw err;
   }
   if (transaction.paymentStatus === "paid") {
-    const pub = toPublicTransaction(transaction);
-    if (pub.invoicePdfKey) pub.invoiceUrl = resolvePublicUrl(pub.invoicePdfKey);
-    return pub;
+    return toPublicTransactionWithInvoice(transaction);
   }
 
   const appConfig = await getAppConfig();

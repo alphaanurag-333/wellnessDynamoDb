@@ -181,7 +181,12 @@ export const DIET_PLAN_SECTIONS = [
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-export function formatFoodDateLabel(date, today = FOOD_DEMO_TODAY) {
+export function localToday() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+export function formatFoodDateLabel(date, today = localToday()) {
   const isToday = date.toDateString() === today.toDateString();
   const label = `${DAY_LABELS[date.getDay()]}, ${date.getDate()} ${MONTH_LABELS[date.getMonth()]}`;
   return isToday ? `Today · ${label}` : label;
@@ -208,7 +213,7 @@ export function macroPct(consumed, target) {
 export function sumMealMacros(meals) {
   return meals.reduce(
     (acc, meal) => {
-      if (!meal.macros) return acc;
+      if (!meal.macros || meal.aiStatus === "rejected") return acc;
       return {
         protein: acc.protein + meal.macros.protein,
         carbs: acc.carbs + meal.macros.carbs,
@@ -218,4 +223,186 @@ export function sumMealMacros(meals) {
     },
     { protein: 0, carbs: 0, fat: 0, calories: 0 },
   );
+}
+
+export function roundMacros(macros) {
+  return {
+    protein: Math.round(Number(macros?.protein) || 0),
+    carbs: Math.round(Number(macros?.carbs) || 0),
+    fat: Math.round(Number(macros?.fat) || 0),
+    calories: Math.round(Number(macros?.calories) || 0),
+  };
+}
+
+export function macroTargetsFromTdee(tdee, bmr = 0) {
+  const calories = Math.round(Number(tdee) || 0);
+  const bmrVal = Math.round(Number(bmr) || 0);
+  if (!calories) {
+    return { protein: 0, carbs: 0, fat: 0, calories: 0, bmr: bmrVal, tdee: 0 };
+  }
+  return {
+    protein: Math.round((calories * 0.22) / 4),
+    carbs: Math.round((calories * 0.51) / 4),
+    fat: Math.round((calories * 0.27) / 9),
+    calories,
+    bmr: bmrVal,
+    tdee: calories,
+  };
+}
+
+export function latestBmrTdee(metrics = []) {
+  const rows = (Array.isArray(metrics) ? metrics : [])
+    .filter((row) => Number(row?.bmr) > 0 || Number(row?.tdee) > 0)
+    .slice()
+    .sort((a, b) => {
+      const aTime = new Date(a.recordedAt || a.updatedAt || a.createdAt || 0).getTime();
+      const bTime = new Date(b.recordedAt || b.updatedAt || b.createdAt || 0).getTime();
+      return bTime - aTime;
+    });
+  const preferred = rows.find((row) => String(row.metricType || "").toLowerCase() === "bmr") || rows[0];
+  return {
+    bmr: Number(preferred?.bmr) || 0,
+    tdee: Number(preferred?.tdee) || 0,
+  };
+}
+
+const MEAL_CATEGORY_LABELS = {
+  functional_juice: "Functional juice",
+  salad: "Salad",
+  meal: "Meal",
+  beverage: "Beverage",
+  snacks: "Snack",
+  protein: "Protein",
+};
+
+export function formatMealEntryTime(hhmm) {
+  const raw = String(hhmm || "").trim();
+  if (!/^\d{2}:\d{2}$/.test(raw)) return "";
+  const [hours, minutes] = raw.split(":").map(Number);
+  const suffix = hours >= 12 ? "PM" : "AM";
+  const hour12 = hours % 12 || 12;
+  return `${hour12}:${String(minutes).padStart(2, "0")} ${suffix}`;
+}
+
+function mealStatusToAi(status) {
+  const next = String(status || "approved").toLowerCase();
+  if (next === "pending_review") return "review";
+  if (next === "rejected") return "rejected";
+  if (next === "approved") return "approved";
+  return "none";
+}
+
+export function mapMealLogToUi(log) {
+  const category = String(log?.category || "meal");
+  const mealType = String(log?.mealType || "").trim();
+  const catLabel = MEAL_CATEGORY_LABELS[category] || "Meal";
+  const name = mealType ? `${catLabel} · ${mealType}` : catLabel;
+  const items = Array.isArray(log?.items) ? log.items : [];
+  const itemTags = items
+    .map((item) => {
+      const itemName = String(item?.name || "").trim();
+      if (!itemName) return "";
+      const qty = Number(item?.quantityGm);
+      return Number.isFinite(qty) && qty > 0 ? `${itemName} · ${qty} g` : itemName;
+    })
+    .filter(Boolean);
+  const description = String(log?.description || "").trim();
+  const detailedTags = itemTags;
+  const loggedBy = String(log?.loggedByRole || "") === "user" ? "entered by client" : "logged by coach";
+
+  return {
+    id: String(log?.id || log?._id || ""),
+    name,
+    time: formatMealEntryTime(log?.entryTime),
+    description,
+    detailedTags,
+    macros: roundMacros({
+      protein: log?.proteinGm,
+      carbs: log?.carbsGm,
+      fat: log?.fatsGm,
+      calories: log?.caloriesKcal,
+    }),
+    aiStatus: mealStatusToAi(log?.status),
+    photoUrl: log?.photoUrl || "",
+    loggedBy,
+    date: log?.date || "",
+  };
+}
+
+export function buildWaterChartFromHistory(history, from, to, today = localToday()) {
+  const days = (Array.isArray(history) ? history : []).map((row) => {
+    const date = parseFoodDateInput(row.date) || new Date(row.date);
+    return {
+      day: String(date && !Number.isNaN(date.getTime()) ? date.getDate() : row.day || "").padStart(2, "0"),
+      value: Number(row.glassCount) || 0,
+      date,
+    };
+  });
+  const values = days.map((d) => d.value);
+  const avg = values.length
+    ? Math.round(values.reduce((sum, val) => sum + val, 0) / values.length)
+    : 0;
+  const todayKey = formatFoodDateInput(today);
+  const todayEntry = (Array.isArray(history) ? history : []).find((row) => row.date === todayKey);
+
+  return {
+    rangeLabel: formatWaterRangeLabel(from, to),
+    from: new Date(from),
+    to: new Date(to),
+    avg,
+    today: Number(todayEntry?.glassCount) || values[values.length - 1] || 0,
+    todayDay: todayEntry ? String(today.getDate()).padStart(2, "0") : null,
+    days: days.map(({ day, value }) => ({ day, value })),
+  };
+}
+
+const SLOT_TITLES = {
+  breakfast: "Breakfast",
+  lunch: "1st Meal / Lunch",
+  dinner: "Dinner",
+  snack: "Snack",
+};
+
+export function mapDietAssignmentToSections(assignment) {
+  const plans = Array.isArray(assignment?.plans) ? assignment.plans : [];
+  const sections = [];
+  plans.forEach((plan, planIndex) => {
+    const meals = Array.isArray(plan.meals) ? plan.meals : [];
+    if (meals.length) {
+      const bySlot = new Map();
+      meals.forEach((meal) => {
+        const slot = String(meal.slot || "meal").toLowerCase();
+        if (!bySlot.has(slot)) bySlot.set(slot, []);
+        bySlot.get(slot).push(meal);
+      });
+      bySlot.forEach((slotMeals, slot) => {
+        sections.push({
+          id: `${plan.planId || planIndex}-${slot}`,
+          title: SLOT_TITLES[slot] || plan.name || slot,
+          rows: slotMeals.map((meal, i) => ({
+            id: meal.mealId || `${slot}-${i}`,
+            label: meal.title || `Option ${i + 1}`,
+            description: meal.foods || meal.notes || "—",
+            quantity: meal.notes || (meal.calories != null ? `${meal.calories} kcal` : "—"),
+          })),
+        });
+      });
+      return;
+    }
+    if (plan.description) {
+      sections.push({
+        id: plan.planId || `plan-${planIndex}`,
+        title: plan.name || `Plan ${planIndex + 1}`,
+        rows: [
+          {
+            id: `${plan.planId || planIndex}-desc`,
+            label: plan.category || "Plan",
+            description: plan.description,
+            quantity: plan.type || "—",
+          },
+        ],
+      });
+    }
+  });
+  return sections;
 }
