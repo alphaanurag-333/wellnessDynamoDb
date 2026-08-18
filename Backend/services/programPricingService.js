@@ -1,10 +1,18 @@
 const { getAppConfig } = require("../models/appConfigModel");
+const { getUserById } = require("../models/userModel");
 const { getPurchasableProgramForUser } = require("../models/userProgramModel");
+const { getConsultancyTransactionById } = require("../models/consultancyTransactionModel");
 const {
   roundMoney,
   parseMoney,
   getActiveRazorpayGateway,
 } = require("./consultancyPricingService");
+const {
+  getActiveCoachCheckoutOffer,
+  getExpiredCoachCheckoutOffer,
+  toPublicCoachProgramOffer,
+  calculateOfferPricing,
+} = require("./coachCheckoutService");
 
 function calculateProgramPricing(config, { baseAmount }) {
   const price = roundMoney(parseMoney(baseAmount));
@@ -42,25 +50,92 @@ function calculateProgramPricing(config, { baseAmount }) {
   };
 }
 
+function throwNamed(message, name) {
+  const err = new Error(message);
+  err.name = name;
+  throw err;
+}
+
+function pricingFromTransaction(transaction, fallback) {
+  if (!transaction) return fallback;
+  return {
+    baseAmount: transaction.baseAmount,
+    discountAmount: transaction.discountAmount,
+    discountedBase: transaction.discountedBase,
+    taxAmount: transaction.taxAmount,
+    taxPercent: transaction.taxPercent,
+    taxType: transaction.taxType,
+    totalAmount: transaction.totalAmount,
+    currency: transaction.currency || "INR",
+  };
+}
+
+async function previewCoachProgramOffer(user, offer) {
+  const config = await getAppConfig();
+  if (!config) throwNamed("App configuration not found", "ConfigNotFoundError");
+
+  const transaction = offer.transactionId
+    ? await getConsultancyTransactionById(offer.transactionId)
+    : null;
+  const pricing = pricingFromTransaction(
+    transaction && String(transaction.paymentStatus || "").toLowerCase() === "pending"
+      ? transaction
+      : null,
+    calculateOfferPricing(config, {
+      baseAmount: offer.amount,
+      discountPercent: offer.discountPercent,
+    })
+  );
+
+  const gateway = getActiveRazorpayGateway(config);
+  const publicOffer = toPublicCoachProgramOffer(offer);
+
+  return {
+    source: "coach_checkout",
+    program: {
+      id: publicOffer.itemId,
+      title: publicOffer.itemName,
+      price: publicOffer.amount,
+      currency: pricing.currency,
+      source: "coach_checkout",
+    },
+    offer: publicOffer,
+    pricing,
+    paymentGateway: gateway ? { provider: gateway.provider, keyId: gateway.keyId } : null,
+    mockPaymentsEnabled: !gateway,
+  };
+}
+
 async function previewProgramCheckout(userId) {
+  const user = await getUserById(userId);
+  if (!user) throwNamed("User not found", "NotFoundError");
+  if (user.programPurchased) {
+    throwNamed("Wellness Program already purchased", "AlreadyPurchasedError");
+  }
+
+  const expiredOffer = getExpiredCoachCheckoutOffer(user, "program");
+  if (expiredOffer) {
+    throwNamed("This payment link has expired", "ValidationError");
+  }
+
+  const offer = getActiveCoachCheckoutOffer(user, "program");
+  if (offer) {
+    return previewCoachProgramOffer(user, offer);
+  }
+
   const program = await getPurchasableProgramForUser(userId);
   if (!program) {
-    const err = new Error("No purchasable Wellness Program available");
-    err.name = "NotFoundError";
-    throw err;
+    throwNamed("No purchasable Wellness Program available", "NotFoundError");
   }
 
   const config = await getAppConfig();
-  if (!config) {
-    const err = new Error("App configuration not found");
-    err.name = "ConfigNotFoundError";
-    throw err;
-  }
+  if (!config) throwNamed("App configuration not found", "ConfigNotFoundError");
 
   const pricing = calculateProgramPricing(config, { baseAmount: program.price });
   const gateway = getActiveRazorpayGateway(config);
 
   return {
+    source: "assigned_program",
     program: {
       id: program.id,
       catalogProgramId: program.catalogProgramId,
@@ -70,6 +145,7 @@ async function previewProgramCheckout(userId) {
       price: program.price,
       currency: program.currency,
     },
+    offer: null,
     pricing,
     paymentGateway: gateway ? { provider: gateway.provider, keyId: gateway.keyId } : null,
     mockPaymentsEnabled: !gateway,

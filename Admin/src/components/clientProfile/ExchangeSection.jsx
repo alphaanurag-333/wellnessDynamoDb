@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { getCoachCheckoutOptions, triggerCoachCheckout } from "../../api/appProgramApi.js";
 import {
-  EXCHANGE_DISCOUNTS,
-  EXCHANGE_PROGRAMS,
-  EXCHANGE_VALIDITY,
   PAYMENT_HISTORY,
   discountLabel,
   discountedPrice,
@@ -11,33 +9,64 @@ import {
   programLabel,
 } from "../../data/exchangeData.js";
 
-function ConfirmModal({ open, title, body, onClose, onConfirm }) {
+function mapPrograms(rows) {
+  return (Array.isArray(rows) ? rows : [])
+    .map((row) => ({
+      id: String(row?.id || ""),
+      name: String(row?.name || "").trim(),
+      price: Number(row?.amount ?? row?.price) || 0,
+    }))
+    .filter((row) => row.id && row.name);
+}
+
+function mapDiscounts(rows) {
+  return (Array.isArray(rows) ? rows : [])
+    .map((row) => ({
+      id: `${row?.pct}-${row?.label}`,
+      pct: Number(row?.pct),
+      label: String(row?.label || "").trim(),
+    }))
+    .filter((row) => Number.isFinite(row.pct) && row.label);
+}
+
+function mapValidity(rows) {
+  return (Array.isArray(rows) ? rows : [])
+    .map((label) => {
+      const value = String(label || "").trim();
+      return value ? { id: value, label: value } : null;
+    })
+    .filter(Boolean);
+}
+
+function ConfirmModal({ open, title, body, confirming, onClose, onConfirm }) {
   useEffect(() => {
     function onKeyDown(event) {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape" && !confirming) onClose();
     }
     if (open) document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [open, onClose]);
+  }, [open, onClose, confirming]);
 
   if (!open) return null;
 
   return (
-    <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={onClose} role="presentation">
+    <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={confirming ? undefined : onClose} role="presentation">
       <div className="ua-cp-ex-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="exchange-confirm-title">
         <p className="ua-cp-ex-modal__eyebrow">Confirm this action</p>
         <h3 id="exchange-confirm-title" className="ua-cp-ex-modal__title">{title}</h3>
         {body ? <p className="ua-cp-ex-modal__body">{body}</p> : null}
         <div className="ua-cp-ex-modal__foot">
-          <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={onClose}>Cancel</button>
-          <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm" onClick={onConfirm}>Yes, trigger it</button>
+          <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={onClose} disabled={confirming}>Cancel</button>
+          <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm" onClick={onConfirm} disabled={confirming}>
+            {confirming ? "Triggering…" : "Yes, trigger it"}
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-function FieldSelect({ label, value, options, open, onToggle, onSelect, getLabel }) {
+function FieldSelect({ label, value, options, open, disabled, onToggle, onSelect, getLabel }) {
   const ref = useRef(null);
 
   useEffect(() => {
@@ -55,7 +84,8 @@ function FieldSelect({ label, value, options, open, onToggle, onSelect, getLabel
         <button
           type="button"
           className={`ua-cp-ex-select__trigger${open ? " ua-cp-ex-select__trigger--open" : ""}`}
-          onClick={() => onToggle(!open)}
+          onClick={() => !disabled && onToggle(!open)}
+          disabled={disabled}
           aria-expanded={open}
           aria-haspopup="listbox"
         >
@@ -118,19 +148,89 @@ function PaymentRow({ row, onToast }) {
 }
 
 export function ExchangeSection({ user, onToast }) {
-  const [program, setProgram] = useState(EXCHANGE_PROGRAMS[0]);
-  const [discount, setDiscount] = useState(EXCHANGE_DISCOUNTS[2]);
-  const [validity, setValidity] = useState(EXCHANGE_VALIDITY[1]);
+  const [programs, setPrograms] = useState([]);
+  const [discounts, setDiscounts] = useState([]);
+  const [validityPeriods, setValidityPeriods] = useState([]);
+  const [program, setProgram] = useState(null);
+  const [discount, setDiscount] = useState(null);
+  const [validity, setValidity] = useState(null);
   const [openField, setOpenField] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [triggering, setTriggering] = useState(false);
 
-  const value = discountedPrice(program.price, discount.pct);
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setLoadError("");
+    getCoachCheckoutOptions({
+      validityPeriods: [],
+      discountSlabs: [],
+      appHealPeriods: [],
+    })
+      .then((options) => {
+        if (!active) return;
+        const nextPrograms = mapPrograms(options.programPricing);
+        const nextDiscounts = mapDiscounts(options.programDiscountSlabs);
+        const nextValidity = mapValidity(options.programValidityPeriods);
+        setPrograms(nextPrograms);
+        setDiscounts(nextDiscounts);
+        setValidityPeriods(nextValidity);
+        setProgram(nextPrograms[0] || null);
+        setDiscount(nextDiscounts[0] || null);
+        setValidity(nextValidity[0] || null);
+      })
+      .catch((error) => {
+        if (!active) return;
+        setLoadError(error.message || "Could not load App Program options");
+        setPrograms([]);
+        setDiscounts([]);
+        setValidityPeriods([]);
+        setProgram(null);
+        setDiscount(null);
+        setValidity(null);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const value = program && discount ? discountedPrice(program.price, discount.pct) : 0;
   const summary = paymentSummary(PAYMENT_HISTORY);
   const firstName = user?.name?.split(" ")[0] || "Client";
+  const canTrigger = Boolean(user?.id && program && discount && validity && !loading && !triggering);
 
   function closeMenus() {
     setOpenField(null);
   }
+
+  async function handleTrigger() {
+    if (!canTrigger) return;
+    setTriggering(true);
+    try {
+      const result = await triggerCoachCheckout({
+        userId: user.id,
+        productType: "program",
+        itemId: program.id,
+        discountPercent: discount.pct,
+        discountLabel: discount.label,
+        linkValidity: validity.label,
+      });
+      setConfirmOpen(false);
+      onToast?.(result.message || `${program.name} triggered in app`);
+    } catch (error) {
+      onToast?.(error.message || "Could not trigger payment");
+    } finally {
+      setTriggering(false);
+    }
+  }
+
+  const emptyConfig = !loading && !loadError && (!programs.length || !discounts.length || !validityPeriods.length);
 
   return (
     <div className="ua-cp-section ua-cp-ex">
@@ -147,42 +247,56 @@ export function ExchangeSection({ user, onToast }) {
         <div className="ua-cp-ex-form__grid">
           <FieldSelect
             label="Program"
-            value={programLabel(program)}
-            options={EXCHANGE_PROGRAMS}
+            value={loading ? "Loading…" : program ? programLabel(program) : "No programs published"}
+            options={programs}
             open={openField === "program"}
+            disabled={loading || !programs.length}
             onToggle={(next) => setOpenField(next ? "program" : null)}
             onSelect={(next) => { setProgram(next); closeMenus(); }}
             getLabel={programLabel}
           />
           <FieldSelect
             label="Discount"
-            value={discountLabel(discount)}
-            options={EXCHANGE_DISCOUNTS}
+            value={loading ? "Loading…" : discount ? discountLabel(discount) : "No discount slabs published"}
+            options={discounts}
             open={openField === "discount"}
+            disabled={loading || !discounts.length}
             onToggle={(next) => setOpenField(next ? "discount" : null)}
             onSelect={(next) => { setDiscount(next); closeMenus(); }}
             getLabel={discountLabel}
           />
           <FieldSelect
             label="Link validity"
-            value={validity.label}
-            options={EXCHANGE_VALIDITY}
+            value={loading ? "Loading…" : validity?.label || "No validity periods published"}
+            options={validityPeriods}
             open={openField === "validity"}
+            disabled={loading || !validityPeriods.length}
             onToggle={(next) => setOpenField(next ? "validity" : null)}
             onSelect={(next) => { setValidity(next); closeMenus(); }}
             getLabel={(option) => option.label}
           />
           <div className="ua-cp-ex-field">
             <span className="ua-cp-ex-field__label">Value</span>
-            <div className="ua-cp-ex-field__value">{formatRupee(value)}</div>
+            <div className="ua-cp-ex-field__value">{program && discount ? formatRupee(value) : "—"}</div>
           </div>
         </div>
         <div className="ua-cp-ex-form__actions">
-          <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-ex-trigger" onClick={() => setConfirmOpen(true)}>
+          <button
+            type="button"
+            className="ua-cp-btn ua-cp-btn--primary ua-cp-ex-trigger"
+            onClick={() => setConfirmOpen(true)}
+            disabled={!canTrigger || emptyConfig}
+          >
             🔔 Trigger to app
           </button>
           <p className="ua-cp-ex-form__note">
-            Listed at {formatRupee(program.price)} · {discount.pct}% discount applied · the payment link expires in {validity.label.toLowerCase()} if unpaid; the invoice generates on success.
+            {loadError
+              ? loadError
+              : emptyConfig
+                ? "Publish Program, Discount, and Link validity on Configs → App Program before triggering a payment."
+                : program && discount && validity
+                  ? `Listed at ${formatRupee(program.price)} · ${discount.pct}% discount applied · the payment link expires in ${validity.label.toLowerCase()} if unpaid; the invoice generates on success.`
+                  : "Loading published App Program options…"}
           </p>
         </div>
       </div>
@@ -205,12 +319,12 @@ export function ExchangeSection({ user, onToast }) {
       <ConfirmModal
         open={confirmOpen}
         title={`Send this payment to ${firstName}'s app?`}
-        body={`${program.name} · ${formatRupee(value)} after ${discount.pct}% discount. They get a notification straight away and the invoice generates when they pay.`}
-        onClose={() => setConfirmOpen(false)}
-        onConfirm={() => {
-          setConfirmOpen(false);
-          onToast?.("Payment triggered to app");
-        }}
+        body={program && discount
+          ? `${program.name} · ${formatRupee(value)} after ${discount.pct}% discount. They get a notification straight away and the invoice generates when they pay.`
+          : null}
+        confirming={triggering}
+        onClose={() => !triggering && setConfirmOpen(false)}
+        onConfirm={handleTrigger}
       />
     </div>
   );

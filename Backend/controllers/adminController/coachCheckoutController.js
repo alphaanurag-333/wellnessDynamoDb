@@ -1,5 +1,10 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
+const { getUserById } = require("../../models/userModel");
+const {
+  assertStaffCanMutate,
+  assertStaffCanAccessUser,
+} = require("../staffAccess");
 const {
   lookupClientByReferralCode,
   listCheckoutStaff,
@@ -46,6 +51,11 @@ exports.triggerCoachCheckoutController = asyncHandler(async (req, res) => {
   if (!userId) throw new AppError("userId is required", 400);
   if (!itemId) throw new AppError("itemId is required", 400);
 
+  const actor = assertStaffCanMutate(req);
+  const user = await getUserById(userId);
+  if (!user || user.status === "deleted") throw new AppError("Client not found", 404);
+  await assertStaffCanAccessUser(req, user);
+
   const result = await triggerCoachCheckout({
     userId,
     productType,
@@ -56,6 +66,7 @@ exports.triggerCoachCheckoutController = asyncHandler(async (req, res) => {
     appHealValidity: body.appHealValidity ?? body.app_heal_validity,
     wellnessCoachId: body.wellnessCoachId ?? body.wellness_coach_id,
     assistantCoachId: body.assistantCoachId ?? body.assistant_coach_id,
+    actor,
   });
 
   return res.status(201).json({

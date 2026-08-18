@@ -73,3 +73,18 @@ Full guide: [monthly-champions-feature.md](./monthly-champions-feature.md)
 | `POST` | `/user/monthly-champions/:postId/comments` | `routes/userRoutes/monthlyChampionRoutes.js` |
 | `DELETE` | `/user/monthly-champions/:postId/comments/:id` | `routes/userRoutes/monthlyChampionRoutes.js` |
 
+## program
+
+Coach-triggered App Program checkout (separate from catalog `UserProgram` assignments). Full contract: [program-payment.md](../domain/program-payment.md)
+
+| Method | Path | Source |
+|--------|------|--------|
+| `GET` | `/user/program` | `routes/userRoutes/programRoutes.js` |
+| `POST` | `/user/program/preview` | `routes/userRoutes/programRoutes.js` |
+| `POST` | `/user/program/order` | `routes/userRoutes/programRoutes.js` |
+| `POST` | `/user/program/verify` | `routes/userRoutes/programRoutes.js` |
+
+Sequence: `GET /user/program` → `POST /user/program/preview` → `POST /user/program/order` → Razorpay/mock → `POST /user/program/verify`.
+
+An unexpired `pendingCoachCheckout` offer is returned on GET (`program.source: "coach_checkout"`, plus `offer`). Expired links return `400` `"This payment link has expired"` on preview/order. Verify marks `programPurchased` and clears the pending offer.
+
