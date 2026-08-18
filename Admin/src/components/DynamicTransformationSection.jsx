@@ -15,6 +15,7 @@ import {
   pointsToTransformationFields,
 } from "../data/testimonialDropdownData.js";
 import { formatRecipeDate } from "../data/recipesConfigData.js";
+import { asCopyString } from "../data/bannerConfigData.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
 import { ListPagination } from "./shared.jsx";
@@ -43,37 +44,34 @@ function Panel({ title, subtitle, actions, children }) {
   );
 }
 
-function CoverDrop({ previewUrl, disabled, label, onPick, onRemove }) {
+function PhotoDrop({ previewUrl, disabled, label, tone, onPick, onRemove }) {
   const inputRef = useRef(null);
+  const filled = Boolean(previewUrl);
+
   return (
-    <div className="ua-cfg-rc-cover-drop-wrap">
-      <div className="ua-cfg-rc-cover-drop-frame">
+    <div className={`ua-cfg-tf-drop ua-cfg-tf-drop--${tone}${filled ? " is-on" : ""}`}>
+      {filled ? <img className="ua-cfg-tf-drop__img" src={previewUrl} alt="" /> : null}
+      <span className="ua-cfg-tf-drop__icon" aria-hidden="true">📷</span>
+      <p className="ua-cfg-tf-drop__label">{label}</p>
+      <button
+        type="button"
+        className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-drop__btn"
+        disabled={disabled}
+        onClick={() => inputRef.current?.click()}
+      >
+        {filled ? "Replace photo" : "Upload photo"}
+      </button>
+      {filled && onRemove ? (
         <button
           type="button"
-          className={`ua-cfg-rc-cover-drop${previewUrl ? " is-on" : ""}`}
+          className="ua-cfg-rc-media-x"
+          aria-label={`Remove ${label}`}
           disabled={disabled}
-          aria-label={previewUrl ? `Replace ${label}` : `Add ${label}`}
-          onClick={() => inputRef.current?.click()}
+          onClick={onRemove}
         >
-          {previewUrl ? (
-            <img className="ua-cfg-rc-drop-preview" src={previewUrl} alt="" />
-          ) : (
-            <span aria-hidden="true">📷</span>
-          )}
-          <em>{previewUrl ? "Replace" : label}</em>
+          ×
         </button>
-        {previewUrl && onRemove ? (
-          <button
-            type="button"
-            className="ua-cfg-rc-media-x"
-            aria-label={`Remove ${label}`}
-            disabled={disabled}
-            onClick={onRemove}
-          >
-            ×
-          </button>
-        ) : null}
-      </div>
+      ) : null}
       <input
         ref={inputRef}
         type="file"
@@ -96,11 +94,11 @@ function DataPointEditor({ points, options, busy, onChange }) {
   const available = options.filter((row) => !used.has(fieldKey(row.value)));
 
   return (
-    <div>
-      <div className="ua-cfg-tf-add" style={{ marginBottom: 8 }}>
+    <div className="ua-cfg-tf-points-ed">
+      <div className="ua-cfg-tf-add">
         <button
           type="button"
-          className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+          className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-add-pt"
           disabled={busy}
           onClick={() => setAddOpen((open) => !open)}
         >
@@ -137,24 +135,27 @@ function DataPointEditor({ points, options, busy, onChange }) {
         </div>
         {points.map((entry) => (
           <div key={entry.id} className="ua-cfg-tf-table__row">
-            <span>{entry.label}</span>
-            <input
-              type="text"
-              value={entry.value}
-              disabled={busy}
-              onChange={(event) => onChange((prev) => prev.map((row) => (
-                row.id === entry.id ? { ...row, value: event.target.value, source: "EDIT" } : row
-              )))}
-            />
-            <button
-              type="button"
-              className="ua-cfg-icon-btn"
-              aria-label={`Remove ${entry.label}`}
-              disabled={busy}
-              onClick={() => onChange((prev) => prev.filter((row) => row.id !== entry.id))}
-            >
-              ×
-            </button>
+            <span>{asCopyString(entry.label)}</span>
+            <div className="ua-cfg-tf-table__value">
+              <input
+                type="text"
+                value={asCopyString(entry.value)}
+                placeholder={asCopyString(entry.label)}
+                disabled={busy}
+                onChange={(event) => onChange((prev) => prev.map((row) => (
+                  row.id === entry.id ? { ...row, value: event.target.value, source: "EDIT" } : row
+                )))}
+              />
+              <button
+                type="button"
+                className="ua-cfg-icon-btn"
+                aria-label={`Remove ${entry.label}`}
+                disabled={busy}
+                onClick={() => onChange((prev) => prev.filter((row) => row.id !== entry.id))}
+              >
+                ×
+              </button>
+            </div>
           </div>
         ))}
       </div>
@@ -166,43 +167,42 @@ function TransformationViewModal({ entry, onClose, onEdit }) {
   if (!entry) return null;
   const points = (entry.dataPoints || []).filter((row) => String(row.value || "").trim());
   return (
-    <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={onClose} role="presentation">
+    <div className="ua-cp-modal-backdrop" onClick={onClose} role="presentation">
       <div className="ua-cfg-rc-view ua-cfg-tf-view" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="tf-view-title">
         <div className="ua-cfg-rc-view__head">
           <div>
             <p className="ua-cfg-rc-view__tag">Transformation</p>
-            <h3 id="tf-view-title">{entry.name || "Untitled client"}</h3>
-            <p>{entry.live ? "Live" : "Hidden"} · {formatRecipeDate(entry.updatedAt)}</p>
+            <h3 id="tf-view-title">{asCopyString(entry.name) || "Untitled client"}</h3>
+            <p>
+              {formatRecipeDate(entry.updatedAt)}
+              <span className={`ua-cfg-tf-view__status${entry.live ? " is-live" : ""}`}>
+                {entry.live ? "Live" : "Hidden"}
+              </span>
+            </p>
           </div>
           <button type="button" className="ua-cfg-mv-upload-modal__close" aria-label="Close" onClick={onClose}>×</button>
         </div>
-        <div className="ua-cfg-tf-view__compare">
-          <div className="ua-cfg-tf-view__shot">
-            {entry.oldImage ? <img src={entry.oldImage} alt={`${entry.name} before`} /> : <div className="ua-cfg-tf-view__empty">No before photo</div>}
-            <span>Before</span>
-          </div>
-          <div className="ua-cfg-tf-view__shot">
-            {entry.newImage ? <img src={entry.newImage} alt={`${entry.name} after`} /> : <div className="ua-cfg-tf-view__empty">No after photo</div>}
-            <span>After</span>
-          </div>
-        </div>
-        {entry.description ? <p className="ua-cfg-rc-view__copy">{entry.description}</p> : null}
-        <dl className="ua-cfg-rc-view__meta">
-          {points.map((row) => (
-            <div key={row.id || row.field}>
-              <dt>{row.label || row.field}</dt>
-              <dd>{row.value}</dd>
+        <div className="ua-cfg-tf-view__body">
+          <div className="ua-cfg-tf-view__compare">
+            <div className="ua-cfg-tf-view__shot">
+              {entry.oldImage ? <img src={entry.oldImage} alt={`${entry.name} before`} /> : <div className="ua-cfg-tf-view__empty">No before photo</div>}
+              <span>Before</span>
             </div>
-          ))}
-          <div>
-            <dt>Status</dt>
-            <dd>{entry.live ? "Live" : "Hidden"}</dd>
+            <div className="ua-cfg-tf-view__shot">
+              {entry.newImage ? <img src={entry.newImage} alt={`${entry.name} after`} /> : <div className="ua-cfg-tf-view__empty">No after photo</div>}
+              <span>After</span>
+            </div>
           </div>
-          <div>
-            <dt>Created</dt>
-            <dd>{formatRecipeDate(entry.createdAt)}</dd>
-          </div>
-        </dl>
+          {asCopyString(entry.description) ? <p className="ua-cfg-rc-view__copy">{asCopyString(entry.description)}</p> : null}
+          <dl className="ua-cfg-rc-view__meta">
+            {points.map((row) => (
+              <div key={row.id || row.field}>
+                <dt>{asCopyString(row.label) || row.field}</dt>
+                <dd>{asCopyString(row.value)}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
         <div className="ua-cfg-rc-view__foot">
           <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose}>Close</button>
           <button
@@ -213,7 +213,7 @@ function TransformationViewModal({ entry, onClose, onEdit }) {
               onClose();
             }}
           >
-            Edit testimonial
+            Edit transformation
           </button>
         </div>
       </div>
@@ -495,7 +495,7 @@ export function DynamicTransformationSection({ items, setItems, onToast }) {
         actions={(
           <button
             type="button"
-            className="ua-cfg-rc-add"
+            className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-tf-add-btn"
             disabled={busy}
             onClick={() => {
               setCreating(true);
@@ -509,47 +509,56 @@ export function DynamicTransformationSection({ items, setItems, onToast }) {
         )}
       >
         {creating ? (
-          <section className="ua-cfg-rc-new">
+          <section className="ua-cfg-rc-new ua-cfg-tf-new">
             <div className="ua-cfg-rc-new__head">
               <strong><span aria-hidden="true">🔁</span> New transformation</strong>
               <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={() => setCreating(false)}>×</button>
             </div>
-            <div className="ua-cfg-rc-new__grid">
-              <div className="ua-cfg-rc-new__media ua-cfg-tf-photos">
-                <CoverDrop
+            <div className="ua-cfg-rc-new__grid ua-cfg-tf-new__grid">
+              <div className="ua-cfg-tf-photos">
+                <PhotoDrop
                   previewUrl={draft.oldPreview}
                   disabled={busy}
                   label="Before"
+                  tone="before"
                   onPick={(file) => openCrop(file, "draft-old")}
                   onRemove={() => clearDraftImage("old")}
                 />
-                <CoverDrop
+                <PhotoDrop
                   previewUrl={draft.newPreview}
                   disabled={busy}
                   label="After"
+                  tone="after"
                   onPick={(file) => openCrop(file, "draft-new")}
                   onRemove={() => clearDraftImage("new")}
                 />
               </div>
-              <div className="ua-cfg-rc-new__fields">
-                {!pointOptions.length ? (
-                  <p className="ua-cfg-panel__sub">Add testimonial data points in Configs → Dropdowns first.</p>
-                ) : (
-                  <DataPointEditor
-                    points={draft.points}
-                    options={pointOptions}
-                    busy={busy}
-                    onChange={(updater) => setDraft((prev) => ({ ...prev, points: updater(prev.points) }))}
+              <div className="ua-cfg-tf-new__split">
+                <div className="ua-cfg-tf-new__fields">
+                  {!pointOptions.length ? (
+                    <p className="ua-cfg-panel__sub">Add testimonial data points in Configs → Dropdowns first.</p>
+                  ) : (
+                    <DataPointEditor
+                      points={draft.points}
+                      options={pointOptions}
+                      busy={busy}
+                      onChange={(updater) => setDraft((prev) => ({ ...prev, points: updater(prev.points) }))}
+                    />
+                  )}
+                </div>
+                <div className="ua-cfg-tf-new__story-col">
+                  <span className="ua-cfg-tf-new__story-label">Story</span>
+                  <textarea
+                    className="ua-cfg-tf-story ua-cfg-tf-new__story"
+                    rows={6}
+                    placeholder="Story / caption shown with the photos…"
+                    value={asCopyString(draft.description)}
+                    disabled={busy}
+                    onChange={(event) => setDraft((prev) => ({ ...prev, description: event.target.value }))}
                   />
-                )}
-                <textarea
-                  className="ua-cfg-tf-story"
-                  rows={3}
-                  placeholder="Story / caption shown with the photos…"
-                  value={draft.description}
-                  disabled={busy}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, description: event.target.value }))}
-                />
+                </div>
+              </div>
+              <div className="ua-cfg-tf-new__foot">
                 <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={addItem}>
                   {busy ? "Saving…" : "Add transformation"}
                 </button>
@@ -609,7 +618,7 @@ export function DynamicTransformationSection({ items, setItems, onToast }) {
                   <div className="ua-cfg-rc-item__body">
                     <div className="ua-cfg-tf-item__head">
                       <div className="ua-cfg-tf-item__identity">
-                        <strong>{entry.name}</strong>
+                        <strong>{asCopyString(entry.name)}</strong>
                         <p className="ua-cfg-panel__sub">{formatRecipeDate(entry.updatedAt)}</p>
                       </div>
                       <div className="ua-cfg-tf-item__actions">
@@ -638,12 +647,12 @@ export function DynamicTransformationSection({ items, setItems, onToast }) {
                         {isEditing ? (
                           <>
                             <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={busy} onClick={() => saveItem(entry)}>Save</button>
-                            <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm" disabled={busy} onClick={() => { setEditingId(null); loadItems(); }}>Cancel</button>
+                            <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={() => { setEditingId(null); loadItems(); }}>Cancel</button>
                           </>
                         ) : (
                           <button
                             type="button"
-                            className="ua-cfg-cr-link ua-cfg-cr-link--modify"
+                            className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
                             disabled={busy}
                             onClick={() => { setViewingId(null); setEditingId(entry.id); setCreating(false); }}
                           >
@@ -668,14 +677,14 @@ export function DynamicTransformationSection({ items, setItems, onToast }) {
                         <textarea
                           className="ua-cfg-tf-story"
                           rows={3}
-                          value={entry.description}
+                          value={asCopyString(entry.description)}
                           disabled={busy}
                           onChange={(event) => patchItem(entry.id, { description: event.target.value })}
                         />
                       </>
                     ) : (
                       <>
-                        {entry.description ? <p>{entry.description}</p> : null}
+                        {asCopyString(entry.description) ? <p>{asCopyString(entry.description)}</p> : null}
                         {points.length ? (
                           <div className="ua-cfg-tf-points">
                             {points.map((row) => (
@@ -733,7 +742,7 @@ export function DynamicTransformationSection({ items, setItems, onToast }) {
       <ConfirmDialog
         open={Boolean(pendingDelete)}
         tag="Transformation"
-        title={`Delete ${pendingDelete?.name || "this transformation"}?`}
+        title={`Delete ${asCopyString(pendingDelete?.name) || "this transformation"}?`}
         body="This permanently removes the story and its before / after photos."
         confirmLabel="Delete"
         confirmTone="danger"

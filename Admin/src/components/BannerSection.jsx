@@ -20,6 +20,7 @@ import {
 } from "../data/bannerConfigData.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
+import { CfgSelect } from "./shared.jsx";
 
 function Panel({ title, subtitle, actions, children, className = "" }) {
   return (
@@ -46,7 +47,7 @@ function DropZone({ label, hint, previewUrl, onUpload }) {
         <span className="ua-cfg-bn-drop__icon" aria-hidden="true">▢</span>
       )}
       <p>{uploaded ? "Banner attached" : hint}</p>
-      <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm" onClick={onUpload}>
+      <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" onClick={onUpload}>
         {uploaded ? "Replace" : label}
       </button>
     </div>
@@ -166,6 +167,19 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast }) {
       type: bannerTypes[0]?.value || "main",
       placement: placements[0]?.value || "",
     });
+  }
+
+  function cancelCreate() {
+    setCreating(false);
+    const selected = items.find((row) => row.id === editor.id) || items[0];
+    if (selected) setEditor(editorFromBanner(selected, emptyBannerEditor()));
+    else {
+      setEditor({
+        ...emptyBannerEditor(),
+        type: bannerTypes[0]?.value || "main",
+        placement: placements[0]?.value || "",
+      });
+    }
   }
 
   function selectItem(item) {
@@ -414,191 +428,198 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast }) {
       </Panel>
 
       <div className="ua-cfg-bn-layout">
-        <div className="ua-cfg-bn-editor">
-          <label className="ua-cfg-bn-field">
-            <span>Banner type</span>
-            <select
-              className="ua-cfg-rc-cat"
-              value={editor.type}
-              disabled={busy}
-              onChange={(event) => patch({ type: event.target.value })}
-            >
-              {!typeOptions.length ? <option value="">No banner types</option> : null}
-              {typeOptions.map((entry) => (
-                <option key={entry.id || entry.value} value={entry.value}>{entry.label}</option>
-              ))}
-            </select>
-          </label>
-          {!bannerTypes.length ? (
-            <p className="ua-cfg-panel__sub">Add banner types in Configs → Dropdowns first.</p>
-          ) : null}
-
-          <div className="ua-cfg-bn-split">
-            <span className="ua-cfg-bn-split__icon" aria-hidden="true">🖥</span>
-            <div>
-              <strong>Split web &amp; mobile</strong>
-              <p>{editor.split ? "Separate web and mobile artwork." : "One artwork for both surfaces"}</p>
-            </div>
-            <button
-              type="button"
-              className={`ua-toggle ua-toggle--sm${editor.split ? " ua-toggle--on" : ""}`}
-              aria-pressed={editor.split}
-              disabled={busy}
-              onClick={() => patch({ split: !editor.split })}
-            >
-              <span className="ua-toggle__knob" />
+        <Panel
+          className={creating || !editor.id ? "ua-cfg-bn-editor-panel is-new" : "ua-cfg-bn-editor-panel"}
+          title={creating || !editor.id ? "New banner" : "Edit banner"}
+          subtitle={creating || !editor.id ? "Artwork, placement and copy." : asCopyString(editor.headline) || "Update artwork and copy."}
+          actions={creating || !editor.id ? (
+            <button type="button" className="ua-cfg-icon-btn" aria-label="Close" disabled={busy} onClick={cancelCreate}>
+              ×
             </button>
-          </div>
-
-          {editor.split ? (
-            <div className="ua-cfg-bn-split-drops">
-              <div>
-                <div className="ua-cfg-bn-split-drops__label">
-                  <strong className="is-web">WEB</strong>
-                  <span>Desktop · wide crop</span>
-                </div>
-                <DropZone label="Upload Web" hint="Web artwork" previewUrl={webPreview} onUpload={() => openFilePicker("web")} />
-              </div>
-              <div>
-                <div className="ua-cfg-bn-split-drops__label">
-                  <strong className="is-app">MOBILE</strong>
-                  <span>Portrait · app crop</span>
-                </div>
-                <DropZone label="Upload Mobile" hint="Mobile artwork" previewUrl={mobilePreview} onUpload={() => openFilePicker("mobile")} />
-              </div>
-            </div>
           ) : null}
+        >
+          <div className="ua-cfg-bn-editor">
+            <label className="ua-cfg-bn-field">
+              <span>Banner type</span>
+              <CfgSelect
+                className="ua-cfg-bn-select"
+                ariaLabel="Banner type"
+                placeholder={typeOptions.length ? "Select banner type" : "No banner types"}
+                options={typeOptions}
+                value={editor.type}
+                disabled={busy || !typeOptions.length}
+                onChange={(value) => patch({ type: value })}
+              />
+            </label>
+            {!bannerTypes.length ? (
+              <p className="ua-cfg-panel__sub">Add banner types in Configs → Dropdowns first.</p>
+            ) : null}
 
-          <label className="ua-cfg-bn-field">
-            <span>
-              Placement
-              <em className="ua-cfg-bn-ratio">{placement.ratio}</em>
-            </span>
-            <select
-              className="ua-cfg-rc-cat"
-              value={editor.placement}
-              disabled={busy}
-              onChange={(event) => patch({ placement: event.target.value })}
-            >
-              {!placementOptions.length ? <option value="">No placements</option> : null}
-              {placementOptions.map((entry) => (
-                <option key={entry.id || entry.value} value={entry.value}>{entry.label}</option>
-              ))}
-            </select>
-          </label>
-
-          {!editor.split ? (
-            <DropZone
-              label="Upload banner"
-              hint={`Drop banner · ${placement.ratio}`}
-              previewUrl={webPreview}
-              onUpload={() => openFilePicker("banner")}
-            />
-          ) : null}
-
-          <div className="ua-cfg-bn-copy">
-            <span>Banner copy</span>
-            <select
-              className="ua-cfg-rc-cat"
-              value={headlineValue}
-              disabled={busy}
-              onChange={(event) => {
-                const copy = headlineOptions.find((row) => row.value === event.target.value || row.label === event.target.value);
-                patch({
-                  headline: copy?.label || event.target.value,
-                  body: copy?.body || editor.body,
-                  cta: copy?.cta || editor.cta,
-                });
-              }}
-            >
-              {!headlineOptions.length ? <option value="">No headlines</option> : null}
-              {headlineOptions.map((entry) => (
-                <option key={entry.id || entry.value} value={entry.value}>{entry.label}</option>
-              ))}
-            </select>
-            <input
-              className="ua-cfg-vh-input"
-              type="text"
-              placeholder="Headline"
-              value={typeof editor.headline === "string" ? editor.headline : ""}
-              disabled={busy}
-              onChange={(event) => patch({ headline: event.target.value })}
-            />
-            <textarea
-              className="ua-cfg-tf-story"
-              rows={4}
-              placeholder="Banner body copy"
-              value={bodyText}
-              disabled={busy}
-              onChange={(event) => patch({ body: event.target.value })}
-            />
-            <input
-              className="ua-cfg-vh-input"
-              type="text"
-              value={typeof editor.cta === "string" ? editor.cta : ""}
-              disabled={busy}
-              onChange={(event) => patch({ cta: event.target.value })}
-              placeholder="Call to action"
-            />
-            <input
-              className="ua-cfg-vh-input"
-              type="text"
-              value={typeof editor.ctaLink === "string" ? editor.ctaLink : ""}
-              disabled={busy}
-              onChange={(event) => patch({ ctaLink: event.target.value })}
-              placeholder="CTA link · https://…"
-            />
-            <div className="ua-cfg-bn-copy__actions">
-              <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" disabled={busy} onClick={() => openFilePicker(editor.split ? "web" : "banner")}>
-                Upload image
-              </button>
+            <div className="ua-cfg-bn-split">
+              <span className="ua-cfg-bn-split__icon" aria-hidden="true">🖥</span>
+              <div>
+                <strong>Split web &amp; mobile</strong>
+                <p>{editor.split ? "Separate web and mobile artwork." : "One artwork for both surfaces"}</p>
+              </div>
               <button
                 type="button"
-                className="ua-cfg-btn ua-cfg-btn--primary"
+                className={`ua-toggle ua-toggle--sm${editor.split ? " ua-toggle--on" : ""}`}
+                aria-pressed={editor.split}
                 disabled={busy}
-                onClick={saveEditor}
+                onClick={() => patch({ split: !editor.split })}
               >
-                {busy ? "Saving…" : editor.id ? "Save banner" : "Add banner"}
+                <span className="ua-toggle__knob" />
               </button>
             </div>
+
+            {editor.split ? (
+              <div className="ua-cfg-bn-split-drops">
+                <div>
+                  <div className="ua-cfg-bn-split-drops__label">
+                    <strong className="is-web">WEB</strong>
+                    <span>Desktop · wide crop</span>
+                  </div>
+                  <DropZone label="Upload Web" hint="Web artwork" previewUrl={webPreview} onUpload={() => openFilePicker("web")} />
+                </div>
+                <div>
+                  <div className="ua-cfg-bn-split-drops__label">
+                    <strong className="is-app">MOBILE</strong>
+                    <span>Portrait · app crop</span>
+                  </div>
+                  <DropZone label="Upload Mobile" hint="Mobile artwork" previewUrl={mobilePreview} onUpload={() => openFilePicker("mobile")} />
+                </div>
+              </div>
+            ) : null}
+
+            <label className="ua-cfg-bn-field">
+              <span>
+                Placement
+                <em className="ua-cfg-bn-ratio">{placement.ratio}</em>
+              </span>
+              <CfgSelect
+                className="ua-cfg-bn-select"
+                ariaLabel="Placement"
+                placeholder={placementOptions.length ? "Select placement" : "No placements"}
+                options={placementOptions}
+                value={editor.placement}
+                disabled={busy || !placementOptions.length}
+                onChange={(value) => patch({ placement: value })}
+              />
+            </label>
+
+            {!editor.split ? (
+              <DropZone
+                label="Upload banner"
+                hint={`Drop banner · ${placement.ratio}`}
+                previewUrl={webPreview}
+                onUpload={() => openFilePicker("banner")}
+              />
+            ) : null}
+
+            <div className="ua-cfg-bn-copy">
+              <span>Banner copy</span>
+              <CfgSelect
+                className="ua-cfg-bn-select"
+                ariaLabel="Banner copy"
+                placeholder={headlineOptions.length ? "Select headline" : "No headlines"}
+                options={headlineOptions}
+                value={headlineValue}
+                disabled={busy || !headlineOptions.length}
+                onChange={(value) => {
+                  const copy = headlineOptions.find((row) => row.value === value || row.label === value);
+                  patch({
+                    headline: copy?.label || value,
+                    body: copy?.body || editor.body,
+                    cta: copy?.cta || editor.cta,
+                  });
+                }}
+              />
+              <input
+                className="ua-cfg-bn-input"
+                type="text"
+                placeholder="Headline"
+                value={asCopyString(editor.headline)}
+                disabled={busy}
+                onChange={(event) => patch({ headline: event.target.value })}
+              />
+              <textarea
+                className="ua-cfg-bn-textarea"
+                rows={4}
+                placeholder="Banner body copy"
+                value={bodyText}
+                disabled={busy}
+                onChange={(event) => patch({ body: event.target.value })}
+              />
+              <input
+                className="ua-cfg-bn-input"
+                type="text"
+                value={asCopyString(editor.cta)}
+                disabled={busy}
+                onChange={(event) => patch({ cta: event.target.value })}
+                placeholder="Call to action"
+              />
+              <input
+                className="ua-cfg-bn-input"
+                type="text"
+                value={asCopyString(editor.ctaLink)}
+                disabled={busy}
+                onChange={(event) => patch({ ctaLink: event.target.value })}
+                placeholder="CTA link · https://…"
+              />
+              <div className="ua-cfg-bn-copy__actions">
+                <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" disabled={busy} onClick={() => openFilePicker(editor.split ? "web" : "banner")}>
+                  Upload image
+                </button>
+                <button
+                  type="button"
+                  className="ua-cfg-btn ua-cfg-btn--primary"
+                  disabled={busy}
+                  onClick={saveEditor}
+                >
+                  {busy ? "Saving…" : editor.id ? "Save banner" : "Add banner"}
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
+        </Panel>
 
         <Panel
           title="Live in this placement"
           subtitle={loading ? "Loading banners…" : `${items.length} banners`}
           actions={(
-            <button type="button" className="ua-cfg-rc-add" disabled={busy} onClick={startCreate}>
+            <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-bn-add" disabled={busy} onClick={startCreate}>
               + Add banner
             </button>
           )}
         >
           <div className="ua-cfg-bn-live">
             {items.map((entry, index) => (
-              <article key={entry.id} className={`ua-cfg-bn-live__row${entry.id === editor.id ? " is-selected" : ""}`}>
+              <article key={entry.id} className={`ua-cfg-bn-live__row${entry.id === editor.id && !creating ? " is-selected" : ""}`}>
                 <span className="ua-cfg-bn-live__handle" aria-hidden="true">⠿</span>
                 <button type="button" className="ua-cfg-bn-live__thumb" onClick={() => selectItem(entry)}>
                   {entry.image || entry.mobileImage ? (
                     <img src={entry.image || entry.mobileImage} alt="" />
                   ) : null}
                 </button>
-                <strong>{entry.title}</strong>
-                <span className={`ua-cfg-faq__shown${entry.shown ? " is-on" : ""}`}>
-                  {entry.shown ? "Shown" : "Hidden"}
-                </span>
-                <button
-                  type="button"
-                  className={`ua-toggle ua-toggle--sm${entry.shown ? " ua-toggle--on" : ""}`}
-                  aria-pressed={entry.shown}
-                  disabled={busy}
-                  onClick={() => persistPatch(entry, { shown: !entry.shown })}
-                >
-                  <span className="ua-toggle__knob" />
-                </button>
-                <span className="ua-cfg-bn-live__rank">#{index + 1}</span>
-                <button type="button" className="ua-cfg-icon-btn" aria-label="Move up" disabled={index === 0 || busy} onClick={() => moveItem(index, -1)}>↑</button>
-                <button type="button" className="ua-cfg-icon-btn" aria-label="Move down" disabled={index === items.length - 1 || busy} onClick={() => moveItem(index, 1)}>↓</button>
-                <button type="button" className="ua-cfg-icon-btn" aria-label={`Delete ${entry.title}`} disabled={busy} onClick={() => setPendingDelete(entry)}>×</button>
+                <strong className="ua-cfg-bn-live__title">{asCopyString(entry.title)}</strong>
+                <div className="ua-cfg-bn-live__actions">
+                  <span className={`ua-cfg-faq__shown${entry.shown ? " is-on" : ""}`}>
+                    {entry.shown ? "LIVE" : "HIDDEN"}
+                  </span>
+                  <button
+                    type="button"
+                    className={`ua-toggle ua-toggle--sm${entry.shown ? " ua-toggle--on" : ""}`}
+                    aria-pressed={entry.shown}
+                    disabled={busy}
+                    onClick={() => persistPatch(entry, { shown: !entry.shown })}
+                  >
+                    <span className="ua-toggle__knob" />
+                  </button>
+                  <span className="ua-cfg-bn-live__rank">#{index + 1}</span>
+                  <button type="button" className="ua-cfg-icon-btn" aria-label="Move up" disabled={index === 0 || busy} onClick={() => moveItem(index, -1)}>↑</button>
+                  <button type="button" className="ua-cfg-icon-btn" aria-label="Move down" disabled={index === items.length - 1 || busy} onClick={() => moveItem(index, 1)}>↓</button>
+                  <button type="button" className="ua-cfg-icon-btn" aria-label={`Delete ${asCopyString(entry.title)}`} disabled={busy} onClick={() => setPendingDelete(entry)}>×</button>
+                </div>
               </article>
             ))}
             {!loading && !items.length ? <p className="ua-cfg-panel__sub">No banners yet.</p> : null}
@@ -665,12 +686,12 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast }) {
                 <span className="ua-cfg-mv-gallery-card__type ua-cfg-bn-badge">Banner</span>
               </div>
               <div className="ua-cfg-mv-gallery-card__body">
-                <strong>{entry.title}</strong>
+                <strong>{asCopyString(entry.title)}</strong>
                 <span>{entry.date ? new Date(entry.date).toLocaleDateString("en-IN") : "—"}</span>
               </div>
-              <div className="ua-cfg-mv-gallery-card__live">
-                <span className={`ua-cfg-mv-gallery-card__status${entry.live ? " is-live" : ""}`}>
-                  {entry.live ? "Live" : "Not live"}
+              <div className="ua-cfg-bn-gallery__foot">
+                <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>
+                  {entry.live ? "LIVE" : "HIDDEN"}
                 </span>
                 <button
                   type="button"
@@ -681,19 +702,22 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast }) {
                 >
                   <span className="ua-toggle__knob" />
                 </button>
-              </div>
-              <div className="ua-cfg-mv-gallery-card__actions">
-                <a className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" href={entry.url} target="_blank" rel="noreferrer">
+                <a
+                  className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-bn-gallery__open"
+                  href={entry.url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   Open
                 </a>
                 <button
                   type="button"
-                  className={`ua-cfg-icon-btn${entry.live ? "" : " ua-cfg-icon-btn--danger"}`}
+                  className="ua-cfg-icon-btn"
                   aria-label="Delete"
                   disabled={entry.live || busy}
                   onClick={() => setPendingDelete(items.find((row) => row.id === entry.id))}
                 >
-                  🗑
+                  ×
                 </button>
               </div>
             </article>
@@ -719,7 +743,7 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast }) {
       <ConfirmDialog
         open={Boolean(pendingDelete)}
         tag="Banner"
-        title={`Delete ${pendingDelete?.title || "this banner"}?`}
+        title={`Delete ${asCopyString(pendingDelete?.title) || "this banner"}?`}
         body="This permanently removes the banner and its uploaded images."
         confirmLabel="Delete"
         confirmTone="danger"

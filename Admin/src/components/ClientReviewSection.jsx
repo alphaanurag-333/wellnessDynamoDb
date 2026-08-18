@@ -3,6 +3,9 @@ import {
   CLIENT_REVIEW_GALLERY_OWNERS,
   CLIENT_REVIEW_PROGRAMS,
 } from "../data/clientReviewConfigData.js";
+import { asCopyString } from "../data/bannerConfigData.js";
+import { ConfirmDialog } from "./ConfirmDialog.jsx";
+import { CfgSelect } from "./shared.jsx";
 
 const CROP_RATIOS = ["Original", "1:1", "4:3", "3:4", "16:9"];
 
@@ -22,9 +25,11 @@ function Panel({ title, subtitle, actions, children, className = "" }) {
 }
 
 function Stars({ count = 5 }) {
+  const filled = Math.max(0, Math.min(5, Number(count) || 0));
   return (
-    <span className="ua-cfg-cr-stars" aria-label={`${count} stars`}>
-      {"★★★★★".slice(0, count)}
+    <span className="ua-cfg-cr-stars" aria-label={`${filled} stars`}>
+      <span>{"★★★★★".slice(0, filled)}</span>
+      <span className="ua-cfg-cr-stars__empty">{"★★★★★".slice(filled)}</span>
     </span>
   );
 }
@@ -90,10 +95,10 @@ function UploadConfirmModal({ open, onClose, onConfirm }) {
 }
 
 function EditReviewModal({ review, onClose, onSave }) {
-  const [quote, setQuote] = useState(review?.quote ?? "");
+  const [quote, setQuote] = useState(asCopyString(review?.quote));
 
   useEffect(() => {
-    setQuote(review?.quote ?? "");
+    setQuote(asCopyString(review?.quote));
   }, [review]);
 
   if (!review) return null;
@@ -103,19 +108,23 @@ function EditReviewModal({ review, onClose, onSave }) {
       <div className="ua-cfg-cr-edit" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="cr-edit-title">
         <div className="ua-cfg-cr-edit__head">
           <div>
-            <h3 id="cr-edit-title" className="ua-cfg-cr-edit__title">
-              <span aria-hidden="true">✎</span> Edit review
-            </h3>
-            <p className="ua-cfg-cr-edit__sub">{review.name}</p>
+            <p className="ua-cfg-rc-view__tag">Client review</p>
+            <h3 id="cr-edit-title" className="ua-cfg-cr-edit__title">Edit review</h3>
+            <p className="ua-cfg-cr-edit__sub">{asCopyString(review.name)}</p>
           </div>
-          <button type="button" className="ua-cfg-mv-upload-modal__close" aria-label="Close" onClick={onClose}>×</button>
+          <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={onClose}>×</button>
         </div>
-        <textarea
-          className="ua-cfg-cr-edit__text"
-          rows={5}
-          value={quote}
-          onChange={(event) => setQuote(event.target.value)}
-        />
+        <div className="ua-cfg-cr-edit__body">
+          <label className="ua-cfg-cr-edit__field">
+            <span>Review</span>
+            <textarea
+              className="ua-cfg-cr-edit__text"
+              rows={5}
+              value={quote}
+              onChange={(event) => setQuote(event.target.value)}
+            />
+          </label>
+        </div>
         <div className="ua-cfg-cr-edit__foot">
           <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose}>Cancel</button>
           <button
@@ -147,6 +156,12 @@ export function ClientReviewSection({
   const [search, setSearch] = useState("");
   const [owner, setOwner] = useState("All owners");
   const [selected, setSelected] = useState([]);
+  const [pendingDelete, setPendingDelete] = useState(null);
+
+  const programOptions = useMemo(() => {
+    const tags = ["No program tag", ...CLIENT_REVIEW_PROGRAMS.filter((row) => row && row !== "No program tag")];
+    return [...new Set(tags)].map((value) => ({ value, label: value }));
+  }, []);
 
   function patch(next) {
     setEditor((prev) => ({ ...prev, ...next }));
@@ -229,70 +244,63 @@ export function ClientReviewSection({
                 <p>{entry.quote}</p>
               </div>
               <div className="ua-cfg-cr-row__actions">
-                <button type="button" className="ua-cfg-cr-link ua-cfg-cr-link--modify" onClick={() => setEditing(entry)}>Modify</button>
-                <button type="button" className="ua-cfg-cr-link ua-cfg-cr-link--approve" onClick={() => approve(entry)}>Approve</button>
-                <button type="button" className="ua-cfg-cr-link ua-cfg-cr-link--reject" onClick={() => reject(entry)}>Reject</button>
+                <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" onClick={() => setEditing(entry)}>Edit</button>
+                <button type="button" className="ua-cfg-btn ua-cfg-btn--sm ua-cfg-cr-btn-approve" onClick={() => approve(entry)}>Approve</button>
+                <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-cr-btn-reject" onClick={() => reject(entry)}>Reject</button>
               </div>
             </article>
           )) : <p className="ua-cfg-panel__sub">No reviews waiting.</p>}
         </div>
       </Panel>
 
-      <section className="ua-cfg-cr-live">
-        <div className="ua-cfg-cr-live__head">
-          <strong>✓ Live on site</strong>
-          <span>{liveCount} published · reorder, tag a program, or disable</span>
-        </div>
+      <Panel
+        title="Live on site"
+        subtitle={`${liveCount} published · reorder, tag a program, or disable`}
+      >
         <div className="ua-cfg-cr-live__list">
           {published.map((entry, index) => (
             <article key={entry.id} className="ua-cfg-cr-row ua-cfg-cr-row--live">
               <span className="ua-cfg-cr-avatar" aria-hidden="true">👤</span>
               <div className="ua-cfg-cr-row__copy">
                 <div className="ua-cfg-cr-row__meta">
-                  <strong>{entry.name}</strong>
+                  <strong>{asCopyString(entry.name)}</strong>
                   <Stars count={entry.rating} />
                 </div>
-                <p>{entry.quote}</p>
+                <p>{asCopyString(entry.quote)}</p>
               </div>
-              <select
-                className="ua-cfg-cr-tag"
-                value={entry.program}
-                onChange={(event) => setPublished((prev) => prev.map((row) => (row.id === entry.id ? { ...row, program: event.target.value } : row)))}
-              >
-                {CLIENT_REVIEW_PROGRAMS.map((program) => (
-                  <option key={program} value={program}>{program}</option>
-                ))}
-              </select>
-              <button type="button" className="ua-cfg-icon-btn" aria-label="Move up" onClick={() => moveItem(index, -1)}>↑</button>
-              <button type="button" className="ua-cfg-icon-btn" aria-label="Move down" onClick={() => moveItem(index, 1)}>↓</button>
-              <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>{entry.live ? "LIVE" : "HIDDEN"}</span>
-              <button
-                type="button"
-                className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
-                aria-pressed={entry.live}
-                onClick={() => setPublished((prev) => prev.map((row) => (row.id === entry.id ? { ...row, live: !row.live } : row)))}
-              >
-                <span className="ua-toggle__knob" />
-              </button>
-              {!entry.live ? (
-                <>
-                  <button type="button" className="ua-cfg-cr-link ua-cfg-cr-link--modify" onClick={() => setEditing(entry)}>Modify</button>
-                  <button
-                    type="button"
-                    className="ua-cfg-cr-link ua-cfg-cr-link--reject"
-                    onClick={() => {
-                      setPublished((prev) => prev.filter((row) => row.id !== entry.id));
-                      onToast("Review deleted");
-                    }}
-                  >
-                    Delete
-                  </button>
-                </>
-              ) : null}
+              <div className="ua-cfg-cr-row__actions">
+                <CfgSelect
+                  className="ua-cfg-cr-tag"
+                  ariaLabel={`Program tag for ${asCopyString(entry.name)}`}
+                  options={programOptions}
+                  value={entry.program || "No program tag"}
+                  onChange={(value) => setPublished((prev) => prev.map((row) => (row.id === entry.id ? { ...row, program: value } : row)))}
+                />
+                <button type="button" className="ua-cfg-icon-btn" aria-label="Move up" disabled={index === 0} onClick={() => moveItem(index, -1)}>↑</button>
+                <button type="button" className="ua-cfg-icon-btn" aria-label="Move down" disabled={index === published.length - 1} onClick={() => moveItem(index, 1)}>↓</button>
+                <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>{entry.live ? "LIVE" : "HIDDEN"}</span>
+                <button
+                  type="button"
+                  className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
+                  aria-pressed={entry.live}
+                  onClick={() => setPublished((prev) => prev.map((row) => (row.id === entry.id ? { ...row, live: !row.live } : row)))}
+                >
+                  <span className="ua-toggle__knob" />
+                </button>
+                <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" onClick={() => setEditing(entry)}>Edit</button>
+                <button
+                  type="button"
+                  className="ua-cfg-icon-btn"
+                  aria-label={`Delete ${asCopyString(entry.name)}`}
+                  onClick={() => setPendingDelete(entry)}
+                >
+                  ×
+                </button>
+              </div>
             </article>
           ))}
         </div>
-      </section>
+      </Panel>
 
       <Panel
         title="Gallery"
@@ -383,6 +391,20 @@ export function ClientReviewSection({
       </Panel>
 
       <EditReviewModal review={editing} onClose={() => setEditing(null)} onSave={saveQuote} />
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        tag="Client review"
+        title={`Delete ${asCopyString(pendingDelete?.name) || "this review"}?`}
+        body="This removes the review from the live list."
+        confirmLabel="Delete"
+        confirmTone="danger"
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => {
+          setPublished((prev) => prev.filter((row) => row.id !== pendingDelete.id));
+          setPendingDelete(null);
+          onToast("Review deleted");
+        }}
+      />
       <UploadConfirmModal
         open={uploadOpen}
         onClose={() => setUploadOpen(false)}

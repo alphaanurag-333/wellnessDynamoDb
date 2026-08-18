@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getWebLocations, saveWebLocations } from "../api/locationsApi.js";
+import { asCopyString } from "../data/bannerConfigData.js";
 import { LOCATIONS } from "../data/locationConfigData.js";
 
 function Panel({ title, subtitle, actions, children }) {
@@ -31,76 +32,83 @@ function LocationRow({
 }) {
   const isEditing = Boolean(editing);
 
+  function handleKeyDown(event) {
+    if (event.key === "Enter") onSave();
+    if (event.key === "Escape") onCancel();
+  }
+
   return (
     <article className={`ua-cfg-loc-row${isEditing ? " is-editing" : ""}`}>
       <span className="ua-cfg-loc-pin" aria-hidden="true">📍</span>
-      <div className="ua-cfg-loc-row__main">
-        {isEditing ? (
-          <>
-            <input
-              type="text"
-              className="ua-cfg-loc-row__input"
-              value={draft.name}
-              placeholder="Name"
-              disabled={locked}
-              onChange={(event) => onDraftChange({ ...draft, name: event.target.value })}
-            />
-            <input
-              type="text"
-              className="ua-cfg-loc-row__input"
-              value={draft.address}
-              placeholder="Full address"
-              disabled={locked}
-              onChange={(event) => onDraftChange({ ...draft, address: event.target.value })}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") onSave();
-                if (event.key === "Escape") onCancel();
-              }}
-            />
-          </>
-        ) : (
-          <>
-            <strong className="ua-cfg-loc-row__name">{entry.name}</strong>
-            <p className="ua-cfg-loc-row__address">{entry.address}</p>
-          </>
-        )}
-      </div>
-      <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>
-        {entry.live ? "LIVE" : "HIDDEN"}
-      </span>
-      <button
-        type="button"
-        className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
-        aria-pressed={entry.live}
-        aria-label={`${entry.name} ${entry.live ? "live" : "hidden"}`}
-        disabled={locked}
-        onClick={onToggle}
-      >
-        <span className="ua-toggle__knob" />
-      </button>
       {isEditing ? (
+        <input
+          type="text"
+          className="ua-cfg-loc-row__name-input"
+          value={asCopyString(draft.name)}
+          placeholder="Name"
+          disabled={locked}
+          onChange={(event) => onDraftChange({ ...draft, name: event.target.value })}
+          onKeyDown={handleKeyDown}
+        />
+      ) : (
+        <strong className="ua-cfg-loc-row__name">{asCopyString(entry.name)}</strong>
+      )}
+      {isEditing ? (
+        <input
+          type="text"
+          className="ua-cfg-loc-row__address-input"
+          value={asCopyString(draft.address)}
+          placeholder="Full address"
+          disabled={locked}
+          onChange={(event) => onDraftChange({ ...draft, address: event.target.value })}
+          onKeyDown={handleKeyDown}
+        />
+      ) : (
+        <p className="ua-cfg-loc-row__address">{asCopyString(entry.address)}</p>
+      )}
+      <div className="ua-cfg-loc-row__actions">
+        <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>
+          {entry.live ? "LIVE" : "HIDDEN"}
+        </span>
         <button
           type="button"
-          className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
+          className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
+          aria-pressed={entry.live}
+          aria-label={`${entry.name} ${entry.live ? "live" : "hidden"}`}
           disabled={locked}
-          onClick={onSave}
+          onClick={onToggle}
         >
-          Save
+          <span className="ua-toggle__knob" />
         </button>
-      ) : (
-        <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost" disabled={locked} onClick={onEdit}>
-          Edit
+        {isEditing ? (
+          <button
+            type="button"
+            className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
+            disabled={locked}
+            onClick={onSave}
+          >
+            Save
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+            disabled={locked}
+            onClick={onEdit}
+          >
+            Edit
+          </button>
+        )}
+        <button
+          type="button"
+          className="ua-cfg-icon-btn"
+          aria-label={isEditing ? "Cancel" : `Remove ${entry.name}`}
+          disabled={locked}
+          onClick={isEditing ? onCancel : onDelete}
+        >
+          ×
         </button>
-      )}
-      <button
-        type="button"
-        className="ua-cfg-icon-btn ua-cfg-icon-btn--danger"
-        aria-label={isEditing ? "Cancel" : `Remove ${entry.name}`}
-        disabled={locked}
-        onClick={isEditing ? onCancel : onDelete}
-      >
-        ×
-      </button>
+      </div>
     </article>
   );
 }
@@ -112,6 +120,18 @@ export function LocationsSection({ locations, setLocations, onToast }) {
   const [draft, setDraft] = useState({ name: "", address: "" });
   const [showAdd, setShowAdd] = useState(false);
   const [newDraft, setNewDraft] = useState({ name: "", address: "" });
+  const addNameRef = useRef(null);
+
+  useEffect(() => {
+    if (!showAdd) return undefined;
+    const timer = window.setTimeout(() => addNameRef.current?.focus(), 0);
+    return () => window.clearTimeout(timer);
+  }, [showAdd]);
+
+  function closeAdd() {
+    setShowAdd(false);
+    setNewDraft({ name: "", address: "" });
+  }
 
   const loadLocations = useCallback(async () => {
     setLoading(true);
@@ -148,9 +168,9 @@ export function LocationsSection({ locations, setLocations, onToast }) {
   }
 
   function startEdit(entry) {
-    setShowAdd(false);
+    closeAdd();
     setEditingId(entry.id);
-    setDraft({ name: entry.name, address: entry.address });
+    setDraft({ name: asCopyString(entry.name), address: asCopyString(entry.address) });
   }
 
   function cancelEdit() {
@@ -159,8 +179,8 @@ export function LocationsSection({ locations, setLocations, onToast }) {
   }
 
   async function saveEdit(id) {
-    const name = draft.name.trim();
-    const address = draft.address.trim();
+    const name = asCopyString(draft.name).trim();
+    const address = asCopyString(draft.address).trim();
     if (!name) {
       onToast("Name is required");
       return;
@@ -177,8 +197,8 @@ export function LocationsSection({ locations, setLocations, onToast }) {
   }
 
   async function addLocation() {
-    const name = newDraft.name.trim();
-    const address = newDraft.address.trim();
+    const name = asCopyString(newDraft.name).trim();
+    const address = asCopyString(newDraft.address).trim();
     if (!name) {
       onToast("Name is required");
       return;
@@ -191,10 +211,12 @@ export function LocationsSection({ locations, setLocations, onToast }) {
       [...locations, { id: `loc-${Date.now()}`, name, address, live: true }],
       `${name} added`
     );
-    if (ok) {
-      setNewDraft({ name: "", address: "" });
-      setShowAdd(false);
-    }
+    if (ok) closeAdd();
+  }
+
+  function handleAddKeyDown(event) {
+    if (event.key === "Enter") addLocation();
+    if (event.key === "Escape") closeAdd();
   }
 
   const locked = loading || busy;
@@ -210,7 +232,7 @@ export function LocationsSection({ locations, setLocations, onToast }) {
       actions={
         <button
           type="button"
-          className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+          className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-loc-add-btn"
           disabled={locked}
           onClick={() => {
             cancelEdit();
@@ -226,41 +248,42 @@ export function LocationsSection({ locations, setLocations, onToast }) {
       ) : null}
 
       {showAdd ? (
-        <section className="ua-cfg-faq-new ua-cfg-loc-add">
-          <div className="ua-cfg-faq-new__head">
-            <h4 className="ua-cfg-faq-new__title">
-              <span aria-hidden="true">📍</span> New location
+        <section className="ua-cfg-loc-add">
+          <div className="ua-cfg-loc-add__head">
+            <h4 className="ua-cfg-loc-add__title">
+              <span className="ua-cfg-loc-pin" aria-hidden="true">📍</span>
+              New location
             </h4>
             <button
               type="button"
               className="ua-cfg-icon-btn"
               aria-label="Close"
               disabled={locked}
-              onClick={() => {
-                setShowAdd(false);
-                setNewDraft({ name: "", address: "" });
-              }}
+              onClick={closeAdd}
             >
               ×
             </button>
           </div>
-          <div className="ua-cfg-loc-add__row">
-            <input
-              type="text"
-              className="ua-cfg-faq-new__question"
-              placeholder="Name · e.g. Wellness studio · Delhi"
-              value={newDraft.name}
-              disabled={locked}
-              onChange={(event) => setNewDraft((prev) => ({ ...prev, name: event.target.value }))}
-            />
-            <input
-              type="text"
-              className="ua-cfg-faq-new__question"
-              placeholder="Full address"
-              value={newDraft.address}
-              disabled={locked}
-              onChange={(event) => setNewDraft((prev) => ({ ...prev, address: event.target.value }))}
-            />
+          <input
+            ref={addNameRef}
+            type="text"
+            className="ua-cfg-loc-add__input"
+            placeholder="Name · e.g. Wellness studio · Delhi"
+            value={asCopyString(newDraft.name)}
+            disabled={locked}
+            onChange={(event) => setNewDraft((prev) => ({ ...prev, name: event.target.value }))}
+            onKeyDown={handleAddKeyDown}
+          />
+          <input
+            type="text"
+            className="ua-cfg-loc-add__input"
+            placeholder="Full address"
+            value={asCopyString(newDraft.address)}
+            disabled={locked}
+            onChange={(event) => setNewDraft((prev) => ({ ...prev, address: event.target.value }))}
+            onKeyDown={handleAddKeyDown}
+          />
+          <div className="ua-cfg-loc-add__foot">
             <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={locked} onClick={addLocation}>
               Add location
             </button>

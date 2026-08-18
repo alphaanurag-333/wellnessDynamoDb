@@ -6,8 +6,14 @@ import {
 } from "../api/clientTestimonialApi.js";
 import { TESTIMONIAL_PAGE_SIZE } from "../data/testimonialDropdownData.js";
 import { formatRecipeDate } from "../data/recipesConfigData.js";
+import { asCopyString } from "../data/bannerConfigData.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
-import { ListPagination } from "./shared.jsx";
+import { CfgSelect, ListPagination } from "./shared.jsx";
+
+const RATING_OPTIONS = [5, 4, 3, 2, 1].map((value) => ({
+  value,
+  label: `${value} star${value === 1 ? "" : "s"}`,
+}));
 
 function Panel({ title, subtitle, actions, children }) {
   return (
@@ -25,19 +31,31 @@ function Panel({ title, subtitle, actions, children }) {
 }
 
 function Stars({ count = 5 }) {
+  const filled = Math.max(0, Math.min(5, Number(count) || 0));
   return (
-    <span className="ua-cfg-cr-stars" aria-label={`${count} stars`}>
-      {"★★★★★".slice(0, Math.max(1, Math.min(5, count)))}
+    <span className="ua-cfg-cr-stars" aria-label={`${filled} stars`}>
+      <span>{"★★★★★".slice(0, filled)}</span>
+      <span className="ua-cfg-cr-stars__empty">{"★★★★★".slice(filled)}</span>
     </span>
   );
 }
 
+function Avatar({ src, name }) {
+  if (src) {
+    return <img className="ua-cfg-cr-avatar ua-cfg-cr-avatar--img" src={src} alt="" />;
+  }
+  const initial = String(name || "?").trim().charAt(0).toUpperCase() || "?";
+  return (
+    <span className="ua-cfg-cr-avatar" aria-hidden="true">{initial}</span>
+  );
+}
+
 function EditReviewModal({ review, busy, onClose, onSave }) {
-  const [quote, setQuote] = useState(review?.quote ?? "");
+  const [quote, setQuote] = useState(asCopyString(review?.quote));
   const [rating, setRating] = useState(review?.rating ?? 5);
 
   useEffect(() => {
-    setQuote(review?.quote ?? "");
+    setQuote(asCopyString(review?.quote));
     setRating(review?.rating ?? 5);
   }, [review]);
 
@@ -48,32 +66,35 @@ function EditReviewModal({ review, busy, onClose, onSave }) {
       <div className="ua-cfg-cr-edit" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="cr-edit-title">
         <div className="ua-cfg-cr-edit__head">
           <div>
-            <h3 id="cr-edit-title" className="ua-cfg-cr-edit__title">
-              <span aria-hidden="true">✎</span> Edit review
-            </h3>
-            <p className="ua-cfg-cr-edit__sub">{review.name}</p>
+            <p className="ua-cfg-rc-view__tag">Client review</p>
+            <h3 id="cr-edit-title" className="ua-cfg-cr-edit__title">Edit review</h3>
+            <p className="ua-cfg-cr-edit__sub">{asCopyString(review.name)}</p>
           </div>
-          <button type="button" className="ua-cfg-mv-upload-modal__close" aria-label="Close" onClick={onClose}>×</button>
+          <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={onClose}>×</button>
         </div>
-        <label className="ua-cfg-panel__sub" htmlFor="cr-edit-rating">Rating</label>
-        <select
-          id="cr-edit-rating"
-          className="ua-cfg-rc-cat"
-          value={rating}
-          disabled={busy}
-          onChange={(event) => setRating(Number(event.target.value))}
-        >
-          {[5, 4, 3, 2, 1].map((value) => (
-            <option key={value} value={value}>{value} star{value === 1 ? "" : "s"}</option>
-          ))}
-        </select>
-        <textarea
-          className="ua-cfg-cr-edit__text"
-          rows={5}
-          value={quote}
-          disabled={busy}
-          onChange={(event) => setQuote(event.target.value)}
-        />
+        <div className="ua-cfg-cr-edit__body">
+          <label className="ua-cfg-cr-edit__field">
+            <span>Rating</span>
+            <CfgSelect
+              className="ua-cfg-cr-edit__select"
+              ariaLabel="Rating"
+              options={RATING_OPTIONS}
+              value={rating}
+              disabled={busy}
+              onChange={(value) => setRating(Number(value))}
+            />
+          </label>
+          <label className="ua-cfg-cr-edit__field">
+            <span>Review</span>
+            <textarea
+              className="ua-cfg-cr-edit__text"
+              rows={5}
+              value={quote}
+              disabled={busy}
+              onChange={(event) => setQuote(event.target.value)}
+            />
+          </label>
+        </div>
         <div className="ua-cfg-cr-edit__foot">
           <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose}>Cancel</button>
           <button
@@ -82,7 +103,7 @@ function EditReviewModal({ review, busy, onClose, onSave }) {
             disabled={busy}
             onClick={() => onSave(quote, rating)}
           >
-            Save changes
+            {busy ? "Saving…" : "Save changes"}
           </button>
         </div>
       </div>
@@ -93,41 +114,30 @@ function EditReviewModal({ review, busy, onClose, onSave }) {
 function ReviewViewModal({ entry, onClose, onEdit }) {
   if (!entry) return null;
   return (
-    <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={onClose} role="presentation">
-      <div className="ua-cfg-rc-view" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="cr-view-title">
+    <div className="ua-cp-modal-backdrop" onClick={onClose} role="presentation">
+      <div className="ua-cfg-rc-view ua-cfg-cr-view" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="cr-view-title">
         <div className="ua-cfg-rc-view__head">
           <div>
             <p className="ua-cfg-rc-view__tag">Client review</p>
-            <h3 id="cr-view-title">{entry.name || "Untitled client"}</h3>
-            <p>{entry.live ? "Live" : "Pending"} · {formatRecipeDate(entry.createdAt)}</p>
+            <h3 id="cr-view-title">{asCopyString(entry.name) || "Untitled client"}</h3>
+            <p>
+              {formatRecipeDate(entry.createdAt)}
+              <span className={`ua-cfg-tf-view__status${entry.live ? " is-live" : ""}`}>
+                {entry.live ? "Live" : "Pending"}
+              </span>
+            </p>
           </div>
-          <button type="button" className="ua-cfg-mv-upload-modal__close" aria-label="Close" onClick={onClose}>×</button>
+          <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={onClose}>×</button>
         </div>
-        {entry.profileImage ? (
-          <div className="ua-cfg-rc-view__media ua-cfg-rc-view__media--photo">
-            <img src={entry.profileImage} alt="" />
-          </div>
-        ) : null}
-        <p className="ua-cfg-cr-stars" aria-label={`${entry.rating} stars`}>{"★★★★★".slice(0, Math.max(1, Math.min(5, entry.rating || 5)))}</p>
-        {entry.quote ? <p className="ua-cfg-rc-view__copy">{entry.quote}</p> : null}
-        <dl className="ua-cfg-rc-view__meta">
-          <div>
-            <dt>Status</dt>
-            <dd>{entry.live ? "Live" : "Pending"}</dd>
-          </div>
-          <div>
-            <dt>Rating</dt>
-            <dd>{entry.rating} / 5</dd>
-          </div>
-          <div>
-            <dt>Created</dt>
-            <dd>{formatRecipeDate(entry.createdAt)}</dd>
-          </div>
-          <div>
-            <dt>Updated</dt>
-            <dd>{formatRecipeDate(entry.updatedAt)}</dd>
-          </div>
-        </dl>
+        <div className="ua-cfg-cr-view__body">
+          {entry.profileImage ? (
+            <div className="ua-cfg-rc-view__media ua-cfg-rc-view__media--photo">
+              <img src={entry.profileImage} alt="" />
+            </div>
+          ) : null}
+          <Stars count={entry.rating} />
+          {asCopyString(entry.quote) ? <p className="ua-cfg-rc-view__copy">{asCopyString(entry.quote)}</p> : null}
+        </div>
         <div className="ua-cfg-rc-view__foot">
           <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose}>Close</button>
           <button
@@ -228,7 +238,7 @@ export function DynamicClientReviewSection({ queue, setQueue, published, setPubl
       const saved = await adminUpdateClientTestimonial(null, entry.id, { live: true });
       setQueue((prev) => prev.filter((row) => row.id !== entry.id));
       setPublished((prev) => [saved, ...prev.filter((row) => row.id !== saved.id)]);
-      onToast(`${entry.name} approved`);
+      onToast(`${asCopyString(entry.name)} approved`);
     } catch (error) {
       onToast(error?.message || "Could not approve review");
     } finally {
@@ -242,7 +252,7 @@ export function DynamicClientReviewSection({ queue, setQueue, published, setPubl
       const saved = await adminUpdateClientTestimonial(null, entry.id, { live: false });
       setPublished((prev) => prev.filter((row) => row.id !== entry.id));
       setQueue((prev) => [saved, ...prev.filter((row) => row.id !== saved.id)]);
-      onToast(`${entry.name} hidden`);
+      onToast(`${asCopyString(entry.name)} hidden`);
     } catch (error) {
       onToast(error?.message || "Could not hide review");
     } finally {
@@ -257,7 +267,7 @@ export function DynamicClientReviewSection({ queue, setQueue, published, setPubl
     setBusy(true);
     try {
       await adminDeleteClientTestimonial(null, item.id);
-      onToast(`${item.name} removed`);
+      onToast(`${asCopyString(item.name)} removed`);
       await loadItems();
     } catch (error) {
       onToast(error?.message || "Could not delete review");
@@ -272,8 +282,9 @@ export function DynamicClientReviewSection({ queue, setQueue, published, setPubl
   return (
     <div className="ua-cfg-cr">
       <Panel
-        title="Pending reviews"
-        subtitle={loading ? "Loading reviews…" : `${queue.length} waiting for approval on this page`}
+        title="Review queue"
+        subtitle="Submitted by clients in the app"
+        actions={<strong className="ua-cfg-cr-count">{loading ? "…" : `${queue.length} awaiting review`}</strong>}
       >
         <div className="ua-cfg-rc-toolbar">
           <input
@@ -286,28 +297,43 @@ export function DynamicClientReviewSection({ queue, setQueue, published, setPubl
           />
         </div>
         {queue.length ? (
-          <div className={`ua-cfg-rc-list${loading ? " is-loading" : ""}`}>
+          <div className={`ua-cfg-cr-queue${loading ? " is-loading" : ""}`}>
             {queue.map((entry) => (
-              <article key={entry.id} className="ua-cfg-rc-item is-text">
-                {entry.profileImage ? (
-                  <div className="ua-cfg-rc-cover-wrap">
-                    <div className="ua-cfg-rc-cover is-on">
-                      <img className="ua-cfg-rc-cover__img" src={entry.profileImage} alt="" />
-                    </div>
-                  </div>
-                ) : null}
-                <div className="ua-cfg-rc-item__body">
-                  <div className="ua-cfg-rc-item__row">
-                    <strong>{entry.name}</strong>
+              <article key={entry.id} className="ua-cfg-cr-row">
+                <Avatar src={entry.profileImage} name={asCopyString(entry.name)} />
+                <div className="ua-cfg-cr-row__copy">
+                  <div className="ua-cfg-cr-row__meta">
+                    <strong>{asCopyString(entry.name)}</strong>
                     <Stars count={entry.rating} />
-                    <span className="ua-cfg-faq__shown">PENDING</span>
-                    <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={busy} onClick={() => approve(entry)}>Approve</button>
-                    <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={() => setViewingId(entry.id)}>View</button>
-                    <button type="button" className="ua-cfg-cr-link ua-cfg-cr-link--modify" disabled={busy} onClick={() => { setViewingId(null); setEditing(entry); }}>Edit</button>
-                    <button type="button" className="ua-cfg-icon-btn" aria-label={`Reject ${entry.name}`} disabled={busy} onClick={() => setPendingDelete(entry)}>×</button>
+                    <em className="ua-cfg-cr-pending">Pending</em>
                   </div>
-                  <p>{entry.quote}</p>
-                  <p className="ua-cfg-panel__sub">{formatRecipeDate(entry.createdAt)}</p>
+                  <p>{asCopyString(entry.quote)}</p>
+                </div>
+                <div className="ua-cfg-cr-row__actions">
+                  <button
+                    type="button"
+                    className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                    disabled={busy}
+                    onClick={() => { setViewingId(null); setEditing(entry); }}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="ua-cfg-btn ua-cfg-btn--sm ua-cfg-cr-btn-approve"
+                    disabled={busy}
+                    onClick={() => approve(entry)}
+                  >
+                    Approve
+                  </button>
+                  <button
+                    type="button"
+                    className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-cr-btn-reject"
+                    disabled={busy}
+                    onClick={() => setPendingDelete(entry)}
+                  >
+                    Reject
+                  </button>
                 </div>
               </article>
             ))}
@@ -318,37 +344,67 @@ export function DynamicClientReviewSection({ queue, setQueue, published, setPubl
       </Panel>
 
       <Panel
-        title="Published reviews"
-        subtitle={`${pagination.total} total · ${liveCount} live on this page · submitted in-app, admin only approves`}
+        title="Live on site"
+        subtitle={`${pagination.total} total · ${liveCount} published · submitted in-app, admin only approves`}
       >
         {published.length ? (
-          <div className={`ua-cfg-rc-list${loading ? " is-loading" : ""}`}>
+          <div className={`ua-cfg-cr-live__list${loading ? " is-loading" : ""}`}>
             {published.map((entry) => (
-              <article key={entry.id} className="ua-cfg-rc-item is-text">
-                {entry.profileImage ? (
-                  <div className="ua-cfg-rc-cover-wrap">
-                    <div className="ua-cfg-rc-cover is-on">
-                      <img className="ua-cfg-rc-cover__img" src={entry.profileImage} alt="" />
-                    </div>
-                  </div>
-                ) : null}
-                <div className="ua-cfg-rc-item__body">
-                  <div className="ua-cfg-rc-item__row">
-                    <strong>{entry.name}</strong>
+              <article key={entry.id} className="ua-cfg-cr-row ua-cfg-cr-row--live">
+                <Avatar src={entry.profileImage} name={asCopyString(entry.name)} />
+                <div className="ua-cfg-cr-row__copy">
+                  <div className="ua-cfg-cr-row__meta">
+                    <strong>{asCopyString(entry.name)}</strong>
                     <Stars count={entry.rating} />
-                    <span className="ua-cfg-faq__shown is-on">LIVE</span>
-                    <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={() => hide(entry)}>Hide</button>
-                    <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={() => setViewingId(entry.id)}>View</button>
-                    <button type="button" className="ua-cfg-cr-link ua-cfg-cr-link--modify" disabled={busy} onClick={() => { setViewingId(null); setEditing(entry); }}>Edit</button>
-                    <button type="button" className="ua-cfg-icon-btn" aria-label={`Delete ${entry.name}`} disabled={busy} onClick={() => setPendingDelete(entry)}>×</button>
                   </div>
-                  <p>{entry.quote}</p>
+                  <p>{asCopyString(entry.quote)}</p>
+                </div>
+                <div className="ua-cfg-cr-row__actions">
+                  <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>
+                    {entry.live ? "LIVE" : "HIDDEN"}
+                  </span>
+                  <button
+                    type="button"
+                    className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
+                    aria-pressed={entry.live}
+                    disabled={busy}
+                    onClick={() => hide(entry)}
+                  >
+                    <span className="ua-toggle__knob" />
+                  </button>
+                  <button
+                    type="button"
+                    className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                    disabled={busy}
+                    onClick={() => setViewingId(entry.id)}
+                  >
+                    View
+                  </button>
+                  <button
+                    type="button"
+                    className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                    disabled={busy}
+                    onClick={() => { setViewingId(null); setEditing(entry); }}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="ua-cfg-icon-btn"
+                    aria-label={`Delete ${asCopyString(entry.name)}`}
+                    disabled={busy}
+                    onClick={() => setPendingDelete(entry)}
+                  >
+                    ×
+                  </button>
                 </div>
               </article>
             ))}
           </div>
         ) : (
-          <p className="ua-cfg-panel__sub">{loading ? "Fetching reviews…" : query ? "No reviews match your search." : "No live reviews yet."}</p>
+          <p className="ua-cfg-panel__sub">
+            {loading ? "Fetching reviews…" : query ? "No reviews match your search." : "No live reviews yet."}
+          </p>
         )}
 
         <ListPagination
@@ -377,7 +433,7 @@ export function DynamicClientReviewSection({ queue, setQueue, published, setPubl
       <ConfirmDialog
         open={Boolean(pendingDelete)}
         tag="Client review"
-        title={`${pendingDelete?.live ? "Delete" : "Reject"} ${pendingDelete?.name || "this review"}?`}
+        title={`${pendingDelete?.live ? "Delete" : "Reject"} ${asCopyString(pendingDelete?.name) || "this review"}?`}
         body={pendingDelete?.live
           ? "This permanently removes the published client review."
           : "This rejects the in-app submission and deletes it."}

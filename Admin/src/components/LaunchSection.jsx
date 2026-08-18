@@ -542,6 +542,7 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
                     type="button"
                     className="ua-cfg-drf-section__toggle"
                     aria-expanded={isOpen}
+                    aria-label={isOpen ? `Collapse ${domain.name}` : `Expand ${domain.name}`}
                     onClick={() => {
                       setExpanded((prev) => {
                         const next = new Set(prev);
@@ -551,7 +552,9 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
                       });
                     }}
                   >
-                    {isOpen ? "▾" : "▸"}
+                    <svg viewBox="0 0 12 12" aria-hidden="true">
+                      <path d="M3 4.5 6 8l3-3.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
                   </button>
                   <input
                     type="text"
