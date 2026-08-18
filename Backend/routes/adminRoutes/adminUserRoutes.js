@@ -43,12 +43,19 @@ router.get(
   listPendingAssignmentUsersController
 );
 
+const clientView = authorizeStaff("console.cl.view", {
+  admin: "users.view",
+  wellness_coach: "nav.my-users",
+  assistant_wellness_coach: "nav.my-users",
+  trainee: "nav.my-users",
+});
+
 router.get("/", protectAccount, authorizeStaff("console.cl.view", { admin: "users.view" }), listUsersController);
-router.get("/:id/at-a-glance", protectAccount, authorizeStaff("console.cl.view", { admin: "users.view" }), getUserAtAGlanceController);
+router.get("/:id/at-a-glance", protectAccount, clientView, getUserAtAGlanceController);
 router.get(
   "/:id/body-analytics",
   protectAccount,
-  authorizeStaff("console.cl.view", { admin: "users.view" }),
+  clientView,
   getUserBodyAnalyticsController
 );
 router.get("/:id/water-tracking", protectAccount, authorizeStaff("console.cl.view", { admin: "users.view" }), getUserWaterTrackingHistoryController);
@@ -71,7 +78,7 @@ router.get(
   authorizeStaff("console.cl.view", { admin: "users.view" }),
   getUserEnergyExchangeAdminController
 );
-router.get("/:id", protectAccount, authorizeStaff("console.cl.view", { admin: "users.view" }), getUserByIdController);
+router.get("/:id", protectAccount, clientView, getUserByIdController);
 router.post("/", protectAccount, authorizeStaff("console.cl.edit", { admin: "users.edit" }), optionalUserFile, createUserController);
 router.post("/:id/convert-to-heal", protectAccount, authorizeStaff("console.cl.edit", { admin: "users.edit" }), convertUserToHealController);
 router.post("/:id/convert-to-seek", protectAccount, authorizeStaff("console.cl.edit", { admin: "users.edit" }), convertUserToSeekController);

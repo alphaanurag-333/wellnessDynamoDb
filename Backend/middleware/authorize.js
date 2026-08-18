@@ -35,6 +35,7 @@ function grantsAllowConsoleSlug(grantsMap, consoleSlug) {
 /**
  * Gate a staff Account route by console slug, with legacy catalog fallback.
  * Super admins always pass. Trainees cannot perform write actions.
+ * `consoleSlug` may be a string or an array (any matching slug is enough).
  */
 function authorizeStaff(consoleSlug, legacySlugs) {
   return (req, res, next) => {
@@ -42,15 +43,18 @@ function authorizeStaff(consoleSlug, legacySlugs) {
       return next(new AppError("Authentication required", 401));
     }
 
+    const slugs = (Array.isArray(consoleSlug) ? consoleSlug : [consoleSlug]).filter(Boolean);
     const role = normalizeRoleKey(req.auth.role);
-    const parsed = parseConsoleSlug(consoleSlug);
-    const isWrite = Boolean(parsed && WRITE_ACTIONS.has(parsed.action));
+    const isWrite = slugs.some((slug) => {
+      const parsed = parseConsoleSlug(slug);
+      return Boolean(parsed && WRITE_ACTIONS.has(parsed.action));
+    });
 
     if (role === "trainee" && isWrite) {
       return next(new AppError("You do not have permission to perform this action", 403));
     }
 
-    if (hasPermission(req.auth, consoleSlug)) {
+    if (slugs.some((slug) => hasPermission(req.auth, slug))) {
       return next();
     }
 
@@ -61,7 +65,7 @@ function authorizeStaff(consoleSlug, legacySlugs) {
 
     if (role === "assistant_wellness_coach") {
       const perms = Array.isArray(req.auth.permissions) ? req.auth.permissions : [];
-      if (perms.length === 0 && grantsAllowConsoleSlug(DEFAULT_CONSOLE_GRANTS.awc, consoleSlug)) {
+      if (perms.length === 0 && slugs.some((slug) => grantsAllowConsoleSlug(DEFAULT_CONSOLE_GRANTS.awc, slug))) {
         return next();
       }
     }
@@ -71,7 +75,7 @@ function authorizeStaff(consoleSlug, legacySlugs) {
       const grants = DEFAULT_CONSOLE_GRANTS[uiKey];
       const perms = Array.isArray(req.auth.permissions) ? req.auth.permissions : [];
       const hasConsole = perms.some((p) => String(p || "").startsWith("console."));
-      if (!hasConsole && grantsAllowConsoleSlug(grants, consoleSlug)) {
+      if (!hasConsole && slugs.some((slug) => grantsAllowConsoleSlug(grants, slug))) {
         return next();
       }
     }

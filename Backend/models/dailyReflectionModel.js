@@ -75,10 +75,44 @@ function normalizeActivitySettings(input) {
   return defaults;
 }
 
+function normalizeSelectedQuestionIds(value) {
+  if (!Array.isArray(value)) return null;
+  const seen = new Set();
+  const ids = [];
+  for (const entry of value) {
+    const id = String(entry || "").trim();
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    ids.push(id);
+  }
+  return ids;
+}
+
+function normalizeBedtime(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  const match = /^(\d{2}):(\d{2})(?::\d{2})?$/.exec(raw);
+  if (!match) {
+    const err = new Error("bedtime must be HH:MM");
+    err.name = "ValidationError";
+    throw err;
+  }
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) {
+    const err = new Error("bedtime must be a valid 24-hour time");
+    err.name = "ValidationError";
+    throw err;
+  }
+  return `${match[1]}:${match[2]}`;
+}
+
 function formatSettings(item) {
   const stored = item?.activities && typeof item.activities === "object" ? item.activities : {};
   return {
     activities: normalizeActivitySettings(stored),
+    selectedQuestionIds: normalizeSelectedQuestionIds(item?.selectedQuestionIds),
+    bedtime: typeof item?.bedtime === "string" ? item.bedtime : null,
     updatedAt: item?.updatedAt ?? null,
   };
 }
@@ -134,19 +168,41 @@ async function getSettings(userId) {
 }
 
 async function upsertSettings(userId, activities) {
+  return upsertSettingsFields(userId, { activities });
+}
+
+async function upsertSettingsFields(userId, fields = {}) {
   const now = new Date().toISOString();
-  const normalized = normalizeActivitySettings(activities);
+  const exprValues = {
+    ":updatedAt": now,
+    ":createdAt": now,
+  };
+  let setExpr = "SET updatedAt = :updatedAt, createdAt = if_not_exists(createdAt, :createdAt)";
+
+  if (fields.activities !== undefined) {
+    exprValues[":activities"] = normalizeActivitySettings(fields.activities);
+    setExpr += ", activities = :activities";
+  }
+  if (fields.selectedQuestionIds !== undefined) {
+    exprValues[":selectedQuestionIds"] = normalizeSelectedQuestionIds(fields.selectedQuestionIds) || [];
+    setExpr += ", selectedQuestionIds = :selectedQuestionIds";
+  }
+  if (fields.bedtime !== undefined) {
+    exprValues[":bedtime"] = normalizeBedtime(fields.bedtime) || "22:30";
+    setExpr += ", bedtime = :bedtime";
+  }
+  if (Object.keys(exprValues).length <= 2) {
+    const err = new Error("No valid settings fields provided");
+    err.name = "ValidationError";
+    throw err;
+  }
+
   const { Attributes } = await docClient.send(
     new UpdateCommand({
       TableName: TABLE,
       Key: { userId, recordKey: SETTINGS_KEY },
-      UpdateExpression:
-        "SET activities = :activities, updatedAt = :updatedAt, createdAt = if_not_exists(createdAt, :createdAt)",
-      ExpressionAttributeValues: {
-        ":activities": normalized,
-        ":updatedAt": now,
-        ":createdAt": now,
-      },
+      UpdateExpression: setExpr,
+      ExpressionAttributeValues: exprValues,
       ReturnValues: "ALL_NEW",
     })
   );
@@ -281,6 +337,7 @@ module.exports = {
   listCatalogWithSettings,
   getSettings,
   upsertSettings,
+  upsertSettingsFields,
   getDayLog,
   upsertDayLog,
   listDayLogsBetween,

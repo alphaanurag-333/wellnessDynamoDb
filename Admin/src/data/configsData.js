@@ -603,6 +603,47 @@ export const CONFIG_GROUPS = {
       ],
     },
     {
+      name: "Body, Mind & Soul",
+      items: [
+        {
+          id: "common-mental-wellbeing",
+          name: "Mental & Emotional Wellbeing",
+          note: "Private video & audio library · coaches pick what appears in a client app",
+          owner: "Admin",
+          app: true,
+          web: false,
+          live: true,
+          on: true,
+          tags: ["Video", "Upload"],
+          toggleable: false,
+        },
+        {
+          id: "common-wellness-yoga",
+          name: "Yoga",
+          note: "Private yoga library · coaches pick what appears in a client app",
+          owner: "Admin",
+          app: true,
+          web: false,
+          live: true,
+          on: true,
+          tags: ["Video", "Upload"],
+          toggleable: false,
+        },
+        {
+          id: "common-physical-exercise",
+          name: "Physical Exercise",
+          note: "Private exercise library · coaches pick what appears in a client app",
+          owner: "Admin",
+          app: true,
+          web: false,
+          live: true,
+          on: true,
+          tags: ["Video", "Upload"],
+          toggleable: false,
+        },
+      ],
+    },
+    {
       name: "Wellnesspedia",
       items: [
         {

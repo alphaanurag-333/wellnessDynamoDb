@@ -34,6 +34,8 @@ const KIND = new Set([
   "internal_parameters_upload",
   "coach_reminder",
   "physical_exercise_assigned",
+  "mental_wellbeing_assigned",
+  "yoga_assigned",
   "meal_log_reviewed",
   "monthly_champion",
   "monthly_champion_comment",

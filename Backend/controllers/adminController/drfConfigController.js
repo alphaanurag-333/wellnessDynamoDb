@@ -21,14 +21,13 @@ const {
   deleteDrfSectionQuestion,
   deleteQuestionsBySectionId,
   listDrfSectionQuestions,
-  listAllQuestionsUnpaged,
   normalizePoints: normalizeQuestionPoints,
   POINTS_MAX: QUESTION_POINTS_MAX,
 } = require("../../models/drfSectionQuestionModel");
 const {
   remainingWeight,
   remainingSectionPoints,
-  summarizeConfig,
+  loadNestedConfig,
 } = require("../../services/drfConfigService");
 
 const NAME_MAX = 80;
@@ -100,27 +99,6 @@ function assertSectionPointsFit(section, { id, points, enabled }) {
   if (nextPoints > remaining) {
     throw new AppError(`Only ${remaining} pts are free in this section`, 400);
   }
-}
-
-async function loadNestedConfig() {
-  const [sections, questions] = await Promise.all([
-    listAllSectionsUnpaged(),
-    listAllQuestionsUnpaged(),
-  ]);
-  const bySection = new Map();
-  for (const question of questions) {
-    const list = bySection.get(question.sectionId) || [];
-    list.push(question);
-    bySection.set(question.sectionId, list);
-  }
-  const nested = sections.map((section) => ({
-    ...section,
-    questions: bySection.get(section.id) || [],
-  }));
-  return {
-    sections: nested,
-    scoring: summarizeConfig(nested),
-  };
 }
 
 exports.getDrfConfigController = asyncHandler(async (req, res) => {

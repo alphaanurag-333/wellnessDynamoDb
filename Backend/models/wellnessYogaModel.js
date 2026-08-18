@@ -1,0 +1,210 @@
+const {
+  PutCommand,
+  GetCommand,
+  UpdateCommand,
+  DeleteCommand,
+} = require("@aws-sdk/lib-dynamodb");
+const { v4: uuidv4 } = require("uuid");
+const { docClient } = require("../config/db");
+const { normalizeMediaField, resolvePublicUrl } = require("../utils/s3");
+const { normalizeDuration, displayMediaType } = require("../utils/wellnessLibraryFields");
+const {
+  listByPartitionKey,
+  buildContainsFilter,
+  appendFilter,
+  sortByCreatedAtDesc,
+} = require("../utils/dynamoList");
+
+const TABLE = "WellnessYoga";
+const WELLNESS_YOGA_ALLOWED_STATUS = ["active", "inactive"];
+const WELLNESS_YOGA_ALLOWED_TYPE = ["ytlink", "video", "audio"];
+const STATUS = new Set(WELLNESS_YOGA_ALLOWED_STATUS);
+const TYPE = new Set(WELLNESS_YOGA_ALLOWED_TYPE);
+
+function normalizeStatus(value, fallback = "active") {
+  const next = String(value || fallback).toLowerCase().trim();
+  return STATUS.has(next) ? next : fallback;
+}
+
+function normalizeType(value, fallback = "ytlink") {
+  const next = String(value || fallback).toLowerCase().trim();
+  return TYPE.has(next) ? next : fallback;
+}
+
+function withLegacyId(item) {
+  if (!item) return null;
+  return { ...item, _id: item.id };
+}
+
+function toPublicWellnessYoga(item) {
+  const row = withLegacyId(item);
+  if (!row) return null;
+  const pub = {
+    ...row,
+    mediaType: displayMediaType(row.type),
+    duration: String(row.duration || "").trim(),
+  };
+  if (pub.thumbnail) pub.thumbnail = resolvePublicUrl(pub.thumbnail) || pub.thumbnail;
+  if ((pub.type === "video" || pub.type === "audio") && pub.file) {
+    pub.file = resolvePublicUrl(pub.file) || pub.file;
+  }
+  return pub;
+}
+
+function sanitizeUpdateField(key, value) {
+  if (key === "status") return normalizeStatus(value);
+  if (key === "type") return normalizeType(value);
+  if (key === "duration") return normalizeDuration(value);
+  if (key === "thumbnail") {
+    if (value == null || String(value).trim() === "") return "";
+    return normalizeMediaField(value, "thumbnail");
+  }
+  if (["title", "ytLink", "file"].includes(key)) {
+    return String(value || "").trim();
+  }
+  return value;
+}
+
+async function createWellnessYoga({
+  title,
+  type = "ytlink",
+  ytLink = "",
+  file = "",
+  thumbnail = "",
+  duration = "",
+  status = "active",
+}) {
+  const now = new Date().toISOString();
+  const item = {
+    id: uuidv4(),
+    title: String(title || "").trim(),
+    type: normalizeType(type),
+    ytLink: String(ytLink || "").trim(),
+    file: String(file || "").trim(),
+    thumbnail: thumbnail ? normalizeMediaField(thumbnail, "thumbnail") : "",
+    duration: normalizeDuration(duration),
+    status: normalizeStatus(status),
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  await docClient.send(new PutCommand({
+    TableName: TABLE,
+    Item: item,
+    ConditionExpression: "attribute_not_exists(id)",
+  }));
+  return toPublicWellnessYoga(item);
+}
+
+async function getWellnessYogaRecordById(id) {
+  const { Item } = await docClient.send(
+    new GetCommand({ TableName: TABLE, Key: { id } })
+  );
+  return withLegacyId(Item || null);
+}
+
+async function getWellnessYogaById(id) {
+  const item = await getWellnessYogaRecordById(id);
+  return item ? toPublicWellnessYoga(item) : null;
+}
+
+async function updateWellnessYoga(id, updates) {
+  const blockedFields = new Set(["id", "_id", "createdAt"]);
+  const entries = Object.entries(updates || {})
+    .filter(([k, v]) => !blockedFields.has(k) && v !== undefined)
+    .map(([k, v]) => [k, sanitizeUpdateField(k, v)]);
+  if (entries.length === 0) throw new Error("No valid fields provided for update");
+
+  const exprNames = {};
+  const exprValues = { ":updatedAt": new Date().toISOString() };
+  let setExpr = "SET updatedAt = :updatedAt";
+
+  for (const [k, v] of entries) {
+    exprNames[`#${k}`] = k;
+    exprValues[`:${k}`] = v;
+    setExpr += `, #${k} = :${k}`;
+  }
+
+  const { Attributes } = await docClient.send(new UpdateCommand({
+    TableName: TABLE,
+    Key: { id },
+    UpdateExpression: setExpr,
+    ExpressionAttributeNames: exprNames,
+    ExpressionAttributeValues: exprValues,
+    ConditionExpression: "attribute_exists(id)",
+    ReturnValues: "ALL_NEW",
+  }));
+  return toPublicWellnessYoga(Attributes || null);
+}
+
+async function deleteWellnessYoga(id) {
+  await docClient.send(new DeleteCommand({
+    TableName: TABLE,
+    Key: { id },
+    ConditionExpression: "attribute_exists(id)",
+  }));
+}
+
+async function listWellnessYoga({ page = 1, limit = 10, status, type, search } = {}) {
+  const normalizedStatus = status ? normalizeStatus(status, "") : "";
+  const normalizedType = type ? String(type).toLowerCase().trim() : "";
+  const searchFilter = buildContainsFilter(["title"], search);
+  let filterExpression = searchFilter.filterExpression;
+  const exprNames = { ...searchFilter.exprNames };
+  const exprValues = { ...searchFilter.exprValues };
+
+  if (normalizedType && TYPE.has(normalizedType)) {
+    exprNames["#type"] = "type";
+    exprValues[":type"] = normalizedType;
+    filterExpression = appendFilter(filterExpression, "#type = :type");
+  }
+
+  const { items, pagination } = await listByPartitionKey({
+    tableName: TABLE,
+    indexName: "StatusCreatedAtIndex",
+    partitionKeyValue: normalizedStatus || undefined,
+    filterExpression,
+    exprNames,
+    exprValues,
+    search: searchFilter.search,
+    searchFields: searchFilter.searchFields,
+    scanIndexForward: false,
+    page,
+    limit,
+    maxLimit: 200,
+    sortFn: sortByCreatedAtDesc,
+  });
+
+  return {
+    items: items.map((row) => toPublicWellnessYoga(row)),
+    pagination,
+  };
+}
+
+async function listActiveWellnessYoga() {
+  const { items } = await listByPartitionKey({
+    tableName: TABLE,
+    indexName: "StatusCreatedAtIndex",
+    partitionKeyValue: "active",
+    scanIndexForward: false,
+    page: 1,
+    limit: 500,
+    maxLimit: 500,
+    sortFn: sortByCreatedAtDesc,
+  });
+  return items.map((row) => toPublicWellnessYoga(row)).filter(Boolean);
+}
+
+module.exports = {
+  WELLNESS_YOGA_ALLOWED_STATUS,
+  WELLNESS_YOGA_ALLOWED_TYPE,
+  normalizeStatus,
+  normalizeType,
+  createWellnessYoga,
+  getWellnessYogaById,
+  getWellnessYogaRecordById,
+  updateWellnessYoga,
+  deleteWellnessYoga,
+  listWellnessYoga,
+  listActiveWellnessYoga,
+};

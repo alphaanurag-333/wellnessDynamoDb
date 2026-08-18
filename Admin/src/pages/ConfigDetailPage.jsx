@@ -53,6 +53,7 @@ import { DynamicGoogleReviewSection } from "../components/DynamicGoogleReviewSec
 import { DropdownsSection } from "../components/DropdownsSection.jsx";
 import { RecipesSection } from "../components/RecipesSection.jsx";
 import { YogaSection } from "../components/YogaSection.jsx";
+import { WellnessLibrarySection } from "../components/WellnessLibrarySection.jsx";
 import { DynamicBlogsSection } from "../components/DynamicBlogsSection.jsx";
 import { RxBankSection } from "../components/RxBankSection.jsx";
 import { FaqConfigPanel } from "../components/FaqConfigPanel.jsx";
@@ -2098,6 +2099,12 @@ export function ConfigDetailPage() {
             onToast={onToast}
           />
         );
+      case "common-mental-wellbeing":
+        return <WellnessLibrarySection kind="mental" onToast={onToast} />;
+      case "common-wellness-yoga":
+        return <WellnessLibrarySection kind="yoga" onToast={onToast} />;
+      case "common-physical-exercise":
+        return <WellnessLibrarySection kind="exercise" onToast={onToast} />;
       case "common-blogs":
         return (
           <DynamicBlogsSection
@@ -2116,7 +2123,7 @@ export function ConfigDetailPage() {
   }
 
   return (
-    <main className={`content ua-page-enter ua-cfg-detail${item.id === "common-banner" || item.id === "common-champion" || item.id === "common-birthday" || item.id === "common-transformation" || item.id === "common-client-review" || item.id === "common-real-people" || item.id === "common-voice" || item.id === "common-cofounder" || item.id === "common-leadership" || item.id === "common-wellness-team" || item.id === "common-about" || item.id === "common-google-review" || item.id === "common-dropdowns" || item.id === "common-recipes" || item.id === "common-yoga" || item.id === "common-blogs" || item.id === "web-program-testimonials" || item.id === "web-footer" || item.id === "web-fs-social" || item.id === "web-fs-links" || item.id === "feature-flags" ? " ua-cfg-detail--wide" : ""}`}>
+    <main className={`content ua-page-enter ua-cfg-detail${item.id === "common-banner" || item.id === "common-champion" || item.id === "common-birthday" || item.id === "common-transformation" || item.id === "common-client-review" || item.id === "common-real-people" || item.id === "common-voice" || item.id === "common-cofounder" || item.id === "common-leadership" || item.id === "common-wellness-team" || item.id === "common-about" || item.id === "common-google-review" || item.id === "common-dropdowns" || item.id === "common-recipes" || item.id === "common-yoga" || item.id === "common-blogs" || item.id === "common-mental-wellbeing" || item.id === "common-wellness-yoga" || item.id === "common-physical-exercise" || item.id === "web-program-testimonials" || item.id === "web-footer" || item.id === "web-fs-social" || item.id === "web-fs-links" || item.id === "feature-flags" ? " ua-cfg-detail--wide" : ""}`}>
       <Link to={UPDATED_ADMIN_PATHS.configs} className="ua-cfg-detail__back">
         ← Configs
       </Link>

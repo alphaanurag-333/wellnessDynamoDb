@@ -1294,6 +1294,97 @@ const TABLE_DEFINITIONS = [
     ...PAY_PER_REQUEST,
   },
   {
+    TableName: "MentalWellbeing",
+    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
+    AttributeDefinitions: [
+      { AttributeName: "id", AttributeType: "S" },
+      { AttributeName: "status", AttributeType: "S" },
+      { AttributeName: "createdAt", AttributeType: "S" },
+    ],
+    GlobalSecondaryIndexes: [statusCreatedAtIndex()],
+    ...PAY_PER_REQUEST,
+  },
+  {
+    TableName: "AssignedMentalWellbeing",
+    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
+    AttributeDefinitions: [
+      { AttributeName: "id", AttributeType: "S" },
+      { AttributeName: "userId", AttributeType: "S" },
+      { AttributeName: "createdAt", AttributeType: "S" },
+      { AttributeName: "coachId", AttributeType: "S" },
+    ],
+    GlobalSecondaryIndexes: [
+      {
+        IndexName: "UserCreatedAtIndex",
+        KeySchema: [
+          { AttributeName: "userId", KeyType: "HASH" },
+          { AttributeName: "createdAt", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+      {
+        IndexName: "CoachCreatedAtIndex",
+        KeySchema: [
+          { AttributeName: "coachId", KeyType: "HASH" },
+          { AttributeName: "createdAt", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+    ],
+    ...PAY_PER_REQUEST,
+  },
+  {
+    TableName: "PhysicalExercise",
+    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
+    AttributeDefinitions: [
+      { AttributeName: "id", AttributeType: "S" },
+      { AttributeName: "status", AttributeType: "S" },
+      { AttributeName: "createdAt", AttributeType: "S" },
+    ],
+    GlobalSecondaryIndexes: [statusCreatedAtIndex()],
+    ...PAY_PER_REQUEST,
+  },
+  {
+    TableName: "WellnessYoga",
+    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
+    AttributeDefinitions: [
+      { AttributeName: "id", AttributeType: "S" },
+      { AttributeName: "status", AttributeType: "S" },
+      { AttributeName: "createdAt", AttributeType: "S" },
+    ],
+    GlobalSecondaryIndexes: [statusCreatedAtIndex()],
+    ...PAY_PER_REQUEST,
+  },
+  {
+    TableName: "AssignedWellnessYoga",
+    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
+    AttributeDefinitions: [
+      { AttributeName: "id", AttributeType: "S" },
+      { AttributeName: "userId", AttributeType: "S" },
+      { AttributeName: "createdAt", AttributeType: "S" },
+      { AttributeName: "coachId", AttributeType: "S" },
+    ],
+    GlobalSecondaryIndexes: [
+      {
+        IndexName: "UserCreatedAtIndex",
+        KeySchema: [
+          { AttributeName: "userId", KeyType: "HASH" },
+          { AttributeName: "createdAt", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+      {
+        IndexName: "CoachCreatedAtIndex",
+        KeySchema: [
+          { AttributeName: "coachId", KeyType: "HASH" },
+          { AttributeName: "createdAt", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+    ],
+    ...PAY_PER_REQUEST,
+  },
+  {
     TableName: "LaunchQuestion",
     KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
     AttributeDefinitions: [
@@ -1817,6 +1908,26 @@ const TABLE_DEFINITIONS = [
         IndexName: "ScopeCreatedAtIndex",
         KeySchema: [
           { AttributeName: "scope", KeyType: "HASH" },
+          { AttributeName: "createdAt", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+    ],
+    ...PAY_PER_REQUEST,
+  },
+  {
+    TableName: "UserProtocolSetting",
+    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
+    AttributeDefinitions: [
+      { AttributeName: "id", AttributeType: "S" },
+      { AttributeName: "userId", AttributeType: "S" },
+      { AttributeName: "createdAt", AttributeType: "S" },
+    ],
+    GlobalSecondaryIndexes: [
+      {
+        IndexName: "UserIdCreatedAtIndex",
+        KeySchema: [
+          { AttributeName: "userId", KeyType: "HASH" },
           { AttributeName: "createdAt", KeyType: "RANGE" },
         ],
         Projection: { ProjectionType: "ALL" },

@@ -51,11 +51,11 @@ function renderSection(section, user, onToast, onNavigate, onUserUpdated) {
     case "launch":
       return <LaunchSection user={user} onToast={onToast} />;
     case "food":
-      return <FoodSection onToast={onToast} />;
+      return <FoodSection user={user} onToast={onToast} />;
     case "bms":
-      return <BmsSection onToast={onToast} />;
+      return <BmsSection user={user} onToast={onToast} />;
     case "nutritions":
-      return <NutritionsSection onToast={onToast} />;
+      return <NutritionsSection user={user} onToast={onToast} />;
     case "health-progress":
       return <HealthProgressSection user={user} onToast={onToast} />;
     case "reflection":

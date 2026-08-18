@@ -41,6 +41,7 @@ const {
   verifyProfileWhatsappChangeOtp: verifyProfileWhatsappChangeOtpHelper,
 } = require("./userProfileHelpers");
 const { uploadFileFromRequest } = require("../../utils/s3");
+const { getClientIp } = require("../../utils/clientIp");
 const { resolveRegistrationReferralFields } = require("../../services/registrationReferralService");
 
 function sendAuthResponse(res, statusCode, user, message = "Authentication successful") {
@@ -218,6 +219,9 @@ exports.registerUser = asyncHandler(async (req, res) => {
   }
   if (!fields.termsAcceptedAt) {
     fields.termsAcceptedAt = new Date().toISOString();
+  }
+  if (!fields.termsAcceptedIp) {
+    fields.termsAcceptedIp = getClientIp(req) || null;
   }
 
   if (password) {

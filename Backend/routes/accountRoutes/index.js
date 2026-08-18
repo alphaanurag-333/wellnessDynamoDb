@@ -56,6 +56,7 @@ const adminDietPlanBookRoutes = require("../adminRoutes/adminDietPlanBookRoutes"
 const adminWellnessPrescriptionCatalogRoutes = require("../adminRoutes/adminWellnessPrescriptionCatalogRoutes");
 const adminAiEnableRoutes = require("../adminRoutes/adminAiEnableRoutes");
 const adminMentalWellbeingRoutes = require("../adminRoutes/adminMentalWellbeingRoutes");
+const adminWellnessYogaRoutes = require("../adminRoutes/adminWellnessYogaRoutes");
 const adminSpecializationRoutes = require("../adminRoutes/adminSpecializationRoutes");
 const adminBirthdayNotificationRoutes = require("../adminRoutes/adminBirthdayNotificationRoutes");
 const adminBirthdayPostRoutes = require("../adminRoutes/adminBirthdayPostRoutes");
@@ -143,6 +144,7 @@ router.use("/diet-plan-book", adminDietPlanBookRoutes);
 router.use("/wellness-prescriptions", adminWellnessPrescriptionCatalogRoutes);
 router.use("/ai-enable", adminAiEnableRoutes);
 router.use("/mental-wellbeing", adminMentalWellbeingRoutes);
+router.use("/wellness-yoga", adminWellnessYogaRoutes);
 router.use("/birthday-notifications", adminBirthdayNotificationRoutes);
 router.use("/birthday-posts", adminBirthdayPostRoutes);
 router.use("/leadership-notes", adminLeadershipNoteRoutes);

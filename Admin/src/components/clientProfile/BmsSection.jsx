@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PillTabs } from "../shared.jsx";
 import { FoodWaterHistoryPicker } from "./FoodDatePicker.jsx";
@@ -7,15 +7,18 @@ import {
   BMS_SLEEP_SUMMARY,
   BMS_SLEEP_TARGET_HISTORY,
   DEFAULT_BMS_RANGE,
-  EXERCISE_CONTENT,
-  MENTAL_CONTENT,
-  YOGA_CONTENT,
   buildHeartChart,
   buildSleepChart,
   buildStepsChart,
   formatStepsLabel,
   isHeartOutOfZone,
 } from "../../data/bmsData.js";
+import {
+  adminListWellnessLibrary,
+  assignUserWellnessItems,
+  listUserWellnessAssignments,
+  unassignUserWellnessItem,
+} from "../../api/wellnessLibraryApi.js";
 
 const BMS_TABS = [
   { id: "steps", label: "Step Tracking" },
@@ -309,24 +312,27 @@ function SleepPanel({
   );
 }
 
-function ContentCard({ item, onToggle }) {
+function ContentCard({ item, onToggle, busy }) {
   return (
     <div className="ua-cp-bms-content-card">
-      <div className="ua-cp-bms-content-card__thumb" aria-hidden="true" />
+      <div className="ua-cp-bms-content-card__thumb" aria-hidden="true">
+        {item.thumbnail ? <img src={item.thumbnail} alt="" /> : null}
+      </div>
       <div className="ua-cp-bms-content-card__body">
         <div className="ua-cp-bms-content-card__meta">
           <span className={`ua-cp-bms-content-card__type ua-cp-bms-content-card__type--${item.type}`}>
-            {item.type === "video" ? "Video" : "Audio"}
+            {item.type === "audio" ? "Audio" : item.type === "ytlink" ? "YouTube" : "Video"}
           </span>
-          <span className="ua-cp-bms-content-card__duration">{item.duration}</span>
+          {item.duration ? <span className="ua-cp-bms-content-card__duration">{item.duration}</span> : null}
         </div>
         <strong className="ua-cp-bms-content-card__title">{item.title}</strong>
-        <span className="ua-cp-bms-content-card__source">{item.source}</span>
+        <span className="ua-cp-bms-content-card__source">{item.source || (item.ytLink ? "YouTube" : "")}</span>
       </div>
       <button
         type="button"
         className={`ua-cp-bms-content-card__action${item.inApp ? " ua-cp-bms-content-card__action--in" : ""}`}
-        onClick={() => onToggle(item.id)}
+        disabled={busy}
+        onClick={() => onToggle(item)}
       >
         {item.inApp ? "✓ In user app" : "Add to app"}
       </button>
@@ -341,12 +347,15 @@ function ContentLibraryPanel({
   filterOptions,
   onToggle,
   hint,
+  loading,
+  emptyLabel,
+  busy,
 }) {
   const selectedCount = items.filter((i) => i.inApp).length;
 
   const filtered = useMemo(() => {
     if (filter === "in-app") return items.filter((i) => i.inApp);
-    if (filter === "video") return items.filter((i) => i.type === "video");
+    if (filter === "video") return items.filter((i) => i.type === "video" || i.type === "ytlink");
     if (filter === "audio") return items.filter((i) => i.type === "audio");
     return items;
   }, [items, filter]);
@@ -358,19 +367,27 @@ function ContentLibraryPanel({
         <span className="ua-cp-bms-library-toolbar__count">{selectedCount} selected for user app</span>
       </div>
       <p className="ua-cp-bms-library-hint">{hint}</p>
-      <div className="ua-cp-bms-content-list">
-        {filtered.map((item) => (
-          <ContentCard key={item.id} item={item} onToggle={onToggle} />
-        ))}
-      </div>
+      {loading ? (
+        <p className="ua-cp-bms-library-hint">Loading library…</p>
+      ) : filtered.length ? (
+        <div className="ua-cp-bms-content-list">
+          {filtered.map((item) => (
+            <ContentCard key={item.id} item={item} onToggle={onToggle} busy={busy} />
+          ))}
+        </div>
+      ) : (
+        <p className="ua-cp-bms-library-hint">{emptyLabel}</p>
+      )}
     </>
   );
 }
 
-export function BmsSection({ onToast }) {
+export function BmsSection({ user, onToast }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
   const tab = BMS_TABS.some((t) => t.id === tabParam) ? tabParam : "steps";
+  const userId = String(user?.id || "").trim();
+  const canAssign = String(user?.userTier || "").toLowerCase() === "heal";
 
   const [heartRateOn, setHeartRateOn] = useState(true);
   const [sleepTrackingOn, setSleepTrackingOn] = useState(true);
@@ -381,9 +398,11 @@ export function BmsSection({ onToast }) {
   const [showTargetHistory, setShowTargetHistory] = useState(false);
   const [clientCanSetSleep] = useState(true);
 
-  const [mentalItems, setMentalItems] = useState(MENTAL_CONTENT);
-  const [yogaItems, setYogaItems] = useState(YOGA_CONTENT);
-  const [exerciseItems, setExerciseItems] = useState(EXERCISE_CONTENT);
+  const [mentalItems, setMentalItems] = useState([]);
+  const [yogaItems, setYogaItems] = useState([]);
+  const [exerciseItems, setExerciseItems] = useState([]);
+  const [libraryLoading, setLibraryLoading] = useState({ mental: false, yoga: false, exercise: false });
+  const [libraryBusy, setLibraryBusy] = useState(false);
 
   const [mentalFilter, setMentalFilter] = useState("all");
   const [yogaFilter, setYogaFilter] = useState("all");
@@ -412,11 +431,70 @@ export function BmsSection({ onToast }) {
     }, { replace: true });
   }
 
-  function toggleContent(setter, id) {
-    setter((list) => list.map((item) => (
-      item.id === id ? { ...item, inApp: !item.inApp } : item
-    )));
-    onToast("Content selection updated");
+  useEffect(() => {
+    const kindByTab = { mental: "mental", yoga: "yoga", exercise: "exercise" };
+    const kind = kindByTab[tab];
+    if (!kind || !userId) return undefined;
+
+    let cancelled = false;
+    const setters = { mental: setMentalItems, yoga: setYogaItems, exercise: setExerciseItems };
+
+    async function loadLibrary() {
+      setLibraryLoading((prev) => ({ ...prev, [kind]: true }));
+      try {
+        const [{ items }, assignments] = await Promise.all([
+          adminListWellnessLibrary(kind, null, { page: 1, limit: 200, status: "active" }),
+          canAssign ? listUserWellnessAssignments(kind, userId) : Promise.resolve([]),
+        ]);
+        if (cancelled) return;
+        const assigned = new Map((assignments || []).map((row) => [row.itemId, row.assignmentId]));
+        setters[kind]((items || []).map((item) => ({
+          ...item,
+          inApp: assigned.has(item.id),
+          assignmentId: assigned.get(item.id) || "",
+        })));
+      } catch (error) {
+        if (!cancelled) onToast(error?.message || "Failed to load library");
+      } finally {
+        if (!cancelled) setLibraryLoading((prev) => ({ ...prev, [kind]: false }));
+      }
+    }
+
+    loadLibrary();
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, userId, canAssign, onToast]);
+
+  async function toggleContent(kind, item) {
+    if (!userId) return;
+    if (!canAssign) {
+      onToast("Content can only be assigned to Heal clients");
+      return;
+    }
+    if (libraryBusy) return;
+    const setters = { mental: setMentalItems, yoga: setYogaItems, exercise: setExerciseItems };
+    setLibraryBusy(true);
+    try {
+      if (item.inApp && item.assignmentId) {
+        await unassignUserWellnessItem(kind, userId, item.assignmentId);
+        setters[kind]((list) => list.map((entry) => (
+          entry.id === item.id ? { ...entry, inApp: false, assignmentId: "" } : entry
+        )));
+        onToast("Removed from user app");
+      } else {
+        const created = await assignUserWellnessItems(kind, userId, [item.id]);
+        const assignmentId = created?.[0]?.assignmentId || "";
+        setters[kind]((list) => list.map((entry) => (
+          entry.id === item.id ? { ...entry, inApp: true, assignmentId } : entry
+        )));
+        onToast("Added to user app");
+      }
+    } catch (error) {
+      onToast(error?.message || "Failed to update selection");
+    } finally {
+      setLibraryBusy(false);
+    }
   }
 
   function saveSleepGoal() {
@@ -430,11 +508,6 @@ export function BmsSection({ onToast }) {
     { id: "all", label: "All" },
     { id: "video", label: "Videos" },
     { id: "audio", label: "Audio" },
-    { id: "in-app", label: "In app" },
-  ];
-
-  const simpleFilters = [
-    { id: "all", label: "All" },
     { id: "in-app", label: "In app" },
   ];
 
@@ -522,7 +595,10 @@ export function BmsSection({ onToast }) {
           filter={mentalFilter}
           onFilterChange={setMentalFilter}
           filterOptions={mentalFilters}
-          onToggle={(id) => toggleContent(setMentalItems, id)}
+          onToggle={(item) => toggleContent("mental", item)}
+          loading={libraryLoading.mental}
+          busy={libraryBusy}
+          emptyLabel="No mental wellbeing items yet. Add them in Config → Common."
           hint="Admin maintains the full library of videos & audios. The wellness coach selects which appear in this client's app."
         />
       ) : null}
@@ -532,8 +608,11 @@ export function BmsSection({ onToast }) {
           items={yogaItems}
           filter={yogaFilter}
           onFilterChange={setYogaFilter}
-          filterOptions={simpleFilters}
-          onToggle={(id) => toggleContent(setYogaItems, id)}
+          filterOptions={mentalFilters}
+          onToggle={(item) => toggleContent("yoga", item)}
+          loading={libraryLoading.yoga}
+          busy={libraryBusy}
+          emptyLabel="No yoga items yet. Add them in Config → Common."
           hint="Admin maintains the full library of yoga videos & audios. The wellness coach selects which appear in this client's app."
         />
       ) : null}
@@ -543,8 +622,11 @@ export function BmsSection({ onToast }) {
           items={exerciseItems}
           filter={exerciseFilter}
           onFilterChange={setExerciseFilter}
-          filterOptions={simpleFilters}
-          onToggle={(id) => toggleContent(setExerciseItems, id)}
+          filterOptions={mentalFilters}
+          onToggle={(item) => toggleContent("exercise", item)}
+          loading={libraryLoading.exercise}
+          busy={libraryBusy}
+          emptyLabel="No physical exercise items yet. Add them in Config → Common."
           hint="Admin maintains the full library of videos & audios. The wellness coach selects which appear in this client's app."
         />
       ) : null}

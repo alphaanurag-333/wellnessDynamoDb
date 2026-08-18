@@ -2,6 +2,7 @@ const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
 const { hashPassword } = require("../../utils/password");
 const { uploadFileFromRequest, deleteStoredMedia } = require("../../utils/s3");
+const { getClientIp } = require("../../utils/clientIp");
 const { getHealthConcernById } = require("../../models/healthConcernModel");
 const {
   createUser,
@@ -18,6 +19,7 @@ const {
   assertUniquePhone,
   buildUserUpdatesFromBody,
 } = require("../userController/userProfileHelpers");
+const { assertStaffCanAccessUser } = require("../staffAccess");
 
 exports.listUsersController = asyncHandler(async (req, res) => {
   const page = Math.max(1, Number(req.query.page) || 1);
@@ -39,6 +41,7 @@ exports.listUsersController = asyncHandler(async (req, res) => {
 exports.getUserByIdController = asyncHandler(async (req, res) => {
   const user = await getUserById(req.params.id);
   if (!user) throw new AppError("User not found", 404);
+  await assertStaffCanAccessUser(req, user);
   return res.status(200).json({ status: true, user: await enrichUser(user) });
 });
 
@@ -57,6 +60,9 @@ exports.createUserController = asyncHandler(async (req, res) => {
 
   if (fields.termsAccepted && !fields.termsAcceptedAt) {
     fields.termsAcceptedAt = new Date().toISOString();
+  }
+  if (fields.termsAccepted && !fields.termsAcceptedIp) {
+    fields.termsAcceptedIp = getClientIp(req) || null;
   }
 
   if (fields.primaryHealthConcern) {

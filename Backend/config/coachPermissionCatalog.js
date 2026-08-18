@@ -37,6 +37,7 @@ const CLIENT_HUB_TAB_META = {
   "internal-parameters": "Internal params",
   "physical-exercises": "Exercises",
   "mental-wellbeing": "Mental wellbeing",
+  yoga: "Yoga",
   "daily-reflection": "Daily reflection",
   "supplement-recommendations": "Supplements",
   "supplement-dosage": "Dosage",
@@ -78,6 +79,7 @@ const CLIENT_HUB_TAB_GROUPS = [
     tabIds: [
       "physical-exercises",
       "mental-wellbeing",
+      "yoga",
       "daily-reflection",
       "supplement-recommendations",
       "supplement-dosage",

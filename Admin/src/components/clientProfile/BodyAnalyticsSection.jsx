@@ -110,49 +110,163 @@ function PhotoCards({ photosByAngle, latestPhotoDate, onOpen }) {
   );
 }
 
+function photoFileName(photo, angle) {
+  const ext = String(photo.url || "").match(/\.(jpe?g|png|webp|gif|heic)(?:\?|$)/i)?.[1]?.toLowerCase() || "jpg";
+  const datePart = String(photo.date || "photo").replace(/[^\w]+/g, "-").replace(/^-|-$/g, "");
+  return `${angle}-${datePart}.${ext}`;
+}
+
+function triggerAnchorDownload(href, filename) {
+  const link = document.createElement("a");
+  link.href = href;
+  link.download = filename;
+  link.rel = "noopener noreferrer";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
+async function downloadPhotoFile(url, filename) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("Could not download photo");
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    triggerAnchorDownload(objectUrl, filename);
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
+  } catch {
+    triggerAnchorDownload(url, filename);
+  }
+}
+
 function PhotoModal({ angle, photos, onClose, onToast }) {
+  const [preview, setPreview] = useState(null);
+  const [busy, setBusy] = useState("");
+
+  useEffect(() => {
+    function onKeyDown(event) {
+      if (event.key !== "Escape") return;
+      if (preview) setPreview(null);
+      else onClose();
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onClose, preview]);
+
   const root = getModalRoot();
   if (!root) return null;
 
+  async function handleSave(photo) {
+    if (!photo?.url || busy) return;
+    setBusy(photo.id);
+    try {
+      await downloadPhotoFile(photo.url, photoFileName(photo, angle));
+      onToast?.(`Saved ${angle} photo (${photo.date})`);
+    } catch {
+      onToast?.("Could not download photo");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function handleDownloadAll() {
+    if (!photos.length || busy) return;
+    setBusy("all");
+    try {
+      for (const photo of photos) {
+        if (!photo.url) continue;
+        await downloadPhotoFile(photo.url, photoFileName(photo, angle));
+      }
+      onToast?.(`Downloaded ${photos.length} ${angle} photo${photos.length === 1 ? "" : "s"}`);
+    } catch {
+      onToast?.("Could not download photos");
+    } finally {
+      setBusy("");
+    }
+  }
+
   return createPortal(
-    <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={onClose} role="presentation">
-      <div className="ua-cp-modal ua-cp-modal--photos" onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="photo-modal-title">
-        <div className="ua-cp-modal__head ua-cp-modal__head--photos">
-          <div>
-            <div id="photo-modal-title" className="ua-cp-modal__title">{angle} Photos</div>
-            <div className="ua-cp-modal__sub">All {angle} photos uploaded by the client — compare over time</div>
-          </div>
-          <div className="ua-cp-modal__actions">
-            <button type="button" className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm" onClick={() => onToast(`Downloading all ${angle} photos`)}>
-              ↓ Download all
-            </button>
-            <button type="button" className="ua-cp-modal__close" onClick={onClose} aria-label="Close">×</button>
-          </div>
-        </div>
-        <div className="ua-cp-ba-photo-grid">
-          {photos.map((p) => (
-            <div key={p.id} className="ua-cp-ba-photo-card">
-              <div className="ua-cp-ba-photo-card__img">
-                <img src={p.url} alt={`${angle} progress from ${p.date}`} />
-              </div>
-              <div className="ua-cp-ba-photo-card__foot">
-                <span>{p.date}</span>
-                <a
-                  className="ua-cp-ba-photo-card__save"
-                  href={p.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  download
-                  onClick={() => onToast(`Opened ${angle} photo (${p.date})`)}
-                >
-                  ↓ Save
-                </a>
-              </div>
+    <>
+      <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={onClose} role="presentation">
+        <div className="ua-cp-modal ua-cp-modal--photos" onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="photo-modal-title">
+          <div className="ua-cp-modal__head ua-cp-modal__head--photos">
+            <div>
+              <div id="photo-modal-title" className="ua-cp-modal__title">{angle} Photos</div>
+              <div className="ua-cp-modal__sub">All {angle} photos uploaded by the client — compare over time</div>
             </div>
-          ))}
+            <div className="ua-cp-modal__actions">
+              <button
+                type="button"
+                className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm"
+                onClick={handleDownloadAll}
+                disabled={busy === "all" || !photos.length}
+              >
+                ↓ {busy === "all" ? "Downloading…" : "Download all"}
+              </button>
+              <button type="button" className="ua-cp-modal__close" onClick={onClose} aria-label="Close">×</button>
+            </div>
+          </div>
+          <div className="ua-cp-ba-photo-grid">
+            {photos.map((p) => (
+              <div key={p.id} className="ua-cp-ba-photo-card">
+                <button
+                  type="button"
+                  className="ua-cp-ba-photo-card__img"
+                  onClick={() => setPreview(p)}
+                  aria-label={`Preview ${angle} photo from ${p.date}`}
+                >
+                  <img src={p.url} alt={`${angle} progress from ${p.date}`} />
+                </button>
+                <div className="ua-cp-ba-photo-card__foot">
+                  <span>{p.date}</span>
+                  <button
+                    type="button"
+                    className="ua-cp-ba-photo-card__save"
+                    onClick={() => handleSave(p)}
+                    disabled={busy === p.id}
+                  >
+                    ↓ {busy === p.id ? "Saving…" : "Save"}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
-    </div>,
+      {preview ? (
+        <div
+          className="ua-cp-ba-photo-preview"
+          onClick={() => setPreview(null)}
+          role="presentation"
+        >
+          <div
+            className="ua-cp-ba-photo-preview__dialog"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-labelledby="photo-preview-title"
+          >
+            <div className="ua-cp-ba-photo-preview__head">
+              <div>
+                <div id="photo-preview-title" className="ua-cp-ba-photo-preview__title">{angle} photo</div>
+                <div className="ua-cp-ba-photo-preview__sub">{preview.date}</div>
+              </div>
+              <div className="ua-cp-modal__actions">
+                <button
+                  type="button"
+                  className="ua-cp-ba-photo-card__save"
+                  onClick={() => handleSave(preview)}
+                  disabled={busy === preview.id}
+                >
+                  ↓ {busy === preview.id ? "Saving…" : "Save"}
+                </button>
+                <button type="button" className="ua-cp-modal__close" onClick={() => setPreview(null)} aria-label="Close preview">×</button>
+              </div>
+            </div>
+            <img src={preview.url} alt={`${angle} progress from ${preview.date}`} />
+          </div>
+        </div>
+      ) : null}
+    </>,
     root,
   );
 }

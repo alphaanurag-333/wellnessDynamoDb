@@ -9,8 +9,6 @@ import { NutritionsSection } from "./NutritionsSection.jsx";
 import { getTierActions } from "../../data/userDetailData.js";
 import { tierBadgeClass, tierBadgeStyle, tierLabel, normalizeTier } from "../../data/usersData.js";
 import {
-  PAID_ONBOARDING_STATUS_KEYS,
-  PAID_ONBOARDING_STEP_LABELS,
   moveUserToMaintenance,
   moveUserToSeek,
   moveMaintenanceUserToHeal,
@@ -27,13 +25,6 @@ export { GutResetSection } from "./GutResetSection.jsx";
 
 function DosageBadge({ label, tone }) {
   return <span className={`ua-cp-dosage ua-cp-dosage--${tone}`}>{label}</span>;
-}
-
-function formatStepStatus(value) {
-  const raw = String(value || "pending").toLowerCase();
-  if (raw === "done") return "Done";
-  if (raw === "skipped") return "Skipped";
-  return "Pending";
 }
 
 export function PersonalDetailsSection({ user, onToast, onUserUpdated }) {
@@ -65,44 +56,22 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated }) {
   const tierActions = getTierActions(currentTier, user.ageDays ?? 30);
   const tierBadgeTone = tierBadgeStyle(currentTier);
   const displayTierLabel = tierLabel(currentTier);
-  const stepStatus = user?.paidOnboardingStepStatus || {};
   const userId = String(user?.id || "").trim();
-
-  function titleCaseOnboardingStep(step) {
-    return String(step || "")
-      .split(/[_\s]+/)
-      .filter(Boolean)
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-      .join(" ");
-  }
-
-  const paidOnboardingLabel = user.paidOnboardingCompleted
-    ? "Completed"
-    : user.paidOnboardingStep
-      ? titleCaseOnboardingStep(user.paidOnboardingStep)
-      : "Pending";
 
   const fields = [
     { key: "name", label: "Full name", editable: true },
     { key: "dob", label: "Date of birth", editable: true },
-    { key: "gender", label: "Gender", value: user.gender, editable: false },
     { key: "email", label: "Email", value: user.email, editable: false },
     { key: "phone", label: "Phone", editable: true },
     { key: "whatsapp", label: "WhatsApp", editable: true },
     { key: "address", label: "Complete address", editable: true },
-    { key: "city", label: "City", value: user.city, editable: false },
     { key: "state", label: "State", editable: true },
-    { key: "country", label: "Country", value: user.country, editable: false },
-    { key: "pincode", label: "Pincode", value: user.pincode, editable: false },
     { key: "tier", label: "Plan / tier", value: displayTierLabel, editable: false },
-    { key: "goal", label: "Primary health concern", editable: true },
-    { key: "dietaryPreference", label: "Dietary preference", value: user.dietaryPreference, editable: false },
-    { key: "wellnessJourneyFor", label: "Wellness journey for", value: user.wellnessJourneyFor, editable: false },
-    { key: "referralCode", label: "Referral code", value: user.referralCode, editable: false },
+    { key: "goal", label: "Goal", editable: true },
     { key: "coach", label: "Assigned coach", value: user.coach, editable: false },
     { key: "joined", label: "Joined", value: user.joined, editable: false },
+    { key: "termsIp", label: "Terms & conditions IP", value: user.termsIp, editable: false },
     { key: "termsAccepted", label: "Terms & conditions accepted", value: user.termsAccepted, editable: false },
-    { key: "paidOnboarding", label: "Paid onboarding", value: paidOnboardingLabel, editable: false },
   ];
 
   function save() {
@@ -196,28 +165,6 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated }) {
         ) : null}
         <span className="ua-cp-status-badge"><span className="ua-cp-status-badge__dot" />{user.status || "Active"}</span>
       </div>
-
-      {user?.paidOnboardingStepStatus ? (
-        <div className="ua-cp-personal__avail-card">
-          <div className="ua-cp-personal__steps">
-            <div className="ua-cp-personal__steps-label">Paid onboarding steps</div>
-            <div className="ua-cp-personal__steps-grid">
-              {PAID_ONBOARDING_STATUS_KEYS.map((key) => {
-                const status = stepStatus[key] || "pending";
-                return (
-                  <div
-                    key={key}
-                    className={`ua-cp-step-chip ua-cp-step-chip--${status}`}
-                  >
-                    <span>{PAID_ONBOARDING_STEP_LABELS[key] || key}</span>
-                    <strong>{formatStepStatus(status)}</strong>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      ) : null}
 
       <div className="ua-cp-personal__card">
         {fields.map((f) => {

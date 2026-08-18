@@ -50,7 +50,11 @@ function toAssignedPhysicalExercisePublic(item, exercise = null) {
       title: exercise.title,
       description: exercise.description,
       type: exercise.type,
+      mediaType: exercise.mediaType,
       link: exercise.link,
+      ytLink: exercise.ytLink,
+      thumbnail: exercise.thumbnail,
+      duration: exercise.duration,
       status: exercise.status,
     },
   };

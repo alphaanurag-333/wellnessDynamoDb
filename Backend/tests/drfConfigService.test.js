@@ -41,4 +41,44 @@ describe("drfConfigService", () => {
     assert.equal(summary.valid.weights, true);
     assert.equal(summary.remainingWeight, 0);
   });
+
+  it("lets coaches select live bank questions and keeps fixed ones on", () => {
+    const {
+      applyUserDrfSelection,
+      selectedQuestionIdsFromSections,
+    } = require("../services/drfConfigService");
+    const catalog = [
+      {
+        id: "meal",
+        name: "Meal Tracking",
+        weight: 20,
+        live: true,
+        questions: [
+          { id: "salad", name: "Salad", points: 10, enabled: true, fixed: true },
+          { id: "protein", name: "Protein", points: 10, enabled: true, fixed: false },
+          { id: "off", name: "Hidden", points: 10, enabled: false, fixed: false },
+        ],
+      },
+      {
+        id: "idle",
+        name: "Idle",
+        weight: 10,
+        live: false,
+        questions: [{ id: "x", name: "X", points: 10, enabled: true }],
+      },
+    ];
+
+    const unsaved = applyUserDrfSelection(catalog, ["protein"], { saved: false });
+    assert.equal(unsaved.length, 1);
+    assert.deepEqual(
+      unsaved[0].questions.map((row) => ({ id: row.id, selected: row.selected })),
+      [
+        { id: "salad", selected: true },
+        { id: "protein", selected: false },
+      ],
+    );
+
+    const saved = applyUserDrfSelection(catalog, ["protein"], { saved: true });
+    assert.deepEqual(selectedQuestionIdsFromSections(saved).sort(), ["protein", "salad"]);
+  });
 });

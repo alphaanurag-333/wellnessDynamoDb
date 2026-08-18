@@ -82,10 +82,12 @@ function resolveAwcName(user) {
 }
 
 function formatPhoneParts(countryCode, phone) {
-  const digits = String(phone || "").trim();
-  if (!digits) return "";
+  const raw = String(phone || "").trim();
+  if (!raw) return "";
+  const digits = raw.replace(/\D/g, "");
+  const local = digits.length === 10 ? `${digits.slice(0, 5)} ${digits.slice(5)}` : raw;
   const cc = String(countryCode || "").trim();
-  return cc ? `${cc} ${digits}` : digits;
+  return cc ? `${cc} ${local}` : local;
 }
 
 function parseIso(iso) {
@@ -163,29 +165,67 @@ function formatLastActive(iso) {
 }
 
 function formatDob(iso) {
+  if (!iso) return "";
+  const match = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) {
+    return `${Number(match[3])} ${MONTHS_SHORT[Number(match[2]) - 1]} ${match[1]}`;
+  }
   const d = parseIso(iso);
   if (!d) return "";
-  return `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()}`;
+  return `${d.getUTCDate()} ${MONTHS_SHORT[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }
 
 function formatAddress(user) {
-  const parts = [
-    user?.addressLine1,
-    user?.addressLine2,
-    user?.city,
-    user?.state,
-    user?.country,
-    user?.pincode,
-  ]
+  const state = String(user?.state || "").trim();
+  const pincode = String(user?.pincode || "").trim();
+  const statePin = [state, pincode].filter(Boolean).join(" ");
+  return [user?.addressLine1, user?.addressLine2, user?.city, statePin]
     .map((p) => String(p || "").trim())
-    .filter(Boolean);
-  return parts.join(", ");
+    .filter(Boolean)
+    .join(", ");
+}
+
+function formatStateDisplay(stateRaw, country) {
+  if (stateRaw && country) return `${stateRaw} (${country})`;
+  return stateRaw || country || "";
+}
+
+function istParts(iso) {
+  const d = parseIso(iso);
+  if (!d) return null;
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(d);
+  const get = (type) => parts.find((p) => p.type === type)?.value || "";
+  return {
+    day: get("day"),
+    month: get("month"),
+    year: get("year"),
+    hour: get("hour"),
+    minute: get("minute"),
+  };
+}
+
+function formatIstDateTime(iso) {
+  const parts = istParts(iso);
+  if (!parts) return "";
+  return `${parts.day} ${parts.month} ${parts.year}, ${parts.hour}:${parts.minute} IST`;
 }
 
 function formatTermsAccepted(user) {
-  const at = formatLongDate(user?.termsAcceptedAt);
+  const at = formatIstDateTime(user?.termsAcceptedAt);
   if (!at) return user?.termsAccepted ? "Accepted" : "";
   return at;
+}
+
+function resolveTermsIp(user) {
+  return String(user?.termsAcceptedIp || user?.termsIp || "").trim();
 }
 
 function buildTags(user, goal) {
@@ -346,7 +386,7 @@ export function mapApiUserToRow(user, index = 0) {
   const stateRaw = String(user?.state || "").trim();
   const country = String(user?.country || "").trim();
   const city = String(user?.city || "").trim();
-  const state = [stateRaw, country].filter(Boolean).join(" · ") || stateRaw;
+  const state = formatStateDisplay(stateRaw, country);
   const paidOnboardingStepStatus = normalizeOnboardingStepStatus(user?.paidOnboardingStepStatus);
   const onboardingDone = countOnboardingDone(paidOnboardingStepStatus);
   const onboardingTotal = PAID_ONBOARDING_STATUS_KEYS.length;
@@ -397,7 +437,7 @@ export function mapApiUserToRow(user, index = 0) {
     joinedAgo: formatJoinedAgo(createdAt),
     lastUpdated: formatShortDate(updatedAt),
     lastReviewed: formatRelativeDate(lastReviewedAt),
-    termsIp: "",
+    termsIp: resolveTermsIp(user),
     termsAccepted: termsAcceptedLabel,
     termsAcceptedBool: Boolean(user?.termsAccepted),
     programs: assignedProgram ? 1 : 0,
@@ -413,6 +453,7 @@ export function mapApiUserToRow(user, index = 0) {
     profileImage: user?.profileImage || "",
     presentablePic: user?.presentablePic || "",
     referralCode: String(user?.referralCode || "").trim(),
+    userTier: String(user?.userTier || "").toLowerCase(),
     parentCoachId: user?.parentCoachId || user?.parentCoach?.id || "",
     assignedCoachId: user?.assignedCoachId || user?.assignedCoach?.id || "",
     assignedCoachType: user?.assignedCoachType || "",
@@ -495,6 +536,16 @@ export async function fetchUser(id) {
     });
     return mapApiUserToRow(data.user);
   } catch (error) {
+    if (error?.response?.status === 403) {
+      try {
+        const { data } = await api.get(`/account/heal-users/${encodeURIComponent(id)}`, {
+          headers: authHeader(),
+        });
+        return mapApiUserToRow(data.user);
+      } catch (scopedError) {
+        normalizeApiError(scopedError);
+      }
+    }
     normalizeApiError(error);
   }
 }

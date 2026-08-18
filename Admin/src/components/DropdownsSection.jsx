@@ -21,10 +21,63 @@ import {
   mapQuestionsToDropdownList,
 } from "../api/medicalConditionQuestionApi.js";
 import { MEDICAL_ANSWER_TYPES } from "../data/configDetailData.js";
+import {
+  formatPack,
+  parseBottlePrice,
+  parsePackSize,
+  SUPPLEMENT_POOL_UNITS,
+  unitOptionsFor,
+} from "../data/nutritionBankData.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 
 const FILTERS = ["All options", "On", "Hidden"];
 const ICON_ACCEPT = "image/jpeg,image/png,image/gif,image/webp,image/jpg";
+const EMPTY_SUPP_DRAFT = { packSize: "", unit: "Caps", price: "" };
+
+function formatSupplementMeta(entry) {
+  const pack = formatPack(entry?.packSize, entry?.unit);
+  const price = Number(entry?.price);
+  const parts = [];
+  if (pack) parts.push(pack);
+  if (Number.isFinite(price) && price > 0) parts.push(`Rs. ${price.toLocaleString("en-IN")}`);
+  return parts.join(" · ");
+}
+
+function SupplementMetaFields({ packSize, unit, price, disabled, onPackSize, onUnit, onPrice }) {
+  return (
+    <>
+      <input
+        className="ua-cfg-dd-row__input"
+        inputMode="numeric"
+        placeholder="Pack size"
+        aria-label="Pack size"
+        value={packSize}
+        disabled={disabled}
+        onChange={(event) => onPackSize(event.target.value.replace(/[^\d]/g, ""))}
+      />
+      <select
+        className="ua-cfg-dd-row__type"
+        value={unit}
+        disabled={disabled}
+        aria-label="Unit"
+        onChange={(event) => onUnit(event.target.value)}
+      >
+        {unitOptionsFor(unit, SUPPLEMENT_POOL_UNITS).map((option) => (
+          <option key={option} value={option}>{option}</option>
+        ))}
+      </select>
+      <input
+        className="ua-cfg-dd-row__input"
+        inputMode="numeric"
+        placeholder="Price (Rs.)"
+        aria-label="Price (Rs.)"
+        value={price}
+        disabled={disabled}
+        onChange={(event) => onPrice(event.target.value.replace(/[^\d]/g, ""))}
+      />
+    </>
+  );
+}
 
 function matchesQuery(list, query) {
   if (!query) return true;
@@ -93,8 +146,12 @@ export function DropdownsSection({ lists, setLists, onToast }) {
   const [editValue, setEditValue] = useState("");
   const [editAnswerType, setEditAnswerType] = useState("yes_no_text");
   const [answerTypeDrafts, setAnswerTypeDrafts] = useState({});
+  const [suppDrafts, setSuppDrafts] = useState({});
   const [editIconFile, setEditIconFile] = useState(null);
   const [editIconPreview, setEditIconPreview] = useState("");
+  const [editPackSize, setEditPackSize] = useState("");
+  const [editUnit, setEditUnit] = useState("Caps");
+  const [editPrice, setEditPrice] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(null);
@@ -147,7 +204,12 @@ export function DropdownsSection({ lists, setLists, onToast }) {
         });
         return { ...list, options };
       })
-      .filter((list) => (list.slug === "health-concern" || list.slug === "medical-questions" || list.options.length > 0) && matchesQuery(list, query));
+      .filter((list) => (
+        list.slug === "health-concern"
+        || list.slug === "medical-questions"
+        || list.slug === "supplement-pool"
+        || list.options.length > 0
+      ) && matchesQuery(list, query));
   }, [lists, filter, query]);
 
   const optionCount = lists.reduce((sum, list) => sum + list.options.length, 0);
@@ -179,6 +241,9 @@ export function DropdownsSection({ lists, setLists, onToast }) {
     setEditAnswerType(entry.answerType || "yes_no_text");
     setEditIconFile(null);
     setEditIconPreview(asCopyString(entry.icon));
+    setEditPackSize(entry.packSize ? String(entry.packSize) : "");
+    setEditUnit(entry.unit || "Caps");
+    setEditPrice(entry.price ? String(entry.price) : "");
   }
 
   function cancelEdit() {
@@ -188,6 +253,9 @@ export function DropdownsSection({ lists, setLists, onToast }) {
     setEditAnswerType("yes_no_text");
     setEditIconFile(null);
     setEditIconPreview("");
+    setEditPackSize("");
+    setEditUnit("Caps");
+    setEditPrice("");
   }
 
   async function addOption(list) {
@@ -196,6 +264,24 @@ export function DropdownsSection({ lists, setLists, onToast }) {
     if (list.slug === "health-concern" && !(iconFiles[list.id] instanceof File)) {
       onToast("Upload an icon image first");
       return;
+    }
+    const suppDraft = suppDrafts[list.id] || EMPTY_SUPP_DRAFT;
+    const packSize = parsePackSize(suppDraft.packSize);
+    const unit = String(suppDraft.unit || "").trim();
+    const price = parseBottlePrice(suppDraft.price);
+    if (list.slug === "supplement-pool") {
+      if (!packSize) {
+        onToast("Enter a pack size");
+        return;
+      }
+      if (!unit) {
+        onToast("Choose a unit");
+        return;
+      }
+      if (!price) {
+        onToast("Enter a price (Rs.)");
+        return;
+      }
     }
     setBusy(true);
     try {
@@ -258,10 +344,14 @@ export function DropdownsSection({ lists, setLists, onToast }) {
         const { list: nextList } = await adminAddConfigDropdownOption(null, list.id, {
           label,
           on: true,
+          ...(list.slug === "supplement-pool" ? { packSize, unit, price } : {}),
         });
         replaceList(nextList);
       }
       setDrafts((prev) => ({ ...prev, [list.id]: "" }));
+      if (list.slug === "supplement-pool") {
+        setSuppDrafts((prev) => ({ ...prev, [list.id]: { ...EMPTY_SUPP_DRAFT } }));
+      }
       onToast("Option added");
     } catch (error) {
       onToast(error?.message || "Failed to add option");
@@ -273,6 +363,23 @@ export function DropdownsSection({ lists, setLists, onToast }) {
   async function saveEdit(list, optionId) {
     const label = asCopyString(editValue).trim();
     if (!label || busy) return;
+    const packSize = parsePackSize(editPackSize);
+    const unit = String(editUnit || "").trim();
+    const price = parseBottlePrice(editPrice);
+    if (list.slug === "supplement-pool") {
+      if (!packSize) {
+        onToast("Enter a pack size");
+        return;
+      }
+      if (!unit) {
+        onToast("Choose a unit");
+        return;
+      }
+      if (!price) {
+        onToast("Enter a price (Rs.)");
+        return;
+      }
+    }
     setBusy(true);
     try {
       if (list.slug === "health-concern") {
@@ -327,7 +434,10 @@ export function DropdownsSection({ lists, setLists, onToast }) {
           ),
         );
       } else {
-        const { list: nextList } = await adminUpdateConfigDropdownOption(null, list.id, optionId, { label });
+        const { list: nextList } = await adminUpdateConfigDropdownOption(null, list.id, optionId, {
+          label,
+          ...(list.slug === "supplement-pool" ? { packSize, unit, price } : {}),
+        });
         replaceList(nextList);
       }
       cancelEdit();
@@ -485,8 +595,9 @@ export function DropdownsSection({ lists, setLists, onToast }) {
             const onCount = source.options.filter((entry) => entry.on).length;
             const supportsIcons = list.slug === "health-concern";
             const supportsAnswerType = list.slug === "medical-questions";
+            const isSupplementPool = list.slug === "supplement-pool";
             return (
-              <section key={list.id} className={`ua-cfg-dd-card${list.wide || supportsIcons || supportsAnswerType ? " ua-cfg-dd-card--wide" : ""}`}>
+              <section key={list.id} className={`ua-cfg-dd-card${list.wide || supportsIcons || supportsAnswerType || isSupplementPool ? " ua-cfg-dd-card--wide" : ""}`}>
                 <div className="ua-cfg-dd-card__head">
                   <h3>{asCopyString(list.title)}</h3>
                   <span>{onCount}/{source.options.length} on</span>
@@ -495,10 +606,10 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                   {list.options.map((entry) => {
                     const isEditing = editing === `${list.id}:${entry.id}`;
                     return (
-                      <div key={entry.id} className={`ua-cfg-dd-row${supportsIcons ? " has-icon" : ""}${supportsAnswerType ? " has-type" : ""}${entry.on ? "" : " is-off"}`}>
+                      <div key={entry.id} className={`ua-cfg-dd-row${supportsIcons ? " has-icon" : ""}${supportsAnswerType ? " has-type" : ""}${isSupplementPool ? " has-supp" : ""}${entry.on ? "" : " is-off"}`}>
                         <i aria-hidden="true" />
                         {isEditing ? (
-                          <div className={`ua-cfg-dd-row__fields${supportsIcons ? " has-icon" : ""}${supportsAnswerType ? " has-type" : ""}`}>
+                          <div className={`ua-cfg-dd-row__fields${supportsIcons ? " has-icon" : ""}${supportsAnswerType ? " has-type" : ""}${isSupplementPool ? " has-supp" : ""}`}>
                             {supportsIcons ? (
                               <IconPicker
                                 previewUrl={editIconPreview}
@@ -537,6 +648,17 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                                 ))}
                               </select>
                             ) : null}
+                            {isSupplementPool ? (
+                              <SupplementMetaFields
+                                packSize={editPackSize}
+                                unit={editUnit}
+                                price={editPrice}
+                                disabled={busy}
+                                onPackSize={setEditPackSize}
+                                onUnit={setEditUnit}
+                                onPrice={setEditPrice}
+                              />
+                            ) : null}
                           </div>
                         ) : (
                           <strong>
@@ -544,6 +666,9 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                             <span className="ua-cfg-dd-row__label">{asCopyString(entry.label)}</span>
                             {supportsAnswerType ? (
                               <span className="ua-cfg-dd-row__type-badge">{answerTypeLabel(entry.answerType)}</span>
+                            ) : null}
+                            {isSupplementPool && formatSupplementMeta(entry) ? (
+                              <span className="ua-cfg-dd-row__meta">{formatSupplementMeta(entry)}</span>
                             ) : null}
                           </strong>
                         )}
@@ -583,7 +708,7 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                     );
                   })}
                 </div>
-                <div className={`ua-cfg-dd-add${supportsIcons ? " has-icon" : ""}${supportsAnswerType ? " has-type" : ""}`}>
+                <div className={`ua-cfg-dd-add${supportsIcons ? " has-icon" : ""}${supportsAnswerType ? " has-type" : ""}${isSupplementPool ? " has-supp" : ""}`}>
                   {supportsIcons ? (
                     <IconPicker
                       previewUrl={asCopyString(iconPreviews[list.id])}
@@ -599,7 +724,9 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                         ? "Add a health concern..."
                         : supportsAnswerType
                           ? "Add a medical question..."
-                          : "Add an option..."
+                          : isSupplementPool
+                            ? "Add a supplement..."
+                            : "Add an option..."
                     }
                     value={asCopyString(drafts[list.id])}
                     disabled={busy}
@@ -622,6 +749,26 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                         </option>
                       ))}
                     </select>
+                  ) : null}
+                  {isSupplementPool ? (
+                    <SupplementMetaFields
+                      packSize={asCopyString((suppDrafts[list.id] || EMPTY_SUPP_DRAFT).packSize)}
+                      unit={(suppDrafts[list.id] || EMPTY_SUPP_DRAFT).unit || "Caps"}
+                      price={asCopyString((suppDrafts[list.id] || EMPTY_SUPP_DRAFT).price)}
+                      disabled={busy}
+                      onPackSize={(value) => setSuppDrafts((prev) => ({
+                        ...prev,
+                        [list.id]: { ...EMPTY_SUPP_DRAFT, ...prev[list.id], packSize: value },
+                      }))}
+                      onUnit={(value) => setSuppDrafts((prev) => ({
+                        ...prev,
+                        [list.id]: { ...EMPTY_SUPP_DRAFT, ...prev[list.id], unit: value },
+                      }))}
+                      onPrice={(value) => setSuppDrafts((prev) => ({
+                        ...prev,
+                        [list.id]: { ...EMPTY_SUPP_DRAFT, ...prev[list.id], price: value },
+                      }))}
+                    />
                   ) : null}
                   <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={() => addOption(list)}>
                     Add

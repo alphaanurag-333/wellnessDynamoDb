@@ -262,7 +262,7 @@ function WaterGoalBar({ goal, dietPlanOn, editing, draftGoal, onStartEdit, onCan
   );
 }
 
-export function FoodSection({ onToast }) {
+export function FoodSection({ user, onToast }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const mode = searchParams.get("mode") === "detailed" ? "detailed" : "macro";
   const tabParam = searchParams.get("tab");
@@ -463,7 +463,7 @@ export function FoodSection({ onToast }) {
         </>
       ) : null}
 
-      {tab === "diet" ? <DietPlanPanel onToast={onToast} /> : null}
+      {tab === "diet" ? <DietPlanPanel user={user} onToast={onToast} /> : null}
 
       {photoMeal ? <MealPhotoModal meal={photoMeal} dateLabel={dateLabel} onClose={() => setPhotoMeal(null)} /> : null}
     </div>

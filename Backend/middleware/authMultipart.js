@@ -27,7 +27,11 @@ const assistantWellnessCoachUpload = memorySingle("file");
 const healthConcernUpload = memorySingle("file");
 const healthToolUpload = memorySingle("file");
 const supplementUpload = memorySingle("file");
-const mentalWellbeingUpload = memorySingle("file");
+const mentalWellbeingUpload = memoryFields([
+  { name: "file", maxCount: 1 },
+  { name: "thumbnailFile", maxCount: 1 },
+  { name: "videoFile", maxCount: 1 },
+]);
 const userUpload = memoryFields([
   { name: "file", maxCount: 1 },
   { name: "presentablePic", maxCount: 1 },
@@ -81,9 +85,16 @@ const blogMediaUpload = memoryFields([
   { name: "coverFile", maxCount: 1 },
 ]);
 
+const wellnessYogaUpload = memoryFields([
+  { name: "file", maxCount: 1 },
+  { name: "thumbnailFile", maxCount: 1 },
+  { name: "videoFile", maxCount: 1 },
+]);
+
 const physicalExerciseUpload = memoryFields([
   { name: "videoFile", maxCount: 1 },
   { name: "file", maxCount: 1 },
+  { name: "thumbnailFile", maxCount: 1 },
 ]);
 
 const transformationUploads = memoryFields([
@@ -115,6 +126,7 @@ exports.optionalHealthConcernFile = optionalMultipart(healthConcernUpload);
 exports.optionalHealthToolFile = optionalMultipart(healthToolUpload);
 exports.optionalSupplementFile = optionalMultipart(supplementUpload);
 exports.optionalMentalWellbeingFile = optionalMultipart(mentalWellbeingUpload);
+exports.optionalWellnessYogaFile = optionalMultipart(wellnessYogaUpload);
 exports.optionalHealthRecipeFile = optionalMultipart(healthRecipeUpload);
 exports.optionalYogaFile = optionalMultipart(yogaUpload);
 exports.optionalBlogPostFile = optionalMultipart(blogPostUpload);

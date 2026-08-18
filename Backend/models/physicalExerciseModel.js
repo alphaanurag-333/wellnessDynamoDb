@@ -6,7 +6,8 @@ const {
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require("uuid");
 const { docClient } = require("../config/db");
-const { resolvePublicUrl } = require("../utils/s3");
+const { normalizeMediaField, resolvePublicUrl } = require("../utils/s3");
+const { normalizeDuration, displayMediaType } = require("../utils/wellnessLibraryFields");
 const {
   listByPartitionKey,
   buildContainsFilter,
@@ -16,7 +17,7 @@ const {
 
 const TABLE = "PhysicalExercise";
 const PHYSICAL_EXERCISE_ALLOWED_STATUS = ["active", "inactive"];
-const PHYSICAL_EXERCISE_ALLOWED_TYPE = ["ytlink", "video"];
+const PHYSICAL_EXERCISE_ALLOWED_TYPE = ["ytlink", "video", "audio"];
 const STATUS = new Set(PHYSICAL_EXERCISE_ALLOWED_STATUS);
 const TYPE = new Set(PHYSICAL_EXERCISE_ALLOWED_TYPE);
 
@@ -39,16 +40,28 @@ function withLegacyId(item) {
 function toPublicPhysicalExercise(item) {
   const row = withLegacyId(item);
   if (!row) return null;
+  const pub = {
+    ...row,
+    mediaType: displayMediaType(row.type),
+    duration: String(row.duration || "").trim(),
+    ytLink: String(row.ytLink || (row.type === "ytlink" ? row.link : "") || "").trim(),
+  };
+  if (pub.thumbnail) pub.thumbnail = resolvePublicUrl(pub.thumbnail) || pub.thumbnail;
   if (row.type === "video" && row.link) {
-    return { ...row, link: resolvePublicUrl(row.link) || row.link };
+    pub.link = resolvePublicUrl(row.link) || row.link;
   }
-  return row;
+  return pub;
 }
 
 function sanitizeUpdateField(key, value) {
   if (key === "status") return normalizeStatus(value);
   if (key === "type") return normalizeType(value);
-  if (["title", "description", "link"].includes(key)) {
+  if (key === "duration") return normalizeDuration(value);
+  if (key === "thumbnail") {
+    if (value == null || String(value).trim() === "") return "";
+    return normalizeMediaField(value, "thumbnail");
+  }
+  if (["title", "description", "link", "ytLink"].includes(key)) {
     return String(value || "").trim();
   }
   return value;
@@ -56,9 +69,12 @@ function sanitizeUpdateField(key, value) {
 
 async function createPhysicalExercise({
   title,
-  description,
+  description = "",
   type = "ytlink",
   link = "",
+  ytLink = "",
+  thumbnail = "",
+  duration = "",
   status = "active",
 }) {
   const now = new Date().toISOString();
@@ -68,6 +84,9 @@ async function createPhysicalExercise({
     description: String(description || "").trim(),
     type: normalizeType(type),
     link: String(link || "").trim(),
+    ytLink: String(ytLink || "").trim(),
+    thumbnail: thumbnail ? normalizeMediaField(thumbnail, "thumbnail") : "",
+    duration: normalizeDuration(duration),
     status: normalizeStatus(status),
     createdAt: now,
     updatedAt: now,
