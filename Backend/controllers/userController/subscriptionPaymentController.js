@@ -10,12 +10,15 @@ const {
   listTransactionsByUserId,
   toPublicTransaction,
 } = require("../../models/consultancyTransactionModel");
-const { isConsultancyOnlyTier } = require("../../models/userAssignmentLogic");
+const { isConsultancyOnlyTier, isHealTier, isMaintenanceTier } = require("../../models/userAssignmentLogic");
 const { getUserById } = require("../../models/userModel");
+const { getActiveCoachCheckoutOffer } = require("../../services/coachCheckoutService");
+const { resolveSubscriptionPlanFromItem } = require("../../services/subscriptionCategoryService");
 
 function mapCheckoutError(err) {
   if (err?.name === "ConsultancyRequiredError") throw new AppError(err.message, 403);
   if (err?.name === "AlreadyConvertedError") throw new AppError(err.message, 409);
+  if (err?.name === "InvalidTierError") throw new AppError(err.message, 400);
   if (err?.name === "ValidationError") throw new AppError(err.message, 400);
   if (err?.name === "ConfigNotFoundError") throw new AppError(err.message, 500);
   if (err?.name === "PaymentGatewayError") throw new AppError(err.message, 502);
@@ -26,12 +29,23 @@ exports.getSubscriptionCheckoutPreviewController = asyncHandler(async (req, res)
   const userId = req.auth?.sub || req.user?.id;
   const user = await getUserById(userId);
   if (!user) throw new AppError("User not found", 404);
-  if (!isConsultancyOnlyTier(user.userTier)) {
+
+  const offer = getActiveCoachCheckoutOffer(user, "subscription");
+  const plan = resolveSubscriptionPlanFromItem({
+    id: offer?.itemId,
+    name: offer?.itemName,
+  });
+
+  if (plan.kind === "maintenance") {
+    if (!isHealTier(user.userTier) && !isMaintenanceTier(user.userTier)) {
+      throw new AppError("Maintenance plan is available after the Heal course period ends", 400);
+    }
+  } else if (!isConsultancyOnlyTier(user.userTier)) {
     throw new AppError("Consultancy payment must be completed before subscription checkout", 403);
   }
 
   try {
-    const data = await previewSubscriptionCheckout();
+    const data = await previewSubscriptionCheckout(userId);
     return res.status(200).json({
       status: true,
       message: "Subscription checkout preview fetched",

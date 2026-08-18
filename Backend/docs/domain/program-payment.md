@@ -56,41 +56,64 @@ When an unexpired coach offer exists, the response prefers that offer even if no
   "enabled": true,
   "payable": true,
   "program": {
-    "id": "fat-loss",
-    "title": "Fat Loss",
-    "price": 24999,
+    "id": "thyroid",
+    "title": "Thyroid Care",
+    "price": 18399.2,
+    "listPrice": 22999,
     "currency": "INR",
     "source": "coach_checkout",
-    "discountPercent": 15,
-    "netPayable": 25123.99,
+    "discountPercent": 20,
+    "netPayable": 18399.2,
     "expiresAt": "2026-08-18T12:00:00.000Z",
     "transactionId": "<transactionId>"
   },
   "offer": {
     "source": "coach_checkout",
     "productType": "program",
-    "itemId": "fat-loss",
-    "itemName": "Fat Loss",
-    "amount": 24999,
-    "discountPercent": 15,
-    "discountLabel": "festive",
-    "netPayable": 25123.99,
+    "itemId": "thyroid",
+    "itemName": "Thyroid Care",
+    "amount": 22999,
+    "discountPercent": 20,
+    "discountLabel": "annual plan",
+    "netPayable": 18399.2,
     "linkValidity": "24 hours",
     "expiresAt": "2026-08-18T12:00:00.000Z",
     "appHealValidity": null,
     "transactionId": "<transactionId>",
     "payable": true
   },
+  "pricing": {
+    "currency": "INR",
+    "baseAmount": 22999,
+    "discountPercent": 20,
+    "discountLabel": "annual plan",
+    "discountAmount": 4599.8,
+    "discountedBase": 18399.2,
+    "taxType": "inclusive",
+    "taxPercent": 0,
+    "taxAmount": 0,
+    "gstAmount": 0,
+    "gstInclusive": true,
+    "taxLabel": "GST",
+    "totalAmount": 18399.2,
+    "netPayable": 18399.2,
+    "lines": [
+      { "key": "base", "label": "Base amount", "amount": 22999 },
+      { "key": "discount", "label": "Discount (20% · annual plan)", "amount": -4599.8 },
+      { "key": "gst", "label": "GST", "amount": 0 },
+      { "key": "total", "label": "Payable", "amount": 18399.2 }
+    ]
+  },
   "programPurchased": false,
   "programPurchasedAt": null
 }
 ```
 
-If there is no offer, the previous catalog-assignment payload is returned (`program` from `UserProgram`, `offer: null`). Expired offers are omitted.
+If there is no offer, the previous catalog-assignment payload is returned (`program` from `UserProgram`, `offer: null`, plus `pricing` when the assignment is payable). Expired offers are omitted.
 
 ### `POST /api/user/program/preview`
 
-Uses the pending offer transaction's discounted/tax amounts when a coach offer is active. `data.source` is `"coach_checkout"`. An expired offer returns `400` with `"This payment link has expired"`.
+Uses the pending offer transaction's discounted/tax amounts when a coach offer is active. `data.source` is `"coach_checkout"`. `data.pricing` is the same bifurcation object as GET (`baseAmount`, `discountAmount`, `gstAmount` / `taxAmount`, `totalAmount`, plus `lines` for the app). An expired offer returns `400` with `"This payment link has expired"`.
 
 ### `POST /api/user/program/order`
 

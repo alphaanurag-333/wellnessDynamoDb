@@ -4,7 +4,7 @@ import {
   DISCOUNT_SLABS,
   VALIDITY_PERIODS,
 } from "../data/configDetailData.js";
-import { discountedPrice, formatRupee } from "../data/exchangeData.js";
+import { formatRupee } from "../data/exchangeData.js";
 
 function slabLabel(slab) {
   return `${slab.pct}% · ${slab.label}`;
@@ -59,7 +59,7 @@ export function ProgramSetupModal({
   if (!open || !program || !client) return null;
 
   const discount = discountSlabs[discountIdx] ?? discountSlabs[0] ?? { pct: 0, label: "none" };
-  const netPayable = discountedPrice(program.amount, discount.pct);
+  const netPayable = program.amount;
 
   function handleCoachChange(id) {
     setWellnessCoachId(id);

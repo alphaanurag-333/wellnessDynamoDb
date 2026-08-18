@@ -24,7 +24,8 @@ const {
   createMockOrder,
   shouldUseMockPayments,
 } = require("../utils/paymentGateway");
-const { isConsultancyOnlyTier, isHealTier } = require("../models/userAssignmentLogic");
+const { isConsultancyOnlyTier, isHealTier, isMaintenanceTier } = require("../models/userAssignmentLogic");
+const { resolveSubscriptionPlanFromItem } = require("./subscriptionCategoryService");
 
 const HOURS_BY_UNIT = {
   hour: 1,
@@ -83,12 +84,13 @@ function formatAgo(iso) {
 }
 
 function calculateOfferPricing(config, { baseAmount, discountPercent = 0 }) {
-  const base = roundMoney(parseMoney(baseAmount));
+  const listed = roundMoney(parseMoney(baseAmount));
   const pct = Math.min(100, Math.max(0, Number(discountPercent) || 0));
-  const discountAmount = roundMoney((base * pct) / 100);
-  const discountedBase = roundMoney(Math.max(0, base - discountAmount));
   const taxPercent = parseMoney(config?.tax_value);
   const taxType = String(config?.tax_type || "exclusive").toLowerCase();
+
+  const discountAmount = roundMoney(listed * (pct / 100));
+  const discountedBase = roundMoney(Math.max(0, listed - discountAmount));
 
   let taxAmount;
   let totalAmount;
@@ -101,7 +103,7 @@ function calculateOfferPricing(config, { baseAmount, discountPercent = 0 }) {
   }
 
   return {
-    baseAmount: base,
+    baseAmount: listed,
     discountAmount,
     discountedBase,
     taxAmount,
@@ -150,15 +152,20 @@ function getExpiredCoachCheckoutOffer(user, productType, now = Date.now()) {
 
 function toPublicCoachProgramOffer(offer) {
   if (!offer || typeof offer !== "object") return null;
+  const amount = Number(offer.amount) || 0;
+  const netPayable =
+    offer.netPayable == null || offer.netPayable === ""
+      ? amount
+      : Number(offer.netPayable) || 0;
   return {
     source: "coach_checkout",
     productType: offer.productType || "program",
     itemId: offer.itemId || null,
     itemName: offer.itemName || "",
-    amount: Number(offer.amount) || 0,
+    amount,
     discountPercent: Number(offer.discountPercent) || 0,
     discountLabel: String(offer.discountLabel || "").trim(),
-    netPayable: Number(offer.netPayable) || 0,
+    netPayable,
     linkValidity: offer.linkValidity || "",
     expiresAt: offer.expiresAt || null,
     appHealValidity: offer.appHealValidity || null,
@@ -218,9 +225,12 @@ function isPendingCheckoutOrderReusable(transaction, now = Date.now()) {
   return new Date(transaction.linkExpiresAt).getTime() > now;
 }
 
-function buildUserProgramGetPayload({ user, assignedProgram, offer } = {}) {
+function buildUserProgramGetPayload({ user, assignedProgram, offer, pricing } = {}) {
   const publicOffer = offer ? toPublicCoachProgramOffer(offer) : null;
+  const breakdown = pricing && typeof pricing === "object" ? pricing : null;
   if (publicOffer) {
+    const netPayable =
+      breakdown && breakdown.netPayable != null ? Number(breakdown.netPayable) : publicOffer.netPayable;
     return {
       message: "Wellness Program offer fetched",
       enabled: true,
@@ -228,15 +238,20 @@ function buildUserProgramGetPayload({ user, assignedProgram, offer } = {}) {
       program: {
         id: publicOffer.itemId,
         title: publicOffer.itemName,
-        price: publicOffer.amount,
-        currency: "INR",
+        price: netPayable,
+        listPrice: publicOffer.amount,
+        currency: breakdown?.currency || "INR",
         source: "coach_checkout",
         discountPercent: publicOffer.discountPercent,
-        netPayable: publicOffer.netPayable,
+        netPayable,
         expiresAt: publicOffer.expiresAt,
         transactionId: publicOffer.transactionId,
       },
-      offer: publicOffer,
+      offer: {
+        ...publicOffer,
+        netPayable,
+      },
+      pricing: breakdown,
       programPurchased: Boolean(user?.programPurchased),
       programPurchasedAt: user?.programPurchasedAt || null,
     };
@@ -249,6 +264,7 @@ function buildUserProgramGetPayload({ user, assignedProgram, offer } = {}) {
       payable: false,
       program: null,
       offer: null,
+      pricing: null,
       programPurchased: Boolean(user?.programPurchased),
       programPurchasedAt: user?.programPurchasedAt || null,
     };
@@ -258,8 +274,16 @@ function buildUserProgramGetPayload({ user, assignedProgram, offer } = {}) {
     message: "Wellness Program fetched",
     enabled: Boolean(assignedProgram.enabled) && !user?.programPurchased,
     payable: Boolean(assignedProgram.enabled) && !user?.programPurchased,
-    program: assignedProgram,
+    program: breakdown
+      ? {
+          ...assignedProgram,
+          price: breakdown.netPayable,
+          listPrice: assignedProgram.price ?? assignedProgram.listPrice,
+          currency: assignedProgram.currency || breakdown.currency,
+        }
+      : assignedProgram,
     offer: null,
+    pricing: breakdown,
     programPurchased: Boolean(user?.programPurchased),
     programPurchasedAt: user?.programPurchasedAt || null,
   };
@@ -473,16 +497,24 @@ async function triggerCoachCheckout({
   if (type === "program" && user.programPurchased) {
     throw new AppError("Client has already purchased a Wellness Program", 409);
   }
-  if (type === "subscription") {
-    if (isHealTier(user.userTier)) {
-      throw new AppError("Subscription is already active for this account", 409);
-    }
-    if (!isConsultancyOnlyTier(user.userTier)) {
-      throw new AppError("Complete consultancy payment before triggering a subscription", 400);
-    }
-  }
 
   const { config, item } = await findCatalogItem(type, itemId);
+
+  if (type === "subscription") {
+    const plan = resolveSubscriptionPlanFromItem(item);
+    if (plan.kind === "maintenance") {
+      if (!isHealTier(user.userTier) && !isMaintenanceTier(user.userTier)) {
+        throw new AppError("Maintenance plan is available after the Heal course period ends", 400);
+      }
+    } else {
+      if (isHealTier(user.userTier) || isMaintenanceTier(user.userTier)) {
+        throw new AppError("Subscription is already active for this account", 409);
+      }
+      if (!isConsultancyOnlyTier(user.userTier)) {
+        throw new AppError("Complete consultancy payment before triggering a subscription", 400);
+      }
+    }
+  }
   const configuredSlabs =
     type === "subscription"
       ? config.app_subscription_discount_slabs
@@ -549,6 +581,9 @@ async function triggerCoachCheckout({
     userTier: user.userTier,
     catalogItemId: item.id,
     catalogItemName: item.name,
+    catalogAmount: item.amount,
+    discountPercent: pct,
+    discountLabel: String(discountLabel || "").trim(),
     appHealValidity: type === "program" ? appHealValidity || null : null,
     linkValidity,
   };
@@ -650,6 +685,8 @@ function formatCheckoutHistoryDate(iso) {
 }
 
 function checkoutDiscountPercent(transaction) {
+  const stored = Number(transaction?.userSnapshot?.discountPercent);
+  if (Number.isFinite(stored) && stored >= 0) return stored;
   const base = Number(transaction?.baseAmount) || 0;
   const discount = Number(transaction?.discountAmount) || 0;
   if (base <= 0) return 0;
@@ -691,7 +728,10 @@ function toCheckoutHistoryRow(transaction, now = Date.now()) {
     date: formatCheckoutHistoryDate(transaction.paidAt || transaction.createdAt),
     detail,
     amount: Number(transaction.totalAmount) || 0,
-    listed: Number(transaction.baseAmount) || 0,
+    listed:
+      Number(transaction.userSnapshot?.catalogAmount) ||
+      Number(transaction.baseAmount) ||
+      0,
     discountPct: checkoutDiscountPercent(transaction),
   };
 }

@@ -148,7 +148,13 @@ function PaymentRow({ row, onToast }) {
       <div className="ua-cp-ex-pay__side">
         <div className="ua-cp-ex-pay__amounts">
           <strong>{formatRupee(row.amount)}</strong>
-          <span>{formatRupee(row.listed)} · {row.discountPct}% off</span>
+          {row.discountPct > 0 ? (
+            <span>
+              <s>{formatRupee(row.listed)}</s>
+              {" · "}
+              {row.discountPct}% off
+            </span>
+          ) : null}
         </div>
         {awaiting ? (
           <button type="button" className="ua-cp-btn ua-cp-ex-pay__btn ua-cp-ex-pay__btn--remind ua-cp-btn--sm" onClick={() => onToast?.("Payment reminder sent")}>
@@ -250,7 +256,11 @@ export function ExchangeSection({ user, onToast }) {
     };
   }, [user?.id]);
 
-  const value = program && discount ? discountedPrice(program.price, discount.pct) : 0;
+  const value = program && discount
+    ? discountedPrice(program.price, discount.pct)
+    : program
+      ? program.price
+      : 0;
   const summary = paymentSummary(history);
   const firstName = user?.name?.split(" ")[0] || "Client";
   const canTrigger = Boolean(user?.id && program && discount && validity && !loading && !triggering);

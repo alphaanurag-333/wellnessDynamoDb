@@ -40,9 +40,12 @@ export function mapUiTierToApi(tierFilter) {
   return undefined;
 }
 
-function mapUtype(userTier) {
-  const t = String(userTier || "").toLowerCase().trim();
-  if (t === "seek") return "app";
+function mapUtype(user) {
+  if (String(user?.clientCategory || "").toLowerCase().trim() === "eagle") {
+    return "team";
+  }
+  const t = String(user?.userTier || "").toLowerCase().trim();
+  if (t === "maintenance") return "app";
   return "individual";
 }
 
@@ -386,7 +389,8 @@ export function mapApiUserToRow(user, index = 0) {
     awc: resolveAwcName(user),
     lastActive: formatLastActive(lastActiveAt),
     status,
-    utype: mapUtype(user?.userTier),
+    utype: mapUtype(user),
+    clientCategory: String(user?.clientCategory || "individual").toLowerCase(),
     team: "",
     ageDays: ageDaysFrom(createdAt),
     joined: formatLongDate(createdAt),
@@ -438,6 +442,7 @@ export async function fetchUsers({
   userTier,
   assignmentStatus,
   parentCoachId,
+  clientCategory,
 } = {}) {
   const q = new URLSearchParams();
   q.set("page", String(page));
@@ -447,6 +452,7 @@ export async function fetchUsers({
   if (userTier) q.set("userTier", userTier);
   if (assignmentStatus) q.set("assignmentStatus", assignmentStatus);
   if (parentCoachId) q.set("parentCoachId", String(parentCoachId).trim());
+  if (clientCategory) q.set("clientCategory", String(clientCategory).trim());
 
   try {
     const { data } = await api.get(`/account/users?${q}`, { headers: authHeader() });

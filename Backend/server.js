@@ -11,7 +11,7 @@ const { notFound } = require("./middleware/notFound");
 const { errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
-
+const host = '192.168.1.43';
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -38,8 +38,8 @@ async function start() {
     const { startMonthlyChampionCron } = require("./jobs/monthlyChampionCron");
     startMonthlyChampionCron();
 
-    app.listen(config.port, () => {
-      console.log(`Server is running on port ${config.port}`);
+    app.listen(config.port, host, () => {
+      console.log(`Server is running on port ${config.port} on host ${host}`);
     });
   } catch (err) {
     console.error("Error starting server:", err.message);

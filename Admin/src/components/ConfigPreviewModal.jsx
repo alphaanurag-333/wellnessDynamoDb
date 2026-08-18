@@ -278,9 +278,11 @@ function LanguagePreview({ hindiOn, surface, item }) {
   );
 }
 
-function GstPreview({ gstOn, surface, item }) {
+function GstPreview({ gstOn, gstPercent, surface, item }) {
   const amount = 24999;
-  const gst = Math.round(amount * 0.18);
+  const rate = Number(gstPercent);
+  const pct = Number.isFinite(rate) && rate > 0 ? rate : 18;
+  const gst = Math.round(amount * (pct / 100));
   const total = gstOn ? amount + gst : amount;
 
   const body = (
@@ -304,7 +306,7 @@ function GstPreview({ gstOn, surface, item }) {
                   <span>{formatRupee(amount)}</span>
                 </div>
                 <div className="ua-cfg-preview-gst__line ua-cfg-preview-gst__line--gst">
-                  <span>GST (18%)</span>
+                  <span>GST ({pct}%)</span>
                   <span>{formatRupee(gst)}</span>
                 </div>
               </>
@@ -1596,7 +1598,14 @@ function renderPreviewBody(item, surface, previewState) {
     case "app-subscriptions":
       return <SubscriptionPreview rows={previewState.subscriptionRows ?? []} surface={surface} item={item} />;
     case "app-gst":
-      return <GstPreview gstOn={previewState.gstOn ?? true} surface={surface} item={item} />;
+      return (
+        <GstPreview
+          gstOn={previewState.gstOn ?? true}
+          gstPercent={previewState.gstPercent}
+          surface={surface}
+          item={item}
+        />
+      );
     case "app-payment-gateway":
       return (
         <PaymentGatewayPreview
@@ -2085,7 +2094,7 @@ export function previewHintForItem(item) {
     return "Set pricing, then open Preview";
   }
   if (item.id === "app-gst") {
-    return "Toggle GST collection, then open Preview";
+    return "Set GST percentage and collection, then open Preview";
   }
   if (item.id === "app-payment-gateway") {
     return "Pick a gateway, then open Preview";

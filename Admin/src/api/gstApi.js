@@ -1,14 +1,16 @@
 import api, { normalizeApiError } from "../api.js";
 
-const DEFAULT_TAX_VALUE = "18";
+export const DEFAULT_TAX_VALUE = "18";
 
 function appConfigBase() {
   return "/admin/app-config";
 }
 
-function parseTaxValue(value) {
+export function parseTaxValue(value) {
   const n = Number(value);
-  return Number.isFinite(n) && n > 0 ? String(n) : "";
+  if (!Number.isFinite(n) || n <= 0 || n > 100) return "";
+  const rounded = Math.round(n * 100) / 100;
+  return String(rounded);
 }
 
 export function toGstOn(config) {
@@ -31,19 +33,18 @@ export async function getAppGst() {
 }
 
 export async function saveAppGst(gstOn, taxValue) {
-  const payload = gstOn
-    ? {
-        tax_type: "exclusive",
-        tax_value: parseTaxValue(taxValue) || DEFAULT_TAX_VALUE,
-      }
-    : { tax_type: "inclusive" };
+  const rate = parseTaxValue(taxValue) || DEFAULT_TAX_VALUE;
+  const payload = {
+    tax_type: gstOn ? "exclusive" : "inclusive",
+    tax_value: rate,
+  };
 
   try {
     const { data } = await api.patch(appConfigBase(), payload);
     const config = data?.data || {};
     return {
       gstOn: toGstOn(config),
-      taxValue: parseTaxValue(config.tax_value) || taxValue || DEFAULT_TAX_VALUE,
+      taxValue: parseTaxValue(config.tax_value) || rate,
     };
   } catch (error) {
     normalizeApiError(error);

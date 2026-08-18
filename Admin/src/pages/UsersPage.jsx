@@ -204,13 +204,15 @@ export function UsersPage() {
       setLoading(true);
       setLoadError("");
       try {
-        const tabTier = typeTab === "app" ? "seek" : undefined;
+        const tabTier = typeTab === "app" ? "maintenance" : undefined;
+        const tabCategory = typeTab === "team" ? "eagle" : undefined;
         const params = {
           page: currentPage,
           limit: PAGE_SIZE,
           search: debouncedSearch || undefined,
           status: mapUiStatusToApi(statusFilter),
           userTier: mapUiTierToApi(tierFilter) || tabTier,
+          clientCategory: tabCategory,
           parentCoachId: coachFilter || undefined,
         };
         const userResult = useScopedUsers
