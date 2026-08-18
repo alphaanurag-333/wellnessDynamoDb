@@ -41,7 +41,9 @@ export function ProgramProgressModal({
         </div>
 
         <div className="ua-prog-progress-modal__body">
-          {isOnboarding ? (
+          {(modal.rows || []).length === 0 ? (
+            <div className="ua-prog-progress-modal__empty">No clients in this group yet.</div>
+          ) : isOnboarding ? (
             <>
               <div className="ua-prog-progress-modal__table-head ua-prog-progress-modal__table-head--onboard">
                 <div>Client</div>
@@ -51,7 +53,7 @@ export function ProgramProgressModal({
                 <div>Remind</div>
               </div>
               {modal.rows.map((row) => (
-                <div key={row.name} className="ua-prog-progress-modal__row ua-prog-progress-modal__row--onboard">
+                <div key={row.userId || row.name} className="ua-prog-progress-modal__row ua-prog-progress-modal__row--onboard">
                   <span className="ua-prog-progress-modal__client">{row.name}</span>
                   <span className="ua-prog-progress-modal__staff">{row.coach}</span>
                   <span className="ua-prog-progress-modal__step">{row.step}</span>
@@ -78,7 +80,7 @@ export function ProgramProgressModal({
               </div>
               {modal.rows.map((row) => (
                 <button
-                  key={row.name}
+                  key={row.userId || row.name}
                   type="button"
                   className="ua-prog-progress-modal__row ua-prog-progress-modal__row--metric"
                   onClick={() => onOpenClient(row)}

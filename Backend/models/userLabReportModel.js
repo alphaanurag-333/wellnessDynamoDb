@@ -4,6 +4,7 @@ const {
   DeleteCommand,
   QueryCommand,
   UpdateCommand,
+  ScanCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require("uuid");
 const { docClient } = require("../config/db");
@@ -155,6 +156,28 @@ async function deleteUserLabReport(id) {
   return toUserLabReportPublic(record);
 }
 
+async function queryPendingLabReports({ limit = 400 } = {}) {
+  const items = [];
+  let lastKey;
+  const max = Math.min(800, Math.max(1, Number(limit) || 400));
+
+  do {
+    const params = {
+      TableName: TABLE,
+      FilterExpression: "#reviewStatus <> :reviewed",
+      ExpressionAttributeNames: { "#reviewStatus": "reviewStatus" },
+      ExpressionAttributeValues: { ":reviewed": "reviewed" },
+    };
+    if (lastKey) params.ExclusiveStartKey = lastKey;
+
+    const { Items = [], LastEvaluatedKey } = await docClient.send(new ScanCommand(params));
+    items.push(...Items);
+    lastKey = LastEvaluatedKey;
+  } while (lastKey && items.length < max);
+
+  return items.slice(0, max).map((row) => toUserLabReportPublic(row)).filter(Boolean);
+}
+
 async function reviewUserLabReport(id, { reviewedById } = {}) {
   const record = await getUserLabReportRecordById(id);
   if (!record) {
@@ -186,6 +209,7 @@ module.exports = {
   getUserLabReportById,
   getUserLabReportRecordById,
   listUserLabReportsByUserId,
+  queryPendingLabReports,
   deleteUserLabReport,
   reviewUserLabReport,
   toUserLabReportPublic,

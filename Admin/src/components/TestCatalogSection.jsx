@@ -10,6 +10,26 @@ import {
 import { ListPagination } from "./shared.jsx";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 
+function PencilIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 6h18" />
+      <path d="M8 6V4h8v2" />
+      <path d="M19 6l-1 14H6L5 6" />
+      <path d="M10 11v6M14 11v6" />
+    </svg>
+  );
+}
+
 function slugify(value) {
   return String(value || "")
     .trim()
@@ -115,12 +135,12 @@ function ParameterRows({ parameters, disabled, onChange }) {
           {parameters.length > 1 ? (
             <button
               type="button"
-              className="ua-cfg-icon-btn"
+              className="ua-cfg-icon-btn ua-cfg-icon-btn--danger"
               disabled={disabled}
               aria-label="Remove parameter"
               onClick={() => onChange(parameters.filter((_, rowIndex) => rowIndex !== index))}
             >
-              ×
+              <TrashIcon />
             </button>
           ) : null}
         </div>
@@ -195,11 +215,13 @@ function TestEditModal({ test, busy, extras = [], onClose, onChange, onDelete })
             </button>
             <button
               type="button"
-              className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-dp-modal__delete"
+              className="ua-cfg-icon-btn ua-cfg-icon-btn--danger"
               disabled={busy}
+              aria-label={`Delete ${test.name}`}
+              title="Delete test"
               onClick={() => onDelete(test)}
             >
-              Delete
+              <TrashIcon />
             </button>
             <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={onClose}>×</button>
           </div>
@@ -484,7 +506,7 @@ export function TestCatalogSection({ tests, setTests, onToast }) {
           <p className="ua-cfg-panel__sub">Fetching tests from the server…</p>
         ) : tests.length ? (
           <div className="ua-cfg-nb-table-wrap">
-            <table className="ua-cfg-nb-table">
+            <table className="ua-cfg-nb-table ua-cfg-tc-table">
               <thead>
                 <tr>
                   <th>Test</th>
@@ -492,21 +514,57 @@ export function TestCatalogSection({ tests, setTests, onToast }) {
                   <th>Type</th>
                   <th>Parameters</th>
                   <th>Live</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {tests.map((test) => (
                   <tr key={test.id} className={test.live ? "" : "is-hidden"}>
                     <td>
-                      <button type="button" className="ua-cfg-tc-name" onClick={() => setSelectedId(test.id)}>
+                      <div className="ua-cfg-tc-name">
                         <strong>{test.name}</strong>
                         <span>{test.testId}</span>
-                      </button>
+                      </div>
                     </td>
                     <td>{test.category}</td>
                     <td>{test.type === "PROFILE" ? "Profile" : "Single"}</td>
                     <td>{test.parameters.length}</td>
-                    <td>{test.live ? "Live" : "Hidden"}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className={`ua-toggle ua-toggle--sm${test.live ? " ua-toggle--on" : ""}`}
+                        aria-pressed={test.live}
+                        aria-label={`${test.live ? "Hide" : "Show"} ${test.name}`}
+                        disabled={busy}
+                        onClick={() => persistTest(test.id, { live: !test.live }, test.live ? "Test hidden" : "Test is live")}
+                      >
+                        <span className="ua-toggle__knob" />
+                      </button>
+                    </td>
+                    <td>
+                      <div className="ua-cfg-tc-actions">
+                        <button
+                          type="button"
+                          className="ua-cfg-icon-btn ua-cfg-icon-btn--edit"
+                          aria-label={`Edit ${test.name}`}
+                          title="Edit"
+                          disabled={busy}
+                          onClick={() => setSelectedId(test.id)}
+                        >
+                          <PencilIcon />
+                        </button>
+                        <button
+                          type="button"
+                          className="ua-cfg-icon-btn ua-cfg-icon-btn--danger"
+                          aria-label={`Delete ${test.name}`}
+                          title="Delete"
+                          disabled={busy}
+                          onClick={() => setPendingDelete(test)}
+                        >
+                          <TrashIcon />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>

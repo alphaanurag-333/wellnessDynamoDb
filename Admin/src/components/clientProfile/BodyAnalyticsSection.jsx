@@ -7,10 +7,13 @@ import {
   buildPhotosByAngle,
   buildMeasurementRows,
   buildMetabolicRows,
+  DUMMY_JULY_PERIOD,
   formatHistoryColumns,
+  formatPeriodOption,
   formatPhotoDate,
   getHistoryWindow,
   getPeriodOptions,
+  withDummyJulyHistory,
 } from "../../data/bodyAnalyticsData.js";
 
 function getModalRoot() {
@@ -34,13 +37,6 @@ function SegToggle({ options, value, onChange, size = "sm" }) {
       ))}
     </div>
   );
-}
-
-function DeltaCell({ value, tone }) {
-  if (tone === "bad") {
-    return <span className="ua-cp-ba-table__delta-pill ua-cp-ba-table__delta-pill--bad">{value}</span>;
-  }
-  return value;
 }
 
 function HistoryTable({ title, labelCol, columns, rows, unitToggle }) {
@@ -69,7 +65,7 @@ function HistoryTable({ title, labelCol, columns, rows, unitToggle }) {
                   <td key={`${row.label}-${i}`}>{val}</td>
                 ))}
                 <td className={`ua-cp-ba-table__delta ua-cp-ba-table__delta--${row.tone}`}>
-                  <DeltaCell value={row.delta} tone={row.tone} />
+                  {row.delta}
                 </td>
               </tr>
             ))}
@@ -292,7 +288,7 @@ export function BodyAnalyticsSection({ user, onToast }) {
     setLoadError("");
     fetchUserBodyAnalytics(user?.id)
       .then((data) => {
-        if (!cancelled) setBodyAnalytics(data);
+        if (!cancelled) setBodyAnalytics(withDummyJulyHistory(data));
       })
       .catch((error) => {
         if (cancelled) return;
@@ -309,12 +305,18 @@ export function BodyAnalyticsSection({ user, onToast }) {
   }, [onToast, user?.id]);
 
   useEffect(() => {
-    setPeriod(periodOptions[0] || "");
-  }, [periodOptions]);
+    setPeriod((current) => {
+      if (current && periodOptions.includes(current)) return current;
+      if (historyMode === "monthly" && periodOptions.includes(DUMMY_JULY_PERIOD)) {
+        return DUMMY_JULY_PERIOD;
+      }
+      return periodOptions[0] || "";
+    });
+  }, [historyMode, periodOptions]);
 
   const historyWindow = useMemo(
-    () => getHistoryWindow(periodOptions, period),
-    [period, periodOptions],
+    () => getHistoryWindow(historyMode, period),
+    [historyMode, period],
   );
 
   const historyColumns = useMemo(
@@ -384,7 +386,7 @@ export function BodyAnalyticsSection({ user, onToast }) {
           >
             {!periodOptions.length ? <option value="">No records</option> : null}
             {periodOptions.map((opt) => (
-              <option key={opt} value={opt}>{formatHistoryColumns(historyMode, [opt])[0]}</option>
+              <option key={opt} value={opt}>{formatPeriodOption(historyMode, opt)}</option>
             ))}
           </select>
         </div>

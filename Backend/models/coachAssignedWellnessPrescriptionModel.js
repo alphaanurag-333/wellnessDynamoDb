@@ -9,7 +9,7 @@ const { v4: uuidv4 } = require("uuid");
 const { docClient } = require("../config/db");
 
 const TABLE = "CoachAssignedWellnessPrescription";
-const CREATED_BY_ROLES = new Set(["wellness_coach", "assistant_wellness_coach"]);
+const CREATED_BY_ROLES = new Set(["wellness_coach", "assistant_wellness_coach", "admin"]);
 
 function withLegacyId(item) {
   if (!item) return null;
@@ -59,8 +59,10 @@ function normalizeItems(items) {
     const prescriptionId = item?.prescriptionId
       ? String(item.prescriptionId).trim()
       : null;
+    const title = String(item?.title || "").trim();
     return {
       prescriptionId: prescriptionId || null,
+      title: title || null,
       text,
     };
   });
