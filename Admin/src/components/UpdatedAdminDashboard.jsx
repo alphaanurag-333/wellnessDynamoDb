@@ -845,7 +845,7 @@ export function UpdatedAdminDashboard({
                 >
                   <span className="prog-cat__icon" style={{ background: "#fff" }}><CategoryIcon icon={p.icon} /></span>
                   <span className="prog-cat__label">{p.label}</span>
-                  <span className="prog-cat__count" style={{ color: p.accent }}>{p.count}</span>
+                  <span className="prog-cat__count">{p.count}</span>
                 </button>
               ))}
             </div>
@@ -941,7 +941,7 @@ export function UpdatedAdminDashboard({
                 >
                   <span className="prog-cat__icon" style={{ background: "#fff" }}><CategoryIcon icon={p.icon} /></span>
                   <span className="prog-cat__label">{p.label}</span>
-                  <span className="prog-cat__count" style={{ color: p.accent }}>{p.count}</span>
+                  <span className="prog-cat__count">{p.count}</span>
                 </button>
               ))}
             </div>
