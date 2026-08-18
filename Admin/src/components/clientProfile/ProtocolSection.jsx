@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   PROTOCOL_ONBOARDING_STEP,
   formatProtocolSavedAt,
   historyDeltaLabel,
   pointCountLabel,
 } from "../../data/protocolSettingsData.js";
+import { fetchUserProtocol, saveUserProtocol } from "../../api/onboardingApi.js";
 
 function pointsEqual(a, b) {
   return JSON.stringify(a) === JSON.stringify(b);
@@ -46,6 +47,32 @@ export function ProtocolSection({ user, onToast }) {
   const [history, setHistory] = useState([]);
   const [draft, setDraft] = useState("");
   const [expandedVersion, setExpandedVersion] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const userId = user?.id;
+    if (!userId || /^\d+$/.test(String(userId))) return undefined;
+    let cancelled = false;
+    fetchUserProtocol(userId)
+      .then((data) => {
+        if (cancelled) return;
+        const latest = data?.protocol;
+        const hist = Array.isArray(data?.history) ? data.history : [];
+        const points = latest?.points || [];
+        setWorkingPoints(points);
+        setSavedPoints(points);
+        setHistory(hist.map((entry) => ({
+          version: entry.version,
+          points: entry.points || [],
+          savedAt: formatProtocolSavedAt(entry.createdAt ? new Date(entry.createdAt) : new Date()),
+          deltaLabel: historyDeltaLabel((entry.points || []).length, 0),
+        })));
+      })
+      .catch((err) => onToast?.(err?.message || "Failed to load protocol"));
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, onToast]);
 
   const clientName = user?.name?.split(" ")[0] || "Client";
   const dirty = !pointsEqual(workingPoints, savedPoints);
@@ -84,23 +111,29 @@ export function ProtocolSection({ user, onToast }) {
     onToast?.("Changes discarded");
   }
 
-  function saveVersion() {
+  async function saveVersion() {
     const points = workingPoints.map((point) => point.trim()).filter(Boolean);
     if (!points.length) return;
-
-    const previousCount = history[0]?.points.length ?? 0;
-    const entry = {
-      version: (history[0]?.version ?? 0) + 1,
-      points,
-      savedAt: formatProtocolSavedAt(),
-      deltaLabel: historyDeltaLabel(points.length, previousCount),
-    };
-
-    setHistory((list) => [entry, ...list]);
-    setWorkingPoints(points);
-    setSavedPoints(points);
-    setExpandedVersion(entry.version);
-    onToast?.(`Protocol saved as v${entry.version}`);
+    setSaving(true);
+    try {
+      const saved = await saveUserProtocol(user.id, points);
+      const previousCount = history[0]?.points.length ?? 0;
+      const entry = {
+        version: saved?.version || (history[0]?.version ?? 0) + 1,
+        points: saved?.points || points,
+        savedAt: formatProtocolSavedAt(saved?.createdAt ? new Date(saved.createdAt) : new Date()),
+        deltaLabel: historyDeltaLabel(points.length, previousCount),
+      };
+      setHistory((list) => [entry, ...list]);
+      setWorkingPoints(entry.points);
+      setSavedPoints(entry.points);
+      setExpandedVersion(entry.version);
+      onToast?.(`Protocol saved as v${entry.version}`);
+    } catch (err) {
+      onToast?.(err?.message || "Failed to save protocol");
+    } finally {
+      setSaving(false);
+    }
   }
 
   function restoreVersion(entry) {
@@ -132,8 +165,8 @@ export function ProtocolSection({ user, onToast }) {
               Discard changes
             </button>
             {canSave ? (
-              <button type="button" className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm" onClick={saveVersion}>
-                Save version
+              <button type="button" className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm" onClick={saveVersion} disabled={saving}>
+                {saving ? "Saving…" : "Save version"}
               </button>
             ) : (
               <button type="button" className="ua-cp-btn ua-cp-btn--muted ua-cp-btn--sm" disabled>

@@ -6,6 +6,67 @@ import {
   countSelected,
   flattenTests,
 } from "../../data/internalParametersData.js";
+import {
+  createUserTestRecommendation,
+  fetchTestCatalog,
+  fetchUserLabReports,
+  fetchUserTestRecommendations,
+  reviewUserLabReport,
+} from "../../api/onboardingApi.js";
+
+const GOAL_PRESET_CATEGORIES = {
+  "Fat Loss": ["Cardiac", "Diabetes"],
+  "Diabetes Reversal": ["Diabetes"],
+  "Thyroid Care": ["Thyroid"],
+  "PCOD / PCOS": ["Thyroid", "Hormones"],
+};
+
+function slugify(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function firstName(user) {
+  return String(user?.name || "Client").split(" ")[0];
+}
+
+function todayIso() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function formatDisplayDate(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function daysFromNow(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return Math.round((date.getTime() - Date.now()) / 86400000);
+}
+
+function addDaysIso(value, days) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function catalogGroups(catalog) {
+  const map = new Map();
+  (catalog || []).forEach((test) => {
+    const category = test.category || "Other";
+    const id = slugify(category) || "other";
+    if (!map.has(id)) map.set(id, { id, name: category, tests: [] });
+    map.get(id).tests.push(test);
+  });
+  return [...map.values()];
+}
 
 function EditActions({ editing, onEdit, onCancel, onSave }) {
   if (editing) {
@@ -21,28 +82,28 @@ function EditActions({ editing, onEdit, onCancel, onSave }) {
   );
 }
 
-function SummaryCards({ onToggleHistory, historyOpen }) {
+function SummaryCards({ lastReport, nextDue, alertText, historyCount, historyOpen, onToggleHistory }) {
   return (
     <div className="ua-cp-ip-summary">
       <div className="ua-cp-ip-summary__card">
         <span className="ua-cp-ip-summary__label">Last report</span>
-        <strong className="ua-cp-ip-summary__val">{INTERNAL_PARAMS.lastReport.date}</strong>
-        <span className="ua-cp-ip-summary__sub">{INTERNAL_PARAMS.lastReport.ago}</span>
+        <strong className="ua-cp-ip-summary__val">{lastReport.date}</strong>
+        <span className="ua-cp-ip-summary__sub">{lastReport.ago}</span>
       </div>
       <div className="ua-cp-ip-summary__card">
         <span className="ua-cp-ip-summary__label">Next due</span>
-        <strong className="ua-cp-ip-summary__val">{INTERNAL_PARAMS.nextDue.date}</strong>
-        <span className="ua-cp-ip-summary__sub">{INTERNAL_PARAMS.nextDue.sub}</span>
+        <strong className="ua-cp-ip-summary__val">{nextDue.date}</strong>
+        <span className="ua-cp-ip-summary__sub">{nextDue.sub}</span>
       </div>
       <button type="button" className="ua-cp-ip-summary__history-btn" onClick={onToggleHistory}>
-        {historyOpen ? "▴ Hide report history" : `Report history · ${INTERNAL_PARAMS.reportHistory.length}`}
+        {historyOpen ? "▴ Hide report history" : `Report history · ${historyCount}`}
       </button>
-      <span className="ua-cp-ip-summary__alert">{INTERNAL_PARAMS.outOfRangeAlert}</span>
+      {alertText ? <span className="ua-cp-ip-summary__alert">{alertText}</span> : null}
     </div>
   );
 }
 
-function ReportHistory({ onToast }) {
+function MockReportHistory({ onToast }) {
   const [range, setRange] = useState("all");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -108,21 +169,122 @@ function ReportHistory({ onToast }) {
   );
 }
 
-function NamespaceSearch({ groups, onAdd, onToast }) {
+function reportInRange(reportDate, range, fromDate, toDate) {
+  const date = new Date(reportDate);
+  if (Number.isNaN(date.getTime())) return false;
+  if (fromDate) {
+    const from = new Date(fromDate);
+    if (!Number.isNaN(from.getTime()) && date < from) return false;
+  }
+  if (toDate) {
+    const to = new Date(`${toDate}T23:59:59`);
+    if (!Number.isNaN(to.getTime()) && date > to) return false;
+  }
+  if (range === "6m" || range === "1y") {
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - (range === "6m" ? 6 : 12));
+    return date >= cutoff;
+  }
+  return true;
+}
+
+function LiveReportHistory({ reports, busy, onToast, onReview }) {
+  const [range, setRange] = useState("all");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const filtered = reports.filter((report) => reportInRange(report.reportDate, range, fromDate, toDate));
+
+  function openReport(report) {
+    if (!report.fileUrl) {
+      onToast("No file attached to this report");
+      return;
+    }
+    window.open(report.fileUrl, "_blank", "noopener,noreferrer");
+  }
+
+  return (
+    <div className="ua-cp-ip-history">
+      <div className="ua-cp-ip-history__toolbar">
+        <div className="ua-cp-ip-history__filters">
+          <span className="ua-cp-ip-history__download-label">Filter</span>
+          <label className="ua-cp-ip-history__date-field">
+            <span>From</span>
+            <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+          </label>
+          <label className="ua-cp-ip-history__date-field">
+            <span>To</span>
+            <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+          </label>
+          <div className="ua-cp-ip-history__range">
+            {["6m", "1y", "all"].map((id) => (
+              <button
+                key={id}
+                type="button"
+                className={`ua-cp-ip-history__range-btn${range === id ? " ua-cp-ip-history__range-btn--active" : ""}`}
+                onClick={() => setRange(id)}
+              >
+                {id === "all" ? "All" : id}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="ua-cp-ip-history__toolbar-actions">
+          <span className="ua-cp-ip-history__count">{filtered.length} of {reports.length} reports</span>
+        </div>
+      </div>
+      {filtered.length ? filtered.map((report) => {
+        const reviewed = report.reviewStatus === "reviewed";
+        return (
+          <div key={report.id} className="ua-cp-ip-history__item">
+            <div className="ua-cp-ip-history__row">
+              <div className="ua-cp-ip-history__info">
+                <strong>{formatDisplayDate(report.reportDate)}</strong>
+                <span>{reviewed ? "Reviewed by coach" : "Uploaded by client · pending review"}</span>
+              </div>
+              <div className="ua-cp-ip-history__actions">
+                <span className={`ua-cp-ip-badge ua-cp-ip-badge--${reviewed ? "good" : "bad"}`}>
+                  {reviewed ? "REVIEWED" : "PENDING"}
+                </span>
+                {report.fileUrl ? (
+                  <a className="ua-cp-ip-history__dl" href={report.fileUrl} target="_blank" rel="noreferrer" aria-label={`Open report ${report.reportDate}`}>
+                    ↓
+                  </a>
+                ) : (
+                  <button type="button" className="ua-cp-ip-history__dl" onClick={() => openReport(report)}>↓</button>
+                )}
+                {!reviewed ? (
+                  <button
+                    type="button"
+                    className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm"
+                    disabled={busy}
+                    onClick={() => onReview(report.id)}
+                  >
+                    Mark reviewed
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        );
+      }) : <p>No lab reports in this range.</p>}
+    </div>
+  );
+}
+
+function NamespaceSearch({ groups, namespaces, onAdd, onToast }) {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
-
   const existingIds = useMemo(() => new Set(groups.map((g) => g.id)), [groups]);
 
   const options = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return INTERNAL_PARAMS.testNamespaces.filter((ns) => {
+    return namespaces.filter((ns) => {
       if (existingIds.has(ns.id)) return false;
       if (!q) return true;
       return ns.name.toLowerCase().includes(q);
     });
-  }, [search, existingIds]);
+  }, [search, existingIds, namespaces]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -173,7 +335,7 @@ function NamespaceSearch({ groups, onAdd, onToast }) {
   );
 }
 
-function RecommendedTestsTab({ user, onToast }) {
+function MockRecommendedTestsTab({ user, onToast }) {
   const [presets, setPresets] = useState(["Fat Loss", "Diabetes Reversal"]);
   const [focusedPreset, setFocusedPreset] = useState("Diabetes Reversal");
   const [published, setPublished] = useState(false);
@@ -252,7 +414,7 @@ function RecommendedTestsTab({ user, onToast }) {
   function publish() {
     setPublished(true);
     setDirty(false);
-    onToast(`Test list published · sent to ${user.name.split(" ")[0]} on WhatsApp and in the app`);
+    onToast(`Test list published · sent to ${firstName(user)} on WhatsApp and in the app`);
   }
 
   return (
@@ -278,7 +440,7 @@ function RecommendedTestsTab({ user, onToast }) {
         </div>
       ) : dirty ? (
         <div className="ua-cp-ip-banner">
-          Unpublished changes — publishing sends the updated list to {user.name.split(" ")[0]} on WhatsApp and in the app.
+          Unpublished changes — publishing sends the updated list to {firstName(user)} on WhatsApp and in the app.
         </div>
       ) : null}
 
@@ -298,7 +460,7 @@ function RecommendedTestsTab({ user, onToast }) {
         </div>
       </div>
 
-      <NamespaceSearch groups={groups} onAdd={addNamespace} onToast={onToast} />
+      <NamespaceSearch groups={groups} namespaces={INTERNAL_PARAMS.testNamespaces} onAdd={addNamespace} onToast={onToast} />
 
       {groups.map((group) => {
         const counts = countSelected(group, selected);
@@ -341,6 +503,257 @@ function RecommendedTestsTab({ user, onToast }) {
   );
 }
 
+function selectedFromRecommendation(catalog, recommended) {
+  const map = {};
+  const slugs = new Set((recommended?.tests || []).map((test) => String(test.testId || "").trim()).filter(Boolean));
+  catalog.forEach((test) => {
+    map[test.id] = slugs.has(String(test.testId || "").trim());
+  });
+  return map;
+}
+
+function LiveRecommendedTestsTab({ user, catalog, recommended, busy, onToast, onPublish }) {
+  const allGroups = useMemo(() => catalogGroups(catalog), [catalog]);
+  const [selected, setSelected] = useState(() => selectedFromRecommendation(catalog, recommended));
+  const [presets, setPresets] = useState([]);
+  const [focusedPreset, setFocusedPreset] = useState("");
+  const [reportDate, setReportDate] = useState(recommended?.reportDate || todayIso());
+  const [dirty, setDirty] = useState(!recommended);
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    setSelected(selectedFromRecommendation(catalog, recommended));
+    setReportDate(recommended?.reportDate || todayIso());
+    setDirty(!recommended);
+  }, [catalog, recommended]);
+
+  const selectedIds = useMemo(
+    () => Object.entries(selected).filter(([, on]) => on).map(([id]) => id),
+    [selected],
+  );
+
+  const visibleGroups = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return allGroups
+      .filter((group) => !categoryFilter || group.id === categoryFilter)
+      .map((group) => ({
+        ...group,
+        tests: q
+          ? group.tests.filter((test) => String(test.name || "").toLowerCase().includes(q))
+          : group.tests,
+      }))
+      .filter((group) => group.tests.length);
+  }, [allGroups, categoryFilter, search]);
+
+  function markDirty() {
+    setDirty(true);
+  }
+
+  function countGroup(group) {
+    const total = group.tests.length;
+    const n = group.tests.filter((test) => selected[test.id]).length;
+    return { n, total };
+  }
+
+  function toggleTest(id) {
+    setSelected((prev) => ({ ...prev, [id]: !prev[id] }));
+    markDirty();
+  }
+
+  function toggleGroup(group) {
+    const { n, total } = countGroup(group);
+    const next = n !== total;
+    setSelected((prev) => {
+      const copy = { ...prev };
+      group.tests.forEach((test) => { copy[test.id] = next; });
+      return copy;
+    });
+    markDirty();
+  }
+
+  function removeGroup(id) {
+    const group = allGroups.find((entry) => entry.id === id);
+    if (group) {
+      setSelected((prev) => {
+        const copy = { ...prev };
+        group.tests.forEach((test) => { copy[test.id] = false; });
+        return copy;
+      });
+      setCategoryFilter((current) => (current === id ? "" : current));
+    }
+    markDirty();
+    onToast("Category cleared from selection");
+  }
+
+  function togglePreset(goal) {
+    setFocusedPreset(goal);
+    const categories = new Set((GOAL_PRESET_CATEGORIES[goal] || []).map((c) => c.toLowerCase()));
+    setPresets((prev) => {
+      const applying = !prev.includes(goal);
+      const next = applying ? [...prev, goal] : prev.filter((g) => g !== goal);
+      if (applying) {
+        setSelected((current) => {
+          const copy = { ...current };
+          catalog.forEach((test) => {
+            if (categories.has(String(test.category || "").toLowerCase())) copy[test.id] = true;
+          });
+          return copy;
+        });
+        markDirty();
+        onToast(`${goal} preset applied`);
+      } else {
+        onToast(`Removed ${goal} preset`);
+      }
+      return next;
+    });
+  }
+
+  function presetClass(goal) {
+    if (focusedPreset === goal && presets.includes(goal)) return " ua-cp-ip-preset__pill--focus";
+    if (presets.includes(goal)) return " ua-cp-ip-preset__pill--applied";
+    return "";
+  }
+
+  function downloadList() {
+    if (recommended?.pdfUrl) {
+      window.open(recommended.pdfUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+    onToast("Publish a list first to generate the PDF");
+  }
+
+  async function publish() {
+    if (!selectedIds.length) {
+      onToast("Select at least one test");
+      return;
+    }
+    const ok = await onPublish({ reportDate, testIds: selectedIds });
+    if (ok) setDirty(false);
+  }
+
+  const published = Boolean(recommended) && !dirty;
+
+  return (
+    <div className="ua-cp-ip-rec">
+      <div className="ua-cp-ip-rec__head">
+        <div>
+          <h3 className="ua-cp-ip-rec__title">Recommended blood tests</h3>
+          <p className="ua-cp-ip-rec__sub">Set by the wellness coach · download to get tested</p>
+        </div>
+        <div className="ua-cp-ip-rec__actions">
+          <label className="ua-cp-ip-history__date-field">
+            <span>Report date</span>
+            <input type="date" value={reportDate} onChange={(e) => { setReportDate(e.target.value); markDirty(); }} />
+          </label>
+          {published ? (
+            <button type="button" className="ua-cp-btn ua-cp-btn--muted" disabled>Published</button>
+          ) : (
+            <button type="button" className="ua-cp-btn ua-cp-btn--green" disabled={busy} onClick={publish}>
+              {busy ? "Publishing…" : "Publish"}
+            </button>
+          )}
+          <button type="button" className="ua-cp-btn ua-cp-btn--orange" onClick={downloadList}>↓ Download list</button>
+        </div>
+      </div>
+
+      {catalog.length ? (
+        published ? (
+          <div className="ua-cp-ip-banner ua-cp-ip-banner--sent">
+            ✓ Sent to {firstName(user)} in the app · {formatDisplayDate(recommended.reportDate)} · {selectedIds.length} tests
+          </div>
+        ) : (
+          <div className="ua-cp-ip-banner">
+            Unpublished changes — publishing sends the updated list to {firstName(user)} in the app.
+          </div>
+        )
+      ) : null}
+
+      {catalog.length ? (
+        <>
+          <div className="ua-cp-ip-rec__toolbar">
+            <input
+              type="search"
+              className="ua-cp-ip-rec__search"
+              placeholder="Search tests…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <select
+              className="ua-cp-ip-rec__search"
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+            >
+              <option value="">All categories</option>
+              {allGroups.map((group) => (
+                <option key={group.id} value={group.id}>{group.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="ua-cp-ip-preset">
+            <span className="ua-cp-ip-preset__label">Quick preset · goal</span>
+            <div className="ua-cp-ip-preset__pills">
+              {INTERNAL_PARAMS.goalPresets.map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  className={`ua-cp-ip-preset__pill${presetClass(g)}`}
+                  onClick={() => togglePreset(g)}
+                >
+                  {g}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {visibleGroups.length ? visibleGroups.map((group) => {
+            const counts = countGroup(group);
+            const allOn = counts.total > 0 && counts.n === counts.total;
+            const partial = counts.n > 0 && !allOn;
+            return (
+              <div key={group.id} className="ua-cp-ip-test-group">
+                <div className="ua-cp-ip-test-group__head">
+                  <button
+                    type="button"
+                    className={`ua-cp-ip-check ua-cp-ip-check--head${allOn || partial ? " ua-cp-ip-check--on" : ""}${partial ? " ua-cp-ip-check--partial" : ""}`}
+                    onClick={() => toggleGroup(group)}
+                    aria-label={`Toggle ${group.name}`}
+                  >
+                    {allOn ? "✓" : partial ? "−" : ""}
+                  </button>
+                  <strong className="ua-cp-ip-test-group__title">{group.name}</strong>
+                  <span className="ua-cp-ip-test-group__count">{counts.n}/{counts.total} selected</span>
+                  <button type="button" className="ua-cp-ip-test-group__remove" onClick={() => removeGroup(group.id)} aria-label="Clear category">×</button>
+                </div>
+                <div className="ua-cp-ip-test-group__grid">
+                  {group.tests.map((test) => (
+                    <label key={test.id} className="ua-cp-ip-test-item">
+                      <input
+                        type="checkbox"
+                        checked={!!selected[test.id]}
+                        onChange={() => toggleTest(test.id)}
+                      />
+                      <span className={`ua-cp-ip-check${selected[test.id] ? " ua-cp-ip-check--on" : ""}`}>
+                        {selected[test.id] ? "✓" : ""}
+                      </span>
+                      <span className="ua-cp-ip-test-item__label">{test.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            );
+          }) : (
+            <p>No tests match this search.</p>
+          )}
+        </>
+      ) : (
+        <p>No live tests in the catalog yet. Add them under Configs → Blood test catalog.</p>
+      )}
+    </div>
+  );
+}
+
 function AiReadingCell({ reading, editing, onChange }) {
   if (editing) {
     return (
@@ -371,7 +784,7 @@ function AiReadingCell({ reading, editing, onChange }) {
   );
 }
 
-function ReportAnalysisTab({ onToast }) {
+function MockReportAnalysisTab({ onToast }) {
   const { aiDates, protocol, nutritionSummary: initialNutrition } = INTERNAL_PARAMS;
   const [analysed, setAnalysed] = useState(INTERNAL_PARAMS.reportUpload.analysed);
   const [aiPanels, setAiPanels] = useState(() => cloneAiPanels(INTERNAL_PARAMS.aiPanels));
@@ -613,7 +1026,7 @@ function ReportAnalysisTab({ onToast }) {
           <span className="ua-cp-ip-nutrition__date">{initialNutrition.latest.date}</span>
           {nutritionEditing ? (
             <textarea
-              className="ua-cp-ip-edit-textarea ua-cp-ip-edit-textarea--compact"
+              className="ua-cfg-dp-add__content ua-cp-ip-edit-textarea ua-cp-ip-edit-textarea--compact"
               value={nutritionDraft}
               rows={4}
               onChange={(e) => setNutritionDraft(e.target.value)}
@@ -634,9 +1047,133 @@ function ReportAnalysisTab({ onToast }) {
   );
 }
 
+function LiveReportAnalysisTab({ reports, busy, onReview }) {
+  const latest = reports[0];
+  if (!latest) {
+    return (
+      <div className="ua-cp-ip-report">
+        <p>No blood report uploaded yet. The client can submit a PDF from Internal Parameters in the app.</p>
+      </div>
+    );
+  }
+
+  const reviewed = latest.reviewStatus === "reviewed";
+
+  return (
+    <div className="ua-cp-ip-report">
+      <div className="ua-cp-ip-upload">
+        <div className="ua-cp-ip-upload__icon">📄</div>
+        <div className="ua-cp-ip-upload__body">
+          <strong>Blood report uploaded</strong>
+          <span>Added by client · {formatDisplayDate(latest.reportDate)} · {reviewed ? "reviewed" : "pending review"}</span>
+        </div>
+        <div className="ua-cp-ip-upload__actions">
+          {latest.fileUrl ? (
+            <a className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" href={latest.fileUrl} target="_blank" rel="noreferrer">↓ Download</a>
+          ) : null}
+          {reviewed ? (
+            <span className="ua-cp-ip-badge ua-cp-ip-badge--good">Reviewed</span>
+          ) : (
+            <button
+              type="button"
+              className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm"
+              disabled={busy}
+              onClick={() => onReview(latest.id)}
+            >
+              Mark reviewed
+            </button>
+          )}
+        </div>
+      </div>
+      <p className="ua-cp-ip-rec__sub">AI interpretation is not available yet. Open the uploaded PDF to review markers.</p>
+    </div>
+  );
+}
+
 export function InternalParametersSection({ user, onToast }) {
   const [tab, setTab] = useState("tests");
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [reports, setReports] = useState([]);
+  const [recommended, setRecommended] = useState(null);
+  const [catalog, setCatalog] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const userId = user?.id;
+  const live = Boolean(userId && !/^\d+$/.test(String(userId)));
+
+  const reload = async () => {
+    if (!live) return;
+    const [rec, labs, tests] = await Promise.allSettled([
+      fetchUserTestRecommendations(userId),
+      fetchUserLabReports(userId),
+      fetchTestCatalog(userId),
+    ]);
+
+    if (rec.status === "fulfilled") {
+      setRecommended(rec.value?.recommended || rec.value?.recommendation || null);
+    }
+    if (labs.status === "fulfilled") {
+      setReports(Array.isArray(labs.value) ? labs.value : []);
+    }
+    if (tests.status === "fulfilled") {
+      const list = Array.isArray(tests.value) ? tests.value : tests.value?.tests || [];
+      setCatalog(list);
+    } else {
+      setCatalog([]);
+    }
+
+    const failed = [tests, rec, labs].find((result) => result.status === "rejected");
+    if (failed) throw failed.reason;
+  };
+
+  useEffect(() => {
+    if (!live) return undefined;
+    let cancelled = false;
+    setLoading(true);
+    reload()
+      .catch((err) => onToast?.(err?.message || "Failed to load internal parameters"))
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  async function handleReview(reportId) {
+    try {
+      setBusy(true);
+      await reviewUserLabReport(userId, reportId);
+      onToast?.("Report marked reviewed");
+      await reload();
+    } catch (err) {
+      onToast?.(err?.message || "Failed to review report");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handlePublish(payload) {
+    try {
+      setBusy(true);
+      await createUserTestRecommendation(userId, payload);
+      onToast?.(`Test list sent to ${firstName(user)} in the app`);
+      await reload();
+      return true;
+    } catch (err) {
+      onToast?.(err?.message || "Failed to assign tests");
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const latestReport = reports[0];
+  const lastDays = latestReport ? daysFromNow(latestReport.reportDate) : null;
+  const nextDueIso = latestReport ? addDaysIso(latestReport.reportDate, 90) : "";
+  const nextDays = nextDueIso ? daysFromNow(nextDueIso) : null;
+  const pendingCount = reports.filter((report) => report.reviewStatus !== "reviewed").length;
 
   return (
     <div className="ua-cp-section ua-cp-internal">
@@ -647,8 +1184,45 @@ export function InternalParametersSection({ user, onToast }) {
         </div>
       </div>
 
-      <SummaryCards historyOpen={historyOpen} onToggleHistory={() => setHistoryOpen((o) => !o)} />
-      {historyOpen ? <ReportHistory onToast={onToast} /> : null}
+      {live && loading ? <p>Loading internal parameters…</p> : null}
+
+      {live ? (
+        <SummaryCards
+          lastReport={{
+            date: latestReport ? formatDisplayDate(latestReport.reportDate) : "—",
+            ago: latestReport
+              ? `uploaded ${Math.abs(lastDays ?? 0)} day${Math.abs(lastDays ?? 0) === 1 ? "" : "s"} ago`
+              : "No upload yet",
+          }}
+          nextDue={{
+            date: nextDueIso ? formatDisplayDate(nextDueIso) : "—",
+            sub: nextDueIso
+              ? `${nextDays >= 0 ? `in ${nextDays} days` : `${Math.abs(nextDays)} days overdue`} · 90-day cycle`
+              : "Starts after the first report",
+          }}
+          alertText={pendingCount ? `${pendingCount} report${pendingCount === 1 ? "" : "s"} pending review` : null}
+          historyCount={reports.length}
+          historyOpen={historyOpen}
+          onToggleHistory={() => setHistoryOpen((open) => !open)}
+        />
+      ) : (
+        <SummaryCards
+          lastReport={INTERNAL_PARAMS.lastReport}
+          nextDue={INTERNAL_PARAMS.nextDue}
+          alertText={INTERNAL_PARAMS.outOfRangeAlert}
+          historyCount={INTERNAL_PARAMS.reportHistory.length}
+          historyOpen={historyOpen}
+          onToggleHistory={() => setHistoryOpen((open) => !open)}
+        />
+      )}
+
+      {historyOpen ? (
+        live ? (
+          <LiveReportHistory reports={reports} busy={busy} onToast={onToast} onReview={handleReview} />
+        ) : (
+          <MockReportHistory onToast={onToast} />
+        )
+      ) : null}
 
       <PillTabs
         size="md"
@@ -661,9 +1235,22 @@ export function InternalParametersSection({ user, onToast }) {
       />
 
       {tab === "tests" ? (
-        <RecommendedTestsTab user={user} onToast={onToast} />
+        live ? (
+          <LiveRecommendedTestsTab
+            user={user}
+            catalog={catalog}
+            recommended={recommended}
+            busy={busy}
+            onToast={onToast}
+            onPublish={handlePublish}
+          />
+        ) : (
+          <MockRecommendedTestsTab user={user} onToast={onToast} />
+        )
+      ) : live ? (
+        <LiveReportAnalysisTab reports={reports} busy={busy} onReview={handleReview} />
       ) : (
-        <ReportAnalysisTab onToast={onToast} />
+        <MockReportAnalysisTab onToast={onToast} />
       )}
     </div>
   );

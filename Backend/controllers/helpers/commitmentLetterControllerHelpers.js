@@ -5,13 +5,19 @@ function readIdParam(req) {
   return String(req.params.id || req.params.letterId || "").trim();
 }
 
+function getUploadedPdfFile(req) {
+  return req?.file || req?.files?.file?.[0] || null;
+}
+
 function assertPdfUpload(req) {
-  if (!req?.file?.buffer) {
+  const file = getUploadedPdfFile(req);
+  if (!file?.buffer) {
     throw new AppError("PDF file is required", 400);
   }
-  if (req.file.mimetype !== "application/pdf") {
+  if (file.mimetype !== "application/pdf") {
     throw new AppError("Only PDF files are allowed", 400);
   }
+  req.file = file;
 }
 
 function assertCoachCanManageCommitmentLetter(record, { coachId, assistantId } = {}) {

@@ -76,6 +76,7 @@ const prakrutiAssessmentRoutes = require("./userRoutes/prakrutiAssessmentRoutes"
 const healthProgressRoutes = require("./userRoutes/healthProgressRoutes");
 const metabolicMetricsRoutes = require("./userRoutes/metabolicMetricsRoutes");
 const healConsultancyTrackRoutes = require("./userRoutes/healConsultancyTrackRoutes");
+const onboardingMeetingRoutes = require("./userRoutes/onboardingMeetingRoutes");
 const dailyReflectionRoutes = require("./userRoutes/dailyReflectionRoutes");
 const coachInsightRoutes = require("./userRoutes/coachInsightRoutes");
 const supplementRecommendationRoutes = require("./userRoutes/supplementRecommendationRoutes");
@@ -207,6 +208,7 @@ router.use("/user/prakruti-assessment", prakrutiAssessmentRoutes);
 router.use("/user/health-progress", healthProgressRoutes);
 router.use("/user/metabolic-metrics", metabolicMetricsRoutes);
 router.use("/user/heal-consultancy-tracks", healConsultancyTrackRoutes);
+router.use("/user/onboarding-meetings", onboardingMeetingRoutes);
 router.use("/user/daily-reflection", dailyReflectionRoutes);
 router.use("/user/coach-insight", coachInsightRoutes);
 router.use("/user/supplements", supplementRecommendationRoutes);

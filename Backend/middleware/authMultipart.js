@@ -126,6 +126,8 @@ const dietPlanUpload = memorySingle("file");
 exports.optionalDietPlanFile = optionalMultipart(dietPlanUpload);
 const supplementBillUpload = memorySingle("file");
 exports.optionalSupplementBillFile = optionalMultipart(supplementBillUpload);
+const commitmentLetterUpload = memorySingle("file");
+exports.optionalCommitmentLetterFile = optionalMultipart(commitmentLetterUpload);
 
 const realPeopleTestimonialUpload = memorySingle("file");
 const mealPhotoUpload = memorySingle("photo");

@@ -6,7 +6,8 @@ const {
   listCoachRecommendedTestsByUserId,
   deleteCoachRecommendedTest,
 } = require("../../models/coachRecommendedTestModel");
-const { listUserLabReportsByUserId } = require("../../models/userLabReportModel");
+const { listUserLabReportsByUserId, getUserLabReportRecordById, reviewUserLabReport } = require("../../models/userLabReportModel");
+const { listActiveTestCatalog } = require("../../models/testCatalogModel");
 const {
   dispatchInternalParametersRecommendationNotification,
 } = require("../../services/notificationDispatchService");
@@ -116,6 +117,31 @@ exports.listCoachUserLabReportsController = asyncHandler(async (req, res) => {
   });
 });
 
+exports.reviewCoachUserLabReportController = asyncHandler(async (req, res) => {
+  const actingCoachId = req.auth?.sub;
+  if (!actingCoachId) throw new AppError("Unauthorized", 401);
+
+  const userId = readUserIdParam(req);
+  const reportId = String(req.params.reportId || "").trim();
+  if (!reportId) throw new AppError("reportId is required", 400);
+
+  const user = await loadTargetUser(userId);
+  await assertStaffCanAccessUser(req, user);
+  assertHealTierUser(user);
+
+  const record = await getUserLabReportRecordById(reportId);
+  if (!record || String(record.userId) !== String(userId)) {
+    throw new AppError("Lab report not found", 404);
+  }
+
+  const report = await reviewUserLabReport(reportId, { reviewedById: actingCoachId });
+  return res.status(200).json({
+    status: true,
+    message: "Lab report marked as reviewed",
+    report,
+  });
+});
+
 exports.deleteCoachUserTestRecommendationController = asyncHandler(async (req, res) => {
   const actingCoachId = req.auth?.sub;
   if (!actingCoachId) throw new AppError("Unauthorized", 401);
@@ -139,5 +165,29 @@ exports.deleteCoachUserTestRecommendationController = asyncHandler(async (req, r
   return res.status(200).json({
     status: true,
     message: "Test recommendation deleted successfully",
+  });
+});
+
+exports.listCoachUserActiveTestCatalogController = asyncHandler(async (req, res) => {
+  const actingCoachId = req.auth?.sub;
+  if (!actingCoachId) throw new AppError("Unauthorized", 401);
+
+  const userId = readUserIdParam(req);
+  const user = await loadTargetUser(userId);
+  await assertStaffCanAccessUser(req, user);
+
+  const tests = await listActiveTestCatalog();
+  const grouped = tests.reduce((acc, test) => {
+    const category = test.category || "Other";
+    if (!acc[category]) acc[category] = [];
+    acc[category].push(test);
+    return acc;
+  }, {});
+
+  return res.status(200).json({
+    status: true,
+    message: "Test catalog fetched successfully",
+    tests,
+    grouped,
   });
 });

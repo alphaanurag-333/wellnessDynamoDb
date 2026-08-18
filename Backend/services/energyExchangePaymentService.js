@@ -26,6 +26,9 @@ const {
   shouldUseMockPayments,
 } = require("../utils/paymentGateway");
 const { emitPaymentReceived } = require("./adminActivityService");
+const {
+  toPublicTransactionWithInvoice,
+} = require("../utils/consultancyInvoiceResponse");
 
 function logPaymentFailure({ transactionId, userId, reason }) {
   console.error("[EnergyExchangePayment] payment failed", {
@@ -245,7 +248,7 @@ async function finalizePaidEnergyExchangeTransaction(transaction, { paymentId, p
   });
 
   if (alreadyPaid) {
-    return toPublicTransaction(paidRecord);
+    return toPublicTransactionWithInvoice(paidRecord);
   }
 
   emitPaymentReceived({
@@ -273,7 +276,7 @@ async function finalizePaidEnergyExchangeTransaction(transaction, { paymentId, p
   });
 
   const fresh = await getConsultancyTransactionById(transaction.id);
-  return toPublicTransaction(fresh);
+  return toPublicTransactionWithInvoice(fresh);
 }
 
 async function verifyEnergyExchangePayment(userId, {
@@ -299,7 +302,7 @@ async function verifyEnergyExchangePayment(userId, {
     throw err;
   }
   if (transaction.paymentStatus === "paid") {
-    return toPublicTransaction(transaction);
+    return toPublicTransactionWithInvoice(transaction);
   }
 
   const appConfig = await getAppConfig();

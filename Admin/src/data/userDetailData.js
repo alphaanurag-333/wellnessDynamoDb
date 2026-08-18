@@ -235,13 +235,14 @@ export const METABOLIC_SNAPSHOT = [
 ];
 
 export const ONBOARDING_STEPS = [
-  { n: 1, label: "Personal Details", section: "personal" },
-  { n: 2, label: "Body Analytics", section: "body" },
-  { n: 3, label: "Internal Parameters", section: "internal" },
-  { n: 4, label: "LAUNCH", section: "launch" },
-  { n: 5, label: "RCA", action: "submit-rca" },
+  { n: 1, key: "personalDetails", label: "Personal Details", section: "personal" },
+  { n: 2, key: "bodyAnalytics", label: "Body Analytics", section: "body" },
+  { n: 3, key: "internalParameter", label: "Internal Parameters", section: "internal" },
+  { n: 4, key: "launch", label: "LAUNCH", section: "launch", action: "schedule-launch", meetingTitle: "Schedule LAUNCH meeting", meetingNote: "We will complete your LAUNCH assessment on this call." },
+  { n: 5, key: "rca", label: "RCA", action: "submit-rca" },
   {
     n: 6,
+    key: "reportsBriefing",
     label: "Reports Briefing",
     action: "schedule-briefing",
     meetingTitle: "Schedule Reports briefing",
@@ -249,15 +250,17 @@ export const ONBOARDING_STEPS = [
   },
   {
     n: 7,
+    key: "hap",
     label: "HAP",
     action: "schedule-hap",
     meetingTitle: "Schedule HAP session",
     meetingNote: "Health Action Plan session — we will set your plan together.",
   },
-  { n: 8, label: "Protocol Settings", section: "protocol", doneAction: "schedule-hap" },
-  { n: 9, label: "Commitment letter", section: "personal" },
+  { n: 8, key: "protocolSettings", label: "Protocol Settings", section: "protocol" },
+  { n: 9, key: "commitmentLetter", label: "Commitment letter", section: "presentable" },
   {
     n: 10,
+    key: "programInitiation",
     label: "Program initiation",
     action: "schedule-initiation",
     meetingTitle: "Schedule Program initiation",

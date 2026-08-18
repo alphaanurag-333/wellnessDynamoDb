@@ -71,10 +71,15 @@ function DietPlanSection({ section, editing, onUpdateRow, onRemoveRow, onAddRow,
   );
 }
 
-export function DietPlanPanel({ onToast }) {
+export function DietPlanPanel({ onToast, live = false, loading = false, assignment = null, sections: liveSections }) {
   const [sections, setSections] = useState(() => cloneSections(DIET_PLAN_SECTIONS));
   const [savedSections, setSavedSections] = useState(() => cloneSections(DIET_PLAN_SECTIONS));
   const [editing, setEditing] = useState(false);
+
+  const displaySections = live
+    ? (Array.isArray(liveSections) ? liveSections : [])
+    : sections;
+  const canEdit = !live;
 
   function updateRow(sectionId, rowId, field, value) {
     setSections((list) => list.map((section) => (
@@ -137,14 +142,30 @@ export function DietPlanPanel({ onToast }) {
     onToast("Diet plan saved & synced to client app");
   }
 
+  const subtitle = live
+    ? (assignment?.startDate
+      ? `Assigned ${assignment.startDate}${assignment.note ? ` · ${assignment.note}` : ""}`
+      : "Coach-assigned plan visible in the client app")
+    : "Meal sections with client-choosable options & quantities";
+
   return (
     <div className="ua-cp-food-diet">
       <div className="ua-cp-food-diet__head">
         <div>
           <strong className="ua-cp-food-diet__title">Personalised diet plan</strong>
-          <span className="ua-cp-food-diet__sub">Meal sections with client-choosable options &amp; quantities</span>
+          <span className="ua-cp-food-diet__sub">{subtitle}</span>
         </div>
-        {editing ? (
+        {live && assignment?.pdfUrl ? (
+          <a
+            className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
+            href={assignment.pdfUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            ↓ Download PDF
+          </a>
+        ) : null}
+        {!live && (editing ? (
           <div className="ua-cp-food-diet__actions">
             <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={cancelEdit}>Cancel</button>
             <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm" onClick={savePlan}>✓ Save plan</button>
@@ -153,19 +174,25 @@ export function DietPlanPanel({ onToast }) {
           <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm ua-cp-food-diet__edit" onClick={startEdit}>
             ✎ Edit plan
           </button>
-        )}
+        ))}
       </div>
-      {sections.map((section) => (
-        <DietPlanSection
-          key={section.id}
-          section={section}
-          editing={editing}
-          onUpdateRow={updateRow}
-          onRemoveRow={removeRow}
-          onAddRow={addRow}
-          onRemoveSection={removeSection}
-        />
-      ))}
+      {loading ? (
+        <p className="ua-page-head__sub">Loading diet plan…</p>
+      ) : displaySections.length ? (
+        displaySections.map((section) => (
+          <DietPlanSection
+            key={section.id}
+            section={section}
+            editing={canEdit && editing}
+            onUpdateRow={updateRow}
+            onRemoveRow={removeRow}
+            onAddRow={addRow}
+            onRemoveSection={removeSection}
+          />
+        ))
+      ) : (
+        <p className="ua-page-head__sub">No diet plan assigned to this client yet.</p>
+      )}
     </div>
   );
 }

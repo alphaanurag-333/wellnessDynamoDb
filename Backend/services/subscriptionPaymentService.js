@@ -27,6 +27,9 @@ const {
 } = require("../models/consultancyTransactionModel");
 const { emitPaymentReceived } = require("./adminActivityService");
 const {
+  toPublicTransactionWithInvoice,
+} = require("../utils/consultancyInvoiceResponse");
+const {
   getActiveCoachCheckoutOffer,
   getExpiredCoachCheckoutOffer,
   isPendingCheckoutOrderReusable,
@@ -306,7 +309,7 @@ async function finalizePaidSubscriptionTransaction(transaction, { paymentId, pro
   });
 
   if (alreadyPaid) {
-    return toPublicTransaction(paidRecord);
+    return toPublicTransactionWithInvoice(paidRecord);
   }
 
   emitPaymentReceived({
@@ -324,7 +327,7 @@ async function finalizePaidSubscriptionTransaction(transaction, { paymentId, pro
   });
 
   const fresh = await getConsultancyTransactionById(transaction.id);
-  return toPublicTransaction(fresh);
+  return toPublicTransactionWithInvoice(fresh);
 }
 
 async function verifySubscriptionPayment(userId, {
@@ -350,7 +353,7 @@ async function verifySubscriptionPayment(userId, {
     throw err;
   }
   if (transaction.paymentStatus === "paid") {
-    return toPublicTransaction(transaction);
+    return toPublicTransactionWithInvoice(transaction);
   }
 
   const appConfig = await getAppConfig();

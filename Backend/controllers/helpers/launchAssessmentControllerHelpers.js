@@ -23,8 +23,6 @@ const {
   handleValidationError,
   resolveCoachIdForUser,
 } = require("./dietPlanControllerHelpers");
-const { updateUser } = require("../../models/userModel");
-const { buildLaunchStepCompletionUpdates } = require("../../utils/paidOnboardingHelpers");
 
 function handleLaunchValidationError(err) {
   if (err?.name === "ValidationError") throw new AppError(err.message, 400);
@@ -192,11 +190,6 @@ function createLaunchAssessmentPortalHandlers({ assertHealUserAccess, createdByR
       } catch (err) {
         if (err instanceof AppError) throw err;
         handleLaunchValidationError(err);
-      }
-
-      const launchUpdates = buildLaunchStepCompletionUpdates(user.paidOnboardingStepStatus);
-      if (launchUpdates) {
-        await updateUser(userId, launchUpdates);
       }
 
       return res.status(201).json({

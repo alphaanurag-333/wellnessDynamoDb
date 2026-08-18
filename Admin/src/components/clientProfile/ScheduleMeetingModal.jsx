@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { DURATION_OPTIONS, HOLD_OPTIONS, SCHEDULE_DATES } from "../../data/launchData.js";
+import { DURATION_OPTIONS, HOLD_OPTIONS } from "../../data/launchData.js";
 
 const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const MONTH_FULL = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const WEEKDAY_FROM_SUN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const CAL_DOW = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
-const DEMO_TODAY = new Date(2026, 7, 14);
+const DEMO_TODAY = new Date();
 
 function getModalRoot() {
   return document.querySelector(".updated-admin .ua-cp-drawer")
@@ -34,6 +34,64 @@ function formatDateLabel(date) {
 
 function formatShortDate(date) {
   return `${String(date.getDate()).padStart(2, "0")} ${MONTH_LABELS[date.getMonth()].toUpperCase()}`;
+}
+
+function padTimePart(n) {
+  return String(n).padStart(2, "0");
+}
+
+function formatDateKey(date) {
+  return `${date.getFullYear()}-${padTimePart(date.getMonth() + 1)}-${padTimePart(date.getDate())}`;
+}
+
+function dateKeyFromSlot(slot) {
+  if (slot?.dateKey) return slot.dateKey;
+  if (slot?.startAt) {
+    const date = new Date(slot.startAt);
+    if (!Number.isNaN(date.getTime())) return formatDateKey(date);
+  }
+  return slot?.dateLabel || "";
+}
+
+function uniqueDateCount(slots) {
+  return new Set((slots || []).map(dateKeyFromSlot).filter(Boolean)).size;
+}
+
+function slotFromIso(slot) {
+  const start = new Date(slot.startAt || slot.start_at);
+  const end = new Date(slot.endAt || slot.end_at);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+  const fromTime = `${padTimePart(start.getHours())}:${padTimePart(start.getMinutes())}`;
+  const toTime = `${padTimePart(end.getHours())}:${padTimePart(end.getMinutes())}`;
+  return {
+    key: slot.id || `${start.toISOString()}-${end.toISOString()}`,
+    dateKey: formatDateKey(start),
+    dateLabel: formatShortDate(start),
+    range: `${fromTime}–${toTime}`,
+    startAt: start.toISOString(),
+    endAt: end.toISOString(),
+  };
+}
+
+function slotsFromMeeting(meeting) {
+  return (meeting?.slots || []).map(slotFromIso).filter(Boolean);
+}
+
+function groupSlotsByDate(slots) {
+  const groups = [];
+  const map = new Map();
+  for (const slot of slots || []) {
+    const key = dateKeyFromSlot(slot);
+    if (!key) continue;
+    if (!map.has(key)) {
+      const group = { key, dateLabel: slot.dateLabel, slots: [] };
+      map.set(key, group);
+      groups.push(group);
+    }
+    map.get(key).slots.push(slot);
+  }
+  groups.sort((a, b) => a.key.localeCompare(b.key));
+  return groups;
 }
 
 export function MiniCalendar({ value, onChange, onClear, onToday }) {
@@ -111,29 +169,61 @@ export function ScheduleMeetingModal({
   title,
   defaultNote,
   defaultDuration = 45,
+  existingMeeting = null,
   onClose,
   onSend,
 }) {
   const laterWrapRef = useRef(null);
+  const upcomingDates = useMemo(() => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    return Array.from({ length: 5 }, (_, index) => {
+      const date = new Date(start);
+      date.setDate(start.getDate() + index + 1);
+      return {
+        id: `d${index}`,
+        day: WEEKDAY_FROM_SUN[date.getDay()].toUpperCase(),
+        date,
+        dateLabel: String(date.getDate()).padStart(2, "0"),
+      };
+    });
+  }, []);
+
   const [dateMode, setDateMode] = useState("preset");
-  const [selectedPreset, setSelectedPreset] = useState("tue");
-  const [laterDate, setLaterDate] = useState(new Date(2026, 7, 4));
+  const [selectedPreset, setSelectedPreset] = useState("d0");
+  const [laterDate, setLaterDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d;
+  });
   const [laterOpen, setLaterOpen] = useState(false);
-  const [duration, setDuration] = useState(defaultDuration);
+  const [duration, setDuration] = useState(
+    Number(existingMeeting?.durationMinutes) || defaultDuration,
+  );
   const [hold, setHold] = useState("24 hours");
-  const [note, setNote] = useState(defaultNote);
+  const [note, setNote] = useState(existingMeeting?.coachNote || defaultNote);
   const [fromTime, setFromTime] = useState("");
   const [toTime, setToTime] = useState("");
-  const [slots, setSlots] = useState([]);
+  const [slots, setSlots] = useState(() => slotsFromMeeting(existingMeeting));
+  const dateCount = uniqueDateCount(slots);
+  const slotsByDate = useMemo(() => groupSlotsByDate(slots), [slots]);
+
+  useEffect(() => {
+    const next = slotsFromMeeting(existingMeeting);
+    if (!next.length) return;
+    setSlots((prev) => (prev.length ? prev : next));
+    if (existingMeeting?.coachNote) setNote(existingMeeting.coachNote);
+    if (existingMeeting?.durationMinutes) {
+      setDuration(Number(existingMeeting.durationMinutes));
+    }
+  }, [existingMeeting]);
 
   const preset = useMemo(
-    () => SCHEDULE_DATES.find((d) => d.id === selectedPreset) || SCHEDULE_DATES[0],
-    [selectedPreset],
+    () => upcomingDates.find((d) => d.id === selectedPreset) || upcomingDates[0],
+    [selectedPreset, upcomingDates],
   );
 
-  const activeDate = dateMode === "preset"
-    ? new Date(2026, 7, Number(preset.date))
-    : laterDate;
+  const activeDate = dateMode === "preset" ? preset.date : laterDate;
 
   const dateLabel = formatDateLabel(activeDate);
   const slotsDayLabel = formatShortDate(activeDate);
@@ -171,13 +261,22 @@ export function ScheduleMeetingModal({
   function addSlot() {
     if (!fromTime) return;
     const end = toTime || formatSlotEnd(fromTime, duration);
-    const slotKey = `${activeDate.toISOString()}-${fromTime}-${end}`;
+    const [startH, startM] = fromTime.split(":").map(Number);
+    const [endH, endM] = end.split(":").map(Number);
+    const startAt = new Date(activeDate);
+    startAt.setHours(startH, startM, 0, 0);
+    const endAt = new Date(activeDate);
+    endAt.setHours(endH, endM, 0, 0);
+    const slotKey = `${startAt.toISOString()}-${endAt.toISOString()}`;
     setSlots((prev) => {
       if (prev.some((s) => s.key === slotKey)) return prev;
       return [...prev, {
         key: slotKey,
+        dateKey: formatDateKey(activeDate),
         dateLabel: slotsDayLabel,
         range: `${fromTime}–${end}`,
+        startAt: startAt.toISOString(),
+        endAt: endAt.toISOString(),
       }];
     });
     setFromTime("");
@@ -212,7 +311,7 @@ export function ScheduleMeetingModal({
               <span className="ua-cp-launch-modal__row-label-meta">{dateLabel}</span>
             </div>
             <div className="ua-cp-launch-modal__dates">
-              {SCHEDULE_DATES.map((d) => (
+              {upcomingDates.map((d) => (
                 <button
                   key={d.id}
                   type="button"
@@ -220,7 +319,7 @@ export function ScheduleMeetingModal({
                   onClick={() => selectPreset(d.id)}
                 >
                   <span>{d.day}</span>
-                  <strong>{d.date}</strong>
+                  <strong>{d.dateLabel}</strong>
                 </button>
               ))}
               <div className="ua-cp-launch-modal__later-wrap" ref={laterWrapRef}>
@@ -244,9 +343,9 @@ export function ScheduleMeetingModal({
                     onChange={selectLaterDate}
                     onClear={() => {
                       setLaterOpen(false);
-                      selectPreset("tue");
+                      selectPreset("d0");
                     }}
-                    onToday={() => selectLaterDate(DEMO_TODAY)}
+                    onToday={() => selectLaterDate(new Date())}
                   />
                 ) : null}
               </div>
@@ -303,13 +402,20 @@ export function ScheduleMeetingModal({
             </div>
             {slots.length ? (
               <div className="ua-cp-launch-modal__offering">
-                <strong>Offering {slots.length} slot(s) across 1 date(s)</strong>
-                <div className="ua-cp-launch-modal__slot-tags">
-                  {slots.map((s) => (
-                    <span key={s.key} className="ua-cp-launch-modal__slot-tag">
-                      {s.dateLabel} {s.range}
-                      <button type="button" onClick={() => removeSlot(s.key)} aria-label="Remove">×</button>
-                    </span>
+                <strong>Offering {slots.length} slot(s) across {dateCount} date(s)</strong>
+                <div className="ua-cp-launch-modal__slot-groups">
+                  {slotsByDate.map((group) => (
+                    <div key={group.key} className="ua-cp-launch-modal__slot-date-group">
+                      <span className="ua-cp-launch-modal__slot-date-label">{group.dateLabel}</span>
+                      <div className="ua-cp-launch-modal__slot-tags">
+                        {group.slots.map((s) => (
+                          <span key={s.key} className="ua-cp-launch-modal__slot-tag">
+                            {s.range}
+                            <button type="button" onClick={() => removeSlot(s.key)} aria-label="Remove">×</button>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -342,7 +448,11 @@ export function ScheduleMeetingModal({
         </div>
 
         <div className="ua-cp-launch-modal__foot">
-          <span>{slots.length ? `${slots.length} slot held across 1 date` : "Nothing held yet"}</span>
+          <span>
+            {slots.length
+              ? `${slots.length} slot${slots.length === 1 ? "" : "s"} held across ${dateCount} date${dateCount === 1 ? "" : "s"}`
+              : "Nothing held yet"}
+          </span>
           <div>
             <button type="button" className="ua-cp-btn ua-cp-btn--outline" onClick={onClose}>Cancel</button>
             <button

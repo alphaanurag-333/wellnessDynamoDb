@@ -341,6 +341,27 @@ async function convertMaintenanceToHeal(userId) {
   return updateUser(userId, { userTier: "heal" });
 }
 
+/**
+ * Program purchase unlocks the paid Heal home (10-step onboarding).
+ * Existing purchasers who were left on consultancy_only are upgraded here
+ * without resetting onboarding progress.
+ */
+async function ensureHealIfProgramPurchased(user) {
+  if (!user?.id || !user.programPurchased) return user;
+  if (isHealTier(user.userTier)) return user;
+  try {
+    return await convertSeekToHeal(user.id, {
+      allowFromSeek: normalizeTier(user.userTier) === "seek",
+    });
+  } catch (err) {
+    if (err?.name === "AlreadyConvertedError") {
+      return getUserById(user.id);
+    }
+    console.error("[ensureHealIfProgramPurchased]", err.message);
+    return user;
+  }
+}
+
 module.exports = {
   loadReferralContext,
   completeConsultancyEnrollment,
@@ -348,5 +369,6 @@ module.exports = {
   convertHealToSeek,
   convertHealToMaintenance,
   convertMaintenanceToHeal,
+  ensureHealIfProgramPurchased,
   omitExistingHistoryFields,
 };

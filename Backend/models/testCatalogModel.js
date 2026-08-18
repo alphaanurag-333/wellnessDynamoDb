@@ -4,6 +4,7 @@ const {
   UpdateCommand,
   DeleteCommand,
   QueryCommand,
+  ScanCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require("uuid");
 const { docClient } = require("../config/db");
@@ -287,6 +288,32 @@ async function getActiveTestCatalogByIds(ids) {
     .filter(Boolean);
 }
 
+function isLiveCatalogRow(row) {
+  return row && normalizeStatus(row.status, "active") !== "inactive";
+}
+
+function sortLiveCatalog(a, b) {
+  const seqDiff = normalizeSequence(a.sequence) - normalizeSequence(b.sequence);
+  if (seqDiff !== 0) return seqDiff;
+  return String(a.name || "").localeCompare(String(b.name || ""));
+}
+
+async function scanAllTestCatalog() {
+  const items = [];
+  let ExclusiveStartKey;
+  do {
+    const res = await docClient.send(
+      new ScanCommand({
+        TableName: TABLE,
+        ExclusiveStartKey,
+      })
+    );
+    items.push(...(res.Items || []));
+    ExclusiveStartKey = res.LastEvaluatedKey;
+  } while (ExclusiveStartKey);
+  return items;
+}
+
 async function listActiveTestCatalog() {
   const { items } = await listByPartitionKey({
     tableName: TABLE,
@@ -296,13 +323,19 @@ async function listActiveTestCatalog() {
     page: 1,
     limit: 500,
     maxLimit: 500,
-    sortFn: (a, b) => {
-      const seqDiff = normalizeSequence(a.sequence) - normalizeSequence(b.sequence);
-      if (seqDiff !== 0) return seqDiff;
-      return String(a.name || "").localeCompare(String(b.name || ""));
-    },
+    sortFn: sortLiveCatalog,
   });
-  return items.map((row) => toTestCatalogPublic(row)).filter(Boolean);
+  let rows = items.map((row) => toTestCatalogPublic(row)).filter(isLiveCatalogRow);
+  if (rows.length) return rows.sort(sortLiveCatalog);
+
+  const listed = await listTestCatalog({ page: 1, limit: 200 });
+  rows = (listed.tests || []).filter(isLiveCatalogRow);
+  if (rows.length) return rows.sort(sortLiveCatalog);
+
+  rows = (await scanAllTestCatalog())
+    .map((row) => toTestCatalogPublic(row))
+    .filter(isLiveCatalogRow);
+  return rows.sort(sortLiveCatalog);
 }
 
 async function listActiveTestCatalogPaginated({ page = 1, limit = 12, search, category } = {}) {

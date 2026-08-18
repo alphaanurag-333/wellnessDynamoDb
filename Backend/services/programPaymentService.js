@@ -1,6 +1,7 @@
 const config = require("../config");
 const { getUserById, updateUser } = require("../models/userModel");
 const { isConsultancyOnlyTier } = require("../models/userAssignmentLogic");
+const { ensureHealIfProgramPurchased } = require("../models/userConversionModel");
 const { getActiveRazorpayGateway } = require("./consultancyPricingService");
 const { previewProgramCheckout } = require("./programPricingService");
 const {
@@ -26,6 +27,9 @@ const {
 } = require("../utils/paymentGateway");
 const { getAppConfig } = require("../models/appConfigModel");
 const { emitPaymentReceived } = require("./adminActivityService");
+const {
+  toPublicTransactionWithInvoice,
+} = require("../utils/consultancyInvoiceResponse");
 const {
   getActiveCoachCheckoutOffer,
   getExpiredCoachCheckoutOffer,
@@ -293,6 +297,12 @@ async function applyPaidProgramEntitlements(user, transaction, paidAt) {
     assignedProgramId: userProgram?.id || user.assignedProgramId || null,
     pendingCoachCheckout: {},
   });
+
+  const refreshed = await getUserById(user.id);
+  await ensureHealIfProgramPurchased({
+    ...refreshed,
+    programPurchased: true,
+  });
 }
 
 async function finalizePaidProgramTransaction(transaction, { paymentId, provider }) {
@@ -328,7 +338,7 @@ async function finalizePaidProgramTransaction(transaction, { paymentId, provider
   }
 
   const fresh = await getConsultancyTransactionById(transaction.id);
-  return toPublicTransaction(fresh || paidRecord);
+  return toPublicTransactionWithInvoice(fresh || paidRecord);
 }
 
 async function verifyProgramPayment(userId, {

@@ -606,6 +606,43 @@ function DietPlansPreview({ plans, surface, item }) {
   );
 }
 
+function TestCatalogPreview({ tests, surface, item }) {
+  const live = (tests ?? []).filter((entry) => entry.live);
+
+  const body = (
+    <div className="ua-cfg-preview-phone">
+      <div className="ua-cfg-preview-phone__shell">
+        <div className="ua-cfg-preview-phone__status" aria-hidden="true" />
+        <div className="ua-cfg-preview-dp ua-cfg-preview-dp--app">
+          <div className="ua-cfg-preview-dp__head">
+            <span className="ua-cfg-preview-dp__back" aria-hidden="true">‹</span>
+            <strong>Recommended tests</strong>
+          </div>
+          <p className="ua-cfg-preview-dp__intro">Your coach picks from this catalog and sends a list to download.</p>
+          {live.length ? (
+            <div className="ua-cfg-preview-dp__list">
+              {live.map((entry) => (
+                <div key={entry.id} className="ua-cfg-preview-dp__item">
+                  <strong>{entry.name}</strong>
+                  <p>{entry.category} · {entry.type === "PROFILE" ? "Profile" : "Single"}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="ua-cfg-preview-dp__empty">No live tests in the catalog yet.</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <PreviewStage surface={surface} item={item}>
+      {body}
+    </PreviewStage>
+  );
+}
+
 function AiEnablePreview({ coaches, assistants, surface, item }) {
   const enabledCoaches = (coaches ?? []).filter((entry) => entry.enabled).length;
   const enabledAssistants = (assistants ?? []).filter((entry) => entry.enabled).length;
@@ -1674,6 +1711,14 @@ function renderPreviewBody(item, surface, previewState) {
           item={item}
         />
       );
+    case "app-test-catalog":
+      return (
+        <TestCatalogPreview
+          tests={previewState.testCatalog ?? []}
+          surface={surface}
+          item={item}
+        />
+      );
     case "app-nutrition-bank":
       return (
         <NutritionBankPreview
@@ -2104,6 +2149,9 @@ export function previewHintForItem(item) {
   }
   if (item.id === "app-health-progress") {
     return "Add or toggle trackers, then open Preview";
+  }
+  if (item.id === "app-test-catalog") {
+    return "Add tests, then open Preview";
   }
   if (item.id === "feature-flags") {
     return "Toggle flags, then open Preview";

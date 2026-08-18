@@ -5,7 +5,7 @@
 const express = require("express");
 const { protectAccount, requireActiveRole } = require("../../middleware/auth");
 const { authorizeStaff } = require("../../middleware/authorize");
-const { optionalMealPhotoFile } = require("../../middleware/authMultipart");
+const { optionalMealPhotoFile, optionalUserFile } = require("../../middleware/authMultipart");
 const { CLINICAL_ROLES } = require("../../controllers/staffAccess");
 const {
   listHealUsersForStaffController,
@@ -23,6 +23,8 @@ const {
   createCoachUserTestRecommendationController,
   deleteCoachUserTestRecommendationController,
   listCoachUserLabReportsController,
+  reviewCoachUserLabReportController,
+  listCoachUserActiveTestCatalogController,
 } = require("../../controllers/adminController/testRecommendationController");
 const {
   listCoachUserWellnessPrescriptionsController,
@@ -99,6 +101,7 @@ const {
 } = require("../../controllers/adminController/dailyReflectionController");
 const {
   getCoachUserCommitmentLetterController,
+  reviewCoachCommitmentLetterController,
 } = require("../../controllers/adminController/commitmentLetterController");
 const {
   getCoachUserCoachInsightController,
@@ -114,6 +117,22 @@ const { getStaffHealUserWaterTrackingController } = require("../../controllers/w
 const { getStaffHealUserStepsTrackingController } = require("../../controllers/stepsTrackingHistoryController");
 const { getStaffHealUserSleepTrackingController } = require("../../controllers/sleepTrackingHistoryController");
 const { getStaffHealUserHeartRateTrackingController } = require("../../controllers/heartRateTrackingHistoryController");
+const {
+  patchUserOnboardingStepController,
+} = require("../../controllers/adminController/onboardingStepController");
+const {
+  listStaffUserRcaController,
+  submitStaffUserRcaController,
+  listStaffUserProtocolController,
+  saveStaffUserProtocolController,
+} = require("../../controllers/adminController/onboardingCoachStepsController");
+const {
+  listStaffOnboardingMeetingsController,
+  createStaffOnboardingMeetingController,
+  acceptOnboardingMeetingRequestController,
+  rejectOnboardingMeetingRequestController,
+  cancelStaffOnboardingMeetingController,
+} = require("../../controllers/adminController/onboardingMeetingController");
 
 function staff(consoleSlug, { admin, coach } = {}) {
   return authorizeStaff(consoleSlug, {
@@ -152,7 +171,9 @@ const tests = staff("console.rep.view", { admin: "users.clientHub.care.internal-
 const testsWrite = staff("console.rep.edit", { admin: "users.clientHub.care.internal-parameters", coach: "clientTab.care.internal-parameters" });
 router.get("/:userId/test-recommendations", tests, listCoachUserTestRecommendationsController);
 router.post("/:userId/test-recommendations", testsWrite, createCoachUserTestRecommendationController);
+router.get("/:userId/test-catalog", tests, listCoachUserActiveTestCatalogController);
 router.get("/:userId/lab-reports", tests, listCoachUserLabReportsController);
+router.patch("/:userId/lab-reports/:reportId/review", testsWrite, reviewCoachUserLabReportController);
 router.delete("/:userId/test-recommendations/:recommendationId", staff("console.rep.delete", { admin: "users.clientHub.care.internal-parameters", coach: "clientTab.care.internal-parameters" }), deleteCoachUserTestRecommendationController);
 
 const rx = staff("console.diet.view", { admin: "users.clientHub.care.wellness-prescriptions", coach: "clientTab.care.wellness-prescriptions" });
@@ -241,7 +262,29 @@ router.get("/:userId/daily-reflection-settings", reflection, getCoachUserDailyRe
 router.patch("/:userId/daily-reflection-settings", reflectionWrite, updateCoachUserDailyReflectionSettingsController);
 router.get("/:userId/daily-reflection/history", reflection, getCoachUserDailyReflectionHistoryController);
 
-router.get("/:userId/commitment-letter", staff("console.diet.view", { admin: "users.clientHub.care.commitment-letter", coach: "clientTab.care.commitment-letter" }), getCoachUserCommitmentLetterController);
+router.patch(
+  "/:userId/onboarding-steps/:stepKey",
+  staff("console.cl.edit", { admin: "users.edit", coach: "clientTab.overview" }),
+  patchUserOnboardingStepController
+);
+
+const onboardMeet = staff("console.cal.view", { admin: "users.clientHub.care.consultancy", coach: "clientTab.care.consultancy" });
+const onboardMeetWrite = staff("console.cal.edit", { admin: "users.clientHub.care.consultancy", coach: "clientTab.care.consultancy" });
+router.get("/:userId/onboarding-meetings", onboardMeet, listStaffOnboardingMeetingsController);
+router.post("/:userId/onboarding-meetings", onboardMeetWrite, createStaffOnboardingMeetingController);
+router.post("/:userId/onboarding-meetings/:meetingId/accept-request", onboardMeetWrite, acceptOnboardingMeetingRequestController);
+router.post("/:userId/onboarding-meetings/:meetingId/reject-request", onboardMeetWrite, rejectOnboardingMeetingRequestController);
+router.post("/:userId/onboarding-meetings/:meetingId/cancel", onboardMeetWrite, cancelStaffOnboardingMeetingController);
+
+router.get("/:userId/rca", tests, listStaffUserRcaController);
+router.post("/:userId/rca", testsWrite, optionalUserFile, submitStaffUserRcaController);
+router.get("/:userId/protocol", tests, listStaffUserProtocolController);
+router.post("/:userId/protocol", testsWrite, saveStaffUserProtocolController);
+
+const commitmentLetter = staff("console.diet.view", { admin: "users.clientHub.care.commitment-letter", coach: "clientTab.care.commitment-letter" });
+const commitmentLetterWrite = staff("console.diet.edit", { admin: "users.clientHub.care.commitment-letter", coach: "clientTab.care.commitment-letter" });
+router.get("/:userId/commitment-letter", commitmentLetter, getCoachUserCommitmentLetterController);
+router.patch("/:userId/commitment-letter/:letterId/review", commitmentLetterWrite, reviewCoachCommitmentLetterController);
 
 const insight = staff("console.diet.view", { admin: "users.clientHub.care.coach-message", coach: "clientTab.care.coach-message" });
 router.get("/:userId/coach-insight", insight, getCoachUserCoachInsightController);

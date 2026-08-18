@@ -181,6 +181,18 @@ export const CONFIG_GROUPS = {
           tags: ["Text"],
           upload: true,
         },
+        {
+          id: "app-test-catalog",
+          name: "Blood test catalog",
+          note: "Master list of lab tests · Admin writes them, coaches assign them on Internal Parameters",
+          owner: "Admin",
+          app: true,
+          web: false,
+          live: true,
+          on: true,
+          tags: ["Text"],
+          upload: true,
+        },
       ],
     },
     {

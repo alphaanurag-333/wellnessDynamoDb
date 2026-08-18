@@ -9741,6 +9741,13 @@
   background: #fff;
 }
 
+.updated-admin .ua-cp-onboard-step__btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
 .updated-admin .ua-cp-onboard-step__btn--link {
   color: #5e6ad2;
   border-color: #e6ebf2;
@@ -12502,6 +12509,12 @@
   display: grid;
   place-items: center;
   flex-shrink: 0;
+  text-decoration: none;
+}
+
+.updated-admin a.ua-cp-btn {
+  text-decoration: none;
+  box-sizing: border-box;
 }
 
 .updated-admin .ua-cp-ip-badge {
@@ -12596,9 +12609,26 @@
 
 .updated-admin .ua-cp-ip-rec__actions {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.updated-admin .ua-cp-ip-rec__toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 10px;
+  margin: 0 0 14px;
+}
+
+.updated-admin .ua-cp-ip-rec__search {
+  height: 38px;
+  border: 1px solid #e6ebf2;
+  border-radius: 10px;
+  padding: 0 12px;
+  font: inherit;
+  color: #16233f;
+  background: #fff;
 }
 
 .updated-admin .ua-cp-ip-preset {
@@ -15191,6 +15221,22 @@
   color: #5e6ad2;
   margin-bottom: 8px;
   letter-spacing: 0.04em;
+}
+
+.updated-admin .ua-cp-launch-modal__slot-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.updated-admin .ua-cp-launch-modal__slot-date-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8a97ac;
+  margin-bottom: 6px;
 }
 
 .updated-admin .ua-cp-launch-modal__slot-tags {
@@ -17833,6 +17879,7 @@
   cursor: pointer;
   padding: 0;
   font-family: inherit;
+  overflow: hidden;
 }
 
 .updated-admin .ua-cp-food-meal__photo-icon {
@@ -17840,10 +17887,24 @@
   opacity: 0.45;
 }
 
+.updated-admin .ua-cp-food-meal__photo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 11px;
+  display: block;
+}
+
+.updated-admin .ua-cp-food-meal__status {
+  font-size: 12px;
+  font-weight: 700;
+  color: #b42318;
+}
+
 .updated-admin .ua-cp-food-meal__photo-swap {
   position: absolute;
-  right: -4px;
-  bottom: -4px;
+  right: 2px;
+  bottom: 2px;
   width: 18px;
   height: 18px;
   border-radius: 50%;
@@ -17868,6 +17929,15 @@
   font-size: 11px;
   color: #8a97ac;
   font-weight: 650;
+}
+
+.updated-admin .ua-cp-food-meal__desc {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 600;
+  color: #3a4a63;
+  white-space: pre-wrap;
 }
 
 .updated-admin .ua-cp-food-meal__tags {
@@ -18656,6 +18726,15 @@
   color: #8a97ac;
 }
 
+.updated-admin .ua-cp-meal-photo-modal__desc {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 600;
+  color: #3a4a63;
+  white-space: pre-wrap;
+}
+
 .updated-admin .ua-cp-meal-photo-modal__photo {
   display: flex;
   flex-direction: column;
@@ -18674,6 +18753,14 @@
 .updated-admin .ua-cp-meal-photo-modal__camera {
   font-size: 28px;
   opacity: 0.45;
+}
+
+.updated-admin .ua-cp-meal-photo-modal__img {
+  width: 100%;
+  max-height: 420px;
+  object-fit: contain;
+  border-radius: 12px;
+  display: block;
 }
 
 
@@ -22359,6 +22446,22 @@
   flex-shrink: 0;
 }
 
+.updated-admin .ua-cp-present-letter-card__icon--pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.updated-admin .ua-cp-present-letter-card__icon--rejected,
+.updated-admin .ua-cp-present-letter-card__icon--empty {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.updated-admin .ua-cp-present-letter-card__icon--rejected {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
 .updated-admin .ua-cp-present-letter-card__title-row {
   display: flex;
   align-items: center;
@@ -22384,6 +22487,21 @@
   letter-spacing: 0.04em;
 }
 
+.updated-admin .ua-cp-present-letter-card__badge--pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.updated-admin .ua-cp-present-letter-card__badge--rejected {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.updated-admin .ua-cp-present-letter-card__badge--empty {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
 .updated-admin .ua-cp-present-letter-card__main p {
   margin: 4px 0 0;
   font-size: 12px;
@@ -22395,6 +22513,8 @@
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .updated-admin .ua-cp-present-photos__head {
@@ -22445,6 +22565,8 @@
   justify-content: center;
   gap: 6px;
   min-height: 150px;
+  height: 180px;
+  overflow: hidden;
   background: #f8fafc;
   border-bottom: 1px dashed #d3dae6;
   color: #8a97ac;
@@ -22543,7 +22665,7 @@
 }
 
 .updated-admin .ua-cp-present-modal--letter {
-  width: min(640px, calc(100vw - 32px));
+  width: min(860px, calc(100vw - 32px));
   padding: 0;
   overflow: hidden;
 }
@@ -22595,8 +22717,8 @@
   color: #5a6b85;
 }
 
-.updated-admin .ua-cp-present-request__field select {
-  height: 38px;
+.updated-admin .ua-cp-present-request__field select,
+.updated-admin .ua-cp-present-request__field textarea {
   padding: 0 12px;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -22604,6 +22726,16 @@
   font-size: 13px;
   color: #16233f;
   background: #fff;
+}
+
+.updated-admin .ua-cp-present-request__field select {
+  height: 38px;
+}
+
+.updated-admin .ua-cp-present-request__field textarea {
+  padding: 10px 12px;
+  min-height: 84px;
+  resize: vertical;
 }
 
 .updated-admin .ua-cp-present-letter__head {
@@ -22651,6 +22783,39 @@
 .updated-admin .ua-cp-present-letter__doc {
   padding: 24px 28px 22px;
   background: #fff;
+}
+
+.updated-admin .ua-cp-present-letter__frame {
+  display: block;
+  width: 100%;
+  height: min(70vh, 720px);
+  border: 0;
+  background: #f8fafc;
+}
+
+.updated-admin .ua-cp-present-letter__empty {
+  padding: 48px 28px;
+  text-align: center;
+}
+
+.updated-admin .ua-cp-present-letter__empty strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 800;
+  color: #16233f;
+}
+
+.updated-admin .ua-cp-present-letter__empty p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #8a97ac;
+}
+
+.updated-admin .ua-cp-present-photo__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .updated-admin .ua-cp-present-letter__brand {
@@ -28173,6 +28338,93 @@
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.updated-admin .ua-cfg-tc-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 180px 160px;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.updated-admin .ua-cfg-tc-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.updated-admin .ua-cfg-tc-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.updated-admin .ua-cfg-tc-name {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  background: none;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+
+.updated-admin .ua-cfg-tc-name span {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.updated-admin .ua-cfg-tc-params,
+.updated-admin .ua-cfg-tc-params-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.updated-admin .ua-cfg-tc-params__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.updated-admin .ua-cfg-tc-params__labels,
+.updated-admin .ua-cfg-tc-params__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) 140px minmax(0, 1.2fr) 36px;
+  gap: 8px;
+  align-items: center;
+}
+
+.updated-admin .ua-cfg-tc-params__labels {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  letter-spacing: 0.02em;
+  padding: 0 2px;
+}
+
+.updated-admin .ua-cfg-tc-modal {
+  width: min(760px, calc(100vw - 32px));
+}
+
+@media (max-width: 720px) {
+  .updated-admin .ua-cfg-tc-filters,
+  .updated-admin .ua-cfg-tc-form,
+  .updated-admin .ua-cfg-tc-params__labels,
+  .updated-admin .ua-cfg-tc-params__row {
+    grid-template-columns: 1fr;
+  }
+
+  .updated-admin .ua-cfg-tc-params__labels {
+    display: none;
+  }
 }
 
 .updated-admin .ua-cfg-dp-modal {
@@ -37364,6 +37616,10 @@
   }
 
   .updated-admin .ua-cp-ip-test-group__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .updated-admin .ua-cp-ip-rec__toolbar {
     grid-template-columns: 1fr;
   }
 

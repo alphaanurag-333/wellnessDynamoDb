@@ -30,6 +30,16 @@ const {
   getUserAtAGlanceController,
 } = require("../../controllers/adminController/atAGlanceController");
 const {
+  patchUserOnboardingStepController,
+} = require("../../controllers/adminController/onboardingStepController");
+const {
+  listStaffOnboardingMeetingsController,
+  createStaffOnboardingMeetingController,
+  acceptOnboardingMeetingRequestController,
+  rejectOnboardingMeetingRequestController,
+  cancelStaffOnboardingMeetingController,
+} = require("../../controllers/adminController/onboardingMeetingController");
+const {
   getUserBodyAnalyticsController,
 } = require("../../controllers/adminController/bodyAnalyticsController");
 
@@ -70,6 +80,42 @@ router.get(
   protectAccount,
   authorizeStaff("console.cl.view", { admin: "users.view" }),
   getUserEnergyExchangeAdminController
+);
+router.patch(
+  "/:id/onboarding-steps/:stepKey",
+  protectAccount,
+  authorizeStaff("console.cl.edit", { admin: "users.edit" }),
+  patchUserOnboardingStepController
+);
+router.get(
+  "/:id/onboarding-meetings",
+  protectAccount,
+  authorizeStaff("console.cal.view", { admin: "users.view" }),
+  listStaffOnboardingMeetingsController
+);
+router.post(
+  "/:id/onboarding-meetings",
+  protectAccount,
+  authorizeStaff("console.cal.edit", { admin: "users.edit" }),
+  createStaffOnboardingMeetingController
+);
+router.post(
+  "/:id/onboarding-meetings/:meetingId/accept-request",
+  protectAccount,
+  authorizeStaff("console.cal.edit", { admin: "users.edit" }),
+  acceptOnboardingMeetingRequestController
+);
+router.post(
+  "/:id/onboarding-meetings/:meetingId/reject-request",
+  protectAccount,
+  authorizeStaff("console.cal.edit", { admin: "users.edit" }),
+  rejectOnboardingMeetingRequestController
+);
+router.post(
+  "/:id/onboarding-meetings/:meetingId/cancel",
+  protectAccount,
+  authorizeStaff("console.cal.edit", { admin: "users.edit" }),
+  cancelStaffOnboardingMeetingController
 );
 router.get("/:id", protectAccount, authorizeStaff("console.cl.view", { admin: "users.view" }), getUserByIdController);
 router.post("/", protectAccount, authorizeStaff("console.cl.edit", { admin: "users.edit" }), optionalUserFile, createUserController);

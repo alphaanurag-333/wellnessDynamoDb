@@ -557,6 +557,70 @@ async function dispatchMealLogReviewedNotification({
   return notification;
 }
 
+const ONBOARDING_MEETING_TITLES = {
+  launch: "LAUNCH",
+  reportsBriefing: "Reports Briefing",
+  hap: "HAP",
+  programInitiation: "Program Initiation",
+};
+
+async function dispatchOnboardingSlotsOfferedNotification({ userId, stepKey }) {
+  const label = ONBOARDING_MEETING_TITLES[stepKey] || "onboarding";
+  const notification = await createTargetedNotification({
+    userId,
+    kind: "onboarding_slots_offered",
+    message: `Your coach offered time slots for your ${label} meeting.`,
+    referenceType: "onboarding_meeting",
+    title: "New meeting slots",
+  });
+  runPushSafely(deliverTargetedPush(userId, notification));
+  return notification;
+}
+
+async function dispatchOnboardingMeetingConfirmedNotification({ userId, stepKey }) {
+  const label = ONBOARDING_MEETING_TITLES[stepKey] || "onboarding";
+  const notification = await createTargetedNotification({
+    userId,
+    kind: "onboarding_meeting_confirmed",
+    message: `Your ${label} meeting is confirmed. Join using the Zoom link in the app.`,
+    referenceType: "onboarding_meeting",
+    title: "Meeting confirmed",
+  });
+  runPushSafely(deliverTargetedPush(userId, notification));
+  return notification;
+}
+
+async function dispatchOnboardingTimeRequestedCoachNotification({ user, stepKey }) {
+  const tokens = await collectCoachFcmTokensForUser(user);
+  if (tokens.length === 0) {
+    return { successCount: 0, failureCount: 0, skipped: true, reason: "no_tokens" };
+  }
+  const userName = String(user?.name || "A client").trim() || "A client";
+  const label = ONBOARDING_MEETING_TITLES[stepKey] || "onboarding";
+  return sendPushToTokens(tokens, {
+    title: "Time requested",
+    body: `${userName} requested another time for ${label}.`,
+    data: {
+      type: "onboarding_time_requested_notification",
+      kind: "onboarding_time_requested",
+      referenceType: "onboarding_meeting",
+      userId: String(user?.id || user?._id || ""),
+    },
+  });
+}
+
+function dispatchOnboardingSlotsOfferedNotificationAsync(payload) {
+  runPushSafely(dispatchOnboardingSlotsOfferedNotification(payload));
+}
+
+function dispatchOnboardingMeetingConfirmedNotificationAsync(payload) {
+  runPushSafely(dispatchOnboardingMeetingConfirmedNotification(payload));
+}
+
+function dispatchOnboardingTimeRequestedCoachNotificationAsync(payload) {
+  runPushSafely(dispatchOnboardingTimeRequestedCoachNotification(payload));
+}
+
 module.exports = {
   dispatchBroadcastNotification,
   dispatchBirthdayWishNotification,
@@ -580,6 +644,12 @@ module.exports = {
   dispatchMealLoggedCoachNotification,
   dispatchMealLoggedCoachNotificationAsync,
   dispatchMealLogReviewedNotification,
+  dispatchOnboardingSlotsOfferedNotification,
+  dispatchOnboardingSlotsOfferedNotificationAsync,
+  dispatchOnboardingMeetingConfirmedNotification,
+  dispatchOnboardingMeetingConfirmedNotificationAsync,
+  dispatchOnboardingTimeRequestedCoachNotification,
+  dispatchOnboardingTimeRequestedCoachNotificationAsync,
   deliverBroadcastPush,
   deliverTargetedPush,
   FCM_TYPE_BY_KIND,

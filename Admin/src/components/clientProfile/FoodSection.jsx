@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PillTabs } from "../shared.jsx";
 import {
@@ -7,15 +7,46 @@ import {
   FOOD_MEALS,
   DEFAULT_WATER_RANGE,
   buildWaterChart,
+  buildWaterChartFromHistory,
+  formatFoodDateInput,
   formatFoodDateLabel,
+  parseFoodDateInput,
+  localToday,
+  latestBmrTdee,
+  mapDietAssignmentToSections,
+  mapMealLogToUi,
   macroPct,
+  macroTargetsFromTdee,
+  roundMacros,
   sumMealMacros,
 } from "../../data/foodData.js";
+import { fetchUserBodyAnalytics } from "../../api/usersApi.js";
+import {
+  fetchUserDietPlanAssignments,
+  fetchUserMealTracking,
+  fetchUserWaterTracking,
+  reviewUserMealLog,
+  updateUserMealLog,
+  updateUserMealTrackingMode,
+} from "../../api/mealTrackingApi.js";
 import { MealPhotoModal } from "./MealPhotoModal.jsx";
 import { FoodDateRow, FoodWaterHistoryPicker } from "./FoodDatePicker.jsx";
 import { DietPlanPanel } from "./DietPlanPanel.jsx";
 
-function SegToggle({ options, value, onChange }) {
+function isLiveUserId(userId) {
+  if (!userId) return false;
+  const numeric = Number(userId);
+  return !(Number.isFinite(numeric) && numeric > 0 && String(numeric) === String(userId));
+}
+
+function defaultWaterRange(today = localToday()) {
+  const to = new Date(today);
+  const from = new Date(today);
+  from.setDate(from.getDate() - 13);
+  return { from, to };
+}
+
+function SegToggle({ options, value, onChange, disabled }) {
   return (
     <div className="ua-cp-seg ua-cp-seg--xs" role="tablist">
       {options.map((opt) => (
@@ -25,6 +56,7 @@ function SegToggle({ options, value, onChange }) {
           role="tab"
           aria-selected={value === opt.id}
           className={`ua-cp-seg__btn${value === opt.id ? " ua-cp-seg__btn--active" : ""}`}
+          disabled={disabled}
           onClick={() => onChange(opt.id)}
         >
           {opt.label}
@@ -54,21 +86,21 @@ function MacroStat({ label, tone, consumed, target, unit = "g" }) {
   );
 }
 
-function TargetedMacrosCard({ consumed }) {
+function TargetedMacrosCard({ consumed, targets }) {
   return (
     <div className="ua-cp-food-macros-card">
       <div className="ua-cp-food-macros-card__head">
         <span className="ua-cp-food-macros-card__title">Targeted macros · consumed vs target</span>
         <div className="ua-cp-food-macros-card__badges">
-          <span className="ua-cp-food-meta-badge">BMR {FOOD_MACRO_TARGETS.bmr.toLocaleString()} kcal</span>
-          <span className="ua-cp-food-meta-badge">TDEE {FOOD_MACRO_TARGETS.tdee.toLocaleString()} kcal</span>
+          <span className="ua-cp-food-meta-badge">BMR {(targets.bmr || 0).toLocaleString()} kcal</span>
+          <span className="ua-cp-food-meta-badge">TDEE {(targets.tdee || 0).toLocaleString()} kcal</span>
         </div>
       </div>
       <div className="ua-cp-food-macros-card__grid">
-        <MacroStat label="Protein" tone="green" consumed={consumed.protein} target={FOOD_MACRO_TARGETS.protein} />
-        <MacroStat label="Carbs" tone="orange" consumed={consumed.carbs} target={FOOD_MACRO_TARGETS.carbs} />
-        <MacroStat label="Fat" tone="blue" consumed={consumed.fat} target={FOOD_MACRO_TARGETS.fat} />
-        <MacroStat label="Calories" tone="purple" consumed={consumed.calories} target={FOOD_MACRO_TARGETS.calories} unit="kcal" />
+        <MacroStat label="Protein" tone="green" consumed={consumed.protein} target={targets.protein} />
+        <MacroStat label="Carbs" tone="orange" consumed={consumed.carbs} target={targets.carbs} />
+        <MacroStat label="Fat" tone="blue" consumed={consumed.fat} target={targets.fat} />
+        <MacroStat label="Calories" tone="purple" consumed={consumed.calories} target={targets.calories} unit="kcal" />
       </div>
     </div>
   );
@@ -98,6 +130,8 @@ function MacroMini({ tone, label, value, unit, editing, onChange }) {
 function MealCard({
   meal,
   mode,
+  live,
+  busy,
   onSubmitAi,
   onApprove,
   onSaveEdit,
@@ -107,6 +141,7 @@ function MealCard({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(meal.macros || { protein: 0, carbs: 0, fat: 0, calories: 0 });
   const shown = editing ? draft : (meal.macros || draft);
+  const showMacros = Boolean(meal.macros) && (meal.aiStatus === "review" || meal.aiStatus === "approved" || meal.aiStatus === "rejected" || editing);
 
   useEffect(() => {
     if (meal.macros) setDraft(meal.macros);
@@ -117,26 +152,41 @@ function MealCard({
     setEditing(true);
   }
 
-  function saveEdit() {
-    onSaveEdit(meal.id, draft);
-    setEditing(false);
-    onToast("Meal macros saved");
+  async function saveEdit() {
+    try {
+      await onSaveEdit(meal.id, draft);
+      setEditing(false);
+      onToast("Meal macros saved");
+    } catch {
+      // Error toast is handled by the parent save handler.
+    }
   }
+
+  const subtitle = [meal.time, mode === "detailed" ? (meal.loggedBy || "entered by client") : ""]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <div className={`ua-cp-food-meal${meal.aiStatus === "review" ? " ua-cp-food-meal--review" : ""}${editing ? " ua-cp-food-meal--edit" : ""}`}>
       <div className="ua-cp-food-meal__main">
         <button type="button" className="ua-cp-food-meal__photo" onClick={() => onOpenPhoto(meal)} aria-label={`View ${meal.name} photo`}>
-          <span className="ua-cp-food-meal__photo-icon" aria-hidden="true">📷</span>
+          {meal.photoUrl ? (
+            <img src={meal.photoUrl} alt="" className="ua-cp-food-meal__photo-img" />
+          ) : (
+            <span className="ua-cp-food-meal__photo-icon" aria-hidden="true">📷</span>
+          )}
           <span className="ua-cp-food-meal__photo-swap" aria-hidden="true">⇄</span>
         </button>
         <div className="ua-cp-food-meal__info">
           <strong>{meal.name}</strong>
-          <span>{meal.time}{mode === "detailed" ? " · entered by client" : ""}</span>
+          <span>{subtitle}</span>
+          {meal.description ? (
+            <p className="ua-cp-food-meal__desc">{meal.description}</p>
+          ) : null}
           {mode === "detailed" && meal.detailedTags?.length ? (
             <div className="ua-cp-food-meal__tags">
-              {meal.detailedTags.map((tag) => (
-                <span key={tag} className="ua-cp-food-meal__tag">{tag}</span>
+              {meal.detailedTags.map((tag, index) => (
+                <span key={`${tag}-${index}`} className="ua-cp-food-meal__tag">{tag}</span>
               ))}
             </div>
           ) : null}
@@ -144,14 +194,20 @@ function MealCard({
         <div className="ua-cp-food-meal__actions">
           {editing ? (
             <>
-              <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={() => setEditing(false)}>Cancel</button>
-              <button type="button" className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm" onClick={saveEdit}>Save</button>
+              <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" disabled={busy} onClick={() => setEditing(false)}>Cancel</button>
+              <button type="button" className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm" disabled={busy} onClick={saveEdit}>Save</button>
             </>
           ) : meal.aiStatus === "review" ? (
             <>
-              <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={startEdit}>Edit</button>
-              <button type="button" className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm" onClick={() => onApprove(meal.id)}>Approve</button>
+              <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" disabled={busy} onClick={startEdit}>Edit</button>
+              <button type="button" className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm" disabled={busy} onClick={() => onApprove(meal.id)}>Approve</button>
             </>
+          ) : meal.aiStatus === "approved" ? (
+            <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" disabled={busy} onClick={startEdit}>Edit</button>
+          ) : meal.aiStatus === "rejected" ? (
+            <span className="ua-cp-food-meal__status">Rejected</span>
+          ) : live ? (
+            <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" disabled={busy} onClick={startEdit}>Edit</button>
           ) : (
             <button type="button" className="ua-cp-btn ua-cp-btn--ai" onClick={() => onSubmitAi(meal.id)}>
               <span aria-hidden="true">✦</span> Submit to AI
@@ -159,7 +215,7 @@ function MealCard({
           )}
         </div>
       </div>
-      {(meal.aiStatus === "review" || editing) && meal.macros ? (
+      {showMacros ? (
         <div className="ua-cp-food-meal__macros">
           <MacroMini tone="green" label="P" value={shown.protein} editing={editing} onChange={(v) => setDraft((d) => ({ ...d, protein: v }))} />
           <MacroMini tone="orange" label="C" value={shown.carbs} editing={editing} onChange={(v) => setDraft((d) => ({ ...d, carbs: v }))} />
@@ -171,31 +227,39 @@ function MealCard({
   );
 }
 
-function MealsPanel({ meals, mode, dayTotal, listLabel, dateLabel, onSubmitAi, onApprove, onSaveEdit, onOpenPhoto, onToast }) {
+function MealsPanel({ meals, mode, live, busyId, dayTotal, listLabel, dateLabel, loading, onSubmitAi, onApprove, onSaveEdit, onOpenPhoto, onToast }) {
   return (
     <div className="ua-cp-food-meals">
       <div className="ua-cp-food-meals__head">
         <span>{dateLabel} · {listLabel}</span>
         <span>Day total: <strong>{dayTotal} kcal</strong></span>
       </div>
-      {meals.map((meal) => (
-        <MealCard
-          key={meal.id}
-          meal={meal}
-          mode={mode}
-          onSubmitAi={onSubmitAi}
-          onApprove={onApprove}
-          onSaveEdit={onSaveEdit}
-          onOpenPhoto={onOpenPhoto}
-          onToast={onToast}
-        />
-      ))}
+      {loading ? (
+        <p className="ua-page-head__sub">Loading meals…</p>
+      ) : meals.length ? (
+        meals.map((meal) => (
+          <MealCard
+            key={meal.id}
+            meal={meal}
+            mode={mode}
+            live={live}
+            busy={busyId === meal.id}
+            onSubmitAi={onSubmitAi}
+            onApprove={onApprove}
+            onSaveEdit={onSaveEdit}
+            onOpenPhoto={onOpenPhoto}
+            onToast={onToast}
+          />
+        ))
+      ) : (
+        <p className="ua-page-head__sub">No meals logged for this date.</p>
+      )}
     </div>
   );
 }
 
 function WaterChartCard({ chart, goal, todayDay }) {
-  const max = Math.max(goal, ...chart.days.map((d) => d.value));
+  const max = Math.max(goal || 0, ...chart.days.map((d) => d.value), 1);
   return (
     <div className="ua-cp-food-water-card">
       <div className="ua-cp-food-water-card__head">
@@ -210,9 +274,9 @@ function WaterChartCard({ chart, goal, todayDay }) {
           Avg <strong>{chart.avg}</strong> · Today <strong className="ua-cp-food-water-card__today">{chart.today}</strong> / {goal}
         </div>
       </div>
-      <div className="ua-cp-food-water-chart" style={{ gridTemplateColumns: `repeat(${chart.days.length}, minmax(0, 1fr))` }}>
-        {chart.days.map((d) => (
-          <div key={d.day} className="ua-cp-food-water-chart__col">
+      <div className="ua-cp-food-water-chart" style={{ gridTemplateColumns: `repeat(${Math.max(chart.days.length, 1)}, minmax(0, 1fr))` }}>
+        {chart.days.map((d, index) => (
+          <div key={`${d.day}-${index}`} className="ua-cp-food-water-chart__col">
             <span className="ua-cp-food-water-chart__val">{d.value}</span>
             <div className="ua-cp-food-water-chart__bar-wrap">
               <span
@@ -228,7 +292,7 @@ function WaterChartCard({ chart, goal, todayDay }) {
   );
 }
 
-function WaterGoalBar({ goal, dietPlanOn, editing, draftGoal, onStartEdit, onCancel, onSave, onDraftChange }) {
+function WaterGoalBar({ goal, dietPlanOn, editing, draftGoal, onStartEdit, onCancel, onSave, onDraftChange, canEdit }) {
   return (
     <div className="ua-cp-food-water-goal">
       {editing ? (
@@ -249,7 +313,9 @@ function WaterGoalBar({ goal, dietPlanOn, editing, draftGoal, onStartEdit, onCan
       ) : (
         <>
           <span className="ua-cp-food-water-goal__text">Goal <strong>{goal}</strong> glasses / day</span>
-          <button type="button" className="ua-cp-food-water-goal__set" onClick={onStartEdit}>Set target</button>
+          {canEdit ? (
+            <button type="button" className="ua-cp-food-water-goal__set" onClick={onStartEdit}>Set target</button>
+          ) : null}
           {dietPlanOn ? (
             <span className="ua-cp-food-water-goal__badge ua-cp-food-water-goal__badge--ok">Client can set in app</span>
           ) : null}
@@ -262,24 +328,39 @@ function WaterGoalBar({ goal, dietPlanOn, editing, draftGoal, onStartEdit, onCan
   );
 }
 
-export function FoodSection({ onToast }) {
+export function FoodSection({ user, onToast }) {
   const [searchParams, setSearchParams] = useSearchParams();
+  const userId = String(user?.id || "").trim();
+  const live = isLiveUserId(userId);
+  const today = useMemo(() => (live ? localToday() : FOOD_DEMO_TODAY), [live]);
   const mode = searchParams.get("mode") === "detailed" ? "detailed" : "macro";
   const tabParam = searchParams.get("tab");
-  const [dietPlanOn, setDietPlanOn] = useState(true);
-  const [meals, setMeals] = useState(FOOD_MEALS);
+  const [dietPlanOn, setDietPlanOn] = useState(!live);
+  const [meals, setMeals] = useState(live ? [] : FOOD_MEALS);
   const [photoMeal, setPhotoMeal] = useState(null);
   const [waterGoal, setWaterGoal] = useState(8);
   const [waterGoalEditing, setWaterGoalEditing] = useState(false);
   const [waterGoalDraft, setWaterGoalDraft] = useState(8);
-  const [selectedDate, setSelectedDate] = useState(FOOD_DEMO_TODAY);
-  const [waterRange, setWaterRange] = useState(DEFAULT_WATER_RANGE);
+  const [selectedDate, setSelectedDate] = useState(today);
+  const [waterRange, setWaterRange] = useState(() => (live ? defaultWaterRange(today) : DEFAULT_WATER_RANGE));
+  const [macroTargets, setMacroTargets] = useState(FOOD_MACRO_TARGETS);
+  const [waterHistory, setWaterHistory] = useState(null);
+  const [dietAssignment, setDietAssignment] = useState(null);
+  const [dietSections, setDietSections] = useState([]);
+  const [mealsLoading, setMealsLoading] = useState(live);
+  const [waterLoading, setWaterLoading] = useState(false);
+  const [dietLoading, setDietLoading] = useState(false);
+  const [modeBusy, setModeBusy] = useState(false);
+  const [busyId, setBusyId] = useState("");
+  const jumpedToLatestRef = useRef(false);
 
-  const dateLabel = formatFoodDateLabel(selectedDate);
-  const waterChart = useMemo(
-    () => buildWaterChart(waterRange.from, waterRange.to),
-    [waterRange.from, waterRange.to],
-  );
+  const dateLabel = formatFoodDateLabel(selectedDate, today);
+  const waterChart = useMemo(() => {
+    if (live && waterHistory) {
+      return buildWaterChartFromHistory(waterHistory, waterRange.from, waterRange.to, today);
+    }
+    return buildWaterChart(waterRange.from, waterRange.to, today);
+  }, [live, today, waterHistory, waterRange.from, waterRange.to]);
 
   const tab = useMemo(() => {
     if (tabParam === "water" || tabParam === "diet") return tabParam;
@@ -287,8 +368,140 @@ export function FoodSection({ onToast }) {
     return tabParam === "water" || tabParam === "diet" ? tabParam : "macro";
   }, [mode, tabParam]);
 
-  const consumed = useMemo(() => sumMealMacros(meals), [meals]);
+  const consumed = useMemo(() => roundMacros(sumMealMacros(meals)), [meals]);
   const dayTotal = consumed.calories;
+
+  useEffect(() => {
+    setSelectedDate(today);
+    setWaterRange(live ? defaultWaterRange(today) : DEFAULT_WATER_RANGE);
+    setPhotoMeal(null);
+    setDietAssignment(null);
+    setDietSections([]);
+    setWaterHistory(null);
+    setMacroTargets(FOOD_MACRO_TARGETS);
+    setDietPlanOn(!live);
+    setMeals(live ? [] : FOOD_MEALS);
+    jumpedToLatestRef.current = false;
+  }, [live, today, userId]);
+
+  useEffect(() => {
+    if (!live) return undefined;
+    let cancelled = false;
+    fetchUserBodyAnalytics(userId)
+      .then((data) => {
+        if (cancelled) return;
+        const { bmr, tdee } = latestBmrTdee(data?.metabolicMetrics);
+        setMacroTargets(macroTargetsFromTdee(tdee, bmr));
+      })
+      .catch(() => {
+        if (!cancelled) setMacroTargets(macroTargetsFromTdee(0, 0));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [live, userId]);
+
+  useEffect(() => {
+    if (!live) {
+      setMeals(FOOD_MEALS);
+      setMealsLoading(false);
+      return undefined;
+    }
+    let cancelled = false;
+    setMealsLoading(true);
+    fetchUserMealTracking(userId, { date: formatFoodDateInput(selectedDate), days: 1 })
+      .then((data) => {
+        if (cancelled) return;
+        const dateKey = formatFoodDateInput(selectedDate);
+        const logs = (data?.logs || []).filter((log) => !log.date || log.date === dateKey);
+        logs.sort((a, b) => String(a.entryTime || "").localeCompare(String(b.entryTime || "")));
+        setMeals(logs.map(mapMealLogToUi));
+        if (
+          !jumpedToLatestRef.current
+          && logs.length === 0
+          && formatFoodDateInput(selectedDate) === formatFoodDateInput(today)
+        ) {
+          jumpedToLatestRef.current = true;
+          fetchUserMealTracking(userId, { date: formatFoodDateInput(today), days: 21 })
+            .then((rangeData) => {
+              if (cancelled) return;
+              const latest = (rangeData?.logs || []).find((log) => log?.date);
+              const nextDate = latest?.date ? parseFoodDateInput(latest.date) : null;
+              if (nextDate && nextDate.toDateString() !== selectedDate.toDateString()) {
+                setSelectedDate(nextDate);
+              }
+            })
+            .catch(() => {});
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setMeals([]);
+        onToast?.(err?.message || "Failed to load meals");
+      })
+      .finally(() => {
+        if (!cancelled) setMealsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [live, onToast, selectedDate, today, userId]);
+
+  useEffect(() => {
+    if (!live || tab !== "water") return undefined;
+    let cancelled = false;
+    setWaterLoading(true);
+    fetchUserWaterTracking(userId, {
+      from: formatFoodDateInput(waterRange.from),
+      to: formatFoodDateInput(waterRange.to),
+    })
+      .then((data) => {
+        if (cancelled) return;
+        setWaterHistory(data?.history || []);
+        const goal = Number(data?.settings?.goalGlasses);
+        if (Number.isFinite(goal) && goal >= 0) {
+          setWaterGoal(goal);
+          setWaterGoalDraft(goal);
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setWaterHistory([]);
+        onToast?.(err?.message || "Failed to load water intake");
+      })
+      .finally(() => {
+        if (!cancelled) setWaterLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [live, onToast, tab, userId, waterRange.from, waterRange.to]);
+
+  useEffect(() => {
+    if (!live || tab !== "diet") return undefined;
+    let cancelled = false;
+    setDietLoading(true);
+    fetchUserDietPlanAssignments(userId)
+      .then((data) => {
+        if (cancelled) return;
+        const recommended = data?.recommended || null;
+        setDietAssignment(recommended);
+        setDietSections(mapDietAssignmentToSections(recommended));
+        setDietPlanOn(Boolean(recommended));
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setDietAssignment(null);
+        setDietSections([]);
+        onToast?.(err?.message || "Failed to load diet plan");
+      })
+      .finally(() => {
+        if (!cancelled) setDietLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [live, onToast, tab, userId]);
 
   function setMode(next) {
     setSearchParams((prev) => {
@@ -303,6 +516,13 @@ export function FoodSection({ onToast }) {
       }
       return p;
     }, { replace: true });
+
+    if (!live || modeBusy) return;
+    setModeBusy(true);
+    updateUserMealTrackingMode(userId, next === "detailed" ? "detailed_macro" : "macro")
+      .then(() => onToast(next === "detailed" ? "Detailed macro mode set for client app" : "Macro mode set for client app"))
+      .catch((err) => onToast(err?.message || "Failed to update meal tracking mode"))
+      .finally(() => setModeBusy(false));
   }
 
   function setTab(next) {
@@ -328,19 +548,58 @@ export function FoodSection({ onToast }) {
     onToast("Submitted to AI for macro analysis");
   }
 
-  function approveMeal(id) {
-    setMeals((list) => list.map((m) => (m.id === id ? { ...m, aiStatus: "approved" } : m)));
-    onToast("Meal approved");
+  async function approveMeal(id) {
+    const meal = meals.find((m) => m.id === id);
+    if (!meal) return;
+    if (!live) {
+      setMeals((list) => list.map((m) => (m.id === id ? { ...m, aiStatus: "approved" } : m)));
+      onToast("Meal approved");
+      return;
+    }
+    setBusyId(id);
+    try {
+      const updated = await reviewUserMealLog(id, {
+        status: "approved",
+        proteinGm: meal.macros?.protein,
+        fatsGm: meal.macros?.fat,
+        carbsGm: meal.macros?.carbs,
+        caloriesKcal: meal.macros?.calories,
+      });
+      setMeals((list) => list.map((m) => (m.id === id ? mapMealLogToUi(updated) : m)));
+      onToast("Meal approved");
+    } catch (err) {
+      onToast(err?.message || "Failed to approve meal");
+    } finally {
+      setBusyId("");
+    }
   }
 
-  function saveMealEdit(id, macros) {
-    setMeals((list) => list.map((m) => (m.id === id ? { ...m, macros, aiStatus: "review" } : m)));
+  async function saveMealEdit(id, macros) {
+    if (!live) {
+      setMeals((list) => list.map((m) => (m.id === id ? { ...m, macros, aiStatus: "review" } : m)));
+      return;
+    }
+    setBusyId(id);
+    try {
+      const updated = await updateUserMealLog(userId, id, {
+        proteinGm: macros.protein,
+        fatsGm: macros.fat,
+        carbsGm: macros.carbs,
+        caloriesKcal: macros.calories,
+      });
+      setMeals((list) => list.map((m) => (m.id === id ? mapMealLogToUi(updated) : m)));
+    } catch (err) {
+      onToast(err?.message || "Failed to save meal macros");
+      throw err;
+    } finally {
+      setBusyId("");
+    }
   }
 
   function saveWaterGoal() {
     setWaterGoal(waterGoalDraft);
     setWaterGoalEditing(false);
-    onToast("Water goal updated");
+    onToast(live ? "Water goal is set by the client in the app" : "Water goal updated");
   }
 
   const macroTabs = [
@@ -368,6 +627,7 @@ export function FoodSection({ onToast }) {
                 { id: "detailed", label: "Detailed" },
               ]}
               value={mode}
+              disabled={modeBusy}
               onChange={setMode}
             />
           </div>
@@ -377,7 +637,10 @@ export function FoodSection({ onToast }) {
               type="button"
               className={`ua-toggle${dietPlanOn ? " ua-toggle--on" : ""}`}
               aria-pressed={dietPlanOn}
-              onClick={() => setDietPlanOn((v) => !v)}
+              onClick={() => {
+                if (live) return;
+                setDietPlanOn((v) => !v);
+              }}
             >
               <span className="ua-toggle__knob" />
             </button>
@@ -396,16 +659,20 @@ export function FoodSection({ onToast }) {
         <>
           <FoodDateRow
             selectedDate={selectedDate}
+            today={today}
             onDateChange={setSelectedDate}
-            onToday={() => setSelectedDate(FOOD_DEMO_TODAY)}
+            onToday={() => setSelectedDate(today)}
           />
-          <TargetedMacrosCard consumed={consumed} />
+          <TargetedMacrosCard consumed={consumed} targets={macroTargets} />
           <MealsPanel
             meals={meals}
             mode="macro"
+            live={live}
+            busyId={busyId}
             dayTotal={dayTotal}
             listLabel="meals"
             dateLabel={dateLabel}
+            loading={mealsLoading}
             onSubmitAi={submitAi}
             onApprove={approveMeal}
             onSaveEdit={saveMealEdit}
@@ -419,16 +686,20 @@ export function FoodSection({ onToast }) {
         <>
           <FoodDateRow
             selectedDate={selectedDate}
+            today={today}
             onDateChange={setSelectedDate}
-            onToday={() => setSelectedDate(FOOD_DEMO_TODAY)}
+            onToday={() => setSelectedDate(today)}
           />
-          <TargetedMacrosCard consumed={consumed} />
+          <TargetedMacrosCard consumed={consumed} targets={macroTargets} />
           <MealsPanel
             meals={meals}
             mode="detailed"
+            live={live}
+            busyId={busyId}
             dayTotal={dayTotal}
             listLabel="logged food"
             dateLabel={dateLabel}
+            loading={mealsLoading}
             onSubmitAi={submitAi}
             onApprove={approveMeal}
             onSaveEdit={saveMealEdit}
@@ -443,9 +714,10 @@ export function FoodSection({ onToast }) {
           <div className="ua-cp-food-water-toolbar">
             <FoodWaterHistoryPicker
               range={waterRange}
+              today={today}
               onApply={(next) => {
                 setWaterRange(next);
-                onToast(`Water history updated · ${buildWaterChart(next.from, next.to).rangeLabel}`);
+                onToast(`Water history updated · ${formatFoodDateLabel(next.from, today)} – ${formatFoodDateLabel(next.to, today)}`);
               }}
             />
             <WaterGoalBar
@@ -453,17 +725,30 @@ export function FoodSection({ onToast }) {
               dietPlanOn={dietPlanOn}
               editing={waterGoalEditing}
               draftGoal={waterGoalDraft}
+              canEdit={!live}
               onStartEdit={() => { setWaterGoalDraft(waterGoal); setWaterGoalEditing(true); }}
               onCancel={() => setWaterGoalEditing(false)}
               onSave={saveWaterGoal}
               onDraftChange={setWaterGoalDraft}
             />
           </div>
-          <WaterChartCard chart={waterChart} goal={waterGoal} todayDay={waterChart.todayDay} />
+          {waterLoading ? (
+            <p className="ua-page-head__sub">Loading water intake…</p>
+          ) : (
+            <WaterChartCard chart={waterChart} goal={waterGoal} todayDay={waterChart.todayDay} />
+          )}
         </>
       ) : null}
 
-      {tab === "diet" ? <DietPlanPanel onToast={onToast} /> : null}
+      {tab === "diet" ? (
+        <DietPlanPanel
+          onToast={onToast}
+          live={live}
+          loading={dietLoading}
+          assignment={dietAssignment}
+          sections={dietSections}
+        />
+      ) : null}
 
       {photoMeal ? <MealPhotoModal meal={photoMeal} dateLabel={dateLabel} onClose={() => setPhotoMeal(null)} /> : null}
     </div>

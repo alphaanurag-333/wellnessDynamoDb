@@ -3,6 +3,7 @@ const {
   GetCommand,
   DeleteCommand,
   QueryCommand,
+  UpdateCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require("uuid");
 const { docClient } = require("../config/db");
@@ -51,6 +52,9 @@ function toUserLabReportPublic(item) {
     reportDate: row.reportDate,
     fileKey: row.fileKey,
     fileUrl: resolvePublicUrl(row.fileKey),
+    reviewStatus: row.reviewStatus === "reviewed" ? "reviewed" : "pending",
+    reviewedAt: row.reviewedAt || null,
+    reviewedById: row.reviewedById || null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -66,6 +70,9 @@ async function createUserLabReport({ userId, reportDate, fileKey }) {
     userId: uid,
     reportDate: normalizeReportDate(reportDate),
     fileKey: normalizeFileKey(fileKey),
+    reviewStatus: "pending",
+    reviewedAt: null,
+    reviewedById: null,
     createdAt: now,
     updatedAt: now,
   };
@@ -148,12 +155,39 @@ async function deleteUserLabReport(id) {
   return toUserLabReportPublic(record);
 }
 
+async function reviewUserLabReport(id, { reviewedById } = {}) {
+  const record = await getUserLabReportRecordById(id);
+  if (!record) {
+    const err = new Error("Lab report not found");
+    err.name = "NotFoundError";
+    throw err;
+  }
+  const now = new Date().toISOString();
+  await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE,
+      Key: { id: String(id) },
+      UpdateExpression:
+        "SET reviewStatus = :reviewStatus, reviewedAt = :reviewedAt, reviewedById = :reviewedById, updatedAt = :updatedAt",
+      ExpressionAttributeValues: {
+        ":reviewStatus": "reviewed",
+        ":reviewedAt": now,
+        ":reviewedById": reviewedById ? String(reviewedById) : null,
+        ":updatedAt": now,
+      },
+      ConditionExpression: "attribute_exists(id)",
+    })
+  );
+  return getUserLabReportById(id);
+}
+
 module.exports = {
   createUserLabReport,
   getUserLabReportById,
   getUserLabReportRecordById,
   listUserLabReportsByUserId,
   deleteUserLabReport,
+  reviewUserLabReport,
   toUserLabReportPublic,
   normalizeReportDate,
 };

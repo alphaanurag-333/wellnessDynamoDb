@@ -1,9 +1,48 @@
 import { useEffect, useState } from "react";
+import { PHOTO_REQUEST_TYPES } from "../../data/presentableData.js";
 import {
-  COMMITMENT_LETTER,
-  PHOTO_REQUEST_TYPES,
-  SUBMITTED_PHOTOS,
-} from "../../data/presentableData.js";
+  fetchUserCommitmentLetter,
+  reviewUserCommitmentLetter,
+} from "../../api/onboardingApi.js";
+import { fetchUser } from "../../api/usersApi.js";
+
+function isLiveUserId(userId) {
+  const raw = String(userId || "").trim();
+  return Boolean(raw) && !/^\d+$/.test(raw);
+}
+
+function formatLetterDate(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function letterStatusMeta(letter) {
+  const status = String(letter?.approvalStatus || "").toLowerCase();
+  if (status === "approved") {
+    return { label: "APPROVED", tone: "approved", icon: "✓" };
+  }
+  if (status === "rejected") {
+    return { label: "REJECTED", tone: "rejected", icon: "✕" };
+  }
+  if (letter) {
+    return { label: "PENDING APPROVAL", tone: "pending", icon: "…" };
+  }
+  return { label: "NOT SUBMITTED", tone: "empty", icon: "—" };
+}
+
+function openPdf(url, onToast) {
+  if (!url) {
+    onToast?.("No PDF file is attached");
+    return;
+  }
+  window.open(url, "_blank", "noopener,noreferrer");
+}
 
 function ConfirmModal({ open, eyebrow, title, body, confirmLabel, confirmTone = "primary", onClose, onConfirm }) {
   useEffect(() => {
@@ -37,7 +76,49 @@ function ConfirmModal({ open, eyebrow, title, body, confirmLabel, confirmTone = 
   );
 }
 
-function CommitmentLetterModal({ open, user, onClose, onToast }) {
+function RejectLetterModal({ open, reason, onReasonChange, onClose, onConfirm, busy }) {
+  useEffect(() => {
+    function onKeyDown(event) {
+      if (event.key === "Escape") onClose();
+    }
+    if (open) document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={onClose} role="presentation">
+      <div className="ua-cp-present-modal ua-cp-present-modal--confirm" onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="reject-letter-title">
+        <p className="ua-cp-present-modal__eyebrow ua-cp-present-modal__eyebrow--danger">This decision is final</p>
+        <h3 id="reject-letter-title" className="ua-cp-present-modal__title">Reject this commitment letter?</h3>
+        <p className="ua-cp-present-modal__body">The client will be asked to upload a new signed copy. Add a reason they can see in the app.</p>
+        <label className="ua-cp-present-request__field">
+          Rejection reason
+          <textarea
+            rows={3}
+            value={reason}
+            onChange={(e) => onReasonChange(e.target.value)}
+            placeholder="e.g. Signature is missing or the scan is unreadable"
+          />
+        </label>
+        <div className="ua-cp-present-modal__foot">
+          <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={onClose} disabled={busy}>Cancel</button>
+          <button
+            type="button"
+            className="ua-cp-btn ua-cp-btn--sm ua-cp-present-modal__confirm--danger"
+            onClick={onConfirm}
+            disabled={busy || !reason.trim()}
+          >
+            {busy ? "Rejecting…" : "Yes, reject it"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CommitmentLetterModal({ open, user, letter, onClose, onToast }) {
   useEffect(() => {
     function onKeyDown(event) {
       if (event.key === "Escape") onClose();
@@ -49,7 +130,9 @@ function CommitmentLetterModal({ open, user, onClose, onToast }) {
   if (!open) return null;
 
   const name = user?.name || "Client";
-  const paragraphs = COMMITMENT_LETTER.paragraphs.map((p) => p.replace("{name}", name));
+  const pdfUrl = letter?.pdfUrl || "";
+  const status = letterStatusMeta(letter);
+  const submitted = formatLetterDate(letter?.updatedAt || letter?.createdAt);
 
   return (
     <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={onClose} role="presentation">
@@ -58,45 +141,32 @@ function CommitmentLetterModal({ open, user, onClose, onToast }) {
           <div className="ua-cp-present-letter__head-copy">
             <h3 id="commitment-letter-title" className="ua-cp-present-letter__title">Commitment letter</h3>
             <p className="ua-cp-present-letter__meta">
-              Signed by {name} on {COMMITMENT_LETTER.signedDate} · {COMMITMENT_LETTER.sizeLabel}
+              {letter
+                ? `${status.label} · uploaded by ${name}${submitted ? ` on ${submitted}` : ""}`
+                : "No signed letter has been uploaded yet"}
             </p>
           </div>
           <div className="ua-cp-present-letter__head-actions">
-            <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm" onClick={() => onToast?.("PDF download started")}>
-              Download PDF
-            </button>
+            {pdfUrl ? (
+              <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm" onClick={() => openPdf(pdfUrl, onToast)}>
+                Open PDF
+              </button>
+            ) : null}
             <button type="button" className="ua-cp-present-letter__close" onClick={onClose} aria-label="Close">×</button>
           </div>
         </div>
-        <div className="ua-cp-present-letter__doc">
-          <div className="ua-cp-present-letter__brand">
-            <span className="ua-cp-present-letter__logo">IR</span>
-            <div>
-              <strong>INDIA</strong>
-              <span>REDEFINING WELLNESS</span>
-            </div>
+        {pdfUrl ? (
+          <iframe
+            className="ua-cp-present-letter__frame"
+            title="Commitment letter PDF"
+            src={pdfUrl}
+          />
+        ) : (
+          <div className="ua-cp-present-letter__empty">
+            <strong>No PDF available</strong>
+            <p>The client has not uploaded a signed commitment letter yet.</p>
           </div>
-          <hr className="ua-cp-present-letter__rule" />
-          <h4 className="ua-cp-present-letter__heading">My commitment</h4>
-          {paragraphs.map((paragraph) => (
-            <p key={paragraph.slice(0, 24)} className="ua-cp-present-letter__para">{paragraph}</p>
-          ))}
-          <div className="ua-cp-present-letter__signatures">
-            <div className="ua-cp-present-letter__sign-block">
-              <span className="ua-cp-present-letter__sign-name">{name}</span>
-              <span className="ua-cp-present-letter__sign-line" aria-hidden="true" />
-              <span className="ua-cp-present-letter__sign-label">Client signature</span>
-            </div>
-            <div className="ua-cp-present-letter__sign-block ua-cp-present-letter__sign-block--date">
-              <span className="ua-cp-present-letter__sign-date">{COMMITMENT_LETTER.signedDate}</span>
-              <span className="ua-cp-present-letter__sign-line" aria-hidden="true" />
-              <span className="ua-cp-present-letter__sign-label">Signed on</span>
-            </div>
-          </div>
-          <p className="ua-cp-present-letter__footnote">
-            Signed in app · IP {COMMITMENT_LETTER.ip} · Document {COMMITMENT_LETTER.documentId}
-          </p>
-        </div>
+        )}
       </div>
     </div>
   );
@@ -137,64 +207,142 @@ function RequestPhotoModal({ open, onClose, onConfirm }) {
   );
 }
 
-function PhotoCard({ photo, onApprove, onReject, onToast }) {
-  const pending = photo.status === "pending";
-
+function PhotoCard({ photo, onToast }) {
   return (
     <article className="ua-cp-present-photo">
       <div className="ua-cp-present-photo__preview" aria-hidden="true">
-        <span>🖼</span>
-        <span>Photo preview</span>
+        {photo.url ? (
+          <img src={photo.url} alt="" className="ua-cp-present-photo__img" />
+        ) : (
+          <>
+            <span>🖼</span>
+            <span>Photo preview</span>
+          </>
+        )}
       </div>
       <div className="ua-cp-present-photo__body">
         <div className="ua-cp-present-photo__meta">
           <strong>{photo.label}</strong>
-          <span className={`ua-cp-present-status ua-cp-present-status--${photo.status}`}>
-            {pending ? "PENDING REVIEW" : "APPROVED"}
-          </span>
-          <span className="ua-cp-present-photo__date">Uploaded {photo.uploaded}</span>
+          <span className="ua-cp-present-status ua-cp-present-status--approved">UPLOADED</span>
+          {photo.uploaded ? (
+            <span className="ua-cp-present-photo__date">Uploaded {photo.uploaded}</span>
+          ) : null}
         </div>
         <div className="ua-cp-present-photo__foot">
-          <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={() => onToast?.("Download started")}>
-            Download
-          </button>
-          <div className="ua-cp-present-photo__actions">
-            {pending ? (
-              <>
-                <button type="button" className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm" onClick={onApprove}>Approve</button>
-                <button type="button" className="ua-cp-btn ua-cp-present-btn--reject ua-cp-btn--sm" onClick={onReject}>Reject</button>
-              </>
-            ) : (
-              <span className="ua-cp-present-photo__locked">Decision locked</span>
-            )}
-          </div>
+          {photo.url ? (
+            <a className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" href={photo.url} target="_blank" rel="noreferrer">
+              View
+            </a>
+          ) : (
+            <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={() => onToast?.("No photo file attached")}>
+              View
+            </button>
+          )}
         </div>
       </div>
     </article>
   );
 }
 
-export function PresentableSection({ user, onToast }) {
+export function PresentableSection({ user, onToast, onUserUpdated }) {
   const [featureEnabled, setFeatureEnabled] = useState(true);
-  const [photos, setPhotos] = useState(SUBMITTED_PHOTOS);
+  const [letter, setLetter] = useState(null);
+  const [letterLoading, setLetterLoading] = useState(() => isLiveUserId(user?.id));
+  const [reviewBusy, setReviewBusy] = useState(false);
   const [letterOpen, setLetterOpen] = useState(false);
   const [requestOpen, setRequestOpen] = useState(false);
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
   const [confirmTarget, setConfirmTarget] = useState(null);
 
-  const pendingCount = photos.filter((photo) => photo.status === "pending").length;
+  const live = isLiveUserId(user?.id);
   const clientName = user?.name?.split(" ")[0] || "Client";
+  const photos = user?.presentablePic
+    ? [{
+        id: "presentable-pic",
+        label: "Presentable pic",
+        url: user.presentablePic,
+        uploaded: formatLetterDate(user.updatedAt || user.lastUpdated),
+      }]
+    : [];
+  const status = letterStatusMeta(letter);
+  const submittedLabel = formatLetterDate(letter?.updatedAt || letter?.createdAt);
 
-  function approvePhoto(id) {
-    setPhotos((list) => list.map((photo) => (photo.id === id ? { ...photo, status: "approved" } : photo)));
-    onToast?.("Photo approved");
-    setConfirmTarget(null);
+  useEffect(() => {
+    if (!live) {
+      setLetter(null);
+      setLetterLoading(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+    setLetterLoading(true);
+    fetchUserCommitmentLetter(user.id)
+      .then((row) => {
+        if (!cancelled) setLetter(row || null);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setLetter(null);
+        onToast?.(err?.message || "Failed to load commitment letter");
+      })
+      .finally(() => {
+        if (!cancelled) setLetterLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [live, onToast, user?.id]);
+
+  async function refreshUser() {
+    if (!live) return;
+    try {
+      const row = await fetchUser(user.id);
+      if (row) onUserUpdated?.(row);
+    } catch {
+      // Letter review already succeeded; profile refresh is best-effort.
+    }
   }
 
-  function rejectPhoto(id) {
-    setPhotos((list) => list.filter((photo) => photo.id !== id));
-    onToast?.("Photo rejected");
-    setConfirmTarget(null);
+  async function approveLetter() {
+    if (!letter?.id) return;
+    setReviewBusy(true);
+    try {
+      const updated = await reviewUserCommitmentLetter(user.id, letter.id, { action: "approved" });
+      setLetter(updated || { ...letter, approvalStatus: "approved" });
+      await refreshUser();
+      onToast?.("Commitment letter approved");
+      setConfirmTarget(null);
+    } catch (err) {
+      onToast?.(err?.message || "Failed to approve commitment letter");
+    } finally {
+      setReviewBusy(false);
+    }
   }
+
+  async function rejectLetter() {
+    const reason = rejectReason.trim();
+    if (!letter?.id || !reason) return;
+    setReviewBusy(true);
+    try {
+      const updated = await reviewUserCommitmentLetter(user.id, letter.id, {
+        action: "rejected",
+        rejectionReason: reason,
+      });
+      setLetter(updated || { ...letter, approvalStatus: "rejected", rejectionReason: reason });
+      await refreshUser();
+      onToast?.("Commitment letter rejected");
+      setRejectOpen(false);
+      setRejectReason("");
+    } catch (err) {
+      onToast?.(err?.message || "Failed to reject commitment letter");
+    } finally {
+      setReviewBusy(false);
+    }
+  }
+
+  const pendingReview = String(letter?.approvalStatus || "").toLowerCase() === "pending";
 
   return (
     <div className="ua-cp-section ua-cp-present">
@@ -241,18 +389,67 @@ export function PresentableSection({ user, onToast }) {
         <div className="ua-cp-present-panel ua-cp-present-panel--letter">
           <div className="ua-cp-present-letter-card">
             <div className="ua-cp-present-letter-card__main">
-              <span className="ua-cp-present-letter-card__icon" aria-hidden="true">✓</span>
+              <span
+                className={`ua-cp-present-letter-card__icon ua-cp-present-letter-card__icon--${status.tone}`}
+                aria-hidden="true"
+              >
+                {status.icon}
+              </span>
               <div>
                 <div className="ua-cp-present-letter-card__title-row">
                   <strong>Commitment letter</strong>
-                  <span className="ua-cp-present-letter-card__badge">SIGNED</span>
+                  <span className={`ua-cp-present-letter-card__badge ua-cp-present-letter-card__badge--${status.tone}`}>
+                    {letterLoading ? "LOADING" : status.label}
+                  </span>
                 </div>
-                <p>Signed by {user?.name || "Client"} on {COMMITMENT_LETTER.signedDate}</p>
+                <p>
+                  {letterLoading
+                    ? "Loading uploaded letter…"
+                    : letter
+                      ? `${letter.approvalStatus === "rejected" && letter.rejectionReason
+                        ? letter.rejectionReason
+                        : `Uploaded by ${user?.name || "client"}`}${submittedLabel ? ` · ${submittedLabel}` : ""}`
+                      : "No signed commitment letter uploaded yet"}
+                </p>
               </div>
             </div>
             <div className="ua-cp-present-letter-card__actions">
-              <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={() => setLetterOpen(true)}>View letter</button>
-              <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm" onClick={() => onToast?.("PDF download started")}>Download PDF</button>
+              <button
+                type="button"
+                className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
+                onClick={() => setLetterOpen(true)}
+                disabled={letterLoading || !letter?.pdfUrl}
+              >
+                View letter
+              </button>
+              <button
+                type="button"
+                className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm"
+                onClick={() => openPdf(letter?.pdfUrl, onToast)}
+                disabled={letterLoading || !letter?.pdfUrl}
+              >
+                Download PDF
+              </button>
+              {pendingReview ? (
+                <>
+                  <button
+                    type="button"
+                    className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm"
+                    onClick={() => setConfirmTarget({ type: "approve-letter" })}
+                    disabled={reviewBusy}
+                  >
+                    Approve
+                  </button>
+                  <button
+                    type="button"
+                    className="ua-cp-btn ua-cp-present-btn--reject ua-cp-btn--sm"
+                    onClick={() => setRejectOpen(true)}
+                    disabled={reviewBusy}
+                  >
+                    Reject
+                  </button>
+                </>
+              ) : null}
             </div>
           </div>
         </div>
@@ -261,49 +458,53 @@ export function PresentableSection({ user, onToast }) {
           <div className="ua-cp-present-photos">
             <div className="ua-cp-present-photos__head">
               <span className="ua-cp-present-photos__label">Submitted photos</span>
-              {pendingCount > 0 ? (
-                <span className="ua-cp-present-photos__pending">{pendingCount} pending</span>
+              {photos.length ? (
+                <span className="ua-cp-present-photos__pending">{photos.length} uploaded</span>
               ) : null}
             </div>
-            <div className="ua-cp-present-photos__grid">
-              {photos.map((photo) => (
-                <PhotoCard
-                  key={photo.id}
-                  photo={photo}
-                  onToast={onToast}
-                  onApprove={() => setConfirmTarget({ type: "approve", photo })}
-                  onReject={() => setConfirmTarget({ type: "reject", photo })}
-                />
-              ))}
-            </div>
+            {photos.length ? (
+              <div className="ua-cp-present-photos__grid">
+                {photos.map((photo) => (
+                  <PhotoCard key={photo.id} photo={photo} onToast={onToast} />
+                ))}
+              </div>
+            ) : (
+              <div className="ua-cp-present-panel ua-cp-present-panel--empty">
+                <strong>No photos uploaded</strong>
+                <p>When this client uploads a presentable photo in the app, it will appear here.</p>
+              </div>
+            )}
           </div>
         ) : null}
       </div>
 
       <ConfirmModal
-        open={confirmTarget?.type === "approve"}
+        open={confirmTarget?.type === "approve-letter"}
         eyebrow="This decision is final"
-        title="Approve this photo for use?"
-        body={`Once approved, “${confirmTarget?.photo?.label}” can be used in testimonials and marketing. This decision is permanent.`}
-        confirmLabel="Yes, approve it"
-        onClose={() => setConfirmTarget(null)}
-        onConfirm={() => approvePhoto(confirmTarget.photo.id)}
+        title="Approve this commitment letter?"
+        body="Once approved, this onboarding step is marked complete for the client."
+        confirmLabel={reviewBusy ? "Approving…" : "Yes, approve it"}
+        onClose={() => !reviewBusy && setConfirmTarget(null)}
+        onConfirm={approveLetter}
       />
 
-      <ConfirmModal
-        open={confirmTarget?.type === "reject"}
-        eyebrow="This decision is final"
-        title="Reject this photo?"
-        body={`“${confirmTarget?.photo?.label}” will be removed from review. The client will need to upload again if requested.`}
-        confirmLabel="Yes, reject it"
-        confirmTone="danger"
-        onClose={() => setConfirmTarget(null)}
-        onConfirm={() => rejectPhoto(confirmTarget.photo.id)}
+      <RejectLetterModal
+        open={rejectOpen}
+        reason={rejectReason}
+        onReasonChange={setRejectReason}
+        onClose={() => {
+          if (reviewBusy) return;
+          setRejectOpen(false);
+          setRejectReason("");
+        }}
+        onConfirm={rejectLetter}
+        busy={reviewBusy}
       />
 
       <CommitmentLetterModal
         open={letterOpen}
         user={user}
+        letter={letter}
         onClose={() => setLetterOpen(false)}
         onToast={onToast}
       />
