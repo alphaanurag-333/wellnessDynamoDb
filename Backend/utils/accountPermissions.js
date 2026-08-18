@@ -11,7 +11,9 @@ const {
   grantsMapToPermissions,
   DEFAULT_CONSOLE_GRANTS,
   ROLE_KEY_META,
+  parseConsoleSlug,
 } = require("../config/consolePermissionCatalog");
+const { listAccessPolicies, policyAppliesToTarget } = require("../models/accessPolicyModel");
 
 function consoleDataScopeForRoleKey(roleKey) {
   const uiKey = ROLE_KEY_TO_UI[roleKey];
@@ -50,6 +52,21 @@ function applyConsoleOverrides(basePermissions, overrides) {
   if (!overrides || typeof overrides !== "object") return basePermissions;
   if (!Object.prototype.hasOwnProperty.call(overrides, "consoleGrants")) return basePermissions;
   return grantsMapToPermissions(overrides.consoleGrants);
+}
+
+function applyPolicyDenies(basePermissions, policies) {
+  if (!Array.isArray(basePermissions) || basePermissions.length === 0) return basePermissions;
+  if (!Array.isArray(policies) || policies.length === 0) return basePermissions;
+  const deniedFeatures = new Set(
+    policies
+      .filter((policy) => String(policy.effect || "").toLowerCase() === "deny" && policy.featureId)
+      .map((policy) => policy.featureId)
+  );
+  if (deniedFeatures.size === 0) return basePermissions;
+  return basePermissions.filter((slug) => {
+    const parsed = parseConsoleSlug(slug);
+    return !parsed || !deniedFeatures.has(parsed.featureId);
+  });
 }
 
 async function resolveAccountPermissions(account, activeRoleKey) {
@@ -93,6 +110,21 @@ async function resolveAccountPermissions(account, activeRoleKey) {
     permissions = consolePermissionsForRoleKey(roleKey);
   }
   permissions = applyConsoleOverrides(permissions, membership?.permissionOverrides);
+  try {
+    const uiRoleKey = ROLE_KEY_TO_UI[roleKey];
+    if (uiRoleKey) {
+      const { items: policies } = await listAccessPolicies({ page: 1, limit: 200, status: "active" });
+      const applicable = policies.filter((policy) =>
+        policyAppliesToTarget(policy, {
+          roleKey: uiRoleKey,
+          accountId: account.id,
+        })
+      );
+      permissions = applyPolicyDenies(permissions, applicable);
+    }
+  } catch {
+    /* Policy evaluation is best-effort until table exists in all environments. */
+  }
 
   return {
     permissions,

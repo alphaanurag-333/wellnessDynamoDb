@@ -1765,6 +1765,59 @@ const TABLE_DEFINITIONS = [
     GlobalSecondaryIndexes: [statusCreatedAtIndex("StatusIndex")],
     ...PAY_PER_REQUEST,
   },
+  {
+    TableName: "AccessPermissionRequest",
+    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
+    AttributeDefinitions: [
+      { AttributeName: "id", AttributeType: "S" },
+      { AttributeName: "status", AttributeType: "S" },
+      { AttributeName: "createdAt", AttributeType: "S" },
+      { AttributeName: "targetAccountId", AttributeType: "S" },
+    ],
+    GlobalSecondaryIndexes: [
+      statusCreatedAtIndex(),
+      {
+        IndexName: "TargetAccountIdIndex",
+        KeySchema: [
+          { AttributeName: "targetAccountId", KeyType: "HASH" },
+          { AttributeName: "createdAt", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+    ],
+    ...PAY_PER_REQUEST,
+  },
+  {
+    TableName: "AccessPolicy",
+    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
+    AttributeDefinitions: [
+      { AttributeName: "id", AttributeType: "S" },
+      { AttributeName: "status", AttributeType: "S" },
+      { AttributeName: "createdAt", AttributeType: "S" },
+    ],
+    GlobalSecondaryIndexes: [statusCreatedAtIndex()],
+    ...PAY_PER_REQUEST,
+  },
+  {
+    TableName: "AccessAuditLog",
+    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
+    AttributeDefinitions: [
+      { AttributeName: "id", AttributeType: "S" },
+      { AttributeName: "scope", AttributeType: "S" },
+      { AttributeName: "createdAt", AttributeType: "S" },
+    ],
+    GlobalSecondaryIndexes: [
+      {
+        IndexName: "ScopeCreatedAtIndex",
+        KeySchema: [
+          { AttributeName: "scope", KeyType: "HASH" },
+          { AttributeName: "createdAt", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+    ],
+    ...PAY_PER_REQUEST,
+  },
 ];
 
 const TABLE_NAMES = TABLE_DEFINITIONS.map((t) => t.TableName);

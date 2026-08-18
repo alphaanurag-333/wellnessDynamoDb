@@ -5991,6 +5991,44 @@
   margin-bottom: 12px;
 }
 
+.updated-admin .ua-policy-card__attachments {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.updated-admin .ua-policy-card__attachments-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.updated-admin .ua-policy-card__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.updated-admin .ua-policy-card__chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #eef0fc;
+  color: #5e6ad2;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.updated-admin .ua-policy-card__empty {
+  font-size: 12px;
+  color: var(--muted);
+}
+
 .updated-admin .ua-policy-card__rule {
   display: flex;
   align-items: center;
@@ -6048,6 +6086,22 @@
   background: var(--brand-green-solid);
   border-color: var(--brand-green-solid);
   color: #fff;
+}
+
+.updated-admin .ua-policy-empty {
+  padding: 28px;
+  text-align: center;
+}
+
+.updated-admin .ua-policy-empty__title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.updated-admin .ua-policy-empty__sub {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--muted);
 }
 
 .updated-admin .ua-reject-btn {
@@ -6195,8 +6249,8 @@
 }
 
 .updated-admin .ua-log-kind--activity {
-  background: #f3f5f9;
-  color: #5a6b85;
+  background: #fef3e2;
+  color: #c27803;
 }
 
 .updated-admin .ua-log-text {
@@ -17224,6 +17278,43 @@
   cursor: not-allowed;
 }
 
+.updated-admin .ua-policy-modal {
+  width: min(460px, calc(100vw - 32px));
+}
+
+.updated-admin .ua-policy-modal__preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fafafa;
+}
+
+.updated-admin .ua-policy-modal__switches {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.updated-admin .ua-policy-modal__switch {
+  height: 42px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.updated-admin .ua-policy-modal__switch--active {
+  border-color: var(--brand-green-solid);
+  color: var(--brand-green-solid);
+  background: #eefbf4;
+}
+
 /* Access Control — Members tab */
 .updated-admin .ua-ac-members-toolbar {
   display: flex;
@@ -19417,17 +19508,10 @@
   color: #8a97ac;
 }
 
-.updated-admin .ua-tm-content-row__live {
-  font-size: 10px;
-  font-weight: 750;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: #2f9e6b;
-  background: #e8f7ef;
-  border: 1px solid #cfe9da;
-  border-radius: 999px;
-  padding: 5px 9px;
-  white-space: nowrap;
+.updated-admin .ua-tm-content-row__live--off {
+  color: #8a97ac;
+  background: #f4f6f9;
+  border-color: #e5e9f0;
 }
 
 .updated-admin .ua-tm-content-row__actions {
@@ -19445,6 +19529,32 @@
   margin: 0 0 14px;
   font-size: 13px;
   color: #7a879c;
+}
+
+.updated-admin .ua-tm-pending {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid #f2d9a8;
+  background: #fff8ea;
+}
+
+.updated-admin .ua-tm-pending__title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #9a6b12;
+}
+
+.updated-admin .ua-tm-pending__meta {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #8a7350;
+}
+
+.updated-admin .ua-tm-pending__item + .ua-tm-pending__item {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f2e2c8;
 }
 
 .updated-admin .ua-tm-perms__save {
@@ -24389,6 +24499,7 @@
   grid-template-columns: minmax(180px, 1fr) 120px 90px 100px 32px;
 }
 
+.updated-admin .ua-cfg-pricing__name-btn,
 .updated-admin .ua-cfg-pricing__amount-btn {
   justify-self: start;
   margin: 0;
@@ -24398,27 +24509,42 @@
   background: transparent;
   color: inherit;
   font: inherit;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
   text-align: left;
   cursor: text;
 }
 
+.updated-admin .ua-cfg-pricing__name-btn {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.updated-admin .ua-cfg-pricing__amount-btn {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.updated-admin .ua-cfg-pricing__name-btn:hover,
 .updated-admin .ua-cfg-pricing__amount-btn:hover {
   border-color: #d8dff5;
   background: #fafbff;
 }
 
+.updated-admin .ua-cfg-pricing__name-btn:disabled,
 .updated-admin .ua-cfg-pricing__amount-btn:disabled {
   cursor: default;
   opacity: 0.6;
 }
 
+.updated-admin .ua-cfg-pricing__name-btn:disabled:hover,
 .updated-admin .ua-cfg-pricing__amount-btn:disabled:hover {
   border-color: transparent;
   background: transparent;
 }
 
+.updated-admin .ua-cfg-pricing__name-input,
 .updated-admin .ua-cfg-pricing__amount-input {
   width: 100%;
   min-width: 0;
@@ -24429,11 +24555,15 @@
   background: #fff;
   color: var(--text);
   font: inherit;
+}
+
+.updated-admin .ua-cfg-pricing__amount-input {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
 
+.updated-admin .ua-cfg-pricing__name-input:focus,
 .updated-admin .ua-cfg-pricing__amount-input:focus {
   outline: none;
   box-shadow: 0 0 0 3px rgba(94, 106, 210, 0.12);

@@ -2,27 +2,53 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useOutletContext, useParams, useSearchParams } from "react-router-dom";
 import { OrangeButton, PageHeader } from "../components/shared.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
-import { STAFF_AVATARS, TEAM_ROLE_META, TEAM_ROLE_TABS_BASE, staffInitials } from "../data/teamsData.js";
+import { useViewAs } from "../context/ViewAsContext.jsx";
+import { STAFF_AVATARS, TEAM_ROLE_META, staffInitials } from "../data/teamsData.js";
 import {
   PERM_ACTS,
   PERM_CATALOG,
   TOTAL_PERM_SLOTS,
   cloneGrants,
 } from "../data/accessData.js";
+import { fetchAccessCatalog, fetchAccessRoles } from "../api/accessApi.js";
 import {
   fetchTeamMember,
   saveTeamMemberPermissions,
   setAccessMemberRole,
 } from "../api/teamsApi.js";
 
+const SYSTEM_TEAM_ROLE_KEYS = ["wc", "awc", "support", "trainee"];
+
+function catalogRowsFromApi(catalog) {
+  if (!Array.isArray(catalog?.features) || !catalog.features.length) return PERM_CATALOG;
+  return catalog.features.map((feature) => [
+    feature.sectionLabel,
+    feature.featureName,
+    feature.featureId,
+    Array.isArray(feature.actions) ? feature.actions : [],
+    feature.sectionId,
+  ]);
+}
+
+function roleChipMeta(role, fallbackKey = "wc") {
+  const key = role?.roleKey || fallbackKey;
+  const base = TEAM_ROLE_META[key] || TEAM_ROLE_META.wc;
+  return {
+    name: role?.name || base.name,
+    roleColor: role?.color || base.roleColor,
+    roleBg: role?.bg || base.roleBg,
+    roleBorder: role?.bd || base.roleBorder,
+  };
+}
+
 function memberHas(grants, featureId, action) {
   if (grants == null) return true;
   return Boolean(grants?.[featureId]?.includes(action));
 }
 
-function countMemberGranted(grants) {
+function countMemberGranted(grants, catalog = PERM_CATALOG) {
   let n = 0;
-  for (const row of PERM_CATALOG) {
+  for (const row of catalog) {
     for (const act of row[3]) {
       if (memberHas(grants, row[2], act)) n += 1;
     }
@@ -34,12 +60,12 @@ function featureOnCount(grants, featureId, actions) {
   return actions.filter((a) => memberHas(grants, featureId, a)).length;
 }
 
-function toggleMemberGrant(grants, featureId, action) {
+function toggleMemberGrant(grants, featureId, action, catalog = PERM_CATALOG) {
   const next =
     grants == null
       ? (() => {
           const all = {};
-          for (const row of PERM_CATALOG) all[row[2]] = [...row[3]];
+          for (const row of catalog) all[row[2]] = [...row[3]];
           return all;
         })()
       : cloneGrants({ m: grants }).m;
@@ -47,11 +73,50 @@ function toggleMemberGrant(grants, featureId, action) {
   const set = new Set(next[featureId] || []);
   if (set.has(action)) set.delete(action);
   else set.add(action);
-  const allowed = PERM_CATALOG.find((r) => r[2] === featureId)?.[3] || [];
+  const allowed = catalog.find((r) => r[2] === featureId)?.[3] || [];
   const ordered = allowed.filter((a) => set.has(a));
   if (ordered.length) next[featureId] = ordered;
   else delete next[featureId];
   return next;
+}
+
+function applyChangeToGrants(grants, change, roleGrants, catalog = PERM_CATALOG) {
+  if (change.reset) return roleGrants == null ? null : { ...roleGrants };
+
+  let next = grants == null ? null : { ...grants };
+  if (next == null) next = roleGrants == null ? null : { ...roleGrants };
+  if (!next || !change.featureId) return next;
+
+  const row = catalog.find((r) => r[2] === change.featureId);
+  const allowed = row?.[3] || [];
+  const set = new Set(next[change.featureId] || []);
+  if (change.changeType === "grant") set.add(change.action);
+  else if (change.changeType === "revoke") set.delete(change.action);
+  const ordered = allowed.filter((a) => set.has(a));
+  if (ordered.length) next[change.featureId] = ordered;
+  else delete next[change.featureId];
+  return next;
+}
+
+function memberPendingRequests(member) {
+  if (Array.isArray(member?.pendingPermissionRequests) && member.pendingPermissionRequests.length) {
+    return member.pendingPermissionRequests.filter((req) => req.status === "pending");
+  }
+  if (member?.pendingPermissionRequest?.status === "pending") {
+    return [member.pendingPermissionRequest];
+  }
+  return [];
+}
+
+function editorGrants(member, usePending, catalog = PERM_CATALOG) {
+  let grants = member?.grants == null ? null : { ...member.grants };
+  if (!usePending) return grants;
+
+  const pending = memberPendingRequests(member);
+  for (const req of [...pending].reverse()) {
+    grants = applyChangeToGrants(grants, req, member.roleGrants, catalog);
+  }
+  return grants;
 }
 
 function pct(part, total) {
@@ -144,8 +209,10 @@ export function TeamMemberPage() {
   const { memberId } = useParams();
   const [searchParams] = useSearchParams();
   const { showToast: onToast } = useOutletContext();
+  const { isSuperAdmin, viewAs } = useViewAs();
   const navigate = useNavigate();
   const permsRef = useRef(null);
+  const requestsApproval = !isSuperAdmin && viewAs === "wc";
 
   const [member, setMember] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -156,22 +223,38 @@ export function TeamMemberPage() {
   const [dirtyPerms, setDirtyPerms] = useState(false);
   const [savingPerms, setSavingPerms] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [accessRoles, setAccessRoles] = useState([]);
+  const [catalogRows, setCatalogRows] = useState(PERM_CATALOG);
+  const [permActs, setPermActs] = useState(PERM_ACTS);
+  const [totalSlots, setTotalSlots] = useState(TOTAL_PERM_SLOTS);
+  const catalogRef = useRef(PERM_CATALOG);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const m = await fetchTeamMember(memberId);
+      const [m, roles, catalog] = await Promise.all([
+        fetchTeamMember(memberId),
+        fetchAccessRoles().catch(() => []),
+        fetchAccessCatalog().catch(() => null),
+      ]);
+      if (!m?.id) throw new Error("Member not found");
+      const rows = catalogRowsFromApi(catalog);
+      catalogRef.current = rows;
+      setCatalogRows(rows);
+      setPermActs(Array.isArray(catalog?.actions) && catalog.actions.length ? catalog.actions : PERM_ACTS);
+      setTotalSlots(Number(catalog?.totalSlots || m?.totalSlots) || TOTAL_PERM_SLOTS);
+      setAccessRoles(Array.isArray(roles) ? roles : []);
       setMember(m);
       setRoleDraft(m.primaryRoleKey || "wc");
-      setGrants(m.grants == null ? null : { ...m.grants });
+      setGrants(editorGrants(m, !isSuperAdmin && viewAs === "wc", rows));
       setDirtyPerms(false);
     } catch (err) {
       setError(err?.message || "Failed to load member");
     } finally {
       setLoading(false);
     }
-  }, [memberId]);
+  }, [memberId, isSuperAdmin, viewAs]);
 
   useEffect(() => {
     load();
@@ -182,14 +265,26 @@ export function TeamMemberPage() {
     permsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [member, searchParams]);
 
-  const roleMeta = TEAM_ROLE_META[member?.primaryRoleKey] || TEAM_ROLE_META.wc;
-  const granted = countMemberGranted(grants);
+  const teamRoles = useMemo(
+    () => (accessRoles || []).filter((role) => SYSTEM_TEAM_ROLE_KEYS.includes(String(role?.roleKey || "").toLowerCase())),
+    [accessRoles],
+  );
+  const activeRole =
+    teamRoles.find((role) => role.id === member?.consoleRoleId) ||
+    teamRoles.find((role) => role.roleKey === member?.primaryRoleKey) ||
+    null;
+  const roleMeta = roleChipMeta(activeRole, member?.primaryRoleKey);
+  const granted = countMemberGranted(grants, catalogRows);
   const avatarColor = STAFF_AVATARS[(member?.name?.length || 0) % STAFF_AVATARS.length];
+  const canEditPerms =
+    Boolean(member) &&
+    !member.isSuperAdmin &&
+    (isSuperAdmin || (requestsApproval && member.primaryRoleKey === "awc"));
 
   const matrixGroups = useMemo(() => {
     const groups = [];
     let cur = null;
-    for (const row of PERM_CATALOG) {
+    for (const row of catalogRows) {
       if (!cur || cur.label !== row[0]) {
         cur = { label: row[0], features: [] };
         groups.push(cur);
@@ -197,7 +292,7 @@ export function TeamMemberPage() {
       cur.features.push(row);
     }
     return groups;
-  }, []);
+  }, [catalogRows]);
 
   const clientCards = useMemo(() => (member ? buildClientCards(member) : []), [member]);
 
@@ -216,8 +311,8 @@ export function TeamMemberPage() {
   }
 
   function handleToggle(featureId, action) {
-    if (member?.isSuperAdmin) return;
-    setGrants((g) => toggleMemberGrant(g, featureId, action));
+    if (!canEditPerms) return;
+    setGrants((g) => toggleMemberGrant(g, featureId, action, catalogRef.current));
     setDirtyPerms(true);
   }
 
@@ -226,9 +321,15 @@ export function TeamMemberPage() {
     try {
       const updated = await saveTeamMemberPermissions(member.id, { grants });
       setMember(updated);
-      setGrants(updated.grants == null ? null : { ...updated.grants });
+      setGrants(editorGrants(updated, requestsApproval, catalogRef.current));
       setDirtyPerms(false);
-      onToast("Permissions saved");
+      onToast(
+        requestsApproval && memberPendingRequests(updated).length
+          ? `Sent ${memberPendingRequests(updated).length} request${
+              memberPendingRequests(updated).length === 1 ? "" : "s"
+            } to Admin`
+          : "Permissions saved",
+      );
     } catch (err) {
       onToast(err?.message || "Save failed");
     } finally {
@@ -241,9 +342,13 @@ export function TeamMemberPage() {
     try {
       const updated = await saveTeamMemberPermissions(member.id, { reset: true });
       setMember(updated);
-      setGrants(updated.grants == null ? null : { ...updated.grants });
+      setGrants(editorGrants(updated, requestsApproval, catalogRef.current));
       setDirtyPerms(false);
-      onToast("Reset to role default");
+      onToast(
+        requestsApproval && memberPendingRequests(updated).length
+          ? "Reset sent to Admin for approval"
+          : "Reset to role default",
+      );
     } catch (err) {
       onToast(err?.message || "Reset failed");
     } finally {
@@ -272,7 +377,15 @@ export function TeamMemberPage() {
   }
 
   const showClients = member.primaryRoleKey === "wc" || member.primaryRoleKey === "awc";
-  const contentLive = member.primaryRoleKey === "wc" ? 2 : 0;
+  const contentItems = Array.isArray(member.content) ? member.content : [];
+  const contentLive = contentItems.filter((item) => item.live).length;
+  const roleOptions = teamRoles.length
+    ? teamRoles
+    : SYSTEM_TEAM_ROLE_KEYS.map((id) => ({
+        id,
+        roleKey: id,
+        name: TEAM_ROLE_META[id]?.name || id,
+      }));
 
   return (
     <main className="content ua-page-enter ua-tm-page">
@@ -333,27 +446,29 @@ export function TeamMemberPage() {
             <select
               className="ua-tm-role-change__select"
               value={roleDraft}
-              disabled={member.isSuperAdmin || savingRole}
+              disabled={member.isSuperAdmin || savingRole || requestsApproval}
               onChange={(e) => setRoleDraft(e.target.value)}
             >
-              {TEAM_ROLE_TABS_BASE.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.label}
-                  {t.id === member.primaryRoleKey ? " (current)" : ""}
+              {roleOptions.map((role) => (
+                <option key={role.id || role.roleKey} value={role.roleKey}>
+                  {role.name}
+                  {role.roleKey === member.primaryRoleKey ? " (current)" : ""}
                 </option>
               ))}
             </select>
             <button
               type="button"
               className="ua-tm-role-change__save"
-              disabled={member.isSuperAdmin || savingRole || roleDraft === member.primaryRoleKey}
+              disabled={member.isSuperAdmin || savingRole || requestsApproval || roleDraft === member.primaryRoleKey}
               onClick={handleSaveRole}
             >
               {savingRole ? "Saving…" : "Save"}
             </button>
           </div>
           <p className="ua-tm-role-change__hint">
-            Admin — applies at once. Current role: {roleMeta.name}
+            {requestsApproval
+              ? "Role changes are applied by Admin. Permission grants for an AWC go to Access Control for approval."
+              : `Admin — applies at once. Current role: ${roleMeta.name}`}
           </p>
         </div>
 
@@ -411,90 +526,115 @@ export function TeamMemberPage() {
         </section>
       ) : null}
 
-      {(member.primaryRoleKey === "wc" || member.primaryRoleKey === "awc") && (
+      {showClients && contentItems.length ? (
         <section className="ua-tm-card">
           <div className="ua-tm-section-head">
             <div className="ua-tm-section-head__title">Content</div>
             <div className="ua-tm-section-head__hint">
-              {contentLive} of 2 live for clients
+              {contentLive} of {contentItems.length} live for clients
             </div>
           </div>
           <div className="ua-tm-content-list">
-            <div className="ua-tm-content-row">
-              <div className="ua-tm-content-row__icon" aria-hidden="true">
-                ▶
-              </div>
-              <div className="ua-tm-content-row__body">
-                <div className="ua-tm-content-row__title">Intro video</div>
-                <div className="ua-tm-content-row__meta">Upload from My content</div>
-              </div>
-              <span className="ua-tm-content-row__live">Live in app</span>
-              <div className="ua-tm-content-row__actions">
-                <button type="button" className="ua-soft-btn" onClick={() => navigate(UPDATED_ADMIN_PATHS.myContent)}>
-                  View
-                </button>
-                <button type="button" className="ua-soft-btn" onClick={() => onToast("Open My content to manage media")}>
-                  Download
-                </button>
-              </div>
-            </div>
-            <div className="ua-tm-content-row">
-              <div className="ua-tm-content-row__icon ua-tm-content-row__icon--doc" aria-hidden="true">
-                ▤
-              </div>
-              <div className="ua-tm-content-row__body">
-                <div className="ua-tm-content-row__title">Commitment letter</div>
-                <div className="ua-tm-content-row__meta">PDF · managed per coach</div>
-              </div>
-              <span className="ua-tm-content-row__live">Live in app</span>
-              <div className="ua-tm-content-row__actions">
-                <button
-                  type="button"
-                  className="ua-soft-btn"
-                  onClick={() => navigate(UPDATED_ADMIN_PATHS.commitmentLetters(member.id))}
+            {contentItems.map((item) => (
+              <div key={item.id} className="ua-tm-content-row">
+                <div
+                  className={`ua-tm-content-row__icon${item.kind === "letter" ? " ua-tm-content-row__icon--doc" : ""}`}
+                  aria-hidden="true"
                 >
-                  View
-                </button>
-                <button type="button" className="ua-soft-btn" onClick={() => onToast("Open letters to download")}>
-                  Download
-                </button>
+                  {item.kind === "letter" ? "▤" : "▶"}
+                </div>
+                <div className="ua-tm-content-row__body">
+                  <div className="ua-tm-content-row__title">{item.title}</div>
+                  <div className="ua-tm-content-row__meta">{item.meta || "Not uploaded"}</div>
+                </div>
+                <span className={`ua-tm-content-row__live${item.live ? "" : " ua-tm-content-row__live--off"}`}>
+                  {item.live ? "Live in app" : "Not uploaded"}
+                </span>
+                <div className="ua-tm-content-row__actions">
+                  <button
+                    type="button"
+                    className="ua-soft-btn"
+                    onClick={() => {
+                      if (item.kind === "letter") {
+                        navigate(UPDATED_ADMIN_PATHS.commitmentLetters(member.id));
+                        return;
+                      }
+                      navigate(UPDATED_ADMIN_PATHS.myContent);
+                    }}
+                  >
+                    View
+                  </button>
+                  <button
+                    type="button"
+                    className="ua-soft-btn"
+                    disabled={!item.url}
+                    onClick={() => {
+                      if (item.url) window.open(item.url, "_blank", "noopener,noreferrer");
+                    }}
+                  >
+                    Download
+                  </button>
+                </div>
               </div>
-            </div>
+            ))}
           </div>
         </section>
-      )}
+      ) : null}
 
       <section ref={permsRef} className="ua-tm-card ua-tm-perms">
         <div className="ua-tm-section-head ua-tm-section-head--perms">
           <div>
             <div className="ua-tm-section-head__title">Permissions</div>
             <div className="ua-tm-section-head__hint">
-              {granted} of {TOTAL_PERM_SLOTS} granted
+              {granted} of {member.totalSlots || totalSlots} granted
               {member.hasOverrides ? " · personal override" : ""}
             </div>
           </div>
           <div className="ua-tm-perms__actions">
-            <button type="button" className="ua-ac-btn-ghost" onClick={handleResetPerms} disabled={savingPerms}>
+            <button type="button" className="ua-ac-btn-ghost" onClick={handleResetPerms} disabled={savingPerms || !canEditPerms}>
               Reset to default
             </button>
             <button
               type="button"
               className={`ua-tm-perms__save${dirtyPerms ? " ua-tm-perms__save--dirty" : ""}`}
               onClick={handleSavePerms}
-              disabled={!dirtyPerms || savingPerms}
+              disabled={!canEditPerms || !dirtyPerms || savingPerms}
             >
-              {savingPerms ? "Saving…" : dirtyPerms ? "Save" : "Saved"}
+              {savingPerms
+                ? requestsApproval
+                  ? "Sending…"
+                  : "Saving…"
+                : dirtyPerms
+                  ? requestsApproval
+                    ? "Request approval"
+                    : "Save"
+                  : "Saved"}
             </button>
           </div>
         </div>
         <p className="ua-tm-perms__intro">
-          Toggle what this member can do, then save. Reset puts every row back to the role default.
+          {requestsApproval
+            ? "Toggle what this assistant can do, then send the request. Admin approval on Access Control grants the permission."
+            : "Toggle what this member can do, then save. Reset puts every row back to the role default."}
         </p>
+        {memberPendingRequests(member).length ? (
+          <div className="ua-tm-pending">
+            <div className="ua-tm-pending__title">
+              Waiting for Admin approval ({memberPendingRequests(member).length})
+            </div>
+            {memberPendingRequests(member).map((req) => (
+              <div key={req.id} className="ua-tm-pending__item">
+                <div className="ua-tm-pending__meta">{req.title}</div>
+                <div className="ua-tm-pending__meta">{req.meta}</div>
+              </div>
+            ))}
+          </div>
+        ) : null}
 
         <div className="ua-ac-matrix__scroll">
           <div className="ua-ac-matrix__cols">
             <div className="ua-ac-matrix__col-label">Feature</div>
-            {PERM_ACTS.map((a) => (
+            {permActs.map((a) => (
               <div key={a} className="ua-ac-matrix__col-act">
                 {a}
               </div>
@@ -512,7 +652,7 @@ export function TeamMemberPage() {
                     <div className="ua-ac-matrix__perm">
                       <span className="ua-ac-matrix__perm-name">{name}</span>
                     </div>
-                    {PERM_ACTS.map((act) => {
+                    {permActs.map((act) => {
                       const applicable = acts.includes(act);
                       if (!applicable) {
                         return (
@@ -525,7 +665,7 @@ export function TeamMemberPage() {
                         <div key={act} className="ua-ac-matrix__cell">
                           <ToggleSwitch
                             on={memberHas(grants, fid, act)}
-                            disabled={member.isSuperAdmin}
+                            disabled={!canEditPerms}
                             onClick={() => handleToggle(fid, act)}
                           />
                         </div>

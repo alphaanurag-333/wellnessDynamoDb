@@ -3,7 +3,7 @@ export const ACCESS_TABS = [
   { id: "members", label: "Members" },
   { id: "policies", label: "Policies" },
   { id: "simulator", label: "Simulator" },
-  { id: "approvals", label: "Approvals", badge: 1 },
+  { id: "approvals", label: "Approvals" },
   { id: "audit", label: "Audit log" },
 ];
 

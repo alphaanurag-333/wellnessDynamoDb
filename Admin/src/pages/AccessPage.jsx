@@ -5,27 +5,33 @@ import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import { staffInitials } from "../data/teamsData.js";
 import {
+  approveAccessRequest,
+  attachAccessPolicy,
+  createAccessPolicy,
   createAccessRole,
+  deleteAccessPolicy,
   deleteAccessRole,
+  fetchAccessApprovals,
+  fetchAccessAuditLog,
   fetchAccessMembers,
+  fetchAccessPolicies,
   fetchAccessRoles,
+  rejectAccessRequest,
   rolesToGrantsState,
   rolesToParentsState,
   rolesToViewsState,
   setAccessMemberRole,
+  updateAccessPolicy,
   updateAccessRole,
 } from "../api/accessApi.js";
 import {
   ACCESS_TABS,
   AC_SECTIONS,
-  APPROVALS,
-  AUDIT_LOG,
   DEFAULT_GRANTS,
   DEFAULT_PARENTS,
   DEFAULT_VIEWS,
   PERM_ACTS,
   PERM_CATALOG,
-  POLICIES,
   ROLE_META,
   ROLE_ORDER,
   SIMULATOR_ROWS,
@@ -140,6 +146,399 @@ function CreateRoleModal({ roles, onClose, onCreate }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function featureMeta(featureId) {
+  const row = PERM_CATALOG.find((entry) => entry[2] === featureId);
+  if (!row) return null;
+  return {
+    sectionLabel: row[0],
+    featureName: row[1],
+    featureId: row[2],
+    actions: row[3],
+    sectionId: row[4],
+  };
+}
+
+function policyAttachmentLabel(attachment) {
+  if (!attachment) return "";
+  if (attachment.targetType === "role") return attachment.roleName || ROLE_META[attachment.roleKey]?.name || attachment.roleKey;
+  return attachment.memberName || attachment.memberEmail || "Member";
+}
+
+function CreatePolicyModal({ policy, busy, onClose, onSubmit }) {
+  const [name, setName] = useState(policy?.name || "");
+  const [featureId, setFeatureId] = useState(policy?.featureId || PERM_CATALOG[0]?.[2] || "");
+  const selected = featureMeta(featureId);
+  const isEditing = Boolean(policy);
+
+  return (
+    <div className="ua-dialog-backdrop" onClick={busy ? undefined : onClose} role="presentation">
+      <div className="ua-ac-modal ua-policy-modal" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
+        <div className="ua-ac-modal__title">{isEditing ? "Edit policy" : "Create a policy"}</div>
+        <p className="ua-ac-modal__body">
+          Quickly create a deny bundle, then attach it to a role or to a specific member.
+        </p>
+        <label className="ua-ac-field">
+          <span className="ua-ac-field__label">Policy name</span>
+          <input
+            className="ua-ac-field__input"
+            placeholder="Policy name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            autoFocus
+          />
+        </label>
+        <label className="ua-ac-field">
+          <span className="ua-ac-field__label">Deny every action on</span>
+          <select
+            className="ua-ac-field__input"
+            value={featureId}
+            onChange={(event) => setFeatureId(event.target.value)}
+          >
+            {PERM_CATALOG.map((row) => (
+              <option key={row[2]} value={row[2]}>
+                {row[1]}
+              </option>
+            ))}
+          </select>
+        </label>
+        {selected ? (
+          <div className="ua-policy-modal__preview">
+            {selected.actions.map((action) => (
+              <div key={action} className="ua-policy-card__rule">
+                <span className="ua-rule-badge ua-rule-badge--deny">DENY</span>
+                <span>{`${action} · ${selected.featureName}`}</span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        <div className="ua-ac-modal__actions">
+          <button type="button" className="btn btn--outline" onClick={onClose} disabled={busy}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="ua-ac-modal__primary"
+            disabled={!name.trim() || !featureId || busy}
+            onClick={() => onSubmit({ name: name.trim(), featureId })}
+          >
+            {busy ? (isEditing ? "Saving…" : "Creating…") : isEditing ? "Save" : "Create"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AttachPolicyModal({ policy, roles, members, busy, onClose, onSubmit }) {
+  const [targetType, setTargetType] = useState("role");
+  const [targetId, setTargetId] = useState("");
+  const options = targetType === "role" ? roles : members;
+
+  return (
+    <div className="ua-dialog-backdrop" onClick={busy ? undefined : onClose} role="presentation">
+      <div className="ua-ac-modal ua-policy-modal" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
+        <div className="ua-ac-modal__title">Attach a policy</div>
+        <p className="ua-ac-modal__body">
+          Grant this deny bundle to a whole role or one member. A policy deny beats the role baseline.
+        </p>
+        <label className="ua-ac-field">
+          <span className="ua-ac-field__label">Policy</span>
+          <select className="ua-ac-field__input" value={policy?.id || ""} disabled>
+            <option value={policy?.id || ""}>{policy?.name || "Policy"}</option>
+          </select>
+        </label>
+        <div className="ua-ac-field">
+          <span className="ua-ac-field__label">Attach to</span>
+          <div className="ua-policy-modal__switches">
+            <button
+              type="button"
+              className={`ua-policy-modal__switch${targetType === "role" ? " ua-policy-modal__switch--active" : ""}`}
+              onClick={() => {
+                setTargetType("role");
+                setTargetId("");
+              }}
+            >
+              A role
+            </button>
+            <button
+              type="button"
+              className={`ua-policy-modal__switch${targetType === "member" ? " ua-policy-modal__switch--active" : ""}`}
+              onClick={() => {
+                setTargetType("member");
+                setTargetId("");
+              }}
+            >
+              A specific member
+            </button>
+          </div>
+        </div>
+        <label className="ua-ac-field">
+          <span className="ua-ac-field__label">{targetType === "role" ? "Role" : "Member"}</span>
+          <select
+            className="ua-ac-field__input"
+            value={targetId}
+            onChange={(event) => setTargetId(event.target.value)}
+          >
+            <option value="">{targetType === "role" ? "Choose a role…" : "Choose a member…"}</option>
+            {options.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="ua-ac-modal__actions">
+          <button type="button" className="btn btn--outline" onClick={onClose} disabled={busy}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="ua-ac-modal__primary"
+            disabled={!targetId || busy}
+            onClick={() =>
+              onSubmit(
+                targetType === "role"
+                  ? { targetType: "role", roleKey: targetId }
+                  : { targetType: "member", accountId: targetId },
+              )
+            }
+          >
+            {busy ? "Attaching…" : "Attach"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PoliciesTab({ onToast }) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [policies, setPolicies] = useState([]);
+  const [roleOptions, setRoleOptions] = useState([]);
+  const [memberOptions, setMemberOptions] = useState([]);
+  const [editorPolicy, setEditorPolicy] = useState(undefined);
+  const [attachPolicyTarget, setAttachPolicyTarget] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [busyAction, setBusyAction] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const [nextPolicies, roles, memberResult] = await Promise.all([
+        fetchAccessPolicies(),
+        fetchAccessRoles(),
+        fetchAccessMembers({ page: 1, limit: 200 }),
+      ]);
+      setPolicies(Array.isArray(nextPolicies) ? nextPolicies : []);
+      setRoleOptions(
+        (Array.isArray(roles) ? roles : [])
+          .map((role) => ({
+            id: role.roleKey || role.id,
+            label: role.name || ROLE_META[role.roleKey]?.name || role.roleKey || role.id,
+          }))
+          .filter((role) => role.id),
+      );
+      setMemberOptions(
+        (Array.isArray(memberResult?.members) ? memberResult.members : []).map((member) => ({
+          id: member.id,
+          label: `${member.name} (${member.email})`,
+        })),
+      );
+    } catch (err) {
+      setError(err?.message || "Failed to load policies");
+      setPolicies([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function handleCreateOrUpdate(payload) {
+    setBusyAction("save");
+    try {
+      if (editorPolicy?.id) {
+        await updateAccessPolicy(editorPolicy.id, payload);
+        onToast(`Updated policy "${payload.name}"`);
+      } else {
+        await createAccessPolicy(payload);
+        onToast(`Created policy "${payload.name}"`);
+      }
+      setEditorPolicy(undefined);
+      await load();
+    } catch (err) {
+      onToast(err?.message || "Could not save policy");
+    } finally {
+      setBusyAction("");
+    }
+  }
+
+  async function handleAttach(payload) {
+    if (!attachPolicyTarget) return;
+    setBusyAction("attach");
+    try {
+      await attachAccessPolicy(attachPolicyTarget.id, payload);
+      onToast(`Attached "${attachPolicyTarget.name}"`);
+      setAttachPolicyTarget(null);
+      await load();
+    } catch (err) {
+      onToast(err?.message || "Could not attach policy");
+    } finally {
+      setBusyAction("");
+    }
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setBusyAction("delete");
+    try {
+      await deleteAccessPolicy(deleteTarget.id);
+      onToast(`Deleted "${deleteTarget.name}"`);
+      setDeleteTarget(null);
+      await load();
+    } catch (err) {
+      onToast(err?.message || "Could not delete policy");
+    } finally {
+      setBusyAction("");
+    }
+  }
+
+  return (
+    <>
+      <div className="ua-section-bar">
+        <span>Reusable allow/deny bundles. Attach one to a whole role or to a single member.</span>
+        <OrangeButton onClick={() => setEditorPolicy(null)}>+ Create policy</OrangeButton>
+      </div>
+
+      {loading ? <p className="ua-page-head__sub">Loading policies…</p> : null}
+      {error ? (
+        <div className="ua-section-bar">
+          <span>{error}</span>
+          <OrangeButton onClick={load}>Retry</OrangeButton>
+        </div>
+      ) : null}
+
+      {!loading && !error ? (
+        policies.length ? (
+          <div className="ua-policy-grid">
+            {policies.map((policy) => (
+              <div key={policy.id} className="ua-policy-card">
+                <div className="ua-policy-card__head">
+                  <div>
+                    <div className="ua-policy-card__name">{policy.name}</div>
+                    <div className="ua-policy-card__desc">{policy.desc}</div>
+                  </div>
+                  <span className="ua-policy-card__scope">{policy.scope}</span>
+                </div>
+                <div className="ua-policy-card__rules">
+                  {policy.rules.map((rule) => (
+                    <div key={`${policy.id}-${rule.action}`} className="ua-policy-card__rule">
+                      <span className={`ua-rule-badge ua-rule-badge--${rule.type.toLowerCase()}`}>{rule.type}</span>
+                      <span>{rule.text}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="ua-policy-card__attachments">
+                  <span className="ua-policy-card__attachments-label">Attached to</span>
+                  <div className="ua-policy-card__chips">
+                    {policy.attachments?.length ? (
+                      policy.attachments.map((attachment) => (
+                        <span key={attachment.id} className="ua-policy-card__chip">
+                          {policyAttachmentLabel(attachment)}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="ua-policy-card__empty">Nobody yet</span>
+                    )}
+                  </div>
+                </div>
+                <div className="ua-policy-card__foot">
+                  <span>
+                    Attached to <b>{policy.attachedCount || 0}</b>
+                  </span>
+                  <div>
+                    <button type="button" className="ua-soft-btn" onClick={() => setEditorPolicy(policy)}>
+                      Edit
+                    </button>
+                    <button type="button" className="ua-soft-btn" onClick={() => setDeleteTarget(policy)}>
+                      Delete
+                    </button>
+                    <button type="button" className="ua-green-btn" onClick={() => setAttachPolicyTarget(policy)}>
+                      Attach
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="ua-table-card ua-policy-empty">
+            <div className="ua-policy-empty__title">No policies yet</div>
+            <div className="ua-policy-empty__sub">Create your first deny bundle, then attach it to a role or a member.</div>
+          </div>
+        )
+      ) : null}
+
+      {editorPolicy !== undefined ? (
+        <CreatePolicyModal
+          policy={editorPolicy}
+          busy={busyAction === "save"}
+          onClose={() => {
+            if (busyAction !== "save") setEditorPolicy(undefined);
+          }}
+          onSubmit={handleCreateOrUpdate}
+        />
+      ) : null}
+
+      {attachPolicyTarget ? (
+        <AttachPolicyModal
+          policy={attachPolicyTarget}
+          roles={roleOptions}
+          members={memberOptions}
+          busy={busyAction === "attach"}
+          onClose={() => {
+            if (busyAction !== "attach") setAttachPolicyTarget(null);
+          }}
+          onSubmit={handleAttach}
+        />
+      ) : null}
+
+      {deleteTarget ? (
+        <div className="ua-dialog-backdrop" role="presentation">
+          <div className="ua-dialog" role="dialog" aria-modal="true">
+            <div className="ua-dialog__title">Delete policy?</div>
+            <p className="ua-dialog__body">
+              This will remove <b>{deleteTarget.name}</b> and all of its role/member attachments.
+            </p>
+            <div className="ua-dialog__actions">
+              <button
+                type="button"
+                className="btn btn--outline"
+                onClick={() => setDeleteTarget(null)}
+                disabled={busyAction === "delete"}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="ua-dialog__btn-danger"
+                onClick={handleDelete}
+                disabled={busyAction === "delete"}
+              >
+                {busyAction === "delete" ? "Deleting…" : "Delete policy"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }
 
@@ -1060,10 +1459,275 @@ function MembersTab({ onToast }) {
   );
 }
 
+function ApprovalsTab({ onToast, onCountChange }) {
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [busyId, setBusyId] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const { requests: rows } = await fetchAccessApprovals({ status: "pending", limit: 50 });
+      const list = Array.isArray(rows) ? rows : [];
+      setRequests(list);
+      onCountChange?.(list.length);
+    } catch (err) {
+      setError(err?.message || "Failed to load approvals");
+      setRequests([]);
+      onCountChange?.(0);
+    } finally {
+      setLoading(false);
+    }
+  }, [onCountChange]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function decide(id, action) {
+    setBusyId(id);
+    try {
+      if (action === "approve") await approveAccessRequest(id);
+      else await rejectAccessRequest(id);
+      onToast(action === "approve" ? "Approved — permission granted" : "Rejected");
+      await load();
+    } catch (err) {
+      onToast(err?.message || "Update failed");
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  return (
+    <div className="ua-approvals">
+      <p className="ua-page-head__sub">Permission and role requests raised by a Wellness Coach land here.</p>
+      {loading ? <p className="ua-table__muted">Loading requests…</p> : null}
+      {error ? <p className="ua-table__muted">{error}</p> : null}
+      {!loading && !error && requests.length === 0 ? (
+        <p className="ua-table__muted">No pending permission requests.</p>
+      ) : null}
+      {requests.map((a) => (
+        <div key={a.id} className="ua-approval-card">
+          <span className="ua-approval-card__kind">{a.kind}</span>
+          <div>
+            <div className="ua-approval-card__title">{a.title}</div>
+            <div className="ua-approval-card__meta">{a.meta}</div>
+          </div>
+          <div className="ua-approval-card__actions">
+            <button
+              type="button"
+              className="ua-reject-btn"
+              disabled={Boolean(busyId)}
+              onClick={() => decide(a.id, "reject")}
+            >
+              {busyId === a.id ? "…" : "Reject"}
+            </button>
+            <button
+              type="button"
+              className="ua-green-btn"
+              disabled={Boolean(busyId)}
+              onClick={() => decide(a.id, "approve")}
+            >
+              {busyId === a.id ? "…" : "Approve"}
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function formatAuditWhen(iso) {
+  if (!iso) return "—";
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "—";
+  const diffMs = Date.now() - then;
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 60) return `${Math.max(1, mins)}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 5) return `${weeks}w ago`;
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(iso));
+}
+
+const AUDIT_TYPE_OPTIONS = [
+  { value: "", label: "All types" },
+  { value: "role", label: "Role changes" },
+  { value: "permission", label: "Permission changes" },
+  { value: "activity", label: "Activity" },
+];
+
+function AuditLogTab() {
+  const PAGE_SIZE = 50;
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [entries, setEntries] = useState([]);
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: PAGE_SIZE,
+    total: 0,
+    pages: 1,
+  });
+
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(searchInput.trim()), 280);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const { entries: rows, pagination: nextPagination } = await fetchAccessAuditLog({
+        page: 1,
+        limit: PAGE_SIZE,
+        search: search || undefined,
+        kind: typeFilter || undefined,
+      });
+      setEntries(rows || []);
+      setPagination({
+        page: Number(nextPagination?.page) || 1,
+        limit: Number(nextPagination?.limit) || PAGE_SIZE,
+        total: Number(nextPagination?.total) || 0,
+        pages: Math.max(1, Number(nextPagination?.pages) || 1),
+      });
+    } catch (err) {
+      setError(err?.message || "Failed to load audit log");
+      setEntries([]);
+      setPagination({ page: 1, limit: PAGE_SIZE, total: 0, pages: 1 });
+    } finally {
+      setLoading(false);
+    }
+  }, [search, typeFilter]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const countLabel = `${pagination.total} ${pagination.total === 1 ? "entry" : "entries"}`;
+
+  return (
+    <div className="ua-audit">
+      <p className="ua-page-head__sub">Every access change and staff activity, newest first. (Phase B)</p>
+      <div className="ua-search-row">
+        <div className="ua-search-wrap ua-search-wrap--wide">
+          <svg className="ua-search-wrap__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+          <input
+            className="ua-search-wrap__input"
+            placeholder="Search name, user ID, phone, coach or event"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            aria-label="Search audit log"
+          />
+        </div>
+        <select
+          className="header__select"
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value)}
+          aria-label="Filter audit log by type"
+        >
+          {AUDIT_TYPE_OPTIONS.map((opt) => (
+            <option key={opt.value || "all"} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        <span className="ua-table__muted">{countLabel}</span>
+      </div>
+
+      {loading ? <p className="ua-page-head__sub">Loading audit log…</p> : null}
+      {error ? (
+        <div className="ua-section-bar">
+          <span>{error}</span>
+          <OrangeButton onClick={load}>Retry</OrangeButton>
+        </div>
+      ) : null}
+
+      {!loading && !error ? (
+        <TableScroll>
+          <div className="ua-table-card">
+            <div className="ua-table ua-table--audit ua-table__head">
+              <div>Type</div>
+              <div>Event</div>
+              <div>Subject</div>
+              <div>Actor</div>
+              <div>When</div>
+            </div>
+            {entries.length === 0 ? (
+              <div className="ua-table ua-table--audit ua-table__row">
+                <div className="ua-table__muted" style={{ gridColumn: "1 / -1" }}>
+                  No audit entries match this filter.
+                </div>
+              </div>
+            ) : null}
+            {entries.map((entry) => (
+              <div key={entry.id} className="ua-table ua-table--audit ua-table__row">
+                <div>
+                  <span className={`ua-log-kind ua-log-kind--${(entry.kindKey || entry.kind || "activity").toLowerCase()}`}>
+                    {entry.kind}
+                  </span>
+                </div>
+                <div>
+                  <div className="ua-log-text">{entry.text}</div>
+                  {entry.detail ? <div className="ua-log-detail">{entry.detail}</div> : null}
+                </div>
+                <div>
+                  <div>{entry.subject}</div>
+                  {entry.subjectMeta ? <div className="ua-table__muted">{entry.subjectMeta}</div> : null}
+                </div>
+                <div>{entry.actor}</div>
+                <div className="ua-table__muted">{formatAuditWhen(entry.createdAt)}</div>
+              </div>
+            ))}
+          </div>
+        </TableScroll>
+      ) : null}
+    </div>
+  );
+}
+
 export function AccessPage() {
   const { showToast: onToast } = useOutletContext();
   const { isSuperAdmin, bootstrapping } = useViewAs();
   const [tab, setTab] = useState("roles");
+  const [pendingCount, setPendingCount] = useState(0);
+
+  const loadPendingCount = useCallback(async () => {
+    try {
+      const { pagination, requests } = await fetchAccessApprovals({ status: "pending", limit: 1 });
+      setPendingCount(pagination?.total ?? (requests || []).length);
+    } catch {
+      setPendingCount(0);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isSuperAdmin || bootstrapping) return;
+    loadPendingCount();
+  }, [isSuperAdmin, bootstrapping, loadPendingCount]);
+
+  const tabs = useMemo(
+    () =>
+      ACCESS_TABS.map((item) =>
+        item.id === "approvals" && pendingCount > 0 ? { ...item, badge: pendingCount } : item,
+      ),
+    [pendingCount],
+  );
 
   if (bootstrapping) {
     return (
@@ -1097,53 +1761,12 @@ export function AccessPage() {
         onAutosave={() => onToast("Saved")}
       />
 
-      <PillTabs tabs={ACCESS_TABS} active={tab} onChange={setTab} size="lg" />
+      <PillTabs tabs={tabs} active={tab} onChange={setTab} size="lg" />
 
       {tab === "roles" ? <RolesPermissionsTab onToast={onToast} /> : null}
       {tab === "members" ? <MembersTab onToast={onToast} /> : null}
 
-      {tab === "policies" ? (
-        <>
-          <div className="ua-section-bar">
-            <span>Reusable allow/deny grants. Attach to a role or an individual user. (Coming in Phase C)</span>
-            <OrangeButton onClick={() => onToast("Policies — coming soon")}>+ Create policy</OrangeButton>
-          </div>
-          <div className="ua-policy-grid">
-            {POLICIES.map((p) => (
-              <div key={p.name} className="ua-policy-card">
-                <div className="ua-policy-card__head">
-                  <div>
-                    <div className="ua-policy-card__name">{p.name}</div>
-                    <div className="ua-policy-card__desc">{p.desc}</div>
-                  </div>
-                  <span className="ua-policy-card__scope">{p.scope}</span>
-                </div>
-                <div className="ua-policy-card__rules">
-                  {p.rules.map((r) => (
-                    <div key={r.text} className="ua-policy-card__rule">
-                      <span className={`ua-rule-badge ua-rule-badge--${r.type.toLowerCase()}`}>{r.type}</span>
-                      <span>{r.text}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="ua-policy-card__foot">
-                  <span>
-                    Attached to <b>{p.attachedCount}</b>
-                  </span>
-                  <div>
-                    <button type="button" className="ua-soft-btn" onClick={() => onToast("Coming soon")}>
-                      Edit
-                    </button>
-                    <button type="button" className="ua-green-btn" onClick={() => onToast("Coming soon")}>
-                      Attach
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
-      ) : null}
+      {tab === "policies" ? <PoliciesTab onToast={onToast} /> : null}
 
       {tab === "simulator" ? (
         <div className="ua-sim-card">
@@ -1177,77 +1800,10 @@ export function AccessPage() {
       ) : null}
 
       {tab === "approvals" ? (
-        <div className="ua-approvals">
-          <p className="ua-page-head__sub">Permission and role requests raised by a Wellness Coach land here.</p>
-          {APPROVALS.map((a) => (
-            <div key={a.title} className="ua-approval-card">
-              <span className="ua-approval-card__kind">{a.kind}</span>
-              <div>
-                <div className="ua-approval-card__title">{a.title}</div>
-                <div className="ua-approval-card__meta">{a.meta}</div>
-              </div>
-              <div className="ua-approval-card__actions">
-                <button type="button" className="ua-reject-btn" onClick={() => onToast("Rejected")}>
-                  Reject
-                </button>
-                <button type="button" className="ua-green-btn" onClick={() => onToast("Approved")}>
-                  Approve
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+        <ApprovalsTab onToast={onToast} onCountChange={setPendingCount} />
       ) : null}
 
-      {tab === "audit" ? (
-        <div className="ua-audit">
-          <p className="ua-page-head__sub">Every access change and staff activity, newest first. (Phase B)</p>
-          <div className="ua-search-row">
-            <div className="ua-search-wrap ua-search-wrap--wide">
-              <svg className="ua-search-wrap__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.3-4.3" />
-              </svg>
-              <input className="ua-search-wrap__input" placeholder="Search name, user ID, phone, coach or event" />
-            </div>
-            <select className="header__select">
-              <option>All types</option>
-              <option>Role changes</option>
-              <option>Permission changes</option>
-              <option>Activity</option>
-            </select>
-            <span className="ua-table__muted">{AUDIT_LOG.length} entries</span>
-          </div>
-          <TableScroll>
-            <div className="ua-table-card">
-              <div className="ua-table ua-table--audit ua-table__head">
-                <div>Type</div>
-                <div>Event</div>
-                <div>Subject</div>
-                <div>Actor</div>
-                <div>When</div>
-              </div>
-              {AUDIT_LOG.map((l) => (
-                <div key={l.text} className="ua-table ua-table--audit ua-table__row">
-                  <div>
-                    <span className={`ua-log-kind ua-log-kind--${l.kind.toLowerCase()}`}>{l.kind}</span>
-                  </div>
-                  <div>
-                    <div className="ua-log-text">{l.text}</div>
-                    <div className="ua-log-detail">{l.detail}</div>
-                  </div>
-                  <div>
-                    <div>{l.subject}</div>
-                    <div className="ua-table__muted">{l.subjectMeta}</div>
-                  </div>
-                  <div>{l.actor}</div>
-                  <div className="ua-table__muted">{l.when}</div>
-                </div>
-              ))}
-            </div>
-          </TableScroll>
-        </div>
-      ) : null}
+      {tab === "audit" ? <AuditLogTab /> : null}
     </main>
   );
 }

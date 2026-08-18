@@ -1,0 +1,2056 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "Wellness User App — Complete Flow",
+    "description": "User App API collection organized by onboarding flow:\n\n**Seek → PWC → Zoom Call → Energy Exchange → Client Payment → Profile Settings**\n\n## Flow overview\n1. **Seek** — Register with health concern + optional referral code (WC/AWC assignment)\n2. **PWC** — Consultancy payment (application subscription by health concern)\n3. **Zoom Call** — Zoom link created after consultancy payment; view via transaction detail\n4. **Heal Subscription** — Full Heal tier unlock (required for most wellness features)\n5. **Energy Exchange** — Coach enables program; user previews, orders, and pays\n6. **Client Payment** — Coach-triggered App Program checkout (optional)\n7. **Paid Onboarding** — Post-subscription profile setup\n8. **Profile Settings** — Update profile, phone, WhatsApp\n\n## Setup\n- Import `Wellness-API.postman_environment.json`\n- Set `baseUrl` (default: `http://localhost:5000/api`)\n- For dev payments: `MOCK_PAYMENTS=true` in backend `.env`\n\n## Auth\nUser auth endpoints auto-save `accessToken` and `refreshToken` to collection variables.\n\n## Staff prerequisites (folder A)\nSome steps require coach/admin actions (enable Energy Exchange, trigger program checkout, assign coach). Use folder **A - Staff Prerequisites** when testing end-to-end.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
+      "key": "userId",
+      "value": ""
+    },
+    {
+      "key": "healthConcernId",
+      "value": ""
+    },
+    {
+      "key": "referralCode",
+      "value": ""
+    },
+    {
+      "key": "razorpay_order_id",
+      "value": ""
+    },
+    {
+      "key": "consultancyTransactionId",
+      "value": ""
+    },
+    {
+      "key": "subscriptionTransactionId",
+      "value": ""
+    },
+    {
+      "key": "energyExchangeTransactionId",
+      "value": ""
+    },
+    {
+      "key": "programTransactionId",
+      "value": ""
+    },
+    {
+      "key": "energyExchangeProgramId",
+      "value": ""
+    },
+    {
+      "key": "coachToken",
+      "value": ""
+    },
+    {
+      "key": "adminToken",
+      "value": ""
+    },
+    {
+      "key": "testPhone",
+      "value": "9876543210"
+    },
+    {
+      "key": "testEmail",
+      "value": "user@example.com"
+    },
+    {
+      "key": "testPassword",
+      "value": "Test@1234"
+    },
+    {
+      "key": "registrationOtp",
+      "value": "123456"
+    }
+  ],
+  "item": [
+    {
+      "name": "00 - Public (Pre-login)",
+      "description": "Catalog data needed before registration and checkout.",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/health",
+            "description": "Server health check."
+          }
+        },
+        {
+          "name": "App Config",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/public/app-config",
+            "description": "App configuration and pricing."
+          }
+        },
+        {
+          "name": "List Health Concerns",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/public/misc/health-concerns",
+            "description": "Active health concerns for registration and consultancy checkout. Auto-saves first concern ID."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  const items = json.data || json.healthConcerns || json.concerns || [];",
+                  "  if (Array.isArray(items) && items[0]?.id) {",
+                  "    pm.collectionVariables.set(\"healthConcernId\", items[0].id);",
+                  "  }",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validate Referral Code",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/public/misc/referral/validate?referralCode={{referralCode}}",
+            "description": "Validate WC/AWC/user referral code before registration or checkout."
+          }
+        },
+        {
+          "name": "List Wellness Coaches",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/public/misc/wellness-coaches",
+            "description": "Public WC directory."
+          }
+        },
+        {
+          "name": "List Assistant Wellness Coaches",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/public/misc/assistant-wellness-coaches",
+            "description": "Public AWC directory."
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 - Seek (Registration & Login)",
+      "description": "Free-tier user registration. Optional `referralCode` assigns WC/AWC at registration. `primaryHealthConcern` is required.",
+      "item": [
+        {
+          "name": "Send Registration OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/auth/register/otp/send",
+            "description": "Sends OTP to WhatsApp. In dev with EXPOSE_OTP_IN_RESPONSE=true, OTP is in response as debugOtp.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"phone\": \"{{testPhone}}\",\n  \"phoneCountryCode\": \"+91\",\n  \"whatsappSameAsMobile\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/auth/register",
+            "description": "Creates Seek-tier account. Saves accessToken. referralCode optional for WC/AWC assignment.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"otp\": \"{{registrationOtp}}\",\n  \"name\": \"Test User\",\n  \"email\": \"{{testEmail}}\",\n  \"phone\": \"{{testPhone}}\",\n  \"phoneCountryCode\": \"+91\",\n  \"primaryHealthConcern\": \"{{healthConcernId}}\",\n  \"termsAccepted\": true,\n  \"password\": \"{{testPassword}}\",\n  \"referralCode\": \"{{referralCode}}\",\n  \"whatsappSameAsMobile\": true,\n  \"fcm_id\": \"test-fcm-token\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  if (json.accessToken) {",
+                  "    pm.collectionVariables.set(\"accessToken\", json.accessToken);",
+                  "    if (json.refreshToken) pm.collectionVariables.set(\"refreshToken\", json.refreshToken);",
+                  "  }",
+                  "  if (json.user?.id) pm.collectionVariables.set(\"userId\", json.user.id);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login (Password)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/auth/login/password",
+            "description": "Password login for returning users.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{testPhone}}\",\n  \"phoneCountryCode\": \"+91\",\n  \"password\": \"{{testPassword}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  if (json.accessToken) {",
+                  "    pm.collectionVariables.set(\"accessToken\", json.accessToken);",
+                  "    if (json.refreshToken) pm.collectionVariables.set(\"refreshToken\", json.refreshToken);",
+                  "  }",
+                  "  if (json.user?.id) pm.collectionVariables.set(\"userId\", json.user.id);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send Login OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/auth/otp/send",
+            "description": "Send OTP for OTP-based login.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{testPhone}}\",\n  \"phoneCountryCode\": \"+91\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Verify Login OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/auth/otp/verify",
+            "description": "Verify OTP login.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{testPhone}}\",\n  \"phoneCountryCode\": \"+91\",\n  \"otp\": \"{{registrationOtp}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  if (json.accessToken) {",
+                  "    pm.collectionVariables.set(\"accessToken\", json.accessToken);",
+                  "    if (json.refreshToken) pm.collectionVariables.set(\"refreshToken\", json.refreshToken);",
+                  "  }",
+                  "  if (json.user?.id) pm.collectionVariables.set(\"userId\", json.user.id);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/auth/refresh-token",
+            "description": "Refresh access token.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  if (json.accessToken) {",
+                  "    pm.collectionVariables.set(\"accessToken\", json.accessToken);",
+                  "    if (json.refreshToken) pm.collectionVariables.set(\"refreshToken\", json.refreshToken);",
+                  "  }",
+                  "  if (json.user?.id) pm.collectionVariables.set(\"userId\", json.user.id);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 - PWC (Consultancy / Application Subscription)",
+      "description": "Seek-to-Heal consultancy payment. User selects health concern, pays consultancy fee. On success: tier becomes consultancy_only, WC/AWC assigned (via referral or pending_admin), Zoom meeting created.",
+      "item": [
+        {
+          "name": "Checkout Preview",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/consultancy-payment/checkout-preview?referralCode={{referralCode}}",
+            "description": "Preview pricing with optional referral discount.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Consultancy Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/consultancy-payment/orders",
+            "description": "Creates Razorpay/mock order. Saves consultancyTransactionId and razorpay_order_id.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"healthConcernId\": \"{{healthConcernId}}\",\n  \"referralCode\": \"{{referralCode}}\",\n  \"paymentMethod\": \"upi\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  const txn = json.data?.transaction;",
+                  "  const orderId = json.data?.payment?.orderId || json.data?.payment?.id;",
+                  "  if (txn?.id) pm.collectionVariables.set(\"consultancyTransactionId\", txn.id);",
+                  "  if (orderId) pm.collectionVariables.set(\"razorpay_order_id\", orderId);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify Consultancy Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/consultancy-payment/verify",
+            "description": "Verify payment. User tier → consultancy_only. Zoom meeting scheduled.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transactionId\": \"{{consultancyTransactionId}}\",\n  \"razorpay_order_id\": \"{{razorpay_order_id}}\",\n  \"razorpay_payment_id\": \"pay_mock_dev\",\n  \"razorpay_signature\": \"mock\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List My Consultancy Transactions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/consultancy-payment/transactions",
+            "description": "List all consultancy transactions.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Consultancy Transaction Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/consultancy-payment/transactions/{{consultancyTransactionId}}",
+            "description": "Transaction detail including zoomMeetingLink.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Download Consultancy Invoice",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/consultancy-payment/transactions/{{consultancyTransactionId}}/invoice",
+            "description": "PDF invoice download.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - WC/AWC Assignment (View)",
+      "description": "Coach assignment happens automatically at registration (referral code) or consultancy payment. Admin can also assign via staff APIs. User views assignment via profile.",
+      "item": [
+        {
+          "name": "Get My Profile (coach assignment)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/auth/me",
+            "description": "Check assignedCoachId, assignedCoachType, parentCoachId, assignmentStatus, userTier.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Coach Insight",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/coach-insight",
+            "description": "Coach notes/insights for Heal-tier users.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Zoom Call",
+      "description": "After consultancy payment, a Zoom meeting is auto-created. Join URL is in the consultancy transaction. Heal consultancy tracks available after Heal subscription.",
+      "item": [
+        {
+          "name": "Get Zoom Meeting Link (via transaction)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/consultancy-payment/transactions/{{consultancyTransactionId}}",
+            "description": "Response includes zoomMeetingLink and zoomMeetingId on paid transactions.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Request Consultancy Session (Heal tier)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/heal-consultancy-tracks",
+            "description": "Request a consultancy track session. Requires Heal tier.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"concern\": \"Follow-up consultation\",\n  \"scheduledAt\": \"2026-08-20T10:00:00.000Z\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List My Consultancy Tracks",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/heal-consultancy-tracks",
+            "description": "List consultancy booking tracks. Requires Heal tier.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Heal Subscription (Full Access)",
+      "description": "After consultancy (PWC), user upgrades to full Heal tier. Required to unlock most wellness features.",
+      "item": [
+        {
+          "name": "Subscription Checkout Preview",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/subscription-payment/checkout-preview",
+            "description": "Requires consultancy_only tier.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Subscription Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/subscription-payment/orders",
+            "description": "Creates subscription order. Saves subscriptionTransactionId.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentMethod\": \"upi\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  const txn = json.data?.transaction;",
+                  "  const orderId = json.data?.payment?.orderId || json.data?.payment?.id;",
+                  "  if (txn?.id) pm.collectionVariables.set(\"subscriptionTransactionId\", txn.id);",
+                  "  if (orderId) pm.collectionVariables.set(\"razorpay_order_id\", orderId);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify Subscription Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/subscription-payment/verify",
+            "description": "Verify payment. User tier → heal.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transactionId\": \"{{subscriptionTransactionId}}\",\n  \"razorpay_order_id\": \"{{razorpay_order_id}}\",\n  \"razorpay_payment_id\": \"pay_mock_dev\",\n  \"razorpay_signature\": \"mock\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List Subscription Transactions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/subscription-payment/transactions",
+            "description": "List subscription payment history.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Subscription Transaction",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/subscription-payment/transactions/{{subscriptionTransactionId}}",
+            "description": "Subscription transaction detail.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 - Energy Exchange Program",
+      "description": "WC enables Energy Exchange program for client (see Staff Prerequisites). User previews FY plans, creates order, and pays.",
+      "item": [
+        {
+          "name": "Get Energy Exchange Program",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/energy-exchange/program",
+            "description": "Current EE program config for user. enabled=false until coach enables.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List FY Plans",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/energy-exchange/plans",
+            "description": "Financial year plans and pricing.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Preview Energy Exchange Checkout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/energy-exchange/preview",
+            "description": "Preview selected FY years pricing.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fyStartYears\": [2025]\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Energy Exchange Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/energy-exchange/order",
+            "description": "Creates EE payment order.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fyStartYears\": [2025],\n  \"paymentMethod\": \"upi\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  const txn = json.data?.transaction;",
+                  "  const orderId = json.data?.payment?.orderId || json.data?.payment?.id;",
+                  "  if (txn?.id) pm.collectionVariables.set(\"energyExchangeTransactionId\", txn.id);",
+                  "  if (orderId) pm.collectionVariables.set(\"razorpay_order_id\", orderId);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify Energy Exchange Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/energy-exchange/verify",
+            "description": "Verify EE payment.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transactionId\": \"{{energyExchangeTransactionId}}\",\n  \"razorpay_order_id\": \"{{razorpay_order_id}}\",\n  \"razorpay_payment_id\": \"pay_mock_dev\",\n  \"razorpay_signature\": \"mock\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List Energy Exchange Subscriptions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/energy-exchange/subscriptions",
+            "description": "Active/queued/expired EE subscriptions.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 - Client Payment (Coach Program Checkout)",
+      "description": "After WC discussion, coach triggers App Program payment link. User pays via /user/program endpoints.",
+      "item": [
+        {
+          "name": "Get Assigned Program / Coach Offer",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/program",
+            "description": "Returns coach-triggered program offer or assigned program.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Preview Program Checkout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/program/preview",
+            "description": "Preview coach-triggered program pricing.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Program Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/program/order",
+            "description": "Creates program payment order.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentMethod\": \"upi\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  const txn = json.data?.transaction;",
+                  "  const orderId = json.data?.payment?.orderId || json.data?.payment?.id;",
+                  "  if (txn?.id) pm.collectionVariables.set(\"programTransactionId\", txn.id);",
+                  "  if (orderId) pm.collectionVariables.set(\"razorpay_order_id\", orderId);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify Program Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/program/verify",
+            "description": "Verify program payment. Sets programPurchased=true.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transactionId\": \"{{programTransactionId}}\",\n  \"razorpay_order_id\": \"{{razorpay_order_id}}\",\n  \"razorpay_payment_id\": \"pay_mock_dev\",\n  \"razorpay_signature\": \"mock\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 - Paid Onboarding",
+      "description": "Post-Heal subscription onboarding steps.",
+      "item": [
+        {
+          "name": "Get Onboarding State",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/paid-onboarding/state",
+            "description": "Current onboarding step.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Submit Onboarding Profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/paid-onboarding/profile",
+            "description": "Profile step during pending onboarding.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dietaryPreference\": \"vegetarian\",\n  \"wellnessJourney\": \"weight_loss\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Submit Body Measurements",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/paid-onboarding/body-measurements",
+            "description": "Body measurements. Requires Heal tier.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"heightCm\": 170,\n  \"weightKg\": 72\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Medical Questions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/paid-onboarding/medical-questions",
+            "description": "Medical condition questions.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Submit Medical Conditions",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/paid-onboarding/medical-conditions",
+            "description": "Submit medical condition answers.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"answers\": []\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List Progress Photos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/paid-onboarding/progress-photos",
+            "description": "Progress photos.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Complete Launch",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/paid-onboarding/launch/complete",
+            "description": "Complete paid onboarding launch.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 - Profile Settings",
+      "description": "Update user profile, phone, and WhatsApp.",
+      "item": [
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/auth/me",
+            "description": "Full enriched profile.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/auth/me",
+            "description": "Update profile fields. Use multipart for profile photo.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\",\n  \"dob\": \"1990-01-15\",\n  \"gender\": \"female\",\n  \"country\": \"India\",\n  \"state\": \"Maharashtra\",\n  \"city\": \"Mumbai\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Send Phone Change OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/auth/profile/phone/otp/send",
+            "description": "Start phone number change.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"9876543211\",\n  \"phoneCountryCode\": \"+91\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Verify Phone Change OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/auth/profile/phone/otp/verify",
+            "description": "Complete phone change.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"9876543211\",\n  \"phoneCountryCode\": \"+91\",\n  \"otp\": \"{{registrationOtp}}\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Send WhatsApp Change OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/auth/profile/whatsapp/otp/send",
+            "description": "Start WhatsApp number change.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"whatsappPhone\": \"9876543211\",\n  \"whatsappCountryCode\": \"+91\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Verify WhatsApp Change OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/auth/profile/whatsapp/otp/verify",
+            "description": "Complete WhatsApp change.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"whatsappPhone\": \"9876543211\",\n  \"whatsappCountryCode\": \"+91\",\n  \"otp\": \"{{registrationOtp}}\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 - Heal Features (Post-unlock)",
+      "description": "Sample Heal-tier feature APIs available after subscription.",
+      "item": [
+        {
+          "name": "Water Tracking Today",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/water-tracking",
+            "description": "Today's water intake.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Steps Tracking Today",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/steps-tracking",
+            "description": "Today's steps.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Assigned Diet Plans",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/diet-plans/assigned",
+            "description": "Coach-assigned diet plans.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Assigned Physical Exercises",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/physical-exercises/assigned",
+            "description": "Assigned exercises.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Assigned Mental Wellbeing",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/mental-wellbeing/assigned",
+            "description": "Mental wellbeing content.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Wellness Prescriptions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/wellness-prescriptions",
+            "description": "Wellness prescriptions.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Supplement Recommendations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/supplements/recommendations",
+            "description": "Supplement recommendations.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Metabolic Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/metabolic-metrics/profile",
+            "description": "Metabolic health profile.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Health Progress Settings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/health-progress/settings",
+            "description": "Health progress feature flags.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Daily Reflection",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/daily-reflection",
+            "description": "Today's daily reflection.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/notifications",
+            "description": "User notifications.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Unread Notification Count",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user/notifications/unread-count",
+            "description": "Unread count.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "A - Staff Prerequisites (Testing)",
+      "description": "Staff/coach APIs needed to complete the user flow during testing. Use Account auth (not legacy /admin/auth).",
+      "item": [
+        {
+          "name": "Staff Login (Coach)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/account/auth/login",
+            "description": "Coach login. Saves coachToken.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"coach@example.com\",\n  \"password\": \"your-password\",\n  \"activeRole\": \"wellness_coach\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  if (json.accessToken) pm.collectionVariables.set(\"coachToken\", json.accessToken);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Staff Login (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/account/auth/login",
+            "description": "Admin login. Saves adminToken.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"your-password\",\n  \"activeRole\": \"admin\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  if (json.accessToken) pm.collectionVariables.set(\"adminToken\", json.accessToken);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin Assign Coach to User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"coachId\": \"WELLNESS_COACH_UUID\",\n  \"coachType\": \"wellness_coach\"\n}"
+            },
+            "url": "{{baseUrl}}/admin/users/{{userId}}/assign-coach",
+            "description": "Assign WC when user has pending_admin assignment status."
+          }
+        },
+        {
+          "name": "Coach List EE Programs for User",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{coachToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/coach/energy-exchange/programs?userId={{userId}}",
+            "description": "List Energy Exchange programs for a client."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  if (json.programs?.[0]?.id) pm.collectionVariables.set('energyExchangeProgramId', json.programs[0].id);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Coach Create Energy Exchange Program",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{coachToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\"\n}"
+            },
+            "url": "{{baseUrl}}/coach/energy-exchange/programs",
+            "description": "Create EE program for client after Zoom consultation."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  const id = json.program?.id || json.data?.program?.id;",
+                  "  if (id) pm.collectionVariables.set('energyExchangeProgramId', id);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Coach Enable Energy Exchange Program",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{coachToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/coach/energy-exchange/programs/{{energyExchangeProgramId}}/enable",
+            "description": "Enable EE program for client. Run Create or List first to set energyExchangeProgramId."
+          }
+        },
+        {
+          "name": "Coach Trigger Program Checkout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{coachToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"productType\": \"program\",\n  \"itemId\": \"fat-loss\",\n  \"discountPercent\": 15,\n  \"discountLabel\": \"festive\",\n  \"linkValidity\": \"24 hours\"\n}"
+            },
+            "url": "{{baseUrl}}/account/coach-checkout/trigger",
+            "description": "Coach triggers App Program payment link for client."
+          }
+        },
+        {
+          "name": "Coach Trigger Subscription Checkout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{coachToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"productType\": \"subscription\",\n  \"discountPercent\": 0,\n  \"linkValidity\": \"24 hours\"\n}"
+            },
+            "url": "{{baseUrl}}/account/coach-checkout/trigger",
+            "description": "Coach triggers Heal subscription payment for client."
+          }
+        }
+      ]
+    }
+  ]
+}
