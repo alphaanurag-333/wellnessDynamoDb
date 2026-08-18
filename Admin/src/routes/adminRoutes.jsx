@@ -13,10 +13,10 @@ import { TeamsPage } from "../pages/TeamsPage.jsx";
 import { TeamMemberPage } from "../pages/TeamMemberPage.jsx";
 import { MyContentPage } from "../pages/MyContentPage.jsx";
 import { CommitmentLettersPage } from "../pages/CommitmentLettersPage.jsx";
-import { UpdatedAdminNotFoundPage } from "../pages/UpdatedAdminNotFoundPage.jsx";
+import { AdminNotFoundPage } from "../pages/AdminNotFoundPage.jsx";
 import { UsersLayout } from "../pages/UsersLayout.jsx";
 import { UserDetailPage } from "../pages/UserDetailPage.jsx";
-import { UpdatedAdminLoginPage } from "../pages/UpdatedAdminLoginPage.jsx";
+import { AdminLoginPage } from "../pages/AdminLoginPage.jsx";
 
 function AdminRoot() {
   return (
@@ -46,7 +46,7 @@ function ProtectedShell() {
 
 export const adminRouteTree = (
   <Route element={<AdminRoot />}>
-    <Route path="login" element={<UpdatedAdminLoginPage />} />
+    <Route path="login" element={<AdminLoginPage />} />
     <Route element={<ProtectedShell />}>
       <Route path="dashboard" element={<DashboardPage />} />
       <Route path="users" element={<UsersLayout />}>
@@ -62,7 +62,7 @@ export const adminRouteTree = (
       <Route path="sop" element={<SopPage />} />
       <Route path="my-content" element={<MyContentPage />} />
       <Route path="my-content/letters/:coachId" element={<CommitmentLettersPage />} />
-      <Route path="*" element={<UpdatedAdminNotFoundPage />} />
+      <Route path="*" element={<AdminNotFoundPage />} />
     </Route>
   </Route>
 );

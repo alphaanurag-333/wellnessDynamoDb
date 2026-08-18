@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import defaultLogo from "../assets/logo/defaultlogo.png";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
+import { getAppContent } from "../api/appContentApi.js";
 import "../admin.css";
 
 function EyeIcon({ off = false }) {
@@ -25,13 +26,28 @@ function EyeIcon({ off = false }) {
   );
 }
 
-export function UpdatedAdminLoginPage() {
+export function AdminLoginPage() {
   const { login, isAuthenticated, bootstrapping, authError, setAuthError } = useViewAs();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [appName, setAppName] = useState("India Redefining Wellness");
+
+  useEffect(() => {
+    let active = true;
+    getAppContent()
+      .then((content) => {
+        if (active && content?.appName) setAppName(content.appName);
+      })
+      .catch(() => {
+        /* keep fallback */
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   if (bootstrapping) {
     return (
@@ -76,7 +92,7 @@ export function UpdatedAdminLoginPage() {
             }}
           />
           <div className="ua-login__kicker">Admin console</div>
-          <h1 className="ua-login__title">India Redefining Wellness</h1>
+          <h1 className="ua-login__title">{appName}</h1>
           <p className="ua-login__sub">
             Sign in to manage users, teams, and console access.
           </p>

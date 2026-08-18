@@ -3,7 +3,7 @@ import { useOutletContext } from "react-router-dom";
 import { fetchDashboardStatistics } from "../api/dashboardApi.js";
 import { adminListHealthConcerns, mapConcernsToDropdownList } from "../api/healthConcernApi.js";
 import { fetchScopedUsers, fetchUsers } from "../api/usersApi.js";
-import { UpdatedAdminDashboard } from "../components/UpdatedAdminDashboard.jsx";
+import { AdminDashboard } from "../components/AdminDashboard.jsx";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 
 export function DashboardPage() {
@@ -54,7 +54,7 @@ export function DashboardPage() {
   }, [loadDashboard]);
 
   return (
-    <UpdatedAdminDashboard
+    <AdminDashboard
       onToast={showToast}
       statistics={statistics}
       healthConcerns={healthConcerns}

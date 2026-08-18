@@ -396,6 +396,18 @@ export const CONFIG_GROUPS = {
       name: "Web · Brand",
       items: [
         {
+          id: "web-app-content",
+          name: "App Content",
+          note: "App name, email, mobile and address",
+          owner: "Admin / Support",
+          app: false,
+          web: true,
+          live: true,
+          on: true,
+          tags: ["Text"],
+          toggleable: false,
+        },
+        {
           id: "web-logo",
           name: "Logo edit",
           note: "Website, admin, and favicon from App Config",

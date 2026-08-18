@@ -8,8 +8,9 @@ import {
 } from "./api/adminInboxApi.js";
 import { ConfirmDialog } from "./components/ConfirmDialog.jsx";
 import { ProfileModal } from "./components/ProfileModal.jsx";
-import { UpdatedAdminHeader } from "./components/UpdatedAdminHeader.jsx";
-import { UpdatedAdminSidebar } from "./components/UpdatedAdminSidebar.jsx";
+import { AdminHeader } from "./components/AdminHeader.jsx";
+import { AdminSidebar } from "./components/AdminSidebar.jsx";
+import { getAppContent } from "./api/appContentApi.js";
 import { useViewAs } from "./context/ViewAsContext.jsx";
 import "./ref-animations.css";
 import "./admin.css";
@@ -83,19 +84,34 @@ export function AdminLayout() {
   }, [toastVisible, toast]);
 
   const isClientProfile = /^\/users\/[^/]+$/.test(pathname) && pathname !== UPDATED_ADMIN_PATHS.users;
+  const [appName, setAppName] = useState("IR Wellness");
+
+  useEffect(() => {
+    let active = true;
+    getAppContent()
+      .then((content) => {
+        if (active && content?.appName) setAppName(content.appName);
+      })
+      .catch(() => {
+        /* keep fallback */
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (isClientProfile) {
-      document.title = "IR Wellness Admin — Client profile";
+      document.title = `${appName} Admin — Client profile`;
       return;
     }
     const active = NAV_ITEMS.find((item) =>
       item.id === "dashboard" ? pathname === item.path : pathname.startsWith(item.path),
     );
     document.title = active
-      ? `IR Wellness Admin — ${active.label}`
-      : "IR Wellness Admin Console";
-  }, [isClientProfile, pathname]);
+      ? `${appName} Admin — ${active.label}`
+      : `${appName} Admin Console`;
+  }, [appName, isClientProfile, pathname]);
 
   useEffect(() => {
     const shell = document.querySelector(".updated-admin .page-shell");
@@ -145,14 +161,14 @@ export function AdminLayout() {
 
   return (
     <div className={`updated-admin${isClientProfile ? " updated-admin--client-profile" : ""}`}>
-      <UpdatedAdminSidebar
+      <AdminSidebar
         onLogout={requestLogout}
         mobileOpen={mobileNavOpen}
         onCloseMobile={() => setMobileNavOpen(false)}
       />
 
       <div className="main">
-        <UpdatedAdminHeader
+        <AdminHeader
           notifications={notifications}
           unreadCount={unreadCount}
           notifOpen={notifOpen}

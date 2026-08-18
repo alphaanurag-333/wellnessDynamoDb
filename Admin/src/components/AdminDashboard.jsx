@@ -292,7 +292,7 @@ function groupClientsByConcern(clients) {
   return groups;
 }
 
-export function UpdatedAdminDashboard({
+export function AdminDashboard({
   onToast,
   statistics,
   healthConcerns,

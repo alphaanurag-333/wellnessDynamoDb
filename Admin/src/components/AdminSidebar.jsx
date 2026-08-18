@@ -8,6 +8,8 @@ import {
   VIEW_AS_ROLES,
   VIEW_AS_STAFF_TOTAL,
 } from "../data/dashboardData.js";
+import { getAppLogos } from "../api/logoApi.js";
+import { getAppContent } from "../api/appContentApi.js";
 
 function RoleCheckIcon() {
   return (
@@ -154,8 +156,33 @@ function ViewAsRolePicker({ collapsed }) {
 
 const NAV_COLLAPSED_KEY = "ua-nav-collapsed";
 
-export function UpdatedAdminSidebar({ onLogout, mobileOpen = false, onCloseMobile }) {
+export function AdminSidebar({ onLogout, mobileOpen = false, onCloseMobile }) {
   const { viewAs, isSuperAdmin, navSections } = useViewAs();
+  const [adminLogoUrl, setAdminLogoUrl] = useState("");
+  const [brandName, setBrandName] = useState("India Redefining Wellness");
+
+  useEffect(() => {
+    let active = true;
+    Promise.allSettled([getAppLogos(), getAppContent()])
+      .then(([logosResult, contentResult]) => {
+        if (!active) return;
+
+        const slots = logosResult.status === "fulfilled" ? logosResult.value : null;
+        const adminSlot = slots?.find((s) => s.field === "admin_logo");
+        if (adminSlot?.url) {
+          setAdminLogoUrl(adminSlot.url);
+        } else {
+          const userSlot = slots?.find((s) => s.field === "user_logo");
+          if (userSlot?.url) setAdminLogoUrl(userSlot.url);
+        }
+
+        const content = contentResult.status === "fulfilled" ? contentResult.value : null;
+        if (content?.appName) setBrandName(content.appName);
+      })
+      .catch(() => { /* keep fallback */ });
+    return () => { active = false; };
+  }, []);
+
   const [collapsed, setCollapsed] = useState(() => {
     try {
       return localStorage.getItem(NAV_COLLAPSED_KEY) === "1";
@@ -201,10 +228,21 @@ export function UpdatedAdminSidebar({ onLogout, mobileOpen = false, onCloseMobil
       >
       <div className="sidebar__brand">
         <NavLink to={UPDATED_ADMIN_PATHS.dashboard} end className="sidebar__brand-link">
-          <div className="sidebar__logo">IR</div>
+          <div className="sidebar__logo">
+            {adminLogoUrl ? (
+              <img
+                src={adminLogoUrl}
+                alt="Admin logo"
+                className="sidebar__logo-img"
+                style={{ width: "100%", height: "100%", objectFit: "contain", borderRadius: "inherit" }}
+              />
+            ) : (
+              "IR"
+            )}
+          </div>
           {!collapsed ? (
             <div className="sidebar__brand-text">
-              <div className="sidebar__brand-name">India Redefining Wellness</div>
+              <div className="sidebar__brand-name">{brandName}</div>
               <div className="sidebar__brand-sub">
                 {isSuperAdmin && viewAs === "admin" ? "SUPER ADMIN" : "ADMIN CONSOLE"}
               </div>

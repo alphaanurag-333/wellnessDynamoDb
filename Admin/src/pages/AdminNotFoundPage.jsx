@@ -1,7 +1,7 @@
 import { Link, useOutletContext } from "react-router-dom";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 
-export function UpdatedAdminNotFoundPage() {
+export function AdminNotFoundPage() {
   const { showToast } = useOutletContext();
 
   return (

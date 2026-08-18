@@ -36,6 +36,7 @@ import { FooterSettingSection } from "../components/FooterSettingSection.jsx";
 import { SocialLinksSection } from "../components/SocialLinksSection.jsx";
 import { LegalBlocksSection } from "../components/LegalBlocksSection.jsx";
 import { ContactDetailsSection } from "../components/ContactDetailsSection.jsx";
+import { AppContentSection } from "../components/AppContentSection.jsx";
 import { LogoSlotsSection } from "../components/LogoSlotsSection.jsx";
 import { LocationsSection } from "../components/LocationsSection.jsx";
 import { BannerSection } from "../components/BannerSection.jsx";
@@ -53,7 +54,6 @@ import { DynamicGoogleReviewSection } from "../components/DynamicGoogleReviewSec
 import { DropdownsSection } from "../components/DropdownsSection.jsx";
 import { RecipesSection } from "../components/RecipesSection.jsx";
 import { YogaSection } from "../components/YogaSection.jsx";
-import { BlogsSection } from "../components/BlogsSection.jsx";
 import { DynamicBlogsSection } from "../components/DynamicBlogsSection.jsx";
 import { RxBankSection } from "../components/RxBankSection.jsx";
 import { FaqConfigPanel } from "../components/FaqConfigPanel.jsx";
@@ -117,6 +117,7 @@ import {
   saveCoachCheckoutOptions,
   triggerCoachCheckout,
 } from "../api/appProgramApi.js";
+import { getAppContent } from "../api/appContentApi.js";
 
 function surfacesLabel(item) {
   if (item.app && item.web) return "App & web";
@@ -1311,6 +1312,12 @@ export function ConfigDetailPage() {
   const [blPosts, setBlPosts] = useState([]);
   const [blGallery, setBlGallery] = useState([]);
   const [featureFlags, setFeatureFlags] = useState(FEATURE_FLAGS);
+  const [appContent, setAppContent] = useState({
+    appName: "",
+    appEmail: "",
+    appMobile: "",
+    address: "",
+  });
   const [previewOpen, setPreviewOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
 
@@ -1340,6 +1347,21 @@ export function ConfigDetailPage() {
         if (active) onToast(error.message || "Could not load coach checkout options");
       });
 
+    return () => {
+      active = false;
+    };
+  }, [configId]);
+
+  useEffect(() => {
+    if (configId !== "web-app-content") return undefined;
+    let active = true;
+    getAppContent()
+      .then((next) => {
+        if (active && next) setAppContent(next);
+      })
+      .catch(() => {
+        /* section handles load failures itself */
+      });
     return () => {
       active = false;
     };
@@ -1462,6 +1484,13 @@ export function ConfigDetailPage() {
                 ? programStories.some((entry) => entry.live)
               : item.id === "web-footer"
                 ? Boolean(String(footerBottomLine || "").trim())
+              : item.id === "web-app-content"
+                ? Boolean(
+                    String(appContent.appName || "").trim()
+                    || String(appContent.appEmail || "").trim()
+                    || String(appContent.appMobile || "").trim()
+                    || String(appContent.address || "").trim(),
+                  )
               : item.id === "web-fs-social"
                 ? socialLinks.some((entry) => String(entry.url || "").trim())
               : item.id === "web-fs-links"
@@ -1799,6 +1828,14 @@ export function ConfigDetailPage() {
           <FooterSettingSection
             bottomLine={footerBottomLine}
             setBottomLine={setFooterBottomLine}
+            onToast={onToast}
+          />
+        );
+      case "web-app-content":
+        return (
+          <AppContentSection
+            content={appContent}
+            setContent={setAppContent}
             onToast={onToast}
           />
         );

@@ -4,7 +4,7 @@ import { useViewAs } from "../context/ViewAsContext.jsx";
 import { userInitials } from "../data/usersData.js";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 
-export function UpdatedAdminHeader({
+export function AdminHeader({
   notifications,
   unreadCount,
   notifOpen,
