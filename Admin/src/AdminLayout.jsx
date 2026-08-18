@@ -10,8 +10,9 @@ import { ConfirmDialog } from "./components/ConfirmDialog.jsx";
 import { ProfileModal } from "./components/ProfileModal.jsx";
 import { AdminHeader } from "./components/AdminHeader.jsx";
 import { AdminSidebar } from "./components/AdminSidebar.jsx";
-import { getAppContent } from "./api/appContentApi.js";
 import { useViewAs } from "./context/ViewAsContext.jsx";
+import { useAppSelector } from "./store/hooks.js";
+import { selectAppName } from "./store/slices/appConfigSlice.js";
 import "./ref-animations.css";
 import "./admin.css";
 
@@ -84,21 +85,7 @@ export function AdminLayout() {
   }, [toastVisible, toast]);
 
   const isClientProfile = /^\/users\/[^/]+$/.test(pathname) && pathname !== UPDATED_ADMIN_PATHS.users;
-  const [appName, setAppName] = useState("IR Wellness");
-
-  useEffect(() => {
-    let active = true;
-    getAppContent()
-      .then((content) => {
-        if (active && content?.appName) setAppName(content.appName);
-      })
-      .catch(() => {
-        /* keep fallback */
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  const appName = useAppSelector(selectAppName);
 
   useEffect(() => {
     if (isClientProfile) {

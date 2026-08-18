@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import defaultLogo from "../assets/logo/defaultlogo.png";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
-import { getAppContent } from "../api/appContentApi.js";
+import { useAppSelector } from "../store/hooks.js";
+import { selectAdminLogoUrl, selectAppName } from "../store/slices/appConfigSlice.js";
 import "../admin.css";
 
 function EyeIcon({ off = false }) {
@@ -33,21 +34,8 @@ export function AdminLoginPage() {
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [appName, setAppName] = useState("India Redefining Wellness");
-
-  useEffect(() => {
-    let active = true;
-    getAppContent()
-      .then((content) => {
-        if (active && content?.appName) setAppName(content.appName);
-      })
-      .catch(() => {
-        /* keep fallback */
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  const appName = useAppSelector(selectAppName);
+  const logoUrl = useAppSelector(selectAdminLogoUrl) || defaultLogo;
 
   if (bootstrapping) {
     return (
@@ -83,7 +71,7 @@ export function AdminLoginPage() {
         <div className="ua-login__brand">
           <img
             className="ua-login__logo"
-            src={defaultLogo}
+            src={logoUrl}
             alt=""
             width={88}
             height="auto"

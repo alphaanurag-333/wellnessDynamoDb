@@ -1,8 +1,13 @@
 import axios from "axios";
+import {
+  hydrateAdminProfile,
+  hydrateStoreFromApiResponse,
+} from "./store/hydrateFromApi.js";
 
 // const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const API_BASE = "https://wellness-development.developmentalphawizz.com";
+// const API_BASE = "http://localhost:5000"; 
 
-const API_BASE = "http://localhost:5000"; 
 //  const API_BASE = "https://wellness.developmentalphawizz.com:5005";
   // const API_BASE = "https://wellness-aws.developmentalphawizz.com:5001";
 const ACCOUNT_AUTH_STORAGE_KEY = "wellness_account_auth";
@@ -57,6 +62,7 @@ async function refreshAccountToken() {
         account: data?.account || current.account,
       };
       writeAccountAuth(updated);
+      if (updated.account) hydrateAdminProfile(updated.account);
       return updated.accessToken;
     })
     .finally(() => {
@@ -78,7 +84,10 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    hydrateStoreFromApiResponse(response);
+    return response;
+  },
   async (error) => {
     const status = error?.response?.status;
     const originalRequest = error?.config;

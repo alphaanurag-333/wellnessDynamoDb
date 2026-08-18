@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import { userInitials } from "../data/usersData.js";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
+import { useAppSelector } from "../store/hooks.js";
+import { selectAdminProfile } from "../store/slices/adminProfileSlice.js";
 
 export function AdminHeader({
   notifications,
@@ -22,8 +24,10 @@ export function AdminHeader({
   const panelRef = useRef(null);
   const btnRef = useRef(null);
   const { activeRole, account } = useViewAs();
-  const avatarInitial = userInitials(account?.name || activeRole.name).charAt(0) || "A";
-  const profileImage = account?.profileImage || null;
+  const storedProfile = useAppSelector(selectAdminProfile);
+  const profileAccount = storedProfile || account;
+  const avatarInitial = userInitials(profileAccount?.name || activeRole.name).charAt(0) || "A";
+  const profileImage = profileAccount?.profileImage || null;
 
   useEffect(() => {
     if (!notifOpen) return undefined;

@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useDispatch } from "react-redux";
 import { VIEW_AS_ROLES } from "../data/dashboardData.js";
 import {
   accountLogin,
@@ -16,6 +17,8 @@ import {
   hasConsolePermission,
   sectionsFromPermissions,
 } from "../utils/permissions.js";
+import { loadAppConfig } from "../store/loadAppConfig.js";
+import { clearAdminProfile, setAdminProfile } from "../store/slices/adminProfileSlice.js";
 
 const VIEW_AS_STORAGE_KEY = "ua-view-as";
 
@@ -54,6 +57,7 @@ function sessionPermissions(account) {
 }
 
 export function ViewAsProvider({ children }) {
+  const dispatch = useDispatch();
   const [auth, setAuth] = useState(() => readAccountAuth());
   const [viewAs, setViewAsState] = useState(() => uiFromAccount(readAccountAuth()?.account));
   const [bootstrapping, setBootstrapping] = useState(Boolean(readAccountAuth()?.accessToken));
@@ -64,6 +68,7 @@ export function ViewAsProvider({ children }) {
     async function bootstrap() {
       if (!readAccountAuth()?.accessToken) {
         setBootstrapping(false);
+        loadAppConfig({ publicOnly: true });
         return;
       }
       try {
@@ -71,10 +76,14 @@ export function ViewAsProvider({ children }) {
         if (cancelled) return;
         setAuth(readAccountAuth());
         setViewAsState(uiFromAccount(account));
+        if (account) dispatch(setAdminProfile(account));
+        loadAppConfig();
       } catch {
         if (!cancelled) {
           clearAccountAuth();
           setAuth(null);
+          dispatch(clearAdminProfile());
+          loadAppConfig({ publicOnly: true });
         }
       } finally {
         if (!cancelled) setBootstrapping(false);
@@ -84,7 +93,7 @@ export function ViewAsProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [dispatch]);
 
   const setViewAsLocal = useCallback((roleId) => {
     setViewAsState(roleId);
@@ -101,34 +110,39 @@ export function ViewAsProvider({ children }) {
       const stored = await accountLogin({ email, password, activeRole });
       setAuth(stored);
       setViewAsLocal(uiFromAccount(stored.account));
+      if (stored?.account) dispatch(setAdminProfile(stored.account));
+      loadAppConfig();
       return stored;
     },
-    [setViewAsLocal],
+    [dispatch, setViewAsLocal],
   );
 
   const logout = useCallback(() => {
     clearAccountAuth();
     setAuth(null);
     setAuthError("");
-  }, []);
+    dispatch(clearAdminProfile());
+  }, [dispatch]);
 
   const setAccount = useCallback((account) => {
     if (!account) return;
+    dispatch(setAdminProfile(account));
     setAuth((prev) => {
       if (!prev?.accessToken) return prev;
       const next = { ...prev, account };
       writeAccountAuth(next);
       return next;
     });
-  }, []);
+  }, [dispatch]);
 
   const refreshAccount = useCallback(async () => {
     const account = await accountMe();
     if (account) {
       setAuth(readAccountAuth());
+      dispatch(setAdminProfile(account));
     }
     return account;
-  }, []);
+  }, [dispatch]);
 
   const isSuperAdmin = accountIsSuperAdmin(auth?.account);
 
@@ -164,13 +178,14 @@ export function ViewAsProvider({ children }) {
         const stored = await accountSwitchRole(roleId);
         setAuth(stored);
         setViewAsLocal(roleId);
+        if (stored?.account) dispatch(setAdminProfile(stored.account));
         return stored;
       } catch (err) {
         setViewAsLocal(roleId);
         throw err;
       }
     },
-    [auth, setViewAsLocal],
+    [auth, dispatch, setViewAsLocal],
   );
 
   const activeRole = useMemo(
@@ -237,6 +252,7 @@ export function ViewAsProvider({ children }) {
       setAuthError,
       login,
       logout,
+      setAccount,
       UI_TO_ROLE_KEY,
     }),
     [
@@ -255,6 +271,7 @@ export function ViewAsProvider({ children }) {
       authError,
       login,
       logout,
+      setAccount,
     ],
   );
 

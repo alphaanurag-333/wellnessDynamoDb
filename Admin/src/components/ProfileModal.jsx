@@ -4,6 +4,8 @@ import { accountUpdateMe } from "../api/accountApi.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import { buildProfileFromAccount } from "../data/profileData.js";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
+import { useAppSelector } from "../store/hooks.js";
+import { selectAdminProfile } from "../store/slices/adminProfileSlice.js";
 
 function ReadOnlyField({ label, value, hint }) {
   return (
@@ -33,9 +35,10 @@ function AvatarMark({ profile, className }) {
 export function ProfileModal({ open, onClose, onToast }) {
   const navigate = useNavigate();
   const { account, activeRole, setAccount } = useViewAs();
+  const storedProfile = useAppSelector(selectAdminProfile);
   const profile = useMemo(
-    () => buildProfileFromAccount(account, activeRole),
-    [account, activeRole],
+    () => buildProfileFromAccount(storedProfile || account, activeRole),
+    [account, activeRole, storedProfile],
   );
   const [bio, setBio] = useState(profile.bio);
   const [savingBio, setSavingBio] = useState(false);
