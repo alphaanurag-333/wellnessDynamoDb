@@ -13,6 +13,7 @@ const {
 } = require("../models/consultancyTransactionModel");
 const {
   getPurchasableProgramForUser,
+  getActiveProgramForUser,
   updateUserProgram,
   getUserProgramById,
 } = require("../models/userProgramModel");
@@ -82,39 +83,34 @@ async function createProgramOrder(userId, { paymentMethod = "upi" } = {}) {
 
   const existingPending = await getPendingProgramOrderForUser(userId);
   if (isPendingCheckoutOrderReusable(existingPending)) {
-    const appConfig = await getAppConfig();
-    const gateway = getActiveRazorpayGateway(appConfig);
-    const useMock = shouldUseMockPayments(gateway);
-    const publicOffer = offer ? toPublicCoachProgramOffer(offer) : null;
-    return {
-      transaction: toPublicTransaction(existingPending),
-      pricing: {
-        baseAmount: existingPending.baseAmount,
-        discountAmount: existingPending.discountAmount,
-        discountedBase: existingPending.discountedBase,
-        taxAmount: existingPending.taxAmount,
-        taxPercent: existingPending.taxPercent,
-        taxType: existingPending.taxType,
-        totalAmount: existingPending.totalAmount,
-        currency: existingPending.currency || "INR",
-      },
-      program: {
-        id: existingPending.userSnapshot?.programId || offer?.itemId || null,
-        title: existingPending.userSnapshot?.programTitle || existingPending.userSnapshot?.catalogItemName || offer?.itemName || "",
-        price: existingPending.baseAmount,
-        source: publicOffer ? "coach_checkout" : "assigned_program",
-      },
-      offer: publicOffer,
-      payment: {
-        provider: useMock ? "mock" : "razorpay",
-        orderId: existingPending.paymentGatewayOrderId,
-        amount: Math.round(Number(existingPending.totalAmount) * 100),
-        currency: existingPending.currency || "INR",
-        keyId: gateway?.keyId || null,
-        mockPayment: useMock,
-        reusedPendingOrder: true,
-      },
-    };
+    const preview = await previewProgramCheckout(userId);
+    if (Number(existingPending.totalAmount) === Number(preview.pricing.totalAmount)) {
+      const appConfig = await getAppConfig();
+      const gateway = getActiveRazorpayGateway(appConfig);
+      const useMock = shouldUseMockPayments(gateway);
+      const publicOffer = offer ? toPublicCoachProgramOffer(offer) : null;
+      return {
+        transaction: toPublicTransaction(existingPending),
+        pricing: preview.pricing,
+        program: {
+          id: existingPending.userSnapshot?.programId || offer?.itemId || null,
+          title: existingPending.userSnapshot?.programTitle || existingPending.userSnapshot?.catalogItemName || offer?.itemName || "",
+          price: existingPending.totalAmount,
+          listPrice: existingPending.baseAmount,
+          source: publicOffer ? "coach_checkout" : "assigned_program",
+        },
+        offer: publicOffer,
+        payment: {
+          provider: useMock ? "mock" : "razorpay",
+          orderId: existingPending.paymentGatewayOrderId,
+          amount: Math.round(Number(existingPending.totalAmount) * 100),
+          currency: existingPending.currency || "INR",
+          keyId: gateway?.keyId || null,
+          mockPayment: useMock,
+          reusedPendingOrder: true,
+        },
+      };
+    }
   }
 
   if (
@@ -147,12 +143,7 @@ async function createProgramOrder(userId, { paymentMethod = "upi" } = {}) {
   const gateway = getActiveRazorpayGateway(appConfig);
   const useMock = shouldUseMockPayments(gateway);
 
-  const transaction = await createConsultancyTransaction({
-    userId,
-    productType: "program",
-    paymentStatus: "pending",
-    paymentProvider: useMock ? "mock" : "razorpay",
-    paymentMethod,
+  const pricingFields = {
     baseAmount: preview.pricing.baseAmount,
     discountAmount: preview.pricing.discountAmount,
     discountedBase: preview.pricing.discountedBase,
@@ -161,8 +152,8 @@ async function createProgramOrder(userId, { paymentMethod = "upi" } = {}) {
     taxType: preview.pricing.taxType,
     totalAmount: preview.pricing.totalAmount,
     currency: preview.pricing.currency,
-    referralCodeUsed: null,
-    referralCodeValid: false,
+    paymentProvider: useMock ? "mock" : "razorpay",
+    paymentMethod,
     parentCoachId: user.parentCoachId || offer?.wellnessCoachId || null,
     checkoutOffer: preview.source === "coach_checkout",
     linkExpiresAt: offer?.expiresAt || null,
@@ -174,12 +165,24 @@ async function createProgramOrder(userId, { paymentMethod = "upi" } = {}) {
       phoneCountryCode: user.phoneCountryCode,
       userTier: user.userTier,
       programId: program.id,
+      userProgramId: preview.source === "coach_checkout" ? null : program.id,
       programTitle: program.title,
       programType: program.programType,
-      catalogItemId: offer?.itemId || preview.offer?.itemId || null,
+      catalogItemId: offer?.itemId || preview.offer?.itemId || program.catalogProgramId || null,
       catalogItemName: offer?.itemName || preview.offer?.itemName || program.title || "",
     },
-  });
+  };
+
+  const transaction = existingPending
+    ? await updateConsultancyTransaction(existingPending.id, pricingFields)
+    : await createConsultancyTransaction({
+        userId,
+        productType: "program",
+        paymentStatus: "pending",
+        referralCodeUsed: null,
+        referralCodeValid: false,
+        ...pricingFields,
+      });
 
   let order;
   if (useMock) {
@@ -243,6 +246,55 @@ async function createProgramOrder(userId, { paymentMethod = "upi" } = {}) {
   };
 }
 
+function programPurchaseNeedsFinalization(user) {
+  if (!user?.programPurchased) return true;
+  const pending = user.pendingCoachCheckout;
+  return Boolean(pending && typeof pending === "object" && pending.productType);
+}
+
+function userProgramLookupIds(user, transaction) {
+  return [
+    user?.assignedProgramId,
+    transaction?.userSnapshot?.userProgramId,
+    transaction?.userSnapshot?.programId,
+  ].filter(Boolean);
+}
+
+async function findUserProgramForTransaction(user, transaction) {
+  const seen = new Set();
+  for (const id of userProgramLookupIds(user, transaction)) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const row = await getUserProgramById(id);
+    if (row && String(row.userId) === String(user.id)) return row;
+  }
+
+  return (
+    (await getPurchasableProgramForUser(user.id)) ||
+    (await getActiveProgramForUser(user.id)) ||
+    null
+  );
+}
+
+async function applyPaidProgramEntitlements(user, transaction, paidAt) {
+  const userProgram = await findUserProgramForTransaction(user, transaction);
+  if (userProgram) {
+    await updateUserProgram(userProgram.id, {
+      status: "purchased",
+      purchasedAt: userProgram.purchasedAt || paidAt,
+      transactionId: transaction.id,
+      enabled: true,
+    });
+  }
+
+  await updateUser(user.id, {
+    programPurchased: true,
+    programPurchasedAt: user.programPurchasedAt || paidAt,
+    assignedProgramId: userProgram?.id || user.assignedProgramId || null,
+    pendingCoachCheckout: {},
+  });
+}
+
 async function finalizePaidProgramTransaction(transaction, { paymentId, provider }) {
   const user = await getUserById(transaction.userId);
   if (!user) {
@@ -262,40 +314,21 @@ async function finalizePaidProgramTransaction(transaction, { paymentId, provider
     },
   });
 
-  if (alreadyPaid) {
-    return toPublicTransaction(paidRecord);
-  }
-
-  emitPaymentReceived({
-    user,
-    amount: transaction.totalAmount,
-    productLabel: "Program",
-    transactionId: transaction.id,
-  });
-
-  const programId =
-    transaction.userSnapshot?.programId ||
-    user.assignedProgramId ||
-    (await getPurchasableProgramForUser(user.id))?.id;
-
-  if (programId) {
-    await updateUserProgram(programId, {
-      status: "purchased",
-      purchasedAt: paidAt,
+  if (!alreadyPaid) {
+    emitPaymentReceived({
+      user,
+      amount: transaction.totalAmount,
+      productLabel: "Program",
       transactionId: transaction.id,
-      enabled: true,
     });
   }
 
-  await updateUser(user.id, {
-    programPurchased: true,
-    programPurchasedAt: paidAt,
-    assignedProgramId: programId || user.assignedProgramId || null,
-    pendingCoachCheckout: {},
-  });
+  if (programPurchaseNeedsFinalization(user)) {
+    await applyPaidProgramEntitlements(user, transaction, paidRecord?.paidAt || paidAt);
+  }
 
   const fresh = await getConsultancyTransactionById(transaction.id);
-  return toPublicTransaction(fresh);
+  return toPublicTransaction(fresh || paidRecord);
 }
 
 async function verifyProgramPayment(userId, {
@@ -321,7 +354,10 @@ async function verifyProgramPayment(userId, {
     throw err;
   }
   if (transaction.paymentStatus === "paid") {
-    return toPublicTransaction(transaction);
+    return finalizePaidProgramTransaction(transaction, {
+      paymentId: razorpay_payment_id || transaction.paymentGatewayPaymentId,
+      provider: transaction.paymentProvider,
+    });
   }
 
   const appConfig = await getAppConfig();
@@ -379,4 +415,6 @@ module.exports = {
   createProgramOrder,
   verifyProgramPayment,
   finalizePaidProgramTransaction,
+  programPurchaseNeedsFinalization,
+  userProgramLookupIds,
 };

@@ -1,4 +1,5 @@
 const USER_TIERS = new Set(["seek", "consultancy_only", "heal", "maintenance"]);
+const CLIENT_CATEGORIES = new Set(["individual", "eagle"]);
 const ASSIGNMENT_STATUSES = new Set(["assigned", "pending_admin"]);
 const ASSIGNED_COACH_TYPES = new Set(["wellness_coach", "assistant_wellness_coach"]);
 const ASSIGNMENT_SOURCES = new Set(["referral", "admin_manual", "coach_reassign"]);
@@ -7,6 +8,15 @@ const REFERRED_BY_ENTITY_TYPES = new Set(["wellness_coach", "assistant_wellness_
 function normalizeUserTier(value, fallback = "seek") {
   const next = String(value || fallback).toLowerCase().trim();
   return USER_TIERS.has(next) ? next : fallback;
+}
+
+function normalizeClientCategory(value, fallback = "individual") {
+  const next = String(value || fallback).toLowerCase().trim();
+  return CLIENT_CATEGORIES.has(next) ? next : fallback;
+}
+
+function isEagleClientCategory(value) {
+  return normalizeClientCategory(value) === "eagle";
 }
 
 function normalizeAssignmentStatus(value, fallback = "pending_admin") {
@@ -34,6 +44,10 @@ function normalizeAssignmentSource(value) {
 
 function isHealTier(value) {
   return normalizeUserTier(value) === "heal";
+}
+
+function isMaintenanceTier(value) {
+  return normalizeUserTier(value) === "maintenance";
 }
 
 function isConsultancyOnlyTier(value) {
@@ -299,16 +313,20 @@ function resolveReassignmentPatch({ assignedCoachId, assignedCoachType, parentCo
 
 module.exports = {
   USER_TIERS,
+  CLIENT_CATEGORIES,
   ASSIGNMENT_STATUSES,
   ASSIGNED_COACH_TYPES,
   ASSIGNMENT_SOURCES,
   REFERRED_BY_ENTITY_TYPES,
   normalizeUserTier,
+  normalizeClientCategory,
+  isEagleClientCategory,
   normalizeAssignmentStatus,
   normalizeAssignedCoachType,
   normalizeAssignmentSource,
   normalizeReferredByEntityType,
   isHealTier,
+  isMaintenanceTier,
   isConsultancyOnlyTier,
   isPaidClientTier,
   isWellnessTrackingTier,

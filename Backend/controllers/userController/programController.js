@@ -10,6 +10,7 @@ const {
   createProgramOrder,
   verifyProgramPayment,
 } = require("../../services/programPaymentService");
+const { resolveProgramPricingForUser } = require("../../services/programPricingService");
 const {
   getActiveCoachCheckoutOffer,
   buildUserProgramGetPayload,
@@ -32,10 +33,17 @@ exports.getProgramForUserController = asyncHandler(async (req, res) => {
   const user = await getUserById(userId);
   const program = await getActiveProgramForUser(userId);
   const offer = getActiveCoachCheckoutOffer(user, "program");
+  let pricing = null;
+  try {
+    pricing = await resolveProgramPricingForUser(user);
+  } catch {
+    pricing = null;
+  }
   const payload = buildUserProgramGetPayload({
     user,
     assignedProgram: program ? toPublicUserProgram(program) : null,
     offer,
+    pricing,
   });
 
   return res.status(200).json({

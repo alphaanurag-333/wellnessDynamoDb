@@ -16,7 +16,7 @@ const {
   buildContainsFilter,
   paginateItems,
 } = require("../utils/dynamoList");
-const { matchesAssignedClientTier } = require("./userAssignmentLogic");
+const { matchesAssignedClientTier, normalizeClientCategory } = require("./userAssignmentLogic");
 const {
   registerReferralCode,
   generateUniqueReferralCode,
@@ -31,6 +31,7 @@ const SPARSE_GSI_ATTRIBUTES = new Set(["parentCoachId", "dobMonthDay"]);
 const USER_ALLOWED_STATUS = ["active", "inactive", "blocked"];
 const USER_ALLOWED_GENDERS = ["male", "female", "other", "boy", "girl", "guess"];
 const USER_ALLOWED_TIERS = ["seek", "consultancy_only", "heal", "maintenance"];
+const USER_ALLOWED_CLIENT_CATEGORIES = ["individual", "eagle"];
 const USER_ALLOWED_ASSIGNMENT_STATUSES = ["assigned", "pending_admin"];
 const USER_ALLOWED_ASSIGNED_COACH_TYPES = ["wellness_coach", "assistant_wellness_coach"];
 const USER_ALLOWED_ASSIGNMENT_SOURCES = ["referral", "admin_manual", "coach_reassign"];
@@ -204,6 +205,7 @@ function sanitizeUpdateField(key, value) {
     return normalizeProfileImageField(value);
   }
   if (key === "userTier") return normalizeUserTier(value);
+  if (key === "clientCategory") return normalizeClientCategory(value);
   if (key === "assignmentStatus") return normalizeAssignmentStatus(value);
   if (key === "assignedCoachType") return normalizeAssignedCoachType(value);
   if (key === "assignmentSource") return normalizeAssignmentSource(value);
@@ -319,6 +321,7 @@ function buildUserItem(input, { id, now } = {}) {
     resetPasswordToken: input.resetPasswordToken != null ? String(input.resetPasswordToken) : null,
     resetPasswordExpire: input.resetPasswordExpire ? normalizeDob(input.resetPasswordExpire) : null,
     userTier: normalizeUserTier(input.userTier),
+    clientCategory: normalizeClientCategory(input.clientCategory),
     referralCode: normalizeReferralCodeField(input.referralCode),
     referredByUserId: input.referredByUserId != null ? String(input.referredByUserId).trim() || null : null,
     referredByCode: normalizeReferralCodeField(input.referredByCode),
@@ -561,7 +564,7 @@ async function deleteUser(id) {
 
 async function listUsersByParentCoachId(
   parentCoachId,
-  { page = 1, limit = 20, search, userTier = "client", scope = "all", unpaginated = false } = {}
+  { page = 1, limit = 20, search, userTier = "client", scope = "all", unpaginated = false, clientCategory } = {}
 ) {
   const coachId = String(parentCoachId || "").trim();
   if (!coachId) {
@@ -573,6 +576,7 @@ async function listUsersByParentCoachId(
   const normalizedSearch = String(search || "").trim().toLowerCase();
   const normalizedTier = String(userTier || "client").toLowerCase().trim();
   const normalizedScope = String(scope || "all").toLowerCase().trim();
+  const normalizedCategory = clientCategory ? normalizeClientCategory(clientCategory, "") : "";
 
   const { Items = [] } = await docClient.send(
     new QueryCommand({
@@ -609,6 +613,10 @@ async function listUsersByParentCoachId(
         String(r.email || "").toLowerCase().includes(normalizedSearch) ||
         String(r.phone || "").includes(normalizedSearch)
     );
+  }
+
+  if (normalizedCategory) {
+    rows = rows.filter((row) => normalizeClientCategory(row.clientCategory) === normalizedCategory);
   }
 
   const total = rows.length;
@@ -740,11 +748,12 @@ async function listUsersWithBirthdayOnDate(dateOnly) {
   return [...byId.values()].filter((user) => userBirthdayMatchesDate(user.dob, dateOnly));
 }
 
-async function listUsers({ page = 1, limit = 20, status, search, userTier, assignmentStatus } = {}) {
+async function listUsers({ page = 1, limit = 20, status, search, userTier, assignmentStatus, clientCategory } = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const normalizedTier = userTier ? normalizeUserTier(userTier, "") : "";
   const normalizedAssignment = assignmentStatus ? normalizeAssignmentStatus(assignmentStatus) : "";
-  const needsPostFilter = Boolean(normalizedTier || normalizedAssignment);
+  const normalizedCategory = clientCategory ? normalizeClientCategory(clientCategory, "") : "";
+  const needsPostFilter = Boolean(normalizedTier || normalizedAssignment || normalizedCategory);
   const searchFilter = buildContainsFilter(["name", "email", "phone"], search);
 
   // When filtering by tier/assignment in memory, load the full status set first, then page.
@@ -772,6 +781,9 @@ async function listUsers({ page = 1, limit = 20, status, search, userTier, assig
   if (normalizedAssignment) {
     users = users.filter((row) => normalizeAssignmentStatus(row.assignmentStatus) === normalizedAssignment);
   }
+  if (normalizedCategory) {
+    users = users.filter((row) => normalizeClientCategory(row.clientCategory) === normalizedCategory);
+  }
 
   if (needsPostFilter) {
     const paged = paginateItems(users, page, limit, 200);
@@ -792,6 +804,7 @@ module.exports = {
   USER_ALLOWED_STATUS,
   USER_ALLOWED_GENDERS,
   USER_ALLOWED_TIERS,
+  USER_ALLOWED_CLIENT_CATEGORIES,
   USER_ALLOWED_ASSIGNMENT_STATUSES,
   USER_ALLOWED_ASSIGNED_COACH_TYPES,
   USER_ALLOWED_DIETARY_PREFERENCES,

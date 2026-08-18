@@ -72,7 +72,7 @@ export const CONFIG_GROUPS = {
         {
           id: "app-gst",
           name: "GST option",
-          note: "On → client pays GST · Off → IRW absorbs it",
+          note: "Set GST % · On → client pays GST · Off → IRW absorbs it",
           owner: "Admin",
           app: true,
           web: false,

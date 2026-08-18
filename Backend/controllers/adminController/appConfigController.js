@@ -162,7 +162,13 @@ function normalizeAppSubscriptionPricing(value) {
     }
 
     ids.add(id);
-    return { id, name, amount };
+    const clientCategory = String(row?.clientCategory ?? "").trim().toLowerCase();
+    return {
+      id,
+      name,
+      amount,
+      ...(clientCategory && clientCategory !== "individual" ? { clientCategory } : {}),
+    };
   });
 }
 

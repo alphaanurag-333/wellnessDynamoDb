@@ -1270,6 +1270,7 @@ export function ConfigDetailPage() {
   const [coachesCanAddSubscriptionValidity, setCoachesCanAddSubscriptionValidity] = useState(true);
   const [coachesCanAddAppHeal, setCoachesCanAddAppHeal] = useState(true);
   const [gstOn, setGstOn] = useState(false);
+  const [gstPercent, setGstPercent] = useState("18");
   const [gateways, setGateways] = useState(createDefaultGateways);
   const [tosCopy, setTosCopy] = useState(TOS_CONTENT);
   const [dpaCopy, setDpaCopy] = useState(DPA_CONTENT);
@@ -1701,6 +1702,8 @@ export function ConfigDetailPage() {
           <GstSection
             gstOn={gstOn}
             setGstOn={setGstOn}
+            gstPercent={gstPercent}
+            setGstPercent={setGstPercent}
             onToast={onToast}
           />
         );
@@ -2156,6 +2159,7 @@ export function ConfigDetailPage() {
           programRows,
           subscriptionRows: subRows,
           gstOn,
+          gstPercent,
           gateways,
           activeGateway,
           tosCopy,

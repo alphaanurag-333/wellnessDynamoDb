@@ -14,6 +14,57 @@ const {
   calculateOfferPricing,
 } = require("./coachCheckoutService");
 
+function money(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function toPublicPricingBreakdown(pricing = {}, extras = {}) {
+  const baseAmount = money(pricing.baseAmount);
+  const discountAmount = money(pricing.discountAmount);
+  const discountedBase = money(pricing.discountedBase ?? Math.max(0, baseAmount - discountAmount));
+  const taxAmount = money(pricing.taxAmount);
+  const taxPercent = money(pricing.taxPercent);
+  const taxType = String(pricing.taxType || extras.taxType || "exclusive").toLowerCase() || "exclusive";
+  const totalAmount = money(pricing.totalAmount);
+  const discountPercent = money(pricing.discountPercent ?? extras.discountPercent);
+  const discountLabel = String(pricing.discountLabel || extras.discountLabel || "").trim();
+  const currency = pricing.currency || "INR";
+  const gstInclusive = taxType === "inclusive";
+  const taxLabel =
+    taxPercent > 0
+      ? `GST (${gstInclusive ? "Inclusive" : "Exclusive"}, ${taxPercent}%)`
+      : "GST";
+  const discountLineLabel = discountPercent > 0
+    ? discountLabel
+      ? `Discount (${discountPercent}% · ${discountLabel})`
+      : `Discount (${discountPercent}%)`
+    : "Discount";
+
+  return {
+    currency,
+    baseAmount,
+    discountPercent,
+    discountLabel,
+    discountAmount,
+    discountedBase,
+    taxType,
+    taxPercent,
+    taxAmount,
+    gstAmount: taxAmount,
+    gstInclusive,
+    taxLabel,
+    totalAmount,
+    netPayable: totalAmount,
+    lines: [
+      { key: "base", label: "Base amount", amount: baseAmount },
+      { key: "discount", label: discountLineLabel, amount: roundMoney(-discountAmount) },
+      { key: "gst", label: taxLabel, amount: taxAmount },
+      { key: "total", label: "Payable", amount: totalAmount },
+    ],
+  };
+}
+
 function calculateProgramPricing(config, { baseAmount }) {
   const price = roundMoney(parseMoney(baseAmount));
   const taxPercent = parseMoney(config?.tax_value);
@@ -47,6 +98,8 @@ function calculateProgramPricing(config, { baseAmount }) {
     taxType,
     totalAmount,
     currency: "INR",
+    discountPercent: 0,
+    discountLabel: "",
   };
 }
 
@@ -67,6 +120,8 @@ function pricingFromTransaction(transaction, fallback) {
     taxType: transaction.taxType,
     totalAmount: transaction.totalAmount,
     currency: transaction.currency || "INR",
+    discountPercent: Number(transaction.userSnapshot?.discountPercent) || 0,
+    discountLabel: String(transaction.userSnapshot?.discountLabel || "").trim(),
   };
 }
 
@@ -77,30 +132,43 @@ async function previewCoachProgramOffer(user, offer) {
   const transaction = offer.transactionId
     ? await getConsultancyTransactionById(offer.transactionId)
     : null;
-  const pricing = pricingFromTransaction(
+  const freshPricing = calculateOfferPricing(config, {
+    baseAmount: offer.amount,
+    discountPercent: offer.discountPercent,
+  });
+  const storedPricing = pricingFromTransaction(
     transaction && String(transaction.paymentStatus || "").toLowerCase() === "pending"
       ? transaction
       : null,
-    calculateOfferPricing(config, {
-      baseAmount: offer.amount,
-      discountPercent: offer.discountPercent,
-    })
+    null
   );
+  const pricing =
+    storedPricing && Number(storedPricing.totalAmount) === Number(freshPricing.totalAmount)
+      ? storedPricing
+      : freshPricing;
 
   const gateway = getActiveRazorpayGateway(config);
-  const publicOffer = toPublicCoachProgramOffer(offer);
+  const breakdown = toPublicPricingBreakdown(pricing, {
+    discountPercent: offer.discountPercent,
+    discountLabel: offer.discountLabel,
+  });
+  const publicOffer = {
+    ...toPublicCoachProgramOffer(offer),
+    netPayable: breakdown.netPayable,
+  };
 
   return {
     source: "coach_checkout",
     program: {
       id: publicOffer.itemId,
       title: publicOffer.itemName,
-      price: publicOffer.amount,
-      currency: pricing.currency,
+      price: breakdown.netPayable,
+      listPrice: publicOffer.amount,
+      currency: breakdown.currency,
       source: "coach_checkout",
     },
     offer: publicOffer,
-    pricing,
+    pricing: breakdown,
     paymentGateway: gateway ? { provider: gateway.provider, keyId: gateway.keyId } : null,
     mockPaymentsEnabled: !gateway,
   };
@@ -131,7 +199,9 @@ async function previewProgramCheckout(userId) {
   const config = await getAppConfig();
   if (!config) throwNamed("App configuration not found", "ConfigNotFoundError");
 
-  const pricing = calculateProgramPricing(config, { baseAmount: program.price });
+  const pricing = toPublicPricingBreakdown(
+    calculateProgramPricing(config, { baseAmount: program.price })
+  );
   const gateway = getActiveRazorpayGateway(config);
 
   return {
@@ -142,8 +212,9 @@ async function previewProgramCheckout(userId) {
       title: program.title,
       programType: program.programType,
       description: program.description,
-      price: program.price,
-      currency: program.currency,
+      price: pricing.netPayable,
+      listPrice: program.price,
+      currency: program.currency || pricing.currency,
     },
     offer: null,
     pricing,
@@ -152,7 +223,26 @@ async function previewProgramCheckout(userId) {
   };
 }
 
+async function resolveProgramPricingForUser(user) {
+  if (!user) return null;
+  const expiredOffer = getExpiredCoachCheckoutOffer(user, "program");
+  if (expiredOffer) return null;
+  const offer = getActiveCoachCheckoutOffer(user, "program");
+  if (offer) {
+    const preview = await previewCoachProgramOffer(user, offer);
+    return preview.pricing;
+  }
+  if (user.programPurchased) return null;
+  const program = await getPurchasableProgramForUser(user.id);
+  if (!program) return null;
+  const config = await getAppConfig();
+  if (!config) return null;
+  return toPublicPricingBreakdown(calculateProgramPricing(config, { baseAmount: program.price }));
+}
+
 module.exports = {
   calculateProgramPricing,
+  toPublicPricingBreakdown,
   previewProgramCheckout,
+  resolveProgramPricingForUser,
 };

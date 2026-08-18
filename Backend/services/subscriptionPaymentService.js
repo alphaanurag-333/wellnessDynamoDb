@@ -1,9 +1,14 @@
 const { getAppConfig } = require("../models/appConfigModel");
 const config = require("../config");
 const { getUserById, updateUser } = require("../models/userModel");
-const { convertSeekToHeal } = require("../models/userConversionModel");
-const { isConsultancyOnlyTier, isHealTier } = require("../models/userAssignmentLogic");
+const { convertSeekToHeal, convertHealToMaintenance } = require("../models/userConversionModel");
+const {
+  isConsultancyOnlyTier,
+  isHealTier,
+  isMaintenanceTier,
+} = require("../models/userAssignmentLogic");
 const { buildSubscriptionCheckoutPreview } = require("../services/subscriptionPricingService");
+const { resolveSubscriptionPlanForPayment } = require("../services/subscriptionCategoryService");
 const { getActiveRazorpayGateway } = require("../services/consultancyPricingService");
 const {
   createRazorpayOrder,
@@ -21,6 +26,12 @@ const {
   toPublicTransaction,
 } = require("../models/consultancyTransactionModel");
 const { emitPaymentReceived } = require("./adminActivityService");
+const {
+  getActiveCoachCheckoutOffer,
+  getExpiredCoachCheckoutOffer,
+  isPendingCheckoutOrderReusable,
+  toPublicCoachProgramOffer,
+} = require("./coachCheckoutService");
 
 function logPaymentFailure({ transactionId, userId, reason, productType = "subscription" }) {
   console.error("[SubscriptionPayment] payment failed", {
@@ -50,30 +61,71 @@ async function createSubscriptionOrder(userId, { paymentMethod = "upi" } = {}) {
     throw err;
   }
 
-  if (isHealTier(user.userTier)) {
-    const err = new Error("Subscription is already active for this account");
-    err.name = "AlreadyConvertedError";
+  const expiredOffer = getExpiredCoachCheckoutOffer(user, "subscription");
+  if (expiredOffer) {
+    const err = new Error("This payment link has expired");
+    err.name = "ValidationError";
     throw err;
   }
 
-  if (!isConsultancyOnlyTier(user.userTier)) {
-    const err = new Error("Complete consultancy payment before subscribing to Seek to Heal");
-    err.name = "ConsultancyRequiredError";
-    throw err;
+  const offer = getActiveCoachCheckoutOffer(user, "subscription");
+  const plan = await resolveSubscriptionPlanForPayment({
+    catalogItemId: offer?.itemId || null,
+    catalogItemName: offer?.itemName || "",
+  });
+
+  if (plan.kind === "maintenance") {
+    if (!isHealTier(user.userTier) && !isMaintenanceTier(user.userTier)) {
+      const err = new Error("Maintenance plan is available after the Heal course period ends");
+      err.name = "ValidationError";
+      throw err;
+    }
+  } else {
+    if (isHealTier(user.userTier) || isMaintenanceTier(user.userTier)) {
+      const err = new Error("Subscription is already active for this account");
+      err.name = "AlreadyConvertedError";
+      throw err;
+    }
+    if (!offer && !isConsultancyOnlyTier(user.userTier)) {
+      const err = new Error("Complete consultancy payment before subscribing to Seek to Heal");
+      err.name = "ConsultancyRequiredError";
+      throw err;
+    }
   }
 
   const existingPending = await getPendingSubscriptionOrderForUser(userId);
-  if (existingPending && (!existingPending.linkExpiresAt || new Date(existingPending.linkExpiresAt).getTime() > Date.now())) {
+  const previewForReuse = existingPending ? await buildSubscriptionCheckoutPreview(userId) : null;
+  if (
+    isPendingCheckoutOrderReusable(existingPending) &&
+    previewForReuse &&
+    Number(existingPending.totalAmount) === Number(previewForReuse.pricing.totalAmount)
+  ) {
     const appConfig = await getAppConfig();
     const gateway = getActiveRazorpayGateway(appConfig);
     const useMock = shouldUseMockPayments(gateway);
+    const publicOffer = offer ? toPublicCoachProgramOffer(offer) : null;
     return {
       transaction: toPublicTransaction(existingPending),
       pricing: {
         baseAmount: existingPending.baseAmount,
+        discountAmount: existingPending.discountAmount,
+        discountedBase: existingPending.discountedBase,
+        taxAmount: existingPending.taxAmount,
+        taxPercent: existingPending.taxPercent,
+        taxType: existingPending.taxType,
         totalAmount: existingPending.totalAmount,
         currency: existingPending.currency || "INR",
       },
+      subscription: publicOffer
+        ? {
+            id: publicOffer.itemId,
+            name: publicOffer.itemName,
+            amount: publicOffer.amount,
+            currency: existingPending.currency || "INR",
+            source: "coach_checkout",
+          }
+        : null,
+      offer: publicOffer,
       payment: {
         provider: useMock ? "mock" : "razorpay",
         orderId: existingPending.paymentGatewayOrderId,
@@ -86,7 +138,17 @@ async function createSubscriptionOrder(userId, { paymentMethod = "upi" } = {}) {
     };
   }
 
-  const preview = await buildSubscriptionCheckoutPreview();
+  if (
+    existingPending?.checkoutOffer &&
+    existingPending.linkExpiresAt &&
+    new Date(existingPending.linkExpiresAt).getTime() <= Date.now()
+  ) {
+    const err = new Error("This payment link has expired");
+    err.name = "ValidationError";
+    throw err;
+  }
+
+  const preview = await buildSubscriptionCheckoutPreview(userId);
   if (preview.pricing.totalAmount <= 0) {
     const err = new Error("Invalid payable amount");
     err.name = "ValidationError";
@@ -103,9 +165,19 @@ async function createSubscriptionOrder(userId, { paymentMethod = "upi" } = {}) {
     paymentStatus: "pending",
     paymentProvider: useMock ? "mock" : "razorpay",
     paymentMethod,
-    ...preview.pricing,
+    baseAmount: preview.pricing.baseAmount,
+    discountAmount: preview.pricing.discountAmount,
+    discountedBase: preview.pricing.discountedBase,
+    taxAmount: preview.pricing.taxAmount,
+    taxPercent: preview.pricing.taxPercent,
+    taxType: preview.pricing.taxType,
+    totalAmount: preview.pricing.totalAmount,
+    currency: preview.pricing.currency,
     referralCodeUsed: null,
     referralCodeValid: false,
+    parentCoachId: user.parentCoachId || offer?.wellnessCoachId || null,
+    checkoutOffer: preview.source === "coach_checkout",
+    linkExpiresAt: offer?.expiresAt || null,
     userSnapshot: {
       id: user.id,
       name: user.name,
@@ -113,6 +185,9 @@ async function createSubscriptionOrder(userId, { paymentMethod = "upi" } = {}) {
       phone: user.phone,
       phoneCountryCode: user.phoneCountryCode,
       userTier: user.userTier,
+      catalogItemId: offer?.itemId || preview.subscription?.id || null,
+      catalogItemName: offer?.itemName || preview.subscription?.name || "",
+      planKind: plan.kind,
     },
   });
 
@@ -131,6 +206,7 @@ async function createSubscriptionOrder(userId, { paymentMethod = "upi" } = {}) {
         transactionId: transaction.id,
         userId,
         productType: "subscription",
+        catalogItemId: offer?.itemId || preview.subscription?.id || "",
       },
     });
   }
@@ -147,6 +223,8 @@ async function createSubscriptionOrder(userId, { paymentMethod = "upi" } = {}) {
     return {
       transaction: paidTransaction,
       pricing: preview.pricing,
+      subscription: preview.subscription,
+      offer: preview.offer || null,
       payment: {
         provider: "mock",
         orderId: order.id,
@@ -162,6 +240,8 @@ async function createSubscriptionOrder(userId, { paymentMethod = "upi" } = {}) {
   return {
     transaction: toPublicTransaction(updated),
     pricing: preview.pricing,
+    subscription: preview.subscription,
+    offer: preview.offer || null,
     payment: {
       provider: useMock ? "mock" : "razorpay",
       orderId: order.id,
@@ -173,6 +253,36 @@ async function createSubscriptionOrder(userId, { paymentMethod = "upi" } = {}) {
   };
 }
 
+async function resolveSubscriptionPlanFromTransaction(transaction) {
+  const snapshot = transaction?.userSnapshot || {};
+  return resolveSubscriptionPlanForPayment({
+    catalogItemId: snapshot.catalogItemId || null,
+    catalogItemName: snapshot.catalogItemName || "",
+  });
+}
+
+async function applyPaidSubscriptionOutcome(user, plan) {
+  if (plan.kind === "maintenance") {
+    if (isMaintenanceTier(user.userTier)) return;
+    try {
+      await convertHealToMaintenance(user.id);
+    } catch (err) {
+      console.error("[SubscriptionPayment] convertHealToMaintenance failed", err.message);
+      throw err;
+    }
+    return;
+  }
+
+  try {
+    await convertSeekToHeal(user.id);
+  } catch (err) {
+    if (err?.name !== "AlreadyConvertedError") {
+      console.error("[SubscriptionPayment] convertSeekToHeal failed", err.message);
+      throw err;
+    }
+  }
+}
+
 async function finalizePaidSubscriptionTransaction(transaction, { paymentId, provider }) {
   const user = await getUserById(transaction.userId);
   if (!user) {
@@ -181,6 +291,7 @@ async function finalizePaidSubscriptionTransaction(transaction, { paymentId, pro
     throw err;
   }
 
+  const plan = await resolveSubscriptionPlanFromTransaction(transaction);
   const paidAt = new Date().toISOString();
   const { item: paidRecord, alreadyPaid } = await markTransactionPaidIfPending(transaction.id, {
     paymentGatewayPaymentId: paymentId || null,
@@ -188,7 +299,9 @@ async function finalizePaidSubscriptionTransaction(transaction, { paymentId, pro
     paidAt,
     userSnapshot: {
       ...(transaction.userSnapshot || {}),
-      userTier: "heal",
+      userTier: plan.userTier,
+      clientCategory: plan.clientCategory,
+      planKind: plan.kind,
     },
   });
 
@@ -199,20 +312,16 @@ async function finalizePaidSubscriptionTransaction(transaction, { paymentId, pro
   emitPaymentReceived({
     user,
     amount: transaction.totalAmount,
-    productLabel: "Subscription",
+    productLabel: plan.kind === "maintenance" ? "Maintenance" : "Subscription",
     transactionId: transaction.id,
   });
 
-  try {
-    await convertSeekToHeal(user.id);
-  } catch (err) {
-    if (err?.name !== "AlreadyConvertedError") {
-      console.error("[SubscriptionPayment] convertSeekToHeal failed", err.message);
-      throw err;
-    }
-  }
+  await applyPaidSubscriptionOutcome(user, plan);
 
-  await updateUser(user.id, { pendingCoachCheckout: {} });
+  await updateUser(user.id, {
+    pendingCoachCheckout: {},
+    ...(plan.clientCategory === "eagle" ? { clientCategory: "eagle" } : {}),
+  });
 
   const fresh = await getConsultancyTransactionById(transaction.id);
   return toPublicTransaction(fresh);
@@ -292,8 +401,8 @@ async function verifySubscriptionPayment(userId, {
   });
 }
 
-async function previewSubscriptionCheckout() {
-  return buildSubscriptionCheckoutPreview();
+async function previewSubscriptionCheckout(userId) {
+  return buildSubscriptionCheckoutPreview(userId);
 }
 
 module.exports = {
@@ -301,4 +410,5 @@ module.exports = {
   createSubscriptionOrder,
   verifySubscriptionPayment,
   finalizePaidSubscriptionTransaction,
+  resolveSubscriptionPlanFromTransaction,
 };

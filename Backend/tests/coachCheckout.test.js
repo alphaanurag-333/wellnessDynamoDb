@@ -35,10 +35,35 @@ describe("coach checkout helpers", () => {
       { tax_value: 18, tax_type: "exclusive" },
       { baseAmount: 1000, discountPercent: 10 }
     );
+    assert.equal(pricing.baseAmount, 1000);
     assert.equal(pricing.discountAmount, 100);
     assert.equal(pricing.discountedBase, 900);
     assert.equal(pricing.taxAmount, 162);
     assert.equal(pricing.totalAmount, 1062);
+    assert.equal(pricing.discountPercent, 10);
+  });
+
+  it("takes 20% off the listed 22999 when tax is inclusive", () => {
+    const pricing = calculateOfferPricing(
+      { tax_value: 18, tax_type: "inclusive" },
+      { baseAmount: 22999, discountPercent: 20 }
+    );
+    assert.equal(pricing.baseAmount, 22999);
+    assert.equal(pricing.discountAmount, 4599.8);
+    assert.equal(pricing.discountedBase, 18399.2);
+    assert.equal(pricing.totalAmount, 18399.2);
+    assert.ok(pricing.taxAmount > 0);
+  });
+
+  it("applies 10% off 29999 then exclusive 5% GST", () => {
+    const pricing = calculateOfferPricing(
+      { tax_value: 5, tax_type: "exclusive" },
+      { baseAmount: 29999, discountPercent: 10 }
+    );
+    assert.equal(pricing.discountAmount, 2999.9);
+    assert.equal(pricing.discountedBase, 26999.1);
+    assert.equal(pricing.taxAmount, 1349.96);
+    assert.equal(pricing.totalAmount, 28349.06);
   });
 });
 
@@ -134,7 +159,52 @@ describe("coach program offer DTO", () => {
     assert.equal(payload.payable, true);
     assert.equal(payload.program.source, "coach_checkout");
     assert.equal(payload.program.id, "fat-loss");
+    assert.equal(payload.program.price, 25123.99);
+    assert.equal(payload.program.listPrice, 24999);
+    assert.equal(payload.offer.netPayable, 25123.99);
     assert.equal(payload.offer.transactionId, "txn-1");
+  });
+
+  it("uses pricing.netPayable and exposes the amount breakdown on GET", () => {
+    const payload = buildUserProgramGetPayload({
+      user: { programPurchased: false },
+      offer: {
+        productType: "program",
+        itemId: "thyroid",
+        itemName: "Thyroid Care",
+        amount: 22999,
+        discountPercent: 20,
+        discountLabel: "annual plan",
+        netPayable: 22999,
+        expiresAt: futureIso(),
+        transactionId: "txn-2",
+      },
+      pricing: {
+        currency: "INR",
+        baseAmount: 22999,
+        discountPercent: 20,
+        discountLabel: "annual plan",
+        discountAmount: 4599.8,
+        taxAmount: 0,
+        gstAmount: 0,
+        totalAmount: 18399.2,
+        netPayable: 18399.2,
+        lines: [
+          { key: "base", label: "Base amount", amount: 22999 },
+          { key: "discount", label: "Discount (20% · annual plan)", amount: -4599.8 },
+          { key: "gst", label: "GST", amount: 0 },
+          { key: "total", label: "Payable", amount: 18399.2 },
+        ],
+      },
+    });
+
+    assert.equal(payload.program.price, 18399.2);
+    assert.equal(payload.program.listPrice, 22999);
+    assert.equal(payload.offer.netPayable, 18399.2);
+    assert.equal(payload.pricing.baseAmount, 22999);
+    assert.equal(payload.pricing.discountAmount, 4599.8);
+    assert.equal(payload.pricing.gstAmount, 0);
+    assert.equal(payload.pricing.lines[0].key, "base");
   });
 
   it("keeps the catalog assignment when no offer exists", () => {
