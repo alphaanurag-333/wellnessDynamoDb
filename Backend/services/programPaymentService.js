@@ -25,7 +25,12 @@ const {
 } = require("../utils/paymentGateway");
 const { getAppConfig } = require("../models/appConfigModel");
 const { emitPaymentReceived } = require("./adminActivityService");
-const { getActiveCoachCheckoutOffer } = require("./coachCheckoutService");
+const {
+  getActiveCoachCheckoutOffer,
+  getExpiredCoachCheckoutOffer,
+  isPendingCheckoutOrderReusable,
+  toPublicCoachProgramOffer,
+} = require("./coachCheckoutService");
 
 function logPaymentFailure({ transactionId, userId, reason }) {
   console.error("[ProgramPayment] payment failed", {
@@ -55,6 +60,13 @@ async function createProgramOrder(userId, { paymentMethod = "upi" } = {}) {
     throw err;
   }
 
+  const expiredOffer = getExpiredCoachCheckoutOffer(user, "program");
+  if (expiredOffer) {
+    const err = new Error("This payment link has expired");
+    err.name = "ValidationError";
+    throw err;
+  }
+
   const offer = getActiveCoachCheckoutOffer(user, "program");
   if (!offer && !isConsultancyOnlyTier(user.userTier)) {
     const err = new Error("Complete consultancy payment before purchasing a Wellness Program");
@@ -69,10 +81,11 @@ async function createProgramOrder(userId, { paymentMethod = "upi" } = {}) {
   }
 
   const existingPending = await getPendingProgramOrderForUser(userId);
-  if (existingPending && (!existingPending.linkExpiresAt || new Date(existingPending.linkExpiresAt).getTime() > Date.now())) {
+  if (isPendingCheckoutOrderReusable(existingPending)) {
     const appConfig = await getAppConfig();
     const gateway = getActiveRazorpayGateway(appConfig);
     const useMock = shouldUseMockPayments(gateway);
+    const publicOffer = offer ? toPublicCoachProgramOffer(offer) : null;
     return {
       transaction: toPublicTransaction(existingPending),
       pricing: {
@@ -89,7 +102,9 @@ async function createProgramOrder(userId, { paymentMethod = "upi" } = {}) {
         id: existingPending.userSnapshot?.programId || offer?.itemId || null,
         title: existingPending.userSnapshot?.programTitle || existingPending.userSnapshot?.catalogItemName || offer?.itemName || "",
         price: existingPending.baseAmount,
+        source: publicOffer ? "coach_checkout" : "assigned_program",
       },
+      offer: publicOffer,
       payment: {
         provider: useMock ? "mock" : "razorpay",
         orderId: existingPending.paymentGatewayOrderId,
@@ -102,6 +117,16 @@ async function createProgramOrder(userId, { paymentMethod = "upi" } = {}) {
     };
   }
 
+  if (
+    existingPending?.checkoutOffer &&
+    existingPending.linkExpiresAt &&
+    new Date(existingPending.linkExpiresAt).getTime() <= Date.now()
+  ) {
+    const err = new Error("This payment link has expired");
+    err.name = "ValidationError";
+    throw err;
+  }
+
   const preview = await previewProgramCheckout(userId);
   if (preview.pricing.totalAmount <= 0) {
     const err = new Error("Invalid payable amount");
@@ -109,7 +134,9 @@ async function createProgramOrder(userId, { paymentMethod = "upi" } = {}) {
     throw err;
   }
 
-  const program = await getPurchasableProgramForUser(userId);
+  const program = preview.source === "coach_checkout"
+    ? preview.program
+    : await getPurchasableProgramForUser(userId);
   if (!program) {
     const err = new Error("No purchasable Wellness Program available");
     err.name = "NotFoundError";
@@ -136,7 +163,9 @@ async function createProgramOrder(userId, { paymentMethod = "upi" } = {}) {
     currency: preview.pricing.currency,
     referralCodeUsed: null,
     referralCodeValid: false,
-    parentCoachId: user.parentCoachId || null,
+    parentCoachId: user.parentCoachId || offer?.wellnessCoachId || null,
+    checkoutOffer: preview.source === "coach_checkout",
+    linkExpiresAt: offer?.expiresAt || null,
     userSnapshot: {
       id: user.id,
       name: user.name,
@@ -147,6 +176,8 @@ async function createProgramOrder(userId, { paymentMethod = "upi" } = {}) {
       programId: program.id,
       programTitle: program.title,
       programType: program.programType,
+      catalogItemId: offer?.itemId || preview.offer?.itemId || null,
+      catalogItemName: offer?.itemName || preview.offer?.itemName || program.title || "",
     },
   });
 
@@ -183,6 +214,7 @@ async function createProgramOrder(userId, { paymentMethod = "upi" } = {}) {
       transaction: paidTransaction,
       pricing: preview.pricing,
       program: preview.program,
+      offer: preview.offer || null,
       payment: {
         provider: "mock",
         orderId: order.id,
@@ -199,6 +231,7 @@ async function createProgramOrder(userId, { paymentMethod = "upi" } = {}) {
     transaction: toPublicTransaction(updated),
     pricing: preview.pricing,
     program: preview.program,
+    offer: preview.offer || null,
     payment: {
       provider: useMock ? "mock" : "razorpay",
       orderId: order.id,

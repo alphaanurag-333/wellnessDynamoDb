@@ -39,6 +39,8 @@ export async function getCoachCheckoutOptions(fallbacks) {
     const config = data?.data || {};
     const pricing = config.app_program_pricing;
     const subscriptions = config.app_subscription_pricing;
+    const legacyValidityPeriods = config.coach_validity_periods;
+    const legacyDiscountSlabs = config.coach_discount_slabs;
     return {
       programPricing: Array.isArray(pricing)
         ? pricing.map(mapProgram).filter((row) => row.name)
@@ -46,22 +48,34 @@ export async function getCoachCheckoutOptions(fallbacks) {
       subscriptionPricing: Array.isArray(subscriptions)
         ? subscriptions.map(mapSubscription).filter((row) => row.name)
         : null,
-      validityPeriods: mapStringOptions(
-        config.coach_validity_periods,
+      programValidityPeriods: mapStringOptions(
+        config.app_program_validity_periods ?? legacyValidityPeriods,
         fallbacks.validityPeriods,
       ),
-      discountSlabs: mapDiscountSlabs(
-        config.coach_discount_slabs,
+      programDiscountSlabs: mapDiscountSlabs(
+        config.app_program_discount_slabs ?? legacyDiscountSlabs,
+        fallbacks.discountSlabs,
+      ),
+      subscriptionValidityPeriods: mapStringOptions(
+        config.app_subscription_validity_periods ?? legacyValidityPeriods,
+        fallbacks.validityPeriods,
+      ),
+      subscriptionDiscountSlabs: mapDiscountSlabs(
+        config.app_subscription_discount_slabs ?? legacyDiscountSlabs,
         fallbacks.discountSlabs,
       ),
       appHealPeriods: mapStringOptions(
         config.app_heal_validity_periods,
         fallbacks.appHealPeriods,
       ),
-      coachesCanAddValidity:
-        config.coaches_can_add_validity === undefined
+      coachesCanAddProgramValidity:
+        (config.coaches_can_add_program_validity ?? config.coaches_can_add_validity) === undefined
           ? true
-          : Boolean(config.coaches_can_add_validity),
+          : Boolean(config.coaches_can_add_program_validity ?? config.coaches_can_add_validity),
+      coachesCanAddSubscriptionValidity:
+        (config.coaches_can_add_subscription_validity ?? config.coaches_can_add_validity) === undefined
+          ? true
+          : Boolean(config.coaches_can_add_subscription_validity ?? config.coaches_can_add_validity),
       coachesCanAddAppHeal:
         config.coaches_can_add_app_heal === undefined
           ? true
@@ -74,13 +88,31 @@ export async function getCoachCheckoutOptions(fallbacks) {
 
 export async function saveCoachCheckoutOptions(options, { programPricing, subscriptionPricing } = {}) {
   try {
-    const payload = {
-      coach_validity_periods: options.validityPeriods,
-      coach_discount_slabs: options.discountSlabs,
-      app_heal_validity_periods: options.appHealPeriods,
-      coaches_can_add_validity: options.coachesCanAddValidity,
-      coaches_can_add_app_heal: options.coachesCanAddAppHeal,
-    };
+    const payload = {};
+    if (options.programValidityPeriods !== undefined) {
+      payload.app_program_validity_periods = options.programValidityPeriods;
+    }
+    if (options.programDiscountSlabs !== undefined) {
+      payload.app_program_discount_slabs = options.programDiscountSlabs;
+    }
+    if (options.subscriptionValidityPeriods !== undefined) {
+      payload.app_subscription_validity_periods = options.subscriptionValidityPeriods;
+    }
+    if (options.subscriptionDiscountSlabs !== undefined) {
+      payload.app_subscription_discount_slabs = options.subscriptionDiscountSlabs;
+    }
+    if (options.appHealPeriods !== undefined) {
+      payload.app_heal_validity_periods = options.appHealPeriods;
+    }
+    if (options.coachesCanAddProgramValidity !== undefined) {
+      payload.coaches_can_add_program_validity = options.coachesCanAddProgramValidity;
+    }
+    if (options.coachesCanAddSubscriptionValidity !== undefined) {
+      payload.coaches_can_add_subscription_validity = options.coachesCanAddSubscriptionValidity;
+    }
+    if (options.coachesCanAddAppHeal !== undefined) {
+      payload.coaches_can_add_app_heal = options.coachesCanAddAppHeal;
+    }
     if (programPricing) {
       payload.app_program_pricing = programPricing.map(mapProgram);
     }
@@ -97,10 +129,13 @@ export async function saveCoachCheckoutOptions(options, { programPricing, subscr
       subscriptionPricing: Array.isArray(config.app_subscription_pricing)
         ? config.app_subscription_pricing.map(mapSubscription).filter((row) => row.name)
         : [],
-      validityPeriods: mapStringOptions(config.coach_validity_periods, []),
-      discountSlabs: mapDiscountSlabs(config.coach_discount_slabs, []),
+      programValidityPeriods: mapStringOptions(config.app_program_validity_periods, []),
+      programDiscountSlabs: mapDiscountSlabs(config.app_program_discount_slabs, []),
+      subscriptionValidityPeriods: mapStringOptions(config.app_subscription_validity_periods, []),
+      subscriptionDiscountSlabs: mapDiscountSlabs(config.app_subscription_discount_slabs, []),
       appHealPeriods: mapStringOptions(config.app_heal_validity_periods, []),
-      coachesCanAddValidity: Boolean(config.coaches_can_add_validity),
+      coachesCanAddProgramValidity: Boolean(config.coaches_can_add_program_validity),
+      coachesCanAddSubscriptionValidity: Boolean(config.coaches_can_add_subscription_validity),
       coachesCanAddAppHeal: Boolean(config.coaches_can_add_app_heal),
     };
   } catch (error) {

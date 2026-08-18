@@ -127,6 +127,23 @@ async function createAppConfig() {
       { id: "sub-year", name: "App subscription · yearly", amount: 4999 },
       { id: "sub-2y", name: "App subscription · 2 years", amount: 8999 },
     ],
+    app_program_validity_periods: ["24 hours", "48 hours", "72 hours"],
+    app_program_discount_slabs: [
+      { pct: 10, label: "standard" },
+      { pct: 15, label: "festive" },
+      { pct: 20, label: "annual plan" },
+      { pct: 25, label: "corporate" },
+    ],
+    app_subscription_validity_periods: ["24 hours", "48 hours", "72 hours"],
+    app_subscription_discount_slabs: [
+      { pct: 10, label: "standard" },
+      { pct: 15, label: "festive" },
+      { pct: 20, label: "annual plan" },
+      { pct: 25, label: "corporate" },
+    ],
+    coaches_can_add_program_validity: true,
+    coaches_can_add_subscription_validity: true,
+    // Legacy shared fields remain for existing clients and stored records.
     coach_validity_periods: ["24 hours", "48 hours", "72 hours"],
     coach_discount_slabs: [
       { pct: 10, label: "standard" },

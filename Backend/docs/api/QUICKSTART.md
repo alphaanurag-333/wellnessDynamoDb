@@ -51,6 +51,9 @@ curl -s "$BASE/api/user/water-tracking" -H "Authorization: Bearer $ACCESS_TOKEN"
 # Consultancy checkout preview
 curl -s "$BASE/api/user/consultancy-payment/checkout-preview?referralCode=COACHCODE" \
   -H "Authorization: Bearer $ACCESS_TOKEN"
+
+# Coach-triggered program offer (see docs/domain/program-payment.md)
+curl -s "$BASE/api/user/program" -H "Authorization: Bearer $ACCESS_TOKEN"
 ```
 
 **Postman:** Use `Wellness-User-API` — auth scripts auto-save `accessToken`.
@@ -71,6 +74,12 @@ curl -s "$BASE/api/coach/heal-users?scope=all" -H "Authorization: Bearer $COACH_
 # Consultancy transactions (scoped to coach)
 curl -s "$BASE/api/coach/consultancy/transactions?paymentStatus=all" \
   -H "Authorization: Bearer $COACH_TOKEN"
+
+# Trigger a configured App Program payment for a client
+curl -s -X POST "$BASE/api/account/coach-checkout/trigger" \
+  -H "Authorization: Bearer $COACH_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"USER_ID","productType":"program","itemId":"fat-loss","discountPercent":15,"discountLabel":"festive","linkValidity":"24 hours"}'
 ```
 
 ---

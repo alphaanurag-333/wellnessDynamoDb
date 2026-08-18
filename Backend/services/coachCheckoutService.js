@@ -127,12 +127,142 @@ function toPublicClient(user) {
   };
 }
 
-function getActiveCoachCheckoutOffer(user, productType) {
+function isCheckoutOfferExpired(offer, now = Date.now()) {
+  if (!offer?.expiresAt) return false;
+  return new Date(offer.expiresAt).getTime() < now;
+}
+
+function getActiveCoachCheckoutOffer(user, productType, now = Date.now()) {
   const offer = user?.pendingCoachCheckout;
   if (!offer || typeof offer !== "object" || !offer.productType) return null;
   if (productType && String(offer.productType || "") !== String(productType)) return null;
-  if (offer.expiresAt && new Date(offer.expiresAt).getTime() < Date.now()) return null;
+  if (isCheckoutOfferExpired(offer, now)) return null;
   return offer;
+}
+
+function getExpiredCoachCheckoutOffer(user, productType, now = Date.now()) {
+  const offer = user?.pendingCoachCheckout;
+  if (!offer || typeof offer !== "object" || !offer.productType) return null;
+  if (productType && String(offer.productType || "") !== String(productType)) return null;
+  if (!isCheckoutOfferExpired(offer, now)) return null;
+  return offer;
+}
+
+function toPublicCoachProgramOffer(offer) {
+  if (!offer || typeof offer !== "object") return null;
+  return {
+    source: "coach_checkout",
+    productType: offer.productType || "program",
+    itemId: offer.itemId || null,
+    itemName: offer.itemName || "",
+    amount: Number(offer.amount) || 0,
+    discountPercent: Number(offer.discountPercent) || 0,
+    discountLabel: String(offer.discountLabel || "").trim(),
+    netPayable: Number(offer.netPayable) || 0,
+    linkValidity: offer.linkValidity || "",
+    expiresAt: offer.expiresAt || null,
+    appHealValidity: offer.appHealValidity || null,
+    transactionId: offer.transactionId || null,
+    payable: true,
+  };
+}
+
+function canActorTriggerCheckout(actor, user) {
+  if (!actor || !user) return false;
+  const role = String(actor.role || "");
+  if (role === "admin") return true;
+  if (role === "wellness_coach") {
+    return String(user.parentCoachId || "") === String(actor.id);
+  }
+  if (role === "assistant_wellness_coach") {
+    return (
+      String(user.assignedCoachId || "") === String(actor.id) &&
+      String(user.assignedCoachType || "").toLowerCase() === "assistant_wellness_coach" &&
+      Boolean(actor.parentCoachId) &&
+      String(user.parentCoachId || "") === String(actor.parentCoachId)
+    );
+  }
+  return false;
+}
+
+function deriveCheckoutCoachIds({ actor, user, wellnessCoachId, assistantCoachId } = {}) {
+  const explicitParent = String(wellnessCoachId || "").trim();
+  const actorParent = actor?.role === "wellness_coach" ? String(actor.id || "").trim() : "";
+  const userParent = String(user?.parentCoachId || "").trim();
+  const parentCoachId = explicitParent || actorParent || userParent || null;
+
+  const explicitAssistant = String(assistantCoachId || "").trim();
+  const assignedAssistant =
+    String(user?.assignedCoachType || "").toLowerCase() === "assistant_wellness_coach"
+      ? String(user?.assignedCoachId || "").trim()
+      : "";
+  const assistantId = explicitAssistant || assignedAssistant || null;
+
+  return {
+    parentCoachId,
+    assistantCoachId: assistantId,
+    meetingAssigneeId: assistantId || parentCoachId || null,
+    meetingAssigneeType: assistantId
+      ? "assistant_wellness_coach"
+      : parentCoachId
+        ? "wellness_coach"
+        : null,
+  };
+}
+
+function isPendingCheckoutOrderReusable(transaction, now = Date.now()) {
+  if (!transaction) return false;
+  if (String(transaction.paymentStatus || "").toLowerCase() !== "pending") return false;
+  if (!transaction.paymentGatewayOrderId) return false;
+  if (!transaction.linkExpiresAt) return true;
+  return new Date(transaction.linkExpiresAt).getTime() > now;
+}
+
+function buildUserProgramGetPayload({ user, assignedProgram, offer } = {}) {
+  const publicOffer = offer ? toPublicCoachProgramOffer(offer) : null;
+  if (publicOffer) {
+    return {
+      message: "Wellness Program offer fetched",
+      enabled: true,
+      payable: true,
+      program: {
+        id: publicOffer.itemId,
+        title: publicOffer.itemName,
+        price: publicOffer.amount,
+        currency: "INR",
+        source: "coach_checkout",
+        discountPercent: publicOffer.discountPercent,
+        netPayable: publicOffer.netPayable,
+        expiresAt: publicOffer.expiresAt,
+        transactionId: publicOffer.transactionId,
+      },
+      offer: publicOffer,
+      programPurchased: Boolean(user?.programPurchased),
+      programPurchasedAt: user?.programPurchasedAt || null,
+    };
+  }
+
+  if (!assignedProgram) {
+    return {
+      message: "No Wellness Program assigned",
+      enabled: false,
+      payable: false,
+      program: null,
+      offer: null,
+      programPurchased: Boolean(user?.programPurchased),
+      programPurchasedAt: user?.programPurchasedAt || null,
+    };
+  }
+
+  return {
+    message: "Wellness Program fetched",
+    enabled: Boolean(assignedProgram.enabled) && !user?.programPurchased,
+    payable: Boolean(assignedProgram.enabled) && !user?.programPurchased,
+    program: assignedProgram,
+    offer: null,
+    programPurchased: Boolean(user?.programPurchased),
+    programPurchasedAt: user?.programPurchasedAt || null,
+  };
 }
 
 async function lookupClientByReferralCode(rawCode) {
@@ -331,10 +461,14 @@ async function triggerCoachCheckout({
   appHealValidity,
   wellnessCoachId,
   assistantCoachId,
+  actor,
 }) {
   const type = String(productType || "").toLowerCase() === "subscription" ? "subscription" : "program";
   const user = await getUserById(userId);
   if (!user || user.status === "deleted") throw new AppError("Client not found", 404);
+  if (actor && !canActorTriggerCheckout(actor, user)) {
+    throw new AppError("User is not under your coaching hierarchy", 403);
+  }
 
   if (type === "program" && user.programPurchased) {
     throw new AppError("Client has already purchased a Wellness Program", 409);
@@ -349,12 +483,28 @@ async function triggerCoachCheckout({
   }
 
   const { config, item } = await findCatalogItem(type, itemId);
-  const slabs = Array.isArray(config.coach_discount_slabs) ? config.coach_discount_slabs : [];
+  const configuredSlabs =
+    type === "subscription"
+      ? config.app_subscription_discount_slabs
+      : config.app_program_discount_slabs;
+  const slabs = Array.isArray(configuredSlabs)
+    ? configuredSlabs
+    : Array.isArray(config.coach_discount_slabs)
+      ? config.coach_discount_slabs
+      : [];
   const pct = Number(discountPercent);
   if (!slabs.some((slab) => Number(slab.pct) === pct)) {
     throw new AppError("Choose a discount slab from the published list", 400);
   }
-  const periods = Array.isArray(config.coach_validity_periods) ? config.coach_validity_periods : [];
+  const configuredPeriods =
+    type === "subscription"
+      ? config.app_subscription_validity_periods
+      : config.app_program_validity_periods;
+  const periods = Array.isArray(configuredPeriods)
+    ? configuredPeriods
+    : Array.isArray(config.coach_validity_periods)
+      ? config.coach_validity_periods
+      : [];
   if (!periods.includes(String(linkValidity || "").trim())) {
     throw new AppError("Choose a validity period from the published list", 400);
   }
@@ -377,13 +527,17 @@ async function triggerCoachCheckout({
   });
   if (pricing.totalAmount <= 0) throw new AppError("Invalid payable amount", 400);
 
-  const parentCoachId = String(wellnessCoachId || user.parentCoachId || "").trim() || null;
-  const meetingAssigneeId = String(assistantCoachId || wellnessCoachId || "").trim() || null;
-  const meetingAssigneeType = assistantCoachId
-    ? "assistant_wellness_coach"
-    : wellnessCoachId
-      ? "wellness_coach"
-      : null;
+  const {
+    parentCoachId,
+    assistantCoachId: resolvedAssistantId,
+    meetingAssigneeId,
+    meetingAssigneeType,
+  } = deriveCheckoutCoachIds({
+    actor,
+    user,
+    wellnessCoachId,
+    assistantCoachId,
+  });
 
   const existing = await replacePendingTransaction(user.id, type);
   const snapshot = {
@@ -468,7 +622,7 @@ async function triggerCoachCheckout({
     expiresAt,
     appHealValidity: type === "program" ? appHealValidity || null : null,
     wellnessCoachId: parentCoachId,
-    assistantCoachId: assistantCoachId || null,
+    assistantCoachId: resolvedAssistantId,
     transactionId: transaction.id,
     createdAt: new Date().toISOString(),
   };
@@ -486,7 +640,14 @@ async function triggerCoachCheckout({
 module.exports = {
   parseDurationToHours,
   calculateOfferPricing,
+  isCheckoutOfferExpired,
   getActiveCoachCheckoutOffer,
+  getExpiredCoachCheckoutOffer,
+  toPublicCoachProgramOffer,
+  canActorTriggerCheckout,
+  deriveCheckoutCoachIds,
+  isPendingCheckoutOrderReusable,
+  buildUserProgramGetPayload,
   lookupClientByReferralCode,
   listCheckoutStaff,
   listRecentPwc,

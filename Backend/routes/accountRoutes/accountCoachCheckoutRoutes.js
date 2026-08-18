@@ -17,7 +17,10 @@ router.get("/staff", listCoachCheckoutStaffController);
 router.get("/pwc", listRecentPwcController);
 router.post(
   "/trigger",
-  authorizeStaff("console.cf.edit", { admin: "settings.edit" }),
+  authorizeStaff("console.pg.edit", {
+    admin: "programs.edit",
+    wellness_coach: "nav.my-users",
+  }),
   triggerCoachCheckoutController
 );
 

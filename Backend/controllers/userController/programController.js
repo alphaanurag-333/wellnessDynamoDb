@@ -10,6 +10,10 @@ const {
   createProgramOrder,
   verifyProgramPayment,
 } = require("../../services/programPaymentService");
+const {
+  getActiveCoachCheckoutOffer,
+  buildUserProgramGetPayload,
+} = require("../../services/coachCheckoutService");
 
 function mapCheckoutError(err) {
   if (err?.name === "ConsultancyRequiredError") throw new AppError(err.message, 403);
@@ -27,25 +31,16 @@ exports.getProgramForUserController = asyncHandler(async (req, res) => {
   const userId = req.auth?.sub || req.user?.id;
   const user = await getUserById(userId);
   const program = await getActiveProgramForUser(userId);
-
-  if (!program) {
-    return res.status(200).json({
-      status: true,
-      message: "No Wellness Program assigned",
-      enabled: false,
-      program: null,
-      programPurchased: Boolean(user?.programPurchased),
-      programPurchasedAt: user?.programPurchasedAt || null,
-    });
-  }
+  const offer = getActiveCoachCheckoutOffer(user, "program");
+  const payload = buildUserProgramGetPayload({
+    user,
+    assignedProgram: program ? toPublicUserProgram(program) : null,
+    offer,
+  });
 
   return res.status(200).json({
     status: true,
-    message: "Wellness Program fetched",
-    enabled: Boolean(program.enabled) && !user?.programPurchased,
-    program: toPublicUserProgram(program),
-    programPurchased: Boolean(user?.programPurchased),
-    programPurchasedAt: user?.programPurchasedAt || null,
+    ...payload,
   });
 });
 

@@ -1225,10 +1225,13 @@ export function ConfigDetailPage() {
   const [faqItems, setFaqItems] = useState([]);
   const [programRows, setProgramRows] = useState(PROGRAM_PRICING);
   const [subRows, setSubRows] = useState(SUBSCRIPTION_PRICING);
-  const [validityPeriods, setValidityPeriods] = useState(VALIDITY_PERIODS);
-  const [discountSlabs, setDiscountSlabs] = useState(DISCOUNT_SLABS);
+  const [programValidityPeriods, setProgramValidityPeriods] = useState(VALIDITY_PERIODS);
+  const [programDiscountSlabs, setProgramDiscountSlabs] = useState(DISCOUNT_SLABS);
+  const [subscriptionValidityPeriods, setSubscriptionValidityPeriods] = useState(VALIDITY_PERIODS);
+  const [subscriptionDiscountSlabs, setSubscriptionDiscountSlabs] = useState(DISCOUNT_SLABS);
   const [appHealPeriods, setAppHealPeriods] = useState(APP_HEAL_PERIODS);
-  const [coachesCanAddValidity, setCoachesCanAddValidity] = useState(true);
+  const [coachesCanAddProgramValidity, setCoachesCanAddProgramValidity] = useState(true);
+  const [coachesCanAddSubscriptionValidity, setCoachesCanAddSubscriptionValidity] = useState(true);
   const [coachesCanAddAppHeal, setCoachesCanAddAppHeal] = useState(true);
   const [gstOn, setGstOn] = useState(false);
   const [gateways, setGateways] = useState(createDefaultGateways);
@@ -1325,10 +1328,13 @@ export function ConfigDetailPage() {
         if (!active) return;
         if (options.programPricing !== null) setProgramRows(options.programPricing);
         if (options.subscriptionPricing !== null) setSubRows(options.subscriptionPricing);
-        setValidityPeriods(options.validityPeriods);
-        setDiscountSlabs(options.discountSlabs);
+        setProgramValidityPeriods(options.programValidityPeriods);
+        setProgramDiscountSlabs(options.programDiscountSlabs);
+        setSubscriptionValidityPeriods(options.subscriptionValidityPeriods);
+        setSubscriptionDiscountSlabs(options.subscriptionDiscountSlabs);
         setAppHealPeriods(options.appHealPeriods);
-        setCoachesCanAddValidity(options.coachesCanAddValidity);
+        setCoachesCanAddProgramValidity(options.coachesCanAddProgramValidity);
+        setCoachesCanAddSubscriptionValidity(options.coachesCanAddSubscriptionValidity);
         setCoachesCanAddAppHeal(options.coachesCanAddAppHeal);
       })
       .catch((error) => {
@@ -1341,14 +1347,20 @@ export function ConfigDetailPage() {
   }, [configId]);
 
   async function persistPricingRows(kind, nextRows) {
+    const programOptions = {
+      programValidityPeriods,
+      programDiscountSlabs,
+      appHealPeriods,
+      coachesCanAddProgramValidity,
+      coachesCanAddAppHeal,
+    };
+    const subscriptionOptions = {
+      subscriptionValidityPeriods,
+      subscriptionDiscountSlabs,
+      coachesCanAddSubscriptionValidity,
+    };
     const saved = await saveCoachCheckoutOptions(
-      {
-        validityPeriods,
-        discountSlabs,
-        appHealPeriods,
-        coachesCanAddValidity,
-        coachesCanAddAppHeal,
-      },
+      kind === "program" ? programOptions : subscriptionOptions,
       {
         programPricing: kind === "program" ? nextRows : null,
         subscriptionPricing: kind === "subscription" ? nextRows : null,
@@ -1364,27 +1376,40 @@ export function ConfigDetailPage() {
     }
 
     try {
+      const isProgram = item.id === "app-program";
       const saved = await saveCoachCheckoutOptions(
+        isProgram
+          ? {
+              programValidityPeriods,
+              programDiscountSlabs,
+              appHealPeriods,
+              coachesCanAddProgramValidity,
+              coachesCanAddAppHeal,
+            }
+          : {
+              subscriptionValidityPeriods,
+              subscriptionDiscountSlabs,
+              coachesCanAddSubscriptionValidity,
+            },
         {
-          validityPeriods,
-          discountSlabs,
-          appHealPeriods,
-          coachesCanAddValidity,
-          coachesCanAddAppHeal,
-        },
-        {
-          programPricing: item.id === "app-program" ? programRows : null,
-          subscriptionPricing: item.id === "app-subscriptions" ? subRows : null,
+          programPricing: isProgram ? programRows : null,
+          subscriptionPricing: isProgram ? null : subRows,
         },
       );
-      if (item.id === "app-program") setProgramRows(saved.programPricing);
-      if (item.id === "app-subscriptions") setSubRows(saved.subscriptionPricing);
-      setValidityPeriods(saved.validityPeriods);
-      setDiscountSlabs(saved.discountSlabs);
-      setAppHealPeriods(saved.appHealPeriods);
-      setCoachesCanAddValidity(saved.coachesCanAddValidity);
-      setCoachesCanAddAppHeal(saved.coachesCanAddAppHeal);
-      onToast(item.id === "app-program" ? "Program config published" : "Subscription config published");
+      if (isProgram) {
+        setProgramRows(saved.programPricing);
+        setProgramValidityPeriods(saved.programValidityPeriods);
+        setProgramDiscountSlabs(saved.programDiscountSlabs);
+        setAppHealPeriods(saved.appHealPeriods);
+        setCoachesCanAddProgramValidity(saved.coachesCanAddProgramValidity);
+        setCoachesCanAddAppHeal(saved.coachesCanAddAppHeal);
+      } else {
+        setSubRows(saved.subscriptionPricing);
+        setSubscriptionValidityPeriods(saved.subscriptionValidityPeriods);
+        setSubscriptionDiscountSlabs(saved.subscriptionDiscountSlabs);
+        setCoachesCanAddSubscriptionValidity(saved.coachesCanAddSubscriptionValidity);
+      }
+      onToast(isProgram ? "Program config published" : "Subscription config published");
     } catch (error) {
       onToast(error.message || "Could not publish coach checkout options");
     }
@@ -1514,9 +1539,9 @@ export function ConfigDetailPage() {
               onToast={onToast}
               programOptions={programRows}
               showAppHeal
-              discountSlabs={discountSlabs}
+              discountSlabs={programDiscountSlabs}
               appHealPeriods={appHealPeriods}
-              validityPeriods={validityPeriods}
+              validityPeriods={programValidityPeriods}
             />
             <PricingPanel
               title="Program pricing & discount validity"
@@ -1541,20 +1566,20 @@ export function ConfigDetailPage() {
             <TagCreatePanel
               title="Validity periods available to coaches"
               subtitle="These appear in the coach's validity dropdown at checkout."
-              items={validityPeriods}
-              setItems={setValidityPeriods}
+              items={programValidityPeriods}
+              setItems={setProgramValidityPeriods}
               placeholder="e.g. 96 hours"
               createLabel="+ Create period"
               coachesToggle
-              coachAdd={coachesCanAddValidity}
-              setCoachAdd={setCoachesCanAddValidity}
+              coachAdd={coachesCanAddProgramValidity}
+              setCoachAdd={setCoachesCanAddProgramValidity}
               onToast={onToast}
             />
             <TagCreatePanel
               title="Discount slabs available to coaches"
               subtitle="These appear in the coach's discount dropdown."
-              items={discountSlabs}
-              setItems={setDiscountSlabs}
+              items={programDiscountSlabs}
+              setItems={setProgramDiscountSlabs}
               placeholder="e.g. 30% · launch"
               createLabel="+ Create slab"
               parseItem={parseDiscountSlab}
@@ -1571,9 +1596,9 @@ export function ConfigDetailPage() {
               programLabel="Subscription"
               showAppHeal={false}
               productType="subscription"
-              discountSlabs={discountSlabs}
+              discountSlabs={subscriptionDiscountSlabs}
               appHealPeriods={appHealPeriods}
-              validityPeriods={validityPeriods}
+              validityPeriods={subscriptionValidityPeriods}
             />
             <PricingPanel
               title="Subscription pricing & discount validity"
@@ -1588,20 +1613,20 @@ export function ConfigDetailPage() {
             <TagCreatePanel
               title="Validity periods available to coaches"
               subtitle="These appear in the coach's validity dropdown at checkout."
-              items={validityPeriods}
-              setItems={setValidityPeriods}
+              items={subscriptionValidityPeriods}
+              setItems={setSubscriptionValidityPeriods}
               placeholder="e.g. 96 hours"
               createLabel="+ Create period"
               coachesToggle
-              coachAdd={coachesCanAddValidity}
-              setCoachAdd={setCoachesCanAddValidity}
+              coachAdd={coachesCanAddSubscriptionValidity}
+              setCoachAdd={setCoachesCanAddSubscriptionValidity}
               onToast={onToast}
             />
             <TagCreatePanel
               title="Discount slabs available to coaches"
               subtitle="These appear in the coach's discount dropdown."
-              items={discountSlabs}
-              setItems={setDiscountSlabs}
+              items={subscriptionDiscountSlabs}
+              setItems={setSubscriptionDiscountSlabs}
               placeholder="e.g. 30% · launch"
               createLabel="+ Create slab"
               parseItem={parseDiscountSlab}

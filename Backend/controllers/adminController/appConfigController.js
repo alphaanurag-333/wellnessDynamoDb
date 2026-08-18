@@ -187,10 +187,10 @@ function normalizeNamedOptions(value, fieldName) {
   });
 }
 
-function normalizeDiscountSlabs(value) {
+function normalizeDiscountSlabs(value, fieldName = "coach_discount_slabs") {
   const parsed = parseJSON(value, null);
   if (!Array.isArray(parsed) || parsed.length === 0) {
-    throw new AppError("coach_discount_slabs must be a non-empty array", 400);
+    throw new AppError(`${fieldName} must be a non-empty array`, 400);
   }
 
   const percentages = new Set();
@@ -366,9 +366,15 @@ exports.createAppConfigController = asyncHandler(async (req, res) => {
     subscription_amount,
     app_program_pricing,
     app_subscription_pricing,
+    app_program_validity_periods,
+    app_program_discount_slabs,
+    app_subscription_validity_periods,
+    app_subscription_discount_slabs,
     coach_validity_periods,
     coach_discount_slabs,
     app_heal_validity_periods,
+    coaches_can_add_program_validity,
+    coaches_can_add_subscription_validity,
     coaches_can_add_validity,
     coaches_can_add_app_heal,
     energy_exchange_monthly_amount,
@@ -419,6 +425,28 @@ exports.createAppConfigController = asyncHandler(async (req, res) => {
       app_subscription_pricing === undefined
         ? config.app_subscription_pricing
         : normalizeAppSubscriptionPricing(app_subscription_pricing),
+    app_program_validity_periods:
+      app_program_validity_periods === undefined
+        ? config.app_program_validity_periods
+        : normalizeNamedOptions(app_program_validity_periods, "app_program_validity_periods"),
+    app_program_discount_slabs:
+      app_program_discount_slabs === undefined
+        ? config.app_program_discount_slabs
+        : normalizeDiscountSlabs(app_program_discount_slabs, "app_program_discount_slabs"),
+    app_subscription_validity_periods:
+      app_subscription_validity_periods === undefined
+        ? config.app_subscription_validity_periods
+        : normalizeNamedOptions(
+            app_subscription_validity_periods,
+            "app_subscription_validity_periods"
+          ),
+    app_subscription_discount_slabs:
+      app_subscription_discount_slabs === undefined
+        ? config.app_subscription_discount_slabs
+        : normalizeDiscountSlabs(
+            app_subscription_discount_slabs,
+            "app_subscription_discount_slabs"
+          ),
     coach_validity_periods:
       coach_validity_periods === undefined
         ? config.coach_validity_periods
@@ -431,6 +459,14 @@ exports.createAppConfigController = asyncHandler(async (req, res) => {
       app_heal_validity_periods === undefined
         ? config.app_heal_validity_periods
         : normalizeNamedOptions(app_heal_validity_periods, "app_heal_validity_periods"),
+    coaches_can_add_program_validity: normalizeBooleanFlag(
+      coaches_can_add_program_validity,
+      config.coaches_can_add_program_validity
+    ),
+    coaches_can_add_subscription_validity: normalizeBooleanFlag(
+      coaches_can_add_subscription_validity,
+      config.coaches_can_add_subscription_validity
+    ),
     coaches_can_add_validity: normalizeBooleanFlag(
       coaches_can_add_validity,
       config.coaches_can_add_validity
@@ -544,6 +580,34 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
     );
   }
 
+  if (req.body.app_program_validity_periods !== undefined) {
+    updates.app_program_validity_periods = normalizeNamedOptions(
+      req.body.app_program_validity_periods,
+      "app_program_validity_periods"
+    );
+  }
+
+  if (req.body.app_program_discount_slabs !== undefined) {
+    updates.app_program_discount_slabs = normalizeDiscountSlabs(
+      req.body.app_program_discount_slabs,
+      "app_program_discount_slabs"
+    );
+  }
+
+  if (req.body.app_subscription_validity_periods !== undefined) {
+    updates.app_subscription_validity_periods = normalizeNamedOptions(
+      req.body.app_subscription_validity_periods,
+      "app_subscription_validity_periods"
+    );
+  }
+
+  if (req.body.app_subscription_discount_slabs !== undefined) {
+    updates.app_subscription_discount_slabs = normalizeDiscountSlabs(
+      req.body.app_subscription_discount_slabs,
+      "app_subscription_discount_slabs"
+    );
+  }
+
   if (req.body.coach_validity_periods !== undefined) {
     updates.coach_validity_periods = normalizeNamedOptions(
       req.body.coach_validity_periods,
@@ -559,6 +623,20 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
     updates.app_heal_validity_periods = normalizeNamedOptions(
       req.body.app_heal_validity_periods,
       "app_heal_validity_periods"
+    );
+  }
+
+  if (req.body.coaches_can_add_program_validity !== undefined) {
+    updates.coaches_can_add_program_validity = normalizeBooleanFlag(
+      req.body.coaches_can_add_program_validity,
+      config.coaches_can_add_program_validity
+    );
+  }
+
+  if (req.body.coaches_can_add_subscription_validity !== undefined) {
+    updates.coaches_can_add_subscription_validity = normalizeBooleanFlag(
+      req.body.coaches_can_add_subscription_validity,
+      config.coaches_can_add_subscription_validity
     );
   }
 
