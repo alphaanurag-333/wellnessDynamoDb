@@ -37,6 +37,8 @@ function toPublicClientAppConfig(doc) {
     favicon: config.favicon ?? "",
     commitment_letter_template: config.commitment_letter_template ?? "",
     body_measurement_guide_type: config.body_measurement_guide_type ?? "none",
+    body_measurement_guide_title: config.body_measurement_guide_title ?? "",
+    body_measurement_guide_description: config.body_measurement_guide_description ?? "",
     body_measurement_guide_yt_link: config.body_measurement_guide_yt_link ?? "",
     body_measurement_guide_video: config.body_measurement_guide_video ?? "",
     body_measurement_info_image_neck: config.body_measurement_info_image_neck ?? "",
@@ -48,6 +50,9 @@ function toPublicClientAppConfig(doc) {
     progress_photo_guidelines: normalizeProgressPhotoGuidelines(
       config.progress_photo_guidelines
     ),
+    health_progress_trackers: Array.isArray(config.health_progress_trackers)
+      ? config.health_progress_trackers
+      : [],
     address: config.address ?? "",
     latitude: config.latitude ?? "",
     longitude: config.longitude ?? "",

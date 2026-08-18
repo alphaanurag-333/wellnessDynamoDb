@@ -54,6 +54,14 @@ function toPublicTransaction(item) {
   };
 }
 
+/** Date-only values become ISO bounds; already-ISO timestamps are left as-is. */
+function toCreatedAtBound(value, { endOfDay = false } = {}) {
+  const raw = String(value || "").trim();
+  if (!raw) return undefined;
+  if (raw.includes("T")) return raw;
+  return endOfDay ? `${raw}T23:59:59.999Z` : raw;
+}
+
 async function createConsultancyTransaction(payload) {
   const now = new Date().toISOString();
   const item = {
@@ -282,14 +290,6 @@ async function listAllTransactions({
     );
     extraValues[":coachId"] = String(coachId).trim();
   }
-  if (fromDate) {
-    filterParts.push("createdAt >= :fromDate");
-    extraValues[":fromDate"] = String(fromDate);
-  }
-  if (toDate) {
-    filterParts.push("createdAt <= :toDate");
-    extraValues[":toDate"] = `${String(toDate)}T23:59:59.999Z`;
-  }
 
   const searchTerm = String(search || "").trim();
   const hasSearch = Boolean(searchTerm);
@@ -300,6 +300,9 @@ async function listAllTransactions({
     indexName: "PaymentStatusCreatedAtIndex",
     partitionKeyName: "paymentStatus",
     partitionKeyValue: status,
+    sortKeyName: "createdAt",
+    sortKeyFrom: toCreatedAtBound(fromDate),
+    sortKeyTo: toCreatedAtBound(toDate, { endOfDay: true }),
     filterExpression: filterParts.length ? filterParts.join(" AND ") : undefined,
     exprNames: extraNames,
     exprValues: extraValues,

@@ -5,7 +5,6 @@ import { ConfigPublishModal } from "../components/ConfigPublishModal.jsx";
 import { ProgramSetupModal } from "../components/ProgramSetupModal.jsx";
 import {
   MeasurementVideoSection,
-  MEASUREMENT_GALLERY,
   MEASUREMENT_GUIDE,
   MEASUREMENT_PARAMETERS,
 } from "../components/MeasurementVideoSection.jsx";
@@ -96,7 +95,7 @@ import {
 import { PageHeader } from "../components/shared.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
-import { HEALTH_TRACKERS } from "../data/healthProgressData.js";
+import { DEFAULT_HEALTH_PROGRESS_TRACKERS } from "../data/healthProgressData.js";
 import {
   APP_HEAL_PERIODS,
   DISCOUNT_SLABS,
@@ -1275,12 +1274,11 @@ export function ConfigDetailPage() {
   const [dpaCopy, setDpaCopy] = useState(DPA_CONTENT);
   const [measurementGuide, setMeasurementGuide] = useState(MEASUREMENT_GUIDE);
   const [measurementParams, setMeasurementParams] = useState(MEASUREMENT_PARAMETERS);
-  const [measurementGallery, setMeasurementGallery] = useState(MEASUREMENT_GALLERY);
   const [onboardingCoaches, setOnboardingCoaches] = useState(ONBOARDING_COACHES);
   const [onboardingSelectedCoachId, setOnboardingSelectedCoachId] = useState("wc01");
   const [onboardingGallery, setOnboardingGallery] = useState(ONBOARDING_GALLERY);
   const [medicalQuestions, setMedicalQuestions] = useState([]);
-  const [healthTrackers, setHealthTrackers] = useState(HEALTH_TRACKERS);
+  const [healthTrackers, setHealthTrackers] = useState(DEFAULT_HEALTH_PROGRESS_TRACKERS);
   const [drfFormSections, setDrfFormSections] = useState([]);
   const [commitmentText, setCommitmentText] = useState(COMMITMENT_LETTER_DEFAULT);
   const [savedCommitmentText, setSavedCommitmentText] = useState("");
@@ -1737,8 +1735,6 @@ export function ConfigDetailPage() {
             setGuide={setMeasurementGuide}
             parameters={measurementParams}
             setParameters={setMeasurementParams}
-            gallery={measurementGallery}
-            setGallery={setMeasurementGallery}
             onToast={onToast}
           />
         );

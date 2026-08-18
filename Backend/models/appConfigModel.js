@@ -25,6 +25,27 @@ const MEDIA_FIELDS = [
   ...BODY_MEASUREMENT_INFO_IMAGE_FIELDS,
 ];
 const BODY_MEASUREMENT_GUIDE_TYPES = new Set(["none", "link", "video"]);
+const DEFAULT_BODY_MEASUREMENT_GUIDE_TITLE = "How to measure yourself";
+const DEFAULT_BODY_MEASUREMENT_GUIDE_DESCRIPTION =
+  "Tape placement for neck, chest, waist, hips and thighs — follow along once and log your numbers in the app.";
+
+const DEFAULT_HEALTH_PROGRESS_TRACKERS = [
+  { id: "fatloss", name: "FatLoss", category: "Fat Loss", color: "#ec7a45", enabled: true, builtin: true, featureKey: "weightPic" },
+  { id: "menstrual", name: "Menstrual cycle", category: "PCOD / PCOS", color: "#c2559a", enabled: true, builtin: true, featureKey: "menstrualCycle" },
+  { id: "glucose", name: "Glucose Panel", category: "Diabetes Reversal", color: "#d64545", enabled: true, builtin: true, featureKey: "glucose" },
+  { id: "thyroid", name: "Thyroid care", category: "Thyroid Care", color: "#0d9488", enabled: true, builtin: true },
+  { id: "weight-gain", name: "Weight gain", category: "Weight Gain", color: "#3b82f6", enabled: true, builtin: true },
+  { id: "gut", name: "Gut health", category: "Gut Health", color: "#22c55e", enabled: true, builtin: true },
+  { id: "cholesterol", name: "Cholesterol", category: "Cholesterol Care", color: "#eab308", enabled: true, builtin: true },
+  { id: "bp", name: "BP tracking", category: "Hypertension", color: "#a16207", enabled: true, builtin: true, featureKey: "bloodPressure" },
+  { id: "fitness", name: "Fitness", category: "Fitness & Strength", color: "#5e6ad2", enabled: true, builtin: true },
+  { id: "prenatal", name: "Prenatal", category: "Prenatal Wellness", color: "#ec4899", enabled: true, builtin: true },
+  { id: "condition", name: "condition tracking", category: "Skin & visible conditions", color: "#6366f1", enabled: true, builtin: true, featureKey: "conditionComparison" },
+];
+
+const BUILTIN_HEALTH_PROGRESS_TRACKER_IDS = new Set(
+  DEFAULT_HEALTH_PROGRESS_TRACKERS.map((row) => row.id)
+);
 
 function normalizeMediaField(value) {
   if (value == null || String(value).trim() === "") return "";
@@ -43,6 +64,77 @@ function normalizeGuidelineList(value) {
   return value
     .map((item) => String(item ?? "").trim())
     .filter(Boolean);
+}
+
+function slugifyTrackerId(value) {
+  return String(value || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
+}
+
+function normalizeHealthProgressTrackerRow(row, { builtinFallback = false } = {}) {
+  if (!row || typeof row !== "object") return null;
+  const id = slugifyTrackerId(row.id || row.name || row.category);
+  if (!id) return null;
+  const builtin = builtinFallback || BUILTIN_HEALTH_PROGRESS_TRACKER_IDS.has(id) || Boolean(row.builtin);
+  const name = String(row.name || row.category || id).trim();
+  const category = String(row.category || row.name || id).trim();
+  const color = String(row.color || "#5e6ad2").trim() || "#5e6ad2";
+  const featureKey = row.featureKey ? String(row.featureKey).trim() : "";
+  return {
+    id,
+    name: name || id,
+    category: category || name || id,
+    color,
+    enabled: row.enabled !== false,
+    builtin,
+    ...(featureKey ? { featureKey } : {}),
+  };
+}
+
+function normalizeHealthProgressTrackers(value) {
+  const stored = Array.isArray(value) ? value : [];
+  const byId = new Map();
+
+  for (const row of stored) {
+    const next = normalizeHealthProgressTrackerRow(row);
+    if (!next) continue;
+    byId.set(next.id, next);
+  }
+
+  for (const builtin of DEFAULT_HEALTH_PROGRESS_TRACKERS) {
+    const existing = byId.get(builtin.id);
+    if (!existing) {
+      byId.set(builtin.id, { ...builtin });
+      continue;
+    }
+    byId.set(builtin.id, {
+      ...existing,
+      builtin: true,
+      featureKey: builtin.featureKey,
+      name: existing.name || builtin.name,
+      category: existing.category || builtin.category,
+      color: existing.color || builtin.color,
+    });
+  }
+
+  const ordered = [];
+  const seen = new Set();
+  for (const row of stored) {
+    const id = slugifyTrackerId(row?.id || row?.name || row?.category);
+    if (!id || seen.has(id) || !byId.has(id)) continue;
+    ordered.push(byId.get(id));
+    seen.add(id);
+  }
+  for (const builtin of DEFAULT_HEALTH_PROGRESS_TRACKERS) {
+    if (seen.has(builtin.id)) continue;
+    ordered.push(byId.get(builtin.id));
+    seen.add(builtin.id);
+  }
+  return ordered;
 }
 
 function normalizeProgressPhotoGuidelines(value, fallback = null) {
@@ -72,7 +164,17 @@ function normalizeProgressPhotoGuidelines(value, fallback = null) {
 function toPublicAppConfig(config) {
   if (!config) return null;
   const { payment_methods: _paymentMethods, ...rest } = config;
-  const pub = { ...rest, app_version: config.app_version ?? "" };
+  const pub = {
+    ...rest,
+    app_version: config.app_version ?? "",
+    body_measurement_guide_title:
+      String(config.body_measurement_guide_title || "").trim() ||
+      DEFAULT_BODY_MEASUREMENT_GUIDE_TITLE,
+    body_measurement_guide_description:
+      String(config.body_measurement_guide_description || "").trim() ||
+      DEFAULT_BODY_MEASUREMENT_GUIDE_DESCRIPTION,
+    health_progress_trackers: normalizeHealthProgressTrackers(config.health_progress_trackers),
+  };
   for (const field of MEDIA_FIELDS) {
     if (pub[field]) pub[field] = resolvePublicUrl(pub[field]) || "";
   }
@@ -97,10 +199,13 @@ async function createAppConfig() {
     favicon:        "",
     commitment_letter_template: "",
     body_measurement_guide_type: "none",
+    body_measurement_guide_title: DEFAULT_BODY_MEASUREMENT_GUIDE_TITLE,
+    body_measurement_guide_description: DEFAULT_BODY_MEASUREMENT_GUIDE_DESCRIPTION,
     body_measurement_guide_yt_link: "",
     body_measurement_guide_video: "",
     ...Object.fromEntries(BODY_MEASUREMENT_INFO_IMAGE_FIELDS.map((field) => [field, ""])),
     progress_photo_guidelines: { en: [], hi: [] },
+    health_progress_trackers: DEFAULT_HEALTH_PROGRESS_TRACKERS.map((row) => ({ ...row })),
     address:        "",
     latitude:       "",
     longitude:      "",
@@ -207,8 +312,14 @@ async function updateAppConfig(updates) {
       nextVal = normalizeBodyMeasurementGuideType(val);
     } else if (key === "body_measurement_guide_yt_link") {
       nextVal = String(val ?? "").trim();
+    } else if (key === "body_measurement_guide_title") {
+      nextVal = String(val ?? "").trim() || DEFAULT_BODY_MEASUREMENT_GUIDE_TITLE;
+    } else if (key === "body_measurement_guide_description") {
+      nextVal = String(val ?? "").trim() || DEFAULT_BODY_MEASUREMENT_GUIDE_DESCRIPTION;
     } else if (key === "progress_photo_guidelines") {
       nextVal = normalizeProgressPhotoGuidelines(val);
+    } else if (key === "health_progress_trackers") {
+      nextVal = normalizeHealthProgressTrackers(val);
     }
     exprValues[`:${key}`] = nextVal;
     setExpr += `, #${key} = :${key}`;
@@ -235,6 +346,10 @@ module.exports = {
   BODY_MEASUREMENT_GUIDE_TYPES,
   BODY_MEASUREMENT_INFO_IMAGE_KEYS,
   BODY_MEASUREMENT_INFO_IMAGE_FIELDS,
+  DEFAULT_BODY_MEASUREMENT_GUIDE_TITLE,
+  DEFAULT_BODY_MEASUREMENT_GUIDE_DESCRIPTION,
+  DEFAULT_HEALTH_PROGRESS_TRACKERS,
   normalizeBodyMeasurementGuideType,
   normalizeProgressPhotoGuidelines,
+  normalizeHealthProgressTrackers,
 };

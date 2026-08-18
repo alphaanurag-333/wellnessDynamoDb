@@ -417,7 +417,11 @@ function MeasurementVideoPreview({ guide, parameters, surface, item }) {
             <div className="ua-cfg-preview-mv__param-list">
               {shown.map((entry) => (
                 <div key={entry.id} className="ua-cfg-preview-mv__param">
-                  <span className={`ua-cfg-preview-mv__param-thumb${entry.hasImage ? " has-image" : ""}`} />
+                  {entry.url ? (
+                    <img className="ua-cfg-preview-mv__param-thumb has-image" src={entry.url} alt="" />
+                  ) : (
+                    <span className={`ua-cfg-preview-mv__param-thumb${entry.hasImage ? " has-image" : ""}`} />
+                  )}
                   <span>{entry.name}</span>
                 </div>
               ))}

@@ -18,7 +18,22 @@ export const CONDITION_TRACKER = {
   color: "#6366f1",
   enabled: true,
   builtin: true,
+  featureKey: "conditionComparison",
 };
+
+export const DEFAULT_HEALTH_PROGRESS_TRACKERS = [
+  { ...HEALTH_TRACKERS[0], featureKey: "weightPic" },
+  { ...HEALTH_TRACKERS[1], featureKey: "menstrualCycle" },
+  { ...HEALTH_TRACKERS[2], featureKey: "glucose" },
+  { ...HEALTH_TRACKERS[3] },
+  { ...HEALTH_TRACKERS[4] },
+  { ...HEALTH_TRACKERS[5] },
+  { ...HEALTH_TRACKERS[6] },
+  { ...HEALTH_TRACKERS[7], featureKey: "bloodPressure" },
+  { ...HEALTH_TRACKERS[8] },
+  { ...HEALTH_TRACKERS[9] },
+  { ...CONDITION_TRACKER },
+];
 
 export const TRACKING_FILTER_OPTIONS = [
   { id: "all", name: "All tracking" },

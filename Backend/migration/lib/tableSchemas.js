@@ -1022,6 +1022,12 @@ const TABLE_DEFINITIONS = [
     ...PAY_PER_REQUEST,
   },
   {
+    TableName: "MeasurementData",
+    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
+    AttributeDefinitions: [{ AttributeName: "id", AttributeType: "S" }],
+    ...PAY_PER_REQUEST,
+  },
+  {
     TableName: "WellnessCoach",
     KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
     AttributeDefinitions: [

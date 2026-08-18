@@ -1,12 +1,16 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  GALLERY_OWNERS,
-  MEASUREMENT_GALLERY,
-  MEASUREMENT_GUIDE,
-  MEASUREMENT_PARAMETERS,
-} from "../data/measurementVideoData.js";
-
-const CROP_RATIOS = ["Original", "1:1", "4:3", "3:4", "16:9"];
+  EMPTY_MEASUREMENT_CONFIG,
+  getMeasurementVideoConfig,
+  saveMeasurementGuideCopy,
+  saveMeasurementGuideLink,
+  saveMeasurementGuideLive,
+  saveMeasurementGuideVideo,
+  saveMeasurementParameterImage,
+  validateMeasurementImageFile,
+  validateMeasurementVideoFile,
+} from "../api/measurementVideoApi.js";
+import { MEASUREMENT_GUIDE, MEASUREMENT_PARAMETERS } from "../data/measurementVideoData.js";
 
 function Panel({ title, subtitle, actions, children }) {
   return (
@@ -23,8 +27,12 @@ function Panel({ title, subtitle, actions, children }) {
   );
 }
 
-function LinkModal({ open, title, onClose, onSave }) {
-  const [url, setUrl] = useState("");
+function LinkModal({ open, title, initialUrl, onClose, onSave, busy }) {
+  const [url, setUrl] = useState(initialUrl || "");
+
+  useEffect(() => {
+    if (open) setUrl(initialUrl || "");
+  }, [initialUrl, open]);
 
   if (!open) return null;
 
@@ -48,16 +56,14 @@ function LinkModal({ open, title, onClose, onSave }) {
           onChange={(event) => setUrl(event.target.value)}
         />
         <div className="ua-cfg-mv-link-modal__foot">
-          <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose}>Cancel</button>
+          <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose} disabled={busy}>Cancel</button>
           <button
             type="button"
             className="ua-cfg-btn ua-cfg-btn--primary"
-            onClick={() => {
-              onSave(url.trim());
-              setUrl("");
-            }}
+            disabled={busy}
+            onClick={() => onSave(url.trim())}
           >
-            Save link
+            {busy ? "Saving…" : "Save link"}
           </button>
         </div>
       </div>
@@ -65,108 +71,54 @@ function LinkModal({ open, title, onClose, onSave }) {
   );
 }
 
-function UploadConfirmModal({ open, label, onClose, onConfirm }) {
-  const [ratio, setRatio] = useState("4:3");
-  const [zoom, setZoom] = useState(100);
-
-  if (!open) return null;
-
-  return (
-    <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={onClose} role="presentation">
-      <div className="ua-cfg-mv-upload-modal" onClick={(event) => event.stopPropagation()} role="dialog">
-        <div className="ua-cfg-mv-upload-modal__head">
-          <div>
-            <h3 className="ua-cfg-mv-upload-modal__title">
-              <span aria-hidden="true">✂</span> Confirm upload
-            </h3>
-            <p className="ua-cfg-mv-upload-modal__sub">{label} · set the crop, ratio and zoom before it is attached</p>
-          </div>
-          <button type="button" className="ua-cfg-mv-upload-modal__close" aria-label="Close" onClick={onClose}>×</button>
-        </div>
-
-        <div className="ua-cfg-mv-upload-modal__ratios">
-          {CROP_RATIOS.map((entry) => (
-            <button
-              key={entry}
-              type="button"
-              className={`ua-cfg-mv-upload-modal__ratio${ratio === entry ? " is-active" : ""}`}
-              onClick={() => setRatio(entry)}
-            >
-              {entry}
-            </button>
-          ))}
-        </div>
-
-        <div className="ua-cfg-mv-upload-modal__crop">
-          <div className="ua-cfg-mv-upload-modal__crop-inner" style={{ transform: `scale(${zoom / 100})` }}>
-            <span className="ua-cfg-mv-upload-modal__grid" aria-hidden="true" />
-          </div>
-        </div>
-
-        <div className="ua-cfg-mv-upload-modal__frameworks">
-          <span className="ua-cfg-mv-upload-modal__frameworks-label">How it will sit in your frameworks</span>
-          <div className="ua-cfg-mv-upload-modal__frameworks-row">
-            <div className="ua-cfg-mv-upload-modal__framework ua-cfg-mv-upload-modal__framework--web">
-              <span>Web</span>
-              <div />
-            </div>
-            <div className="ua-cfg-mv-upload-modal__framework ua-cfg-mv-upload-modal__framework--app is-active">
-              <span>App</span>
-              <div />
-            </div>
-          </div>
-        </div>
-
-        <div className="ua-cfg-mv-upload-modal__zoom">
-          <button type="button" className="ua-cfg-mv-upload-modal__zoom-btn" onClick={() => setZoom((value) => Math.max(50, value - 10))}>−</button>
-          <input
-            type="range"
-            min={50}
-            max={150}
-            value={zoom}
-            onChange={(event) => setZoom(Number(event.target.value))}
-          />
-          <button type="button" className="ua-cfg-mv-upload-modal__zoom-btn" onClick={() => setZoom((value) => Math.min(150, value + 10))}>+</button>
-          <span className="ua-cfg-mv-upload-modal__zoom-value">{zoom}%</span>
-          <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm" onClick={() => setZoom(100)}>Reset</button>
-        </div>
-
-        <div className="ua-cfg-mv-upload-modal__foot">
-          <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose}>Discard</button>
-          <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" onClick={onConfirm}>Confirm &amp; attach</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function GuidePanel({ guide, onChange, onToast }) {
+function GuidePanel({ guide, busy, onToast, onChangeCopy, onChangeLink, onChangeVideo, onToggleLive }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({ title: guide.title, description: guide.description });
   const [linkOpen, setLinkOpen] = useState(false);
-  const [uploadOpen, setUploadOpen] = useState(false);
+  const videoInputRef = useRef(null);
 
-  function saveEdit() {
-    onChange({ ...guide, title: draft.title.trim(), description: draft.description.trim() });
+  useEffect(() => {
+    if (!editing) {
+      setDraft({ title: guide.title, description: guide.description });
+    }
+  }, [editing, guide.description, guide.title]);
+
+  async function saveEdit() {
+    await onChangeCopy({ title: draft.title.trim(), description: draft.description.trim() });
     setEditing(false);
-    onToast("Measurement guide saved");
   }
 
   return (
     <>
       <Panel
         title="Measurement video"
-        subtitle="One how-to-measure guide · cover photo, video and description shown in the app. One video only — uploading a new cover or video replaces what is live."
+        subtitle="One how-to-measure guide · video or link and description shown in the app. Uploading a new video or link replaces what is live."
       >
         <div className="ua-cfg-mv-guide">
           <button
             type="button"
             className="ua-cfg-mv-guide__cover"
-            onClick={() => setUploadOpen(true)}
+            disabled={busy}
+            onClick={() => videoInputRef.current?.click()}
           >
-            <span className="ua-cfg-mv-guide__cover-icon" aria-hidden="true">▶</span>
-            <span>{guide.hasCover ? "Cover" : "Upload cover"}</span>
+            {guide.videoUrl ? (
+              <video className="ua-cfg-mv-guide__cover-video" src={guide.videoUrl} muted playsInline />
+            ) : (
+              <span className="ua-cfg-mv-guide__cover-icon" aria-hidden="true">▶</span>
+            )}
+            <span>{guide.hasCover ? (guide.sourceType === "link" ? "Linked" : "Replace video") : "Upload video"}</span>
           </button>
+          <input
+            ref={videoInputRef}
+            type="file"
+            accept="video/mp4,video/webm,video/ogg,video/quicktime,.mp4,.webm,.ogg,.mov,.m4v"
+            hidden
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = "";
+              if (file) onChangeVideo(file);
+            }}
+          />
 
           <div className="ua-cfg-mv-guide__main">
             <div className="ua-cfg-mv-guide__row">
@@ -182,18 +134,16 @@ function GuidePanel({ guide, onChange, onToast }) {
               )}
               <div className="ua-cfg-mv-guide__badges">
                 <span className="ua-cfg-mv-guide__badge ua-cfg-mv-guide__badge--type">
-                  {guide.sourceType === "link" ? "LINK" : "VIDEO"}
+                  {guide.sourceType === "link" ? "LINK" : guide.sourceType === "video" ? "VIDEO" : "OFF"}
                 </span>
-                {guide.sourceType === "video" ? (
-                  <span className="ua-cfg-mv-guide__badge">{guide.duration}</span>
-                ) : null}
                 {guide.live ? <span className="ua-cfg-mv-guide__badge ua-cfg-mv-guide__badge--live">Live</span> : null}
               </div>
               <button
                 type="button"
                 className={`ua-toggle${guide.live ? " ua-toggle--on" : ""}`}
                 aria-pressed={guide.live}
-                onClick={() => onChange({ ...guide, live: !guide.live })}
+                disabled={busy}
+                onClick={() => onToggleLive(!guide.live)}
               >
                 <span className="ua-toggle__knob" />
               </button>
@@ -210,21 +160,36 @@ function GuidePanel({ guide, onChange, onToast }) {
               <p className="ua-cfg-mv-guide__desc">{guide.description}</p>
             )}
 
+            {guide.sourceType === "link" && guide.linkUrl ? (
+              <p className="ua-cfg-mv-guide__desc">{guide.linkUrl}</p>
+            ) : null}
+
             <div className="ua-cfg-mv-guide__actions">
-              <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" onClick={() => setUploadOpen(true)}>
+              <button
+                type="button"
+                className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                disabled={busy}
+                onClick={() => videoInputRef.current?.click()}
+              >
                 Video
               </button>
-              <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" onClick={() => setLinkOpen(true)}>
+              <button
+                type="button"
+                className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                disabled={busy}
+                onClick={() => setLinkOpen(true)}
+              >
                 Link
               </button>
               {editing ? (
-                <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" onClick={saveEdit}>
+                <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={busy} onClick={saveEdit}>
                   Save
                 </button>
               ) : (
                 <button
                   type="button"
                   className="ua-cfg-btn ua-cfg-btn--ghost"
+                  disabled={busy}
                   onClick={() => {
                     setDraft({ title: guide.title, description: guide.description });
                     setEditing(true);
@@ -241,262 +206,158 @@ function GuidePanel({ guide, onChange, onToast }) {
       <LinkModal
         open={linkOpen}
         title={guide.title}
+        initialUrl={guide.linkUrl}
+        busy={busy}
         onClose={() => setLinkOpen(false)}
-        onSave={(url) => {
+        onSave={async (url) => {
           if (!url) {
             onToast("Enter a video link");
             return;
           }
-          onChange({ ...guide, sourceType: "link", linkUrl: url, duration: "" });
-          setLinkOpen(false);
-          onToast("Video link saved");
-        }}
-      />
-
-      <UploadConfirmModal
-        open={uploadOpen}
-        label="guide-cover"
-        onClose={() => setUploadOpen(false)}
-        onConfirm={() => {
-          onChange({ ...guide, hasCover: true, sourceType: "video", duration: guide.duration || "3:20" });
-          setUploadOpen(false);
-          onToast("Cover and video attached");
+          const saved = await onChangeLink(url);
+          if (saved) setLinkOpen(false);
         }}
       />
     </>
   );
 }
 
-function ParametersPanel({ parameters, setParameters, onToast }) {
-  const [newName, setNewName] = useState("");
-  const [uploadTarget, setUploadTarget] = useState(null);
-  const shownCount = parameters.filter((entry) => entry.shown).length;
-
-  function addParameter() {
-    const name = newName.trim();
-    if (!name) return;
-    const id = name.toLowerCase().replace(/\s+/g, "-");
-    if (parameters.some((entry) => entry.id === id)) {
-      onToast("Parameter already exists");
-      return;
-    }
-    setParameters([...parameters, { id, name, shown: true, hasImage: false }]);
-    setNewName("");
-    onToast(`${name} added`);
-  }
-
-  return (
-    <>
-      <Panel
-        title="Internal parameters"
-        subtitle="Reference images shown beside each measurement in the app. Images only — nothing else is editable."
-        actions={<span className="ua-cfg-mv-params__count">{shownCount} of {parameters.length} shown in the app</span>}
-      >
-        <div className="ua-cfg-mv-params__add">
-          <input
-            type="text"
-            className="ua-cfg-mv-params__add-input"
-            placeholder="Add a parameter · e.g. Calves"
-            value={newName}
-            onChange={(event) => setNewName(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") addParameter();
-            }}
-          />
-          <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" onClick={addParameter}>
-            + Add parameter
-          </button>
-        </div>
-
-        <div className="ua-cfg-mv-params__grid">
-          {parameters.map((entry) => (
-            <article key={entry.id} className="ua-cfg-mv-param-card">
-              <button
-                type="button"
-                className={`ua-cfg-mv-param-card__media${entry.hasImage ? " has-image" : ""}`}
-                onClick={() => setUploadTarget(entry.id)}
-              >
-                <span className="ua-cfg-mv-param-card__icon" aria-hidden="true">🧍</span>
-                <span>{entry.hasImage ? "Replace image" : "Upload image"}</span>
-              </button>
-              <div className="ua-cfg-mv-param-card__foot">
-                <span className="ua-cfg-mv-param-card__name">{entry.name}</span>
-                <span className={`ua-cfg-mv-param-card__shown${entry.shown ? " is-on" : ""}`}>
-                  {entry.shown ? "Shown" : "Hidden"}
-                </span>
-                <button
-                  type="button"
-                  className={`ua-toggle ua-toggle--sm${entry.shown ? " ua-toggle--on" : ""}`}
-                  aria-pressed={entry.shown}
-                  onClick={() => {
-                    setParameters(
-                      parameters.map((row) =>
-                        row.id === entry.id ? { ...row, shown: !row.shown } : row,
-                      ),
-                    );
-                  }}
-                >
-                  <span className="ua-toggle__knob" />
-                </button>
-              </div>
-            </article>
-          ))}
-        </div>
-      </Panel>
-
-      <UploadConfirmModal
-        open={Boolean(uploadTarget)}
-        label={parameters.find((entry) => entry.id === uploadTarget)?.name ?? "measimg"}
-        onClose={() => setUploadTarget(null)}
-        onConfirm={() => {
-          setParameters(
-            parameters.map((row) =>
-              row.id === uploadTarget ? { ...row, hasImage: true } : row,
-            ),
-          );
-          setUploadTarget(null);
-          onToast("Reference image attached");
-        }}
-      />
-    </>
-  );
-}
-
-function GalleryPanel({ gallery, setGallery, onToast }) {
-  const [search, setSearch] = useState("");
-  const [owner, setOwner] = useState("All owners");
-  const [selected, setSelected] = useState([]);
-
-  const filtered = useMemo(() => {
-    return gallery.filter((entry) => {
-      const matchesSearch = entry.title.toLowerCase().includes(search.trim().toLowerCase());
-      const matchesOwner = owner === "All owners" || entry.owner === owner;
-      return matchesSearch && matchesOwner;
-    });
-  }, [gallery, owner, search]);
-
-  function toggleSelect(id) {
-    setSelected((prev) => (prev.includes(id) ? prev.filter((entry) => entry !== id) : [...prev, id]));
-  }
+function ParametersPanel({ parameters, busy, onUpload }) {
+  const shownCount = parameters.filter((entry) => entry.hasImage).length;
+  const inputRefs = useRef({});
 
   return (
     <Panel
-      title="Gallery"
-      subtitle="Assets uploaded for this section — filter by owner or date, reuse, download or delete. Live assets must be unmarked first."
-      actions={
-        <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" onClick={() => onToast("Upload started")}>
-          + Upload media
-        </button>
-      }
+      title="Internal parameters"
+      subtitle="Reference images shown beside each measurement in the app. Images only — labels are fixed."
+      actions={<span className="ua-cfg-mv-params__count">{shownCount} of {parameters.length} have images</span>}
     >
-      <div className="ua-cfg-mv-gallery__filters">
-        <input
-          type="search"
-          className="ua-cfg-mv-gallery__search"
-          placeholder="Search media by name"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
-        <select className="ua-cfg-mv-gallery__select" value={owner} onChange={(event) => setOwner(event.target.value)}>
-          {GALLERY_OWNERS.map((entry) => (
-            <option key={entry} value={entry}>{entry}</option>
-          ))}
-        </select>
-        <input type="date" className="ua-cfg-mv-gallery__date" aria-label="From date" />
-        <input type="date" className="ua-cfg-mv-gallery__date" aria-label="To date" />
-      </div>
-
-      <div className="ua-cfg-mv-gallery__bar">
-        <span>{filtered.length} of {gallery.length} items</span>
-        {selected.length ? (
-          <div className="ua-cfg-mv-gallery__selection">
-            <span>{selected.length} selected</span>
-            <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" onClick={() => onToast("Download started")}>
-              Download
+      <div className="ua-cfg-mv-params__grid">
+        {parameters.map((entry) => (
+          <article key={entry.id} className="ua-cfg-mv-param-card">
+            <button
+              type="button"
+              className={`ua-cfg-mv-param-card__media${entry.hasImage ? " has-image" : ""}`}
+              disabled={busy}
+              onClick={() => inputRefs.current[entry.id]?.click()}
+            >
+              {entry.url ? (
+                <img src={entry.url} alt="" className="ua-cfg-mv-param-card__img" />
+              ) : (
+                <span className="ua-cfg-mv-param-card__icon" aria-hidden="true">🧍</span>
+              )}
+              <span>{entry.hasImage ? "Replace image" : "Upload image"}</span>
             </button>
-            <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm" onClick={() => onToast("Deleted selected items")}>
-              Delete
-            </button>
-            <button type="button" className="ua-cfg-icon-btn" aria-label="Clear selection" onClick={() => setSelected([])}>×</button>
-          </div>
-        ) : null}
-      </div>
-
-      <div className="ua-cfg-mv-gallery__grid">
-        {filtered.map((entry) => {
-          const isSelected = selected.includes(entry.id);
-          return (
-            <article key={entry.id} className={`ua-cfg-mv-gallery-card${isSelected ? " is-selected" : ""}`}>
-              <div className="ua-cfg-mv-gallery-card__thumb">
-                <label className="ua-cfg-mv-gallery-card__check">
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => toggleSelect(entry.id)}
-                  />
-                </label>
-                <span className="ua-cfg-mv-gallery-card__type">Video</span>
-                <span className="ua-cfg-mv-gallery-card__play" aria-hidden="true">▶</span>
-                <span className="ua-cfg-mv-gallery-card__duration">{entry.duration}</span>
-              </div>
-              <div className="ua-cfg-mv-gallery-card__body">
-                <strong>{entry.title}</strong>
-                <span>{entry.owner} · {entry.date}</span>
-                <span>{entry.size} · {entry.versions} versions</span>
-              </div>
-              <div className="ua-cfg-mv-gallery-card__live">
-                <span className={`ua-cfg-mv-gallery-card__status${entry.live ? " is-live" : ""}`}>
-                  {entry.live ? "Live" : "Not live"}
-                </span>
-                <button
-                  type="button"
-                  className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
-                  aria-pressed={entry.live}
-                  onClick={() => {
-                    setGallery(
-                      gallery.map((row) =>
-                        row.id === entry.id ? { ...row, live: !row.live } : row,
-                      ),
-                    );
-                  }}
-                >
-                  <span className="ua-toggle__knob" />
-                </button>
-              </div>
-              <div className="ua-cfg-mv-gallery-card__actions">
-                <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" onClick={() => onToast("History opened")}>
-                  History
-                </button>
-                <button type="button" className="ua-cfg-icon-btn" aria-label="Download" onClick={() => onToast("Download started")}>↓</button>
-                <button
-                  type="button"
-                  className={`ua-cfg-icon-btn${entry.live ? "" : " ua-cfg-icon-btn--danger"}`}
-                  aria-label="Delete"
-                  disabled={entry.live}
-                  onClick={() => {
-                    setGallery(gallery.filter((row) => row.id !== entry.id));
-                    onToast("Asset deleted");
-                  }}
-                >
-                  🗑
-                </button>
-              </div>
-            </article>
-          );
-        })}
+            <input
+              ref={(node) => {
+                inputRefs.current[entry.id] = node;
+              }}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (file) onUpload(entry, file);
+              }}
+            />
+            <div className="ua-cfg-mv-param-card__foot">
+              <span className="ua-cfg-mv-param-card__name">{entry.name}</span>
+              <span className={`ua-cfg-mv-param-card__shown${entry.hasImage ? " is-on" : ""}`}>
+                {entry.hasImage ? "Ready" : "No image"}
+              </span>
+            </div>
+          </article>
+        ))}
       </div>
     </Panel>
   );
 }
 
-export function MeasurementVideoSection({ guide, setGuide, parameters, setParameters, gallery, setGallery, onToast }) {
+export function MeasurementVideoSection({ guide, setGuide, parameters, setParameters, onToast }) {
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+
+  const applyConfig = useCallback((next) => {
+    if (!next) return;
+    setGuide(next.guide);
+    setParameters(next.parameters);
+  }, [setGuide, setParameters]);
+
+  const loadConfig = useCallback(async () => {
+    setLoading(true);
+    try {
+      applyConfig(await getMeasurementVideoConfig());
+    } catch (error) {
+      onToast(error?.message || "Failed to load measurement guide");
+      applyConfig(EMPTY_MEASUREMENT_CONFIG);
+    } finally {
+      setLoading(false);
+    }
+  }, [applyConfig, onToast]);
+
+  useEffect(() => {
+    loadConfig();
+  }, [loadConfig]);
+
+  async function runSave(work, successMessage) {
+    if (busy) return null;
+    setBusy(true);
+    try {
+      const next = await work();
+      applyConfig(next);
+      if (successMessage) onToast(successMessage);
+      return next;
+    } catch (error) {
+      onToast(error?.message || "Failed to save measurement guide");
+      return null;
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="ua-cfg-mv">
-      <GuidePanel guide={guide} onChange={setGuide} onToast={onToast} />
-      <ParametersPanel parameters={parameters} setParameters={setParameters} onToast={onToast} />
-      <GalleryPanel gallery={gallery} setGallery={setGallery} onToast={onToast} />
+      {loading ? (
+        <Panel title="Measurement video" subtitle="Loading measurement guide from App Config…">
+          <p className="ua-cfg-panel__sub">Fetching the how-to-measure video and reference images…</p>
+        </Panel>
+      ) : (
+        <>
+          <GuidePanel
+            guide={guide}
+            busy={busy}
+            onToast={onToast}
+            onChangeCopy={(next) => runSave(() => saveMeasurementGuideCopy(next), "Measurement guide saved")}
+            onChangeLink={(url) => runSave(() => saveMeasurementGuideLink(url), "Video link saved")}
+            onChangeVideo={(file) => {
+              const invalid = validateMeasurementVideoFile(file);
+              if (invalid) {
+                onToast(invalid);
+                return null;
+              }
+              return runSave(() => saveMeasurementGuideVideo(file), "Measurement video uploaded");
+            }}
+            onToggleLive={(live) =>
+              runSave(() => saveMeasurementGuideLive(live, guide), live ? "Measurement guide is live" : "Measurement guide hidden")
+            }
+          />
+          <ParametersPanel
+            parameters={parameters}
+            busy={busy}
+            onUpload={(entry, file) => {
+              const invalid = validateMeasurementImageFile(file);
+              if (invalid) {
+                onToast(invalid);
+                return;
+              }
+              runSave(() => saveMeasurementParameterImage(entry.field, file), `${entry.name} image attached`);
+            }}
+          />
+        </>
+      )}
     </div>
   );
 }
 
-export { MEASUREMENT_GUIDE, MEASUREMENT_PARAMETERS, MEASUREMENT_GALLERY };
+export { MEASUREMENT_GUIDE, MEASUREMENT_PARAMETERS };

@@ -65,11 +65,38 @@ async function paginateDynamo({
   };
 }
 
+function buildSortKeyCondition(sortKeyName, sortKeyFrom, sortKeyTo) {
+  if (!sortKeyName || (sortKeyFrom == null && sortKeyTo == null)) {
+    return { keyCondition: "", names: {}, values: {} };
+  }
+
+  const names = { [`#${sortKeyName}`]: sortKeyName };
+  const values = {};
+  if (sortKeyFrom != null && sortKeyTo != null) {
+    values[":sortKeyFrom"] = sortKeyFrom;
+    values[":sortKeyTo"] = sortKeyTo;
+    return {
+      keyCondition: ` AND #${sortKeyName} BETWEEN :sortKeyFrom AND :sortKeyTo`,
+      names,
+      values,
+    };
+  }
+  if (sortKeyFrom != null) {
+    values[":sortKeyFrom"] = sortKeyFrom;
+    return { keyCondition: ` AND #${sortKeyName} >= :sortKeyFrom`, names, values };
+  }
+  values[":sortKeyTo"] = sortKeyTo;
+  return { keyCondition: ` AND #${sortKeyName} <= :sortKeyTo`, names, values };
+}
+
 async function queryPartition({
   tableName,
   indexName,
   partitionKeyName,
   partitionKeyValue,
+  sortKeyName,
+  sortKeyFrom,
+  sortKeyTo,
   filterExpression,
   exprNames,
   exprValues,
@@ -80,14 +107,20 @@ async function queryPartition({
 }) {
   const keyNames = { [`#${partitionKeyName}`]: partitionKeyName };
   const keyValues = { [`:${partitionKeyName}`]: partitionKeyValue };
-  const merged = mergeExpr(keyNames, keyValues, exprNames, exprValues);
+  const sortKey = buildSortKeyCondition(sortKeyName, sortKeyFrom, sortKeyTo);
+  const merged = mergeExpr(
+    { ...keyNames, ...sortKey.names },
+    { ...keyValues, ...sortKey.values },
+    exprNames,
+    exprValues
+  );
 
   return paginateDynamo({
     command: QueryCommand,
     baseParams: {
       TableName: tableName,
       IndexName: indexName,
-      KeyConditionExpression: `#${partitionKeyName} = :${partitionKeyName}`,
+      KeyConditionExpression: `#${partitionKeyName} = :${partitionKeyName}${sortKey.keyCondition}`,
       ScanIndexForward: scanIndexForward,
       ...(filterExpression ? { FilterExpression: filterExpression } : {}),
       ...merged,
@@ -164,6 +197,9 @@ async function listByPartitionKey({
   indexName,
   partitionKeyName = "status",
   partitionKeyValue,
+  sortKeyName,
+  sortKeyFrom,
+  sortKeyTo,
   statusPartitions = DEFAULT_STATUS_PARTITIONS,
   filterExpression,
   exprNames = {},
@@ -195,6 +231,9 @@ async function listByPartitionKey({
       indexName,
       partitionKeyName,
       partitionKeyValue,
+      sortKeyName,
+      sortKeyFrom,
+      sortKeyTo,
       filterExpression: queryFilter,
       exprNames,
       exprValues,
@@ -212,6 +251,9 @@ async function listByPartitionKey({
         indexName,
         partitionKeyName,
         partitionKeyValue: value,
+        sortKeyName,
+        sortKeyFrom,
+        sortKeyTo,
         filterExpression: queryFilter,
         exprNames,
         exprValues,

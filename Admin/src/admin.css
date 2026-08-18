@@ -26232,6 +26232,8 @@
 }
 
 .updated-admin .ua-cfg-mv-guide__cover {
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -26248,7 +26250,36 @@
   cursor: pointer;
 }
 
+.updated-admin .ua-cfg-mv-guide__cover-video {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.updated-admin .ua-cfg-mv-guide__cover:has(.ua-cfg-mv-guide__cover-video) {
+  color: #fff;
+  border-style: solid;
+}
+
+.updated-admin .ua-cfg-mv-guide__cover:has(.ua-cfg-mv-guide__cover-video)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(180deg, rgba(17, 24, 39, 0.12), rgba(17, 24, 39, 0.55));
+}
+
+.updated-admin .ua-cfg-mv-guide__cover > span:last-child {
+  position: relative;
+  z-index: 1;
+}
+
 .updated-admin .ua-cfg-mv-guide__cover-icon {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -26369,6 +26400,8 @@
 }
 
 .updated-admin .ua-cfg-mv-param-card__media {
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -26385,8 +26418,23 @@
   cursor: pointer;
 }
 
+.updated-admin .ua-cfg-mv-param-card__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .updated-admin .ua-cfg-mv-param-card__media.has-image {
-  background: linear-gradient(180deg, #eef0fc 0%, #fdf4ff 100%);
+  background: #111827;
+  color: #fff;
+}
+
+.updated-admin .ua-cfg-mv-param-card__media.has-image > span {
+  position: relative;
+  z-index: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
 }
 
 .updated-admin .ua-cfg-mv-param-card__icon {
@@ -26395,7 +26443,7 @@
 
 .updated-admin .ua-cfg-mv-param-card__foot {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto 40px;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
@@ -26872,6 +26920,10 @@
 .updated-admin .ua-cfg-preview-mv__param-thumb.has-image {
   border-style: solid;
   background: linear-gradient(180deg, #eef0fc 0%, #fdf4ff 100%);
+}
+
+.updated-admin img.ua-cfg-preview-mv__param-thumb {
+  object-fit: cover;
 }
 
 

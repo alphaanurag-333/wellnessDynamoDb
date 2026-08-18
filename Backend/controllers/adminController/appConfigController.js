@@ -11,6 +11,7 @@ const {
   toPublicAppConfig,
   normalizeBodyMeasurementGuideType,
   normalizeProgressPhotoGuidelines,
+  normalizeHealthProgressTrackers,
   BODY_MEASUREMENT_INFO_IMAGE_FIELDS,
 } = require("../../models/appConfigModel");
 
@@ -292,10 +293,6 @@ function applyBodyMeasurementGuideFields(req, config, updates) {
 
   if (nextType === "none") {
     updates.body_measurement_guide_type = "none";
-    updates.body_measurement_guide_yt_link = "";
-    if (config?.body_measurement_guide_video || updates[BODY_MEASUREMENT_GUIDE_VIDEO_FIELD]) {
-      updates[BODY_MEASUREMENT_GUIDE_VIDEO_FIELD] = "";
-    }
     return;
   }
 
@@ -548,6 +545,8 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
     "energy_exchange_monthly_amount",
     "fy_start_month",
     "app_footer_text",
+    "body_measurement_guide_title",
+    "body_measurement_guide_description",
   ];
 
   const updates = {};
@@ -681,6 +680,11 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
       parsed,
       config.progress_photo_guidelines
     );
+  }
+
+  if (req.body.health_progress_trackers !== undefined) {
+    const parsed = parseJSON(req.body.health_progress_trackers, null);
+    updates.health_progress_trackers = normalizeHealthProgressTrackers(parsed);
   }
 
   await applyLogoUploads(req, config, updates);
