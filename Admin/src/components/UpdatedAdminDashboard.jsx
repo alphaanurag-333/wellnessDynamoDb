@@ -1251,10 +1251,11 @@ export function UpdatedAdminDashboard({
               </div>
             </div>
 
+           
+            <div className="leaderboard__rows leaderboard__rows--compact">
             <div className="leaderboard__table-head">
               <div>#</div><div>Client</div><div>Score</div><div>Days</div>
             </div>
-            <div className="leaderboard__rows leaderboard__rows--compact">
               {activeLeaderboard.map((row) => (
                 <div
                   key={row.rank}
