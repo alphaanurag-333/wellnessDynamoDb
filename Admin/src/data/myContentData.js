@@ -90,3 +90,39 @@ export const MY_CONTENT_COACHES = [
     ],
   },
 ];
+
+export function myContentForCoach(name) {
+  const needle = String(name || "").trim().toLowerCase();
+  const match = MY_CONTENT_COACHES.find((coach) => coach.name.toLowerCase() === needle);
+  const slug = needle.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "self";
+  const items = match?.items || [
+    {
+      id: "intro",
+      kind: "video",
+      title: "Intro video",
+      meta: "Not uploaded yet",
+      live: false,
+      primaryAction: "Upload",
+      secondaryAction: "View",
+    },
+    {
+      id: "letter",
+      kind: "letter",
+      title: "Commitment letter",
+      meta: "Not uploaded yet",
+      live: false,
+      primaryAction: "Upload",
+      secondaryAction: "View",
+      letterCoachId: match?.id || slug,
+    },
+  ];
+  return {
+    id: match?.id || slug,
+    name: match?.name || name || "Coach",
+    items: items.map((item) => ({
+      ...item,
+      letterCoachId: item.letterCoachId || match?.id || slug,
+      title: item.kind === "video" ? "My intro video" : "My commitment letter",
+    })),
+  };
+}

@@ -2,6 +2,10 @@ const { PutCommand, GetCommand, UpdateCommand } = require("@aws-sdk/lib-dynamodb
 const { docClient } = require("../config/db");
 const { v4: uuidv4 } = require("uuid");
 const { normalizeStoredMedia, resolvePublicUrl } = require("../utils/s3");
+const {
+  DEFAULT_COMMITMENT_LETTER_TEXT,
+  resolveCommitmentLetterText,
+} = require("../utils/coachContent");
 
 const BODY_MEASUREMENT_INFO_IMAGE_KEYS = [
   "neck",
@@ -239,6 +243,11 @@ function toPublicAppConfig(config) {
     health_progress_trackers: normalizeHealthProgressTrackers(config.health_progress_trackers),
     web_locations: normalizeWebLocations(config.web_locations),
     web_contact_details: normalizeWebContactDetails(config.web_contact_details),
+    commitment_letter_text: resolveCommitmentLetterText(config.commitment_letter_text),
+    commitment_letter_version: Math.max(
+      1,
+      Number(config.commitment_letter_version) || 1
+    ),
   };
   for (const field of MEDIA_FIELDS) {
     if (pub[field]) pub[field] = resolvePublicUrl(pub[field]) || "";
@@ -263,6 +272,8 @@ async function createAppConfig() {
     user_logo:      "",
     favicon:        "",
     commitment_letter_template: "",
+    commitment_letter_text: DEFAULT_COMMITMENT_LETTER_TEXT,
+    commitment_letter_version: 1,
     body_measurement_guide_type: "none",
     body_measurement_guide_title: DEFAULT_BODY_MEASUREMENT_GUIDE_TITLE,
     body_measurement_guide_description: DEFAULT_BODY_MEASUREMENT_GUIDE_DESCRIPTION,
@@ -419,6 +430,7 @@ module.exports = {
   BODY_MEASUREMENT_INFO_IMAGE_FIELDS,
   DEFAULT_BODY_MEASUREMENT_GUIDE_TITLE,
   DEFAULT_BODY_MEASUREMENT_GUIDE_DESCRIPTION,
+  DEFAULT_COMMITMENT_LETTER_TEXT,
   DEFAULT_HEALTH_PROGRESS_TRACKERS,
   normalizeBodyMeasurementGuideType,
   normalizeProgressPhotoGuidelines,

@@ -36,6 +36,8 @@ function toPublicClientAppConfig(doc) {
     consultancy_amount: config.consultancy_amount ?? "",
     favicon: config.favicon ?? "",
     commitment_letter_template: config.commitment_letter_template ?? "",
+    commitment_letter_text: config.commitment_letter_text ?? "",
+    commitment_letter_version: config.commitment_letter_version ?? 1,
     body_measurement_guide_type: config.body_measurement_guide_type ?? "none",
     body_measurement_guide_title: config.body_measurement_guide_title ?? "",
     body_measurement_guide_description: config.body_measurement_guide_description ?? "",

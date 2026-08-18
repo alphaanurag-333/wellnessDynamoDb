@@ -160,6 +160,52 @@ async function listHealUsersForStaff(req, { page = 1, limit = 20, search, scope 
   throw new AppError("Forbidden", 403);
 }
 
+function userIdSet(users) {
+  return new Set(
+    (users || [])
+      .map((row) => String(row?.id || row?._id || "").trim())
+      .filter(Boolean)
+  );
+}
+
+/**
+ * Inbox visibility: admin sees every activity; coaches/assistants/trainees
+ * only see items whose subjectUserId is on their roster. `null` = no filter.
+ */
+async function listStaffClientIdSet(req) {
+  const actor = resolveStaffActor(req);
+  if (actor.role === "admin") return null;
+
+  if (actor.role === "wellness_coach") {
+    const data = await listUsersByParentCoachId(actor.id, {
+      unpaginated: true,
+      userTier: "all",
+    });
+    return userIdSet(data.users);
+  }
+
+  if (actor.role === "assistant_wellness_coach") {
+    if (!actor.parentCoachId) return new Set();
+    const data = await listUsersByAssignedCoachId(actor.id, {
+      parentCoachId: actor.parentCoachId,
+      unpaginated: true,
+      userTier: "all",
+    });
+    return userIdSet(data.users);
+  }
+
+  if (actor.role === "trainee") {
+    if (!actor.parentCoachId) return new Set();
+    const data = await listUsersByParentCoachId(actor.parentCoachId, {
+      unpaginated: true,
+      userTier: "all",
+    });
+    return userIdSet(data.users);
+  }
+
+  return new Set();
+}
+
 module.exports = {
   CLINICAL_ROLES,
   READ_ONLY_ROLES,
@@ -169,4 +215,5 @@ module.exports = {
   assertStaffCanAccessUser,
   assertStaffCanAssignCoach,
   listHealUsersForStaff,
+  listStaffClientIdSet,
 };

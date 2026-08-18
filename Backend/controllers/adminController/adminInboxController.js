@@ -1,5 +1,6 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
+const { listStaffClientIdSet } = require("../staffAccess");
 const {
   listAdminActivities,
   listAdminActivityIds,
@@ -29,14 +30,27 @@ function resolveAccountId(req) {
   );
 }
 
+function isActivityVisible(activity, subjectUserIds) {
+  if (!(subjectUserIds instanceof Set)) return true;
+  const uid = String(activity?.subjectUserId || "").trim();
+  return Boolean(uid && subjectUserIds.has(uid));
+}
+
 exports.listAdminInboxController = asyncHandler(async (req, res) => {
   const accountId = resolveAccountId(req);
   if (!accountId) throw new AppError("Unauthorized", 401);
 
   const { page, limit } = readPaging(req.query);
   const unreadOnly = String(req.query.unread || "").trim().toLowerCase() === "true";
+  const subjectUserIds = await listStaffClientIdSet(req);
 
-  const data = await listAdminActivities({ page, limit, unreadOnly, accountId });
+  const data = await listAdminActivities({
+    page,
+    limit,
+    unreadOnly,
+    accountId,
+    subjectUserIds,
+  });
 
   return res.status(200).json({
     status: true,
@@ -49,7 +63,8 @@ exports.getAdminInboxUnreadCountController = asyncHandler(async (req, res) => {
   const accountId = resolveAccountId(req);
   if (!accountId) throw new AppError("Unauthorized", 401);
 
-  const unreadCount = await countUnreadAdminActivities(accountId);
+  const subjectUserIds = await listStaffClientIdSet(req);
+  const unreadCount = await countUnreadAdminActivities(accountId, subjectUserIds);
 
   return res.status(200).json({
     status: true,
@@ -62,7 +77,8 @@ exports.markAdminInboxItemReadController = asyncHandler(async (req, res) => {
   if (!accountId) throw new AppError("Unauthorized", 401);
 
   const activity = await getAdminActivityById(req.params.id);
-  if (!activity || activity.status !== "active") {
+  const subjectUserIds = await listStaffClientIdSet(req);
+  if (!activity || activity.status !== "active" || !isActivityVisible(activity, subjectUserIds)) {
     throw new AppError("Notification not found", 404);
   }
 
@@ -80,7 +96,8 @@ exports.markAllAdminInboxReadController = asyncHandler(async (req, res) => {
   const accountId = resolveAccountId(req);
   if (!accountId) throw new AppError("Unauthorized", 401);
 
-  const activityIds = await listAdminActivityIds({ limit: 200 });
+  const subjectUserIds = await listStaffClientIdSet(req);
+  const activityIds = await listAdminActivityIds({ limit: 200, subjectUserIds });
   await markAllActivitiesRead(accountId, activityIds);
 
   return res.status(200).json({
@@ -95,7 +112,8 @@ exports.getAdminInboxItemController = asyncHandler(async (req, res) => {
   if (!accountId) throw new AppError("Unauthorized", 401);
 
   const activity = await getAdminActivityById(req.params.id);
-  if (!activity || activity.status !== "active") {
+  const subjectUserIds = await listStaffClientIdSet(req);
+  if (!activity || activity.status !== "active" || !isActivityVisible(activity, subjectUserIds)) {
     throw new AppError("Notification not found", 404);
   }
 

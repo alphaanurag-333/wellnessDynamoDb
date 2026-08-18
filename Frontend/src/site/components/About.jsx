@@ -1,11 +1,42 @@
+import { useEffect, useState } from "react";
 import { FiBookOpen } from "react-icons/fi";
 
 import aboutOne from "../images/about-one.png";
 import aboutTwo from "../images/about-two.png";
 import aboutThree from "../images/about-three.jpg";
 import aboutFour from "../images/about-four.png";
+import { fetchStaticPageBySlugSafe, splitHtmlAroundFirstHeading } from "../api/publicMisc.js";
+
+const FALLBACK_TITLE = "Welcome to India Redefining Wellness!";
+const FALLBACK_DESCRIPTION = `Welcome to India Redefining Wellness, your trusted partner in
+              holistic health and wellness transformation. At India Redefining
+              Wellness, we specialize in personalized holistic solutions aimed
+              at addressing a wide range of health concerns, including
+              personalized holistic fat loss, lifestyle disorders reversal like
+              Diabetes, Hypo & Hyper Thyroid, PCOD/PCOS, Gut Health, and
+              Autoimmune Disorders.`;
+
+function looksLikeHtml(value) {
+  return /<[a-z][\s\S]*>/i.test(String(value || ""));
+}
 
 export default function AboutUs() {
+  const [page, setPage] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchStaticPageBySlugSafe("about-us").then((next) => {
+      if (!cancelled) setPage(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const parts = splitHtmlAroundFirstHeading(page?.content);
+  const title = parts.heading || page?.title || FALLBACK_TITLE;
+  const body = parts.intro || FALLBACK_DESCRIPTION;
+
   return (
     <section className="about-section">
       <div className="site-container">
@@ -13,21 +44,16 @@ export default function AboutUs() {
           <div className="about-content">
             <div className="about-us__badge">ABOUT US</div>
 
-            <h2 className="about-title">
-              Welcome to India
-              <br />
-              Redefining Wellness!
-            </h2>
+            <h2 className="about-title">{title}</h2>
 
-            <p className="about-description">
-              Welcome to India Redefining Wellness, your trusted partner in
-              holistic health and wellness transformation. At India Redefining
-              Wellness, we specialize in personalized holistic solutions aimed
-              at addressing a wide range of health concerns, including
-              personalized holistic fat loss, lifestyle disorders reversal like
-              Diabetes, Hypo & Hyper Thyroid, PCOD/PCOS, Gut Health, and
-              Autoimmune Disorders.
-            </p>
+            {looksLikeHtml(body) ? (
+              <div
+                className="about-description static-page-content"
+                dangerouslySetInnerHTML={{ __html: body }}
+              />
+            ) : (
+              <p className="about-description">{body}</p>
+            )}
 
             <button className="about-btn">
               Read All Stories

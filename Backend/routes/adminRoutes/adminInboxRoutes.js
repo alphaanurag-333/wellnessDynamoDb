@@ -1,5 +1,6 @@
 const express = require("express");
 const { protectAccount, requireActiveRole } = require("../../middleware/auth");
+const { CLINICAL_ROLES } = require("../../controllers/staffAccess");
 const {
   listAdminInboxController,
   getAdminInboxUnreadCountController,
@@ -10,7 +11,7 @@ const {
 
 const router = express.Router();
 
-router.use(protectAccount, requireActiveRole("admin"));
+router.use(protectAccount, requireActiveRole(...CLINICAL_ROLES));
 
 router.get("/", listAdminInboxController);
 router.get("/unread-count", getAdminInboxUnreadCountController);

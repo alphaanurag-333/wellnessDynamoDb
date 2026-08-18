@@ -705,6 +705,19 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
     );
   }
 
+  if (req.body.commitment_letter_text !== undefined) {
+    const nextText = String(req.body.commitment_letter_text || "").trim();
+    if (!nextText) {
+      throw new AppError("commitment_letter_text cannot be empty", 400);
+    }
+    const previousText = String(config.commitment_letter_text || "").trim();
+    updates.commitment_letter_text = nextText;
+    if (nextText !== previousText) {
+      const currentVersion = Math.max(0, Number(config.commitment_letter_version) || 0);
+      updates.commitment_letter_version = currentVersion < 1 ? 1 : currentVersion + 1;
+    }
+  }
+
   await applyLogoUploads(req, config, updates);
   await applyTemplateUploads(req, config, updates);
   await applyBodyMeasurementInfoImageUploads(req, config, updates);

@@ -10,7 +10,17 @@ const {
   removeMembership,
   toPublicAccount,
   getAccountByEmail,
+  updateAccount,
 } = require("../../models/accountModel");
+const { uploadMulterFile, deleteStoredMedia } = require("../../utils/s3");
+const {
+  normalizeCoachContent,
+  introHasMedia,
+  letterHasFile,
+  asBool,
+  asString,
+} = require("../../utils/coachContent");
+const { getAppConfig, toPublicAppConfig } = require("../../models/appConfigModel");
 const { getRoleById, listRoles } = require("../../models/roleModel");
 const { normalizeRoleKey, ROLE_KEY_TO_UI } = require("../../config/accountRoles");
 const { normalizeEmail, normalizePhone, normalizeCountryCode } = require("../../models/userModel");
@@ -264,5 +274,256 @@ exports.revokeMembershipHandler = asyncHandler(async (req, res) => {
     status: true,
     message: "Membership revoked",
     account: toPublicAccount(account),
+  });
+});
+
+const COACH_CONTENT_FOLDER = "coach-content";
+
+const COACH_CONTENT_ROLES = new Set([
+  "wellness_coach",
+  "assistant_wellness_coach",
+  "trainee",
+]);
+
+function accountRoleKeys(account) {
+  return new Set(
+    [
+      ...(Array.isArray(account.roleKeys) ? account.roleKeys : []),
+      ...(Array.isArray(account.memberships) ? account.memberships.map((row) => row?.roleKey) : []),
+    ]
+      .map((key) => normalizeRoleKey(key))
+      .filter(Boolean)
+  );
+}
+
+function assertCoachContentRole(account) {
+  const roleKeys = accountRoleKeys(account);
+  const allowed = [...COACH_CONTENT_ROLES].some((key) => roleKeys.has(key));
+  if (!allowed) {
+    throw new AppError("Onboarding video and letter apply to coaches", 400);
+  }
+}
+
+function isPdfMime(mimetype = "") {
+  return String(mimetype).toLowerCase() === "application/pdf";
+}
+
+async function applyCoachContentPatch(req, account) {
+  const current = normalizeCoachContent(account.coach_content);
+  const nextIntro = { ...current.intro };
+  const nextLetter = { ...current.letter };
+  let introTouched = false;
+  let letterTouched = false;
+
+  if (req.body.title !== undefined) {
+    nextIntro.title = asString(req.body.title);
+    introTouched = true;
+  }
+  if (req.body.description !== undefined) {
+    nextIntro.description = asString(req.body.description);
+    introTouched = true;
+  }
+  if (req.body.duration !== undefined) {
+    nextIntro.duration = asString(req.body.duration);
+    introTouched = true;
+  }
+
+  const galleryPickId = asString(req.body.galleryPickId);
+  if (galleryPickId) {
+    if (galleryPickId === account.id) {
+      throw new AppError("Pick a different coach's video from the gallery", 400);
+    }
+    const source = await getAccountById(galleryPickId);
+    if (!source) throw new AppError("Gallery video not found", 404);
+    const sourceIntro = normalizeCoachContent(source.coach_content).intro;
+    if (!introHasMedia(sourceIntro)) {
+      throw new AppError("That gallery item has no video", 400);
+    }
+    nextIntro.sourceType = "gallery";
+    nextIntro.galleryPickId = galleryPickId;
+    nextIntro.videoKey = sourceIntro.videoKey;
+    nextIntro.linkUrl = sourceIntro.linkUrl;
+    nextIntro.coverKey = sourceIntro.coverKey || nextIntro.coverKey;
+    nextIntro.duration = sourceIntro.duration || nextIntro.duration;
+    if (!nextIntro.title) nextIntro.title = sourceIntro.title;
+    if (!nextIntro.description) nextIntro.description = sourceIntro.description;
+    nextIntro.version += 1;
+    introTouched = true;
+  }
+
+  if (req.body.linkUrl !== undefined || asString(req.body.sourceType).toLowerCase() === "link") {
+    const linkUrl = asString(req.body.linkUrl);
+    if (!linkUrl) throw new AppError("Enter a video link", 400);
+    if (nextIntro.videoKey && nextIntro.sourceType === "upload") {
+      await replaceMediaKey(nextIntro.videoKey, "");
+      nextIntro.videoKey = "";
+    }
+    nextIntro.sourceType = "link";
+    nextIntro.linkUrl = linkUrl;
+    nextIntro.galleryPickId = "";
+    nextIntro.version += 1;
+    introTouched = true;
+  }
+
+  const videoFile = req.files?.intro_video?.[0];
+  if (videoFile) {
+    if (!isVideoMime(videoFile.mimetype)) {
+      throw new AppError("intro_video must be a video file", 400);
+    }
+    const uploadedKey = await uploadMulterFile(videoFile, COACH_CONTENT_FOLDER);
+    if (!uploadedKey) throw new AppError("Failed to upload intro video", 500);
+    if (nextIntro.sourceType === "upload") {
+      await replaceMediaKey(nextIntro.videoKey, uploadedKey);
+    }
+    nextIntro.videoKey = uploadedKey;
+    nextIntro.sourceType = "upload";
+    nextIntro.linkUrl = "";
+    nextIntro.galleryPickId = "";
+    nextIntro.version += 1;
+    introTouched = true;
+  }
+
+  const coverFile = req.files?.intro_cover?.[0];
+  if (coverFile) {
+    if (!isImageMime(coverFile.mimetype)) {
+      throw new AppError("intro_cover must be an image file", 400);
+    }
+    const uploadedKey = await uploadMulterFile(coverFile, COACH_CONTENT_FOLDER);
+    if (!uploadedKey) throw new AppError("Failed to upload cover image", 500);
+    await replaceMediaKey(nextIntro.coverKey, uploadedKey);
+    nextIntro.coverKey = uploadedKey;
+    introTouched = true;
+  }
+
+  if (req.body.live !== undefined) {
+    const live = asBool(req.body.live, false);
+    if (live && !introHasMedia(nextIntro)) {
+      throw new AppError("Upload a video or add a link before going live", 400);
+    }
+    nextIntro.live = live;
+    introTouched = true;
+  }
+
+  if (!introHasMedia(nextIntro)) {
+    nextIntro.live = false;
+  }
+
+  const letterFile = req.files?.letter_file?.[0];
+  if (letterFile) {
+    if (!isPdfMime(letterFile.mimetype)) {
+      throw new AppError("letter_file must be a PDF", 400);
+    }
+    const uploadedKey = await uploadMulterFile(letterFile, COACH_CONTENT_FOLDER);
+    if (!uploadedKey) throw new AppError("Failed to upload commitment letter", 500);
+    await replaceMediaKey(nextLetter.fileKey, uploadedKey);
+    nextLetter.fileKey = uploadedKey;
+    nextLetter.signed = true;
+    nextLetter.signedAt = new Date().toISOString();
+    const config = await getAppConfig();
+    nextLetter.signedVersion = Math.max(1, Number(config?.commitment_letter_version) || 1);
+    letterTouched = true;
+  }
+
+  if (req.body.letter_signed !== undefined) {
+    const signed = asBool(req.body.letter_signed, false);
+    nextLetter.signed = signed;
+    nextLetter.signedAt = signed
+      ? asString(req.body.letter_signed_at) || new Date().toISOString()
+      : "";
+    if (req.body.letter_signed_version !== undefined) {
+      nextLetter.signedVersion = Math.max(0, Number(req.body.letter_signed_version) || 0);
+    }
+    letterTouched = true;
+  }
+
+  if (req.body.letter_live !== undefined) {
+    const live = asBool(req.body.letter_live, false);
+    if (live && !letterHasFile(nextLetter)) {
+      throw new AppError("Upload a signed letter before going live", 400);
+    }
+    nextLetter.live = live;
+    letterTouched = true;
+  }
+
+  if (!letterHasFile(nextLetter)) {
+    nextLetter.live = false;
+  }
+
+  if (!introTouched && !letterTouched) {
+    throw new AppError("At least one coach content field is required", 400);
+  }
+
+  return updateAccount(account.id, {
+    coach_content: {
+      intro: nextIntro,
+      letter: nextLetter,
+    },
+  });
+}
+
+function letterTemplatePayload(config) {
+  const pub = toPublicAppConfig(config) || {};
+  return {
+    text: pub.commitment_letter_text || "",
+    version: pub.commitment_letter_version || 1,
+    templateUrl: pub.commitment_letter_template || "",
+  };
+}
+
+function isVideoMime(mimetype = "") {
+  return String(mimetype).toLowerCase().startsWith("video/");
+}
+
+function isImageMime(mimetype = "") {
+  return String(mimetype).toLowerCase().startsWith("image/");
+}
+
+async function replaceMediaKey(previousKey, nextKey) {
+  if (previousKey && previousKey !== nextKey) {
+    await deleteStoredMedia(previousKey);
+  }
+  return nextKey;
+}
+
+exports.patchCoachContentHandler = asyncHandler(async (req, res) => {
+  const account = await getAccountById(req.params.id);
+  if (!account) throw new AppError("Account not found", 404);
+  assertCoachContentRole(account);
+
+  const isAdmin = req.auth?.role === "admin";
+  const isSelf = req.auth?.sub === account.id;
+  if (!isAdmin && !isSelf) {
+    throw new AppError("Forbidden", 403);
+  }
+
+  const updated = await applyCoachContentPatch(req, account);
+  return res.json({
+    status: true,
+    message: "Coach content updated",
+    account: toPublicAccount(updated),
+  });
+});
+
+exports.getMyCoachContentHandler = asyncHandler(async (req, res) => {
+  const account = req.account || (await getAccountById(req.auth?.sub));
+  if (!account) throw new AppError("Account not found", 404);
+  const config = await getAppConfig();
+  return res.json({
+    status: true,
+    account: toPublicAccount(account),
+    letter: letterTemplatePayload(config),
+  });
+});
+
+exports.patchMyCoachContentHandler = asyncHandler(async (req, res) => {
+  const account = req.account || (await getAccountById(req.auth?.sub));
+  if (!account) throw new AppError("Account not found", 404);
+  assertCoachContentRole(account);
+  const updated = await applyCoachContentPatch(req, account);
+  return res.json({
+    status: true,
+    message: "Coach content updated",
+    account: toPublicAccount(updated),
+    letter: letterTemplatePayload(await getAppConfig()),
   });
 });

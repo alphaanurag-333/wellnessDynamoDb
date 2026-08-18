@@ -11,6 +11,9 @@ import {
   fetchWellnessCoaches,
   fetchAssistantWellnessCoaches,
   fetchLeadershipNotes,
+  fetchStaticPageBySlugSafe,
+  splitHtmlAroundFirstHeading,
+  staticPageCopy,
 } from "../api/publicMisc.js";
 
 import "swiper/css";
@@ -44,7 +47,6 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { FiArrowRight } from "react-icons/fi";
-import AboutUs from "./About.jsx";
 import Methodology from "./Methodology.jsx";
 import { LeadershipMessageSection, LeadershipNotesSlider } from "./LeadershipMessageSection.jsx";
 import FinalCTA from "./FinalCTA.jsx";
@@ -233,6 +235,47 @@ function CoachBoardSection({
   );
 }
 
+const FALLBACK_DESCRIPTION_TITLE = (
+  <>
+    Meet Your <span> Wellness</span> Partner
+  </>
+);
+const FALLBACK_DESCRIPTION_BODY =
+  "We merge advanced clinical diagnostics with restorative holistic practices to create your personalized path to vitality.";
+
+const FALLBACK_PILLARS = [
+  {
+    id: 1,
+    slug: "our-mission",
+    title: "Our Mission",
+    headTitle: "Reinvigorating India’s Wellness Heritage.",
+    description:
+      "We’re passionate about redefining India’s rich heritage of wellness practices in context to the modern era backed by science & research. Drawing inspiration from Ayurveda, Yoga, Meditation, and other traditional systems of medicine, we seek to blend ancient wisdom with contemporary science to promote holistic well-being for individuals across India.",
+    icon: CardTwo,
+    active: true,
+  },
+  {
+    id: 2,
+    slug: "our-vision",
+    title: "Our Vision",
+    headTitle: "To Inspire & Educate India to live a Healthy & Happy Life.",
+    description:
+      "Usually people are reactive and disease oriented when it comes to health. We should be inspired for the cause of being healthy inside-out to live a disease free life.  Current health situation is getting deteriorated primarily because of change in lifestyle hence it is important to get educated rightly about the good health practices.",
+    icon: CardOne,
+    active: false,
+  },
+  {
+    id: 3,
+    slug: "our-goal",
+    title: "Our Goal",
+    headTitle: "Reach out One million families help them living a Healthy & Medicine Free life.",
+    description:
+      "Our goal is to reach out to One million families, empowering them to achieve a healthy and medicine-free life by addressing and reversing lifestyle disorders through holistic and sustainable fat-loss methods. By integrating comprehensive wellness strategies that encompass balanced nutrition, regular physical activity, stress management, and natural healing practices, we aim to transform lives and foster long-term health improvements. ",
+    icon: CardThree,
+    active: false,
+  },
+];
+
 const AboutUsSection = () => {
   const items = [
     { title: "Fat Loss", icon: <Flame size={18} /> },
@@ -241,39 +284,6 @@ const AboutUsSection = () => {
     { title: "PCOS", icon: <ShieldPlus size={18} /> },
     { title: "Gut Health", icon: <Heart size={18} /> },
     { title: "Stress Management", icon: <Dumbbell size={18} /> },
-  ];
-
-  const pillars = [
-    {
-      id: 1,
-      title: "Our Mission",
-      headTitle: "Reinvigorating India’s Wellness Heritage.",
-      description:
-        "We’re passionate about redefining India’s rich heritage of wellness practices in context to the modern era backed by science & research. Drawing inspiration from Ayurveda, Yoga, Meditation, and other traditional systems of medicine, we seek to blend ancient wisdom with contemporary science to promote holistic well-being for individuals across India.",
-
-      icon: CardTwo,
-      active: true,
-    },
-    {
-      id: 2,
-      title: "Our Vision",
-      headTitle: "To Inspire & Educate India to live a Healthy & Happy Life.",
-
-      description:
-        "Usually people are reactive and disease oriented when it comes to health. We should be inspired for the cause of being healthy inside-out to live a disease free life.  Current health situation is getting deteriorated primarily because of change in lifestyle hence it is important to get educated rightly about the good health practices.",
-      icon: CardOne,
-      active: false,
-    },
-    {
-      id: 3,
-      title: "Our Goal",
-      headTitle: "Reach out One million families help them living a Healthy & Medicine Free life.",
-
-      description:
-        "Our goal is to reach out to One million families, empowering them to achieve a healthy and medicine-free life by addressing and reversing lifestyle disorders through holistic and sustainable fat-loss methods. By integrating comprehensive wellness strategies that encompass balanced nutrition, regular physical activity, stress management, and natural healing practices, we aim to transform lives and foster long-term health improvements. ",
-      icon: CardThree,
-      active: false,
-    },
   ];
 
   const faqData = [
@@ -316,10 +326,38 @@ const AboutUsSection = () => {
   const [coachesLoading, setCoachesLoading] = useState(true);
   const [assistantWellnessCoaches, setAssistantWellnessCoaches] = useState([]);
   const [assistantsLoading, setAssistantsLoading] = useState(true);
+  const [aboutPage, setAboutPage] = useState(null);
+  const [pillarPages, setPillarPages] = useState({});
+  const [aboutPagesLoaded, setAboutPagesLoaded] = useState(false);
   const prevRef = useRef(null);
   const nextRef = useRef(null);
   const assistantPrevRef = useRef(null);
   const assistantNextRef = useRef(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      const [description, mission, vision, goal] = await Promise.all([
+        fetchStaticPageBySlugSafe("about-us"),
+        fetchStaticPageBySlugSafe("our-mission"),
+        fetchStaticPageBySlugSafe("our-vision"),
+        fetchStaticPageBySlugSafe("our-goal"),
+      ]);
+      if (cancelled) return;
+      setAboutPage(description);
+      setPillarPages({
+        "our-mission": mission,
+        "our-vision": vision,
+        "our-goal": goal,
+      });
+      setAboutPagesLoaded(true);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -425,6 +463,21 @@ const AboutUsSection = () => {
   const cofounderVideo = cofounderMessage?.video || "";
 
   const marqueeItems = [...items, ...items, ...items, ...items];
+  const aboutParts = splitHtmlAroundFirstHeading(aboutPage?.content);
+  const aboutTitle = aboutParts.heading || aboutPage?.title || null;
+  const aboutBody = aboutParts.intro;
+  const aboutRest = aboutParts.rest;
+  const pillars = FALLBACK_PILLARS.map((fallback) => {
+    const page = pillarPages[fallback.slug];
+    if (aboutPagesLoaded && !page) return null;
+    const copy = staticPageCopy(page, fallback);
+    return {
+      ...fallback,
+      title: copy.title || fallback.title,
+      headTitle: copy.headTitle || fallback.headTitle,
+      description: copy.description || fallback.description,
+    };
+  }).filter(Boolean);
 
   return (
     <section className="about-wellness about-page p-0 pt-3">
@@ -434,13 +487,19 @@ const AboutUsSection = () => {
             {/* <span className="wellness__label">WELCOME TO OUR SPACE</span> */}
 
             <h2 className="wellness__title">
-              Meet Your <span> Wellness</span> Partner
+              {aboutTitle || FALLBACK_DESCRIPTION_TITLE}
             </h2>
 
-            <p className="wellness__text mt-0 mb-0">
-              We merge advanced clinical diagnostics with restorative holistic
-              practices to create your personalized path to vitality.
-            </p>
+            {aboutBody ? (
+              <div
+                className="wellness__text mt-0 mb-0 static-page-content"
+                dangerouslySetInnerHTML={{ __html: aboutBody }}
+              />
+            ) : (
+              <p className="wellness__text mt-0 mb-0">
+                {FALLBACK_DESCRIPTION_BODY}
+              </p>
+            )}
           </div>
 
           <div className="wellness__imageArea">
@@ -454,6 +513,15 @@ const AboutUsSection = () => {
           </div>
         </div>
       </div>
+
+      {aboutRest ? (
+        <div className="site-container pt-3 pb-3">
+          <div
+            className="static-page-content"
+            dangerouslySetInnerHTML={{ __html: aboutRest }}
+          />
+        </div>
+      ) : null}
 
       <section className="marquee-section mt-2">
         <div className="marquee">
@@ -483,32 +551,26 @@ const AboutUsSection = () => {
 
       
 
+      {pillars.length ? (
       <section className="pillars pt-3 pb-3">
         <div className="site-container">
-          {/* Heading */}
-
           <div className="pillars__heading">
             <h2 className="pillars__title">Our Vision, Mission & Goal</h2>
           </div>
 
-          {/* Cards */}
-
           <div className="pillars__wrapper">
-            {pillars.map((item) => (
+            {pillars.map((item, index) => (
               <div
-                className={`pillar-card ${item.active ? "pillar-card--active" : ""
-                  }`}
+                className={`pillar-card ${index === 0 ? "pillar-card--active" : ""}`}
                 key={item.id}
               >
                 <div className="pillar-card__icon">
-
                   <img src={item.icon} alt="Founder" />
                 </div>
 
                 <div className="methodology-card__content mb-0">
                   <h3 className="">{item.title}</h3>
                   <h5>{item.headTitle}</h5>
-
                   <p className="pillar-card__description mb-0">{item.description}</p>
                 </div>
               </div>
@@ -516,6 +578,7 @@ const AboutUsSection = () => {
           </div>
         </div>
       </section>
+      ) : null}
 
       <Methodology />
 

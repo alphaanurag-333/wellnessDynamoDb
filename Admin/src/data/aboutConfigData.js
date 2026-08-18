@@ -10,12 +10,44 @@ function defaultAssets() {
   };
 }
 
-export const ABOUT_EDITOR = {
-  appOn: true,
-  webOn: true,
-};
+function pageBlock(id, title, text, extra = {}) {
+  return {
+    id,
+    title,
+    shown: true,
+    webVersion: extra.webVersion || 1,
+    appVersion: extra.appVersion || 1,
+    assets: extra.assets || defaultAssets(),
+    versions: extra.versions || [
+      {
+        n: 1,
+        date: extra.date || "",
+        author: extra.author || "Admin",
+        text,
+      },
+    ],
+  };
+}
 
-export const ABOUT_BLOCKS = [
+export const ABOUT_DESCRIPTION_BLOCKS = [
+  pageBlock(
+    "intro",
+    "Welcome to India Redefining Wellness",
+    "<p>India Redefining Wellness is your trusted partner in holistic health and wellness transformation. We specialize in personalized holistic solutions aimed at addressing a wide range of health concerns, including personalized holistic fat loss, lifestyle disorders reversal like Diabetes, Hypo &amp; Hyper Thyroid, PCOD/PCOS, Gut Health, and Autoimmune Disorders.</p><p>We merge advanced clinical diagnostics with restorative holistic practices to create your personalized path to vitality.</p>"
+  ),
+  pageBlock(
+    "what-we-specialize-in",
+    "What We Specialize In",
+    "<ul><li>Personalized holistic fat loss</li><li>Lifestyle disorder management and reversal (Diabetes, Thyroid, PCOD/PCOS)</li><li>Gut health restoration</li><li>Autoimmune disorder support</li><li>Stress management and emotional wellbeing</li></ul>"
+  ),
+  pageBlock(
+    "our-approach",
+    "Our Approach",
+    "<p>We believe our client's health is our responsibility. We develop an understanding of each client's current lifestyle and uncover health conditions through deep root-cause analysis. Our approach includes personalized hand-holding with consistent monitoring of all health pillars—Food &amp; Nutrition, Sleep &amp; Rest, Physical Exercise, and Emotional Health.</p>"
+  ),
+];
+
+export const ABOUT_VISION_BLOCKS = [
   {
     id: "vision",
     title: "Vision",
@@ -44,6 +76,9 @@ export const ABOUT_BLOCKS = [
       },
     ],
   },
+];
+
+export const ABOUT_MISSION_BLOCKS = [
   {
     id: "mission",
     title: "Mission",
@@ -72,6 +107,9 @@ export const ABOUT_BLOCKS = [
       },
     ],
   },
+];
+
+export const ABOUT_GOAL_BLOCKS = [
   {
     id: "goal",
     title: "Goal",
@@ -99,5 +137,43 @@ export const ABOUT_BLOCKS = [
         text: "Prove that a protocol plus a coach can reverse metabolic disease at scale.",
       },
     ],
+  },
+];
+
+export const ABOUT_BLOCKS = [
+  ...ABOUT_DESCRIPTION_BLOCKS,
+  ...ABOUT_VISION_BLOCKS,
+  ...ABOUT_MISSION_BLOCKS,
+  ...ABOUT_GOAL_BLOCKS,
+];
+
+export const ABOUT_STATIC_PAGES = [
+  {
+    slug: "about-us",
+    defaultTitle: "About Us",
+    sitePath: "irwellness.in/about-us",
+    noun: "description section",
+    fallbackBlocks: ABOUT_DESCRIPTION_BLOCKS,
+  },
+  {
+    slug: "our-vision",
+    defaultTitle: "Our Vision",
+    sitePath: "irwellness.in/about-us",
+    noun: "vision section",
+    fallbackBlocks: ABOUT_VISION_BLOCKS,
+  },
+  {
+    slug: "our-mission",
+    defaultTitle: "Our Mission",
+    sitePath: "irwellness.in/about-us",
+    noun: "mission section",
+    fallbackBlocks: ABOUT_MISSION_BLOCKS,
+  },
+  {
+    slug: "our-goal",
+    defaultTitle: "Our Goal",
+    sitePath: "irwellness.in/about-us",
+    noun: "goal section",
+    fallbackBlocks: ABOUT_GOAL_BLOCKS,
   },
 ];

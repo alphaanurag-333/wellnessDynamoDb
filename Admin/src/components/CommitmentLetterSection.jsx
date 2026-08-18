@@ -1,9 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  COMMITMENT_COACH_SIGNOFFS,
+  getCommitmentLetterConfig,
+  listCommitmentLetterCoaches,
+  saveCommitmentLetterText,
+} from "../api/coachContentApi.js";
+import {
   COMMITMENT_LETTER_DEFAULT,
   COMMITMENT_LETTER_VERSION,
   commitmentRemindMessage,
+  normalizeCommitmentLetterText,
+  parseCommitmentLetterBlocks,
   pendingCoachCount,
 } from "../data/commitmentLetterData.js";
 
@@ -18,6 +24,63 @@ function Panel({ title, subtitle, children, className = "" }) {
       </div>
       {children}
     </section>
+  );
+}
+
+export function CommitmentLetterBody({ text, clientName = "{name}" }) {
+  const blocks = useMemo(
+    () => parseCommitmentLetterBlocks(text, clientName),
+    [clientName, text],
+  );
+
+  return (
+    <>
+      {blocks.map((block, index) =>
+        block.type === "list" ? (
+          <ul key={`list-${index}`} className="ua-cfg-cl-doc__list">
+            {block.items.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        ) : (
+          <p key={`para-${index}`} className="ua-cp-present-letter__para">
+            {block.text}
+          </p>
+        ),
+      )}
+    </>
+  );
+}
+
+export function CommitmentLetterDocument({ text, version }) {
+  return (
+    <div className="ua-cp-present-letter__doc ua-cfg-cl-doc">
+      <div className="ua-cp-present-letter__brand">
+        <span className="ua-cp-present-letter__logo">IR</span>
+        <div>
+          <strong>INDIA</strong>
+          <span>REDEFINING WELLNESS</span>
+        </div>
+      </div>
+      <hr className="ua-cp-present-letter__rule" />
+      <h4 className="ua-cp-present-letter__heading">My commitment</h4>
+      <p className="ua-cfg-cl-doc__hint">Use {"{name}"} for the client’s name when this letter is assigned.</p>
+      <CommitmentLetterBody text={text} />
+      <div className="ua-cp-present-letter__signatures">
+        <div className="ua-cp-present-letter__sign-block">
+          <span className="ua-cp-present-letter__sign-name">Coach</span>
+          <span className="ua-cp-present-letter__sign-line" aria-hidden="true" />
+          <span className="ua-cp-present-letter__sign-label">Coach signature</span>
+        </div>
+        <div className="ua-cp-present-letter__sign-block ua-cp-present-letter__sign-block--date">
+          <span className="ua-cp-present-letter__sign-date">
+            {version ? `Letter v${version}` : "Date"}
+          </span>
+          <span className="ua-cp-present-letter__sign-line" aria-hidden="true" />
+          <span className="ua-cp-present-letter__sign-label">Signed on</span>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -117,29 +180,80 @@ export function CommitmentLetterSection({
   savedText,
   setSavedText,
   coaches,
+  setCoaches,
   version = COMMITMENT_LETTER_VERSION,
+  setVersion,
   onToast,
 }) {
   const [remindCoachId, setRemindCoachId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const isDirty = text.trim() !== savedText.trim();
   const pendingCount = pendingCoachCount(coaches);
   const remindCoach = coaches.find((entry) => entry.id === remindCoachId) ?? null;
 
-  function saveText() {
+  const loadLetter = useCallback(async () => {
+    setLoading(true);
+    try {
+      const config = await getCommitmentLetterConfig();
+      const nextVersion = config?.version || 1;
+      const nextText = normalizeCommitmentLetterText(config?.text);
+      setText(nextText);
+      setSavedText(nextText);
+      setEditing(false);
+      if (typeof setVersion === "function") setVersion(nextVersion);
+      const rows = await listCommitmentLetterCoaches(nextVersion);
+      if (typeof setCoaches === "function") setCoaches(rows);
+    } catch (error) {
+      onToast(error?.message || "Failed to load commitment letter");
+    } finally {
+      setLoading(false);
+    }
+  }, [onToast, setCoaches, setSavedText, setText, setVersion]);
+
+  useEffect(() => {
+    loadLetter();
+  }, [loadLetter]);
+
+  async function saveText() {
     const next = text.trim();
     if (!next) {
       onToast("Letter text cannot be empty");
       return;
     }
-    setText(next);
-    setSavedText(next);
-    onToast("Commitment letter saved");
+    if (busy) return;
+    setBusy(true);
+    try {
+      const config = await saveCommitmentLetterText(next);
+      const nextText = normalizeCommitmentLetterText(config.text);
+      setText(nextText);
+      setSavedText(nextText);
+      setEditing(false);
+      if (typeof setVersion === "function") setVersion(config.version);
+      if (typeof setCoaches === "function") {
+        setCoaches(await listCommitmentLetterCoaches(config.version));
+      }
+      onToast("Commitment letter saved");
+    } catch (error) {
+      onToast(error?.message || "Failed to save commitment letter");
+    } finally {
+      setBusy(false);
+    }
   }
 
   function resetToDefault() {
     setText(COMMITMENT_LETTER_DEFAULT);
     onToast("Reset to default text");
+  }
+
+  if (loading) {
+    return (
+      <Panel title="Commitment letter" subtitle="Loading letter text and coach sign-off from App Config…">
+        <p className="ua-cfg-panel__sub">Fetching the current commitment letter…</p>
+      </Panel>
+    );
   }
 
   return (
@@ -149,20 +263,43 @@ export function CommitmentLetterSection({
         title="Commitment letter"
         subtitle="Signed by the wellness coach at onboarding and shareable with clients."
       >
-        <textarea
-          className="ua-cfg-cl__textarea"
-          rows={4}
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-        />
+        {editing ? (
+          <textarea
+            className="ua-cfg-cl__textarea"
+            rows={12}
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+          />
+        ) : (
+          <CommitmentLetterDocument text={text} version={version} />
+        )}
 
         <div className="ua-cfg-cl__actions">
-          <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" onClick={saveText}>
-            Save text
-          </button>
-          <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={resetToDefault}>
-            Reset to default
-          </button>
+          {editing ? (
+            <>
+              <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={saveText}>
+                {busy ? "Saving…" : "Save text"}
+              </button>
+              <button
+                type="button"
+                className="ua-cfg-btn ua-cfg-btn--outline"
+                disabled={busy}
+                onClick={() => {
+                  setText(savedText);
+                  setEditing(false);
+                }}
+              >
+                Cancel
+              </button>
+              <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" disabled={busy} onClick={resetToDefault}>
+                Reset to default
+              </button>
+            </>
+          ) : (
+            <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={() => setEditing(true)}>
+              Edit letter
+            </button>
+          )}
           <span className="ua-cfg-cl__status">
             {isDirty ? "Not saved yet" : "Saved"} · v{version}
           </span>
@@ -175,41 +312,47 @@ export function CommitmentLetterSection({
               <span className="ua-cfg-cl-signoff__badge">
                 {pendingCount} of {coaches.length} coaches still to sign v{version}
               </span>
-            ) : (
+            ) : coaches.length ? (
               <span className="ua-cfg-cl-signoff__badge ua-cfg-cl-signoff__badge--done">
                 All coaches signed v{version}
               </span>
+            ) : (
+              <span className="ua-cfg-cl-signoff__badge">No wellness coaches yet</span>
             )}
           </div>
 
           <div className="ua-cfg-cl-coaches">
-            {coaches.map((coach) => (
-              <div key={coach.id} className="ua-cfg-cl-coach">
-                <span
-                  className="ua-cfg-cl-coach__avatar"
-                  style={{ backgroundColor: coach.color }}
-                  aria-hidden="true"
-                >
-                  {coach.initials}
-                </span>
-                <div className="ua-cfg-cl-coach__meta">
-                  <strong>{coach.name}</strong>
-                  <span className={`ua-cfg-cl-coach__status is-${coach.status}`}>
-                    {coach.status === "pending" ? "Pending" : "Signed"}
-                  </span>
-                </div>
-                {coach.status === "pending" ? (
-                  <button
-                    type="button"
-                    className="ua-cfg-cl-coach__remind"
-                    aria-label={`Remind ${coach.name}`}
-                    onClick={() => setRemindCoachId(coach.id)}
+            {coaches.length ? (
+              coaches.map((coach) => (
+                <div key={coach.id} className="ua-cfg-cl-coach">
+                  <span
+                    className="ua-cfg-cl-coach__avatar"
+                    style={{ backgroundColor: coach.color }}
+                    aria-hidden="true"
                   >
-                    ↻
-                  </button>
-                ) : null}
-              </div>
-            ))}
+                    {coach.initials}
+                  </span>
+                  <div className="ua-cfg-cl-coach__meta">
+                    <strong>{coach.name}</strong>
+                    <span className={`ua-cfg-cl-coach__status is-${coach.status}`}>
+                      {coach.status === "pending" ? "Pending" : "Signed"}
+                    </span>
+                  </div>
+                  {coach.status === "pending" ? (
+                    <button
+                      type="button"
+                      className="ua-cfg-cl-coach__remind"
+                      aria-label={`Remind ${coach.name}`}
+                      onClick={() => setRemindCoachId(coach.id)}
+                    >
+                      ↻
+                    </button>
+                  ) : null}
+                </div>
+              ))
+            ) : (
+              <p className="ua-cfg-panel__sub">No active wellness coaches found.</p>
+            )}
           </div>
         </div>
 

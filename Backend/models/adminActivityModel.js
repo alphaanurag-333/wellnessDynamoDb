@@ -121,24 +121,42 @@ async function getAdminActivityById(id) {
   return Item || null;
 }
 
-async function listAdminActivities({ page = 1, limit = 30, unreadOnly = false, accountId } = {}) {
+function matchesSubjectScope(row, subjectUserIds) {
+  if (!(subjectUserIds instanceof Set)) return true;
+  const uid = String(row?.subjectUserId || "").trim();
+  return Boolean(uid && subjectUserIds.has(uid));
+}
+
+async function listAdminActivities({
+  page = 1,
+  limit = 30,
+  unreadOnly = false,
+  accountId,
+  subjectUserIds = null,
+} = {}) {
+  const scoped = subjectUserIds instanceof Set;
+  const inMemoryPage = unreadOnly || scoped;
+
   const { items, pagination } = await queryPartition({
     tableName: TABLE,
     indexName: "StatusCreatedAtIndex",
     partitionKeyName: "status",
     partitionKeyValue: "active",
     scanIndexForward: false,
-    page: unreadOnly ? 1 : page,
-    limit: unreadOnly ? Math.min(200, Math.max(limit, 50)) : limit,
+    page: inMemoryPage ? 1 : page,
+    limit: inMemoryPage ? Math.min(200, Math.max(limit, 50)) : limit,
     maxLimit: 200,
   });
 
-  const ids = items.map((row) => row.id);
+  const scopedItems = items.filter((row) => matchesSubjectScope(row, subjectUserIds));
+  const ids = scopedItems.map((row) => row.id);
   const readMap = accountId ? await getReadMapForAccount(accountId, ids) : new Map();
 
-  let notifications = items.map((row) => toInboxItem(row, readMap)).filter(Boolean);
-  if (unreadOnly) {
-    notifications = notifications.filter((row) => row.unread);
+  let notifications = scopedItems.map((row) => toInboxItem(row, readMap)).filter(Boolean);
+  if (inMemoryPage) {
+    if (unreadOnly) {
+      notifications = notifications.filter((row) => row.unread);
+    }
     const safePage = Math.max(1, Number(page) || 1);
     const safeLimit = Math.min(200, Math.max(1, Number(limit) || 30));
     const skip = (safePage - 1) * safeLimit;
@@ -158,7 +176,7 @@ async function listAdminActivities({ page = 1, limit = 30, unreadOnly = false, a
   return { notifications, pagination };
 }
 
-async function listAdminActivityIds({ limit = 200 } = {}) {
+async function listAdminActivityIds({ limit = 200, subjectUserIds = null } = {}) {
   const { items } = await queryPartition({
     tableName: TABLE,
     indexName: "StatusCreatedAtIndex",
@@ -169,15 +187,19 @@ async function listAdminActivityIds({ limit = 200 } = {}) {
     limit,
     maxLimit: 500,
   });
-  return items.map((row) => row.id).filter(Boolean);
+  return items
+    .filter((row) => matchesSubjectScope(row, subjectUserIds))
+    .map((row) => row.id)
+    .filter(Boolean);
 }
 
-async function countUnreadAdminActivities(accountId) {
+async function countUnreadAdminActivities(accountId, subjectUserIds = null) {
   const { notifications } = await listAdminActivities({
     page: 1,
     limit: 200,
     unreadOnly: true,
     accountId,
+    subjectUserIds,
   });
   return notifications.length;
 }

@@ -16,6 +16,7 @@ const {
 } = require("./userModel");
 const { normalizeNullableMediaField, resolvePublicUrl } = require("../utils/s3");
 const { toPublicProfile } = require("../utils/toPublicProfile");
+const { normalizeCoachContent, toPublicCoachContent } = require("../utils/coachContent");
 const {
   listByPartitionKey,
   appendFilter,
@@ -221,6 +222,7 @@ function buildAccountItem(input, { id, now } = {}) {
     defaultRoleKey: defaultRoleKeyRaw,
     sourceLegacyType: normalizeNullableString(input.sourceLegacyType),
     legacySources: Array.isArray(input.legacySources) ? input.legacySources : null,
+    coach_content: normalizeCoachContent(input.coach_content),
     otp: input.otp != null ? String(input.otp) : null,
     otpExpire: input.otpExpire != null && input.otpExpire !== "" ? String(input.otpExpire) : null,
     resetPasswordToken: input.resetPasswordToken != null ? String(input.resetPasswordToken) : null,
@@ -251,6 +253,7 @@ function toPublicAccount(account) {
       .filter(Boolean);
   }
   pub.aiEnabled = normalizeVisibleFlag(account.aiEnabled, true);
+  pub.coach_content = toPublicCoachContent(account.coach_content);
   return pub;
 }
 
@@ -328,6 +331,9 @@ function sanitizeUpdateField(key, value) {
     if (value == null) return null;
     if (typeof value !== "object" || Array.isArray(value)) return null;
     return value;
+  }
+  if (key === "coach_content") {
+    return normalizeCoachContent(value);
   }
   return value;
 }

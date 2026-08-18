@@ -1,6 +1,7 @@
-import { useNavigate, useOutletContext } from "react-router-dom";
+import { useNavigate, useOutletContext, Navigate } from "react-router-dom";
 import { BackLink } from "../components/shared.jsx";
-import { MY_CONTENT_COACHES } from "../data/myContentData.js";
+import { useViewAs } from "../context/ViewAsContext.jsx";
+import { MY_CONTENT_COACHES, myContentForCoach } from "../data/myContentData.js";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 
 function ContentToggle({ live, onChange }) {
@@ -19,6 +20,12 @@ function ContentToggle({ live, onChange }) {
 export function MyContentPage() {
   const { showToast } = useOutletContext();
   const navigate = useNavigate();
+  const { viewAs, account } = useViewAs();
+
+  if (viewAs !== "admin") {
+    const own = myContentForCoach(account?.name);
+    return <Navigate to={UPDATED_ADMIN_PATHS.commitmentLetters(own.id)} replace />;
+  }
 
   return (
     <main className="content ua-page-enter">

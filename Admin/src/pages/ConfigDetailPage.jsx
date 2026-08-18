@@ -11,13 +11,11 @@ import {
 import {
   OnboardingVideoSection,
   ONBOARDING_COACHES,
-  ONBOARDING_GALLERY,
 } from "../components/OnboardingVideoSection.jsx";
 import { HealthProgressTrackersPanel } from "../components/ConfigAppRemainingSections.jsx";
 import { MedicalQuestionnairePanel } from "../components/MedicalQuestionnairePanel.jsx";
 import {
   CommitmentLetterSection,
-  COMMITMENT_COACH_SIGNOFFS,
   COMMITMENT_LETTER_DEFAULT,
 } from "../components/CommitmentLetterSection.jsx";
 import { DietPlansSection } from "../components/DietPlansSection.jsx";
@@ -88,7 +86,7 @@ import {
   WELLNESS_TEAM_PHOTOS,
   WELLNESS_TEAM_TITLES,
 } from "../data/wellnessTeamConfigData.js";
-import { ABOUT_BLOCKS, ABOUT_EDITOR } from "../data/aboutConfigData.js";
+import { ABOUT_BLOCKS } from "../data/aboutConfigData.js";
 import {
   RECIPES_EDITOR,
 } from "../data/recipesConfigData.js";
@@ -1189,14 +1187,14 @@ export function ConfigDetailPage() {
   const [measurementGuide, setMeasurementGuide] = useState(MEASUREMENT_GUIDE);
   const [measurementParams, setMeasurementParams] = useState(MEASUREMENT_PARAMETERS);
   const [onboardingCoaches, setOnboardingCoaches] = useState(ONBOARDING_COACHES);
-  const [onboardingSelectedCoachId, setOnboardingSelectedCoachId] = useState("wc01");
-  const [onboardingGallery, setOnboardingGallery] = useState(ONBOARDING_GALLERY);
+  const [onboardingSelectedCoachId, setOnboardingSelectedCoachId] = useState("");
   const [medicalQuestions, setMedicalQuestions] = useState([]);
   const [healthTrackers, setHealthTrackers] = useState(DEFAULT_HEALTH_PROGRESS_TRACKERS);
   const [drfFormSections, setDrfFormSections] = useState([]);
   const [commitmentText, setCommitmentText] = useState(COMMITMENT_LETTER_DEFAULT);
   const [savedCommitmentText, setSavedCommitmentText] = useState("");
-  const [commitmentCoaches] = useState(COMMITMENT_COACH_SIGNOFFS);
+  const [commitmentCoaches, setCommitmentCoaches] = useState([]);
+  const [commitmentVersion, setCommitmentVersion] = useState(1);
   const [dietPlans, setDietPlans] = useState([]);
   const [nutritionBank, setNutritionBank] = useState([]);
   const [rxProtocols, setRxProtocols] = useState([]);
@@ -1239,7 +1237,6 @@ export function ConfigDetailPage() {
   const [wtEditor, setWtEditor] = useState(WELLNESS_TEAM_EDITOR);
   const [wtPhotos, setWtPhotos] = useState(WELLNESS_TEAM_PHOTOS);
   const [wtMessages, setWtMessages] = useState(WELLNESS_TEAM_MESSAGES);
-  const [aboutEditor, setAboutEditor] = useState(ABOUT_EDITOR);
   const [aboutBlocks, setAboutBlocks] = useState(ABOUT_BLOCKS);
   const [grStats, setGrStats] = useState([]);
   const [dropdownLists, setDropdownLists] = useState([]);
@@ -1482,7 +1479,7 @@ export function ConfigDetailPage() {
               : item.id === "common-wellness-team"
                 ? wtEditor.appOn || wtEditor.webOn
               : item.id === "common-about"
-                ? aboutEditor.appOn || aboutEditor.webOn
+                ? aboutBlocks.some((entry) => entry.shown)
               : item.id === "common-google-review"
                 ? (grStats ?? []).some((entry) => String(entry.value || "").trim())
               : item.id === "common-dropdowns"
@@ -1665,8 +1662,6 @@ export function ConfigDetailPage() {
             setCoaches={setOnboardingCoaches}
             selectedCoachId={onboardingSelectedCoachId}
             setSelectedCoachId={setOnboardingSelectedCoachId}
-            gallery={onboardingGallery}
-            setGallery={setOnboardingGallery}
             onToast={onToast}
           />
         );
@@ -1702,6 +1697,9 @@ export function ConfigDetailPage() {
             savedText={savedCommitmentText}
             setSavedText={setSavedCommitmentText}
             coaches={commitmentCoaches}
+            setCoaches={setCommitmentCoaches}
+            version={commitmentVersion}
+            setVersion={setCommitmentVersion}
             onToast={onToast}
           />
         );
@@ -1981,8 +1979,6 @@ export function ConfigDetailPage() {
       case "common-about":
         return (
           <AboutSection
-            editor={aboutEditor}
-            setEditor={setAboutEditor}
             blocks={aboutBlocks}
             setBlocks={setAboutBlocks}
             onToast={onToast}

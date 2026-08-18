@@ -1,5 +1,7 @@
 /** Map logged-in account + active role into the profile modal shape. */
 
+const COACH_ROLE_IDS = new Set(["wc", "awc", "trainee"]);
+
 function formatPhone(countryCode, phone) {
   const digits = String(phone || "").trim();
   if (!digits) return "—";
@@ -10,21 +12,48 @@ function formatPhone(countryCode, phone) {
 }
 
 function formatAddress(account) {
-  const parts = [account?.city, account?.state, account?.country]
+  const parts = [
+    account?.address,
+    account?.addressLine1,
+    account?.addressLine2,
+    account?.city,
+    account?.state,
+    account?.country,
+    account?.pincode || account?.pinCode || account?.postalCode,
+  ]
     .map((part) => String(part || "").trim())
     .filter(Boolean);
-  return parts.length ? parts.join(", ") : "—";
+  return [...new Set(parts)].join(", ") || "—";
 }
 
 function formatMemberSince(iso) {
   if (!iso) return "—";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString("en-IN", {
+  return date.toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "short",
     year: "numeric",
   });
+}
+
+function formatLastSignIn(iso) {
+  if (!iso) return "—";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "—";
+  const day = date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "Asia/Kolkata",
+  });
+  const time = date.toLocaleTimeString("en-IN", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "Asia/Kolkata",
+  });
+  return `${day} · ${time} IST`;
 }
 
 function initialsFromName(name) {
@@ -37,16 +66,28 @@ function initialsFromName(name) {
   return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase();
 }
 
+function roleInitial(roleName) {
+  const name = String(roleName || "").trim();
+  return name ? name.charAt(0).toUpperCase() : "?";
+}
+
+export function isCoachProfileRole(roleId) {
+  return COACH_ROLE_IDS.has(String(roleId || "").trim());
+}
+
 /**
  * @param {object|null} account
  * @param {{ name?: string, id?: string }|null} activeRole
  */
 export function buildProfileFromAccount(account, activeRole) {
+  const roleName = activeRole?.name || account?.designation || "—";
   if (!account) {
     return {
-      initial: "?",
+      id: "",
+      initial: roleInitial(roleName),
       name: "Not signed in",
-      role: activeRole?.name || "—",
+      role: roleName,
+      roleId: activeRole?.id || "",
       roleNote: "set by admin",
       email: "—",
       whatsapp: "—",
@@ -55,9 +96,9 @@ export function buildProfileFromAccount(account, activeRole) {
       bio: "",
       memberSince: "—",
       lastSignIn: "—",
-      twoFactor: "—",
       profileImage: "",
       hasPhone: false,
+      isCoach: isCoachProfileRole(activeRole?.id),
     };
   }
 
@@ -65,9 +106,11 @@ export function buildProfileFromAccount(account, activeRole) {
   const hasPhone = Boolean(String(account.phone || "").trim());
 
   return {
-    initial: initialsFromName(account.name),
+    id: account.id || "",
+    initial: roleInitial(roleName),
     name: account.name || "—",
-    role: activeRole?.name || account.designation || "—",
+    role: roleName,
+    roleId: activeRole?.id || "",
     roleNote: "set by admin",
     email: account.email || "—",
     whatsapp,
@@ -77,10 +120,10 @@ export function buildProfileFromAccount(account, activeRole) {
     address: formatAddress(account),
     bio: account.bio || "",
     memberSince: formatMemberSince(account.createdAt),
-    lastSignIn: "—",
-    twoFactor: "—",
+    lastSignIn: formatLastSignIn(account.lastLoginAt || account.lastSignIn || account.updatedAt),
     profileImage: account.profileImage || "",
     hasPhone,
+    isCoach: isCoachProfileRole(activeRole?.id),
   };
 }
 
@@ -89,4 +132,4 @@ export function accountAvatarInitial(account, fallback = "?") {
 }
 
 /** @deprecated Prefer buildProfileFromAccount — kept only for empty fallback. */
-export const ADMIN_PROFILE = buildProfileFromAccount(null, { name: "Admin" });
+export const ADMIN_PROFILE = buildProfileFromAccount(null, { id: "admin", name: "Admin" });

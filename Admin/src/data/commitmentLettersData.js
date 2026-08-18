@@ -7,6 +7,8 @@ export const COMMITMENT_COACHES = [
 export const COMMITMENT_LETTERS_BY_COACH = {
   "anita-rao": {
     signatureName: "Anita Rao",
+    drawnOn: "12 Feb 2026",
+    usedOn: 3,
     featuredId: "v3",
     letters: [
       { id: "v3", label: "Commitment letter v3", signed: "18 Jul 2026", size: "2.4 MB", status: "signed", live: true },
@@ -17,6 +19,8 @@ export const COMMITMENT_LETTERS_BY_COACH = {
   },
   "priya-nair": {
     signatureName: "Priya Nair",
+    drawnOn: "04 Mar 2026",
+    usedOn: 2,
     featuredId: "v2",
     letters: [
       { id: "v2", label: "Commitment letter v2", signed: "15 Jul 2026", size: "2.3 MB", status: "signed", live: true },
@@ -25,6 +29,8 @@ export const COMMITMENT_LETTERS_BY_COACH = {
   },
   "vikram-sethi": {
     signatureName: "Vikram Sethi",
+    drawnOn: "20 Jul 2026",
+    usedOn: 0,
     featuredId: "v1",
     letters: [
       { id: "v1", label: "Commitment letter v1", signed: "Uploaded 28 Jul 2026", size: "2.0 MB", status: "draft", live: false },
@@ -33,9 +39,17 @@ export const COMMITMENT_LETTERS_BY_COACH = {
 };
 
 export function getCommitmentCoach(id) {
-  return COMMITMENT_COACHES.find((c) => c.id === id) ?? COMMITMENT_COACHES[0];
+  return COMMITMENT_COACHES.find((c) => c.id === id) ?? { id, name: id };
 }
 
-export function getCommitmentData(coachId) {
-  return COMMITMENT_LETTERS_BY_COACH[coachId] ?? COMMITMENT_LETTERS_BY_COACH["anita-rao"];
+export function getCommitmentData(coachId, fallbackName = "Coach") {
+  return (
+    COMMITMENT_LETTERS_BY_COACH[coachId] ?? {
+      signatureName: fallbackName,
+      drawnOn: "",
+      usedOn: 0,
+      featuredId: null,
+      letters: [],
+    }
+  );
 }

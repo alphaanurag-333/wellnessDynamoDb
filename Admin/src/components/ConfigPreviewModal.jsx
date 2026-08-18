@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { COMMITMENT_LETTER_DEFAULT } from "../data/commitmentLetterData.js";
+import {
+  COMMITMENT_LETTER_DEFAULT,
+  normalizeCommitmentLetterText,
+  parseCommitmentLetterBlocks,
+} from "../data/commitmentLetterData.js";
 import { formatRupee } from "../data/exchangeData.js";
 import { paymentMethodsForGateway } from "../data/configDetailData.js";
 import { programTestimonialLabel } from "../data/programTestimonialsConfigData.js";
@@ -726,6 +730,7 @@ function GalleryPreview({ media, surface, item }) {
 }
 
 function CommitmentLetterPreview({ text, surface, item }) {
+  const blocks = parseCommitmentLetterBlocks(normalizeCommitmentLetterText(text));
   const body = (
     <div className="ua-cfg-preview-phone">
       <div className="ua-cfg-preview-phone__shell">
@@ -737,7 +742,17 @@ function CommitmentLetterPreview({ text, surface, item }) {
           </div>
           <p className="ua-cfg-preview-cl__intro">Signed by your coach at onboarding.</p>
           <div className="ua-cfg-preview-cl__body">
-            <p>{text?.trim() || COMMITMENT_LETTER_DEFAULT}</p>
+            {blocks.map((block, index) =>
+              block.type === "list" ? (
+                <ul key={`list-${index}`} className="ua-cfg-cl-doc__list">
+                  {block.items.map((itemText) => (
+                    <li key={itemText}>{itemText}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p key={`para-${index}`}>{block.text}</p>
+              ),
+            )}
           </div>
           <div className="ua-cfg-preview-cl__signature">
             <span>Coach signature</span>
@@ -1717,7 +1732,7 @@ function renderPreviewBody(item, surface, previewState) {
     case "app-commitment-letter":
       return (
         <CommitmentLetterPreview
-          text={previewState.commitmentText ?? COMMITMENT_LETTER_DEFAULT}
+          text={normalizeCommitmentLetterText(previewState.commitmentText ?? COMMITMENT_LETTER_DEFAULT)}
           surface={surface}
           item={item}
         />
@@ -1962,7 +1977,7 @@ function renderPreviewBody(item, surface, previewState) {
           surface={surface}
           item={item}
           title="About"
-          url="irwellness.in/about"
+          url="irwellness.in/about-us"
           empty="No about blocks are shown yet."
         />
       );

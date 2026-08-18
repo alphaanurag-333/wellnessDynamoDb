@@ -21,7 +21,9 @@ const {
   createAccountHandler,
   grantMembershipHandler,
   revokeMembershipHandler,
+  patchCoachContentHandler,
 } = require("../../controllers/accountController/accountAdminController");
+const { optionalCoachContentFiles } = require("../../middleware/authMultipart");
 
 const adminSopRoutes = require("../adminRoutes/adminSopRoutes");
 const adminAppConfigRoutes = require("../adminRoutes/adminAppConfigRoutes");
@@ -93,6 +95,13 @@ router.use("/portal-client-testimonials", accountPortalClientTestimonialRoutes);
 router.get("/accounts", protectAccount, requireActiveRole("admin"), listAccountsHandler);
 router.post("/accounts", protectAccount, requireActiveRole("admin"), createAccountHandler);
 router.get("/accounts/:id", protectAccount, requireActiveRole("admin"), getAccountHandler);
+router.patch(
+  "/accounts/:id/coach-content",
+  protectAccount,
+  requireActiveRole("admin"),
+  optionalCoachContentFiles,
+  patchCoachContentHandler
+);
 router.post(
   "/accounts/:id/memberships",
   protectAccount,
