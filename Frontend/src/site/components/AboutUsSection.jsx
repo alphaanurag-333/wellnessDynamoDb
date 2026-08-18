@@ -11,6 +11,7 @@ import {
   fetchWellnessCoaches,
   fetchAssistantWellnessCoaches,
   fetchLeadershipNotes,
+  fetchWellnessTeamNotes,
   fetchStaticPageBySlugSafe,
   splitHtmlAroundFirstHeading,
   staticPageCopy,
@@ -322,6 +323,8 @@ const AboutUsSection = () => {
   const [cofounderMessage, setCofounderMessage] = useState(null);
   const [leadershipNotes, setLeadershipNotes] = useState([]);
   const [leadershipNotesLoading, setLeadershipNotesLoading] = useState(true);
+  const [wellnessTeamNotes, setWellnessTeamNotes] = useState([]);
+  const [wellnessTeamNotesLoading, setWellnessTeamNotesLoading] = useState(true);
   const [wellnessCoaches, setWellnessCoaches] = useState([]);
   const [coachesLoading, setCoachesLoading] = useState(true);
   const [assistantWellnessCoaches, setAssistantWellnessCoaches] = useState([]);
@@ -394,6 +397,30 @@ const AboutUsSection = () => {
         if (!cancelled) setLeadershipNotes([]);
       } finally {
         if (!cancelled) setLeadershipNotesLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      setWellnessTeamNotesLoading(true);
+      try {
+        const response = await fetchWellnessTeamNotes({ page: 1, limit: 50, platform: "web" });
+        if (!cancelled) {
+          setWellnessTeamNotes(
+            Array.isArray(response?.wellnessTeamNotes) ? response.wellnessTeamNotes : [],
+          );
+        }
+      } catch {
+        if (!cancelled) setWellnessTeamNotes([]);
+      } finally {
+        if (!cancelled) setWellnessTeamNotesLoading(false);
       }
     })();
 
@@ -608,6 +635,15 @@ const AboutUsSection = () => {
         ariaNext="Next assistant coach"
       />
 
+
+<LeadershipNotesSlider
+        notes={wellnessTeamNotes}
+        loading={wellnessTeamNotesLoading}
+        label="Wellness team profiles"
+        heading="Our Wellness Team"
+        subheading="Coaches and nutritionists walking this programme with you"
+        loadingLabel="Loading wellness team profiles…"
+      />
 
 <LeadershipNotesSlider notes={leadershipNotes} loading={leadershipNotesLoading} />
 

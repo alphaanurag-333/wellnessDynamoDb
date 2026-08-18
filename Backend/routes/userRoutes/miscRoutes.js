@@ -21,6 +21,7 @@ const {
   getActiveWellnessCoaches,
   getActiveAssistantWellnessCoaches,
   getActiveLeadershipNotes,
+  getActiveWellnessTeamNotes,
   getActiveBirthdayPosts,
   getActiveMonthlyChampions,
   getActiveTestCatalog,
@@ -57,6 +58,7 @@ router.get("/transformations", getActiveTransformations);
 router.get("/wellness-coaches", getActiveWellnessCoaches);
 router.get("/assistant-wellness-coaches", getActiveAssistantWellnessCoaches);
 router.get("/leadership-notes", getActiveLeadershipNotes);
+router.get("/wellness-team-notes", getActiveWellnessTeamNotes);
 router.get("/birthday-posts", getActiveBirthdayPosts);
 router.get("/monthly-champions", getActiveMonthlyChampions);
 router.get("/test-catalog", getActiveTestCatalog);

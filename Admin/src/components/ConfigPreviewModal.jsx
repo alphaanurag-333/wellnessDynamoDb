@@ -1454,20 +1454,20 @@ function ContactDetailsPreview({ details = [], surface, item }) {
   );
 }
 
-function LeadershipPreview({ items = [] }) {
+function LeadershipPreview({ items = [], heading = "Leadership Profile", empty = "No live leadership notes to preview.", badgeFallback = "A NOTE FROM LEADERSHIP", appLabel = "Leadership" }) {
   const live = items.filter((entry) => entry.live);
   const featured = live[0];
 
   if (!featured) {
     return (
       <div className="ua-cfg-preview-modal__empty">
-        <p>No live leadership notes to preview.</p>
+        <p>{empty}</p>
       </div>
     );
   }
 
   const photo = featured.profileImage;
-  const title = featured.title || featured.designation || "Leadership";
+  const title = featured.title || featured.designation || heading;
 
   return (
     <div className="ua-cfg-tf-live">
@@ -1476,7 +1476,7 @@ function LeadershipPreview({ items = [] }) {
         <div className="ua-cfg-pt-live-preview">
           <div className="ua-cfg-pt-live-preview__bar">
             <span className="ua-cfg-pt-live-preview__brand">IR</span>
-            <strong>Leadership Profile</strong>
+            <strong>{heading}</strong>
             <span className="ua-cfg-pt-live-preview__url">irwellness.in</span>
           </div>
           {photo ? (
@@ -1486,7 +1486,7 @@ function LeadershipPreview({ items = [] }) {
           ) : (
             <div className="ua-cfg-vh-preview-video">👤</div>
           )}
-          <p className="ua-cfg-ft-preview__copy">{featured.badge || "A NOTE FROM LEADERSHIP"}</p>
+          <p className="ua-cfg-ft-preview__copy">{featured.badge || badgeFallback}</p>
           <p className="ua-cfg-ft-preview__copy"><strong>{featured.name}</strong> · {title}</p>
           {featured.message ? <p className="ua-cfg-ft-preview__copy">{featured.message}</p> : null}
         </div>
@@ -1502,7 +1502,7 @@ function LeadershipPreview({ items = [] }) {
           <div className="ua-cfg-tf-live__app-body">
             <div className="ua-cfg-tf-live__app-head">
               <span className="ua-cfg-pt-live-preview__brand">IR</span>
-              <strong>Leadership</strong>
+              <strong>{appLabel}</strong>
             </div>
             {photo ? <img src={photo} alt="" style={{ width: "100%", borderRadius: 12, marginBottom: 8 }} /> : null}
             <p><strong>{featured.name}</strong></p>
@@ -2012,17 +2012,12 @@ function renderPreviewBody(item, surface, previewState) {
       );
     case "common-wellness-team":
       return (
-        <VoicePreview
-          editor={{
-            ...previewState.wtEditor,
-            videoUploaded: previewState.wtEditor?.videoUploaded || previewState.wtEditor?.appVideo || previewState.wtEditor?.webVideo,
-            clientName: asCopyString(previewState.wtEditor?.name),
-          }}
-          items={(previewState.wtMessages ?? []).map((entry) => ({
-            ...entry,
-            title: asCopyString(entry.title),
-          }))}
+        <LeadershipPreview
+          items={previewState.wtItems ?? []}
           heading="Wellness Team Profile"
+          empty="No live wellness team profiles to preview."
+          badgeFallback="OUR WELLNESS TEAM"
+          appLabel="Team"
         />
       );
     case "common-about":
