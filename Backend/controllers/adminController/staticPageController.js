@@ -3,11 +3,15 @@ const { asyncHandler } = require("../../utils/asyncHandler");
 const {
   listPages,
   getPageById,
+  getPageBySlugWithAliases,
+  withResolvedBlocks,
   createPage,
   updatePage,
   deletePage,
+  slugify,
   normalizeStatus,
 } = require("../../models/staticPageModel");
+const { normalizeLegalBlocks } = require("../../utils/legalBlocks");
 
 exports.listPagesController = asyncHandler(async (_req, res) => {
   const rows = await listPages();
@@ -24,8 +28,81 @@ exports.getPageByIdController = asyncHandler(async (req, res) => {
   }
   return res.status(200).json({
     status: true,
-    data: row,
+    data: withResolvedBlocks(row),
   });
+});
+
+exports.getPageBySlugController = asyncHandler(async (req, res) => {
+  const slug = slugify(req.params.slug || "");
+  if (!slug) throw new AppError("slug is required", 400);
+  const row = await getPageBySlugWithAliases(slug);
+  if (!row) throw new AppError("Page not found", 404);
+  return res.status(200).json({
+    status: true,
+    data: withResolvedBlocks(row),
+  });
+});
+
+exports.upsertPageBySlugController = asyncHandler(async (req, res) => {
+  const slug = slugify(req.params.slug || "");
+  if (!slug) throw new AppError("slug is required", 400);
+
+  const title = String(req.body.title || "").trim();
+  const status = req.body.status !== undefined
+    ? normalizeStatus(req.body.status, "active")
+    : undefined;
+  const blocks = req.body.blocks !== undefined
+    ? normalizeLegalBlocks(req.body.blocks)
+    : undefined;
+  const content = req.body.content !== undefined
+    ? String(req.body.content || "").trim()
+    : undefined;
+
+  if (blocks === undefined && content === undefined) {
+    throw new AppError("blocks or content is required", 400);
+  }
+  if (blocks && !blocks.length && !content) {
+    throw new AppError("Add at least one section before saving", 400);
+  }
+
+  const existing = await getPageBySlugWithAliases(slug);
+  const nextTitle = title || existing?.title || slug.replace(/-/g, " ");
+  if (nextTitle.length < 3) {
+    throw new AppError("Title must be at least 3 characters", 400);
+  }
+
+  try {
+    if (!existing) {
+      const row = await createPage({
+        title: nextTitle,
+        slug,
+        status: status || "active",
+        ...(blocks !== undefined ? { blocks } : { content: content || "" }),
+      });
+      return res.status(201).json({
+        status: true,
+        message: "Page created successfully",
+        data: withResolvedBlocks(row),
+      });
+    }
+
+    const updates = { title: nextTitle };
+    if (status !== undefined) updates.status = status;
+    if (blocks !== undefined) updates.blocks = blocks;
+    else if (content !== undefined) updates.content = content;
+
+    const row = await updatePage(existing.id, updates);
+    return res.status(200).json({
+      status: true,
+      message: "Page updated successfully",
+      data: withResolvedBlocks(row),
+    });
+  } catch (err) {
+    if (err?.code === "DUPLICATE_SLUG") throw new AppError("Slug already exists", 409);
+    if (err?.code === "NOT_FOUND") throw new AppError("Page not found", 404);
+    if (err?.code === "INVALID_SLUG") throw new AppError("Slug is invalid", 400);
+    throw err;
+  }
 });
 
 exports.createPageController = asyncHandler(async (req, res) => {
@@ -81,6 +158,10 @@ exports.updatePageController = asyncHandler(async (req, res) => {
 
   if (req.body.slug !== undefined) {
     updates.slug = String(req.body.slug || "").trim();
+  }
+
+  if (req.body.blocks !== undefined) {
+    updates.blocks = normalizeLegalBlocks(req.body.blocks);
   }
 
   if (Object.keys(updates).length === 0) {

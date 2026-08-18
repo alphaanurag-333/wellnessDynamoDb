@@ -53,6 +53,10 @@ function toPublicClientAppConfig(doc) {
     health_progress_trackers: Array.isArray(config.health_progress_trackers)
       ? config.health_progress_trackers
       : [],
+    web_locations: Array.isArray(config.web_locations) ? config.web_locations : [],
+    web_contact_details: Array.isArray(config.web_contact_details)
+      ? config.web_contact_details
+      : [],
     address: config.address ?? "",
     latitude: config.latitude ?? "",
     longitude: config.longitude ?? "",

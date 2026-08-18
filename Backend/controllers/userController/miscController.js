@@ -7,7 +7,7 @@ const {
   getDropdownBySlug,
   toPublicList,
 } = require("../../models/configDropdownModel");
-const { getPageBySlug, slugify } = require("../../models/staticPageModel");
+const { getPageBySlugWithAliases, slugify, withResolvedBlocks } = require("../../models/staticPageModel");
 const { listClientTestimonials } = require("../../models/clientTestimonials");
 const { listProgramTestimonials } = require("../../models/programTestimonialModel");
 const { listRealPeopleTestimonials } = require("../../models/realPeopleTestimonialModel");
@@ -148,11 +148,11 @@ exports.getStaticPageBySlug = asyncHandler(async (req, res) => {
   const raw = String(req.params.slug || "").trim();
   if (!raw) throw new AppError("slug is required", 400);
   const slug = slugify(raw) || raw.toLowerCase().trim();
-  const page = await getPageBySlug(slug);
+  const page = await getPageBySlugWithAliases(slug);
   if (!page || String(page.status || "").toLowerCase() !== "active") {
     throw new AppError("Page not found", 404);
   }
-  return res.status(200).json({ status: true, page });
+  return res.status(200).json({ status: true, page: withResolvedBlocks(page) });
 });
 
 exports.getActiveClientTestimonials = asyncHandler(async (req, res) => {

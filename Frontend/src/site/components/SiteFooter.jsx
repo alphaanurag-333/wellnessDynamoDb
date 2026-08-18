@@ -156,7 +156,20 @@ export function SiteFooter() {
           <div className="site-footer__column site-footer__contact">
             <h4 className="site-footer__heading">Contact Us</h4>
 
-            {contact.address ? (
+            {contact.locations?.length ? (
+              contact.locations.map((location) => (
+                <div key={location.id} className="site-footer__contact-row">
+                  <span className="site-footer__contact-icon" aria-hidden="true">
+                    <MapPin size={16} />
+                  </span>
+                  <p>
+                    {location.name ? <strong>{location.name}</strong> : null}
+                    {location.name ? " · " : ""}
+                    {location.address}
+                  </p>
+                </div>
+              ))
+            ) : contact.address ? (
               <div className="site-footer__contact-row">
                 <span className="site-footer__contact-icon" aria-hidden="true">
                   <MapPin size={16} />
@@ -193,6 +206,16 @@ export function SiteFooter() {
                 <a href={`mailto:${contact.email}`} className="border-bottom">{contact.email}</a>
               </div>
             ) : null}
+            {(contact.details || [])
+              .filter((row) => !/phone|mobile|email|mail|whatsapp|tel/i.test(row.label))
+              .map((row) => (
+                <div key={row.id} className="site-footer__contact-row">
+                  <span className="site-footer__contact-icon" aria-hidden="true">
+                    <Phone size={16} />
+                  </span>
+                  <p>{row.label}: {row.value}</p>
+                </div>
+              ))}
           </div>
         </div>
 

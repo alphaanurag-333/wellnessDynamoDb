@@ -30,12 +30,30 @@ export function ContactSection() {
                   <span>{contact.phone}</span>
                 </a>
               ) : null}
-              {contact.address ? (
-                <p className="site-contact__item site-contact__item--static">
+            {contact.locations?.length ? (
+              contact.locations.map((location) => (
+                <p key={location.id} className="site-contact__item site-contact__item--static">
                   <IoLocationOutline size={20} aria-hidden />
-                  <span>{contact.address}</span>
+                  <span>
+                    {location.name ? <strong>{location.name}</strong> : null}
+                    {location.name ? " · " : ""}
+                    {location.address}
+                  </span>
                 </p>
-              ) : null}
+              ))
+            ) : contact.address ? (
+              <p className="site-contact__item site-contact__item--static">
+                <IoLocationOutline size={20} aria-hidden />
+                <span>{contact.address}</span>
+              </p>
+            ) : null}
+            {(contact.details || [])
+              .filter((row) => !/phone|mobile|email|mail|whatsapp|tel/i.test(row.label))
+              .map((row) => (
+                <p key={row.id} className="site-contact__item site-contact__item--static">
+                  <span>{row.label}: {row.value}</span>
+                </p>
+              ))}
             </div>
           </div>
 

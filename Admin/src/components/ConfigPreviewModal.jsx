@@ -897,7 +897,8 @@ function NutritionBankPreview({ items, surface, item }) {
   );
 }
 
-function LegalTextPreview({ title, copy, surface, item }) {
+function LegalTextPreview({ title, blocks = [], surface, item }) {
+  const shown = (Array.isArray(blocks) ? blocks : []).filter((entry) => entry.shown);
   const body = (
     <div className="ua-cfg-preview-phone">
       <div className="ua-cfg-preview-phone__shell">
@@ -908,14 +909,16 @@ function LegalTextPreview({ title, copy, surface, item }) {
             <strong>{title}</strong>
           </div>
           <div className="ua-cfg-preview-legal__body">
-            <p>{copy?.intro}</p>
-            {copy?.bullets?.length ? (
-              <ul>
-                {copy.bullets.map((bullet) => (
-                  <li key={bullet}>{bullet}</li>
-                ))}
-              </ul>
-            ) : null}
+            {shown.length ? (
+              shown.map((block) => (
+                <div key={block.id}>
+                  {block.id === "intro" ? null : <strong>{block.title}</strong>}
+                  <LegalPreviewCopy text={liveVersionText(block, "app")} />
+                </div>
+              ))
+            ) : (
+              <p>No copy yet.</p>
+            )}
           </div>
           <div className="ua-cfg-preview-legal__accept">I agree</div>
         </div>
@@ -1548,6 +1551,19 @@ function DropdownsPreview({ lists = [], surface, item }) {
   );
 }
 
+function looksLikeHtml(value) {
+  return /<[a-z][\s\S]*>/i.test(String(value || ""));
+}
+
+function LegalPreviewCopy({ text }) {
+  const value = String(text || "").trim();
+  if (!value) return null;
+  if (looksLikeHtml(value)) {
+    return <div className="ua-cfg-privacy__html" dangerouslySetInnerHTML={{ __html: value }} />;
+  }
+  return <p>{value}</p>;
+}
+
 function LegalBlocksPreview({
   blocks = [],
   surface,
@@ -1569,8 +1585,8 @@ function LegalBlocksPreview({
         <div className="ua-cfg-lb-preview">
           {shown.map((block) => (
             <div key={block.id}>
-              <strong>{block.title}</strong>
-              <p>{liveVersionText(block, surface === "app" ? "app" : "web")}</p>
+              {block.id === "intro" ? null : <strong>{block.title}</strong>}
+              <LegalPreviewCopy text={liveVersionText(block, surface === "app" ? "app" : "web")} />
             </div>
           ))}
         </div>
@@ -1618,7 +1634,7 @@ function renderPreviewBody(item, surface, previewState) {
       return (
         <LegalTextPreview
           title="Terms of service"
-          copy={previewState.tosCopy}
+          blocks={previewState.appTosBlocks ?? []}
           surface={surface}
           item={item}
         />
@@ -1627,7 +1643,7 @@ function renderPreviewBody(item, surface, previewState) {
       return (
         <LegalTextPreview
           title="Data processing agreement"
-          copy={previewState.dpaCopy}
+          blocks={previewState.dpaBlocks ?? []}
           surface={surface}
           item={item}
         />
@@ -1777,8 +1793,8 @@ function renderPreviewBody(item, surface, previewState) {
           blocks={previewState.tosBlocks ?? []}
           surface={surface}
           item={item}
-          title="Terms of service"
-          url="irwellness.in/terms"
+          title="Terms and Conditions"
+          url="irwellness.in/terms-and-conditions"
           empty="No terms sections are shown yet."
         />
       );
@@ -1788,18 +1804,28 @@ function renderPreviewBody(item, surface, previewState) {
           blocks={previewState.guidelineBlocks ?? []}
           surface={surface}
           item={item}
-          title="Community guidelines"
-          url="irwellness.in/community-guidelines"
+          title="Community Guidelines"
+          url="irwellness.in/community-guideline"
           empty="No guidelines are shown yet."
         />
       );
     case "web-fs-contact":
       return (
-        <ContactDetailsPreview
-          details={previewState.contactDetails ?? []}
-          surface={surface}
-          item={item}
-        />
+        <>
+          <LegalBlocksPreview
+            blocks={previewState.contactPageBlocks ?? []}
+            surface={surface}
+            item={item}
+            title="Contact us"
+            url="irwellness.in/contact-us"
+            empty="No contact sections are shown yet."
+          />
+          <ContactDetailsPreview
+            details={previewState.contactDetails ?? []}
+            surface={surface}
+            item={item}
+          />
+        </>
       );
     case "web-fs-text":
       return (

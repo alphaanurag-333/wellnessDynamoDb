@@ -12,6 +12,8 @@ const {
   normalizeBodyMeasurementGuideType,
   normalizeProgressPhotoGuidelines,
   normalizeHealthProgressTrackers,
+  normalizeWebLocations,
+  normalizeWebContactDetails,
   BODY_MEASUREMENT_INFO_IMAGE_FIELDS,
 } = require("../../models/appConfigModel");
 
@@ -691,6 +693,16 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
   if (req.body.health_progress_trackers !== undefined) {
     const parsed = parseJSON(req.body.health_progress_trackers, null);
     updates.health_progress_trackers = normalizeHealthProgressTrackers(parsed);
+  }
+
+  if (req.body.web_locations !== undefined) {
+    updates.web_locations = normalizeWebLocations(parseJSON(req.body.web_locations, []));
+  }
+
+  if (req.body.web_contact_details !== undefined) {
+    updates.web_contact_details = normalizeWebContactDetails(
+      parseJSON(req.body.web_contact_details, [])
+    );
   }
 
   await applyLogoUploads(req, config, updates);

@@ -244,3 +244,49 @@ export const DPA_CONTENT = {
     "You may request export or deletion of your account data by contacting support; some records may be retained where law requires.",
   ],
 };
+
+function escapeLegalHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function legalCopyBlock(id, title, html) {
+  return {
+    id,
+    title,
+    shown: true,
+    webVersion: 1,
+    appVersion: 1,
+    versions: [{ n: 1, date: "", author: "Admin", text: html }],
+  };
+}
+
+function legalCopyToBlocks(prefix, introTitle, intro, listTitle, bullets) {
+  return [
+    legalCopyBlock(prefix, introTitle, `<p>${escapeLegalHtml(intro)}</p>`),
+    legalCopyBlock(
+      `${prefix}-points`,
+      listTitle,
+      `<ul>${(bullets || []).map((item) => `<li>${escapeLegalHtml(item)}</li>`).join("")}</ul>`
+    ),
+  ];
+}
+
+export const APP_TOS_BLOCKS = legalCopyToBlocks(
+  "intro",
+  "Agreement",
+  TOS_CONTENT.intro,
+  "Key terms",
+  TOS_CONTENT.bullets
+);
+
+export const APP_DPA_BLOCKS = legalCopyToBlocks(
+  "intro",
+  "Overview",
+  DPA_CONTENT.intro,
+  "How we process data",
+  DPA_CONTENT.bullets
+);

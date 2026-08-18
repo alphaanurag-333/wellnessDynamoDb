@@ -249,6 +249,36 @@ const STATIC_PAGES = [
     `.trim(),
   },
   {
+    title: "App Terms of Service",
+    slug: "app-tos",
+    status: "active",
+    content: `
+      <p>By creating an account you agree to these terms and to the protocols prescribed by your assigned wellness coach.</p>
+      <h2>Key terms</h2>
+      <ul>
+        <li>Programs are delivered digitally through the IRW app. Session timings are agreed with your coach.</li>
+        <li>Program fees are refundable on a pro-rata basis within the first 14 days.</li>
+        <li>Your labs, photos and notes are visible only to you and your assigned coach.</li>
+        <li>We may update these terms; material changes are notified in the app.</li>
+      </ul>
+    `.trim(),
+  },
+  {
+    title: "Data Processing Agreement",
+    slug: "app-dpa",
+    status: "active",
+    content: `
+      <p>IR Wellness processes your health data to deliver coaching, lab reviews, and app features. This agreement explains what we collect, why, and how long we keep it.</p>
+      <h2>How we process data</h2>
+      <ul>
+        <li>We collect profile details, body metrics, lab reports, and coach notes needed for your program.</li>
+        <li>Data is stored securely and accessed only by you, your assigned coach, and authorised IRW staff.</li>
+        <li>We do not sell your data. Processors such as labs and payment gateways receive only what is required to fulfil a service.</li>
+        <li>You may request export or deletion of your account data by contacting support; some records may be retained where law requires.</li>
+      </ul>
+    `.trim(),
+  },
+  {
     title: "About Us",
     slug: "about-us",
     status: "active",
@@ -354,6 +384,7 @@ async function upsertPage(row) {
       slug: row.slug,
       content: row.content,
       status: row.status,
+      blocks: [],
     });
     return { action: "updated", item: updated };
   }
@@ -363,12 +394,24 @@ async function upsertPage(row) {
 }
 
 async function main() {
+  const onlyArg = process.argv.find((arg) => arg.startsWith("--only="));
+  const onlySlugs = onlyArg
+    ? new Set(onlyArg.slice("--only=".length).split(",").map((slug) => slug.trim()).filter(Boolean))
+    : null;
+  const pages = onlySlugs
+    ? STATIC_PAGES.filter((row) => onlySlugs.has(row.slug))
+    : STATIC_PAGES;
+
+  if (!pages.length) {
+    throw new Error("No matching static pages to seed");
+  }
+
   console.log("Seeding StaticPage entries...\n");
 
   let created = 0;
   let updated = 0;
 
-  for (const row of STATIC_PAGES) {
+  for (const row of pages) {
     const { action, item } = await upsertPage(row);
     console.log(`  ✓ ${action}: ${row.title} → ${item.slug} (${item.id})`);
     if (action === "created") created += 1;
@@ -378,7 +421,9 @@ async function main() {
   console.log(`\nDone: ${created} created, ${updated} updated.`);
 }
 
-main().catch((err) => {
-  console.error("Seed failed:", err.message || err);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  main().catch((err) => {
+    console.error("Seed failed:", err.message || err);
+    process.exitCode = 1;
+  });
+}

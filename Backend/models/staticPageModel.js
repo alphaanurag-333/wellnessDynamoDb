@@ -12,6 +12,12 @@ const {
   listByPartitionKey,
   sortByUpdatedAtDesc,
 } = require("../utils/dynamoList");
+const {
+  compileLegalBlocksToHtml,
+  normalizeLegalBlocks,
+  resolveLegalBlocks,
+  slugCandidates,
+} = require("../utils/legalBlocks");
 
 const TABLE = "StaticPage";
 const STATUS = new Set(["active", "inactive"]);
@@ -37,14 +43,32 @@ function withLegacyId(row) {
 }
 
 async function getPageBySlug(slug) {
+  const clean = slugify(slug);
+  if (!clean) return null;
   const { Items } = await docClient.send(new QueryCommand({
     TableName: TABLE,
     IndexName: "SlugIndex",
     KeyConditionExpression: "slug = :slug",
-    ExpressionAttributeValues: { ":slug": slug },
+    ExpressionAttributeValues: { ":slug": clean },
     Limit: 1,
   }));
   return withLegacyId(Items?.[0] || null);
+}
+
+async function getPageBySlugWithAliases(slug) {
+  for (const candidate of slugCandidates(slug)) {
+    const row = await getPageBySlug(candidate);
+    if (row) return row;
+  }
+  return null;
+}
+
+function withResolvedBlocks(row, fallbackBlocks) {
+  if (!row) return null;
+  return {
+    ...row,
+    blocks: resolveLegalBlocks(row, fallbackBlocks),
+  };
 }
 
 async function listPages() {
@@ -69,10 +93,14 @@ async function getPageById(id) {
   return withLegacyId(Item || null);
 }
 
-async function createPage({ title, content = "", status = "active", slug }) {
+async function createPage({ title, content = "", status = "active", slug, blocks }) {
   const cleanTitle = String(title || "").trim();
   const now = new Date().toISOString();
   const cleanSlug = slugify(slug || cleanTitle);
+  const normalizedBlocks = blocks !== undefined ? normalizeLegalBlocks(blocks) : undefined;
+  const compiled = normalizedBlocks
+    ? compileLegalBlocksToHtml(normalizedBlocks)
+    : String(content || "").trim();
 
   const existing = await getPageBySlug(cleanSlug);
   if (existing) {
@@ -85,11 +113,12 @@ async function createPage({ title, content = "", status = "active", slug }) {
     id: uuidv4(),
     title: cleanTitle,
     slug: cleanSlug,
-    content: String(content || "").trim(),
+    content: compiled,
     status: normalizeStatus(status),
     createdAt: now,
     updatedAt: now,
   };
+  if (normalizedBlocks) item.blocks = normalizedBlocks;
 
   await docClient.send(new PutCommand({
     TableName: TABLE,
@@ -109,6 +138,13 @@ async function updatePage(id, updates) {
   }
 
   const next = { ...updates };
+
+  if (next.blocks !== undefined) {
+    next.blocks = normalizeLegalBlocks(next.blocks);
+    if (next.content === undefined) {
+      next.content = compileLegalBlocksToHtml(next.blocks);
+    }
+  }
 
   if (next.slug !== undefined || next.title !== undefined) {
     const candidateSlug = slugify(next.slug || next.title || existing.slug);
@@ -170,6 +206,8 @@ module.exports = {
   listPages,
   getPageById,
   getPageBySlug,
+  getPageBySlugWithAliases,
+  withResolvedBlocks,
   createPage,
   updatePage,
   deletePage,

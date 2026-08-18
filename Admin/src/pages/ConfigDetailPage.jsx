@@ -27,6 +27,12 @@ import { AiEnableSection } from "../components/AiEnableSection.jsx";
 import { PaymentGatewaySection } from "../components/PaymentGatewaySection.jsx";
 import { LanguageDisableSection } from "../components/LanguageDisableSection.jsx";
 import { GstSection } from "../components/GstSection.jsx";
+import { DpaSection } from "../components/DpaSection.jsx";
+import { AppTosSection } from "../components/AppTosSection.jsx";
+import { PrivacyPolicySection } from "../components/PrivacyPolicySection.jsx";
+import { TermsAndConditionsSection } from "../components/TermsAndConditionsSection.jsx";
+import { CommunityGuidelinesSection } from "../components/CommunityGuidelinesSection.jsx";
+import { LegalSectionsEditor } from "../components/LegalSectionsEditor.jsx";
 import { LaunchSection } from "../components/LaunchSection.jsx";
 import { NutritionBankSection } from "../components/NutritionBankSection.jsx";
 import { FeatureFlagsSection } from "../components/FeatureFlagsSection.jsx";
@@ -61,7 +67,7 @@ import { WEBSITE_FOOTER_LINKS } from "../data/websiteLinksConfigData.js";
 import { PRIVACY_BLOCKS } from "../data/privacyConfigData.js";
 import { TOS_BLOCKS } from "../data/tosConfigData.js";
 import { GUIDELINE_BLOCKS } from "../data/guidelinesConfigData.js";
-import { CONTACT_DETAILS } from "../data/contactConfigData.js";
+import { CONTACT_DETAILS, CONTACT_PAGE_BLOCKS } from "../data/contactConfigData.js";
 import { FOOTER_TEXT_BLOCKS } from "../data/footerTextConfigData.js";
 import { createDefaultLogoSlots } from "../data/logoConfigData.js";
 import { LOCATIONS } from "../data/locationConfigData.js";
@@ -104,8 +110,8 @@ import {
   VALIDITY_PERIODS,
   activePaymentGateway,
   createDefaultGateways,
-  TOS_CONTENT,
-  DPA_CONTENT,
+  APP_TOS_BLOCKS,
+  APP_DPA_BLOCKS,
 } from "../data/configDetailData.js";
 import { findConfigItem, getConfigStateLabel } from "../data/configsData.js";
 import { formatRupee } from "../data/exchangeData.js";
@@ -1056,99 +1062,6 @@ function ExchangeClientSection({
   );
 }
 
-function LegalTextPanel({ title, copy, onChange, onToast }) {
-  const [editing, setEditing] = useState(false);
-  const [draftIntro, setDraftIntro] = useState(copy.intro);
-  const [draftBullets, setDraftBullets] = useState(copy.bullets.join("\n"));
-
-  function startEdit() {
-    setDraftIntro(copy.intro);
-    setDraftBullets(copy.bullets.join("\n"));
-    setEditing(true);
-  }
-
-  function cancelEdit() {
-    setDraftIntro(copy.intro);
-    setDraftBullets(copy.bullets.join("\n"));
-    setEditing(false);
-  }
-
-  function saveEdit() {
-    const intro = draftIntro.trim();
-    const bullets = draftBullets
-      .split("\n")
-      .map((line) => line.replace(/^[\s•\-–]+/, "").trim())
-      .filter(Boolean);
-
-    if (!intro) {
-      onToast("Add an opening paragraph before saving");
-      return;
-    }
-
-    onChange({ intro, bullets });
-    setEditing(false);
-    onToast(`${title} updated`);
-  }
-
-  return (
-    <Panel
-      title={title}
-      subtitle="Write the copy as a paragraph or bullet points."
-      actions={
-        editing ? (
-          <>
-            {/* <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" onClick={cancelEdit}>
-              Cancel
-            </button> */}
-            <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" onClick={saveEdit}>
-              Save
-            </button>
-          </>
-        ) : (
-          <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost" onClick={startEdit}>
-            Edit
-          </button>
-        )
-      }
-    >
-      {editing ? (
-        <div className="ua-cfg-legal-edit">
-          <label className="ua-cfg-legal-edit__field">
-            <span className="ua-cfg-legal-edit__label">Opening paragraph</span>
-            <textarea
-              className="ua-cfg-legal-edit__textarea"
-              rows={3}
-              value={draftIntro}
-              onChange={(event) => setDraftIntro(event.target.value)}
-            />
-          </label>
-          <label className="ua-cfg-legal-edit__field">
-            <span className="ua-cfg-legal-edit__label">Bullet points · one per line</span>
-            <textarea
-              className="ua-cfg-legal-edit__textarea ua-cfg-legal-edit__textarea--bullets"
-              rows={6}
-              value={draftBullets}
-              placeholder="One bullet per line"
-              onChange={(event) => setDraftBullets(event.target.value)}
-            />
-          </label>
-        </div>
-      ) : (
-        <div className="ua-cfg-legal-view">
-          <p className="ua-cfg-legal-view__intro">{copy.intro}</p>
-          {copy.bullets.length ? (
-            <ul className="ua-cfg-legal-view__list">
-              {copy.bullets.map((bullet) => (
-                <li key={bullet}>{bullet}</li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
-      )}
-    </Panel>
-  );
-}
-
 function GenericPanel({ item }) {
   return (
     <section className="ua-cfg-empty">
@@ -1271,8 +1184,8 @@ export function ConfigDetailPage() {
   const [gstOn, setGstOn] = useState(false);
   const [gstPercent, setGstPercent] = useState("18");
   const [gateways, setGateways] = useState(createDefaultGateways);
-  const [tosCopy, setTosCopy] = useState(TOS_CONTENT);
-  const [dpaCopy, setDpaCopy] = useState(DPA_CONTENT);
+  const [appTosBlocks, setAppTosBlocks] = useState(APP_TOS_BLOCKS);
+  const [dpaBlocks, setDpaBlocks] = useState(APP_DPA_BLOCKS);
   const [measurementGuide, setMeasurementGuide] = useState(MEASUREMENT_GUIDE);
   const [measurementParams, setMeasurementParams] = useState(MEASUREMENT_PARAMETERS);
   const [onboardingCoaches, setOnboardingCoaches] = useState(ONBOARDING_COACHES);
@@ -1300,6 +1213,7 @@ export function ConfigDetailPage() {
   const [tosBlocks, setTosBlocks] = useState(TOS_BLOCKS);
   const [guidelineBlocks, setGuidelineBlocks] = useState(GUIDELINE_BLOCKS);
   const [contactDetails, setContactDetails] = useState(CONTACT_DETAILS);
+  const [contactPageBlocks, setContactPageBlocks] = useState(CONTACT_PAGE_BLOCKS);
   const [footerTextBlocks, setFooterTextBlocks] = useState(FOOTER_TEXT_BLOCKS);
   const [logoSlots, setLogoSlots] = useState(createDefaultLogoSlots);
   const [locations, setLocations] = useState(LOCATIONS);
@@ -1482,6 +1396,10 @@ export function ConfigDetailPage() {
         ? gstOn
         : item.id === "app-payment-gateway"
           ? activeGateway?.name ?? false
+          : item.id === "app-tos"
+            ? appTosBlocks.some((entry) => entry.shown)
+          : item.id === "app-dpa"
+            ? dpaBlocks.some((entry) => entry.shown)
           : item.id === "app-measurement-video"
             ? measurementGuide.live
           : item.id === "app-onboarding-video"
@@ -1536,6 +1454,7 @@ export function ConfigDetailPage() {
                 ? guidelineBlocks.some((entry) => entry.shown)
               : item.id === "web-fs-contact"
                 ? contactDetails.some((entry) => entry.live)
+                  || contactPageBlocks.some((entry) => entry.shown)
               : item.id === "web-fs-text"
                 ? footerTextBlocks.some((entry) => entry.shown)
               : item.id === "web-logo"
@@ -1715,19 +1634,17 @@ export function ConfigDetailPage() {
         );
       case "app-tos":
         return (
-          <LegalTextPanel
-            title="Terms of service"
-            copy={tosCopy}
-            onChange={setTosCopy}
+          <AppTosSection
+            blocks={appTosBlocks}
+            setBlocks={setAppTosBlocks}
             onToast={onToast}
           />
         );
       case "app-dpa":
         return (
-          <LegalTextPanel
-            title="Data processing agreement"
-            copy={dpaCopy}
-            onChange={setDpaCopy}
+          <DpaSection
+            blocks={dpaBlocks}
+            setBlocks={setDpaBlocks}
             onToast={onToast}
           />
         );
@@ -1892,7 +1809,7 @@ export function ConfigDetailPage() {
         );
       case "web-fs-privacy":
         return (
-          <LegalBlocksSection
+          <PrivacyPolicySection
             blocks={privacyBlocks}
             setBlocks={setPrivacyBlocks}
             onToast={onToast}
@@ -1900,7 +1817,7 @@ export function ConfigDetailPage() {
         );
       case "web-fs-tos":
         return (
-          <LegalBlocksSection
+          <TermsAndConditionsSection
             blocks={tosBlocks}
             setBlocks={setTosBlocks}
             onToast={onToast}
@@ -1908,7 +1825,7 @@ export function ConfigDetailPage() {
         );
       case "web-fs-guidelines":
         return (
-          <LegalBlocksSection
+          <CommunityGuidelinesSection
             blocks={guidelineBlocks}
             setBlocks={setGuidelineBlocks}
             onToast={onToast}
@@ -1916,11 +1833,23 @@ export function ConfigDetailPage() {
         );
       case "web-fs-contact":
         return (
-          <ContactDetailsSection
-            details={contactDetails}
-            setDetails={setContactDetails}
-            onToast={onToast}
-          />
+          <>
+            <LegalSectionsEditor
+              slug="contact-us"
+              defaultTitle="Contact Us"
+              sitePath="irwellness.in/contact-us"
+              noun="contact section"
+              fallbackBlocks={CONTACT_PAGE_BLOCKS}
+              blocks={contactPageBlocks}
+              setBlocks={setContactPageBlocks}
+              onToast={onToast}
+            />
+            <ContactDetailsSection
+              details={contactDetails}
+              setDetails={setContactDetails}
+              onToast={onToast}
+            />
+          </>
         );
       case "web-fs-text":
         return (
@@ -2158,8 +2087,8 @@ export function ConfigDetailPage() {
           gstPercent,
           gateways,
           activeGateway,
-          tosCopy,
-          dpaCopy,
+          appTosBlocks,
+          dpaBlocks,
           measurementGuide,
           measurementParams,
           onboardingCoaches,
@@ -2184,6 +2113,7 @@ export function ConfigDetailPage() {
           tosBlocks,
           guidelineBlocks,
           contactDetails,
+          contactPageBlocks,
           footerTextBlocks,
           logoSlots,
           locations,

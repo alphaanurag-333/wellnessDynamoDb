@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Country } from "country-state-city";
 import FinalCTA from "./FinalCTA";
-import { submitContactInquiry } from "../api/publicMisc.js";
+import { fetchStaticPageBySlug, submitContactInquiry } from "../api/publicMisc.js";
 import ContactCountryDialSelect from "./ContactCountryDialSelect.jsx";
 import {
   DEFAULT_ISO,
@@ -49,6 +49,21 @@ export default function ContactUsSection() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState(null);
+  const [page, setPage] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchStaticPageBySlug("contact-us")
+      .then((data) => {
+        if (!cancelled) setPage(data?.page || null);
+      })
+      .catch(() => {
+        if (!cancelled) setPage(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const clearFieldError = (name) => {
     setFieldErrors((prev) => {
@@ -211,13 +226,24 @@ export default function ContactUsSection() {
       <div class="site-container">
         <div class="wellness-toolkit__content pt-2 maximumwidth">
           <h2 class="wellness__title mb-0">
-                       Contact Our
-            <span> Wellness Team</span>
+            {page?.title || (
+              <>
+                Contact Our
+                <span> Wellness Team</span>
+              </>
+            )}
           </h2>
-          <p class="wellness-toolkit__description maximumwidth">
-            Expert guidance for your wellness journey. Reach out to our
-            specialists for personalized clinical support.
-          </p>
+          {page?.content ? (
+            <div
+              className="wellness-toolkit__description maximumwidth static-page-content"
+              dangerouslySetInnerHTML={{ __html: page.content }}
+            />
+          ) : (
+            <p class="wellness-toolkit__description maximumwidth">
+              Expert guidance for your wellness journey. Reach out to our
+              specialists for personalized clinical support.
+            </p>
+          )}
         </div>
       </div>
       <div className="contact-card mt-0 mb-3">

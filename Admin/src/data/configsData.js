@@ -100,7 +100,7 @@ export const CONFIG_GROUPS = {
         {
           id: "app-tos",
           name: "Terms of service",
-          note: "Legal copy",
+          note: "App legal copy · Static Pages",
           owner: "Admin / Support",
           app: true,
           web: false,
@@ -111,7 +111,7 @@ export const CONFIG_GROUPS = {
         {
           id: "app-dpa",
           name: "Data processing agreement",
-          note: "Legal copy",
+          note: "App legal copy · Static Pages",
           owner: "Admin / Support",
           app: true,
           web: false,

@@ -66,6 +66,69 @@ function normalizeGuidelineList(value) {
     .filter(Boolean);
 }
 
+function parseStoredArray(value) {
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return [];
+    }
+  }
+  return Array.isArray(value) ? value : [];
+}
+
+function uniqueId(raw, fallback, seen) {
+  const base = slugifyTrackerId(raw) || fallback;
+  let id = base;
+  let n = 2;
+  while (seen.has(id)) {
+    id = `${base}-${n}`;
+    n += 1;
+  }
+  seen.add(id);
+  return id;
+}
+
+function normalizeWebLocationRow(row, index, seen) {
+  if (!row || typeof row !== "object") return null;
+  const name = String(row.name || "").trim();
+  const address = String(row.address || "").trim();
+  if (!name || !address) return null;
+  return {
+    id: uniqueId(row.id || name, `loc-${index + 1}`, seen),
+    name,
+    address,
+    live: row.live !== false,
+  };
+}
+
+function normalizeWebLocations(value) {
+  const seen = new Set();
+  return parseStoredArray(value)
+    .map((row, index) => normalizeWebLocationRow(row, index, seen))
+    .filter(Boolean);
+}
+
+function normalizeWebContactDetailRow(row, index, seen) {
+  if (!row || typeof row !== "object") return null;
+  const label = String(row.label || "").trim();
+  const value = String(row.value || "").trim();
+  if (!label || !value) return null;
+  return {
+    id: uniqueId(row.id || label, `ct-${index + 1}`, seen),
+    label,
+    value,
+    live: row.live !== false,
+  };
+}
+
+function normalizeWebContactDetails(value) {
+  const seen = new Set();
+  return parseStoredArray(value)
+    .map((row, index) => normalizeWebContactDetailRow(row, index, seen))
+    .filter(Boolean);
+}
+
 function slugifyTrackerId(value) {
   return String(value || "")
     .toLowerCase()
@@ -163,7 +226,7 @@ function normalizeProgressPhotoGuidelines(value, fallback = null) {
 
 function toPublicAppConfig(config) {
   if (!config) return null;
-  const { payment_methods: _paymentMethods, ...rest } = config;
+  const { payment_methods: _paymentMethods, dpa_content: _dpaContent, ...rest } = config;
   const pub = {
     ...rest,
     app_version: config.app_version ?? "",
@@ -174,6 +237,8 @@ function toPublicAppConfig(config) {
       String(config.body_measurement_guide_description || "").trim() ||
       DEFAULT_BODY_MEASUREMENT_GUIDE_DESCRIPTION,
     health_progress_trackers: normalizeHealthProgressTrackers(config.health_progress_trackers),
+    web_locations: normalizeWebLocations(config.web_locations),
+    web_contact_details: normalizeWebContactDetails(config.web_contact_details),
   };
   for (const field of MEDIA_FIELDS) {
     if (pub[field]) pub[field] = resolvePublicUrl(pub[field]) || "";
@@ -206,6 +271,8 @@ async function createAppConfig() {
     ...Object.fromEntries(BODY_MEASUREMENT_INFO_IMAGE_FIELDS.map((field) => [field, ""])),
     progress_photo_guidelines: { en: [], hi: [] },
     health_progress_trackers: DEFAULT_HEALTH_PROGRESS_TRACKERS.map((row) => ({ ...row })),
+    web_locations: [],
+    web_contact_details: [],
     address:        "",
     latitude:       "",
     longitude:      "",
@@ -320,6 +387,10 @@ async function updateAppConfig(updates) {
       nextVal = normalizeProgressPhotoGuidelines(val);
     } else if (key === "health_progress_trackers") {
       nextVal = normalizeHealthProgressTrackers(val);
+    } else if (key === "web_locations") {
+      nextVal = normalizeWebLocations(val);
+    } else if (key === "web_contact_details") {
+      nextVal = normalizeWebContactDetails(val);
     }
     exprValues[`:${key}`] = nextVal;
     setExpr += `, #${key} = :${key}`;
@@ -352,4 +423,6 @@ module.exports = {
   normalizeBodyMeasurementGuideType,
   normalizeProgressPhotoGuidelines,
   normalizeHealthProgressTrackers,
+  normalizeWebLocations,
+  normalizeWebContactDetails,
 };

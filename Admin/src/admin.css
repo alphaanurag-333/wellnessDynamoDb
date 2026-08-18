@@ -26368,6 +26368,18 @@
   color: #16233f;
 }
 
+.updated-admin .ua-cfg-preview-legal__body strong {
+  display: block;
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: #16233f;
+}
+
+.updated-admin .ua-cfg-preview-legal__body .ua-cfg-privacy__html {
+  max-height: none;
+  font-size: 11.5px;
+}
+
 .updated-admin .ua-cfg-preview-legal__body ul {
   margin: 0;
   padding-left: 16px;
@@ -32095,6 +32107,71 @@
   color: #5a6b85;
 }
 
+.updated-admin .ua-cfg-privacy .ua-cfg-lb-card__copy {
+  display: block;
+  margin-bottom: 0;
+}
+
+.updated-admin .ua-cfg-privacy .ua-cfg-lb-card__head .ua-cfg-faq-new__question {
+  flex: 1;
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-privacy__html {
+  max-height: 280px;
+  overflow: auto;
+  color: #334155;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.updated-admin .ua-cfg-privacy__html h2,
+.updated-admin .ua-cfg-privacy__html h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.updated-admin .ua-cfg-privacy__html p,
+.updated-admin .ua-cfg-privacy__html ul {
+  margin: 0 0 8px;
+}
+
+.updated-admin .ua-cfg-ckeditor {
+  width: 100%;
+  border: 1px solid #dbe3ef;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.updated-admin .ua-cfg-ckeditor.is-disabled {
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+.updated-admin .ua-cfg-ckeditor .ck.ck-editor__main > .ck-editor__editable {
+  min-height: 220px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.updated-admin .ua-cfg-ckeditor.is-compact .ck.ck-editor__main > .ck-editor__editable {
+  min-height: 180px;
+}
+
+.updated-admin .ua-cfg-ckeditor .ck.ck-toolbar {
+  border: 0 !important;
+  border-bottom: 1px solid #edf1f7 !important;
+  background: #f8fafc;
+}
+
+.updated-admin .ua-cfg-ckeditor .ck.ck-editor__editable_inline {
+  padding: 14px 16px;
+  color: #16233f;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
 .updated-admin .ua-cfg-lb-assets {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -32383,6 +32460,16 @@
   font-size: 12px;
   line-height: 1.5;
   color: #5a6b85;
+}
+
+.updated-admin .ua-cfg-lb-preview .ua-cfg-privacy__html {
+  max-height: none;
+}
+
+.updated-admin .ua-cfg-lb-preview .ua-cfg-privacy__html p,
+.updated-admin .ua-cfg-lb-preview .ua-cfg-privacy__html ul {
+  margin: 0 0 8px;
+  font-size: 12px;
 }
 
 

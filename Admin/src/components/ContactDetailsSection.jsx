@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { getWebContactDetails, saveWebContactDetails } from "../api/contactDetailsApi.js";
+import { CONTACT_DETAILS } from "../data/contactConfigData.js";
+import { ConfirmDialog } from "./ConfirmDialog.jsx";
 
 function Panel({ title, subtitle, actions, children }) {
   return (
@@ -15,7 +18,22 @@ function Panel({ title, subtitle, actions, children }) {
   );
 }
 
-function ContactRow({ entry, editing, draft, onDraftChange, onToggle, onEdit, onSave, onCancel, onDelete }) {
+function ContactRow({
+  entry,
+  editing,
+  draft,
+  locked,
+  canMoveUp,
+  canMoveDown,
+  onDraftChange,
+  onToggle,
+  onEdit,
+  onSave,
+  onCancel,
+  onMoveUp,
+  onMoveDown,
+  onDelete,
+}) {
   const isEditing = Boolean(editing);
 
   return (
@@ -28,6 +46,7 @@ function ContactRow({ entry, editing, draft, onDraftChange, onToggle, onEdit, on
             className="ua-cfg-ct-row__input"
             value={draft}
             placeholder="Value"
+            disabled={locked}
             onChange={(event) => onDraftChange(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") onSave();
@@ -46,23 +65,48 @@ function ContactRow({ entry, editing, draft, onDraftChange, onToggle, onEdit, on
         className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
         aria-pressed={entry.live}
         aria-label={`${entry.label} ${entry.live ? "live" : "hidden"}`}
+        disabled={locked}
         onClick={onToggle}
       >
         <span className="ua-toggle__knob" />
       </button>
       {isEditing ? (
-        <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" onClick={onSave}>
+        <button
+          type="button"
+          className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
+          disabled={locked}
+          onClick={onSave}
+        >
           Save
         </button>
       ) : (
-        <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost" onClick={onEdit}>
+        <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost" disabled={locked} onClick={onEdit}>
           Edit
         </button>
       )}
       <button
         type="button"
+        className="ua-cfg-icon-btn"
+        aria-label="Move up"
+        disabled={locked || !canMoveUp}
+        onClick={onMoveUp}
+      >
+        ↑
+      </button>
+      <button
+        type="button"
+        className="ua-cfg-icon-btn"
+        aria-label="Move down"
+        disabled={locked || !canMoveDown}
+        onClick={onMoveDown}
+      >
+        ↓
+      </button>
+      <button
+        type="button"
         className="ua-cfg-icon-btn ua-cfg-icon-btn--danger"
         aria-label={isEditing ? "Cancel" : `Remove ${entry.label}`}
+        disabled={locked}
         onClick={isEditing ? onCancel : onDelete}
       >
         ×
@@ -72,10 +116,46 @@ function ContactRow({ entry, editing, draft, onDraftChange, onToggle, onEdit, on
 }
 
 export function ContactDetailsSection({ details, setDetails, onToast }) {
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [newDraft, setNewDraft] = useState({ label: "", value: "" });
+  const [pendingDelete, setPendingDelete] = useState(null);
+
+  const loadDetails = useCallback(async () => {
+    setLoading(true);
+    try {
+      setDetails(await getWebContactDetails());
+    } catch (error) {
+      onToast(error?.message || "Failed to load contact details");
+      setDetails(CONTACT_DETAILS.map((row) => ({ ...row })));
+    } finally {
+      setLoading(false);
+    }
+  }, [onToast, setDetails]);
+
+  useEffect(() => {
+    loadDetails();
+  }, [loadDetails]);
+
+  async function persist(nextItems, successMessage) {
+    const previous = details;
+    setDetails(nextItems);
+    setBusy(true);
+    try {
+      setDetails(await saveWebContactDetails(nextItems));
+      if (successMessage) onToast(successMessage);
+      return true;
+    } catch (error) {
+      setDetails(previous);
+      onToast(error?.message || "Failed to save contact details");
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
 
   function startEdit(entry) {
     setShowAdd(false);
@@ -88,18 +168,20 @@ export function ContactDetailsSection({ details, setDetails, onToast }) {
     setDraft("");
   }
 
-  function saveEdit(id) {
+  async function saveEdit(id) {
     const value = draft.trim();
     if (!value) {
       onToast("Value is required");
       return;
     }
-    setDetails((prev) => prev.map((entry) => (entry.id === id ? { ...entry, value } : entry)));
-    cancelEdit();
-    onToast("Contact detail saved");
+    const ok = await persist(
+      details.map((entry) => (entry.id === id ? { ...entry, value } : entry)),
+      "Contact detail saved"
+    );
+    if (ok) cancelEdit();
   }
 
-  function addDetail() {
+  async function addDetail() {
     const label = newDraft.label.trim();
     const value = newDraft.value.trim();
     if (!label) {
@@ -110,23 +192,41 @@ export function ContactDetailsSection({ details, setDetails, onToast }) {
       onToast("Value is required");
       return;
     }
-    setDetails((prev) => [
-      ...prev,
-      { id: `ct-${Date.now()}`, label, value, live: true },
-    ]);
-    setNewDraft({ label: "", value: "" });
-    setShowAdd(false);
-    onToast(`${label} added`);
+    const ok = await persist(
+      [...details, { id: `ct-${Date.now()}`, label, value, live: true }],
+      `${label} added`
+    );
+    if (ok) {
+      setNewDraft({ label: "", value: "" });
+      setShowAdd(false);
+    }
+  }
+
+  const locked = loading || busy;
+
+  function moveDetail(index, delta) {
+    if (locked) return;
+    const nextIndex = index + delta;
+    if (nextIndex < 0 || nextIndex >= details.length) return;
+    const copy = [...details];
+    const [row] = copy.splice(index, 1);
+    copy.splice(nextIndex, 0, row);
+    persist(copy, "Contact order saved");
   }
 
   return (
     <Panel
       title="Contact details"
-      subtitle="Shown in the website footer."
+      subtitle={
+        loading
+          ? "Loading contact details…"
+          : "Shown in the website footer. Use ↑ ↓ to reorder. Saved to App Config."
+      }
       actions={
         <button
           type="button"
           className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+          disabled={locked}
           onClick={() => {
             cancelEdit();
             setShowAdd(true);
@@ -136,6 +236,10 @@ export function ContactDetailsSection({ details, setDetails, onToast }) {
         </button>
       }
     >
+      {loading ? (
+        <p className="ua-cfg-panel__sub">Fetching contact details from App Config…</p>
+      ) : null}
+
       {showAdd ? (
         <section className="ua-cfg-faq-new ua-cfg-ct-add">
           <div className="ua-cfg-faq-new__head">
@@ -146,6 +250,7 @@ export function ContactDetailsSection({ details, setDetails, onToast }) {
               type="button"
               className="ua-cfg-icon-btn"
               aria-label="Close"
+              disabled={locked}
               onClick={() => {
                 setShowAdd(false);
                 setNewDraft({ label: "", value: "" });
@@ -160,6 +265,7 @@ export function ContactDetailsSection({ details, setDetails, onToast }) {
               className="ua-cfg-faq-new__question"
               placeholder="Label · e.g. WhatsApp"
               value={newDraft.label}
+              disabled={locked}
               onChange={(event) => setNewDraft((prev) => ({ ...prev, label: event.target.value }))}
             />
             <input
@@ -167,9 +273,10 @@ export function ContactDetailsSection({ details, setDetails, onToast }) {
               className="ua-cfg-faq-new__question"
               placeholder="Value · e.g. +91 90000 12345"
               value={newDraft.value}
+              disabled={locked}
               onChange={(event) => setNewDraft((prev) => ({ ...prev, value: event.target.value }))}
             />
-            <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" onClick={addDetail}>
+            <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={locked} onClick={addDetail}>
               Add detail
             </button>
           </div>
@@ -177,28 +284,51 @@ export function ContactDetailsSection({ details, setDetails, onToast }) {
       ) : null}
 
       <div className="ua-cfg-ct-list">
-        {details.map((entry) => (
+        {details.map((entry, index) => (
           <ContactRow
             key={entry.id}
             entry={entry}
             editing={editingId === entry.id}
             draft={draft}
+            locked={locked}
+            canMoveUp={index > 0}
+            canMoveDown={index < details.length - 1}
             onDraftChange={setDraft}
             onToggle={() => {
-              setDetails((prev) =>
-                prev.map((row) => (row.id === entry.id ? { ...row, live: !row.live } : row)),
+              persist(
+                details.map((row) => (row.id === entry.id ? { ...row, live: !row.live } : row)),
+                entry.live ? `${entry.label} hidden` : `${entry.label} is live`
               );
             }}
             onEdit={() => startEdit(entry)}
             onSave={() => saveEdit(entry.id)}
             onCancel={cancelEdit}
-            onDelete={() => {
-              setDetails((prev) => prev.filter((row) => row.id !== entry.id));
-              onToast(`${entry.label} removed`);
-            }}
+            onMoveUp={() => moveDetail(index, -1)}
+            onMoveDown={() => moveDetail(index, 1)}
+            onDelete={() => setPendingDelete(entry)}
           />
         ))}
       </div>
+
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        tag="Delete contact detail"
+        title={pendingDelete ? `Remove “${pendingDelete.label}”?` : ""}
+        body="This contact detail will be removed from the website footer. You can’t undo this."
+        cancelLabel="Keep detail"
+        confirmLabel="Delete"
+        confirmTone="danger"
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => {
+          const entry = pendingDelete;
+          setPendingDelete(null);
+          if (!entry) return;
+          persist(
+            details.filter((row) => row.id !== entry.id),
+            `${entry.label} removed`
+          );
+        }}
+      />
     </Panel>
   );
 }

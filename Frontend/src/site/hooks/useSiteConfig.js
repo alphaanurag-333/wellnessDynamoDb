@@ -108,9 +108,26 @@ export function useSiteConfig() {
   const consultancyAmount = useSelector(selectConsultancyAmount);
 
   return useMemo(() => {
-    const email = pick(config?.app_email, CONTACT_SECTION.email);
-    const phone = pick(config?.app_mobile, CONTACT_SECTION.phone);
-    const address = pick(config?.address);
+    const liveLocations = Array.isArray(config?.web_locations)
+      ? config.web_locations.filter((row) => row && row.live !== false && str(row.address))
+      : [];
+    const liveContactDetails = Array.isArray(config?.web_contact_details)
+      ? config.web_contact_details.filter((row) => row && row.live !== false && str(row.value))
+      : [];
+    const detailByLabel = (matcher) =>
+      liveContactDetails.find((row) => matcher.test(String(row.label || "")))?.value || "";
+
+    const email = pick(
+      detailByLabel(/email|mail/i),
+      config?.app_email,
+      CONTACT_SECTION.email
+    );
+    const phone = pick(
+      detailByLabel(/phone|mobile|whatsapp|tel/i),
+      config?.app_mobile,
+      CONTACT_SECTION.phone
+    );
+    const address = pick(liveLocations[0]?.address, config?.address);
     const shortDetail = pick(config?.app_detail, config?.app_details);
     const longDetail = pick(config?.app_details, config?.app_detail, ABOUT_SECTION.body);
     const amountLabel = formatAmount(consultancyAmount || config?.consultancy_amount);
@@ -144,6 +161,16 @@ export function useSiteConfig() {
       email,
       phone,
       address,
+      locations: liveLocations.map((row) => ({
+        id: str(row.id) || str(row.name),
+        name: str(row.name) || "Location",
+        address: str(row.address),
+      })),
+      details: liveContactDetails.map((row) => ({
+        id: str(row.id) || str(row.label),
+        label: str(row.label),
+        value: str(row.value),
+      })),
     };
 
     const consultation = {
