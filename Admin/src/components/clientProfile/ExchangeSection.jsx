@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { getCoachCheckoutOptions, triggerCoachCheckout } from "../../api/appProgramApi.js";
 import {
-  PAYMENT_HISTORY,
+  downloadCoachCheckoutInvoice,
+  getCoachCheckoutOptions,
+  listCoachCheckoutHistory,
+  triggerCoachCheckout,
+} from "../../api/appProgramApi.js";
+import {
   discountLabel,
   discountedPrice,
   formatRupee,
@@ -116,6 +120,19 @@ function FieldSelect({ label, value, options, open, disabled, onToggle, onSelect
 
 function PaymentRow({ row, onToast }) {
   const awaiting = row.status === "awaiting";
+  const [busy, setBusy] = useState(false);
+
+  async function handleInvoice() {
+    setBusy(true);
+    try {
+      await downloadCoachCheckoutInvoice(row.id);
+      onToast?.("Invoice download started");
+    } catch (error) {
+      onToast?.(error.message || "Could not download invoice");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div className="ua-cp-ex-pay">
@@ -138,8 +155,8 @@ function PaymentRow({ row, onToast }) {
             Remind
           </button>
         ) : (
-          <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-ex-pay__btn ua-cp-btn--sm" onClick={() => onToast?.("Invoice download started")}>
-            📄 Invoice
+          <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-ex-pay__btn ua-cp-btn--sm" onClick={handleInvoice} disabled={busy}>
+            {busy ? "Downloading…" : "📄 Invoice"}
           </button>
         )}
       </div>
@@ -159,6 +176,9 @@ export function ExchangeSection({ user, onToast }) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [triggering, setTriggering] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -200,8 +220,38 @@ export function ExchangeSection({ user, onToast }) {
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    if (!user?.id) {
+      setHistory([]);
+      setHistoryError("");
+      setHistoryLoading(false);
+      return undefined;
+    }
+
+    setHistoryLoading(true);
+    setHistoryError("");
+    listCoachCheckoutHistory(user.id)
+      .then((rows) => {
+        if (!active) return;
+        setHistory(Array.isArray(rows) ? rows : []);
+      })
+      .catch((error) => {
+        if (!active) return;
+        setHistory([]);
+        setHistoryError(error.message || "Could not load payment history");
+      })
+      .finally(() => {
+        if (active) setHistoryLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
+
   const value = program && discount ? discountedPrice(program.price, discount.pct) : 0;
-  const summary = paymentSummary(PAYMENT_HISTORY);
+  const summary = paymentSummary(history);
   const firstName = user?.name?.split(" ")[0] || "Client";
   const canTrigger = Boolean(user?.id && program && discount && validity && !loading && !triggering);
 
@@ -223,6 +273,13 @@ export function ExchangeSection({ user, onToast }) {
       });
       setConfirmOpen(false);
       onToast?.(result.message || `${program.name} triggered in app`);
+      try {
+        const rows = await listCoachCheckoutHistory(user.id);
+        setHistory(Array.isArray(rows) ? rows : []);
+        setHistoryError("");
+      } catch (historyErr) {
+        setHistoryError(historyErr.message || "Could not refresh payment history");
+      }
     } catch (error) {
       onToast?.(error.message || "Could not trigger payment");
     } finally {
@@ -307,12 +364,22 @@ export function ExchangeSection({ user, onToast }) {
             <strong className="ua-cp-ex-history__title">Program payment history</strong>
             <p>Newest first. Invoices are available for settled payments.</p>
           </div>
-          <span className="ua-cp-ex-history__summary">{summary.label}</span>
+          <span className="ua-cp-ex-history__summary">
+            {historyLoading ? "Loading…" : historyError ? "—" : summary.label}
+          </span>
         </div>
         <div className="ua-cp-ex-history__list">
-          {PAYMENT_HISTORY.map((row) => (
-            <PaymentRow key={row.id} row={row} onToast={onToast} />
-          ))}
+          {historyLoading ? (
+            <p className="ua-cp-ex-history__empty">Loading payment history…</p>
+          ) : historyError ? (
+            <p className="ua-cp-ex-history__empty">{historyError}</p>
+          ) : history.length === 0 ? (
+            <p className="ua-cp-ex-history__empty">No program payments yet. Trigger a payment to send it to their app.</p>
+          ) : (
+            history.map((row) => (
+              <PaymentRow key={row.id} row={row} onToast={onToast} />
+            ))
+          )}
         </div>
       </div>
 

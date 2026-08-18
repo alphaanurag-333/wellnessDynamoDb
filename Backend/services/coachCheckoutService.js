@@ -637,6 +637,75 @@ async function triggerCoachCheckout({
   };
 }
 
+const CHECKOUT_HISTORY_TYPES = new Set(["program", "subscription"]);
+
+function formatCheckoutHistoryDate(iso) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function checkoutDiscountPercent(transaction) {
+  const base = Number(transaction?.baseAmount) || 0;
+  const discount = Number(transaction?.discountAmount) || 0;
+  if (base <= 0) return 0;
+  return Math.round((discount / base) * 100);
+}
+
+function isCheckoutHistoryTransaction(transaction) {
+  return CHECKOUT_HISTORY_TYPES.has(String(transaction?.productType || "").toLowerCase());
+}
+
+function toCheckoutHistoryRow(transaction, now = Date.now()) {
+  if (!transaction) return null;
+  const paid = String(transaction.paymentStatus || "").toLowerCase() === "paid";
+  const expired =
+    !paid &&
+    Boolean(transaction.linkExpiresAt) &&
+    new Date(transaction.linkExpiresAt).getTime() < now;
+  const method = String(transaction.paymentMethod || "").trim();
+  const provider = String(transaction.paymentProvider || "").trim();
+  const reference = String(transaction.referenceNumber || "").trim();
+  const type = String(transaction.productType || "").toLowerCase();
+
+  let detail;
+  if (paid) {
+    detail = [method, provider, reference].filter(Boolean).join(" · ") || "Paid";
+  } else if (expired) {
+    detail = "Payment link expired";
+  } else {
+    detail = "Triggered to app · Invoice on payment";
+  }
+
+  return {
+    id: transaction.id,
+    program:
+      transaction.userSnapshot?.catalogItemName ||
+      transaction.userSnapshot?.programTitle ||
+      (type === "subscription" ? "App subscription" : "Wellness Program"),
+    status: paid ? "paid" : "awaiting",
+    date: formatCheckoutHistoryDate(transaction.paidAt || transaction.createdAt),
+    detail,
+    amount: Number(transaction.totalAmount) || 0,
+    listed: Number(transaction.baseAmount) || 0,
+    discountPct: checkoutDiscountPercent(transaction),
+  };
+}
+
+async function listCheckoutHistoryForUser(userId, now = Date.now()) {
+  if (!userId) return [];
+  const result = await listTransactionsByUserId(userId, { page: 1, limit: 50 });
+  return (result.items || [])
+    .filter(isCheckoutHistoryTransaction)
+    .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))
+    .map((row) => toCheckoutHistoryRow(row, now))
+    .filter(Boolean);
+}
+
 module.exports = {
   parseDurationToHours,
   calculateOfferPricing,
@@ -648,6 +717,8 @@ module.exports = {
   deriveCheckoutCoachIds,
   isPendingCheckoutOrderReusable,
   buildUserProgramGetPayload,
+  toCheckoutHistoryRow,
+  listCheckoutHistoryForUser,
   lookupClientByReferralCode,
   listCheckoutStaff,
   listRecentPwc,

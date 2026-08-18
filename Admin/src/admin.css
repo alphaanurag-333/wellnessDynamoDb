@@ -22835,6 +22835,16 @@
   gap: 10px;
 }
 
+.updated-admin .ua-cp-ex-history__empty {
+  margin: 0;
+  padding: 18px 16px;
+  border: 1px dashed #e8ecf4;
+  border-radius: 12px;
+  font-size: 13px;
+  color: #8a97ac;
+  text-align: center;
+}
+
 .updated-admin .ua-cp-ex-pay {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
