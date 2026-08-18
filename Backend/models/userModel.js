@@ -201,6 +201,10 @@ function sanitizeUpdateField(key, value) {
   if (key === "whatsappSameAsMobile" || key === "termsAccepted") {
     return Boolean(value);
   }
+  if (key === "termsAcceptedIp") {
+    const s = value == null ? "" : String(value).trim();
+    return s || null;
+  }
   if (key === "profileImage" || key === "presentablePic") {
     return normalizeProfileImageField(value);
   }
@@ -312,6 +316,7 @@ function buildUserItem(input, { id, now } = {}) {
         : null,
     termsAccepted: Boolean(input.termsAccepted),
     termsAcceptedAt: input.termsAcceptedAt ? normalizeDob(input.termsAcceptedAt) : null,
+    termsAcceptedIp: input.termsAcceptedIp != null ? String(input.termsAcceptedIp).trim() || null : null,
     profileImage: normalizeProfileImageField(input.profileImage),
     presentablePic: normalizeProfileImageField(input.presentablePic),
     fcm_id: input.fcm_id != null ? String(input.fcm_id).trim() || null : null,

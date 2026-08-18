@@ -292,6 +292,16 @@ exports.listHealUsersForStaffController = asyncHandler(async (req, res) => {
   });
 });
 
+exports.getHealUserForStaffController = asyncHandler(async (req, res) => {
+  const user = await getUserById(req.params.id);
+  if (!user) throw new AppError("User not found", 404);
+  await assertStaffCanAccessUser(req, user);
+  return res.status(200).json({
+    status: true,
+    user: await enrichUser(user),
+  });
+});
+
 exports.listHealUsersForCoachPortalController = exports.listHealUsersForStaffController;
 exports.listHealUsersForAssistantPortalController = exports.listHealUsersForStaffController;
 

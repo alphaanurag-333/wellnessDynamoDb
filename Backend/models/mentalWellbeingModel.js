@@ -6,7 +6,8 @@ const {
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require("uuid");
 const { docClient } = require("../config/db");
-const { resolvePublicUrl } = require("../utils/s3");
+const { normalizeMediaField, resolvePublicUrl } = require("../utils/s3");
+const { normalizeDuration, displayMediaType } = require("../utils/wellnessLibraryFields");
 const {
   listByPartitionKey,
   buildContainsFilter,
@@ -39,15 +40,26 @@ function withLegacyId(item) {
 function toPublicMentalWellbeing(item) {
   const row = withLegacyId(item);
   if (!row) return null;
-  if ((row.type === "video" || row.type === "audio") && row.file) {
-    return { ...row, file: resolvePublicUrl(row.file) || row.file };
+  const pub = {
+    ...row,
+    mediaType: displayMediaType(row.type),
+    duration: String(row.duration || "").trim(),
+  };
+  if (pub.thumbnail) pub.thumbnail = resolvePublicUrl(pub.thumbnail) || pub.thumbnail;
+  if ((pub.type === "video" || pub.type === "audio") && pub.file) {
+    pub.file = resolvePublicUrl(pub.file) || pub.file;
   }
-  return row;
+  return pub;
 }
 
 function sanitizeUpdateField(key, value) {
   if (key === "status") return normalizeStatus(value);
   if (key === "type") return normalizeType(value);
+  if (key === "duration") return normalizeDuration(value);
+  if (key === "thumbnail") {
+    if (value == null || String(value).trim() === "") return "";
+    return normalizeMediaField(value, "thumbnail");
+  }
   if (["title", "ytLink", "file"].includes(key)) {
     return String(value || "").trim();
   }
@@ -59,6 +71,8 @@ async function createMentalWellbeing({
   type = "ytlink",
   ytLink = "",
   file = "",
+  thumbnail = "",
+  duration = "",
   status = "active",
 }) {
   const now = new Date().toISOString();
@@ -68,6 +82,8 @@ async function createMentalWellbeing({
     type: normalizeType(type),
     ytLink: String(ytLink || "").trim(),
     file: String(file || "").trim(),
+    thumbnail: thumbnail ? normalizeMediaField(thumbnail, "thumbnail") : "",
+    duration: normalizeDuration(duration),
     status: normalizeStatus(status),
     createdAt: now,
     updatedAt: now,

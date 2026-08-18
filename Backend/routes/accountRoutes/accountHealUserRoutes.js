@@ -9,6 +9,7 @@ const { optionalMealPhotoFile } = require("../../middleware/authMultipart");
 const { CLINICAL_ROLES } = require("../../controllers/staffAccess");
 const {
   listHealUsersForStaffController,
+  getHealUserForStaffController,
   reassignHealUserForStaffController,
 } = require("../../controllers/adminController/userAssignmentController");
 const {
@@ -44,6 +45,11 @@ const {
   createCoachUserMentalWellbeingController,
   deleteCoachUserMentalWellbeingController,
 } = require("../../controllers/adminController/mentalWellbeingAssignmentController");
+const {
+  listCoachUserWellnessYogaController,
+  createCoachUserWellnessYogaController,
+  deleteCoachUserWellnessYogaController,
+} = require("../../controllers/adminController/wellnessYogaAssignmentController");
 const {
   listCoachUserSupplementRecommendationsController,
   createCoachUserSupplementRecommendationController,
@@ -110,6 +116,10 @@ const {
   updateCoachHealConsultancyTrackController,
   deleteCoachHealConsultancyTrackController,
 } = require("../../controllers/adminController/healConsultancyTrackController");
+const {
+  getStaffUserProtocolSettingsController,
+  saveStaffUserProtocolSettingsController,
+} = require("../../controllers/adminController/protocolSettingsController");
 const { getStaffHealUserWaterTrackingController } = require("../../controllers/waterTrackingHistoryController");
 const { getStaffHealUserStepsTrackingController } = require("../../controllers/stepsTrackingHistoryController");
 const { getStaffHealUserSleepTrackingController } = require("../../controllers/sleepTrackingHistoryController");
@@ -179,6 +189,12 @@ router.get("/:userId/mental-wellbeing", mw, listCoachUserMentalWellbeingControll
 router.post("/:userId/mental-wellbeing", mwWrite, createCoachUserMentalWellbeingController);
 router.delete("/:userId/mental-wellbeing/:assignmentId", staff("console.diet.delete", { admin: "users.clientHub.wellness.mental-wellbeing", coach: "clientTab.wellness.mental-wellbeing" }), deleteCoachUserMentalWellbeingController);
 
+const yoga = staff("console.diet.view", { admin: "users.clientHub.wellness.yoga", coach: "clientTab.wellness.yoga" });
+const yogaWrite = staff("console.diet.create", { admin: "users.clientHub.wellness.yoga", coach: "clientTab.wellness.yoga" });
+router.get("/:userId/wellness-yoga", yoga, listCoachUserWellnessYogaController);
+router.post("/:userId/wellness-yoga", yogaWrite, createCoachUserWellnessYogaController);
+router.delete("/:userId/wellness-yoga/:assignmentId", staff("console.diet.delete", { admin: "users.clientHub.wellness.yoga", coach: "clientTab.wellness.yoga" }), deleteCoachUserWellnessYogaController);
+
 const supp = staff("console.diet.view", { admin: "users.clientHub.wellness.supplement-recommendations", coach: "clientTab.wellness.supplement-recommendations" });
 const suppWrite = staff("console.diet.create", { admin: "users.clientHub.wellness.supplement-recommendations", coach: "clientTab.wellness.supplement-recommendations" });
 router.get("/:userId/supplement-recommendations", supp, listCoachUserSupplementRecommendationsController);
@@ -244,6 +260,11 @@ router.get("/:userId/daily-reflection/history", reflection, getCoachUserDailyRef
 router.get("/:userId/commitment-letter", staff("console.diet.view", { admin: "users.clientHub.care.commitment-letter", coach: "clientTab.care.commitment-letter" }), getCoachUserCommitmentLetterController);
 
 const insight = staff("console.diet.view", { admin: "users.clientHub.care.coach-message", coach: "clientTab.care.coach-message" });
+const protocol = staff("console.diet.view", { admin: "users.view", coach: "nav.my-users" });
+const protocolWrite = staff("console.diet.edit", { admin: "users.edit", coach: "nav.my-users" });
+router.get("/:userId/protocol-settings", protocol, getStaffUserProtocolSettingsController);
+router.post("/:userId/protocol-settings", protocolWrite, saveStaffUserProtocolSettingsController);
+
 router.get("/:userId/coach-insight", insight, getCoachUserCoachInsightController);
 router.put("/:userId/coach-insight", staff("console.diet.edit", { admin: "users.clientHub.care.coach-message", coach: "clientTab.care.coach-message" }), upsertCoachUserCoachInsightController);
 
@@ -253,5 +274,7 @@ router.get("/:userId/heal-consultancy-tracks", tracks, listCoachHealConsultancyT
 router.post("/:userId/heal-consultancy-tracks", tracksWrite, createCoachHealConsultancyTrackController);
 router.patch("/:userId/heal-consultancy-tracks/:trackId", tracksWrite, updateCoachHealConsultancyTrackController);
 router.delete("/:userId/heal-consultancy-tracks/:trackId", staff("console.cal.delete", { admin: "users.clientHub.care.consultancy", coach: "clientTab.care.consultancy" }), deleteCoachHealConsultancyTrackController);
+
+router.get("/:id", staff("console.cl.view", { admin: "users.view", coach: "nav.my-users" }), getHealUserForStaffController);
 
 module.exports = router;

@@ -11275,19 +11275,25 @@
 }
 
 .updated-admin .ua-cp-rec-add {
-  display: flex;
-  gap: 8px;
+  display: block;
   margin-bottom: 12px;
-  flex-wrap: wrap;
 }
 
 .updated-admin .ua-cp-rec-select {
-  flex: 1;
-  height: 38px;
-  border: 1px solid var(--border);
-  border-radius: 9px;
+  width: 100%;
+  height: 42px;
+  border: 1.5px dashed #c9d4e8;
+  border-radius: 10px;
   padding: 0 12px;
-  min-width: 100%;
+  background: #fff;
+  color: #8b97ab;
+  font-size: 13px;
+}
+
+.updated-admin .ua-cp-rec-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .updated-admin .ua-cp-rec-item {
@@ -11295,13 +11301,16 @@
   grid-template-columns: 1fr auto auto auto;
   gap: 12px;
   align-items: center;
-  padding: 12px 0;
-  border-top: 1px solid var(--border-soft);
+  padding: 12px 14px;
+  border: 1px solid #d7e0ee;
+  border-radius: 12px;
+  background: #fff;
 }
 
 .updated-admin .ua-cp-rec-item__name {
   font-weight: 800;
   font-size: 14px;
+  color: #1e3a5f;
 }
 
 .updated-admin .ua-cp-rec-item__pack {
@@ -11313,8 +11322,8 @@
 .updated-admin .ua-cp-rec-item__qty {
   display: inline-flex;
   align-items: center;
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  border: 1px solid #d7e0ee;
+  border-radius: 10px;
   overflow: hidden;
 }
 
@@ -11325,6 +11334,7 @@
   background: #f8fafc;
   cursor: pointer;
   font-weight: 800;
+  color: #4b5563;
 }
 
 .updated-admin .ua-cp-rec-item__qty span {
@@ -11342,7 +11352,7 @@
 .updated-admin .ua-cp-rec-item__remove {
   border: none;
   background: none;
-  color: #ef4444;
+  color: #9aa6b8;
   font-size: 18px;
   cursor: pointer;
 }
@@ -11473,7 +11483,8 @@
 }
 
 .updated-admin .ua-cp-dosage-add select,
-.updated-admin .ua-cp-dosage-qty {
+.updated-admin .ua-cp-dosage-qty,
+.updated-admin .ua-cp-dosage-date {
   height: 38px;
   border: 1px solid var(--border);
   border-radius: 9px;
@@ -11485,6 +11496,10 @@
 .updated-admin .ua-cp-dosage-qty {
   width: 56px;
   text-align: center;
+}
+
+.updated-admin .ua-cp-dosage-date {
+  min-width: 148px;
 }
 
 .updated-admin .ua-cp-timing-wrap {
@@ -11547,6 +11562,10 @@
 .updated-admin .ua-cp-dosage-card {
   padding: 14px 16px;
   margin-bottom: 12px;
+}
+
+.updated-admin .ua-cp-dosage-card--stopped {
+  opacity: 0.62;
 }
 
 .updated-admin .ua-cp-dosage-card__head {
@@ -12418,11 +12437,15 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
+  width: 100%;
   min-height: 140px;
+  padding: 0;
+  border: none;
   background: #f8fafc;
   color: #8a97ac;
   font-size: 12px;
   font-weight: 650;
+  cursor: zoom-in;
 }
 
 .updated-admin .ua-cp-ba-photo-card__img img {
@@ -12430,6 +12453,7 @@
   width: 100%;
   height: 180px;
   object-fit: contain;
+  pointer-events: none;
 }
 
 .updated-admin .ua-cp-ba-photo-card__img span:first-child {
@@ -12456,6 +12480,61 @@
   font-weight: 700;
   cursor: pointer;
   font-family: inherit;
+}
+
+.updated-admin .ua-cp-ba-photo-card__save:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.updated-admin .ua-cp-ba-photo-preview {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.72);
+}
+
+.updated-admin .ua-cp-ba-photo-preview__dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(920px, 100%);
+  max-height: min(92vh, 900px);
+  overflow: hidden;
+  background: #111827;
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+}
+
+.updated-admin .ua-cp-ba-photo-preview__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #fff;
+}
+
+.updated-admin .ua-cp-ba-photo-preview__title {
+  font-size: 15px;
+  font-weight: 750;
+  color: #16233f;
+}
+
+.updated-admin .ua-cp-ba-photo-preview__sub {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #8a97ac;
+}
+
+.updated-admin .ua-cp-ba-photo-preview__dialog img {
+  display: block;
+  width: 100%;
+  max-height: calc(92vh - 68px);
+  object-fit: contain;
+  background: #0b1220;
 }
 
 
@@ -18950,7 +19029,7 @@
 
 .updated-admin .ua-cp-food-diet-row {
   display: grid;
-  grid-template-columns: 140px minmax(0, 1fr) 180px auto;
+  grid-template-columns: 140px minmax(0, 1fr) 180px;
   gap: 12px;
   align-items: start;
   padding: 12px 14px;
@@ -19038,6 +19117,148 @@
 
 .updated-admin .ua-cp-food-diet-section__add:hover {
   background: #f3f5fd;
+}
+
+.updated-admin .ua-cp-food-diet__empty {
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px dashed #e6ebf2;
+  border-radius: 12px;
+  background: #fafbfc;
+  font-size: 13px;
+  color: #5a6b85;
+}
+
+.updated-admin .ua-cp-food-diet__note {
+  margin: 0;
+  font-size: 13px;
+  color: #3a4a63;
+  line-height: 1.5;
+}
+
+.updated-admin .ua-cp-food-diet-assign,
+.updated-admin .ua-cp-food-diet-current,
+.updated-admin .ua-cp-food-diet-history {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.updated-admin .ua-cp-food-diet-assign {
+  padding: 14px;
+  border: 1px solid #e6ebf2;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.updated-admin .ua-cp-food-diet-assign__fields {
+  display: grid;
+  grid-template-columns: minmax(140px, 200px) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.updated-admin .ua-cp-food-diet-assign__fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #8a97ac;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.updated-admin .ua-cp-food-diet-assign__fields input {
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid #dbe2ee;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #16233f;
+  font-family: inherit;
+}
+
+.updated-admin .ua-cp-food-diet-catalog {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.updated-admin .ua-cp-food-diet-catalog__item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid #e6ebf2;
+  border-radius: 12px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.updated-admin .ua-cp-food-diet-catalog__item strong {
+  font-size: 13px;
+  color: #16233f;
+}
+
+.updated-admin .ua-cp-food-diet-catalog__item span,
+.updated-admin .ua-cp-food-diet-catalog__item em {
+  font-size: 12px;
+  color: #8a97ac;
+  font-style: normal;
+  line-height: 1.4;
+}
+
+.updated-admin .ua-cp-food-diet-catalog__item--on {
+  border-color: #5e6ad2;
+  background: #f3f5fd;
+  box-shadow: 0 0 0 3px rgba(94, 106, 210, 0.12);
+}
+
+.updated-admin .ua-cp-food-diet-plan {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.updated-admin .ua-cp-food-diet-plan__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.updated-admin .ua-cp-food-diet-plan__meta strong {
+  font-size: 14px;
+  color: #16233f;
+}
+
+.updated-admin .ua-cp-food-diet-plan__meta span,
+.updated-admin .ua-cp-food-diet-plan__meta p {
+  margin: 0;
+  font-size: 12px;
+  color: #8a97ac;
+  line-height: 1.45;
+}
+
+.updated-admin .ua-cp-food-diet-history strong {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8a97ac;
+}
+
+.updated-admin .ua-cp-food-diet-history__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid #eef1f6;
+  border-radius: 10px;
+  font-size: 12px;
+  color: #3a4a63;
 }
 
 .updated-admin .ua-cp-modal--meal-photo {
@@ -22113,6 +22334,13 @@
   padding: 4px 0;
 }
 
+.updated-admin .ua-cp-reflect-section__title--readonly {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .updated-admin .ua-cp-reflect-section__meta {
   display: flex;
   align-items: center;
@@ -22212,12 +22440,29 @@
   outline: none;
 }
 
+.updated-admin .ua-cp-reflect-question__text--readonly {
+  display: block;
+  border-color: transparent;
+  background: transparent;
+  cursor: default;
+}
+
+.updated-admin .ua-cp-reflect-question__text--readonly:hover,
+.updated-admin .ua-cp-reflect-question__text--readonly:focus {
+  border-color: transparent;
+  background: transparent;
+}
+
+.updated-admin .ua-cp-reflect-question.is-off .ua-cp-reflect-question__text--readonly {
+  color: #8a97ac;
+}
+
 .updated-admin .ua-cp-reflect-question__score {
-  flex: 0 0 118px;
+  flex: 0 0 210px;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 6px;
+  gap: 8px;
   font-size: 12px;
   color: #8a97ac;
   white-space: nowrap;
@@ -22255,6 +22500,10 @@
   grid-template-columns: 1fr 1fr;
   gap: 12px;
   margin-top: 4px;
+}
+
+.updated-admin .ua-cp-reflect-foot--single {
+  grid-template-columns: 1fr;
 }
 
 .updated-admin .ua-cp-reflect-foot .ua-cp-reflect-add-section {
@@ -29231,6 +29480,91 @@
   width: auto;
   min-width: 130px;
   cursor: pointer;
+}
+
+.updated-admin .ua-cfg-wl-table th:nth-child(3),
+.updated-admin .ua-cfg-wl-table td:nth-child(3) {
+  min-width: 170px;
+}
+
+.updated-admin .ua-cfg-wl-table th:nth-child(4),
+.updated-admin .ua-cfg-wl-table td:nth-child(4) {
+  min-width: 180px;
+}
+
+.updated-admin .ua-cfg-wl-table__type,
+.updated-admin .ua-cfg-wl-add__type {
+  min-width: 190px;
+  max-width: none;
+}
+
+.updated-admin .ua-cfg-wl-file {
+  width: 100%;
+  min-height: 36px;
+  border: 1px dashed #d5dbeb;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 13px;
+  color: #3d4a66;
+  background: #f8f9fd;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.updated-admin .ua-cfg-wl-file:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.updated-admin .ua-cfg-wl-table__link,
+.updated-admin .ua-cfg-wl-table__time {
+  width: 100%;
+  height: 36px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 0 8px;
+  font: inherit;
+  color: #1a1d26;
+  background: transparent;
+}
+
+.updated-admin .ua-cfg-wl-table__link:focus,
+.updated-admin .ua-cfg-wl-table__time:focus {
+  outline: none;
+  border-color: #c9d0f5;
+  background: #fff;
+}
+
+.updated-admin .ua-cfg-wl-table__time {
+  width: 72px;
+}
+
+.updated-admin .ua-cfg-wl-add__meta {
+  display: grid;
+  grid-template-columns: minmax(170px, 200px) minmax(180px, 1fr) 110px auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.updated-admin .ua-cfg-wl-add__time {
+  max-width: 110px;
+}
+
+.updated-admin .ua-cp-bms-content-card__thumb {
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
+}
+
+.updated-admin .ua-cp-bms-content-card__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .updated-admin .ua-cfg-nb-add__input--price {
@@ -37600,6 +37934,46 @@
   font-weight: 700;
 }
 
+.updated-admin .ua-cfg-dd-add.has-supp {
+  grid-template-columns: minmax(180px, 1.4fr) 110px 130px 140px auto;
+  align-items: center;
+}
+
+.updated-admin .ua-cfg-dd-add.has-supp .ua-cfg-dd-row__input,
+.updated-admin .ua-cfg-dd-add.has-supp .ua-cfg-dd-row__type {
+  height: 40px;
+}
+
+.updated-admin .ua-cfg-dd-row.has-supp .ua-cfg-dd-row__main {
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 12px;
+}
+
+.updated-admin .ua-cfg-dd-row__meta {
+  flex-shrink: 0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.updated-admin .ua-cfg-dd-row__fields.has-supp {
+  grid-template-columns: minmax(160px, 1.4fr) 110px 130px 140px;
+  gap: 8px;
+  align-items: center;
+}
+
+@media (max-width: 900px) {
+  .updated-admin .ua-cfg-dd-add.has-supp,
+  .updated-admin .ua-cfg-dd-row__fields.has-supp {
+    grid-template-columns: minmax(0, 1fr) 1fr;
+  }
+
+  .updated-admin .ua-cfg-dd-add.has-supp .ua-cfg-btn {
+    grid-column: 1 / -1;
+  }
+}
+
 .updated-admin .ua-cfg-dd-row__thumb {
   flex: 0 0 36px;
   width: 36px;
@@ -40852,9 +41226,11 @@
   .updated-admin .ua-cfg-dd-row,
   .updated-admin .ua-cfg-dd-row__fields.has-icon,
   .updated-admin .ua-cfg-dd-row__fields.has-type,
+  .updated-admin .ua-cfg-dd-row__fields.has-supp,
   .updated-admin .ua-cfg-dd-add,
   .updated-admin .ua-cfg-dd-add.has-icon,
-  .updated-admin .ua-cfg-dd-add.has-type {
+  .updated-admin .ua-cfg-dd-add.has-type,
+  .updated-admin .ua-cfg-dd-add.has-supp {
     grid-template-columns: 1fr;
   }
 

@@ -123,6 +123,20 @@ const SEED_LISTS = [
       { label: "Lifestyle Counsellor" },
     ],
   },
+  {
+    slug: "supplement-pool",
+    title: "Supplement pool",
+    wide: true,
+    options: [
+      { label: "Vitamin D Plus", packSize: 60, unit: "Caps", price: 1200 },
+      { label: "Whey Protein Isolate", packSize: 1, unit: "Kg", price: 2400 },
+      { label: "Omega-3 Fish Oil", packSize: 120, unit: "Tabs", price: 1200 },
+      { label: "Magnesium Glycinate", packSize: 90, unit: "Caps", price: 900 },
+      { label: "B12 + Folate", packSize: 60, unit: "Tabs", price: 650 },
+      { label: "Probiotic 20B CFU", packSize: 30, unit: "Caps", price: 1100 },
+      { label: "Iron Bisglycinate", packSize: 60, unit: "Caps", price: 750 },
+    ],
+  },
 ];
 
 function normalizeStatus(status, fallback = "active") {
@@ -148,6 +162,11 @@ function optionValueFromLabel(label) {
     .slice(0, 80);
 }
 
+function normalizeNumberField(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+
 function normalizeOption(raw, index = 0) {
   const label = String(raw?.label || "").trim();
   if (!label) return null;
@@ -160,6 +179,9 @@ function normalizeOption(raw, index = 0) {
     icon: String(raw?.icon || "").trim(),
     on: raw?.on === false ? false : true,
     sortOrder: Number.isFinite(Number(raw?.sortOrder)) ? Number(raw.sortOrder) : index + 1,
+    packSize: normalizeNumberField(raw?.packSize),
+    unit: String(raw?.unit || "").trim(),
+    price: normalizeNumberField(raw?.price),
   };
 }
 
@@ -226,7 +248,14 @@ async function getDropdownByIdOrSlug(idOrSlug) {
   if (!raw) return null;
   const byId = await getDropdownById(raw);
   if (byId) return byId;
-  return getDropdownBySlug(raw);
+  const bySlug = await getDropdownBySlug(raw);
+  if (bySlug) return bySlug;
+  const key = slugify(raw);
+  if (SEED_LISTS.some((seed) => seed.slug === key)) {
+    await ensureSeeded();
+    return getDropdownBySlug(raw);
+  }
+  return null;
 }
 
 async function persistList(item) {
@@ -256,32 +285,68 @@ async function removeRetiredDropdownLists(lists) {
   return remaining;
 }
 
+function optionHasSupplementMeta(option) {
+  return Number(option?.packSize) > 0 || Boolean(String(option?.unit || "").trim()) || Number(option?.price) > 0;
+}
+
+async function backfillSupplementPool(lists) {
+  const list = (lists || []).find((row) => row.slug === "supplement-pool");
+  const seed = SEED_LISTS.find((row) => row.slug === "supplement-pool");
+  if (!list || !seed) return lists || [];
+
+  const seedByLabel = new Map(
+    (seed.options || []).map((opt) => [String(opt.label || "").trim().toLowerCase(), opt]),
+  );
+  let changed = Boolean(seed.wide) && !list.wide;
+  const options = (list.options || []).map((opt, index) => {
+    if (optionHasSupplementMeta(opt)) return opt;
+    const seedOpt = seedByLabel.get(String(opt.label || "").trim().toLowerCase());
+    if (!seedOpt) return opt;
+    changed = true;
+    return normalizeOption({
+      ...opt,
+      packSize: seedOpt.packSize,
+      unit: seedOpt.unit,
+      price: seedOpt.price,
+    }, index);
+  });
+  if (!changed) return lists;
+
+  const updated = await updateDropdown(list.id, {
+    options,
+    ...(seed.wide ? { wide: true } : {}),
+  });
+  return lists.map((row) => (row.id === list.id ? updated : row));
+}
+
 async function ensureSeeded() {
   const existing = await removeRetiredDropdownLists(await listAllUnpaged());
   const have = new Set(existing.map((row) => row.slug));
   const seeds = SEED_LISTS.filter((seed) => !have.has(seed.slug));
-  if (!seeds.length) return existing;
-
-  const now = new Date().toISOString();
   const created = [];
-  for (let i = 0; i < seeds.length; i += 1) {
-    const seed = seeds[i];
-    const seedIndex = SEED_LISTS.findIndex((row) => row.slug === seed.slug);
-    const item = {
-      id: uuidv4(),
-      slug: seed.slug,
-      title: seed.title,
-      wide: Boolean(seed.wide),
-      status: "active",
-      sortOrder: seedIndex + 1,
-      options: normalizeOptions(seed.options),
-      createdAt: now,
-      updatedAt: now,
-    };
-    await persistList(item);
-    created.push(withLegacyId(item));
+
+  if (seeds.length) {
+    const now = new Date().toISOString();
+    for (let i = 0; i < seeds.length; i += 1) {
+      const seed = seeds[i];
+      const seedIndex = SEED_LISTS.findIndex((row) => row.slug === seed.slug);
+      const item = {
+        id: uuidv4(),
+        slug: seed.slug,
+        title: seed.title,
+        wide: Boolean(seed.wide),
+        status: "active",
+        sortOrder: seedIndex + 1,
+        options: normalizeOptions(seed.options),
+        createdAt: now,
+        updatedAt: now,
+      };
+      await persistList(item);
+      created.push(withLegacyId(item));
+    }
   }
-  return [...existing, ...created].sort(sortLists);
+
+  return backfillSupplementPool([...existing, ...created].sort(sortLists));
 }
 
 async function listDropdowns({ page = 1, limit = 50, status, search, seed = true } = {}) {
@@ -435,6 +500,9 @@ async function updateOption(listId, optionId, patch) {
     value: patch.value !== undefined ? patch.value : prev.value,
     on: patch.on !== undefined ? patch.on : prev.on,
     sortOrder: patch.sortOrder !== undefined ? patch.sortOrder : prev.sortOrder,
+    packSize: patch.packSize !== undefined ? patch.packSize : prev.packSize,
+    unit: patch.unit !== undefined ? patch.unit : prev.unit,
+    price: patch.price !== undefined ? patch.price : prev.price,
   }, idx);
   const options = current.options.map((row, i) => (i === idx ? nextOption : row));
   const updated = await updateDropdown(listId, { options });
@@ -485,6 +553,9 @@ function toPublicList(list, { activeOptionsOnly = false } = {}) {
       icon: row.icon || "",
       on: row.on,
       sortOrder: row.sortOrder,
+      packSize: Number(row.packSize) || 0,
+      unit: String(row.unit || "").trim(),
+      price: Number(row.price) || 0,
     })),
   };
 }

@@ -1,3 +1,6 @@
+const { listAllSectionsUnpaged } = require("../models/drfSectionModel");
+const { listAllQuestionsUnpaged } = require("../models/drfSectionQuestionModel");
+
 const TARGET_WEIGHT = 100;
 const TARGET_SECTION_POINTS = 100;
 
@@ -60,6 +63,74 @@ function totalQuestionCount(sections = []) {
   }, 0);
 }
 
+async function loadNestedConfig() {
+  const [sections, questions] = await Promise.all([
+    listAllSectionsUnpaged(),
+    listAllQuestionsUnpaged(),
+  ]);
+  const bySection = new Map();
+  for (const question of questions) {
+    const list = bySection.get(question.sectionId) || [];
+    list.push(question);
+    bySection.set(question.sectionId, list);
+  }
+  const nested = sections.map((section) => ({
+    ...section,
+    questions: bySection.get(section.id) || [],
+  }));
+  return {
+    sections: nested,
+    scoring: summarizeConfig(nested),
+  };
+}
+
+function liveCatalogSections(sections = []) {
+  return sections
+    .filter(isLiveSection)
+    .map((section) => ({
+      ...section,
+      questions: (Array.isArray(section.questions) ? section.questions : []).filter(isEnabledQuestion),
+    }))
+    .filter((section) => section.questions.length > 0);
+}
+
+function applyUserDrfSelection(sections = [], selectedQuestionIds, { saved = false } = {}) {
+  const catalog = liveCatalogSections(sections);
+  const catalogIds = new Set(catalog.flatMap((section) => section.questions.map((question) => String(question.id))));
+  const requested = (Array.isArray(selectedQuestionIds) ? selectedQuestionIds : [])
+    .map((id) => String(id))
+    .filter((id) => catalogIds.has(id));
+  const selected = new Set(saved ? requested : []);
+
+  for (const section of catalog) {
+    for (const question of section.questions) {
+      if (question.fixed) selected.add(String(question.id));
+    }
+  }
+
+  return catalog.map((section) => ({
+    id: section.id,
+    name: section.name,
+    weight: Number(section.weight) || 0,
+    fixed: Boolean(section.fixed),
+    questions: section.questions.map((question) => ({
+      id: question.id,
+      name: question.name,
+      points: Number(question.points) || 0,
+      fixed: Boolean(question.fixed),
+      selected: selected.has(String(question.id)),
+    })),
+  }));
+}
+
+function selectedQuestionIdsFromSections(sections = []) {
+  return sections.flatMap((section) =>
+    (Array.isArray(section.questions) ? section.questions : [])
+      .filter((question) => question.selected || question.fixed)
+      .map((question) => String(question.id)),
+  );
+}
+
 function summarizeConfig(sections = []) {
   const allocated = weightTotal(sections);
   const hasLive = sections.some(isLiveSection);
@@ -102,4 +173,8 @@ module.exports = {
   liveQuestionCount,
   totalQuestionCount,
   summarizeConfig,
+  loadNestedConfig,
+  liveCatalogSections,
+  applyUserDrfSelection,
+  selectedQuestionIdsFromSections,
 };

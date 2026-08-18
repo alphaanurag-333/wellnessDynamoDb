@@ -1,5 +1,5 @@
-function option(id, label, on = true) {
-  return { id, label, on };
+function option(id, label, on = true, extra = {}) {
+  return { id, label, on, ...extra };
 }
 
 export const DROPDOWN_LISTS = [
@@ -107,6 +107,20 @@ export const DROPDOWN_LISTS = [
       option("wd-4", "Yoga & Movement Coach"),
       option("wd-5", "Ayurveda Practitioner"),
       option("wd-6", "Lifestyle Counsellor"),
+    ],
+  },
+  {
+    id: "supplement-pool",
+    title: "Supplement pool",
+    wide: true,
+    options: [
+      option("sp-1", "Vitamin D Plus", true, { packSize: 60, unit: "Caps", price: 1200 }),
+      option("sp-2", "Whey Protein Isolate", true, { packSize: 1, unit: "Kg", price: 2400 }),
+      option("sp-3", "Omega-3 Fish Oil", true, { packSize: 120, unit: "Tabs", price: 1200 }),
+      option("sp-4", "Magnesium Glycinate", true, { packSize: 90, unit: "Caps", price: 900 }),
+      option("sp-5", "B12 + Folate", true, { packSize: 60, unit: "Tabs", price: 650 }),
+      option("sp-6", "Probiotic 20B CFU", true, { packSize: 30, unit: "Caps", price: 1100 }),
+      option("sp-7", "Iron Bisglycinate", true, { packSize: 60, unit: "Caps", price: 750 }),
     ],
   },
 ];

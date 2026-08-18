@@ -119,6 +119,7 @@ const PERMISSION_GROUPS_RAW = [
         actions: [VIEW, EDIT, DELETE],
       },
       { to: "mental-wellbeing", label: "Mental Wellbeing", actions: [VIEW, EDIT, DELETE] },
+      { to: "wellness-yoga", label: "Yoga", actions: [VIEW, EDIT, DELETE] },
     ],
   },
   {
@@ -189,6 +190,7 @@ const CLIENT_HUB_TAB_META = {
   "internal-parameters": "Internal params",
   "physical-exercises": "Exercises",
   "mental-wellbeing": "Mental wellbeing",
+  yoga: "Yoga",
   "daily-reflection": "Daily reflection",
   "supplement-recommendations": "Supplements",
   "supplement-dosage": "Dosage",
@@ -230,6 +232,7 @@ const CLIENT_HUB_TAB_GROUPS = [
     tabIds: [
       "physical-exercises",
       "mental-wellbeing",
+      "yoga",
       "daily-reflection",
       "supplement-recommendations",
       "supplement-dosage",

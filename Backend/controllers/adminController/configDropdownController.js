@@ -136,6 +136,9 @@ exports.addConfigDropdownOptionController = asyncHandler(async (req, res) => {
       value: req.body.value,
       icon: req.body.icon,
       on: req.body.on,
+      packSize: req.body.packSize,
+      unit: req.body.unit,
+      price: req.body.price,
     });
   } catch (err) {
     throwModelError(err);
@@ -163,6 +166,9 @@ exports.updateConfigDropdownOptionController = asyncHandler(async (req, res) => 
   if (req.body.icon !== undefined) patch.icon = String(req.body.icon).trim();
   if (req.body.on !== undefined) patch.on = Boolean(req.body.on);
   if (req.body.sortOrder !== undefined) patch.sortOrder = req.body.sortOrder;
+  if (req.body.packSize !== undefined) patch.packSize = req.body.packSize;
+  if (req.body.unit !== undefined) patch.unit = req.body.unit;
+  if (req.body.price !== undefined) patch.price = req.body.price;
   if (Object.keys(patch).length === 0) {
     throw new AppError("At least one field is required for update", 400);
   }

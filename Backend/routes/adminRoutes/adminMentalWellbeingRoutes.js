@@ -3,6 +3,7 @@ const express = require("express");
 const { protectAccount } = require("../../middleware/auth");
 const { authorizeStaff } = require("../../middleware/authorize");
 const { optionalMentalWellbeingFile } = require("../../middleware/authMultipart");
+const { previewYoutubeDurationController } = require("../../controllers/adminController/wellnessLibraryMetaController");
 const {
   listMentalWellbeingController,
   getMentalWellbeingByIdController,
@@ -13,7 +14,21 @@ const {
 
 const router = express.Router();
 
-router.get("/", protectAccount, authorizeStaff("console.cf.view", { admin: "mental-wellbeing.view" }), listMentalWellbeingController);
+router.get(
+  "/",
+  protectAccount,
+  authorizeStaff(["console.cf.view", "console.diet.view"], {
+    admin: ["mental-wellbeing.view", "users.clientHub.wellness.mental-wellbeing"],
+    coach: "clientTab.wellness.mental-wellbeing",
+  }),
+  listMentalWellbeingController
+);
+router.get(
+  "/youtube-duration",
+  protectAccount,
+  authorizeStaff("console.cf.edit", { admin: "mental-wellbeing.edit" }),
+  previewYoutubeDurationController
+);
 router.get("/:id", protectAccount, authorizeStaff("console.cf.view", { admin: "mental-wellbeing.view" }), getMentalWellbeingByIdController);
 router.post(
   "/",

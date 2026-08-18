@@ -11,8 +11,15 @@ const {
 
 const router = express.Router();
 
-router.get("/", protectAccount, authorizeStaff("console.cf.view", { admin: "diet-plan-catalog.view" }), listDietPlanCatalogController);
-router.get("/:id", protectAccount, authorizeStaff("console.cf.view", { admin: "diet-plan-catalog.view" }), getDietPlanCatalogByIdController);
+const catalogRead = authorizeStaff(["console.cf.view", "console.diet.view"], {
+  admin: "diet-plan-catalog.view",
+  wellness_coach: "clientTab.care.diet-plan",
+  assistant_wellness_coach: "clientTab.care.diet-plan",
+  trainee: "clientTab.care.diet-plan",
+});
+
+router.get("/", protectAccount, catalogRead, listDietPlanCatalogController);
+router.get("/:id", protectAccount, catalogRead, getDietPlanCatalogByIdController);
 router.post("/", protectAccount, authorizeStaff("console.cf.edit", { admin: "diet-plan-catalog.edit" }), createDietPlanCatalogController);
 router.patch("/:id", protectAccount, authorizeStaff("console.cf.edit", { admin: "diet-plan-catalog.edit" }), updateDietPlanCatalogController);
 router.delete(

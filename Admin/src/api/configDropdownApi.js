@@ -18,6 +18,9 @@ function mapOption(row) {
     icon: row.icon || "",
     on: row.on !== false,
     sortOrder: Number.isFinite(Number(row.sortOrder)) ? Number(row.sortOrder) : 0,
+    packSize: Number(row.packSize) || 0,
+    unit: String(row.unit || "").trim(),
+    price: Number(row.price) || 0,
   };
 }
 
@@ -65,6 +68,16 @@ export async function adminGetConfigDropdown(token, idOrSlug) {
   }
 }
 
+/** Active options only — used by WC / other team roles that cannot list Config dropdowns. */
+export async function fetchActiveConfigDropdown(slug) {
+  try {
+    const { data } = await api.get(`/public/misc/config-dropdowns/${encodeURIComponent(slug)}`);
+    return mapList(data.list);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function adminAddConfigDropdownOption(token, listId, fields) {
   try {
     const { data } = await api.post(
@@ -74,6 +87,9 @@ export async function adminAddConfigDropdownOption(token, listId, fields) {
         ...(fields.value ? { value: fields.value } : {}),
         ...(fields.icon ? { icon: String(fields.icon).trim() } : {}),
         ...(fields.on !== undefined ? { on: fields.on } : {}),
+        ...(fields.packSize !== undefined ? { packSize: Number(fields.packSize) || 0 } : {}),
+        ...(fields.unit !== undefined ? { unit: String(fields.unit).trim() } : {}),
+        ...(fields.price !== undefined ? { price: Number(fields.price) || 0 } : {}),
       },
       { headers: authHeader(tokenOrStored(token)) },
     );
@@ -89,6 +105,9 @@ export async function adminUpdateConfigDropdownOption(token, listId, optionId, f
   if (fields.value !== undefined) payload.value = String(fields.value).trim();
   if (fields.icon !== undefined) payload.icon = String(fields.icon).trim();
   if (fields.on !== undefined) payload.on = Boolean(fields.on);
+  if (fields.packSize !== undefined) payload.packSize = Number(fields.packSize) || 0;
+  if (fields.unit !== undefined) payload.unit = String(fields.unit).trim();
+  if (fields.price !== undefined) payload.price = Number(fields.price) || 0;
   try {
     const { data } = await api.patch(
       `${dropdownBase()}/${encodeURIComponent(listId)}/options/${encodeURIComponent(optionId)}`,

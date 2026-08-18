@@ -30,6 +30,7 @@ const FCM_TYPE_BY_KIND = {
   coach_reminder: "reminder_notification",
   physical_exercise_assigned: "physical_exercise_notification",
   mental_wellbeing_assigned: "mental_wellbeing_notification",
+  yoga_assigned: "yoga_assigned_notification",
   supplement_recommended: "supplement_recommendation_notification",
   supplement_dosage_assigned: "supplement_dosage_notification",
   supplement_delivery_requested: "supplement_delivery_requested_notification",
@@ -377,6 +378,30 @@ async function dispatchMentalWellbeingAssignedNotification({
   return notification;
 }
 
+async function dispatchWellnessYogaAssignedNotification({
+  userId,
+  coachName,
+  count = 1,
+}) {
+  const name = String(coachName || "Your coach").trim() || "Your coach";
+  const n = Number(count) || 1;
+  const message =
+    n === 1
+      ? `${name} assigned new yoga content for you.`
+      : `${name} assigned ${n} new yoga items for you.`;
+
+  const notification = await createTargetedNotification({
+    userId,
+    kind: "yoga_assigned",
+    message,
+    referenceType: "assigned_wellness_yoga",
+    title: "New yoga content",
+  });
+
+  runPushSafely(deliverTargetedPush(userId, notification));
+  return notification;
+}
+
 async function dispatchLabReportUploadCoachNotification({ user, reportId }) {
   emitLabReportUploaded({ user, reportId });
 
@@ -569,6 +594,7 @@ module.exports = {
   dispatchCoachReminderNotification,
   dispatchPhysicalExerciseAssignedNotification,
   dispatchMentalWellbeingAssignedNotification,
+  dispatchWellnessYogaAssignedNotification,
   dispatchSupplementRecommendedNotification,
   dispatchSupplementDosageAssignedNotification,
   dispatchSupplementDeliveryRequestedCoachNotification,

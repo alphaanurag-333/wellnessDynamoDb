@@ -1,10 +1,12 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   PROTOCOL_ONBOARDING_STEP,
-  formatProtocolSavedAt,
-  historyDeltaLabel,
   pointCountLabel,
 } from "../../data/protocolSettingsData.js";
+import {
+  fetchUserProtocolSettings,
+  saveUserProtocolSettings,
+} from "../../api/protocolSettingsApi.js";
 
 function pointsEqual(a, b) {
   return JSON.stringify(a) === JSON.stringify(b);
@@ -17,7 +19,7 @@ function HistoryVersionCard({ entry, expanded, onToggle, onRestore }) {
         <span className="ua-cp-proto-ver__badge">v{entry.version}</span>
         <div className="ua-cp-proto-ver__copy">
           <strong>{pointCountLabel(entry.points.length)} · {entry.savedAt}</strong>
-          <span>Saved by Admin desk · {entry.deltaLabel}</span>
+          <span>Saved by {entry.savedByLabel} · {entry.deltaLabel}</span>
         </div>
         <span className={`ua-cp-proto-ver__chev${expanded ? " ua-cp-proto-ver__chev--open" : ""}`} aria-hidden="true">›</span>
       </button>
@@ -25,7 +27,7 @@ function HistoryVersionCard({ entry, expanded, onToggle, onRestore }) {
         <div className="ua-cp-proto-ver__body">
           <ol className="ua-cp-proto-ver__list">
             {entry.points.map((point, index) => (
-              <li key={`${entry.version}-${index}`}>
+              <li key={`${entry.id}-${index}`}>
                 <span className="ua-cp-proto-ver__list-num">{index + 1}</span>
                 <span>{point}</span>
               </li>
@@ -41,28 +43,70 @@ function HistoryVersionCard({ entry, expanded, onToggle, onRestore }) {
 }
 
 export function ProtocolSection({ user, onToast }) {
+  const userId = String(user?.id || "").trim();
   const [workingPoints, setWorkingPoints] = useState([]);
   const [savedPoints, setSavedPoints] = useState([]);
   const [history, setHistory] = useState([]);
   const [draft, setDraft] = useState("");
   const [expandedVersion, setExpandedVersion] = useState(null);
+  const [loading, setLoading] = useState(Boolean(userId));
+  const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState("");
 
   const clientName = user?.name?.split(" ")[0] || "Client";
   const dirty = !pointsEqual(workingPoints, savedPoints);
   const latestVersion = history[0]?.version ?? null;
-  const canSave = dirty && workingPoints.some((point) => point.trim());
+  const canSave = dirty && workingPoints.some((point) => point.trim()) && !saving && !loading;
 
   const workingMeta = useMemo(() => {
     const count = workingPoints.length;
+    if (loading) return "Loading protocol…";
     if (!count && !latestVersion) return "No points yet. Add the first one below.";
     if (dirty) return `${pointCountLabel(count)} · unsaved changes`;
     if (latestVersion) return `${pointCountLabel(count)} · saved as v${latestVersion}`;
     return pointCountLabel(count);
-  }, [workingPoints.length, dirty, latestVersion]);
+  }, [workingPoints.length, dirty, latestVersion, loading]);
 
   const pageSub = latestVersion
     ? `Step ${PROTOCOL_ONBOARDING_STEP} of onboarding · saved as v${latestVersion}.`
     : `Step ${PROTOCOL_ONBOARDING_STEP} of onboarding. Not set yet.`;
+
+  useEffect(() => {
+    if (!userId) {
+      setWorkingPoints([]);
+      setSavedPoints([]);
+      setHistory([]);
+      setLoading(false);
+      setLoadError("");
+      return undefined;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+    setLoadError("");
+
+    fetchUserProtocolSettings(userId)
+      .then((data) => {
+        if (cancelled) return;
+        const points = data?.current?.points || [];
+        setWorkingPoints([...points]);
+        setSavedPoints([...points]);
+        setHistory(data?.history || []);
+        setExpandedVersion(data?.current?.version ?? null);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setLoadError(err?.message || "Failed to load protocol settings");
+        onToast?.(err?.message || "Failed to load protocol settings");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [onToast, userId]);
 
   function updatePoint(index, value) {
     setWorkingPoints((list) => list.map((point, i) => (i === index ? value : point)));
@@ -84,23 +128,26 @@ export function ProtocolSection({ user, onToast }) {
     onToast?.("Changes discarded");
   }
 
-  function saveVersion() {
+  async function saveVersion() {
     const points = workingPoints.map((point) => point.trim()).filter(Boolean);
-    if (!points.length) return;
+    if (!points.length || !userId || saving) return;
 
-    const previousCount = history[0]?.points.length ?? 0;
-    const entry = {
-      version: (history[0]?.version ?? 0) + 1,
-      points,
-      savedAt: formatProtocolSavedAt(),
-      deltaLabel: historyDeltaLabel(points.length, previousCount),
-    };
-
-    setHistory((list) => [entry, ...list]);
-    setWorkingPoints(points);
-    setSavedPoints(points);
-    setExpandedVersion(entry.version);
-    onToast?.(`Protocol saved as v${entry.version}`);
+    setSaving(true);
+    try {
+      const data = await saveUserProtocolSettings(userId, points);
+      const nextPoints = data?.current?.points || points;
+      setHistory(data?.history || []);
+      setWorkingPoints([...nextPoints]);
+      setSavedPoints([...nextPoints]);
+      setExpandedVersion(data?.current?.version ?? null);
+      onToast?.(data?.current?.version
+        ? `Protocol saved as v${data.current.version}`
+        : "Protocol saved");
+    } catch (err) {
+      onToast?.(err?.message || "Could not save protocol");
+    } finally {
+      setSaving(false);
+    }
   }
 
   function restoreVersion(entry) {
@@ -115,6 +162,10 @@ export function ProtocolSection({ user, onToast }) {
         <p className="ua-cp-proto__sub">{pageSub}</p>
       </div>
 
+      {loadError ? (
+        <p className="ua-page-head__sub" style={{ color: "#b42318", margin: "0 0 16px" }}>{loadError}</p>
+      ) : null}
+
       <div className="ua-cp-proto-panel">
         <div className="ua-cp-proto-work__head">
           <div className="ua-cp-proto-work__copy">
@@ -126,22 +177,26 @@ export function ProtocolSection({ user, onToast }) {
             <button
               type="button"
               className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
-              disabled={!dirty}
+              disabled={!dirty || saving || loading}
               onClick={discardChanges}
             >
               Discard changes
             </button>
             {canSave ? (
               <button type="button" className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm" onClick={saveVersion}>
-                Save version
+                {saving ? "Saving…" : "Save version"}
               </button>
             ) : (
               <button type="button" className="ua-cp-btn ua-cp-btn--muted ua-cp-btn--sm" disabled>
-                Saved
+                {saving ? "Saving…" : "Saved"}
               </button>
             )}
           </div>
         </div>
+
+        {loading ? (
+          <p className="ua-page-head__sub" style={{ margin: "8px 0 0" }}>Loading protocol…</p>
+        ) : null}
 
         {workingPoints.length ? (
           <div className="ua-cp-proto-points">
@@ -153,6 +208,7 @@ export function ProtocolSection({ user, onToast }) {
                   className="ua-cp-proto-point__text"
                   value={point}
                   onChange={(e) => updatePoint(index, e.target.value)}
+                  disabled={saving}
                 />
                 <button type="button" className="ua-cp-proto-point__remove" onClick={() => removePoint(index)} aria-label="Remove point">×</button>
               </div>
@@ -168,11 +224,12 @@ export function ProtocolSection({ user, onToast }) {
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") addPoint(); }}
+            disabled={loading || saving}
           />
           <button
             type="button"
             className={`ua-cp-btn ua-cp-btn--sm${draft.trim() ? " ua-cp-btn--primary" : " ua-cp-btn--muted"}`}
-            disabled={!draft.trim()}
+            disabled={!draft.trim() || loading || saving}
             onClick={addPoint}
           >
             + Add point
@@ -189,7 +246,7 @@ export function ProtocolSection({ user, onToast }) {
           <div className="ua-cp-proto-history__list">
             {history.map((entry) => (
               <HistoryVersionCard
-                key={entry.version}
+                key={entry.id}
                 entry={entry}
                 expanded={expandedVersion === entry.version}
                 onToggle={() => setExpandedVersion((v) => (v === entry.version ? null : entry.version))}
@@ -199,7 +256,7 @@ export function ProtocolSection({ user, onToast }) {
           </div>
         ) : (
           <div className="ua-cp-proto-history__empty">
-            Nothing saved yet. Save the working protocol to start the history.
+            {loading ? "Loading history…" : "Nothing saved yet. Save the working protocol to start the history."}
           </div>
         )}
       </div>

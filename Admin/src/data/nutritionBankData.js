@@ -4,6 +4,8 @@ export const NUTRITION_BANK_PAGE_SIZE = 20;
 
 export const NUTRITION_BANK_UNITS = ["Caps", "Tablets", "Softgels", "Sachets", "ml", "g", "mg", "Drops"];
 
+export const SUPPLEMENT_POOL_UNITS = ["Caps", "Tabs", "Tablets", "Softgels", "Sachets", "Kg", "g", "mg", "ml", "Drops"];
+
 export function emptyNutritionDraft() {
   return {
     name: "",
@@ -39,10 +41,10 @@ export function formatPack(packSize, unit) {
   return "";
 }
 
-export function unitOptionsFor(unit) {
+export function unitOptionsFor(unit, units = NUTRITION_BANK_UNITS) {
   const current = String(unit || "").trim();
-  if (current && !NUTRITION_BANK_UNITS.includes(current)) {
-    return [current, ...NUTRITION_BANK_UNITS];
+  if (current && !units.includes(current)) {
+    return [current, ...units];
   }
-  return NUTRITION_BANK_UNITS;
+  return units;
 }

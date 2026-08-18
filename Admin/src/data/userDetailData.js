@@ -19,7 +19,7 @@ export const CLIENT_MENU = [
 ];
 
 export const COMPACT_CLIENT_MENU = CLIENT_MENU.filter((item) =>
-  ["personal", "internal", "nutritions"].includes(item.id)
+  ["personal", "internal", "nutritions", "food"].includes(item.id)
 );
 
 const DIABETES_REVERSAL_CONCERN = "diabetes reversal";
@@ -292,6 +292,8 @@ export const ACTIVE_SUPPLEMENTS = [
   { name: "B12 + Folate", note: "After lunch", dosages: [{ label: "Noon · 1", tone: "noon" }], date: "05 Sep", daysLeft: 42, urgent: false },
 ];
 
+export const SUPPLEMENT_POOL_SLUG = "supplement-pool";
+
 export const SUPPLEMENT_POOL = [
   { id: "vitd", name: "Vitamin D Plus", pack: "60 Caps", price: 1200 },
   { id: "whey", name: "Whey Protein Isolate", pack: "1 Kg", price: 2400 },
@@ -301,6 +303,41 @@ export const SUPPLEMENT_POOL = [
   { id: "prob", name: "Probiotic 20B CFU", pack: "30 Caps", price: 1100 },
   { id: "iron", name: "Iron Bisglycinate", pack: "60 Caps", price: 750 },
 ];
+
+export function dropdownOptionsToSupplementPool(options = []) {
+  return (Array.isArray(options) ? options : [])
+    .filter((row) => row && row.on !== false)
+    .map((row) => {
+      const packSize = Number(row.packSize) || 0;
+      const unit = String(row.unit || "").trim();
+      return {
+        id: String(row.id || row.value || "").trim(),
+        name: String(row.label || "").trim(),
+        packSize,
+        unit,
+        pack: String(row.pack || "").trim() || [packSize || "", unit].filter(Boolean).join(" ").trim(),
+        price: Number(row.price) || 0,
+      };
+    })
+    .filter((row) => row.id && row.name);
+}
+
+export function mergeSupplementPoolWithBank(pool = [], bankItems = []) {
+  const byName = new Map(
+    (Array.isArray(bankItems) ? bankItems : [])
+      .filter((item) => item?.name)
+      .map((item) => [String(item.name).trim().toLowerCase(), item]),
+  );
+  return pool.map((item) => {
+    const bank = byName.get(String(item.name || "").trim().toLowerCase());
+    if (!bank) return item;
+    return {
+      ...item,
+      pack: item.pack || bank.pack || item.pack,
+      price: Number(item.price) > 0 ? Number(item.price) : Number(bank.price) || 0,
+    };
+  });
+}
 
 export const TIMING_OPTIONS = [
   "Empty stomach",
@@ -358,11 +395,16 @@ export const DOSAGE_CARDS = [
 ];
 
 export function formatSupplementOption(item) {
-  return `${item.name} · ${item.pack} · Rs. ${item.price.toLocaleString("en-IN")}`;
+  const name = String(item?.name || "").trim();
+  const pack = String(item?.pack || "").trim();
+  const price = Number(item?.price) > 0 ? `Rs. ${Number(item.price).toLocaleString("en-IN")}` : "";
+  const detail = [pack, price].filter(Boolean).join(" · ");
+  if (name && detail) return `${name} — ${detail}`;
+  return name || detail;
 }
 
-export function createDosageCard(name, timings, qty, unit) {
-  const poolItem = SUPPLEMENT_POOL.find((s) => s.name === name);
+export function createDosageCard(name, timings, qty, unit, pool = SUPPLEMENT_POOL) {
+  const poolItem = (pool || []).find((s) => s.name === name);
   const id = poolItem?.id || `dosage-${Date.now()}`;
   const dailyTotal = qty * timings.length;
   return {
@@ -520,6 +562,7 @@ export function profileFromListUser(row, userId) {
     joinedAgo: base.joinedAgo || extra.joinedAgo,
     lastReviewed: base.lastReviewed || extra.lastReviewed,
     lastUpdated: base.lastUpdated || extra.lastUpdated,
+    termsIp: base.termsIp || extra.termsIp,
     termsAccepted: base.termsAccepted || extra.termsAccepted,
     profileImage: base.profileImage || extra.profileImage,
     presentablePic: base.presentablePic || extra.presentablePic,

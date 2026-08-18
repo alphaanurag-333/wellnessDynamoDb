@@ -9,6 +9,7 @@ const {
   resolvePublicUrl,
 } = require("../../utils/s3");
 const { getHealthConcernById } = require("../../models/healthConcernModel");
+const { getClientIp } = require("../../utils/clientIp");
 const {
   getUserProgramById,
   toPublicUserProgram,
@@ -431,6 +432,10 @@ async function buildUserUpdatesFromBody(body, current, { allowStatus = true, req
     updates.termsAccepted = parseBool(body.termsAccepted);
     if (updates.termsAccepted && body.termsAcceptedAt === undefined && !current.termsAcceptedAt) {
       updates.termsAcceptedAt = new Date().toISOString();
+    }
+    if (updates.termsAccepted && !current.termsAcceptedIp) {
+      const ip = getClientIp(req);
+      if (ip) updates.termsAcceptedIp = ip;
     }
   }
   if (body.termsAcceptedAt !== undefined) {

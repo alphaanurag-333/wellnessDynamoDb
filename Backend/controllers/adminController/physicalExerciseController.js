@@ -12,18 +12,33 @@ const {
   updatePhysicalExercise,
   deletePhysicalExercise,
   listPhysicalExercises,
-  normalizeType,
   PHYSICAL_EXERCISE_ALLOWED_STATUS,
   PHYSICAL_EXERCISE_ALLOWED_TYPE,
 } = require("../../models/physicalExerciseModel");
+const {
+  normalizeDuration,
+  isValidYoutubeUrl,
+  resolveLibraryType,
+  resolveDuration,
+} = require("../../utils/wellnessLibraryFields");
 
 const S3_FOLDER = "physical-exercise";
 
-async function uploadPhysicalExerciseVideo(req) {
-  return (
+async function uploadPhysicalExerciseMedia(req) {
+  const thumbnail =
+    (await uploadMulterField(req, "thumbnailFile", S3_FOLDER)) ||
+    (await uploadMulterField(req, "thumbnail", S3_FOLDER));
+  const video =
     (await uploadMulterField(req, "videoFile", S3_FOLDER)) ||
-    (await uploadMulterField(req, "file", S3_FOLDER))
-  );
+    (await uploadMulterField(req, "file", S3_FOLDER));
+  return { thumbnail, video };
+}
+
+function readYtLink(body) {
+  const explicit = String(body.ytLink || body.ytlink || "").trim();
+  if (explicit) return explicit;
+  const link = String(body.link || "").trim();
+  return isValidYoutubeUrl(link) ? link : "";
 }
 
 exports.listPhysicalExerciseController = asyncHandler(async (req, res) => {
@@ -45,30 +60,53 @@ exports.getPhysicalExerciseByIdController = asyncHandler(async (req, res) => {
 exports.createPhysicalExerciseController = asyncHandler(async (req, res) => {
   const title = String(req.body.title || "").trim();
   const description = String(req.body.description || "").trim();
-  const rawType = String(req.body.type || "ytlink").trim().toLowerCase();
-  const type = normalizeType(rawType);
+  const type = resolveLibraryType(req.body.type, "ytlink");
   const status = String(req.body.status || "active").trim().toLowerCase();
+  const rawDuration = req.body.duration || req.body.videoTime || "";
+  const { thumbnail: uploadedThumb, video: uploadedVideo } = await uploadPhysicalExerciseMedia(req);
+  const thumbnail = uploadedThumb ?? parseMediaKeyFromBody(req.body.thumbnail, "thumbnail") ?? "";
 
   if (!title) throw new AppError("title is required", 400);
-  if (!description) throw new AppError("description is required", 400);
-  if (!PHYSICAL_EXERCISE_ALLOWED_TYPE.includes(rawType)) {
-    throw new AppError("type must be ytlink or video", 400);
+  if (!PHYSICAL_EXERCISE_ALLOWED_TYPE.includes(type)) {
+    throw new AppError("type must be video or ytlink", 400);
   }
   if (!PHYSICAL_EXERCISE_ALLOWED_STATUS.includes(status)) {
     throw new AppError("status must be active or inactive", 400);
   }
-
-  let link;
-  if (type === "video") {
-    const uploadedVideo = await uploadPhysicalExerciseVideo(req);
-    link = uploadedVideo ?? parseMediaKeyFromBody(req.body.link, "link") ?? "";
-    if (!link) throw new AppError("video file is required when type is video", 400);
-  } else {
-    link = String(req.body.link || "").trim();
-    if (!link) throw new AppError("link is required when type is ytlink", 400);
+  if (!thumbnail) throw new AppError("thumbnail is required", 400);
+  if (String(rawDuration).trim() && !normalizeDuration(rawDuration)) {
+    throw new AppError("video time must look like 5:12 (minutes:seconds), not a number", 400);
   }
 
-  const physicalExercise = await createPhysicalExercise({ title, description, type, link, status });
+  let link = "";
+  let ytLink = "";
+  let duration = "";
+
+  if (type === "ytlink") {
+    ytLink = readYtLink(req.body);
+    if (!isValidYoutubeUrl(ytLink)) throw new AppError("A valid YouTube URL is required", 400);
+    link = ytLink;
+    duration = await resolveDuration({ duration: rawDuration, ytLink });
+  } else {
+    link = uploadedVideo ?? parseMediaKeyFromBody(req.body.link, "link") ?? "";
+    if (!link || isValidYoutubeUrl(link)) throw new AppError("Upload a video file", 400);
+    duration = normalizeDuration(rawDuration);
+  }
+
+  if (!duration) {
+    throw new AppError("Could not detect video time. Enter time as 5:12 (minutes:seconds).", 400);
+  }
+
+  const physicalExercise = await createPhysicalExercise({
+    title,
+    description,
+    type,
+    link,
+    ytLink,
+    thumbnail,
+    duration,
+    status,
+  });
 
   return res.status(201).json({
     status: true,
@@ -88,9 +126,7 @@ exports.updatePhysicalExerciseController = asyncHandler(async (req, res) => {
     updates.title = title;
   }
   if (req.body.description !== undefined) {
-    const description = String(req.body.description || "").trim();
-    if (!description) throw new AppError("description cannot be empty", 400);
-    updates.description = description;
+    updates.description = String(req.body.description || "").trim();
   }
   if (req.body.status !== undefined) {
     const status = String(req.body.status || "").trim().toLowerCase();
@@ -100,47 +136,75 @@ exports.updatePhysicalExerciseController = asyncHandler(async (req, res) => {
     updates.status = status;
   }
   if (req.body.type !== undefined) {
-    const rawType = String(req.body.type || "").trim().toLowerCase();
-    if (!PHYSICAL_EXERCISE_ALLOWED_TYPE.includes(rawType)) {
-      throw new AppError("type must be ytlink or video", 400);
+    const type = resolveLibraryType(req.body.type, current.type);
+    if (!PHYSICAL_EXERCISE_ALLOWED_TYPE.includes(type)) {
+      throw new AppError("type must be video or ytlink", 400);
     }
-    updates.type = normalizeType(rawType);
+    updates.type = type;
   }
 
   const nextType = updates.type || current.type;
-  const typeChanged = updates.type && updates.type !== current.type;
-  const uploadedVideo = await uploadPhysicalExerciseVideo(req);
+  const typeChanged = Boolean(updates.type && updates.type !== current.type);
+  const { thumbnail: uploadedThumb, video: uploadedVideo } = await uploadPhysicalExerciseMedia(req);
 
-  let newLink;
-  if (nextType === "video") {
-    if (uploadedVideo) {
-      newLink = uploadedVideo;
-    } else if (req.body.link !== undefined) {
-      newLink = parseMediaKeyFromBody(req.body.link, "link") ?? "";
-    } else if (!typeChanged) {
-      newLink = current.link;
-    } else {
-      newLink = "";
+  if (uploadedThumb) {
+    if (current.thumbnail) await deleteStoredMedia(current.thumbnail);
+    updates.thumbnail = uploadedThumb;
+  } else if (req.body.thumbnail !== undefined) {
+    const nextThumb = parseMediaKeyFromBody(req.body.thumbnail, "thumbnail") ?? "";
+    if (!nextThumb && !current.thumbnail) throw new AppError("thumbnail is required", 400);
+    if (nextThumb && current.thumbnail && current.thumbnail !== nextThumb) {
+      await deleteStoredMedia(current.thumbnail);
     }
-    if (!newLink) throw new AppError("video file is required when type is video", 400);
-  } else {
-    if (req.body.link !== undefined) {
-      newLink = String(req.body.link || "").trim();
-    } else if (!typeChanged) {
-      newLink = current.link;
-    } else {
-      newLink = "";
-    }
-    if (!newLink) throw new AppError("link is required when type is ytlink", 400);
+    if (nextThumb) updates.thumbnail = nextThumb;
   }
 
-  const linkChanged = newLink !== current.link;
-  if (typeChanged || linkChanged || uploadedVideo) {
+  let ytLink = current.ytLink || (current.type === "ytlink" ? current.link : "");
+  if (req.body.ytLink !== undefined || req.body.ytlink !== undefined || req.body.link !== undefined) {
+    ytLink = readYtLink(req.body);
+  }
+
+  let newLink = current.link;
+  if (nextType === "ytlink") {
+    if (!isValidYoutubeUrl(ytLink)) throw new AppError("A valid YouTube URL is required", 400);
+    newLink = ytLink;
+  } else if (uploadedVideo) {
+    newLink = uploadedVideo;
+    ytLink = "";
+  } else if (req.body.link !== undefined && !isValidYoutubeUrl(String(req.body.link || ""))) {
+    newLink = parseMediaKeyFromBody(req.body.link, "link") ?? "";
+    ytLink = "";
+  } else if (typeChanged) {
+    newLink = current.type === "video" ? current.link : "";
+    ytLink = "";
+  }
+  if (nextType === "video" && !newLink) throw new AppError("Upload a video file", 400);
+
+  if (typeChanged || newLink !== current.link || uploadedVideo || ytLink !== (current.ytLink || "")) {
     updates.link = newLink;
+    updates.ytLink = nextType === "ytlink" ? ytLink : "";
   }
 
   if (current.type === "video" && current.link && current.link !== newLink) {
     await deleteStoredMedia(current.link);
+  }
+
+  const rawDuration = req.body.duration ?? req.body.videoTime;
+  const ytLinkChanged = nextType === "ytlink" && ytLink !== (current.ytLink || current.link || "");
+  if (rawDuration !== undefined) {
+    if (String(rawDuration).trim() && !normalizeDuration(rawDuration)) {
+      throw new AppError("video time must look like 5:12 (minutes:seconds), not a number", 400);
+    }
+    const duration = nextType === "ytlink"
+      ? await resolveDuration({ duration: rawDuration, ytLink })
+      : normalizeDuration(rawDuration, current.duration);
+    if (!duration) {
+      throw new AppError("Could not detect video time. Enter time as 5:12 (minutes:seconds).", 400);
+    }
+    updates.duration = duration;
+  } else if (ytLinkChanged) {
+    const duration = await resolveDuration({ ytLink });
+    if (duration) updates.duration = duration;
   }
 
   if (Object.keys(updates).length === 0) {
@@ -167,6 +231,7 @@ exports.deletePhysicalExerciseController = asyncHandler(async (req, res) => {
   const current = await getPhysicalExerciseRecordById(req.params.id);
   if (!current) throw new AppError("Physical exercise not found", 404);
   if (current.type === "video" && current.link) await deleteStoredMedia(current.link);
+  if (current.thumbnail) await deleteStoredMedia(current.thumbnail);
 
   try {
     await deletePhysicalExercise(req.params.id);
@@ -178,3 +243,4 @@ exports.deletePhysicalExerciseController = asyncHandler(async (req, res) => {
   }
   return res.status(200).json({ status: true, message: "Physical exercise deleted successfully" });
 });
+

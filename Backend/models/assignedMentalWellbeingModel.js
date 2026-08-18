@@ -26,6 +26,8 @@ function normalizeAssignedByRole(value, fallback = "wellness_coach") {
 
 function resolvePlaybackLink(item) {
   if (!item) return "";
+  const yt = String(item.ytLink || "").trim();
+  if (yt) return yt;
   const type = String(item.type || "").toLowerCase();
   if (type === "ytlink") return String(item.ytLink || "").trim();
   if (type === "video" || type === "audio") return String(item.file || "").trim();
@@ -57,8 +59,11 @@ function toAssignedMentalWellbeingPublic(item, mentalWellbeing = null) {
       _id: mentalWellbeing._id || mentalWellbeing.id,
       title: mentalWellbeing.title,
       type: mentalWellbeing.type,
+      mediaType: mentalWellbeing.mediaType,
       ytLink: mentalWellbeing.ytLink,
       file: mentalWellbeing.file,
+      thumbnail: mentalWellbeing.thumbnail,
+      duration: mentalWellbeing.duration,
       link: resolvePlaybackLink(mentalWellbeing),
       status: mentalWellbeing.status,
     },
