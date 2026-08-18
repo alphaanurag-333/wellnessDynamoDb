@@ -25085,7 +25085,7 @@
 }
 
 .updated-admin .ua-cfg-btn--primary {
-  margin-top: 8px;
+  /* margin-top: 8px; */
   background: rgb(94, 106, 210);
   color: #fff;
   border-color: #5e6ad2;
