@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useOutletContext, useParams, useSearchParams } from "react-router-dom";
-import { OrangeButton, PageHeader } from "../components/shared.jsx";
+import { CfgSelect, OrangeButton, PageHeader } from "../components/shared.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import { STAFF_AVATARS, TEAM_ROLE_META, staffInitials } from "../data/teamsData.js";
@@ -237,7 +237,8 @@ export function TeamMemberPage() {
   const [grants, setGrants] = useState({});
   const [dirtyPerms, setDirtyPerms] = useState(false);
   const [savingPerms, setSavingPerms] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(true);
+  const [permsOpen, setPermsOpen] = useState(true);
   const [accessRoles, setAccessRoles] = useState([]);
   const [catalogRows, setCatalogRows] = useState(PERM_CATALOG);
   const [permActs, setPermActs] = useState(PERM_ACTS);
@@ -277,6 +278,7 @@ export function TeamMemberPage() {
 
   useEffect(() => {
     if (!member || searchParams.get("focus") !== "permissions") return;
+    setPermsOpen(true);
     permsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [member, searchParams]);
 
@@ -462,29 +464,38 @@ export function TeamMemberPage() {
             aria-expanded={profileOpen}
           >
             {profileOpen ? "Hide profile" : "View profile"}{" "}
-            <span className={profileOpen ? "ua-tm-profile__chevron ua-tm-profile__chevron--open" : "ua-tm-profile__chevron"} aria-hidden="true">›</span>
+            <span className={profileOpen ? "ua-tm-profile__chevron ua-tm-profile__chevron--open" : "ua-tm-profile__chevron"} aria-hidden="true">▾</span>
           </button>
         </div>
 
         <div className="ua-tm-role-change">
-          <div className="ua-tm-role-change__label">Role change</div>
+          <div>
+            <div className="ua-tm-role-change__label">Role change</div>
+            <p className="ua-tm-role-change__hint">
+              {requestsApproval
+                ? "Role changes are applied by Admin. Permission grants for an AWC go to Access Control for approval."
+                : `Admin — applies at once. Current role: ${roleMeta.name}`}
+            </p>
+          </div>
           <div className="ua-tm-role-change__controls">
-            <select
+            <CfgSelect
               className="ua-tm-role-change__select"
+              options={roleOptions.map((role) => {
+                const value = role.id || role.roleKey;
+                const current =
+                  (role.id && role.id === member.consoleRoleId) ||
+                  (!member.consoleRoleId && role.roleKey === member.primaryRoleKey);
+                return {
+                  value,
+                  label: current ? `${role.name} (current)` : role.name,
+                };
+              })}
               value={roleDraft}
               disabled={member.isSuperAdmin || savingRole || requestsApproval}
-              onChange={(e) => setRoleDraft(e.target.value)}
-            >
-              {roleOptions.map((role) => (
-                <option key={role.id || role.roleKey} value={role.id || role.roleKey}>
-                  {role.name}
-                  {(role.id && role.id === member.consoleRoleId) ||
-                  (!member.consoleRoleId && role.roleKey === member.primaryRoleKey)
-                    ? " (current)"
-                    : ""}
-                </option>
-              ))}
-            </select>
+              onChange={setRoleDraft}
+              ariaLabel="Assigned role"
+              placeholder="Choose role"
+            />
             <button
               type="button"
               className="ua-tm-role-change__save"
@@ -499,11 +510,6 @@ export function TeamMemberPage() {
               {savingRole ? "Saving…" : "Save"}
             </button>
           </div>
-          <p className="ua-tm-role-change__hint">
-            {requestsApproval
-              ? "Role changes are applied by Admin. Permission grants for an AWC go to Access Control for approval."
-              : `Admin — applies at once. Current role: ${roleMeta.name}`}
-          </p>
         </div>
 
         {profileOpen ? (
@@ -511,21 +517,21 @@ export function TeamMemberPage() {
             <div className="ua-tm-profile-panel">
               <div className="ua-tm-profile-panel__title">Personal details</div>
               <dl className="ua-tm-profile-panel__rows">
-                <div><dt>Full name</dt><dd>{member.name || "—"}</dd></div>
-                <div><dt>Email</dt><dd>{member.email || "—"}</dd></div>
-                <div><dt>Mobile</dt><dd>{memberPhone(member)}</dd></div>
-                <div><dt>Date of birth</dt><dd>{formatProfileDate(member.dateOfBirth)}</dd></div>
-                <div><dt>Location</dt><dd>{memberLocation(member)}</dd></div>
+                <div><dt>Full name:</dt><dd>{member.name || "—"}</dd></div>
+                <div><dt>Email:</dt><dd>{member.email || "—"}</dd></div>
+                <div><dt>Mobile:</dt><dd>{memberPhone(member)}</dd></div>
+                <div><dt>Date of birth:</dt><dd>{formatProfileDate(member.dateOfBirth)}</dd></div>
+                <div><dt>Location:</dt><dd>{memberLocation(member)}</dd></div>
               </dl>
             </div>
             <div className="ua-tm-profile-panel">
               <div className="ua-tm-profile-panel__title">Role &amp; engagement</div>
               <dl className="ua-tm-profile-panel__rows">
-                <div><dt>Role</dt><dd>{roleMeta.name}</dd></div>
-                <div><dt>Status</dt><dd>{member.displayStatus || "—"}</dd></div>
-                <div><dt>Detail</dt><dd>{member.meta || "—"}</dd></div>
-                <div><dt>Joined</dt><dd>{formatProfileDate(member.joinedAt)}</dd></div>
-                <div><dt>Referral code</dt><dd>{member.referralCode || "—"}</dd></div>
+                <div><dt>Role:</dt><dd>{roleMeta.name}</dd></div>
+                <div><dt>Status:</dt><dd>{member.displayStatus || "—"}</dd></div>
+                <div><dt>Detail:</dt><dd>{member.meta || "—"}</dd></div>
+                <div><dt>Joined:</dt><dd>{formatProfileDate(member.joinedAt)}</dd></div>
+                <div><dt>Referral code:</dt><dd>{member.referralCode || "—"}</dd></div>
               </dl>
             </div>
           </div>
@@ -587,7 +593,7 @@ export function TeamMemberPage() {
                 <div className="ua-tm-content-row__actions">
                   <button
                     type="button"
-                    className="ua-soft-btn"
+                    className="ua-tm-link-btn"
                     onClick={() => {
                       if (item.kind === "letter") {
                         navigate(UPDATED_ADMIN_PATHS.commitmentLetters(member.id));
@@ -600,7 +606,7 @@ export function TeamMemberPage() {
                   </button>
                   <button
                     type="button"
-                    className="ua-soft-btn"
+                    className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
                     disabled={!item.url}
                     onClick={() => {
                       if (item.url) window.open(item.url, "_blank", "noopener,noreferrer");
@@ -615,18 +621,23 @@ export function TeamMemberPage() {
         </section>
       ) : null}
 
-      <section ref={permsRef} className="ua-tm-card ua-tm-perms">
-        <div className="ua-tm-section-head ua-tm-section-head--perms">
+      <section ref={permsRef} id="permissions" className="ua-tm-card ua-tm-perms">
+        <div className="ua-tm-perms__head">
           <div>
             <div className="ua-tm-section-head__title">Permissions</div>
-            <div className="ua-tm-section-head__hint">
-              {granted} of {member.totalSlots || totalSlots} granted
-              {member.hasOverrides ? " · personal override" : ""}
-            </div>
+            <p className="ua-tm-perms__intro">
+              {requestsApproval
+                ? "Toggle what this assistant can do, then send the request. Admin approval on Access Control grants the permission."
+                : "Toggle what this member can do, then save. Reset puts every row back to the role default."}
+            </p>
           </div>
           <div className="ua-tm-perms__actions">
-            <button type="button" className="ua-ac-btn-ghost" onClick={handleResetPerms} disabled={savingPerms || !canEditPerms}>
-              Reset to default
+            <span className="ua-tm-perms__count">
+              {granted} of {member.totalSlots || totalSlots} granted
+              {member.hasOverrides ? " · personal override" : ""}
+            </span>
+            <button type="button" className="ua-tm-perms__reset" onClick={handleResetPerms} disabled={savingPerms || !canEditPerms}>
+              <span aria-hidden="true">↺</span> Reset to default
             </button>
             <button
               type="button"
@@ -644,13 +655,17 @@ export function TeamMemberPage() {
                     : "Save"
                   : "Saved"}
             </button>
+            <button
+              type="button"
+              className="ua-tm-perms__fold"
+              aria-expanded={permsOpen}
+              aria-label={permsOpen ? "Collapse permissions" : "Expand permissions"}
+              onClick={() => setPermsOpen((open) => !open)}
+            >
+              {permsOpen ? "▴" : "▾"}
+            </button>
           </div>
         </div>
-        <p className="ua-tm-perms__intro">
-          {requestsApproval
-            ? "Toggle what this assistant can do, then send the request. Admin approval on Access Control grants the permission."
-            : "Toggle what this member can do, then save. Reset puts every row back to the role default."}
-        </p>
         {memberPendingRequests(member).length ? (
           <div className="ua-tm-pending">
             <div className="ua-tm-pending__title">
@@ -665,57 +680,61 @@ export function TeamMemberPage() {
           </div>
         ) : null}
 
-        <div className="ua-ac-matrix__scroll">
-          <div className="ua-ac-matrix__cols">
-            <div className="ua-ac-matrix__col-label">Feature</div>
-            {permActs.map((a) => (
-              <div key={a} className="ua-ac-matrix__col-act">
-                {a}
-              </div>
-            ))}
-            <div className="ua-ac-matrix__col-granted">On</div>
-          </div>
-          {matrixGroups.map((group) => (
-            <div key={group.label} className="ua-ac-matrix__group">
-              <div className="ua-ac-matrix__group-label">{group.label}</div>
-              {group.features.map((row) => {
-                const [, name, fid, acts] = row;
-                const onCount = featureOnCount(grants, fid, acts);
-                return (
-                  <div key={fid} className="ua-ac-matrix__row">
-                    <div className="ua-ac-matrix__perm">
-                      <span className="ua-ac-matrix__perm-name">{name}</span>
-                    </div>
-                    {permActs.map((act) => {
-                      const applicable = acts.includes(act);
-                      if (!applicable) {
+        {permsOpen ? (
+          <div className="ua-tm-perms__matrix">
+          <div className="ua-ac-matrix__scroll">
+            <div className="ua-ac-matrix__cols">
+              <div className="ua-ac-matrix__col-label">Feature</div>
+              {permActs.map((a) => (
+                <div key={a} className="ua-ac-matrix__col-act">
+                  {a}
+                </div>
+              ))}
+              <div className="ua-ac-matrix__col-granted">On</div>
+            </div>
+            {matrixGroups.map((group) => (
+              <div key={group.label} className="ua-ac-matrix__group">
+                <div className="ua-ac-matrix__group-label">{group.label}</div>
+                {group.features.map((row) => {
+                  const [, name, fid, acts] = row;
+                  const onCount = featureOnCount(grants, fid, acts);
+                  return (
+                    <div key={fid} className="ua-ac-matrix__row">
+                      <div className="ua-ac-matrix__perm">
+                        <span className="ua-ac-matrix__perm-name">{name}</span>
+                      </div>
+                      {permActs.map((act) => {
+                        const applicable = acts.includes(act);
+                        if (!applicable) {
+                          return (
+                            <div key={act} className="ua-ac-matrix__cell">
+                              <span className="ua-ac-dash">—</span>
+                            </div>
+                          );
+                        }
                         return (
                           <div key={act} className="ua-ac-matrix__cell">
-                            <span className="ua-ac-dash">—</span>
+                            <ToggleSwitch
+                              on={memberHas(grants, fid, act)}
+                              disabled={!canEditPerms}
+                              onClick={() => handleToggle(fid, act)}
+                            />
                           </div>
                         );
-                      }
-                      return (
-                        <div key={act} className="ua-ac-matrix__cell">
-                          <ToggleSwitch
-                            on={memberHas(grants, fid, act)}
-                            disabled={!canEditPerms}
-                            onClick={() => handleToggle(fid, act)}
-                          />
-                        </div>
-                      );
-                    })}
-                    <div className="ua-ac-matrix__granted">
-                      <span className={`ua-ac-granted-pill${onCount > 0 ? " ua-ac-granted-pill--on" : ""}`}>
-                        {onCount}/{acts.length}
-                      </span>
+                      })}
+                      <div className="ua-ac-matrix__granted">
+                        <span className={`ua-ac-granted-pill${onCount > 0 ? " ua-ac-granted-pill--on" : ""}`}>
+                          {onCount}/{acts.length}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-        </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+          </div>
+        ) : null}
       </section>
     </main>
   );

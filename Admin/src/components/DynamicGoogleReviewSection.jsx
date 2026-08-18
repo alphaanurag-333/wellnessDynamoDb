@@ -6,6 +6,15 @@ import {
   statsFromAppConfig,
 } from "../api/googleReviewApi.js";
 
+const PLACEHOLDERS = {
+  "gr-rating": "e.g. 4.8",
+  "gr-reviews": "e.g. 1,284",
+  "gr-clients": "e.g. 12,000",
+  "gr-success": "e.g. 94",
+  "gr-improved": "e.g. 8,400",
+  "gr-facebook": "e.g. 42.1K",
+};
+
 function Panel({ title, subtitle, actions, children }) {
   return (
     <section className="ua-cfg-panel">
@@ -21,10 +30,9 @@ function Panel({ title, subtitle, actions, children }) {
   );
 }
 
-export function DynamicGoogleReviewSection({ stats, setStats, onToast, onOpenPreview }) {
+export function DynamicGoogleReviewSection({ stats, setStats, onToast }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [editingId, setEditingId] = useState(null);
   const [dirty, setDirty] = useState(false);
   const rows = Array.isArray(stats) ? stats : statsFromAppConfig({});
 
@@ -50,15 +58,15 @@ export function DynamicGoogleReviewSection({ stats, setStats, onToast, onOpenPre
     setStats((prev) => {
       const list = Array.isArray(prev) ? prev : statsFromAppConfig({});
       return list.map((row) => {
-      if (row.id !== id) return row;
-      const next = { ...row, ...patch };
-      if ("value" in patch) {
-        const value = String(patch.value ?? "").trim();
-        next.value = value;
-        next.shown = Boolean(value);
-      }
-      return next;
-    });
+        if (row.id !== id) return row;
+        const next = { ...row, ...patch };
+        if ("value" in patch) {
+          const value = String(patch.value ?? "").trim();
+          next.value = value;
+          next.shown = Boolean(value);
+        }
+        return next;
+      });
     });
     setDirty(true);
   }
@@ -69,7 +77,6 @@ export function DynamicGoogleReviewSection({ stats, setStats, onToast, onOpenPre
       const saved = await adminSaveGoogleReviewStats(null, rows);
       setStats(Array.isArray(saved) ? saved : statsFromAppConfig({}));
       setDirty(false);
-      setEditingId(null);
       onToast("Site stats saved");
     } catch (error) {
       onToast(error?.message || "Could not save site stats");
@@ -87,79 +94,52 @@ export function DynamicGoogleReviewSection({ stats, setStats, onToast, onOpenPre
     <div className="ua-cfg-gr">
       <Panel
         title="Google review & social stats"
-        subtitle={loading ? "Loading from App Config…" : `${liveCount} of ${rows.length} stats set · synced to site hero and about sections`}
+        subtitle={
+          loading
+            ? "Loading from App Config…"
+            : `${liveCount} of ${rows.length} stats set · clear a value to hide it on the site`
+        }
         actions={(
-          <>
-            {onOpenPreview ? (
-              <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" onClick={onOpenPreview}>Preview</button>
-            ) : null}
-            <button
-              type="button"
-              className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
-              disabled={busy || loading || !dirty}
-              onClick={saveAll}
-            >
-              Save changes
-            </button>
-          </>
+          <button
+            type="button"
+            className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
+            disabled={busy || loading || !dirty}
+            onClick={saveAll}
+          >
+            Save changes
+          </button>
         )}
       >
-        <p className="ua-cfg-panel__sub">
-          Values are stored in App Config and shown on the website and app when set. Clear a value to hide that stat.
-        </p>
-      </Panel>
-
-      {loading ? <p className="ua-cfg-panel__sub">Loading…</p> : null}
-
-      <div className="ua-cfg-gr-grid">
-        {rows.map((entry) => {
-          const editing = editingId === entry.id;
-          const hasValue = Boolean(String(entry.value || "").trim());
-          return (
-            <article key={entry.id} className={`ua-cfg-gr-card ua-cfg-gr-card--${entry.tone}`}>
-              <div className="ua-cfg-gr-card__head">
-                <span aria-hidden="true">{entry.icon}</span>
-                <strong>{asCopyString(entry.label)}</strong>
-                {editing ? (
-                  <button
-                    type="button"
-                    className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm"
-                    disabled={busy}
-                    onClick={() => setEditingId(null)}
-                  >
-                    Done
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm"
-                    disabled={busy}
-                    onClick={() => setEditingId(entry.id)}
-                  >
-                    Edit
-                  </button>
-                )}
-              </div>
-              {editing ? (
+        <div className={`ua-cfg-gr-grid${loading ? " is-loading" : ""}`}>
+          {rows.map((entry) => {
+            const hasValue = Boolean(String(entry.value || "").trim());
+            return (
+              <article key={entry.id} className={`ua-cfg-gr-card ua-cfg-gr-card--${entry.tone}`}>
+                <div className="ua-cfg-gr-card__head">
+                  <span className="ua-cfg-gr-card__icon" aria-hidden="true">{entry.icon}</span>
+                  <strong>{asCopyString(entry.label)}</strong>
+                </div>
                 <input
                   className={`ua-cfg-gr-card__input ua-cfg-gr-card__value--${entry.tone}`}
                   value={asCopyString(entry.value)}
-                  disabled={busy}
-                  placeholder="e.g. 4.8 or 1,284"
+                  disabled={busy || loading}
+                  placeholder={PLACEHOLDERS[entry.id] || "e.g. 4.8 or 1,284"}
+                  aria-label={asCopyString(entry.label)}
                   onChange={(event) => updateStat(entry.id, { value: event.target.value })}
                 />
-              ) : (
-                <p className={`ua-cfg-gr-card__value ua-cfg-gr-card__value--${entry.tone}`}>
-                  {hasValue ? asCopyString(entry.value) : "Not set"}
-                </p>
-              )}
-              <div className="ua-cfg-gr-card__shown">
-                <span className={hasValue ? "is-on" : ""}>{hasValue ? "Shown on site" : "Hidden"}</span>
-              </div>
-            </article>
-          );
-        })}
-      </div>
+                <div className="ua-cfg-gr-card__shown">
+                  <span className={`ua-cfg-gr-chip${hasValue ? " is-on" : ""}`}>
+                    {hasValue ? "Live" : "Hidden"}
+                  </span>
+                  <span className="ua-cfg-gr-card__hint">
+                    {hasValue ? "Shown on site" : "Empty — hidden on site"}
+                  </span>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </Panel>
     </div>
   );
 }

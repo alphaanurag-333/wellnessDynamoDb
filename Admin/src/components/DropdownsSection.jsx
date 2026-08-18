@@ -22,9 +22,35 @@ import {
 } from "../api/medicalConditionQuestionApi.js";
 import { MEDICAL_ANSWER_TYPES } from "../data/configDetailData.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
+import { CfgSelect } from "./shared.jsx";
 
-const FILTERS = ["All options", "On", "Hidden"];
+const FILTER_OPTIONS = [
+  { value: "All options", label: "All options" },
+  { value: "On", label: "On" },
+  { value: "Hidden", label: "Hidden" },
+];
+
+const ANSWER_TYPE_OPTIONS = MEDICAL_ANSWER_TYPES.map((entry) => ({
+  value: entry.id,
+  label: entry.label,
+}));
+
 const ICON_ACCEPT = "image/jpeg,image/png,image/gif,image/webp,image/jpg";
+
+function Panel({ title, subtitle, actions, children }) {
+  return (
+    <section className="ua-cfg-panel">
+      <div className="ua-cfg-panel__head">
+        <div>
+          {title ? <h3 className="ua-cfg-panel__title">{title}</h3> : null}
+          {subtitle ? <p className="ua-cfg-panel__sub">{subtitle}</p> : null}
+        </div>
+        {actions ? <div className="ua-cfg-panel__actions">{actions}</div> : null}
+      </div>
+      {children}
+    </section>
+  );
+}
 
 function matchesQuery(list, query) {
   if (!query) return true;
@@ -38,18 +64,32 @@ function isImageIcon(icon) {
   return /^https?:\/\//i.test(value) || value.startsWith("blob:") || value.includes("/");
 }
 
-function IconPicker({ previewUrl, disabled, onPick, label = "Upload icon" }) {
+function IconPicker({ previewUrl, disabled, onPick, onClear, label = "Upload icon" }) {
   const inputRef = useRef(null);
+  const filled = Boolean(previewUrl);
 
   return (
-    <button
-      type="button"
-      className={`ua-cfg-dd-icon-pick${previewUrl ? " has-image" : ""}`}
-      disabled={disabled}
-      aria-label={label}
-      onClick={() => inputRef.current?.click()}
-    >
-      {previewUrl ? <img src={previewUrl} alt="" /> : <span>+</span>}
+    <div className={`ua-cfg-dd-icon-pick${filled ? " has-image" : ""}`}>
+      <button
+        type="button"
+        className="ua-cfg-dd-icon-pick__btn"
+        disabled={disabled}
+        aria-label={label}
+        onClick={() => inputRef.current?.click()}
+      >
+        {filled ? <img src={previewUrl} alt="" /> : <span>+</span>}
+      </button>
+      {filled && onClear ? (
+        <button
+          type="button"
+          className="ua-cfg-rc-media-x"
+          aria-label="Remove icon"
+          disabled={disabled}
+          onClick={onClear}
+        >
+          ×
+        </button>
+      ) : null}
       <input
         ref={inputRef}
         type="file"
@@ -62,7 +102,7 @@ function IconPicker({ previewUrl, disabled, onPick, label = "Upload icon" }) {
           onPick(file);
         }}
       />
-    </button>
+    </div>
   );
 }
 
@@ -152,8 +192,6 @@ export function DropdownsSection({ lists, setLists, onToast }) {
 
   const optionCount = lists.reduce((sum, list) => sum + list.options.length, 0);
   const hiddenCount = lists.reduce((sum, list) => sum + list.options.filter((entry) => !entry.on).length, 0);
-  const visibleOptionCount = visible.reduce((sum, list) => sum + list.options.length, 0);
-  const visibleHiddenCount = visible.reduce((sum, list) => sum + list.options.filter((entry) => !entry.on).length, 0);
 
   function replaceList(nextList) {
     if (!nextList) return;
@@ -454,31 +492,37 @@ export function DropdownsSection({ lists, setLists, onToast }) {
 
   return (
     <div className="ua-cfg-dd">
-      <div className="ua-cfg-dd-toolbar">
-        <input
-          type="search"
-          className="ua-cfg-dd-search"
-          placeholder="Search any option or list..."
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
-        <button
-          type="button"
-          className="ua-cfg-dd-filter"
-          onClick={() => setFilter((prev) => FILTERS[(FILTERS.indexOf(prev) + 1) % FILTERS.length])}
-        >
-          {filter}
-        </button>
-        <div className="ua-cfg-dd-stats">
-          <span><strong>{query || filter !== "All options" ? visible.length : lists.length}</strong> lists</span>
-          <span><strong>{query || filter !== "All options" ? visibleOptionCount : optionCount}</strong> options</span>
-          <span><strong>{query || filter !== "All options" ? visibleHiddenCount : hiddenCount}</strong> hidden</span>
+      <Panel
+        title="Dropdown lists"
+        subtitle={
+          loading
+            ? "Loading lists from the server…"
+            : `${lists.length} lists · ${optionCount} options · ${hiddenCount} hidden`
+        }
+      >
+        <div className="ua-cfg-dd-toolbar">
+          <input
+            type="search"
+            className="ua-cfg-dd-search"
+            placeholder="Search any option or list…"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            aria-label="Search dropdowns"
+          />
+          <CfgSelect
+            className="ua-cfg-dd-filter"
+            options={FILTER_OPTIONS}
+            value={filter}
+            disabled={busy || loading}
+            onChange={setFilter}
+            ariaLabel="Filter options"
+          />
         </div>
-      </div>
+      </Panel>
 
       {loading ? (
         <p className="ua-cfg-panel__sub">Fetching dropdowns from the server…</p>
-      ) : (
+      ) : visible.length ? (
         <div className="ua-cfg-dd-grid">
           {visible.map((list) => {
             const source = lists.find((entry) => entry.id === list.id) ?? list;
@@ -486,17 +530,34 @@ export function DropdownsSection({ lists, setLists, onToast }) {
             const supportsIcons = list.slug === "health-concern";
             const supportsAnswerType = list.slug === "medical-questions";
             return (
-              <section key={list.id} className={`ua-cfg-dd-card${list.wide || supportsIcons || supportsAnswerType ? " ua-cfg-dd-card--wide" : ""}`}>
-                <div className="ua-cfg-dd-card__head">
-                  <h3>{asCopyString(list.title)}</h3>
-                  <span>{onCount}/{source.options.length} on</span>
+              <section
+                key={list.id}
+                className={`ua-cfg-panel ua-cfg-dd-card${list.wide || supportsIcons || supportsAnswerType ? " ua-cfg-dd-card--wide" : ""}`}
+              >
+                <div className="ua-cfg-panel__head ua-cfg-dd-card__head">
+                  <div>
+                    <h3 className="ua-cfg-panel__title">{asCopyString(list.title)}</h3>
+                    <p className="ua-cfg-panel__sub">
+                      {supportsIcons
+                        ? "Shown in client forms, reviews, and program filters"
+                        : supportsAnswerType
+                          ? "Medical questionnaire answers in onboarding"
+                          : "Used across admin forms and site filters"}
+                    </p>
+                  </div>
+                  <span className={`ua-cfg-dd-count${onCount ? " is-on" : ""}`}>
+                    {onCount}/{source.options.length} on
+                  </span>
                 </div>
+
                 <div className="ua-cfg-dd-card__list">
-                  {list.options.map((entry) => {
+                  {list.options.length ? list.options.map((entry) => {
                     const isEditing = editing === `${list.id}:${entry.id}`;
                     return (
-                      <div key={entry.id} className={`ua-cfg-dd-row${supportsIcons ? " has-icon" : ""}${supportsAnswerType ? " has-type" : ""}${entry.on ? "" : " is-off"}`}>
-                        <i aria-hidden="true" />
+                      <div
+                        key={entry.id}
+                        className={`ua-cfg-dd-row${supportsIcons ? " has-icon" : ""}${supportsAnswerType ? " has-type" : ""}${entry.on ? "" : " is-off"}${isEditing ? " is-editing" : ""}`}
+                      >
                         {isEditing ? (
                           <div className={`ua-cfg-dd-row__fields${supportsIcons ? " has-icon" : ""}${supportsAnswerType ? " has-type" : ""}`}>
                             {supportsIcons ? (
@@ -523,66 +584,88 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                               }}
                             />
                             {supportsAnswerType ? (
-                              <select
-                                className="ua-cfg-dd-row__type"
+                              <CfgSelect
+                                className="ua-cfg-dd-select"
+                                options={ANSWER_TYPE_OPTIONS}
                                 value={editAnswerType}
                                 disabled={busy}
-                                aria-label="Answer type"
-                                onChange={(event) => setEditAnswerType(event.target.value)}
-                              >
-                                {MEDICAL_ANSWER_TYPES.map((option) => (
-                                  <option key={option.id} value={option.id}>
-                                    {option.label}
-                                  </option>
-                                ))}
-                              </select>
+                                onChange={setEditAnswerType}
+                                ariaLabel="Answer type"
+                              />
                             ) : null}
                           </div>
                         ) : (
-                          <strong>
+                          <div className="ua-cfg-dd-row__main">
                             {supportsIcons ? <OptionIcon icon={entry.icon} /> : null}
-                            <span className="ua-cfg-dd-row__label">{asCopyString(entry.label)}</span>
+                            <strong className="ua-cfg-dd-row__label">{asCopyString(entry.label)}</strong>
                             {supportsAnswerType ? (
                               <span className="ua-cfg-dd-row__type-badge">{answerTypeLabel(entry.answerType)}</span>
                             ) : null}
-                          </strong>
+                          </div>
                         )}
-                        {isEditing ? (
-                          <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={busy} onClick={() => saveEdit(list, entry.id)}>
-                            Save
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm"
-                            disabled={busy}
-                            onClick={() => startEdit(list, entry)}
-                          >
-                            Edit
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          className={`ua-toggle ua-toggle--sm${entry.on ? " ua-toggle--on" : ""}`}
-                          aria-pressed={entry.on}
-                          disabled={busy}
-                          onClick={() => toggleOption(list, entry)}
-                        >
-                          <span className="ua-toggle__knob" />
-                        </button>
-                        <button
-                          type="button"
-                          className="ua-cfg-icon-btn"
-                          aria-label={`Remove ${asCopyString(entry.label)}`}
-                          disabled={busy}
-                          onClick={() => askRemoveOption(list, entry)}
-                        >
-                          ×
-                        </button>
+                        <div className="ua-cfg-dd-row__actions">
+                          {isEditing ? (
+                            <>
+                              <button
+                                type="button"
+                                className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                                disabled={busy}
+                                onClick={cancelEdit}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
+                                disabled={busy}
+                                onClick={() => saveEdit(list, entry.id)}
+                              >
+                                Save
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <span className={`ua-cfg-faq__shown${entry.on ? " is-on" : ""}`}>
+                                {entry.on ? "LIVE" : "HIDDEN"}
+                              </span>
+                              <button
+                                type="button"
+                                className={`ua-toggle ua-toggle--sm${entry.on ? " ua-toggle--on" : ""}`}
+                                aria-pressed={entry.on}
+                                disabled={busy}
+                                onClick={() => toggleOption(list, entry)}
+                              >
+                                <span className="ua-toggle__knob" />
+                              </button>
+                              <button
+                                type="button"
+                                className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                                disabled={busy}
+                                onClick={() => startEdit(list, entry)}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                className="ua-cfg-icon-btn"
+                                aria-label={`Remove ${asCopyString(entry.label)}`}
+                                disabled={busy}
+                                onClick={() => askRemoveOption(list, entry)}
+                              >
+                                ×
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </div>
                     );
-                  })}
+                  }) : (
+                    <p className="ua-cfg-panel__sub ua-cfg-dd-empty">
+                      {query || filter !== "All options" ? "No options match this filter." : "No options yet. Add one below."}
+                    </p>
+                  )}
                 </div>
+
                 <div className={`ua-cfg-dd-add${supportsIcons ? " has-icon" : ""}${supportsAnswerType ? " has-type" : ""}`}>
                   {supportsIcons ? (
                     <IconPicker
@@ -590,16 +673,17 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                       disabled={busy}
                       label="New health concern icon"
                       onPick={(file) => pickAddIcon(list.id, file)}
+                      onClear={() => clearAddIcon(list.id)}
                     />
                   ) : null}
                   <input
-                    className="ua-cfg-vh-input"
+                    className="ua-cfg-vh-input ua-cfg-dd-add__input"
                     placeholder={
                       supportsIcons
-                        ? "Add a health concern..."
+                        ? "Add a health concern…"
                         : supportsAnswerType
-                          ? "Add a medical question..."
-                          : "Add an option..."
+                          ? "Add a medical question…"
+                          : "Add an option…"
                     }
                     value={asCopyString(drafts[list.id])}
                     disabled={busy}
@@ -609,28 +693,30 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                     }}
                   />
                   {supportsAnswerType ? (
-                    <select
-                      className="ua-cfg-dd-add__type"
+                    <CfgSelect
+                      className="ua-cfg-dd-select"
+                      options={ANSWER_TYPE_OPTIONS}
                       value={answerTypeDrafts[list.id] || "yes_no_text"}
                       disabled={busy}
-                      aria-label="Answer type"
-                      onChange={(event) => setAnswerTypeDrafts((prev) => ({ ...prev, [list.id]: event.target.value }))}
-                    >
-                      {MEDICAL_ANSWER_TYPES.map((option) => (
-                        <option key={option.id} value={option.id}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(value) => setAnswerTypeDrafts((prev) => ({ ...prev, [list.id]: value }))}
+                      ariaLabel="Answer type"
+                    />
                   ) : null}
-                  <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={() => addOption(list)}>
-                    Add
+                  <button
+                    type="button"
+                    className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-tf-add-btn"
+                    disabled={busy}
+                    onClick={() => addOption(list)}
+                  >
+                    + Add
                   </button>
                 </div>
               </section>
             );
           })}
         </div>
+      ) : (
+        <p className="ua-cfg-panel__sub">No lists match your search.</p>
       )}
 
       <ConfirmDialog

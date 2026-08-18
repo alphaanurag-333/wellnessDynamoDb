@@ -16,6 +16,7 @@ import {
   mapTestimonialPointOptions,
 } from "../data/testimonialDropdownData.js";
 import { formatRecipeDate } from "../data/recipesConfigData.js";
+import { asCopyString } from "../data/bannerConfigData.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
 import { CfgSelect, ListPagination } from "./shared.jsx";
@@ -45,25 +46,26 @@ function Panel({ title, subtitle, actions, children }) {
   );
 }
 
-function CoverDrop({ previewUrl, disabled, onPick, onRemove }) {
+function PhotoDrop({ previewUrl, disabled, onPick, onRemove }) {
   const inputRef = useRef(null);
+  const filled = Boolean(previewUrl);
+
   return (
-    <div className="ua-cfg-rc-cover-drop-wrap">
-      <div className="ua-cfg-rc-cover-drop-frame">
-        <button
-          type="button"
-          className={`ua-cfg-rc-cover-drop${previewUrl ? " is-on" : ""}`}
-          disabled={disabled}
-          aria-label={previewUrl ? "Replace client photo" : "Add client photo"}
-          onClick={() => inputRef.current?.click()}
-        >
-          {previewUrl ? <img className="ua-cfg-rc-drop-preview" src={previewUrl} alt="" /> : <span aria-hidden="true">📷</span>}
-          <em>{previewUrl ? "Replace" : "Client photo"}</em>
-        </button>
-        {previewUrl && onRemove ? (
-          <button type="button" className="ua-cfg-rc-media-x" aria-label="Remove client photo" disabled={disabled} onClick={onRemove}>×</button>
-        ) : null}
-      </div>
+    <div className={`ua-cfg-tf-drop ua-cfg-tf-drop--before ua-cfg-rp-drop${filled ? " is-on" : ""}`}>
+      {filled ? <img className="ua-cfg-tf-drop__img" src={previewUrl} alt="" /> : null}
+      <span className="ua-cfg-tf-drop__icon" aria-hidden="true">📷</span>
+      <p className="ua-cfg-tf-drop__label">Client photo</p>
+      <button
+        type="button"
+        className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-drop__btn"
+        disabled={disabled}
+        onClick={() => inputRef.current?.click()}
+      >
+        {filled ? "Replace photo" : "Upload photo"}
+      </button>
+      {filled && onRemove ? (
+        <button type="button" className="ua-cfg-rc-media-x" aria-label="Remove client photo" disabled={disabled} onClick={onRemove}>×</button>
+      ) : null}
       <input
         ref={inputRef}
         type="file"
@@ -82,17 +84,18 @@ function CoverDrop({ previewUrl, disabled, onPick, onRemove }) {
 
 const STAR_OPTIONS = [5, 4, 3, 2, 1].map((value) => ({
   value,
-  label: `${value} ★`,
+  label: `${value} star${value === 1 ? "" : "s"}`,
 }));
 
-function ConcernSelect({ options, value, disabled, onChange }) {
+function ConcernSelect({ options, value, disabled, onChange, className = "" }) {
   return (
     <CfgSelect
+      className={`ua-cfg-rp-select${className ? ` ${className}` : ""}`}
       options={options.length ? options : [{ value: "", label: "No health concerns" }]}
       value={value || ""}
       disabled={disabled || !options.length}
       ariaLabel="Health concern"
-      placeholder="Health concern"
+      placeholder="Select health concern"
       onChange={onChange}
     />
   );
@@ -104,9 +107,14 @@ function DataPointEditor({ points, options, busy, onChange }) {
   const available = options.filter((row) => !used.has(fieldKey(row.value)) && fieldKey(row.value) !== "client_name");
 
   return (
-    <div>
-      <div className="ua-cfg-tf-add" style={{ marginBottom: 8 }}>
-        <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={() => setAddOpen((open) => !open)}>
+    <div className="ua-cfg-tf-points-ed">
+      <div className="ua-cfg-tf-add">
+        <button
+          type="button"
+          className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-add-pt"
+          disabled={busy}
+          onClick={() => setAddOpen((open) => !open)}
+        >
           + Add data point
         </button>
         {addOpen ? (
@@ -140,16 +148,27 @@ function DataPointEditor({ points, options, busy, onChange }) {
         </div>
         {points.map((entry) => (
           <div key={entry.id} className="ua-cfg-tf-table__row">
-            <span>{entry.label}</span>
-            <input
-              type="text"
-              value={entry.value}
-              disabled={busy}
-              onChange={(event) => onChange((prev) => prev.map((row) => (
-                row.id === entry.id ? { ...row, value: event.target.value } : row
-              )))}
-            />
-            <button type="button" className="ua-cfg-icon-btn" aria-label={`Remove ${entry.label}`} disabled={busy} onClick={() => onChange((prev) => prev.filter((row) => row.id !== entry.id))}>×</button>
+            <span>{asCopyString(entry.label)}</span>
+            <div className="ua-cfg-tf-table__value">
+              <input
+                type="text"
+                value={asCopyString(entry.value)}
+                placeholder={asCopyString(entry.label)}
+                disabled={busy}
+                onChange={(event) => onChange((prev) => prev.map((row) => (
+                  row.id === entry.id ? { ...row, value: event.target.value } : row
+                )))}
+              />
+              <button
+                type="button"
+                className="ua-cfg-icon-btn"
+                aria-label={`Remove ${entry.label}`}
+                disabled={busy}
+                onClick={() => onChange((prev) => prev.filter((row) => row.id !== entry.id))}
+              >
+                ×
+              </button>
+            </div>
           </div>
         ))}
       </div>
@@ -162,49 +181,43 @@ function RealPeopleViewModal({ entry, concernLabel, onClose, onEdit }) {
   const photo = entry.imagePreview || entry.profileImage;
   const points = (entry.dataPoints || []).filter((row) => String(row.value || "").trim());
   return (
-    <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={onClose} role="presentation">
-      <div className="ua-cfg-rc-view" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="rp-view-title">
+    <div className="ua-cp-modal-backdrop" onClick={onClose} role="presentation">
+      <div className="ua-cfg-rc-view ua-cfg-rp-view" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="rp-view-title">
         <div className="ua-cfg-rc-view__head">
           <div>
             <p className="ua-cfg-rc-view__tag">Real People Real Healing</p>
-            <h3 id="rp-view-title">{entry.name || "Untitled client"}</h3>
-            <p>{entry.healthConcernTitle || concernLabel(entry.healthConcernId) || "Uncategorized"} · {entry.live ? "Live" : "Hidden"}</p>
+            <h3 id="rp-view-title">{asCopyString(entry.name) || "Untitled client"}</h3>
+            <p>
+              {asCopyString(entry.healthConcernTitle) || concernLabel(entry.healthConcernId) || "Uncategorized"}
+              <span className={`ua-cfg-tf-view__status${entry.live ? " is-live" : ""}`}>
+                {entry.live ? "Live" : "Hidden"}
+              </span>
+            </p>
           </div>
-          <button type="button" className="ua-cfg-mv-upload-modal__close" aria-label="Close" onClick={onClose}>×</button>
+          <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={onClose}>×</button>
         </div>
-        {photo ? (
-          <div className="ua-cfg-rc-view__media ua-cfg-rc-view__media--photo">
-            <img src={photo} alt="" />
-          </div>
-        ) : (
-          <div className="ua-cfg-rc-view__media"><div className="ua-cfg-rc-view__media-empty">No photo</div></div>
-        )}
-        <p className="ua-cfg-cr-stars" aria-label={`${entry.stars} stars`}>{"★★★★★".slice(0, Math.max(1, Math.min(5, entry.stars || 5)))}</p>
-        {entry.review ? <p className="ua-cfg-rc-view__copy">{entry.review}</p> : null}
-        <dl className="ua-cfg-rc-view__meta">
-          <div>
-            <dt>Health concern</dt>
-            <dd>{entry.healthConcernTitle || concernLabel(entry.healthConcernId) || "—"}</dd>
-          </div>
-          <div>
-            <dt>Rating</dt>
-            <dd>{entry.stars} / 5</dd>
-          </div>
-          {points.map((row) => (
-            <div key={row.id || row.field}>
-              <dt>{row.label || row.field}</dt>
-              <dd>{row.value}</dd>
+        <div className="ua-cfg-rp-view__body">
+          {photo ? (
+            <div className="ua-cfg-rc-view__media ua-cfg-rc-view__media--photo">
+              <img src={photo} alt="" />
             </div>
-          ))}
-          <div>
-            <dt>Status</dt>
-            <dd>{entry.live ? "Live" : "Hidden"}</dd>
-          </div>
-          <div>
-            <dt>Updated</dt>
-            <dd>{formatRecipeDate(entry.updatedAt)}</dd>
-          </div>
-        </dl>
+          ) : (
+            <div className="ua-cfg-rc-view__media"><div className="ua-cfg-rc-view__media-empty">No photo</div></div>
+          )}
+          <p className="ua-cfg-cr-stars" aria-label={`${entry.stars} stars`}>
+            {"★★★★★".slice(0, Math.max(1, Math.min(5, entry.stars || 5)))}
+            <span className="ua-cfg-cr-stars__empty">{"★★★★★".slice(Math.max(1, Math.min(5, entry.stars || 5)))}</span>
+          </p>
+          {asCopyString(entry.review) ? <p className="ua-cfg-rc-view__copy">{asCopyString(entry.review)}</p> : null}
+          <dl className="ua-cfg-rc-view__meta">
+            {points.map((row) => (
+              <div key={row.id || row.field}>
+                <dt>{asCopyString(row.label) || row.field}</dt>
+                <dd>{asCopyString(row.value)}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
         <div className="ua-cfg-rc-view__foot">
           <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose}>Close</button>
           <button
@@ -484,7 +497,7 @@ export function DynamicRealPeopleSection({ items, setItems, onToast }) {
         actions={(
           <button
             type="button"
-            className="ua-cfg-rc-add"
+            className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-tf-add-btn"
             disabled={busy}
             onClick={() => {
               setCreating(true);
@@ -502,59 +515,77 @@ export function DynamicRealPeopleSection({ items, setItems, onToast }) {
         )}
       >
         {creating ? (
-          <section className="ua-cfg-rc-new">
+          <section className="ua-cfg-rc-new ua-cfg-rp-new">
             <div className="ua-cfg-rc-new__head">
               <strong><span aria-hidden="true">💬</span> New testimonial</strong>
               <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={() => setCreating(false)}>×</button>
             </div>
-            <div className="ua-cfg-rc-new__grid">
-              <div className="ua-cfg-rc-new__media">
-                <CoverDrop
+            <div className="ua-cfg-rp-new__grid">
+              <div className="ua-cfg-rp-new__top">
+                <PhotoDrop
                   previewUrl={draft.imagePreview}
                   disabled={busy}
                   onPick={(file) => openCrop(file, "draft")}
                   onRemove={clearDraftPhoto}
                 />
+                <div className="ua-cfg-rp-new__meta">
+                  <label className="ua-cfg-rp-field">
+                    <span>Health concern</span>
+                    <ConcernSelect
+                      options={concernOptions}
+                      value={draft.healthConcernId}
+                      disabled={busy}
+                      onChange={(value) => setDraft((prev) => ({ ...prev, healthConcernId: value }))}
+                    />
+                  </label>
+                  <label className="ua-cfg-rp-field">
+                    <span>Rating</span>
+                    <CfgSelect
+                      className="ua-cfg-rp-select"
+                      options={STAR_OPTIONS}
+                      value={draft.stars}
+                      disabled={busy}
+                      ariaLabel="Rating"
+                      onChange={(value) => setDraft((prev) => ({ ...prev, stars: Number(value) }))}
+                    />
+                  </label>
+                  <label className="ua-cfg-rp-field ua-cfg-rp-field--wide">
+                    <span>Client name</span>
+                    <input
+                      className="ua-cfg-vh-input"
+                      placeholder="Client name"
+                      value={asCopyString(draft.name)}
+                      disabled={busy}
+                      onChange={(event) => setDraft((prev) => ({ ...prev, name: event.target.value }))}
+                    />
+                  </label>
+                  {!concernOptions.length ? (
+                    <p className="ua-cfg-panel__sub ua-cfg-rp-field--wide">Add health concerns in Configs → Dropdowns first.</p>
+                  ) : null}
+                </div>
               </div>
-              <div className="ua-cfg-rc-new__fields">
-                <ConcernSelect
-                  options={concernOptions}
-                  value={draft.healthConcernId}
-                  disabled={busy}
-                  onChange={(value) => setDraft((prev) => ({ ...prev, healthConcernId: value }))}
-                />
-                {!concernOptions.length ? (
-                  <p className="ua-cfg-panel__sub">Add health concerns in Configs → Dropdowns first.</p>
-                ) : null}
-                <CfgSelect
-                  className="ua-cfg-select--sm"
-                  options={STAR_OPTIONS}
-                  value={draft.stars}
-                  disabled={busy}
-                  ariaLabel="Rating"
-                  onChange={(value) => setDraft((prev) => ({ ...prev, stars: Number(value) }))}
-                />
-                <input
-                  className="ua-cfg-vh-input"
-                  placeholder="Client name"
-                  value={draft.name}
-                  disabled={busy}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, name: event.target.value }))}
-                />
-                <DataPointEditor
-                  points={draft.points}
-                  options={pointOptions}
-                  busy={busy}
-                  onChange={(updater) => setDraft((prev) => ({ ...prev, points: updater(prev.points) }))}
-                />
-                <textarea
-                  className="ua-cfg-tf-story"
-                  rows={3}
-                  placeholder="Client review…"
-                  value={draft.review}
-                  disabled={busy}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, review: event.target.value }))}
-                />
+              <div className="ua-cfg-rp-new__split">
+                <div className="ua-cfg-rp-new__fields">
+                  <DataPointEditor
+                    points={draft.points}
+                    options={pointOptions}
+                    busy={busy}
+                    onChange={(updater) => setDraft((prev) => ({ ...prev, points: updater(prev.points) }))}
+                  />
+                </div>
+                <div className="ua-cfg-rp-new__story-col">
+                  <span className="ua-cfg-rp-new__story-label">Review</span>
+                  <textarea
+                    className="ua-cfg-tf-story ua-cfg-rp-new__story"
+                    rows={6}
+                    placeholder="Client review shown with the photo…"
+                    value={asCopyString(draft.review)}
+                    disabled={busy}
+                    onChange={(event) => setDraft((prev) => ({ ...prev, review: event.target.value }))}
+                  />
+                </div>
+              </div>
+              <div className="ua-cfg-rp-new__foot">
                 <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={addItem}>
                   {busy ? "Saving…" : "Add testimonial"}
                 </button>
@@ -587,7 +618,7 @@ export function DynamicRealPeopleSection({ items, setItems, onToast }) {
               const isEditing = editingId === entry.id;
               const photo = entry.imagePreview || entry.profileImage;
               return (
-                <article key={entry.id} className="ua-cfg-rc-item is-text">
+                <article key={entry.id} className="ua-cfg-rc-item ua-cfg-rp-item">
                   <div className="ua-cfg-rc-cover-wrap">
                     <button
                       type="button"
@@ -615,48 +646,72 @@ export function DynamicRealPeopleSection({ items, setItems, onToast }) {
                     />
                   </div>
                   <div className="ua-cfg-rc-item__body">
-                    <div className="ua-cfg-rc-item__row">
-                      {isEditing ? (
-                        <input className="ua-cfg-vh-input ua-cfg-rc-title" value={entry.name} disabled={busy} onChange={(event) => patchItem(entry.id, { name: event.target.value })} />
-                      ) : (
-                        <strong>{entry.name}</strong>
-                      )}
-                      {isEditing ? (
-                        <ConcernSelect
-                          options={concernOptions}
-                          value={entry.healthConcernId}
-                          disabled={busy}
-                          onChange={(value) => patchItem(entry.id, { healthConcernId: value })}
-                        />
-                      ) : (
-                        <span className="ua-cfg-rc-pill ua-cfg-rc-pill--cat">{entry.healthConcernTitle || concernLabel(entry.healthConcernId)}</span>
-                      )}
-                      {isEditing ? (
-                        <CfgSelect
-                          className="ua-cfg-select--sm"
-                          options={STAR_OPTIONS}
-                          value={entry.stars}
-                          disabled={busy}
-                          ariaLabel="Rating"
-                          onChange={(value) => patchItem(entry.id, { stars: Number(value) })}
-                        />
-                      ) : (
-                        <span className="ua-cfg-cr-stars">{"★★★★★".slice(0, entry.stars)}</span>
-                      )}
-                      <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>{entry.live ? "LIVE" : "HIDDEN"}</span>
-                      <button type="button" className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`} aria-pressed={entry.live} disabled={busy} onClick={() => toggleLive(entry)}>
-                        <span className="ua-toggle__knob" />
-                      </button>
-                      <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={() => setViewingId(entry.id)}>View</button>
-                      {isEditing ? (
-                        <>
-                          <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={busy} onClick={() => saveItem(entry)}>Save</button>
-                          <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm" disabled={busy} onClick={() => { setEditingId(null); loadItems(); }}>Cancel</button>
-                        </>
-                      ) : (
-                        <button type="button" className="ua-cfg-cr-link ua-cfg-cr-link--modify" disabled={busy} onClick={() => { setViewingId(null); setEditingId(entry.id); setCreating(false); }}>Edit</button>
-                      )}
-                      <button type="button" className="ua-cfg-icon-btn" aria-label={`Delete ${entry.name}`} disabled={busy} onClick={() => setPendingDelete(entry)}>×</button>
+                    <div className="ua-cfg-tf-item__head">
+                      <div className="ua-cfg-tf-item__identity">
+                        {isEditing ? (
+                          <input
+                            className="ua-cfg-vh-input ua-cfg-rc-title"
+                            value={asCopyString(entry.name)}
+                            disabled={busy}
+                            onChange={(event) => patchItem(entry.id, { name: event.target.value })}
+                          />
+                        ) : (
+                          <strong>{asCopyString(entry.name)}</strong>
+                        )}
+                        <div className="ua-cfg-rp-item__meta">
+                          {isEditing ? (
+                            <>
+                              <ConcernSelect
+                                options={concernOptions}
+                                value={entry.healthConcernId}
+                                disabled={busy}
+                                onChange={(value) => patchItem(entry.id, { healthConcernId: value })}
+                              />
+                              <CfgSelect
+                                className="ua-cfg-rp-select ua-cfg-select--sm"
+                                options={STAR_OPTIONS}
+                                value={entry.stars}
+                                disabled={busy}
+                                ariaLabel="Rating"
+                                onChange={(value) => patchItem(entry.id, { stars: Number(value) })}
+                              />
+                            </>
+                          ) : (
+                            <>
+                              <span className="ua-cfg-rc-pill ua-cfg-rc-pill--cat">
+                                {asCopyString(entry.healthConcernTitle) || concernLabel(entry.healthConcernId) || "Uncategorized"}
+                              </span>
+                              <span className="ua-cfg-cr-stars" aria-label={`${entry.stars} stars`}>
+                                {"★★★★★".slice(0, Math.max(1, Math.min(5, entry.stars || 5)))}
+                              </span>
+                              <p className="ua-cfg-panel__sub">{formatRecipeDate(entry.updatedAt)}</p>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <div className="ua-cfg-tf-item__actions">
+                        <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>{entry.live ? "LIVE" : "HIDDEN"}</span>
+                        <button type="button" className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`} aria-pressed={entry.live} disabled={busy} onClick={() => toggleLive(entry)}>
+                          <span className="ua-toggle__knob" />
+                        </button>
+                        <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={() => setViewingId(entry.id)}>View</button>
+                        {isEditing ? (
+                          <>
+                            <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={busy} onClick={() => saveItem(entry)}>Save</button>
+                            <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={() => { setEditingId(null); loadItems(); }}>Cancel</button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                            disabled={busy}
+                            onClick={() => { setViewingId(null); setEditingId(entry.id); setCreating(false); }}
+                          >
+                            Edit
+                          </button>
+                        )}
+                        <button type="button" className="ua-cfg-icon-btn" aria-label={`Delete ${asCopyString(entry.name)}`} disabled={busy} onClick={() => setPendingDelete(entry)}>×</button>
+                      </div>
                     </div>
                     {isEditing ? (
                       <>
@@ -666,13 +721,16 @@ export function DynamicRealPeopleSection({ items, setItems, onToast }) {
                           busy={busy}
                           onChange={(updater) => patchItem(entry.id, { dataPoints: updater(entry.dataPoints || []) })}
                         />
-                        <textarea className="ua-cfg-tf-story" rows={3} value={entry.review} disabled={busy} onChange={(event) => patchItem(entry.id, { review: event.target.value })} />
+                        <textarea
+                          className="ua-cfg-tf-story"
+                          rows={3}
+                          value={asCopyString(entry.review)}
+                          disabled={busy}
+                          onChange={(event) => patchItem(entry.id, { review: event.target.value })}
+                        />
                       </>
                     ) : (
-                      <>
-                        <p>{entry.review}</p>
-                        <p className="ua-cfg-panel__sub">{formatRecipeDate(entry.updatedAt)}</p>
-                      </>
+                      <p>{asCopyString(entry.review)}</p>
                     )}
                   </div>
                 </article>
@@ -721,7 +779,7 @@ export function DynamicRealPeopleSection({ items, setItems, onToast }) {
       <ConfirmDialog
         open={Boolean(pendingDelete)}
         tag="Real people testimonial"
-        title={`Delete ${pendingDelete?.name || "this testimonial"}?`}
+        title={`Delete ${asCopyString(pendingDelete?.name) || "this testimonial"}?`}
         body="This permanently removes the testimonial and its uploaded image."
         confirmLabel="Delete"
         confirmTone="danger"

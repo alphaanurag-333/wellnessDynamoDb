@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { asCopyString } from "../data/bannerConfigData.js";
-import { validateRecipeImage, formatRecipeDate } from "../data/recipesConfigData.js";
-import { galleryOwnersFromMedia } from "../data/blogsConfigData.js";
+import { validateRecipeImage } from "../data/recipesConfigData.js";
 import {
   adminCreateBlogMedia,
   adminCreateBlogPost,
@@ -12,12 +11,18 @@ import {
   adminListBlogPosts,
   adminReorderBlogPosts,
   adminUpdateBlogConfig,
-  adminUpdateBlogMedia,
   adminUpdateBlogPost,
 } from "../api/blogApi.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
-import { ListPagination } from "./shared.jsx";
+import { CfgSelect, ListPagination } from "./shared.jsx";
+
+const POSITION_OPTIONS = [
+  { value: "featured", label: "Featured (top)" },
+  { value: "2", label: "Position 2" },
+  { value: "3", label: "Position 3" },
+  { value: "last", label: "Last" },
+];
 
 function Panel({ title, subtitle, actions, children }) {
   return (
@@ -45,142 +50,92 @@ function sortOrderForPosition(position, count) {
   return count + 1;
 }
 
-function BlogPostViewModal({ entry, positionLabel, onClose, onEdit }) {
-  if (!entry) return null;
-  const cover = entry.coverImage;
-  return (
-    <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={onClose} role="presentation">
-      <div className="ua-cfg-rc-view" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="bl-view-title">
-        <div className="ua-cfg-rc-view__head">
-          <div>
-            <p className="ua-cfg-rc-view__tag">Blog post</p>
-            <h3 id="bl-view-title">{asCopyString(entry.title) || "Untitled post"}</h3>
-            <p>{positionLabel || "Post"} · {entry.live ? "Live" : "Hidden"}</p>
-          </div>
-          <button type="button" className="ua-cfg-mv-upload-modal__close" aria-label="Close" onClick={onClose}>×</button>
-        </div>
-        <div className="ua-cfg-rc-view__media ua-cfg-rc-view__media--photo">
-          {cover ? <img src={cover} alt="" /> : <div className="ua-cfg-rc-view__media-empty">No cover image</div>}
-        </div>
-        {entry.description ? <p className="ua-cfg-rc-view__copy">{asCopyString(entry.description)}</p> : null}
-        <dl className="ua-cfg-rc-view__meta">
-          <div>
-            <dt>Position</dt>
-            <dd>{positionLabel || "—"}</dd>
-          </div>
-          <div>
-            <dt>Sort order</dt>
-            <dd>{entry.sortOrder || "—"}</dd>
-          </div>
-          <div>
-            <dt>Status</dt>
-            <dd>{entry.live ? "Live" : "Hidden"}</dd>
-          </div>
-          <div>
-            <dt>Cover</dt>
-            <dd>{cover ? "Attached" : "Not set"}</dd>
-          </div>
-          <div>
-            <dt>Created</dt>
-            <dd>{formatRecipeDate(entry.createdAt)}</dd>
-          </div>
-          <div>
-            <dt>Updated</dt>
-            <dd>{formatRecipeDate(entry.updatedAt)}</dd>
-          </div>
-        </dl>
-        <div className="ua-cfg-rc-view__foot">
-          <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose}>Close</button>
-          <button
-            type="button"
-            className="ua-cfg-btn ua-cfg-btn--primary"
-            onClick={() => {
-              onEdit(entry.id);
-              onClose();
-            }}
-          >
-            Edit post
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+function CoverPick({ previewUrl, disabled, compact, onPick }) {
+  const inputRef = useRef(null);
+  const filled = Boolean(previewUrl);
 
-function HistoryModal({ entry, onClose, onToast }) {
-  if (!entry) return null;
-  const rows = [
-    {
-      badge: "CURRENT",
-      title: "Live version",
-      author: entry.owner,
-      date: entry.date,
-      size: entry.size,
-      current: true,
-    },
-  ];
-  for (let n = (entry.versions || 1) - 1; n >= 1; n -= 1) {
-    rows.push({
-      badge: `V${n}`,
-      title: `Version ${n}`,
-      author: entry.owner,
-      date: entry.date,
-      size: entry.size,
-      current: false,
-    });
+  function pick() {
+    if (!disabled) inputRef.current?.click();
   }
+
   return (
-    <div className="ua-cp-modal-backdrop" onClick={onClose} role="presentation">
-      <div className="ua-cfg-rc-history" onClick={(event) => event.stopPropagation()} role="dialog">
-        <div className="ua-cfg-rc-history__head">
-          <div>
-            <h3>{asCopyString(entry.title)}</h3>
-            <p>Blog · owned by {asCopyString(entry.owner)} · newest first</p>
-          </div>
-          <button type="button" className="ua-cfg-mv-upload-modal__close" aria-label="Close" onClick={onClose}>×</button>
-        </div>
-        {rows.map((row) => (
-          <div key={row.badge} className={`ua-cfg-rc-history__row${row.current ? " is-current" : ""}`}>
-            <span className={row.current ? "is-current" : "is-old"}>{row.badge}</span>
-            <div>
-              <strong>{row.title}</strong>
-              <p>Uploaded by {asCopyString(row.author)} · {asCopyString(row.date)} · {asCopyString(row.size)}</p>
-            </div>
-            <div className="ua-cfg-rc-history__actions">
-              <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" onClick={() => onToast("Download started")}>Download</button>
-              {row.current ? null : (
-                <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm" onClick={() => onToast("Version restored")}>Restore</button>
-              )}
-            </div>
-          </div>
-        ))}
+    <div
+      className={`ua-cfg-bl-cover${compact ? " ua-cfg-bl-cover--row" : ""}${filled ? " is-on" : ""}`}
+      role="button"
+      tabIndex={disabled ? -1 : 0}
+      aria-label={filled ? "Replace cover image" : "Add cover image"}
+      aria-disabled={disabled}
+      onClick={pick}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          pick();
+        }
+      }}
+    >
+      {filled ? <img src={previewUrl} alt="" /> : <span aria-hidden="true">🖼</span>}
+      <em>{filled ? "Replace" : "Cover"}</em>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        hidden
+        disabled={disabled}
+        onClick={(event) => event.stopPropagation()}
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          if (file) onPick(file);
+        }}
+      />
+    </div>
+  );
+}
+
+function SurfaceToggles({ editor, busy, onPatch }) {
+  const appOn = editor?.appOn !== false;
+  const webOn = editor?.webOn !== false;
+  return (
+    <div className="ua-cfg-bn-surfaces">
+      <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--app${appOn ? " is-on" : ""}`}>
+        <span>App {appOn ? "Enabled" : "Disabled"}</span>
+        <button
+          type="button"
+          className={`ua-toggle ua-toggle--sm${appOn ? " ua-toggle--on" : ""}`}
+          aria-pressed={appOn}
+          disabled={busy}
+          onClick={() => onPatch({ appOn: !appOn })}
+        >
+          <span className="ua-toggle__knob" />
+        </button>
+      </div>
+      <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--web${webOn ? " is-on" : ""}`}>
+        <span>Web {webOn ? "Enabled" : "Disabled"}</span>
+        <button
+          type="button"
+          className={`ua-toggle ua-toggle--sm${webOn ? " ua-toggle--on" : ""}`}
+          aria-pressed={webOn}
+          disabled={busy}
+          onClick={() => onPatch({ webOn: !webOn })}
+        >
+          <span className="ua-toggle__knob" />
+        </button>
       </div>
     </div>
   );
 }
 
-export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, gallery, setGallery, onToast }) {
+export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, gallery, setGallery, summary, onToast }) {
   const POSTS_PAGE_SIZE = 20;
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [viewingId, setViewingId] = useState(null);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ page: 1, limit: POSTS_PAGE_SIZE, total: 0, pages: 1 });
-  const [history, setHistory] = useState(null);
   const [draft, setDraft] = useState({ title: "", description: "", coverFile: null, coverPreview: "", position: "last" });
-  const [search, setSearch] = useState("");
-  const [owner, setOwner] = useState("All owners");
-  const [selected, setSelected] = useState([]);
   const [cropPending, setCropPending] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
-  const coverInputRef = useRef(null);
-  const galleryInputRef = useRef(null);
-  const postCoverInputRef = useRef(null);
-  const postCoverTargetRef = useRef(null);
-
-  const galleryOwners = useMemo(() => galleryOwnersFromMedia(gallery), [gallery]);
 
   const loadPosts = useCallback(async (pageOverride) => {
     const nextPage = pageOverride ?? page;
@@ -192,7 +147,6 @@ export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, galler
       total: Number(result?.pagination?.total) || 0,
       pages: Number(result?.pagination?.pages) || 1,
     });
-    setViewingId((current) => ((result?.items || []).some((entry) => entry.id === current) ? current : null));
   }, [page, setPosts]);
 
   const loadAll = useCallback(async () => {
@@ -395,25 +349,7 @@ export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, galler
       return;
     }
     if (target.type === "post") {
-      const saved = await persistPost(target.id, {}, { coverFile: file }, "Cover attached");
-      if (!saved) return;
-    }
-  }
-
-  async function toggleGalleryLive(entry) {
-    const live = !entry.live;
-    setGallery((prev) => prev.map((row) => (row.id === entry.id ? { ...row, live } : row)));
-    setBusy(true);
-    try {
-      const saved = await adminUpdateBlogMedia(null, entry.id, { live });
-      if (saved) {
-        setGallery((prev) => prev.map((row) => (row.id === entry.id ? saved : row)));
-      }
-    } catch (error) {
-      setGallery((prev) => prev.map((row) => (row.id === entry.id ? { ...row, live: entry.live } : row)));
-      onToast(error?.message || "Could not update media");
-    } finally {
-      setBusy(false);
+      await persistPost(target.id, {}, { coverFile: file }, "Cover attached");
     }
   }
 
@@ -422,7 +358,6 @@ export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, galler
     try {
       await adminDeleteBlogMedia(null, entry.id);
       setGallery((prev) => prev.filter((row) => row.id !== entry.id));
-      setSelected((prev) => prev.filter((id) => id !== entry.id));
       onToast("Asset deleted");
     } catch (error) {
       onToast(error?.message || "Could not delete media");
@@ -432,41 +367,38 @@ export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, galler
   }
 
   const liveCount = posts.filter((entry) => entry.live).length;
-  const viewing = posts.find((entry) => entry.id === viewingId) || null;
-  const viewingIndex = viewing ? posts.findIndex((entry) => entry.id === viewing.id) : -1;
-  const filtered = useMemo(() => gallery.filter((entry) => {
-    const matchesSearch = asCopyString(entry.title).toLowerCase().includes(search.trim().toLowerCase());
-    const matchesOwner = owner === "All owners" || entry.owner === owner;
-    return matchesSearch && matchesOwner;
-  }), [gallery, owner, search]);
-
-  if (loading) {
-    return <Panel title="Blogs" subtitle="Loading posts and gallery…" />;
-  }
+  const totalCount = pagination.total || posts.length;
 
   return (
     <div className="ua-cfg-bl">
-      <Panel title="Where this is live" subtitle="Turn it on for the app, the website, or both.">
-        <div className="ua-cfg-bn-surfaces">
-          <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--app${editor.appOn ? " is-on" : ""}`}>
-            <span>App {editor.appOn ? "Enabled" : "Disabled"}</span>
-            <button type="button" className={`ua-toggle ua-toggle--sm${editor.appOn ? " ua-toggle--on" : ""}`} aria-pressed={editor.appOn} disabled={busy} onClick={() => patchConfig({ appOn: !editor.appOn })}>
-              <span className="ua-toggle__knob" />
-            </button>
-          </div>
-          <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--web${editor.webOn ? " is-on" : ""}`}>
-            <span>Web {editor.webOn ? "Enabled" : "Disabled"}</span>
-            <button type="button" className={`ua-toggle ua-toggle--sm${editor.webOn ? " ua-toggle--on" : ""}`} aria-pressed={editor.webOn} disabled={busy} onClick={() => patchConfig({ webOn: !editor.webOn })}>
-              <span className="ua-toggle__knob" />
-            </button>
-          </div>
-        </div>
-      </Panel>
+      <Panel
+        title="Where this is live"
+        subtitle="Turn it on for the app, the website, or both."
+        actions={<SurfaceToggles editor={editor} busy={busy} onPatch={patchConfig} />}
+      />
+
+      {summary}
 
       <Panel
         title="Posts"
-        subtitle={`Page ${pagination.page} · ${pagination.total} total · ${liveCount} of ${posts.length} live on this page`}
-        actions={<button type="button" className="ua-cfg-rc-add" disabled={busy} onClick={() => setCreating(true)}>+ Add post</button>}
+        subtitle={
+          loading
+            ? "Loading posts…"
+            : `Drag to reorder · ${liveCount} of ${posts.length || totalCount} live`
+        }
+        actions={(
+          <button
+            type="button"
+            className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-tf-add-btn"
+            disabled={busy}
+            onClick={() => {
+              setCreating(true);
+              setEditingId(null);
+            }}
+          >
+            + Add post
+          </button>
+        )}
       >
         {creating ? (
           <section className="ua-cfg-rc-new">
@@ -474,80 +406,130 @@ export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, galler
               <strong><span aria-hidden="true">✎</span> New post</strong>
               <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={() => setCreating(false)}>×</button>
             </div>
-            <div className="ua-cfg-rc-new__grid">
-              <div className={`ua-cfg-vh-drop ua-cfg-vh-drop--cover${draft.coverPreview ? " is-on" : ""}`}>
-                {draft.coverPreview ? <img className="ua-cfg-rc-drop-preview" src={draft.coverPreview} alt="" /> : <span aria-hidden="true">🖼</span>}
-                <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm" disabled={busy} onClick={() => coverInputRef.current?.click()}>
-                  {draft.coverPreview ? "Replace cover" : "Cover image"}
-                </button>
-                <input ref={coverInputRef} type="file" accept="image/*" hidden onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  event.target.value = "";
-                  if (file) openCrop(file, { type: "draft" });
-                }} />
-              </div>
+            <div className="ua-cfg-bl-new__grid">
+              <CoverPick
+                previewUrl={draft.coverPreview}
+                disabled={busy}
+                onPick={(file) => openCrop(file, { type: "draft" })}
+              />
               <div className="ua-cfg-rc-new__fields">
-                <input className="ua-cfg-vh-input" placeholder="Headline · e.g. What your HbA1c really tells you" value={asCopyString(draft.title)} disabled={busy} onChange={(event) => setDraft((prev) => ({ ...prev, title: event.target.value }))} />
-                <textarea className="ua-cfg-tf-story" rows={3} placeholder="Short description shown under the headline..." value={asCopyString(draft.description)} disabled={busy} onChange={(event) => setDraft((prev) => ({ ...prev, description: event.target.value }))} />
-              </div>
-              <div className="ua-cfg-bl-new-foot">
-                <select className="ua-cfg-vh-input ua-cfg-bl-pos" value={draft.position} disabled={busy} onChange={(event) => setDraft((prev) => ({ ...prev, position: event.target.value }))}>
-                  <option value="featured">Featured (top)</option>
-                  <option value="2">Position 2</option>
-                  <option value="3">Position 3</option>
-                  <option value="last">Last</option>
-                </select>
-                <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={addPost}>Add post</button>
+                <input
+                  className="ua-cfg-vh-input"
+                  placeholder="Headline · e.g. What your HbA1c really tells you"
+                  value={asCopyString(draft.title)}
+                  disabled={busy}
+                  onChange={(event) => setDraft((prev) => ({ ...prev, title: event.target.value }))}
+                />
+                <textarea
+                  className="ua-cfg-tf-story ua-cfg-bl-edit__desc"
+                  rows={3}
+                  placeholder="Short description shown under the headline..."
+                  value={asCopyString(draft.description)}
+                  disabled={busy}
+                  onChange={(event) => setDraft((prev) => ({ ...prev, description: event.target.value }))}
+                />
+                <div className="ua-cfg-bl-new-foot">
+                  <CfgSelect
+                    className="ua-cfg-bl-pos"
+                    options={POSITION_OPTIONS}
+                    value={draft.position}
+                    disabled={busy}
+                    onChange={(value) => setDraft((prev) => ({ ...prev, position: value }))}
+                    ariaLabel="Post position"
+                    placeholder="Position"
+                  />
+                  <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={addPost}>
+                    {busy && creating ? "Saving…" : "Add post"}
+                  </button>
+                </div>
               </div>
             </div>
           </section>
         ) : null}
 
-        <div className="ua-cfg-rc-list">
-          {posts.map((entry, index) => {
-            const editing = editingId === entry.id;
-            return (
-              <article key={entry.id} className="ua-cfg-rc-item">
-                <button type="button" className={`ua-cfg-rc-cover${entry.cover ? " is-on" : ""}`} disabled={busy} onClick={() => {
-                  postCoverTargetRef.current = entry.id;
-                  postCoverInputRef.current?.click();
-                }}>
-                  {entry.coverImage ? <img className="ua-cfg-rc-drop-preview" src={entry.coverImage} alt="" /> : <span aria-hidden="true">🖼</span>}
-                  <em>Cover</em>
-                </button>
-                <div className="ua-cfg-rc-item__body">
-                  <div className="ua-cfg-rc-item__row">
-                    <span className="ua-cfg-bn-live__handle" aria-hidden="true">⠿</span>
-                    <span className="ua-cfg-rc-pill ua-cfg-bl-flag">{postLabel(index)}</span>
-                    {editing ? (
-                      <input className="ua-cfg-vh-input ua-cfg-rc-title" value={asCopyString(entry.title)} disabled={busy} onChange={(event) => updateLocalPost(entry.id, { title: event.target.value })} />
-                    ) : (
-                      <strong>{asCopyString(entry.title)}</strong>
-                    )}
-                    <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>{entry.live ? "LIVE" : "HIDDEN"}</span>
-                    <button type="button" className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`} aria-pressed={entry.live} disabled={busy} onClick={() => togglePostLive(entry)}>
-                      <span className="ua-toggle__knob" />
-                    </button>
-                    <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={() => setViewingId(entry.id)}>View</button>
-                    {editing ? (
-                      <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={busy} onClick={() => saveEditedPost(entry)}>Save</button>
-                    ) : (
-                      <button type="button" className="ua-cfg-cr-link ua-cfg-cr-link--modify" disabled={busy} onClick={() => { setViewingId(null); setEditingId(entry.id); }}>Edit</button>
-                    )}
-                    <button type="button" className="ua-cfg-icon-btn" aria-label="Move up" disabled={busy || index === 0} onClick={() => movePost(index, -1)}>↑</button>
-                    <button type="button" className="ua-cfg-icon-btn" aria-label="Move down" disabled={busy || index === posts.length - 1} onClick={() => movePost(index, 1)}>↓</button>
-                    <button type="button" className="ua-cfg-icon-btn" aria-label="Delete" disabled={busy} onClick={() => setPendingDelete({ kind: "post", entry })}>×</button>
+        {loading && !posts.length ? (
+          <p className="ua-cfg-panel__sub">Fetching posts…</p>
+        ) : posts.length ? (
+          <div className="ua-cfg-rc-list">
+            {posts.map((entry, index) => {
+              const editing = editingId === entry.id;
+              return (
+                <article key={entry.id} className={`ua-cfg-rc-item ua-cfg-bl-item${editing ? " is-editing" : ""}`}>
+                  <CoverPick
+                    previewUrl={entry.coverImage}
+                    disabled={busy}
+                    compact
+                    onPick={(file) => openCrop(file, { type: "post", id: entry.id })}
+                  />
+                  <div className="ua-cfg-rc-item__body">
+                    <div className="ua-cfg-bl-item__head">
+                      <div className="ua-cfg-bl-item__identity">
+                        <span className="ua-cfg-bl-handle" aria-hidden="true">⠿</span>
+                        <span className="ua-cfg-rc-pill ua-cfg-bl-flag">{postLabel(index)}</span>
+                        {editing ? (
+                          <input
+                            className="ua-cfg-vh-input ua-cfg-rc-title"
+                            value={asCopyString(entry.title)}
+                            disabled={busy}
+                            onChange={(event) => updateLocalPost(entry.id, { title: event.target.value })}
+                          />
+                        ) : (
+                          <strong>{asCopyString(entry.title)}</strong>
+                        )}
+                        {editing ? (
+                          <textarea
+                            className="ua-cfg-tf-story ua-cfg-bl-edit__desc"
+                            rows={2}
+                            value={asCopyString(entry.description)}
+                            disabled={busy}
+                            onChange={(event) => updateLocalPost(entry.id, { description: event.target.value })}
+                          />
+                        ) : (
+                          <p>{asCopyString(entry.description)}</p>
+                        )}
+                      </div>
+                      <div className="ua-cfg-bl-item__actions">
+                        <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>{entry.live ? "LIVE" : "HIDDEN"}</span>
+                        <button
+                          type="button"
+                          className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
+                          aria-pressed={entry.live}
+                          disabled={busy}
+                          onClick={() => togglePostLive(entry)}
+                        >
+                          <span className="ua-toggle__knob" />
+                        </button>
+                        {editing ? (
+                          <>
+                            <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={busy} onClick={() => saveEditedPost(entry)}>Save</button>
+                            <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={() => setEditingId(null)}>Cancel</button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                            disabled={busy}
+                            onClick={() => {
+                              setCreating(false);
+                              setEditingId(entry.id);
+                            }}
+                          >
+                            Edit
+                          </button>
+                        )}
+                        <button type="button" className="ua-cfg-icon-btn" aria-label="Move up" disabled={busy || index === 0} onClick={() => movePost(index, -1)}>↑</button>
+                        <button type="button" className="ua-cfg-icon-btn" aria-label="Move down" disabled={busy || index === posts.length - 1} onClick={() => movePost(index, 1)}>↓</button>
+                        <button type="button" className="ua-cfg-icon-btn" aria-label="Delete" disabled={busy} onClick={() => setPendingDelete({ kind: "post", entry })}>×</button>
+                      </div>
+                    </div>
                   </div>
-                  {editing ? (
-                    <textarea className="ua-cfg-tf-story" rows={2} value={asCopyString(entry.description)} disabled={busy} onChange={(event) => updateLocalPost(entry.id, { description: event.target.value })} />
-                  ) : (
-                    <p>{asCopyString(entry.description)}</p>
-                  )}
-                </div>
-              </article>
-            );
-          })}
-        </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="ua-cfg-panel__sub">No posts yet.</p>
+        )}
         <ListPagination
           page={pagination.page}
           pages={pagination.pages}
@@ -557,18 +539,6 @@ export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, galler
           label="Blog posts pagination"
         />
       </Panel>
-
-      <input ref={galleryInputRef} type="file" accept="image/*" hidden onChange={(event) => {
-        const file = event.target.files?.[0];
-        event.target.value = "";
-        if (file) openCrop(file, { type: "gallery" });
-      }} />
-      <input ref={postCoverInputRef} type="file" accept="image/*" hidden onChange={(event) => {
-        const file = event.target.files?.[0];
-        const id = postCoverTargetRef.current;
-        event.target.value = "";
-        if (file && id) openCrop(file, { type: "post", id });
-      }} />
 
       <ImageCropModal
         open={Boolean(cropPending)}
@@ -587,16 +557,6 @@ export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, galler
           setCropPending(null);
         }}
       />
-      <BlogPostViewModal
-        entry={viewing}
-        positionLabel={viewingIndex >= 0 ? postLabel(viewingIndex) : ""}
-        onClose={() => setViewingId(null)}
-        onEdit={(id) => {
-          setCreating(false);
-          setEditingId(id);
-        }}
-      />
-      <HistoryModal entry={history} onClose={() => setHistory(null)} onToast={onToast} />
       <ConfirmDialog
         open={Boolean(pendingDelete)}
         title={pendingDelete?.kind === "post" ? "Delete blog post?" : "Delete gallery asset?"}

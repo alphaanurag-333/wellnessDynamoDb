@@ -7,6 +7,7 @@ import {
 } from "../api/leadershipNoteApi.js";
 import { adminGetConfigDropdown } from "../api/configDropdownApi.js";
 import { formatRecipeDate } from "../data/recipesConfigData.js";
+import { asCopyString } from "../data/bannerConfigData.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
 import { CfgSelect, ListPagination } from "./shared.jsx";
@@ -43,37 +44,36 @@ function Panel({ title, subtitle, actions, children }) {
 
 function PortraitDrop({ previewUrl, disabled, onPick, onRemove }) {
   const inputRef = useRef(null);
+  const filled = Boolean(previewUrl);
+
   return (
-    <div className="ua-cfg-cf-portrait-wrap">
-      <div className="ua-cfg-rc-cover-drop-wrap">
-        <div className="ua-cfg-rc-cover-drop-frame">
-          <button
-            type="button"
-            className={`ua-cfg-rc-cover-drop ua-cfg-cf-portrait-drop${previewUrl ? " is-on" : ""}`}
-            disabled={disabled}
-            aria-label={previewUrl ? "Replace portrait photo" : "Add portrait photo"}
-            onClick={() => inputRef.current?.click()}
-          >
-            {previewUrl ? <img className="ua-cfg-rc-drop-preview" src={previewUrl} alt="" /> : <span aria-hidden="true">👤</span>}
-            <em>{previewUrl ? "Replace" : "Portrait"}</em>
-          </button>
-          {previewUrl && onRemove ? (
-            <button type="button" className="ua-cfg-rc-media-x" aria-label="Remove portrait photo" disabled={disabled} onClick={onRemove}>×</button>
-          ) : null}
-        </div>
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/*"
-          hidden
-          disabled={disabled}
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            event.target.value = "";
-            if (file) onPick(file);
-          }}
-        />
-      </div>
+    <div className={`ua-cfg-tf-drop ua-cfg-tf-drop--before ua-cfg-ld-drop${filled ? " is-on" : ""}`}>
+      {filled ? <img className="ua-cfg-tf-drop__img" src={previewUrl} alt="" /> : null}
+      <span className="ua-cfg-tf-drop__icon" aria-hidden="true">👤</span>
+      <p className="ua-cfg-tf-drop__label">Portrait</p>
+      <button
+        type="button"
+        className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-drop__btn"
+        disabled={disabled}
+        onClick={() => inputRef.current?.click()}
+      >
+        {filled ? "Replace photo" : "Upload photo"}
+      </button>
+      {filled && onRemove ? (
+        <button type="button" className="ua-cfg-rc-media-x" aria-label="Remove portrait photo" disabled={disabled} onClick={onRemove}>×</button>
+      ) : null}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        hidden
+        disabled={disabled}
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          if (file) onPick(file);
+        }}
+      />
     </div>
   );
 }
@@ -82,45 +82,44 @@ function LeadershipViewModal({ entry, onClose, onEdit }) {
   if (!entry) return null;
   const photo = entry.imagePreview || entry.profileImage;
   return (
-    <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={onClose} role="presentation">
-      <div className="ua-cfg-rc-view" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="ld-view-title">
+    <div className="ua-cp-modal-backdrop" onClick={onClose} role="presentation">
+      <div className="ua-cfg-rc-view ua-cfg-ld-view" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="ld-view-title">
         <div className="ua-cfg-rc-view__head">
           <div>
-            <p className="ua-cfg-rc-view__tag">{entry.badge || DEFAULT_BADGE}</p>
-            <h3 id="ld-view-title">{entry.name || "Untitled leader"}</h3>
-            <p>{entry.designation || entry.title || "—"} · {entry.live ? "Live" : "Hidden"}</p>
+            <p className="ua-cfg-rc-view__tag">{asCopyString(entry.badge) || DEFAULT_BADGE}</p>
+            <h3 id="ld-view-title">{asCopyString(entry.name) || "Untitled leader"}</h3>
+            <p>
+              {asCopyString(entry.designation) || asCopyString(entry.title) || "—"}
+              <span className={`ua-cfg-tf-view__status${entry.live ? " is-live" : ""}`}>
+                {entry.live ? "Live" : "Hidden"}
+              </span>
+            </p>
           </div>
-          <button type="button" className="ua-cfg-mv-upload-modal__close" aria-label="Close" onClick={onClose}>×</button>
+          <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={onClose}>×</button>
         </div>
-        {photo ? (
-          <div className="ua-cfg-rc-view__media ua-cfg-rc-view__media--photo">
-            <img src={photo} alt="" />
-          </div>
-        ) : (
-          <div className="ua-cfg-rc-view__media"><div className="ua-cfg-rc-view__media-empty">No photo</div></div>
-        )}
-        {entry.message ? <p className="ua-cfg-rc-view__copy">{entry.message}</p> : null}
-        <dl className="ua-cfg-rc-view__meta">
-          <div>
-            <dt>Designation</dt>
-            <dd>{entry.designation || "—"}</dd>
-          </div>
-          <div>
-            <dt>Title</dt>
-            <dd>{entry.title || entry.designation || "—"}</dd>
-          </div>
-          <div>
-            <dt>Web</dt>
-            <dd>{entry.webVisible ? "Visible" : "Hidden"}</dd>
-          </div>
-          <div>
-            <dt>App</dt>
-            <dd>{entry.appVisible ? "Visible" : "Hidden"}</dd>
-          </div>
-        </dl>
-        <div className="ua-cfg-rc-view__actions">
+        <div className="ua-cfg-ld-view__body">
+          {photo ? (
+            <div className="ua-cfg-rc-view__media ua-cfg-rc-view__media--photo">
+              <img src={photo} alt="" />
+            </div>
+          ) : (
+            <div className="ua-cfg-rc-view__media"><div className="ua-cfg-rc-view__media-empty">No photo</div></div>
+          )}
+          {asCopyString(entry.message) ? <p className="ua-cfg-rc-view__copy">{asCopyString(entry.message)}</p> : null}
+          <dl className="ua-cfg-rc-view__meta">
+            <div>
+              <dt>Web</dt>
+              <dd>{entry.webVisible ? "Visible" : "Hidden"}</dd>
+            </div>
+            <div>
+              <dt>App</dt>
+              <dd>{entry.appVisible ? "Visible" : "Hidden"}</dd>
+            </div>
+          </dl>
+        </div>
+        <div className="ua-cfg-rc-view__foot">
           <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose}>Close</button>
-          <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" onClick={() => { onClose(); onEdit(entry.id); }}>Edit</button>
+          <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" onClick={() => { onClose(); onEdit(entry.id); }}>Edit note</button>
         </div>
       </div>
     </div>
@@ -142,111 +141,114 @@ function NoteForm({
     : [{ value: "", label: "Add titles in Configs → Dropdowns" }];
 
   return (
-    <div className="ua-cfg-rc-new__grid">
-      <div className="ua-cfg-rc-new__media">
+    <div className="ua-cfg-ld-new__grid">
+      <div className="ua-cfg-ld-new__top">
         <PortraitDrop
           previewUrl={draft.imagePreview}
           disabled={busy}
           onPick={(file) => onPickPhoto?.(file)}
-          onRemove={draft.imageFile instanceof File ? () => setDraft((prev) => {
+          onRemove={draft.imagePreview ? () => setDraft((prev) => {
             if (prev.imagePreview?.startsWith("blob:")) URL.revokeObjectURL(prev.imagePreview);
             return { ...prev, imageFile: null, imagePreview: "" };
           }) : undefined}
         />
+        <div className="ua-cfg-ld-new__meta">
+          <label className="ua-cfg-ld-field">
+            <span>Name</span>
+            <input
+              type="text"
+              className="ua-cfg-vh-input"
+              value={asCopyString(draft.name)}
+              disabled={busy}
+              placeholder="Leader name"
+              onChange={(event) => setDraft((prev) => ({ ...prev, name: event.target.value }))}
+            />
+          </label>
+          <label className="ua-cfg-ld-field">
+            <span>Designation</span>
+            <CfgSelect
+              className="ua-cfg-ld-select"
+              options={designationOptions}
+              value={draft.designation || ""}
+              disabled={busy || !titleOptions.length}
+              ariaLabel="Designation"
+              placeholder="Pick designation"
+              onChange={(value) => setDraft((prev) => ({
+                ...prev,
+                designation: value,
+                title: prev.title || value,
+              }))}
+            />
+          </label>
+          <label className="ua-cfg-ld-field">
+            <span>Card title</span>
+            <input
+              type="text"
+              className="ua-cfg-vh-input"
+              value={asCopyString(draft.title)}
+              disabled={busy}
+              placeholder="Defaults to designation"
+              onChange={(event) => setDraft((prev) => ({ ...prev, title: event.target.value }))}
+            />
+          </label>
+          <label className="ua-cfg-ld-field">
+            <span>Badge label</span>
+            <input
+              type="text"
+              className="ua-cfg-vh-input"
+              value={asCopyString(draft.badge)}
+              disabled={busy}
+              onChange={(event) => setDraft((prev) => ({ ...prev, badge: event.target.value }))}
+            />
+          </label>
+          <div className="ua-cfg-bn-surfaces ua-cfg-ld-field--wide">
+            <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--web${draft.webVisible ? " is-on" : ""}`}>
+              <span>Web {draft.webVisible ? "Visible" : "Hidden"}</span>
+              <button
+                type="button"
+                className={`ua-toggle ua-toggle--sm${draft.webVisible ? " ua-toggle--on" : ""}`}
+                aria-pressed={draft.webVisible}
+                disabled={busy}
+                onClick={() => setDraft((prev) => ({ ...prev, webVisible: !prev.webVisible }))}
+              >
+                <span className="ua-toggle__knob" />
+              </button>
+            </div>
+            <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--app${draft.appVisible ? " is-on" : ""}`}>
+              <span>App {draft.appVisible ? "Visible" : "Hidden"}</span>
+              <button
+                type="button"
+                className={`ua-toggle ua-toggle--sm${draft.appVisible ? " ua-toggle--on" : ""}`}
+                aria-pressed={draft.appVisible}
+                disabled={busy}
+                onClick={() => setDraft((prev) => ({ ...prev, appVisible: !prev.appVisible }))}
+              >
+                <span className="ua-toggle__knob" />
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
-      <div className="ua-cfg-rc-new__fields">
-        <label className="ua-cfg-vh-field">
-          <span>Name</span>
-          <input
-            type="text"
-            className="ua-cfg-vh-input"
-            value={draft.name}
-            disabled={busy}
-            onChange={(event) => setDraft((prev) => ({ ...prev, name: event.target.value }))}
-          />
-        </label>
-        <label className="ua-cfg-vh-field">
-          <span>Designation</span>
-          <CfgSelect
-            options={designationOptions}
-            value={draft.designation || ""}
-            disabled={busy || !titleOptions.length}
-            ariaLabel="Designation"
-            placeholder="Pick designation"
-            onChange={(value) => setDraft((prev) => ({
-              ...prev,
-              designation: value,
-              title: prev.title || value,
-            }))}
-          />
-        </label>
-        <label className="ua-cfg-vh-field">
-          <span>Card title</span>
-          <input
-            type="text"
-            className="ua-cfg-vh-input"
-            value={draft.title}
-            disabled={busy}
-            placeholder="Defaults to designation"
-            onChange={(event) => setDraft((prev) => ({ ...prev, title: event.target.value }))}
-          />
-        </label>
-        <label className="ua-cfg-vh-field">
-          <span>Badge label</span>
-          <input
-            type="text"
-            className="ua-cfg-vh-input"
-            value={draft.badge}
-            disabled={busy}
-            onChange={(event) => setDraft((prev) => ({ ...prev, badge: event.target.value }))}
-          />
-        </label>
-        <label className="ua-cfg-vh-field">
-          <span>Message</span>
-          <textarea
-            className="ua-cfg-vh-input ua-cfg-vh-input--area"
-            rows={5}
-            value={draft.message}
-            disabled={busy}
-            onChange={(event) => setDraft((prev) => ({ ...prev, message: event.target.value }))}
-          />
-        </label>
-        <div className="ua-cfg-bn-surfaces">
-          <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--web${draft.webVisible ? " is-on" : ""}`}>
-            <span>Web {draft.webVisible ? "Visible" : "Hidden"}</span>
-            <button
-              type="button"
-              className={`ua-toggle ua-toggle--sm${draft.webVisible ? " ua-toggle--on" : ""}`}
-              aria-pressed={draft.webVisible}
-              disabled={busy}
-              onClick={() => setDraft((prev) => ({ ...prev, webVisible: !prev.webVisible }))}
-            >
-              <span className="ua-toggle__knob" />
-            </button>
-          </div>
-          <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--app${draft.appVisible ? " is-on" : ""}`}>
-            <span>App {draft.appVisible ? "Visible" : "Hidden"}</span>
-            <button
-              type="button"
-              className={`ua-toggle ua-toggle--sm${draft.appVisible ? " ua-toggle--on" : ""}`}
-              aria-pressed={draft.appVisible}
-              disabled={busy}
-              onClick={() => setDraft((prev) => ({ ...prev, appVisible: !prev.appVisible }))}
-            >
-              <span className="ua-toggle__knob" />
-            </button>
-          </div>
-        </div>
-        <div className="ua-cfg-rc-new__actions">
-          {onCancel ? <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" disabled={busy} onClick={onCancel}>Cancel</button> : null}
-          <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={onSave}>{saveLabel}</button>
-        </div>
+      <label className="ua-cfg-ld-field">
+        <span>Message</span>
+        <textarea
+          className="ua-cfg-tf-story ua-cfg-ld-new__story"
+          rows={5}
+          value={asCopyString(draft.message)}
+          disabled={busy}
+          placeholder="Leadership message…"
+          onChange={(event) => setDraft((prev) => ({ ...prev, message: event.target.value }))}
+        />
+      </label>
+      <div className="ua-cfg-ld-new__foot">
+        {onCancel ? <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" disabled={busy} onClick={onCancel}>Cancel</button> : null}
+        <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={onSave}>{saveLabel}</button>
       </div>
     </div>
   );
 }
 
-export function DynamicLeadershipSection({ items, setItems, onToast, onOpenPreview }) {
+export function DynamicLeadershipSection({ items, setItems, onToast }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [page, setPage] = useState(1);
@@ -492,28 +494,23 @@ export function DynamicLeadershipSection({ items, setItems, onToast, onOpenPrevi
         title="Leadership notes"
         subtitle={loading ? "Loading notes…" : `${pagination.total} total · ${liveCount} live on this page`}
         actions={(
-          <>
-            {onOpenPreview ? (
-              <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" onClick={onOpenPreview}>Preview</button>
-            ) : null}
-            <button
-              type="button"
-              className="ua-cfg-rc-add"
-              disabled={busy}
-              onClick={() => {
-                setCreating(true);
-                setEditingId(null);
-                const first = titleOptions[0] || "";
-                setDraft({ ...EMPTY_DRAFT, designation: first, title: first });
-              }}
-            >
-              + Add note
-            </button>
-          </>
+          <button
+            type="button"
+            className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-tf-add-btn"
+            disabled={busy}
+            onClick={() => {
+              setCreating(true);
+              setEditingId(null);
+              const first = titleOptions[0] || "";
+              setDraft({ ...EMPTY_DRAFT, designation: first, title: first });
+            }}
+          >
+            + Add note
+          </button>
         )}
       >
         {creating ? (
-          <section className="ua-cfg-rc-new">
+          <section className="ua-cfg-rc-new ua-cfg-ld-new">
             <div className="ua-cfg-rc-new__head">
               <strong><span aria-hidden="true">✦</span> New leadership note</strong>
               <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={() => setCreating(false)}>×</button>
@@ -550,7 +547,7 @@ export function DynamicLeadershipSection({ items, setItems, onToast, onOpenPrevi
               const photo = item.profileImage;
               const updated = item.updatedAt ? formatRecipeDate(item.updatedAt) : "";
               return (
-                <article key={item.id} className={`ua-cfg-rc-item is-text${item.live ? " is-live" : ""}`}>
+                <article key={item.id} className={`ua-cfg-rc-item ua-cfg-ld-item${item.live ? " is-live" : ""}`}>
                   <div className="ua-cfg-rc-cover-wrap ua-cfg-ld-cover-wrap">
                     <button
                       type="button"
@@ -578,107 +575,129 @@ export function DynamicLeadershipSection({ items, setItems, onToast, onOpenPrevi
                     />
                   </div>
                   <div className="ua-cfg-rc-item__body">
-                    <div className="ua-cfg-rc-item__row">
-                      {isEditing ? (
-                        <input
-                          className="ua-cfg-vh-input ua-cfg-rc-title"
-                          value={item.name}
-                          disabled={busy}
-                          placeholder="Name"
-                          onChange={(event) => patchItem(item.id, { name: event.target.value })}
-                        />
-                      ) : (
-                        <strong>{item.name || "Untitled"}</strong>
-                      )}
-                      {isEditing ? (
-                        <CfgSelect
-                          className="ua-cfg-select--filter"
-                          options={designationOptions}
-                          value={item.designation || ""}
-                          disabled={busy || !titleOptions.length}
-                          ariaLabel="Designation"
-                          placeholder="Pick designation"
-                          onChange={(value) => patchItem(item.id, {
-                            designation: value,
-                            title: item.title || value,
-                          })}
-                        />
-                      ) : (
-                        <span className="ua-cfg-rc-pill ua-cfg-rc-pill--cat">
-                          {item.designation || item.title || "No designation"}
+                    <div className="ua-cfg-ld-item__head">
+                      <div className="ua-cfg-ld-item__identity">
+                        {isEditing ? (
+                          <input
+                            className="ua-cfg-vh-input ua-cfg-rc-title"
+                            value={asCopyString(item.name)}
+                            disabled={busy}
+                            placeholder="Name"
+                            onChange={(event) => patchItem(item.id, { name: event.target.value })}
+                          />
+                        ) : (
+                          <strong>{asCopyString(item.name) || "Untitled"}</strong>
+                        )}
+                        <div className="ua-cfg-ld-item__meta-row">
+                          {isEditing ? (
+                            <CfgSelect
+                              className="ua-cfg-ld-select ua-cfg-select--sm"
+                              options={designationOptions}
+                              value={item.designation || ""}
+                              disabled={busy || !titleOptions.length}
+                              ariaLabel="Designation"
+                              placeholder="Pick designation"
+                              onChange={(value) => patchItem(item.id, {
+                                designation: value,
+                                title: item.title || value,
+                              })}
+                            />
+                          ) : (
+                            <span className="ua-cfg-rc-pill ua-cfg-rc-pill--cat">
+                              {asCopyString(item.designation) || asCopyString(item.title) || "No designation"}
+                            </span>
+                          )}
+                          {isEditing ? null : (
+                            <>
+                              {updated ? <span className="ua-cfg-panel__sub">Updated {updated}</span> : null}
+                              <span className={`ua-cfg-ld-chip${item.webVisible ? " is-on" : ""}`}>Web</span>
+                              <span className={`ua-cfg-ld-chip ua-cfg-ld-chip--app${item.appVisible ? " is-on" : ""}`}>App</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <div className="ua-cfg-ld-item__actions">
+                        <span className={`ua-cfg-faq__shown${item.live ? " is-on" : ""}`}>
+                          {item.live ? "LIVE" : "HIDDEN"}
                         </span>
-                      )}
-                      <span className={`ua-cfg-faq__shown${item.live ? " is-on" : ""}`}>
-                        {item.live ? "LIVE" : "HIDDEN"}
-                      </span>
-                      <button
-                        type="button"
-                        className={`ua-toggle ua-toggle--sm${item.live ? " ua-toggle--on" : ""}`}
-                        aria-pressed={item.live}
-                        aria-label={item.live ? "Hide note" : "Publish note"}
-                        disabled={busy}
-                        onClick={() => toggleLive(item)}
-                      >
-                        <span className="ua-toggle__knob" />
-                      </button>
-                      <button
-                        type="button"
-                        className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
-                        disabled={busy}
-                        onClick={() => setViewingId(item.id)}
-                      >
-                        View
-                      </button>
-                      {isEditing ? (
-                        <>
-                          <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={busy} onClick={() => saveItem(item)}>Save</button>
-                          <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm" disabled={busy} onClick={() => { setEditingId(null); loadItems(); }}>Cancel</button>
-                        </>
-                      ) : (
                         <button
                           type="button"
-                          className="ua-cfg-cr-link ua-cfg-cr-link--modify"
+                          className={`ua-toggle ua-toggle--sm${item.live ? " ua-toggle--on" : ""}`}
+                          aria-pressed={item.live}
+                          aria-label={item.live ? "Hide note" : "Publish note"}
                           disabled={busy}
-                          onClick={() => { setViewingId(null); setEditingId(item.id); setCreating(false); }}
+                          onClick={() => toggleLive(item)}
                         >
-                          Edit
+                          <span className="ua-toggle__knob" />
                         </button>
-                      )}
-                      <button
-                        type="button"
-                        className="ua-cfg-icon-btn"
-                        aria-label={`Delete ${item.name || "note"}`}
-                        disabled={busy}
-                        onClick={() => setPendingDelete(item)}
-                      >
-                        ×
-                      </button>
+                        <button
+                          type="button"
+                          className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                          disabled={busy}
+                          onClick={() => setViewingId(item.id)}
+                        >
+                          View
+                        </button>
+                        {isEditing ? (
+                          <>
+                            <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={busy} onClick={() => saveItem(item)}>Save</button>
+                            <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={() => { setEditingId(null); loadItems(); }}>Cancel</button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                            disabled={busy}
+                            onClick={() => { setViewingId(null); setEditingId(item.id); setCreating(false); }}
+                          >
+                            Edit
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="ua-cfg-icon-btn"
+                          aria-label={`Delete ${asCopyString(item.name) || "note"}`}
+                          disabled={busy}
+                          onClick={() => setPendingDelete(item)}
+                        >
+                          ×
+                        </button>
+                      </div>
                     </div>
                     {isEditing ? (
                       <div className="ua-cfg-ld-edit">
-                        <input
-                          className="ua-cfg-vh-input"
-                          value={item.title || ""}
-                          disabled={busy}
-                          placeholder="Card title (defaults to designation)"
-                          onChange={(event) => patchItem(item.id, { title: event.target.value })}
-                        />
-                        <input
-                          className="ua-cfg-vh-input"
-                          value={item.badge || DEFAULT_BADGE}
-                          disabled={busy}
-                          placeholder="Badge label"
-                          onChange={(event) => patchItem(item.id, { badge: event.target.value })}
-                        />
-                        <textarea
-                          className="ua-cfg-tf-story"
-                          rows={4}
-                          value={item.message}
-                          disabled={busy}
-                          placeholder="Leadership message"
-                          onChange={(event) => patchItem(item.id, { message: event.target.value })}
-                        />
-                        <div className="ua-cfg-bn-surfaces">
+                        <label className="ua-cfg-ld-field">
+                          <span>Card title</span>
+                          <input
+                            className="ua-cfg-vh-input"
+                            value={asCopyString(item.title)}
+                            disabled={busy}
+                            placeholder="Card title (defaults to designation)"
+                            onChange={(event) => patchItem(item.id, { title: event.target.value })}
+                          />
+                        </label>
+                        <label className="ua-cfg-ld-field">
+                          <span>Badge label</span>
+                          <input
+                            className="ua-cfg-vh-input"
+                            value={asCopyString(item.badge) || DEFAULT_BADGE}
+                            disabled={busy}
+                            placeholder="Badge label"
+                            onChange={(event) => patchItem(item.id, { badge: event.target.value })}
+                          />
+                        </label>
+                        <label className="ua-cfg-ld-field ua-cfg-ld-field--wide">
+                          <span>Message</span>
+                          <textarea
+                            className="ua-cfg-tf-story"
+                            rows={4}
+                            value={asCopyString(item.message)}
+                            disabled={busy}
+                            placeholder="Leadership message"
+                            onChange={(event) => patchItem(item.id, { message: event.target.value })}
+                          />
+                        </label>
+                        <div className="ua-cfg-bn-surfaces ua-cfg-ld-field--wide">
                           <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--web${item.webVisible ? " is-on" : ""}`}>
                             <span>Web {item.webVisible ? "Visible" : "Hidden"}</span>
                             <button
@@ -706,14 +725,7 @@ export function DynamicLeadershipSection({ items, setItems, onToast, onOpenPrevi
                         </div>
                       </div>
                     ) : (
-                      <>
-                        <p>{item.message}</p>
-                        <div className="ua-cfg-ld-meta">
-                          {updated ? <span>Updated {updated}</span> : null}
-                          <span className={`ua-cfg-ld-chip${item.webVisible ? " is-on" : ""}`}>Web</span>
-                          <span className={`ua-cfg-ld-chip ua-cfg-ld-chip--app${item.appVisible ? " is-on" : ""}`}>App</span>
-                        </div>
-                      </>
+                      <p>{asCopyString(item.message)}</p>
                     )}
                   </div>
                 </article>
@@ -749,7 +761,7 @@ export function DynamicLeadershipSection({ items, setItems, onToast, onOpenPrevi
       <ConfirmDialog
         open={Boolean(pendingDelete)}
         tag="Leadership note"
-        title={`Delete ${pendingDelete?.name || "this note"}?`}
+        title={`Delete ${asCopyString(pendingDelete?.name) || "this note"}?`}
         body="This permanently removes the leadership note and its portrait."
         confirmLabel="Delete"
         confirmTone="danger"
@@ -765,8 +777,8 @@ export function DynamicLeadershipSection({ items, setItems, onToast, onOpenPrevi
           previewUrl={cropPending.previewUrl || ""}
           busy={busy}
           defaultRatio="Original"
-          originalAspectCss="auto"
-          originalAspectNumber={0}
+          originalAspectCss="3 / 4"
+          originalAspectNumber={3 / 4}
           onClose={closeCoverCrop}
           onConfirm={confirmCoverCrop}
         />

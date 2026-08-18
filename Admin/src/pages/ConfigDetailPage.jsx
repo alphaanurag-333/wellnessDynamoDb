@@ -1994,7 +1994,6 @@ export function ConfigDetailPage() {
             stats={grStats}
             setStats={setGrStats}
             onToast={onToast}
-            onOpenPreview={() => setPreviewOpen(true)}
           />
         );
       case "common-dropdowns":
@@ -2036,6 +2035,7 @@ export function ConfigDetailPage() {
             setPosts={setBlPosts}
             gallery={blGallery}
             setGallery={setBlGallery}
+            summary={<ConfigSummary item={item} groupName={groupName} on={summaryOn} />}
             onToast={onToast}
           />
         );
@@ -2156,7 +2156,9 @@ export function ConfigDetailPage() {
 
       {canViewConfig ? (
         <div className="ua-cfg-detail__body">
-          <ConfigSummary item={item} groupName={groupName} on={summaryOn} />
+          {item.id === "common-blogs" ? null : (
+            <ConfigSummary item={item} groupName={groupName} on={summaryOn} />
+          )}
           <div
             aria-disabled={!canEditConfig}
             style={
