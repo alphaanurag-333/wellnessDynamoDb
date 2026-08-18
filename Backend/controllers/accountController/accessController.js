@@ -95,6 +95,26 @@ function accountPrimaryUiRole(account) {
   return primary ? ACCOUNT_TO_UI_ROLE[primary] || primary : null;
 }
 
+async function resolveAccountRoleKeyFromConsoleRole(startRole) {
+  let current = startRole;
+  const seen = new Set();
+  while (current) {
+    if (seen.has(current.id)) break;
+    seen.add(current.id);
+
+    const uiKey = String(current.roleKey || "").trim().toLowerCase();
+    if (uiKey) {
+      const mapped = UI_TO_ACCOUNT_ROLE[uiKey] || uiKey;
+      if (mapped) return mapped;
+    }
+
+    if (!current.inheritsFromRoleId) break;
+    current = await getRoleById(current.inheritsFromRoleId);
+    if (current && current.scope !== CONSOLE_SCOPE) break;
+  }
+  return null;
+}
+
 function isAccessAdmin(req) {
   return Boolean(req.auth?.isSuperAdmin || req.auth?.role === "admin");
 }
@@ -1346,22 +1366,40 @@ exports.setAccessMemberRole = asyncHandler(async (req, res) => {
     throw new AppError("Cannot change the Super Admin primary role this way", 400);
   }
 
-  const uiRole = String(req.body?.roleKey || req.body?.role || "").trim().toLowerCase();
-  const accountRoleKey = UI_TO_ACCOUNT_ROLE[uiRole];
-  if (!accountRoleKey) throw new AppError("Invalid roleKey", 400);
-
   const previousUiRole = accountPrimaryUiRole(account);
   const pub = toPublicAccount(account);
+  const uiRole = String(req.body?.roleKey || req.body?.role || "").trim().toLowerCase();
+  const consoleRoleId = String(req.body?.consoleRoleId || "").trim();
 
-  const { roles: consoleRoles } = await listRoles({
-    scope: CONSOLE_SCOPE,
-    status: "active",
-    page: 1,
-    limit: 100,
-  });
-  const consoleRole = consoleRoles.find((r) => r.roleKey === uiRole);
-  if (!consoleRole) {
-    throw new AppError("CONSOLE role template missing for this roleKey — run seed", 400);
+  let consoleRole = null;
+  let accountRoleKey = null;
+
+  if (consoleRoleId) {
+    consoleRole = await getRoleById(consoleRoleId);
+    if (!consoleRole || consoleRole.scope !== CONSOLE_SCOPE) {
+      throw new AppError("Access Control role not found", 404);
+    }
+    if (consoleRole.status && consoleRole.status !== "active") {
+      throw new AppError("Access Control role is not active", 400);
+    }
+    accountRoleKey = await resolveAccountRoleKeyFromConsoleRole(consoleRole);
+    if (!accountRoleKey || accountRoleKey === "admin") {
+      throw new AppError("Choose a non-admin Access Control role", 400);
+    }
+  } else {
+    accountRoleKey = UI_TO_ACCOUNT_ROLE[uiRole];
+    if (!accountRoleKey) throw new AppError("Invalid roleKey", 400);
+
+    const { roles: consoleRoles } = await listRoles({
+      scope: CONSOLE_SCOPE,
+      status: "active",
+      page: 1,
+      limit: 100,
+    });
+    consoleRole = consoleRoles.find((r) => r.roleKey === uiRole);
+    if (!consoleRole) {
+      throw new AppError("CONSOLE role template missing for this roleKey — run seed", 400);
+    }
   }
 
   // Replace memberships with the selected primary role (v1 single primary)

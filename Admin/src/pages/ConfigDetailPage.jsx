@@ -95,6 +95,7 @@ import {
 } from "../data/blogsConfigData.js";
 import { PageHeader } from "../components/shared.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
+import { useViewAs } from "../context/ViewAsContext.jsx";
 import { HEALTH_TRACKERS } from "../data/healthProgressData.js";
 import {
   APP_HEAL_PERIODS,
@@ -1226,9 +1227,34 @@ function PreviewActions({ item, onOpen, onPublish, canPublish }) {
   );
 }
 
+function configPermissionPrefix(configId) {
+  if (configId === "common-banner") return "bn";
+  if (
+    configId === "web-program-testimonials" ||
+    configId === "common-champion" ||
+    configId === "common-birthday" ||
+    configId === "common-transformation" ||
+    configId === "common-client-review" ||
+    configId === "common-real-people" ||
+    configId === "common-voice" ||
+    configId === "common-cofounder" ||
+    configId === "common-leadership" ||
+    configId === "common-wellness-team" ||
+    configId === "common-about" ||
+    configId === "common-google-review" ||
+    configId === "common-recipes" ||
+    configId === "common-yoga" ||
+    configId === "common-blogs"
+  ) {
+    return "ct";
+  }
+  return "cf";
+}
+
 export function ConfigDetailPage() {
   const { configId } = useParams();
   const { showToast: onToast } = useOutletContext();
+  const { can } = useViewAs();
   const found = useMemo(() => findConfigItem(configId), [configId]);
 
   const [hindiOn, setHindiOn] = useState(false);
@@ -1441,6 +1467,14 @@ export function ConfigDetailPage() {
   }
 
   const { item, groupName } = found;
+  const permissionPrefix = configPermissionPrefix(item.id);
+  const canViewConfig = can(`console.${permissionPrefix}.view`);
+  const canEditConfig =
+    can(`console.${permissionPrefix}.edit`) ||
+    can(`console.${permissionPrefix}.create`) ||
+    can(`console.${permissionPrefix}.delete`) ||
+    can(`console.${permissionPrefix}.upload`) ||
+    can(`console.${permissionPrefix}.toggle`);
   const activeGateway = item.id === "app-payment-gateway" ? activePaymentGateway(gateways) : null;
   const summaryOn =
     item.id === "app-language-disable"
@@ -2095,10 +2129,22 @@ export function ConfigDetailPage() {
             item={item}
             onOpen={() => setPreviewOpen(true)}
             onPublish={() => setPublishOpen(true)}
-            canPublish
+            canPublish={canEditConfig}
           />
         ) : null}
       />
+
+      {!canViewConfig ? (
+        <div className="ua-section-bar">
+          <span>You do not have access to view this config.</span>
+        </div>
+      ) : null}
+
+      {canViewConfig && !canEditConfig ? (
+        <div className="ua-section-bar">
+          <span>Read-only access. Edit, upload, delete, toggle, and publish actions are disabled for this role.</span>
+        </div>
+      ) : null}
 
       <ConfigPreviewModal
         open={previewOpen}
@@ -2172,16 +2218,27 @@ export function ConfigDetailPage() {
       />
 
       <ConfigPublishModal
-        open={publishOpen}
+        open={publishOpen && canEditConfig}
         onClose={() => setPublishOpen(false)}
         item={item}
         onConfirm={publishConfig}
       />
 
-      <div className="ua-cfg-detail__body">
-        <ConfigSummary item={item} groupName={groupName} on={summaryOn} />
-        {renderBody()}
-      </div>
+      {canViewConfig ? (
+        <div className="ua-cfg-detail__body">
+          <ConfigSummary item={item} groupName={groupName} on={summaryOn} />
+          <div
+            aria-disabled={!canEditConfig}
+            style={
+              canEditConfig
+                ? undefined
+                : { pointerEvents: "none", opacity: 0.72, userSelect: "none" }
+            }
+          >
+            {renderBody()}
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

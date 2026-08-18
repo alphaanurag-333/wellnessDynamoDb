@@ -19,6 +19,21 @@ import {
 
 const SYSTEM_TEAM_ROLE_KEYS = ["wc", "awc", "support", "trainee"];
 
+function resolveBaseUiRoleKey(role, allRoles) {
+  const byId = Object.fromEntries((allRoles || []).map((r) => [r.id, r]));
+  let current = role;
+  const seen = new Set();
+  while (current) {
+    const currentId = current.id || current.roleKey;
+    if (!currentId || seen.has(currentId)) break;
+    seen.add(currentId);
+    const key = String(current.roleKey || "").toLowerCase();
+    if (SYSTEM_TEAM_ROLE_KEYS.includes(key)) return key;
+    current = current.inheritsFromRoleId ? byId[current.inheritsFromRoleId] : null;
+  }
+  return null;
+}
+
 function catalogRowsFromApi(catalog) {
   if (!Array.isArray(catalog?.features) || !catalog.features.length) return PERM_CATALOG;
   return catalog.features.map((feature) => [
@@ -246,7 +261,7 @@ export function TeamMemberPage() {
       setTotalSlots(Number(catalog?.totalSlots || m?.totalSlots) || TOTAL_PERM_SLOTS);
       setAccessRoles(Array.isArray(roles) ? roles : []);
       setMember(m);
-      setRoleDraft(m.primaryRoleKey || "wc");
+      setRoleDraft(m.consoleRoleId || m.primaryRoleKey || "wc");
       setGrants(editorGrants(m, !isSuperAdmin && viewAs === "wc", rows));
       setDirtyPerms(false);
     } catch (err) {
@@ -266,14 +281,19 @@ export function TeamMemberPage() {
   }, [member, searchParams]);
 
   const teamRoles = useMemo(
-    () => (accessRoles || []).filter((role) => SYSTEM_TEAM_ROLE_KEYS.includes(String(role?.roleKey || "").toLowerCase())),
+    () =>
+      (accessRoles || []).filter((role) => {
+        const baseUiKey = resolveBaseUiRoleKey(role, accessRoles);
+        return Boolean(baseUiKey);
+      }),
     [accessRoles],
   );
   const activeRole =
     teamRoles.find((role) => role.id === member?.consoleRoleId) ||
     teamRoles.find((role) => role.roleKey === member?.primaryRoleKey) ||
     null;
-  const roleMeta = roleChipMeta(activeRole, member?.primaryRoleKey);
+  const activeBaseUiKey = resolveBaseUiRoleKey(activeRole, teamRoles) || member?.primaryRoleKey;
+  const roleMeta = roleChipMeta(activeRole, activeBaseUiKey);
   const granted = countMemberGranted(grants, catalogRows);
   const avatarColor = STAFF_AVATARS[(member?.name?.length || 0) % STAFF_AVATARS.length];
   const canEditPerms =
@@ -297,10 +317,16 @@ export function TeamMemberPage() {
   const clientCards = useMemo(() => (member ? buildClientCards(member) : []), [member]);
 
   async function handleSaveRole() {
-    if (!member || roleDraft === member.primaryRoleKey) return;
+    if (!member) return;
+    const nextRole = roleOptions.find((role) => String(role.id || role.roleKey) === String(roleDraft));
+    const currentRoleKey = String(member.consoleRoleId || member.primaryRoleKey || "");
+    if (!nextRole || String(roleDraft) === currentRoleKey) return;
     setSavingRole(true);
     try {
-      await setAccessMemberRole(member.id, roleDraft);
+      await setAccessMemberRole(member.id, {
+        consoleRoleId: nextRole.id,
+        roleKey: nextRole.roleKey,
+      });
       onToast("Role updated");
       await load();
     } catch (err) {
@@ -450,16 +476,24 @@ export function TeamMemberPage() {
               onChange={(e) => setRoleDraft(e.target.value)}
             >
               {roleOptions.map((role) => (
-                <option key={role.id || role.roleKey} value={role.roleKey}>
+                <option key={role.id || role.roleKey} value={role.id || role.roleKey}>
                   {role.name}
-                  {role.roleKey === member.primaryRoleKey ? " (current)" : ""}
+                  {(role.id && role.id === member.consoleRoleId) ||
+                  (!member.consoleRoleId && role.roleKey === member.primaryRoleKey)
+                    ? " (current)"
+                    : ""}
                 </option>
               ))}
             </select>
             <button
               type="button"
               className="ua-tm-role-change__save"
-              disabled={member.isSuperAdmin || savingRole || requestsApproval || roleDraft === member.primaryRoleKey}
+              disabled={
+                member.isSuperAdmin ||
+                savingRole ||
+                requestsApproval ||
+                String(roleDraft) === String(member.consoleRoleId || member.primaryRoleKey || "")
+              }
               onClick={handleSaveRole}
             >
               {savingRole ? "Saving…" : "Save"}

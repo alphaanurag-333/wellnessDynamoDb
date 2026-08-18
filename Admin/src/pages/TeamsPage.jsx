@@ -230,7 +230,12 @@ export function TeamsPage() {
   const [reloadNonce, setReloadNonce] = useState(0);
 
   const teamRoles = useMemo(
-    () => (accessRoles || []).filter((r) => !isAdminAccessRole(r) && isSystemTeamRole(r)),
+    () =>
+      (accessRoles || []).filter((role) => {
+        if (isAdminAccessRole(role)) return false;
+        const baseUiKey = resolveBaseUiRoleKey(role, accessRoles);
+        return Boolean(baseUiKey && SYSTEM_TEAM_ROLE_KEYS.has(baseUiKey));
+      }),
     [accessRoles],
   );
 
@@ -262,7 +267,8 @@ export function TeamsPage() {
   );
 
   const activeRole = roleById[roleTab];
-  const apiRoleKey = activeRole?.roleKey || (TEAM_ROLE_META[roleTab] ? roleTab : undefined);
+  const activeBaseUiKey = activeRole ? resolveBaseUiRoleKey(activeRole, teamRoles) : null;
+  const apiRoleKey = activeRole?.roleKey || activeBaseUiKey || (TEAM_ROLE_META[roleTab] ? roleTab : undefined);
 
   const loadRoles = useCallback(async () => {
     try {
