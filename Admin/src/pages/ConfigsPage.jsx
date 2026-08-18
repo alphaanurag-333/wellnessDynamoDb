@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { PageHeader, PillTabs } from "../components/shared.jsx";
@@ -24,10 +24,25 @@ function buildInitialState() {
 export function ConfigsPage() {
   const navigate = useNavigate();
   const { showToast: onToast } = useOutletContext();
-  const [tab, setTab] = useState("app");
+  const [tab, setTab] = useState(() => {
+    try {
+      const saved = window.localStorage.getItem("admin.configs.activeTab");
+      return CONFIG_TABS.some((entry) => entry.id === saved) ? saved : "app";
+    } catch {
+      return "app";
+    }
+  });
   const [{ toggles, surfaces }, setState] = useState(buildInitialState);
 
   const groups = CONFIG_GROUPS[tab] ?? [];
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("admin.configs.activeTab", tab);
+    } catch {
+      /* ignore storage issues */
+    }
+  }, [tab]);
 
   function flipToggle(item) {
     setState((prev) => {

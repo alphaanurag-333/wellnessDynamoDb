@@ -76,6 +76,9 @@ const PERMISSION_GROUPS_RAW = [
       { to: "health-recipes", label: "Health Recipes", actions: [VIEW, EDIT, DELETE] },
       { to: "health-disorders", label: "Health Disorders", actions: [VIEW, EDIT, DELETE] },
       { to: "yoga", label: "Yoga", actions: [VIEW, EDIT, DELETE] },
+      { to: "blog-config", label: "Blog Config", actions: [VIEW, EDIT] },
+      { to: "blog-posts", label: "Blog Posts", actions: [VIEW, EDIT, DELETE] },
+      { to: "blog-media", label: "Blog Media", actions: [VIEW, EDIT, DELETE] },
       { to: "physical-exercises", label: "Physical Exercise", actions: [VIEW, EDIT, DELETE] },
       { to: "supplements", label: "Supplements", actions: [VIEW, EDIT, DELETE] },
       {

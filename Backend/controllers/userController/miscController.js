@@ -18,6 +18,9 @@ const { listHealthDisorders } = require("../../models/healthDisorderModel");
 const { listHealthTools } = require("../../models/healthToolModel");
 const { listHealthRecipes } = require("../../models/healthRecipeModel");
 const { listYoga } = require("../../models/yogaModel");
+const { getBlogConfig } = require("../../models/blogConfigModel");
+const { listBlogPosts } = require("../../models/blogPostModel");
+const { listBlogMedia } = require("../../models/blogMediaModel");
 const { listTransformations } = require("../../models/transformationModel");
 const { listWellnessCoaches } = require("../../models/wellnessCoachModel");
 const {
@@ -302,6 +305,53 @@ exports.getActiveYoga = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     yoga: data.yoga,
+    pagination: data.pagination,
+  });
+});
+
+exports.getBlogConfig = asyncHandler(async (_req, res) => {
+  const config = await getBlogConfig();
+  return res.status(200).json({
+    status: true,
+    message: config ? "Blog config fetched" : "Blog config not available",
+    data: config,
+  });
+});
+
+exports.getActiveBlogPosts = asyncHandler(async (req, res) => {
+  const { page, limit } = readPaging(req.query);
+  const data = resolveListMedia(
+    await listBlogPosts({
+      page,
+      limit,
+      status: "active",
+      search: readSearch(req.query),
+    }),
+    "posts",
+    ["coverImage"]
+  );
+  return res.status(200).json({
+    status: true,
+    posts: data.posts,
+    pagination: data.pagination,
+  });
+});
+
+exports.getActiveBlogMedia = asyncHandler(async (req, res) => {
+  const { page, limit } = readPaging(req.query);
+  const data = resolveListMedia(
+    await listBlogMedia({
+      page,
+      limit,
+      status: "active",
+      search: readSearch(req.query),
+    }),
+    "media",
+    ["image"]
+  );
+  return res.status(200).json({
+    status: true,
+    media: data.media,
     pagination: data.pagination,
   });
 });

@@ -46,12 +46,15 @@ import { DynamicClientReviewSection } from "../components/DynamicClientReviewSec
 import { DynamicRealPeopleSection } from "../components/DynamicRealPeopleSection.jsx";
 import { DynamicVoiceOfHealingSection } from "../components/DynamicVoiceOfHealingSection.jsx";
 import { CofounderSection } from "../components/CofounderSection.jsx";
+import { DynamicCofounderSection } from "../components/DynamicCofounderSection.jsx";
 import { AboutSection } from "../components/AboutSection.jsx";
-import { GoogleReviewSection } from "../components/GoogleReviewSection.jsx";
+import { DynamicLeadershipSection } from "../components/DynamicLeadershipSection.jsx";
+import { DynamicGoogleReviewSection } from "../components/DynamicGoogleReviewSection.jsx";
 import { DropdownsSection } from "../components/DropdownsSection.jsx";
 import { RecipesSection } from "../components/RecipesSection.jsx";
 import { YogaSection } from "../components/YogaSection.jsx";
 import { BlogsSection } from "../components/BlogsSection.jsx";
+import { DynamicBlogsSection } from "../components/DynamicBlogsSection.jsx";
 import { RxBankSection } from "../components/RxBankSection.jsx";
 import { FaqConfigPanel } from "../components/FaqConfigPanel.jsx";
 import { FEATURE_FLAGS } from "../data/featureFlagsData.js";
@@ -72,14 +75,8 @@ import { REAL_PEOPLE_EDITOR } from "../data/realPeopleConfigData.js";
 import { VOICE_EDITOR } from "../data/voiceConfigData.js";
 import {
   COFOUNDER_EDITOR,
-  COFOUNDER_MESSAGES,
-  COFOUNDER_PHOTOS,
 } from "../data/cofounderConfigData.js";
-import {
-  LEADERSHIP_EDITOR,
-  LEADERSHIP_MESSAGES,
-  LEADERSHIP_TITLES,
-} from "../data/leadershipConfigData.js";
+import { editorFromCofounder } from "../api/cofounderMessageApi.js";
 import {
   WELLNESS_TEAM_EDITOR,
   WELLNESS_TEAM_MESSAGES,
@@ -88,11 +85,6 @@ import {
 } from "../data/wellnessTeamConfigData.js";
 import { ABOUT_BLOCKS, ABOUT_EDITOR } from "../data/aboutConfigData.js";
 import {
-  GOOGLE_REVIEW_EDITOR,
-  GOOGLE_REVIEW_GALLERY,
-  GOOGLE_REVIEW_STATS,
-} from "../data/googleReviewConfigData.js";
-import {
   RECIPES_EDITOR,
 } from "../data/recipesConfigData.js";
 import {
@@ -100,8 +92,6 @@ import {
 } from "../data/yogaConfigData.js";
 import {
   BLOGS_EDITOR,
-  BLOG_GALLERY,
-  BLOG_POSTS,
 } from "../data/blogsConfigData.js";
 import { PageHeader } from "../components/shared.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
@@ -1265,27 +1255,23 @@ export function ConfigDetailPage() {
   const [rpItems, setRpItems] = useState([]);
   const [voiceEditor] = useState(VOICE_EDITOR);
   const [voiceItems, setVoiceItems] = useState([]);
-  const [cfEditor, setCfEditor] = useState(COFOUNDER_EDITOR);
-  const [cfPhotos, setCfPhotos] = useState(COFOUNDER_PHOTOS);
-  const [cfMessages, setCfMessages] = useState(COFOUNDER_MESSAGES);
-  const [ldEditor, setLdEditor] = useState(LEADERSHIP_EDITOR);
-  const [ldMessages, setLdMessages] = useState(LEADERSHIP_MESSAGES);
+  const [cfRecord, setCfRecord] = useState(null);
+  const cfEditor = useMemo(() => editorFromCofounder(cfRecord, COFOUNDER_EDITOR), [cfRecord]);
+  const [ldItems, setLdItems] = useState([]);
   const [wtEditor, setWtEditor] = useState(WELLNESS_TEAM_EDITOR);
   const [wtPhotos, setWtPhotos] = useState(WELLNESS_TEAM_PHOTOS);
   const [wtMessages, setWtMessages] = useState(WELLNESS_TEAM_MESSAGES);
   const [aboutEditor, setAboutEditor] = useState(ABOUT_EDITOR);
   const [aboutBlocks, setAboutBlocks] = useState(ABOUT_BLOCKS);
-  const [grEditor, setGrEditor] = useState(GOOGLE_REVIEW_EDITOR);
-  const [grStats, setGrStats] = useState(GOOGLE_REVIEW_STATS);
-  const [grGallery, setGrGallery] = useState(GOOGLE_REVIEW_GALLERY);
+  const [grStats, setGrStats] = useState([]);
   const [dropdownLists, setDropdownLists] = useState([]);
   const [rcEditor, setRcEditor] = useState(RECIPES_EDITOR);
   const [rcItems, setRcItems] = useState([]);
   const [ygEditor, setYgEditor] = useState(YOGA_EDITOR);
   const [ygItems, setYgItems] = useState([]);
   const [blEditor, setBlEditor] = useState(BLOGS_EDITOR);
-  const [blPosts, setBlPosts] = useState(BLOG_POSTS);
-  const [blGallery, setBlGallery] = useState(BLOG_GALLERY);
+  const [blPosts, setBlPosts] = useState([]);
+  const [blGallery, setBlGallery] = useState([]);
   const [featureFlags, setFeatureFlags] = useState(FEATURE_FLAGS);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
@@ -1471,15 +1457,15 @@ export function ConfigDetailPage() {
               : item.id === "common-voice"
                 ? voiceItems.some((entry) => entry.live)
               : item.id === "common-cofounder"
-                ? cfEditor.appOn || cfEditor.webOn
+                ? Boolean(cfRecord?.live)
               : item.id === "common-leadership"
-                ? ldEditor.appOn || ldEditor.webOn
+                ? ldItems.some((entry) => entry.live)
               : item.id === "common-wellness-team"
                 ? wtEditor.appOn || wtEditor.webOn
               : item.id === "common-about"
                 ? aboutEditor.appOn || aboutEditor.webOn
               : item.id === "common-google-review"
-                ? grEditor.appOn || grEditor.webOn
+                ? (grStats ?? []).some((entry) => String(entry.value || "").trim())
               : item.id === "common-dropdowns"
                 ? dropdownLists.some((list) => list.options.some((entry) => entry.on))
               : item.id === "common-recipes"
@@ -1487,7 +1473,7 @@ export function ConfigDetailPage() {
               : item.id === "common-yoga"
                 ? ygItems.some((entry) => entry.live)
               : item.id === "common-blogs"
-                ? blEditor.appOn || blEditor.webOn
+                ? blEditor.appOn || blEditor.webOn || blPosts.some((entry) => entry.live)
               : item.id === "feature-flags"
                 ? featureFlags.some((entry) => entry.on)
           : item.toggleable === false
@@ -1920,30 +1906,20 @@ export function ConfigDetailPage() {
         );
       case "common-cofounder":
         return (
-          <CofounderSection
-            editor={cfEditor}
-            setEditor={setCfEditor}
-            photos={cfPhotos}
-            setPhotos={setCfPhotos}
-            messages={cfMessages}
-            setMessages={setCfMessages}
+          <DynamicCofounderSection
+            record={cfRecord}
+            setRecord={setCfRecord}
             onToast={onToast}
             onOpenPreview={() => setPreviewOpen(true)}
           />
         );
       case "common-leadership":
         return (
-          <CofounderSection
-            editor={ldEditor}
-            setEditor={setLdEditor}
-            photos={[]}
-            messages={ldMessages}
-            setMessages={setLdMessages}
+          <DynamicLeadershipSection
+            items={ldItems}
+            setItems={setLdItems}
             onToast={onToast}
             onOpenPreview={() => setPreviewOpen(true)}
-            titleOptions={LEADERSHIP_TITLES}
-            showPhotoHistory={false}
-            cropLabel="leader"
           />
         );
       case "common-wellness-team":
@@ -1977,14 +1953,11 @@ export function ConfigDetailPage() {
         );
       case "common-google-review":
         return (
-          <GoogleReviewSection
-            editor={grEditor}
-            setEditor={setGrEditor}
+          <DynamicGoogleReviewSection
             stats={grStats}
             setStats={setGrStats}
-            gallery={grGallery}
-            setGallery={setGrGallery}
             onToast={onToast}
+            onOpenPreview={() => setPreviewOpen(true)}
           />
         );
       case "common-dropdowns":
@@ -2019,7 +1992,7 @@ export function ConfigDetailPage() {
         );
       case "common-blogs":
         return (
-          <BlogsSection
+          <DynamicBlogsSection
             editor={blEditor}
             setEditor={setBlEditor}
             posts={blPosts}
@@ -2106,13 +2079,11 @@ export function ConfigDetailPage() {
           voiceEditor,
           voiceItems,
           cfEditor,
-          cfMessages,
-          ldEditor,
-          ldMessages,
+          cfRecord,
+          ldItems,
           wtEditor,
           wtMessages,
           aboutBlocks,
-          grEditor,
           grStats,
           dropdownLists,
           rcEditor,

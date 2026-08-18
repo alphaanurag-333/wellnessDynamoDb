@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { coverLayout, cropImageToFile } from "../utils/cropImage.js";
 
-const CROP_RATIOS = ["Original", "1:1", "4:3", "3:4", "16:9"];
+const CROP_RATIOS = ["Original", "1:1", "4:5", "3:4", "4:3", "16:9"];
 
 function cropAspectCss(ratio, originalAspectCss) {
   if (ratio === "Original") return originalAspectCss;

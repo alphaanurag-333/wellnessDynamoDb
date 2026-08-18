@@ -1393,21 +1393,72 @@ function ContactDetailsPreview({ details = [], surface, item }) {
   );
 }
 
-function GoogleReviewPreview({ editor = {}, stats = [] }) {
-  const webOn = editor.webOn !== false;
-  const appOn = editor.appOn !== false;
+function LeadershipPreview({ items = [] }) {
+  const live = items.filter((entry) => entry.live);
+  const featured = live[0];
 
-  function visible(surface) {
-    return stats.filter((entry) => {
-      if (!entry.shown) return false;
-      if (entry.surface === "both") return true;
-      return entry.surface === surface;
-    });
+  if (!featured) {
+    return (
+      <div className="ua-cfg-preview-modal__empty">
+        <p>No live leadership notes to preview.</p>
+      </div>
+    );
   }
 
-  function statRow(surface) {
-    const rows = visible(surface);
-    if (!rows.length) return <div className="ua-cfg-pt-preview__empty">No stats shown on this surface.</div>;
+  const photo = featured.profileImage;
+  const title = featured.title || featured.designation || "Leadership";
+
+  return (
+    <div className="ua-cfg-tf-live">
+      <div className="ua-cfg-tf-live__pane">
+        <span className="ua-cfg-bn-preview__label is-web">Website</span>
+        <div className="ua-cfg-pt-live-preview">
+          <div className="ua-cfg-pt-live-preview__bar">
+            <span className="ua-cfg-pt-live-preview__brand">IR</span>
+            <strong>Leadership Profile</strong>
+            <span className="ua-cfg-pt-live-preview__url">irwellness.in</span>
+          </div>
+          {photo ? (
+            <div className="ua-cfg-rc-view__media ua-cfg-rc-view__media--photo">
+              <img src={photo} alt="" />
+            </div>
+          ) : (
+            <div className="ua-cfg-vh-preview-video">👤</div>
+          )}
+          <p className="ua-cfg-ft-preview__copy">{featured.badge || "A NOTE FROM LEADERSHIP"}</p>
+          <p className="ua-cfg-ft-preview__copy"><strong>{featured.name}</strong> · {title}</p>
+          {featured.message ? <p className="ua-cfg-ft-preview__copy">{featured.message}</p> : null}
+        </div>
+      </div>
+      <div className="ua-cfg-tf-live__pane ua-cfg-tf-live__pane--app">
+        <span className="ua-cfg-bn-preview__label is-app">App</span>
+        <div className="ua-cfg-bn-preview__phone ua-cfg-tf-live__phone">
+          <div className="ua-cfg-bn-preview__phone-bar">
+            <span>9:41</span>
+            <strong>About</strong>
+            <span aria-hidden="true">🔔</span>
+          </div>
+          <div className="ua-cfg-tf-live__app-body">
+            <div className="ua-cfg-tf-live__app-head">
+              <span className="ua-cfg-pt-live-preview__brand">IR</span>
+              <strong>Leadership</strong>
+            </div>
+            {photo ? <img src={photo} alt="" style={{ width: "100%", borderRadius: 12, marginBottom: 8 }} /> : null}
+            <p><strong>{featured.name}</strong></p>
+            <p>{title}</p>
+            {featured.message ? <p>{featured.message.slice(0, 120)}{featured.message.length > 120 ? "…" : ""}</p> : null}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GoogleReviewPreview({ stats = [] }) {
+  const rows = stats.filter((entry) => String(entry.value || "").trim());
+
+  function statRow(surfaceLabel) {
+    if (!rows.length) return <div className="ua-cfg-pt-preview__empty">No stats set yet.</div>;
     return (
       <div className="ua-cfg-gr-preview">
         {rows.map((entry) => (
@@ -1422,38 +1473,34 @@ function GoogleReviewPreview({ editor = {}, stats = [] }) {
 
   return (
     <div className="ua-cfg-tf-live">
-      {webOn ? (
-        <div className="ua-cfg-tf-live__pane">
-          <span className="ua-cfg-bn-preview__label is-web">Website</span>
-          <div className="ua-cfg-pt-live-preview">
-            <div className="ua-cfg-pt-live-preview__bar">
+      <div className="ua-cfg-tf-live__pane">
+        <span className="ua-cfg-bn-preview__label is-web">Website</span>
+        <div className="ua-cfg-pt-live-preview">
+          <div className="ua-cfg-pt-live-preview__bar">
+            <span className="ua-cfg-pt-live-preview__brand">IR</span>
+            <strong>Google Review & Followers</strong>
+            <span className="ua-cfg-pt-live-preview__url">irwellness.in</span>
+          </div>
+          {statRow("web")}
+        </div>
+      </div>
+      <div className="ua-cfg-tf-live__pane ua-cfg-tf-live__pane--app">
+        <span className="ua-cfg-bn-preview__label is-app">App</span>
+        <div className="ua-cfg-bn-preview__phone ua-cfg-tf-live__phone">
+          <div className="ua-cfg-bn-preview__phone-bar">
+            <span>9:41</span>
+            <strong>About</strong>
+            <span aria-hidden="true">🔔</span>
+          </div>
+          <div className="ua-cfg-tf-live__app-body">
+            <div className="ua-cfg-tf-live__app-head">
               <span className="ua-cfg-pt-live-preview__brand">IR</span>
-              <strong>Google Review & Followers</strong>
-              <span className="ua-cfg-pt-live-preview__url">irwellness.in</span>
+              <strong>Stats</strong>
             </div>
-            {statRow("web")}
+            {statRow("app")}
           </div>
         </div>
-      ) : null}
-      {appOn ? (
-        <div className="ua-cfg-tf-live__pane ua-cfg-tf-live__pane--app">
-          <span className="ua-cfg-bn-preview__label is-app">App</span>
-          <div className="ua-cfg-bn-preview__phone ua-cfg-tf-live__phone">
-            <div className="ua-cfg-bn-preview__phone-bar">
-              <span>9:41</span>
-              <strong>About</strong>
-              <span aria-hidden="true">🔔</span>
-            </div>
-            <div className="ua-cfg-tf-live__app-body">
-              <div className="ua-cfg-tf-live__app-head">
-                <span className="ua-cfg-pt-live-preview__brand">IR</span>
-                <strong>Reviews</strong>
-              </div>
-              {statRow("app")}
-            </div>
-          </div>
-        </div>
-      ) : null}
+      </div>
     </div>
   );
 }
@@ -1837,30 +1884,22 @@ function renderPreviewBody(item, surface, previewState) {
         <VoicePreview
           editor={{
             ...previewState.cfEditor,
-            videoUploaded: previewState.cfEditor?.videoUploaded || previewState.cfEditor?.appVideo || previewState.cfEditor?.webVideo,
+            videoUploaded: previewState.cfEditor?.videoUploaded
+              || previewState.cfEditor?.type === "video"
+              || Boolean(previewState.cfEditor?.videoLink),
             clientName: asCopyString(previewState.cfEditor?.name),
           }}
-          items={(previewState.cfMessages ?? []).map((entry) => ({
-            ...entry,
-            title: asCopyString(entry.title),
-          }))}
+          items={previewState.cfRecord?.live ? [{
+            id: previewState.cfRecord.id,
+            title: asCopyString(previewState.cfRecord.name),
+            live: true,
+          }] : []}
           heading="Co-Founder Message"
         />
       );
     case "common-leadership":
       return (
-        <VoicePreview
-          editor={{
-            ...previewState.ldEditor,
-            videoUploaded: previewState.ldEditor?.videoUploaded || previewState.ldEditor?.appVideo || previewState.ldEditor?.webVideo,
-            clientName: asCopyString(previewState.ldEditor?.name),
-          }}
-          items={(previewState.ldMessages ?? []).map((entry) => ({
-            ...entry,
-            title: asCopyString(entry.title),
-          }))}
-          heading="Leadership Profile"
-        />
+        <LeadershipPreview items={previewState.ldItems ?? []} />
       );
     case "common-wellness-team":
       return (
@@ -1890,10 +1929,7 @@ function renderPreviewBody(item, surface, previewState) {
       );
     case "common-google-review":
       return (
-        <GoogleReviewPreview
-          editor={previewState.grEditor}
-          stats={previewState.grStats ?? []}
-        />
+        <GoogleReviewPreview stats={previewState.grStats ?? []} />
       );
     case "common-dropdowns":
       return (

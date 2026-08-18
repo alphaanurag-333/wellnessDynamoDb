@@ -33972,9 +33972,38 @@
 
 .updated-admin .ua-cfg-cf-photo {
   display: grid;
-  grid-template-columns: 180px minmax(0, 1fr);
+  grid-template-columns: 220px minmax(0, 1fr);
   gap: 16px;
   align-items: start;
+}
+
+.updated-admin .ua-cfg-cf-portrait-wrap {
+  width: 220px;
+  display: grid;
+  gap: 8px;
+}
+
+.updated-admin .ua-cfg-cf-portrait-wrap .ua-cfg-rc-cover-drop-wrap {
+  width: 220px;
+}
+
+.updated-admin .ua-cfg-cf-portrait-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.updated-admin .ua-cfg-cf-video-box {
+  display: grid;
+  gap: 10px;
+  max-width: 560px;
+}
+
+.updated-admin .ua-cfg-cf-video-box .ua-cfg-rc-view__embed,
+.updated-admin .ua-cfg-cf-video-box .ua-cfg-rc-view__player {
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .updated-admin .ua-cfg-cf-photo__status {
@@ -35243,6 +35272,23 @@
   text-shadow: 0 1px 2px rgba(15, 23, 42, 0.45);
 }
 
+.updated-admin .ua-cfg-cf .ua-cfg-rc-cover-drop.ua-cfg-cf-portrait-drop {
+  width: 220px;
+  height: auto;
+  min-height: 160px;
+  aspect-ratio: auto;
+  background: #f8fafc;
+}
+
+.updated-admin .ua-cfg-cf .ua-cfg-cf-portrait-drop .ua-cfg-rc-drop-preview {
+  position: static;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  display: block;
+  background: #f8fafc;
+}
+
 .updated-admin .ua-cfg-rc-file-btn {
   max-width: 100%;
   overflow: hidden;
@@ -35315,6 +35361,76 @@
   font-style: normal;
   font-size: 12px;
   color: #7a8799;
+}
+
+.updated-admin .ua-cfg-ld-cover-wrap {
+  width: 88px;
+  height: 110px;
+}
+
+.updated-admin .ua-cfg-ld .ua-cfg-rc-item {
+  grid-template-columns: 88px minmax(0, 1fr);
+  align-items: start;
+}
+
+.updated-admin .ua-cfg-ld-cover {
+  width: 88px;
+  height: 110px;
+  min-height: 110px;
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+.updated-admin .ua-cfg-ld-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: #8a97ab;
+}
+
+.updated-admin .ua-cfg-ld-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.updated-admin .ua-cfg-ld-chip.is-on {
+  background: #ecfdf5;
+  color: #166534;
+}
+
+.updated-admin .ua-cfg-ld-chip--app.is-on {
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.updated-admin .ua-cfg-ld .ua-cfg-rc-item__body > p {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.updated-admin .ua-cfg-ld .ua-cfg-rc-new__fields .ua-cfg-vh-field {
+  display: grid;
+  gap: 6px;
+}
+
+.updated-admin .ua-cfg-ld .ua-cfg-rc-new__fields .ua-cfg-vh-field > span {
+  font-size: 12px;
+  font-weight: 700;
+  color: #5a6b85;
 }
 
 .updated-admin .ua-cfg-rc-badge {
@@ -36569,6 +36685,12 @@
   .updated-admin .ua-cfg-cf-split,
   .updated-admin .ua-cfg-cf-msg {
     grid-template-columns: 1fr;
+  }
+
+  .updated-admin .ua-cfg-cf-portrait-wrap,
+  .updated-admin .ua-cfg-cf-portrait-wrap .ua-cfg-rc-cover-drop-wrap,
+  .updated-admin .ua-cfg-cf .ua-cfg-rc-cover-drop.ua-cfg-cf-portrait-drop {
+    width: min(220px, 100%);
   }
 
 

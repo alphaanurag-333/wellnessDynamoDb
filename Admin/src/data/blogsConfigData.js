@@ -1,37 +1,80 @@
+import { formatRecipeDate } from "./recipesConfigData.js";
+
 export const BLOGS_EDITOR = {
   appOn: true,
   webOn: true,
 };
 
-export const BLOG_POSTS = [
-  {
-    id: "bl-1",
-    title: "Why fasting insulin matters more than your weight",
-    description: "A short read on why insulin resistance shows up years before the scale moves — and what to test first.",
-    live: true,
-    cover: true,
-  },
-  {
-    id: "bl-2",
-    title: "Five Indian breakfasts that keep blood sugar flat",
-    description: "Poha, besan chilla, sprouts and two more — with the protein add-on that flattens the spike.",
-    live: true,
-    cover: true,
-  },
-  {
-    id: "bl-3",
-    title: "Prakriti explained: how constitution shapes your plan",
-    description: "Vata, Pitta and Kapha in plain language, and how your coach uses them to pick your protocol.",
-    live: true,
-    cover: true,
-  },
-];
+export const BLOG_POSTS = [];
 
-export const BLOG_GALLERY_OWNERS = ["All owners", "Anita Rao", "Ishita Sen", "Rohan Das", "Priya Nair", "Admin"];
+export const BLOG_GALLERY_OWNERS = ["All owners", "Admin"];
 
-export const BLOG_GALLERY = [
-  { id: "bl-g1", title: "Fasting insulin cover", owner: "Anita Rao", date: "22 Jul 2026", size: "1.4 MB", versions: 2, live: true },
-  { id: "bl-g2", title: "Indian breakfasts cover", owner: "Ishita Sen", date: "18 Jul 2026", size: "1.8 MB", versions: 1, live: true },
-  { id: "bl-g3", title: "Prakriti explained cover", owner: "Rohan Das", date: "16 Jul 2026", size: "1.6 MB", versions: 3, live: false },
-  { id: "bl-g4", title: "Blog hero — insulin", owner: "Priya Nair", date: "09 Jul 2026", size: "2.0 MB", versions: 1, live: false },
-];
+export const BLOG_GALLERY = [];
+
+export function mapBlogConfig(row) {
+  if (!row) return null;
+  return {
+    id: row.id || row._id || "blog-config",
+    appOn: row.appOn !== false,
+    webOn: row.webOn !== false,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+export function editorFromBlogConfig(row, fallback = BLOGS_EDITOR) {
+  const mapped = mapBlogConfig(row);
+  if (!mapped) return { ...fallback };
+  return {
+    ...fallback,
+    appOn: mapped.appOn,
+    webOn: mapped.webOn,
+    updatedAt: mapped.updatedAt,
+  };
+}
+
+export function mapBlogPost(row) {
+  if (!row) return null;
+  const id = row.id || row._id;
+  if (!id) return null;
+  return {
+    id,
+    title: String(row.title || "").trim(),
+    description: String(row.description || "").trim(),
+    live: row.status !== "inactive",
+    status: row.status === "inactive" ? "inactive" : "active",
+    cover: Boolean(row.coverImage),
+    coverImage: row.coverImage || "",
+    sortOrder: Number(row.sortOrder) || 0,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+export function mapBlogMedia(row) {
+  if (!row) return null;
+  const id = row.id || row._id;
+  if (!id) return null;
+  const sizeLabel = row.fileSizeLabel || row.fileSize || "";
+  return {
+    id,
+    title: String(row.title || "").trim() || "Blog cover",
+    owner: String(row.owner || "Admin").trim() || "Admin",
+    date: formatRecipeDate(row.updatedAt || row.createdAt),
+    size: sizeLabel,
+    versions: Number(row.versions) || 1,
+    live: row.status === "active",
+    status: row.status === "active" ? "active" : "inactive",
+    image: row.image || "",
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+export function galleryOwnersFromMedia(items = []) {
+  const owners = new Set(["Admin"]);
+  for (const entry of items) {
+    if (entry?.owner) owners.add(entry.owner);
+  }
+  return ["All owners", ...Array.from(owners).sort((a, b) => a.localeCompare(b))];
+}

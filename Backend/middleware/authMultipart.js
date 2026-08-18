@@ -71,6 +71,16 @@ const yogaUpload = memoryFields([
   { name: "file", maxCount: 1 },
 ]);
 
+const blogPostUpload = memoryFields([
+  { name: "coverFile", maxCount: 1 },
+  { name: "file", maxCount: 1 },
+]);
+
+const blogMediaUpload = memoryFields([
+  { name: "file", maxCount: 1 },
+  { name: "coverFile", maxCount: 1 },
+]);
+
 const physicalExerciseUpload = memoryFields([
   { name: "videoFile", maxCount: 1 },
   { name: "file", maxCount: 1 },
@@ -107,6 +117,8 @@ exports.optionalSupplementFile = optionalMultipart(supplementUpload);
 exports.optionalMentalWellbeingFile = optionalMultipart(mentalWellbeingUpload);
 exports.optionalHealthRecipeFile = optionalMultipart(healthRecipeUpload);
 exports.optionalYogaFile = optionalMultipart(yogaUpload);
+exports.optionalBlogPostFile = optionalMultipart(blogPostUpload);
+exports.optionalBlogMediaFile = optionalMultipart(blogMediaUpload);
 exports.optionalPhysicalExerciseFile = optionalMultipart(physicalExerciseUpload);
 exports.optionalTransformationFiles = optionalMultipart(transformationUploads);
 exports.optionalProgressPhotoFiles = optionalMultipart(progressPhotoUploads);
