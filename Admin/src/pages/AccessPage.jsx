@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useNavigate, useOutletContext } from "react-router-dom";
-import { OrangeButton, PageHeader, PillTabs, TableScroll, ListPagination } from "../components/shared.jsx";
+import { CfgSelect, OrangeButton, PageHeader, PillTabs, TableScroll, ListPagination } from "../components/shared.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import { staffInitials } from "../data/teamsData.js";
@@ -34,13 +34,13 @@ import {
   PERM_CATALOG,
   ROLE_META,
   ROLE_ORDER,
-  SIMULATOR_ROWS,
   TOTAL_PERM_SLOTS,
   cellKind,
   cloneGrants,
   copyRoleGrants,
   countGranted,
   featureGrantedCount,
+  roleHas,
   sectionStats,
   toggleGrant,
   vsParentDelta,
@@ -1308,8 +1308,17 @@ function MembersTab({ onToast }) {
 
   const totalLabel = `${pagination.total} of ${baseTotal || pagination.total} members`;
 
+  const roleSelectOptions = useMemo(
+    () => assignableRoles.map((r) => ({ value: r.id, label: r.name })),
+    [assignableRoles],
+  );
+  const roleFilterOptions = useMemo(
+    () => [{ value: "", label: "All roles" }, ...roleSelectOptions],
+    [roleSelectOptions],
+  );
+
   return (
-    <>
+    <div className="ua-ac-members">
       <div className="ua-ac-members-toolbar">
         <div className="ua-search-wrap">
           <svg className="ua-search-wrap__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -1324,19 +1333,14 @@ function MembersTab({ onToast }) {
             aria-label="Search members"
           />
         </div>
-        <select
+        <CfgSelect
           className="ua-ac-members-toolbar__select"
+          options={roleFilterOptions}
           value={roleFilter}
-          onChange={(e) => setRoleFilter(e.target.value)}
-          aria-label="Filter by role"
-        >
-          <option value="">All roles</option>
-          {assignableRoles.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.name}
-            </option>
-          ))}
-        </select>
+          onChange={setRoleFilter}
+          ariaLabel="Filter by role"
+          placeholder="All roles"
+        />
         <div className="ua-ac-members-toolbar__count">{totalLabel}</div>
       </div>
 
@@ -1350,7 +1354,7 @@ function MembersTab({ onToast }) {
 
       {!loading && !error ? (
         <TableScroll>
-          <div className="ua-table-card">
+          <div className="ua-table-card ua-table-card--ac-members">
             <div className="ua-table ua-table--ac-members ua-table__head">
               <div>Member</div>
               <div>Assigned role</div>
@@ -1378,9 +1382,9 @@ function MembersTab({ onToast }) {
                     <span
                       className="ua-avatar ua-avatar--staff"
                       style={{
-                        background: meta.bg,
-                        color: meta.color,
-                        borderColor: meta.bd,
+                        background: meta.color,
+                        color: "#fff",
+                        borderColor: meta.color,
                       }}
                     >
                       {staffInitials(m.name)}
@@ -1399,22 +1403,20 @@ function MembersTab({ onToast }) {
                         {meta.name}
                       </span>
                     ) : (
-                      <select
+                      <CfgSelect
                         className="ua-ac-role-select"
+                        options={[
+                          ...(!roleSelectOptions.some((r) => String(r.value) === String(currentRoleId))
+                            ? [{ value: currentRoleId, label: meta.name }]
+                            : []),
+                          ...roleSelectOptions,
+                        ]}
                         value={currentRoleId}
                         disabled={busyId === m.id}
-                        onChange={(e) => handleRoleChange(m, e.target.value)}
-                        aria-label={`Role for ${m.name}`}
-                      >
-                        {!assignableRoles.some((r) => r.id === currentRoleId) ? (
-                          <option value={currentRoleId}>{meta.name}</option>
-                        ) : null}
-                        {assignableRoles.map((r) => (
-                          <option key={r.id} value={r.id}>
-                            {r.name}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(value) => handleRoleChange(m, value)}
+                        ariaLabel={`Role for ${m.name}`}
+                        placeholder="Choose role"
+                      />
                     )}
                   </div>
                   <div>
@@ -1433,10 +1435,10 @@ function MembersTab({ onToast }) {
                   </div>
                   <div>
                     <span className={`ua-ac-override${m.hasOverrides ? " ua-ac-override--custom" : ""}`}>
-                      {m.hasOverrides ? "personal" : "role default"}
+                      {m.hasOverrides ? "Personal" : "Role default"}
                     </span>
                   </div>
-                  <div>
+                  <div className="ua-ac-members-actions">
                     <button
                       type="button"
                       className="ua-ac-fine-tune"
@@ -1462,7 +1464,7 @@ function MembersTab({ onToast }) {
           label="Access members pagination"
         />
       ) : null}
-    </>
+    </div>
   );
 }
 
@@ -1548,22 +1550,13 @@ function ApprovalsTab({ onToast, onCountChange }) {
 
 function formatAuditWhen(iso) {
   if (!iso) return "—";
-  const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return "—";
-  const diffMs = Date.now() - then;
-  const mins = Math.floor(diffMs / 60000);
-  if (mins < 60) return `${Math.max(1, mins)}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  if (days < 7) return `${days}d ago`;
-  const weeks = Math.floor(days / 7);
-  if (weeks < 5) return `${weeks}w ago`;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "—";
   return new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
     month: "short",
     year: "numeric",
-  }).format(new Date(iso));
+  }).format(date);
 }
 
 const AUDIT_TYPE_OPTIONS = [
@@ -1581,6 +1574,7 @@ function AuditLogTab() {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
+  const [baseTotal, setBaseTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({
     page: 1,
@@ -1615,6 +1609,9 @@ function AuditLogTab() {
         total: Number(nextPagination?.total) || 0,
         pages: Math.max(1, Number(nextPagination?.pages) || 1),
       });
+      if (!search && !typeFilter) {
+        setBaseTotal(Number(nextPagination?.total) || 0);
+      }
     } catch (err) {
       setError(err?.message || "Failed to load audit log");
       setEntries([]);
@@ -1633,13 +1630,15 @@ function AuditLogTab() {
     if (page > pagination.pages) setPage(pagination.pages);
   }, [error, loading, page, pagination.pages]);
 
-  const countLabel = `${pagination.total} ${pagination.total === 1 ? "entry" : "entries"}`;
+  const countLabel = `${pagination.total} of ${baseTotal || pagination.total} ${pagination.total === 1 ? "entry" : "entries"}`;
 
   return (
     <div className="ua-audit">
-      <p className="ua-page-head__sub">Every access change and staff activity, newest first. (Phase B)</p>
-      <div className="ua-search-row">
-        <div className="ua-search-wrap ua-search-wrap--wide">
+      <p className="ua-page-head__sub">
+        Every access change and staff activity, newest first. Requests, approvals, rejections, direct admin edits and what each member did.
+      </p>
+      <div className="ua-ac-members-toolbar">
+        <div className="ua-search-wrap">
           <svg className="ua-search-wrap__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <circle cx="11" cy="11" r="8" />
             <path d="m21 21-4.3-4.3" />
@@ -1652,32 +1651,28 @@ function AuditLogTab() {
             aria-label="Search audit log"
           />
         </div>
-        <select
-          className="header__select"
+        <CfgSelect
+          className="ua-ac-members-toolbar__select"
+          options={AUDIT_TYPE_OPTIONS}
           value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value)}
-          aria-label="Filter audit log by type"
-        >
-          {AUDIT_TYPE_OPTIONS.map((opt) => (
-            <option key={opt.value || "all"} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-        <span className="ua-table__muted">{countLabel}</span>
+          onChange={setTypeFilter}
+          ariaLabel="Filter audit log by type"
+          placeholder="All types"
+        />
+        <div className="ua-ac-members-toolbar__count">{countLabel}</div>
       </div>
 
       {loading ? <p className="ua-page-head__sub">Loading audit log…</p> : null}
       {error ? (
         <div className="ua-section-bar">
           <span>{error}</span>
-          <OrangeButton onClick={load}>Retry</OrangeButton>
+          <OrangeButton onClick={() => load(page)}>Retry</OrangeButton>
         </div>
       ) : null}
 
       {!loading && !error ? (
         <TableScroll>
-          <div className="ua-table-card">
+          <div className="ua-table-card ua-table-card--audit">
             <div className="ua-table ua-table--audit ua-table__head">
               <div>Type</div>
               <div>Event</div>
@@ -1704,11 +1699,11 @@ function AuditLogTab() {
                   {entry.detail ? <div className="ua-log-detail">{entry.detail}</div> : null}
                 </div>
                 <div>
-                  <div>{entry.subject}</div>
-                  {entry.subjectMeta ? <div className="ua-table__muted">{entry.subjectMeta}</div> : null}
+                  <div className="ua-log-subject">{entry.subject || "—"}</div>
+                  {entry.subjectMeta ? <div className="ua-log-detail">{entry.subjectMeta}</div> : null}
                 </div>
-                <div>{entry.actor}</div>
-                <div className="ua-table__muted">{formatAuditWhen(entry.createdAt)}</div>
+                <div className="ua-log-actor">{entry.actor || "—"}</div>
+                <div className="ua-log-when">{formatAuditWhen(entry.createdAt)}</div>
               </div>
             ))}
           </div>
@@ -1725,6 +1720,149 @@ function AuditLogTab() {
           label="Audit log pagination"
         />
       ) : null}
+    </div>
+  );
+}
+
+function SimulatorTab() {
+  const [loading, setLoading] = useState(true);
+  const [roleId, setRoleId] = useState("wc");
+  const [apiRoles, setApiRoles] = useState([]);
+  const [grants, setGrants] = useState(cloneGrants());
+  const [parents, setParents] = useState({ ...DEFAULT_PARENTS });
+  const [views, setViews] = useState({ ...DEFAULT_VIEWS });
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const roles = await fetchAccessRoles();
+        if (cancelled) return;
+        const list = Array.isArray(roles) && roles.length ? roles : [];
+        setApiRoles(list);
+        if (list.length) {
+          setGrants(rolesToGrantsState(list));
+          setParents(rolesToParentsState(list));
+          setViews(rolesToViewsState(list));
+          setRoleId((prev) => (list.some((r) => roleUiKey(r) === prev) ? prev : roleUiKey(list.find((r) => r.roleKey === "wc") || list[0])));
+        }
+      } catch {
+        if (!cancelled) setApiRoles([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const roleList = useMemo(() => {
+    const mapped = mapApiRolesToUi(apiRoles);
+    if (mapped.length) return mapped;
+    return ROLE_ORDER.map((id) => ({
+      id,
+      name: ROLE_META[id]?.name || id,
+      scope: ROLE_META[id]?.scope || "All",
+    }));
+  }, [apiRoles]);
+
+  const role = roleList.find((r) => r.id === roleId) || roleList[0];
+  const roleName = role?.name || "this role";
+  const granted = role ? countGranted(grants, parents, role.id) : 0;
+  const navOpen = role ? views[role.id] || DEFAULT_VIEWS[role.id] || [] : [];
+  const selectOptions = roleList.map((r) => ({
+    value: r.id,
+    label: `${r.name} (role baseline)`,
+  }));
+
+  const rows = useMemo(() => {
+    if (!role) return [];
+    return PERM_CATALOG.map((entry) => {
+      const [, featureName, featureId, actions] = entry;
+      const allowed = actions.filter((act) => roleHas(grants, parents, role.id, featureId, act));
+      const visible = allowed.includes("view") || allowed.length > 0;
+      return {
+        featureId,
+        featureName,
+        actions,
+        allowed,
+        visible,
+        reason: visible
+          ? "role baseline allows it, no override in play"
+          : `hidden — not in the ${roleName} baseline.`,
+      };
+    });
+  }, [grants, parents, role, roleName]);
+
+  return (
+    <div className="ua-sim">
+      <section className="ua-sim-panel">
+        <div className="ua-sim-panel__head">
+          <span className="ua-sim-panel__label">Previewing access as</span>
+          <CfgSelect
+            className="ua-sim-select"
+            options={selectOptions}
+            value={role?.id || ""}
+            disabled={loading}
+            onChange={setRoleId}
+            ariaLabel="Preview role"
+            placeholder="Choose a role"
+          />
+          <span className="ua-sim-scope">scope: {role?.scope || "All"}</span>
+          <span className="ua-sim-meta">
+            {loading ? "Loading…" : `${granted} of ${TOTAL_PERM_SLOTS} actions available · baseline only`}
+          </span>
+        </div>
+      </section>
+
+      <section className="ua-sim-panel">
+        <h3 className="ua-sim-panel__title">Left navigation they would see</h3>
+        <div className="ua-sim-nav">
+          {AC_SECTIONS.map((sec) => {
+            const open = navOpen.includes(sec.id);
+            return (
+              <span key={sec.id} className={`ua-sim-nav__pill${open ? " is-on" : ""}`}>
+                {sec.label}
+              </span>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="ua-sim-panel">
+        <h3 className="ua-sim-panel__title">What they can do, and why</h3>
+        <div className="ua-sim-list">
+          {rows.map((row) => (
+            <div key={row.featureId} className={`ua-sim-row${row.visible ? " is-on" : ""}`}>
+              <span className={`ua-sim-row__icon${row.visible ? " ua-sim-row__icon--ok" : ""}`} aria-hidden="true">
+                {row.visible ? "👁" : "🔒"}
+              </span>
+              <div className="ua-sim-row__body">
+                <div className="ua-sim-row__feature">{row.featureName}</div>
+                <div className="ua-sim-row__reason">{row.reason}</div>
+              </div>
+              <div className="ua-sim-acts">
+                {row.actions.map((act) => {
+                  const on = row.allowed.includes(act);
+                  return (
+                    <span
+                      key={act}
+                      className={`ua-sim-act${on ? (act === "view" ? " is-on" : " is-write") : ""}`}
+                    >
+                      {act}
+                    </span>
+                  );
+                })}
+              </div>
+              <span className={`ua-sim-pill${row.visible ? " ua-sim-pill--ok" : ""}`}>
+                {row.visible ? "Visible" : "Hidden"}
+              </span>
+            </div>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
@@ -1796,36 +1934,7 @@ export function AccessPage() {
 
       {tab === "policies" ? <PoliciesTab onToast={onToast} /> : null}
 
-      {tab === "simulator" ? (
-        <div className="ua-sim-card">
-          <div className="ua-sim-card__head">
-            <strong>Previewing access as</strong>
-            <select className="header__select" defaultValue="awc">
-              <option value="admin">Admin</option>
-              <option value="wc">Wellness Coach</option>
-              <option value="awc">Assistant WC</option>
-              <option value="trainee">Trainee</option>
-              <option value="support">Support</option>
-            </select>
-            <span className="chip chip--global">scope: Team</span>
-          </div>
-          <p className="ua-page-head__sub" style={{ padding: "0 16px 8px" }}>
-            Live simulator lands in Phase C — preview below is illustrative.
-          </p>
-          {SIMULATOR_ROWS.map((row) => (
-            <div key={row.feature} className="ua-sim-row">
-              <span className={`ua-sim-row__icon${row.verdict === "Visible" ? " ua-sim-row__icon--ok" : ""}`}>
-                {row.verdict === "Visible" ? "👁" : "🔒"}
-              </span>
-              <div className="ua-sim-row__body">
-                <div className="ua-sim-row__feature">{row.feature}</div>
-                <div className="ua-sim-row__reason">{row.reason}</div>
-              </div>
-              <span className={`ua-sim-pill${row.verdict === "Visible" ? " ua-sim-pill--ok" : ""}`}>{row.verdict}</span>
-            </div>
-          ))}
-        </div>
-      ) : null}
+      {tab === "simulator" ? <SimulatorTab /> : null}
 
       {tab === "approvals" ? (
         <ApprovalsTab onToast={onToast} onCountChange={setPendingCount} />

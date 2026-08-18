@@ -7,6 +7,7 @@ import {
 } from "../api/videoTestimonialApi.js";
 import { TESTIMONIAL_PAGE_SIZE } from "../data/testimonialDropdownData.js";
 import { formatRecipeDate, youtubeEmbedUrl } from "../data/recipesConfigData.js";
+import { asCopyString } from "../data/bannerConfigData.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
 import { ListPagination } from "./shared.jsx";
@@ -38,27 +39,63 @@ function Panel({ title, subtitle, actions, children }) {
 
 function CoverDrop({ previewUrl, disabled, onPick, onRemove }) {
   const inputRef = useRef(null);
+  const filled = Boolean(previewUrl);
+
   return (
-    <div className="ua-cfg-rc-cover-drop-wrap">
-      <div className="ua-cfg-rc-cover-drop-frame">
-        <button
-          type="button"
-          className={`ua-cfg-rc-cover-drop${previewUrl ? " is-on" : ""}`}
-          disabled={disabled}
-          aria-label={previewUrl ? "Replace cover image" : "Add cover image"}
-          onClick={() => inputRef.current?.click()}
-        >
-          {previewUrl ? <img className="ua-cfg-rc-drop-preview" src={previewUrl} alt="" /> : <span aria-hidden="true">🖼</span>}
-          <em>{previewUrl ? "Replace" : "Cover image"}</em>
-        </button>
-        {previewUrl && onRemove ? (
-          <button type="button" className="ua-cfg-rc-media-x" aria-label="Remove cover image" disabled={disabled} onClick={onRemove}>×</button>
-        ) : null}
-      </div>
+    <div className={`ua-cfg-tf-drop ua-cfg-tf-drop--before ua-cfg-vh-dropbox${filled ? " is-on" : ""}`}>
+      {filled ? <img className="ua-cfg-tf-drop__img" src={previewUrl} alt="" /> : null}
+      <span className="ua-cfg-tf-drop__icon" aria-hidden="true">🖼</span>
+      <p className="ua-cfg-tf-drop__label">Cover image</p>
+      <button
+        type="button"
+        className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-drop__btn"
+        disabled={disabled}
+        onClick={() => inputRef.current?.click()}
+      >
+        {filled ? "Replace photo" : "Upload photo"}
+      </button>
+      {filled && onRemove ? (
+        <button type="button" className="ua-cfg-rc-media-x" aria-label="Remove cover image" disabled={disabled} onClick={onRemove}>×</button>
+      ) : null}
       <input
         ref={inputRef}
         type="file"
         accept="image/*"
+        hidden
+        disabled={disabled}
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          if (file) onPick(file);
+        }}
+      />
+    </div>
+  );
+}
+
+function VideoDrop({ fileName, disabled, onPick, onRemove }) {
+  const inputRef = useRef(null);
+  const filled = Boolean(fileName);
+
+  return (
+    <div className={`ua-cfg-tf-drop ua-cfg-tf-drop--after ua-cfg-vh-dropbox${filled ? " is-on" : ""}`}>
+      <span className="ua-cfg-tf-drop__icon" aria-hidden="true">▶</span>
+      <p className="ua-cfg-tf-drop__label">{filled ? fileName : "Video file"}</p>
+      <button
+        type="button"
+        className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-drop__btn"
+        disabled={disabled}
+        onClick={() => inputRef.current?.click()}
+      >
+        {filled ? "Replace video" : "Upload video"}
+      </button>
+      {filled && onRemove ? (
+        <button type="button" className="ua-cfg-rc-media-x" aria-label="Remove video" disabled={disabled} onClick={onRemove}>×</button>
+      ) : null}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="video/*"
         hidden
         disabled={disabled}
         onChange={(event) => {
@@ -77,54 +114,45 @@ function VoiceViewModal({ entry, onClose, onEdit }) {
   const embed = youtubeEmbedUrl(entry.ytLink);
   const isVideo = entry.type === "video";
   return (
-    <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={onClose} role="presentation">
-      <div className="ua-cfg-rc-view" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="vh-view-title">
+    <div className="ua-cp-modal-backdrop" onClick={onClose} role="presentation">
+      <div className="ua-cfg-rc-view ua-cfg-vh-view" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="vh-view-title">
         <div className="ua-cfg-rc-view__head">
           <div>
             <p className="ua-cfg-rc-view__tag">Voice of Healing</p>
-            <h3 id="vh-view-title">{entry.name || "Untitled video"}</h3>
-            <p>{isVideo ? "Uploaded video" : "YouTube link"} · {entry.live ? "Live" : "Hidden"}</p>
+            <h3 id="vh-view-title">{asCopyString(entry.name) || "Untitled video"}</h3>
+            <p>
+              {isVideo ? "Uploaded video" : "YouTube link"}
+              <span className={`ua-cfg-tf-view__status${entry.live ? " is-live" : ""}`}>
+                {entry.live ? "Live" : "Hidden"}
+              </span>
+            </p>
           </div>
-          <button type="button" className="ua-cfg-mv-upload-modal__close" aria-label="Close" onClick={onClose}>×</button>
+          <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={onClose}>×</button>
         </div>
-        {photo ? (
-          <div className="ua-cfg-rc-view__media">
-            <img src={photo} alt="" />
-          </div>
-        ) : (
-          <div className="ua-cfg-rc-view__media"><div className="ua-cfg-rc-view__media-empty">No cover</div></div>
-        )}
-        <dl className="ua-cfg-rc-view__meta">
-          <div>
-            <dt>Type</dt>
-            <dd>{isVideo ? "Uploaded video" : "YouTube link"}</dd>
-          </div>
-          <div>
-            <dt>{isVideo ? "Video" : "YouTube"}</dt>
-            <dd>
-              {isVideo && entry.video ? (
-                <a href={entry.video} target="_blank" rel="noreferrer">{entry.video}</a>
-              ) : entry.ytLink ? (
-                <a href={entry.ytLink} target="_blank" rel="noreferrer">{entry.ytLink}</a>
-              ) : "—"}
-            </dd>
-          </div>
-          <div>
-            <dt>Status</dt>
-            <dd>{entry.live ? "Live" : "Hidden"}</dd>
-          </div>
-          <div>
-            <dt>Updated</dt>
-            <dd>{formatRecipeDate(entry.updatedAt)}</dd>
-          </div>
-        </dl>
-        {embed ? (
-          <div className="ua-cfg-rc-view__embed">
-            <iframe title={entry.name || "Voice of Healing video"} src={embed} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
-          </div>
-        ) : isVideo && entry.video ? (
-          <video className="ua-cfg-rc-view__player" src={entry.video} controls preload="metadata" />
-        ) : null}
+        <div className="ua-cfg-vh-view__body">
+          {photo ? (
+            <div className="ua-cfg-rc-view__media">
+              <img src={photo} alt="" />
+            </div>
+          ) : null}
+          {embed ? (
+            <div className="ua-cfg-rc-view__embed">
+              <iframe title={asCopyString(entry.name) || "Voice of Healing video"} src={embed} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+            </div>
+          ) : isVideo && entry.video ? (
+            <video className="ua-cfg-rc-view__player" src={entry.video} controls preload="metadata" />
+          ) : null}
+          <dl className="ua-cfg-rc-view__meta">
+            <div>
+              <dt>Type</dt>
+              <dd>{isVideo ? "Uploaded video" : "YouTube link"}</dd>
+            </div>
+            <div>
+              <dt>Updated</dt>
+              <dd>{formatRecipeDate(entry.updatedAt)}</dd>
+            </div>
+          </dl>
+        </div>
         <div className="ua-cfg-rc-view__foot">
           <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose}>Close</button>
           <button
@@ -135,7 +163,7 @@ function VoiceViewModal({ entry, onClose, onEdit }) {
               onClose();
             }}
           >
-            Edit testimonial
+            Edit video
           </button>
         </div>
       </div>
@@ -157,7 +185,6 @@ export function DynamicVoiceOfHealingSection({ items, setItems, onToast }) {
   const [pendingDelete, setPendingDelete] = useState(null);
   const [cropPending, setCropPending] = useState(null);
   const coverInputRefs = useRef({});
-  const videoInputRef = useRef(null);
 
   const loadItems = useCallback(async (pageOverride) => {
     const nextPage = pageOverride ?? page;
@@ -229,6 +256,15 @@ export function DynamicVoiceOfHealingSection({ items, setItems, onToast }) {
       if (prev.imagePreview?.startsWith("blob:")) URL.revokeObjectURL(prev.imagePreview);
       return { ...prev, imageFile: null, imagePreview: "" };
     });
+  }
+
+  function clearDraftVideo() {
+    setDraft((prev) => ({
+      ...prev,
+      videoFile: null,
+      videoName: "",
+      type: prev.ytLink.trim() ? "link" : "link",
+    }));
   }
 
   async function confirmCrop(croppedFile, cropError) {
@@ -362,7 +398,7 @@ export function DynamicVoiceOfHealingSection({ items, setItems, onToast }) {
         actions={(
           <button
             type="button"
-            className="ua-cfg-rc-add"
+            className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-tf-add-btn"
             disabled={busy}
             onClick={() => {
               setCreating(true);
@@ -376,51 +412,49 @@ export function DynamicVoiceOfHealingSection({ items, setItems, onToast }) {
         )}
       >
         {creating ? (
-          <section className="ua-cfg-rc-new">
+          <section className="ua-cfg-rc-new ua-cfg-vh-new">
             <div className="ua-cfg-rc-new__head">
               <strong><span aria-hidden="true">▶</span> New video</strong>
               <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={() => setCreating(false)}>×</button>
             </div>
-            <div className="ua-cfg-rc-new__grid">
-              <div className="ua-cfg-rc-new__media">
+            <div className="ua-cfg-vh-new__grid">
+              <div className="ua-cfg-vh-new__media">
                 <CoverDrop
                   previewUrl={draft.imagePreview}
                   disabled={busy}
                   onPick={(file) => openCrop(file, "draft")}
                   onRemove={clearDraftPhoto}
                 />
+                <VideoDrop
+                  fileName={draft.videoName}
+                  disabled={busy}
+                  onPick={(file) => setDraft((prev) => ({ ...prev, videoFile: file, videoName: file.name, type: "video" }))}
+                  onRemove={clearDraftVideo}
+                />
               </div>
-              <div className="ua-cfg-rc-new__fields">
-                <input
-                  className="ua-cfg-vh-input"
-                  placeholder="Title · e.g. Madhupriya's reversal story"
-                  value={draft.name}
-                  disabled={busy}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, name: event.target.value }))}
-                />
-                <input
-                  className="ua-cfg-vh-input"
-                  placeholder="YouTube link"
-                  value={draft.ytLink}
-                  disabled={busy}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, ytLink: event.target.value, type: prev.videoFile ? "video" : "link" }))}
-                />
-                <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={() => videoInputRef.current?.click()}>
-                  {draft.videoName ? `Video: ${draft.videoName}` : "Or upload a video file"}
-                </button>
-                <input
-                  ref={videoInputRef}
-                  type="file"
-                  accept="video/*"
-                  hidden
-                  disabled={busy}
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    event.target.value = "";
-                    if (!file) return;
-                    setDraft((prev) => ({ ...prev, videoFile: file, videoName: file.name, type: "video" }));
-                  }}
-                />
+              <div className="ua-cfg-vh-new__fields">
+                <label className="ua-cfg-vh-field">
+                  <span>Title</span>
+                  <input
+                    className="ua-cfg-vh-input"
+                    placeholder="Title · e.g. Madhupriya's reversal story"
+                    value={asCopyString(draft.name)}
+                    disabled={busy}
+                    onChange={(event) => setDraft((prev) => ({ ...prev, name: event.target.value }))}
+                  />
+                </label>
+                <label className="ua-cfg-vh-field">
+                  <span>YouTube link</span>
+                  <input
+                    className="ua-cfg-vh-input"
+                    placeholder="https://youtube.com/…"
+                    value={asCopyString(draft.ytLink)}
+                    disabled={busy}
+                    onChange={(event) => setDraft((prev) => ({ ...prev, ytLink: event.target.value, type: prev.videoFile ? "video" : "link" }))}
+                  />
+                </label>
+              </div>
+              <div className="ua-cfg-vh-new__foot">
                 <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={addItem}>
                   {busy ? "Saving…" : "Add video"}
                 </button>
@@ -447,7 +481,7 @@ export function DynamicVoiceOfHealingSection({ items, setItems, onToast }) {
               const photo = entry.imagePreview || entry.profileImage;
               const embed = youtubeEmbedUrl(entry.ytLink);
               return (
-                <article key={entry.id} className="ua-cfg-rc-item is-text">
+                <article key={entry.id} className="ua-cfg-rc-item ua-cfg-vh-item">
                   <div className="ua-cfg-rc-cover-wrap">
                     <button
                       type="button"
@@ -475,41 +509,67 @@ export function DynamicVoiceOfHealingSection({ items, setItems, onToast }) {
                     />
                   </div>
                   <div className="ua-cfg-rc-item__body">
-                    <div className="ua-cfg-rc-item__row">
-                      {isEditing ? (
-                        <input className="ua-cfg-vh-input ua-cfg-rc-title" value={entry.name} disabled={busy} onChange={(event) => patchItem(entry.id, { name: event.target.value })} />
-                      ) : (
-                        <strong>{entry.name}</strong>
-                      )}
-                      <span className="ua-cfg-rc-pill ua-cfg-rc-pill--cat">{entry.type === "video" ? "Video" : "Link"}</span>
-                      <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>{entry.live ? "LIVE" : "HIDDEN"}</span>
-                      <button type="button" className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`} aria-pressed={entry.live} disabled={busy} onClick={() => toggleLive(entry)}>
-                        <span className="ua-toggle__knob" />
-                      </button>
-                      <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={() => setViewingId(entry.id)}>View</button>
-                      {isEditing ? (
-                        <>
-                          <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={busy} onClick={() => saveItem(entry)}>Save</button>
-                          <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm" disabled={busy} onClick={() => { setEditingId(null); loadItems(); }}>Cancel</button>
-                        </>
-                      ) : (
-                        <button type="button" className="ua-cfg-cr-link ua-cfg-cr-link--modify" disabled={busy} onClick={() => { setViewingId(null); setEditingId(entry.id); setCreating(false); }}>Edit</button>
-                      )}
-                      <button type="button" className="ua-cfg-icon-btn" aria-label={`Delete ${entry.name}`} disabled={busy} onClick={() => setPendingDelete(entry)}>×</button>
+                    <div className="ua-cfg-vh-item__head">
+                      <div className="ua-cfg-vh-item__identity">
+                        {isEditing ? (
+                          <input
+                            className="ua-cfg-vh-input ua-cfg-rc-title"
+                            value={asCopyString(entry.name)}
+                            disabled={busy}
+                            onChange={(event) => patchItem(entry.id, { name: event.target.value })}
+                          />
+                        ) : (
+                          <strong>{asCopyString(entry.name)}</strong>
+                        )}
+                        <div className="ua-cfg-vh-item__meta">
+                          <span className={`ua-cfg-rc-pill${entry.type === "video" ? " ua-cfg-rc-pill--video" : " ua-cfg-rc-pill--cat"}`}>
+                            {entry.type === "video" ? "Video" : "Link"}
+                          </span>
+                          {isEditing ? null : (
+                            <p className="ua-cfg-panel__sub">
+                              {entry.type === "video" ? "Uploaded video" : (embed ? "YouTube link" : asCopyString(entry.ytLink) || "No link")}
+                              {" · "}
+                              {formatRecipeDate(entry.updatedAt)}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="ua-cfg-vh-item__actions">
+                        <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>{entry.live ? "LIVE" : "HIDDEN"}</span>
+                        <button type="button" className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`} aria-pressed={entry.live} disabled={busy} onClick={() => toggleLive(entry)}>
+                          <span className="ua-toggle__knob" />
+                        </button>
+                        <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={() => setViewingId(entry.id)}>View</button>
+                        {isEditing ? (
+                          <>
+                            <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={busy} onClick={() => saveItem(entry)}>Save</button>
+                            <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={() => { setEditingId(null); loadItems(); }}>Cancel</button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                            disabled={busy}
+                            onClick={() => { setViewingId(null); setEditingId(entry.id); setCreating(false); }}
+                          >
+                            Edit
+                          </button>
+                        )}
+                        <button type="button" className="ua-cfg-icon-btn" aria-label={`Delete ${asCopyString(entry.name)}`} disabled={busy} onClick={() => setPendingDelete(entry)}>×</button>
+                      </div>
                     </div>
                     {isEditing ? (
-                      <input
-                        className="ua-cfg-vh-input"
-                        placeholder="YouTube link"
-                        value={entry.ytLink}
-                        disabled={busy}
-                        onChange={(event) => patchItem(entry.id, { ytLink: event.target.value })}
-                      />
-                    ) : (
-                      <p className="ua-cfg-panel__sub">
-                        {entry.type === "video" ? "Uploaded video" : (embed ? "YouTube link" : entry.ytLink || "No link")} · {formatRecipeDate(entry.updatedAt)}
-                      </p>
-                    )}
+                      <label className="ua-cfg-vh-field">
+                        <span>YouTube link</span>
+                        <input
+                          className="ua-cfg-vh-input"
+                          placeholder="https://youtube.com/…"
+                          value={asCopyString(entry.ytLink)}
+                          disabled={busy}
+                          onChange={(event) => patchItem(entry.id, { ytLink: event.target.value })}
+                        />
+                      </label>
+                    ) : null}
                   </div>
                 </article>
               );
@@ -556,7 +616,7 @@ export function DynamicVoiceOfHealingSection({ items, setItems, onToast }) {
       <ConfirmDialog
         open={Boolean(pendingDelete)}
         tag="Voice of Healing"
-        title={`Delete ${pendingDelete?.name || "this video"}?`}
+        title={`Delete ${asCopyString(pendingDelete?.name) || "this video"}?`}
         body="This permanently removes the video and its cover image."
         confirmLabel="Delete"
         confirmTone="danger"
