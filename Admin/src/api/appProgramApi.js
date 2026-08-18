@@ -185,3 +185,58 @@ export async function triggerCoachCheckout(payload) {
     normalizeApiError(error);
   }
 }
+
+export async function listCoachCheckoutHistory(userId) {
+  try {
+    const { data } = await api.get("/account/coach-checkout/transactions", {
+      params: { userId },
+    });
+    return Array.isArray(data.history) ? data.history : [];
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+function filenameFromDisposition(header) {
+  const value = String(header || "");
+  const utf = value.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf?.[1]) return decodeURIComponent(utf[1]);
+  const plain = value.match(/filename="?([^"]+)"?/i);
+  return plain?.[1] || "invoice.pdf";
+}
+
+export async function downloadCoachCheckoutInvoice(transactionId) {
+  try {
+    const { data, headers } = await api.get(
+      `/account/coach-checkout/transactions/${encodeURIComponent(transactionId)}/invoice`,
+      { responseType: "blob" },
+    );
+    const blob = data instanceof Blob ? data : new Blob([data], { type: "application/pdf" });
+    if (blob.type && blob.type.includes("application/json")) {
+      const parsed = JSON.parse(await blob.text());
+      throw new Error(parsed.message || "Could not download invoice");
+    }
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filenameFromDisposition(headers?.["content-disposition"]);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    const blob = error?.response?.data;
+    if (blob instanceof Blob) {
+      let message = "Could not download invoice";
+      try {
+        const parsed = JSON.parse(await blob.text());
+        if (parsed?.message) message = parsed.message;
+      } catch {
+        // keep fallback
+      }
+      throw new Error(message);
+    }
+    if (error instanceof Error && !error.response) throw error;
+    normalizeApiError(error);
+  }
+}

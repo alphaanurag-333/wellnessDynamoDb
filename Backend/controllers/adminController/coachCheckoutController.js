@@ -1,6 +1,8 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
 const { getUserById } = require("../../models/userModel");
+const { getConsultancyTransactionById } = require("../../models/consultancyTransactionModel");
+const { sendConsultancyInvoicePdf } = require("../../utils/consultancyInvoiceResponse");
 const {
   assertStaffCanMutate,
   assertStaffCanAccessUser,
@@ -9,6 +11,7 @@ const {
   lookupClientByReferralCode,
   listCheckoutStaff,
   listRecentPwc,
+  listCheckoutHistoryForUser,
   triggerCoachCheckout,
 } = require("../../services/coachCheckoutService");
 
@@ -41,6 +44,38 @@ exports.listRecentPwcController = asyncHandler(async (req, res) => {
     message: "Recent PWC completions fetched",
     items,
   });
+});
+
+exports.listCoachCheckoutHistoryController = asyncHandler(async (req, res) => {
+  const userId = String(req.query.userId || req.query.user_id || "").trim();
+  if (!userId) throw new AppError("userId is required", 400);
+
+  const user = await getUserById(userId);
+  if (!user || user.status === "deleted") throw new AppError("Client not found", 404);
+  await assertStaffCanAccessUser(req, user);
+
+  const history = await listCheckoutHistoryForUser(userId);
+  return res.status(200).json({
+    status: true,
+    message: "Program payment history fetched",
+    history,
+  });
+});
+
+exports.getCoachCheckoutInvoiceController = asyncHandler(async (req, res) => {
+  const transaction = await getConsultancyTransactionById(req.params.id);
+  if (!transaction) throw new AppError("Transaction not found", 404);
+
+  const type = String(transaction.productType || "").toLowerCase();
+  if (type !== "program" && type !== "subscription") {
+    throw new AppError("Invoice not found", 404);
+  }
+
+  const user = await getUserById(transaction.userId);
+  if (!user || user.status === "deleted") throw new AppError("Client not found", 404);
+  await assertStaffCanAccessUser(req, user);
+
+  await sendConsultancyInvoicePdf(res, transaction);
 });
 
 exports.triggerCoachCheckoutController = asyncHandler(async (req, res) => {

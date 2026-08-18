@@ -11,6 +11,7 @@ const {
   deriveCheckoutCoachIds,
   isPendingCheckoutOrderReusable,
   buildUserProgramGetPayload,
+  toCheckoutHistoryRow,
 } = require("../services/coachCheckoutService");
 
 function futureIso(ms = 60 * 60 * 1000) {
@@ -189,6 +190,51 @@ describe("coach hierarchy for checkout trigger", () => {
     assert.equal(ids.parentCoachId, "coach-1");
     assert.equal(ids.assistantCoachId, "awc-1");
     assert.equal(ids.meetingAssigneeType, "assistant_wellness_coach");
+  });
+});
+
+describe("checkout payment history rows", () => {
+  it("maps a pending program checkout to awaiting history", () => {
+    const row = toCheckoutHistoryRow({
+      id: "txn-1",
+      productType: "program",
+      paymentStatus: "pending",
+      baseAmount: 24999,
+      discountAmount: 3749.85,
+      totalAmount: 22311.61,
+      createdAt: "2026-08-18T05:21:58.396Z",
+      userSnapshot: { catalogItemName: "Fat Loss" },
+      checkoutOffer: true,
+      linkExpiresAt: futureIso(),
+      referenceNumber: "WD20260818ABC",
+    });
+
+    assert.equal(row.program, "Fat Loss");
+    assert.equal(row.status, "awaiting");
+    assert.equal(row.detail, "Triggered to app · Invoice on payment");
+    assert.equal(row.amount, 22311.61);
+    assert.equal(row.listed, 24999);
+    assert.equal(row.discountPct, 15);
+  });
+
+  it("maps a paid program checkout to invoice-ready history", () => {
+    const row = toCheckoutHistoryRow({
+      id: "txn-2",
+      productType: "program",
+      paymentStatus: "paid",
+      paymentMethod: "upi",
+      paymentProvider: "mock",
+      baseAmount: 24999,
+      discountAmount: 3749.85,
+      totalAmount: 22311.61,
+      paidAt: "2026-08-18T06:00:00.000Z",
+      createdAt: "2026-08-18T05:21:58.396Z",
+      userSnapshot: { catalogItemName: "Fat Loss" },
+      referenceNumber: "WD20260818ABC",
+    });
+
+    assert.equal(row.status, "paid");
+    assert.equal(row.detail, "upi · mock · WD20260818ABC");
   });
 });
 

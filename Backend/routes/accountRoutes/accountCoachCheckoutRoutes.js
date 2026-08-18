@@ -5,6 +5,8 @@ const {
   lookupCoachCheckoutClientController,
   listCoachCheckoutStaffController,
   listRecentPwcController,
+  listCoachCheckoutHistoryController,
+  getCoachCheckoutInvoiceController,
   triggerCoachCheckoutController,
 } = require("../../controllers/adminController/coachCheckoutController");
 
@@ -15,6 +17,8 @@ router.use(protectAccount);
 router.get("/clients", lookupCoachCheckoutClientController);
 router.get("/staff", listCoachCheckoutStaffController);
 router.get("/pwc", listRecentPwcController);
+router.get("/transactions", listCoachCheckoutHistoryController);
+router.get("/transactions/:id/invoice", getCoachCheckoutInvoiceController);
 router.post(
   "/trigger",
   authorizeStaff("console.pg.edit", {
