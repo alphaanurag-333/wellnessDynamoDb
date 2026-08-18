@@ -310,7 +310,7 @@ export function NutritionBankSection({ items, setItems, onToast }) {
       >
         {loading ? (
           <p className="ua-cfg-panel__sub">Fetching supplements from the server…</p>
-        ) : items.length ? (
+        ) : (
           <div className="ua-cfg-nb-table-wrap">
             <table className="ua-cfg-nb-table">
               <thead>
@@ -325,6 +325,76 @@ export function NutritionBankSection({ items, setItems, onToast }) {
                 </tr>
               </thead>
               <tbody>
+                <tr className="ua-cfg-nb-add-row">
+                  <td>
+                    <ImagePicker
+                      previewUrl={draftPreview}
+                      disabled={locked}
+                      label="Upload supplement image"
+                      onPick={pickDraftImage}
+                    />
+                  </td>
+                  <td>
+                    <div className="ua-cfg-nb-add__copy">
+                      <input
+                        type="text"
+                        className="ua-cfg-nb-add__input"
+                        placeholder="Supplement name"
+                        value={draft.name}
+                        disabled={locked}
+                        onChange={(event) => setDraft({ ...draft, name: event.target.value })}
+                      />
+                      <input
+                        type="text"
+                        className="ua-cfg-nb-add__input"
+                        placeholder="Description"
+                        value={draft.description}
+                        disabled={locked}
+                        onChange={(event) => setDraft({ ...draft, description: event.target.value })}
+                      />
+                    </div>
+                  </td>
+                  <td>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      className="ua-cfg-nb-add__input ua-cfg-nb-add__pack"
+                      placeholder="Pack"
+                      value={draft.packSize}
+                      disabled={locked}
+                      onChange={(event) => setDraft({ ...draft, packSize: event.target.value.replace(/[^\d]/g, "") })}
+                    />
+                  </td>
+                  <td>
+                    <select
+                      className="ua-cfg-nb-add__input ua-cfg-nb-add__unit"
+                      value={draft.unit}
+                      disabled={locked}
+                      aria-label="Unit"
+                      onChange={(event) => setDraft({ ...draft, unit: event.target.value })}
+                    >
+                      {unitOptionsFor(draft.unit).map((unit) => (
+                        <option key={unit} value={unit}>{unit}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      className="ua-cfg-nb-add__input ua-cfg-nb-add__input--price"
+                      placeholder="Rs."
+                      value={draft.price}
+                      disabled={locked}
+                      onChange={(event) => setDraft({ ...draft, price: event.target.value })}
+                    />
+                  </td>
+                  <td colSpan={2}>
+                    <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={locked} onClick={addItem}>
+                      + Add supplement
+                    </button>
+                  </td>
+                </tr>
                 {items.map((item) => (
                   <tr key={item.id} className={item.live ? "" : "is-hidden"}>
                     <td>
@@ -421,9 +491,11 @@ export function NutritionBankSection({ items, setItems, onToast }) {
               </tbody>
             </table>
           </div>
-        ) : (
-          <p className="ua-cfg-panel__sub">No supplements in the bank yet. Add one below.</p>
         )}
+
+        {!loading && !items.length ? (
+          <p className="ua-cfg-panel__sub">No supplements in the bank yet. Use the row above to add one.</p>
+        ) : null}
 
         {!loading && pagination.total > 0 ? (
           <ListPagination
@@ -435,67 +507,6 @@ export function NutritionBankSection({ items, setItems, onToast }) {
             label="Nutrition bank pagination"
           />
         ) : null}
-
-        <div className="ua-cfg-nb-add">
-          <ImagePicker
-            previewUrl={draftPreview}
-            disabled={locked}
-            label="Upload supplement image"
-            onPick={pickDraftImage}
-          />
-          <div className="ua-cfg-nb-add__fields">
-            <input
-              type="text"
-              className="ua-cfg-nb-add__input"
-              placeholder="Supplement name"
-              value={draft.name}
-              disabled={locked}
-              onChange={(event) => setDraft({ ...draft, name: event.target.value })}
-            />
-            <input
-              type="text"
-              className="ua-cfg-nb-add__input"
-              placeholder="Description"
-              value={draft.description}
-              disabled={locked}
-              onChange={(event) => setDraft({ ...draft, description: event.target.value })}
-            />
-            <div className="ua-cfg-nb-add__meta">
-              <input
-                type="text"
-                inputMode="numeric"
-                className="ua-cfg-nb-add__input"
-                placeholder="Pack size"
-                value={draft.packSize}
-                disabled={locked}
-                onChange={(event) => setDraft({ ...draft, packSize: event.target.value.replace(/[^\d]/g, "") })}
-              />
-              <select
-                className="ua-cfg-nb-add__input ua-cfg-nb-add__unit"
-                value={draft.unit}
-                disabled={locked}
-                aria-label="Unit"
-                onChange={(event) => setDraft({ ...draft, unit: event.target.value })}
-              >
-                {unitOptionsFor(draft.unit).map((unit) => (
-                  <option key={unit} value={unit}>{unit}</option>
-                ))}
-              </select>
-              <input
-                type="text"
-                inputMode="numeric"
-                className="ua-cfg-nb-add__input ua-cfg-nb-add__input--price"
-                placeholder="Bottle (Rs.)"
-                value={draft.price}
-                disabled={locked}
-                onChange={(event) => setDraft({ ...draft, price: event.target.value })}
-              />
-              <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={locked} onClick={addItem}>
-                + Add supplement
-              </button>
-            </div>
-          </div>
-        </div>
       </Panel>
 
       <ConfirmDialog

@@ -25,12 +25,12 @@ import {
 function Panel({ title, subtitle, actions, children, className = "" }) {
   const hasHead = Boolean(title || subtitle || actions);
   return (
-    <section className={`ua-cfg-panel${className ? ` ${className}` : ""}`}>
+    <section  className={`ua-cfg-panel${className ? ` ${className}` : ""}`}>
       {hasHead ? (
         <div className="ua-cfg-panel__head">
           <div>
             {title ? <h3 className="ua-cfg-panel__title">{title}</h3> : null}
-            {subtitle ? <p className="ua-cfg-panel__sub">{subtitle}</p> : null}
+            {subtitle ? <p style={{maxWidth: "100%"}} className="ua-cfg-panel__sub">{subtitle}</p> : null}
           </div>
           {actions ? <div className="ua-cfg-panel__actions">{actions}</div> : null}
         </div>
@@ -503,13 +503,17 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
 
       <Panel
         className="ua-cfg-drf ua-cfg-launch-domains"
-        title="LAUNCH assessment · domains"
-        subtitle="Domain weights must total 100%, and the questions inside one domain must total 100 points. Mark a domain or question Fixed to lock its weightage against coach edits."
-        actions={(
-          <div className="ua-cfg-drf__head-actions">
+        title={(
+          <>
+            LAUNCH assessment · domains
             <span className={`ua-cfg-drf__allocated${weightTotal === 100 ? " is-full" : " is-warn"}`}>
               {weightTotal === 100 ? "100% allocated" : `${weightTotal}% allocated`}
             </span>
+          </>
+        )}
+        subtitle="Domain weights must total 100%, and the questions inside one domain must total 100 points. Mark a domain or question Fixed to lock its weightage against coach edits."
+        actions={(
+          <div className="ua-cfg-drf__head-actions">
             <span className="ua-cfg-drf__live-count">{liveQuestions} of {totalQuestions} questions live</span>
             <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm" onClick={() => setExpanded(new Set(domains.map((entry) => entry.id)))}>
               Expand all
@@ -715,7 +719,7 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
                       />
                       <button
                         type="button"
-                        className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                        className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-launch-add-q"
                         disabled={busy || (!isGeneral && remainingPts <= 0)}
                         onClick={() => addQuestion(domain.id)}
                       >
@@ -731,7 +735,7 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
       </Panel>
 
       <Panel
-        title="Add a domain"
+       title="Add a domain"
         subtitle={`Scored domains share the 100% — a new one can only take the weight that is still free (${remainingWeight}% available). Leave the weight at 0 for a general, unscored section (name, age, occupation and the like).`}
       >
         <div className="ua-cfg-drf-add-section">

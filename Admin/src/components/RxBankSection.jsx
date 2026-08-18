@@ -355,7 +355,7 @@ export function RxBankSection({ protocols, setProtocols, onToast }) {
         actions={
           loading ? null : (
             <span className="ua-cfg-rx__count">
-              {liveCount} live on this page · {pagination.total} in book
+              {liveCount} live of {pagination.total}
             </span>
           )
         }
