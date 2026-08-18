@@ -1,12 +1,12 @@
 :root {
   --brand-green: linear-gradient(135deg, rgb(52, 165, 106), rgb(124, 199, 154));
-  --brand-green-solid: #34a56a;
+  --brand-green-solid: rgb(43, 143, 91);
   --brand-blue: #16233f;
   --bg: #eef1f7;
   --surface: #ffffff;
-  --border: #e6ebf2;
+  --border: rgb(230, 235, 242);
   --border-soft: #eef1f6;
-  --text: #16233f;
+  --text: rgb(22, 35, 63);
   --muted: #8a97ac;
   --muted-light: #9aa6b8;
   --accent-blue: #5e6ad2;
@@ -1103,11 +1103,11 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  height: 38px;
-  padding: 0 16px;
+  height: 36px;
+  padding: 0 15px;
   border-radius: 9px;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12.5px;
+  font-weight: 650;
   cursor: pointer;
   border: none;
 }
@@ -4452,8 +4452,8 @@
 
 .updated-admin .badge--green {
   color: var(--brand-green-solid);
-  background: #e7f6ee;
-  border: 1px solid #cdeede;
+  background: rgb(231, 246, 238);
+  border: 1px solid rgb(205, 238, 222);
 }
 
 .updated-admin .bar-chart {
@@ -4777,11 +4777,11 @@
   display: flex;
   gap: 3px;
   /* background: #eef1f6; */
-  background: #f5f5f5;
+  background: rgb(238, 241, 246);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 4px;
-  margin: 0 0 14px;
+  /* margin: 0 0 14px; */
   overflow-x: auto;
 }
 
@@ -4826,7 +4826,7 @@
 }
 
 .updated-admin .ua-pill-tabs__btn--active {
-  background: #fff;
+  background: rgb(255, 255, 255);
   color: var(--text);
   box-shadow: 0 1px 2px rgba(16, 35, 63, 0.1);
 }
@@ -6617,7 +6617,7 @@
 .updated-admin .ua-surface-chip {
   display: inline-flex;
   padding: 2px 7px;
-  border-radius: 5px;
+  border-radius: 6px;
   font-size: 10px;
   font-weight: 700;
 }
@@ -6635,11 +6635,11 @@
 .updated-admin .ua-toggle {
   position: relative;
   display: inline-block;
-  width: 46px;
-  height: 24px;
+  width: 34px;
+  height: 19px;
   border-radius: 999px;
   border: none;
-  background: #d1d9e3;
+  background: rgb(221, 227, 236);
   padding: 0;
   cursor: pointer;
   flex-shrink: 0;
@@ -6663,8 +6663,8 @@
   position: absolute;
   top: 2px;
   left: 2px;
-  width: 20px;
-  height: 20px;
+  width: 15px;
+  height: 15px;
   border-radius: 50%;
   background: #fff;
   box-shadow: none;
@@ -6673,7 +6673,7 @@
 }
 
 .updated-admin .ua-toggle--on .ua-toggle__knob {
-  left: 24px;
+  left: 17px;
 }
 
 .updated-admin .ua-not-found {
@@ -6808,12 +6808,12 @@
 }
 
 .updated-admin .ua-config-section__head {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  color: #9aa6b8;
+  letter-spacing: 0.04em;
+  color: rgb(138, 151, 172);
   text-transform: uppercase;
-  margin: 14px 0 8px;
+  margin: 2px 0px 9px;
 }
 
 .updated-admin .ua-config-card {
@@ -6821,7 +6821,7 @@
   border: 1px solid var(--border);
   border-radius: 12px;
   overflow: hidden;
-  margin-bottom: 8px;
+  margin-bottom: 16px;
   box-shadow: var(--shadow);
 }
 
@@ -6830,7 +6830,7 @@
   grid-template-columns: minmax(0, 1fr) minmax(200px, auto) 44px 92px;
   align-items: center;
   gap: 12px;
-  padding: 14px 18px;
+  padding: 12px 16px;
   border-bottom: 1px solid #f1f4f9;
 }
 
@@ -6844,7 +6844,7 @@
 }
 
 .updated-admin .ua-config-item__name {
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--text);
   line-height: 1.3;
@@ -6852,8 +6852,8 @@
 
 .updated-admin .ua-config-item__note {
   font-size: 11.5px;
-  color: #9aa6b8;
-  margin-top: 3px;
+  color:rgb(154, 166, 184);
+  margin-top: 2px;
   line-height: 1.4;
 }
 
@@ -6878,11 +6878,11 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  height: 22px;
+  height: 17px;
   padding: 0 8px;
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 700;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
   letter-spacing: 0.02em;
   cursor: pointer;
   transition: opacity 0.15s, background 0.15s, border-color 0.15s;
@@ -6919,9 +6919,9 @@
 .updated-admin .ua-config-upload-tag {
   display: inline-flex;
   align-items: center;
-  height: 22px;
+  height: 17px;
   padding: 0 8px;
-  border-radius: 999px;
+  border-radius: 6px;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -6933,12 +6933,12 @@
 .updated-admin .ua-config-status {
   display: inline-flex;
   align-items: center;
-  height: 22px;
-  padding: 0 8px;
-  border-radius: 999px;
+  height: 17px;
+  padding: 2px 8px;
+  border-radius: 6px;
   font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
+  font-weight: 700;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
 }
 
@@ -6959,11 +6959,11 @@
   justify-self: end;
   width: 92px;
   height: 30px;
-  padding: 0 12px;
+  padding: 0px 12px;
   border-radius: 8px;
   border: 1px solid var(--border);
   background: #fff;
-  color: #334155;
+  color: rgb(94, 106, 210);
   font-weight: 650;
   font-size: 11.5px;
   cursor: pointer;
@@ -15277,18 +15277,18 @@
 
 /* ── SOP Library ─────────────────────────────────────────── */
 .updated-admin .ua-sop-page .page-head__sub {
-  max-width: 520px;
+  max-width: 540px;
 }
 
 .updated-admin .ua-sop-btn-new {
   display: inline-flex;
   align-items: center;
   height: 38px;
-  padding: 0 16px;
+  padding: 0 15px;
   border: none;
-  border-radius: 9px;
-  background: #3b6ef5;
-  color: #fff;
+  border-radius: 10px;
+  background: rgb(94, 106, 210);
+  color: rgb(255, 255, 255);
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
@@ -15297,7 +15297,7 @@
 }
 
 .updated-admin .ua-sop-btn-new:hover {
-  background: #2f5de0;
+  /* background: #2f5de0; */
 }
 
 .updated-admin .ua-sop-list {
@@ -15310,7 +15310,7 @@
   background: #fff;
   border: 1px solid var(--border);
   border-radius: 14px;
-  padding: 16px 18px;
+  padding: 15px 17px;
   box-shadow: 0 1px 2px rgba(16, 35, 63, 0.04);
   transition: box-shadow 0.18s ease, border-color 0.18s ease;
 }
@@ -15339,13 +15339,13 @@
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
-  height: 24px;
-  padding: 0 9px;
+  /* height: 24px; */
+  padding: 3px 8px;
   border-radius: 6px;
   border: 1px solid transparent;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
+  font-size: 9.5px;
+  font-weight: 750;
+  letter-spacing: 0.03em;
   margin-top: 3px;
 }
 
@@ -15359,7 +15359,7 @@
   font-weight: 750;
   color: #16233f;
   letter-spacing: -0.01em;
-  line-height: 1.35;
+  line-height: 1;
 }
 
 .updated-admin .ua-sop-card__meta {
@@ -15382,60 +15382,61 @@
 }
 
 .updated-admin .ua-sop-action {
-  height: 32px;
+  height: 30px;
   padding: 0 12px;
   border-radius: 8px;
-  border: 1px solid #e3e8f0;
+  border: 1px solid rgb(230, 235, 242);
   background: #fff;
-  color: #5a6b85;
+  color: rgb(94, 106, 210);
   font-size: 12.5px;
-  font-weight: 650;
+  font-weight: 700;
   cursor: pointer;
   font-family: inherit;
 }
 
 .updated-admin .ua-sop-action:hover {
-  border-color: #c9d3e3;
-  color: #16233f;
+  border-color: rgb(94, 106, 210) !important;
+  color: rgb(94, 106, 210);
 }
 
 .updated-admin .ua-sop-action--active {
-  border-color: #16233f;
-  color: #16233f;
-  background: #f7f8fb;
+  border-color: rgb(230, 235, 242);
+  color:rgb(94, 106, 210);
+  background: rgb(255, 255, 255);
 }
 
 .updated-admin .ua-sop-action--edit {
-  background: #eef2ff;
-  border-color: #d5defc;
-  color: #3d5bb5;
+  background: rgb(238, 240, 252);
+  border-color: currentcolor;
+  color:rgb(94, 106, 210);
+  border: 0px;
 }
 
 .updated-admin .ua-sop-action--edit:hover {
-  background: #e4eaff;
-  border-color: #c5d0f8;
+  background:rgb(238, 240, 252);
+  /* border-color: #c5d0f8; */
 }
 
 .updated-admin .ua-sop-action--icon {
-  width: 32px;
+  width: 30px;
   padding: 0;
-  font-size: 18px;
+  font-size: 15px;
   line-height: 1;
-  color: #8a97ac;
-  background: #f3f5f9;
+  color: rgb(154, 166, 184);
+  background:rgb(255, 255, 255);
   border-color: #e6ebf2;
 }
 
 .updated-admin .ua-sop-action--icon:hover {
-  background: #fdeaea;
-  border-color: #f5c6c6;
-  color: #c0392b;
+  background: rgb(255, 255, 255);
+  border-color: rgb(240, 201, 196) !important;
+  color: rgb(192, 57, 43) !important;
 }
 
 .updated-admin .ua-sop-steps {
   list-style: none;
-  margin: 16px 0 2px;
-  padding: 14px 0 0;
+  margin: 12px 0 2px;
+  padding: 11px 0 0;
   border-top: 1px solid #eef1f7;
   display: flex;
   flex-direction: column;
@@ -15449,24 +15450,27 @@
 }
 
 .updated-admin .ua-sop-steps__num {
-  flex: 0 0 26px;
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
-  background: #e8eefc;
-  color: #3d5bb5;
-  font-size: 12px;
+  flex: 0 0 22px;
+  width: 22px;
+  border: 1px solid rgb(220, 223, 247);
+  height: 22px;
+  border-radius: 6px;
+  background: rgb(238, 240, 252);
+  color: rgb(94, 106, 210);
+  font-size: 10px;
   font-weight: 750;
   display: grid;
   place-items: center;
+  margin-top: 1px;
 }
 
 .updated-admin .ua-sop-steps__text {
-  flex: 1;
-  font-size: 13.5px;
-  color: #2a3a55;
-  line-height: 1.5;
-  padding-top: 3px;
+  flex: 1 1 0%;
+  font-size: 13px;
+  color: rgb(58, 74, 99);
+  line-height: 1.6;
+  
+  text-wrap: pretty;  
 }
 
 .updated-admin .ua-sop-empty {
@@ -15493,31 +15497,45 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  padding: 20px 22px 0;
+  gap: 11px;
+  padding: 15px 18px;
+  border-bottom: 1px solid rgb(238, 241, 246);
 }
 
 .updated-admin .ua-sop-modal__title {
-  font-size: 18px;
-  font-weight: 800;
-  color: #16233f;
+  font-size: 15px;
+  font-weight: 750;
+  color: rgb(22, 35, 63);
   letter-spacing: -0.02em;
 }
 
 .updated-admin .ua-sop-modal__sub {
-  margin-top: 3px;
-  font-size: 12.5px;
-  color: #8a97ac;
+  margin-top: 1px;
+  font-size: 11.5px;
+  color:rgb(154, 166, 184);
 }
 
 .updated-admin .ua-sop-modal__close {
-  border: none;
+  /* border: none;
   background: none;
   font-size: 24px;
   line-height: 1;
   color: #8a97ac;
   cursor: pointer;
-  padding: 0 2px;
+  padding: 0 2px; */
+
+
+  width: 30px;
+  height: 30px;
+  border-width: medium;
+  border-style: none;
+  border-color: currentcolor;
+  border-image: none;
+  background: rgb(242, 245, 250);
+  border-radius: 8px;
+  color: rgb(90, 107, 133);
+  font-size: 16px;
+  cursor: pointer;
 }
 
 .updated-admin .ua-sop-modal__close:hover {
@@ -15538,11 +15556,19 @@
 }
 
 .updated-admin .ua-sop-field__label {
-  font-size: 11px;
+  /* font-size: 11px;
   font-weight: 750;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: #8a97ac;
+  color: #8a97ac; */
+
+
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgb(138, 151, 172);
+ 
 }
 
 .updated-admin .ua-sop-field__input,
@@ -15580,13 +15606,13 @@
 }
 
 .updated-admin .ua-sop-modal__primary {
-  height: 38px;
-  padding: 0 18px;
+  height: 36px;
+  padding: 0 16px;
   border: none;
   border-radius: 9px;
-  background: #5e6ad2;
-  color: #fff;
-  font-size: 13px;
+  background: rgb(94, 106, 210);
+  color: rgb(255, 255, 255);
+  font-size: 12.5px;
   font-weight: 700;
   cursor: pointer;
   font-family: inherit;
@@ -23923,11 +23949,26 @@
   display: inline-flex;
   align-items: center;
   width: fit-content;
-  margin-bottom: 12px;
+  /* margin-bottom: 12px;
   font-size: 12px;
   font-weight: 650;
-  color: #5a6b85;
+  color: #5a6b85;*/
   text-decoration: none;
+   
+
+
+  height: 30px;
+  padding: 0px 11px;
+  border: 1px solid rgb(230, 235, 242);
+  border-radius: 8px;
+  background: rgb(255, 255, 255);
+  color: rgb(90, 107, 133);
+  font-weight: 650;
+  font-size: 11.5px;
+  cursor: pointer;
+  font-family: inherit;
+  margin-bottom: 14px;
+  
 }
 
 .updated-admin .ua-cfg-detail__back:hover {
@@ -23959,7 +24000,7 @@
 }
 
 .updated-admin .ua-cfg-btn--primary {
-  background: #5e6ad2;
+  background: rgb(94, 106, 210);
   color: #fff;
   border-color: #5e6ad2;
 }
@@ -23969,8 +24010,8 @@
 }
 
 .updated-admin .ua-cfg-btn--muted {
-  background: #eef0fc;
-  color: #5e6ad2;
+  background: rgb(238, 240, 252);
+  color: rgb(94, 106, 210);
   border-color: #dcdff7;
 }
 
@@ -24019,7 +24060,7 @@
 
 .updated-admin .ua-cfg-summary__title {
   margin: 0;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 760;
   color: var(--text);
 }
@@ -24039,7 +24080,7 @@
 }
 
 .updated-admin .ua-cfg-summary__cell {
-  padding: 12px 14px;
+  padding: 9px 11px;
   border: 1px solid #edf1f7;
   border-radius: 10px;
   background: #fafbfd;
@@ -24053,11 +24094,11 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: #9aa6b8;
-  margin-bottom: 6px;
+  /* margin-bottom: 6px; */
 }
 
 .updated-admin .ua-cfg-summary__value {
-  margin: 0;
+  margin-top: 2px;
   font-size: 12.5px;
   font-weight: 650;
   color: var(--text);
@@ -24082,7 +24123,7 @@
 
 .updated-admin .ua-cfg-panel__title {
   margin: 0 0 4px;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 760;
   color: var(--text);
 }
@@ -24104,8 +24145,15 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px 0;
+  /* padding: 14px 0; */
   border-top: 1px solid #f1f4f9;
+
+
+  background: rgb(251, 252, 254);
+    border: 1px solid rgb(238, 241, 246);
+    border-radius: 11px;
+    padding: 11px 13px;
+    margin-bottom: 10px;
 }
 
 .updated-admin .ua-cfg-lang-row:first-of-type {
@@ -24114,7 +24162,7 @@
 }
 
 .updated-admin .ua-cfg-lang-row__name {
-  font-size: 13.5px;
+  font-size: 12.5px;
   font-weight: 700;
   color: var(--text);
 }
@@ -24132,9 +24180,9 @@
 }
 
 .updated-admin .ua-cfg-lang-row__state {
-  font-size: 12px;
-  font-weight: 650;
-  color: #5a6b85;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: rgb(43, 143, 91);
 }
 
 .updated-admin .ua-cfg-lang-row__lock {
