@@ -25085,6 +25085,7 @@
 }
 
 .updated-admin .ua-cfg-btn--primary {
+  margin-top: 8px;
   background: rgb(94, 106, 210);
   color: #fff;
   border-color: #5e6ad2;
@@ -25219,6 +25220,7 @@
   justify-content: space-between;
   gap: 14px;
   margin-bottom: 10px;
+  flex-wrap: wrap;
 }
 
 .updated-admin .ua-cfg-panel__title {
@@ -29542,6 +29544,7 @@
   overflow: auto;
   background: #fff;
   border-radius: 14px;
+  padding: 15px;
   box-shadow: 0 24px 64px rgba(15, 23, 42, 0.18);
 }
 
@@ -34664,6 +34667,7 @@
 .updated-admin .ua-cfg-bn-surface {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
   height: 40px;
   padding: 0 12px 0 14px;
@@ -41779,6 +41783,7 @@
   white-space: nowrap;
   color: #2563eb;
   font-size: 12px;
+  text-wrap: wrap;
 }
 
 .updated-admin .ua-cfg-rc-view {
@@ -42324,6 +42329,15 @@
 
 /* Large phone */
 @media (max-width: 640px) {
+  .updated-admin .ua-cfg-rc .ua-cfg-rc-item--lib .ua-cfg-rc-cover-wrap{
+    margin:  0 auto;
+  }
+  .updated-admin .ua-cfg-rc .ua-cfg-rc-item--lib{
+    grid-template-columns: 1fr;
+  }
+  .updated-admin .ua-cfg-bn-surfaces{
+    flex-direction: column;
+  }
 
   .updated-admin .ua-cp-rx-card__title {
     font-size: 13px;
