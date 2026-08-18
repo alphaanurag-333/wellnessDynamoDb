@@ -7,7 +7,7 @@
  *   ReferralCode rows for entityType=user
  *
  * Seeds HEAL users with distinct primary health concerns + purchased programs
- * so Admin client-profile (Diabetes Reversal compact vs full workspace) can be tested.
+ * so Admin client-profile can be tested across programs.
  *
  * Usage (from Backend/):
  *   node --use-system-ca scripts/seedTestUsers.js --confirm
@@ -449,7 +449,7 @@ async function run() {
   console.log("\n=== DONE ===");
   console.log("| Name               | Email                            | Concern            | Profile expect |");
   console.log("|--------------------|----------------------------------|--------------------|--------------|");
-  console.log("| Aisha Diabetes     | test.diabetes@irwellness.local   | Diabetes Reversal  | compact       |");
+  console.log("| Aisha Diabetes     | test.diabetes@irwellness.local   | Diabetes Reversal  | full         |");
   console.log("| Rohan Fat Loss     | test.fatloss@irwellness.local    | Fat Loss           | full         |");
   console.log("| Meera Thyroid      | test.thyroid@irwellness.local    | Thyroid Care       | full         |");
   console.log("| Kavya PCOD         | test.pcod@irwellness.local       | PCOD / PCOS        | full         |");
@@ -457,7 +457,7 @@ async function run() {
   console.log("| Sneha Everyday     | test.everyday@irwellness.local   | Everyday Wellness  | full         |");
   console.log("| Seek Tester        | test.seek@irwellness.local       | Fat Loss (SEEK)    | full         |");
   console.log(`\nPassword for all: ${DEFAULT_PASSWORD}`);
-  console.log("Admin profile: Diabetes Reversal → compact; all other concerns → full.");
+  console.log("Admin profile: all program clients get the full menu.");
 }
 
 run().catch((err) => {

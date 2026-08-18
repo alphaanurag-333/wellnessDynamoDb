@@ -40,6 +40,13 @@ function padTimePart(n) {
   return String(n).padStart(2, "0");
 }
 
+function nextRoundedStartTime(date = new Date()) {
+  const next = new Date(date);
+  next.setSeconds(0, 0);
+  next.setMinutes(next.getMinutes() < 30 ? 30 : 60, 0, 0);
+  return `${padTimePart(next.getHours())}:${padTimePart(next.getMinutes())}`;
+}
+
 function formatDateKey(date) {
   return `${date.getFullYear()}-${padTimePart(date.getMonth() + 1)}-${padTimePart(date.getDate())}`;
 }
@@ -202,8 +209,8 @@ export function ScheduleMeetingModal({
   );
   const [hold, setHold] = useState("24 hours");
   const [note, setNote] = useState(existingMeeting?.coachNote || defaultNote);
-  const [fromTime, setFromTime] = useState("");
-  const [toTime, setToTime] = useState("");
+  const [fromTime, setFromTime] = useState(() => nextRoundedStartTime());
+  const [toTime, setToTime] = useState(() => formatSlotEnd(nextRoundedStartTime(), Number(existingMeeting?.durationMinutes) || defaultDuration));
   const [slots, setSlots] = useState(() => slotsFromMeeting(existingMeeting));
   const dateCount = uniqueDateCount(slots);
   const slotsByDate = useMemo(() => groupSlotsByDate(slots), [slots]);
@@ -258,26 +265,34 @@ export function ScheduleMeetingModal({
     setLaterOpen(false);
   }
 
-  function addSlot() {
-    if (!fromTime) return;
+  function buildSlotFromForm() {
+    if (!fromTime) return null;
     const end = toTime || formatSlotEnd(fromTime, duration);
     const [startH, startM] = fromTime.split(":").map(Number);
     const [endH, endM] = end.split(":").map(Number);
+    if (![startH, startM, endH, endM].every(Number.isFinite)) return null;
     const startAt = new Date(activeDate);
     startAt.setHours(startH, startM, 0, 0);
     const endAt = new Date(activeDate);
     endAt.setHours(endH, endM, 0, 0);
+    if (endAt.getTime() <= startAt.getTime()) return null;
     const slotKey = `${startAt.toISOString()}-${endAt.toISOString()}`;
+    return {
+      key: slotKey,
+      dateKey: formatDateKey(activeDate),
+      dateLabel: slotsDayLabel,
+      range: `${fromTime}–${end}`,
+      startAt: startAt.toISOString(),
+      endAt: endAt.toISOString(),
+    };
+  }
+
+  function addSlot() {
+    const slot = buildSlotFromForm();
+    if (!slot) return;
     setSlots((prev) => {
-      if (prev.some((s) => s.key === slotKey)) return prev;
-      return [...prev, {
-        key: slotKey,
-        dateKey: formatDateKey(activeDate),
-        dateLabel: slotsDayLabel,
-        range: `${fromTime}–${end}`,
-        startAt: startAt.toISOString(),
-        endAt: endAt.toISOString(),
-      }];
+      if (prev.some((s) => s.key === slot.key)) return prev;
+      return [...prev, slot];
     });
     setFromTime("");
     setToTime("");
@@ -285,6 +300,17 @@ export function ScheduleMeetingModal({
 
   function removeSlot(key) {
     setSlots((prev) => prev.filter((s) => s.key !== key));
+  }
+
+  function handleSend() {
+    const pending = buildSlotFromForm();
+    const nextSlots = [...slots];
+    if (pending && !nextSlots.some((s) => s.key === pending.key)) {
+      nextSlots.push(pending);
+      setSlots(nextSlots);
+    }
+    if (!nextSlots.length) return;
+    onSend?.({ slots: nextSlots, note, hold, duration, date: activeDate });
   }
 
   const modal = (
@@ -451,15 +477,17 @@ export function ScheduleMeetingModal({
           <span>
             {slots.length
               ? `${slots.length} slot${slots.length === 1 ? "" : "s"} held across ${dateCount} date${dateCount === 1 ? "" : "s"}`
-              : "Nothing held yet"}
+              : fromTime
+                ? "Ready to send the time above"
+                : "Pick a start time, then send"}
           </span>
           <div>
             <button type="button" className="ua-cp-btn ua-cp-btn--outline" onClick={onClose}>Cancel</button>
             <button
               type="button"
               className="ua-cp-btn ua-cp-btn--primary"
-              disabled={!slots.length}
-              onClick={() => onSend?.({ slots, note, hold, duration, date: activeDate })}
+              disabled={!slots.length && !fromTime}
+              onClick={handleSend}
             >
               Send slot
             </button>
