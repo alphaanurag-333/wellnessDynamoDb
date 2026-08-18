@@ -4,12 +4,12 @@ import { DEFAULT_TAX_VALUE, getAppGst, parseTaxValue, saveAppGst } from "../api/
 function Panel({ title, subtitle, children }) {
   return (
     <section className="ua-cfg-panel">
-      <div className="ua-cfg-panel__head">
+      {/* <div className="ua-cfg-panel__head">
         <div>
           {title ? <h3 className="ua-cfg-panel__title">{title}</h3> : null}
           {subtitle ? <p className="ua-cfg-panel__sub">{subtitle}</p> : null}
         </div>
-      </div>
+      </div> */}
       {children}
     </section>
   );

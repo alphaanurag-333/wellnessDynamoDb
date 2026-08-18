@@ -255,7 +255,7 @@ export function DietPlansSection({ plans, setPlans, onToast }) {
         actions={
           loading ? null : (
             <span className="ua-cfg-dp__count">
-              {liveCount} live on this page · {pagination.total} in book
+              {liveCount} live of {pagination.total} 
             </span>
           )
         }
@@ -324,8 +324,8 @@ export function DietPlansSection({ plans, setPlans, onToast }) {
             />
             <textarea
               className="ua-cfg-dp-add__content"
-              rows={6}
-              placeholder="Write the full plan here…"
+              rows={4}
+              
               value={newContent}
               disabled={busy}
               onChange={(event) => setNewContent(event.target.value)}

@@ -6,6 +6,7 @@ import {
   adminReorderFaqs,
   adminUpdateFaq,
 } from "../api/faqApi.js";
+import { asCopyString } from "../data/bannerConfigData.js";
 
 function Panel({ title, subtitle, actions, children, className = "" }) {
   return (
@@ -51,14 +52,14 @@ function FaqItemControls({
       {isEditing ? (
         <button
           type="button"
-          className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
+          className="ua-cfg-btn ua-cfg-btn--primary"
           disabled={busy}
           onClick={onSave}
         >
           Save
         </button>
       ) : (
-        <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost" disabled={busy} onClick={onEdit}>
+        <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" disabled={busy} onClick={onEdit}>
           Edit
         </button>
       )}
@@ -102,14 +103,14 @@ function FaqNewQuestionForm({ draft, onChange, onClose, onSubmit, inputRef, busy
         ref={inputRef}
         type="text"
         className="ua-cfg-faq-new__question"
-        value={draft.question}
+        value={asCopyString(draft.question)}
         placeholder="Question · e.g. Can I switch my coach?"
         disabled={busy}
         onChange={(event) => onChange({ ...draft, question: event.target.value })}
       />
       <textarea
         className="ua-cfg-faq-new__answer"
-        value={draft.answer}
+        value={asCopyString(draft.answer)}
         placeholder="Answer shown in the app..."
         rows={5}
         disabled={busy}
@@ -180,7 +181,7 @@ export function FaqConfigPanel({ items, setItems, onToast }) {
   function startEdit(item) {
     setShowAddForm(false);
     setEditingId(item.id);
-    setDraft({ question: item.question, answer: item.answer });
+    setDraft({ question: asCopyString(item.question), answer: asCopyString(item.answer) });
   }
 
   function cancelEdit() {
@@ -335,6 +336,7 @@ export function FaqConfigPanel({ items, setItems, onToast }) {
 
   return (
     <Panel
+      className="ua-cfg-faq-shell"
       title="Questions & answers"
       subtitle={
         loading
@@ -344,7 +346,7 @@ export function FaqConfigPanel({ items, setItems, onToast }) {
       actions={(
         <button
           type="button"
-          className="ua-cfg-btn ua-cfg-btn--outline"
+          className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-faq-add"
           disabled={busy || loading}
           onClick={openAddForm}
         >
@@ -416,45 +418,50 @@ export function FaqConfigPanel({ items, setItems, onToast }) {
                   setDragOverId(null);
                 }}
               >
-                <div className="ua-cfg-faq__head">
-                  <span
-                    className="ua-cfg-faq__drag"
-                    aria-hidden="true"
-                    title="Drag to reorder"
-                  >
-                    ⋮⋮
-                  </span>
-                  <span className="ua-cfg-faq__num">Q{index + 1}</span>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      className="ua-cfg-faq__question-input"
-                      value={draft.question}
-                      placeholder="Question"
-                      disabled={busy}
-                      onChange={(event) =>
-                        setDraft((prev) => ({ ...prev, question: event.target.value }))
-                      }
-                    />
-                  ) : (
-                    <strong className="ua-cfg-faq__question">{item.question}</strong>
-                  )}
-                  <FaqItemControls
-                    item={item}
-                    isEditing={isEditing}
-                    busy={busy}
-                    onToggleShown={() => toggleShown(item)}
-                    onEdit={() => startEdit(item)}
-                    onSave={() => saveEdit(item.id)}
-                    onMoveUp={() => moveItem(item.id, -1)}
-                    onMoveDown={() => moveItem(item.id, 1)}
-                    onDelete={() => removeItem(item)}
+                <span
+                  className="ua-cfg-faq__drag"
+                  aria-hidden="true"
+                  title="Drag to reorder"
+                >
+                  <svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor">
+                    <circle cx="2" cy="2" r="1.25" />
+                    <circle cx="8" cy="2" r="1.25" />
+                    <circle cx="2" cy="8" r="1.25" />
+                    <circle cx="8" cy="8" r="1.25" />
+                    <circle cx="2" cy="14" r="1.25" />
+                    <circle cx="8" cy="14" r="1.25" />
+                  </svg>
+                </span>
+                <span className="ua-cfg-faq__num">Q{index + 1}</span>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    className="ua-cfg-faq__question-input"
+                    value={asCopyString(draft.question)}
+                    placeholder="Question"
+                    disabled={busy}
+                    onChange={(event) =>
+                      setDraft((prev) => ({ ...prev, question: event.target.value }))
+                    }
                   />
-                </div>
+                ) : (
+                  <strong className="ua-cfg-faq__question">{asCopyString(item.question)}</strong>
+                )}
+                <FaqItemControls
+                  item={item}
+                  isEditing={isEditing}
+                  busy={busy}
+                  onToggleShown={() => toggleShown(item)}
+                  onEdit={() => startEdit(item)}
+                  onSave={() => saveEdit(item.id)}
+                  onMoveUp={() => moveItem(item.id, -1)}
+                  onMoveDown={() => moveItem(item.id, 1)}
+                  onDelete={() => removeItem(item)}
+                />
                 {isEditing ? (
                   <textarea
                     className="ua-cfg-faq__answer-input"
-                    value={draft.answer}
+                    value={asCopyString(draft.answer)}
                     placeholder="Answer"
                     rows={4}
                     disabled={busy}
@@ -463,7 +470,7 @@ export function FaqConfigPanel({ items, setItems, onToast }) {
                     }
                   />
                 ) : (
-                  <p className="ua-cfg-faq__answer">{item.answer}</p>
+                  <p className="ua-cfg-faq__answer">{asCopyString(item.answer)}</p>
                 )}
               </article>
             );
