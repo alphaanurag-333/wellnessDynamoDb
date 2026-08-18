@@ -1183,8 +1183,8 @@ function MembersTab({ onToast }) {
   const rolesByKey = useMemo(() => {
     const map = {};
     for (const r of roleOptions) {
-      const key = r.roleKey || r.id;
-      if (key) map[key] = r;
+      if (r.id) map[r.id] = r;
+      if (r.roleKey) map[r.roleKey] = r;
     }
     return map;
   }, [roleOptions]);
@@ -1270,7 +1270,8 @@ function MembersTab({ onToast }) {
     if (roleOptions.length) {
       return roleOptions
         .map((r) => ({
-          id: r.roleKey || r.id,
+          id: r.id || r.roleKey,
+          roleKey: r.roleKey || "",
           name: r.name || ROLE_META[r.roleKey]?.name || r.roleKey || r.id,
         }))
         .filter((r) => r.id);
@@ -1278,15 +1279,20 @@ function MembersTab({ onToast }) {
     return ROLE_ORDER.map((id) => ({ id, name: ROLE_META[id]?.name || id }));
   }, [roleOptions]);
 
-  async function handleRoleChange(member, roleKey) {
+  async function handleRoleChange(member, selectedRoleId) {
     if (member.isSuperAdmin) {
       onToast("Super Admin role is locked");
       return;
     }
-    if (!roleKey || roleKey === member.primaryRoleKey) return;
+    const nextRole = assignableRoles.find((role) => String(role.id) === String(selectedRoleId));
+    const currentRoleId = String(member.consoleRoleId || member.primaryRoleKey || "");
+    if (!nextRole || String(selectedRoleId) === currentRoleId) return;
     setBusyId(member.id);
     try {
-      await setAccessMemberRole(member.id, roleKey);
+      await setAccessMemberRole(member.id, {
+        consoleRoleId: nextRole.id,
+        roleKey: nextRole.roleKey || undefined,
+      });
       onToast(`Updated ${member.name}`);
       await load(page);
     } catch (err) {
@@ -1361,6 +1367,7 @@ function MembersTab({ onToast }) {
             ) : null}
             {members.map((m) => {
               const roleKey = m.primaryRoleKey || "admin";
+              const currentRoleId = m.consoleRoleId || roleKey;
               const meta = memberRoleMeta(roleKey, rolesByKey);
               const granted = typeof m.grantedCount === "number" ? m.grantedCount : 0;
               const total = typeof m.totalSlots === "number" && m.totalSlots > 0 ? m.totalSlots : TOTAL_PERM_SLOTS;
@@ -1394,13 +1401,13 @@ function MembersTab({ onToast }) {
                     ) : (
                       <select
                         className="ua-ac-role-select"
-                        value={roleKey}
+                        value={currentRoleId}
                         disabled={busyId === m.id}
                         onChange={(e) => handleRoleChange(m, e.target.value)}
                         aria-label={`Role for ${m.name}`}
                       >
-                        {!assignableRoles.some((r) => r.id === roleKey) ? (
-                          <option value={roleKey}>{meta.name}</option>
+                        {!assignableRoles.some((r) => r.id === currentRoleId) ? (
+                          <option value={currentRoleId}>{meta.name}</option>
                         ) : null}
                         {assignableRoles.map((r) => (
                           <option key={r.id} value={r.id}>
@@ -1567,13 +1574,14 @@ const AUDIT_TYPE_OPTIONS = [
 ];
 
 function AuditLogTab() {
-  const PAGE_SIZE = 50;
+  const PAGE_SIZE = 20;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [entries, setEntries] = useState([]);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
+  const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({
     page: 1,
     limit: PAGE_SIZE,
@@ -1586,19 +1594,23 @@ function AuditLogTab() {
     return () => clearTimeout(t);
   }, [searchInput]);
 
-  const load = useCallback(async () => {
+  useEffect(() => {
+    setPage(1);
+  }, [search, typeFilter]);
+
+  const load = useCallback(async (nextPage = page) => {
     setLoading(true);
     setError("");
     try {
       const { entries: rows, pagination: nextPagination } = await fetchAccessAuditLog({
-        page: 1,
+        page: nextPage,
         limit: PAGE_SIZE,
         search: search || undefined,
         kind: typeFilter || undefined,
       });
       setEntries(rows || []);
       setPagination({
-        page: Number(nextPagination?.page) || 1,
+        page: Number(nextPagination?.page) || nextPage,
         limit: Number(nextPagination?.limit) || PAGE_SIZE,
         total: Number(nextPagination?.total) || 0,
         pages: Math.max(1, Number(nextPagination?.pages) || 1),
@@ -1610,11 +1622,16 @@ function AuditLogTab() {
     } finally {
       setLoading(false);
     }
-  }, [search, typeFilter]);
+  }, [page, search, typeFilter]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    load(page);
+  }, [load, page]);
+
+  useEffect(() => {
+    if (loading || error) return;
+    if (page > pagination.pages) setPage(pagination.pages);
+  }, [error, loading, page, pagination.pages]);
 
   const countLabel = `${pagination.total} ${pagination.total === 1 ? "entry" : "entries"}`;
 
@@ -1696,6 +1713,17 @@ function AuditLogTab() {
             ))}
           </div>
         </TableScroll>
+      ) : null}
+
+      {!loading && !error ? (
+        <ListPagination
+          page={page}
+          pages={pagination.pages}
+          total={pagination.total}
+          pageSize={PAGE_SIZE}
+          onPageChange={setPage}
+          label="Audit log pagination"
+        />
       ) : null}
     </div>
   );

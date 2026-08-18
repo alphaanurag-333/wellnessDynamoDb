@@ -119,11 +119,15 @@ export async function fetchAccessMembers({ search, roleKey, page = 1, limit = 20
   }
 }
 
-export async function setAccessMemberRole(accountId, roleKey) {
+export async function setAccessMemberRole(accountId, roleOrPayload) {
   try {
+    const payload =
+      roleOrPayload && typeof roleOrPayload === "object"
+        ? roleOrPayload
+        : { roleKey: roleOrPayload };
     const { data } = await api.patch(
       `/account/access/members/${encodeURIComponent(accountId)}/role`,
-      { roleKey },
+      payload,
       { headers: authHeader() },
     );
     return data.account;
