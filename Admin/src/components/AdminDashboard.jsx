@@ -25,7 +25,6 @@ import {
   CLIENT_ALERTS,
   COMM_ONB_COUNT,
   COACH_TIERS,
-  DASH_ROLE_CARDS,
   DASH_SCOPE_LABELS,
   EXP_CARDS,
   EXP_NOTE,
@@ -47,7 +46,6 @@ import {
   WC_PENDING_GROUPS,
   WC_STALE_RECORDS,
   WC_STALE_TOTAL,
-  WC_TEAM_CARDS,
   AWC_A1C_METRICS,
   AWC_APP_CLIENT_STATS,
   AWC_COACH_TIERS,
@@ -89,36 +87,56 @@ function asNumber(value) {
   return Number.isFinite(number) ? number : 0;
 }
 
-const TEAM_PENDING_BY_ROLE = Object.fromEntries(
-  [...DASH_ROLE_CARDS, ...WC_TEAM_CARDS].map((card) => [card.roleId, card.pending]),
-);
+function pendingChipsForRole(roleId, statistics) {
+  if (!statistics || roleId !== "wc") return [];
+  const chips = [];
+  const assignments = asNumber(statistics.pendingUserAssignments);
+  const approvals = asNumber(statistics.pendingCoachApprovals);
+  if (assignments > 0) {
+    chips.push({
+      label: `${assignments} assignment${assignments === 1 ? "" : "s"} pending`,
+      bg: "#fdf3ec",
+      color: "#c2661d",
+    });
+  }
+  if (approvals > 0) {
+    chips.push({
+      label: `${approvals} coach approval${approvals === 1 ? "" : "s"} pending`,
+      bg: "#fdf3ec",
+      color: "#c2661d",
+    });
+  }
+  return chips;
+}
 
-function teamCardsFromRoles(roles, { excludeIds = [], statisticsForView, hasAdminStatistics, hasStaffStatistics } = {}) {
+function teamCardsFromStats(rows, { excludeIds = [] } = {}) {
+  const skip = new Set(["admin", ...excludeIds]);
+  return (rows || [])
+    .filter((row) => row && !skip.has(row.roleKey) && !skip.has(row.id))
+    .map((row) => ({
+      label: row.name,
+      roleId: row.roleKey || row.id,
+      consoleRoleId: row.id,
+      value: asNumber(row.memberCount),
+      accent: row.color || "#5e6ad2",
+      bar: row.color || "#5e6ad2",
+      pending: Array.isArray(row.pending) ? row.pending : [],
+    }));
+}
+
+function teamCardsFromRoles(roles, { excludeIds = [], statisticsForView } = {}) {
   const skip = new Set(["admin", ...excludeIds]);
   return (roles || [])
     .filter((role) => role && !skip.has(role.id))
-    .map((role) => {
-      const staticCard = DASH_ROLE_CARDS.find((card) => card.roleId === role.id);
-      let value = asNumber(role.live);
-      if (!value && staticCard && !statisticsForView) value = asNumber(staticCard.value);
-      if (role.id === "wc" && hasAdminStatistics) {
-        value = asNumber(statisticsForView?.activeWellnessCoaches);
-      } else if (role.id === "awc") {
-        const statsValue = hasStaffStatistics
-          ? statisticsForView?.totalAssistants
-          : statisticsForView?.activeAssistants;
-        if (statsValue != null) value = asNumber(statsValue);
-      }
-      return {
-        label: role.name,
-        roleId: role.id,
-        consoleRoleId: role.dbId || role.id,
-        value,
-        accent: role.color || staticCard?.accent || "#5e6ad2",
-        bar: role.color || staticCard?.bar || "#5e6ad2",
-        pending: TEAM_PENDING_BY_ROLE[role.id] || [],
-      };
-    });
+    .map((role) => ({
+      label: role.name,
+      roleId: role.id,
+      consoleRoleId: role.dbId || role.id,
+      value: asNumber(role.live),
+      accent: role.color || "#5e6ad2",
+      bar: role.color || "#5e6ad2",
+      pending: pendingChipsForRole(role.id, statisticsForView),
+    }));
 }
 
 function dynamicTiers(baseTiers, rows) {
@@ -354,7 +372,7 @@ export function AdminDashboard({
   onRetry,
 }) {
   const navigate = useNavigate();
-  const { viewAs: viewAsId, viewAsPersona, catalogRoles } = useViewAs();
+  const { viewAs: viewAsId, viewAsPersona, liveMenuRoles, liveRolesReady } = useViewAs();
   const viewAs = viewAsPersona || viewAsId;
   const isStaffDash = viewAs === "wc" || viewAs === "awc";
   const isSupportDash = viewAs === "support";
@@ -467,14 +485,17 @@ export function AdminDashboard({
       cells: OPS_OVERDUE.cells.map((cell) => ({ ...cell, count: 0, people: [] })),
     }
     : OPS_OVERDUE);
-  const fallbackTeamCards = viewAs === "wc" ? WC_TEAM_CARDS : DASH_ROLE_CARDS;
-  const catalogTeamCards = teamCardsFromRoles(catalogRoles, {
-    excludeIds: viewAs === "wc" ? ["wc"] : [],
-    statisticsForView,
-    hasAdminStatistics,
-    hasStaffStatistics,
-  });
-  const teamCards = catalogTeamCards.length ? catalogTeamCards : fallbackTeamCards;
+  const excludeTeamIds = viewAs === "wc" ? ["wc"] : [];
+  const liveTeamRoles = statisticsForView?.teamRoles;
+  const catalogTeamCards = Array.isArray(liveTeamRoles)
+    ? teamCardsFromStats(liveTeamRoles, { excludeIds: excludeTeamIds })
+    : teamCardsFromRoles(
+        liveRolesReady
+          ? (liveMenuRoles || []).filter((role) => role.dbId)
+          : [],
+        { excludeIds: excludeTeamIds, statisticsForView },
+      );
+  const teamCards = catalogTeamCards;
   const fallbackLeaderboard = viewAs === "wc" ? WC_LEADERBOARD : viewAs === "awc" ? AWC_LEADERBOARD : viewAs === "support" ? WC_LEADERBOARD : LEADERBOARD;
   const liveCommunity = statistics?.community || null;
   const birthdayRows = liveCommunity ? (liveCommunity.birthdays || []) : BIRTHDAYS;
@@ -1376,6 +1397,11 @@ export function AdminDashboard({
             <span className="ua-section-label__hint">View a role&apos;s queue or send a reminder</span>
           </div>
           <div className="team-row">
+            {teamCards.length === 0 ? (
+              <div className="community-card__empty" style={{ padding: "18px 8px" }}>
+                No team roles yet. Create a role in Access Control to see it here.
+              </div>
+            ) : null}
             {teamCards.map((team) => (
               <div key={team.consoleRoleId || team.roleId || team.label} className="team-card cdact">
                 <span className="stat-card__bar" style={{ background: team.bar }} />
@@ -1474,7 +1500,7 @@ export function AdminDashboard({
               </div>
               <div className="leaderboard__hero-score">
                 <div className="leaderboard__hero-points">{champ.score}</div>
-                <div className="leaderboard__hero-label">avg score</div>
+                <div className="leaderboard__hero-label">DRF score</div>
               </div>
             </div>
 
@@ -1508,7 +1534,7 @@ export function AdminDashboard({
               ))}
             </div>
             <p className="leaderboard__foot">
-              ⚙️ Ranked automatically from Daily Reflection scores · {champ.label} · {activeLeaderboard.length} client{activeLeaderboard.length === 1 ? "" : "s"}
+              ⚙️ Ranked from Daily Reflection totals this month · {champ.label} · {activeLeaderboard.length} client{activeLeaderboard.length === 1 ? "" : "s"}
             </p>
           </>
         )}

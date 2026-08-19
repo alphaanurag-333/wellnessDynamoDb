@@ -23,15 +23,17 @@ function buildChampionMessage({ monthLbl, averageScore }) {
   return `Champion of ${monthLbl}! Average daily reflection score: ${averageScore}%.`;
 }
 
-async function upsertChampionPost({ userId, monthYear, rank, averageScore, daysSubmitted }) {
+async function upsertChampionPost({ userId, monthYear, rank, averageScore, totalScore, daysSubmitted }) {
   const existing = await findMonthlyChampionPostByUserAndMonth(userId, monthYear);
   const monthLbl = monthLabel(monthYear);
   const message = buildChampionMessage({ monthLbl, averageScore });
+  const total = Number(totalScore) || 0;
 
   if (existing) {
     const needsUpdate =
       existing.rank !== rank ||
       existing.averageScore !== averageScore ||
+      Number(existing.totalScore) !== total ||
       existing.daysSubmitted !== daysSubmitted ||
       existing.message !== message ||
       existing.status !== "active";
@@ -40,6 +42,7 @@ async function upsertChampionPost({ userId, monthYear, rank, averageScore, daysS
       ? await updateMonthlyChampionPost(existing.id, {
           rank,
           averageScore,
+          totalScore: total,
           daysSubmitted,
           message,
           status: "active",
@@ -54,6 +57,7 @@ async function upsertChampionPost({ userId, monthYear, rank, averageScore, daysS
     monthYear,
     rank,
     averageScore,
+    totalScore: total,
     daysSubmitted,
     message,
     status: "active",
@@ -127,6 +131,7 @@ async function runMonthlyChampionJob(options = {}) {
         monthYear,
         rank: row.rank,
         averageScore: row.averageScore,
+        totalScore: row.totalScore,
         daysSubmitted: row.daysSubmitted,
       });
 

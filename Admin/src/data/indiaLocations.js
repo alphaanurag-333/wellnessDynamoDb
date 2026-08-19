@@ -5,6 +5,10 @@ export const PHONE_COUNTRY_OPTIONS = [
   { iso: "GB", dial: "+44", label: "United Kingdom (+44)" },
   { iso: "SG", dial: "+65", label: "Singapore (+65)" },
   { iso: "AU", dial: "+61", label: "Australia (+61)" },
+  { iso: "CA", dial: "+1", label: "Canada (+1)" },
+  { iso: "NP", dial: "+977", label: "Nepal (+977)" },
+  { iso: "BD", dial: "+880", label: "Bangladesh (+880)" },
+  { iso: "LK", dial: "+94", label: "Sri Lanka (+94)" },
 ];
 
 export const COUNTRY_OPTIONS = [
@@ -19,6 +23,39 @@ export const COUNTRY_OPTIONS = [
   "Bangladesh",
   "Sri Lanka",
 ];
+
+export const COUNTRY_DIAL_CODE = {
+  India: "+91",
+  "United Arab Emirates": "+971",
+  "United States": "+1",
+  "United Kingdom": "+44",
+  Singapore: "+65",
+  Australia: "+61",
+  Canada: "+1",
+  Nepal: "+977",
+  Bangladesh: "+880",
+  "Sri Lanka": "+94",
+};
+
+export const PHONE_LEN_BY_DIAL = {
+  "+91": 10,
+  "+971": 9,
+  "+1": 10,
+  "+44": 10,
+  "+65": 8,
+  "+61": 9,
+  "+977": 10,
+  "+880": 10,
+  "+94": 9,
+};
+
+export function dialCodeForCountry(country) {
+  return COUNTRY_DIAL_CODE[country] || "+91";
+}
+
+export function phoneLengthForDial(dial) {
+  return PHONE_LEN_BY_DIAL[dial] || 15;
+}
 
 export const INDIA_STATE_CITIES = {
   "Andhra Pradesh": ["Visakhapatnam", "Vijayawada", "Guntur", "Nellore", "Tirupati", "Kurnool"],

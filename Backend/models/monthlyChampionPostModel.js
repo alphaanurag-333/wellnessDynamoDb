@@ -69,6 +69,7 @@ async function createMonthlyChampionPost({
   monthYear,
   rank,
   averageScore,
+  totalScore,
   daysSubmitted,
   message = "",
   status = "active",
@@ -85,6 +86,7 @@ async function createMonthlyChampionPost({
     monthYear: month,
     rank: Number(rank) || 0,
     averageScore: Number(averageScore) || 0,
+    totalScore: Number(totalScore) || 0,
     daysSubmitted: Number(daysSubmitted) || 0,
     message: String(message || "").trim(),
     status: normalizeStatus(status),
@@ -198,7 +200,7 @@ async function listMonthlyChampionPostsByMonth({
     sortFn: (a, b) => {
       const rankCmp = (Number(a.rank) || 0) - (Number(b.rank) || 0);
       if (rankCmp !== 0) return rankCmp;
-      return (Number(b.averageScore) || 0) - (Number(a.averageScore) || 0);
+      return (Number(b.totalScore) || Number(b.averageScore) || 0) - (Number(a.totalScore) || Number(a.averageScore) || 0);
     },
   });
 
@@ -244,7 +246,7 @@ async function listMonthlyChampionPosts({ page = 1, limit = 10, status, monthYea
     if (monthCmp !== 0) return monthCmp;
     const rankCmp = (Number(a.rank) || 0) - (Number(b.rank) || 0);
     if (rankCmp !== 0) return rankCmp;
-    return (Number(b.averageScore) || 0) - (Number(a.averageScore) || 0);
+    return (Number(b.totalScore) || Number(b.averageScore) || 0) - (Number(a.totalScore) || Number(a.averageScore) || 0);
   });
 
   const total = sorted.length;

@@ -647,12 +647,14 @@ export function getTierActions(tier, ageDays = 30) {
   const upTier = nextTier(t);
   const downTier = t === "Maintenance" ? "Seek to Heal" : "Seek";
   return {
-    canConvert: t === "Seek to Heal",
+    canConvert: t === "Seek" || t === "Consultancy" || t === "Seek to Heal",
     canDowngrade: canDowngradeTier(t, ageDays),
-    convertLabel: `Move to ${tierLabel(upTier)}`,
+    convertLabel: `Convert to ${tierLabel(upTier)}`,
     convertTitle: t === "Seek to Heal"
       ? "Move this client into MAINTENANCE — for when every goal has been achieved"
-      : "Move this client up one tier by hand — for when the automatic upgrade did not go through",
+      : t === "Consultancy"
+        ? "Convert this client from PWC to HEAL"
+        : "Convert this client from SEEK to HEAL when payment did not go through",
     downgradeLabel: t === "Maintenance" ? "Move down to HEAL" : "Move down to SEEK",
     downgradeTitle: t === "Maintenance"
       ? "Move this client back to HEAL — for when maintenance was entered too early"

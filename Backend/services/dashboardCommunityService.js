@@ -62,6 +62,22 @@ function formatScoreNumber(value) {
   return Number.isInteger(n) ? n : Math.round(n * 10) / 10;
 }
 
+function formatClientScore(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.round(n);
+}
+
+function inferredTotalScore(row) {
+  const stored = Number(row?.totalScore);
+  if (Number.isFinite(stored) && stored > 0) return formatScoreNumber(stored);
+  const avg = Number(row?.averageScore) || 0;
+  if (avg > 100) return formatScoreNumber(avg);
+  const days = Number(row?.daysSubmitted) || 0;
+  if (days > 0 && avg > 0) return formatScoreNumber(avg * days);
+  return formatScoreNumber(avg);
+}
+
 function userIdOf(row) {
   return String(row?.id || row?._id || row?.userId || "").trim();
 }
@@ -207,22 +223,26 @@ async function loadCoachNames(coachIds) {
 }
 
 function toClientCard(row, user) {
+  const totalScore = inferredTotalScore(row);
   return {
     id: row.userId,
     name: displayName(user),
-    score: formatScoreDisplay(row.averageScore),
+    score: formatClientScore(totalScore),
+    totalScore: formatClientScore(totalScore),
     averageScore: formatScoreNumber(row.averageScore),
     daysSubmitted: Number(row.daysSubmitted) || 0,
   };
 }
 
 function toLeaderboardRow(row, user, rank) {
-  const score = formatScoreNumber(row.averageScore);
+  const totalScore = formatClientScore(inferredTotalScore(row));
   return {
     rank,
     userId: row.userId,
     name: displayName(user),
-    score,
+    score: totalScore,
+    totalScore,
+    averageScore: formatScoreNumber(row.averageScore),
     days: Number(row.daysSubmitted) || 0,
     medal: medalForRank(rank),
     highlight: rank === 2,
@@ -268,11 +288,12 @@ async function rankingsFromChampionPosts(monthYear, allowedIds) {
     .filter((post) => !allowedIds || allowedIds.has(String(post.userId || "").trim()))
     .map((post) => ({
       userId: String(post.userId || "").trim(),
+      totalScore: inferredTotalScore(post),
       averageScore: Number(post.averageScore) || 0,
       daysSubmitted: Number(post.daysSubmitted) || 0,
     }))
     .filter((row) => row.userId)
-    .sort((a, b) => b.averageScore - a.averageScore);
+    .sort((a, b) => (Number(b.totalScore) || 0) - (Number(a.totalScore) || 0) || (Number(b.averageScore) || 0) - (Number(a.averageScore) || 0));
   return { monthYear, rows };
 }
 
@@ -287,6 +308,7 @@ async function loadChampionRankings(allowedIds) {
       .filter((row) => row?.userId && (!allowedIds || allowedIds.has(String(row.userId).trim())))
       .map((row) => ({
         userId: String(row.userId).trim(),
+        totalScore: inferredTotalScore(row),
         averageScore: Number(row.averageScore) || 0,
         daysSubmitted: Number(row.daysSubmitted) || 0,
       }));

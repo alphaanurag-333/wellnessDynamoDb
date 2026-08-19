@@ -19,19 +19,25 @@ export function sanitizePhoneDigits(raw, maxLen = PHONE_NATIONAL_LEN) {
 export const PINCODE_LEN = 6;
 export const INDIAN_PINCODE_PATTERN = /^[1-9]\d{5}$/;
 
-export function sanitizePincode(raw, maxLen = PINCODE_LEN) {
-  return String(raw ?? "").replace(/\D/g, "").slice(0, maxLen);
+export function sanitizePincode(raw, maxLen = 12) {
+  return String(raw ?? "").replace(/[^a-zA-Z0-9]/g, "").slice(0, maxLen);
 }
 
-export function validatePincode(pincode, { label = "Pin code", required = true } = {}) {
+export function validatePincode(pincode, { label = "Pin code", required = true, country = "India" } = {}) {
   const trimmed = String(pincode ?? "").trim();
   if (!trimmed) return required ? `${label} is required.` : "";
-  if (!/^\d+$/.test(trimmed)) return `${label} should contain digits only.`;
-  if (trimmed.length !== PINCODE_LEN) {
-    return `${label} must be exactly ${PINCODE_LEN} digits.`;
+  if (country === "India") {
+    if (!/^\d+$/.test(trimmed)) return `${label} should contain digits only.`;
+    if (trimmed.length !== PINCODE_LEN) {
+      return `${label} must be exactly ${PINCODE_LEN} digits.`;
+    }
+    if (!INDIAN_PINCODE_PATTERN.test(trimmed)) {
+      return `${label} is not valid.`;
+    }
+    return "";
   }
-  if (!INDIAN_PINCODE_PATTERN.test(trimmed)) {
-    return `${label} is not valid.`;
+  if (trimmed.length < 3 || trimmed.length > 12) {
+    return `${label} must be 3–12 characters.`;
   }
   return "";
 }
@@ -70,18 +76,30 @@ export function validatePersonName(
   return "";
 }
 
-export function validatePhoneDigits(phone, { label = "Mobile number" } = {}) {
+export function validatePhoneDigits(phone, { label = "Mobile number", countryCode = "+91" } = {}) {
   const trimmed = String(phone ?? "").trim();
   if (!trimmed) return `${label} is required.`;
   if (!/^\d+$/.test(trimmed)) return `${label} should contain digits only.`;
-  if (trimmed.length !== PHONE_NATIONAL_LEN) {
-    return `${label} must be exactly ${PHONE_NATIONAL_LEN} digits.`;
+  const cc = String(countryCode || "+91").startsWith("+")
+    ? String(countryCode)
+    : `+${countryCode}`;
+  if (cc === "+91") {
+    if (trimmed.length !== PHONE_NATIONAL_LEN) {
+      return `${label} must be exactly ${PHONE_NATIONAL_LEN} digits.`;
+    }
+    if (/^(\d)\1{9}$/.test(trimmed)) {
+      return `${label} is not valid.`;
+    }
+    if (!INDIAN_MOBILE_PATTERN.test(trimmed)) {
+      return `${label} must start with 6, 7, 8, or 9.`;
+    }
+    return "";
   }
-  if (/^(\d)\1{9}$/.test(trimmed)) {
+  if (trimmed.length < 6 || trimmed.length > 15) {
+    return `${label} must be 6–15 digits.`;
+  }
+  if (/^(\d)\1+$/.test(trimmed)) {
     return `${label} is not valid.`;
-  }
-  if (!INDIAN_MOBILE_PATTERN.test(trimmed)) {
-    return `${label} must start with 6, 7, 8, or 9.`;
   }
   return "";
 }

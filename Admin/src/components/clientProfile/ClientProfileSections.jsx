@@ -10,6 +10,7 @@ import { getTierActions } from "../../data/userDetailData.js";
 import { tierBadgeClass, tierBadgeStyle, tierLabel, normalizeTier } from "../../data/usersData.js";
 import { adminListHealthConcerns } from "../../api/healthConcernApi.js";
 import {
+  moveUserToHeal,
   moveUserToMaintenance,
   moveUserToSeek,
   moveMaintenanceUserToHeal,
@@ -221,17 +222,15 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
 
   async function convertTier() {
     if (!tierActions.canConvert || !userId || tierBusy) return;
-    if (currentTier !== "Seek to Heal") {
-      onToast("Upgrade this client from the users list conversion flow");
-      return;
-    }
     setTierBusy(true);
     try {
-      const updated = await moveUserToMaintenance(userId);
+      const updated = currentTier === "Seek to Heal"
+        ? await moveUserToMaintenance(userId)
+        : await moveUserToHeal(userId);
       onUserUpdated?.(updated);
-      onToast(`${user.name} moved to MAINTENANCE`);
+      onToast(`${user.name} converted to ${tierLabel(tierActions.upTier)}`);
     } catch (err) {
-      onToast(err?.message || "Could not move user to maintenance");
+      onToast(err?.message || "Could not convert this client");
     } finally {
       setTierBusy(false);
     }

@@ -644,6 +644,19 @@ export async function deleteUser(id) {
   }
 }
 
+export async function moveUserToHeal(id) {
+  try {
+    const { data } = await api.post(
+      `/account/users/${encodeURIComponent(id)}/convert-to-heal`,
+      {},
+      { headers: authHeader() },
+    );
+    return mapApiUserToRow(data.user);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function moveUserToMaintenance(id) {
   try {
     const { data } = await api.post(

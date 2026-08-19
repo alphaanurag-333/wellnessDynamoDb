@@ -6,6 +6,8 @@ import {
   INDIA_STATES,
   PHONE_COUNTRY_OPTIONS,
   citiesForState,
+  dialCodeForCountry,
+  phoneLengthForDial,
 } from "../data/indiaLocations.js";
 import {
   EMAIL_MAX_LEN,
@@ -62,7 +64,7 @@ function emptyForm() {
     phone: "",
     whatsappCountryCode: "+91",
     whatsappPhone: "",
-    country: "India",
+    country: "",
     state: "",
     city: "",
     pincode: "",
@@ -108,6 +110,8 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
   const [submitError, setSubmitError] = useState("");
 
   const indiaSelected = form.country === "India";
+  const phoneLen = phoneLengthForDial(form.phoneCountryCode);
+  const waLen = phoneLengthForDial(form.whatsappSameAsMobile ? form.phoneCountryCode : form.whatsappCountryCode);
   const cityOptions = useMemo(() => citiesForState(form.state), [form.state]);
   const showOtherConcern = isOtherConcern(concerns, form.primaryHealthConcern);
 
@@ -195,16 +199,19 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
       next.dob = `Date of birth must be at least ${DOB_MIN_AGE_YEARS} years ago.`;
     }
     if (!form.gender) next.gender = "Gender is required.";
-    const phoneErr = validatePhoneDigits(form.phone);
+    const phoneErr = validatePhoneDigits(form.phone, { countryCode: form.phoneCountryCode });
     if (phoneErr) next.phone = phoneErr;
     if (!form.whatsappSameAsMobile) {
-      const waErr = validatePhoneDigits(form.whatsappPhone, { label: "WhatsApp number" });
+      const waErr = validatePhoneDigits(form.whatsappPhone, {
+        label: "WhatsApp number",
+        countryCode: form.whatsappCountryCode,
+      });
       if (waErr) next.whatsappPhone = waErr;
     }
     if (!form.country) next.country = "Country is required.";
     if (!String(form.state || "").trim()) next.state = "State / region is required.";
     if (!String(form.city || "").trim()) next.city = "City is required.";
-    const pinErr = validatePincode(form.pincode);
+    const pinErr = validatePincode(form.pincode, { country: form.country || "India" });
     if (pinErr) next.pincode = pinErr;
     if (!form.primaryHealthConcern) next.primaryHealthConcern = "Primary health concern is required.";
     if (showOtherConcern && !String(form.primaryHealthConcernOther || "").trim()) {
@@ -386,7 +393,11 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
             <Field
               label="Mobile number"
               required
-              hint="10-digit Indian mobile (must start with 6, 7, 8, or 9)."
+              hint={
+                form.phoneCountryCode === "+91"
+                  ? "10-digit Indian mobile (must start with 6, 7, 8, or 9)."
+                  : `${phoneLen}-digit mobile number for the selected country.`
+              }
               error={errors.phone}
             >
               <div className="ua-create-user__phone">
@@ -394,28 +405,34 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
                   className="ua-create-user__input ua-create-user__dial"
                   value={form.phoneCountryCode}
                   disabled={busy}
-                  onChange={(e) => patch({ phoneCountryCode: e.target.value })}
+                  onChange={(e) => patch({ phoneCountryCode: e.target.value, phone: "" })}
                 >
                   {PHONE_COUNTRY_OPTIONS.map((opt) => (
-                    <option key={opt.dial} value={opt.dial}>{opt.label}</option>
+                    <option key={`${opt.iso}-${opt.dial}`} value={opt.dial}>{opt.label}</option>
                   ))}
                 </select>
                 <input
                   className="ua-create-user__input"
                   inputMode="numeric"
-                  placeholder="9876543210"
-                  maxLength={10}
+                  placeholder={form.phoneCountryCode === "+91" ? "9876543210" : "Mobile number"}
+                  maxLength={phoneLen}
                   value={form.phone}
                   disabled={busy}
-                  onKeyDown={blockIndianMobileFirstDigitKeyDown}
-                  onChange={(e) => patch({ phone: sanitizePhoneDigits(e.target.value) })}
+                  onKeyDown={form.phoneCountryCode === "+91" ? blockIndianMobileFirstDigitKeyDown : blockPhoneNonDigitKeyDown}
+                  onChange={(e) => patch({ phone: sanitizePhoneDigits(e.target.value, phoneLen) })}
                 />
               </div>
             </Field>
             <Field
               label="WhatsApp number"
               required
-              hint={form.whatsappSameAsMobile ? "Matches mobile number." : "10-digit Indian mobile (must start with 6, 7, 8, or 9)."}
+              hint={
+                form.whatsappSameAsMobile
+                  ? "Matches mobile number."
+                  : form.whatsappCountryCode === "+91"
+                    ? "10-digit Indian mobile (must start with 6, 7, 8, or 9)."
+                    : `${waLen}-digit WhatsApp number for the selected country.`
+              }
               error={errors.whatsappPhone}
             >
               <div className="ua-create-user__phone">
@@ -423,21 +440,30 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
                   className="ua-create-user__input ua-create-user__dial"
                   value={form.whatsappSameAsMobile ? form.phoneCountryCode : form.whatsappCountryCode}
                   disabled={busy || form.whatsappSameAsMobile}
-                  onChange={(e) => patch({ whatsappCountryCode: e.target.value })}
+                  onChange={(e) => patch({ whatsappCountryCode: e.target.value, whatsappPhone: "" })}
                 >
                   {PHONE_COUNTRY_OPTIONS.map((opt) => (
-                    <option key={opt.dial} value={opt.dial}>{opt.label}</option>
+                    <option key={`wa-${opt.iso}-${opt.dial}`} value={opt.dial}>{opt.label}</option>
                   ))}
                 </select>
                 <input
                   className="ua-create-user__input"
                   inputMode="numeric"
-                  placeholder="9876543210"
-                  maxLength={10}
+                  placeholder={form.phoneCountryCode === "+91" ? "9876543210" : "WhatsApp number"}
+                  maxLength={form.whatsappSameAsMobile ? phoneLen : waLen}
                   value={form.whatsappSameAsMobile ? form.phone : form.whatsappPhone}
                   disabled={busy || form.whatsappSameAsMobile}
-                  onKeyDown={blockIndianMobileFirstDigitKeyDown}
-                  onChange={(e) => patch({ whatsappPhone: sanitizePhoneDigits(e.target.value) })}
+                  onKeyDown={
+                    (form.whatsappSameAsMobile ? form.phoneCountryCode : form.whatsappCountryCode) === "+91"
+                      ? blockIndianMobileFirstDigitKeyDown
+                      : blockPhoneNonDigitKeyDown
+                  }
+                  onChange={(e) => patch({
+                    whatsappPhone: sanitizePhoneDigits(
+                      e.target.value,
+                      form.whatsappSameAsMobile ? phoneLen : waLen,
+                    ),
+                  })}
                 />
               </div>
             </Field>
@@ -450,8 +476,22 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
                 className="ua-create-user__input"
                 value={form.country}
                 disabled={busy}
-                onChange={(e) => patch({ country: e.target.value, state: "", city: "" })}
+                onChange={(e) => {
+                  const country = e.target.value;
+                  const dial = dialCodeForCountry(country);
+                  patch({
+                    country,
+                    state: "",
+                    city: "",
+                    pincode: "",
+                    phoneCountryCode: dial,
+                    whatsappCountryCode: dial,
+                    phone: "",
+                    whatsappPhone: "",
+                  });
+                }}
               >
+                <option value="">Select country</option>
                 {COUNTRY_OPTIONS.map((name) => (
                   <option key={name} value={name}>{name}</option>
                 ))}
@@ -504,20 +544,24 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
               )}
             </Field>
             <Field
-              label="Pin code"
+              label={indiaSelected ? "Pin code" : "Postal code"}
               required
-              hint="6-digit Indian PIN code."
+              hint={indiaSelected ? "6-digit Indian PIN code." : "3–12 characters, letters or digits."}
               error={errors.pincode}
             >
               <input
                 className="ua-create-user__input"
-                inputMode="numeric"
-                placeholder="400001"
-                maxLength={PINCODE_LEN}
+                inputMode={indiaSelected ? "numeric" : "text"}
+                placeholder={indiaSelected ? "400001" : "Postal code"}
+                maxLength={indiaSelected ? PINCODE_LEN : 12}
                 value={form.pincode}
                 disabled={busy}
-                onKeyDown={blockPhoneNonDigitKeyDown}
-                onChange={(e) => patch({ pincode: sanitizePincode(e.target.value) })}
+                onKeyDown={indiaSelected ? blockPhoneNonDigitKeyDown : undefined}
+                onChange={(e) => patch({
+                  pincode: indiaSelected
+                    ? sanitizePincode(e.target.value, PINCODE_LEN).replace(/\D/g, "")
+                    : sanitizePincode(e.target.value, 12),
+                })}
               />
             </Field>
           </div>

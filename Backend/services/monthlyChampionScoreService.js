@@ -36,15 +36,32 @@ function roundScore(value) {
   return Math.round((Number(value) || 0) * 10) / 10;
 }
 
+function isGutResetLog(log) {
+  if (!log || typeof log !== "object") return false;
+  if (log.gutReset === true || log.excludedFromChampionship === true) return true;
+  const kind = String(log.dayType || log.mode || log.protocol || "").toLowerCase();
+  return kind.includes("gut_reset") || kind.includes("gut-reset") || kind === "gutreset";
+}
+
+function compareChampionRows(a, b) {
+  const totalDelta = (Number(b.totalScore) || 0) - (Number(a.totalScore) || 0);
+  if (totalDelta) return totalDelta;
+  const avgDelta = (Number(b.averageScore) || 0) - (Number(a.averageScore) || 0);
+  if (avgDelta) return avgDelta;
+  return (Number(b.daysSubmitted) || 0) - (Number(a.daysSubmitted) || 0);
+}
+
 /**
- * Groups day logs by userId and computes the average score per user for the month.
- * Returns rows sorted by averageScore desc (no ranks assigned yet).
+ * Groups submitted DRF day logs by user for the month.
+ * totalScore = sum of daily DRF scores (0–100 each). Gut Reset days are skipped.
+ * Sorted by totalScore desc (no ranks assigned yet).
  */
 async function computeUserAveragesForMonth(monthYear) {
   const logs = await scanDailyReflectionLogsForMonth(monthYear);
 
   const byUser = new Map();
   for (const log of logs) {
+    if (isGutResetLog(log)) continue;
     const userId = String(log.userId || "").trim();
     if (!userId) continue;
     const score = Number(log.score) || 0;
@@ -54,26 +71,25 @@ async function computeUserAveragesForMonth(monthYear) {
 
   const rows = [...byUser.values()].map(({ userId, scores }) => {
     const daysSubmitted = scores.length;
-    const total = scores.reduce((sum, s) => sum + s, 0);
-    const averageScore = daysSubmitted > 0 ? roundScore(total / daysSubmitted) : 0;
-    return { userId, averageScore, daysSubmitted };
+    const totalScore = roundScore(scores.reduce((sum, s) => sum + s, 0));
+    const averageScore = daysSubmitted > 0 ? roundScore(totalScore / daysSubmitted) : 0;
+    return { userId, totalScore, averageScore, daysSubmitted };
   });
 
-  rows.sort((a, b) => b.averageScore - a.averageScore);
+  rows.sort(compareChampionRows);
   return rows;
 }
 
 /**
- * Keeps only users with the highest average score for the month.
- * All tied top scorers are included and marked rank 1 (no 2nd/3rd place).
- * Example: scores [90, 90, 80] -> only the two users with 90.
+ * Keeps only users with the highest monthly DRF total.
+ * All tied top scorers are included and marked rank 1.
  */
 function assignCompetitionRanks(sortedRows) {
   if (!sortedRows.length) return [];
 
-  const topScore = sortedRows[0].averageScore;
+  const topScore = Number(sortedRows[0].totalScore) || 0;
   return sortedRows
-    .filter((row) => row.averageScore === topScore)
+    .filter((row) => (Number(row.totalScore) || 0) === topScore)
     .map((row) => ({ ...row, rank: 1 }));
 }
 
@@ -105,13 +121,15 @@ async function getCachedUserAveragesForMonth(monthYear) {
 function buildStandingForUser(rows, userId) {
   const id = String(userId || "").trim();
   const me = rows.find((row) => row.userId === id) || null;
+  const totalScore = me ? me.totalScore : null;
   const averageScore = me ? me.averageScore : null;
   const daysSubmitted = me ? me.daysSubmitted : 0;
   const positionsAway = me
-    ? rows.filter((row) => row.averageScore > me.averageScore).length
+    ? rows.filter((row) => (Number(row.totalScore) || 0) > (Number(me.totalScore) || 0)).length
     : null;
 
   return {
+    totalScore,
     averageScore,
     daysSubmitted,
     rank: me ? positionsAway + 1 : null,

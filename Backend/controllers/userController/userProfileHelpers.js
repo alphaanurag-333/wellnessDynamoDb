@@ -1,5 +1,5 @@
 const AppError = require("../../utils/AppError");
-const { assertValidIndianMobile } = require("../../utils/phoneValidation");
+const { assertValidIndianMobile, assertValidMobile } = require("../../utils/phoneValidation");
 const { generateOtp, getOtpExpiryDate, isOtpExpired, deliverOtp } = require("../../utils/otp");
 const {
   uploadFileFromRequest,
@@ -168,7 +168,7 @@ function parseUserFields(body, { requirePassword = false } = {}) {
   if (!name) throw new AppError("name is required", 400);
   if (!email) throw new AppError("email is required", 400);
   if (!phone) throw new AppError("phone is required", 400);
-  assertValidIndianMobile(phone, { field: "phone" });
+  assertValidMobile(phone, { field: "phone", countryCode: phoneCountryCode });
   if (requirePassword && !password) throw new AppError("password is required", 400);
 
   if (status && !USER_ALLOWED_STATUS.includes(status)) {
@@ -214,7 +214,7 @@ function parseUserFields(body, { requirePassword = false } = {}) {
   if (whatsappCountryCode !== undefined) fields.whatsappCountryCode = whatsappCountryCode;
   if (whatsappPhone !== undefined) {
     fields.whatsappPhone = whatsappPhone;
-    if (whatsappPhone) assertValidIndianMobile(whatsappPhone, { field: "whatsappPhone" });
+    if (whatsappPhone) assertValidMobile(whatsappPhone, { field: "whatsappPhone", countryCode: whatsappCountryCode || phoneCountryCode });
   }
 
   return { fields, password };
@@ -388,7 +388,7 @@ async function buildUserUpdatesFromBody(body, current, { allowStatus = true, req
 
     if (nextPhone !== currentPhone || nextCc !== currentCc) {
       if (!nextPhone) throw new AppError("phone cannot be empty", 400);
-      assertValidIndianMobile(nextPhone, { field: "phone" });
+      assertValidMobile(nextPhone, { field: "phone", countryCode: nextCc });
       await assertUniquePhone(nextCc, nextPhone, current.id);
       updates.phone = nextPhone;
       updates.phoneCountryCode = nextCc;
@@ -452,7 +452,12 @@ async function buildUserUpdatesFromBody(body, current, { allowStatus = true, req
       }
       if (body.whatsappPhone !== undefined) {
         const waPhone = normalizePhone(body.whatsappPhone) || null;
-        if (waPhone) assertValidIndianMobile(waPhone, { field: "whatsappPhone" });
+        if (waPhone) {
+          assertValidMobile(waPhone, {
+            field: "whatsappPhone",
+            countryCode: updates.whatsappCountryCode || current.whatsappCountryCode || nextCc,
+          });
+        }
         updates.whatsappPhone = waPhone;
       }
     }

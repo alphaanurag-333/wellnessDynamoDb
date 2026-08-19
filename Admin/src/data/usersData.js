@@ -175,8 +175,55 @@ export function tierBadgeClass(tier) {
 export function nextTier(tier) {
   const t = normalizeTier(tier);
   if (t === "Seek to Heal") return "Maintenance";
-  if (t === "Seek") return "Consultancy";
   return "Seek to Heal";
+}
+
+export function canConvertTier(tier) {
+  const t = normalizeTier(tier);
+  return t === "Seek" || t === "Consultancy" || t === "Seek to Heal";
+}
+
+export function conversionPrompt(user, direction) {
+  const name = String(user?.name || "this client").trim() || "this client";
+  const t = normalizeTier(user?.tier);
+  if (direction === "up") {
+    if (t === "Seek to Heal") {
+      return {
+        title: `Move ${name} from HEAL to MAINTENANCE?`,
+        body: `${name} stays on the roster without an active Heal program. Use this when every goal has been achieved.`,
+        confirm: "Move to MAINTENANCE",
+        kicker: "Conversion",
+      };
+    }
+    if (t === "Consultancy") {
+      return {
+        title: `Convert ${name} from PWC to HEAL?`,
+        body: `${name} already completed consultancy. This upgrades them into the Heal program with full coaching entitlements.`,
+        confirm: "Convert to HEAL",
+        kicker: "Conversion",
+      };
+    }
+    return {
+      title: `Convert ${name} from SEEK to HEAL?`,
+      body: `This is a manual upgrade when payment did not go through. ${name} becomes a Heal client with coaching entitlements. Assign a coach afterwards if they are still unassigned.`,
+      confirm: "Convert to HEAL",
+      kicker: "Conversion",
+    };
+  }
+  if (t === "Maintenance") {
+    return {
+      title: `Move ${name} back from MAINTENANCE to HEAL?`,
+      body: `Use this if maintenance was started too early. ${name} returns to an active Heal program.`,
+      confirm: "Move to HEAL",
+      kicker: "Conversion",
+    };
+  }
+  return {
+    title: `Move ${name} from HEAL to SEEK?`,
+    body: `This ends paid coaching entitlements. ${name}’s history stays on the account.`,
+    confirm: "Move to SEEK",
+    kicker: "Conversion",
+  };
 }
 
 export function prevTier(tier) {

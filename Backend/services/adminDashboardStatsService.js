@@ -2,6 +2,9 @@ const { TABLE: USER_TABLE, getUserById } = require("../models/userModel");
 const { TABLE: COACH_TABLE, getWellnessCoachById } = require("../models/wellnessCoachModel");
 const { TABLE: ASSISTANT_TABLE } = require("../models/assistantWellnessCoachModel");
 const { TABLE: PROGRAM_TABLE } = require("../models/programCatalogModel");
+const { listRoles } = require("../models/roleModel");
+const { countAccountsByConsoleRoleId } = require("../models/accountModel");
+const { ROLE_KEY_META, UI_TO_ACCOUNT_ROLE } = require("../config/consolePermissionCatalog");
 const {
   sumPaidTransactionTotals,
   listPaidTransactionsForAnalytics,
@@ -13,6 +16,90 @@ const { countAcrossPartitions } = require("../utils/dynamoCount");
 
 const STATUS_INDEX = "StatusCreatedAtIndex";
 const IST_TZ = "Asia/Kolkata";
+const CONSOLE_SCOPE = "CONSOLE";
+const TEAM_ROLE_ORDER = ["wc", "awc", "trainee", "support"];
+const CUSTOM_ROLE_COLORS = ["#db2777", "#ea580c", "#0284c7", "#4f46e5", "#0f766e", "#b45309"];
+
+function colorForCustomRole(id) {
+  const seed = String(id || "");
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  return CUSTOM_ROLE_COLORS[hash % CUSTOM_ROLE_COLORS.length];
+}
+
+function pendingChip(count, singular, plural) {
+  const n = Number(count) || 0;
+  if (n <= 0) return null;
+  return {
+    label: `${n} ${n === 1 ? singular : plural}`,
+    bg: "#fdf3ec",
+    color: "#c2661d",
+  };
+}
+
+async function countMembersForConsoleRole(role) {
+  const roleKey = String(role?.roleKey || "").trim().toLowerCase();
+  const accountRole = UI_TO_ACCOUNT_ROLE[roleKey] || null;
+  const isSystem = Boolean(roleKey && ROLE_KEY_META[roleKey]);
+  try {
+    if (isSystem && accountRole) {
+      return await countAccountsByConsoleRoleId(role.id, {
+        accountRoleKey: accountRole,
+        includeUnassigned: true,
+      });
+    }
+    return await countAccountsByConsoleRoleId(role.id);
+  } catch {
+    return 0;
+  }
+}
+
+function pendingForTeamRole(roleKey, stats) {
+  if (roleKey !== "wc") return [];
+  return [
+    pendingChip(stats.pendingUserAssignments, "assignment pending", "assignments pending"),
+    pendingChip(stats.pendingCoachApprovals, "coach approval pending", "coach approvals pending"),
+  ].filter(Boolean);
+}
+
+async function buildTeamRoleCards(stats = {}) {
+  try {
+    const { roles } = await listRoles({
+      scope: CONSOLE_SCOPE,
+      status: "active",
+      page: 1,
+      limit: 100,
+    });
+    const visible = (roles || []).filter(
+      (role) => String(role.roleKey || "").toLowerCase() !== "admin",
+    );
+    const counts = await Promise.all(visible.map((role) => countMembersForConsoleRole(role)));
+    const cards = visible.map((role, index) => {
+      const roleKey = String(role.roleKey || "").trim().toLowerCase();
+      const meta = ROLE_KEY_META[roleKey] || {};
+      const isSystem = Boolean(roleKey && ROLE_KEY_META[roleKey]);
+      return {
+        id: role.id,
+        roleKey: roleKey || role.id,
+        name: role.name || meta.name || "Role",
+        memberCount: counts[index] || 0,
+        color: role.uiMeta?.color || meta.color || (isSystem ? "#5e6ad2" : colorForCustomRole(role.id)),
+        pending: pendingForTeamRole(roleKey, stats),
+      };
+    });
+    cards.sort((a, b) => {
+      const ai = TEAM_ROLE_ORDER.indexOf(a.roleKey);
+      const bi = TEAM_ROLE_ORDER.indexOf(b.roleKey);
+      if (ai === -1 && bi === -1) return String(a.name).localeCompare(String(b.name));
+      if (ai === -1) return 1;
+      if (bi === -1) return -1;
+      return ai - bi;
+    });
+    return cards;
+  } catch {
+    return [];
+  }
+}
 const PRODUCT_LABELS = {
   consultancy: "Consultancy",
   program: "Programs",
@@ -521,6 +608,11 @@ async function getAdminDashboardStats() {
     (fy) => fy.fyStartYear === revenueAnalytics.currentFyStartYear,
   );
 
+  const teamRoles = await buildTeamRoleCards({
+    pendingUserAssignments,
+    pendingCoachApprovals,
+  });
+
   return {
     totalUsers,
     activePrograms,
@@ -550,6 +642,7 @@ async function getAdminDashboardStats() {
       revenueByProduct: revenueAnalytics.products,
       userTiers,
     },
+    teamRoles,
   };
 }
 

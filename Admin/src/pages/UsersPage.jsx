@@ -9,7 +9,9 @@ import {
   USER_TYPE_TAB_DEFS,
   avatarColor,
   enrichUser,
+  canConvertTier,
   canDowngradeTier,
+  conversionPrompt,
   lastActiveMinutes,
   nextTier,
   prevTier,
@@ -27,6 +29,7 @@ import {
   mapUiStatusToApi,
   mapUiTierToApi,
   moveMaintenanceUserToHeal,
+  moveUserToHeal,
   moveUserToMaintenance,
   moveUserToSeek,
   reassignUserCoach,
@@ -225,11 +228,12 @@ export function UsersPage() {
   const [deletedUsers, setDeletedUsers] = useState([]);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [disableTarget, setDisableTarget] = useState(null);
+  const [conversionAsk, setConversionAsk] = useState(null);
+  const [conversionMenu, setConversionMenu] = useState(null);
   const [reassignAsk, setReassignAsk] = useState(null);
   const [actionBusy, setActionBusy] = useState(false);
   const [selectReset, setSelectReset] = useState(0);
   const [reloadNonce, setReloadNonce] = useState(0);
-  const [openTierMore, setOpenTierMore] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [tabCounts, setTabCounts] = useState(EMPTY_TAB_COUNTS);
@@ -246,10 +250,10 @@ export function UsersPage() {
   }, [search]);
 
   useEffect(() => {
-    if (disableTarget || deleteTarget || reassignAsk) {
+    if (disableTarget || deleteTarget || reassignAsk || conversionAsk || conversionMenu) {
       document.activeElement?.blur?.();
     }
-  }, [disableTarget, deleteTarget, reassignAsk]);
+  }, [disableTarget, deleteTarget, reassignAsk, conversionAsk, conversionMenu]);
 
   useEffect(() => {
     if (!canReassignAwc) {
@@ -591,73 +595,43 @@ export function UsersPage() {
     });
   };
 
-  const convertTier = async (user) => {
-    const key = userOverrideKey(user);
-    if (user.tier === "Seek to Heal") {
-      setActionBusy(true);
-      try {
-        const updated = await moveUserToMaintenance(key);
-        setUsers((prev) => prev.map((row) => (
-          userOverrideKey(row) === key ? { ...row, ...updated } : row
-        )));
-        onToast(`${user.name} moved to MAINTENANCE`);
-      } catch (err) {
-        onToast(err?.message || "Could not move user to maintenance");
-      } finally {
-        setActionBusy(false);
-      }
-      return;
-    }
-    const nx = nextTier(user.tier);
-    setTierOverrides((prev) => ({ ...prev, [key]: nx }));
-    onToast(`${user.name} moved to ${tierLabel(nx)} by Admin`);
+  const convertTier = (user) => {
+    setConversionAsk({ user, direction: "up", ...conversionPrompt(user, "up") });
   };
 
-  const downgradeTier = async (user) => {
-    const key = userOverrideKey(user);
-    if (user.tier === "Maintenance") {
-      setActionBusy(true);
-      try {
-        const updated = await moveMaintenanceUserToHeal(key);
-        setUsers((prev) => prev.map((row) => (
-          userOverrideKey(row) === key ? { ...row, ...updated } : row
-        )));
-        onToast(`${user.name} moved back to HEAL`);
-      } catch (err) {
-        onToast(err?.message || "Could not move user back to Heal");
-      } finally {
-        setActionBusy(false);
-      }
-      return;
-    }
-    if (user.tier === "Seek to Heal") {
-      setActionBusy(true);
-      try {
-        const updated = await moveUserToSeek(key);
-        setUsers((prev) => prev.map((row) => (
-          userOverrideKey(row) === key ? { ...row, ...updated } : row
-        )));
-        onToast(`${user.name} moved down to SEEK`);
-      } catch (err) {
-        onToast(err?.message || "Could not move user to Seek");
-      } finally {
-        setActionBusy(false);
-      }
-      return;
-    }
-    const dn = prevTier(user.tier);
-    setTierOverrides((prev) => ({ ...prev, [key]: dn }));
-    onToast(`${user.name} moved down to ${tierLabel(dn)} by Admin`);
+  const downgradeTier = (user) => {
+    setConversionAsk({ user, direction: "down", ...conversionPrompt(user, "down") });
   };
 
-  const revertTier = (user) => {
+  const confirmConversion = async () => {
+    const ask = conversionAsk;
+    if (!ask?.user) return;
+    const user = ask.user;
     const key = userOverrideKey(user);
-    setTierOverrides((prev) => {
-      const next = { ...prev };
-      delete next[key];
-      return next;
-    });
-    onToast(`Manual conversion undone for ${user.name}`);
+    setActionBusy(true);
+    try {
+      let updated;
+      if (ask.direction === "up") {
+        updated = user.tier === "Seek to Heal"
+          ? await moveUserToMaintenance(key)
+          : await moveUserToHeal(key);
+      } else if (user.tier === "Maintenance") {
+        updated = await moveMaintenanceUserToHeal(key);
+      } else {
+        updated = await moveUserToSeek(key);
+      }
+      setUsers((prev) => prev.map((row) => (
+        userOverrideKey(row) === key ? { ...row, ...updated } : row
+      )));
+      onToast(ask.direction === "up"
+        ? `${user.name} converted to ${tierLabel(nextTier(user.tier))}`
+        : `${user.name} moved to ${tierLabel(prevTier(user.tier))}`);
+      setConversionAsk(null);
+    } catch (err) {
+      onToast(err?.message || "Could not convert this client");
+    } finally {
+      setActionBusy(false);
+    }
   };
 
   const askDisable = async (user) => {
@@ -942,11 +916,10 @@ export function UsersPage() {
             rows.map((u, i) => {
               const tier = tierStyle(u.tier);
               const tone = u.off || u.status === "Disabled" ? "red" : u.status === "Active" ? "green" : "muted";
-              const canConvert = u.tier !== "Maintenance";
-              const canDowngrade = canDowngradeTier(u.tier, u.ageDays);
+              const canConvert = canEdit && canConvertTier(u.tier);
+              const canDowngrade = canEdit && canDowngradeTier(u.tier, u.ageDays);
+              const extraCount = Number(canConvert) + Number(canDowngrade);
               const rowKey = userOverrideKey(u) || u.name;
-              const extraCount = Number(canEdit && canConvert) + Number(canEdit && canDowngrade) + Number(canEdit && u.converted);
-              const tierOpen = openTierMore === rowKey;
 
               return (
                 <div
@@ -967,60 +940,26 @@ export function UsersPage() {
                       </div>
                     </div>
                   </div>
-                  <div className={`ua-users-tier${tierOpen ? " is-open" : ""}`} onClick={(e) => e.stopPropagation()}>
-                    <div className="ua-users-tier__primary">
-                      <span
-                        className="ua-tier"
-                        style={{ background: tier.bg, color: tier.color, borderColor: tier.border }}
+                  <div className="ua-users-tier" onClick={(e) => e.stopPropagation()}>
+                    <span
+                      className="ua-tier"
+                      style={{ background: tier.bg, color: tier.color, borderColor: tier.border }}
+                    >
+                      {tierLabel(u.tier)}
+                    </span>
+                    {extraCount > 0 ? (
+                      <button
+                        type="button"
+                        className="ua-tier-more"
+                        disabled={actionBusy}
+                        onClick={() => {
+                          if (canConvert && !canDowngrade) convertTier(u);
+                          else if (!canConvert && canDowngrade) downgradeTier(u);
+                          else setConversionMenu(u);
+                        }}
                       >
-                        {tierLabel(u.tier)}
-                      </span>
-                      {extraCount > 0 ? (
-                        <>
-                          <br />
-                          <button
-                            type="button"
-                            className="ua-tier-more"
-                            aria-expanded={tierOpen}
-                            onClick={() => setOpenTierMore(tierOpen ? null : rowKey)}
-                          >
-                            {tierOpen ? "Hide" : `+${extraCount} more`}
-                          </button>
-                        </>
-                      ) : null}
-                    </div>
-                    {tierOpen ? (
-                      <div className="ua-users-tier__more">
-                        {canEdit && canConvert ? (
-                          <button
-                            type="button"
-                            className="ua-tier-action ua-tier-action--up"
-                            title={u.tier === "Seek to Heal"
-                              ? `Move ${u.name} into MAINTENANCE — for when every goal has been achieved`
-                              : `Move ${u.name} up to ${u.tier === "Seek" ? "PWC" : "HEAL"} by hand — for when the automatic upgrade did not go through`}
-                            onClick={() => convertTier(u)}
-                            disabled={actionBusy}
-                          >
-                            → {tierLabel(nextTier(u.tier))}
-                          </button>
-                        ) : null}
-                        {canEdit && canDowngrade ? (
-                          <button
-                            type="button"
-                            className="ua-tier-action ua-tier-action--down"
-                            title={u.tier === "Maintenance"
-                              ? `Move ${u.name} back to HEAL — for when maintenance was entered too early`
-                              : `Move ${u.name} back down to SEEK — ends paid coaching entitlements`}
-                            onClick={() => downgradeTier(u)}
-                            disabled={actionBusy}
-                          >
-                            ↓ {tierLabel(prevTier(u.tier))}
-                          </button>
-                        ) : null}
-                        {canEdit && u.converted ? (
-                          <button type="button" className="ua-tier-action ua-tier-action--undo" title="Undo this manual change" onClick={() => revertTier(u)}>undo</button>
-                        ) : null}
-                      </div>
+                        +{extraCount} more
+                      </button>
                     ) : null}
                   </div>
                   <div onClick={(e) => e.stopPropagation()}>
@@ -1187,6 +1126,79 @@ export function UsersPage() {
                 disabled={actionBusy}
               >
                 {actionBusy ? "Assigning…" : "Confirm"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {conversionMenu ? (
+        <div className="ua-dialog-backdrop" onClick={() => !actionBusy && setConversionMenu(null)} role="presentation">
+          <div
+            className="ua-dialog ua-dialog--confirm"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="convert-menu-title"
+          >
+            <div className="ua-dialog__kicker">Conversion</div>
+            <div id="convert-menu-title" className="ua-dialog__title ua-dialog__title--confirm">
+              Change {conversionMenu.name}&rsquo;s tier?
+            </div>
+            <p className="ua-dialog__body">
+              Choose how to convert {conversionMenu.name}. You will confirm the change on the next step.
+            </p>
+            <div className="ua-dialog__actions ua-dialog__actions--stack">
+              {canConvertTier(conversionMenu.tier) ? (
+                <button
+                  type="button"
+                  className="ua-dialog__btn-primary"
+                  onClick={() => {
+                    const user = conversionMenu;
+                    setConversionMenu(null);
+                    convertTier(user);
+                  }}
+                >
+                  {conversionPrompt(conversionMenu, "up").confirm}
+                </button>
+              ) : null}
+              {canDowngradeTier(conversionMenu.tier, conversionMenu.ageDays) ? (
+                <button
+                  type="button"
+                  className="btn btn--outline"
+                  onClick={() => {
+                    const user = conversionMenu;
+                    setConversionMenu(null);
+                    downgradeTier(user);
+                  }}
+                >
+                  {conversionPrompt(conversionMenu, "down").confirm}
+                </button>
+              ) : null}
+              <button type="button" className="btn btn--outline" onClick={() => setConversionMenu(null)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {conversionAsk ? (
+        <div className="ua-dialog-backdrop" onClick={() => !actionBusy && setConversionAsk(null)} role="presentation">
+          <div
+            className="ua-dialog ua-dialog--confirm"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="convert-user-title"
+          >
+            <div className="ua-dialog__kicker">{conversionAsk.kicker}</div>
+            <div id="convert-user-title" className="ua-dialog__title ua-dialog__title--confirm">
+              {conversionAsk.title}
+            </div>
+            <p className="ua-dialog__body">{conversionAsk.body}</p>
+            <div className="ua-dialog__actions">
+              <button type="button" className="btn btn--outline" onClick={() => setConversionAsk(null)} disabled={actionBusy}>Cancel</button>
+              <button type="button" className="ua-dialog__btn-primary" onClick={confirmConversion} disabled={actionBusy}>
+                {actionBusy ? "Converting…" : conversionAsk.confirm}
               </button>
             </div>
           </div>

@@ -2047,20 +2047,38 @@
   font-size: 19px;
 }
 
-/* Team cards */
+/* Team cards — one row, extra roles scroll horizontally */
 .updated-admin .team-row {
   display: flex;
   gap: 9px;
-  flex-wrap: wrap;
-  padding-bottom: 4px;
-  padding-top: 4px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 6px 2px 12px;
+  max-width: 100%;
+  scrollbar-width: thin;
+  scrollbar-color: #c5cbe8 transparent;
+}
+
+.updated-admin .team-row::-webkit-scrollbar {
+  height: 6px;
+}
+
+.updated-admin .team-row::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.updated-admin .team-row::-webkit-scrollbar-thumb {
+  background: #c5cbe8;
+  border-radius: 99px;
 }
 
 .updated-admin .team-card {
   position: relative;
   overflow: hidden;
-  flex: 1 1 200px;
-  min-width: 180px;
+  flex: 0 0 220px;
+  width: 220px;
+  min-width: 220px;
   background: #fff;
   border: 1px solid var(--border-soft);
   border-radius: var(--radius);
@@ -5979,18 +5997,14 @@
 }
 
 .updated-admin .ua-users-tier__primary {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .updated-admin .ua-users-tier__more {
-  display: flex;
-  flex-direction: column;
-  flex-wrap: nowrap;
-  align-items: flex-start;
-  justify-content: flex-start;
-  gap: 6px;
-  min-width: 0;
-  max-width: 100%;
+  display: none;
 }
 
 .updated-admin .ua-tier-more {
@@ -6005,7 +6019,7 @@
   min-height: 26px;
   min-width: max-content;
   padding: 0 12px;
-  margin: 6px 0 0;
+  margin: 0;
   border-radius: 999px;
   border: 1px dashed rgb(203, 213, 230);
   background: #fff;
@@ -6400,6 +6414,15 @@
   display: flex;
   gap: 9px;
   justify-content: flex-end;
+}
+
+.updated-admin .ua-dialog__actions--stack {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.updated-admin .ua-dialog__actions--stack > button {
+  justify-content: center;
 }
 
 .updated-admin .ua-dialog__btn-danger {
