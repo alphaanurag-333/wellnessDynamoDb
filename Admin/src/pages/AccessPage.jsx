@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Navigate, useNavigate, useOutletContext } from "react-router-dom";
+import { Navigate, useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 import { BrandLoader } from "../components/BrandLoader.jsx";
 import { CfgSelect, OrangeButton, PageHeader, PillTabs, TableScroll, ListPagination } from "../components/shared.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
@@ -1874,7 +1874,15 @@ function SimulatorTab() {
 export function AccessPage() {
   const { showToast: onToast } = useOutletContext();
   const { isSuperAdmin, bootstrapping } = useViewAs();
-  const [tab, setTab] = useState("roles");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const tab = ACCESS_TABS.some((item) => item.id === tabParam) ? tabParam : "roles";
+  const setTab = (nextTab) => {
+    const next = new URLSearchParams(searchParams);
+    if (!nextTab || nextTab === "roles") next.delete("tab");
+    else next.set("tab", nextTab);
+    setSearchParams(next, { replace: true });
+  };
   const [pendingCount, setPendingCount] = useState(0);
 
   const loadPendingCount = useCallback(async () => {

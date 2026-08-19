@@ -4,6 +4,7 @@ import { userInitials } from "../data/usersData.js";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { useAppSelector } from "../store/hooks.js";
 import { selectAdminProfile } from "../store/slices/adminProfileSlice.js";
+import { HeaderSearch } from "./HeaderSearch.jsx";
 import { NotificationInboxPanel } from "./NotificationInboxPanel.jsx";
 
 export function AdminHeader({
@@ -42,13 +43,7 @@ export function AdminHeader({
         </button>
       )}
 
-      <div className="header__search">
-        <svg className="header__search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-          <circle cx="11" cy="11" r="8" />
-          <path d="m21 21-4.3-4.3" />
-        </svg>
-        <input type="search" className="header__search-input" placeholder="Search users, teams, policies…" aria-label="Search" />
-      </div>
+      <HeaderSearch />
 
       <div className="header__actions">
         <NotificationInboxPanel />

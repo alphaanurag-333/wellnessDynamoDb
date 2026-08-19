@@ -91,6 +91,8 @@ export function buildProfileFromAccount(account, activeRole) {
       roleNote: "set by admin",
       email: "—",
       whatsapp: "—",
+      phoneDigits: "",
+      phoneCountryCode: "+91",
       whatsappHint: "",
       address: "—",
       bio: "",
@@ -114,9 +116,11 @@ export function buildProfileFromAccount(account, activeRole) {
     roleNote: "set by admin",
     email: account.email || "—",
     whatsapp,
+    phoneDigits: String(account.phone || "").trim(),
+    phoneCountryCode: String(account.phoneCountryCode || "+91").trim() || "+91",
     whatsappHint: hasPhone
-      ? "Verified · a new number needs an OTP before it replaces this one."
-      : "No WhatsApp number on file.",
+      ? "This number is used for WhatsApp and OTP sign-in."
+      : "Add a mobile number for WhatsApp and OTP sign-in.",
     address: formatAddress(account),
     bio: account.bio || "",
     memberSince: formatMemberSince(account.createdAt),
