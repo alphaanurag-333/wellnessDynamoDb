@@ -3283,7 +3283,7 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 8px;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 750;
   color: var(--text);
 }
@@ -6769,6 +6769,21 @@
   padding: 3px 8px;
   border-radius: 6px;
   height: fit-content;
+}
+
+.updated-admin .ua-policy-card__scope--allow {
+  color: #2b8f5b;
+  background: #e7f6ee;
+}
+
+.updated-admin .ua-policy-card__scope--deny {
+  color: #d64545;
+  background: #fdeeee;
+}
+
+.updated-admin .ua-policy-card__scope--mixed {
+  color: #2563eb;
+  background: #e8f0ff;
 }
 
 .updated-admin .ua-policy-card__rules {
@@ -18932,12 +18947,15 @@
 .updated-admin .ua-ac-page {
   min-width: 0;
   max-width: 100%;
-  overflow-x: clip;
+  overflow-x: visible;
 }
 
 .updated-admin .ua-ac-page .ua-pill-tabs--lg {
   max-width: 100%;
   box-sizing: border-box;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: visible;
 }
 
 .updated-admin .ua-ac-roles-bar {
@@ -19740,7 +19758,79 @@
 }
 
 .updated-admin .ua-policy-modal {
-  width: min(460px, calc(100vw - 32px));
+  width: min(560px, calc(100vw - 32px));
+  max-width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+}
+
+.updated-admin .ua-policy-rule-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.updated-admin .ua-policy-rule-editor__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.updated-admin .ua-policy-rule-editor__remove {
+  border: 0;
+  background: transparent;
+  color: #d64545;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.updated-admin .ua-policy-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.updated-admin .ua-policy-action {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.updated-admin .ua-policy-action.is-allow {
+  background: #e7f6ee;
+  border-color: #b7e0c8;
+  color: #2b8f5b;
+}
+
+.updated-admin .ua-policy-action.is-deny {
+  background: #fdeeee;
+  border-color: #f3c4c4;
+  color: #d64545;
+}
+
+.updated-admin .ua-policy-add-rule {
+  width: 100%;
+  height: 38px;
+  margin-bottom: 12px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  background: #fafafa;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
 }
 
 .updated-admin .ua-policy-modal__preview {
@@ -19776,6 +19866,18 @@
   background: #eefbf4;
 }
 
+.updated-admin .ua-policy-modal__switch--allow {
+  border-color: #2b8f5b;
+  color: #2b8f5b;
+  background: #eefbf4;
+}
+
+.updated-admin .ua-policy-modal__switch--deny {
+  border-color: #d64545;
+  color: #d64545;
+  background: #fdeeee;
+}
+
 /* Access Control — Members tab */
 .updated-admin .ua-ac-members .ua-table-scroll,
 .updated-admin .ua-table-card--ac-members {
@@ -19787,13 +19889,18 @@
   align-items: center;
   gap: 12px;
   margin-bottom: 14px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .updated-admin .ua-ac-members-toolbar .ua-search-wrap {
-  flex: 1 1 280px;
-  min-width: 220px;
-  max-width: 420px;
+  flex: 0 0 330px;
+  width: 330px;
+  min-width: 240px;
+  max-width: 330px;
+}
+
+.updated-admin .ua-ac-members-toolbar .ua-search-wrap__input {
+  width: 100%;
 }
 
 .updated-admin .ua-ac-members-toolbar__select {
@@ -19802,16 +19909,45 @@
   flex: 0 0 180px;
 }
 
-.updated-admin .ua-ac-members-toolbar__select .ua-cfg-select__trigger {
+.updated-admin .ua-ac-members-toolbar__select.is-open,
+.updated-admin .ua-ac-role-select.is-open {
+  z-index: 40;
+}
+
+.updated-admin .ua-ac-members-toolbar__select .ua-cfg-select__trigger,
+.updated-admin .ua-ac-role-select .ua-cfg-select__trigger {
   height: 38px;
   border: 1px solid rgb(203, 213, 230);
   border-radius: 10px;
   font-size: 13px;
   font-weight: 650;
+  gap: 8px;
+}
+
+.updated-admin .ua-ac-members-toolbar__select .ua-cfg-select__chev,
+.updated-admin .ua-ac-role-select .ua-cfg-select__chev {
+  width: 18px;
+  height: 18px;
+  margin-right: 2px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-size: 0;
+  line-height: 0;
+  color: transparent;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%2316233f' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 12px 8px no-repeat;
+  transition: transform 0.15s ease;
+}
+
+.updated-admin .ua-ac-members-toolbar__select.is-open .ua-cfg-select__chev,
+.updated-admin .ua-ac-role-select.is-open .ua-cfg-select__chev {
+  transform: rotate(180deg);
 }
 
 .updated-admin .ua-ac-members-toolbar__select.is-open .ua-cfg-select__trigger,
-.updated-admin .ua-ac-members-toolbar__select .ua-cfg-select__trigger:focus-visible {
+.updated-admin .ua-ac-members-toolbar__select .ua-cfg-select__trigger:focus-visible,
+.updated-admin .ua-ac-role-select.is-open .ua-cfg-select__trigger,
+.updated-admin .ua-ac-role-select .ua-cfg-select__trigger:focus-visible {
   border-color: #5e6ad2;
   box-shadow: 0 0 0 3px rgba(94, 106, 210, 0.12);
 }

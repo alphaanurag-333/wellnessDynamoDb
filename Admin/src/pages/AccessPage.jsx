@@ -209,18 +209,75 @@ function policyAttachmentLabel(attachment) {
   return attachment.memberName || attachment.memberEmail || "Member";
 }
 
+function newPolicyRule(partial = {}) {
+  const featureId = partial.featureId || PERM_CATALOG[0]?.[2] || "";
+  const meta = featureMeta(featureId);
+  return {
+    key: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    effect: partial.effect === "allow" ? "allow" : "deny",
+    featureId,
+    actions: Array.isArray(partial.actions) && partial.actions.length ? [...partial.actions] : [...(meta?.actions || [])],
+  };
+}
+
+function editorRulesFromPolicy(policy) {
+  if (!policy) return [newPolicyRule({ effect: "deny" })];
+  if (Array.isArray(policy.rules) && policy.rules.length) {
+    return policy.rules.map((rule) =>
+      newPolicyRule({
+        effect: String(rule.effect || rule.type || "deny").toLowerCase() === "allow" ? "allow" : "deny",
+        featureId: rule.featureId || policy.featureId,
+        actions: rule.actions,
+      }),
+    );
+  }
+  return [
+    newPolicyRule({
+      effect: String(policy.effect || "deny").toLowerCase() === "allow" ? "allow" : "deny",
+      featureId: policy.featureId,
+    }),
+  ];
+}
+
 function CreatePolicyModal({ policy, busy, onClose, onSubmit }) {
   const [name, setName] = useState(policy?.name || "");
-  const [featureId, setFeatureId] = useState(policy?.featureId || PERM_CATALOG[0]?.[2] || "");
-  const selected = featureMeta(featureId);
+  const [description, setDescription] = useState(policy?.description || "");
+  const [rules, setRules] = useState(() => editorRulesFromPolicy(policy));
   const isEditing = Boolean(policy);
+  const canSubmit = Boolean(name.trim()) && rules.every((rule) => rule.featureId && rule.actions.length) && !busy;
+
+  function updateRule(key, patch) {
+    setRules((current) =>
+      current.map((rule) => {
+        if (rule.key !== key) return rule;
+        if (patch.featureId && patch.featureId !== rule.featureId) {
+          const meta = featureMeta(patch.featureId);
+          return { ...rule, featureId: patch.featureId, actions: [...(meta?.actions || [])] };
+        }
+        return { ...rule, ...patch };
+      }),
+    );
+  }
+
+  function toggleAction(key, action) {
+    setRules((current) =>
+      current.map((rule) => {
+        if (rule.key !== key) return rule;
+        const has = rule.actions.includes(action);
+        const actions = has ? rule.actions.filter((item) => item !== action) : [...rule.actions, action];
+        const meta = featureMeta(rule.featureId);
+        const ordered = (meta?.actions || []).filter((item) => actions.includes(item));
+        return { ...rule, actions: ordered };
+      }),
+    );
+  }
 
   return (
     <div className="ua-dialog-backdrop" onClick={busy ? undefined : onClose} role="presentation">
       <div className="ua-ac-modal ua-policy-modal" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
         <div className="ua-ac-modal__title">{isEditing ? "Edit policy" : "Create a policy"}</div>
         <p className="ua-ac-modal__body">
-          Quickly create a deny bundle, then attach it to a role or to a specific member.
+          Mix allow and deny rules in one bundle. Deny beats the role baseline; a personal override still wins.
         </p>
         <label className="ua-ac-field">
           <span className="ua-ac-field__label">Policy name</span>
@@ -233,29 +290,98 @@ function CreatePolicyModal({ policy, busy, onClose, onSubmit }) {
           />
         </label>
         <label className="ua-ac-field">
-          <span className="ua-ac-field__label">Deny every action on</span>
-          <select
+          <span className="ua-ac-field__label">Description</span>
+          <input
             className="ua-ac-field__input"
-            value={featureId}
-            onChange={(event) => setFeatureId(event.target.value)}
-          >
-            {PERM_CATALOG.map((row) => (
-              <option key={row[2]} value={row[2]}>
-                {row[1]}
-              </option>
-            ))}
-          </select>
+            placeholder="Optional — shown on the policy card"
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+          />
         </label>
-        {selected ? (
-          <div className="ua-policy-modal__preview">
-            {selected.actions.map((action) => (
-              <div key={action} className="ua-policy-card__rule">
-                <span className="ua-rule-badge ua-rule-badge--deny">DENY</span>
-                <span>{`${action} · ${selected.featureName}`}</span>
+
+        {rules.map((rule, index) => {
+          const selected = featureMeta(rule.featureId);
+          return (
+            <div key={rule.key} className="ua-policy-rule-editor">
+              <div className="ua-policy-rule-editor__head">
+                <span className="ua-ac-field__label">Rule {index + 1}</span>
+                {rules.length > 1 ? (
+                  <button
+                    type="button"
+                    className="ua-policy-rule-editor__remove"
+                    onClick={() => setRules((current) => current.filter((item) => item.key !== rule.key))}
+                  >
+                    Remove
+                  </button>
+                ) : null}
               </div>
-            ))}
-          </div>
-        ) : null}
+              <div className="ua-policy-modal__switches">
+                <button
+                  type="button"
+                  className={`ua-policy-modal__switch${rule.effect === "allow" ? " ua-policy-modal__switch--allow" : ""}`}
+                  onClick={() => updateRule(rule.key, { effect: "allow" })}
+                >
+                  Allow
+                </button>
+                <button
+                  type="button"
+                  className={`ua-policy-modal__switch${rule.effect === "deny" ? " ua-policy-modal__switch--deny" : ""}`}
+                  onClick={() => updateRule(rule.key, { effect: "deny" })}
+                >
+                  Deny
+                </button>
+              </div>
+              <label className="ua-ac-field">
+                <span className="ua-ac-field__label">{rule.effect === "allow" ? "Grant actions on" : "Block actions on"}</span>
+                <select
+                  className="ua-ac-field__input"
+                  value={rule.featureId}
+                  onChange={(event) => updateRule(rule.key, { featureId: event.target.value })}
+                >
+                  {PERM_CATALOG.map((row) => (
+                    <option key={row[2]} value={row[2]}>
+                      {row[1]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {selected ? (
+                <div className="ua-policy-actions">
+                  {selected.actions.map((action) => {
+                    const on = rule.actions.includes(action);
+                    return (
+                      <button
+                        key={action}
+                        type="button"
+                        className={`ua-policy-action${on ? (rule.effect === "allow" ? " is-allow" : " is-deny") : ""}`}
+                        onClick={() => toggleAction(rule.key, action)}
+                      >
+                        {action}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+
+        <button type="button" className="ua-policy-add-rule" onClick={() => setRules((current) => [...current, newPolicyRule()])}>
+          + Add another rule
+        </button>
+
+        <div className="ua-policy-modal__preview">
+          {rules.map((rule) => {
+            const selected = featureMeta(rule.featureId);
+            if (!selected || !rule.actions.length) return null;
+            return (
+              <div key={rule.key} className="ua-policy-card__rule">
+                <span className={`ua-rule-badge ua-rule-badge--${rule.effect}`}>{rule.effect.toUpperCase()}</span>
+                <span>{`${rule.actions.join(" / ")} · ${selected.featureName}`}</span>
+              </div>
+            );
+          })}
+        </div>
         <div className="ua-ac-modal__actions">
           <button type="button" className="btn btn--outline" onClick={onClose} disabled={busy}>
             Cancel
@@ -263,8 +389,18 @@ function CreatePolicyModal({ policy, busy, onClose, onSubmit }) {
           <button
             type="button"
             className="ua-ac-modal__primary"
-            disabled={!name.trim() || !featureId || busy}
-            onClick={() => onSubmit({ name: name.trim(), featureId })}
+            disabled={!canSubmit}
+            onClick={() =>
+              onSubmit({
+                name: name.trim(),
+                description: description.trim(),
+                rules: rules.map((rule) => ({
+                  effect: rule.effect,
+                  featureId: rule.featureId,
+                  actions: rule.actions,
+                })),
+              })
+            }
           >
             {busy ? (isEditing ? "Saving…" : "Creating…") : isEditing ? "Save" : "Create"}
           </button>
@@ -284,7 +420,7 @@ function AttachPolicyModal({ policy, roles, members, busy, onClose, onSubmit }) 
       <div className="ua-ac-modal ua-policy-modal" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
         <div className="ua-ac-modal__title">Attach a policy</div>
         <p className="ua-ac-modal__body">
-          Grant this deny bundle to a whole role or one member. A policy deny beats the role baseline.
+          Grant this bundle to a whole role or one member. Policy deny beats the role baseline; policy allow adds on top.
         </p>
         <label className="ua-ac-field">
           <span className="ua-ac-field__label">Policy</span>
@@ -455,7 +591,7 @@ function PoliciesTab({ onToast }) {
   return (
     <>
       <div className="ua-section-bar">
-        <span>Reusable allow/deny bundles. Attach one to a whole role or to a single member.</span>
+        <span>Reusable allow/deny bundles. Attach one to a whole role or a single member; a policy deny beats the role baseline but a personal override still wins.</span>
         <OrangeButton onClick={() => setEditorPolicy(null)}>+ Create policy</OrangeButton>
       </div>
 
@@ -477,12 +613,16 @@ function PoliciesTab({ onToast }) {
                     <div className="ua-policy-card__name">{policy.name}</div>
                     <div className="ua-policy-card__desc">{policy.desc}</div>
                   </div>
-                  <span className="ua-policy-card__scope">{policy.scope}</span>
+                  <span className={`ua-policy-card__scope ua-policy-card__scope--${String(policy.effect || policy.scope || "deny").toLowerCase()}`}>
+                    {policy.scope}
+                  </span>
                 </div>
                 <div className="ua-policy-card__rules">
-                  {policy.rules.map((rule) => (
-                    <div key={`${policy.id}-${rule.action}`} className="ua-policy-card__rule">
-                      <span className={`ua-rule-badge ua-rule-badge--${rule.type.toLowerCase()}`}>{rule.type}</span>
+                  {policy.rules.map((rule, index) => (
+                    <div key={`${policy.id}-${rule.featureId}-${rule.effect}-${rule.action}-${index}`} className="ua-policy-card__rule">
+                      <span className={`ua-rule-badge ua-rule-badge--${String(rule.type || rule.effect || "deny").toLowerCase()}`}>
+                        {rule.type || String(rule.effect || "deny").toUpperCase()}
+                      </span>
                       <span>{rule.text}</span>
                     </div>
                   ))}
@@ -523,7 +663,7 @@ function PoliciesTab({ onToast }) {
         ) : (
           <div className="ua-table-card ua-policy-empty">
             <div className="ua-policy-empty__title">No policies yet</div>
-            <div className="ua-policy-empty__sub">Create your first deny bundle, then attach it to a role or a member.</div>
+            <div className="ua-policy-empty__sub">Create your first allow/deny bundle, then attach it to a role or a member.</div>
           </div>
         )
       ) : null}
@@ -1251,8 +1391,16 @@ function effectivePermSubtext(member) {
   return "role baseline only";
 }
 
+const CONSOLE_ROLE_ID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isConsoleRoleId(value) {
+  return CONSOLE_ROLE_ID_RE.test(String(value || "").trim());
+}
+
 function MembersTab({ onToast }) {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const PAGE_SIZE = 20;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -1260,7 +1408,13 @@ function MembersTab({ onToast }) {
   const [roleOptions, setRoleOptions] = useState([]);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState("");
+  const roleFilter = searchParams.get("role") || "";
+  const setRoleFilter = (value) => {
+    const next = new URLSearchParams(searchParams);
+    if (!value) next.delete("role");
+    else next.set("role", String(value));
+    setSearchParams(next, { replace: true });
+  };
   const [baseTotal, setBaseTotal] = useState(0);
   const [pagination, setPagination] = useState({
     page: 1,
@@ -1323,11 +1477,13 @@ function MembersTab({ onToast }) {
     setLoading(true);
     setError("");
     try {
+      const consoleRoleId = isConsoleRoleId(roleFilter) ? roleFilter : undefined;
       const { members: rows, pagination: nextPagination } = await fetchAccessMembers({
         page: nextPage,
         limit: PAGE_SIZE,
         search: search || undefined,
-        roleKey: roleFilter || undefined,
+        consoleRoleId,
+        roleKey: consoleRoleId ? undefined : roleFilter || undefined,
       });
       setMembers(rows || []);
       setPagination({
@@ -1535,7 +1691,7 @@ function MembersTab({ onToast }) {
                       className="ua-ac-fine-tune"
                       onClick={() => openPermissions(m.id)}
                     >
-                      Permissions ›
+                      Permissions {">"}
                     </button>
                   </div>
                 </div>
@@ -2015,6 +2171,7 @@ export function AccessPage() {
     const next = new URLSearchParams(searchParams);
     if (!nextTab || nextTab === "roles") next.delete("tab");
     else next.set("tab", nextTab);
+    next.delete("role");
     setSearchParams(next, { replace: true });
   };
   const [pendingCount, setPendingCount] = useState(0);

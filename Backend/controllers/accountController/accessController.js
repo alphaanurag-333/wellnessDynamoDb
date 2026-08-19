@@ -121,13 +121,23 @@ function isSystemConsoleRole(role) {
   return Boolean(key && ROLE_KEY_META[key]);
 }
 
+const CONSOLE_ROLE_ID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isConsoleRoleId(value) {
+  return CONSOLE_ROLE_ID_RE.test(String(value || "").trim());
+}
+
 function accountMatchesConsoleRole(account, selectedRole, primaryAccountRole) {
   if (!selectedRole) return true;
   const assignedId = assignedMembershipRoleId(account, primaryAccountRole);
-  if (isSystemConsoleRole(selectedRole)) {
-    return !assignedId || assignedId === selectedRole.id;
-  }
-  return assignedId === selectedRole.id;
+  if (assignedId) return assignedId === selectedRole.id;
+  if (!isSystemConsoleRole(selectedRole)) return false;
+  const uiRole = String(ACCOUNT_TO_UI_ROLE[primaryAccountRole] || primaryAccountRole || "")
+    .trim()
+    .toLowerCase();
+  const selectedKey = String(selectedRole.roleKey || "").trim().toLowerCase();
+  return Boolean(uiRole && selectedKey && uiRole === selectedKey);
 }
 
 function resolveAssignedConsoleRole(account, primaryAccountRole, consoleRoles, roleByKey) {
@@ -683,14 +693,23 @@ exports.listAccessPolicies = asyncHandler(async (req, res) => {
 exports.createAccessPolicy = asyncHandler(async (req, res) => {
   assertSuperAdmin(req);
   const name = String(req.body?.name || "").trim();
-  const featureId = String(req.body?.featureId || "").trim();
   if (!name) throw new AppError("Policy name is required", 400);
-  if (!featureId) throw new AppError("featureId is required", 400);
-  const policy = await createAccessPolicy({ name, featureId });
+  let policy;
+  try {
+    policy = await createAccessPolicy({
+      name,
+      description: req.body?.description,
+      featureId: req.body?.featureId,
+      effect: req.body?.effect,
+      rules: req.body?.rules,
+    });
+  } catch (err) {
+    throw new AppError(err.message || "Could not create policy", 400);
+  }
   recordAccessAuditLogAsync({
     kind: "permission",
     text: `Created policy ${policy.name}`,
-    detail: `Deny every action on ${policy.featureName}`,
+    detail: `${policy.scope} policy · ${policy.desc}`,
     subject: policy.name,
     subjectMeta: "Policy",
     actor: actorDisplayName(req),
@@ -707,14 +726,22 @@ exports.updateAccessPolicy = asyncHandler(async (req, res) => {
   assertSuperAdmin(req);
   const existing = await getAccessPolicyById(req.params.id);
   if (!existing) throw new AppError("Policy not found", 404);
-  const name = req.body?.name !== undefined ? String(req.body.name || "").trim() : undefined;
-  const featureId =
-    req.body?.featureId !== undefined ? String(req.body.featureId || "").trim() : undefined;
-  const policy = await updateAccessPolicy(req.params.id, { name, featureId });
+  let policy;
+  try {
+    policy = await updateAccessPolicy(req.params.id, {
+      name: req.body?.name !== undefined ? String(req.body.name || "").trim() : undefined,
+      description: req.body?.description,
+      featureId: req.body?.featureId,
+      effect: req.body?.effect,
+      rules: req.body?.rules,
+    });
+  } catch (err) {
+    throw new AppError(err.message || "Could not update policy", 400);
+  }
   recordAccessAuditLogAsync({
     kind: "permission",
     text: `Updated policy ${policy.name}`,
-    detail: `Deny every action on ${policy.featureName}`,
+    detail: `${policy.scope} policy · ${policy.desc}`,
     subject: policy.name,
     subjectMeta: "Policy",
     actor: actorDisplayName(req),
@@ -800,8 +827,12 @@ exports.attachAccessPolicy = asyncHandler(async (req, res) => {
 exports.listAccessMembers = asyncHandler(async (req, res) => {
   assertTeamsReadAccess(req);
   const search = req.query.search || req.query.q;
-  const roleFilter = req.query.roleKey || req.query.role;
-  const consoleRoleIdFilter = String(req.query.consoleRoleId || "").trim();
+  let roleFilter = String(req.query.roleKey || req.query.role || "").trim();
+  let consoleRoleIdFilter = String(req.query.consoleRoleId || "").trim();
+  if (!consoleRoleIdFilter && isConsoleRoleId(roleFilter)) {
+    consoleRoleIdFilter = roleFilter;
+    roleFilter = "";
+  }
   let selectedConsoleRole = null;
   if (consoleRoleIdFilter) {
     selectedConsoleRole = await getRoleById(consoleRoleIdFilter);

@@ -11,7 +11,8 @@ const { PERM_CATALOG, ROLE_KEY_META } = require("../config/consolePermissionCata
 
 const TABLE = "AccessPolicy";
 const STATUS = new Set(["active", "inactive"]);
-const EFFECTS = new Set(["deny"]);
+const RULE_EFFECTS = new Set(["allow", "deny"]);
+const POLICY_EFFECTS = new Set(["allow", "deny", "mixed"]);
 const TARGET_TYPES = new Set(["role", "member"]);
 
 function normalizeStatus(value, fallback = "active") {
@@ -19,9 +20,14 @@ function normalizeStatus(value, fallback = "active") {
   return STATUS.has(next) ? next : fallback;
 }
 
+function normalizeRuleEffect(value, fallback = "deny") {
+  const next = String(value || fallback).trim().toLowerCase();
+  return RULE_EFFECTS.has(next) ? next : fallback;
+}
+
 function normalizeEffect(value, fallback = "deny") {
   const next = String(value || fallback).trim().toLowerCase();
-  return EFFECTS.has(next) ? next : fallback;
+  return POLICY_EFFECTS.has(next) ? next : fallback;
 }
 
 function normalizeSlug(value) {
@@ -52,9 +58,12 @@ function normalizeRoleKey(value) {
 function buildSearchBlob(item) {
   const parts = [
     item.name,
+    item.description,
     item.featureId,
     item.featureName,
     item.sectionLabel,
+    item.effect,
+    ...(item.rules || []).flatMap((rule) => [rule.effect, rule.featureId, rule.featureName]),
     ...(item.attachments || []).flatMap((attachment) => [
       attachment.roleName,
       attachment.memberName,
@@ -100,33 +109,120 @@ function normalizeAttachment(input) {
   };
 }
 
-function formatRuleText(featureName, action) {
-  return `${action} \u00b7 ${featureName}`;
+function formatRuleText(featureName, actions) {
+  const list = Array.isArray(actions) ? actions.filter(Boolean) : [];
+  return `${list.join(" / ")} \u00b7 ${featureName}`;
+}
+
+function normalizeStoredRule(input) {
+  const effect = normalizeRuleEffect(input?.effect || input?.type);
+  const featureId = normalizeFeatureId(input?.featureId);
+  const row = getFeatureRow(featureId);
+  const allowed = row[3] || [];
+  const incoming = Array.isArray(input?.actions) ? input.actions.map((action) => String(action).trim()) : [];
+  const actions = allowed.filter((action) => incoming.includes(action));
+  if (!actions.length) {
+    throw new Error("Each policy rule needs at least one valid action");
+  }
+  return {
+    effect,
+    featureId,
+    featureName: row[1],
+    actions,
+  };
+}
+
+function rulesFromLegacyItem(item) {
+  if (!item?.featureId) return [];
+  const row = getFeatureRow(item.featureId);
+  if (!row) return [];
+  return [
+    {
+      effect: normalizeRuleEffect(item.effect),
+      featureId: row[2],
+      featureName: row[1],
+      actions: [...row[3]],
+    },
+  ];
+}
+
+function normalizeStoredRules(rules, fallback = {}) {
+  if (Array.isArray(rules) && rules.length) {
+    return rules.map(normalizeStoredRule);
+  }
+  if (fallback.featureId) {
+    return rulesFromLegacyItem({
+      featureId: fallback.featureId,
+      effect: fallback.effect,
+    });
+  }
+  throw new Error("Add at least one allow or deny rule");
+}
+
+function derivePolicyEffect(rules) {
+  const effects = new Set((rules || []).map((rule) => rule.effect));
+  if (effects.has("allow") && effects.has("deny")) return "mixed";
+  if (effects.has("allow")) return "allow";
+  return "deny";
+}
+
+function derivePolicyScope(effect) {
+  if (effect === "allow") return "Allow";
+  if (effect === "mixed") return "Mixed";
+  return "Deny";
+}
+
+function derivePolicyDescription(item, rules, effect) {
+  const custom = String(item?.description || "").trim();
+  if (custom) return custom;
+  if (effect === "mixed") return "Mix of allow and deny rules.";
+  const names = [...new Set((rules || []).map((rule) => rule.featureName).filter(Boolean))];
+  const label = names.join(", ") || "selected features";
+  if (effect === "allow") return `Grants selected actions on ${label}.`;
+  return `Blocks selected actions on ${label}.`;
+}
+
+function storedRulesFromItem(item) {
+  try {
+    if (Array.isArray(item?.rules) && item.rules.length) {
+      return item.rules.map(normalizeStoredRule);
+    }
+  } catch {
+    /* fall back to the original single-feature deny/allow shape */
+  }
+  return rulesFromLegacyItem(item);
 }
 
 function toPublicAccessPolicy(item) {
   if (!item) return null;
-  const row = getFeatureRow(item.featureId);
-  const featureName = row?.[1] || item.featureName || item.featureId;
+  const rules = storedRulesFromItem(item);
+  const effect = derivePolicyEffect(rules);
+  const primary = rules[0] || null;
+  const row = getFeatureRow(primary?.featureId || item.featureId);
+  const featureName = primary?.featureName || row?.[1] || item.featureName || item.featureId;
   const sectionLabel = row?.[0] || item.sectionLabel || "Policy";
-  const actions = row?.[3] || [];
   const attachments = Array.isArray(item.attachments) ? item.attachments.map(normalizeAttachment) : [];
   return {
     id: item.id,
     name: item.name,
     slug: item.slug,
     status: normalizeStatus(item.status),
-    effect: normalizeEffect(item.effect),
-    featureId: item.featureId,
+    effect,
+    description: String(item.description || "").trim(),
+    featureId: primary?.featureId || item.featureId || null,
     featureName,
     sectionId: row?.[4] || null,
     sectionLabel,
-    scope: "Deny",
-    desc: `Blocks every action on ${featureName}.`,
-    rules: actions.map((action) => ({
-      type: "DENY",
-      action,
-      text: formatRuleText(featureName, action),
+    scope: derivePolicyScope(effect),
+    desc: derivePolicyDescription(item, rules, effect),
+    rules: rules.map((rule) => ({
+      type: rule.effect.toUpperCase(),
+      effect: rule.effect,
+      featureId: rule.featureId,
+      featureName: rule.featureName,
+      actions: rule.actions,
+      action: rule.actions.join("/"),
+      text: formatRuleText(rule.featureName, rule.actions),
     })),
     attachments,
     attachedCount: attachments.length,
@@ -135,17 +231,36 @@ function toPublicAccessPolicy(item) {
   };
 }
 
-async function createAccessPolicy({ name, featureId, effect = "deny", status = "active" }) {
-  const row = getFeatureRow(featureId);
+function policyFieldsFromRules(rules, description) {
+  const primary = rules[0];
+  const row = getFeatureRow(primary.featureId);
+  const effect = derivePolicyEffect(rules);
+  return {
+    description: String(description || "").trim(),
+    featureId: primary.featureId,
+    featureName: row?.[1] || primary.featureName,
+    sectionLabel: row?.[0] || "",
+    effect,
+    rules,
+  };
+}
+
+async function createAccessPolicy({
+  name,
+  description = "",
+  featureId,
+  effect = "deny",
+  rules,
+  status = "active",
+}) {
   const now = new Date().toISOString();
+  const storedRules = normalizeStoredRules(rules, { featureId, effect });
+  const fields = policyFieldsFromRules(storedRules, description);
   const item = {
     id: uuidv4(),
     name: String(name || "").trim(),
     slug: normalizeSlug(name),
-    featureId: normalizeFeatureId(featureId),
-    featureName: row[1],
-    sectionLabel: row[0],
-    effect: normalizeEffect(effect),
+    ...fields,
     status: normalizeStatus(status),
     attachments: [],
     createdAt: now,
@@ -162,7 +277,7 @@ async function createAccessPolicy({ name, featureId, effect = "deny", status = "
   return toPublicAccessPolicy(item);
 }
 
-async function getAccessPolicyById(id) {
+async function getAccessPolicyRecord(id) {
   if (!id) return null;
   const { Item } = await docClient.send(
     new GetCommand({
@@ -170,30 +285,52 @@ async function getAccessPolicyById(id) {
       Key: { id: String(id).trim() },
     })
   );
-  return Item ? toPublicAccessPolicy(Item) : null;
+  return Item || null;
+}
+
+async function getAccessPolicyById(id) {
+  const item = await getAccessPolicyRecord(id);
+  return item ? toPublicAccessPolicy(item) : null;
 }
 
 async function updateAccessPolicy(id, updates) {
-  const current = await getAccessPolicyById(id);
+  const current = await getAccessPolicyRecord(id);
   if (!current) return null;
   const nextName =
     updates?.name !== undefined ? String(updates.name || "").trim() : current.name;
-  const nextFeatureId =
-    updates?.featureId !== undefined ? normalizeFeatureId(updates.featureId) : current.featureId;
-  const row = getFeatureRow(nextFeatureId);
+  const nextDescription =
+    updates?.description !== undefined ? String(updates.description || "").trim() : current.description || "";
   const nextAttachments =
     updates?.attachments !== undefined
       ? (Array.isArray(updates.attachments) ? updates.attachments : []).map(normalizeAttachment)
-      : current.attachments;
+      : Array.isArray(current.attachments)
+        ? current.attachments.map(normalizeAttachment)
+        : [];
+
+  let storedRules;
+  if (updates?.rules !== undefined) {
+    storedRules = normalizeStoredRules(updates.rules, {
+      featureId: updates.featureId || current.featureId,
+      effect: updates.effect || current.effect,
+    });
+  } else if (updates?.featureId !== undefined || updates?.effect !== undefined) {
+    storedRules = normalizeStoredRules(current.rules, {
+      featureId: updates.featureId !== undefined ? updates.featureId : current.featureId,
+      effect: updates.effect !== undefined ? updates.effect : current.effect,
+    });
+  } else {
+    storedRules = Array.isArray(current.rules) && current.rules.length
+      ? current.rules.map(normalizeStoredRule)
+      : rulesFromLegacyItem(current);
+  }
+
+  const fields = policyFieldsFromRules(storedRules, nextDescription);
   const item = {
     ...current,
     name: nextName,
     slug: normalizeSlug(nextName),
-    featureId: nextFeatureId,
-    featureName: row?.[1] || current.featureName,
-    sectionLabel: row?.[0] || current.sectionLabel,
-    effect: updates?.effect !== undefined ? normalizeEffect(updates.effect) : current.effect,
-    status: updates?.status !== undefined ? normalizeStatus(updates.status) : current.status,
+    ...fields,
+    status: updates?.status !== undefined ? normalizeStatus(updates.status) : normalizeStatus(current.status),
     attachments: nextAttachments,
     updatedAt: new Date().toISOString(),
   };
@@ -204,18 +341,22 @@ async function updateAccessPolicy(id, updates) {
       TableName: TABLE,
       Key: { id: String(id).trim() },
       UpdateExpression:
-        "SET #name = :name, slug = :slug, featureId = :featureId, featureName = :featureName, sectionLabel = :sectionLabel, effect = :effect, #status = :status, attachments = :attachments, searchBlob = :searchBlob, updatedAt = :updatedAt",
+        "SET #name = :name, slug = :slug, #description = :description, featureId = :featureId, featureName = :featureName, sectionLabel = :sectionLabel, effect = :effect, #rules = :rules, #status = :status, attachments = :attachments, searchBlob = :searchBlob, updatedAt = :updatedAt",
       ExpressionAttributeNames: {
         "#name": "name",
+        "#description": "description",
+        "#rules": "rules",
         "#status": "status",
       },
       ExpressionAttributeValues: {
         ":name": item.name,
         ":slug": item.slug,
+        ":description": item.description,
         ":featureId": item.featureId,
         ":featureName": item.featureName,
         ":sectionLabel": item.sectionLabel,
         ":effect": item.effect,
+        ":rules": item.rules,
         ":status": item.status,
         ":attachments": item.attachments,
         ":searchBlob": item.searchBlob,
