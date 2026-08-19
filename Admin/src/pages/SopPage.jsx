@@ -12,9 +12,18 @@ import {
 import {
   SOP_CATEGORIES,
   SOP_CATEGORY_STYLES,
+  SOP_STEP_MAX_COUNT,
+  SOP_STEP_MAX_LEN,
+  SOP_STEPS_TEXT_MAX_LEN,
+  SOP_TITLE_MAX_LEN,
   formatSopDate,
+  sanitizeSopStepsText,
+  sanitizeSopTitle,
   stepsToText,
   textToSteps,
+  validateSopCategory,
+  validateSopStepsText,
+  validateSopTitle,
   withStepCount,
 } from "../data/sopData.js";
 
@@ -43,15 +52,35 @@ function SopFormModal({ mode, initial, saving, onClose, onSubmit }) {
     category: initial?.category || "onboarding",
     stepsText: stepsToText(initial?.steps),
   }));
+  const [errors, setErrors] = useState({});
 
-  const canSubmit =
-    form.title.trim().length > 0 &&
-    textToSteps(form.stepsText).length > 0 &&
-    !saving;
+  const stepCount = textToSteps(form.stepsText).length;
+
+  function clearError(key) {
+    setErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }
+
+  function validate() {
+    const next = {};
+    const titleErr = validateSopTitle(form.title);
+    if (titleErr) next.title = titleErr;
+    const categoryErr = validateSopCategory(form.category);
+    if (categoryErr) next.category = categoryErr;
+    const stepsErr = validateSopStepsText(form.stepsText);
+    if (stepsErr) next.stepsText = stepsErr;
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  }
 
   function handleSubmit(e) {
     e.preventDefault();
-    if (!canSubmit) return;
+    if (saving) return;
+    if (!validate()) return;
     onSubmit({
       title: form.title.trim(),
       category: form.category,
@@ -80,24 +109,39 @@ function SopFormModal({ mode, initial, saving, onClose, onSubmit }) {
           </button>
         </div>
 
-        <form className="ua-sop-modal__body" onSubmit={handleSubmit}>
+        <form className="ua-sop-modal__body" onSubmit={handleSubmit} noValidate>
           <label className="ua-sop-field">
-            <span className="ua-sop-field__label">Title</span>
+            <span className="ua-sop-field__label-row">
+              <span className="ua-sop-field__label">Title *</span>
+              <span className="ua-sop-field__count">
+                {form.title.trim().length}/{SOP_TITLE_MAX_LEN}
+              </span>
+            </span>
             <input
-              className="ua-sop-field__input"
+              className={`ua-sop-field__input${errors.title ? " is-invalid" : ""}`}
               value={form.title}
-              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+              maxLength={SOP_TITLE_MAX_LEN}
+              onChange={(e) => {
+                setForm((f) => ({ ...f, title: sanitizeSopTitle(e.target.value) }));
+                clearError("title");
+              }}
               placeholder="e.g. Handling a missed check-in"
               autoFocus
             />
+            {errors.title ? <span className="ua-sop-field__error">{errors.title}</span> : (
+              <span className="ua-sop-field__hint">At least 3 characters</span>
+            )}
           </label>
 
           <label className="ua-sop-field">
-            <span className="ua-sop-field__label">Category</span>
+            <span className="ua-sop-field__label">Category *</span>
             <select
-              className="ua-sop-field__input"
+              className={`ua-sop-field__input${errors.category ? " is-invalid" : ""}`}
               value={form.category}
-              onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+              onChange={(e) => {
+                setForm((f) => ({ ...f, category: e.target.value }));
+                clearError("category");
+              }}
             >
               {SOP_CATEGORIES.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -105,24 +149,41 @@ function SopFormModal({ mode, initial, saving, onClose, onSubmit }) {
                 </option>
               ))}
             </select>
+            {errors.category ? <span className="ua-sop-field__error">{errors.category}</span> : null}
           </label>
 
           <label className="ua-sop-field">
-            <span className="ua-sop-field__label">Steps — one per line</span>
+            <span className="ua-sop-field__label-row">
+              <span className="ua-sop-field__label">Steps — one per line *</span>
+              <span className="ua-sop-field__count">
+                {stepCount}/{SOP_STEP_MAX_COUNT} steps
+              </span>
+            </span>
             <textarea
-              className="ua-sop-field__textarea"
+              className={`ua-sop-field__textarea${errors.stepsText ? " is-invalid" : ""}`}
               value={form.stepsText}
-              onChange={(e) => setForm((f) => ({ ...f, stepsText: e.target.value }))}
+              maxLength={SOP_STEPS_TEXT_MAX_LEN}
+              onChange={(e) => {
+                setForm((f) => ({ ...f, stepsText: sanitizeSopStepsText(e.target.value) }));
+                clearError("stepsText");
+              }}
               placeholder="Write one step per line"
               rows={7}
             />
+            {errors.stepsText ? (
+              <span className="ua-sop-field__error">{errors.stepsText}</span>
+            ) : (
+              <span className="ua-sop-field__hint">
+                One step per line · max {SOP_STEP_MAX_LEN} characters each
+              </span>
+            )}
           </label>
 
           <div className="ua-sop-modal__actions">
             <button type="button" className="btn btn--outline" onClick={onClose} disabled={saving}>
               Cancel
             </button>
-            <button type="submit" className="ua-sop-modal__primary" disabled={!canSubmit}>
+            <button type="submit" className="ua-sop-modal__primary" disabled={saving}>
               {saving ? "Saving…" : mode === "edit" ? "Save changes" : "Publish SOP"}
             </button>
           </div>

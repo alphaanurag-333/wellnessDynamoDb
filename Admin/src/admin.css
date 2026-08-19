@@ -17295,19 +17295,40 @@
 }
 
 .updated-admin .ua-sop-field__label {
-  /* font-size: 11px;
-  font-weight: 750;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: #8a97ac; */
-
-
   font-size: 10px;
   font-weight: 750;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: rgb(138, 151, 172);
- 
+}
+
+.updated-admin .ua-sop-field__label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.updated-admin .ua-sop-field__count {
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #8a97ac;
+}
+
+.updated-admin .ua-sop-field__error,
+.updated-admin .ua-sop-field__hint {
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+.updated-admin .ua-sop-field__error {
+  color: #e11d48;
+}
+
+.updated-admin .ua-sop-field__hint {
+  color: #8a97ab;
 }
 
 .updated-admin .ua-sop-field__input,
@@ -17334,7 +17355,13 @@
 .updated-admin .ua-sop-field__textarea {
   resize: vertical;
   min-height: 140px;
+  max-height: 320px;
   line-height: 1.5;
+}
+
+.updated-admin .ua-sop-field__input.is-invalid,
+.updated-admin .ua-sop-field__textarea.is-invalid {
+  border-color: #e11d48;
 }
 
 .updated-admin .ua-sop-modal__actions {

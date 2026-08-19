@@ -12,6 +12,35 @@ const {
   ALLOWED_CATEGORIES,
 } = require("../../models/sopModel");
 
+const TITLE_MIN_LEN = 3;
+const TITLE_MAX_LEN = 100;
+const STEP_MIN_COUNT = 1;
+const STEP_MAX_COUNT = 20;
+const STEP_MAX_LEN = 240;
+
+function assertTitle(title) {
+  if (!title) throw new AppError("title is required", 400);
+  if (title.length < TITLE_MIN_LEN) {
+    throw new AppError(`title must be at least ${TITLE_MIN_LEN} characters`, 400);
+  }
+  if (title.length > TITLE_MAX_LEN) {
+    throw new AppError(`title cannot exceed ${TITLE_MAX_LEN} characters`, 400);
+  }
+}
+
+function assertSteps(steps) {
+  if (steps.length < STEP_MIN_COUNT) {
+    throw new AppError("at least one step is required", 400);
+  }
+  if (steps.length > STEP_MAX_COUNT) {
+    throw new AppError(`at most ${STEP_MAX_COUNT} steps are allowed`, 400);
+  }
+  const tooLong = steps.findIndex((step) => String(step).length > STEP_MAX_LEN);
+  if (tooLong !== -1) {
+    throw new AppError(`step ${tooLong + 1} cannot exceed ${STEP_MAX_LEN} characters`, 400);
+  }
+}
+
 function resolveAuthor(req) {
   const fromBody = String(req.body?.author || "").trim();
   if (fromBody) return fromBody;
@@ -54,15 +83,11 @@ exports.createSopController = asyncHandler(async (req, res) => {
   const status = normalizeStatus(req.body.status, "active");
   const author = resolveAuthor(req);
 
-  if (!title) {
-    throw new AppError("title is required", 400);
-  }
   if (!ALLOWED_CATEGORIES.has(category)) {
     throw new AppError("invalid category", 400);
   }
-  if (steps.length === 0) {
-    throw new AppError("at least one step is required", 400);
-  }
+  assertTitle(title);
+  assertSteps(steps);
 
   const sop = await createSop({ title, category, steps, author, status });
 
@@ -78,7 +103,7 @@ exports.updateSopController = asyncHandler(async (req, res) => {
 
   if (req.body.title !== undefined) {
     const title = String(req.body.title).trim();
-    if (!title) throw new AppError("title cannot be empty", 400);
+    assertTitle(title);
     updates.title = title;
   }
 
@@ -92,7 +117,7 @@ exports.updateSopController = asyncHandler(async (req, res) => {
 
   if (req.body.steps !== undefined) {
     const steps = normalizeSteps(req.body.steps);
-    if (steps.length === 0) throw new AppError("at least one step is required", 400);
+    assertSteps(steps);
     updates.steps = steps;
   }
 
