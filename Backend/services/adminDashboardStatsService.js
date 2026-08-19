@@ -1,5 +1,5 @@
-const { TABLE: USER_TABLE } = require("../models/userModel");
-const { TABLE: COACH_TABLE } = require("../models/wellnessCoachModel");
+const { TABLE: USER_TABLE, getUserById } = require("../models/userModel");
+const { TABLE: COACH_TABLE, getWellnessCoachById } = require("../models/wellnessCoachModel");
 const { TABLE: ASSISTANT_TABLE } = require("../models/assistantWellnessCoachModel");
 const { TABLE: PROGRAM_TABLE } = require("../models/programCatalogModel");
 const {
@@ -97,6 +97,93 @@ function productBucket(productType) {
   return "app";
 }
 
+function snapshotName(value) {
+  if (!value || typeof value !== "object") return "";
+  return String(value.name || "").trim();
+}
+
+function formatPaymentDateLabel(iso) {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: IST_TZ,
+    day: "numeric",
+    month: "short",
+  }).format(date);
+}
+
+function paymentProgramLabel(row) {
+  const type = String(row.productType || "").toLowerCase();
+  const catalog = String(
+    row.userSnapshot?.catalogItemName ||
+      row.userSnapshot?.programTitle ||
+      row.userSnapshot?.healthConcernTitle ||
+      "",
+  ).trim();
+  const concern = String(row.healthConcernSnapshot?.title || "").trim();
+  const name = catalog || concern;
+
+  if (type === "program") return name || "Wellness program";
+  if (type === "consultancy") return name || "PWC";
+  if (type === "subscription" || type === "energy_exchange") {
+    if (!name) return type === "energy_exchange" ? "Energy Exchange" : "App user";
+    if (/^app user/i.test(name)) return name;
+    return `App user · ${name}`;
+  }
+  return name || type.replace(/_/g, " ");
+}
+
+function toPaymentRow(row, coachNames, usersById = new Map()) {
+  const user = usersById.get(String(row.userId || row.userSnapshot?.id || "").trim()) || null;
+  const parentId = String(row.parentCoachId || user?.parentCoachId || "").trim();
+  const assignedCoachId = String(user?.assignedCoachId || row.meetingAssigneeId || "").trim();
+  const assignedCoachType = String(user?.assignedCoachType || row.assigneeSnapshot?.type || "").toLowerCase();
+  const assigneeName = snapshotName(row.assigneeSnapshot);
+  const coachName =
+    (parentId && coachNames.get(parentId)) ||
+    (assignedCoachType === "wellness_coach" && assignedCoachId && coachNames.get(assignedCoachId)) ||
+    (assignedCoachType === "wellness_coach" ? assigneeName : "") ||
+    assigneeName ||
+    "—";
+  const paidAt = row.paidAt || row.createdAt;
+  const healthConcernId = String(
+    row.healthConcernId ||
+      row.healthConcernSnapshot?.id ||
+      user?.primaryHealthConcern ||
+      "",
+  ).trim();
+  return {
+    id: row.id,
+    userId: row.userId || row.userSnapshot?.id || user?.id || null,
+    userName: snapshotName(row.userSnapshot) || user?.name || "Client",
+    coachName,
+    programType: paymentProgramLabel(row),
+    healthConcernId: healthConcernId || null,
+    productType: String(row.productType || "").toLowerCase() || null,
+    dateLabel: formatPaymentDateLabel(paidAt),
+    paidAt,
+    amount: roundMoney(row.totalAmount),
+  };
+}
+
+async function loadCoachNamesById(ids) {
+  const unique = [...new Set((ids || []).map((id) => String(id || "").trim()).filter(Boolean))];
+  const byId = new Map();
+  await Promise.all(
+    unique.map(async (id) => {
+      try {
+        const coach = await getWellnessCoachById(id);
+        const name = String(coach?.name || "").trim();
+        if (name) byId.set(id, name);
+      } catch {
+        /* ignore missing coaches */
+      }
+    }),
+  );
+  return byId;
+}
+
 function lastNMonthKeys(count = 6) {
   const keys = [];
   const now = new Date();
@@ -177,6 +264,8 @@ function buildRevenueAnalytics({
   paidTransactions,
   onboardedByMonth,
   payingClientCount,
+  coachNames = new Map(),
+  usersById = new Map(),
   now = new Date(),
 } = {}) {
   const fyStartMonth = DEFAULT_FY_START_MONTH;
@@ -184,6 +273,7 @@ function buildRevenueAnalytics({
   const currentFyStartYear = fyStartYearFromMonthKey(currentMonthKey, fyStartMonth);
   const allTime = emptyBucketTotals();
   const byMonth = new Map();
+  const paymentsByMonth = new Map();
 
   for (const row of paidTransactions || []) {
     const monthKey = transactionMonthKey(row);
@@ -193,6 +283,12 @@ function buildRevenueAnalytics({
     addToBuckets(allTime, bucket, amount);
     if (!byMonth.has(monthKey)) byMonth.set(monthKey, emptyBucketTotals());
     addToBuckets(byMonth.get(monthKey), bucket, amount);
+    if (!paymentsByMonth.has(monthKey)) paymentsByMonth.set(monthKey, []);
+    paymentsByMonth.get(monthKey).push(toPaymentRow(row, coachNames, usersById));
+  }
+
+  for (const list of paymentsByMonth.values()) {
+    list.sort((a, b) => String(b.paidAt || "").localeCompare(String(a.paidAt || "")));
   }
 
   const fyYears = new Set([currentFyStartYear, currentFyStartYear - 1]);
@@ -222,6 +318,7 @@ function buildRevenueAnalytics({
           displayLabel: formatMonthDisplay(monthKey),
           ...rounded,
           products: buildProductRows(rounded, { barNames: true }),
+          payments: paymentsByMonth.get(monthKey) || [],
         };
       });
       const onboarded = months.map((row) => ({
@@ -270,15 +367,16 @@ async function countUsersByTier(tier) {
 async function scanUserAnalytics() {
   const counts = new Map();
   const onboardedByMonth = {};
+  const usersById = new Map();
   let lastKey;
 
   do {
     const { Items = [], LastEvaluatedKey } = await docClient.send(
       new ScanCommand({
         TableName: USER_TABLE,
-        ProjectionExpression: "primaryHealthConcern, #status, createdAt",
+        ProjectionExpression: "id, #name, primaryHealthConcern, parentCoachId, assignedCoachId, assignedCoachType, #status, createdAt",
         FilterExpression: "#status IN (:active, :inactive, :blocked)",
-        ExpressionAttributeNames: { "#status": "status" },
+        ExpressionAttributeNames: { "#status": "status", "#name": "name" },
         ExpressionAttributeValues: {
           ":active": "active",
           ":inactive": "inactive",
@@ -289,7 +387,19 @@ async function scanUserAnalytics() {
     );
 
     for (const user of Items) {
-      const concernId = String(user.primaryHealthConcern || "").trim();
+      const id = String(user.id || "").trim();
+      if (id) {
+        usersById.set(id, {
+          name: String(user.name || "").trim(),
+          parentCoachId: String(user.parentCoachId || "").trim(),
+          assignedCoachId: String(user.assignedCoachId || "").trim(),
+          assignedCoachType: String(user.assignedCoachType || "").trim(),
+          primaryHealthConcern: String(
+            user.primaryHealthConcern?.id || user.primaryHealthConcern || "",
+          ).trim(),
+        });
+      }
+      const concernId = String(user.primaryHealthConcern?.id || user.primaryHealthConcern || "").trim();
       if (concernId) counts.set(concernId, (counts.get(concernId) || 0) + 1);
       const monthKey = monthKeyFromDate(user.createdAt);
       if (monthKey) onboardedByMonth[monthKey] = (onboardedByMonth[monthKey] || 0) + 1;
@@ -300,6 +410,7 @@ async function scanUserAnalytics() {
   return {
     healthConcernCounts: Object.fromEntries(counts),
     onboardedByMonth,
+    usersById,
   };
 }
 
@@ -372,12 +483,22 @@ async function getAdminDashboardStats() {
     scanUserAnalytics(),
   ]);
 
-  const { healthConcernCounts, onboardedByMonth } = userAnalytics;
+  const { healthConcernCounts, onboardedByMonth, usersById = new Map() } = userAnalytics;
   const payingClientCount = healUsers + consultancyUsers + maintenanceUsers;
+  const coachIds = [
+    ...(paidTransactions || []).map((row) => row.parentCoachId),
+    ...[...usersById.values()].flatMap((user) => [
+      user.parentCoachId,
+      user.assignedCoachType === "wellness_coach" ? user.assignedCoachId : "",
+    ]),
+  ];
+  const coachNames = await loadCoachNamesById(coachIds);
   const revenueAnalytics = buildRevenueAnalytics({
     paidTransactions,
     onboardedByMonth,
     payingClientCount,
+    coachNames,
+    usersById,
   });
 
   const userTiers = [
@@ -432,7 +553,52 @@ async function getAdminDashboardStats() {
   };
 }
 
+async function listDashboardPaymentsForMonth(monthKey) {
+  const key = String(monthKey || "").trim();
+  const paidTransactions = await listPaidTransactionsForAnalytics();
+  const monthRows = (paidTransactions || []).filter((row) => transactionMonthKey(row) === key);
+  const userIds = [
+    ...new Set(
+      monthRows
+        .map((row) => String(row.userId || row.userSnapshot?.id || "").trim())
+        .filter(Boolean),
+    ),
+  ];
+  const usersById = new Map();
+  await Promise.all(
+    userIds.map(async (id) => {
+      try {
+        const user = await getUserById(id);
+        if (!user) return;
+        usersById.set(id, {
+          name: String(user.name || "").trim(),
+          parentCoachId: String(user.parentCoachId || "").trim(),
+          assignedCoachId: String(user.assignedCoachId || "").trim(),
+          assignedCoachType: String(user.assignedCoachType || "").trim(),
+          primaryHealthConcern: String(
+            user.primaryHealthConcern?.id || user.primaryHealthConcern || "",
+          ).trim(),
+        });
+      } catch {
+        /* ignore missing users */
+      }
+    }),
+  );
+  const coachIds = [
+    ...monthRows.map((row) => row.parentCoachId),
+    ...[...usersById.values()].flatMap((user) => [
+      user.parentCoachId,
+      user.assignedCoachType === "wellness_coach" ? user.assignedCoachId : "",
+    ]),
+  ];
+  const coachNames = await loadCoachNamesById(coachIds);
+  return monthRows
+    .map((row) => toPaymentRow(row, coachNames, usersById))
+    .sort((a, b) => String(b.paidAt || "").localeCompare(String(a.paidAt || "")));
+}
+
 module.exports = {
   getAdminDashboardStats,
   buildRevenueAnalytics,
+  listDashboardPaymentsForMonth,
 };

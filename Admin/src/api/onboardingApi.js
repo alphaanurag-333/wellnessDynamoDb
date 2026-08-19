@@ -280,6 +280,32 @@ export async function reviewUserLabReport(userId, reportId) {
   }
 }
 
+export async function analyzeUserLabReport(userId, reportId) {
+  try {
+    const { data } = await api.post(
+      `/account/heal-users/${encodeURIComponent(userId)}/lab-reports/${encodeURIComponent(reportId)}/analyze`,
+      {},
+      { headers: authHeader(), timeout: 120000 },
+    );
+    return data.report;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function updateUserLabReportAnalysis(userId, reportId, payload) {
+  try {
+    const { data } = await api.patch(
+      `/account/heal-users/${encodeURIComponent(userId)}/lab-reports/${encodeURIComponent(reportId)}/ai-analysis`,
+      payload,
+      { headers: authHeader() },
+    );
+    return data.report;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function fetchUserLaunchAssessments(userId) {
   try {
     const { data } = await api.get(

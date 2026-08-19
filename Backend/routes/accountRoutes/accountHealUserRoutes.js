@@ -26,6 +26,8 @@ const {
   deleteCoachUserTestRecommendationController,
   listCoachUserLabReportsController,
   reviewCoachUserLabReportController,
+  analyzeCoachUserLabReportController,
+  updateCoachUserLabReportAiController,
   listCoachUserActiveTestCatalogController,
 } = require("../../controllers/adminController/testRecommendationController");
 const {
@@ -188,6 +190,8 @@ router.get("/:userId/test-recommendations/:recommendationId/pdf", tests, downloa
 router.get("/:userId/test-catalog", tests, listCoachUserActiveTestCatalogController);
 router.get("/:userId/lab-reports", tests, listCoachUserLabReportsController);
 router.patch("/:userId/lab-reports/:reportId/review", testsWrite, reviewCoachUserLabReportController);
+router.post("/:userId/lab-reports/:reportId/analyze", testsWrite, analyzeCoachUserLabReportController);
+router.patch("/:userId/lab-reports/:reportId/ai-analysis", testsWrite, updateCoachUserLabReportAiController);
 router.delete("/:userId/test-recommendations/:recommendationId", staff("console.rep.delete", { admin: "users.clientHub.care.internal-parameters", coach: "clientTab.care.internal-parameters" }), deleteCoachUserTestRecommendationController);
 
 const rx = staff("console.diet.view", { admin: "users.clientHub.care.wellness-prescriptions", coach: "clientTab.care.wellness-prescriptions" });

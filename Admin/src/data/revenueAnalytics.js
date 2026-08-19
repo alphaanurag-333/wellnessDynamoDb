@@ -18,7 +18,11 @@ export function formatRevenue(value) {
   return `Rs. ${Math.round(amount).toLocaleString("en-IN")}`;
 }
 
-function monthRow({ month, program, consultancy, app, onboarded = 0 }) {
+export function formatPaymentAmount(value) {
+  return `Rs. ${Math.round(asRevenueNumber(value)).toLocaleString("en-IN")}`;
+}
+
+function monthRow({ month, program, consultancy, app, onboarded = 0, payments = [] }) {
   const [year, monthNum] = month.split("-").map(Number);
   const label = new Date(year, monthNum - 1, 1).toLocaleString("en-IN", { month: "short" });
   const total = program + consultancy + app;
@@ -37,6 +41,7 @@ function monthRow({ month, program, consultancy, app, onboarded = 0 }) {
     total,
     products,
     onboarded,
+    payments: Array.isArray(payments) ? payments : [],
   };
 }
 
@@ -116,12 +121,15 @@ function fromLegacyStatistics(statistics) {
     const consultancy = asRevenueNumber(row.consultancy);
     const app = asRevenueNumber(row.app);
     const total = asRevenueNumber(row.revenue ?? program + consultancy + app);
-    return monthRow({
-      month: row.month || `2026-${String(["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].indexOf(row.label) + 1).padStart(2, "0")}`,
-      program,
-      consultancy,
-      app: app || Math.max(0, total - program - consultancy),
-    });
+    return {
+      ...monthRow({
+        month: row.month || `2026-${String(["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].indexOf(row.label) + 1).padStart(2, "0")}`,
+        program,
+        consultancy,
+        app: app || Math.max(0, total - program - consultancy),
+      }),
+      payments: Array.isArray(row.payments) ? row.payments : [],
+    };
   });
   const fyStartYear = MOCK_REVENUE_ANALYTICS.currentFyStartYear;
   return {
@@ -147,4 +155,71 @@ function fromLegacyStatistics(statistics) {
 export function findFinancialYear(analytics, fyStartYear) {
   const years = analytics?.financialYears || [];
   return years.find((fy) => fy.fyStartYear === Number(fyStartYear)) || years[0] || null;
+}
+
+export function paymentsForMonth(analytics, monthKey) {
+  if (!monthKey) return [];
+  const years = analytics?.financialYears || [];
+  for (const fy of years) {
+    const row = (fy.months || []).find((month) => month.month === monthKey);
+    if (row) return Array.isArray(row.payments) ? row.payments : [];
+  }
+  return [];
+}
+
+const PLACEHOLDER_USER = new Set(["", "client"]);
+const PLACEHOLDER_COACH = new Set(["", "—", "-", "not assigned"]);
+const PLACEHOLDER_PROGRAM = new Set(["", "—", "pwc", "wellness program", "app user", "energy exchange", "consultancy"]);
+
+function isPlaceholder(value, placeholders) {
+  return placeholders.has(String(value || "").trim().toLowerCase());
+}
+
+export function enrichLivePayments(payments, { clients = [], healthConcerns = [] } = {}) {
+  const rows = Array.isArray(payments) ? payments : [];
+  if (!rows.length) return [];
+
+  const clientsById = new Map(
+    (clients || [])
+      .map((user) => [String(user?.id || user?._id || "").trim(), user])
+      .filter(([id]) => id),
+  );
+  const concernTitleById = new Map(
+    (healthConcerns || [])
+      .map((concern) => [
+        String(concern?.id || concern?.value || "").trim(),
+        String(concern?.label || concern?.title || "").trim(),
+      ])
+      .filter(([id, title]) => id && title),
+  );
+
+  return rows.map((row) => {
+    const client = clientsById.get(String(row.userId || "").trim());
+    const concernTitle =
+      concernTitleById.get(String(row.healthConcernId || "").trim()) ||
+      client?.goal ||
+      "";
+    const userName = isPlaceholder(row.userName, PLACEHOLDER_USER)
+      ? (client?.name || row.userName || "Client")
+      : row.userName;
+    const coachFromClient = client?.coach && !String(client.coach).startsWith("—")
+      ? client.coach
+      : "";
+    const coachName = isPlaceholder(row.coachName, PLACEHOLDER_COACH)
+      ? (coachFromClient || row.coachName || "—")
+      : row.coachName;
+    let programType = row.programType;
+    if (isPlaceholder(programType, PLACEHOLDER_PROGRAM) && concernTitle) {
+      const type = String(row.productType || "").toLowerCase();
+      programType = type === "subscription" || type === "energy_exchange"
+        ? `App user · ${concernTitle}`
+        : concernTitle;
+    }
+    return {
+      ...row,
+      userName,
+      coachName,
+      programType,
+    };
+  });
 }

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { fetchDashboardPayments } from "../api/dashboardApi.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import { CommunityBroadcastModal } from "./CommunityBroadcastModal.jsx";
 import { ExportIcon } from "./NavIcons.jsx";
@@ -7,6 +8,7 @@ import { AutosaveButton } from "./shared.jsx";
 import { ProgramCategoryModal } from "./ProgramCategoryModal.jsx";
 import { ProgramProgressModal } from "./ProgramProgressModal.jsx";
 import { TeamRemindModal } from "./TeamRemindModal.jsx";
+import { PaymentsModal } from "./PaymentsModal.jsx";
 import { StatIcon } from "./DashboardIcons.jsx";
 import {
   A1C_METRICS,
@@ -75,6 +77,8 @@ import {
   PRODUCT_COLORS,
   findFinancialYear,
   formatRevenue,
+  paymentsForMonth,
+  enrichLivePayments,
   resolveRevenueAnalytics,
 } from "../data/revenueAnalytics.js";
 
@@ -469,6 +473,10 @@ export function AdminDashboard({
   const [remindModal, setRemindModal] = useState(null);
   const [programModalTarget, setProgramModalTarget] = useState(null);
   const [progressModalKey, setProgressModalKey] = useState(null);
+  const [paymentsModalOpen, setPaymentsModalOpen] = useState(false);
+  const [monthPayments, setMonthPayments] = useState([]);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
+  const [paymentsError, setPaymentsError] = useState("");
 
   const champMonthOptions = liveCommunity
     ? (liveLeaderboard?.months || [])
@@ -522,6 +530,35 @@ export function AdminDashboard({
     const month = liveLeaderboard?.monthYear;
     if (month) setChampMonth(month);
   }, [liveLeaderboard?.monthYear]);
+
+  useEffect(() => {
+    if (!paymentsModalOpen || !selectedMonthKey) return undefined;
+    let cancelled = false;
+    setPaymentsLoading(true);
+    setPaymentsError("");
+    fetchDashboardPayments(selectedMonthKey)
+      .then((rows) => {
+        if (cancelled) return;
+        setMonthPayments(enrichLivePayments(rows, { clients, healthConcerns }));
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        const fallback = enrichLivePayments(
+          paymentsForMonth(revenueAnalytics, selectedMonthKey),
+          { clients, healthConcerns },
+        );
+        setMonthPayments(fallback);
+        if (!fallback.length) {
+          setPaymentsError(error?.message || "Couldn’t load payments for this month.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setPaymentsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [paymentsModalOpen, selectedMonthKey, clients, healthConcerns, revenueAnalytics]);
 
   const selectedMonthRow = fyMonths.find((row) => row.month === selectedMonthKey) || fyMonths.at(-1) || null;
   const previousMonthRow = selectedMonthRow
@@ -707,6 +744,15 @@ export function AdminDashboard({
       return;
     }
     onToast(`Opening profile for ${row.name}`);
+  }
+
+  function openPaymentClient(row) {
+    setPaymentsModalOpen(false);
+    if (row.userId) {
+      navigate(UPDATED_ADMIN_PATHS.userDetail(row.userId));
+      return;
+    }
+    onToast(`Opening profile for ${row.userName}`);
   }
 
   function goPending(focus = "") {
@@ -1502,9 +1548,10 @@ export function AdminDashboard({
                 <button
                   type="button"
                   className="btn btn--soft"
-                  onClick={() => onToast("Opening payments…")}
+                  onClick={() => setPaymentsModalOpen(true)}
                 >
-                  💳 View payments
+                  <span className="chart-controls__pay-icon" aria-hidden="true">💳</span>
+                  View payments
                 </button>
                 <select
                   className="header__select"
@@ -1684,6 +1731,16 @@ export function AdminDashboard({
         program={programModal}
         onClose={() => setProgramModalTarget(null)}
         onOpenClient={openProgramClient}
+      />
+
+      <PaymentsModal
+        open={paymentsModalOpen}
+        monthLabel={selectedMonthRow?.displayLabel}
+        payments={monthPayments}
+        loading={paymentsLoading}
+        error={paymentsError}
+        onClose={() => setPaymentsModalOpen(false)}
+        onOpenClient={openPaymentClient}
       />
 
       <ProgramProgressModal

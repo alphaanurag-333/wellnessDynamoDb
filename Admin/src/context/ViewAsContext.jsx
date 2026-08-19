@@ -12,8 +12,10 @@ import {
   UI_TO_ROLE_KEY,
 } from "../api/accountApi.js";
 import {
+  ALL_CONSOLE_PERMISSIONS,
   baselineDataScopeForRole,
   baselinePermissionsForRole,
+  defaultAdminNavSections,
   hasConsolePermission,
   sectionsFromPermissions,
 } from "../utils/permissions.js";
@@ -44,13 +46,22 @@ function accountIsSuperAdmin(account) {
   return Boolean(account?.isSuperAdmin);
 }
 
+function accountIsAdminRole(account) {
+  if (!account) return false;
+  if (accountIsSuperAdmin(account)) return true;
+  const key = account.activeRole || account.defaultRoleKey;
+  return key === "admin" || ROLE_KEY_TO_UI[key] === "admin" || account.activeRoleUi === "admin";
+}
+
 /**
  * Slugs the current session may actually use.
- * Accounts whose role template predates the console catalog fall back to the
- * role baseline, matching the same fallback the API applies.
+ * Admin always receives the full catalog — WC / AWC section grants must not
+ * leak into an admin session. Other roles whose template predates the console
+ * catalog fall back to the role baseline, matching the API.
  */
 function sessionPermissions(account) {
   if (!account) return [];
+  if (accountIsAdminRole(account)) return [...ALL_CONSOLE_PERMISSIONS];
   const granted = Array.isArray(account.permissions) ? account.permissions : [];
   if (granted.some((slug) => String(slug).startsWith("console."))) return granted;
   return baselinePermissionsForRole(ROLE_KEY_TO_UI[account.activeRole] || account.activeRoleUi);
@@ -201,35 +212,43 @@ export function ViewAsProvider({ children }) {
     return VIEW_AS_ROLES.filter((r) => allowed.has(r.id) || r.switchable === false);
   }, [auth, isSuperAdmin]);
 
-  const hasFullAccess = isSuperAdmin && viewAs === "admin";
-
-  /**
-   * Live grants for the console. While previewing another role the session is
-   * narrowed to that role's baseline so the preview can never show more than
-   * the signed-in account is allowed to do.
-   */
   const sessionUi = auth?.account
     ? ROLE_KEY_TO_UI[auth.account.activeRole] || auth.account.activeRoleUi
     : null;
 
+  /** Signed-in Admin (or Super Admin) looking at the Admin console — full section access. */
+  const isAdminView = viewAs === "admin" && (isSuperAdmin || sessionUi === "admin");
+  const hasFullAccess = isSuperAdmin && viewAs === "admin";
+
+  /**
+   * Live grants for the console. Admin always gets every catalog slug.
+   * While a Super Admin previews another role the session is narrowed to that
+   * role's baseline so the preview never shows more than WC / AWC can do.
+   */
   const permissions = useMemo(() => {
+    if (isAdminView) return [...ALL_CONSOLE_PERMISSIONS];
     const granted = sessionPermissions(auth?.account);
     if (!sessionUi || sessionUi === viewAs) return granted;
     const preview = new Set(baselinePermissionsForRole(viewAs));
     return granted.filter((slug) => preview.has(slug));
-  }, [auth, sessionUi, viewAs]);
+  }, [auth, isAdminView, sessionUi, viewAs]);
 
-  const can = useCallback((slug) => hasConsolePermission(permissions, slug), [permissions]);
+  const can = useCallback(
+    (slug) => (isAdminView ? Boolean(slug) : hasConsolePermission(permissions, slug)),
+    [isAdminView, permissions],
+  );
 
   const navSections = useMemo(() => {
+    if (isAdminView) return defaultAdminNavSections({ includeAccess: hasFullAccess });
     const sections = sectionsFromPermissions(permissions);
     if (hasFullAccess) sections.add("access");
     return sections;
-  }, [permissions, hasFullAccess]);
+  }, [permissions, hasFullAccess, isAdminView]);
 
   /** "all" | "team" | "assigned" — how wide the role's client roster is. */
-  const dataScope =
-    String(auth?.account?.dataScope || "").toLowerCase() || baselineDataScopeForRole(sessionUi);
+  const dataScope = isAdminView
+    ? "all"
+    : String(auth?.account?.dataScope || "").toLowerCase() || baselineDataScopeForRole(sessionUi);
 
   const value = useMemo(
     () => ({

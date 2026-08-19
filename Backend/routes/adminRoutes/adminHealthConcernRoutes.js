@@ -13,7 +13,12 @@ const {
 
 const router = express.Router();
 
-router.get("/", protectAccount, authorizeStaff("console.cf.view", { admin: "health-concerns.view" }), listHealthConcernsController);
+router.get(
+  "/",
+  protectAccount,
+  authorizeStaff(["console.cf.view", "console.dash.view"], { admin: "health-concerns.view" }),
+  listHealthConcernsController
+);
 router.get("/:id", protectAccount, authorizeStaff("console.cf.view", { admin: "health-concerns.view" }), getHealthConcernByIdController);
 router.post(
   "/",

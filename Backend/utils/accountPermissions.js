@@ -84,10 +84,12 @@ async function resolveAccountPermissions(account, activeRoleKey) {
   const membership = getMembership(account, roleKey);
   const isSuperAdmin = roleKey === "admin" && Boolean(account.isSuperAdmin);
 
-  if (isSuperAdmin) {
+  // Admin (including Super Admin) always has every console section. WC / AWC
+  // grants and deny policies must never shrink that default.
+  if (roleKey === "admin") {
     return {
       permissions: [...ALL_CONSOLE_PERMISSIONS],
-      isSuperAdmin: true,
+      isSuperAdmin,
       roleId: membership?.roleId || null,
       permissionMap: null,
       dataScope: "all",

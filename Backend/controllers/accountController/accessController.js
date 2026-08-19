@@ -1468,6 +1468,18 @@ exports.ensureConsoleRolesSeeded = async function ensureConsoleRolesSeeded() {
         uiMeta: { color: meta.color },
       });
       created.push(roleKey);
+    } else if (roleKey === "admin") {
+      const full = grantsMapToPermissions(null);
+      const current = Array.isArray(role.permissions) ? role.permissions : [];
+      const incomplete = full.some((slug) => !current.includes(slug));
+      if (incomplete || !role.locked) {
+        role = await updateRole(role.id, {
+          permissions: full,
+          locked: true,
+          navSections: DEFAULT_NAV_SECTIONS.admin,
+          dataScope: meta.dataScope,
+        });
+      }
     }
     byKey[roleKey] = role;
   }

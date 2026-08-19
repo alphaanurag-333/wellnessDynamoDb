@@ -6,7 +6,15 @@ const {
   listCoachRecommendedTestsByUserId,
   deleteCoachRecommendedTest,
 } = require("../../models/coachRecommendedTestModel");
-const { listUserLabReportsByUserId, getUserLabReportRecordById, reviewUserLabReport } = require("../../models/userLabReportModel");
+const {
+  listUserLabReportsByUserId,
+  getUserLabReportRecordById,
+  reviewUserLabReport,
+  saveUserLabReportAiAnalysis,
+  updateUserLabReportAiAnalysis,
+} = require("../../models/userLabReportModel");
+const { analyzeLabReportFile } = require("../../services/labReportAiService");
+const { normalizeAiAnalysis, panelsToAnalysis } = require("../../utils/labReportAi");
 const { listActiveTestCatalog } = require("../../models/testCatalogModel");
 const {
   dispatchInternalParametersRecommendationNotification,
@@ -139,6 +147,132 @@ exports.reviewCoachUserLabReportController = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     message: "Lab report marked as reviewed",
+    report,
+  });
+});
+
+async function loadLabReportForUser(reportId, userId) {
+  const record = await getUserLabReportRecordById(reportId);
+  if (!record || String(record.userId) !== String(userId)) {
+    throw new AppError("Lab report not found", 404);
+  }
+  return record;
+}
+
+function analysisPanelsFromStored(analysis) {
+  return (analysis?.panels || []).map((panel) => ({
+    title: panel.title,
+    rows: (panel.rows || []).map((row) => ({
+      name: row.name,
+      optimal: row.optimal,
+      rr: row.rr,
+      readings: [{ value: row.value, tone: row.tone, note: row.note }],
+    })),
+  }));
+}
+
+function readAiAnalysisFromBody(body, { reportDate, fallback } = {}) {
+  if (body?.aiAnalysis && typeof body.aiAnalysis === "object") {
+    return normalizeAiAnalysis(body.aiAnalysis, { reportDate });
+  }
+  if (Array.isArray(body?.panels)) {
+    return panelsToAnalysis(body.panels, {
+      dateLabel: body.dateLabel || fallback?.dateLabel,
+      bloodSummary: body.bloodSummary,
+      protocolItems: body.protocolItems,
+      nutritionSummary: body.nutritionSummary,
+    });
+  }
+  if (fallback) {
+    return panelsToAnalysis(analysisPanelsFromStored(fallback), {
+      dateLabel: fallback.dateLabel,
+      bloodSummary: body?.bloodSummary ?? fallback.bloodSummary,
+      protocolItems: body?.protocolItems ?? fallback.protocolItems,
+      nutritionSummary: body?.nutritionSummary ?? fallback.nutritionSummary,
+    });
+  }
+  throw new AppError("AI analysis payload is required", 400);
+}
+
+exports.analyzeCoachUserLabReportController = asyncHandler(async (req, res) => {
+  const actingCoachId = req.auth?.sub;
+  if (!actingCoachId) throw new AppError("Unauthorized", 401);
+
+  const userId = readUserIdParam(req);
+  const reportId = String(req.params.reportId || "").trim();
+  if (!reportId) throw new AppError("reportId is required", 400);
+
+  const user = await loadTargetUser(userId);
+  await assertStaffCanAccessUser(req, user);
+  assertHealTierUser(user);
+
+  const record = await loadLabReportForUser(reportId, userId);
+  if (!record.fileKey) throw new AppError("This report has no file to analyse", 422);
+
+  let analysis;
+  try {
+    analysis = await analyzeLabReportFile({
+      fileKey: record.fileKey,
+      reportDate: record.reportDate,
+    });
+  } catch (err) {
+    await saveUserLabReportAiAnalysis(reportId, {
+      aiStatus: "failed",
+      aiError: err?.message || "AI analysis failed",
+      analysedById: actingCoachId,
+    }).catch(() => {});
+    if (err instanceof AppError) throw err;
+    throw new AppError(err?.message || "AI analysis failed", 502);
+  }
+
+  const report = await saveUserLabReportAiAnalysis(reportId, {
+    aiStatus: "analysed",
+    aiAnalysis: analysis,
+    analysedById: actingCoachId,
+  });
+
+  return res.status(200).json({
+    status: true,
+    message: "Lab report analysed successfully",
+    report,
+  });
+});
+
+exports.updateCoachUserLabReportAiController = asyncHandler(async (req, res) => {
+  const actingCoachId = req.auth?.sub;
+  if (!actingCoachId) throw new AppError("Unauthorized", 401);
+
+  const userId = readUserIdParam(req);
+  const reportId = String(req.params.reportId || "").trim();
+  if (!reportId) throw new AppError("reportId is required", 400);
+
+  const user = await loadTargetUser(userId);
+  await assertStaffCanAccessUser(req, user);
+  assertHealTierUser(user);
+
+  const record = await loadLabReportForUser(reportId, userId);
+  let analysis;
+  try {
+    analysis = readAiAnalysisFromBody(req.body, {
+      reportDate: record.reportDate,
+      fallback: record.aiAnalysis,
+    });
+  } catch (err) {
+    if (err?.name === "AiParseError") throw new AppError(err.message, 400);
+    handleValidationError(err);
+  }
+
+  let report;
+  try {
+    report = await updateUserLabReportAiAnalysis(reportId, analysis);
+  } catch (err) {
+    if (err?.name === "NotFoundError") throw new AppError("Lab report not found", 404);
+    handleValidationError(err);
+  }
+
+  return res.status(200).json({
+    status: true,
+    message: "AI interpretation saved",
     report,
   });
 });

@@ -1,7 +1,7 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
 const { resolveStaffActor } = require("../staffAccess");
-const { getAdminDashboardStats } = require("../../services/adminDashboardStatsService");
+const { getAdminDashboardStats, listDashboardPaymentsForMonth } = require("../../services/adminDashboardStatsService");
 const { getCoachDashboardStats } = require("../../services/coachDashboardStatsService");
 const { getAssistantDashboardStats } = require("../../services/assistantDashboardStatsService");
 const { getProgramProgressOverview } = require("../../services/programProgressService");
@@ -65,3 +65,23 @@ exports.getStaffDashboardStatistics = asyncHandler(async (req, res) => {
 exports.getCoachDashboardStatistics = exports.getStaffDashboardStatistics;
 exports.getDashboardStatistics = exports.getStaffDashboardStatistics;
 exports.getAssistantDashboardStatistics = exports.getStaffDashboardStatistics;
+
+exports.listStaffDashboardPayments = asyncHandler(async (req, res) => {
+  const actor = resolveStaffActor(req);
+  if (actor.role !== "admin" && actor.role !== "support") {
+    throw new AppError("Forbidden", 403);
+  }
+
+  const month = String(req.query.month || "").trim();
+  if (!/^\d{4}-\d{2}$/.test(month)) {
+    throw new AppError("month must be YYYY-MM", 400);
+  }
+
+  const payments = await listDashboardPaymentsForMonth(month);
+  return res.status(200).json({
+    status: true,
+    message: "Dashboard payments fetched",
+    month,
+    payments,
+  });
+});

@@ -13,6 +13,8 @@ import {
   fetchUserLabReports,
   fetchUserTestRecommendations,
   reviewUserLabReport,
+  analyzeUserLabReport,
+  updateUserLabReportAnalysis,
 } from "../../api/onboardingApi.js";
 
 const GOAL_PRESET_CATEGORIES = {
@@ -139,6 +141,53 @@ function addDaysIso(value, days) {
   if (Number.isNaN(date.getTime())) return "";
   date.setDate(date.getDate() + days);
   return date.toISOString().slice(0, 10);
+}
+
+function storedAnalysisToPanels(analysis) {
+  const dateLabel = analysis?.dateLabel || "—";
+  return {
+    dates: [dateLabel],
+    panels: (analysis?.panels || []).map((panel) => ({
+      title: panel.title,
+      rows: (panel.rows || []).map((row) => ({
+        name: row.name,
+        optimal: row.optimal || "—",
+        rr: row.rr || "—",
+        readings: [{ value: row.value ?? "—", tone: row.tone || "neutral", note: row.note || "" }],
+      })),
+    })),
+  };
+}
+
+function uiToStoredAnalysis({ panels, dateLabel, bloodSummary, protocolItems, nutritionSummary }) {
+  return {
+    dateLabel: dateLabel || "—",
+    panels: (panels || []).map((panel) => ({
+      title: panel.title,
+      rows: (panel.rows || []).map((row) => {
+        const reading = row.readings?.[0] || {};
+        return {
+          name: row.name,
+          optimal: row.optimal,
+          rr: row.rr,
+          value: reading.value ?? "—",
+          tone: reading.tone || "neutral",
+          note: reading.note || "",
+        };
+      }),
+    })),
+    bloodSummary,
+    protocolItems,
+    nutritionSummary,
+  };
+}
+
+function reportAiStatusText(report) {
+  if (report?.aiStatus === "failed") {
+    return report?.aiAnalysis?.panels?.length ? "AI analysis failed — showing last result" : "AI analysis failed";
+  }
+  if (report?.aiStatus === "analysed") return "AI analysed";
+  return "ready for AI analysis";
 }
 
 function catalogGroups(catalog) {
@@ -1254,9 +1303,52 @@ function MockReportAnalysisTab({ onToast }) {
   );
 }
 
-function LiveReportAnalysisTab({ reports, busy, onReview }) {
-  const latest = reports[0];
-  if (!latest) {
+function LiveReportAnalysisTab({ reports, busy, onAnalyze, onSaveAnalysis, onToast }) {
+  const [selectedId, setSelectedId] = useState(reports[0]?.id || null);
+
+  useEffect(() => {
+    if (!reports.length) {
+      setSelectedId(null);
+      return;
+    }
+    if (!reports.some((report) => report.id === selectedId)) {
+      setSelectedId(reports[0].id);
+    }
+  }, [reports, selectedId]);
+
+  const selected = reports.find((report) => report.id === selectedId) || reports[0];
+  const analysis = selected?.aiAnalysis;
+  const hasAnalysis = Boolean(analysis?.panels?.length);
+  const analysed = hasAnalysis;
+  const ui = storedAnalysisToPanels(analysis);
+  const older = reports.filter(
+    (report) => report.id !== selected?.id && report.aiStatus === "analysed" && report.aiAnalysis
+  );
+
+  const [aiDraft, setAiDraft] = useState(null);
+  const [aiEditing, setAiEditing] = useState(false);
+  const [bloodSummary, setBloodSummary] = useState(analysis?.bloodSummary || []);
+  const [summaryDraft, setSummaryDraft] = useState("");
+  const [summaryEditing, setSummaryEditing] = useState(false);
+  const [protocolItems, setProtocolItems] = useState(analysis?.protocolItems || []);
+  const [protocolDraft, setProtocolDraft] = useState([]);
+  const [protocolEditing, setProtocolEditing] = useState(false);
+  const [nutritionLatest, setNutritionLatest] = useState(analysis?.nutritionSummary || "");
+  const [nutritionDraft, setNutritionDraft] = useState("");
+  const [nutritionEditing, setNutritionEditing] = useState(false);
+
+  useEffect(() => {
+    setAiDraft(null);
+    setAiEditing(false);
+    setBloodSummary(analysis?.bloodSummary || []);
+    setSummaryEditing(false);
+    setProtocolItems(analysis?.protocolItems || []);
+    setProtocolEditing(false);
+    setNutritionLatest(analysis?.nutritionSummary || "");
+    setNutritionEditing(false);
+  }, [selected?.id, selected?.aiAnalysedAt, selected?.updatedAt]);
+
+  if (!selected) {
     return (
       <div className="ua-cp-ip-report">
         <p>No blood report uploaded yet. The client can submit a PDF from Internal Parameters in the app.</p>
@@ -1264,35 +1356,310 @@ function LiveReportAnalysisTab({ reports, busy, onReview }) {
     );
   }
 
-  const reviewed = latest.reviewStatus === "reviewed";
+  const panels = aiEditing && aiDraft ? aiDraft : ui.panels;
+
+  function updateReading(panelIdx, rowIdx, readingIdx, nextReading) {
+    setAiDraft((prev) => {
+      const next = cloneAiPanels(prev ?? panels);
+      next[panelIdx].rows[rowIdx].readings[readingIdx] = nextReading;
+      return next;
+    });
+  }
+
+  async function persist(nextAnalysis, toast) {
+    await onSaveAnalysis(selected.id, { aiAnalysis: nextAnalysis });
+    onToast?.(toast);
+  }
 
   return (
     <div className="ua-cp-ip-report">
-      <div className="ua-cp-ip-upload">
-        <div className="ua-cp-ip-upload__icon">📄</div>
-        <div className="ua-cp-ip-upload__body">
-          <strong>Blood report uploaded</strong>
-          <span>Added by client · {formatDisplayDate(latest.reportDate)} · {reviewed ? "reviewed" : "pending review"}</span>
-        </div>
-        <div className="ua-cp-ip-upload__actions">
-          {latest.fileUrl ? (
-            <a className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" href={latest.fileUrl} target="_blank" rel="noreferrer">↓ Download</a>
-          ) : null}
-          {reviewed ? (
-            <span className="ua-cp-ip-badge ua-cp-ip-badge--good">Reviewed</span>
-          ) : (
-            <button
-              type="button"
-              className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm"
-              disabled={busy}
-              onClick={() => onReview(latest.id)}
+      <div className="ua-cp-ip-upload-list">
+        {reports.map((report, index) => {
+          const isSelected = report.id === selected.id;
+          const reportAnalysed = Boolean(report.aiAnalysis?.panels?.length);
+          return (
+            <div
+              key={report.id}
+              className={`ua-cp-ip-upload${isSelected ? " ua-cp-ip-upload--active" : ""}`}
+              role="button"
+              tabIndex={0}
+              onClick={() => setSelectedId(report.id)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  setSelectedId(report.id);
+                }
+              }}
             >
-              Mark reviewed
-            </button>
-          )}
-        </div>
+              <div className="ua-cp-ip-upload__icon">📄</div>
+              <div className="ua-cp-ip-upload__body">
+                <strong>
+                  Blood report uploaded
+                  {index === 0 ? <span className="ua-cp-ip-tag ua-cp-ip-tag--latest">Latest</span> : null}
+                </strong>
+                <span>Added by client · {formatDisplayDate(report.reportDate)} · {reportAiStatusText(report)}</span>
+              </div>
+              <div className="ua-cp-ip-upload__actions" onClick={(event) => event.stopPropagation()}>
+                {report.fileUrl ? (
+                  <a className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" href={report.fileUrl} target="_blank" rel="noreferrer">↓ Download</a>
+                ) : null}
+                {reportAnalysed && report.aiStatus === "analysed" ? (
+                  <span className="ua-cp-ip-badge ua-cp-ip-badge--good">AI analysed</span>
+                ) : null}
+                <button
+                  type="button"
+                  className="ua-cp-btn ua-cp-btn--ai ua-cp-btn--sm"
+                  disabled={busy || !report.fileUrl}
+                  title={!report.fileUrl ? "No file attached to this report" : undefined}
+                  onClick={() => {
+                    setSelectedId(report.id);
+                    onAnalyze(report.id);
+                  }}
+                >
+                  <span aria-hidden="true">⚡</span> {busy && isSelected ? "Reading report…" : reportAnalysed ? "Resubmit to AI" : "Submit to AI"}
+                </button>
+              </div>
+            </div>
+          );
+        })}
       </div>
-      <p className="ua-cp-ip-rec__sub">AI interpretation is not available yet. Open the uploaded PDF to review markers.</p>
+
+      {selected.aiStatus === "failed" && selected.aiError ? (
+        <p className="ua-cp-ip-rec__sub">{selected.aiError}</p>
+      ) : null}
+
+      {analysed ? (
+        <>
+          <div className="ua-cp-ip-ai">
+            <div className="ua-cp-ip-ai__head">
+              <div>
+                <strong>⚡ AI interpretation</strong>
+                <span>value + interpretation from the client-uploaded report</span>
+              </div>
+              <EditActions
+                editing={aiEditing}
+                onEdit={() => {
+                  setAiDraft(cloneAiPanels(panels));
+                  setAiEditing(true);
+                }}
+                onCancel={() => {
+                  setAiDraft(null);
+                  setAiEditing(false);
+                }}
+                onSave={async () => {
+                  const next = uiToStoredAnalysis({
+                    panels: aiDraft || panels,
+                    dateLabel: analysis.dateLabel,
+                    bloodSummary,
+                    protocolItems,
+                    nutritionSummary: nutritionLatest,
+                  });
+                  await persist(next, "AI interpretation saved");
+                  setAiDraft(null);
+                  setAiEditing(false);
+                }}
+              />
+            </div>
+            <div className="ua-cp-ip-ai__table-wrap">
+              <table className="ua-cp-ip-ai__table">
+                <thead>
+                  <tr>
+                    <th className="ua-cp-ip-ai__sticky ua-cp-ip-ai__sticky--1">Parameter</th>
+                    <th className="ua-cp-ip-ai__sticky ua-cp-ip-ai__sticky--2">Optimal</th>
+                    <th className="ua-cp-ip-ai__sticky ua-cp-ip-ai__sticky--3">RR · lab</th>
+                    {ui.dates.map((d) => <th key={d}>{d}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {panels.map((panel, panelIdx) => (
+                    <Fragment key={panel.title}>
+                      <tr className="ua-cp-ip-ai__cat">
+                        <td colSpan={3 + ui.dates.length}>{panel.title}</td>
+                      </tr>
+                      {panel.rows.map((row, rowIdx) => (
+                        <tr key={row.name}>
+                          <td className="ua-cp-ip-ai__param ua-cp-ip-ai__sticky ua-cp-ip-ai__sticky--1">{row.name}</td>
+                          <td className="ua-cp-ip-ai__sticky ua-cp-ip-ai__sticky--2">{row.optimal}</td>
+                          <td className="ua-cp-ip-ai__sticky ua-cp-ip-ai__sticky--3">{row.rr}</td>
+                          {row.readings.map((r, readingIdx) => (
+                            <AiReadingCell
+                              key={readingIdx}
+                              reading={r}
+                              editing={aiEditing}
+                              onChange={(next) => updateReading(panelIdx, rowIdx, readingIdx, next)}
+                            />
+                          ))}
+                        </tr>
+                      ))}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="ua-cp-ip-summary-card">
+            <div className="ua-cp-ip-summary-card__head">
+              <div>
+                <strong>Blood report summary</strong>
+                <span className="ua-cp-ip-tag ua-cp-ip-tag--ai">AI GENERATED</span>
+              </div>
+              <EditActions
+                editing={summaryEditing}
+                onEdit={() => {
+                  setSummaryDraft(bloodSummary.join("\n"));
+                  setSummaryEditing(true);
+                }}
+                onCancel={() => setSummaryEditing(false)}
+                onSave={async () => {
+                  const nextSummary = summaryDraft.split("\n").map((s) => s.trim()).filter(Boolean);
+                  await persist(uiToStoredAnalysis({
+                    panels,
+                    dateLabel: analysis.dateLabel,
+                    bloodSummary: nextSummary,
+                    protocolItems,
+                    nutritionSummary: nutritionLatest,
+                  }), "Blood report summary saved");
+                  setBloodSummary(nextSummary);
+                  setSummaryEditing(false);
+                }}
+              />
+            </div>
+            <p className="ua-cp-ip-summary-card__sub">Synthesised from the client-uploaded report</p>
+            {summaryEditing ? (
+              <textarea
+                className="ua-cp-ip-edit-textarea"
+                value={summaryDraft}
+                rows={8}
+                onChange={(e) => setSummaryDraft(e.target.value)}
+                placeholder="One bullet per line…"
+              />
+            ) : (
+              <ul className="ua-cp-ip-summary-card__list">
+                {bloodSummary.map((item) => <li key={item}>{item}</li>)}
+              </ul>
+            )}
+          </div>
+
+          <div className="ua-cp-ip-protocol">
+            <div className="ua-cp-ip-protocol__head">
+              <div>
+                <strong>Protocol · nutritionist recommendation</strong>
+                <span>AI-generated · {formatDisplayDate(selected.reportDate)}</span>
+              </div>
+              <EditActions
+                editing={protocolEditing}
+                onEdit={() => {
+                  setProtocolDraft([...protocolItems]);
+                  setProtocolEditing(true);
+                }}
+                onCancel={() => setProtocolEditing(false)}
+                onSave={async () => {
+                  const nextItems = protocolDraft.map((s) => s.trim()).filter(Boolean);
+                  await persist(uiToStoredAnalysis({
+                    panels,
+                    dateLabel: analysis.dateLabel,
+                    bloodSummary,
+                    protocolItems: nextItems,
+                    nutritionSummary: nutritionLatest,
+                  }), "Protocol saved");
+                  setProtocolItems(nextItems);
+                  setProtocolEditing(false);
+                }}
+              />
+            </div>
+            <div className="ua-cp-ip-protocol__items">
+              {(protocolEditing ? protocolDraft : protocolItems).map((item, idx) => (
+                <div key={idx} className="ua-cp-ip-protocol__item">
+                  <span className="ua-cp-ip-protocol__check">✓</span>
+                  {protocolEditing ? (
+                    <input
+                      className="ua-cp-ip-protocol__input"
+                      value={item}
+                      onChange={(e) => {
+                        const next = [...protocolDraft];
+                        next[idx] = e.target.value;
+                        setProtocolDraft(next);
+                      }}
+                    />
+                  ) : item}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {older.length ? (
+            <div className="ua-cp-ip-prev">
+              <h4 className="ua-cp-ip-prev__title">Previous protocols</h4>
+              {older.map((report) => (
+                <div key={report.id} className="ua-cp-ip-prev__card">
+                  <div className="ua-cp-ip-prev__date">{formatDisplayDate(report.reportDate)}</div>
+                  <ul>{(report.aiAnalysis?.protocolItems || []).map((item) => <li key={item}>{item}</li>)}</ul>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </>
+      ) : (
+        <p className="ua-cp-ip-rec__sub">Submit the client-uploaded PDF to AI to extract markers and generate the interpretation.</p>
+      )}
+
+      {analysed || older.length ? (
+        <div className="ua-cp-ip-nutrition">
+          <div className="ua-cp-ip-nutrition__head">
+            <h4>Nutrition summary</h4>
+            {analysed ? (
+              <EditActions
+                editing={nutritionEditing}
+                onEdit={() => {
+                  setNutritionDraft(nutritionLatest);
+                  setNutritionEditing(true);
+                }}
+                onCancel={() => setNutritionEditing(false)}
+                onSave={async () => {
+                  const nextText = nutritionDraft.trim();
+                  await persist(uiToStoredAnalysis({
+                    panels,
+                    dateLabel: analysis.dateLabel,
+                    bloodSummary,
+                    protocolItems,
+                    nutritionSummary: nextText,
+                  }), "Nutrition summary saved");
+                  setNutritionLatest(nextText);
+                  setNutritionEditing(false);
+                }}
+              />
+            ) : null}
+          </div>
+          {analysed ? (
+            <div className="ua-cp-ip-nutrition__latest">
+              <span className="ua-cp-ip-tag ua-cp-ip-tag--latest">Latest</span>
+              <span className="ua-cp-ip-nutrition__date">{formatDisplayDate(selected.reportDate)}</span>
+              {nutritionEditing ? (
+                <textarea
+                  className="ua-cfg-dp-add__content ua-cp-ip-edit-textarea ua-cp-ip-edit-textarea--compact"
+                  value={nutritionDraft}
+                  rows={4}
+                  onChange={(e) => setNutritionDraft(e.target.value)}
+                />
+              ) : (
+                <p>{nutritionLatest || "No nutrition summary yet."}</p>
+              )}
+            </div>
+          ) : null}
+          {older.length ? (
+            <>
+              <h4 className="ua-cp-ip-nutrition__hist-title">History</h4>
+              {older.map((report) => (
+                <div key={report.id} className="ua-cp-ip-nutrition__hist-card">
+                  <div className="ua-cp-ip-nutrition__date">{formatDisplayDate(report.reportDate)}</div>
+                  <p>{report.aiAnalysis?.nutritionSummary || "—"}</p>
+                </div>
+              ))}
+            </>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1358,6 +1725,33 @@ export function InternalParametersSection({ user, onToast }) {
       await reload();
     } catch (err) {
       onToast?.(err?.message || "Failed to review report");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleAnalyze(reportId) {
+    try {
+      setBusy(true);
+      await analyzeUserLabReport(userId, reportId);
+      onToast?.("Submitted to AI");
+      await reload();
+    } catch (err) {
+      onToast?.(err?.message || "Failed to analyse report");
+      await reload().catch(() => {});
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleSaveAnalysis(reportId, payload) {
+    try {
+      setBusy(true);
+      await updateUserLabReportAnalysis(userId, reportId, payload);
+      await reload();
+    } catch (err) {
+      onToast?.(err?.message || "Failed to save analysis");
+      throw err;
     } finally {
       setBusy(false);
     }
@@ -1458,7 +1852,13 @@ export function InternalParametersSection({ user, onToast }) {
           <MockRecommendedTestsTab user={user} onToast={onToast} />
         )
       ) : live ? (
-        <LiveReportAnalysisTab reports={reports} busy={busy} onReview={handleReview} />
+        <LiveReportAnalysisTab
+          reports={reports}
+          busy={busy}
+          onAnalyze={handleAnalyze}
+          onSaveAnalysis={handleSaveAnalysis}
+          onToast={onToast}
+        />
       ) : (
         <MockReportAnalysisTab onToast={onToast} />
       )}
