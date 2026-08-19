@@ -28,6 +28,7 @@ const {
   toPublicAssistant,
 } = require("../../models/assistantWellnessCoachModel");
 const { listLeadershipNotes } = require("../../models/leadershipNoteModel");
+const { listWellnessTeamNotes } = require("../../models/wellnessTeamNoteModel");
 const { getSpecializationById } = require("../../models/specializationModel");
 const { listBirthdayPostsByPostDate } = require("../../models/birthdayPostModel");
 const { listActiveTestCatalog, listActiveTestCatalogPaginated } = require("../../models/testCatalogModel");
@@ -475,6 +476,24 @@ exports.getActiveLeadershipNotes = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     leadershipNotes: data.leadershipNotes,
+    pagination: data.pagination,
+  });
+});
+
+exports.getActiveWellnessTeamNotes = asyncHandler(async (req, res) => {
+  const { page, limit } = readPaging(req.query);
+  const platform = String(req.query.platform || "").trim().toLowerCase() || undefined;
+  const data = await listWellnessTeamNotes({
+    page,
+    limit,
+    status: "active",
+    search: readSearch(req.query),
+    platform,
+  });
+
+  return res.status(200).json({
+    status: true,
+    wellnessTeamNotes: data.wellnessTeamNotes,
     pagination: data.pagination,
   });
 });

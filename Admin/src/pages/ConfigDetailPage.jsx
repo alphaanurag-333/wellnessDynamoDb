@@ -50,10 +50,10 @@ import { DynamicTransformationSection } from "../components/DynamicTransformatio
 import { DynamicClientReviewSection } from "../components/DynamicClientReviewSection.jsx";
 import { DynamicRealPeopleSection } from "../components/DynamicRealPeopleSection.jsx";
 import { DynamicVoiceOfHealingSection } from "../components/DynamicVoiceOfHealingSection.jsx";
-import { CofounderSection } from "../components/CofounderSection.jsx";
 import { DynamicCofounderSection } from "../components/DynamicCofounderSection.jsx";
 import { AboutSection } from "../components/AboutSection.jsx";
 import { DynamicLeadershipSection } from "../components/DynamicLeadershipSection.jsx";
+import { DynamicWellnessTeamSection } from "../components/DynamicWellnessTeamSection.jsx";
 import { DynamicGoogleReviewSection } from "../components/DynamicGoogleReviewSection.jsx";
 import { DropdownsSection } from "../components/DropdownsSection.jsx";
 import { RecipesSection } from "../components/RecipesSection.jsx";
@@ -82,12 +82,6 @@ import {
   COFOUNDER_EDITOR,
 } from "../data/cofounderConfigData.js";
 import { editorFromCofounder } from "../api/cofounderMessageApi.js";
-import {
-  WELLNESS_TEAM_EDITOR,
-  WELLNESS_TEAM_MESSAGES,
-  WELLNESS_TEAM_PHOTOS,
-  WELLNESS_TEAM_TITLES,
-} from "../data/wellnessTeamConfigData.js";
 import { ABOUT_BLOCKS } from "../data/aboutConfigData.js";
 import {
   RECIPES_EDITOR,
@@ -1238,9 +1232,7 @@ export function ConfigDetailPage() {
   const [cfRecord, setCfRecord] = useState(null);
   const cfEditor = useMemo(() => editorFromCofounder(cfRecord, COFOUNDER_EDITOR), [cfRecord]);
   const [ldItems, setLdItems] = useState([]);
-  const [wtEditor, setWtEditor] = useState(WELLNESS_TEAM_EDITOR);
-  const [wtPhotos, setWtPhotos] = useState(WELLNESS_TEAM_PHOTOS);
-  const [wtMessages, setWtMessages] = useState(WELLNESS_TEAM_MESSAGES);
+  const [wtItems, setWtItems] = useState([]);
   const [aboutBlocks, setAboutBlocks] = useState(ABOUT_BLOCKS);
   const [grStats, setGrStats] = useState([]);
   const [dropdownLists, setDropdownLists] = useState([]);
@@ -1483,7 +1475,7 @@ export function ConfigDetailPage() {
               : item.id === "common-leadership"
                 ? ldItems.some((entry) => entry.live)
               : item.id === "common-wellness-team"
-                ? wtEditor.appOn || wtEditor.webOn
+                ? wtItems.some((entry) => entry.live)
               : item.id === "common-about"
                 ? aboutBlocks.some((entry) => entry.shown)
               : item.id === "common-google-review"
@@ -1973,21 +1965,10 @@ export function ConfigDetailPage() {
         );
       case "common-wellness-team":
         return (
-          <CofounderSection
-            editor={wtEditor}
-            setEditor={setWtEditor}
-            photos={wtPhotos}
-            setPhotos={setWtPhotos}
-            messages={wtMessages}
-            setMessages={setWtMessages}
+          <DynamicWellnessTeamSection
+            items={wtItems}
+            setItems={setWtItems}
             onToast={onToast}
-            onOpenPreview={() => setPreviewOpen(true)}
-            titleOptions={WELLNESS_TEAM_TITLES}
-            showPhotoHistory
-            cropLabel="team"
-            photoHint="Upload a portrait for this team member — cropping and zoom are set in the upload dialog."
-            liveTitle="Live team profiles"
-            liveSubtitle="Who is live, their designation and where they show."
           />
         );
       case "common-about":
@@ -2149,8 +2130,7 @@ export function ConfigDetailPage() {
           cfEditor,
           cfRecord,
           ldItems,
-          wtEditor,
-          wtMessages,
+          wtItems,
           aboutBlocks,
           grStats,
           dropdownLists,

@@ -2,6 +2,7 @@ const { coachHandlers } = require("../helpers/prakrutiAssessmentControllerHelper
 
 exports.listCoachUserPrakrutiThingsToAvoidController = coachHandlers.listThingsToAvoidController;
 exports.listCoachUserPrakrutiQuestionsController = coachHandlers.listQuestionsController;
+exports.listCoachUserPrakrutiRecommendationsController = coachHandlers.listRecommendationsController;
 exports.getCoachUserPrakrutiAssessmentController = coachHandlers.getAssessmentController;
 exports.saveCoachUserPrakrutiAssessmentController = coachHandlers.saveAssessmentController;
 exports.exportCoachUserPrakrutiQuestionsController = coachHandlers.exportQuestionsController;

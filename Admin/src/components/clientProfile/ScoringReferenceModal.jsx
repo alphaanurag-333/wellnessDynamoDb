@@ -6,20 +6,39 @@ function getModalRoot() {
     || document.querySelector(".updated-admin");
 }
 
-function ratingLabel(id) {
-  return SCORING_REFERENCE.find((row) => row.id === id)?.label
-    ?? id.charAt(0).toUpperCase() + id.slice(1);
+function toRows(ratings) {
+  if (Array.isArray(ratings) && ratings.length) {
+    return ratings.map((row) => ({
+      id: row.id,
+      label: row.badge || row.name || row.label || "Rating",
+      score: Number(row.points ?? row.score) || 0,
+      tone: row.tone || "default",
+      desc: row.description || row.desc || "",
+    }));
+  }
+  return SCORING_REFERENCE.map((row) => ({
+    id: row.id,
+    label: row.label,
+    score: row.score,
+    tone: row.tone,
+    desc: row.desc,
+  }));
 }
 
 export function ScoringReferenceModal({
   question,
   reply,
   suggestedRating,
+  ratings,
   onUseSuggested,
   onClose,
 }) {
-  const suggestedScore = RATING_SCORES[suggestedRating] ?? 100;
-  const suggestedTone = SCORING_REFERENCE.find((row) => row.id === suggestedRating)?.tone ?? "excellent";
+  const rows = toRows(ratings);
+  const suggested = rows.find((row) => row.id === suggestedRating || row.tone === suggestedRating)
+    || rows[0];
+  const suggestedScore = suggested?.score ?? RATING_SCORES[suggestedRating] ?? 100;
+  const suggestedTone = suggested?.tone || "excellent";
+  const suggestedLabel = suggested?.label || suggestedRating;
 
   const modal = (
     <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={onClose} role="presentation">
@@ -42,12 +61,12 @@ export function ScoringReferenceModal({
             <strong>{reply || "—"}</strong>
           </div>
           <div className={`ua-cp-scoring-ref__suggested ua-cp-scoring-ref__suggested--${suggestedTone}`}>
-            Suggested · {ratingLabel(suggestedRating)} · {suggestedScore}
+            Suggested · {suggestedLabel} · {suggestedScore}
           </div>
         </div>
 
         <div className="ua-cp-scoring-ref__rows">
-          {SCORING_REFERENCE.map((row) => (
+          {rows.map((row) => (
             <div key={row.id} className={`ua-cp-scoring-ref__row ua-cp-scoring-ref__row--${row.tone}`}>
               <span className="ua-cp-scoring-ref__row-label">{row.label}</span>
               <span className="ua-cp-scoring-ref__row-score">{row.score}</span>

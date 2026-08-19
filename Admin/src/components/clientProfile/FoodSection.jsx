@@ -274,19 +274,21 @@ function WaterChartCard({ chart, goal, todayDay }) {
           Avg <strong>{chart.avg}</strong> · Today <strong className="ua-cp-food-water-card__today">{chart.today}</strong> / {goal}
         </div>
       </div>
-      <div className="ua-cp-food-water-chart" style={{ gridTemplateColumns: `repeat(${Math.max(chart.days.length, 1)}, minmax(0, 1fr))` }}>
-        {chart.days.map((d, index) => (
-          <div key={`${d.day}-${index}`} className="ua-cp-food-water-chart__col">
-            <span className="ua-cp-food-water-chart__val">{d.value}</span>
-            <div className="ua-cp-food-water-chart__bar-wrap">
-              <span
-                className={`ua-cp-food-water-chart__bar${todayDay && d.day === todayDay ? " ua-cp-food-water-chart__bar--today" : ""}`}
-                style={{ height: `${Math.max(12, (d.value / max) * 100)}%` }}
-              />
+      <div className="ua-cp-food-water-chart-scroll">
+        <div className="ua-cp-food-water-chart" style={{ gridTemplateColumns: `repeat(${Math.max(chart.days.length, 1)}, minmax(28px, 1fr))` }}>
+          {chart.days.map((d, index) => (
+            <div key={`${d.day}-${index}`} className="ua-cp-food-water-chart__col">
+              <span className="ua-cp-food-water-chart__val">{d.value}</span>
+              <div className="ua-cp-food-water-chart__bar-wrap">
+                <span
+                  className={`ua-cp-food-water-chart__bar${todayDay && d.day === todayDay ? " ua-cp-food-water-chart__bar--today" : ""}`}
+                  style={{ height: `${Math.max(12, (d.value / max) * 100)}%` }}
+                />
+              </div>
+              <span className="ua-cp-food-water-chart__day">{d.day}</span>
             </div>
-            <span className="ua-cp-food-water-chart__day">{d.day}</span>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );

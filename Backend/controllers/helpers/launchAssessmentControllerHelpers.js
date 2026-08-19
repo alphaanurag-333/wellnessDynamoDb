@@ -2,6 +2,9 @@ const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
 const { listLaunchQuestions, listActiveLaunchQuestions } = require("../../models/launchQuestionModel");
 const { listLaunchFocusAreas } = require("../../models/launchFocusAreaModel");
+const { listAllRatingsUnpaged } = require("../../models/launchRatingModel");
+const { listAllDomainsUnpaged } = require("../../models/launchDomainModel");
+const { listAllQuestionsUnpaged } = require("../../models/launchDomainQuestionModel");
 const {
   createUserLaunchAssessment,
   getUserLaunchAssessmentById,
@@ -13,6 +16,11 @@ const {
   SCORE_MAX,
 } = require("../../models/userLaunchAssessmentModel");
 const {
+  isLiveDomain,
+  isEnabledQuestion,
+  summarizeConfig,
+} = require("../../services/launchScoreService");
+const {
   readUserIdParam,
   loadTargetUser,
   assertCoachCanAccessUser,
@@ -22,6 +30,7 @@ const {
   assertHealTierUser,
   handleValidationError,
   resolveCoachIdForUser,
+  resolveStaffActor,
 } = require("./dietPlanControllerHelpers");
 
 function handleLaunchValidationError(err) {
@@ -44,6 +53,62 @@ function parseFocusAreaIds(body) {
     throw new AppError("focusAreaIds must be an array", 400);
   }
   return body.focusAreaIds;
+}
+
+function parseAnswers(body) {
+  if (body?.answers === undefined) return undefined;
+  if (!Array.isArray(body.answers)) {
+    throw new AppError("answers must be an array", 400);
+  }
+  return body.answers;
+}
+
+function isActiveRating(row) {
+  return String(row?.status || "active").toLowerCase() !== "inactive";
+}
+
+async function loadLiveLaunchConfig() {
+  const [ratings, domains, questions] = await Promise.all([
+    listAllRatingsUnpaged(),
+    listAllDomainsUnpaged(),
+    listAllQuestionsUnpaged(),
+  ]);
+  const byDomain = new Map();
+  for (const question of questions) {
+    if (!isEnabledQuestion(question)) continue;
+    const list = byDomain.get(question.domainId) || [];
+    list.push(question);
+    byDomain.set(question.domainId, list);
+  }
+  const liveRatings = ratings.filter(isActiveRating);
+  const nested = domains
+    .filter(isLiveDomain)
+    .map((domain) => ({
+      ...domain,
+      questions: byDomain.get(domain.id) || [],
+    }));
+  return {
+    ratings: liveRatings,
+    domains: nested,
+    scoring: summarizeConfig({ ratings: liveRatings, domains: nested }),
+  };
+}
+
+function flattenConfigQuestions(domains = []) {
+  const questions = [];
+  domains.forEach((domain) => {
+    (domain.questions || []).forEach((question) => {
+      questions.push({
+        id: question.id,
+        domainId: domain.id,
+        category: domain.name,
+        question: question.name,
+        points: Number(question.points) || 0,
+        hasInfo: question.hasInfo !== false,
+      });
+    });
+  });
+  return questions;
 }
 
 function parseListQuery(req, { defaultLimit = 10, maxLimit = 50 } = {}) {
@@ -113,8 +178,8 @@ async function assertAdminHealUserAccess(req) {
 function createLaunchAssessmentPortalHandlers({ assertHealUserAccess, createdByRole }) {
   return {
     listFocusAreasController: asyncHandler(async (req, res) => {
-      await assertHealUserAccess(req);
-      const { page, limit, search } = parseListQuery(req, { defaultLimit: 8, maxLimit: 50 });
+      resolveStaffActor(req);
+      const { page, limit, search } = parseListQuery(req, { defaultLimit: 50, maxLimit: 200 });
       const data = await listLaunchFocusAreas({ page, limit, status: "active", search });
       return res.status(200).json({
         status: true,
@@ -124,9 +189,31 @@ function createLaunchAssessmentPortalHandlers({ assertHealUserAccess, createdByR
       });
     }),
 
+    getConfigController: asyncHandler(async (req, res) => {
+      resolveStaffActor(req);
+      const bundle = await loadLiveLaunchConfig();
+      return res.status(200).json({
+        status: true,
+        message: "LAUNCH config fetched successfully",
+        ratings: bundle.ratings,
+        domains: bundle.domains,
+        scoring: bundle.scoring,
+      });
+    }),
+
     listQuestionsController: asyncHandler(async (req, res) => {
-      await assertHealUserAccess(req);
-      const { page, limit, search } = parseListQuery(req, { defaultLimit: 10, maxLimit: 50 });
+      resolveStaffActor(req);
+      const bundle = await loadLiveLaunchConfig();
+      const configQuestions = flattenConfigQuestions(bundle.domains);
+      if (configQuestions.length) {
+        return res.status(200).json({
+          status: true,
+          message: "LAUNCH questions fetched successfully",
+          questions: configQuestions,
+          pagination: { page: 1, pages: 1, total: configQuestions.length, limit: configQuestions.length },
+        });
+      }
+      const { page, limit, search } = parseListQuery(req, { defaultLimit: 50, maxLimit: 200 });
       const data = await listLaunchQuestions({ page, limit, status: "active", search });
       return res.status(200).json({
         status: true,
@@ -184,6 +271,7 @@ function createLaunchAssessmentPortalHandlers({ assertHealUserAccess, createdByR
           assessmentDate,
           totalScore: parseTotalScore(req.body),
           focusAreaIds: parseFocusAreaIds(req.body) ?? [],
+          answers: parseAnswers(req.body) ?? [],
           createdByRole: req.auth?.role || createdByRole,
           createdById: actingId,
         });
@@ -219,6 +307,10 @@ function createLaunchAssessmentPortalHandlers({ assertHealUserAccess, createdByR
       const focusAreaIds = parseFocusAreaIds(req.body);
       if (focusAreaIds !== undefined) {
         updates.focusAreaIds = focusAreaIds;
+      }
+      const answers = parseAnswers(req.body);
+      if (answers !== undefined) {
+        updates.answers = answers;
       }
 
       if (Object.keys(updates).length === 0) {
@@ -264,7 +356,11 @@ function createLaunchAssessmentPortalHandlers({ assertHealUserAccess, createdByR
 
     exportQuestionsController: asyncHandler(async (req, res) => {
       const { userId, user } = await assertHealUserAccess(req);
-      const questions = await listActiveLaunchQuestions();
+      const bundle = await loadLiveLaunchConfig();
+      const configQuestions = flattenConfigQuestions(bundle.domains);
+      const questions = configQuestions.length
+        ? configQuestions
+        : await listActiveLaunchQuestions();
       const { content, filename } = buildQuestionsCsv(user, userId, questions);
       res.setHeader("Content-Type", "text/csv; charset=utf-8");
       res.setHeader(
@@ -288,6 +384,8 @@ module.exports = {
   handleLaunchValidationError,
   parseTotalScore,
   parseFocusAreaIds,
+  parseAnswers,
+  loadLiveLaunchConfig,
   createLaunchAssessmentPortalHandlers,
   staffHandlers,
   coachHandlers,

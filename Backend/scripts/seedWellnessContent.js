@@ -16,26 +16,6 @@ const SUPPLEMENTS = [
   { name: "Electrolyte Hydration", description: "Sugar-free electrolytes for daily hydration.", packSize: 20, unit: "Sachets", price: 449, status: "inactive" },
 ];
 
-// ──────────────── Mental & Emotional Wellbeing ────────────────
-const MENTAL_WELLBEING = [
-  { title: "10-Minute Guided Meditation for Anxiety", type: "ytlink", ytLink: "https://www.youtube.com/watch?v=O-6f5wQXSu8", status: "active" },
-  { title: "Breathing Exercises to Calm the Mind", type: "ytlink", ytLink: "https://www.youtube.com/watch?v=tEmt1Znux58", status: "active" },
-  { title: "Body Scan Meditation for Deep Relaxation", type: "ytlink", ytLink: "https://www.youtube.com/watch?v=QS2yDmWk0vs", status: "active" },
-  { title: "Mindfulness Meditation for Beginners", type: "ytlink", ytLink: "https://www.youtube.com/watch?v=ssss7V1_eyA", status: "active" },
-  { title: "Sleep Meditation for Stress Relief", type: "ytlink", ytLink: "https://www.youtube.com/watch?v=aEqlQvczMJQ", status: "active" },
-  { title: "Gratitude Practice for Emotional Balance", type: "ytlink", ytLink: "https://www.youtube.com/watch?v=WPPPFqsECz0", status: "inactive" },
-];
-
-// ──────────────── Physical Exercise ────────────────
-const PHYSICAL_EXERCISE = [
-  { title: "Full Body Beginner Workout (No Equipment)", description: "20-minute follow-along routine for all levels.", type: "ytlink", link: "https://www.youtube.com/watch?v=UItWltVZZmE", status: "active" },
-  { title: "Morning Mobility & Stretch Routine", description: "Loosen up joints and improve flexibility.", type: "ytlink", link: "https://www.youtube.com/watch?v=g_tea8ZNk5A", status: "active" },
-  { title: "Core Strength & Abs Workout", description: "10-minute core burner to build stability.", type: "ytlink", link: "https://www.youtube.com/watch?v=Ej3o2TgFsKw", status: "active" },
-  { title: "Low Impact HIIT for Fat Loss", description: "Joint-friendly cardio with no jumping.", type: "ytlink", link: "https://www.youtube.com/watch?v=50kH47ZztHs", status: "active" },
-  { title: "Beginner Yoga Flow for Strength", description: "Gentle yoga to build strength and balance.", type: "ytlink", link: "https://www.youtube.com/watch?v=v7AYKMP6rOE", status: "active" },
-  { title: "Posture Correction Exercises", description: "Fix rounded shoulders and back pain.", type: "ytlink", link: "https://www.youtube.com/watch?v=RqcOCBb4arc", status: "inactive" },
-];
-
 async function existingValues(table, field) {
   const seen = new Set();
   let lastKey;
@@ -100,33 +80,8 @@ async function main() {
     }),
   });
 
-  await seedTable({
-    table: "MentalWellbeing",
-    field: "title",
-    rows: MENTAL_WELLBEING,
-    buildItem: (r) => ({
-      title: r.title.trim(),
-      type: r.type,
-      ytLink: (r.ytLink || "").trim(),
-      file: "",
-      status: r.status,
-    }),
-  });
-
-  await seedTable({
-    table: "PhysicalExercise",
-    field: "title",
-    rows: PHYSICAL_EXERCISE,
-    buildItem: (r) => ({
-      title: r.title.trim(),
-      description: r.description.trim(),
-      type: r.type,
-      link: (r.link || "").trim(),
-      status: r.status,
-    }),
-  });
-
-  console.log("\nDone seeding wellness content.");
+  console.log("\nDone seeding supplements.");
+  console.log("Mental / yoga / exercise libraries: npm run seed:wellness-libraries");
 }
 
 main().catch((err) => {

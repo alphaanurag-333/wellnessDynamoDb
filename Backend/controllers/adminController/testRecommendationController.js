@@ -11,6 +11,7 @@ const { listActiveTestCatalog } = require("../../models/testCatalogModel");
 const {
   dispatchInternalParametersRecommendationNotification,
 } = require("../../services/notificationDispatchService");
+const { sendStoredObjectAsAttachment } = require("../../utils/s3");
 const {
   readUserIdParam,
   readRecommendationIdParam,
@@ -139,6 +140,28 @@ exports.reviewCoachUserLabReportController = asyncHandler(async (req, res) => {
     status: true,
     message: "Lab report marked as reviewed",
     report,
+  });
+});
+
+exports.downloadCoachUserTestRecommendationPdfController = asyncHandler(async (req, res) => {
+  const actingCoachId = req.auth?.sub;
+  if (!actingCoachId) throw new AppError("Unauthorized", 401);
+
+  const userId = readUserIdParam(req);
+  const recommendationId = readRecommendationIdParam(req);
+  const user = await loadTargetUser(userId);
+  await assertStaffCanAccessUser(req, user);
+  assertHealTierUser(user);
+
+  const record = await loadRecommendationForUser(recommendationId, userId);
+  if (!record?.pdfKey) {
+    throw new AppError("PDF is not available for this recommendation", 404);
+  }
+
+  const datePart = String(record.reportDate || "list").slice(0, 10);
+  await sendStoredObjectAsAttachment(res, record.pdfKey, {
+    filename: `recommended-tests-${datePart}.pdf`,
+    contentType: "application/pdf",
   });
 });
 

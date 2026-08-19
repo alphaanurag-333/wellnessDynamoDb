@@ -368,7 +368,7 @@ export function TeamsPage() {
   }
 
   return (
-    <main className="content ua-page-enter">
+    <main className="content ua-page-enter ua-teams-page">
       <PageHeader
         title="Teams & roles"
         subtitle={
@@ -437,12 +437,12 @@ export function TeamsPage() {
                     >
                       {staffInitials(s.name)}
                     </span>
-                    <div>
+                    <div className="ua-user-cell__meta">
                       <div className="ua-user-cell__name">{s.name}</div>
-                      <div className="ua-user-cell__sub">{s.email}</div>
+                      <div className="ua-user-cell__sub ua-user-cell__email">{s.email}</div>
                     </div>
                   </div>
-                  <div>
+                  <div data-label="Role">
                     <span
                       className="ua-role-chip"
                       style={{
@@ -454,8 +454,8 @@ export function TeamsPage() {
                       {meta.name}
                     </span>
                   </div>
-                  <div className="ua-table__load">{s.meta}</div>
-                  <div>
+                  <div className="ua-table__load" data-label={col3}>{s.meta}</div>
+                  <div data-label="Status">
                     <span
                       className={`ua-status-pill${
                         s.displayStatus === "Pending" ? " ua-status-pill--amber" : " ua-status-pill--green"
@@ -464,7 +464,7 @@ export function TeamsPage() {
                       {s.displayStatus || "Active"}
                     </span>
                   </div>
-                  <div className="ua-team-actions" onClick={(e) => e.stopPropagation()}>
+                  <div className="ua-team-actions" data-label="Actions" onClick={(e) => e.stopPropagation()}>
                     <button
                       type="button"
                       className="ua-team-actions__perm"

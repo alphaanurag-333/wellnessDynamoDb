@@ -203,7 +203,14 @@ function equalizeSlideHeights(swiper) {
   // that can clip the video row on tablet widths.
 }
 
-export function LeadershipNotesSlider({ notes = [], loading = false }) {
+export function LeadershipNotesSlider({
+  notes = [],
+  loading = false,
+  label = "Leadership notes",
+  heading = "Notes from Leadership",
+  subheading = "Guiding our vision with transparency, purpose, and commitment",
+  loadingLabel = "Loading leadership notes…",
+}) {
   const swiperRef = useRef(null);
   const prevRef = useRef(null);
   const nextRef = useRef(null);
@@ -225,9 +232,9 @@ export function LeadershipNotesSlider({ notes = [], loading = false }) {
 
   if (loading) {
     return (
-      <section className="leadership leadership-slider" aria-label="Leadership notes">
+      <section className="leadership leadership-slider" aria-label={label}>
         <div className="site-container">
-          <p className="leadership-slider__loading">Loading leadership notes…</p>
+          <p className="leadership-slider__loading">{loadingLabel}</p>
         </div>
       </section>
     );
@@ -236,13 +243,13 @@ export function LeadershipNotesSlider({ notes = [], loading = false }) {
   if (items.length === 0) return null;
 
   return (
-    <section className="leadership leadership-slider pt-2 pb-0" aria-label="Leadership notes">
+    <section className="leadership leadership-slider pt-2 pb-0" aria-label={label}>
       
       <div className="site-container">
          <div className="transformation-header mb-2">
           <div className="header-left">
-            <h2>Notes from Leadership</h2>
-            <p>Guiding our vision with transparency, purpose, and commitment</p>
+            <h2>{heading}</h2>
+            <p>{subheading}</p>
           </div>
          
         {showNav ? (

@@ -41,6 +41,7 @@ const adminBirthdayNotificationRoutes = require("./adminRoutes/adminBirthdayNoti
 const adminBirthdayPostRoutes = require("./adminRoutes/adminBirthdayPostRoutes");
 const adminClientTestimonialsRoutes = require("./adminRoutes/adminClientTestimonialsRoutes");
 const adminLeadershipNoteRoutes = require("./adminRoutes/adminLeadershipNoteRoutes");
+const adminWellnessTeamNoteRoutes = require("./adminRoutes/adminWellnessTeamNoteRoutes");
 const adminProgramTestimonialRoutes = require("./adminRoutes/adminProgramTestimonialRoutes");
 const adminVideoTestimonialsRoutes = require("./adminRoutes/adminVideoTestimonialsRoutes");
 const adminRealPeopleTestimonialRoutes = require("./adminRoutes/adminRealPeopleTestimonialRoutes");
@@ -149,6 +150,7 @@ router.use("/admin/birthday-notifications", adminBirthdayNotificationRoutes);
 router.use("/admin/birthday-posts", adminBirthdayPostRoutes);
 router.use("/admin/client-testimonials", adminClientTestimonialsRoutes);
 router.use("/admin/leadership-notes", adminLeadershipNoteRoutes);
+router.use("/admin/wellness-team-notes", adminWellnessTeamNoteRoutes);
 router.use("/admin/program-testimonials", adminProgramTestimonialRoutes);
 router.use("/admin/video-testimonials", adminVideoTestimonialsRoutes);
 router.use("/admin/real-people-testimonials", adminRealPeopleTestimonialRoutes);

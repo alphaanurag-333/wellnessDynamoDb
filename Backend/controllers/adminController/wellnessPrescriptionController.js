@@ -15,6 +15,7 @@ const {
   parseAssignmentDate,
   parsePrescriptionIds,
   parseCustomPoints,
+  parseProtocols,
   loadTargetUser,
   assertCoachCanAccessUser,
   assertStaffCanAccessUser,
@@ -59,9 +60,11 @@ exports.createCoachUserWellnessPrescriptionController = asyncHandler(async (req,
 
   const prescriptionIds = parsePrescriptionIds(req.body);
   const customPoints = parseCustomPoints(req.body);
+  const protocols = parseProtocols(req.body);
   const { items, sourcePrescriptionIds } = await buildAssignmentItems({
     prescriptionIds,
     customPoints,
+    protocols,
   });
 
   const coach = { id: actingCoachId, name: resolveStaffActor(req).displayName };

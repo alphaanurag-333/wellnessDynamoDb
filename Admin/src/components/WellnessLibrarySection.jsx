@@ -6,12 +6,14 @@ import {
   adminPreviewYoutubeDuration,
   adminUpdateWellnessLibraryItem,
 } from "../api/wellnessLibraryApi.js";
+import { formatRecipeDate, youtubeEmbedUrl } from "../data/recipesConfigData.js";
 import {
   WELLNESS_LIBRARY_KINDS,
   WELLNESS_LIBRARY_PAGE_SIZE,
   WELLNESS_LIBRARY_TYPES,
   WELLNESS_VIDEO_ACCEPT,
   WELLNESS_VIDEO_MAX_MB,
+  displayTypeLabel,
   emptyWellnessDraft,
   isBareNumber,
   isValidDuration,
@@ -20,11 +22,17 @@ import {
   resolveLibraryType,
   sanitizeTimeInput,
 } from "../data/wellnessLibraryData.js";
-import { ListPagination } from "./shared.jsx";
+import { CfgSelect, ListPagination } from "./shared.jsx";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 
 const IMAGE_ACCEPT = "image/jpeg,image/png,image/gif,image/webp,image/jpg";
 const TIME_HINT = "Enter time as 5:12 (minutes:seconds), not a number";
+const SEARCH_DEBOUNCE_MS = 400;
+const TYPE_FILTERS = [
+  { value: "", label: "All types" },
+  { value: "ytlink", label: "YouTube" },
+  { value: "video", label: "Uploaded video" },
+];
 
 function snapshotItem(item) {
   return {
@@ -47,6 +55,89 @@ function sameSnapshot(a, b) {
   );
 }
 
+function revokeBlobUrl(url) {
+  if (url && String(url).startsWith("blob:")) URL.revokeObjectURL(url);
+}
+
+function LibraryViewModal({ entry, viewTag, itemNoun, onClose, onEdit }) {
+  if (!entry) return null;
+  const isVideo = resolveLibraryType(entry.type) === "video";
+  const embed = !isVideo ? youtubeEmbedUrl(entry.ytLink) : "";
+  const videoSrc = isVideo ? entry.fileUrl : "";
+  return (
+    <div className="ua-cp-modal-backdrop" onClick={onClose} role="presentation">
+      <div className="ua-cfg-rc-view ua-cfg-rc-view--sheet" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="library-view-title">
+        <div className="ua-cfg-rc-view__head">
+          <div>
+            <p className="ua-cfg-rc-view__tag">{viewTag}</p>
+            <h3 id="library-view-title">{entry.title || `Untitled ${itemNoun}`}</h3>
+            <p>{displayTypeLabel(entry.type)}{entry.duration ? ` · ${entry.duration}` : ""} · {entry.live ? "Live" : "Hidden"}</p>
+          </div>
+          <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={onClose}>×</button>
+        </div>
+        <div className="ua-cfg-rc-view__body">
+          <div className="ua-cfg-rc-view__media">
+            {entry.thumbnail ? <img src={entry.thumbnail} alt="" /> : <div className="ua-cfg-rc-view__media-empty">No cover</div>}
+          </div>
+          <dl className="ua-cfg-rc-view__meta">
+            <div>
+              <dt>Type</dt>
+              <dd>{isVideo ? "Uploaded video" : "YouTube link"}</dd>
+            </div>
+            <div>
+              <dt>{isVideo ? "Video" : "YouTube"}</dt>
+              <dd>
+                {isVideo && videoSrc ? (
+                  <a href={videoSrc} target="_blank" rel="noreferrer">{videoSrc}</a>
+                ) : entry.ytLink ? (
+                  <a href={entry.ytLink} target="_blank" rel="noreferrer">{entry.ytLink}</a>
+                ) : "—"}
+              </dd>
+            </div>
+            <div>
+              <dt>Time</dt>
+              <dd>{entry.duration || "—"}</dd>
+            </div>
+            <div>
+              <dt>Created</dt>
+              <dd>{formatRecipeDate(entry.createdAt)}</dd>
+            </div>
+            <div>
+              <dt>Updated</dt>
+              <dd>{formatRecipeDate(entry.updatedAt)}</dd>
+            </div>
+          </dl>
+          {embed ? (
+            <div className="ua-cfg-rc-view__embed">
+              <iframe
+                title={entry.title || `${itemNoun} video`}
+                src={embed}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          ) : videoSrc ? (
+            <video className="ua-cfg-rc-view__player" src={videoSrc} controls preload="metadata" />
+          ) : null}
+        </div>
+        <div className="ua-cfg-rc-view__foot">
+          <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose}>Close</button>
+          <button
+            type="button"
+            className="ua-cfg-btn ua-cfg-btn--primary"
+            onClick={() => {
+              onEdit(entry.id);
+              onClose();
+            }}
+          >
+            Edit {itemNoun}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Panel({ title, subtitle, actions, children }) {
   return (
     <section className="ua-cfg-panel">
@@ -62,18 +153,26 @@ function Panel({ title, subtitle, actions, children }) {
   );
 }
 
-function ImagePicker({ previewUrl, disabled, onPick, label = "Upload thumbnail" }) {
+function CoverDrop({ previewUrl, disabled, label = "Cover photo", onPick, onRemove }) {
   const inputRef = useRef(null);
+  const filled = Boolean(previewUrl);
 
   return (
-    <button
-      type="button"
-      className={`ua-cfg-nb-thumb${previewUrl ? " has-image" : ""}`}
-      disabled={disabled}
-      aria-label={label}
-      onClick={() => inputRef.current?.click()}
-    >
-      {previewUrl ? <img src={previewUrl} alt="" /> : <span>+</span>}
+    <div className={`ua-cfg-tf-drop ua-cfg-tf-drop--before ua-cfg-rc-dropbox${filled ? " is-on" : ""}`}>
+      {filled ? <img className="ua-cfg-tf-drop__img" src={previewUrl} alt="" /> : null}
+      <span className="ua-cfg-tf-drop__icon" aria-hidden="true">🖼</span>
+      <p className="ua-cfg-tf-drop__label">{label}</p>
+      <button
+        type="button"
+        className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-drop__btn"
+        disabled={disabled}
+        onClick={() => inputRef.current?.click()}
+      >
+        {filled ? "Replace photo" : "Upload photo"}
+      </button>
+      {filled && onRemove ? (
+        <button type="button" className="ua-cfg-rc-media-x" aria-label="Remove cover" disabled={disabled} onClick={onRemove}>×</button>
+      ) : null}
       <input
         ref={inputRef}
         type="file"
@@ -83,43 +182,43 @@ function ImagePicker({ previewUrl, disabled, onPick, label = "Upload thumbnail" 
         onChange={(event) => {
           const file = event.target.files?.[0] || null;
           event.target.value = "";
-          onPick(file);
+          if (file) onPick(file);
         }}
       />
-    </button>
+    </div>
   );
 }
 
-function TypeSelect({ value, disabled, onChange, ariaLabel, className }) {
-  const type = resolveLibraryType(value);
-  return (
-    <select
-      className={className}
-      value={type}
-      disabled={disabled}
-      aria-label={ariaLabel}
-      onChange={(event) => onChange(event.target.value)}
-    >
-      {type === "audio" ? <option value="audio">Audio</option> : null}
-      {WELLNESS_LIBRARY_TYPES.map((option) => (
-        <option key={option.value} value={option.value}>{option.label}</option>
-      ))}
-    </select>
-  );
-}
-
-function VideoPicker({ label, fileName, disabled, onPick }) {
+function VideoDrop({ previewUrl, embedUrl, fileName, disabled, onPick, onRemove }) {
   const inputRef = useRef(null);
+  const filled = Boolean(previewUrl || embedUrl || fileName);
+
   return (
-    <>
+    <div className={`ua-cfg-tf-drop ua-cfg-tf-drop--after ua-cfg-rc-dropbox${filled ? " is-on" : ""}`}>
+      {previewUrl ? (
+        <video className="ua-cfg-tf-drop__img ua-cfg-rc-video-preview" src={previewUrl} controls preload="metadata" />
+      ) : embedUrl ? (
+        <iframe
+          className="ua-cfg-tf-drop__img ua-cfg-rc-video-preview"
+          title="YouTube preview"
+          src={embedUrl}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        />
+      ) : null}
+      <span className="ua-cfg-tf-drop__icon" aria-hidden="true">▶</span>
+      <p className="ua-cfg-tf-drop__label">{fileName || "Video file"}</p>
       <button
         type="button"
-        className="ua-cfg-wl-file"
+        className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-drop__btn"
         disabled={disabled}
         onClick={() => inputRef.current?.click()}
       >
-        {fileName || label}
+        {previewUrl || fileName ? "Replace video" : "Upload video"}
       </button>
+      {filled && onRemove ? (
+        <button type="button" className="ua-cfg-rc-media-x" aria-label="Remove video" disabled={disabled} onClick={onRemove}>×</button>
+      ) : null}
       <input
         ref={inputRef}
         type="file"
@@ -129,18 +228,18 @@ function VideoPicker({ label, fileName, disabled, onPick }) {
         onChange={(event) => {
           const file = event.target.files?.[0] || null;
           event.target.value = "";
-          onPick(file);
+          if (file) onPick(file);
         }}
       />
-    </>
+    </div>
   );
 }
 
-function TimeInput({ value, disabled, detecting, onChange, onBlur, ariaLabel, className }) {
+function TimeInput({ value, disabled, detecting, onChange, onBlur, ariaLabel }) {
   return (
     <input
       type="text"
-      className={className}
+      className="ua-cfg-vh-input"
       value={detecting ? "" : value}
       placeholder={detecting ? "Detecting…" : "5:12"}
       disabled={disabled || detecting}
@@ -159,6 +258,13 @@ export function WellnessLibrarySection({ kind, onToast }) {
   const [draftThumb, setDraftThumb] = useState(null);
   const [draftPreview, setDraftPreview] = useState("");
   const [draftVideo, setDraftVideo] = useState(null);
+  const [draftVideoPreview, setDraftVideoPreview] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId] = useState("");
+  const [viewingId, setViewingId] = useState("");
+  const [listQuery, setListQuery] = useState("");
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({
     page: 1,
@@ -172,6 +278,8 @@ export function WellnessLibrarySection({ kind, onToast }) {
   const [pendingDelete, setPendingDelete] = useState(null);
   const savedRef = useRef({});
   const itemsRef = useRef(items);
+  const editFilesRef = useRef({});
+  const coverInputRefs = useRef({});
 
   const rememberSaved = useCallback((rows) => {
     savedRef.current = Object.fromEntries((rows || []).map((row) => [row.id, snapshotItem(row)]));
@@ -184,6 +292,8 @@ export function WellnessLibrarySection({ kind, onToast }) {
       const { items: rows, pagination: nextPagination } = await adminListWellnessLibrary(kind, null, {
         page: nextPage,
         limit: WELLNESS_LIBRARY_PAGE_SIZE,
+        search,
+        type: typeFilter || undefined,
       });
       const next = rows || [];
       setItems(next);
@@ -204,11 +314,45 @@ export function WellnessLibrarySection({ kind, onToast }) {
     } finally {
       setLoading(false);
     }
-  }, [kind, meta.title, onToast, page, rememberSaved]);
+  }, [kind, meta.title, onToast, page, rememberSaved, search, typeFilter]);
+
+  useEffect(() => {
+    setPage(1);
+    setListQuery("");
+    setSearch("");
+    setTypeFilter("");
+    setCreating(false);
+    setEditingId("");
+    setViewingId("");
+    setDraft(emptyWellnessDraft());
+    setDraftThumb(null);
+    setDraftVideo(null);
+    setDraftPreview((prev) => {
+      revokeBlobUrl(prev);
+      return "";
+    });
+    setDraftVideoPreview((prev) => {
+      revokeBlobUrl(prev);
+      return "";
+    });
+    editFilesRef.current = {};
+  }, [kind]);
 
   useEffect(() => {
     loadItems();
   }, [loadItems]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const next = listQuery.trim();
+      setSearch((prev) => {
+        if (prev === next) return prev;
+        setPage(1);
+        return next;
+      });
+    }, SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [listQuery]);
 
   useEffect(() => {
     if (!loading && page > pagination.pages) setPage(pagination.pages);
@@ -219,8 +363,9 @@ export function WellnessLibrarySection({ kind, onToast }) {
   }, [items]);
 
   useEffect(() => () => {
-    if (draftPreview.startsWith("blob:")) URL.revokeObjectURL(draftPreview);
-  }, [draftPreview]);
+    revokeBlobUrl(draftPreview);
+    revokeBlobUrl(draftVideoPreview);
+  }, [draftPreview, draftVideoPreview]);
 
   function updateItem(id, patch) {
     setItems((prev) => {
@@ -237,11 +382,6 @@ export function WellnessLibrarySection({ kind, onToast }) {
       return false;
     }
     return true;
-  }
-
-  function restoreTime(id, saved) {
-    updateItem(id, { duration: saved.duration });
-    onToast(TIME_HINT);
   }
 
   async function detectYoutubeTime(url) {
@@ -275,115 +415,79 @@ export function WellnessLibrarySection({ kind, onToast }) {
     }
   }
 
-  async function commitItem(id) {
-    const item = itemsRef.current.find((entry) => entry.id === id);
+  async function resolveDuration(item, next) {
+    if (next.duration && (isBareNumber(next.duration) || !isValidDuration(next.duration))) {
+      onToast(TIME_HINT);
+      return "";
+    }
+    if (next.type === "ytlink") {
+      if (!isValidYoutubeUrl(next.ytLink)) {
+        onToast("A valid YouTube URL is required");
+        return "";
+      }
+      if (isValidDuration(next.duration)) return next.duration;
+      setDetecting(item.id);
+      const detected = await detectYoutubeTime(next.ytLink);
+      setDetecting("");
+      if (!detected) {
+        onToast(TIME_HINT);
+        return "";
+      }
+      updateItem(item.id, { duration: detected });
+      return detected;
+    }
+    const staged = editFilesRef.current[item.id]?.videoFile;
+    if (!item.hasFile && !(staged instanceof File)) {
+      onToast("Upload a video file");
+      return "";
+    }
+    if (isValidDuration(next.duration)) return next.duration;
+    onToast(TIME_HINT);
+    return "";
+  }
+
+  async function saveEditedItem(item) {
     if (!item?.id || busy) return;
     const next = snapshotItem(item);
-    const saved = savedRef.current[item.id] || next;
-
     if (!next.title) {
-      updateItem(item.id, saved);
       onToast("Title is required");
       return;
     }
-
-    if (next.duration && (isBareNumber(next.duration) || !isValidDuration(next.duration))) {
-      restoreTime(item.id, saved);
+    const duration = await resolveDuration(item, next);
+    if (!duration) return;
+    next.duration = duration;
+    const staged = editFilesRef.current[item.id] || {};
+    const files = {};
+    if (staged.videoFile instanceof File) files.videoFile = staged.videoFile;
+    const saved = savedRef.current[item.id] || next;
+    if (sameSnapshot(saved, next) && !files.videoFile) {
+      setEditingId("");
       return;
     }
-
-    if (next.type === "ytlink") {
-      if (!isValidYoutubeUrl(next.ytLink)) {
-        updateItem(item.id, saved);
-        onToast("A valid YouTube URL is required");
-        return;
-      }
-      if (!isValidDuration(next.duration)) {
-        setDetecting(item.id);
-        const detected = await detectYoutubeTime(next.ytLink);
-        setDetecting("");
-        if (!detected) {
-          onToast(TIME_HINT);
-          return;
-        }
-        next.duration = detected;
-        updateItem(item.id, { duration: detected });
-      }
-    } else if (!item.hasFile) {
-      onToast("Upload a video file");
-      return;
-    } else if (!isValidDuration(next.duration)) {
-      onToast(TIME_HINT);
-      return;
-    }
-
-    if (sameSnapshot(saved, next)) return;
-
-    const ok = await persistItem(item.id, {
-      title: next.title,
-      type: next.type,
-      ytLink: next.type === "ytlink" ? next.ytLink : "",
-      duration: next.duration,
-    });
-    if (!ok) updateItem(item.id, saved);
-  }
-
-  async function changeType(item, type) {
-    if (busy) return;
-    const nextType = resolveLibraryType(type);
-    if (nextType === item.type) return;
-
-    if (nextType === "video" && !item.hasFile) {
-      updateItem(item.id, { type: nextType, ytLink: "", duration: "" });
-      onToast("Upload a video file");
-      return;
-    }
-
-    if (nextType === "ytlink" && !isValidYoutubeUrl(item.ytLink)) {
-      updateItem(item.id, { type: nextType, duration: item.duration });
-      onToast("Paste a YouTube URL");
-      return;
-    }
-
-    let duration = item.duration;
-    if (nextType === "ytlink" && !isValidDuration(duration)) {
-      setDetecting(item.id);
-      duration = await detectYoutubeTime(item.ytLink);
-      setDetecting("");
-    }
-    if (!isValidDuration(duration)) {
-      updateItem(item.id, { type: nextType });
-      onToast(TIME_HINT);
-      return;
-    }
-
-    updateItem(item.id, { type: nextType, duration, ytLink: nextType === "ytlink" ? item.ytLink : "" });
-    const ok = await persistItem(item.id, {
-      type: nextType,
-      ytLink: nextType === "ytlink" ? item.ytLink : "",
-      duration,
-    });
-    if (!ok) updateItem(item.id, savedRef.current[item.id] || snapshotItem(item));
-  }
-
-  async function changeVideoFile(item, file) {
-    if (!assertVideoFile(file) || busy) return;
-    setDetecting(item.id);
-    const duration = await readVideoFileDuration(file);
-    setDetecting("");
-    if (!isValidDuration(duration)) {
-      updateItem(item.id, { type: "video", duration: "" });
-      onToast("Could not detect video time. Enter time as 5:12");
-      return;
-    }
-    updateItem(item.id, { type: "video", duration, ytLink: "" });
     const ok = await persistItem(
       item.id,
-      { type: "video", duration, ytLink: "" },
-      { videoFile: file },
-      "Video updated",
+      {
+        title: next.title,
+        type: next.type,
+        ytLink: next.type === "ytlink" ? next.ytLink : "",
+        duration: next.duration,
+      },
+      files,
+      `${next.title} saved`,
     );
-    if (!ok) updateItem(item.id, savedRef.current[item.id] || snapshotItem(item));
+    if (ok) {
+      delete editFilesRef.current[item.id];
+      setEditingId("");
+    } else {
+      updateItem(item.id, saved);
+    }
+  }
+
+  function cancelEdit(item) {
+    const saved = savedRef.current[item.id];
+    if (saved) updateItem(item.id, saved);
+    delete editFilesRef.current[item.id];
+    setEditingId("");
   }
 
   async function toggleLive(item) {
@@ -396,23 +500,48 @@ export function WellnessLibrarySection({ kind, onToast }) {
 
   async function changeImage(item, file) {
     if (!(file instanceof File) || busy) return;
-    await persistItem(item.id, {}, { thumbnailFile: file }, "Thumbnail updated");
+    await persistItem(item.id, {}, { thumbnailFile: file }, "Cover updated");
+  }
+
+  async function pickEditVideo(item, file) {
+    if (!assertVideoFile(file) || busy) return;
+    setDetecting(item.id);
+    const duration = await readVideoFileDuration(file);
+    setDetecting("");
+    editFilesRef.current[item.id] = { ...(editFilesRef.current[item.id] || {}), videoFile: file };
+    updateItem(item.id, {
+      type: "video",
+      ytLink: "",
+      duration: duration || item.duration,
+      hasFile: true,
+      fileUrl: URL.createObjectURL(file),
+    });
+    if (!duration) onToast("Could not detect video time. Enter time as 5:12");
   }
 
   function pickDraftImage(file) {
-    if (draftPreview.startsWith("blob:")) URL.revokeObjectURL(draftPreview);
+    revokeBlobUrl(draftPreview);
     setDraftThumb(file instanceof File ? file : null);
     setDraftPreview(file instanceof File ? URL.createObjectURL(file) : "");
   }
 
   async function pickDraftVideo(file) {
     if (!assertVideoFile(file)) return;
+    revokeBlobUrl(draftVideoPreview);
     setDraftVideo(file);
+    setDraftVideoPreview(URL.createObjectURL(file));
     setDetecting("draft");
     const duration = await readVideoFileDuration(file);
     setDetecting("");
     setDraft((prev) => ({ ...prev, type: "video", duration: duration || "", ytLink: "" }));
     if (!duration) onToast("Could not detect video time. Enter time as 5:12");
+  }
+
+  function clearDraftVideo() {
+    revokeBlobUrl(draftVideoPreview);
+    setDraftVideo(null);
+    setDraftVideoPreview("");
+    setDraft((prev) => ({ ...prev, type: "ytlink", duration: prev.ytLink ? prev.duration : "" }));
   }
 
   async function detectDraftYoutube(url) {
@@ -431,7 +560,7 @@ export function WellnessLibrarySection({ kind, onToast }) {
       duration: "",
       ytLink: nextType === "ytlink" ? prev.ytLink : "",
     }));
-    if (nextType !== "video") setDraftVideo(null);
+    if (nextType !== "video") clearDraftVideo();
   }
 
   function commitDraftTime() {
@@ -443,6 +572,16 @@ export function WellnessLibrarySection({ kind, onToast }) {
     }
   }
 
+  function resetDraft() {
+    revokeBlobUrl(draftPreview);
+    revokeBlobUrl(draftVideoPreview);
+    setDraft(emptyWellnessDraft());
+    setDraftThumb(null);
+    setDraftPreview("");
+    setDraftVideo(null);
+    setDraftVideoPreview("");
+  }
+
   async function addItem() {
     const title = draft.title.trim();
     const type = resolveLibraryType(draft.type);
@@ -450,7 +589,7 @@ export function WellnessLibrarySection({ kind, onToast }) {
     let duration = draft.duration.trim();
 
     if (!title || !(draftThumb instanceof File)) {
-      onToast("Title and thumbnail are required");
+      onToast("Title and cover photo are required");
       return;
     }
     if (duration && (isBareNumber(duration) || !isValidDuration(duration))) {
@@ -497,9 +636,8 @@ export function WellnessLibrarySection({ kind, onToast }) {
         },
       );
       if (!created) throw new Error("Failed to add item");
-      setDraft(emptyWellnessDraft());
-      setDraftVideo(null);
-      pickDraftImage(null);
+      resetDraft();
+      setCreating(false);
       onToast(`${title} added to the library`);
       setPage(1);
       await loadItems(1);
@@ -518,6 +656,7 @@ export function WellnessLibrarySection({ kind, onToast }) {
     try {
       await adminDeleteWellnessLibraryItem(kind, null, item.id);
       onToast(`${item.title} removed`);
+      if (editingId === item.id) setEditingId("");
       const remaining = itemsRef.current.filter((entry) => entry.id !== item.id).length;
       if (remaining === 0 && page > 1) {
         const nextPage = page - 1;
@@ -533,135 +672,356 @@ export function WellnessLibrarySection({ kind, onToast }) {
     }
   }
 
+  function clearFilters() {
+    setListQuery("");
+    setSearch("");
+    setTypeFilter("");
+    setPage(1);
+  }
+
   const locked = busy || loading;
   const liveCount = items.filter((entry) => entry.live).length;
+  const hasFilters = Boolean(search || typeFilter);
 
   return (
-    <>
+    <div className="ua-cfg-rc">
       <Panel
         title={meta.title}
         subtitle={
           loading
             ? `Loading ${meta.title.toLowerCase()}…`
-            : meta.subtitle
+            : `${pagination.total || items.length} ${(pagination.total || items.length) === 1 ? meta.noun : meta.nouns} · ${liveCount} live on this page${hasFilters ? " · filtered" : ""}`
         }
         actions={
-          loading ? null : (
-            <span className="ua-cfg-dp__count">
-              {liveCount} live on this page · {pagination.total} in library
-            </span>
-          )
+          <button
+            type="button"
+            className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-tf-add-btn"
+            disabled={locked}
+            onClick={() => {
+              setEditingId("");
+              setCreating(true);
+            }}
+          >
+            {meta.addLabel}
+          </button>
         }
       >
+        {creating ? (
+          <section className="ua-cfg-rc-new">
+            <div className="ua-cfg-rc-new__head">
+              <strong><span aria-hidden="true">{meta.emoji}</span> {meta.newLabel}</strong>
+              <button
+                type="button"
+                className="ua-cfg-icon-btn"
+                aria-label="Close"
+                disabled={locked}
+                onClick={() => {
+                  resetDraft();
+                  setCreating(false);
+                }}
+              >
+                ×
+              </button>
+            </div>
+            <div className="ua-cfg-rc-new__grid">
+              <div className="ua-cfg-rc-new__media">
+                <CoverDrop
+                  previewUrl={draftPreview}
+                  disabled={locked}
+                  onPick={pickDraftImage}
+                  onRemove={() => pickDraftImage(null)}
+                />
+                <VideoDrop
+                  previewUrl={draftVideoPreview}
+                  embedUrl={draftVideo ? "" : youtubeEmbedUrl(draft.ytLink)}
+                  fileName={draftVideo?.name || ""}
+                  disabled={locked}
+                  onPick={pickDraftVideo}
+                  onRemove={clearDraftVideo}
+                />
+              </div>
+              <div className="ua-cfg-rc-new__fields">
+                <label className="ua-cfg-rc-field">
+                  <span>Title</span>
+                  <input
+                    className="ua-cfg-vh-input"
+                    placeholder="Title"
+                    value={draft.title}
+                    disabled={locked}
+                    onChange={(event) => setDraft((prev) => ({ ...prev, title: event.target.value }))}
+                  />
+                </label>
+                <label className="ua-cfg-rc-field">
+                  <span>Type</span>
+                  <CfgSelect
+                    className="ua-cfg-rc-select"
+                    options={WELLNESS_LIBRARY_TYPES}
+                    value={resolveLibraryType(draft.type)}
+                    disabled={locked}
+                    onChange={changeDraftType}
+                    ariaLabel="Type"
+                    placeholder="Choose type"
+                  />
+                </label>
+                {draft.type === "ytlink" ? (
+                  <label className="ua-cfg-rc-field ua-cfg-rc-field--wide">
+                    <span>YouTube link</span>
+                    <input
+                      className="ua-cfg-vh-input"
+                      placeholder="https://youtube.com/…"
+                      value={draft.ytLink}
+                      disabled={locked}
+                      onChange={(event) => setDraft((prev) => ({ ...prev, ytLink: event.target.value, type: "ytlink" }))}
+                      onBlur={() => detectDraftYoutube(draft.ytLink)}
+                    />
+                  </label>
+                ) : null}
+                <label className="ua-cfg-rc-field">
+                  <span>Time</span>
+                  <TimeInput
+                    value={draft.duration}
+                    detecting={detecting === "draft"}
+                    disabled={locked}
+                    ariaLabel="Video time"
+                    onChange={(duration) => setDraft((prev) => ({ ...prev, duration }))}
+                    onBlur={commitDraftTime}
+                  />
+                </label>
+                <div className="ua-cfg-rc-new__foot">
+                  <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={locked} onClick={addItem}>
+                    {busy && creating ? "Saving…" : meta.addLabel.replace(/^\+\s*/, "Add ")}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        <div className="ua-cfg-rc-toolbar">
+          <input
+            type="search"
+            className="ua-cfg-dd-search"
+            placeholder={meta.search}
+            value={listQuery}
+            onChange={(event) => setListQuery(event.target.value)}
+            aria-label={`Search ${meta.nouns}`}
+          />
+          <CfgSelect
+            className="ua-cfg-rc-select ua-cfg-rc-filter"
+            options={TYPE_FILTERS}
+            value={typeFilter}
+            disabled={locked}
+            onChange={(value) => {
+              setTypeFilter(value);
+              setPage(1);
+            }}
+            ariaLabel="Filter by type"
+            placeholder="All types"
+          />
+          {hasFilters ? (
+            <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" onClick={clearFilters}>
+              Clear
+            </button>
+          ) : null}
+        </div>
+
         {loading ? (
           <p className="ua-cfg-panel__sub">Fetching library from the server…</p>
         ) : items.length ? (
-          <div className="ua-cfg-nb-table-wrap ua-cfg-wl-table-wrap">
-            <table className="ua-cfg-nb-table ua-cfg-wl-table">
-              <thead>
-                <tr>
-                  <th>Thumbnail</th>
-                  <th>Title</th>
-                  <th>Type</th>
-                  <th>Source</th>
-                  <th>Time</th>
-                  <th>Live</th>
-                  <th aria-hidden="true" />
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => (
-                  <tr key={item.id} className={item.live ? "" : "is-hidden"}>
-                    <td>
-                      <ImagePicker
-                        previewUrl={item.thumbnail}
-                        disabled={locked}
-                        label={`Change thumbnail for ${item.title}`}
-                        onPick={(file) => changeImage(item, file)}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="text"
-                        className="ua-cfg-nb-table__name"
-                        value={item.title}
-                        disabled={locked}
-                        aria-label={`Title for ${item.title}`}
-                        onChange={(event) => updateItem(item.id, { title: event.target.value })}
-                        onBlur={() => commitItem(item.id)}
-                      />
-                    </td>
-                    <td>
-                      <TypeSelect
-                        className="ua-cfg-nb-table__unit ua-cfg-wl-table__type"
-                        value={item.type}
-                        disabled={locked}
-                        ariaLabel={`Type for ${item.title}`}
-                        onChange={(type) => changeType(item, type)}
-                      />
-                    </td>
-                    <td>
-                      {item.type === "video" ? (
-                        <VideoPicker
-                          label="Upload video"
-                          fileName={item.hasFile ? "Replace video" : ""}
-                          disabled={locked}
-                          onPick={(file) => changeVideoFile(item, file)}
-                        />
+          <div className={`ua-cfg-rc-list${busy ? " is-loading" : ""}`}>
+            {items.map((item) => {
+              const editing = editingId === item.id;
+              const stagedFile = editFilesRef.current[item.id]?.videoFile;
+              return (
+                <article
+                  key={item.id}
+                  className={`ua-cfg-rc-item ua-cfg-rc-item--lib${editing ? " is-editing" : ""} is-video`}
+                >
+                  <div className="ua-cfg-rc-cover-wrap">
+                    <button
+                      type="button"
+                      className="ua-cfg-rc-cover is-video ua-cfg-rc-cover--pick"
+                      disabled={locked}
+                      onClick={() => coverInputRefs.current[item.id]?.click()}
+                    >
+                      {item.thumbnail ? (
+                        <img className="ua-cfg-rc-cover__img" src={item.thumbnail} alt="" />
                       ) : (
-                        <input
-                          type="url"
-                          className="ua-cfg-wl-table__link"
-                          value={item.ytLink}
-                          disabled={locked}
-                          placeholder="YouTube URL"
-                          aria-label={`YouTube URL for ${item.title}`}
-                          onChange={(event) => updateItem(item.id, { ytLink: event.target.value, type: "ytlink" })}
-                          onBlur={() => commitItem(item.id)}
-                        />
+                        <span aria-hidden="true">🖼</span>
                       )}
-                    </td>
-                    <td>
-                      <TimeInput
-                        className="ua-cfg-wl-table__time"
-                        value={item.duration}
-                        detecting={detecting === item.id}
-                        disabled={locked}
-                        ariaLabel={`Video time for ${item.title}`}
-                        onChange={(duration) => updateItem(item.id, { duration })}
-                        onBlur={() => commitItem(item.id)}
-                      />
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        className={`ua-toggle ua-toggle--sm${item.live ? " ua-toggle--on" : ""}`}
-                        aria-pressed={item.live}
-                        aria-label={`${item.live ? "Hide" : "Show"} ${item.title}`}
-                        disabled={locked}
-                        onClick={() => toggleLive(item)}
-                      >
-                        <span className="ua-toggle__knob" />
-                      </button>
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        className="ua-cfg-icon-btn ua-cfg-nb-table__delete"
-                        aria-label={`Remove ${item.title}`}
-                        disabled={locked}
-                        onClick={() => setPendingDelete(item)}
-                      >
-                        ×
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      <em>{item.thumbnail ? "Replace" : "Cover"}</em>
+                    </button>
+                    <input
+                      ref={(node) => {
+                        coverInputRefs.current[item.id] = node;
+                      }}
+                      type="file"
+                      accept={IMAGE_ACCEPT}
+                      hidden
+                      disabled={locked}
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        event.target.value = "";
+                        if (file) changeImage(item, file);
+                      }}
+                    />
+                  </div>
+                  <div className="ua-cfg-rc-item__body">
+                    <div className="ua-cfg-rc-item__head">
+                      <div className="ua-cfg-rc-item__identity">
+                        {editing ? (
+                          <input
+                            className="ua-cfg-vh-input ua-cfg-rc-title"
+                            value={item.title}
+                            disabled={locked}
+                            onChange={(event) => updateItem(item.id, { title: event.target.value })}
+                          />
+                        ) : (
+                          <strong>{item.title}</strong>
+                        )}
+                        <div className="ua-cfg-rc-item__meta">
+                          <span className={`ua-cfg-rc-pill ua-cfg-rc-pill--${item.type === "ytlink" ? "video" : "video"}`}>
+                            {displayTypeLabel(item.type)}
+                          </span>
+                          {item.duration ? (
+                            <span className="ua-cfg-rc-pill ua-cfg-rc-pill--cat">{item.duration}</span>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div className="ua-cfg-rc-item__actions">
+                        <span className={`ua-cfg-faq__shown${item.live ? " is-on" : ""}`}>
+                          {item.live ? "LIVE" : "HIDDEN"}
+                        </span>
+                        <button
+                          type="button"
+                          className={`ua-toggle ua-toggle--sm${item.live ? " ua-toggle--on" : ""}`}
+                          aria-pressed={item.live}
+                          aria-label={`${item.title} ${item.live ? "live" : "hidden"}`}
+                          disabled={locked}
+                          onClick={() => toggleLive(item)}
+                        >
+                          <span className="ua-toggle__knob" />
+                        </button>
+                        <button
+                          type="button"
+                          className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                          disabled={locked}
+                          onClick={() => setViewingId(item.id)}
+                        >
+                          View
+                        </button>
+                        {editing ? (
+                          <>
+                            <button
+                              type="button"
+                              className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
+                              disabled={locked}
+                              onClick={() => saveEditedItem(item)}
+                            >
+                              Save
+                            </button>
+                            <button
+                              type="button"
+                              className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                              disabled={locked}
+                              onClick={() => cancelEdit(item)}
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                            disabled={locked}
+                            onClick={() => {
+                              setCreating(false);
+                              setViewingId("");
+                              setEditingId(item.id);
+                            }}
+                          >
+                            Edit
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="ua-cfg-icon-btn"
+                          aria-label={`Remove ${item.title}`}
+                          disabled={locked}
+                          onClick={() => setPendingDelete(item)}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                    {editing ? (
+                      <div className="ua-cfg-rc-edit">
+                        <div className="ua-cfg-rc-edit__media">
+                          <VideoDrop
+                            previewUrl={item.fileUrl || ""}
+                            embedUrl={item.fileUrl ? "" : youtubeEmbedUrl(item.ytLink)}
+                            fileName={stagedFile?.name || (item.hasFile ? "Uploaded video" : "")}
+                            disabled={locked}
+                            onPick={(file) => pickEditVideo(item, file)}
+                            onRemove={() => {
+                              delete editFilesRef.current[item.id];
+                              updateItem(item.id, { type: "ytlink", fileUrl: "", hasFile: false });
+                            }}
+                          />
+                          <div className="ua-cfg-rc-edit__side">
+                            <label className="ua-cfg-rc-field">
+                              <span>Type</span>
+                              <CfgSelect
+                                className="ua-cfg-rc-select"
+                                options={WELLNESS_LIBRARY_TYPES}
+                                value={resolveLibraryType(item.type)}
+                                disabled={locked}
+                                onChange={(type) => updateItem(item.id, {
+                                  type: resolveLibraryType(type),
+                                  ytLink: resolveLibraryType(type) === "ytlink" ? item.ytLink : "",
+                                })}
+                                ariaLabel={`Type for ${item.title}`}
+                                placeholder="Choose type"
+                              />
+                            </label>
+                            {item.type === "ytlink" ? (
+                              <input
+                                className="ua-cfg-vh-input"
+                                placeholder="YouTube link · youtube.com/watch?v=…"
+                                value={item.ytLink}
+                                disabled={locked}
+                                onChange={(event) => updateItem(item.id, { ytLink: event.target.value, type: "ytlink" })}
+                              />
+                            ) : null}
+                            <label className="ua-cfg-rc-field">
+                              <span>Time</span>
+                              <TimeInput
+                                value={item.duration}
+                                detecting={detecting === item.id}
+                                disabled={locked}
+                                ariaLabel={`Video time for ${item.title}`}
+                                onChange={(duration) => updateItem(item.id, { duration })}
+                              />
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      item.ytLink ? (
+                        <a className="ua-cfg-rc-link" href={item.ytLink} target="_blank" rel="noreferrer">
+                          {item.ytLink}
+                        </a>
+                      ) : null
+                    )}
+                  </div>
+                </article>
+              );
+            })}
           </div>
         ) : (
-          <p className="ua-cfg-panel__sub">No items in the library yet. Add one below.</p>
+          <p className="ua-cfg-panel__sub">
+            {hasFilters ? `No ${meta.nouns} match your search.` : `No ${meta.nouns} yet. Add one to start the library.`}
+          </p>
         )}
 
         {!loading && pagination.total > 0 ? (
@@ -674,65 +1034,18 @@ export function WellnessLibrarySection({ kind, onToast }) {
             label={`${meta.title} pagination`}
           />
         ) : null}
-
-        <div className="ua-cfg-nb-add ua-cfg-wl-add">
-          <ImagePicker
-            previewUrl={draftPreview}
-            disabled={locked}
-            label="Upload thumbnail"
-            onPick={pickDraftImage}
-          />
-          <div className="ua-cfg-nb-add__fields">
-            <input
-              type="text"
-              className="ua-cfg-nb-add__input"
-              placeholder="Title"
-              value={draft.title}
-              disabled={locked}
-              onChange={(event) => setDraft({ ...draft, title: event.target.value })}
-            />
-            <div className="ua-cfg-wl-add__meta">
-              <TypeSelect
-                className="ua-cfg-nb-add__input ua-cfg-nb-add__unit ua-cfg-wl-add__type"
-                value={draft.type}
-                disabled={locked}
-                ariaLabel="Type"
-                onChange={changeDraftType}
-              />
-              {draft.type === "video" ? (
-                <VideoPicker
-                  label="Upload video"
-                  fileName={draftVideo?.name || ""}
-                  disabled={locked}
-                  onPick={pickDraftVideo}
-                />
-              ) : (
-                <input
-                  type="url"
-                  className="ua-cfg-nb-add__input"
-                  placeholder="YouTube URL"
-                  value={draft.ytLink}
-                  disabled={locked}
-                  onChange={(event) => setDraft({ ...draft, ytLink: event.target.value })}
-                  onBlur={() => detectDraftYoutube(draft.ytLink)}
-                />
-              )}
-              <TimeInput
-                className="ua-cfg-nb-add__input ua-cfg-wl-add__time"
-                value={draft.duration}
-                detecting={detecting === "draft"}
-                disabled={locked}
-                ariaLabel="Video time"
-                onChange={(duration) => setDraft({ ...draft, duration })}
-                onBlur={commitDraftTime}
-              />
-              <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={locked} onClick={addItem}>
-                {meta.addLabel}
-              </button>
-            </div>
-          </div>
-        </div>
       </Panel>
+
+      <LibraryViewModal
+        entry={items.find((row) => row.id === viewingId) || null}
+        viewTag={meta.title}
+        itemNoun={meta.noun}
+        onClose={() => setViewingId("")}
+        onEdit={(id) => {
+          setCreating(false);
+          setEditingId(id);
+        }}
+      />
 
       <ConfirmDialog
         open={!!pendingDelete}
@@ -745,6 +1058,6 @@ export function WellnessLibrarySection({ kind, onToast }) {
         onCancel={() => setPendingDelete(null)}
         onConfirm={confirmDelete}
       />
-    </>
+    </div>
   );
 }

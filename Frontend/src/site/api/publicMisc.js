@@ -81,6 +81,15 @@ export async function fetchLeadershipNotes(params = {}) {
   }
 }
 
+export async function fetchWellnessTeamNotes(params = {}) {
+  try {
+    const { data } = await api.get("/public/misc/wellness-team-notes", { params });
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function fetchHealthRecipes(params = {}) {
   try {
     const { data } = await api.get("/public/misc/health-recipes", { params });

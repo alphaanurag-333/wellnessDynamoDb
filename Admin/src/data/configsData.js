@@ -561,7 +561,7 @@ export const CONFIG_GROUPS = {
         {
           id: "common-wellness-team",
           name: "Wellness Team Profile",
-          note: "Coaches and nutritionists - wellness designations",
+          note: "Live coach and nutritionist profiles with photo, designation, and message",
           owner: "Admin / Support",
           app: true,
           web: true,

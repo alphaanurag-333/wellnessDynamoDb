@@ -147,6 +147,7 @@ const PERMISSION_GROUPS_RAW = [
     label: "Leadership Messages",
     items: [
       { to: "leadership-notes", label: "Leadership Notes", actions: [VIEW, EDIT, DELETE] },
+      { to: "wellness-team-notes", label: "Wellness Team Profiles", actions: [VIEW, EDIT, DELETE] },
       { to: "cofounder-message", label: "Cofounder Message", actions: [VIEW, EDIT] },
     ],
   },
