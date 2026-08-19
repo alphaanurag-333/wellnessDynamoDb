@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 import { ExportIcon } from "../components/NavIcons.jsx";
 import { BrandLoader } from "../components/BrandLoader.jsx";
-import { OrangeButton, PageHeader, PillTabs, ScopeChip, TableScroll } from "../components/shared.jsx";
+import { AutosaveButton, CfgSelect, OrangeButton, PageHeader, PillTabs, ScopeChip, TableScroll } from "../components/shared.jsx";
 import {
   TIER_OPTIONS,
   UNASSIGNED_COACH,
@@ -35,6 +35,21 @@ import {
 import { fetchTeamMembers } from "../api/teamsApi.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import { CreateUserModal } from "../components/CreateUserModal.jsx";
+
+const STATUS_FILTER_OPTIONS = [
+  { value: "", label: "All status" },
+  { value: "Active", label: "Active" },
+  { value: "Disabled", label: "Disabled" },
+];
+
+const EMPTY_TAB_COUNTS = { all: 0, individual: 0, team: 0, app: 0 };
+
+function extraQueryForTypeTab(tabId, baseUserTier) {
+  if (tabId === "app") return { userTier: baseUserTier || "maintenance" };
+  if (tabId === "team") return { clientCategory: "eagle" };
+  if (tabId === "individual") return { clientCategory: "individual" };
+  return {};
+}
 
 function resolveWcId(user) {
   if (user?.parentCoachId) return String(user.parentCoachId);
@@ -217,6 +232,7 @@ export function UsersPage() {
   const [openTierMore, setOpenTierMore] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [tabCounts, setTabCounts] = useState(EMPTY_TAB_COUNTS);
 
   const typeTab = searchParams.get("tab") || "all";
   const tierFilter = searchParams.get("tier") || "";
@@ -262,17 +278,21 @@ export function UsersPage() {
     setReloadNonce((n) => n + 1);
   }, []);
 
+  const baseListQuery = useMemo(() => ({
+    search: debouncedSearch || undefined,
+    status: mapUiStatusToApi(statusFilter),
+    userTier: mapUiTierToApi(tierFilter),
+    parentCoachId: coachFilter || undefined,
+  }), [coachFilter, debouncedSearch, statusFilter, tierFilter]);
+
   const listQuery = useMemo(() => {
-    const tabTier = typeTab === "app" ? "maintenance" : undefined;
-    const tabCategory = typeTab === "team" ? "eagle" : undefined;
+    const extra = extraQueryForTypeTab(typeTab, baseListQuery.userTier);
     return {
-      search: debouncedSearch || undefined,
-      status: mapUiStatusToApi(statusFilter),
-      userTier: mapUiTierToApi(tierFilter) || tabTier,
-      clientCategory: tabCategory,
-      parentCoachId: coachFilter || undefined,
+      ...baseListQuery,
+      userTier: extra.userTier || baseListQuery.userTier,
+      clientCategory: extra.clientCategory,
     };
-  }, [coachFilter, debouncedSearch, statusFilter, tierFilter, typeTab]);
+  }, [baseListQuery, typeTab]);
 
   const loadUsersPage = useCallback(async (page, limit) => {
     const params = { ...listQuery, page, limit };
@@ -322,6 +342,50 @@ export function UsersPage() {
       cancelled = true;
     };
   }, [currentPage, loadUsersPage, reloadNonce]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadTabCounts() {
+      const fetchCount = async (tabId) => {
+        const extra = extraQueryForTypeTab(tabId, baseListQuery.userTier);
+        const params = {
+          ...baseListQuery,
+          userTier: extra.userTier || baseListQuery.userTier,
+          clientCategory: extra.clientCategory,
+        };
+        try {
+          const result = useScopedUsers
+            ? await fetchScopedUsers({
+                page: 1,
+                limit: 1,
+                search: params.search,
+                userTier: params.userTier,
+              })
+            : await fetchUsers({ ...params, page: 1, limit: 1 });
+          return Number(result?.pagination?.total) || 0;
+        } catch {
+          return 0;
+        }
+      };
+      const [all, individual, team, app] = await Promise.all([
+        fetchCount("all"),
+        fetchCount("individual"),
+        fetchCount("team"),
+        fetchCount("app"),
+      ]);
+      if (!cancelled) setTabCounts({ all, individual, team, app });
+    }
+    loadTabCounts();
+    return () => {
+      cancelled = true;
+    };
+  }, [baseListQuery, reloadNonce, useScopedUsers]);
+
+  useEffect(() => {
+    setTabCounts((prev) => (
+      prev[typeTab] === pagination.total ? prev : { ...prev, [typeTab]: pagination.total }
+    ));
+  }, [pagination.total, typeTab]);
 
   const setTypeTab = (tab) => {
     const next = new URLSearchParams(searchParams);
@@ -425,12 +489,15 @@ export function UsersPage() {
   }, [enrichedPool, teamMembers]);
 
   const typeTabs = useMemo(
-    () => USER_TYPE_TAB_DEFS.map((def) => ({
-      id: def.id || "all",
-      label: def.label,
-      count: def.id ? undefined : pagination.total,
-    })),
-    [pagination.total],
+    () => USER_TYPE_TAB_DEFS.map((def) => {
+      const id = def.id || "all";
+      return {
+        id,
+        label: def.label,
+        count: tabCounts[id] ?? 0,
+      };
+    }),
+    [tabCounts],
   );
 
   const pageRows = useMemo(() => {
@@ -748,60 +815,62 @@ export function UsersPage() {
         <PageHeader
           title="User Management"
           layout="split"
-          autosave
-          onAutosave={() => onToast("Saved")}
           meta={(
             <>
-              <span className="page-head__count">{loading ? "…" : totalCount}</span> clients ·{" "}
+              <span className="page-head__count">{loading ? "…" : totalCount}</span>  &nbsp;clients ·{" "}
               {useScopedUsers ? <span>Your assigned clients</span> : <ScopeChip />}
             </>
           )}
+          actions={(
+            <div className="ua-users-toolbar">
+              <div className="ua-search-wrap ua-search-wrap--wide">
+                <svg className="ua-search-wrap__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+                <input
+                  className="ua-search-wrap__input"
+                  placeholder="Search name, email, phone"
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    goToFirstPage();
+                  }}
+                />
+              </div>
+              <CfgSelect
+                className="ua-users-filter"
+                ariaLabel="Filter by tier"
+                value={tierFilter}
+                options={TIER_OPTIONS}
+                onChange={setTierFilter}
+              />
+              <CfgSelect
+                className="ua-users-filter"
+                ariaLabel="Filter by status"
+                value={statusFilter}
+                options={STATUS_FILTER_OPTIONS}
+                onChange={(value) => {
+                  setStatusFilter(value);
+                  goToFirstPage();
+                }}
+              />
+              {canExport ? (
+                <button
+                  type="button"
+                  className="btn btn--outline ua-users-export"
+                  onClick={exportCsv}
+                  disabled={exporting || loading}
+                >
+                  <ExportIcon /> {exporting ? "Exporting…" : "Export CSV"}
+                </button>
+              ) : null}
+              <div className="ua-users-toolbar__cta">
+                {canCreate ? (
+                  <OrangeButton onClick={() => setCreateOpen(true)}>+ Add user</OrangeButton>
+                ) : null}
+                <AutosaveButton onClick={() => onToast("Saved")} />
+              </div>
+            </div>
+          )}
         />
-
-        <div className="ua-users-toolbar">
-          <div className="ua-search-wrap ua-search-wrap--wide">
-            <svg className="ua-search-wrap__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
-            <input
-              className="ua-search-wrap__input"
-              placeholder="Search name, email, phone"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                goToFirstPage();
-              }}
-            />
-          </div>
-          <select className="header__select ua-users-filter" value={tierFilter} onChange={(e) => setTierFilter(e.target.value)}>
-            {TIER_OPTIONS.map((opt) => (
-              <option key={opt.label} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
-          <select
-            className="header__select ua-users-filter"
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              goToFirstPage();
-            }}
-          >
-            <option value="">All status</option>
-            <option>Active</option>
-            <option>Disabled</option>
-          </select>
-          {canExport ? (
-            <button
-              type="button"
-              className="btn btn--outline ua-users-export"
-              onClick={exportCsv}
-              disabled={exporting || loading}
-            >
-              <ExportIcon /> {exporting ? "Exporting…" : "Export CSV"}
-            </button>
-          ) : null}
-          {canCreate ? (
-            <OrangeButton onClick={() => setCreateOpen(true)}>+ Add user</OrangeButton>
-          ) : null}
-        </div>
 
         {coachFilter ? (
           <div className="ua-coach-filter">
@@ -812,7 +881,7 @@ export function UsersPage() {
           </div>
         ) : null}
 
-        <PillTabs tabs={typeTabs} active={typeTab} onChange={setTypeTab} />
+        <PillTabs tabs={typeTabs} active={typeTab} onChange={setTypeTab} size="lg" />
       </div>
 
       {isReadOnly ? (

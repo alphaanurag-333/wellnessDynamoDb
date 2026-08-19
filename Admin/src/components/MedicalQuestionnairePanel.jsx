@@ -7,6 +7,7 @@ import {
   adminUpdateMedicalConditionQuestion,
 } from "../api/medicalConditionQuestionApi.js";
 import { MEDICAL_ANSWER_TYPES } from "../data/configDetailData.js";
+import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { CfgSelect } from "./shared.jsx";
 
 const ANSWER_TYPE_OPTIONS = MEDICAL_ANSWER_TYPES.map((option) => ({
@@ -51,6 +52,7 @@ export function MedicalQuestionnairePanel({ items, setItems, onToast }) {
   const [newAnswerType, setNewAnswerType] = useState("yes_no_text");
   const [dragId, setDragId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null);
   const itemsRef = useRef(items);
 
   useEffect(() => {
@@ -183,12 +185,14 @@ export function MedicalQuestionnairePanel({ items, setItems, onToast }) {
     }
   }
 
-  async function removeItem(item) {
-    if (!window.confirm(`Delete “${item.question || "this question"}”?`)) return;
+  async function confirmDelete() {
+    const item = pendingDelete;
+    if (!item) return;
     if (editingId === item.id) cancelEdit();
     setBusy(true);
     const previous = itemsRef.current;
     setItems((prev) => prev.filter((entry) => entry.id !== item.id));
+    setPendingDelete(null);
     try {
       await adminDeleteMedicalConditionQuestion(null, item.id);
       onToast("Question removed");
@@ -276,7 +280,7 @@ export function MedicalQuestionnairePanel({ items, setItems, onToast }) {
         />
         <button
           type="button"
-          className="ua-cfg-btn ua-cfg-btn--primary"
+          className="ua-cfg-btn ua-cfg-mq-add__btn"
           disabled={busy || loading}
           onClick={addQuestion}
         >
@@ -373,7 +377,7 @@ export function MedicalQuestionnairePanel({ items, setItems, onToast }) {
                     onChange={(answerType) => changeAnswerType(item, answerType)}
                   />
                   <div className="ua-cfg-mq-row__shown-wrap">
-                    <span className={`ua-cfg-mq-row__shown${item.shown ? " is-on" : ""}`}>
+                    <span className={`ua-cfg-faq__shown${item.shown ? " is-on" : ""}`}>
                       {item.shown ? "SHOWN" : "HIDDEN"}
                     </span>
                     <button
@@ -387,63 +391,75 @@ export function MedicalQuestionnairePanel({ items, setItems, onToast }) {
                       <span className="ua-toggle__knob" />
                     </button>
                   </div>
-                  {isEditing ? (
-                    <button
-                      type="button"
-                      className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
-                      disabled={busy}
-                      onClick={() => saveEdit(item.id)}
-                    >
-                      Save
-                    </button>
-                  ) : (
-                    <div className="ua-cfg-mq-row__moves">
-                      <button
-                        type="button"
-                        className="ua-cfg-icon-btn"
-                        aria-label="Move up"
-                        disabled={busy || index === 0}
-                        onClick={() => moveItem(item.id, -1)}
-                      >
-                        ↑
-                      </button>
-                      <button
-                        type="button"
-                        className="ua-cfg-icon-btn"
-                        aria-label="Move down"
-                        disabled={busy || index === items.length - 1}
-                        onClick={() => moveItem(item.id, 1)}
-                      >
-                        ↓
-                      </button>
-                    </div>
-                  )}
-                  {!isEditing ? (
-                    <button
-                      type="button"
-                      className="ua-cfg-icon-btn ua-cfg-icon-btn--danger ua-cfg-mq-row__delete"
-                      aria-label="Delete question"
-                      disabled={busy}
-                      onClick={() => removeItem(item)}
-                    >
-                      ×
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm"
-                      disabled={busy}
-                      onClick={cancelEdit}
-                    >
-                      Cancel
-                    </button>
-                  )}
+                  <div className="ua-cfg-mq-row__btns">
+                    {isEditing ? (
+                      <>
+                        <button
+                          type="button"
+                          className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
+                          disabled={busy}
+                          onClick={() => saveEdit(item.id)}
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                          disabled={busy}
+                          onClick={cancelEdit}
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="ua-cfg-icon-btn"
+                          aria-label="Move up"
+                          disabled={busy || index === 0}
+                          onClick={() => moveItem(item.id, -1)}
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          className="ua-cfg-icon-btn"
+                          aria-label="Move down"
+                          disabled={busy || index === items.length - 1}
+                          onClick={() => moveItem(item.id, 1)}
+                        >
+                          ↓
+                        </button>
+                        <button
+                          type="button"
+                          className="ua-cfg-icon-btn ua-cfg-icon-btn--danger ua-cfg-mq-row__delete"
+                          aria-label="Delete question"
+                          disabled={busy}
+                          onClick={() => setPendingDelete(item)}
+                        >
+                          ×
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </article>
             );
           })}
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        tag="Medical questionnaire"
+        title={`Delete ${pendingDelete?.question || "this question"}?`}
+        body="This permanently removes the onboarding question."
+        confirmLabel="Delete"
+        confirmTone="danger"
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={confirmDelete}
+      />
     </Panel>
   );
 }

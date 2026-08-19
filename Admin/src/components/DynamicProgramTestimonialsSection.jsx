@@ -43,37 +43,26 @@ function Panel({ title, subtitle, actions, children }) {
   );
 }
 
-function CoverDrop({ previewUrl, disabled, label = "Photo", onPick, onRemove }) {
+function CoverDrop({ previewUrl, disabled, onPick, onRemove }) {
   const inputRef = useRef(null);
+  const filled = Boolean(previewUrl);
+
   return (
-    <div className="ua-cfg-rc-cover-drop-wrap">
-      <div className="ua-cfg-rc-cover-drop-frame">
-        <button
-          type="button"
-          className={`ua-cfg-rc-cover-drop${previewUrl ? " is-on" : ""}`}
-          disabled={disabled}
-          aria-label={previewUrl ? "Replace client photo" : "Add client photo"}
-          onClick={() => inputRef.current?.click()}
-        >
-          {previewUrl ? (
-            <img className="ua-cfg-rc-drop-preview" src={previewUrl} alt="" />
-          ) : (
-            <span aria-hidden="true">🖼</span>
-          )}
-          <em>{previewUrl ? "Replace" : label}</em>
-        </button>
-        {previewUrl && onRemove ? (
-          <button
-            type="button"
-            className="ua-cfg-rc-media-x"
-            aria-label="Remove client photo"
-            disabled={disabled}
-            onClick={onRemove}
-          >
-            ×
-          </button>
-        ) : null}
-      </div>
+    <div className={`ua-cfg-tf-drop ua-cfg-tf-drop--after ua-cfg-pt-drop${filled ? " is-on" : ""}`}>
+      {filled ? <img className="ua-cfg-tf-drop__img" src={previewUrl} alt="" /> : null}
+      <span className="ua-cfg-tf-drop__icon" aria-hidden="true">📷</span>
+      <p className="ua-cfg-tf-drop__label">Client photo</p>
+      <button
+        type="button"
+        className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-drop__btn"
+        disabled={disabled}
+        onClick={() => inputRef.current?.click()}
+      >
+        {filled ? "Replace photo" : "Upload photo"}
+      </button>
+      {filled && onRemove ? (
+        <button type="button" className="ua-cfg-rc-media-x" aria-label="Remove client photo" disabled={disabled} onClick={onRemove}>×</button>
+      ) : null}
       <input
         ref={inputRef}
         type="file"
@@ -96,6 +85,7 @@ function ProgramSelect({ options, value, disabled, onChange }) {
   const extra = !known && value ? [{ value, label: programTestimonialLabel(value, options) }] : [];
   return (
     <CfgSelect
+      className="ua-cfg-pt-select"
       options={options.length ? [...extra, ...options] : [{ value: "", label: "No health concerns" }]}
       value={known ? selected : value || ""}
       disabled={disabled || !options.length}
@@ -450,37 +440,45 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
                 <CoverDrop
                   previewUrl={draft.imagePreview}
                   disabled={busy}
-                  label="Client photo"
                   onPick={pickDraftPhoto}
                   onRemove={clearDraftPhoto}
                 />
               </div>
               <div className="ua-cfg-rc-new__fields">
-                <ProgramSelect
-                  options={concernOptions}
-                  value={draft.program}
-                  disabled={busy}
-                  onChange={(value) => setDraft((prev) => ({ ...prev, program: value }))}
-                />
+                <label className="ua-cfg-pt-field">
+                  <span>Health concern</span>
+                  <ProgramSelect
+                    options={concernOptions}
+                    value={draft.program}
+                    disabled={busy}
+                    onChange={(value) => setDraft((prev) => ({ ...prev, program: value }))}
+                  />
+                </label>
                 {!concernOptions.length ? (
                   <p className="ua-cfg-panel__sub">Add health concerns in Configs → Dropdowns first.</p>
                 ) : null}
-                <input
-                  className="ua-cfg-vh-input"
-                  placeholder="Client name"
-                  value={draft.name}
-                  disabled={busy}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, name: event.target.value }))}
-                />
+                <label className="ua-cfg-pt-field">
+                  <span>Client name</span>
+                  <input
+                    className="ua-cfg-vh-input"
+                    placeholder="e.g. Vikram Singh"
+                    value={draft.name}
+                    disabled={busy}
+                    onChange={(event) => setDraft((prev) => ({ ...prev, name: event.target.value }))}
+                  />
+                </label>
               </div>
-              <textarea
-                className="ua-cfg-tf-story ua-cfg-pt-new-story"
-                rows={4}
-                placeholder="Client success story…"
-                value={draft.description}
-                disabled={busy}
-                onChange={(event) => setDraft((prev) => ({ ...prev, description: event.target.value }))}
-              />
+              <label className="ua-cfg-pt-field ua-cfg-pt-field--wide">
+                <span>Success story</span>
+                <textarea
+                  className="ua-cfg-tf-story ua-cfg-pt-new-story"
+                  rows={4}
+                  placeholder="Client success story…"
+                  value={draft.description}
+                  disabled={busy}
+                  onChange={(event) => setDraft((prev) => ({ ...prev, description: event.target.value }))}
+                />
+              </label>
               <div className="ua-cfg-pt-new-foot">
                 <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-pt-new-submit" disabled={busy} onClick={addItem}>
                   {busy ? "Saving…" : "Add testimonial"}
@@ -545,88 +543,105 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
                       }}
                     />
                   </div>
-                  <div className="ua-cfg-pt-item__copy">
+                  <div className="ua-cfg-pt-item__body">
+                    <div className="ua-cfg-pt-item__head">
+                      <div className="ua-cfg-pt-item__identity">
+                        {isEditing ? (
+                          <input
+                            className="ua-cfg-vh-input ua-cfg-rc-title"
+                            placeholder="Client name"
+                            value={entry.name}
+                            disabled={busy}
+                            onChange={(event) => patchItem(entry.id, { name: event.target.value })}
+                          />
+                        ) : (
+                          <strong>{entry.name}</strong>
+                        )}
+                        {isEditing ? null : (
+                          <span className="ua-cfg-rc-pill ua-cfg-rc-pill--cat">
+                            {programTestimonialLabel(entry.program, concernOptions)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="ua-cfg-pt-item__actions">
+                        <div className="ua-cfg-pt-item__live">
+                          <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>
+                            {entry.live ? "LIVE" : "HIDDEN"}
+                          </span>
+                          <button
+                            type="button"
+                            className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
+                            aria-pressed={entry.live}
+                            disabled={busy}
+                            onClick={() => toggleLive(entry)}
+                          >
+                            <span className="ua-toggle__knob" />
+                          </button>
+                        </div>
+                        <div className="ua-cfg-pt-item__btns">
+                          {isEditing ? (
+                            <>
+                              <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={busy} onClick={() => saveItem(entry)}>Save</button>
+                              <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={() => { setEditingId(null); loadItems(); }}>Cancel</button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                                disabled={busy}
+                                onClick={() => setViewingId(entry.id)}
+                              >
+                                View
+                              </button>
+                              <button
+                                type="button"
+                                className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                                disabled={busy}
+                                onClick={() => { setViewingId(null); setEditingId(entry.id); setCreating(false); }}
+                              >
+                                Edit
+                              </button>
+                            </>
+                          )}
+                          <button
+                            type="button"
+                            className="ua-cfg-icon-btn"
+                            aria-label={`Delete ${entry.name}`}
+                            disabled={busy}
+                            onClick={() => setPendingDelete(entry)}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                     {isEditing ? (
-                      <input
-                        className="ua-cfg-vh-input ua-cfg-rc-title"
-                        value={entry.name}
-                        disabled={busy}
-                        onChange={(event) => patchItem(entry.id, { name: event.target.value })}
-                      />
-                    ) : (
-                      <strong>{entry.name}</strong>
-                    )}
-                    {isEditing ? (
-                      <textarea
-                        className="ua-cfg-tf-story"
-                        rows={3}
-                        value={entry.description}
-                        disabled={busy}
-                        onChange={(event) => patchItem(entry.id, { description: event.target.value })}
-                      />
+                      <div className="ua-cfg-pt-item__edit">
+                        <label className="ua-cfg-pt-field">
+                          <span>Health concern</span>
+                          <ProgramSelect
+                            options={concernOptions}
+                            value={entry.program}
+                            disabled={busy}
+                            onChange={(value) => patchItem(entry.id, { program: value })}
+                          />
+                        </label>
+                        <label className="ua-cfg-pt-field">
+                          <span>Success story</span>
+                          <textarea
+                            className="ua-cfg-tf-story ua-cfg-pt-new-story"
+                            rows={4}
+                            placeholder="Client success story…"
+                            value={entry.description}
+                            disabled={busy}
+                            onChange={(event) => patchItem(entry.id, { description: event.target.value })}
+                          />
+                        </label>
+                      </div>
                     ) : (
                       <p>{entry.description}</p>
                     )}
-                  </div>
-                  <div className="ua-cfg-pt-item__actions">
-                    {isEditing ? (
-                      <ProgramSelect
-                        options={concernOptions}
-                        value={entry.program}
-                        disabled={busy}
-                        onChange={(value) => patchItem(entry.id, { program: value })}
-                      />
-                    ) : (
-                      <span className="ua-cfg-rc-pill ua-cfg-rc-pill--cat">
-                        {programTestimonialLabel(entry.program, concernOptions)}
-                      </span>
-                    )}
-                    <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>
-                      {entry.live ? "LIVE" : "HIDDEN"}
-                    </span>
-                    <button
-                      type="button"
-                      className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
-                      aria-pressed={entry.live}
-                      disabled={busy}
-                      onClick={() => toggleLive(entry)}
-                    >
-                      <span className="ua-toggle__knob" />
-                    </button>
-                    {isEditing ? (
-                      <>
-                        <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={busy} onClick={() => saveItem(entry)}>Save</button>
-                        <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm" disabled={busy} onClick={() => { setEditingId(null); loadItems(); }}>Cancel</button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          type="button"
-                          className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
-                          disabled={busy}
-                          onClick={() => setViewingId(entry.id)}
-                        >
-                          View
-                        </button>
-                        <button
-                          type="button"
-                          className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
-                          disabled={busy}
-                          onClick={() => { setViewingId(null); setEditingId(entry.id); setCreating(false); }}
-                        >
-                          Edit
-                        </button>
-                      </>
-                    )}
-                    <button
-                      type="button"
-                      className="ua-cfg-icon-btn"
-                      aria-label={`Delete ${entry.name}`}
-                      disabled={busy}
-                      onClick={() => setPendingDelete(entry)}
-                    >
-                      ×
-                    </button>
                   </div>
                 </article>
               );

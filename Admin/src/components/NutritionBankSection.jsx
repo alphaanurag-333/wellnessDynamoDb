@@ -231,7 +231,7 @@ function NutritionEditModal({ item, busy, onClose, onSave, onToggleLive, onDelet
   }
 
   return (
-    <div className="ua-cp-modal-backdrop" onClick={onClose} role="presentation">
+    <div className="ua-cp-modal-backdrop ua-cfg-nb-modal-backdrop" onClick={onClose} role="presentation">
       <div
         className="ua-cfg-dp-modal ua-cfg-nb-modal"
         onClick={(event) => event.stopPropagation()}
