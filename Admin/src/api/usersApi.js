@@ -772,4 +772,18 @@ export async function saveUserCoachInsight(id, message) {
   }
 }
 
+export async function fetchConsultancyClient(id) {
+  try {
+    const { data } = await api.get(
+      `/account/consultancy/clients/${encodeURIComponent(id)}`,
+      { headers: authHeader() },
+    );
+    return data?.client || null;
+  } catch (error) {
+    const status = error?.response?.status;
+    if (status === 403 || status === 404) return null;
+    normalizeApiError(error);
+  }
+}
+
 export { resolveUserId };

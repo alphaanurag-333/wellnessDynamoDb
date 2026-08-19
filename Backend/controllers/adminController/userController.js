@@ -21,6 +21,7 @@ const {
   buildUserUpdatesFromBody,
 } = require("../userController/userProfileHelpers");
 const { assertStaffCanAccessUser, assertStaffCanMutate } = require("../staffAccess");
+const { resolveRegistrationReferralFields } = require("../../services/registrationReferralService");
 const { readUserIdParam } = require("../helpers/reminderControllerHelpers");
 const {
   dispatchPresentablePicRequestNotification,
@@ -81,6 +82,19 @@ exports.createUserController = asyncHandler(async (req, res) => {
   if (fields.primaryHealthConcern) {
     const concern = await getHealthConcernById(fields.primaryHealthConcern);
     if (!concern) throw new AppError("primaryHealthConcern not found", 400);
+  }
+
+  const referralCodeInput = req.body?.referralCode ?? req.body?.referral_code ?? null;
+  try {
+    const referralFields = await resolveRegistrationReferralFields(referralCodeInput, {
+      strict: true,
+    });
+    Object.assign(fields, referralFields);
+  } catch (err) {
+    if (err?.name === "InvalidReferralCodeError") {
+      throw new AppError(err.message || "Invalid referral code", 400);
+    }
+    throw err;
   }
 
   const user = await createUser(fields);

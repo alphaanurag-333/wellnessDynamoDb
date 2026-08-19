@@ -53,6 +53,7 @@ function emptyForm() {
     pincode: "",
     primaryHealthConcern: "",
     primaryHealthConcernOther: "",
+    referralCode: "",
     status: "active",
     termsAccepted: false,
   };
@@ -220,6 +221,9 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
       status: form.status,
       termsAccepted: true,
     };
+    if (String(form.referralCode || "").trim()) {
+      payload.referralCode = String(form.referralCode).trim().toUpperCase();
+    }
     if (!form.whatsappSameAsMobile) {
       payload.whatsappCountryCode = form.whatsappCountryCode;
       payload.whatsappPhone = form.whatsappPhone;
@@ -523,6 +527,19 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
+            </Field>
+            <Field
+              label="Coach referral code"
+              hint="Optional. Example IRW-WC-980 — assigns that Wellness Coach after create / consultancy payment."
+            >
+              <input
+                className="ua-create-user__input"
+                placeholder="IRW-WC-980"
+                value={form.referralCode}
+                disabled={busy}
+                autoCapitalize="characters"
+                onChange={(e) => patch({ referralCode: e.target.value.toUpperCase() })}
+              />
             </Field>
             {showOtherConcern ? (
               <Field

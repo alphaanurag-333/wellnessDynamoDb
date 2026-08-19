@@ -85,46 +85,50 @@ async function resolveMeetingAssignee(referralCodeInput) {
 
   if (referralRecord.entityType === "wellness_coach") {
     const coach = context.wellnessCoach;
-    if (!coach || coach.status !== "active") {
+    const coachId = String(coach?.id || referralRecord.entityId || "").trim();
+    if (!coachId || (coach && coach.status && coach.status !== "active")) {
       const err = new Error("Invalid referral code");
       err.name = "InvalidReferralCodeError";
       throw err;
     }
     return {
       assigneeType: "wellness_coach",
-      assigneeId: coach.id,
-      assignee: contactFromEntity(coach, "wellness_coach"),
-      parentCoachId: coach.id,
-      visibleToCoachIds: [coach.id],
+      assigneeId: coachId,
+      assignee: contactFromEntity(coach || { id: coachId }, "wellness_coach"),
+      parentCoachId: coachId,
+      visibleToCoachIds: [coachId],
       referralCodeUsed: referralRecord.referralCode,
       referralEntityType: "wellness_coach",
-      referralEntityId: coach.id,
+      referralEntityId: coachId,
     };
   }
 
   if (referralRecord.entityType === "assistant_wellness_coach") {
     const assistant = context.assistantWellnessCoach;
-    if (!assistant || assistant.status !== "active") {
+    const assistantId = String(assistant?.id || referralRecord.entityId || "").trim();
+    const parentCoachId = String(
+      assistant?.wellnessCoachId || referralRecord.ownerCoachId || ""
+    ).trim();
+    if (
+      !assistantId ||
+      !parentCoachId ||
+      parentCoachId === "pending" ||
+      (assistant && assistant.status && assistant.status !== "active")
+    ) {
       const err = new Error("Invalid referral code");
       err.name = "InvalidReferralCodeError";
       throw err;
     }
-    const parentCoachId = String(assistant.wellnessCoachId || "").trim();
-    if (!parentCoachId) {
-      const err = new Error("Invalid referral code");
-      err.name = "InvalidReferralCodeError";
-      throw err;
-    }
-    const visibleToCoachIds = [assistant.id, parentCoachId];
+    const visibleToCoachIds = [assistantId, parentCoachId];
     return {
       assigneeType: "assistant_wellness_coach",
-      assigneeId: assistant.id,
-      assignee: contactFromEntity(assistant, "assistant_wellness_coach"),
+      assigneeId: assistantId,
+      assignee: contactFromEntity(assistant || { id: assistantId }, "assistant_wellness_coach"),
       parentCoachId,
       visibleToCoachIds,
       referralCodeUsed: referralRecord.referralCode,
       referralEntityType: "assistant_wellness_coach",
-      referralEntityId: assistant.id,
+      referralEntityId: assistantId,
     };
   }
 
