@@ -54,19 +54,61 @@ function applyConsoleOverrides(basePermissions, overrides) {
   return grantsMapToPermissions(overrides.consoleGrants);
 }
 
-function applyPolicyDenies(basePermissions, policies) {
-  if (!Array.isArray(basePermissions) || basePermissions.length === 0) return basePermissions;
-  if (!Array.isArray(policies) || policies.length === 0) return basePermissions;
-  const deniedFeatures = new Set(
-    policies
-      .filter((policy) => String(policy.effect || "").toLowerCase() === "deny" && policy.featureId)
-      .map((policy) => policy.featureId)
-  );
-  if (deniedFeatures.size === 0) return basePermissions;
-  return basePermissions.filter((slug) => {
+function slugsForPolicyRule(rule) {
+  const featureId = String(rule?.featureId || "").trim();
+  if (!featureId) return [];
+  const actions = Array.isArray(rule?.actions) && rule.actions.length ? rule.actions : null;
+  return ALL_CONSOLE_PERMISSIONS.filter((slug) => {
     const parsed = parseConsoleSlug(slug);
-    return !parsed || !deniedFeatures.has(parsed.featureId);
+    if (!parsed || parsed.featureId !== featureId) return false;
+    return !actions || actions.includes(parsed.action);
   });
+}
+
+function policyRules(policy) {
+  if (Array.isArray(policy?.rules) && policy.rules.length) return policy.rules;
+  if (policy?.featureId) {
+    return [
+      {
+        effect: String(policy.effect || "deny").toLowerCase(),
+        featureId: policy.featureId,
+        actions: [],
+      },
+    ];
+  }
+  return [];
+}
+
+function applyPolicyEffects(basePermissions, policies) {
+  if (!Array.isArray(policies) || policies.length === 0) {
+    return Array.isArray(basePermissions) ? basePermissions : [];
+  }
+  const set = new Set(basePermissions || []);
+  for (const policy of policies) {
+    for (const rule of policyRules(policy)) {
+      const effect = String(rule.effect || rule.type || "").toLowerCase();
+      if (effect !== "allow") continue;
+      for (const slug of slugsForPolicyRule(rule)) set.add(slug);
+    }
+  }
+  for (const policy of policies) {
+    for (const rule of policyRules(policy)) {
+      const effect = String(rule.effect || rule.type || "").toLowerCase();
+      if (effect !== "deny") continue;
+      const slugs = slugsForPolicyRule(rule);
+      if (slugs.length) {
+        for (const slug of slugs) set.delete(slug);
+        continue;
+      }
+      if (rule.featureId) {
+        for (const slug of [...set]) {
+          const parsed = parseConsoleSlug(slug);
+          if (parsed?.featureId === rule.featureId) set.delete(slug);
+        }
+      }
+    }
+  }
+  return ALL_CONSOLE_PERMISSIONS.filter((slug) => set.has(slug));
 }
 
 async function resolveAccountPermissions(account, activeRoleKey) {
@@ -111,7 +153,6 @@ async function resolveAccountPermissions(account, activeRoleKey) {
   if (permissions == null) {
     permissions = consolePermissionsForRoleKey(roleKey);
   }
-  permissions = applyConsoleOverrides(permissions, membership?.permissionOverrides);
   try {
     const uiRoleKey = ROLE_KEY_TO_UI[roleKey];
     if (uiRoleKey) {
@@ -122,11 +163,12 @@ async function resolveAccountPermissions(account, activeRoleKey) {
           accountId: account.id,
         })
       );
-      permissions = applyPolicyDenies(permissions, applicable);
+      permissions = applyPolicyEffects(permissions, applicable);
     }
   } catch {
     /* Policy evaluation is best-effort until table exists in all environments. */
   }
+  permissions = applyConsoleOverrides(permissions, membership?.permissionOverrides);
 
   return {
     permissions,
