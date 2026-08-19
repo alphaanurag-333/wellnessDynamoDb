@@ -2,16 +2,21 @@ const { v4: uuidv4 } = require("uuid");
 const { PutCommand, GetCommand, UpdateCommand, DeleteCommand } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../config/db");
 const { queryPartition } = require("../utils/dynamoList");
+const { enrichOffer, listPeriodCatalog } = require("../utils/counsellingPeriodHelpers");
 
 const TABLE = "UserHealConsultancyTrack";
 
 const TRACK_STATUSES = new Set([
   "requested",
+  "periods_offered",
+  "period_selected",
   "scheduled",
   "completed",
   "follow_up_needed",
   "cancelled",
 ]);
+
+const ACTIVE_TRACK_STATUSES = new Set(["requested", "periods_offered", "period_selected"]);
 
 const MAX_CONCERN_LENGTH = 500;
 const MAX_NOTES_LENGTH = 1000;
@@ -19,6 +24,10 @@ const MAX_NOTES_LENGTH = 1000;
 function normalizeTrackStatus(value, fallback = "requested") {
   const next = String(value || fallback).toLowerCase().trim();
   return TRACK_STATUSES.has(next) ? next : null;
+}
+
+function isActiveTrackStatus(status) {
+  return ACTIVE_TRACK_STATUSES.has(String(status || "").toLowerCase().trim());
 }
 
 function normalizeOptionalText(value, maxLen) {
@@ -44,12 +53,27 @@ function normalizeScheduledAt(value) {
   return date.toISOString();
 }
 
+function normalizePeriodOffersField(value) {
+  if (!Array.isArray(value)) return [];
+  return value.map((offer) => enrichOffer(offer));
+}
+
 function toPublicHealConsultancyTrack(item) {
   if (!item) return null;
+  const periodOffers = normalizePeriodOffersField(item.periodOffers);
   return {
     ...item,
     _id: item.id,
+    periodOffers,
+    periodCatalog: listPeriodCatalog(),
   };
+}
+
+function toUserFacingHealConsultancyTrack(item) {
+  const pub = toPublicHealConsultancyTrack(item);
+  if (!pub) return null;
+  delete pub.zoomStartUrl;
+  return pub;
 }
 
 function buildHealConsultancyTrackItem(input, { id, now }) {
@@ -71,6 +95,15 @@ function buildHealConsultancyTrackItem(input, { id, now }) {
     scheduledAt: normalizeScheduledAt(input.scheduledAt),
     meetingLink: normalizeOptionalText(input.meetingLink, 500),
     coachNotes: normalizeOptionalText(input.coachNotes, MAX_NOTES_LENGTH),
+    periodOffers: Array.isArray(input.periodOffers) ? input.periodOffers : [],
+    selectedOfferId: input.selectedOfferId ? String(input.selectedOfferId) : null,
+    selectedPeriod: input.selectedPeriod ? String(input.selectedPeriod) : null,
+    selectedDate: input.selectedDate ? String(input.selectedDate) : null,
+    zoomMeetingId: input.zoomMeetingId ? String(input.zoomMeetingId) : null,
+    zoomJoinUrl: input.zoomJoinUrl ? String(input.zoomJoinUrl) : null,
+    zoomStartUrl: input.zoomStartUrl ? String(input.zoomStartUrl) : null,
+    confirmedAt: input.confirmedAt ? String(input.confirmedAt) : null,
+    durationMinutes: Number(input.durationMinutes) || null,
     statusUpdatedByRole: input.statusUpdatedByRole ? String(input.statusUpdatedByRole) : null,
     statusUpdatedById: input.statusUpdatedById ? String(input.statusUpdatedById) : null,
     createdAt: now,
@@ -168,6 +201,11 @@ async function listHealConsultancyTracksByUserId(userId, { page = 1, limit = 20,
   });
 }
 
+async function findActiveHealConsultancyTrackByUserId(userId) {
+  const result = await listHealConsultancyTracksByUserId(userId, { page: 1, limit: 50 });
+  return result.items.find((item) => isActiveTrackStatus(item.status)) || null;
+}
+
 async function updateHealConsultancyTrack(id, updates) {
   const exprNames = {};
   const exprValues = { ":updatedAt": new Date().toISOString() };
@@ -220,14 +258,18 @@ async function deleteHealConsultancyTrack(id) {
 module.exports = {
   TABLE,
   TRACK_STATUSES,
+  ACTIVE_TRACK_STATUSES,
   MAX_CONCERN_LENGTH,
   MAX_NOTES_LENGTH,
   normalizeTrackStatus,
+  isActiveTrackStatus,
   toPublicHealConsultancyTrack,
+  toUserFacingHealConsultancyTrack,
   createHealConsultancyTrack,
   getHealConsultancyTrackById,
   listHealConsultancyTracksByUserId,
   listHealConsultancyTracksByParentCoachId,
+  findActiveHealConsultancyTrackByUserId,
   updateHealConsultancyTrack,
   deleteHealConsultancyTrack,
 };

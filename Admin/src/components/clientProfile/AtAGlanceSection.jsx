@@ -733,23 +733,23 @@ function resolveStepAction(step, steps) {
     return null;
   }
   if (step.action === "schedule-launch") {
-    if (ready) return { label: "Schedule LAUNCH", tone: "green" };
     if (done) return { label: "Undo", tone: "ghost" };
+    if (ready) return { label: "Schedule LAUNCH", tone: "green" };
     return null;
   }
   if (step.action === "schedule-briefing") {
-    if (ready) return { label: "Schedule briefing", tone: "green" };
     if (done) return { label: "Undo", tone: "ghost" };
+    if (ready) return { label: "Schedule briefing", tone: "green" };
     return null;
   }
   if (step.action === "schedule-hap") {
-    if (ready) return { label: "Schedule HAP", tone: "green" };
     if (done) return { label: "Undo", tone: "ghost" };
+    if (ready) return { label: "Schedule HAP", tone: "green" };
     return null;
   }
   if (step.action === "schedule-initiation") {
-    if (ready) return { label: "Schedule initiation", tone: "green" };
     if (done) return { label: "Undo", tone: "ghost" };
+    if (ready) return { label: "Schedule initiation", tone: "green" };
     return null;
   }
   if (done) {
@@ -855,7 +855,7 @@ function OnboardingStatusCard({ user, onToast, onNavigate, onProgressChange, onU
   };
 
   const handleStepAction = (step) => {
-    if (step.done && !step.action?.startsWith("schedule-")) {
+    if (step.done) {
       toggleStep(step.n);
       onToast(`Reopened · ${step.label}`);
       return;

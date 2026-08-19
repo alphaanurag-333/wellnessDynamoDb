@@ -44,6 +44,10 @@ const FCM_TYPE_BY_KIND = {
   onboarding_slots_offered: "onboarding_slots_offered_notification",
   onboarding_reminder: "onboarding_reminder_notification",
   onboarding_meeting_confirmed: "onboarding_meeting_confirmed_notification",
+  counselling_requested: "counselling_requested_notification",
+  counselling_periods_offered: "counselling_periods_offered_notification",
+  counselling_period_selected: "counselling_period_selected_notification",
+  counselling_scheduled: "counselling_scheduled_notification",
   program_checkout_triggered: "program_checkout_triggered_notification",
   program_assigned: "program_assigned_notification",
   presentable_pic_request: "presentable_pic_request_notification",
@@ -784,6 +788,92 @@ function dispatchOnboardingTimeRequestedCoachNotificationAsync(payload) {
   runPushSafely(dispatchOnboardingTimeRequestedCoachNotification(payload));
 }
 
+async function dispatchCounsellingCoachPush({ user, title, body, kind, trackId }) {
+  const tokens = await collectCoachFcmTokensForUser(user);
+  if (tokens.length === 0) {
+    return { successCount: 0, failureCount: 0, skipped: true, reason: "no_tokens" };
+  }
+  return sendPushToTokens(tokens, {
+    title,
+    body,
+    data: {
+      type: FCM_TYPE_BY_KIND[kind] || `${kind}_notification`,
+      kind,
+      referenceType: "heal_consultancy_track",
+      referenceId: trackId ? String(trackId) : "",
+      userId: String(user?.id || user?._id || ""),
+    },
+  });
+}
+
+async function dispatchCounsellingRequestedCoachNotification({ user, trackId }) {
+  const userName = String(user?.name || "A client").trim() || "A client";
+  return dispatchCounsellingCoachPush({
+    user,
+    title: "Counselling requested",
+    body: `${userName} requested a counselling session.`,
+    kind: "counselling_requested",
+    trackId,
+  });
+}
+
+async function dispatchCounsellingPeriodSelectedCoachNotification({ user, trackId }) {
+  const userName = String(user?.name || "A client").trim() || "A client";
+  return dispatchCounsellingCoachPush({
+    user,
+    title: "Period selected",
+    body: `${userName} selected a time period for counselling.`,
+    kind: "counselling_period_selected",
+    trackId,
+  });
+}
+
+async function dispatchCounsellingPeriodsOfferedNotification({ userId, trackId }) {
+  const notification = await createTargetedNotification({
+    userId,
+    kind: "counselling_periods_offered",
+    message: "Your coach shared available dates and time periods for your counselling session.",
+    referenceId: trackId ? String(trackId) : null,
+    referenceType: "heal_consultancy_track",
+    title: "Counselling availability",
+  });
+  runPushSafely(deliverTargetedPush(userId, notification));
+  return notification;
+}
+
+async function dispatchCounsellingScheduledNotification({ userId, trackId }) {
+  const notification = await createTargetedNotification({
+    userId,
+    kind: "counselling_scheduled",
+    message: "Your counselling session time is confirmed. Join using the Zoom link in the app.",
+    referenceId: trackId ? String(trackId) : null,
+    referenceType: "heal_consultancy_track",
+    title: "Counselling confirmed",
+  });
+  runPushSafely(deliverTargetedPush(userId, notification));
+  return notification;
+}
+
+function dispatchCounsellingRequestedCoachNotificationAsync(payload) {
+  runPushSafely(dispatchCounsellingRequestedCoachNotification(payload));
+}
+
+function dispatchCounsellingPeriodSelectedCoachNotificationAsync(payload) {
+  runPushSafely(dispatchCounsellingPeriodSelectedCoachNotification(payload));
+}
+
+function dispatchCounsellingPeriodsOfferedNotificationAsync(payload) {
+  dispatchCounsellingPeriodsOfferedNotification(payload).catch((err) => {
+    console.error("Counselling periods offered notification failed:", err?.message || err);
+  });
+}
+
+function dispatchCounsellingScheduledNotificationAsync(payload) {
+  dispatchCounsellingScheduledNotification(payload).catch((err) => {
+    console.error("Counselling scheduled notification failed:", err?.message || err);
+  });
+}
+
 module.exports = {
   dispatchBroadcastNotification,
   dispatchBirthdayWishNotification,
@@ -821,6 +911,14 @@ module.exports = {
   dispatchOnboardingMeetingConfirmedNotificationAsync,
   dispatchOnboardingTimeRequestedCoachNotification,
   dispatchOnboardingTimeRequestedCoachNotificationAsync,
+  dispatchCounsellingRequestedCoachNotification,
+  dispatchCounsellingRequestedCoachNotificationAsync,
+  dispatchCounsellingPeriodSelectedCoachNotification,
+  dispatchCounsellingPeriodSelectedCoachNotificationAsync,
+  dispatchCounsellingPeriodsOfferedNotification,
+  dispatchCounsellingPeriodsOfferedNotificationAsync,
+  dispatchCounsellingScheduledNotification,
+  dispatchCounsellingScheduledNotificationAsync,
   deliverBroadcastPush,
   deliverTargetedPush,
   FCM_TYPE_BY_KIND,
