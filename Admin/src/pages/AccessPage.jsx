@@ -96,6 +96,46 @@ function ToggleSwitch({ kind, onClick, disabled }) {
   );
 }
 
+function ConfirmDialog({
+  title,
+  body,
+  confirmLabel = "Yes",
+  cancelLabel = "Cancel",
+  busy = false,
+  onConfirm,
+  onClose,
+  danger = false,
+}) {
+  return (
+    <div className="ua-dialog-backdrop" onClick={() => !busy && onClose()} role="presentation">
+      <div
+        className={`ua-dialog${danger ? " ua-dialog--danger" : ""}`}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className="ua-dialog__head">
+          <div className="ua-dialog__title">{title}</div>
+        </div>
+        <p className="ua-dialog__body">{body}</p>
+        <div className="ua-dialog__actions">
+          <button type="button" className="btn btn--outline" onClick={onClose} disabled={busy}>
+            {cancelLabel}
+          </button>
+          <button
+            type="button"
+            className={danger ? "ua-dialog__btn-danger" : "ua-dialog__btn-primary"}
+            onClick={onConfirm}
+            disabled={busy}
+          >
+            {busy ? "Working…" : confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CreateRoleModal({ roles, onClose, onCreate }) {
   const [name, setName] = useState("");
   const [inheritFrom, setInheritFrom] = useState("");
@@ -558,6 +598,9 @@ function RolesPermissionsTab({ onToast }) {
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
+  const [inheritPending, setInheritPending] = useState(null);
   const [dirty, setDirty] = useState(false);
   const saveTimer = useRef(null);
   const stateRef = useRef({ grants: {}, parents: {}, views: {}, apiRoles: [], selectedRole: "admin", scope: "All" });
@@ -690,6 +733,13 @@ function RolesPermissionsTab({ onToast }) {
     scheduleSave();
   }
 
+  function requestParentChange(nextParent) {
+    if (!role || role.locked) return;
+    const current = parents[role.id] || "";
+    if (nextParent === current) return;
+    setInheritPending(nextParent || "");
+  }
+
   function handleParentChange(nextParent) {
     if (!role || role.locked) return;
     setParents((p) => {
@@ -742,6 +792,7 @@ function RolesPermissionsTab({ onToast }) {
 
   async function resetRole() {
     if (!role || role.locked) return;
+    setResetBusy(true);
     const key = role.roleKey || role.id;
     const nextGrants = cloneGrants(grants);
     if (key in DEFAULT_GRANTS) {
@@ -771,9 +822,12 @@ function RolesPermissionsTab({ onToast }) {
       });
       setApiRoles((prev) => prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)));
       setDirty(false);
+      setResetOpen(false);
       onToast("Reset to default");
     } catch (err) {
       onToast(err?.message || "Reset failed");
+    } finally {
+      setResetBusy(false);
     }
   }
 
@@ -905,7 +959,7 @@ function RolesPermissionsTab({ onToast }) {
                 </button>
               ))}
             </div>
-            <button type="button" className="ua-ac-btn-ghost" onClick={resetRole} disabled={role.locked}>
+            <button type="button" className="ua-ac-btn-ghost" onClick={() => setResetOpen(true)} disabled={role.locked}>
               Reset to default
             </button>
             {canDeleteRole ? (
@@ -924,9 +978,9 @@ function RolesPermissionsTab({ onToast }) {
           <span className="ua-ac-inherit__label">Inherits from</span>
           <select
             className="ua-ac-inherit__select"
-            value={parents[role.id] || ""}
+            value={inheritPending !== null ? inheritPending : parents[role.id] || ""}
             disabled={role.locked}
-            onChange={(e) => handleParentChange(e.target.value)}
+            onChange={(e) => requestParentChange(e.target.value)}
           >
             <option value="">Nothing — standalone</option>
             {roleList
@@ -1096,6 +1150,38 @@ function RolesPermissionsTab({ onToast }) {
           roles={roleList}
           onClose={() => setCreateOpen(false)}
           onCreate={handleCreateRole}
+        />
+      ) : null}
+
+      {resetOpen ? (
+        <ConfirmDialog
+          title="Reset to default?"
+          body={`This restores “${role.name}” permissions, inheritance, and sections to the built-in default. Custom changes on this role will be lost.`}
+          confirmLabel="Yes"
+          cancelLabel="Cancel"
+          busy={resetBusy}
+          danger
+          onClose={() => !resetBusy && setResetOpen(false)}
+          onConfirm={resetRole}
+        />
+      ) : null}
+
+      {inheritPending !== null ? (
+        <ConfirmDialog
+          title="Approve inheritance change?"
+          body={
+            inheritPending
+              ? `Update “${role.name}” to inherit from “${roleList.find((r) => r.id === inheritPending)?.name || inheritPending}”? That role’s permissions become the new baseline.`
+              : `Make “${role.name}” standalone? Parent permissions will no longer flow into this role.`
+          }
+          confirmLabel="Yes"
+          cancelLabel="Cancel"
+          onClose={() => setInheritPending(null)}
+          onConfirm={() => {
+            const next = inheritPending;
+            setInheritPending(null);
+            handleParentChange(next);
+          }}
         />
       ) : null}
 
