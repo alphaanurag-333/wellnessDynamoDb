@@ -1,4 +1,4 @@
-import { DEFAULT_GRANTS, PERM_CATALOG, ROLE_META } from "../data/accessData.js";
+import { DEFAULT_GRANTS, DEFAULT_VIEWS, PERM_CATALOG, ROLE_META } from "../data/accessData.js";
 
 const CONSOLE_SLUG_RE = /^console\.([a-z0-9_-]+)\.([a-z]+)$/i;
 
@@ -49,5 +49,12 @@ export function sectionsFromPermissions(permissions) {
     const sectionId = parsed && FEATURE_SECTION.get(parsed.featureId);
     if (sectionId) sections.add(sectionId);
   }
+  return sections;
+}
+
+/** Admin always opens every operational section; Access Control is Super Admin only. */
+export function defaultAdminNavSections({ includeAccess = false } = {}) {
+  const sections = new Set(DEFAULT_VIEWS.admin || []);
+  if (includeAccess) sections.add("access");
   return sections;
 }

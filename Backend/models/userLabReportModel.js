@@ -43,9 +43,17 @@ function normalizeFileKey(value) {
   return fileKey;
 }
 
+const AI_STATUSES = new Set(["none", "pending", "analysed", "failed"]);
+
+function normalizeAiStatus(value) {
+  const status = String(value || "").trim().toLowerCase();
+  return AI_STATUSES.has(status) ? status : "none";
+}
+
 function toUserLabReportPublic(item) {
   const row = withLegacyId(item);
   if (!row) return null;
+  const aiStatus = normalizeAiStatus(row.aiStatus);
   return {
     id: row.id,
     _id: row._id,
@@ -56,6 +64,11 @@ function toUserLabReportPublic(item) {
     reviewStatus: row.reviewStatus === "reviewed" ? "reviewed" : "pending",
     reviewedAt: row.reviewedAt || null,
     reviewedById: row.reviewedById || null,
+    aiStatus,
+    aiError: row.aiError || null,
+    aiAnalysedAt: row.aiAnalysedAt || null,
+    aiAnalysedById: row.aiAnalysedById || null,
+    aiAnalysis: row.aiAnalysis || null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -74,6 +87,11 @@ async function createUserLabReport({ userId, reportDate, fileKey }) {
     reviewStatus: "pending",
     reviewedAt: null,
     reviewedById: null,
+    aiStatus: "none",
+    aiError: null,
+    aiAnalysedAt: null,
+    aiAnalysedById: null,
+    aiAnalysis: null,
     createdAt: now,
     updatedAt: now,
   };
@@ -204,6 +222,76 @@ async function reviewUserLabReport(id, { reviewedById } = {}) {
   return getUserLabReportById(id);
 }
 
+async function saveUserLabReportAiAnalysis(id, {
+  aiStatus,
+  aiAnalysis = null,
+  aiError = null,
+  analysedById = null,
+} = {}) {
+  const record = await getUserLabReportRecordById(id);
+  if (!record) {
+    const err = new Error("Lab report not found");
+    err.name = "NotFoundError";
+    throw err;
+  }
+
+  const now = new Date().toISOString();
+  const status = normalizeAiStatus(aiStatus);
+  const analysed = status === "analysed";
+
+  await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE,
+      Key: { id: String(id) },
+      UpdateExpression:
+        "SET aiStatus = :aiStatus, aiAnalysis = :aiAnalysis, aiError = :aiError, aiAnalysedAt = :aiAnalysedAt, aiAnalysedById = :aiAnalysedById, updatedAt = :updatedAt",
+      ExpressionAttributeValues: {
+        ":aiStatus": status,
+        ":aiAnalysis": analysed ? (aiAnalysis || null) : (aiAnalysis || record.aiAnalysis || null),
+        ":aiError": status === "failed" ? String(aiError || "AI analysis failed") : null,
+        ":aiAnalysedAt": analysed ? now : (record.aiAnalysedAt || null),
+        ":aiAnalysedById": analysed
+          ? (analysedById ? String(analysedById) : null)
+          : (record.aiAnalysedById || null),
+        ":updatedAt": now,
+      },
+      ConditionExpression: "attribute_exists(id)",
+    })
+  );
+
+  return getUserLabReportById(id);
+}
+
+async function updateUserLabReportAiAnalysis(id, aiAnalysis) {
+  const record = await getUserLabReportRecordById(id);
+  if (!record) {
+    const err = new Error("Lab report not found");
+    err.name = "NotFoundError";
+    throw err;
+  }
+  if (normalizeAiStatus(record.aiStatus) !== "analysed") {
+    const err = new Error("Lab report has not been analysed yet");
+    err.name = "ValidationError";
+    throw err;
+  }
+
+  const now = new Date().toISOString();
+  await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE,
+      Key: { id: String(id) },
+      UpdateExpression: "SET aiAnalysis = :aiAnalysis, updatedAt = :updatedAt",
+      ExpressionAttributeValues: {
+        ":aiAnalysis": aiAnalysis,
+        ":updatedAt": now,
+      },
+      ConditionExpression: "attribute_exists(id)",
+    })
+  );
+
+  return getUserLabReportById(id);
+}
+
 module.exports = {
   createUserLabReport,
   getUserLabReportById,
@@ -212,6 +300,9 @@ module.exports = {
   queryPendingLabReports,
   deleteUserLabReport,
   reviewUserLabReport,
+  saveUserLabReportAiAnalysis,
+  updateUserLabReportAiAnalysis,
   toUserLabReportPublic,
   normalizeReportDate,
+  normalizeAiStatus,
 };

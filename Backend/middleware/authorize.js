@@ -54,6 +54,10 @@ function authorizeStaff(consoleSlug, legacySlugs) {
       return next(new AppError("You do not have permission to perform this action", 403));
     }
 
+    if (req.auth.isSuperAdmin || role === "admin") {
+      return next();
+    }
+
     if (slugs.some((slug) => hasPermission(req.auth, slug))) {
       return next();
     }
@@ -159,7 +163,7 @@ function requireTeamsReadAccess(req, res, next) {
   if (!req.auth) {
     return next(new AppError("Authentication required", 401));
   }
-  if (req.auth.isSuperAdmin || hasPermission(req.auth, "console.tm.view")) {
+  if (req.auth.isSuperAdmin || req.auth.role === "admin" || hasPermission(req.auth, "console.tm.view")) {
     return next();
   }
   const perms = Array.isArray(req.auth.permissions) ? req.auth.permissions : [];

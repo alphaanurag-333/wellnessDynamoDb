@@ -181,6 +181,25 @@ function parseMediaKeyFromBody(value, fieldName = "image") {
   return key;
 }
 
+async function getStoredObjectBuffer(key) {
+  const objectKey = normalizeStoredMedia(key);
+  if (!objectKey) throw new AppError("File not found", 404);
+
+  assertS3Configured();
+  const result = await s3Client.send(
+    new GetObjectCommand({
+      Bucket: config.awsS3BucketName,
+      Key: objectKey,
+    })
+  );
+
+  const bytes = await result.Body.transformToByteArray();
+  return {
+    buffer: Buffer.from(bytes),
+    contentType: result.ContentType || "application/octet-stream",
+  };
+}
+
 async function sendStoredObjectAsAttachment(res, key, { filename, contentType = "application/octet-stream" } = {}) {
   const objectKey = normalizeStoredMedia(key);
   if (!objectKey) throw new AppError("File not found", 404);
@@ -240,5 +259,6 @@ module.exports = {
   uploadMulterField,
   uploadFileFromRequest,
   deleteStoredMedia,
+  getStoredObjectBuffer,
   sendStoredObjectAsAttachment,
 };

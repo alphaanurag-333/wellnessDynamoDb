@@ -690,7 +690,8 @@ async function listPaidTransactionsForAnalytics() {
         KeyConditionExpression: "#paymentStatus = :paymentStatus",
         ExpressionAttributeNames: { "#paymentStatus": "paymentStatus" },
         ExpressionAttributeValues: { ":paymentStatus": "paid" },
-        ProjectionExpression: "totalAmount, currency, productType, createdAt, paidAt",
+        ProjectionExpression:
+          "id, userId, totalAmount, currency, productType, createdAt, paidAt, parentCoachId, meetingAssigneeId, healthConcernId, userSnapshot, assigneeSnapshot, healthConcernSnapshot",
         ExclusiveStartKey: lastKey,
       })
     );

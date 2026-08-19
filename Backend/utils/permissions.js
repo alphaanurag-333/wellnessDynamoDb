@@ -20,14 +20,18 @@ function parentPermissionKey(slug) {
   return parentCoachPermissionKey(slug) || parentClientHubPermissionKey(slug);
 }
 
+function isAdminRole(auth) {
+  return Boolean(auth?.isSuperAdmin || auth?.role === "admin");
+}
+
 /**
  * True when `auth.permissions` includes `slug`.
- * Super admins always pass.
+ * Super admins and the Admin role always pass (full console access by default).
  * For coach clientTab / admin users.clientHub child keys, the parent group key must also be present.
  */
 function hasPermission(auth, slug) {
   if (!auth) return false;
-  if (auth.isSuperAdmin) return true;
+  if (isAdminRole(auth)) return true;
   if (!Array.isArray(auth.permissions) || !auth.permissions.includes(slug)) {
     return false;
   }
