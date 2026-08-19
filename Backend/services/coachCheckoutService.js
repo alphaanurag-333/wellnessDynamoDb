@@ -697,6 +697,22 @@ function isCheckoutHistoryTransaction(transaction) {
   return CHECKOUT_HISTORY_TYPES.has(String(transaction?.productType || "").toLowerCase());
 }
 
+function checkoutReminderBlockReason(transaction, now = Date.now()) {
+  if (!transaction) return "Transaction not found";
+  const type = String(transaction.productType || "").toLowerCase();
+  if (!CHECKOUT_HISTORY_TYPES.has(type)) return "Not a program payment";
+  const status = String(transaction.paymentStatus || "").toLowerCase();
+  if (status === "paid") return "This payment is already complete";
+  if (status !== "pending") return "This payment is not awaiting";
+  if (
+    transaction.linkExpiresAt &&
+    new Date(transaction.linkExpiresAt).getTime() < now
+  ) {
+    return "Payment link expired. Trigger a new payment.";
+  }
+  return null;
+}
+
 function toCheckoutHistoryRow(transaction, now = Date.now()) {
   if (!transaction) return null;
   const paid = String(transaction.paymentStatus || "").toLowerCase() === "paid";
@@ -758,6 +774,7 @@ module.exports = {
   isPendingCheckoutOrderReusable,
   buildUserProgramGetPayload,
   toCheckoutHistoryRow,
+  checkoutReminderBlockReason,
   listCheckoutHistoryForUser,
   lookupClientByReferralCode,
   listCheckoutStaff,

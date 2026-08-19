@@ -12,9 +12,11 @@ const {
   listCheckoutStaff,
   listRecentPwc,
   listCheckoutHistoryForUser,
+  checkoutReminderBlockReason,
   triggerCoachCheckout,
 } = require("../../services/coachCheckoutService");
 const {
+  dispatchProgramCheckoutTriggeredNotification,
   dispatchProgramCheckoutTriggeredNotificationAsync,
 } = require("../../services/notificationDispatchService");
 
@@ -62,6 +64,53 @@ exports.listCoachCheckoutHistoryController = asyncHandler(async (req, res) => {
     status: true,
     message: "Program payment history fetched",
     history,
+  });
+});
+
+exports.remindCoachCheckoutController = asyncHandler(async (req, res) => {
+  const actor = assertStaffCanMutate(req);
+  const transaction = await getConsultancyTransactionById(req.params.id);
+  const blocked = checkoutReminderBlockReason(transaction);
+  if (blocked) {
+    const status = blocked === "Transaction not found" ? 404 : 400;
+    throw new AppError(blocked, status);
+  }
+
+  const user = await getUserById(transaction.userId);
+  if (!user || user.status === "deleted") throw new AppError("Client not found", 404);
+  await assertStaffCanAccessUser(req, user);
+
+  const programName =
+    transaction.userSnapshot?.catalogItemName ||
+    transaction.userSnapshot?.programTitle ||
+    "Wellness Program";
+
+  const { notification, push } = await dispatchProgramCheckoutTriggeredNotification({
+    userId: user.id,
+    programName,
+    transactionId: transaction.id,
+    reminder: true,
+    actorUserId: actor.id,
+  });
+
+  const delivered = Boolean(push && !push.skipped && Number(push.successCount) > 0);
+  const noDevice = Boolean(push?.skipped && push?.reason === "no_token");
+
+  return res.status(200).json({
+    status: true,
+    message: delivered
+      ? "Payment reminder pushed to the app"
+      : noDevice
+        ? "Reminder saved in the app inbox, but this user has no push device registered"
+        : "Reminder saved in the app inbox",
+    notificationId: notification?.id || null,
+    push: {
+      delivered,
+      skipped: Boolean(push?.skipped),
+      reason: push?.reason || null,
+      successCount: Number(push?.successCount) || 0,
+      failureCount: Number(push?.failureCount) || 0,
+    },
   });
 });
 

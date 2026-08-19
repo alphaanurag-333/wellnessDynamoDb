@@ -74,6 +74,56 @@ function PhoneField({ countryCode, phone, onCountryCode, onPhone, hint, disabled
   );
 }
 
+function EyeIcon({ off = false }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {off ? (
+        <>
+          <path d="M3 3l18 18" />
+          <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
+          <path d="M9.9 5.1A9.8 9.8 0 0 1 12 5c7 0 10 7 10 7a13.4 13.4 0 0 1-3.2 3.9" />
+          <path d="M6.1 6.1C3.7 7.8 2 12 2 12s3 7 10 7c1.7 0 3.2-.4 4.5-1" />
+        </>
+      ) : (
+        <>
+          <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" />
+          <circle cx="12" cy="12" r="3" />
+        </>
+      )}
+    </svg>
+  );
+}
+
+function PasswordField({ label, value, onChange, disabled, autoComplete }) {
+  const [visible, setVisible] = useState(false);
+
+  return (
+    <label className="ua-profile-modal__field">
+      <span className="ua-profile-modal__label">{label}</span>
+      <div className="ua-profile-modal__password-wrap">
+        <input
+          type={visible ? "text" : "password"}
+          className="ua-profile-modal__input ua-profile-modal__input--edit"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          disabled={disabled}
+          autoComplete={autoComplete}
+        />
+        <button
+          type="button"
+          className="ua-profile-modal__eye"
+          onClick={() => setVisible((v) => !v)}
+          disabled={disabled}
+          aria-label={visible ? "Hide password" : "Show password"}
+          aria-pressed={visible}
+        >
+          <EyeIcon off={visible} />
+        </button>
+      </div>
+    </label>
+  );
+}
+
 function PasswordChangeModal({ open, busy, onClose, onSubmit }) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -133,39 +183,27 @@ function PasswordChangeModal({ open, busy, onClose, onSubmit }) {
             ×
           </button>
         </div>
-        <label className="ua-profile-modal__field">
-          <span className="ua-profile-modal__label">Current password</span>
-          <input
-            type="password"
-            className="ua-profile-modal__input ua-profile-modal__input--edit"
-            value={currentPassword}
-            onChange={(event) => setCurrentPassword(event.target.value)}
-            disabled={busy}
-            autoComplete="current-password"
-          />
-        </label>
-        <label className="ua-profile-modal__field">
-          <span className="ua-profile-modal__label">New password</span>
-          <input
-            type="password"
-            className="ua-profile-modal__input ua-profile-modal__input--edit"
-            value={newPassword}
-            onChange={(event) => setNewPassword(event.target.value)}
-            disabled={busy}
-            autoComplete="new-password"
-          />
-        </label>
-        <label className="ua-profile-modal__field">
-          <span className="ua-profile-modal__label">Confirm new password</span>
-          <input
-            type="password"
-            className="ua-profile-modal__input ua-profile-modal__input--edit"
-            value={confirmPassword}
-            onChange={(event) => setConfirmPassword(event.target.value)}
-            disabled={busy}
-            autoComplete="new-password"
-          />
-        </label>
+        <PasswordField
+          label="Current password"
+          value={currentPassword}
+          onChange={setCurrentPassword}
+          disabled={busy}
+          autoComplete="current-password"
+        />
+        <PasswordField
+          label="New password"
+          value={newPassword}
+          onChange={setNewPassword}
+          disabled={busy}
+          autoComplete="new-password"
+        />
+        <PasswordField
+          label="Confirm new password"
+          value={confirmPassword}
+          onChange={setConfirmPassword}
+          disabled={busy}
+          autoComplete="new-password"
+        />
         {error ? <p className="ua-profile-modal__form-error">{error}</p> : null}
         <div className="ua-cfg-mv-link-modal__foot">
           <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose} disabled={busy}>

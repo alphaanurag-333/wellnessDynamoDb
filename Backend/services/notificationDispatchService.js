@@ -671,18 +671,23 @@ async function dispatchProgramCheckoutTriggeredNotification({
   userId,
   programName,
   transactionId,
+  reminder = false,
+  actorUserId = null,
 }) {
   const name = String(programName || "Wellness Program").trim() || "Wellness Program";
   const notification = await createTargetedNotification({
     userId,
     kind: "program_checkout_triggered",
-    message: `Your coach shared ${name} for payment. Complete it in the app.`,
+    message: reminder
+      ? `Reminder: complete payment for ${name} in the app.`
+      : `Your coach shared ${name} for payment. Complete it in the app.`,
     referenceId: transactionId ? String(transactionId) : null,
     referenceType: "coach_checkout",
-    title: "Program payment ready",
+    actorUserId,
+    title: reminder ? "Payment reminder" : "Program payment ready",
   });
-  runPushSafely(deliverTargetedPush(userId, notification));
-  return notification;
+  const push = await deliverTargetedPush(userId, notification);
+  return { notification, push };
 }
 
 async function dispatchProgramAssignedNotification({ userId, programTitle, programId }) {

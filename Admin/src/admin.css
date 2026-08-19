@@ -17607,6 +17607,42 @@
   gap: 10px;
 }
 
+.updated-admin .ua-profile-modal__password-wrap {
+  position: relative;
+}
+
+.updated-admin .ua-profile-modal__password-wrap .ua-profile-modal__input {
+  padding-right: 42px;
+}
+
+.updated-admin .ua-profile-modal__eye {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.updated-admin .ua-profile-modal__eye:hover:not(:disabled) {
+  color: #334155;
+  background: #eef2f7;
+}
+
+.updated-admin .ua-profile-modal__eye:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .updated-admin .ua-profile-modal__hint {
   font-size: 10px;
   color: var(--muted-light);
