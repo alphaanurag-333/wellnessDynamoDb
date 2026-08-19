@@ -201,7 +201,9 @@ function NoteForm({
               onChange={(event) => setDraft((prev) => ({ ...prev, badge: event.target.value }))}
             />
           </label>
-          <div className="ua-cfg-bn-surfaces ua-cfg-ld-field--wide">
+        </div>
+      </div>
+      <div className="ua-cfg-bn-surfaces ua-cfg-ld-field--wide">
             <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--web${draft.webVisible ? " is-on" : ""}`}>
               <span>Web {draft.webVisible ? "Visible" : "Hidden"}</span>
               <button
@@ -226,8 +228,6 @@ function NoteForm({
                 <span className="ua-toggle__knob" />
               </button>
             </div>
-          </div>
-        </div>
       </div>
       <label className="ua-cfg-ld-field">
         <span>Message</span>
@@ -547,7 +547,7 @@ export function DynamicLeadershipSection({ items, setItems, onToast }) {
               const photo = item.profileImage;
               const updated = item.updatedAt ? formatRecipeDate(item.updatedAt) : "";
               return (
-                <article key={item.id} className={`ua-cfg-rc-item ua-cfg-ld-item${item.live ? " is-live" : ""}`}>
+                <article key={item.id} className={`ua-cfg-rc-item ua-cfg-ld-item${item.live ? " is-live" : ""}${isEditing ? " is-editing" : ""}`}>
                   <div className="ua-cfg-rc-cover-wrap ua-cfg-ld-cover-wrap">
                     <button
                       type="button"
