@@ -50,15 +50,10 @@ export function PageHeader({
   layout = "default",
 }) {
   const isSplit = layout === "split";
-  const showActions = Boolean(actions) || (!isSplit && autosave);
+  const showActions = Boolean(actions) || autosave;
 
   return (
     <div className={`page-head${isSplit ? " page-head--split" : ""}`}>
-      {isSplit && autosave ? (
-        <span className="page-head__autosave">
-          <AutosaveButton onClick={onAutosave} />
-        </span>
-      ) : null}
       <div className="page-head__main">
         {backLink ? <BackLink label={backLink} to={backTo ?? UPDATED_ADMIN_PATHS.dashboard} /> : null}
         <div className="page-head__intro">
@@ -71,7 +66,7 @@ export function PageHeader({
       {showActions ? (
         <div className="page-head__actions">
           {actions}
-          {!isSplit && autosave ? <AutosaveButton onClick={onAutosave} /> : null}
+          {autosave ? <AutosaveButton onClick={onAutosave} /> : null}
         </div>
       ) : null}
     </div>

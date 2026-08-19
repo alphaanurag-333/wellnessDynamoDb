@@ -109,7 +109,7 @@ function CreateRoleModal({ roles, onClose, onCreate }) {
         </p>
         <label className="ua-ac-field">
           <span className="ua-ac-field__label">Role name</span>
-          <input
+          <input maxLength={35}
             className="ua-ac-field__input"
             placeholder="Role name"
             value={name}

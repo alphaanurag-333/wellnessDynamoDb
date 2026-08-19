@@ -6,6 +6,7 @@ import {
 } from "../api/healthProgressTrackersApi.js";
 import { TRACKER_COLORS } from "../data/configDetailData.js";
 import { DEFAULT_HEALTH_PROGRESS_TRACKERS } from "../data/healthProgressData.js";
+import { ConfirmDialog } from "./ConfirmDialog.jsx";
 
 function Panel({ title, subtitle, actions, children, className = "" }) {
   const hasHead = Boolean(title || subtitle || actions);
@@ -29,6 +30,7 @@ export function HealthProgressTrackersPanel({ items = [], setItems, onToast }) {
   const [newName, setNewName] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(null);
   const availableCount = items.filter((item) => item.enabled).length;
 
   const loadTrackers = useCallback(async () => {
@@ -75,42 +77,47 @@ export function HealthProgressTrackersPanel({ items = [], setItems, onToast }) {
     persist([...items, created], `${label} added to the master list`);
   }
 
+  function confirmDelete() {
+    const item = pendingDelete;
+    if (!item) return;
+    setPendingDelete(null);
+    persist(items.filter((entry) => entry.id !== item.id), `${item.category} removed`);
+  }
+
   return (
-    <Panel className="ua-cfg-hp">
-      <div className="ua-cfg-hp__toolbar">
-        <p className="ua-cfg-hp__hint">
-          {loading
-            ? "Loading trackers from App Config…"
-            : "Coaches pick from this list when they add a tracker to a client. Turning one off leaves existing clients untouched but removes it from the picker."}
-        </p>
-        <div className="ua-cfg-hp__add">
-          <input
-            type="text"
-            className="ua-cfg-hp__add-input"
-            placeholder="New tracker name..."
-            value={newName}
-            disabled={busy || loading}
-            onChange={(event) => setNewName(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") addTracker();
-            }}
-          />
-          <button
-            type="button"
-            className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
-            disabled={busy || loading || !newName.trim()}
-            onClick={addTracker}
-          >
-            Add tracker
-          </button>
-        </div>
+    <Panel
+      className="ua-cfg-hp"
+      title="Trackers"
+      subtitle={
+        loading
+          ? "Loading trackers from App Config…"
+          : "Coaches pick from this list when they add a tracker to a client. Turning one off leaves existing clients untouched but removes it from the picker."
+      }
+      actions={<span className="ua-cfg-hp__count">{availableCount} of {items.length} available</span>}
+    >
+      <div className="ua-cfg-hp__add">
+        <input
+          type="text"
+          className="ua-cfg-hp__add-input"
+          placeholder="New tracker name…"
+          value={newName}
+          disabled={busy || loading}
+          onChange={(event) => setNewName(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") addTracker();
+          }}
+        />
+        <button
+          type="button"
+          className="ua-cfg-btn ua-cfg-hp__add-btn"
+          disabled={busy || loading || !newName.trim()}
+          onClick={addTracker}
+        >
+          {busy ? "Saving…" : "+ Add tracker"}
+        </button>
       </div>
 
       <div className="ua-cfg-hp-list">
-        <div className="ua-cfg-hp-list__head">
-          <span className="ua-cfg-hp-list__label">Tracker</span>
-          <span className="ua-cfg-hp-list__count">{availableCount} of {items.length} available</span>
-        </div>
         {loading ? (
           <div className="ua-cfg-hp-empty">Fetching the master tracker list…</div>
         ) : items.length ? (
@@ -125,30 +132,35 @@ export function HealthProgressTrackersPanel({ items = [], setItems, onToast }) {
                 <span className={`ua-cfg-hp-row__type${item.builtin !== false ? "" : " ua-cfg-hp-row__type--custom"}`}>
                   {item.builtin !== false ? "Built in" : "Custom"}
                 </span>
-                <button
-                  type="button"
-                  className={`ua-toggle ua-toggle--sm${item.enabled ? " ua-toggle--on" : ""}`}
-                  aria-pressed={item.enabled}
-                  aria-label={`${item.category} ${item.enabled ? "available" : "hidden"}`}
-                  disabled={busy}
-                  onClick={() => {
-                    persist(
-                      items.map((entry) =>
-                        entry.id === item.id ? { ...entry, enabled: !entry.enabled } : entry,
-                      ),
-                      item.enabled ? `${item.category} hidden from the picker` : `${item.category} available to coaches`,
-                    );
-                  }}
-                >
-                  <span className="ua-toggle__knob" />
-                </button>
+                <div className="ua-cfg-hp-row__shown-wrap">
+                  <span className={`ua-cfg-faq__shown${item.enabled ? " is-on" : ""}`}>
+                    {item.enabled ? "SHOWN" : "HIDDEN"}
+                  </span>
+                  <button
+                    type="button"
+                    className={`ua-toggle ua-toggle--sm${item.enabled ? " ua-toggle--on" : ""}`}
+                    aria-pressed={item.enabled}
+                    aria-label={`${item.category} ${item.enabled ? "available" : "hidden"}`}
+                    disabled={busy}
+                    onClick={() => {
+                      persist(
+                        items.map((entry) =>
+                          entry.id === item.id ? { ...entry, enabled: !entry.enabled } : entry,
+                        ),
+                        item.enabled ? `${item.category} hidden from the picker` : `${item.category} available to coaches`,
+                      );
+                    }}
+                  >
+                    <span className="ua-toggle__knob" />
+                  </button>
+                </div>
                 {item.builtin === false ? (
                   <button
                     type="button"
-                    className="ua-cfg-icon-btn ua-cfg-hp-row__delete"
+                    className="ua-cfg-icon-btn ua-cfg-icon-btn--danger ua-cfg-hp-row__delete"
                     aria-label={`Remove ${item.category}`}
                     disabled={busy}
-                    onClick={() => persist(items.filter((entry) => entry.id !== item.id), `${item.category} removed`)}
+                    onClick={() => setPendingDelete(item)}
                   >
                     ×
                   </button>
@@ -160,6 +172,17 @@ export function HealthProgressTrackersPanel({ items = [], setItems, onToast }) {
           <div className="ua-cfg-hp-empty">No trackers yet. Add one above to get started.</div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        tag="Health progress"
+        title={`Delete ${pendingDelete?.category || "this tracker"}?`}
+        body="This removes the custom tracker from the master picker. Existing client data is left untouched."
+        confirmLabel="Delete"
+        confirmTone="danger"
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={confirmDelete}
+      />
     </Panel>
   );
 }
