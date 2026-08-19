@@ -31,7 +31,7 @@ function Panel({ title, subtitle, actions, children }) {
   return (
     <section className="ua-cfg-panel">
       <div className="ua-cfg-panel__head">
-        <div>
+        <div className="ua-cfg-panel__copy">
           {title ? <h3 className="ua-cfg-panel__title">{title}</h3> : null}
           {subtitle ? <p className="ua-cfg-panel__sub">{subtitle}</p> : null}
         </div>
@@ -610,58 +610,64 @@ export function DynamicLeadershipSection({ items, setItems, onToast }) {
                           {isEditing ? null : (
                             <>
                               {updated ? <span className="ua-cfg-panel__sub">Updated {updated}</span> : null}
-                              <span className={`ua-cfg-ld-chip${item.webVisible ? " is-on" : ""}`}>Web</span>
-                              <span className={`ua-cfg-ld-chip ua-cfg-ld-chip--app${item.appVisible ? " is-on" : ""}`}>App</span>
+                              <span className="ua-cfg-ld-item__chips">
+                                <span className={`ua-cfg-ld-chip${item.webVisible ? " is-on" : ""}`}>Web</span>
+                                <span className={`ua-cfg-ld-chip ua-cfg-ld-chip--app${item.appVisible ? " is-on" : ""}`}>App</span>
+                              </span>
                             </>
                           )}
                         </div>
                       </div>
                       <div className="ua-cfg-ld-item__actions">
-                        <span className={`ua-cfg-faq__shown${item.live ? " is-on" : ""}`}>
-                          {item.live ? "LIVE" : "HIDDEN"}
-                        </span>
-                        <button
-                          type="button"
-                          className={`ua-toggle ua-toggle--sm${item.live ? " ua-toggle--on" : ""}`}
-                          aria-pressed={item.live}
-                          aria-label={item.live ? "Hide note" : "Publish note"}
-                          disabled={busy}
-                          onClick={() => toggleLive(item)}
-                        >
-                          <span className="ua-toggle__knob" />
-                        </button>
-                        <button
-                          type="button"
-                          className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
-                          disabled={busy}
-                          onClick={() => setViewingId(item.id)}
-                        >
-                          View
-                        </button>
-                        {isEditing ? (
-                          <>
-                            <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={busy} onClick={() => saveItem(item)}>Save</button>
-                            <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={() => { setEditingId(null); loadItems(); }}>Cancel</button>
-                          </>
-                        ) : (
+                        <div className="ua-cfg-ld-item__live">
+                          <span className={`ua-cfg-faq__shown${item.live ? " is-on" : ""}`}>
+                            {item.live ? "LIVE" : "HIDDEN"}
+                          </span>
+                          <button
+                            type="button"
+                            className={`ua-toggle ua-toggle--sm${item.live ? " ua-toggle--on" : ""}`}
+                            aria-pressed={item.live}
+                            aria-label={item.live ? "Hide note" : "Publish note"}
+                            disabled={busy}
+                            onClick={() => toggleLive(item)}
+                          >
+                            <span className="ua-toggle__knob" />
+                          </button>
+                        </div>
+                        <div className="ua-cfg-ld-item__btns">
                           <button
                             type="button"
                             className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
                             disabled={busy}
-                            onClick={() => { setViewingId(null); setEditingId(item.id); setCreating(false); }}
+                            onClick={() => setViewingId(item.id)}
                           >
-                            Edit
+                            View
                           </button>
-                        )}
-                        <button
-                          type="button"
-                          className="ua-cfg-icon-btn"
-                          aria-label={`Delete ${asCopyString(item.name) || "note"}`}
-                          disabled={busy}
-                          onClick={() => setPendingDelete(item)}
-                        >
-                          ×
-                        </button>
+                          {isEditing ? (
+                            <>
+                              <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={busy} onClick={() => saveItem(item)}>Save</button>
+                              <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={() => { setEditingId(null); loadItems(); }}>Cancel</button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                              disabled={busy}
+                              onClick={() => { setViewingId(null); setEditingId(item.id); setCreating(false); }}
+                            >
+                              Edit
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="ua-cfg-icon-btn"
+                            aria-label={`Delete ${asCopyString(item.name) || "note"}`}
+                            disabled={busy}
+                            onClick={() => setPendingDelete(item)}
+                          >
+                            ×
+                          </button>
+                        </div>
                       </div>
                     </div>
                     {isEditing ? (

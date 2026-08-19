@@ -7,7 +7,7 @@ function Panel({ title, subtitle, actions, children }) {
   return (
     <section className="ua-cfg-panel">
       <div className="ua-cfg-panel__head">
-        <div>
+        <div className="ua-cfg-panel__copy">
           <h3 className="ua-cfg-panel__title">{title}</h3>
           {subtitle ? <p className="ua-cfg-panel__sub">{subtitle}</p> : null}
         </div>
@@ -57,6 +57,7 @@ function ContactRow({
           <strong className="ua-cfg-ct-row__value">{entry.value}</strong>
         )}
       </div>
+      <div className="ua-cfg-ct-row__actions">
       <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>
         {entry.live ? "LIVE" : "HIDDEN"}
       </span>
@@ -80,7 +81,7 @@ function ContactRow({
           Save
         </button>
       ) : (
-        <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost" disabled={locked} onClick={onEdit}>
+        <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={locked} onClick={onEdit}>
           Edit
         </button>
       )}
@@ -111,6 +112,7 @@ function ContactRow({
       >
         ×
       </button>
+      </div>
     </article>
   );
 }
@@ -215,6 +217,7 @@ export function ContactDetailsSection({ details, setDetails, onToast }) {
   }
 
   return (
+    <div className="ua-cfg-ct">
     <Panel
       title="Contact details"
       subtitle={
@@ -225,7 +228,7 @@ export function ContactDetailsSection({ details, setDetails, onToast }) {
       actions={
         <button
           type="button"
-          className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+          className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-ct-add-btn"
           disabled={locked}
           onClick={() => {
             cancelEdit();
@@ -330,5 +333,6 @@ export function ContactDetailsSection({ details, setDetails, onToast }) {
         }}
       />
     </Panel>
+    </div>
   );
 }

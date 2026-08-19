@@ -23,7 +23,7 @@ function Panel({ title, subtitle, actions, children, className = "" }) {
     <section className={`ua-cfg-panel${className ? ` ${className}` : ""}`}>
       {hasHead ? (
         <div className="ua-cfg-panel__head">
-          <div>
+          <div className="ua-cfg-panel__copy">
             {title ? <h3 className="ua-cfg-panel__title">{title}</h3> : null}
             {subtitle ? <p className="ua-cfg-panel__sub">{subtitle}</p> : null}
           </div>

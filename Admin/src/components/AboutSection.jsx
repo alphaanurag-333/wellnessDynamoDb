@@ -68,7 +68,7 @@ function Panel({ title, subtitle, children }) {
   return (
     <section className="ua-cfg-panel">
       <div className="ua-cfg-panel__head">
-        <div>
+        <div className="ua-cfg-panel__copy">
           {title ? <h3 className="ua-cfg-panel__title">{title}</h3> : null}
           {subtitle ? <p className="ua-cfg-panel__sub">{subtitle}</p> : null}
         </div>
@@ -249,49 +249,55 @@ export function AboutSection({ setBlocks, onToast }) {
                 ) : (
                   <h3 className="ua-cfg-lb-card__title">{section.title}</h3>
                 )}
-                <span className={`ua-cfg-faq__shown${section.live ? " is-on" : ""}`}>
-                  {section.live ? "LIVE" : "HIDDEN"}
-                </span>
-                <button
-                  type="button"
-                  className={`ua-toggle ua-toggle--sm${section.live ? " ua-toggle--on" : ""}`}
-                  aria-pressed={section.live}
-                  aria-label={`${section.title} ${section.live ? "live" : "hidden"}`}
-                  disabled={locked}
-                  onClick={() => toggleLive(section)}
-                >
-                  <span className="ua-toggle__knob" />
-                </button>
-                {isEditing ? (
-                  <button
-                    type="button"
-                    className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
-                    disabled={locked}
-                    onClick={() => saveEdit(section)}
-                  >
-                    Save
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className="ua-cfg-btn ua-cfg-btn--ghost"
-                    disabled={locked}
-                    onClick={() => startEdit(section)}
-                  >
-                    Edit
-                  </button>
-                )}
-                {isEditing ? (
-                  <button
-                    type="button"
-                    className="ua-cfg-icon-btn"
-                    aria-label="Cancel"
-                    disabled={locked}
-                    onClick={cancelEdit}
-                  >
-                    ×
-                  </button>
-                ) : null}
+                <div className="ua-cfg-lb-card__actions">
+                  <div className="ua-cfg-lb-card__shown">
+                    <span className={`ua-cfg-faq__shown${section.live ? " is-on" : ""}`}>
+                      {section.live ? "LIVE" : "HIDDEN"}
+                    </span>
+                    <button
+                      type="button"
+                      className={`ua-toggle ua-toggle--sm${section.live ? " ua-toggle--on" : ""}`}
+                      aria-pressed={section.live}
+                      aria-label={`${section.title} ${section.live ? "live" : "hidden"}`}
+                      disabled={locked}
+                      onClick={() => toggleLive(section)}
+                    >
+                      <span className="ua-toggle__knob" />
+                    </button>
+                  </div>
+                  <div className="ua-cfg-about-btns">
+                    {isEditing ? (
+                      <button
+                        type="button"
+                        className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
+                        disabled={locked}
+                        onClick={() => saveEdit(section)}
+                      >
+                        Save
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="ua-cfg-btn ua-cfg-btn--ghost"
+                        disabled={locked}
+                        onClick={() => startEdit(section)}
+                      >
+                        Edit
+                      </button>
+                    )}
+                    {isEditing ? (
+                      <button
+                        type="button"
+                        className="ua-cfg-icon-btn"
+                        aria-label="Cancel"
+                        disabled={locked}
+                        onClick={cancelEdit}
+                      >
+                        ×
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
               </div>
               <div className="ua-cfg-lb-card__copy">
                 {isEditing ? (

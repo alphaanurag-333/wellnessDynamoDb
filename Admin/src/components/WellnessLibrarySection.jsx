@@ -66,7 +66,7 @@ function LibraryViewModal({ entry, viewTag, itemNoun, onClose, onEdit }) {
   const videoSrc = isVideo ? entry.fileUrl : "";
   return (
     <div className="ua-cp-modal-backdrop" onClick={onClose} role="presentation">
-      <div className="ua-cfg-rc-view ua-cfg-rc-view--sheet" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="library-view-title">
+      <div className="ua-cfg-rc-view ua-cfg-rc-view--sheet ua-cfg-lib-view" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="library-view-title">
         <div className="ua-cfg-rc-view__head">
           <div>
             <p className="ua-cfg-rc-view__tag">{viewTag}</p>
@@ -142,7 +142,7 @@ function Panel({ title, subtitle, actions, children }) {
   return (
     <section className="ua-cfg-panel">
       <div className="ua-cfg-panel__head">
-        <div>
+        <div className="ua-cfg-panel__copy">
           {title ? <h3 className="ua-cfg-panel__title">{title}</h3> : null}
           {subtitle ? <p className="ua-cfg-panel__sub">{subtitle}</p> : null}
         </div>
@@ -684,7 +684,7 @@ export function WellnessLibrarySection({ kind, onToast }) {
   const hasFilters = Boolean(search || typeFilter);
 
   return (
-    <div className="ua-cfg-rc">
+    <div className="ua-cfg-rc ua-cfg-lib">
       <Panel
         title={meta.title}
         subtitle={
@@ -707,7 +707,7 @@ export function WellnessLibrarySection({ kind, onToast }) {
         }
       >
         {creating ? (
-          <section className="ua-cfg-rc-new">
+          <section className="ua-cfg-rc-new ua-cfg-lib-new">
             <div className="ua-cfg-rc-new__head">
               <strong><span aria-hidden="true">{meta.emoji}</span> {meta.newLabel}</strong>
               <button
@@ -835,7 +835,7 @@ export function WellnessLibrarySection({ kind, onToast }) {
               return (
                 <article
                   key={item.id}
-                  className={`ua-cfg-rc-item ua-cfg-rc-item--lib${editing ? " is-editing" : ""} is-video`}
+                  className={`ua-cfg-rc-item ua-cfg-rc-item--lib ua-cfg-lib-item${editing ? " is-editing" : ""} is-video`}
                 >
                   <div className="ua-cfg-rc-cover-wrap">
                     <button
@@ -889,69 +889,73 @@ export function WellnessLibrarySection({ kind, onToast }) {
                         </div>
                       </div>
                       <div className="ua-cfg-rc-item__actions">
-                        <span className={`ua-cfg-faq__shown${item.live ? " is-on" : ""}`}>
-                          {item.live ? "LIVE" : "HIDDEN"}
-                        </span>
-                        <button
-                          type="button"
-                          className={`ua-toggle ua-toggle--sm${item.live ? " ua-toggle--on" : ""}`}
-                          aria-pressed={item.live}
-                          aria-label={`${item.title} ${item.live ? "live" : "hidden"}`}
-                          disabled={locked}
-                          onClick={() => toggleLive(item)}
-                        >
-                          <span className="ua-toggle__knob" />
-                        </button>
-                        <button
-                          type="button"
-                          className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
-                          disabled={locked}
-                          onClick={() => setViewingId(item.id)}
-                        >
-                          View
-                        </button>
-                        {editing ? (
-                          <>
-                            <button
-                              type="button"
-                              className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
-                              disabled={locked}
-                              onClick={() => saveEditedItem(item)}
-                            >
-                              Save
-                            </button>
-                            <button
-                              type="button"
-                              className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
-                              disabled={locked}
-                              onClick={() => cancelEdit(item)}
-                            >
-                              Cancel
-                            </button>
-                          </>
-                        ) : (
+                        <div className="ua-cfg-rc-item__live">
+                          <span className={`ua-cfg-faq__shown${item.live ? " is-on" : ""}`}>
+                            {item.live ? "LIVE" : "HIDDEN"}
+                          </span>
+                          <button
+                            type="button"
+                            className={`ua-toggle ua-toggle--sm${item.live ? " ua-toggle--on" : ""}`}
+                            aria-pressed={item.live}
+                            aria-label={`${item.title} ${item.live ? "live" : "hidden"}`}
+                            disabled={locked}
+                            onClick={() => toggleLive(item)}
+                          >
+                            <span className="ua-toggle__knob" />
+                          </button>
+                        </div>
+                        <div className="ua-cfg-rc-item__btns">
                           <button
                             type="button"
                             className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
                             disabled={locked}
-                            onClick={() => {
-                              setCreating(false);
-                              setViewingId("");
-                              setEditingId(item.id);
-                            }}
+                            onClick={() => setViewingId(item.id)}
                           >
-                            Edit
+                            View
                           </button>
-                        )}
-                        <button
-                          type="button"
-                          className="ua-cfg-icon-btn"
-                          aria-label={`Remove ${item.title}`}
-                          disabled={locked}
-                          onClick={() => setPendingDelete(item)}
-                        >
-                          ×
-                        </button>
+                          {editing ? (
+                            <>
+                              <button
+                                type="button"
+                                className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
+                                disabled={locked}
+                                onClick={() => saveEditedItem(item)}
+                              >
+                                Save
+                              </button>
+                              <button
+                                type="button"
+                                className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                                disabled={locked}
+                                onClick={() => cancelEdit(item)}
+                              >
+                                Cancel
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                              disabled={locked}
+                              onClick={() => {
+                                setCreating(false);
+                                setViewingId("");
+                                setEditingId(item.id);
+                              }}
+                            >
+                              Edit
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="ua-cfg-icon-btn"
+                            aria-label={`Remove ${item.title}`}
+                            disabled={locked}
+                            onClick={() => setPendingDelete(item)}
+                          >
+                            ×
+                          </button>
+                        </div>
                       </div>
                     </div>
                     {editing ? (
