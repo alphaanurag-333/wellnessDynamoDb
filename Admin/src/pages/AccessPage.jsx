@@ -920,7 +920,7 @@ function RolesPermissionsTab({ onToast }) {
         </div>
 
         <div className="ua-ac-inherit">
-          <span className="ua-ac-inherit__label">Inherits from</span>
+          <span className="ua-ac-inherit__label" style={{color:"rgb(94, 106, 210)"}}>Inherits from</span>
           <select
             className="ua-ac-inherit__select"
             value={parents[role.id] || ""}
