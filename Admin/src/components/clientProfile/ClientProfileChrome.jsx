@@ -29,8 +29,6 @@ function ClientAvatar({ user, className = "" }) {
 export function ClientProfileTopbar({
   menuHidden,
   onToggleMenu,
-  onBack,
-  showBack,
   onSave,
   notifications = CLIENT_NOTIFICATIONS,
 }) {
@@ -50,11 +48,6 @@ export function ClientProfileTopbar({
   return (
     <header className="ua-cp-topbar">
       <Link to={UPDATED_ADMIN_PATHS.users} className="ua-cp-topbar__btn">← Users</Link>
-      {showBack ? (
-        <button type="button" className="ua-cp-topbar__btn ua-cp-topbar__btn--back" onClick={onBack} title="Back to previous screen">
-          ‹ Back
-        </button>
-      ) : null}
       <button type="button" className="ua-cp-topbar__btn ua-cp-topbar__btn--menu" onClick={onToggleMenu} title="Toggle menu">
         {menuHidden ? "▥ Show menu" : "▤ Hide menu"}
       </button>

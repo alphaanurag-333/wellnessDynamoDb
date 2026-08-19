@@ -25,8 +25,10 @@ import {
   DROPDOWN_SEARCH_MAX,
   labelLimitForList,
   sanitizeDropdownText,
+  sortDropdownListsForPage,
   validateDropdownLabel,
 } from "../data/dropdownsConfigData.js";
+import { BrandLoader } from "./BrandLoader.jsx";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { CfgSelect } from "./shared.jsx";
 
@@ -43,31 +45,10 @@ const ANSWER_TYPE_OPTIONS = MEDICAL_ANSWER_TYPES.map((entry) => ({
 
 const ICON_ACCEPT = "image/jpeg,image/png,image/gif,image/webp,image/jpg";
 
-function Panel({ title, subtitle, actions, children }) {
-  return (
-    <section className="ua-cfg-panel">
-      <div className="ua-cfg-panel__head">
-        <div className="ua-cfg-panel__copy">
-          {title ? <h3 className="ua-cfg-panel__title">{title}</h3> : null}
-          {subtitle ? <p className="ua-cfg-panel__sub">{subtitle}</p> : null}
-        </div>
-        {actions ? <div className="ua-cfg-panel__actions">{actions}</div> : null}
-      </div>
-      {children}
-    </section>
-  );
-}
-
 function matchesQuery(list, query) {
   if (!query) return true;
   if (asCopyString(list.title).toLowerCase().includes(query)) return true;
   return list.options.some((entry) => asCopyString(entry.label).toLowerCase().includes(query));
-}
-
-function isImageIcon(icon) {
-  const value = String(icon || "").trim();
-  if (!value) return false;
-  return /^https?:\/\//i.test(value) || value.startsWith("blob:") || value.includes("/");
 }
 
 function IconPicker({ previewUrl, disabled, onPick, onClear, label = "Upload icon" }) {
@@ -112,10 +93,6 @@ function IconPicker({ previewUrl, disabled, onPick, onClear, label = "Upload ico
   );
 }
 
-function answerTypeLabel(value) {
-  return MEDICAL_ANSWER_TYPES.find((entry) => entry.id === value)?.label || "Text";
-}
-
 function CharHint({ value, max, error }) {
   const length = String(value || "").length;
   return (
@@ -125,25 +102,10 @@ function CharHint({ value, max, error }) {
   );
 }
 
-function OptionIcon({ icon }) {
-  const value = asCopyString(icon);
-  if (!value) return <span className="ua-cfg-dd-row__thumb ua-cfg-dd-row__thumb--empty" aria-hidden="true" />;
-  if (isImageIcon(value)) {
-    return (
-      <span className="ua-cfg-dd-row__thumb">
-        <img src={value} alt="" />
-      </span>
-    );
-  }
-  return <span className="ua-cfg-dd-row__emoji">{value}</span>;
-}
-
 export function DropdownsSection({ lists, setLists, onToast }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All options");
   const [drafts, setDrafts] = useState({});
-  const [iconFiles, setIconFiles] = useState({});
-  const [iconPreviews, setIconPreviews] = useState({});
   const [editing, setEditing] = useState(null);
   const [editValue, setEditValue] = useState("");
   const [editAnswerType, setEditAnswerType] = useState("yes_no_text");
@@ -169,11 +131,11 @@ export function DropdownsSection({ lists, setLists, onToast }) {
       );
       const concerns = concernsResult?.healthConcerns || [];
       const questions = questionsResult?.questions || [];
-      setLists([
+      setLists(sortDropdownListsForPage([
         mapConcernsToDropdownList(concerns),
         mapQuestionsToDropdownList(questions),
         ...filtered,
-      ]);
+      ]));
     } catch (error) {
       onToast(error?.message || "Failed to load dropdowns");
       setLists([]);
@@ -185,12 +147,6 @@ export function DropdownsSection({ lists, setLists, onToast }) {
   useEffect(() => {
     loadLists();
   }, [loadLists]);
-
-  useEffect(() => () => {
-    Object.values(iconPreviews).forEach((url) => {
-      if (String(url).startsWith("blob:")) URL.revokeObjectURL(url);
-    });
-  }, [iconPreviews]);
 
   const visible = useMemo(() => {
     return lists
@@ -217,19 +173,6 @@ export function DropdownsSection({ lists, setLists, onToast }) {
     setLists((prev) => prev.map((list) => (list.id === nextList.id ? nextList : list)));
   }
 
-  function pickAddIcon(listId, file) {
-    setIconPreviews((prev) => {
-      const previous = prev[listId];
-      if (String(previous).startsWith("blob:")) URL.revokeObjectURL(previous);
-      return { ...prev, [listId]: file ? URL.createObjectURL(file) : "" };
-    });
-    setIconFiles((prev) => ({ ...prev, [listId]: file || null }));
-  }
-
-  function clearAddIcon(listId) {
-    pickAddIcon(listId, null);
-  }
-
   function startEdit(list, entry) {
     setEditing(`${list.id}:${entry.id}`);
     setEditValue(asCopyString(entry.label));
@@ -254,10 +197,6 @@ export function DropdownsSection({ lists, setLists, onToast }) {
       if (!busy && drafts[list.id]?.trim()) onToast(labelCheck.message);
       return;
     }
-    if (list.slug === "health-concern" && !(iconFiles[list.id] instanceof File)) {
-      onToast("Upload an icon image first");
-      return;
-    }
     const label = labelCheck.value;
     setBusy(true);
     try {
@@ -265,7 +204,6 @@ export function DropdownsSection({ lists, setLists, onToast }) {
         const created = await adminCreateHealthConcern(
           null,
           { title: label, description: label },
-          iconFiles[list.id],
         );
         setLists((prev) =>
           prev.map((row) =>
@@ -288,7 +226,6 @@ export function DropdownsSection({ lists, setLists, onToast }) {
               : row,
           ),
         );
-        clearAddIcon(list.id);
       } else if (list.slug === "medical-questions") {
         const created = await adminCreateMedicalConditionQuestion(null, {
           question: label,
@@ -532,21 +469,7 @@ export function DropdownsSection({ lists, setLists, onToast }) {
 
   return (
     <div className="ua-cfg-dd">
-      <Panel
-        title="Dropdown lists"
-        subtitle={
-          loading
-            ? "Loading lists from the server…"
-            : "Manage every dropdown list used across the admin panel, app, and website."
-        }
-        actions={
-          loading ? null : (
-            <span className="ua-cfg-dp__count">
-              {lists.length} lists · {optionCount} options · {hiddenCount} hidden
-            </span>
-          )
-        }
-      >
+      <div className="ua-cfg-dd-bar">
         <div className="ua-cfg-dd-toolbar">
           <input
             type="search"
@@ -557,19 +480,37 @@ export function DropdownsSection({ lists, setLists, onToast }) {
             onChange={(event) => setSearch(sanitizeDropdownText(event.target.value, DROPDOWN_SEARCH_MAX))}
             aria-label="Search dropdowns"
           />
-          <CfgSelect
-            className="ua-cfg-dd-filter ua-cfg-tc-select"
-            options={FILTER_OPTIONS}
-            value={filter}
-            disabled={busy || loading}
-            onChange={setFilter}
-            ariaLabel="Filter options"
-          />
+          <div className="ua-cfg-dd-toolbar__meta">
+            <CfgSelect
+              className="ua-cfg-dd-filter ua-cfg-tc-select"
+              options={FILTER_OPTIONS}
+              value={filter}
+              disabled={busy || loading}
+              onChange={setFilter}
+              ariaLabel="Filter options"
+            />
+            {loading ? null : (
+              <div className="ua-cfg-dd-stats" aria-label="Dropdown stats">
+                <div className="ua-cfg-dd-stat">
+                  <strong>{lists.length}</strong>
+                  <span>LISTS</span>
+                </div>
+                <div className="ua-cfg-dd-stat">
+                  <strong>{optionCount}</strong>
+                  <span>OPTIONS</span>
+                </div>
+                <div className="ua-cfg-dd-stat">
+                  <strong>{hiddenCount}</strong>
+                  <span>HIDDEN</span>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      </Panel>
+      </div>
 
       {loading ? (
-        <p className="ua-cfg-panel__sub">Fetching dropdowns from the server…</p>
+        <BrandLoader variant="page" label="Loading dropdowns…" />
       ) : visible.length ? (
         <div className="ua-cfg-dd-grid">
           {visible.map((list) => {
@@ -580,23 +521,15 @@ export function DropdownsSection({ lists, setLists, onToast }) {
             const labelMax = labelLimitForList(list.slug);
             const draftValue = asCopyString(drafts[list.id]);
             const draftValidation = validateDropdownLabel(draftValue, { slug: list.slug, options: source.options });
-            const canAdd = draftValidation.ok
-              && (!supportsIcons || iconFiles[list.id] instanceof File);
+            const canAdd = draftValidation.ok;
             return (
               <section
                 key={list.id}
-                className={`ua-cfg-panel ua-cfg-dd-card${list.wide || supportsIcons || supportsAnswerType ? " ua-cfg-dd-card--wide" : ""}`}
+                className={`ua-cfg-panel ua-cfg-dd-card${list.slug === "medical-questions" ? " ua-cfg-dd-card--wide" : ""}`}
               >
                 <div className="ua-cfg-panel__head ua-cfg-dd-card__head">
                   <div className="ua-cfg-panel__copy">
                     <h3 className="ua-cfg-panel__title">{asCopyString(list.title)}</h3>
-                    <p className="ua-cfg-panel__sub">
-                      {supportsIcons
-                        ? "Shown in client forms, reviews, and program filters"
-                        : supportsAnswerType
-                          ? "Medical questionnaire answers in onboarding"
-                          : "Used across admin forms and site filters"}
-                    </p>
                   </div>
                   <span className={`ua-cfg-dd-count${onCount ? " is-on" : ""}`}>
                     {onCount}/{source.options.length} on
@@ -666,11 +599,10 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                           </div>
                         ) : (
                           <div className="ua-cfg-dd-row__main">
-                            {supportsIcons ? <OptionIcon icon={entry.icon} /> : null}
-                            <strong className="ua-cfg-dd-row__label">{asCopyString(entry.label)}</strong>
-                            {supportsAnswerType ? (
-                              <span className="ua-cfg-dd-row__type-badge">{answerTypeLabel(entry.answerType)}</span>
-                            ) : null}
+                            <span className={`ua-cfg-dd-row__dot${entry.on ? " is-on" : ""}`} aria-hidden="true" />
+                            <div className="ua-cfg-dd-row__copy">
+                              <strong className="ua-cfg-dd-row__label">{asCopyString(entry.label)}</strong>
+                            </div>
                           </div>
                         )}
                         <div className="ua-cfg-dd-row__actions">
@@ -695,39 +627,32 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                             </div>
                           ) : (
                             <>
-                              <div className="ua-cfg-dd-row__live">
-                                <span className={`ua-cfg-faq__shown${entry.on ? " is-on" : ""}`}>
-                                  {entry.on ? "LIVE" : "HIDDEN"}
-                                </span>
-                                <button
-                                  type="button"
-                                  className={`ua-toggle ua-toggle--sm${entry.on ? " ua-toggle--on" : ""}`}
-                                  aria-pressed={entry.on}
-                                  disabled={busy}
-                                  onClick={() => toggleOption(list, entry)}
-                                >
-                                  <span className="ua-toggle__knob" />
-                                </button>
-                              </div>
-                              <div className="ua-cfg-dd-row__btns">
-                                <button
-                                  type="button"
-                                  className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
-                                  disabled={busy}
-                                  onClick={() => startEdit(list, entry)}
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  type="button"
-                                  className="ua-cfg-icon-btn"
-                                  aria-label={`Remove ${asCopyString(entry.label)}`}
-                                  disabled={busy}
-                                  onClick={() => askRemoveOption(list, entry)}
-                                >
-                                  ×
-                                </button>
-                              </div>
+                              <button
+                                type="button"
+                                className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-dd-row__edit"
+                                disabled={busy}
+                                onClick={() => startEdit(list, entry)}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                className={`ua-toggle ua-toggle--sm${entry.on ? " ua-toggle--on" : ""}`}
+                                aria-pressed={entry.on}
+                                disabled={busy}
+                                onClick={() => toggleOption(list, entry)}
+                              >
+                                <span className="ua-toggle__knob" />
+                              </button>
+                              <button
+                                type="button"
+                                className="ua-cfg-icon-btn"
+                                aria-label={`Remove ${asCopyString(entry.label)}`}
+                                disabled={busy}
+                                onClick={() => askRemoveOption(list, entry)}
+                              >
+                                ×
+                              </button>
                             </>
                           )}
                         </div>
@@ -739,26 +664,11 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                     </p>
                   )}
                 </div>
-                <div className={`ua-cfg-dd-add${supportsIcons ? " has-icon" : ""}${supportsAnswerType ? " has-type" : ""}`}>
-                  {supportsIcons ? (
-                    <IconPicker
-                      previewUrl={asCopyString(iconPreviews[list.id])}
-                      disabled={busy}
-                      label="New health concern icon"
-                      onPick={(file) => pickAddIcon(list.id, file)}
-                      onClear={() => clearAddIcon(list.id)}
-                    />
-                  ) : null}
+                <div className="ua-cfg-dd-add">
                   <label className="ua-cfg-dd-field ua-cfg-dd-add__field">
                     <input
                       className="ua-cfg-vh-input ua-cfg-dd-add__input"
-                      placeholder={
-                        supportsIcons
-                          ? "Add a health concern…"
-                          : supportsAnswerType
-                            ? "Add a medical question…"
-                            : "Add an option…"
-                      }
+                      placeholder="Add an option…"
                       value={draftValue}
                       maxLength={labelMax}
                       disabled={busy}
@@ -770,29 +680,21 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                         if (event.key === "Enter" && canAdd) addOption(list);
                       }}
                     />
-                    <CharHint
-                      value={draftValue}
-                      max={labelMax}
-                      error={draftValue.trim() && !draftValidation.ok ? draftValidation.message : ""}
-                    />
+                    {draftValue.trim() && !draftValidation.ok ? (
+                      <CharHint
+                        value={draftValue}
+                        max={labelMax}
+                        error={draftValidation.message}
+                      />
+                    ) : null}
                   </label>
-                  {supportsAnswerType ? (
-                    <CfgSelect
-                      className="ua-cfg-dd-select"
-                      options={ANSWER_TYPE_OPTIONS}
-                      value={answerTypeDrafts[list.id] || "yes_no_text"}
-                      disabled={busy}
-                      onChange={(value) => setAnswerTypeDrafts((prev) => ({ ...prev, [list.id]: value }))}
-                      ariaLabel="Answer type"
-                    />
-                  ) : null}
                   <button
                     type="button"
-                    className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-tf-add-btn"
+                    className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-dd-add__btn"
                     disabled={busy || !canAdd}
                     onClick={() => addOption(list)}
                   >
-                    + Add
+                    Add
                   </button>
                 </div>
               </section>

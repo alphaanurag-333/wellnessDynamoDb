@@ -39,12 +39,20 @@ const PLACEHOLDER_META = {
   gut: { title: "Gut Reset", subtitle: "Gut reset program tracking." },
 };
 
-function renderSection(section, user, onToast, onNavigate, onUserUpdated) {
+function renderSection(section, user, onToast, onNavigate, onUserUpdated, sectionNav) {
   switch (section) {
     case "glance":
       return <AtAGlanceSection user={user} onToast={onToast} onNavigate={onNavigate} onUserUpdated={onUserUpdated} />;
     case "personal":
-      return <PersonalDetailsSection user={user} onToast={onToast} onUserUpdated={onUserUpdated} />;
+      return (
+        <PersonalDetailsSection
+          user={user}
+          onToast={onToast}
+          onUserUpdated={onUserUpdated}
+          showBack={sectionNav?.showBack}
+          onBack={sectionNav?.onBack}
+        />
+      );
     case "body":
       return <BodyAnalyticsSection user={user} onToast={onToast} />;
     case "internal":
@@ -231,8 +239,6 @@ export function UserDetailPage() {
       <ClientProfileTopbar
         menuHidden={menuHidden}
         onToggleMenu={() => setMenuHidden((h) => !h)}
-        showBack={showBack}
-        onBack={goBack}
         onSave={() => onToast("Profile saved")}
       />
       {loadError ? (
@@ -253,9 +259,21 @@ export function UserDetailPage() {
             {loading ? (
               <BrandLoader variant="page" label="Loading client…" />
             ) : (
-              renderSection(section, user, onToast, setSection, (updatedRow) => {
-                setUser(profileFromListUser(updatedRow, userId));
-              })
+              <>
+                {showBack && section !== "personal" ? (
+                  <button
+                    type="button"
+                    className="ua-cp-section-back"
+                    onClick={goBack}
+                    title="Back to previous screen"
+                  >
+                    ‹ Back
+                  </button>
+                ) : null}
+                {renderSection(section, user, onToast, setSection, (updatedRow) => {
+                  setUser(profileFromListUser(updatedRow, userId));
+                }, { showBack, onBack: goBack })}
+              </>
             )}
           </div>
         </div>
