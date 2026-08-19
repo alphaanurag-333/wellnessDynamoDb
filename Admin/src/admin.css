@@ -12043,24 +12043,29 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
   min-width: 0;
 }
 
 .updated-admin .ua-cp-personal__head-copy {
   min-width: 0;
-  flex: 1 1 auto;
+  flex: 1 1 12rem;
 }
 
 .updated-admin .ua-cp-personal__actions {
   display: flex;
   gap: 8px;
   align-items: center;
-  flex: 0 0 auto;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .updated-admin .ua-cp-personal__actions:has(.ua-cp-btn--green) .ua-cp-btn {
-  min-width: 9rem;
+  min-width: min(9rem, 100%);
   height: 32px;
   padding: 0 14px;
   justify-content: center;
@@ -47323,6 +47328,37 @@
   .updated-admin .ua-cp-personal .ua-cp-field__input--select {
     justify-self: start;
     max-width: 100%;
+  }
+
+  .updated-admin .ua-cp-personal__head {
+    gap: 12px;
+  }
+
+  .updated-admin .ua-cp-personal__head-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .updated-admin .ua-cp-personal__head-copy {
+    flex: 1 1 auto;
+  }
+
+  .updated-admin .ua-cp-personal__title {
+    font-size: 17px;
+  }
+
+  .updated-admin .ua-cp-personal__actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .updated-admin .ua-cp-personal__actions .ua-cp-btn,
+  .updated-admin .ua-cp-personal__actions:has(.ua-cp-btn--green) .ua-cp-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    width: auto;
+    padding: 0 10px;
   }
 
   .updated-admin .ua-cp-ba-photos {
