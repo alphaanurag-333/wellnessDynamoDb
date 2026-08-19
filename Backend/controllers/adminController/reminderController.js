@@ -48,13 +48,17 @@ exports.createCoachUserReminderController = asyncHandler(async (req, res) => {
   await assertStaffCanAccessUser(req, user);
 
   const payload = parseReminderBody(req.body);
+  const createdByRole =
+    String(req.auth?.role || "").toLowerCase() === "assistant_wellness_coach"
+      ? "assistant_wellness_coach"
+      : "wellness_coach";
 
   let reminder;
   try {
     reminder = await createReminder({
       userId,
       ...payload,
-      createdByRole: req.auth?.role || "wellness_coach",
+      createdByRole,
       createdById: actingCoachId,
     });
   } catch (err) {

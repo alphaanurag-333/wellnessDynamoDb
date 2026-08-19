@@ -4,6 +4,8 @@ import {
   fetchUserCommitmentLetter,
   reviewUserCommitmentLetter,
   reviewUserPresentablePic,
+  requestUserPresentablePic,
+  patchUserPresentablePicsSettings,
 } from "../../api/onboardingApi.js";
 import { fetchUser } from "../../api/usersApi.js";
 
@@ -224,7 +226,7 @@ function PresentablePicViewModal({ open, url, label, onClose }) {
   );
 }
 
-function RequestPhotoModal({ open, onClose, onConfirm }) {
+function RequestPhotoModal({ open, onClose, onConfirm, busy }) {
   const [selected, setSelected] = useState(PHOTO_REQUEST_TYPES[0]);
 
   useEffect(() => {
@@ -251,8 +253,10 @@ function RequestPhotoModal({ open, onClose, onConfirm }) {
           </select>
         </label>
         <div className="ua-cp-present-modal__foot">
-          <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={onClose}>Cancel</button>
-          <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm" onClick={() => onConfirm(selected)}>Send request</button>
+          <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={onClose} disabled={busy}>Cancel</button>
+          <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm" onClick={() => onConfirm(selected)} disabled={busy}>
+            {busy ? "Sending…" : "Send request"}
+          </button>
         </div>
       </div>
     </div>
@@ -343,7 +347,7 @@ function PhotoCard({ photo, onToast, onApprove, onReject, reviewBusy, onView }) 
 }
 
 export function PresentableSection({ user, onToast, onUserUpdated }) {
-  const [featureEnabled, setFeatureEnabled] = useState(true);
+  const [featureEnabled, setFeatureEnabled] = useState(() => user?.presentablePicsEnabled !== false);
   const [letter, setLetter] = useState(null);
   const [letterLoading, setLetterLoading] = useState(() => isLiveUserId(user?.id));
   const [reviewBusy, setReviewBusy] = useState(false);
@@ -353,6 +357,8 @@ export function PresentableSection({ user, onToast, onUserUpdated }) {
   const [rejectReason, setRejectReason] = useState("");
   const [confirmTarget, setConfirmTarget] = useState(null);
   const [photoReviewBusy, setPhotoReviewBusy] = useState(false);
+  const [requestBusy, setRequestBusy] = useState(false);
+  const [settingsBusy, setSettingsBusy] = useState(false);
 
   const live = isLiveUserId(user?.id);
   const clientName = user?.name?.split(" ")[0] || "Client";
@@ -414,6 +420,33 @@ export function PresentableSection({ user, onToast, onUserUpdated }) {
       cancelled = true;
     };
   }, [live, onToast, user?.id]);
+
+  useEffect(() => {
+    setFeatureEnabled(user?.presentablePicsEnabled !== false);
+  }, [user?.presentablePicsEnabled]);
+
+  async function togglePresentablePicsFeature() {
+    const next = !featureEnabled;
+    if (!live) {
+      setFeatureEnabled(next);
+      return;
+    }
+    setSettingsBusy(true);
+    try {
+      await patchUserPresentablePicsSettings(user.id, { enabled: next });
+      setFeatureEnabled(next);
+      await refreshUser();
+      onToast?.(
+        next
+          ? "Presentable pics enabled in the app"
+          : "Presentable pics hidden in the app"
+      );
+    } catch (err) {
+      onToast?.(err?.message || "Failed to update presentable pics setting");
+    } finally {
+      setSettingsBusy(false);
+    }
+  }
 
   async function refreshUser() {
     if (!live) return;
@@ -477,6 +510,24 @@ export function PresentableSection({ user, onToast, onUserUpdated }) {
     }
   }
 
+  async function sendPhotoRequest(photoType) {
+    if (!live) {
+      setRequestOpen(false);
+      onToast?.(`Photo request sent to ${clientName}: ${photoType}`);
+      return;
+    }
+    setRequestBusy(true);
+    try {
+      await requestUserPresentablePic(user.id, { photoType });
+      setRequestOpen(false);
+      onToast?.(`Photo request sent to ${clientName}: ${photoType}`);
+    } catch (err) {
+      onToast?.(err?.message || "Failed to send photo request");
+    } finally {
+      setRequestBusy(false);
+    }
+  }
+
   async function rejectPresentablePic() {
     if (!live || !user?.presentablePic) return;
     setPhotoReviewBusy(true);
@@ -510,7 +561,12 @@ export function PresentableSection({ user, onToast, onUserUpdated }) {
           <h2 className="ua-cp-present__title">Presentable pics</h2>
           <p className="ua-cp-present__sub">Approve client photos for testimonials and marketing. Rejections are final.</p>
         </div>
-        <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-present__request" onClick={() => setRequestOpen(true)}>
+        <button
+          type="button"
+          className="ua-cp-btn ua-cp-btn--primary ua-cp-present__request"
+          onClick={() => setRequestOpen(true)}
+          disabled={!featureEnabled}
+        >
           🔔 Request a photo
         </button>
       </div>
@@ -529,7 +585,8 @@ export function PresentableSection({ user, onToast, onUserUpdated }) {
             <button
               type="button"
               className={`ua-toggle${featureEnabled ? " ua-toggle--on" : ""}`}
-              onClick={() => setFeatureEnabled((enabled) => !enabled)}
+              onClick={togglePresentablePicsFeature}
+              disabled={settingsBusy}
               aria-pressed={featureEnabled}
               aria-label="Toggle presentable pics feature"
             >
@@ -699,11 +756,9 @@ export function PresentableSection({ user, onToast, onUserUpdated }) {
 
       <RequestPhotoModal
         open={requestOpen}
-        onClose={() => setRequestOpen(false)}
-        onConfirm={(type) => {
-          setRequestOpen(false);
-          onToast?.(`Photo request sent to ${clientName}: ${type}`);
-        }}
+        busy={requestBusy}
+        onClose={() => !requestBusy && setRequestOpen(false)}
+        onConfirm={sendPhotoRequest}
       />
 
       <PresentablePicViewModal

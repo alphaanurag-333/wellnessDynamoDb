@@ -149,6 +149,32 @@ export async function reviewUserCommitmentLetter(userId, letterId, { action, rej
   }
 }
 
+export async function patchUserPresentablePicsSettings(userId, { enabled } = {}) {
+  try {
+    const { data } = await api.patch(
+      `/account/heal-users/${encodeURIComponent(userId)}/presentable-pics/settings`,
+      { enabled },
+      { headers: authHeader() },
+    );
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function requestUserPresentablePic(userId, { photoType } = {}) {
+  try {
+    const { data } = await api.post(
+      `/account/heal-users/${encodeURIComponent(userId)}/presentable-pic/request`,
+      { photoType },
+      { headers: authHeader() },
+    );
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function reviewUserPresentablePic(userId, { action } = {}) {
   try {
     const { data } = await api.patch(

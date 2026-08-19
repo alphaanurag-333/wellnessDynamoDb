@@ -45,6 +45,7 @@ const KIND = new Set([
   "onboarding_meeting_confirmed",
   "program_checkout_triggered",
   "program_assigned",
+  "presentable_pic_request",
 ]);
 const BROADCAST_KINDS = new Set(["admin_broadcast", "health_tool", "recipe", "yoga"]);
 

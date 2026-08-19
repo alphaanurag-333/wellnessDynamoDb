@@ -461,6 +461,7 @@ export function mapApiUserToRow(user, index = 0) {
     presentablePicStatus: String(user?.presentablePicStatus || "").toLowerCase(),
     presentablePicUploadedAt: user?.presentablePicUploadedAt || "",
     presentablePicHistory: Array.isArray(user?.presentablePicHistory) ? user.presentablePicHistory : [],
+    presentablePicsEnabled: user?.presentablePicsEnabled !== false,
     referralCode: String(user?.referralCode || "").trim(),
     userTier: String(user?.userTier || "").toLowerCase(),
     parentCoachId: user?.parentCoachId || user?.parentCoach?.id || "",
@@ -685,6 +686,67 @@ export async function reassignUserCoach(id, payload) {
       { headers: authHeader() },
     );
     return mapApiUserToRow(data.user);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function fetchUserCoachInsight(id) {
+  try {
+    const { data } = await api.get(
+      `/account/heal-users/${encodeURIComponent(id)}/coach-insight`,
+      { headers: authHeader() },
+    );
+    return data.coachInsight || null;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function fetchUserReminders(id) {
+  try {
+    const { data } = await api.get(
+      `/account/heal-users/${encodeURIComponent(id)}/reminders`,
+      { headers: authHeader() },
+    );
+    return Array.isArray(data.reminders) ? data.reminders : [];
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function createUserReminder(id, payload) {
+  try {
+    const { data } = await api.post(
+      `/account/heal-users/${encodeURIComponent(id)}/reminders`,
+      payload,
+      { headers: authHeader() },
+    );
+    return data.reminder || null;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function deleteUserReminder(id, reminderId) {
+  try {
+    await api.delete(
+      `/account/heal-users/${encodeURIComponent(id)}/reminders/${encodeURIComponent(reminderId)}`,
+      { headers: authHeader() },
+    );
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function saveUserCoachInsight(id, message) {
+  try {
+    const { data } = await api.put(
+      `/account/heal-users/${encodeURIComponent(id)}/coach-insight`,
+      { message: String(message ?? "") },
+      { headers: authHeader() },
+    );
+    return data.coachInsight || null;
   } catch (error) {
     normalizeApiError(error);
   }

@@ -114,7 +114,11 @@ const {
   getCoachUserCommitmentLetterController,
   reviewCoachCommitmentLetterController,
 } = require("../../controllers/adminController/commitmentLetterController");
-const { reviewPresentablePicController } = require("../../controllers/adminController/userController");
+const {
+  reviewPresentablePicController,
+  requestPresentablePicController,
+  patchPresentablePicsSettingsController,
+} = require("../../controllers/adminController/userController");
 const {
   getCoachUserCoachInsightController,
   upsertCoachUserCoachInsightController,
@@ -314,6 +318,8 @@ router.get("/:userId/commitment-letter", commitmentLetter, getCoachUserCommitmen
 router.patch("/:userId/commitment-letter/:letterId/review", commitmentLetterWrite, reviewCoachCommitmentLetterController);
 
 const presentablePicReview = staff("console.cl.edit", { admin: "users.edit", coach: "clientTab.overview" });
+router.patch("/:userId/presentable-pics/settings", presentablePicReview, patchPresentablePicsSettingsController);
+router.post("/:userId/presentable-pic/request", presentablePicReview, requestPresentablePicController);
 router.patch("/:userId/presentable-pic/review", presentablePicReview, reviewPresentablePicController);
 
 const insight = staff("console.diet.view", { admin: "users.clientHub.care.coach-message", coach: "clientTab.care.coach-message" });

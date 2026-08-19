@@ -1,12 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   buildOnboardingRemindMessage,
-  DEFAULT_REMINDERS,
   ONBOARDING_INITIAL_DONE,
   ONBOARDING_STEP_NOTES,
   ONBOARDING_STEPS,
 } from "../../data/userDetailData.js";
-import { fetchUserAtAGlance, getNextOnboardingStepLabel } from "../../api/usersApi.js";
+import {
+  createUserReminder,
+  deleteUserReminder,
+  fetchUserAtAGlance,
+  fetchUserCoachInsight,
+  fetchUserReminders,
+  getNextOnboardingStepLabel,
+  saveUserCoachInsight,
+} from "../../api/usersApi.js";
 import {
   acceptOnboardingMeetingRequest,
   createOnboardingMeetingSlots,
@@ -333,34 +340,251 @@ function SupplementsBlock({ supplements, onNavigate }) {
   );
 }
 
+const COACH_MESSAGE_MAX = 500;
+const REMINDER_NAME_MAX = 120;
+const ALL_WEEKDAYS = [0, 1, 2, 3, 4, 5, 6];
+const WEEKDAY_CHIPS = [
+  { i: 0, label: "S" },
+  { i: 1, label: "M" },
+  { i: 2, label: "T" },
+  { i: 3, label: "W" },
+  { i: 4, label: "T" },
+  { i: 5, label: "F" },
+  { i: 6, label: "S" },
+];
+const WEEKDAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function sameDaySet(a, b) {
+  const left = [...(a || [])].sort((x, y) => x - y).join(",");
+  const right = [...(b || [])].sort((x, y) => x - y).join(",");
+  return left === right;
+}
+
+function formatReminderDays(days) {
+  const list = Array.isArray(days) ? days.map(Number).filter((d) => d >= 0 && d <= 6) : [];
+  if (!list.length) return "No days";
+  if (sameDaySet(list, ALL_WEEKDAYS)) return "Daily";
+  if (sameDaySet(list, [1, 2, 3, 4, 5])) return "Weekdays";
+  if (sameDaySet(list, [0, 6])) return "Weekends";
+  return list.sort((a, b) => a - b).map((d) => WEEKDAY_NAMES[d]).join(", ");
+}
+
+function formatReminderTime(time) {
+  const raw = String(time || "").trim();
+  const match = raw.match(/^([01]\d|2[0-3]):([0-5]\d)$/);
+  if (!match) return raw || "—";
+  const hour = Number(match[1]);
+  const minute = match[2];
+  const meridiem = hour >= 12 ? "PM" : "AM";
+  const hour12 = hour % 12 || 12;
+  return `${hour12}:${minute} ${meridiem}`;
+}
+
+function formatCoachInsightTime(iso) {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
 function CommsBlock({ user, onToast, reminders, setReminders, onOpenList }) {
+  const userId = String(user?.id || "").trim();
+  const isMock = isMockNumericId(userId);
   const [message, setMessage] = useState("");
+  const [liveInsight, setLiveInsight] = useState(null);
+  const [sending, setSending] = useState(false);
   const [reminder, setReminder] = useState("");
   const [reminderTime, setReminderTime] = useState("07:00");
-  const [reminderFreq, setReminderFreq] = useState("Daily");
+  const [reminderDays, setReminderDays] = useState(ALL_WEEKDAYS);
+  const [savingReminder, setSavingReminder] = useState(false);
+
+  useEffect(() => {
+    if (!userId || isMock) {
+      setMessage("");
+      setLiveInsight(null);
+      return undefined;
+    }
+
+    let cancelled = false;
+    fetchUserCoachInsight(userId)
+      .then((insight) => {
+        if (cancelled) return;
+        setLiveInsight(insight || null);
+        setMessage(insight?.message || "");
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isMock, userId]);
+
+  const sendCoachMessage = async () => {
+    const trimmed = message.trim();
+    if (!trimmed) {
+      onToast("Write a message first");
+      return;
+    }
+    if (trimmed.length > COACH_MESSAGE_MAX) {
+      onToast(`Message must be at most ${COACH_MESSAGE_MAX} characters`);
+      return;
+    }
+    if (isMock) {
+      onToast("Message sent");
+      return;
+    }
+
+    setSending(true);
+    try {
+      const insight = await saveUserCoachInsight(userId, trimmed);
+      setLiveInsight(insight);
+      setMessage(insight?.message || trimmed);
+      onToast("Message sent — it will show on their Heal page");
+    } catch (err) {
+      onToast(err?.message || "Failed to send message");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const setCoachReminder = async () => {
+    const name = reminder.trim();
+    if (!name) {
+      onToast("Write a reminder first");
+      return;
+    }
+    const time = String(reminderTime || "").slice(0, 5);
+    if (!/^\d{2}:\d{2}$/.test(time)) {
+      onToast("Choose a reminder time");
+      return;
+    }
+    if (!reminderDays.length) {
+      onToast("Select at least one day");
+      return;
+    }
+    if (isMock) {
+      setReminders((list) => [
+        ...list,
+        {
+          id: `mock-${Date.now()}`,
+          name,
+          time,
+          days: reminderDays,
+          isCoachAssigned: true,
+          isActive: true,
+        },
+      ]);
+      setReminder("");
+      onToast("Reminder set");
+      return;
+    }
+
+    setSavingReminder(true);
+    try {
+      const created = await createUserReminder(userId, {
+        name,
+        time,
+        days: reminderDays,
+        isActive: true,
+      });
+      if (created) setReminders((list) => [created, ...list]);
+      setReminder("");
+      onToast("Reminder set — it will show in their app");
+    } catch (err) {
+      onToast(err?.message || "Failed to set reminder");
+    } finally {
+      setSavingReminder(false);
+    }
+  };
 
   return (
     <div className="ua-cp-comms-stack">
       <div className="ua-cp-comms__bar ua-cp-comms__bar--message">
         <span className="ua-cp-comms__label">💬 Message {user.name}</span>
-        <input className="ua-cp-comms__input" placeholder="Write a message… pops up in their app" value={message} onChange={(e) => setMessage(e.target.value)} />
-        <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-comms__action" onClick={() => { onToast("Message sent"); setMessage(""); }}>Send</button>
+        <input
+          className="ua-cp-comms__input"
+          placeholder="Write a message… pops up in their app"
+          maxLength={COACH_MESSAGE_MAX}
+          value={message}
+          disabled={sending}
+          onChange={(e) => setMessage(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              sendCoachMessage();
+            }
+          }}
+        />
+        <button
+          type="button"
+          className="ua-cp-btn ua-cp-btn--primary ua-cp-comms__action"
+          disabled={sending}
+          onClick={sendCoachMessage}
+        >
+          {sending ? "Sending…" : "Send"}
+        </button>
       </div>
+      {liveInsight?.message ? (
+        <p className="ua-cp-comms__live">
+          Live on Heal page
+          {liveInsight.updatedAt ? ` · ${formatCoachInsightTime(liveInsight.updatedAt)}` : ""}
+        </p>
+      ) : null}
       <div className="ua-cp-comms__bar ua-cp-comms__bar--reminders">
         <span className="ua-cp-comms__label">⏰ Reminders</span>
-        <input className="ua-cp-comms__input ua-cp-comms__input--reminder" placeholder="Reminder (e.g. Take supplements)" value={reminder} onChange={(e) => setReminder(e.target.value)} />
-        <input type="time" className="ua-cp-reminder-time" value={reminderTime} onChange={(e) => setReminderTime(e.target.value)} />
-        <select className="ua-cp-reminder-freq" value={reminderFreq} onChange={(e) => setReminderFreq(e.target.value)}>
-          <option>Daily</option><option>Weekly</option><option>After lunch</option>
-        </select>
-        <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-comms__action" onClick={() => {
-          if (reminder.trim()) {
-            setReminders((r) => [...r, { id: Date.now(), text: reminder, freq: reminderFreq, time: reminderTime }]);
-            setReminder("");
-            onToast("Reminder set");
-          }
-        }}>Set</button>
-        <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-comms__action" onClick={onOpenList}>List ({reminders.length})</button>
+        <input
+          className="ua-cp-comms__input ua-cp-comms__input--reminder"
+          placeholder="Reminder (e.g. Take supplements)"
+          maxLength={REMINDER_NAME_MAX}
+          value={reminder}
+          disabled={savingReminder}
+          onChange={(e) => setReminder(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              setCoachReminder();
+            }
+          }}
+        />
+        <input
+          type="time"
+          className="ua-cp-reminder-time"
+          value={reminderTime}
+          disabled={savingReminder}
+          onChange={(e) => setReminderTime(e.target.value)}
+        />
+        <div className="ua-cp-reminder-days" role="group" aria-label="Repeat on">
+          {WEEKDAY_CHIPS.map((day) => {
+            const on = reminderDays.includes(day.i);
+            return (
+              <button
+                key={day.i}
+                type="button"
+                className={`ua-cp-reminder-day${on ? " ua-cp-reminder-day--on" : ""}`}
+                aria-pressed={on}
+                disabled={savingReminder}
+                onClick={() => setReminderDays((current) => (
+                  current.includes(day.i)
+                    ? current.filter((d) => d !== day.i)
+                    : [...current, day.i].sort((a, b) => a - b)
+                ))}
+              >
+                {day.label}
+              </button>
+            );
+          })}
+        </div>
+        <button
+          type="button"
+          className="ua-cp-btn ua-cp-btn--primary ua-cp-comms__action"
+          disabled={savingReminder}
+          onClick={setCoachReminder}
+        >
+          {savingReminder ? "Saving…" : "Set"}
+        </button>
+        <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-comms__action" onClick={onOpenList}>
+          List ({reminders.length})
+        </button>
       </div>
     </div>
   );
@@ -917,7 +1141,7 @@ function OnboardingStatusCard({ user, onToast, onNavigate, onProgressChange, onU
   );
 }
 
-function RemindersModal({ user, reminders, onClose, onDelete }) {
+function RemindersModal({ user, reminders, deletingId, onClose, onDelete }) {
   return (
     <div className="ua-cp-modal-backdrop" onClick={onClose} role="presentation">
       <div className="ua-cp-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="reminders-title">
@@ -929,17 +1153,31 @@ function RemindersModal({ user, reminders, onClose, onDelete }) {
           <button type="button" className="ua-cp-modal__close" onClick={onClose} aria-label="Close">×</button>
         </div>
         <div className="ua-cp-modal__body">
-          {reminders.map((r) => (
-            <div key={r.id} className="ua-cp-reminder-item">
+          {reminders.length ? reminders.map((r) => (
+            <div key={r.id} className={`ua-cp-reminder-item${r.isActive === false ? " ua-cp-reminder-item--off" : ""}`}>
               <span className="ua-cp-reminder-item__icon">⏰</span>
               <div className="ua-cp-reminder-item__text">
-                <div className="ua-cp-reminder-item__title">{r.text}</div>
-                <div className="ua-cp-reminder-item__freq">{r.freq}</div>
+                <div className="ua-cp-reminder-item__title">{r.name || r.text}</div>
+                <div className="ua-cp-reminder-item__freq">
+                  {formatReminderDays(r.days)}
+                  {r.isCoachAssigned ? " · Coach assigned" : ""}
+                  {r.isActive === false ? " · Off" : ""}
+                </div>
               </div>
-              <span className="ua-cp-reminder-item__time">{r.time}</span>
-              <button type="button" className="ua-cp-reminder-item__del" onClick={() => onDelete(r.id)} aria-label="Delete">×</button>
+              <span className="ua-cp-reminder-item__time">{formatReminderTime(r.time)}</span>
+              <button
+                type="button"
+                className="ua-cp-reminder-item__del"
+                disabled={deletingId === r.id}
+                onClick={() => onDelete(r.id)}
+                aria-label="Delete"
+              >
+                ×
+              </button>
             </div>
-          ))}
+          )) : (
+            <p className="ua-cp-reminder-empty">No reminders yet. Set one above and it will appear in their app.</p>
+          )}
         </div>
         <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-modal__cancel" onClick={onClose}>Cancel</button>
       </div>
@@ -955,8 +1193,9 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
   useEffect(() => {
     setViewMode(inProgress ? "onboarding" : "onboarded");
   }, [inProgress, user?.id]);
-  const [reminders, setReminders] = useState(DEFAULT_REMINDERS);
+  const [reminders, setReminders] = useState([]);
   const [remindersOpen, setRemindersOpen] = useState(false);
+  const [deletingReminderId, setDeletingReminderId] = useState(null);
   const [rainActive, setRainActive] = useState(false);
   const [rainTip, setRainTip] = useState("");
   const [celebrateOpen, setCelebrateOpen] = useState(false);
@@ -967,6 +1206,27 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
 
   useEffect(() => {
     setOnboardingProgress(null);
+  }, [user?.id]);
+
+  useEffect(() => {
+    const userId = user?.id;
+    if (!userId || isMockNumericId(userId)) {
+      setReminders([]);
+      return undefined;
+    }
+
+    let cancelled = false;
+    fetchUserReminders(userId)
+      .then((rows) => {
+        if (!cancelled) setReminders(rows || []);
+      })
+      .catch(() => {
+        if (!cancelled) setReminders([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [user?.id]);
 
   useEffect(() => {
@@ -1063,8 +1323,24 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
         <RemindersModal
           user={user}
           reminders={reminders}
+          deletingId={deletingReminderId}
           onClose={() => setRemindersOpen(false)}
-          onDelete={(id) => setReminders((list) => list.filter((x) => x.id !== id))}
+          onDelete={async (id) => {
+            if (isMockNumericId(user?.id)) {
+              setReminders((list) => list.filter((x) => x.id !== id));
+              return;
+            }
+            setDeletingReminderId(id);
+            try {
+              await deleteUserReminder(user.id, id);
+              setReminders((list) => list.filter((x) => x.id !== id));
+              onToast("Reminder deleted");
+            } catch (err) {
+              onToast(err?.message || "Failed to delete reminder");
+            } finally {
+              setDeletingReminderId(null);
+            }
+          }}
         />
       ) : null}
     </div>
