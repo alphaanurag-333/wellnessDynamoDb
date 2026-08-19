@@ -207,3 +207,16 @@ export async function deleteUserDietPlanAssignment(userId, assignmentId) {
     normalizeApiError(error);
   }
 }
+
+export async function updateUserDietPlanEnabled(userId, enabled) {
+  try {
+    const { data } = await api.patch(
+      `/account/heal-users/${encodeURIComponent(userId)}/diet-plan-enabled`,
+      { enabled: Boolean(enabled) },
+      { headers: authHeader(tokenOrStored()) },
+    );
+    return data.dietPlanEnabled !== false;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}

@@ -15,6 +15,7 @@ const { computeDailyReflectionScore } = require("../../services/dailyReflectionS
 const {
   buildScorePresentation,
   buildDailyReflectionAnalytics,
+  buildCurrentMonthlyScore,
   isValidAnalyticsRange,
 } = require("../../services/dailyReflectionScorePresentation");
 
@@ -167,7 +168,12 @@ exports.getMyDailyReflectionScoreController = asyncHandler(async (req, res) => {
   if (!userId) throw new AppError("Unauthorized", 401);
 
   const today = todayDateOnly();
-  const todayLog = await getDayLog(userId, today);
+  const month = today.slice(0, 7);
+  const [todayLog, monthlyScore] = await Promise.all([
+    getDayLog(userId, today),
+    buildCurrentMonthlyScore(userId, month),
+  ]);
+
   if (todayLog?.submittedAt) {
     return res.status(200).json({
       status: true,
@@ -177,6 +183,7 @@ exports.getMyDailyReflectionScoreController = asyncHandler(async (req, res) => {
         isToday: true,
         submittedToday: true,
       }),
+      monthlyScore,
     });
   }
 
@@ -197,6 +204,7 @@ exports.getMyDailyReflectionScoreController = asyncHandler(async (req, res) => {
           submittedToday: false,
         })
       : null,
+    monthlyScore,
   });
 });
 

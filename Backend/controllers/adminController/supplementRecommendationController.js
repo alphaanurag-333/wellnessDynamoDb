@@ -61,7 +61,7 @@ exports.createCoachUserSupplementRecommendationController = asyncHandler(async (
   try {
     recommendation = await createCoachRecommendedSupplement({
       userId,
-      coachId: resolveCoachIdForUser(user),
+      coachId: resolveCoachIdForUser(user, actingCoachId),
       items,
       deliveryOption,
       createdByRole: req.auth?.role || "wellness_coach",

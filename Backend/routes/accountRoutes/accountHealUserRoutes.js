@@ -39,6 +39,7 @@ const {
   listCoachUserDietPlanAssignmentsController,
   createCoachUserDietPlanAssignmentController,
   deleteCoachUserDietPlanAssignmentController,
+  updateCoachUserDietPlanEnabledController,
 } = require("../../controllers/adminController/dietPlanCatalogAssignmentController");
 const {
   listCoachUserPhysicalExercisesController,
@@ -140,6 +141,9 @@ const { getStaffHealUserStepsTrackingController } = require("../../controllers/s
 const { getStaffHealUserSleepTrackingController } = require("../../controllers/sleepTrackingHistoryController");
 const { getStaffHealUserHeartRateTrackingController } = require("../../controllers/heartRateTrackingHistoryController");
 const {
+  updateCoachUserBmsTrackingController,
+} = require("../../controllers/adminController/bmsTrackingController");
+const {
   patchUserOnboardingStepController,
   pushUserOnboardingReminderController,
 } = require("../../controllers/adminController/onboardingStepController");
@@ -179,8 +183,13 @@ router.post(
 
 router.get("/:id/water-tracking", staff("console.body.view", { admin: "users.view", coach: "clientTab.tracking.water" }), getStaffHealUserWaterTrackingController);
 router.get("/:id/steps-tracking", staff("console.body.view", { admin: "users.view", coach: "clientTab.tracking.steps" }), getStaffHealUserStepsTrackingController);
-router.get("/:id/sleep-tracking", staff("console.body.view", { admin: "users.clientHub.tracking.health-progress", coach: "clientTab.tracking" }), getStaffHealUserSleepTrackingController);
-router.get("/:id/heart-rate-tracking", staff("console.body.view", { admin: "users.clientHub.tracking.health-progress", coach: "clientTab.tracking" }), getStaffHealUserHeartRateTrackingController);
+router.get("/:id/sleep-tracking", staff("console.body.view", { admin: "users.view", coach: "clientTab.tracking" }), getStaffHealUserSleepTrackingController);
+router.get("/:id/heart-rate-tracking", staff("console.body.view", { admin: "users.view", coach: "clientTab.tracking" }), getStaffHealUserHeartRateTrackingController);
+router.patch(
+  "/:userId/bms-tracking",
+  staff("console.body.edit", { admin: "users.edit", coach: "clientTab.tracking" }),
+  updateCoachUserBmsTrackingController
+);
 
 const careReminders = staff("console.diet.view", { admin: "users.clientHub.care.reminders", coach: "clientTab.care.reminders" });
 const careRemindersWrite = staff("console.diet.edit", { admin: "users.clientHub.care.reminders", coach: "clientTab.care.reminders" });
@@ -212,6 +221,7 @@ const diet = staff("console.diet.view", { admin: "users.clientHub.care.diet-plan
 const dietWrite = staff("console.diet.create", { admin: "users.clientHub.care.diet-plan", coach: "clientTab.care.diet-plan" });
 router.get("/:userId/diet-plan-assignments", diet, listCoachUserDietPlanAssignmentsController);
 router.post("/:userId/diet-plan-assignments", dietWrite, createCoachUserDietPlanAssignmentController);
+router.patch("/:userId/diet-plan-enabled", dietWrite, updateCoachUserDietPlanEnabledController);
 router.delete("/:userId/diet-plan-assignments/:assignmentId", staff("console.diet.delete", { admin: "users.clientHub.care.diet-plan", coach: "clientTab.care.diet-plan" }), deleteCoachUserDietPlanAssignmentController);
 
 const pe = staff("console.diet.view", { admin: "users.clientHub.wellness.physical-exercises", coach: "clientTab.wellness.physical-exercises" });

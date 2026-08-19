@@ -2,6 +2,7 @@ const AppError = require("../utils/AppError");
 const { asyncHandler } = require("../utils/asyncHandler");
 const { getUserById } = require("../models/userModel");
 const { getUserSleepSummary } = require("../models/sleepTrackingModel");
+const { historyRangeFromQuery } = require("../utils/dateOnly");
 const { enrichUser } = require("./userController/userProfileHelpers");
 const { normalizeUserTier } = require("../models/userAssignmentLogic");
 const { assertStaffCanAccessUser } = require("./staffAccess");
@@ -17,9 +18,7 @@ function toHistoryUser(user) {
 }
 
 async function fetchSleepHistory(userId, query) {
-  const days = Math.min(Math.max(Number(query.days) || 7, 1), 90);
-  const date = query.date ? String(query.date).trim() : undefined;
-
+  const { date, days } = historyRangeFromQuery(query, { defaultDays: 14, maxDays: 366 });
   return getUserSleepSummary(userId, { date, days });
 }
 

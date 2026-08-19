@@ -265,6 +265,7 @@ async function createMealLog({
   }
 
   const now = new Date().toISOString();
+  const trimmedCoachId = String(coachId || "").trim();
   const item = {
     id: uuidv4(),
     userId: uid,
@@ -281,7 +282,6 @@ async function createMealLog({
     caloriesKcal: normalizeMacro(caloriesKcal, "caloriesKcal"),
     loggedByRole: role,
     loggedById: String(loggedById || "").trim() || null,
-    coachId: coachId ? String(coachId).trim() : null,
     status: resolvedStatus,
     assignedCoachId: assignedCoachId ? String(assignedCoachId).trim() : null,
     assignedCoachType: assignedCoachType
@@ -294,6 +294,10 @@ async function createMealLog({
     createdAt: now,
     updatedAt: now,
   };
+  // CoachCreatedAtIndex is sparse: DynamoDB rejects NULL partition keys.
+  if (trimmedCoachId) {
+    item.coachId = trimmedCoachId;
+  }
 
   await docClient.send(
     new PutCommand({

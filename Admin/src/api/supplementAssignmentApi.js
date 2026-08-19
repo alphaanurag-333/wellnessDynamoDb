@@ -68,7 +68,7 @@ export function mapRecommendation(row) {
   };
 }
 
-export function mapDosagePeriod(row) {
+export function mapDosagePeriod(row, todayCompletion = {}) {
   if (!row) return null;
   const period = String(row.period || "").toLowerCase();
   if (!["morning", "afternoon", "evening"].includes(period)) return null;
@@ -76,7 +76,7 @@ export function mapDosagePeriod(row) {
     period,
     quantity: Math.max(1, Math.floor(Number(row.quantity) || 1)),
     mealRelation: String(row.mealRelation || "after").toLowerCase() === "before" ? "before" : "after",
-    completed: Boolean(row.completed),
+    completed: Boolean(row.completed) || todayCompletion[period] === true,
   };
 }
 
@@ -84,6 +84,9 @@ export function mapDosage(row) {
   if (!row) return null;
   const id = row.id || row._id;
   if (!id) return null;
+  const todayCompletion = row.todayCompletion && typeof row.todayCompletion === "object"
+    ? row.todayCompletion
+    : {};
   return {
     id: String(id),
     userId: String(row.userId || ""),
@@ -91,13 +94,14 @@ export function mapDosage(row) {
     name: String(row.name || "").trim(),
     unit: String(row.unit || "").trim(),
     packSize: Number(row.packSize) || 0,
-    periods: (Array.isArray(row.periods) ? row.periods : []).map(mapDosagePeriod).filter(Boolean),
+    periods: (Array.isArray(row.periods) ? row.periods : []).map((period) => mapDosagePeriod(period, todayCompletion)).filter(Boolean),
     totalPerDay: Number(row.totalPerDay) || 0,
     durationDays: Number(row.durationDays) || 0,
     startDate: String(row.startDate || "").trim(),
     endDate: String(row.endDate || "").trim(),
     status: String(row.status || "active").toLowerCase() === "stopped" ? "stopped" : "active",
     progressPercent: Math.max(0, Math.min(100, Math.round(Number(row.progressPercent) || 0))),
+    todayCompletion,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
