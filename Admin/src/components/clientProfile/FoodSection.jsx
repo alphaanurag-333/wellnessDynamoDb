@@ -263,10 +263,17 @@ function WaterChartCard({ chart, goal, todayDay }) {
     <div className="ua-cp-food-water-card">
       <div className="ua-cp-food-water-card__head">
         <div className="ua-cp-food-water-card__title-wrap">
-          <span className="ua-cp-food-water-card__icon" aria-hidden="true">📅</span>
+          <span className="ua-cp-food-water-card__icon" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="5" width="18" height="16" rx="2" />
+              <path d="M3 10h18" />
+              <path d="M8 3v4" />
+              <path d="M16 3v4" />
+            </svg>
+          </span>
           <div>
             <strong>Water intake</strong>
-            <span>{chart.rangeLabel}</span>
+            <span className="ua-cp-food-water-card__range">{chart.rangeLabel}</span>
           </div>
         </div>
         <div className="ua-cp-food-water-card__stats">
