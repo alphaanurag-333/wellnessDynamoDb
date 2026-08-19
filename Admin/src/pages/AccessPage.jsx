@@ -1394,7 +1394,7 @@ function MembersTab({ onToast }) {
                       <div className="ua-user-cell__sub ua-user-cell__email">{m.email}</div>
                     </div>
                   </div>
-                  <div>
+                  <div data-label="Assigned role">
                     {m.isSuperAdmin ? (
                       <span
                         className="ua-role-chip"
@@ -1419,7 +1419,7 @@ function MembersTab({ onToast }) {
                       />
                     )}
                   </div>
-                  <div>
+                  <div data-label="Effective permissions">
                     <div className="ua-ac-eff">
                       <div className="ua-ac-eff__count">
                         {granted}/{total}
@@ -1433,12 +1433,12 @@ function MembersTab({ onToast }) {
                       <div className="ua-ac-eff__sub">{effectivePermSubtext(m)}</div>
                     </div>
                   </div>
-                  <div>
+                  <div data-label="Overrides">
                     <span className={`ua-ac-override${m.hasOverrides ? " ua-ac-override--custom" : ""}`}>
                       {m.hasOverrides ? "Personal" : "Role default"}
                     </span>
                   </div>
-                  <div className="ua-ac-members-actions">
+                  <div className="ua-ac-members-actions" data-label="Fine-tune">
                     <button
                       type="button"
                       className="ua-ac-fine-tune"
@@ -1520,7 +1520,7 @@ function ApprovalsTab({ onToast, onCountChange }) {
       {requests.map((a) => (
         <div key={a.id} className="ua-approval-card">
           <span className="ua-approval-card__kind">{a.kind}</span>
-          <div>
+          <div className="ua-approval-card__copy">
             <div className="ua-approval-card__title">{a.title}</div>
             <div className="ua-approval-card__meta">{a.meta}</div>
           </div>
@@ -1689,21 +1689,21 @@ function AuditLogTab() {
             ) : null}
             {entries.map((entry) => (
               <div key={entry.id} className="ua-table ua-table--audit ua-table__row">
-                <div>
+                <div data-label="Type">
                   <span className={`ua-log-kind ua-log-kind--${(entry.kindKey || entry.kind || "activity").toLowerCase()}`}>
                     {entry.kind}
                   </span>
                 </div>
-                <div>
+                <div data-label="Event">
                   <div className="ua-log-text">{entry.text}</div>
                   {entry.detail ? <div className="ua-log-detail">{entry.detail}</div> : null}
                 </div>
-                <div>
+                <div data-label="Subject">
                   <div className="ua-log-subject">{entry.subject || "—"}</div>
                   {entry.subjectMeta ? <div className="ua-log-detail">{entry.subjectMeta}</div> : null}
                 </div>
-                <div className="ua-log-actor">{entry.actor || "—"}</div>
-                <div className="ua-log-when">{formatAuditWhen(entry.createdAt)}</div>
+                <div className="ua-log-actor" data-label="Actor">{entry.actor || "—"}</div>
+                <div className="ua-log-when" data-label="When">{formatAuditWhen(entry.createdAt)}</div>
               </div>
             ))}
           </div>
