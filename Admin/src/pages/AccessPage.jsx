@@ -830,15 +830,15 @@ function RolesPermissionsTab({ onToast }) {
     <>
       <div className="ua-ac-roles-bar">
         <div className="ua-ac-roles-bar__head">
-            <div className="ua-ac-roles-bar__label">Roles</div>
+          <div className="ua-ac-roles-bar__label">Roles</div>
           <div className="ua-ac-roles-bar__actions">
             <p className="ua-ac-roles-bar__hint">
               Edits apply at once to every member holding the role, unless they carry a personal override.
               {dirty ? " Saving…" : ""}
             </p>
-          <button type="button" className="ua-ac-btn-outline ua-ac-btn-outline--new" onClick={() => setCreateOpen(true)}>
-            + New role
-          </button>
+            <button type="button" className="ua-ac-btn-outline ua-ac-btn-outline--new" onClick={() => setCreateOpen(true)}>
+              + New role
+            </button>
           </div>
         </div>
 
@@ -886,8 +886,8 @@ function RolesPermissionsTab({ onToast }) {
             <span className="ua-ac-role-chip" style={{ background: role.bg, color: role.color, borderColor: role.bd }}>
               {role.name}
             </span>
-            {role.system ? <span className="ua-ac-tag">System role</span> : null}
-            {role.locked ? <span className="ua-ac-tag ua-ac-tag--lock">Locked</span> : null}
+            {role.system ? <span className="ua-ac-tag">System role · {role.locked ? <span className="">Locked</span> : null}</span> : null}
+            
             <p className="ua-ac-role-detail__desc">{role.desc}</p>
           </div>
           <div className="ua-ac-role-detail__controls">
