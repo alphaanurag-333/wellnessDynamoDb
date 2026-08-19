@@ -58,7 +58,7 @@ function extractOpenAiText(payload) {
 }
 
 async function callGemini({ buffer, mimeType, prompt }) {
-  const model = encodeURIComponent(config.geminiModel || "gemini-2.0-flash");
+  const model = encodeURIComponent(config.geminiModel || "gemini-3.6-flash");
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(config.geminiApiKey)}`;
   const response = await fetch(url, {
     method: "POST",

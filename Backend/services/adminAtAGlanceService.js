@@ -186,7 +186,7 @@ function buildMetabolicSnapshot({ user, bodyMeasurement, dashboard, metabolicLog
 
 function buildLifestyleScore(launchAssessments) {
   if (!Array.isArray(launchAssessments) || launchAssessments.length === 0) {
-    return { lifestyleScore: null, lifestylePoints: null, lifestyleMax: 750 };
+    return { lifestyleScore: null, lifestylePoints: null, lifestyleMax: 100 };
   }
   const sorted = [...launchAssessments].sort((a, b) =>
     String(b.assessmentDate || "").localeCompare(String(a.assessmentDate || ""))
@@ -194,15 +194,21 @@ function buildLifestyleScore(launchAssessments) {
   const latest = sorted[0];
   const points = Number(latest?.totalScore);
   if (!Number.isFinite(points)) {
-    return { lifestyleScore: null, lifestylePoints: null, lifestyleMax: 750 };
+    return { lifestyleScore: null, lifestylePoints: null, lifestyleMax: 100 };
   }
-  // UI shows /10; stored launch score is 0–750.
-  const scoreOutOf10 = Math.min(10, Math.max(0, Number((points / 75).toFixed(1))));
-  return {
-    lifestyleScore: scoreOutOf10,
-    lifestylePoints: points,
-    lifestyleMax: 750,
-  };
+  // UI shows Lifestyle as `/10`.
+  //
+  // In the current LAUNCH implementation, `totalScore` is stored as `0–100`
+  // (frontend `computeLaunchAssessment()` returns `maxOverall: 100` and saves
+  // `totalScore: Math.round(totals.overall)`).
+  //
+  // Some legacy data may store `totalScore` as `0–750`. To avoid mismatches,
+  // we infer the scale and convert accordingly.
+  const usesLegacyScale = points > 100;
+  const lifestyleMax = usesLegacyScale ? 750 : 100;
+  const outOf10 = usesLegacyScale ? points / 75 : points / 10;
+  const scoreOutOf10 = Math.min(10, Math.max(0, Number(outOf10.toFixed(1))));
+  return { lifestyleScore: scoreOutOf10, lifestylePoints: points, lifestyleMax };
 }
 
 function buildDailyReflectionScores(logs, today) {
