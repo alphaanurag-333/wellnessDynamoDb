@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { asCopyString } from "../data/bannerConfigData.js";
-import { validateRecipeImage } from "../data/recipesConfigData.js";
+import { formatRecipeDate, validateRecipeImage } from "../data/recipesConfigData.js";
 import {
   adminCreateBlogMedia,
   adminCreateBlogPost,
@@ -92,6 +92,63 @@ function CoverPick({ previewUrl, disabled, compact, onPick }) {
   );
 }
 
+function BlogViewModal({ entry, onClose, onEdit }) {
+  if (!entry) return null;
+  return (
+    <div className="ua-cp-modal-backdrop" onClick={onClose} role="presentation">
+      <div
+        className="ua-cfg-rc-view ua-cfg-rc-view--sheet ua-cfg-bl-view"
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-labelledby="bl-view-title"
+      >
+        <div className="ua-cfg-rc-view__head">
+          <div className="ua-cfg-bl-view__intro">
+            <p className="ua-cfg-rc-view__tag">Blog post</p>
+            <h3 id="bl-view-title">{asCopyString(entry.title) || "Untitled post"}</h3>
+            <p className="ua-cfg-bl-view__meta">
+              <span>{formatRecipeDate(entry.updatedAt || entry.createdAt)}</span>
+              <span className={`ua-cfg-tf-view__status${entry.live ? " is-live" : ""}`}>
+                {entry.live ? "Live" : "Hidden"}
+              </span>
+            </p>
+          </div>
+          <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={onClose}>×</button>
+        </div>
+        <div className="ua-cfg-bl-view__body">
+          {entry.coverImage ? (
+            <div className="ua-cfg-rc-view__media ua-cfg-rc-view__media--photo">
+              <img src={entry.coverImage} alt="" />
+            </div>
+          ) : (
+            <div className="ua-cfg-rc-view__media">
+              <div className="ua-cfg-rc-view__media-empty">No cover image</div>
+            </div>
+          )}
+          {asCopyString(entry.description) ? (
+            <p className="ua-cfg-rc-view__copy">{asCopyString(entry.description)}</p>
+          ) : (
+            <p className="ua-cfg-rc-view__copy ua-cfg-bl-view__empty">No description yet.</p>
+          )}
+        </div>
+        <div className="ua-cfg-rc-view__foot">
+          <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose}>Close</button>
+          <button
+            type="button"
+            className="ua-cfg-btn ua-cfg-btn--primary"
+            onClick={() => {
+              onEdit(entry.id);
+              onClose();
+            }}
+          >
+            Edit post
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SurfaceToggles({ editor, busy, onPatch }) {
   const appOn = editor?.appOn !== false;
   const webOn = editor?.webOn !== false;
@@ -131,6 +188,7 @@ export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, galler
   const [busy, setBusy] = useState(false);
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [viewingId, setViewingId] = useState(null);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ page: 1, limit: POSTS_PAGE_SIZE, total: 0, pages: 1 });
   const [draft, setDraft] = useState({ title: "", description: "", coverFile: null, coverPreview: "", position: "last" });
@@ -147,6 +205,7 @@ export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, galler
       total: Number(result?.pagination?.total) || 0,
       pages: Number(result?.pagination?.pages) || 1,
     });
+    setViewingId((current) => ((result?.items || []).some((row) => row.id === current) ? current : null));
   }, [page, setPosts]);
 
   const loadAll = useCallback(async () => {
@@ -368,6 +427,7 @@ export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, galler
 
   const liveCount = posts.filter((entry) => entry.live).length;
   const totalCount = pagination.total || posts.length;
+  const viewing = posts.find((entry) => entry.id === viewingId) || null;
 
   return (
     <div className="ua-cfg-bl">
@@ -394,6 +454,7 @@ export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, galler
             onClick={() => {
               setCreating(true);
               setEditingId(null);
+              setViewingId(null);
             }}
           >
             + Add post
@@ -504,6 +565,14 @@ export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, galler
                           </button>
                         </div>
                         <div className="ua-cfg-bl-item__btns">
+                          <button
+                            type="button"
+                            className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                            disabled={busy}
+                            onClick={() => setViewingId(entry.id)}
+                          >
+                            View
+                          </button>
                           {editing ? (
                             <>
                               <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={busy} onClick={() => saveEditedPost(entry)}>Save</button>
@@ -516,6 +585,7 @@ export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, galler
                               disabled={busy}
                               onClick={() => {
                                 setCreating(false);
+                                setViewingId(null);
                                 setEditingId(entry.id);
                               }}
                             >
@@ -545,6 +615,15 @@ export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, galler
           label="Blog posts pagination"
         />
       </Panel>
+
+      <BlogViewModal
+        entry={viewing}
+        onClose={() => setViewingId(null)}
+        onEdit={(id) => {
+          setCreating(false);
+          setEditingId(id);
+        }}
+      />
 
       <ImageCropModal
         open={Boolean(cropPending)}
