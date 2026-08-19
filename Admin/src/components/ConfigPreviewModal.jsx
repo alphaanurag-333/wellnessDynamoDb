@@ -340,6 +340,67 @@ function GstPreview({ gstOn, gstPercent, surface, item }) {
   );
 }
 
+function ConsultancyPreview({ settings, surface, item }) {
+  const base = Number.parseFloat(settings?.consultancyAmount) || 0;
+  const pct = Number.parseFloat(settings?.taxValue) || 0;
+  const taxType = String(settings?.taxType || "inclusive").toLowerCase();
+  const discount = Number.parseFloat(settings?.referralDiscount) || 0;
+  const discounted = Math.max(0, Math.round((base - discount) * 100) / 100);
+  const taxAmount =
+    taxType === "inclusive"
+      ? pct > 0
+        ? Math.round((discounted - discounted / (1 + pct / 100)) * 100) / 100
+        : 0
+      : Math.round(discounted * (pct / 100) * 100) / 100;
+  const total = taxType === "inclusive" ? discounted : Math.round((discounted + taxAmount) * 100) / 100;
+
+  const body = (
+    <div className="ua-cfg-preview-phone">
+      <div className="ua-cfg-preview-phone__shell">
+        <div className="ua-cfg-preview-phone__status" aria-hidden="true" />
+        <div className="ua-cfg-preview-gst ua-cfg-preview-gst--app">
+          <div className="ua-cfg-preview-gst__head">
+            <span className="ua-cfg-preview-gst__back" aria-hidden="true">‹</span>
+            <strong>Consultancy</strong>
+          </div>
+          <div className="ua-cfg-preview-gst__card">
+            <div className="ua-cfg-preview-gst__program">
+              <span>PWC consult</span>
+              <strong>{formatRupee(base)}</strong>
+            </div>
+            {discount > 0 ? (
+              <div className="ua-cfg-preview-gst__line">
+                <span>Referral discount</span>
+                <span>-{formatRupee(discount)}</span>
+              </div>
+            ) : null}
+            <div className="ua-cfg-preview-gst__line ua-cfg-preview-gst__line--gst">
+              <span>
+                Tax ({pct}%) · {taxType === "inclusive" ? "inclusive" : "exclusive"}
+              </span>
+              <span>{formatRupee(taxAmount)}</span>
+            </div>
+            <div className="ua-cfg-preview-gst__total">
+              <span>Total payable</span>
+              <strong>{formatRupee(total)}</strong>
+            </div>
+          </div>
+          <div className="ua-cfg-preview-gst__pay">Pay now</div>
+          <p className="ua-cfg-preview-gst__mode">
+            Checkout preview uses App Config. Referral discount applies when a valid code is used.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <PreviewStage surface={surface} item={item}>
+      {body}
+    </PreviewStage>
+  );
+}
+
 function PaymentGatewayPreview({ activeGateway, surface, item }) {
   const amount = 22499;
   const methods = activeGateway ? paymentMethodsForGateway(activeGateway.id) : [];
@@ -1695,6 +1756,14 @@ function renderPreviewBody(item, surface, previewState) {
           item={item}
         />
       );
+    case "app-consultancy-amount":
+      return (
+        <ConsultancyPreview
+          settings={previewState.consultancySettings ?? {}}
+          surface={surface}
+          item={item}
+        />
+      );
     case "app-payment-gateway":
       return (
         <PaymentGatewayPreview
@@ -2199,6 +2268,9 @@ export function previewHintForItem(item) {
   }
   if (item.id === "app-gst") {
     return "Set GST percentage and collection, then open Preview";
+  }
+  if (item.id === "app-consultancy-amount") {
+    return "Set consultancy fee and tax, then open Preview";
   }
   if (item.id === "app-payment-gateway") {
     return "Pick a gateway, then open Preview";

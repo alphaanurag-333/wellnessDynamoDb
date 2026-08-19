@@ -64,6 +64,18 @@ export const CONFIG_GROUPS = {
           tags: ["Amount", "Discount"],
           toggleable: false,
         },
+        {
+          id: "app-consultancy-amount",
+          name: "Consultancy amount",
+          note: "PWC fee, tax type, tax value and referral discount",
+          owner: "Admin",
+          app: true,
+          web: false,
+          live: true,
+          on: true,
+          tags: ["Amount"],
+          toggleable: false,
+        },
       ],
     },
     {
@@ -844,6 +856,43 @@ export function findConfigItem(configId) {
     }
   }
   return null;
+}
+
+/** Access Control feature id used to gate a config screen. */
+export function configPermissionPrefix(configId) {
+  if (configId === "common-banner") return "bn";
+  if (
+    configId === "web-program-testimonials" ||
+    configId === "common-champion" ||
+    configId === "common-birthday" ||
+    configId === "common-transformation" ||
+    configId === "common-client-review" ||
+    configId === "common-real-people" ||
+    configId === "common-voice" ||
+    configId === "common-cofounder" ||
+    configId === "common-leadership" ||
+    configId === "common-wellness-team" ||
+    configId === "common-about" ||
+    configId === "common-google-review" ||
+    configId === "common-recipes" ||
+    configId === "common-yoga" ||
+    configId === "common-blogs"
+  ) {
+    return "ct";
+  }
+  return "cf";
+}
+
+export function listConfigItems() {
+  const items = [];
+  for (const [tab, groups] of Object.entries(CONFIG_GROUPS)) {
+    for (const group of groups) {
+      for (const item of group.items) {
+        items.push({ item, groupName: group.name, tab });
+      }
+    }
+  }
+  return items;
 }
 
 export function getConfigStateLabel(item, on) {

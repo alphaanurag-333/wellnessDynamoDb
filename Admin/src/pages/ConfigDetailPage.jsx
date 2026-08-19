@@ -26,6 +26,7 @@ import { AiEnableSection } from "../components/AiEnableSection.jsx";
 import { PaymentGatewaySection } from "../components/PaymentGatewaySection.jsx";
 import { LanguageDisableSection } from "../components/LanguageDisableSection.jsx";
 import { GstSection } from "../components/GstSection.jsx";
+import { ConsultancyAmountSection } from "../components/ConsultancyAmountSection.jsx";
 import { DpaSection } from "../components/DpaSection.jsx";
 import { AppTosSection } from "../components/AppTosSection.jsx";
 import { PrivacyPolicySection } from "../components/PrivacyPolicySection.jsx";
@@ -105,7 +106,7 @@ import {
   APP_TOS_BLOCKS,
   APP_DPA_BLOCKS,
 } from "../data/configDetailData.js";
-import { findConfigItem, getConfigStateLabel } from "../data/configsData.js";
+import { configPermissionPrefix, findConfigItem, getConfigStateLabel } from "../data/configsData.js";
 import { formatRupee } from "../data/exchangeData.js";
 import {
   getCoachCheckoutOptions,
@@ -1116,6 +1117,7 @@ const PREVIEW_CONFIGS = new Set([
   "app-faq",
   "app-program",
   "app-subscriptions",
+  "app-consultancy-amount",
   "app-gst",
   "app-payment-gateway",
   "app-tos",
@@ -1179,30 +1181,6 @@ function PreviewActions({ item, onOpen, onPublish, canPublish }) {
   );
 }
 
-function configPermissionPrefix(configId) {
-  if (configId === "common-banner") return "bn";
-  if (
-    configId === "web-program-testimonials" ||
-    configId === "common-champion" ||
-    configId === "common-birthday" ||
-    configId === "common-transformation" ||
-    configId === "common-client-review" ||
-    configId === "common-real-people" ||
-    configId === "common-voice" ||
-    configId === "common-cofounder" ||
-    configId === "common-leadership" ||
-    configId === "common-wellness-team" ||
-    configId === "common-about" ||
-    configId === "common-google-review" ||
-    configId === "common-recipes" ||
-    configId === "common-yoga" ||
-    configId === "common-blogs"
-  ) {
-    return "ct";
-  }
-  return "cf";
-}
-
 export function ConfigDetailPage() {
   const { configId } = useParams();
   const { showToast: onToast } = useOutletContext();
@@ -1223,6 +1201,12 @@ export function ConfigDetailPage() {
   const [coachesCanAddAppHeal, setCoachesCanAddAppHeal] = useState(true);
   const [gstOn, setGstOn] = useState(false);
   const [gstPercent, setGstPercent] = useState("18");
+  const [consultancySettings, setConsultancySettings] = useState({
+    consultancyAmount: "",
+    taxType: "inclusive",
+    taxValue: "",
+    referralDiscount: "",
+  });
   const [gateways, setGateways] = useState(createDefaultGateways);
   const [appTosBlocks, setAppTosBlocks] = useState(APP_TOS_BLOCKS);
   const [dpaBlocks, setDpaBlocks] = useState(APP_DPA_BLOCKS);
@@ -1430,6 +1414,8 @@ export function ConfigDetailPage() {
       ? hindiOn
       : item.id === "app-gst"
         ? gstOn
+        : item.id === "app-consultancy-amount"
+          ? Boolean(String(consultancySettings.consultancyAmount || "").trim())
         : item.id === "app-payment-gateway"
           ? activeGateway?.name ?? false
           : item.id === "app-tos"
@@ -1653,6 +1639,14 @@ export function ConfigDetailPage() {
               onToast={onToast}
             />
           </>
+        );
+      case "app-consultancy-amount":
+        return (
+          <ConsultancyAmountSection
+            settings={consultancySettings}
+            setSettings={setConsultancySettings}
+            onToast={onToast}
+          />
         );
       case "app-gst":
         return (
@@ -2123,6 +2117,7 @@ export function ConfigDetailPage() {
           subscriptionRows: subRows,
           gstOn,
           gstPercent,
+          consultancySettings,
           gateways,
           activeGateway,
           appTosBlocks,
