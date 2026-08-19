@@ -11,6 +11,7 @@ export function ClientRemindModal({
   nextStepLabel,
   defaultMessage,
   whatsapp,
+  busy = false,
   onClose,
   onPush,
   onWhatsApp,
@@ -79,10 +80,20 @@ export function ClientRemindModal({
         </div>
 
         <div className="ua-team-remind__actions">
-          <button type="button" className="ua-team-remind__push" onClick={() => onPush?.(message)}>
-            <span aria-hidden="true">📱</span> Push to app
+          <button
+            type="button"
+            className="ua-team-remind__push"
+            disabled={busy || !message.trim()}
+            onClick={() => onPush?.(message)}
+          >
+            <span aria-hidden="true">📱</span> {busy ? "Sending…" : "Push to app"}
           </button>
-          <button type="button" className="ua-team-remind__whatsapp" onClick={() => onWhatsApp?.(message)}>
+          <button
+            type="button"
+            className="ua-team-remind__whatsapp"
+            disabled={busy}
+            onClick={() => onWhatsApp?.(message)}
+          >
             <span aria-hidden="true">💬</span> Send on WhatsApp
           </button>
         </div>

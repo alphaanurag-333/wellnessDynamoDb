@@ -7,17 +7,17 @@ const SETTINGS_KEY = "settings";
 const DAY_KEY_PREFIX = "day#";
 
 const ACTIVITY_CATALOG = [
-  { key: "yogaNamaskar", unit: "cycles" },
-  { key: "suryaNamaskar", unit: "cycles" },
-  { key: "bhramari", unit: "times" },
-  { key: "meditation", unit: "times" },
-  { key: "nadiSuddhi", unit: "times" },
-  { key: "lnb", unit: "times" },
-  { key: "pranayam", unit: "times" },
-  { key: "blessingsFromSun", unit: "mins" },
-  { key: "physicalExercise", unit: "mins" },
-  { key: "grounding", unit: "mins" },
-  { key: "gratitudeJournal", unit: "boolean" },
+  { key: "yogaNamaskar", unit: "cycles", name: "Yoga Namaskar", section: "Physical Activities", defaultGoal: 21 },
+  { key: "suryaNamaskar", unit: "cycles", name: "Surya Namaskar", section: "Physical Activities", defaultGoal: 12 },
+  { key: "physicalExercise", unit: "mins", name: "Physical Exercise", section: "Physical Activities", defaultGoal: 10 },
+  { key: "grounding", unit: "mins", name: "Grounding", section: "Physical Activities", defaultGoal: 10 },
+  { key: "blessingsFromSun", unit: "mins", name: "Blessings from Sun", section: "Physical Activities", defaultGoal: 10 },
+  { key: "bhramari", unit: "times", name: "Bhramari", section: "Mindfulness & Breath", defaultGoal: 21 },
+  { key: "meditation", unit: "times", name: "Meditation", section: "Mindfulness & Breath", defaultGoal: 21 },
+  { key: "nadiSuddhi", unit: "times", name: "Nadi Suddhi", section: "Mindfulness & Breath", defaultGoal: 21 },
+  { key: "lnb", unit: "times", name: "LNB", section: "Mindfulness & Breath", defaultGoal: 21 },
+  { key: "pranayam", unit: "times", name: "Pranayam", section: "Mindfulness & Breath", defaultGoal: 21 },
+  { key: "gratitudeJournal", unit: "boolean", name: "Gratitude Journal", section: "Mindfulness & Breath", defaultGoal: 1 },
 ];
 
 const ACTIVITY_KEYS = new Set(ACTIVITY_CATALOG.map((item) => item.key));
@@ -137,24 +137,28 @@ function getCatalogItem(key) {
   return ACTIVITY_CATALOG.find((item) => item.key === key) || null;
 }
 
+function serializeCatalogActivity(item, settingsRow = {}) {
+  return {
+    key: item.key,
+    name: item.name,
+    section: item.section,
+    unit: item.unit,
+    defaultGoal: Number(item.defaultGoal || 0),
+    enabled: Boolean(settingsRow.enabled),
+    goal: Number(settingsRow.goal ?? 0),
+  };
+}
+
 function listEnabledActivities(settings) {
   const activities = settings?.activities || defaultActivitySettings();
-  return ACTIVITY_CATALOG.filter((item) => Boolean(activities[item.key]?.enabled)).map((item) => ({
-    key: item.key,
-    unit: item.unit,
-    enabled: true,
-    goal: Number(activities[item.key]?.goal ?? 0),
-  }));
+  return ACTIVITY_CATALOG.filter((item) => Boolean(activities[item.key]?.enabled)).map((item) =>
+    serializeCatalogActivity(item, activities[item.key])
+  );
 }
 
 function listCatalogWithSettings(settings) {
   const activities = settings?.activities || defaultActivitySettings();
-  return ACTIVITY_CATALOG.map((item) => ({
-    key: item.key,
-    unit: item.unit,
-    enabled: Boolean(activities[item.key]?.enabled),
-    goal: Number(activities[item.key]?.goal ?? 0),
-  }));
+  return ACTIVITY_CATALOG.map((item) => serializeCatalogActivity(item, activities[item.key]));
 }
 
 async function getSettings(userId) {
@@ -333,6 +337,7 @@ module.exports = {
   defaultActivitySettings,
   normalizeActivitySettings,
   getCatalogItem,
+  serializeCatalogActivity,
   listEnabledActivities,
   listCatalogWithSettings,
   getSettings,

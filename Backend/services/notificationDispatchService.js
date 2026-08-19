@@ -28,6 +28,7 @@ const FCM_TYPE_BY_KIND = {
   internal_parameters_upload: "internal_parameters_upload_notification",
   diet_plan_assignment: "diet_plan_assignment_notification",
   coach_reminder: "reminder_notification",
+  daily_reflection_reminder: "reminder_notification",
   physical_exercise_assigned: "physical_exercise_notification",
   mental_wellbeing_assigned: "mental_wellbeing_notification",
   yoga_assigned: "yoga_assigned_notification",
@@ -41,6 +42,7 @@ const FCM_TYPE_BY_KIND = {
   monthly_champion_comment: "monthly_champion_comment_notification",
   wellness_prescription_assignment: "wellness_prescription_assignment_notification",
   onboarding_slots_offered: "onboarding_slots_offered_notification",
+  onboarding_reminder: "onboarding_reminder_notification",
   onboarding_meeting_confirmed: "onboarding_meeting_confirmed_notification",
   program_checkout_triggered: "program_checkout_triggered_notification",
   program_assigned: "program_assigned_notification",
@@ -275,6 +277,39 @@ async function dispatchWellnessPrescriptionAssignedNotification({
     referenceId: assignmentId,
     referenceType: "coach_assigned_wellness_prescription",
     title: "New wellness prescriptions",
+  });
+
+  runPushSafely(deliverTargetedPush(userId, notification));
+  return notification;
+}
+
+function formatBedtimeLabel(value) {
+  const raw = String(value || "22:30");
+  const [h, m] = raw.split(":");
+  const hour = Number(h);
+  if (!Number.isFinite(hour)) return raw;
+  const suffix = hour >= 12 ? "PM" : "AM";
+  const display = hour % 12 || 12;
+  return `${display}:${m || "00"} ${suffix}`;
+}
+
+async function dispatchDailyReflectionBedtimeNotification({
+  userId,
+  bedtime,
+  coachName,
+  actorUserId = null,
+}) {
+  const name = String(coachName || "Your coach").trim() || "Your coach";
+  const timeLabel = formatBedtimeLabel(bedtime);
+  const message = `${name} sent a bedtime reminder. Your daily reflection form is ready — log tonight’s check-in around ${timeLabel}.`;
+
+  const notification = await createTargetedNotification({
+    userId,
+    kind: "daily_reflection_reminder",
+    message,
+    referenceType: "daily_reflection_bedtime",
+    actorUserId,
+    title: "Bedtime reminder",
   });
 
   runPushSafely(deliverTargetedPush(userId, notification));
@@ -595,6 +630,29 @@ const ONBOARDING_MEETING_TITLES = {
   programInitiation: "Program Initiation",
 };
 
+async function dispatchOnboardingReminderNotification({
+  userId,
+  message,
+  stepLabel = "",
+  actorUserId = null,
+}) {
+  const body = String(message || "").trim();
+  const label = String(stepLabel || "").trim();
+  const title = label ? `Reminder: ${label}` : "Onboarding reminder";
+
+  const notification = await createTargetedNotification({
+    userId,
+    kind: "onboarding_reminder",
+    message: body,
+    referenceType: "onboarding_step",
+    actorUserId,
+    title,
+  });
+
+  const push = await deliverTargetedPush(userId, notification);
+  return { notification, push };
+}
+
 async function dispatchOnboardingSlotsOfferedNotification({ userId, stepKey, meetingId }) {
   const label = ONBOARDING_MEETING_TITLES[stepKey] || "onboarding";
   const notification = await createTargetedNotification({
@@ -731,6 +789,7 @@ module.exports = {
   dispatchDietPlanAssignmentNotification,
   dispatchWellnessPrescriptionAssignedNotification,
   dispatchCoachReminderNotification,
+  dispatchDailyReflectionBedtimeNotification,
   dispatchPhysicalExerciseAssignedNotification,
   dispatchMentalWellbeingAssignedNotification,
   dispatchWellnessYogaAssignedNotification,
@@ -745,6 +804,7 @@ module.exports = {
   dispatchMealLoggedCoachNotification,
   dispatchMealLoggedCoachNotificationAsync,
   dispatchMealLogReviewedNotification,
+  dispatchOnboardingReminderNotification,
   dispatchOnboardingSlotsOfferedNotification,
   dispatchOnboardingSlotsOfferedNotificationAsync,
   dispatchProgramCheckoutTriggeredNotification,

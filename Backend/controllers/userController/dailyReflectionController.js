@@ -63,6 +63,7 @@ exports.getMyDailyReflectionController = asyncHandler(async (req, res) => {
     status: true,
     message: "Daily reflection fetched",
     date,
+    bedtime: snapshot.settings?.bedtime || "22:30",
     activities: snapshot.enabledActivities,
     tracking: snapshot.tracking,
     todayLog,

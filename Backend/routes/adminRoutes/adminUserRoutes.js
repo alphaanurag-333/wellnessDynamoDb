@@ -31,6 +31,7 @@ const {
 } = require("../../controllers/adminController/atAGlanceController");
 const {
   patchUserOnboardingStepController,
+  pushUserOnboardingReminderController,
 } = require("../../controllers/adminController/onboardingStepController");
 const {
   listStaffOnboardingMeetingsController,
@@ -93,6 +94,12 @@ router.patch(
   protectAccount,
   authorizeStaff("console.cl.edit", { admin: "users.edit" }),
   patchUserOnboardingStepController
+);
+router.post(
+  "/:id/onboarding-reminder",
+  protectAccount,
+  authorizeStaff("console.cl.edit", { admin: "users.edit" }),
+  pushUserOnboardingReminderController
 );
 router.get(
   "/:id/onboarding-meetings",

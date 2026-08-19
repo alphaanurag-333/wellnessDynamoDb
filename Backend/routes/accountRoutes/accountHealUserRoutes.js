@@ -109,6 +109,8 @@ const {
   getCoachUserDailyReflectionSettingsController,
   updateCoachUserDailyReflectionSettingsController,
   getCoachUserDailyReflectionHistoryController,
+  submitCoachUserDailyReflectionController,
+  pushCoachUserDailyReflectionBedtimeController,
 } = require("../../controllers/adminController/dailyReflectionController");
 const {
   getCoachUserCommitmentLetterController,
@@ -139,6 +141,7 @@ const { getStaffHealUserSleepTrackingController } = require("../../controllers/s
 const { getStaffHealUserHeartRateTrackingController } = require("../../controllers/heartRateTrackingHistoryController");
 const {
   patchUserOnboardingStepController,
+  pushUserOnboardingReminderController,
 } = require("../../controllers/adminController/onboardingStepController");
 const {
   listStaffUserRcaController,
@@ -291,12 +294,19 @@ const reflection = staff("console.diet.view", { admin: "users.clientHub.wellness
 const reflectionWrite = staff("console.diet.edit", { admin: "users.clientHub.wellness.daily-reflection", coach: "clientTab.wellness.daily-reflection" });
 router.get("/:userId/daily-reflection-settings", reflection, getCoachUserDailyReflectionSettingsController);
 router.patch("/:userId/daily-reflection-settings", reflectionWrite, updateCoachUserDailyReflectionSettingsController);
+router.post("/:userId/daily-reflection", reflectionWrite, submitCoachUserDailyReflectionController);
+router.post("/:userId/daily-reflection/bedtime-push", reflectionWrite, pushCoachUserDailyReflectionBedtimeController);
 router.get("/:userId/daily-reflection/history", reflection, getCoachUserDailyReflectionHistoryController);
 
 router.patch(
   "/:userId/onboarding-steps/:stepKey",
   staff("console.cl.edit", { admin: "users.edit", coach: "clientTab.overview" }),
   patchUserOnboardingStepController
+);
+router.post(
+  "/:userId/onboarding-reminder",
+  staff("console.cl.edit", { admin: "users.edit", coach: "clientTab.overview" }),
+  pushUserOnboardingReminderController
 );
 
 const onboardMeet = staff("console.cal.view", { admin: "users.clientHub.care.consultancy", coach: "clientTab.care.consultancy" });

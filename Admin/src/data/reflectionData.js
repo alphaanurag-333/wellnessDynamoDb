@@ -1,5 +1,45 @@
 export const DEFAULT_BEDTIME = "22:30";
 
+export const TRACKING_ROWS = [
+  { key: "steps", name: "Steps", unit: "steps" },
+  { key: "water", name: "Water", unit: "glasses" },
+  { key: "nutrition", name: "Nutritions", unit: "doses" },
+  { key: "meal", name: "Meal tracking", unit: "meals" },
+];
+
+export function unitLabel(unit) {
+  if (unit === "cycles") return "cycles";
+  if (unit === "times") return "times";
+  if (unit === "mins") return "mins";
+  if (unit === "boolean") return "yes / no";
+  return unit || "";
+}
+
+export function groupActivities(activities = []) {
+  const groups = [];
+  const index = new Map();
+  for (const activity of activities) {
+    const name = activity.section || "Activities";
+    if (!index.has(name)) {
+      index.set(name, groups.length);
+      groups.push({ id: name, name, activities: [] });
+    }
+    groups[index.get(name)].activities.push(activity);
+  }
+  return groups;
+}
+
+export function activitiesPayload(activities = []) {
+  const payload = {};
+  for (const activity of activities) {
+    payload[activity.key] = {
+      enabled: Boolean(activity.enabled),
+      goal: Number(activity.goal) || 0,
+    };
+  }
+  return payload;
+}
+
 export function selectedQuestionCount(sections = []) {
   return sections.reduce(
     (sum, section) => sum + (section.questions || []).filter((question) => question.selected).length,
