@@ -514,12 +514,13 @@ export async function fetchUsers({
 }
 
 /** Role-scoped clients for WC/AWC/trainee console sessions. */
-export async function fetchScopedUsers({ page = 1, limit = 20, search, scope = "all" } = {}) {
+export async function fetchScopedUsers({ page = 1, limit = 20, search, scope = "all", userTier } = {}) {
   const q = new URLSearchParams();
   q.set("page", String(page));
   q.set("limit", String(limit));
   if (search && String(search).trim()) q.set("search", String(search).trim());
   if (scope) q.set("scope", String(scope));
+  if (userTier) q.set("userTier", userTier);
 
   try {
     const { data } = await api.get(`/account/heal-users?${q}`, {

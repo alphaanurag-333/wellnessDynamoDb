@@ -29,6 +29,7 @@ import {
   EXP_CARDS,
   EXP_NOTE,
   EXP_TOTAL,
+  SUBSCRIBED_NOTE,
   FAT_METRICS,
   GRADIENT_GREEN,
   LEADERBOARD,
@@ -384,7 +385,8 @@ export function AdminDashboard({
         : item
   ));
   const fallbackExpTotal = viewAs === "wc" ? WC_EXP_TOTAL : viewAs === "awc" ? AWC_EXP_TOTAL : EXP_TOTAL;
-  const expTotal = statisticsForView ? null : fallbackExpTotal;
+  const subscribedCount = asNumber(tierRows?.find((row) => row.key === "heal")?.value);
+  const expTotal = statisticsForView ? subscribedCount : fallbackExpTotal;
   const everydayWellnessConcern = healthConcerns?.find(
     (option) => String(option.label || "").trim().toLowerCase() === "everyday wellness",
   );
@@ -881,9 +883,9 @@ export function AdminDashboard({
 
             <div className="expiry-card">
               <div className="expiry-card__head">
-                <span className="expiry-card__title">Expiring in 15 days</span>
+                <span className="expiry-card__title">{statisticsForView ? "Subscribed users" : "Expiring in 15 days"}</span>
                 <span className="expiry-card__total">
-                  {expTotal == null ? "Not available" : `${expTotal} total`}
+                  {`${expTotal} total`}
                 </span>
               </div>
               <div className="expiry-card__cells">
@@ -892,22 +894,22 @@ export function AdminDashboard({
                     key={e.label}
                     type="button"
                     className="expiry-cell cdact"
-                    onClick={() => goUsers()}
+                    onClick={() => goUsers({ tier: e.tierFilter || "Seek to Heal" })}
                   >
                     <span className="expiry-cell__label">
                       <span className="expiry-cell__dot expiry-cell__dot--pulse" style={{ background: e.color }} />
                       {e.label}
                     </span>
                     <span className="expiry-cell__value">
-                      <span style={{ color: e.color }}>{expTotal == null ? "—" : isStaffDash ? expTotal : e.value}</span>
+                      <span style={{ color: e.color }}>{statisticsForView || isStaffDash ? expTotal : e.value}</span>
                       <span className="expiry-cell__sub">
-                        {expTotal == null ? "No renewal date source configured" : e.sub}
+                        {statisticsForView ? "Active Heal subscriptions" : e.sub}
                       </span>
                     </span>
                   </button>
                 ))}
               </div>
-              <p className="expiry-card__note">{EXP_NOTE}</p>
+              <p className="expiry-card__note">{statisticsForView ? SUBSCRIBED_NOTE : EXP_NOTE}</p>
             </div>
           </div>
         </section>

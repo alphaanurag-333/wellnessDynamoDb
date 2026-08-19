@@ -228,6 +228,7 @@ export function UsersPage() {
               page: params.page,
               limit: params.limit,
               search: params.search,
+              userTier: params.userTier,
             })
           : await fetchUsers(params);
         if (cancelled) return;

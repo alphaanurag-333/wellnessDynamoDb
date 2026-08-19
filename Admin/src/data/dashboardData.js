@@ -380,11 +380,12 @@ export const APP_CLIENT_STATS = [
 ];
 
 export const EXP_CARDS = [
-  { label: "Subscription", value: 4, sub: "soonest in 4 days", color: "#c0392b" },
+  { label: "Subscription", value: 4, sub: "soonest in 4 days", color: "#c0392b", tierFilter: "Seek to Heal" },
 ];
 
 export const EXP_TOTAL = 4;
 export const EXP_NOTE = "Subscription renewals due within the next 15 days. Click to see who.";
+export const SUBSCRIBED_NOTE = "Clients with an active Heal subscription. Click to see who.";
 
 export const COMM_ONB_COUNT = 6;
 
