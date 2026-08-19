@@ -14,6 +14,19 @@ import { createTeamMember, fetchTeamMembers, listTeamParentOptions } from "../ap
 import { fetchAccessRoles } from "../api/accessApi.js";
 import { UI_TO_ROLE_KEY } from "../api/accountApi.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
+import {
+  EMAIL_MAX_LEN,
+  PERSON_NAME_MAX_LEN,
+  PHONE_NATIONAL_LEN,
+  blockIndianMobileFirstDigitKeyDown,
+  blockPersonNameDigitKeyDown,
+  sanitizeEmailInput,
+  sanitizePersonName,
+  sanitizePhoneDigits,
+  validateEmail,
+  validatePersonName,
+  validatePhoneDigits,
+} from "../utils/personFieldValidation.js";
 
 const SYSTEM_TEAM_ROLE_KEYS = new Set(["wc", "awc", "trainee", "support"]);
 const PAGE_SIZE = 20;
@@ -64,13 +77,24 @@ function CreateMemberModal({ open, roles, parentOptions, onClose, onCreated, onT
   const [email, setEmail] = useState("");
   const [consoleRoleId, setConsoleRoleId] = useState("");
   const [parentAccountId, setParentAccountId] = useState("");
+  const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);
+
+  function clearError(key) {
+    setErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }
 
   useEffect(() => {
     if (!open) return;
     setName("");
     setPhone("");
     setEmail("");
+    setErrors({});
     const defaultRole = creatableRoles.find((r) => r.roleKey === "wc") || creatableRoles[0];
     setConsoleRoleId(defaultRole?.id || "");
     setParentAccountId("");
@@ -100,26 +124,32 @@ function CreateMemberModal({ open, roles, parentOptions, onClose, onCreated, onT
 
   if (!open) return null;
 
+  function validate() {
+    const next = {};
+    const nameErr = validatePersonName(name);
+    if (nameErr) next.name = nameErr;
+    const phoneErr = validatePhoneDigits(phone);
+    if (phoneErr) next.phone = phoneErr;
+    const emailErr = validateEmail(email);
+    if (emailErr) next.email = emailErr;
+    if (!consoleRoleId) next.role = "Pick a role.";
+    if (needsParent && !parentAccountId) {
+      next.parent = `Pick a ${baseUiKey === "trainee" ? "Assistant WC" : "Wellness Coach"} this person reports to.`;
+    }
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!name.trim() || !email.trim()) {
-      onToast("Name and email are required");
-      return;
-    }
-    if (!consoleRoleId) {
-      onToast("Pick a role from Access Control");
-      return;
-    }
-    if (needsParent && !parentAccountId) {
-      onToast("Pick a Wellness Coach for this role");
-      return;
-    }
+    if (!validate()) return;
     setBusy(true);
     try {
       const result = await createTeamMember({
         name: name.trim(),
         email: email.trim(),
-        phone: phone.trim() || undefined,
+        phone: phone.trim(),
+        phoneCountryCode: "+91",
         consoleRoleId,
         roleKey: selectedRole?.roleKey || baseUiKey || undefined,
         parentAccountId: needsParent ? parentAccountId : undefined,
@@ -167,65 +197,110 @@ function CreateMemberModal({ open, roles, parentOptions, onClose, onCreated, onT
             ×
           </button>
         </div>
-        <form className="ua-teams-create__form" onSubmit={handleSubmit}>
+        <form className="ua-teams-create__form" onSubmit={handleSubmit} noValidate>
           <div className="ua-teams-create__body">
             <label className="ua-teams-create__field">
+              <span className="ua-teams-create__label">
+                Full name <span aria-hidden="true">*</span>
+              </span>
               <input
-                className="ua-teams-create__input"
-                placeholder="Full name"
+                className={`ua-teams-create__input${errors.name ? " is-invalid" : ""}`}
+                placeholder="e.g. Anita Rao"
                 value={name}
-                onChange={(event) => setName(event.target.value)}
-                required
+                maxLength={PERSON_NAME_MAX_LEN}
+                autoComplete="name"
+                onKeyDown={blockPersonNameDigitKeyDown}
+                onChange={(event) => {
+                  setName(sanitizePersonName(event.target.value));
+                  clearError("name");
+                }}
                 autoFocus
               />
+              {errors.name ? <span className="ua-teams-create__error">{errors.name}</span> : (
+                <span className="ua-teams-create__hint">Letters only · max {PERSON_NAME_MAX_LEN} characters</span>
+              )}
             </label>
             <label className="ua-teams-create__field">
+              <span className="ua-teams-create__label">
+                Mobile number <span aria-hidden="true">*</span>
+              </span>
               <input
-                className="ua-teams-create__input"
-                placeholder="Mobile number"
+                className={`ua-teams-create__input${errors.phone ? " is-invalid" : ""}`}
+                placeholder="10-digit mobile"
+                inputMode="numeric"
+                autoComplete="tel"
                 value={phone}
-                onChange={(event) => setPhone(event.target.value)}
+                maxLength={PHONE_NATIONAL_LEN}
+                onKeyDown={blockIndianMobileFirstDigitKeyDown}
+                onChange={(event) => {
+                  setPhone(sanitizePhoneDigits(event.target.value));
+                  clearError("phone");
+                }}
               />
+              {errors.phone ? <span className="ua-teams-create__error">{errors.phone}</span> : (
+                <span className="ua-teams-create__hint">Exactly {PHONE_NATIONAL_LEN} digits, starting with 6–9</span>
+              )}
             </label>
             <label className="ua-teams-create__field">
+              <span className="ua-teams-create__label">
+                Email address <span aria-hidden="true">*</span>
+              </span>
               <input
-                className="ua-teams-create__input"
-                placeholder="Email address"
+                className={`ua-teams-create__input${errors.email ? " is-invalid" : ""}`}
+                placeholder="name@company.com"
                 type="email"
+                autoComplete="email"
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                required
+                maxLength={EMAIL_MAX_LEN}
+                onChange={(event) => {
+                  setEmail(sanitizeEmailInput(event.target.value));
+                  clearError("email");
+                }}
               />
+              {errors.email ? <span className="ua-teams-create__error">{errors.email}</span> : (
+                <span className="ua-teams-create__hint">Max {EMAIL_MAX_LEN} characters</span>
+              )}
             </label>
             <label className="ua-teams-create__field">
-              <span className="ua-teams-create__label">Role</span>
+              <span className="ua-teams-create__label">
+                Role <span aria-hidden="true">*</span>
+              </span>
               <CfgSelect
-                className="ua-teams-create__select"
+                className={`ua-teams-create__select${errors.role ? " is-invalid" : ""}`}
                 options={creatableRoles.map((role) => ({ value: role.id, label: role.name }))}
                 value={consoleRoleId}
                 disabled={busy || creatableRoles.length === 0}
-                onChange={setConsoleRoleId}
+                onChange={(value) => {
+                  setConsoleRoleId(value);
+                  clearError("role");
+                }}
                 ariaLabel="Role"
                 placeholder="No Access Control roles found"
               />
+              {errors.role ? <span className="ua-teams-create__error">{errors.role}</span> : null}
             </label>
             {needsParent ? (
               <label className="ua-teams-create__field">
                 <span className="ua-teams-create__label">
-                  Reports to ({baseUiKey === "trainee" ? "Assistant WC" : "Wellness Coach"})
+                  Reports to ({baseUiKey === "trainee" ? "Assistant WC" : "Wellness Coach"}){" "}
+                  <span aria-hidden="true">*</span>
                 </span>
                 <CfgSelect
-                  className="ua-teams-create__select"
+                  className={`ua-teams-create__select${errors.parent ? " is-invalid" : ""}`}
                   options={eligibleParents.map((coach) => ({
                     value: coach.id,
                     label: `${coach.name} · ${coach.email}`,
                   }))}
                   value={parentAccountId}
                   disabled={busy}
-                  onChange={setParentAccountId}
+                  onChange={(value) => {
+                    setParentAccountId(value);
+                    clearError("parent");
+                  }}
                   ariaLabel="Reports to"
                   placeholder="Choose coach…"
                 />
+                {errors.parent ? <span className="ua-teams-create__error">{errors.parent}</span> : null}
               </label>
             ) : null}
           </div>
