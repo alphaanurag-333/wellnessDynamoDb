@@ -17,6 +17,8 @@ import { useViewAs } from "../context/ViewAsContext.jsx";
 import "./contactInquiries.css";
 
 const PAGE_SIZE = 20;
+const MESSAGE_WORD_LIMIT = 14;
+const MESSAGE_CHAR_LIMIT = 1000;
 
 const STATUS_TABS = [
   { id: "all", label: "All" },
@@ -40,6 +42,14 @@ function formatInquiryDate(value) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function clipInquiryMessage(value, wordLimit = MESSAGE_WORD_LIMIT) {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  if (!text) return "—";
+  const words = text.split(" ");
+  if (words.length <= wordLimit) return text;
+  return `${words.slice(0, wordLimit).join(" ")}…`;
 }
 
 function initialsFor(name) {
@@ -111,7 +121,12 @@ function InquiryDetail({ inquiry, canEdit, canDelete, busy, onClose, onStatus, o
           </dl>
 
           <div className="ua-ci-message">
-            <div className="ua-ci-message__label">Message</div>
+            <div className="ua-ci-message__label">
+              Message
+              <span className="ua-ci-message__count">
+                {String(inquiry.message || "").length} / {MESSAGE_CHAR_LIMIT}
+              </span>
+            </div>
             <p>{inquiry.message || "—"}</p>
           </div>
         </div>
@@ -344,11 +359,13 @@ export function ContactInquiriesPage() {
                       <strong>{name}</strong>
                     </div>
                     <div data-label="Contact">
-                      <div>{row.email || "—"}</div>
-                      <div className="ua-table__muted">{row.phone || "—"}</div>
+                      <div className="ua-ci-clip">{row.email || "—"}</div>
+                      <div className="ua-table__muted ua-ci-clip">{row.phone || "—"}</div>
                     </div>
-                    <div data-label="Enquiry">{inquiryTypeLabel(row.inquiryType)}</div>
-                    <div className="ua-ci-clip" data-label="Message">{row.message || "—"}</div>
+                    <div className="ua-ci-clip" data-label="Enquiry">{inquiryTypeLabel(row.inquiryType)}</div>
+                    <div className="ua-ci-clip" data-label="Message" title={row.message || ""}>
+                      {clipInquiryMessage(row.message)}
+                    </div>
                     <div className="ua-table__muted" data-label="Received">{formatInquiryDate(row.createdAt)}</div>
                     <div data-label="Status">
                       <StatusBadge tone={statusTone(row.status)}>
