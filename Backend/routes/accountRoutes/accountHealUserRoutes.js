@@ -112,6 +112,7 @@ const {
   getCoachUserCommitmentLetterController,
   reviewCoachCommitmentLetterController,
 } = require("../../controllers/adminController/commitmentLetterController");
+const { reviewPresentablePicController } = require("../../controllers/adminController/userController");
 const {
   getCoachUserCoachInsightController,
   upsertCoachUserCoachInsightController,
@@ -307,6 +308,9 @@ const commitmentLetter = staff("console.diet.view", { admin: "users.clientHub.ca
 const commitmentLetterWrite = staff("console.diet.edit", { admin: "users.clientHub.care.commitment-letter", coach: "clientTab.care.commitment-letter" });
 router.get("/:userId/commitment-letter", commitmentLetter, getCoachUserCommitmentLetterController);
 router.patch("/:userId/commitment-letter/:letterId/review", commitmentLetterWrite, reviewCoachCommitmentLetterController);
+
+const presentablePicReview = staff("console.cl.edit", { admin: "users.edit", coach: "clientTab.overview" });
+router.patch("/:userId/presentable-pic/review", presentablePicReview, reviewPresentablePicController);
 
 const insight = staff("console.diet.view", { admin: "users.clientHub.care.coach-message", coach: "clientTab.care.coach-message" });
 const protocol = staff("console.diet.view", { admin: "users.view", coach: "nav.my-users" });

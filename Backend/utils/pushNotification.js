@@ -1,6 +1,7 @@
 const { getMessaging } = require("../config/firebase");
 
 const FCM_BATCH_SIZE = 500;
+const DEFAULT_ANDROID_CHANNEL_ID = "default";
 
 function chunkArray(items, size) {
   const chunks = [];
@@ -21,10 +22,18 @@ function buildMulticastMessage({ tokens, title, body, imageUrl, data }) {
 
   if (imageUrl) {
     message.notification.imageUrl = imageUrl;
-    message.android = { notification: { imageUrl } };
+    message.android = {
+      priority: "high",
+      notification: { imageUrl, channelId: DEFAULT_ANDROID_CHANNEL_ID },
+    };
     message.apns = {
       payload: { aps: { "mutable-content": 1 } },
       fcm_options: { image: imageUrl },
+    };
+  } else {
+    message.android = {
+      priority: "high",
+      notification: { channelId: DEFAULT_ANDROID_CHANNEL_ID },
     };
   }
 

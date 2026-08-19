@@ -24,6 +24,7 @@ const {
   getWellnessCoachByIdResolved,
   getAssistantWellnessCoachByIdResolved,
 } = require("../../services/accountResolver");
+const { toPublicIntroVideo } = require("../../utils/coachContent");
 const {
   getUserById,
   getUserByEmail,
@@ -55,6 +56,23 @@ function parseBool(value) {
 function resolveCoachProfileImage(profileImage) {
   if (!profileImage) return null;
   return resolvePublicUrl(profileImage) || profileImage;
+}
+
+/** Live coach intro only — omitted when draft, empty, or not uploaded. */
+function buildPublicWelcomeVideo(account) {
+  if (!account) return null;
+  const intro = toPublicIntroVideo(account.coach_content?.intro);
+  if (!intro?.live) return null;
+  return {
+    title: intro.title,
+    description: intro.description,
+    sourceType: intro.sourceType,
+    videoUrl: intro.videoUrl,
+    linkUrl: intro.linkUrl,
+    coverUrl: intro.coverUrl,
+    live: intro.live,
+    duration: intro.duration,
+  };
 }
 
 /** Accepts fcm_id, fcmId, fcm_token, fcmToken. Undefined = omit; empty string = clear. */
@@ -278,14 +296,18 @@ async function enrichUser(user, { ensureReferral = true } = {}) {
     const parentCoach =
       (await getWellnessCoachByIdResolved(pub.parentCoachId)) ||
       (await getWellnessCoachById(pub.parentCoachId));
-    pub.parentCoach = parentCoach
-      ? {
-          id: parentCoach.id,
-          _id: parentCoach._id ?? parentCoach.id,
-          name: parentCoach.name,
-          profileImage: resolveCoachProfileImage(parentCoach.profileImage),
-        }
-      : null;
+    if (parentCoach) {
+      const welcomeVideo = buildPublicWelcomeVideo(parentCoach);
+      pub.parentCoach = {
+        id: parentCoach.id,
+        _id: parentCoach._id ?? parentCoach.id,
+        name: parentCoach.name,
+        profileImage: resolveCoachProfileImage(parentCoach.profileImage),
+        ...(welcomeVideo ? { welcomeVideo } : {}),
+      };
+    } else {
+      pub.parentCoach = null;
+    }
   }
 
   return pub;
@@ -464,8 +486,37 @@ async function buildUserUpdatesFromBody(body, current, { allowStatus = true, req
     const presentablePic = parsePresentablePicFromBody(body.presentablePic);
     if (presentablePic === null && current.presentablePic) {
       await deleteStoredMedia(current.presentablePic);
+      updates.presentablePic = null;
+      updates.presentablePicStatus = null;
+      updates.presentablePicReviewedAt = null;
+      updates.presentablePicReviewedById = null;
+      // Keep `presentablePicHistory` as-is; users can still see previous attempts.
+    } else if (presentablePic && presentablePic !== current.presentablePic) {
+      const prevHistory = Array.isArray(current.presentablePicHistory)
+        ? current.presentablePicHistory
+        : [];
+      const prevAttempt = current.presentablePic
+        ? {
+            url: current.presentablePic,
+            status: current.presentablePicStatus || "pending",
+            uploadedAt: current.presentablePicUploadedAt || current.updatedAt || null,
+            reviewedAt: current.presentablePicReviewedAt || null,
+            reviewedById: current.presentablePicReviewedById || null,
+          }
+        : null;
+
+      updates.presentablePicHistory = prevAttempt
+        ? [prevAttempt, ...prevHistory].slice(0, 10)
+        : prevHistory;
+
+      updates.presentablePic = presentablePic;
+      updates.presentablePicStatus = "pending";
+      updates.presentablePicUploadedAt = new Date().toISOString();
+      updates.presentablePicReviewedAt = null;
+      updates.presentablePicReviewedById = null;
+    } else if (presentablePic) {
+      updates.presentablePic = presentablePic;
     }
-    updates.presentablePic = presentablePic;
   }
 
   if (req) {
@@ -484,9 +535,24 @@ async function buildUserUpdatesFromBody(body, current, { allowStatus = true, req
     );
     if (uploadedPresentable) {
       if (current.presentablePic && current.presentablePic !== uploadedPresentable) {
-        await deleteStoredMedia(current.presentablePic);
+        const prevHistory = Array.isArray(current.presentablePicHistory)
+          ? current.presentablePicHistory
+          : [];
+        const prevAttempt = {
+          url: current.presentablePic,
+          status: current.presentablePicStatus || "pending",
+          uploadedAt: current.presentablePicUploadedAt || current.updatedAt || null,
+          reviewedAt: current.presentablePicReviewedAt || null,
+          reviewedById: current.presentablePicReviewedById || null,
+        };
+        // Keep previous media in storage; just reference it in history.
+        updates.presentablePicHistory = [prevAttempt, ...prevHistory].slice(0, 10);
       }
       updates.presentablePic = uploadedPresentable;
+      updates.presentablePicStatus = "pending";
+      updates.presentablePicUploadedAt = new Date().toISOString();
+      updates.presentablePicReviewedAt = null;
+      updates.presentablePicReviewedById = null;
     }
   }
 
@@ -521,6 +587,11 @@ async function deleteUserAccountByPhoneOtp({ phone, phoneCountryCode, otp }) {
 
   if (user.profileImage) await deleteStoredMedia(user.profileImage);
   if (user.presentablePic) await deleteStoredMedia(user.presentablePic);
+  if (Array.isArray(user.presentablePicHistory)) {
+    for (const item of user.presentablePicHistory) {
+      if (item?.url) await deleteStoredMedia(item.url);
+    }
+  }
 
   try {
     await deleteUser(user.id);

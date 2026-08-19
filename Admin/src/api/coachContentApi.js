@@ -335,6 +335,18 @@ export async function saveMyIntroVideo(file) {
   }
 }
 
+export async function saveMyIntroLink(url) {
+  try {
+    const { data } = await api.patch("/account/auth/me/coach-content", {
+      sourceType: "link",
+      linkUrl: String(url || "").trim(),
+    });
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function saveMyIntroLive(live) {
   try {
     const { data } = await api.patch("/account/auth/me/coach-content", { live: Boolean(live) });

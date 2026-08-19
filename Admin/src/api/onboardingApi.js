@@ -149,6 +149,19 @@ export async function reviewUserCommitmentLetter(userId, letterId, { action, rej
   }
 }
 
+export async function reviewUserPresentablePic(userId, { action } = {}) {
+  try {
+    const { data } = await api.patch(
+      `/account/heal-users/${encodeURIComponent(userId)}/presentable-pic/review`,
+      { action },
+      { headers: authHeader() },
+    );
+    return data.user;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function fetchUserProtocol(userId) {
   try {
     const { data } = await api.get(`/account/heal-users/${encodeURIComponent(userId)}/protocol`, {

@@ -19,7 +19,8 @@ const {
   assertUniquePhone,
   buildUserUpdatesFromBody,
 } = require("../userController/userProfileHelpers");
-const { assertStaffCanAccessUser } = require("../staffAccess");
+const { assertStaffCanAccessUser, assertStaffCanMutate } = require("../staffAccess");
+const { readUserIdParam } = require("../helpers/reminderControllerHelpers");
 
 exports.listUsersController = asyncHandler(async (req, res) => {
   const page = Math.max(1, Number(req.query.page) || 1);
@@ -113,6 +114,11 @@ exports.deleteUserController = asyncHandler(async (req, res) => {
   if (!current) throw new AppError("User not found", 404);
   if (current.profileImage) await deleteStoredMedia(current.profileImage);
   if (current.presentablePic) await deleteStoredMedia(current.presentablePic);
+  if (Array.isArray(current.presentablePicHistory)) {
+    for (const item of current.presentablePicHistory) {
+      if (item?.url) await deleteStoredMedia(item.url);
+    }
+  }
 
   try {
     await deleteUser(req.params.id);
@@ -124,6 +130,40 @@ exports.deleteUserController = asyncHandler(async (req, res) => {
   }
 
   return res.status(200).json({ status: true, message: "User archived successfully" });
+});
+
+exports.reviewPresentablePicController = asyncHandler(async (req, res) => {
+  const actor = assertStaffCanMutate(req);
+  const userId = readUserIdParam(req);
+  const user = await getUserById(userId);
+  if (!user) throw new AppError("User not found", 404);
+  await assertStaffCanAccessUser(req, user);
+
+  if (!user.presentablePic) {
+    throw new AppError("No presentable pic uploaded", 400);
+  }
+
+  const currentStatus = String(user.presentablePicStatus || "pending").toLowerCase();
+  if (currentStatus !== "pending") {
+    throw new AppError("Presentable pic is not pending approval", 400);
+  }
+
+  const action = String(req.body.action || req.body.approvalStatus || "").trim().toLowerCase();
+  if (!["approved", "rejected"].includes(action)) {
+    throw new AppError("action must be approved or rejected", 400);
+  }
+
+  const updated = await updateUser(userId, {
+    presentablePicStatus: action,
+    presentablePicReviewedAt: new Date().toISOString(),
+    presentablePicReviewedById: actor.id,
+  });
+
+  return res.status(200).json({
+    status: true,
+    message: `Presentable pic ${action}`,
+    user: await enrichUser(updated),
+  });
 });
 
 exports.parseUserFields = parseUserFields;

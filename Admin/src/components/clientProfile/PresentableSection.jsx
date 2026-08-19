@@ -3,6 +3,7 @@ import { PHOTO_REQUEST_TYPES } from "../../data/presentableData.js";
 import {
   fetchUserCommitmentLetter,
   reviewUserCommitmentLetter,
+  reviewUserPresentablePic,
 } from "../../api/onboardingApi.js";
 import { fetchUser } from "../../api/usersApi.js";
 
@@ -172,6 +173,57 @@ function CommitmentLetterModal({ open, user, letter, onClose, onToast }) {
   );
 }
 
+function PresentablePicViewModal({ open, url, label, onClose }) {
+  useEffect(() => {
+    function onKeyDown(event) {
+      if (event.key === "Escape") onClose();
+    }
+    if (open) document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div className="ua-cp-modal-backdrop" onClick={onClose} role="presentation">
+      <div
+        className="ua-cp-modal"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-labelledby="presentable-view-title"
+      >
+        <div className="ua-cp-modal__head">
+          <div className="ua-cp-modal__title" id="presentable-view-title">
+            {label || "Presentable pic"}
+          </div>
+          <button
+            type="button"
+            className="ua-cp-modal__close"
+            onClick={onClose}
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+        <div className="ua-cp-modal__body" style={{ padding: 0 }}>
+          <div style={{ padding: 14, display: "flex", justifyContent: "center" }}>
+            <img
+              src={url}
+              alt={label || "Presentable pic"}
+              style={{
+                maxWidth: "100%",
+                maxHeight: "70vh",
+                objectFit: "contain",
+                borderRadius: 12,
+              }}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function RequestPhotoModal({ open, onClose, onConfirm }) {
   const [selected, setSelected] = useState(PHOTO_REQUEST_TYPES[0]);
 
@@ -207,7 +259,21 @@ function RequestPhotoModal({ open, onClose, onConfirm }) {
   );
 }
 
-function PhotoCard({ photo, onToast }) {
+function photoStatusMeta(status) {
+  const value = String(status || "").toLowerCase();
+  if (value === "approved") {
+    return { label: "APPROVED", tone: "approved" };
+  }
+  if (value === "rejected") {
+    return { label: "REJECTED", tone: "rejected" };
+  }
+  return { label: "PENDING APPROVAL", tone: "pending" };
+}
+
+function PhotoCard({ photo, onToast, onApprove, onReject, reviewBusy, onView }) {
+  const status = photoStatusMeta(photo.status);
+  const pending = photo?.reviewable !== false && status.tone === "pending";
+
   return (
     <article className="ua-cp-present-photo">
       <div className="ua-cp-present-photo__preview" aria-hidden="true">
@@ -223,20 +289,52 @@ function PhotoCard({ photo, onToast }) {
       <div className="ua-cp-present-photo__body">
         <div className="ua-cp-present-photo__meta">
           <strong>{photo.label}</strong>
-          <span className="ua-cp-present-status ua-cp-present-status--approved">UPLOADED</span>
+          <span className={`ua-cp-present-status ua-cp-present-status--${status.tone}`}>
+            {status.label}
+          </span>
           {photo.uploaded ? (
             <span className="ua-cp-present-photo__date">Uploaded {photo.uploaded}</span>
           ) : null}
         </div>
         <div className="ua-cp-present-photo__foot">
           {photo.url ? (
-            <a className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" href={photo.url} target="_blank" rel="noreferrer">
-              View
-            </a>
-          ) : (
-            <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={() => onToast?.("No photo file attached")}>
+            <button
+              type="button"
+              className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
+              onClick={() => onView?.(photo.url)}
+            >
               View
             </button>
+          ) : (
+            <button
+              type="button"
+              className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
+              onClick={() => onToast?.("No photo file attached")}
+            >
+              View
+            </button>
+          )}
+          {pending ? (
+            <div className="ua-cp-present-photo__actions">
+              <button
+                type="button"
+                className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm"
+                onClick={onApprove}
+                disabled={reviewBusy}
+              >
+                Approve
+              </button>
+              <button
+                type="button"
+                className="ua-cp-btn ua-cp-present-btn--reject ua-cp-btn--sm"
+                onClick={onReject}
+                disabled={reviewBusy}
+              >
+                Reject
+              </button>
+            </div>
+          ) : (
+            <span className="ua-cp-present-photo__locked">Review complete</span>
           )}
         </div>
       </div>
@@ -254,17 +352,39 @@ export function PresentableSection({ user, onToast, onUserUpdated }) {
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [confirmTarget, setConfirmTarget] = useState(null);
+  const [photoReviewBusy, setPhotoReviewBusy] = useState(false);
 
   const live = isLiveUserId(user?.id);
   const clientName = user?.name?.split(" ")[0] || "Client";
-  const photos = user?.presentablePic
-    ? [{
+  const presentablePicStatus = user?.presentablePic
+    ? String(user?.presentablePicStatus || "pending").toLowerCase()
+    : "";
+  const history = Array.isArray(user?.presentablePicHistory) ? user.presentablePicHistory : [];
+
+  const historyPhotos = history.map((item, idx) => ({
+    id: `presentable-history-${idx}`,
+    label: "Presentable pic",
+    url: item?.url,
+    status: String(item?.status || "").toLowerCase(),
+    uploaded: formatLetterDate(item?.uploadedAt || item?.reviewedAt || ""),
+    // History items cannot be reviewed via the current review endpoint.
+    reviewable: false,
+  }));
+
+  const currentPhoto = user?.presentablePic
+    ? {
         id: "presentable-pic",
         label: "Presentable pic",
         url: user.presentablePic,
-        uploaded: formatLetterDate(user.updatedAt || user.lastUpdated),
-      }]
-    : [];
+        status: presentablePicStatus,
+        uploaded: formatLetterDate(
+          user?.presentablePicUploadedAt || user.updatedAt || user.lastUpdated
+        ),
+        reviewable: true,
+      }
+    : null;
+
+  const photos = currentPhoto ? [currentPhoto, ...historyPhotos] : historyPhotos;
   const status = letterStatusMeta(letter);
   const submittedLabel = formatLetterDate(letter?.updatedAt || letter?.createdAt);
 
@@ -342,7 +462,46 @@ export function PresentableSection({ user, onToast, onUserUpdated }) {
     }
   }
 
+  async function approvePresentablePic() {
+    if (!live || !user?.presentablePic) return;
+    setPhotoReviewBusy(true);
+    try {
+      await reviewUserPresentablePic(user.id, { action: "approved" });
+      await refreshUser();
+      onToast?.("Presentable pic approved");
+      setConfirmTarget(null);
+    } catch (err) {
+      onToast?.(err?.message || "Failed to approve presentable pic");
+    } finally {
+      setPhotoReviewBusy(false);
+    }
+  }
+
+  async function rejectPresentablePic() {
+    if (!live || !user?.presentablePic) return;
+    setPhotoReviewBusy(true);
+    try {
+      await reviewUserPresentablePic(user.id, { action: "rejected" });
+      await refreshUser();
+      onToast?.("Presentable pic rejected");
+      setConfirmTarget(null);
+    } catch (err) {
+      onToast?.(err?.message || "Failed to reject presentable pic");
+    } finally {
+      setPhotoReviewBusy(false);
+    }
+  }
+
   const pendingReview = String(letter?.approvalStatus || "").toLowerCase() === "pending";
+  const [viewOpen, setViewOpen] = useState(false);
+  const [viewUrl, setViewUrl] = useState("");
+  const [viewLabel, setViewLabel] = useState("Presentable pic");
+
+  function openView(url, label) {
+    setViewUrl(url);
+    setViewLabel(label || "Presentable pic");
+    setViewOpen(true);
+  }
 
   return (
     <div className="ua-cp-section ua-cp-present">
@@ -465,7 +624,15 @@ export function PresentableSection({ user, onToast, onUserUpdated }) {
             {photos.length ? (
               <div className="ua-cp-present-photos__grid">
                 {photos.map((photo) => (
-                  <PhotoCard key={photo.id} photo={photo} onToast={onToast} />
+                  <PhotoCard
+                    key={photo.id}
+                    photo={photo}
+                    onToast={onToast}
+                    reviewBusy={photoReviewBusy}
+                    onApprove={() => setConfirmTarget({ type: "approve-photo" })}
+                    onReject={() => setConfirmTarget({ type: "reject-photo" })}
+                    onView={() => openView(photo.url, photo.label)}
+                  />
                 ))}
               </div>
             ) : (
@@ -486,6 +653,27 @@ export function PresentableSection({ user, onToast, onUserUpdated }) {
         confirmLabel={reviewBusy ? "Approving…" : "Yes, approve it"}
         onClose={() => !reviewBusy && setConfirmTarget(null)}
         onConfirm={approveLetter}
+      />
+
+      <ConfirmModal
+        open={confirmTarget?.type === "approve-photo"}
+        eyebrow="This decision is final"
+        title="Approve this presentable pic?"
+        body="Once approved, this photo is marked ready for testimonials and marketing."
+        confirmLabel={photoReviewBusy ? "Approving…" : "Yes, approve it"}
+        onClose={() => !photoReviewBusy && setConfirmTarget(null)}
+        onConfirm={approvePresentablePic}
+      />
+
+      <ConfirmModal
+        open={confirmTarget?.type === "reject-photo"}
+        eyebrow="This decision is final"
+        title="Reject this presentable pic?"
+        body="The client will be asked to upload another presentable photo in the app."
+        confirmLabel={photoReviewBusy ? "Rejecting…" : "Yes, reject it"}
+        confirmTone="danger"
+        onClose={() => !photoReviewBusy && setConfirmTarget(null)}
+        onConfirm={rejectPresentablePic}
       />
 
       <RejectLetterModal
@@ -516,6 +704,13 @@ export function PresentableSection({ user, onToast, onUserUpdated }) {
           setRequestOpen(false);
           onToast?.(`Photo request sent to ${clientName}: ${type}`);
         }}
+      />
+
+      <PresentablePicViewModal
+        open={viewOpen}
+        url={viewUrl}
+        label={viewLabel}
+        onClose={() => setViewOpen(false)}
       />
     </div>
   );

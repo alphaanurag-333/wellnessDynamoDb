@@ -366,6 +366,9 @@ async function applyCoachContentPatch(req, account) {
   }
 
   const videoFile = req.files?.intro_video?.[0];
+  const coverFile = req.files?.intro_cover?.[0];
+  let coverReplacedThisPatch = false;
+
   if (videoFile) {
     if (!isVideoMime(videoFile.mimetype)) {
       throw new AppError("intro_video must be a video file", 400);
@@ -379,11 +382,14 @@ async function applyCoachContentPatch(req, account) {
     nextIntro.sourceType = "upload";
     nextIntro.linkUrl = "";
     nextIntro.galleryPickId = "";
+    if (!coverFile && nextIntro.coverKey) {
+      await replaceMediaKey(nextIntro.coverKey, "");
+      nextIntro.coverKey = "";
+    }
     nextIntro.version += 1;
     introTouched = true;
   }
 
-  const coverFile = req.files?.intro_cover?.[0];
   if (coverFile) {
     if (!isImageMime(coverFile.mimetype)) {
       throw new AppError("intro_cover must be an image file", 400);
@@ -392,6 +398,18 @@ async function applyCoachContentPatch(req, account) {
     if (!uploadedKey) throw new AppError("Failed to upload cover image", 500);
     await replaceMediaKey(nextIntro.coverKey, uploadedKey);
     nextIntro.coverKey = uploadedKey;
+    coverReplacedThisPatch = true;
+    introTouched = true;
+  }
+
+  if (
+    (req.body.linkUrl !== undefined || asString(req.body.sourceType).toLowerCase() === "link") &&
+    !coverReplacedThisPatch &&
+    !coverFile &&
+    nextIntro.coverKey
+  ) {
+    await replaceMediaKey(nextIntro.coverKey, "");
+    nextIntro.coverKey = "";
     introTouched = true;
   }
 

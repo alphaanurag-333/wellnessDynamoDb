@@ -16,6 +16,9 @@ const {
   toPublicUserProgram,
   normalizeStatus,
 } = require("../../models/userProgramModel");
+const {
+  dispatchProgramAssignedNotificationAsync,
+} = require("../../services/notificationDispatchService");
 
 function getCoachId(req) {
   const actor = resolveStaffActor(req);
@@ -110,6 +113,12 @@ exports.createProgramAssignmentController = asyncHandler(async (req, res) => {
   await updateUser(userId, {
     assignedProgramId: program.id,
     programEnabled: enabled,
+  });
+
+  dispatchProgramAssignedNotificationAsync({
+    userId,
+    programTitle: program.title,
+    programId: program.id,
   });
 
   return res.status(201).json({

@@ -63,6 +63,14 @@ const ASSIGNED_COACH_TYPES = new Set(USER_ALLOWED_ASSIGNED_COACH_TYPES);
 const ASSIGNMENT_SOURCES = new Set(USER_ALLOWED_ASSIGNMENT_SOURCES);
 const DIETARY_PREFERENCES = new Set(USER_ALLOWED_DIETARY_PREFERENCES);
 const MEAL_TRACKING_MODES = new Set(USER_ALLOWED_MEAL_TRACKING_MODES);
+const PRESENTABLE_PIC_STATUSES = new Set(["pending", "approved", "rejected"]);
+
+function normalizePresentablePicStatus(value) {
+  if (value == null || value === "") return null;
+  const next = String(value).toLowerCase().trim();
+  return PRESENTABLE_PIC_STATUSES.has(next) ? next : null;
+}
+
 function normalizeDietaryPreference(value) {
   if (value == null || value === "") return null;
   const next = String(value).toLowerCase().trim();
@@ -182,6 +190,13 @@ function toPublicUser(user) {
   if (pub.presentablePic) {
     pub.presentablePic = resolvePublicUrl(pub.presentablePic);
   }
+  if (Array.isArray(pub.presentablePicHistory)) {
+    pub.presentablePicHistory = pub.presentablePicHistory.map((item) => {
+      if (!item || typeof item !== "object") return item;
+      if (item.url) return { ...item, url: resolvePublicUrl(item.url) };
+      return item;
+    });
+  }
   return withLegacyId(pub);
 }
 
@@ -207,6 +222,13 @@ function sanitizeUpdateField(key, value) {
   }
   if (key === "profileImage" || key === "presentablePic") {
     return normalizeProfileImageField(value);
+  }
+  if (key === "presentablePicStatus") return normalizePresentablePicStatus(value);
+  if (key === "presentablePicReviewedAt") return normalizeDob(value);
+  if (key === "presentablePicUploadedAt") return normalizeDob(value);
+  if (key === "presentablePicReviewedById") {
+    const s = value == null ? "" : String(value).trim();
+    return s || null;
   }
   if (key === "userTier") return normalizeUserTier(value);
   if (key === "clientCategory") return normalizeClientCategory(value);
@@ -317,8 +339,19 @@ function buildUserItem(input, { id, now } = {}) {
     termsAccepted: Boolean(input.termsAccepted),
     termsAcceptedAt: input.termsAcceptedAt ? normalizeDob(input.termsAcceptedAt) : null,
     termsAcceptedIp: input.termsAcceptedIp != null ? String(input.termsAcceptedIp).trim() || null : null,
-    profileImage: normalizeProfileImageField(input.profileImage),
-    presentablePic: normalizeProfileImageField(input.presentablePic),
+    profileImage: input.profileImage != null ? normalizeProfileImageField(input.profileImage) : null,
+    presentablePic: input.presentablePic != null ? normalizeProfileImageField(input.presentablePic) : null,
+    presentablePicStatus: normalizePresentablePicStatus(input.presentablePicStatus),
+    presentablePicUploadedAt: input.presentablePicUploadedAt
+      ? normalizeDob(input.presentablePicUploadedAt)
+      : null,
+    presentablePicReviewedAt: input.presentablePicReviewedAt
+      ? normalizeDob(input.presentablePicReviewedAt)
+      : null,
+    presentablePicReviewedById:
+      input.presentablePicReviewedById != null
+        ? String(input.presentablePicReviewedById).trim() || null
+        : null,
     fcm_id: input.fcm_id != null ? String(input.fcm_id).trim() || null : null,
     status: normalizeStatus(input.status),
     otp: input.otp != null ? String(input.otp) : null,

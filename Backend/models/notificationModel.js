@@ -39,6 +39,12 @@ const KIND = new Set([
   "meal_log_reviewed",
   "monthly_champion",
   "monthly_champion_comment",
+  "diet_plan_assignment",
+  "wellness_prescription_assignment",
+  "onboarding_slots_offered",
+  "onboarding_meeting_confirmed",
+  "program_checkout_triggered",
+  "program_assigned",
 ]);
 const BROADCAST_KINDS = new Set(["admin_broadcast", "health_tool", "recipe", "yoga"]);
 
