@@ -83,6 +83,7 @@ export async function getLegalPage(slug, fallbackBlocks = []) {
 export async function saveLegalPage(slug, { title, blocks, status = "active" }) {
   try {
     const { data } = await api.put(`${pagesBase()}/by-slug/${encodeURIComponent(slug)}`, {
+      slug,
       title,
       blocks,
       status,

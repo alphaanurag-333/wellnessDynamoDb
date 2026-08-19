@@ -1900,6 +1900,9 @@ export function ConfigDetailPage() {
             blocks={footerTextBlocks}
             setBlocks={setFooterTextBlocks}
             onToast={onToast}
+            persistSlug="footer-text"
+            pageTitle="Footer text"
+            fallbackBlocks={FOOTER_TEXT_BLOCKS}
           />
         );
       case "web-logo":

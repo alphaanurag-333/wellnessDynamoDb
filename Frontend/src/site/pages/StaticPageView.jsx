@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import FinalCTA from "../components/FinalCTA.jsx";
-import { fetchStaticPageBySlug } from "../api/publicMisc.js";
+import { fetchStaticPageBySlug, htmlFromStaticPage } from "../api/publicMisc.js";
 
 export function StaticPageView({ slug, fallbackTitle = "Page" }) {
   const [page, setPage] = useState(null);
@@ -31,6 +31,7 @@ export function StaticPageView({ slug, fallbackTitle = "Page" }) {
   }, [slug]);
 
   const title = page?.title || fallbackTitle;
+  const html = htmlFromStaticPage(page);
 
   return (
     <section className="static-page-section">
@@ -50,11 +51,14 @@ export function StaticPageView({ slug, fallbackTitle = "Page" }) {
           </p>
         )}
 
-        {page?.content && !loading && !error && (
+        {html && !loading && !error && (
           <div
             className="static-page-content"
-            dangerouslySetInnerHTML={{ __html: page.content }}
+            dangerouslySetInnerHTML={{ __html: html }}
           />
+        )}
+        {!html && !loading && !error && (
+          <p className="static-page-message">This page has no published content yet.</p>
         )}
       </div>
 

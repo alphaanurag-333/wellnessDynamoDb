@@ -187,7 +187,7 @@ export function AdminSidebar({ onLogout, mobileOpen = false, onCloseMobile }) {
 
   // A section appears as soon as Access Control grants any permission inside it.
   const visibleNav = useMemo(
-    () => NAV_ITEMS.filter((item) => navSections.has(item.id)),
+    () => NAV_ITEMS.filter((item) => navSections.has(item.id) || (item.visibleWith && navSections.has(item.visibleWith))),
     [navSections],
   );
 

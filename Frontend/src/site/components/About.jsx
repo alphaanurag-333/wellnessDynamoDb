@@ -5,16 +5,10 @@ import aboutOne from "../images/about-one.png";
 import aboutTwo from "../images/about-two.png";
 import aboutThree from "../images/about-three.jpg";
 import aboutFour from "../images/about-four.png";
-import { fetchStaticPageBySlugSafe, splitHtmlAroundFirstHeading } from "../api/publicMisc.js";
+import { fetchStaticPageBySlugSafe, heroCopyFromStaticPage } from "../api/publicMisc.js";
 
-const FALLBACK_TITLE = "Welcome to India Redefining Wellness!";
-const FALLBACK_DESCRIPTION = `Welcome to India Redefining Wellness, your trusted partner in
-              holistic health and wellness transformation. At India Redefining
-              Wellness, we specialize in personalized holistic solutions aimed
-              at addressing a wide range of health concerns, including
-              personalized holistic fat loss, lifestyle disorders reversal like
-              Diabetes, Hypo & Hyper Thyroid, PCOD/PCOS, Gut Health, and
-              Autoimmune Disorders.`;
+const FALLBACK_TITLE = "Meet Your Wellness Partner";
+const FALLBACK_DESCRIPTION = "We merge advanced clinical diagnostics with restorative holistic practices to create your personalized path to vitality.";
 
 function looksLikeHtml(value) {
   return /<[a-z][\s\S]*>/i.test(String(value || ""));
@@ -33,9 +27,12 @@ export default function AboutUs() {
     };
   }, []);
 
-  const parts = splitHtmlAroundFirstHeading(page?.content);
-  const title = parts.heading || page?.title || FALLBACK_TITLE;
-  const body = parts.intro || FALLBACK_DESCRIPTION;
+  const hero = heroCopyFromStaticPage(page, {
+    title: FALLBACK_TITLE,
+    body: FALLBACK_DESCRIPTION,
+  });
+  const title = hero.title || FALLBACK_TITLE;
+  const body = hero.bodyHtml || FALLBACK_DESCRIPTION;
 
   return (
     <section className="about-section">

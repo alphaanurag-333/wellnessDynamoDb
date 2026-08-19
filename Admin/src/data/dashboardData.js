@@ -11,6 +11,7 @@ export const UPDATED_ADMIN_PATHS = {
   configs: "/configs",
   pending: "/pending",
   sop: "/sop",
+  contactInquiries: "/contact-inquiries",
   myContent: "/my-content",
   commitmentLetters: (coachId = "anita-rao") => `/my-content/letters/${coachId}`,
   notifications: "/notifications",
@@ -25,6 +26,7 @@ export const NAV_ITEMS = [
   { id: "configs", label: "Configs", icon: "settings", path: UPDATED_ADMIN_PATHS.configs, adminOnly: true },
   { id: "pending", label: "Pending Tasks", icon: "bell", path: UPDATED_ADMIN_PATHS.pending },
   { id: "sop", label: "SOP", icon: "file", path: UPDATED_ADMIN_PATHS.sop },
+  { id: "contact-inquiries", label: "Contact Us", icon: "mail", path: UPDATED_ADMIN_PATHS.contactInquiries, visibleWith: "configs" },
 ];
 
 export const VIEW_AS_ROLES = [

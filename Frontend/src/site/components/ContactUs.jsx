@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { Country } from "country-state-city";
+import { Mail, MapPin, Phone } from "lucide-react";
 import FinalCTA from "./FinalCTA";
 import { fetchStaticPageBySlug, submitContactInquiry } from "../api/publicMisc.js";
+import { useSiteConfig } from "../hooks/useSiteConfig.js";
 import ContactCountryDialSelect from "./ContactCountryDialSelect.jsx";
 import {
   DEFAULT_ISO,
@@ -44,7 +46,14 @@ function FieldHint({ id, error, hint, counter }) {
   return null;
 }
 
+const FALLBACK_COMPANY_ADDRESS = "Vijay Nagar, Indore, Madhya Pradesh, India";
+
+function mapsUrl(address) {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+}
+
 export default function ContactUsSection() {
+  const { contact, appName } = useSiteConfig();
   const [formData, setFormData] = useState(INITIAL_CONTACT_FORM);
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -202,6 +211,12 @@ export default function ContactUsSection() {
     ? "9876543210"
     : "Phone number";
 
+  const locations = (contact.locations || []).filter((row) => String(row.address || "").trim());
+  const companyAddress = String(contact.address || "").trim() || FALLBACK_COMPANY_ADDRESS;
+  const addressRows = locations.length
+    ? locations
+    : [{ id: "company", name: appName || "Company address", address: companyAddress }];
+
   return (
     <section className="wellness-toolkit wellnesspedia-page contact-section">
       {/* <div className=" contact-hero pt-3 pb-0" style={{ minHeight: "auto" }}>
@@ -223,9 +238,9 @@ export default function ContactUsSection() {
         </div>
       </div> */}
 
-      <div class="site-container">
-        <div class="wellness-toolkit__content pt-2 maximumwidth">
-          <h2 class="wellness__title mb-0">
+      <div className="site-container">
+        <div className="wellness-toolkit__content pt-2 contact-intro">
+          <h2 className="wellness__title mb-0">
             {page?.title || (
               <>
                 Contact Our
@@ -235,19 +250,66 @@ export default function ContactUsSection() {
           </h2>
           {page?.content ? (
             <div
-              className="wellness-toolkit__description maximumwidth static-page-content"
+              className="wellness-toolkit__description static-page-content"
               dangerouslySetInnerHTML={{ __html: page.content }}
             />
           ) : (
-            <p class="wellness-toolkit__description maximumwidth">
+            <p className="wellness-toolkit__description">
               Expert guidance for your wellness journey. Reach out to our
               specialists for personalized clinical support.
             </p>
           )}
         </div>
-      </div>
-      <div className="contact-card mt-0 mb-3">
-        <form onSubmit={handleSubmit} noValidate>
+
+        <div className="contact-layout">
+          <aside className="contact-card contact-card--details">
+            <h3 className="contact-office__heading">Get in touch</h3>
+            <div className="contact-office" aria-label="Company address">
+              {addressRows.map((location) => (
+                <a
+                  key={location.id}
+                  className="contact-office__row"
+                  href={mapsUrl(location.address)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <span className="contact-office__icon" aria-hidden="true">
+                    <MapPin size={18} />
+                  </span>
+                  <span>
+                    <strong>{location.name || "Company address"}</strong>
+                    <em>{location.address}</em>
+                  </span>
+                </a>
+              ))}
+              {contact.email ? (
+                <a className="contact-office__row" href={`mailto:${contact.email}`}>
+                  <span className="contact-office__icon" aria-hidden="true">
+                    <Mail size={18} />
+                  </span>
+                  <span>
+                    <strong>Email</strong>
+                    <em>{contact.email}</em>
+                  </span>
+                </a>
+              ) : null}
+              {contact.phone ? (
+                <a className="contact-office__row" href={`tel:${contact.phone.replace(/\s/g, "")}`}>
+                  <span className="contact-office__icon" aria-hidden="true">
+                    <Phone size={18} />
+                  </span>
+                  <span>
+                    <strong>Phone</strong>
+                    <em>{contact.phone}</em>
+                  </span>
+                </a>
+              ) : null}
+            </div>
+          </aside>
+
+          <div className="contact-card contact-card--form">
+            <h3 className="contact-office__heading">Send a message</h3>
+            <form onSubmit={handleSubmit} noValidate>
           {feedback ? (
             <div
               className={`contact-form-feedback contact-form-feedback--${feedback.type}`}
@@ -450,6 +512,8 @@ export default function ContactUsSection() {
             </p>
           </div>
         </form>
+          </div>
+        </div>
       </div>
       <FinalCTA />
     </section>

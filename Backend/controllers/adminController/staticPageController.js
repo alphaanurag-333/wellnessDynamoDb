@@ -86,7 +86,7 @@ exports.upsertPageBySlugController = asyncHandler(async (req, res) => {
       });
     }
 
-    const updates = { title: nextTitle };
+    const updates = { title: nextTitle, slug };
     if (status !== undefined) updates.status = status;
     if (blocks !== undefined) updates.blocks = blocks;
     else if (content !== undefined) updates.content = content;

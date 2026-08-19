@@ -146,8 +146,8 @@ async function updatePage(id, updates) {
     }
   }
 
-  if (next.slug !== undefined || next.title !== undefined) {
-    const candidateSlug = slugify(next.slug || next.title || existing.slug);
+  if (next.slug !== undefined) {
+    const candidateSlug = slugify(next.slug);
     if (!candidateSlug) {
       const err = new Error("slug is required");
       err.code = "INVALID_SLUG";

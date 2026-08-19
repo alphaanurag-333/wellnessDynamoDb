@@ -203,13 +203,141 @@ export function splitHtmlAroundFirstHeading(html) {
 }
 
 export function staticPageCopy(page, fallback = {}) {
-  if (!page) return fallback;
-  const html = String(page.content || "").trim();
-  const parts = splitHtmlAroundFirstHeading(html);
+  return pillarCopyFromStaticPage(page, fallback);
+}
+
+function liveBlockText(block) {
+  if (!block || typeof block !== "object") return "";
+  const versions = Array.isArray(block.versions) ? block.versions : [];
+  const n = Number(block.webVersion);
+  const version = versions.find((entry) => Number(entry?.n) === n) || versions[0];
+  return String(version?.text || block.text || block.content || "").trim();
+}
+
+function shownBlocks(page) {
+  return (Array.isArray(page?.blocks) ? page.blocks : []).filter(
+    (block) => block && block.shown !== false
+  );
+}
+
+export function htmlFromStaticPage(page) {
+  if (!page) return "";
+  const compiled = shownBlocks(page)
+    .map((block) => {
+      const text = liveBlockText(block);
+      if (!text) return "";
+      if (block.id === "intro" || block.id === "copyright" || block.id === "secondary") {
+        return text;
+      }
+      const alreadyHasHeading = /<h2\b/i.test(text);
+      if (alreadyHasHeading) return text;
+      const title = String(block.title || "").trim();
+      return title ? `<h2>${title}</h2>\n${text}` : text;
+    })
+    .filter(Boolean)
+    .join("\n");
+  if (stripHtml(compiled)) return compiled;
+  return String(page.content || "").trim();
+}
+
+export function footerCopyFromStaticPage(page) {
+  if (!page) {
+    return { copyright: "", credit: "" };
+  }
+  const blocks = shownBlocks(page);
+  const byId = (id) => blocks.find((block) => block.id === id);
+  const copyright = stripHtml(liveBlockText(byId("copyright")) || "");
+  const credit = stripHtml(liveBlockText(byId("secondary")) || "");
+  if (copyright || credit) {
+    return { copyright, credit };
+  }
+  const parts = stripHtml(page.content || "")
+    .split("||")
+    .flatMap((part) => String(part).split(/\n+/))
+    .map((part) => part.trim())
+    .filter(Boolean);
   return {
-    title: String(page.title || fallback.title || "").trim() || fallback.title,
-    headTitle: parts.heading || fallback.headTitle,
-    html: parts.intro || html || fallback.html,
-    description: stripHtml(parts.intro || html) || fallback.description,
+    copyright: parts.find((part) => /©|copyright/i.test(part)) || parts[0] || "",
+    credit: parts.find((part) => part !== parts[0]) || "",
+  };
+}
+
+export function pillarCopyFromStaticPage(page, fallback = {}) {
+  if (!page) {
+    return {
+      title: fallback.title || "",
+      headTitle: fallback.headTitle || "",
+      description: fallback.description || "",
+      html: fallback.html || "",
+    };
+  }
+
+  const title = String(page.title || "").trim() || fallback.title || "";
+  const shown = (Array.isArray(page.blocks) ? page.blocks : []).filter((block) => block && block.shown !== false);
+  const headlineBlock = shown.find((block) => block.id === "headline")
+    || shown.find((block) => block.id && block.id !== "intro");
+  const introBlock = shown.find((block) => block.id === "intro");
+
+  let headTitle = "";
+  let bodyHtml = "";
+
+  if (headlineBlock && headlineBlock.id !== "intro") {
+    headTitle = String(headlineBlock.title || "").trim();
+    bodyHtml = liveBlockText(headlineBlock);
+    if (headTitle && title && headTitle.toLowerCase() === title.toLowerCase()) {
+      headTitle = "";
+    }
+  } else if (introBlock) {
+    const parts = splitHtmlAroundFirstHeading(liveBlockText(introBlock));
+    headTitle = parts.heading;
+    bodyHtml = parts.intro || liveBlockText(introBlock);
+  }
+
+  if (!headTitle || !stripHtml(bodyHtml)) {
+    const html = String(page.content || "").trim();
+    const parts = splitHtmlAroundFirstHeading(html);
+    if (!headTitle) {
+      const heading = parts.heading || "";
+      headTitle = heading && heading.toLowerCase() !== title.toLowerCase() ? heading : "";
+    }
+    if (!stripHtml(bodyHtml)) {
+      bodyHtml = parts.heading ? parts.intro : html;
+    }
+  }
+
+  if (headTitle && title && headTitle.toLowerCase() === title.toLowerCase()) {
+    headTitle = "";
+  }
+
+  return {
+    title: title || fallback.title,
+    headTitle: headTitle || fallback.headTitle || "",
+    html: bodyHtml || fallback.html || "",
+    description: stripHtml(bodyHtml) || fallback.description || "",
+  };
+}
+
+export function heroCopyFromStaticPage(page, fallback = {}) {
+  const pageTitle = String(page?.title || "").trim();
+  const html = String(page?.content || "").trim();
+  const parts = splitHtmlAroundFirstHeading(html);
+  const genericTitle = !pageTitle || /^about us$/i.test(pageTitle);
+  if (genericTitle) {
+    return {
+      title: fallback.title || parts.heading || "",
+      bodyHtml: fallback.body || parts.intro || html || "",
+      rest: parts.rest || "",
+    };
+  }
+  const headingMatchesTitle =
+    Boolean(parts.heading)
+    && parts.heading.toLowerCase() === pageTitle.toLowerCase();
+  const bodyHtml = headingMatchesTitle
+    ? (parts.intro || "")
+    : (html || fallback.body || "");
+  return {
+    title: pageTitle,
+    bodyHtml: bodyHtml || fallback.body || "",
+    rest: headingMatchesTitle ? (parts.rest || "") : "",
   };
 }

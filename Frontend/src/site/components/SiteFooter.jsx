@@ -1,10 +1,11 @@
-import { Fragment } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube } from "react-icons/fa";
-import { Mail, MapPin, MessageCircle, Phone } from "lucide-react";
+import { Mail, MessageCircle, Phone } from "lucide-react";
 import defaultLogo from "../../assets/logo/defaultlogo.png";
 import { selectLoginBrandLogoUrl } from "../../store/appConfigSelectors.js";
+import { fetchStaticPageBySlugSafe, footerCopyFromStaticPage } from "../api/publicMisc.js";
 import { useSiteConfig } from "../hooks/useSiteConfig.js";
 
 const SOCIAL_ICONS = {
@@ -31,10 +32,10 @@ const FOOTER_EXPLORE_LINKS = [
 ];
 
 const FOOTER_LEGAL_LINKS = [
-  { label: "Privacy Policy", to: "/privacy-policy" },
-  { label: "Terms of Service", to: "/terms-and-conditions" },
-  { label: "Community Guidelines", to: "/community-guideline" },
-  { label: "Contact Us", to: "/contact-us" },
+  { slug: "privacy-policy", label: "Privacy Policy", to: "/privacy-policy" },
+  { slug: "terms-and-conditions", label: "Terms of Service", to: "/terms-and-conditions" },
+  { slug: "community-guideline", label: "Community Guidelines", to: "/community-guideline" },
+  { slug: "contact-us", label: "Contact Us", to: "/contact-us" },
 ];
 
 function footerNavClass({ isActive }) {
@@ -75,10 +76,41 @@ function FooterLinkList({ links }) {
 export function SiteFooter() {
   const brandLogoUrl = useSelector(selectLoginBrandLogoUrl);
   const { appName, footerText, footerCopyright, footerCredit, contact, social } = useSiteConfig();
+  const [legalLinks, setLegalLinks] = useState(FOOTER_LEGAL_LINKS);
+  const [cmsCopyright, setCmsCopyright] = useState("");
+  const [cmsCredit, setCmsCredit] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    Promise.all([
+      fetchStaticPageBySlugSafe("footer-text"),
+      ...FOOTER_LEGAL_LINKS.map((item) => fetchStaticPageBySlugSafe(item.slug)),
+    ]).then(([footerPage, ...pages]) => {
+      if (cancelled) return;
+
+      const copy = footerCopyFromStaticPage(footerPage);
+      setCmsCopyright(copy.copyright);
+      setCmsCredit(copy.credit);
+
+      setLegalLinks(
+        FOOTER_LEGAL_LINKS.map((item, index) => {
+          const page = pages[index];
+          return { ...item, label: page?.title || item.label };
+        })
+      );
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const logoSrc = brandLogoUrl || defaultLogo;
   const year = new Date().getFullYear();
-  const copyrightLine = footerCopyright || `© ${year} ${appName}. All rights reserved.`;
+  const copyrightLine =
+    cmsCopyright || footerCopyright || `© ${year} ${appName}. All rights reserved.`;
+  const creditLine = cmsCredit || footerCredit;
 
   return (
     <footer className="site-footer">
@@ -156,40 +188,9 @@ export function SiteFooter() {
           <div className="site-footer__column site-footer__contact">
             <h4 className="site-footer__heading">Contact Us</h4>
 
-            {contact.locations?.length ? (
-              contact.locations.map((location) => (
-                <div key={location.id} className="site-footer__contact-row">
-                  <span className="site-footer__contact-icon" aria-hidden="true">
-                    <MapPin size={16} />
-                  </span>
-                  <p>
-                    {location.name ? <strong>{location.name}</strong> : null}
-                    {location.name ? " · " : ""}
-                    {location.address}
-                  </p>
-                </div>
-              ))
-            ) : contact.address ? (
-              <div className="site-footer__contact-row">
-                <span className="site-footer__contact-icon" aria-hidden="true">
-                  <MapPin size={16} />
-                </span>
-                <p>{contact.address}</p>
-              </div>
-            ) : null}
 
             {contact.phone ? (
-//               <div className="site-footer__contact-row">
-//   <a
-//     href={`https://wa.me/91${contact.phone.replace(/\D/g, "")}`}
-//     target="_blank"
-//     rel="noopener noreferrer"
-//     className="whatsapp-btn pt-2"
-//   >
-//     <MessageCircle size={18} />
-//     <span>Chat on WhatsApp</span>
-//   </a>
-// </div>
+
               <div className="site-footer__contact-row ">
                 <span className="site-footer__contact-icon" aria-hidden="true">
                   <MessageCircle size={16}/>
@@ -222,11 +223,11 @@ export function SiteFooter() {
         <div className="site-footer__bottom">
           <div className="site-footer__bottom-meta">
             <p className="text-dark">{copyrightLine}</p>
-            {footerCredit ? <p className="site-footer__credit text-dark fw-semibold">{footerCredit}</p> : null}
+            {creditLine ? <p className="site-footer__credit text-dark fw-semibold">{creditLine}</p> : null}
           </div>
 
           <nav className="site-footer__bottom-links" aria-label="Legal links">
-            {FOOTER_LEGAL_LINKS.map((link, index) => (
+            {legalLinks.map((link, index) => (
               <Fragment key={link.to}>
                 {index > 0 ? (
                   <span className="site-footer__bottom-dot" aria-hidden="true">

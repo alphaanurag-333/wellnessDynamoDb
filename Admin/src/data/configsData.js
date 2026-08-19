@@ -589,7 +589,7 @@ export const CONFIG_GROUPS = {
         {
           id: "common-about",
           name: "Description, Vision, Mission, Goal",
-          note: "Editable copy blocks with per-block toggle",
+          note: "Title and description for About Us, Vision, Mission, and Goal",
           owner: "Admin / Support",
           app: true,
           web: true,

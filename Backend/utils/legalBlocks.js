@@ -1,6 +1,11 @@
 const SLUG_ALIASES = {
   "community-guidelines": ["community-guideline"],
   "community-guideline": ["community-guidelines"],
+  "privacy": ["privacy-policy"],
+  "privacy-policy": ["privacy"],
+  "terms": ["terms-and-conditions", "terms-of-service"],
+  "terms-of-service": ["terms-and-conditions", "terms"],
+  "terms-and-conditions": ["terms-of-service", "terms"],
   "app-tos": ["app-terms-and-conditions"],
   "app-terms-and-conditions": ["app-tos"],
   "app-dpa": ["data-processing-agreement", "dpa"],

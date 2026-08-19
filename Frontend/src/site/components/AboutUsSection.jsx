@@ -13,8 +13,8 @@ import {
   fetchLeadershipNotes,
   fetchWellnessTeamNotes,
   fetchStaticPageBySlugSafe,
-  splitHtmlAroundFirstHeading,
-  staticPageCopy,
+  pillarCopyFromStaticPage,
+  heroCopyFromStaticPage,
 } from "../api/publicMisc.js";
 
 import "swiper/css";
@@ -236,34 +236,47 @@ function CoachBoardSection({
   );
 }
 
-const FALLBACK_DESCRIPTION_TITLE = (
-  <>
-    Meet Your <span> Wellness</span> Partner
-  </>
-);
+function highlightWellnessTitle(title) {
+  const text = String(title || "");
+  const match = text.match(/wellness/i);
+  if (!match || match.index == null) return text;
+  const start = match.index;
+  const end = start + match[0].length;
+  return (
+    <>
+      {text.slice(0, start)}
+      <span>{text.slice(start, end)}</span>
+      {text.slice(end)}
+    </>
+  );
+}
+
+function looksLikeHtml(value) {
+  return /<[a-z][\s\S]*>/i.test(String(value || ""));
+}
+
+const FALLBACK_DESCRIPTION_TITLE = "Meet Your Wellness Partner";
 const FALLBACK_DESCRIPTION_BODY =
   "We merge advanced clinical diagnostics with restorative holistic practices to create your personalized path to vitality.";
 
 const FALLBACK_PILLARS = [
   {
     id: 1,
+    slug: "our-vision",
+    title: "Our Vision",
+    headTitle: "To Inspire & Educate India to live a Healthy & Happy Life.",
+    description:
+      "Usually people are reactive and disease oriented when it comes to health. We should be inspired for the cause of being healthy inside-out to live a disease free life. Current health situation is getting deteriorated primarily because of change in lifestyle hence it is important to get educated rightly about the good health practices.",
+    icon: CardOne,
+  },
+  {
+    id: 2,
     slug: "our-mission",
     title: "Our Mission",
     headTitle: "Reinvigorating India’s Wellness Heritage.",
     description:
       "We’re passionate about redefining India’s rich heritage of wellness practices in context to the modern era backed by science & research. Drawing inspiration from Ayurveda, Yoga, Meditation, and other traditional systems of medicine, we seek to blend ancient wisdom with contemporary science to promote holistic well-being for individuals across India.",
     icon: CardTwo,
-    active: true,
-  },
-  {
-    id: 2,
-    slug: "our-vision",
-    title: "Our Vision",
-    headTitle: "To Inspire & Educate India to live a Healthy & Happy Life.",
-    description:
-      "Usually people are reactive and disease oriented when it comes to health. We should be inspired for the cause of being healthy inside-out to live a disease free life.  Current health situation is getting deteriorated primarily because of change in lifestyle hence it is important to get educated rightly about the good health practices.",
-    icon: CardOne,
-    active: false,
   },
   {
     id: 3,
@@ -271,9 +284,8 @@ const FALLBACK_PILLARS = [
     title: "Our Goal",
     headTitle: "Reach out One million families help them living a Healthy & Medicine Free life.",
     description:
-      "Our goal is to reach out to One million families, empowering them to achieve a healthy and medicine-free life by addressing and reversing lifestyle disorders through holistic and sustainable fat-loss methods. By integrating comprehensive wellness strategies that encompass balanced nutrition, regular physical activity, stress management, and natural healing practices, we aim to transform lives and foster long-term health improvements. ",
+      "Our goal is to reach out to One million families, empowering them to achieve a healthy and medicine-free life by addressing and reversing lifestyle disorders through holistic and sustainable fat-loss methods. By integrating comprehensive wellness strategies that encompass balanced nutrition, regular physical activity, stress management, and natural healing practices, we aim to transform lives and foster long-term health improvements.",
     icon: CardThree,
-    active: false,
   },
 ];
 
@@ -490,19 +502,23 @@ const AboutUsSection = () => {
   const cofounderVideo = cofounderMessage?.video || "";
 
   const marqueeItems = [...items, ...items, ...items, ...items];
-  const aboutParts = splitHtmlAroundFirstHeading(aboutPage?.content);
-  const aboutTitle = aboutParts.heading || aboutPage?.title || null;
-  const aboutBody = aboutParts.intro;
-  const aboutRest = aboutParts.rest;
+  const aboutHero = heroCopyFromStaticPage(aboutPage, {
+    title: FALLBACK_DESCRIPTION_TITLE,
+    body: FALLBACK_DESCRIPTION_BODY,
+  });
+  const aboutTitle = aboutHero.title || FALLBACK_DESCRIPTION_TITLE;
+  const aboutBody = aboutHero.bodyHtml;
+  const aboutRest = aboutHero.rest;
   const pillars = FALLBACK_PILLARS.map((fallback) => {
     const page = pillarPages[fallback.slug];
     if (aboutPagesLoaded && !page) return null;
-    const copy = staticPageCopy(page, fallback);
+    const copy = pillarCopyFromStaticPage(page, fallback);
     return {
       ...fallback,
       title: copy.title || fallback.title,
       headTitle: copy.headTitle || fallback.headTitle,
       description: copy.description || fallback.description,
+      html: copy.html || "",
     };
   }).filter(Boolean);
 
@@ -514,14 +530,20 @@ const AboutUsSection = () => {
             {/* <span className="wellness__label">WELCOME TO OUR SPACE</span> */}
 
             <h2 className="wellness__title">
-              {aboutTitle || FALLBACK_DESCRIPTION_TITLE}
+              {highlightWellnessTitle(aboutTitle)}
             </h2>
 
             {aboutBody ? (
+              looksLikeHtml(aboutBody) ? (
               <div
                 className="wellness__text mt-0 mb-0 static-page-content"
                 dangerouslySetInnerHTML={{ __html: aboutBody }}
               />
+              ) : (
+              <p className="wellness__text mt-0 mb-0">
+                {aboutBody}
+              </p>
+              )
             ) : (
               <p className="wellness__text mt-0 mb-0">
                 {FALLBACK_DESCRIPTION_BODY}
@@ -586,21 +608,26 @@ const AboutUsSection = () => {
           </div>
 
           <div className="pillars__wrapper">
-            {pillars.map((item, index) => (
-              <div
-                className={`pillar-card ${index === 0 ? "pillar-card--active" : ""}`}
-                key={item.id}
-              >
+            {pillars.map((item) => (
+              <article className="pillar-card" key={item.slug}>
                 <div className="pillar-card__icon">
-                  <img src={item.icon} alt="Founder" />
+                  <img src={item.icon} alt="" />
                 </div>
-
-                <div className="methodology-card__content mb-0">
-                  <h3 className="">{item.title}</h3>
-                  <h5>{item.headTitle}</h5>
-                  <p className="pillar-card__description mb-0">{item.description}</p>
+                <div className="pillar-card__content">
+                  <h3 className="pillar-card__title">{item.title}</h3>
+                  {item.headTitle ? (
+                    <h5 className="pillar-card__head-title">{item.headTitle}</h5>
+                  ) : null}
+                  {item.html && looksLikeHtml(item.html) ? (
+                    <div
+                      className="pillar-card__description mb-0 static-page-content"
+                      dangerouslySetInnerHTML={{ __html: item.html }}
+                    />
+                  ) : (
+                    <p className="pillar-card__description mb-0">{item.description}</p>
+                  )}
                 </div>
-              </div>
+              </article>
             ))}
           </div>
         </div>

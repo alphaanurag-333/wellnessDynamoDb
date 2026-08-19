@@ -75,6 +75,13 @@ export function NavIcon({ name }) {
           <path d="M13.73 21a2 2 0 0 1-3.46 0" />
         </svg>
       );
+    case "mail":
+      return (
+        <svg {...iconProps}>
+          <path d="M4 4h16v16H4z" />
+          <path d="m22 6-10 7L2 6" />
+        </svg>
+      );
     case "file":
       return (
         <svg {...iconProps}>
