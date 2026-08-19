@@ -4,6 +4,7 @@ import { accountUpdateMe } from "../api/accountApi.js";
 import {
   buildCoachProfileContent,
   getMyCoachContent,
+  saveMyIntroLink,
   saveMyIntroLive,
   saveMyIntroVideo,
   saveMyLetterFile,
@@ -125,7 +126,70 @@ function LetterPreview({ item }) {
   );
 }
 
-function CoachContentCard({ video, letter, busy, onToggle, onView, onUpload }) {
+function IntroLinkModal({ open, title, initialUrl, busy, onClose, onSave }) {
+  const [url, setUrl] = useState(initialUrl || "");
+
+  useEffect(() => {
+    if (open) setUrl(initialUrl || "");
+  }, [initialUrl, open]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="ua-team-modal-backdrop ua-team-modal-backdrop--stack"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        className="ua-cfg-mv-link-modal"
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-label={title}
+      >
+        <div className="ua-cfg-mv-link-modal__head">
+          <div>
+            <h3 className="ua-cfg-mv-link-modal__title">
+              <span aria-hidden="true">🔗</span> Use a link
+            </h3>
+            <p className="ua-cfg-mv-link-modal__sub">{title} · YouTube or Vimeo URL</p>
+          </div>
+          <button
+            type="button"
+            className="ua-cfg-mv-link-modal__close"
+            aria-label="Close"
+            onClick={onClose}
+          >
+            ×
+          </button>
+        </div>
+        <input
+          type="url"
+          className="ua-cfg-mv-link-modal__input"
+          placeholder="youtube.com/watch?v=… or vimeo.com/…"
+          value={url}
+          onChange={(event) => setUrl(event.target.value)}
+          disabled={busy}
+        />
+        <div className="ua-cfg-mv-link-modal__foot">
+          <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose} disabled={busy}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="ua-cfg-btn ua-cfg-btn--primary"
+            disabled={busy || !url.trim()}
+            onClick={() => onSave(url.trim())}
+          >
+            {busy ? "Saving…" : "Save link"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CoachContentCard({ video, letter, busy, onToggle, onView, onUpload, onUseLink }) {
   const items = [video, letter].filter(Boolean);
   return (
     <section className="ua-profile-modal__card">
@@ -164,8 +228,24 @@ function CoachContentCard({ video, letter, busy, onToggle, onView, onUpload }) {
                 disabled={busy}
                 onClick={() => onUpload(item)}
               >
-                {item.kind === "video" ? (item.hasMedia ? "Replace" : "Upload") : item.hasMedia ? "Replace" : "Upload"}
+                {item.kind === "video"
+                  ? item.hasMedia
+                    ? "Replace"
+                    : "Upload"
+                  : item.hasMedia
+                    ? "Replace"
+                    : "Upload"}
               </button>
+              {item.kind === "video" ? (
+                <button
+                  type="button"
+                  className="ua-profile-modal__upload"
+                  disabled={busy}
+                  onClick={() => onUseLink(item)}
+                >
+                  Use link
+                </button>
+              ) : null}
               <ContentToggle
                 live={item.live}
                 disabled={busy || !item.hasMedia}
@@ -195,6 +275,7 @@ export function ProfileModal({ open, onClose, onToast }) {
   const [contentBusy, setContentBusy] = useState(false);
   const [content, setContent] = useState(EMPTY_CONTENT);
   const [preview, setPreview] = useState(null);
+  const [linkModalOpen, setLinkModalOpen] = useState(false);
   const fileRef = useRef(null);
   const videoRef = useRef(null);
   const letterRef = useRef(null);
@@ -228,6 +309,7 @@ export function ProfileModal({ open, onClose, onToast }) {
     setBio(profile.bio);
     bioBaseline.current = profile.bio;
     setPreview(null);
+    setLinkModalOpen(false);
     if (!profile.isCoach) return undefined;
 
     let cancelled = false;
@@ -329,6 +411,18 @@ export function ProfileModal({ open, onClose, onToast }) {
       return;
     }
     runContentSave(() => saveMyIntroVideo(file), "Intro video uploaded");
+  }
+
+  function handleIntroLinkSave(url) {
+    if (!url) {
+      onToast?.("Enter a video link");
+      return;
+    }
+    runContentSave(async () => {
+      const payload = await saveMyIntroLink(url);
+      setLinkModalOpen(false);
+      return payload;
+    }, "Intro video link saved");
   }
 
   function handleLetterSelected(event) {
@@ -434,6 +528,7 @@ export function ProfileModal({ open, onClose, onToast }) {
                   if (item.kind === "letter") letterRef.current?.click();
                   else videoRef.current?.click();
                 }}
+                onUseLink={() => setLinkModalOpen(true)}
               />
               <input
                 ref={videoRef}
@@ -485,6 +580,14 @@ export function ProfileModal({ open, onClose, onToast }) {
         </div>
       </div>
 
+      <IntroLinkModal
+        open={linkModalOpen}
+        title="My intro video"
+        initialUrl={content.video?.linkUrl || ""}
+        busy={contentBusy}
+        onClose={() => setLinkModalOpen(false)}
+        onSave={handleIntroLinkSave}
+      />
       <ContentPreviewModal
         open={preview === "video"}
         title="My intro video"

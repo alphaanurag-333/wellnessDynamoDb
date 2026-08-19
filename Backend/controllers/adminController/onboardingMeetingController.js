@@ -112,7 +112,7 @@ exports.createStaffOnboardingMeetingController = asyncHandler(async (req, res) =
     handleMeetingError(err);
   }
 
-  dispatchOnboardingSlotsOfferedNotificationAsync({ userId, stepKey });
+  dispatchOnboardingSlotsOfferedNotificationAsync({ userId, stepKey, meetingId: meeting.id });
 
   return res.status(201).json({
     status: true,

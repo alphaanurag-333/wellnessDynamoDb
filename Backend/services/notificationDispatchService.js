@@ -39,6 +39,11 @@ const FCM_TYPE_BY_KIND = {
   meal_log_reviewed: "meal_log_reviewed_notification",
   monthly_champion: "monthly_champion_notification",
   monthly_champion_comment: "monthly_champion_comment_notification",
+  wellness_prescription_assignment: "wellness_prescription_assignment_notification",
+  onboarding_slots_offered: "onboarding_slots_offered_notification",
+  onboarding_meeting_confirmed: "onboarding_meeting_confirmed_notification",
+  program_checkout_triggered: "program_checkout_triggered_notification",
+  program_assigned: "program_assigned_notification",
 };
 
 function buildPushData(notification) {
@@ -589,14 +594,47 @@ const ONBOARDING_MEETING_TITLES = {
   programInitiation: "Program Initiation",
 };
 
-async function dispatchOnboardingSlotsOfferedNotification({ userId, stepKey }) {
+async function dispatchOnboardingSlotsOfferedNotification({ userId, stepKey, meetingId }) {
   const label = ONBOARDING_MEETING_TITLES[stepKey] || "onboarding";
   const notification = await createTargetedNotification({
     userId,
     kind: "onboarding_slots_offered",
     message: `Your coach offered time slots for your ${label} meeting.`,
+    referenceId: meetingId ? String(meetingId) : null,
     referenceType: "onboarding_meeting",
     title: "New meeting slots",
+  });
+  runPushSafely(deliverTargetedPush(userId, notification));
+  return notification;
+}
+
+async function dispatchProgramCheckoutTriggeredNotification({
+  userId,
+  programName,
+  transactionId,
+}) {
+  const name = String(programName || "Wellness Program").trim() || "Wellness Program";
+  const notification = await createTargetedNotification({
+    userId,
+    kind: "program_checkout_triggered",
+    message: `Your coach shared ${name} for payment. Complete it in the app.`,
+    referenceId: transactionId ? String(transactionId) : null,
+    referenceType: "coach_checkout",
+    title: "Program payment ready",
+  });
+  runPushSafely(deliverTargetedPush(userId, notification));
+  return notification;
+}
+
+async function dispatchProgramAssignedNotification({ userId, programTitle, programId }) {
+  const title = String(programTitle || "Wellness Program").trim() || "Wellness Program";
+  const notification = await createTargetedNotification({
+    userId,
+    kind: "program_assigned",
+    message: `Your coach assigned ${title} to you. Open the app to view it.`,
+    referenceId: programId ? String(programId) : null,
+    referenceType: "user_program",
+    title: "Program assigned",
   });
   runPushSafely(deliverTargetedPush(userId, notification));
   return notification;
@@ -635,7 +673,21 @@ async function dispatchOnboardingTimeRequestedCoachNotification({ user, stepKey 
 }
 
 function dispatchOnboardingSlotsOfferedNotificationAsync(payload) {
-  runPushSafely(dispatchOnboardingSlotsOfferedNotification(payload));
+  dispatchOnboardingSlotsOfferedNotification(payload).catch((err) => {
+    console.error("Onboarding slots notification failed:", err?.message || err);
+  });
+}
+
+function dispatchProgramCheckoutTriggeredNotificationAsync(payload) {
+  dispatchProgramCheckoutTriggeredNotification(payload).catch((err) => {
+    console.error("Program checkout notification failed:", err?.message || err);
+  });
+}
+
+function dispatchProgramAssignedNotificationAsync(payload) {
+  dispatchProgramAssignedNotification(payload).catch((err) => {
+    console.error("Program assigned notification failed:", err?.message || err);
+  });
 }
 
 function dispatchOnboardingMeetingConfirmedNotificationAsync(payload) {
@@ -672,6 +724,10 @@ module.exports = {
   dispatchMealLogReviewedNotification,
   dispatchOnboardingSlotsOfferedNotification,
   dispatchOnboardingSlotsOfferedNotificationAsync,
+  dispatchProgramCheckoutTriggeredNotification,
+  dispatchProgramCheckoutTriggeredNotificationAsync,
+  dispatchProgramAssignedNotification,
+  dispatchProgramAssignedNotificationAsync,
   dispatchOnboardingMeetingConfirmedNotification,
   dispatchOnboardingMeetingConfirmedNotificationAsync,
   dispatchOnboardingTimeRequestedCoachNotification,

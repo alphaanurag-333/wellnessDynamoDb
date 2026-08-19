@@ -14,6 +14,9 @@ const {
   listCheckoutHistoryForUser,
   triggerCoachCheckout,
 } = require("../../services/coachCheckoutService");
+const {
+  dispatchProgramCheckoutTriggeredNotificationAsync,
+} = require("../../services/notificationDispatchService");
 
 exports.lookupCoachCheckoutClientController = asyncHandler(async (req, res) => {
   const code = req.query.code || req.query.referralCode || req.query.referral_code;
@@ -103,6 +106,14 @@ exports.triggerCoachCheckoutController = asyncHandler(async (req, res) => {
     assistantCoachId: body.assistantCoachId ?? body.assistant_coach_id,
     actor,
   });
+
+  if (productType === "program") {
+    dispatchProgramCheckoutTriggeredNotificationAsync({
+      userId,
+      programName: result.offer?.itemName,
+      transactionId: result.transaction?.id,
+    });
+  }
 
   return res.status(201).json({
     status: true,

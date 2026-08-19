@@ -78,6 +78,24 @@ function GlanceRainOverlay() {
   );
 }
 
+function padMeetingTime(date) {
+  const hours = date.getHours() % 12 || 12;
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const meridiem = date.getHours() >= 12 ? "PM" : "AM";
+  return `${hours}:${minutes} ${meridiem}`;
+}
+
+function formatMeetingSlotLabel(startIso, endIso) {
+  const start = new Date(startIso);
+  if (Number.isNaN(start.getTime())) return "";
+  const end = endIso ? new Date(endIso) : null;
+  const date = `${String(start.getDate()).padStart(2, "0")} ${start.toLocaleString("en-GB", { month: "short" })}`;
+  const range = end && !Number.isNaN(end.getTime())
+    ? `${padMeetingTime(start)}–${padMeetingTime(end)}`
+    : padMeetingTime(start);
+  return `${date} · ${range}`;
+}
+
 function waterHydrationTip(metric) {
   const current = parseInt(String(metric.value).replace(/[^\d]/g, ""), 10);
   const goal = parseInt(String(metric.goal).replace(/[^\d]/g, ""), 10);
@@ -699,12 +717,25 @@ function OnboardingStatusCard({ user, onToast, onNavigate, onProgressChange, onU
             const isCurrent = !step.done && step.n === currentStep.n;
             const note = stepNotes[step.n];
             const meeting = meetings.find((row) => row.stepKey === step.key && ["slots_offered", "time_requested", "confirmed"].includes(row.status));
+            const requestedTimeLabel = meeting?.status === "time_requested"
+              ? formatMeetingSlotLabel(meeting.requestedStartAt, meeting.requestedEndAt)
+              : "";
+            const confirmedSlot = meeting?.status === "confirmed"
+              ? (meeting.slots || []).find((s) => s.id === meeting.selectedSlotId) || meeting.slots?.[0]
+              : null;
+            const confirmedTimeLabel = confirmedSlot
+              ? formatMeetingSlotLabel(confirmedSlot.startAt, confirmedSlot.endAt)
+              : "";
             const meetingNote = meeting?.status === "slots_offered"
               ? "Slots offered — waiting for client"
               : meeting?.status === "time_requested"
-                ? "Client requested another time"
+                ? requestedTimeLabel
+                  ? `Client requested ${requestedTimeLabel}`
+                  : "Client requested another time"
                 : meeting?.status === "confirmed"
-                  ? "Meeting confirmed"
+                  ? confirmedTimeLabel
+                    ? `Meeting confirmed · ${confirmedTimeLabel}`
+                    : "Meeting confirmed"
                   : null;
             return (
               <div
