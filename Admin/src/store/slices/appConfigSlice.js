@@ -61,4 +61,8 @@ export function selectUserLogoUrl(state) {
   return String(state.appConfig.data?.user_logo || "").trim();
 }
 
+export function selectFaviconUrl(state) {
+  return String(state.appConfig.data?.favicon || "").trim();
+}
+
 export default appConfigSlice.reducer;

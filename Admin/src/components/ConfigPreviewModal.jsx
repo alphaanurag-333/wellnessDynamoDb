@@ -995,17 +995,36 @@ function GenericPreview({ item, surface }) {
   );
 }
 
-function ChampionPreview({ editor = {}, surface, item }) {
-  const design = editor.design || "gold";
-  const icons = { gold: "🏆", navy: "🏆", confetti: "🏆", program: "🏆", balloons: "🎈", botanical: "🌿", typo: "✨", coach: "💌" };
+function ChampionPreview({ editor = {}, items = [], surface, item, kind = "champion" }) {
+  const live = (Array.isArray(items) ? items : []).filter((row) => row.live);
+  const featured = live[0] || items[0] || null;
+  const isBirthday = kind === "birthday" || item?.id === "common-birthday";
+  const icon = isBirthday ? "🎂" : "🏆";
+  const headline = featured?.name
+    || (typeof editor.headline === "string" ? editor.headline : null)
+    || (isBirthday ? "Birthday wishes" : "Champion of the month");
+  const subline = featured?.monthLabel
+    || featured?.postDate
+    || (typeof editor.subline === "string" ? editor.subline : "");
+  const description = featured?.message
+    || (typeof editor.description === "string" ? editor.description : "")
+    || (isBirthday ? "Birthday card message" : "Champion card message");
   const body = (
     <div className="ua-cfg-ch-preview">
-      <div className={`ua-cfg-ch-preview__card ua-cfg-ch-design--${design}`}>
-        <span aria-hidden="true">{icons[design] || "🎂"}</span>
-        <strong>{typeof editor.headline === "string" ? editor.headline : "Card"}</strong>
-        <span>{typeof editor.subline === "string" ? editor.subline : ""}</span>
-        <p>{typeof editor.description === "string" ? editor.description : ""}</p>
-        <span>{typeof editor.footer === "string" ? editor.footer : ""}</span>
+      <div className={`ua-cfg-ch-preview__card ua-cfg-ch-design--${isBirthday ? "balloons" : "gold"}`}>
+        {featured?.profileImage ? (
+          <img src={featured.profileImage} alt="" style={{ width: 56, height: 56, borderRadius: "50%", objectFit: "cover" }} />
+        ) : (
+          <span aria-hidden="true">{icon}</span>
+        )}
+        <strong>{headline}</strong>
+        <span>{subline}</span>
+        <p>{description}</p>
+        <span>
+          {live.length
+            ? `${live.length} live ${isBirthday ? "wish" : "champion"}${live.length === 1 ? "" : "s"}`
+            : "No live cards yet"}
+        </span>
       </div>
     </div>
   );
@@ -1935,17 +1954,19 @@ function renderPreviewBody(item, surface, previewState) {
     case "common-champion":
       return (
         <ChampionPreview
-          editor={previewState.championEditor}
+          items={previewState.championItems}
           surface={surface}
           item={item}
+          kind="champion"
         />
       );
     case "common-birthday":
       return (
         <ChampionPreview
-          editor={previewState.birthdayEditor}
+          items={previewState.birthdayPosts}
           surface={surface}
           item={item}
+          kind="birthday"
         />
       );
     case "common-transformation":

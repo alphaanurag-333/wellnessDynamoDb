@@ -597,6 +597,20 @@ export async function updateUserStatus(id, status) {
   }
 }
 
+/** PATCH /account/users/:id — personal profile fields (name, dob, phone, address, goal, …). */
+export async function updateUserPersonalDetails(id, payload) {
+  try {
+    const { data } = await api.patch(
+      `/account/users/${encodeURIComponent(id)}`,
+      payload,
+      { headers: authHeader() },
+    );
+    return mapApiUserToRow(data.user);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function deleteUser(id) {
   try {
     await api.delete(`/account/users/${encodeURIComponent(id)}`, { headers: authHeader() });

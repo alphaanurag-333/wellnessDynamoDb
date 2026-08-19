@@ -7,28 +7,19 @@ import {
   adminUpdateTestCatalog,
   testCategoryOptions,
 } from "../api/testCatalogApi.js";
-import { ListPagination } from "./shared.jsx";
+import { CfgSelect, ListPagination } from "./shared.jsx";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 
-function PencilIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M12 20h9" />
-      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
-    </svg>
-  );
-}
+const TYPE_OPTIONS = [
+  { value: "SINGLE", label: "Single" },
+  { value: "PROFILE", label: "Profile" },
+];
 
-function TrashIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M3 6h18" />
-      <path d="M8 6V4h8v2" />
-      <path d="M19 6l-1 14H6L5 6" />
-      <path d="M10 11v6M14 11v6" />
-    </svg>
-  );
-}
+const STATUS_FILTER_OPTIONS = [
+  { value: "", label: "All statuses" },
+  { value: "active", label: "Live" },
+  { value: "inactive", label: "Hidden" },
+];
 
 function slugify(value) {
   return String(value || "")
@@ -57,10 +48,17 @@ function cleanParameters(parameters, type) {
   return cleaned;
 }
 
-function Panel({ title, subtitle, actions, children }) {
+function paramPreview(parameters = []) {
+  const names = parameters.map((entry) => entry.name).filter(Boolean);
+  if (!names.length) return "No parameters yet";
+  if (names.length <= 3) return names.join(" · ");
+  return `${names.slice(0, 3).join(" · ")} +${names.length - 3} more`;
+}
+
+function Panel({ title, subtitle, actions, children, className = "" }) {
   const hasHead = Boolean(title || subtitle || actions);
   return (
-    <section className="ua-cfg-panel">
+    <section className={`ua-cfg-panel${className ? ` ${className}` : ""}`}>
       {hasHead ? (
         <div className="ua-cfg-panel__head">
           <div>
@@ -75,21 +73,32 @@ function Panel({ title, subtitle, actions, children }) {
   );
 }
 
-function CategorySelect({ value, extras = [], disabled, onChange, allowEmpty = false, emptyLabel = "Select category" }) {
+function CategorySelect({
+  value,
+  extras = [],
+  disabled,
+  onChange,
+  allowEmpty = false,
+  emptyLabel = "Select category",
+  className = "ua-cfg-tc-select",
+  ariaLabel = "Category",
+}) {
   const options = testCategoryOptions(extras);
   const list = value && !options.includes(value) ? [value, ...options] : options;
+  const selectOptions = [
+    ...(allowEmpty ? [{ value: "", label: emptyLabel }] : []),
+    ...list.map((category) => ({ value: category, label: category })),
+  ];
   return (
-    <select
-      className="ua-cfg-dp-add__title"
+    <CfgSelect
+      className={className}
+      options={selectOptions}
       value={value}
       disabled={disabled}
-      onChange={(event) => onChange(event.target.value)}
-    >
-      {allowEmpty ? <option value="">{emptyLabel}</option> : null}
-      {list.map((category) => (
-        <option key={category} value={category}>{category}</option>
-      ))}
-    </select>
+      ariaLabel={ariaLabel}
+      placeholder={emptyLabel}
+      onChange={onChange}
+    />
   );
 }
 
@@ -110,7 +119,7 @@ function ParameterRows({ parameters, disabled, onChange }) {
         <div key={`param-${index}`} className="ua-cfg-tc-params__row">
           <input
             type="text"
-            className="ua-cfg-dp-add__title"
+            className="ua-cfg-tc-field"
             placeholder="Parameter name · e.g. HbA1c"
             value={param.name}
             disabled={disabled}
@@ -118,7 +127,7 @@ function ParameterRows({ parameters, disabled, onChange }) {
           />
           <input
             type="text"
-            className="ua-cfg-dp-add__title"
+            className="ua-cfg-tc-field"
             placeholder="Unit"
             value={param.unit}
             disabled={disabled}
@@ -126,7 +135,7 @@ function ParameterRows({ parameters, disabled, onChange }) {
           />
           <input
             type="text"
-            className="ua-cfg-dp-add__title"
+            className="ua-cfg-tc-field"
             placeholder="Ref range"
             value={param.refRange}
             disabled={disabled}
@@ -140,9 +149,11 @@ function ParameterRows({ parameters, disabled, onChange }) {
               aria-label="Remove parameter"
               onClick={() => onChange(parameters.filter((_, rowIndex) => rowIndex !== index))}
             >
-              <TrashIcon />
+              ×
             </button>
-          ) : null}
+          ) : (
+            <span className="ua-cfg-tc-params__spacer" aria-hidden="true" />
+          )}
         </div>
       ))}
     </div>
@@ -215,62 +226,66 @@ function TestEditModal({ test, busy, extras = [], onClose, onChange, onDelete })
             </button>
             <button
               type="button"
-              className="ua-cfg-icon-btn ua-cfg-icon-btn--danger"
+              className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-dp-modal__delete"
               disabled={busy}
-              aria-label={`Delete ${test.name}`}
-              title="Delete test"
               onClick={() => onDelete(test)}
             >
-              <TrashIcon />
+              Delete
             </button>
             <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={onClose}>×</button>
           </div>
         </div>
 
-        <div className="ua-cfg-tc-form">
-          <label>
-            <span>Name</span>
-            <input className="ua-cfg-dp-add__title" value={name} disabled={busy} onChange={(e) => setName(e.target.value)} />
-          </label>
-          <label>
-            <span>Slug</span>
-            <input className="ua-cfg-dp-add__title" value={testId} disabled={busy} onChange={(e) => setTestId(e.target.value)} />
-          </label>
-          <label>
-            <span>Category</span>
-            <CategorySelect value={category} extras={extras} disabled={busy} onChange={setCategory} />
-          </label>
-          <label>
-            <span>Type</span>
-            <select className="ua-cfg-dp-add__title" value={type} disabled={busy} onChange={(e) => setTypeAndParams(e.target.value)}>
-              <option value="SINGLE">Single</option>
-              <option value="PROFILE">Profile</option>
-            </select>
-          </label>
-          <label>
-            <span>Sequence</span>
-            <input className="ua-cfg-dp-add__title" type="number" min="0" value={sequence} disabled={busy} onChange={(e) => setSequence(e.target.value)} />
-          </label>
-        </div>
-
-        <div className="ua-cfg-tc-params-wrap">
-          <div className="ua-cfg-tc-params__head">
-            <strong>Parameters</strong>
-            {type === "PROFILE" ? (
-              <button
-                type="button"
-                className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+        <div className="ua-cfg-tc-modal__body">
+          <div className="ua-cfg-tc-form">
+            <label>
+              <span>Name</span>
+              <input className="ua-cfg-tc-field" value={name} disabled={busy} onChange={(e) => setName(e.target.value)} />
+            </label>
+            <label>
+              <span>Slug</span>
+              <input className="ua-cfg-tc-field" value={testId} disabled={busy} onChange={(e) => setTestId(e.target.value)} />
+            </label>
+            <label>
+              <span>Category</span>
+              <CategorySelect value={category} extras={extras} disabled={busy} onChange={setCategory} />
+            </label>
+            <label>
+              <span>Type</span>
+              <CfgSelect
+                className="ua-cfg-tc-select"
+                options={TYPE_OPTIONS}
+                value={type}
                 disabled={busy}
-                onClick={() => setParameters((prev) => [...prev, emptyParam(prev.length + 1)])}
-              >
-                + Parameter
-              </button>
-            ) : null}
+                ariaLabel="Test type"
+                onChange={setTypeAndParams}
+              />
+            </label>
+            <label>
+              <span>Sequence</span>
+              <input className="ua-cfg-tc-field" type="number" min="0" value={sequence} disabled={busy} onChange={(e) => setSequence(e.target.value)} />
+            </label>
           </div>
-          <ParameterRows parameters={parameters} disabled={busy} onChange={setParameters} />
+
+          <div className="ua-cfg-tc-params-wrap">
+            <div className="ua-cfg-tc-params__head">
+              <strong>Parameters</strong>
+              {type === "PROFILE" ? (
+                <button
+                  type="button"
+                  className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                  disabled={busy}
+                  onClick={() => setParameters((prev) => [...prev, emptyParam(prev.length + 1)])}
+                >
+                  + Parameter
+                </button>
+              ) : null}
+            </div>
+            <ParameterRows parameters={parameters} disabled={busy} onChange={setParameters} />
+          </div>
         </div>
 
-        <div className="ua-cfg-dp-add__actions">
+        <div className="ua-cfg-tc-modal__foot">
           <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={save}>
             {busy ? "Saving…" : "Save test"}
           </button>
@@ -456,6 +471,7 @@ export function TestCatalogSection({ tests, setTests, onToast }) {
   return (
     <>
       <Panel
+        className="ua-cfg-tc"
         title="Blood test catalog"
         subtitle={
           loading
@@ -465,7 +481,7 @@ export function TestCatalogSection({ tests, setTests, onToast }) {
         actions={
           loading ? null : (
             <span className="ua-cfg-dp__count">
-              {liveCount} live on this page · {pagination.total} in catalog
+              {liveCount} live of {pagination.total}
             </span>
           )
         }
@@ -473,7 +489,7 @@ export function TestCatalogSection({ tests, setTests, onToast }) {
         <div className="ua-cfg-tc-filters">
           <input
             type="search"
-            className="ua-cfg-dp-add__title"
+            className="ua-cfg-tc-field"
             placeholder="Search name, slug or category"
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
@@ -483,92 +499,53 @@ export function TestCatalogSection({ tests, setTests, onToast }) {
             extras={categories}
             allowEmpty
             emptyLabel="All categories"
+            ariaLabel="Filter by category"
             onChange={(value) => {
               setPage(1);
               setCategoryFilter(value);
             }}
           />
-          <select
-            className="ua-cfg-dp-add__title"
+          <CfgSelect
+            className="ua-cfg-tc-select"
+            options={STATUS_FILTER_OPTIONS}
             value={statusFilter}
-            onChange={(event) => {
+            ariaLabel="Filter by status"
+            onChange={(value) => {
               setPage(1);
-              setStatusFilter(event.target.value);
+              setStatusFilter(value);
             }}
-          >
-            <option value="">All statuses</option>
-            <option value="active">Live</option>
-            <option value="inactive">Hidden</option>
-          </select>
+          />
         </div>
 
         {loading ? (
           <p className="ua-cfg-panel__sub">Fetching tests from the server…</p>
         ) : tests.length ? (
-          <div className="ua-cfg-nb-table-wrap">
-            <table className="ua-cfg-nb-table ua-cfg-tc-table">
-              <thead>
-                <tr>
-                  <th>Test</th>
-                  <th>Category</th>
-                  <th>Type</th>
-                  <th>Parameters</th>
-                  <th>Live</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tests.map((test) => (
-                  <tr key={test.id} className={test.live ? "" : "is-hidden"}>
-                    <td>
-                      <div className="ua-cfg-tc-name">
-                        <strong>{test.name}</strong>
-                        <span>{test.testId}</span>
-                      </div>
-                    </td>
-                    <td>{test.category}</td>
-                    <td>{test.type === "PROFILE" ? "Profile" : "Single"}</td>
-                    <td>{test.parameters.length}</td>
-                    <td>
-                      <button
-                        type="button"
-                        className={`ua-toggle ua-toggle--sm${test.live ? " ua-toggle--on" : ""}`}
-                        aria-pressed={test.live}
-                        aria-label={`${test.live ? "Hide" : "Show"} ${test.name}`}
-                        disabled={busy}
-                        onClick={() => persistTest(test.id, { live: !test.live }, test.live ? "Test hidden" : "Test is live")}
-                      >
-                        <span className="ua-toggle__knob" />
-                      </button>
-                    </td>
-                    <td>
-                      <div className="ua-cfg-tc-actions">
-                        <button
-                          type="button"
-                          className="ua-cfg-icon-btn ua-cfg-icon-btn--edit"
-                          aria-label={`Edit ${test.name}`}
-                          title="Edit"
-                          disabled={busy}
-                          onClick={() => setSelectedId(test.id)}
-                        >
-                          <PencilIcon />
-                        </button>
-                        <button
-                          type="button"
-                          className="ua-cfg-icon-btn ua-cfg-icon-btn--danger"
-                          aria-label={`Delete ${test.name}`}
-                          title="Delete"
-                          disabled={busy}
-                          onClick={() => setPendingDelete(test)}
-                        >
-                          <TrashIcon />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="ua-cfg-tc-grid">
+            {tests.map((test) => (
+              <button
+                key={test.id}
+                type="button"
+                className={`ua-cfg-tc-card${selectedId === test.id ? " is-selected" : ""}${test.live ? "" : " is-hidden"}`}
+                onClick={() => setSelectedId(test.id)}
+              >
+                <div className="ua-cfg-tc-card__top">
+                  <div className="ua-cfg-tc-card__title-wrap">
+                    <strong>{test.name}</strong>
+                    <span className="ua-cfg-tc-card__slug">{test.testId}</span>
+                  </div>
+                  {test.live ? <span className="ua-cfg-tc-card__live">Live</span> : <span className="ua-cfg-tc-card__hidden">Hidden</span>}
+                </div>
+                <div className="ua-cfg-tc-card__meta">
+                  <span>{test.category || "Uncategorized"}</span>
+                  <span aria-hidden="true">·</span>
+                  <span>{test.type === "PROFILE" ? "Profile" : "Single"}</span>
+                </div>
+                <p className="ua-cfg-tc-card__excerpt">{paramPreview(test.parameters)}</p>
+                <span className="ua-cfg-tc-card__count">
+                  {test.parameters.length} parameter{test.parameters.length === 1 ? "" : "s"}
+                </span>
+              </button>
+            ))}
           </div>
         ) : (
           <p className="ua-cfg-panel__sub">No tests in the catalog yet. Add one below.</p>
@@ -603,13 +580,13 @@ export function TestCatalogSection({ tests, setTests, onToast }) {
         }
       >
         {showAddForm ? (
-          <div className="ua-cfg-dp-add">
+          <div className="ua-cfg-tc-add">
             <div className="ua-cfg-tc-form">
               <label>
                 <span>Test name</span>
                 <input
                   type="text"
-                  className="ua-cfg-dp-add__title"
+                  className="ua-cfg-tc-field"
                   placeholder="e.g. HbA1c"
                   value={newName}
                   disabled={busy}
@@ -620,7 +597,7 @@ export function TestCatalogSection({ tests, setTests, onToast }) {
                 <span>Slug</span>
                 <input
                   type="text"
-                  className="ua-cfg-dp-add__title"
+                  className="ua-cfg-tc-field"
                   placeholder="Optional · auto from name"
                   value={newTestId}
                   disabled={busy}
@@ -639,12 +616,13 @@ export function TestCatalogSection({ tests, setTests, onToast }) {
               </label>
               <label>
                 <span>Type</span>
-                <select
-                  className="ua-cfg-dp-add__title"
+                <CfgSelect
+                  className="ua-cfg-tc-select"
+                  options={TYPE_OPTIONS}
                   value={newType}
                   disabled={busy}
-                  onChange={(event) => {
-                    const nextType = event.target.value;
+                  ariaLabel="Test type"
+                  onChange={(nextType) => {
                     setNewType(nextType);
                     if (nextType === "SINGLE") {
                       setNewParameters((prev) => (prev.length ? [prev[0]] : [emptyParam()]));
@@ -652,34 +630,38 @@ export function TestCatalogSection({ tests, setTests, onToast }) {
                       setNewParameters((prev) => (prev.length >= 2 ? prev : [...prev, emptyParam(prev.length + 1)]));
                     }
                   }}
-                >
-                  <option value="SINGLE">Single</option>
-                  <option value="PROFILE">Profile</option>
-                </select>
+                />
               </label>
               <label>
                 <span>Sequence</span>
                 <input
                   type="number"
                   min="0"
-                  className="ua-cfg-dp-add__title"
+                  className="ua-cfg-tc-field"
                   value={newSequence}
                   disabled={busy}
                   onChange={(event) => setNewSequence(event.target.value)}
                 />
               </label>
             </div>
-            <ParameterRows parameters={newParameters} disabled={busy} onChange={setNewParameters} />
-            {newType === "PROFILE" ? (
-              <button
-                type="button"
-                className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
-                disabled={busy}
-                onClick={() => setNewParameters((prev) => [...prev, emptyParam(prev.length + 1)])}
-              >
-                + Parameter
-              </button>
-            ) : null}
+
+            <div className="ua-cfg-tc-params-wrap">
+              <div className="ua-cfg-tc-params__head">
+                <strong>Parameters</strong>
+                {newType === "PROFILE" ? (
+                  <button
+                    type="button"
+                    className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                    disabled={busy}
+                    onClick={() => setNewParameters((prev) => [...prev, emptyParam(prev.length + 1)])}
+                  >
+                    + Parameter
+                  </button>
+                ) : null}
+              </div>
+              <ParameterRows parameters={newParameters} disabled={busy} onChange={setNewParameters} />
+            </div>
+
             <div className="ua-cfg-dp-add__actions">
               <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={addTest}>
                 {busy ? "Adding…" : "Add to catalog"}

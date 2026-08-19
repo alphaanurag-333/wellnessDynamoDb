@@ -1,5 +1,6 @@
 import { Navigate, Outlet, Route } from "react-router-dom";
 import { AdminLayout } from "../AdminLayout.jsx";
+import { AppConfigBrandingSync } from "../components/AppConfigBrandingSync.jsx";
 import { ViewAsProvider, useViewAs } from "../context/ViewAsContext.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { AccessPage } from "../pages/AccessPage.jsx";
@@ -21,6 +22,7 @@ import { AdminLoginPage } from "../pages/AdminLoginPage.jsx";
 function AdminRoot() {
   return (
     <ViewAsProvider>
+      <AppConfigBrandingSync />
       <Outlet />
     </ViewAsProvider>
   );

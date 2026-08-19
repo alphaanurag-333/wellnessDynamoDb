@@ -44,8 +44,8 @@ import { AppContentSection } from "../components/AppContentSection.jsx";
 import { LogoSlotsSection } from "../components/LogoSlotsSection.jsx";
 import { LocationsSection } from "../components/LocationsSection.jsx";
 import { BannerSection } from "../components/BannerSection.jsx";
-import { ChampionSection } from "../components/ChampionSection.jsx";
-import { BirthdaySection } from "../components/BirthdaySection.jsx";
+import { DynamicChampionSection } from "../components/DynamicChampionSection.jsx";
+import { DynamicBirthdaySection } from "../components/DynamicBirthdaySection.jsx";
 import { DynamicTransformationSection } from "../components/DynamicTransformationSection.jsx";
 import { DynamicClientReviewSection } from "../components/DynamicClientReviewSection.jsx";
 import { DynamicRealPeopleSection } from "../components/DynamicRealPeopleSection.jsx";
@@ -72,8 +72,6 @@ import { FOOTER_TEXT_BLOCKS } from "../data/footerTextConfigData.js";
 import { createDefaultLogoSlots } from "../data/logoConfigData.js";
 import { LOCATIONS } from "../data/locationConfigData.js";
 import { emptyBannerEditor } from "../data/bannerConfigData.js";
-import { CHAMPION_EDITOR, CHAMPION_GALLERY } from "../data/championConfigData.js";
-import { BIRTHDAY_EDITOR, BIRTHDAY_GALLERY, BIRTHDAY_QUEUE } from "../data/birthdayConfigData.js";
 import { TRANSFORMATION_EDITOR } from "../data/transformationConfigData.js";
 import { CLIENT_REVIEW_EDITOR } from "../data/clientReviewConfigData.js";
 import { REAL_PEOPLE_EDITOR } from "../data/realPeopleConfigData.js";
@@ -1215,11 +1213,9 @@ export function ConfigDetailPage() {
   const [locations, setLocations] = useState(LOCATIONS);
   const [bannerEditor, setBannerEditor] = useState(() => emptyBannerEditor());
   const [bannerItems, setBannerItems] = useState([]);
-  const [championEditor, setChampionEditor] = useState(CHAMPION_EDITOR);
-  const [championGallery, setChampionGallery] = useState(CHAMPION_GALLERY);
-  const [birthdayEditor, setBirthdayEditor] = useState(BIRTHDAY_EDITOR);
-  const [birthdayGallery, setBirthdayGallery] = useState(BIRTHDAY_GALLERY);
-  const [birthdayQueue, setBirthdayQueue] = useState(BIRTHDAY_QUEUE);
+  const [championItems, setChampionItems] = useState([]);
+  const [birthdayPosts, setBirthdayPosts] = useState([]);
+  const [birthdayQueue, setBirthdayQueue] = useState([]);
   const [tfEditor] = useState(TRANSFORMATION_EDITOR);
   const [tfItems, setTfItems] = useState([]);
   const [crEditor] = useState(CLIENT_REVIEW_EDITOR);
@@ -1459,9 +1455,10 @@ export function ConfigDetailPage() {
               : item.id === "common-banner"
                 ? bannerItems.some((entry) => entry.shown && (entry.appOn || entry.webOn))
               : item.id === "common-champion"
-                ? championEditor.appOn || championEditor.webOn
+                ? championItems.some((entry) => entry.live)
               : item.id === "common-birthday"
-                ? birthdayEditor.appOn || birthdayEditor.webOn
+                ? birthdayPosts.some((entry) => entry.live)
+                  || birthdayQueue.some((entry) => entry.status === "sent")
               : item.id === "common-transformation"
                 ? tfItems.some((entry) => entry.live)
               : item.id === "common-client-review"
@@ -1891,21 +1888,17 @@ export function ConfigDetailPage() {
         );
       case "common-champion":
         return (
-          <ChampionSection
-            editor={championEditor}
-            setEditor={setChampionEditor}
-            gallery={championGallery}
-            setGallery={setChampionGallery}
+          <DynamicChampionSection
+            items={championItems}
+            setItems={setChampionItems}
             onToast={onToast}
           />
         );
       case "common-birthday":
         return (
-          <BirthdaySection
-            editor={birthdayEditor}
-            setEditor={setBirthdayEditor}
-            gallery={birthdayGallery}
-            setGallery={setBirthdayGallery}
+          <DynamicBirthdaySection
+            posts={birthdayPosts}
+            setPosts={setBirthdayPosts}
             queue={birthdayQueue}
             setQueue={setBirthdayQueue}
             onToast={onToast}
@@ -2117,8 +2110,9 @@ export function ConfigDetailPage() {
           locations,
           bannerEditor,
           bannerItems,
-          championEditor,
-          birthdayEditor,
+          championItems,
+          birthdayPosts,
+          birthdayQueue,
           tfEditor,
           tfItems,
           crEditor,
