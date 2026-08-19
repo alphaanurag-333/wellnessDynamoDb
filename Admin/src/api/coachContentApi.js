@@ -91,9 +91,19 @@ export function mapCommitmentLetterConfig(config = {}) {
   return { text, version };
 }
 
-async function listWellnessCoachAccounts({ page = 1, limit = ONBOARDING_PAGE_SIZE } = {}) {
+const COACH_ROLE_LABELS = {
+  wellness_coach: "Wellness Coach",
+  assistant_wellness_coach: "Assistant Wellness Coach",
+  trainee: "Trainee",
+};
+
+async function listWellnessCoachAccounts({
+  page = 1,
+  limit = ONBOARDING_PAGE_SIZE,
+  roleKey = "wellness_coach",
+} = {}) {
   const { data } = await api.get("/account/accounts", {
-    params: { roleKey: "wellness_coach", status: "active", page, limit },
+    params: { roleKey, status: "active", page, limit },
   });
   return {
     accounts: Array.isArray(data?.accounts) ? data.accounts : [],
@@ -174,6 +184,28 @@ export async function saveCoachIntroLive(accountId, live) {
   try {
     const { data } = await api.patch(`/account/accounts/${encodeURIComponent(accountId)}/coach-content`, {
       live: Boolean(live),
+    });
+    return data?.account;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function saveCoachLetterFile(accountId, file) {
+  const fd = new FormData();
+  fd.append("letter_file", file);
+  try {
+    const { data } = await api.patch(`/account/accounts/${encodeURIComponent(accountId)}/coach-content`, fd);
+    return data?.account;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function saveCoachLetterLive(accountId, live) {
+  try {
+    const { data } = await api.patch(`/account/accounts/${encodeURIComponent(accountId)}/coach-content`, {
+      letter_live: Boolean(live),
     });
     return data?.account;
   } catch (error) {
@@ -299,6 +331,68 @@ export function buildCoachProfileContent(account, letterConfig = {}) {
       templateUrl: letterConfig.templateUrl || "",
     },
   };
+}
+
+function primaryCoachRoleKey(account) {
+  const keys = Array.isArray(account?.roleKeys) ? account.roleKeys.map(String) : [];
+  if (keys.includes("wellness_coach")) return "wellness_coach";
+  if (keys.includes("assistant_wellness_coach")) return "assistant_wellness_coach";
+  if (keys.includes("trainee")) return "trainee";
+  return "wellness_coach";
+}
+
+export function mapAccountToMyContentCoach(account, letterConfig = {}, index = 0) {
+  const content = buildCoachProfileContent(account, letterConfig);
+  const video = {
+    ...content.video,
+    title: "Intro video",
+    primaryAction: content.video.hasMedia ? "Replace" : "Upload",
+    secondaryAction: "View",
+  };
+  const letter = {
+    ...content.letter,
+    title: "Commitment letter",
+    primaryAction: content.letter.hasMedia ? "Replace" : "Upload",
+    secondaryAction: "View",
+    letterCoachId: account?.id,
+  };
+  const liveCount = [video, letter].filter((item) => item.live).length;
+  const clients = Number(account?.clientCount);
+  const roleKey = primaryCoachRoleKey(account);
+  return {
+    id: account?.id,
+    name: account?.name || "Unnamed coach",
+    role: COACH_ROLE_LABELS[roleKey] || "Coach",
+    clients: Number.isFinite(clients) && clients > 0 ? clients : null,
+    initial: initialsFromName(account?.name),
+    color: AVATAR_COLORS[index % AVATAR_COLORS.length],
+    liveLabel: `${liveCount} OF 2 LIVE`,
+    items: [video, letter],
+  };
+}
+
+export async function listMyContentCoaches({ roleKey = "wellness_coach", letterConfig } = {}) {
+  try {
+    const config = letterConfig || (await getCommitmentLetterConfig().catch(() => ({ text: "", version: 1 })));
+    const { accounts } = await listWellnessCoachAccounts({
+      page: 1,
+      limit: 200,
+      roleKey: roleKey || "wellness_coach",
+    });
+    const unique = [];
+    const seen = new Set();
+    for (const account of accounts || []) {
+      if (!account?.id || seen.has(account.id)) continue;
+      seen.add(account.id);
+      unique.push(account);
+    }
+    const coaches = unique
+      .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), undefined, { sensitivity: "base" }))
+      .map((account, index) => mapAccountToMyContentCoach(account, config, index));
+    return { coaches, letterConfig: config };
+  } catch (error) {
+    normalizeApiError(error);
+  }
 }
 
 export function videoPreviewSrc(item) {

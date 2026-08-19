@@ -17781,6 +17781,16 @@
   max-width: 640px;
 }
 
+.updated-admin .ua-my-content__tabs {
+  margin: 0 0 16px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.updated-admin .ua-my-content__tabs .ua-pill-tabs {
+  flex-wrap: wrap;
+}
+
 .updated-admin .ua-my-content__list {
   display: flex;
   flex-direction: column;
@@ -17951,6 +17961,11 @@
   border-radius: 50%;
   background: #fff;
   box-shadow: 0 1px 2px rgba(16, 35, 63, 0.18);
+}
+
+.updated-admin .ua-my-content__toggle:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 /* Commitment letters */
