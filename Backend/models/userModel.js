@@ -71,6 +71,11 @@ function normalizePresentablePicStatus(value) {
   return PRESENTABLE_PIC_STATUSES.has(next) ? next : null;
 }
 
+/** Missing field on existing users means enabled (legacy default). */
+function isPresentablePicsEnabled(user) {
+  return user?.presentablePicsEnabled !== false;
+}
+
 function normalizeDietaryPreference(value) {
   if (value == null || value === "") return null;
   const next = String(value).toLowerCase().trim();
@@ -242,7 +247,8 @@ function sanitizeUpdateField(key, value) {
     key === "paidOnboardingCompleted" ||
     key === "energyExchangeEnabled" ||
     key === "programEnabled" ||
-    key === "programPurchased"
+    key === "programPurchased" ||
+    key === "presentablePicsEnabled"
   ) {
     return Boolean(value);
   }
@@ -352,6 +358,7 @@ function buildUserItem(input, { id, now } = {}) {
       input.presentablePicReviewedById != null
         ? String(input.presentablePicReviewedById).trim() || null
         : null,
+    presentablePicsEnabled: input.presentablePicsEnabled !== false,
     fcm_id: input.fcm_id != null ? String(input.fcm_id).trim() || null : null,
     status: normalizeStatus(input.status),
     otp: input.otp != null ? String(input.otp) : null,
@@ -866,6 +873,7 @@ module.exports = {
   computePaidOnboardingCompleted,
   normalizeWellnessJourneyFor,
   normalizeDob,
+  isPresentablePicsEnabled,
   buildUserItem,
   toPublicUser,
   createUser,

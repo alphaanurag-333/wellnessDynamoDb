@@ -42,6 +42,7 @@ const {
   normalizeStatus,
   normalizeGender,
   normalizeDob,
+  isPresentablePicsEnabled,
   USER_ALLOWED_STATUS,
   USER_ALLOWED_GENDERS,
 } = require("../../models/userModel");
@@ -123,7 +124,8 @@ function parseUserFields(body, { requirePassword = false } = {}) {
   const country = body.country !== undefined ? String(body.country || "").trim() || null : undefined;
   const state = body.state !== undefined ? String(body.state || "").trim() || null : undefined;
   const city = body.city !== undefined ? String(body.city || "").trim() || null : undefined;
-  const pincode = body.pincode !== undefined ? String(body.pincode || "").trim() || null : undefined;
+  const pincode =
+    body.pincode !== undefined ? String(body.pincode || "").trim() || null : undefined;
   const primaryHealthConcern =
     body.primaryHealthConcern !== undefined
       ? String(body.primaryHealthConcern || "").trim() || null
@@ -504,6 +506,9 @@ async function buildUserUpdatesFromBody(body, current, { allowStatus = true, req
   }
 
   if (body.presentablePic !== undefined) {
+    if (!isPresentablePicsEnabled(current)) {
+      throw new AppError("Presentable pics are disabled for this account", 403);
+    }
     const presentablePic = parsePresentablePicFromBody(body.presentablePic);
     if (presentablePic === null && current.presentablePic) {
       await deleteStoredMedia(current.presentablePic);
@@ -555,6 +560,10 @@ async function buildUserUpdatesFromBody(body, current, { allowStatus = true, req
       "user/presentable"
     );
     if (uploadedPresentable) {
+      if (!isPresentablePicsEnabled(current)) {
+        await deleteStoredMedia(uploadedPresentable);
+        throw new AppError("Presentable pics are disabled for this account", 403);
+      }
       if (current.presentablePic && current.presentablePic !== uploadedPresentable) {
         const prevHistory = Array.isArray(current.presentablePicHistory)
           ? current.presentablePicHistory

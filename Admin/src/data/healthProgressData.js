@@ -35,9 +35,16 @@ export const DEFAULT_HEALTH_PROGRESS_TRACKERS = [
   { ...CONDITION_TRACKER },
 ];
 
+export const CLIENT_HEALTH_TRACKERS = DEFAULT_HEALTH_PROGRESS_TRACKERS.filter((row) => row.featureKey);
+
 export const TRACKING_FILTER_OPTIONS = [
   { id: "all", name: "All tracking" },
   ...HEALTH_TRACKERS.map(({ id, name }) => ({ id, name })),
+];
+
+export const CLIENT_TRACKING_FILTER_OPTIONS = [
+  { id: "all", name: "All tracking" },
+  ...CLIENT_HEALTH_TRACKERS.map(({ id, name }) => ({ id, name })),
 ];
 
 export const FATLOSS_JOURNEY = {

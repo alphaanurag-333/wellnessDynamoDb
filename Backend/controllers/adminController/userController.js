@@ -11,6 +11,7 @@ const {
   deleteUser,
   listUsers,
   listUsersByParentCoachId,
+  isPresentablePicsEnabled,
 } = require("../../models/userModel");
 const {
   parseUserFields,
@@ -21,6 +22,17 @@ const {
 } = require("../userController/userProfileHelpers");
 const { assertStaffCanAccessUser, assertStaffCanMutate } = require("../staffAccess");
 const { readUserIdParam } = require("../helpers/reminderControllerHelpers");
+const {
+  dispatchPresentablePicRequestNotification,
+} = require("../../services/notificationDispatchService");
+
+const PRESENTABLE_PHOTO_REQUEST_TYPES = new Set([
+  "Front pose · gym",
+  "Portrait",
+  "Full body",
+  "Side profile",
+  "Progress comparison",
+]);
 
 exports.listUsersController = asyncHandler(async (req, res) => {
   const page = Math.max(1, Number(req.query.page) || 1);
@@ -130,6 +142,68 @@ exports.deleteUserController = asyncHandler(async (req, res) => {
   }
 
   return res.status(200).json({ status: true, message: "User archived successfully" });
+});
+
+exports.patchPresentablePicsSettingsController = asyncHandler(async (req, res) => {
+  assertStaffCanMutate(req);
+  const userId = readUserIdParam(req);
+  const user = await getUserById(userId);
+  if (!user) throw new AppError("User not found", 404);
+  await assertStaffCanAccessUser(req, user);
+
+  if (req.body.enabled === undefined && req.body.presentablePicsEnabled === undefined) {
+    throw new AppError("enabled is required", 400);
+  }
+
+  const raw = req.body.enabled !== undefined ? req.body.enabled : req.body.presentablePicsEnabled;
+  const enabled =
+    raw === true || raw === false
+      ? raw
+      : String(raw).trim().toLowerCase() === "true"
+        ? true
+        : String(raw).trim().toLowerCase() === "false"
+          ? false
+          : null;
+  if (enabled == null) {
+    throw new AppError("enabled must be true or false", 400);
+  }
+  const updated = await updateUser(userId, { presentablePicsEnabled: enabled });
+
+  return res.status(200).json({
+    status: true,
+    message: enabled
+      ? "Presentable pics enabled in the app"
+      : "Presentable pics hidden in the app",
+    enabled: isPresentablePicsEnabled(updated),
+    user: await enrichUser(updated),
+  });
+});
+
+exports.requestPresentablePicController = asyncHandler(async (req, res) => {
+  const actor = assertStaffCanMutate(req);
+  const userId = readUserIdParam(req);
+  const user = await getUserById(userId);
+  if (!user) throw new AppError("User not found", 404);
+  await assertStaffCanAccessUser(req, user);
+
+  const photoType = String(req.body.photoType || req.body.type || "").trim();
+  if (!PRESENTABLE_PHOTO_REQUEST_TYPES.has(photoType)) {
+    throw new AppError("Invalid photo type", 400);
+  }
+
+  const notification = await dispatchPresentablePicRequestNotification({
+    userId,
+    photoType,
+    coachName: actor.displayName,
+    actorUserId: actor.id,
+  });
+
+  return res.status(200).json({
+    status: true,
+    message: "Photo request sent",
+    photoType,
+    notification,
+  });
 });
 
 exports.reviewPresentablePicController = asyncHandler(async (req, res) => {

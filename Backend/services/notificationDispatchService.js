@@ -44,6 +44,7 @@ const FCM_TYPE_BY_KIND = {
   onboarding_meeting_confirmed: "onboarding_meeting_confirmed_notification",
   program_checkout_triggered: "program_checkout_triggered_notification",
   program_assigned: "program_assigned_notification",
+  presentable_pic_request: "presentable_pic_request_notification",
 };
 
 function buildPushData(notification) {
@@ -640,6 +641,28 @@ async function dispatchProgramAssignedNotification({ userId, programTitle, progr
   return notification;
 }
 
+async function dispatchPresentablePicRequestNotification({
+  userId,
+  photoType,
+  coachName,
+  actorUserId = null,
+}) {
+  const name = String(coachName || "Your coach").trim() || "Your coach";
+  const type = String(photoType || "presentable photo").trim() || "presentable photo";
+  const notification = await createTargetedNotification({
+    userId,
+    kind: "presentable_pic_request",
+    message: `${name} requested a new photo: ${type}. Please upload it in Personal Details.`,
+    referenceType: "presentable_pic",
+    actorUserId,
+    title: "Photo requested",
+    comment: type,
+  });
+
+  runPushSafely(deliverTargetedPush(userId, notification));
+  return notification;
+}
+
 async function dispatchOnboardingMeetingConfirmedNotification({ userId, stepKey }) {
   const label = ONBOARDING_MEETING_TITLES[stepKey] || "onboarding";
   const notification = await createTargetedNotification({
@@ -728,6 +751,7 @@ module.exports = {
   dispatchProgramCheckoutTriggeredNotificationAsync,
   dispatchProgramAssignedNotification,
   dispatchProgramAssignedNotificationAsync,
+  dispatchPresentablePicRequestNotification,
   dispatchOnboardingMeetingConfirmedNotification,
   dispatchOnboardingMeetingConfirmedNotificationAsync,
   dispatchOnboardingTimeRequestedCoachNotification,

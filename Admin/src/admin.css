@@ -10793,7 +10793,7 @@
 }
 
 .updated-admin .ua-cp-comms__bar--reminders {
-  grid-template-columns: minmax(96px, auto) minmax(0, 1fr) 124px 92px auto auto;
+  grid-template-columns: minmax(96px, auto) minmax(0, 1fr) 124px auto auto auto;
   gap: 8px;
 }
 
@@ -10815,6 +10815,13 @@
 
 .updated-admin .ua-cp-comms__bar .ua-cp-comms__action {
   justify-self: end;
+}
+
+.updated-admin .ua-cp-comms__live {
+  margin: -4px 2px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #2b8f5b;
 }
 
 
@@ -11126,6 +11133,48 @@
 .updated-admin .ua-cp-reminder-time {
   width: 124px;
   min-width: 124px;
+}
+
+.updated-admin .ua-cp-reminder-days {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.updated-admin .ua-cp-reminder-day {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--muted);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.updated-admin .ua-cp-reminder-day--on {
+  background: #5e6ad2;
+  border-color: #5e6ad2;
+  color: #fff;
+}
+
+.updated-admin .ua-cp-reminder-day:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.updated-admin .ua-cp-reminder-empty {
+  margin: 8px 0 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.updated-admin .ua-cp-reminder-item--off {
+  opacity: 0.62;
 }
 
 .updated-admin .ua-cp-reminder-freq {
@@ -21962,6 +22011,35 @@
   color: #2b8f5b;
 }
 
+.updated-admin .ua-cp-hptrack__status {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #7b8798;
+}
+
+.updated-admin .ua-cp-hptrack__status--error {
+  color: #b42318;
+}
+
+.updated-admin .ua-cp-hptrack-empty {
+  margin: 0;
+  padding: 16px 18px;
+  border: 1px dashed #d7deea;
+  border-radius: 12px;
+  background: #f8fafc;
+  font-size: 13px;
+  color: #6b778c;
+}
+
+.updated-admin .ua-toggle:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.updated-admin .ua-cp-hptrack-list__row--locked .ua-cp-hptrack-list__copy span {
+  color: #9aa5b5;
+}
+
 .updated-admin .ua-cp-hptrack__filter {
   display: flex;
   flex-direction: column;
@@ -22840,7 +22918,7 @@
 .updated-admin .ua-cp-hptrack-cycle-table__head,
 .updated-admin .ua-cp-hptrack-cycle-table__row {
   display: grid;
-  grid-template-columns: 1.2fr 1fr 1fr 28px;
+  grid-template-columns: 1.2fr 1fr 1fr;
   gap: 8px;
   padding: 8px 0;
   font-size: 12px;
@@ -23047,6 +23125,16 @@
   padding: 20px 16px;
   border-radius: 12px;
   background: linear-gradient(160deg, #eef2ff 0%, #e0e7ff 55%, #dbeafe 100%);
+  overflow: hidden;
+}
+
+.updated-admin .ua-cp-hptrack-photo-card__img,
+.updated-admin .ua-cp-hptrack-weight-photo-card__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .updated-admin .ua-cp-hptrack-photo-card__badge {
@@ -23095,6 +23183,10 @@
   display: grid;
   grid-template-columns: 1fr 1fr auto;
   gap: 8px;
+}
+
+.updated-admin .ua-cp-hptrack-photo-card__actions--view {
+  grid-template-columns: 1fr;
 }
 
 .updated-admin .ua-cp-hptrack-photo-card__approve,
@@ -23258,6 +23350,7 @@
   min-height: 120px;
   padding: 18px 14px;
   background: linear-gradient(160deg, #fff4ed 0%, #ffe8d6 55%, #ffdfc8 100%);
+  overflow: hidden;
 }
 
 .updated-admin .ua-cp-hptrack-weight-photo-card__badge {
@@ -45322,6 +45415,11 @@
   .updated-admin .ua-cp-comms__bar .ua-cp-reminder-freq {
     width: 100%;
     min-width: 0;
+  }
+
+  .updated-admin .ua-cp-reminder-days {
+    grid-column: 1 / -1;
+    justify-content: space-between;
   }
 
   .updated-admin .ua-cp-comms__bar .ua-cp-comms__action {
