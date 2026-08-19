@@ -31,6 +31,8 @@ import {
 
 const SYSTEM_TEAM_ROLE_KEYS = new Set(["wc", "awc", "trainee", "support"]);
 const PAGE_SIZE = 20;
+const ALL_TAB_ID = "all";
+const ROLE_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function isAdminAccessRole(role) {
   const key = String(role?.roleKey || "").toLowerCase();
@@ -350,7 +352,9 @@ function CreateMemberModal({ open, member, roles, parentOptions, onClose, onSave
 
 export function TeamsPage() {
   const { showToast: onToast } = useOutletContext();
-  const { isSuperAdmin, viewAs } = useViewAs();
+  const { isSuperAdmin, viewAs, sessionUi } = useViewAs();
+  const actorIsWc = viewAs === "wc" || sessionUi === "wc";
+  const actorIsAwc = viewAs === "awc" || sessionUi === "awc";
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [members, setMembers] = useState([]);
@@ -361,6 +365,7 @@ export function TeamsPage() {
     pages: 1,
   });
   const [accessRoles, setAccessRoles] = useState([]);
+  const [rolesReady, setRolesReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
@@ -384,7 +389,9 @@ export function TeamsPage() {
 
   const pageParam = Number(searchParams.get("page"));
   const currentPage = Number.isFinite(pageParam) && pageParam > 0 ? Math.floor(pageParam) : 1;
-  const roleTab = searchParams.get("role") || teamRoles[0]?.id || "wc";
+  const roleParam = searchParams.get("role") || "";
+  const roleTab = roleParam || ALL_TAB_ID;
+  const isAllTab = roleTab === ALL_TAB_ID;
 
   const setPage = (page) => {
     const next = new URLSearchParams(searchParams);
@@ -395,8 +402,7 @@ export function TeamsPage() {
 
   const setRoleTab = (role) => {
     const next = new URLSearchParams(searchParams);
-    const defaultId = teamRoles[0]?.id;
-    if (!role || role === defaultId) next.delete("role");
+    if (!role || role === ALL_TAB_ID) next.delete("role");
     else next.set("role", role);
     next.delete("page");
     setSearchParams(next, { replace: true });
@@ -407,9 +413,9 @@ export function TeamsPage() {
     [teamRoles],
   );
 
-  const activeRole = roleById[roleTab];
-  const activeBaseUiKey = activeRole ? resolveBaseUiRoleKey(activeRole, teamRoles) : null;
-  const apiRoleKey = activeRole?.roleKey || activeBaseUiKey || (TEAM_ROLE_META[roleTab] ? roleTab : undefined);
+  const activeRole = isAllTab ? null : roleById[roleTab];
+  const selectedConsoleRoleId = !isAllTab && ROLE_ID_RE.test(roleTab) ? roleTab : undefined;
+  const fallbackUiRoleKey = !isAllTab && TEAM_ROLE_META[roleTab] ? roleTab : undefined;
 
   const loadRoles = useCallback(async () => {
     try {
@@ -417,6 +423,8 @@ export function TeamsPage() {
       setAccessRoles(Array.isArray(roles) ? roles : []);
     } catch {
       setAccessRoles([]);
+    } finally {
+      setRolesReady(true);
     }
   }, []);
 
@@ -432,13 +440,15 @@ export function TeamsPage() {
   useEffect(() => {
     let cancelled = false;
     async function loadMembers() {
+      if (!isAllTab && !selectedConsoleRoleId && !rolesReady) return;
       setLoading(true);
       setError("");
       try {
         const { members: rows, pagination: nextPagination } = await fetchTeamMembers({
           page: currentPage,
           limit: PAGE_SIZE,
-          roleKey: apiRoleKey,
+          consoleRoleId: selectedConsoleRoleId,
+          roleKey: selectedConsoleRoleId ? undefined : fallbackUiRoleKey,
         });
         if (cancelled) return;
         const list = (rows || []).filter((m) => !m.isSuperAdmin && m.primaryRoleKey !== "admin");
@@ -462,7 +472,7 @@ export function TeamsPage() {
     return () => {
       cancelled = true;
     };
-  }, [apiRoleKey, currentPage, reloadNonce]);
+  }, [isAllTab, selectedConsoleRoleId, fallbackUiRoleKey, rolesReady, currentPage, reloadNonce]);
 
   useEffect(() => {
     if (loading || error) return;
@@ -478,29 +488,31 @@ export function TeamsPage() {
   }, [createOpen]);
 
   const tabs = useMemo(() => {
-    if (teamRoles.length) {
-      return teamRoles.map((r) => ({
-        id: r.id,
-        label: r.name,
-        count: r.memberCount || 0,
-      }));
-    }
-    return TEAM_ROLE_TABS_BASE.map((t) => ({ ...t, count: 0 }));
+    const roleTabs = teamRoles.length
+      ? teamRoles.map((r) => ({
+          id: r.id,
+          label: r.name,
+          count: r.memberCount || 0,
+        }))
+      : TEAM_ROLE_TABS_BASE.map((t) => ({ ...t, count: 0 }));
+    const allCount = roleTabs.reduce((sum, tab) => sum + (Number(tab.count) || 0), 0);
+    return [{ id: ALL_TAB_ID, label: "All", count: allCount }, ...roleTabs];
   }, [teamRoles]);
 
   useEffect(() => {
     if (!teamRoles.length) return;
-    if (!teamRoles.some((r) => r.id === roleTab)) {
-      setRoleTab(teamRoles[0].id);
+    if (isAllTab) return;
+    if (!teamRoles.some((r) => r.id === roleTab) && !TEAM_ROLE_META[roleTab]) {
+      setRoleTab(ALL_TAB_ID);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teamRoles, roleTab]);
+  }, [teamRoles, roleTab, isAllTab]);
 
   const rows = members;
 
   const baseUiForCol = activeRole
     ? resolveBaseUiRoleKey(activeRole, teamRoles) || activeRole.roleKey
-    : roleTab;
+    : null;
   const col3 = STAFF_COL3[baseUiForCol] || "Load";
 
   function openMember(id, focus) {
@@ -513,9 +525,9 @@ export function TeamsPage() {
       <PageHeader
         title="Teams & roles"
         subtitle={
-          viewAs === "wc"
+          actorIsWc
             ? "Your Assistant WCs and the trainees below them."
-            : viewAs === "awc"
+            : actorIsAwc
               ? "Trainees assigned below you."
               : "Each team = 1 Wellness Coach + N assistants + assigned clients. Manage every staff role below."
         }
@@ -550,7 +562,7 @@ export function TeamsPage() {
             {rows.length === 0 ? (
               <div className="ua-table ua-table--teams ua-table__row">
                 <div className="ua-table__muted" style={{ gridColumn: "1 / -1" }}>
-                  No members in this role yet.
+                  {isAllTab ? "No team members yet." : "No members in this role yet."}
                 </div>
               </div>
             ) : null}
@@ -627,9 +639,9 @@ export function TeamsPage() {
                     <button
                       type="button"
                       className="ua-team-actions__perm"
-                      onClick={() => openMember(s.id, isSuperAdmin || viewAs === "wc" ? "permissions" : undefined)}
+                      onClick={() => openMember(s.id, isSuperAdmin || actorIsWc ? "permissions" : undefined)}
                     >
-                      {isSuperAdmin || viewAs === "wc" ? "Permissions" : "View members"} ›
+                      {isSuperAdmin || actorIsWc ? "Permissions" : "View members"} ›
                     </button>
                   </div>
                 </div>

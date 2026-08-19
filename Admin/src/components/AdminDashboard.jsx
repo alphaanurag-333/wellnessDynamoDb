@@ -89,6 +89,38 @@ function asNumber(value) {
   return Number.isFinite(number) ? number : 0;
 }
 
+const TEAM_PENDING_BY_ROLE = Object.fromEntries(
+  [...DASH_ROLE_CARDS, ...WC_TEAM_CARDS].map((card) => [card.roleId, card.pending]),
+);
+
+function teamCardsFromRoles(roles, { excludeIds = [], statisticsForView, hasAdminStatistics, hasStaffStatistics } = {}) {
+  const skip = new Set(["admin", ...excludeIds]);
+  return (roles || [])
+    .filter((role) => role && !skip.has(role.id))
+    .map((role) => {
+      const staticCard = DASH_ROLE_CARDS.find((card) => card.roleId === role.id);
+      let value = asNumber(role.live);
+      if (!value && staticCard && !statisticsForView) value = asNumber(staticCard.value);
+      if (role.id === "wc" && hasAdminStatistics) {
+        value = asNumber(statisticsForView?.activeWellnessCoaches);
+      } else if (role.id === "awc") {
+        const statsValue = hasStaffStatistics
+          ? statisticsForView?.totalAssistants
+          : statisticsForView?.activeAssistants;
+        if (statsValue != null) value = asNumber(statsValue);
+      }
+      return {
+        label: role.name,
+        roleId: role.id,
+        consoleRoleId: role.dbId || role.id,
+        value,
+        accent: role.color || staticCard?.accent || "#5e6ad2",
+        bar: role.color || staticCard?.bar || "#5e6ad2",
+        pending: TEAM_PENDING_BY_ROLE[role.id] || [],
+      };
+    });
+}
+
 function dynamicTiers(baseTiers, rows) {
   if (!Array.isArray(rows)) return baseTiers;
   const values = new Map(rows.map((row) => [row.key, asNumber(row.value)]));
@@ -322,7 +354,7 @@ export function AdminDashboard({
   onRetry,
 }) {
   const navigate = useNavigate();
-  const { viewAs: viewAsId, viewAsPersona } = useViewAs();
+  const { viewAs: viewAsId, viewAsPersona, catalogRoles } = useViewAs();
   const viewAs = viewAsPersona || viewAsId;
   const isStaffDash = viewAs === "wc" || viewAs === "awc";
   const isSupportDash = viewAs === "support";
@@ -435,18 +467,14 @@ export function AdminDashboard({
       cells: OPS_OVERDUE.cells.map((cell) => ({ ...cell, count: 0, people: [] })),
     }
     : OPS_OVERDUE);
-  const baseTeamCards = viewAs === "wc" ? WC_TEAM_CARDS : DASH_ROLE_CARDS;
-  const teamCards = baseTeamCards.map((team) => {
-    if (!statisticsForView) return team;
-    if (team.roleId === "wc" && hasAdminStatistics) {
-      return { ...team, value: asNumber(statistics.activeWellnessCoaches) };
-    }
-    if (team.roleId === "awc") {
-      const value = hasStaffStatistics ? statistics.totalAssistants : statistics.activeAssistants;
-      return { ...team, value: asNumber(value) };
-    }
-    return team;
+  const fallbackTeamCards = viewAs === "wc" ? WC_TEAM_CARDS : DASH_ROLE_CARDS;
+  const catalogTeamCards = teamCardsFromRoles(catalogRoles, {
+    excludeIds: viewAs === "wc" ? ["wc"] : [],
+    statisticsForView,
+    hasAdminStatistics,
+    hasStaffStatistics,
   });
+  const teamCards = catalogTeamCards.length ? catalogTeamCards : fallbackTeamCards;
   const fallbackLeaderboard = viewAs === "wc" ? WC_LEADERBOARD : viewAs === "awc" ? AWC_LEADERBOARD : viewAs === "support" ? WC_LEADERBOARD : LEADERBOARD;
   const liveCommunity = statistics?.community || null;
   const birthdayRows = liveCommunity ? (liveCommunity.birthdays || []) : BIRTHDAYS;
@@ -1349,7 +1377,7 @@ export function AdminDashboard({
           </div>
           <div className="team-row">
             {teamCards.map((team) => (
-              <div key={team.label} className="team-card cdact">
+              <div key={team.consoleRoleId || team.roleId || team.label} className="team-card cdact">
                 <span className="stat-card__bar" style={{ background: team.bar }} />
                 <div className="stat-card__top">
                   <span className="stat-card__icon" style={{ background: team.bar, color: "#fff", boxShadow: `0 2px 6px ${team.bar}55` }}>
@@ -1359,7 +1387,7 @@ export function AdminDashboard({
                 </div>
                 <div className="stat-card__value" >{team.value}</div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {team.pending.map((tag) => (
+                  {(team.pending || []).map((tag) => (
                     <span key={tag.label} className="tag" style={{ background: tag.bg, color: tag.color, borderColor: tag.color }}>
                       {tag.label}
                     </span>
@@ -1369,7 +1397,14 @@ export function AdminDashboard({
                   <button
                     type="button"
                     className="team-card__view"
-                    onClick={() => navigate(UPDATED_ADMIN_PATHS.teams)}
+                    onClick={() => {
+                      const role = team.consoleRoleId || team.roleId;
+                      navigate(
+                        role
+                          ? `${UPDATED_ADMIN_PATHS.teams}?role=${encodeURIComponent(role)}`
+                          : UPDATED_ADMIN_PATHS.teams,
+                      );
+                    }}
                   >
                     View
                   </button>

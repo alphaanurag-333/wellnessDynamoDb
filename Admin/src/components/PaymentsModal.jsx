@@ -62,7 +62,7 @@ export function PaymentsModal({
               <div className="ua-payments-modal__table-head">
                 <div>User</div>
                 <div>Wellness coach</div>
-                <div>Program type</div>
+                <div>Type</div>
                 <div>Date</div>
                 <div>Amount</div>
               </div>
@@ -76,7 +76,16 @@ export function PaymentsModal({
                   <span className="ua-payments-modal__user">{row.userName}</span>
                   <span className="ua-payments-modal__coach">{row.coachName || "—"}</span>
                   <span className="ua-payments-modal__program">
-                    <span className="ua-payments-modal__badge">{row.programType || "—"}</span>
+                    <span
+                      className={`ua-payments-modal__badge${
+                        String(row.productType || "").toLowerCase() === "consultancy" ||
+                        String(row.programType || "").toLowerCase() === "consultation"
+                          ? " ua-payments-modal__badge--consult"
+                          : ""
+                      }`}
+                    >
+                      {row.programType || "—"}
+                    </span>
                   </span>
                   <span className="ua-payments-modal__date">{row.dateLabel}</span>
                   <span className="ua-payments-modal__amount">{formatPaymentAmount(row.amount)}</span>

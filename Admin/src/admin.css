@@ -2051,8 +2051,7 @@
 .updated-admin .team-row {
   display: flex;
   gap: 9px;
-  flex-wrap: nowrap;
-  overflow-x: auto;
+  flex-wrap: wrap;
   padding-bottom: 4px;
   padding-top: 4px;
 }
@@ -2060,7 +2059,7 @@
 .updated-admin .team-card {
   position: relative;
   overflow: hidden;
-  flex: 1 1 0;
+  flex: 1 1 200px;
   min-width: 180px;
   background: #fff;
   border: 1px solid var(--border-soft);
@@ -2576,6 +2575,11 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.updated-admin .ua-payments-modal__badge--consult {
+  background: #e6f6f3;
+  color: #0f766e;
 }
 
 .updated-admin .ua-payments-modal__amount {
@@ -7269,7 +7273,11 @@
 
 .updated-admin .ua-audit .ua-table-scroll,
 .updated-admin .ua-table-card--audit {
-  overflow: visible;
+  overflow-x: auto;
+}
+
+.updated-admin .ua-table--audit > * {
+  min-width: 0;
 }
 
 .updated-admin .ua-audit .ua-page-head__sub {
@@ -7325,6 +7333,14 @@
   color: #c27803;
 }
 
+.updated-admin .ua-truncate-tip {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  outline: none;
+}
+
 .updated-admin .ua-log-text,
 .updated-admin .ua-log-subject {
   font-size: 13.5px;
@@ -7344,6 +7360,25 @@
   font-size: 13px;
   font-weight: 650;
   color: #5a6b85;
+}
+
+.ua-truncate-tip__bubble {
+  position: fixed;
+  z-index: 1400;
+  padding: 8px 10px;
+  background: #1b2b44;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.45;
+  border-radius: 8px;
+  box-shadow: 0 10px 28px rgba(16, 35, 63, 0.22);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  pointer-events: none;
+  max-height: min(240px, 50vh);
+  overflow-y: auto;
 }
 
 .updated-admin .ua-log-when {

@@ -64,7 +64,7 @@ function programTypeFromTransaction(tx) {
   const concern = String(tx?.healthConcernSnapshot?.title || "").trim();
   const name = catalog || concern;
   if (type === "program") return name || "Wellness program";
-  if (type === "consultancy") return name || "PWC";
+  if (type === "consultancy") return "Consultation";
   if (type === "subscription" || type === "energy_exchange") {
     if (!name) return type === "energy_exchange" ? "Energy Exchange" : "App user";
     if (/^app user/i.test(name)) return name;

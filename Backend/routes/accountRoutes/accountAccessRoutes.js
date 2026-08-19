@@ -33,8 +33,8 @@ router.use(protectAccount);
 
 const requireAccessAdmin = [requireActiveRole("admin"), requireSuperAdmin];
 
-/** Access Control catalog / role mutations — Super Admin only */
-router.get("/catalog", ...requireAccessAdmin, getAccessCatalog);
+/** Access Control catalog — Super Admin mutates; Teams readers may load the matrix */
+router.get("/catalog", requireTeamsReadAccess, getAccessCatalog);
 router.post("/roles", ...requireAccessAdmin, createAccessRole);
 router.get("/policies", ...requireAccessAdmin, listAccessPolicies);
 router.post("/policies", ...requireAccessAdmin, createAccessPolicy);

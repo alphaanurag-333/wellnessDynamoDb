@@ -800,19 +800,37 @@ async function countAccountsByRoleKey(roleKey, { status = "active", primaryOnly 
   return total;
 }
 
-/** Count accounts whose membership points at this console Role id. */
-async function countAccountsByConsoleRoleId(consoleRoleId, { status = "active" } = {}) {
+function assignedMembershipRoleId(account, primaryRoleKey) {
+  const memberships = Array.isArray(account?.memberships) ? account.memberships : [];
+  const primary = normalizeRoleKey(primaryRoleKey) || resolvePrimaryRoleKey(account);
+  const match =
+    (primary && memberships.find((m) => normalizeRoleKey(m?.roleKey) === primary)) ||
+    memberships[0] ||
+    null;
+  return String(match?.roleId || "").trim();
+}
+
+/**
+ * Count accounts assigned to a console Role id.
+ * System templates can also include legacy rows with no membership.roleId
+ * when accountRoleKey + includeUnassigned are set.
+ */
+async function countAccountsByConsoleRoleId(
+  consoleRoleId,
+  { status = "active", accountRoleKey = null, includeUnassigned = false } = {}
+) {
   const id = String(consoleRoleId || "").trim();
   if (!id) return 0;
 
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
+  const expectedRole = accountRoleKey ? normalizeRoleKey(accountRoleKey) : null;
   let total = 0;
   let lastKey;
   do {
     const exprNames = {};
     const exprValues = {};
     let filterExpression;
-    const projection = ["memberships"];
+    const projection = ["memberships", "defaultRoleKey", "roleKeys"];
 
     if (normalizedStatus) {
       exprNames["#status"] = "status";
@@ -833,8 +851,14 @@ async function countAccountsByConsoleRoleId(consoleRoleId, { status = "active" }
     );
 
     for (const item of Items || []) {
-      const memberships = Array.isArray(item.memberships) ? item.memberships : [];
-      if (memberships.some((m) => String(m?.roleId || "").trim() === id)) {
+      const primary = resolvePrimaryRoleKey(item);
+      if (expectedRole && primary !== expectedRole) continue;
+      const assignedId = assignedMembershipRoleId(item, primary);
+      if (assignedId === id) {
+        total += 1;
+        continue;
+      }
+      if (includeUnassigned && !assignedId && expectedRole && primary === expectedRole) {
         total += 1;
       }
     }
@@ -871,4 +895,5 @@ module.exports = {
   listAccountsByParentAccountId,
   countAccountsByRoleKey,
   countAccountsByConsoleRoleId,
+  assignedMembershipRoleId,
 };
