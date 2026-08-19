@@ -39,7 +39,7 @@ export function AdminHeader({
           title="Go back"
           onClick={() => navigate(-1)}
         >
-          ‹ Back
+          ‹ <span className="header__back-label">Back</span>
         </button>
       )}
 

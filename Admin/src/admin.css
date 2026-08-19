@@ -574,9 +574,9 @@
 
 .updated-admin .header__search {
   position: relative;
-  flex: 1 1 140px;
-  min-width: 120px;
-  max-width: 300px;
+  flex: 1 1 280px;
+  min-width: 180px;
+  max-width: 520px;
 }
 
 .updated-admin .header__search-icon {
@@ -46011,6 +46011,11 @@
     width: min(280px, 86vw);
   }
 
+  .updated-admin .header {
+    gap: 8px;
+    padding: 0 10px;
+  }
+
   .updated-admin .header__menu {
     display: flex;
     align-items: center;
@@ -46024,6 +46029,44 @@
     color: #16233f;
     cursor: pointer;
     padding: 0;
+  }
+
+  .updated-admin .header__back {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    justify-content: center;
+    font-size: 22px;
+    line-height: 1;
+  }
+
+  .updated-admin .header__back-label {
+    display: none;
+  }
+
+  .updated-admin .header__search.header__search--compact {
+    flex: 0 0 36px;
+    min-width: 36px;
+    max-width: 36px;
+  }
+
+  .updated-admin .header__actions {
+    gap: 8px;
+    margin-left: auto;
+  }
+
+  .updated-admin .header__notif-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .updated-admin .header__profile {
+    gap: 0;
+    padding-left: 0;
+  }
+
+  .updated-admin .header__profile-badge {
+    display: none;
   }
 
   .updated-admin .header__menu:hover {
@@ -49141,7 +49184,7 @@
     flex-direction: column;
   }
 
-  .updated-admin .header__search {
+  .updated-admin .header__search:not(.header__search--compact) {
     flex: 1 1 auto;
     min-width: 0;
     max-width: none;

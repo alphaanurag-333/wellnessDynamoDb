@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import { useInbox } from "../context/InboxContext.jsx";
+import "./notificationInbox.css";
 
 const ROLE_NOTIF_SUBTITLES = {
   admin: "All console activity",
@@ -12,6 +13,8 @@ const ROLE_NOTIF_SUBTITLES = {
   support: "Content & feedback",
   trainee: "Learning activities",
 };
+
+const COMPACT_MQ = "(max-width: 960px)";
 
 export function NotificationInboxPanel({ wrapClassName = "header__notif-wrap", btnClassName = "header__notif-btn" }) {
   const navigate = useNavigate();
@@ -27,18 +30,31 @@ export function NotificationInboxPanel({ wrapClassName = "header__notif-wrap", b
 
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState({ top: 0, right: 12 });
+  const [compact, setCompact] = useState(() => (
+    typeof window !== "undefined" ? window.matchMedia(COMPACT_MQ).matches : false
+  ));
   const panelRef = useRef(null);
   const btnRef = useRef(null);
 
   function positionPanel() {
     const btn = btnRef.current;
-    if (!btn) return;
+    if (!btn || compact) return;
     const rect = btn.getBoundingClientRect();
     setCoords({
       top: rect.bottom + 8,
       right: Math.max(12, window.innerWidth - rect.right),
     });
   }
+
+  useEffect(() => {
+    const media = window.matchMedia(COMPACT_MQ);
+    function sync() {
+      setCompact(media.matches);
+    }
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
 
   useLayoutEffect(() => {
     if (!open) return undefined;
@@ -53,7 +69,7 @@ export function NotificationInboxPanel({ wrapClassName = "header__notif-wrap", b
       window.removeEventListener("resize", onResize);
       window.removeEventListener("scroll", onResize, true);
     };
-  }, [open, loadInbox]);
+  }, [open, compact, loadInbox]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -82,83 +98,120 @@ export function NotificationInboxPanel({ wrapClassName = "header__notif-wrap", b
 
   const isClientBell = btnClassName.includes("ua-cp-topbar__icon");
 
-  const panel = open
-    ? createPortal(
-        <div
-          ref={panelRef}
-          className="header__notif-panel header__notif-panel--portal"
-          role="dialog"
-          aria-label="Notifications"
-          style={{ top: coords.top, right: coords.right }}
+  function closeAndOpen(id) {
+    setOpen(false);
+    handleNotifClick(id);
+  }
+
+  const list = (
+    <>
+      {inboxLoading && notifications.length === 0 ? (
+        <div className="header__notif-empty">Loading notifications…</div>
+      ) : null}
+      {!inboxLoading && notifications.length === 0 ? (
+        <div className="header__notif-empty">No console events yet</div>
+      ) : null}
+      {notifications.map((n) => (
+        <button
+          key={n.id}
+          type="button"
+          className={`header__notif-item${n.unread ? " is-unread" : ""}`}
+          onClick={() => closeAndOpen(n.id)}
         >
-          <div className="header__notif-head">
-            <span>🔔</span>
-            <div>
-              <div className="header__notif-title">Notifications</div>
-              <div className="header__notif-sub">
-                {ROLE_NOTIF_SUBTITLES[activeRole?.id] || "Everything across the console"}
-              </div>
-            </div>
-            <button
-              type="button"
-              className="header__notif-mark"
-              onClick={handleMarkAllRead}
-              disabled={unreadCount === 0}
-            >
-              Mark all read
-            </button>
-          </div>
-          {inboxLoading && notifications.length === 0 ? (
-            <div className="header__notif-empty">Loading notifications…</div>
-          ) : null}
-          {!inboxLoading && notifications.length === 0 ? (
-            <div className="header__notif-empty">No console events yet</div>
-          ) : null}
-          {notifications.map((n) => (
-            <button
-              key={n.id}
-              type="button"
-              className="header__notif-item"
-              style={{ background: n.unread ? "#f9fbfd" : "#fff" }}
-              onClick={() => {
-                setOpen(false);
-                handleNotifClick(n.id);
-              }}
-            >
-              <span style={{ fontSize: 18 }}>{n.icon}</span>
-              <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2, textAlign: "left" }}>
-                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 9, fontWeight: 700, color: "#5e6ad2", background: "#eef0fc", padding: "2px 6px", borderRadius: 4 }}>
-                    {n.kind}
-                  </span>
-                  <span style={{ fontSize: 9.5, color: "#b0bacb" }}>{n.time}</span>
-                </span>
-                <span style={{ fontSize: 12, fontWeight: 650, color: "#16233f", lineHeight: 1.35 }}>{n.title}</span>
-                {n.from && n.from !== "System" ? (
-                  <span style={{ fontSize: 10.5, color: "#8a97ac" }}>From {n.from}</span>
-                ) : null}
-              </span>
-              {n.unread ? (
-                <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#5e6ad2", flexShrink: 0, marginTop: 2 }} />
-              ) : (
-                <span style={{ color: "#c0c9d6", fontSize: 15 }}>›</span>
-              )}
-            </button>
-          ))}
-          <button
-            type="button"
-            className="header__notif-viewall"
-            onClick={() => {
-              setOpen(false);
-              navigate(UPDATED_ADMIN_PATHS.notifications);
+          <span className="header__notif-item-icon" aria-hidden="true">{n.icon}</span>
+          <span className="header__notif-item-body">
+            <span className="header__notif-item-meta">
+              <span className="header__notif-item-kind">{n.kind}</span>
+              <span className="header__notif-item-time">{n.time}</span>
+            </span>
+            <span className="header__notif-item-title">{n.title}</span>
+            {n.from && n.from !== "System" ? (
+              <span className="header__notif-item-from">From {n.from}</span>
+            ) : null}
+          </span>
+          {n.unread ? (
+            <span className="header__notif-item-status" aria-label="Unread" />
+          ) : (
+            <span className="header__notif-item-chevron" aria-hidden="true">›</span>
+          )}
+        </button>
+      ))}
+    </>
+  );
+
+  const head = (
+    <div className="header__notif-head">
+      <span className="header__notif-head-icon" aria-hidden="true">🔔</span>
+      <div className="header__notif-head-copy">
+        <div className="header__notif-title">Notifications</div>
+        <div className="header__notif-sub">
+          {ROLE_NOTIF_SUBTITLES[activeRole?.id] || "Everything across the console"}
+        </div>
+      </div>
+      <button
+        type="button"
+        className="header__notif-mark"
+        onClick={handleMarkAllRead}
+        disabled={unreadCount === 0}
+      >
+        Mark all read
+      </button>
+      <button
+        type="button"
+        className="header__notif-close"
+        aria-label="Close notifications"
+        onClick={() => setOpen(false)}
+      >
+        ×
+      </button>
+    </div>
+  );
+
+  const viewAll = (
+    <button
+      type="button"
+      className="header__notif-viewall"
+      onClick={() => {
+        setOpen(false);
+        navigate(UPDATED_ADMIN_PATHS.notifications);
+      }}
+    >
+      View all notifications →
+    </button>
+  );
+
+  const panel = !open
+    ? null
+    : compact
+      ? createPortal(
+          <div
+            className="header__notif-overlay"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) setOpen(false);
             }}
           >
-            View all notifications →
-          </button>
-        </div>,
-        document.querySelector(".updated-admin") || document.body,
-      )
-    : null;
+            <div className="header__notif-sheet" ref={panelRef} role="dialog" aria-label="Notifications">
+              {head}
+              <div className="header__notif-list">{list}</div>
+              {viewAll}
+            </div>
+          </div>,
+          document.body,
+        )
+      : createPortal(
+          <div
+            ref={panelRef}
+            className="header__notif-panel header__notif-panel--portal"
+            role="dialog"
+            aria-label="Notifications"
+            style={{ top: coords.top, right: coords.right }}
+          >
+            {head}
+            <div className="header__notif-list">{list}</div>
+            {viewAll}
+          </div>,
+          document.querySelector(".updated-admin") || document.body,
+        );
 
   return (
     <div className={wrapClassName}>
