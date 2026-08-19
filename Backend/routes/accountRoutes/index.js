@@ -22,6 +22,8 @@ const {
   listAccountsHandler,
   getAccountHandler,
   createAccountHandler,
+  updateAccountHandler,
+  deleteAccountHandler,
   grantMembershipHandler,
   revokeMembershipHandler,
   patchCoachContentHandler,
@@ -105,7 +107,17 @@ router.use("/portal-client-testimonials", accountPortalClientTestimonialRoutes);
 
 router.get("/accounts", protectAccount, requireActiveRole("admin"), listAccountsHandler);
 router.post("/accounts", protectAccount, requireActiveRole("admin"), createAccountHandler);
-router.get("/accounts/:id", protectAccount, requireActiveRole("admin"), getAccountHandler);
+router.route("/accounts/:id")
+  .get(protectAccount, requireActiveRole("admin"), getAccountHandler)
+  .patch(protectAccount, requireActiveRole("admin"), updateAccountHandler)
+  .put(protectAccount, requireActiveRole("admin"), updateAccountHandler)
+  .delete(protectAccount, requireActiveRole("admin"), deleteAccountHandler);
+router.post(
+  "/accounts/:id/delete",
+  protectAccount,
+  requireActiveRole("admin"),
+  deleteAccountHandler
+);
 router.patch(
   "/accounts/:id/coach-content",
   protectAccount,

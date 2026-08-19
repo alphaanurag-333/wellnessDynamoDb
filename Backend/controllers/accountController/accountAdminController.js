@@ -10,7 +10,10 @@ const {
   removeMembership,
   toPublicAccount,
   getAccountByEmail,
+  getAccountByPhone,
+  getMembership,
   updateAccount,
+  deleteAccount,
 } = require("../../models/accountModel");
 const { uploadMulterFile, deleteStoredMedia } = require("../../utils/s3");
 const {
@@ -23,7 +26,7 @@ const {
 const { getAppConfig, toPublicAppConfig } = require("../../models/appConfigModel");
 const { getRoleById, listRoles } = require("../../models/roleModel");
 const { normalizeRoleKey, ROLE_KEY_TO_UI } = require("../../config/accountRoles");
-const { normalizeEmail, normalizePhone, normalizeCountryCode } = require("../../models/userModel");
+const { normalizeEmail, normalizePhone, normalizeCountryCode, listUsersByParentCoachId, listUsersByAssignedCoachId } = require("../../models/userModel");
 const { UI_TO_ACCOUNT_ROLE } = require("../../config/consolePermissionCatalog");
 const {
   generateUniqueReferralCode,
@@ -112,6 +115,62 @@ async function resolveCreateRoleTarget({ rawRole, consoleRoleId }) {
   }
 
   return { accountRoleKey, consoleRole };
+}
+
+function primaryAccountRoleKey(account) {
+  const roleKeys = Array.isArray(account?.roleKeys) ? account.roleKeys : [];
+  if (account?.defaultRoleKey && roleKeys.includes(account.defaultRoleKey)) {
+    return account.defaultRoleKey;
+  }
+  return roleKeys[0] || null;
+}
+
+async function resolveWellnessCoachId(account) {
+  if (!account) return null;
+  const roleKeys = Array.isArray(account.roleKeys) ? account.roleKeys : [];
+  if (roleKeys.includes("wellness_coach")) return account.id;
+
+  let current = account;
+  const seen = new Set();
+  while (current?.parentAccountId || getMembership(current, primaryAccountRoleKey(current))?.parentAccountId) {
+    if (seen.has(current.id)) break;
+    seen.add(current.id);
+    const parentId =
+      current.parentAccountId ||
+      getMembership(current, primaryAccountRoleKey(current))?.parentAccountId ||
+      null;
+    if (!parentId) break;
+    current = await getAccountById(parentId);
+    if (!current) break;
+    const keys = Array.isArray(current.roleKeys) ? current.roleKeys : [];
+    if (keys.includes("wellness_coach")) return current.id;
+  }
+  return null;
+}
+
+async function countAssignedClients(account) {
+  const role = primaryAccountRoleKey(account);
+  if (role === "wellness_coach") {
+    const clients = await listUsersByParentCoachId(account.id, { page: 1, limit: 1, scope: "all" });
+    return Number(clients.pagination?.total || 0);
+  }
+  const parentCoachId = await resolveWellnessCoachId(account);
+  if (!parentCoachId) return 0;
+  const clients = await listUsersByAssignedCoachId(account.id, {
+    parentCoachId,
+    page: 1,
+    limit: 1,
+  });
+  return Number(clients.pagination?.total || 0);
+}
+
+async function countReportingStaff(accountId) {
+  const children = await listAccounts({
+    parentAccountId: accountId,
+    page: 1,
+    limit: 1,
+  });
+  return Number(children.pagination?.total || 0);
 }
 
 exports.listAccountsHandler = asyncHandler(async (req, res) => {
@@ -245,6 +304,110 @@ exports.createAccountHandler = asyncHandler(async (req, res) => {
     message: "Team member created",
     account: toPublicAccount(account),
     temporaryPassword: password ? undefined : tempPassword,
+  });
+});
+
+/**
+ * Update a staff Account profile (Teams page).
+ * Body: name?, email?, phone?, phoneCountryCode?
+ */
+exports.updateAccountHandler = asyncHandler(async (req, res) => {
+  if (!req.auth?.isSuperAdmin) {
+    throw new AppError("Only the Super Admin can edit team members", 403);
+  }
+
+  const account = await getAccountById(req.params.id);
+  if (!account) throw new AppError("Account not found", 404);
+  if (account.isSuperAdmin) {
+    throw new AppError("This account cannot be edited here", 403);
+  }
+
+  const { name, email, phone, phoneCountryCode } = req.body || {};
+  const updates = {};
+
+  if (name !== undefined) {
+    if (!String(name).trim()) throw new AppError("name is required", 400);
+    updates.name = String(name).trim();
+  }
+
+  if (email !== undefined) {
+    const normalized = normalizeEmail(email);
+    if (!normalized) throw new AppError("email is required", 400);
+    const existing = await getAccountByEmail(normalized);
+    if (existing && existing.id !== account.id) {
+      throw new AppError("An account already exists with this email", 409);
+    }
+    updates.email = normalized;
+  }
+
+  if (phoneCountryCode !== undefined) {
+    updates.phoneCountryCode = normalizeCountryCode(phoneCountryCode);
+  }
+
+  if (phone !== undefined) {
+    const nextPhone = phone ? normalizePhone(phone) : null;
+    if (!nextPhone) throw new AppError("phone is required", 400);
+    updates.phone = nextPhone;
+    const nextCc = updates.phoneCountryCode || account.phoneCountryCode || "+91";
+    const existingPhone = await getAccountByPhone(nextCc, nextPhone);
+    if (existingPhone && existingPhone.id !== account.id) {
+      throw new AppError("An account already exists with this phone number", 409);
+    }
+  }
+
+  if (Object.keys(updates).length === 0) {
+    throw new AppError("No profile fields to update", 400);
+  }
+
+  const updated = await updateAccount(account.id, updates);
+  return res.json({
+    status: true,
+    message: "Profile updated",
+    account: toPublicAccount(updated),
+  });
+});
+
+/**
+ * Delete a staff Account (Teams page).
+ * Refuses if any clients are assigned, or if other staff report to this member.
+ */
+exports.deleteAccountHandler = asyncHandler(async (req, res) => {
+  if (!req.auth?.isSuperAdmin) {
+    throw new AppError("Only the Super Admin can delete team members", 403);
+  }
+
+  const account = await getAccountById(req.params.id);
+  if (!account) throw new AppError("Account not found", 404);
+  if (account.isSuperAdmin) {
+    throw new AppError("This account cannot be deleted", 403);
+  }
+  if (req.auth?.sub && String(req.auth.sub) === String(account.id)) {
+    throw new AppError("You cannot delete your own account", 400);
+  }
+
+  const assignedUsers = await countAssignedClients(account);
+  if (assignedUsers > 0) {
+    const label = assignedUsers === 1 ? "user is" : "users are";
+    throw new AppError(
+      `Cannot delete: ${assignedUsers} ${label} assigned to this team member. Reassign them first.`,
+      400
+    );
+  }
+
+  const reportingStaff = await countReportingStaff(account.id);
+  if (reportingStaff > 0) {
+    const label = reportingStaff === 1 ? "team member reports" : "team members report";
+    throw new AppError(
+      `Cannot delete: ${reportingStaff} ${label} to this person. Reassign them first.`,
+      400
+    );
+  }
+
+  await deleteAccount(account.id);
+  return res.json({
+    status: true,
+    message: "Team member deleted",
+    deleted: true,
   });
 });
 

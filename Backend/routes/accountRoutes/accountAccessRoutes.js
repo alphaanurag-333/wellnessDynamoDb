@@ -2,6 +2,9 @@ const express = require("express");
 const { protectAccount, requireActiveRole } = require("../../middleware/auth");
 const { requireSuperAdmin, requireTeamsReadAccess } = require("../../middleware/authorize");
 const {
+  deleteAccountHandler,
+} = require("../../controllers/accountController/accountAdminController");
+const {
   getAccessCatalog,
   listAccessRoles,
   createAccessRole,
@@ -73,5 +76,7 @@ router.get(
   })
 );
 router.get("/members/:id", requireTeamsReadAccess, getAccessMember);
+router.post("/members/:id/delete", ...requireAccessAdmin, deleteAccountHandler);
+router.delete("/members/:id", ...requireAccessAdmin, deleteAccountHandler);
 
 module.exports = router;

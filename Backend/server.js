@@ -37,8 +37,18 @@ async function start() {
     const { startMonthlyChampionCron } = require("./jobs/monthlyChampionCron");
     startMonthlyChampionCron();
 
-    app.listen(config.port, () => {
+    const server = app.listen(config.port, () => {
       console.log(`Server is running on port ${config.port}`);
+    });
+    server.on("error", (err) => {
+      if (err.code === "EADDRINUSE") {
+        console.error(
+          `Port ${config.port} is already in use. Stop the old Node process on that port, then start the server again.`
+        );
+      } else {
+        console.error("Server listen error:", err.message || err);
+      }
+      process.exit(1);
     });
   } catch (err) {
     console.error("Error starting server:", err.message);

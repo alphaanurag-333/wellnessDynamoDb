@@ -5712,7 +5712,7 @@
 }
 
 .updated-admin .ua-table--teams {
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 1.3fr) minmax(0, 1fr) 110px;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 1.3fr) minmax(0, 1fr) minmax(240px, 1.6fr);
 }
 
 .updated-admin .ua-table--audit {
@@ -7821,6 +7821,7 @@
   display: flex;
   gap: 6px;
   justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 .updated-admin .ua-team-actions__bell {
@@ -7844,6 +7845,12 @@
   font-weight: 650;
   font-size: 11px;
   cursor: pointer;
+}
+
+.updated-admin .ua-team-actions__perm--danger {
+  color: #c0392b;
+  border-color: #f0d0cc;
+  background: #fff8f7;
 }
 
 .updated-admin .ua-teams-page {
@@ -8198,6 +8205,7 @@
 
   .updated-admin .ua-teams-page .ua-team-actions {
     justify-content: stretch;
+    flex-wrap: wrap;
   }
 
   .updated-admin .ua-teams-page .ua-team-actions__perm {

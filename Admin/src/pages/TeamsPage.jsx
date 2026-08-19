@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 import { BrandLoader } from "../components/BrandLoader.jsx";
+import { ConfirmDialog } from "../components/ConfirmDialog.jsx";
 import { CfgSelect, OrangeButton, PageHeader, PillTabs, SectionLabel, TableScroll, ListPagination } from "../components/shared.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import {
@@ -10,7 +11,7 @@ import {
   TEAM_ROLE_TABS_BASE,
   staffInitials,
 } from "../data/teamsData.js";
-import { createTeamMember, fetchTeamMembers, listTeamParentOptions } from "../api/teamsApi.js";
+import { createTeamMember, deleteTeamMember, fetchTeamMembers, listTeamParentOptions, updateTeamMember } from "../api/teamsApi.js";
 import { fetchAccessRoles } from "../api/accessApi.js";
 import { UI_TO_ROLE_KEY } from "../api/accountApi.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
@@ -67,7 +68,12 @@ function roleChipMeta(role, fallbackKey = "wc") {
   };
 }
 
-function CreateMemberModal({ open, roles, parentOptions, onClose, onCreated, onToast }) {
+function nationalPhoneDigits(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  return digits.slice(-PHONE_NATIONAL_LEN);
+}
+
+function CreateMemberModal({ open, member, roles, parentOptions, onClose, onSaved, onToast }) {
   const creatableRoles = useMemo(
     () => (roles || []).filter((r) => !isAdminAccessRole(r)),
     [roles],
@@ -89,16 +95,26 @@ function CreateMemberModal({ open, roles, parentOptions, onClose, onCreated, onT
     });
   }
 
+  const isEdit = Boolean(member?.id);
+
   useEffect(() => {
     if (!open) return;
+    setErrors({});
+    if (member?.id) {
+      setName(sanitizePersonName(member.name || ""));
+      setPhone(nationalPhoneDigits(member.phone));
+      setEmail(sanitizeEmailInput(member.email || ""));
+      setConsoleRoleId(member.consoleRoleId || "");
+      setParentAccountId(member.parentAccountId || "");
+      return;
+    }
     setName("");
     setPhone("");
     setEmail("");
-    setErrors({});
     const defaultRole = creatableRoles.find((r) => r.roleKey === "wc") || creatableRoles[0];
     setConsoleRoleId(defaultRole?.id || "");
     setParentAccountId("");
-  }, [open, creatableRoles]);
+  }, [open, creatableRoles, member]);
 
   const selectedRole = creatableRoles.find((r) => r.id === consoleRoleId) || null;
   const baseUiKey = selectedRole ? resolveBaseUiRoleKey(selectedRole, creatableRoles) : null;
@@ -114,13 +130,13 @@ function CreateMemberModal({ open, roles, parentOptions, onClose, onCreated, onT
   );
 
   useEffect(() => {
-    if (!open || !needsParent) return;
+    if (!open || isEdit || !needsParent) return;
     setParentAccountId((current) =>
       eligibleParents.some((parent) => parent.id === current)
         ? current
         : eligibleParents[0]?.id || "",
     );
-  }, [open, needsParent, parentRoleKey, eligibleParents]);
+  }, [open, isEdit, needsParent, parentRoleKey, eligibleParents]);
 
   if (!open) return null;
 
@@ -132,8 +148,8 @@ function CreateMemberModal({ open, roles, parentOptions, onClose, onCreated, onT
     if (phoneErr) next.phone = phoneErr;
     const emailErr = validateEmail(email);
     if (emailErr) next.email = emailErr;
-    if (!consoleRoleId) next.role = "Pick a role.";
-    if (needsParent && !parentAccountId) {
+    if (!isEdit && !consoleRoleId) next.role = "Pick a role.";
+    if (!isEdit && needsParent && !parentAccountId) {
       next.parent = `Pick a ${baseUiKey === "trainee" ? "Assistant WC" : "Wellness Coach"} this person reports to.`;
     }
     setErrors(next);
@@ -145,6 +161,18 @@ function CreateMemberModal({ open, roles, parentOptions, onClose, onCreated, onT
     if (!validate()) return;
     setBusy(true);
     try {
+      if (isEdit) {
+        const result = await updateTeamMember(member.id, {
+          name: name.trim(),
+          email: email.trim(),
+          phone: phone.trim(),
+          phoneCountryCode: member.phoneCountryCode || "+91",
+        });
+        onToast(`Updated ${result.account?.name || name.trim()}`);
+        onSaved(result.account);
+        onClose();
+        return;
+      }
       const result = await createTeamMember({
         name: name.trim(),
         email: email.trim(),
@@ -159,10 +187,10 @@ function CreateMemberModal({ open, roles, parentOptions, onClose, onCreated, onT
           ? `Created ${result.account?.name} · temp password ${result.temporaryPassword}`
           : `Created ${result.account?.name}`,
       );
-      onCreated(result.account);
+      onSaved(result.account);
       onClose();
     } catch (err) {
-      onToast(err?.message || "Create failed");
+      onToast(err?.message || (isEdit ? "Update failed" : "Create failed"));
     } finally {
       setBusy(false);
     }
@@ -183,8 +211,8 @@ function CreateMemberModal({ open, roles, parentOptions, onClose, onCreated, onT
             👤
             </span>
             <div className="ua-teams-create__copy">
-              <h2 id="ua-teams-create-title">Create a team member</h2>
-              <p>Works for every role</p>
+              <h2 id="ua-teams-create-title">{isEdit ? "Edit profile" : "Create a team member"}</h2>
+              <p>{isEdit ? "Update name, phone, and email" : "Works for every role"}</p>
             </div>
           </div>
           <button
@@ -261,6 +289,7 @@ function CreateMemberModal({ open, roles, parentOptions, onClose, onCreated, onT
                 <span className="ua-teams-create__hint">Max {EMAIL_MAX_LEN} characters</span>
               )}
             </label>
+            {isEdit ? null : (
             <label className="ua-teams-create__field">
               <span className="ua-teams-create__label">
                 Role <span aria-hidden="true">*</span>
@@ -279,7 +308,8 @@ function CreateMemberModal({ open, roles, parentOptions, onClose, onCreated, onT
               />
               {errors.role ? <span className="ua-teams-create__error">{errors.role}</span> : null}
             </label>
-            {needsParent ? (
+            )}
+            {!isEdit && needsParent ? (
               <label className="ua-teams-create__field">
                 <span className="ua-teams-create__label">
                   Reports to ({baseUiKey === "trainee" ? "Assistant WC" : "Wellness Coach"}){" "}
@@ -308,8 +338,8 @@ function CreateMemberModal({ open, roles, parentOptions, onClose, onCreated, onT
             <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose} disabled={busy}>
               Cancel
             </button>
-            <button type="submit" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy || !consoleRoleId}>
-              {busy ? "Creating…" : "Create member"}
+            <button type="submit" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy || (!isEdit && !consoleRoleId)}>
+              {busy ? (isEdit ? "Saving…" : "Creating…") : isEdit ? "Save profile" : "Create member"}
             </button>
           </div>
         </form>
@@ -334,6 +364,9 @@ export function TeamsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState(null);
+  const [deletingMember, setDeletingMember] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const [parentOptions, setParentOptions] = useState([]);
   const [reloadNonce, setReloadNonce] = useState(0);
 
@@ -573,6 +606,24 @@ export function TeamsPage() {
                     </span>
                   </div>
                   <div className="ua-team-actions" data-label="Actions" onClick={(e) => e.stopPropagation()}>
+                    {isSuperAdmin ? (
+                      <>
+                        <button
+                          type="button"
+                          className="ua-team-actions__perm"
+                          onClick={() => setEditingMember(s)}
+                        >
+                          Edit profile
+                        </button>
+                        <button
+                          type="button"
+                          className="ua-team-actions__perm ua-team-actions__perm--danger"
+                          onClick={() => setDeletingMember(s)}
+                        >
+                          Delete
+                        </button>
+                      </>
+                    ) : null}
                     <button
                       type="button"
                       className="ua-team-actions__perm"
@@ -600,12 +651,42 @@ export function TeamsPage() {
       ) : null}
 
       <CreateMemberModal
-        open={createOpen}
+        open={createOpen || Boolean(editingMember)}
+        member={editingMember}
         roles={createRoles}
         parentOptions={parentOptions}
-        onClose={() => setCreateOpen(false)}
-        onCreated={() => load()}
+        onClose={() => {
+          setCreateOpen(false);
+          setEditingMember(null);
+        }}
+        onSaved={() => load()}
         onToast={onToast}
+      />
+
+      <ConfirmDialog
+        open={Boolean(deletingMember)}
+        tag="Teams"
+        title={deletingMember ? `Delete ${deletingMember.name}?` : "Delete team member?"}
+        body="This only works if no users are assigned to this team member. If anyone is assigned, they must be reassigned first."
+        cancelLabel="Cancel"
+        confirmLabel={deleteBusy ? "Deleting…" : "Delete user"}
+        confirmTone="danger"
+        onCancel={deleteBusy ? undefined : () => setDeletingMember(null)}
+        onConfirm={async () => {
+          if (!deletingMember || deleteBusy) return;
+          setDeleteBusy(true);
+          try {
+            await deleteTeamMember(deletingMember.id);
+            onToast(`Deleted ${deletingMember.name}`);
+            setDeletingMember(null);
+            load();
+          } catch (err) {
+            onToast(err?.message || "Delete failed");
+            setDeletingMember(null);
+          } finally {
+            setDeleteBusy(false);
+          }
+        }}
       />
     </main>
   );

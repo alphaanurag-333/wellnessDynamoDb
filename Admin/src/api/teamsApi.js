@@ -45,6 +45,30 @@ export async function createTeamMember(payload) {
   }
 }
 
+export async function updateTeamMember(id, payload) {
+  try {
+    const { data } = await api.patch(`/account/accounts/${encodeURIComponent(id)}`, payload, {
+      headers: authHeader(),
+    });
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function deleteTeamMember(id) {
+  try {
+    const { data } = await api.post(
+      `/account/access/members/${encodeURIComponent(id)}/delete`,
+      {},
+      { headers: authHeader() },
+    );
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function listTeamParentOptions() {
   try {
     const roles = ["wellness_coach", "assistant_wellness_coach"];
