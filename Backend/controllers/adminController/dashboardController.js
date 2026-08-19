@@ -5,6 +5,7 @@ const { getAdminDashboardStats } = require("../../services/adminDashboardStatsSe
 const { getCoachDashboardStats } = require("../../services/coachDashboardStatsService");
 const { getAssistantDashboardStats } = require("../../services/assistantDashboardStatsService");
 const { getProgramProgressOverview } = require("../../services/programProgressService");
+const { getDashboardCommunity, emptyCommunity } = require("../../services/dashboardCommunityService");
 
 async function loadRoleStatistics(actor) {
   if (actor.role === "admin" || actor.role === "support") {
@@ -28,16 +29,22 @@ exports.getStaffDashboardStatistics = asyncHandler(async (req, res) => {
 
   let statistics;
   let overview = { programProgress: null, opsOverdue: null };
+  let community = emptyCommunity();
   try {
-    const [roleStats, progress] = await Promise.all([
+    const [roleStats, progress, communityData] = await Promise.all([
       loadRoleStatistics(actor),
       getProgramProgressOverview(actor).catch((err) => {
         console.warn("[dashboard] program progress failed:", err?.message || err);
         return { programProgress: null, opsOverdue: null };
       }),
+      getDashboardCommunity(actor).catch((err) => {
+        console.warn("[dashboard] community failed:", err?.message || err);
+        return emptyCommunity();
+      }),
     ]);
     statistics = roleStats;
     overview = progress || overview;
+    community = communityData || emptyCommunity();
   } catch (err) {
     if (err instanceof AppError) throw err;
     throw new AppError(err.message || "Failed to load dashboard statistics", 400);
@@ -50,6 +57,7 @@ exports.getStaffDashboardStatistics = asyncHandler(async (req, res) => {
       ...statistics,
       programProgress: overview.programProgress,
       opsOverdue: overview.opsOverdue,
+      community,
     },
   });
 });

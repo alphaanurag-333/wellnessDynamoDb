@@ -22,6 +22,7 @@ const {
 const {
   listCoachUserTestRecommendationsController,
   createCoachUserTestRecommendationController,
+  downloadCoachUserTestRecommendationPdfController,
   deleteCoachUserTestRecommendationController,
   listCoachUserLabReportsController,
   reviewCoachUserLabReportController,
@@ -71,6 +72,7 @@ const {
 } = require("../../controllers/adminController/mealTrackingController");
 const {
   listCoachUserLaunchFocusAreasController,
+  getCoachUserLaunchConfigController,
   listCoachUserLaunchQuestionsController,
   listCoachUserLaunchAssessmentsController,
   getCoachUserLaunchAssessmentByDateController,
@@ -82,6 +84,7 @@ const {
 const {
   listCoachUserPrakrutiThingsToAvoidController,
   listCoachUserPrakrutiQuestionsController,
+  listCoachUserPrakrutiRecommendationsController,
   getCoachUserPrakrutiAssessmentController,
   saveCoachUserPrakrutiAssessmentController,
   exportCoachUserPrakrutiQuestionsController,
@@ -181,6 +184,7 @@ const tests = staff("console.rep.view", { admin: "users.clientHub.care.internal-
 const testsWrite = staff("console.rep.edit", { admin: "users.clientHub.care.internal-parameters", coach: "clientTab.care.internal-parameters" });
 router.get("/:userId/test-recommendations", tests, listCoachUserTestRecommendationsController);
 router.post("/:userId/test-recommendations", testsWrite, createCoachUserTestRecommendationController);
+router.get("/:userId/test-recommendations/:recommendationId/pdf", tests, downloadCoachUserTestRecommendationPdfController);
 router.get("/:userId/test-catalog", tests, listCoachUserActiveTestCatalogController);
 router.get("/:userId/lab-reports", tests, listCoachUserLabReportsController);
 router.patch("/:userId/lab-reports/:reportId/review", testsWrite, reviewCoachUserLabReportController);
@@ -239,6 +243,7 @@ router.patch("/:userId/meal-tracking-mode", mealWrite, updateCoachUserMealTracki
 const launch = staff("console.body.view", { admin: "users.clientHub.assessments.launch-assessment", coach: "clientTab.assessments.launch-assessment" });
 const launchWrite = staff("console.body.edit", { admin: "users.clientHub.assessments.launch-assessment", coach: "clientTab.assessments.launch-assessment" });
 router.get("/:userId/launch-assessment/focus-areas", launch, listCoachUserLaunchFocusAreasController);
+router.get("/:userId/launch-assessment/config", launch, getCoachUserLaunchConfigController);
 router.get("/:userId/launch-assessment/questions", launch, listCoachUserLaunchQuestionsController);
 router.get("/:userId/launch-assessment/export", staff("console.body.export", { admin: "users.clientHub.assessments.launch-assessment", coach: "clientTab.assessments.launch-assessment" }), exportCoachUserLaunchQuestionsController);
 router.get("/:userId/launch-assessment", launch, listCoachUserLaunchAssessmentsController);
@@ -251,6 +256,7 @@ const prakruti = staff("console.body.view", { admin: "users.clientHub.assessment
 const prakrutiWrite = staff("console.body.edit", { admin: "users.clientHub.assessments.prakruti-assessment", coach: "clientTab.assessments.prakruti-assessment" });
 router.get("/:userId/prakruti-assessment/things-to-avoid", prakruti, listCoachUserPrakrutiThingsToAvoidController);
 router.get("/:userId/prakruti-assessment/questions", prakruti, listCoachUserPrakrutiQuestionsController);
+router.get("/:userId/prakruti-assessment/recommendations", prakruti, listCoachUserPrakrutiRecommendationsController);
 router.get("/:userId/prakruti-assessment/export", staff("console.body.export", { admin: "users.clientHub.assessments.prakruti-assessment", coach: "clientTab.assessments.prakruti-assessment" }), exportCoachUserPrakrutiQuestionsController);
 router.get("/:userId/prakruti-assessment", prakruti, getCoachUserPrakrutiAssessmentController);
 router.post("/:userId/prakruti-assessment", prakrutiWrite, saveCoachUserPrakrutiAssessmentController);

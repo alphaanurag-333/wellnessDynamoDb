@@ -31,7 +31,7 @@ function assertS3Configured() {
 }
 
 function getPublicBaseUrl() {
-  return config.awsS3PublicBaseUrl.trim().replace(/\/$/, "");
+  return String(config.awsS3PublicBaseUrl || "").trim().replace(/\/$/, "");
 }
 
 function encodeKeyForUrl(key) {
@@ -82,7 +82,9 @@ function normalizeStoredMedia(key) {
 function resolvePublicUrl(key) {
   const stored = normalizeStoredMedia(key);
   if (!stored) return null;
-  return `${getPublicBaseUrl()}/${encodeKeyForUrl(stored)}`;
+  const base = getPublicBaseUrl();
+  if (!base) return null;
+  return `${base}/${encodeKeyForUrl(stored)}`;
 }
 
 async function uploadBufferToS3({ buffer, contentType, folder, originalName }) {

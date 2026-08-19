@@ -1,6 +1,7 @@
 const { coachHandlers } = require("../helpers/launchAssessmentControllerHelpers");
 
 exports.listCoachUserLaunchFocusAreasController = coachHandlers.listFocusAreasController;
+exports.getCoachUserLaunchConfigController = coachHandlers.getConfigController;
 exports.listCoachUserLaunchQuestionsController = coachHandlers.listQuestionsController;
 exports.listCoachUserLaunchAssessmentsController = coachHandlers.listAssessmentsController;
 exports.getCoachUserLaunchAssessmentByDateController = coachHandlers.getAssessmentByDateController;
