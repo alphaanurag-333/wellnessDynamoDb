@@ -44,7 +44,7 @@ function Panel({ title, subtitle, actions, children }) {
   return (
     <section className="ua-cfg-panel">
       <div className="ua-cfg-panel__head">
-        <div>
+        <div className="ua-cfg-panel__copy">
           {title ? <h3 className="ua-cfg-panel__title">{title}</h3> : null}
           {subtitle ? <p className="ua-cfg-panel__sub">{subtitle}</p> : null}
         </div>
@@ -295,7 +295,7 @@ function RecipeViewModal({ entry, onClose, onEdit, viewTag = "Yoga & Pranayam", 
   const isVideo = entry.apiType === "video" || entry.type === "VIDEO";
   return (
     <div className="ua-cp-modal-backdrop" onClick={onClose} role="presentation">
-      <div className="ua-cfg-rc-view ua-cfg-rc-view--sheet" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="recipe-view-title">
+      <div className="ua-cfg-rc-view ua-cfg-rc-view--sheet ua-cfg-recipes-view" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="recipe-view-title">
         <div className="ua-cfg-rc-view__head">
           <div>
             <p className="ua-cfg-rc-view__tag">{viewTag}</p>
@@ -1060,7 +1060,7 @@ export function YogaSection({
   }
 
   return (
-    <div className="ua-cfg-rc">
+    <div className="ua-cfg-rc ua-cfg-recipes">
       {!persist ? (
         <Panel title="Where this is live" subtitle="Turn it on for the app, the website, or both.">
           <div className="ua-cfg-bn-surfaces">
@@ -1094,7 +1094,7 @@ export function YogaSection({
         }
       >
         {creating ? (
-          <section className="ua-cfg-rc-new">
+          <section className="ua-cfg-rc-new ua-cfg-recipes-new">
             <div className="ua-cfg-rc-new__head">
               <strong><span aria-hidden="true">🧘</span> New practice</strong>
               <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={() => setCreating(false)}>×</button>
@@ -1216,7 +1216,7 @@ export function YogaSection({
             {items.map((entry) => {
               const editing = editingId === entry.id;
               return (
-                <article key={entry.id} className={`ua-cfg-rc-item ua-cfg-rc-item--lib${editing ? " is-editing" : ""}${entry.type === "VIDEO" || entry.type === "YT" ? " is-video" : " is-text"}`}>
+                <article key={entry.id} className={`ua-cfg-rc-item ua-cfg-rc-item--lib ua-cfg-recipes-item${editing ? " is-editing" : ""}${entry.type === "VIDEO" || entry.type === "YT" ? " is-video" : " is-text"}`}>
                   <div className="ua-cfg-rc-cover-wrap">
                     <button
                       type="button"
@@ -1280,41 +1280,45 @@ export function YogaSection({
                         </div>
                       </div>
                       <div className="ua-cfg-rc-item__actions">
-                        <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>{entry.live ? "LIVE" : "HIDDEN"}</span>
-                        <button
-                          type="button"
-                          className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
-                          aria-pressed={entry.live}
-                          disabled={disabled}
-                          onClick={() => toggleLive(entry)}
-                        >
-                          <span className="ua-toggle__knob" />
-                        </button>
-                        <button
-                          type="button"
-                          className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
-                          disabled={disabled}
-                          onClick={() => setViewingId(entry.id)}
-                        >
-                          View
-                        </button>
-                        {editing ? (
-                          <>
-                            <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={disabled} onClick={() => saveEditedItem(entry)}>Save</button>
-                            <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={disabled} onClick={() => setEditingId(null)}>Cancel</button>
-                          </>
-                        ) : (
-                          <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={disabled} onClick={() => { setViewingId(null); setEditingId(entry.id); }}>Edit</button>
-                        )}
-                        <button
-                          type="button"
-                          className="ua-cfg-icon-btn"
-                          aria-label="Delete"
-                          disabled={disabled}
-                          onClick={() => setPendingDelete(entry)}
-                        >
-                          ×
-                        </button>
+                        <div className="ua-cfg-rc-item__live">
+                          <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>{entry.live ? "LIVE" : "HIDDEN"}</span>
+                          <button
+                            type="button"
+                            className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
+                            aria-pressed={entry.live}
+                            disabled={disabled}
+                            onClick={() => toggleLive(entry)}
+                          >
+                            <span className="ua-toggle__knob" />
+                          </button>
+                        </div>
+                        <div className="ua-cfg-rc-item__btns">
+                          <button
+                            type="button"
+                            className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                            disabled={disabled}
+                            onClick={() => setViewingId(entry.id)}
+                          >
+                            View
+                          </button>
+                          {editing ? (
+                            <>
+                              <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={disabled} onClick={() => saveEditedItem(entry)}>Save</button>
+                              <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={disabled} onClick={() => setEditingId(null)}>Cancel</button>
+                            </>
+                          ) : (
+                            <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={disabled} onClick={() => { setViewingId(null); setEditingId(entry.id); }}>Edit</button>
+                          )}
+                          <button
+                            type="button"
+                            className="ua-cfg-icon-btn"
+                            aria-label="Delete"
+                            disabled={disabled}
+                            onClick={() => setPendingDelete(entry)}
+                          >
+                            ×
+                          </button>
+                        </div>
                       </div>
                     </div>
                     {editing ? (

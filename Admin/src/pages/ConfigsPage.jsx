@@ -71,7 +71,7 @@ export function ConfigsPage() {
   }
 
   return (
-    <main className="content ua-page-enter">
+    <main className="content ua-page-enter ua-configs-page">
       <PageHeader
         title="Configs"
         subtitle="Configuration groups scoped to the app, the web, or shared across both."

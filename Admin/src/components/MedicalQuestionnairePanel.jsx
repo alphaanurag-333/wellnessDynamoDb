@@ -7,12 +7,19 @@ import {
   adminUpdateMedicalConditionQuestion,
 } from "../api/medicalConditionQuestionApi.js";
 import { MEDICAL_ANSWER_TYPES } from "../data/configDetailData.js";
+import { CfgSelect } from "./shared.jsx";
+
+const ANSWER_TYPE_OPTIONS = MEDICAL_ANSWER_TYPES.map((option) => ({
+  id: option.id,
+  value: option.id,
+  label: option.label,
+}));
 
 function Panel({ title, subtitle, actions, children }) {
   return (
-    <section className="ua-cfg-panel">
+    <section className="ua-cfg-panel ua-cfg-mq">
       <div className="ua-cfg-panel__head">
-        <div>
+        <div className="ua-cfg-panel__copy">
           <h3 className="ua-cfg-panel__title">{title}</h3>
           {subtitle ? <p className="ua-cfg-panel__sub">{subtitle}</p> : null}
         </div>
@@ -259,19 +266,14 @@ export function MedicalQuestionnairePanel({ items, setItems, onToast }) {
             if (event.key === "Enter") addQuestion();
           }}
         />
-        <select
+        <CfgSelect
           className="ua-cfg-mq-add__type"
+          ariaLabel="Answer type"
           value={newAnswerType}
           disabled={busy || loading}
-          onChange={(event) => setNewAnswerType(event.target.value)}
-          aria-label="Answer type"
-        >
-          {MEDICAL_ANSWER_TYPES.map((option) => (
-            <option key={option.id} value={option.id}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+          options={ANSWER_TYPE_OPTIONS}
+          onChange={setNewAnswerType}
+        />
         <button
           type="button"
           className="ua-cfg-btn ua-cfg-btn--primary"
@@ -362,32 +364,29 @@ export function MedicalQuestionnairePanel({ items, setItems, onToast }) {
                   </button>
                 )}
                 <div className="ua-cfg-mq-row__controls">
-                  <select
+                  <CfgSelect
                     className="ua-cfg-mq-row__type"
                     value={item.answerType}
                     disabled={busy}
-                    aria-label={`Answer type for ${item.question}`}
-                    onChange={(event) => changeAnswerType(item, event.target.value)}
-                  >
-                    {MEDICAL_ANSWER_TYPES.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  <span className={`ua-cfg-mq-row__shown${item.shown ? " is-on" : ""}`}>
-                    {item.shown ? "SHOWN" : "HIDDEN"}
-                  </span>
-                  <button
-                    type="button"
-                    className={`ua-toggle ua-toggle--sm${item.shown ? " ua-toggle--on" : ""}`}
-                    aria-pressed={item.shown}
-                    aria-label={`Toggle ${item.question}`}
-                    disabled={busy}
-                    onClick={() => toggleShown(item)}
-                  >
-                    <span className="ua-toggle__knob" />
-                  </button>
+                    ariaLabel={`Answer type for ${item.question}`}
+                    options={ANSWER_TYPE_OPTIONS}
+                    onChange={(answerType) => changeAnswerType(item, answerType)}
+                  />
+                  <div className="ua-cfg-mq-row__shown-wrap">
+                    <span className={`ua-cfg-mq-row__shown${item.shown ? " is-on" : ""}`}>
+                      {item.shown ? "SHOWN" : "HIDDEN"}
+                    </span>
+                    <button
+                      type="button"
+                      className={`ua-toggle ua-toggle--sm${item.shown ? " ua-toggle--on" : ""}`}
+                      aria-pressed={item.shown}
+                      aria-label={`Toggle ${item.question}`}
+                      disabled={busy}
+                      onClick={() => toggleShown(item)}
+                    >
+                      <span className="ua-toggle__knob" />
+                    </button>
+                  </div>
                   {isEditing ? (
                     <button
                       type="button"
@@ -398,7 +397,7 @@ export function MedicalQuestionnairePanel({ items, setItems, onToast }) {
                       Save
                     </button>
                   ) : (
-                    <>
+                    <div className="ua-cfg-mq-row__moves">
                       <button
                         type="button"
                         className="ua-cfg-icon-btn"
@@ -417,7 +416,7 @@ export function MedicalQuestionnairePanel({ items, setItems, onToast }) {
                       >
                         ↓
                       </button>
-                    </>
+                    </div>
                   )}
                   {!isEditing ? (
                     <button

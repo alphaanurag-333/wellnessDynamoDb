@@ -12,7 +12,7 @@ function Panel({ title, subtitle, actions, children }) {
   return (
     <section className="ua-cfg-panel">
       <div className="ua-cfg-panel__head">
-        <div>
+        <div className="ua-cfg-panel__copy">
           {title ? <h3 className="ua-cfg-panel__title">{title}</h3> : null}
           {subtitle ? <p className="ua-cfg-panel__sub">{subtitle}</p> : null}
         </div>
@@ -161,6 +161,7 @@ export function SocialLinksSection({
   const locked = busy || loading;
 
   return (
+    <div className="ua-cfg-sm">
     <Panel
       title="Links"
       subtitle={
@@ -255,36 +256,38 @@ export function SocialLinksSection({
                     ) : (
                       <span className="ua-cfg-sm-row__url">{url || "Not set"}</span>
                     )}
-                    {isEditing ? (
-                      <button
-                        type="button"
-                        className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
-                        disabled={locked}
-                        onClick={() => saveEdit(entry.id)}
-                      >
-                        Save
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="ua-cfg-cr-link ua-cfg-cr-link--modify"
-                        disabled={locked}
-                        onClick={() => startEdit(entry)}
-                      >
-                        Edit
-                      </button>
-                    )}
-                    {persistToAppConfig ? null : (
-                      <button
-                        type="button"
-                        className="ua-cfg-icon-btn"
-                        aria-label={`Remove ${label}`}
-                        disabled={locked}
-                        onClick={() => removeLink(entry)}
-                      >
-                        ×
-                      </button>
-                    )}
+                    <div className="ua-cfg-sm-row__actions">
+                      {isEditing ? (
+                        <button
+                          type="button"
+                          className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
+                          disabled={locked}
+                          onClick={() => saveEdit(entry.id)}
+                        >
+                          Save
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="ua-cfg-cr-link ua-cfg-cr-link--modify"
+                          disabled={locked}
+                          onClick={() => startEdit(entry)}
+                        >
+                          Edit
+                        </button>
+                      )}
+                      {persistToAppConfig ? null : (
+                        <button
+                          type="button"
+                          className="ua-cfg-icon-btn"
+                          aria-label={`Remove ${label}`}
+                          disabled={locked}
+                          onClick={() => removeLink(entry)}
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
                   </article>
                 );
               })}
@@ -295,5 +298,6 @@ export function SocialLinksSection({
         </>
       )}
     </Panel>
+    </div>
   );
 }

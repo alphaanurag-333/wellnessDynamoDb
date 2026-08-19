@@ -12,7 +12,7 @@ import {
   parsePackSize,
   unitOptionsFor,
 } from "../data/nutritionBankData.js";
-import { ListPagination } from "./shared.jsx";
+import { CfgSelect, ListPagination } from "./shared.jsx";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 
 const IMAGE_ACCEPT = "image/jpeg,image/png,image/gif,image/webp,image/jpg";
@@ -40,13 +40,17 @@ function sameSnapshot(a, b) {
   );
 }
 
+function unitSelectOptions(unit) {
+  return unitOptionsFor(unit).map((value) => ({ id: value, value, label: value }));
+}
+
 function Panel({ title, subtitle, actions, children, className = "" }) {
   const hasHead = Boolean(title || subtitle || actions);
   return (
     <section className={`ua-cfg-panel${className ? ` ${className}` : ""}`}>
       {hasHead ? (
         <div className="ua-cfg-panel__head">
-          <div>
+          <div className="ua-cfg-panel__copy">
             {title ? <h3 className="ua-cfg-panel__title">{title}</h3> : null}
             {subtitle ? <p className="ua-cfg-panel__sub">{subtitle}</p> : null}
           </div>
@@ -294,6 +298,7 @@ export function NutritionBankSection({ items, setItems, onToast }) {
   return (
     <>
       <Panel
+        className="ua-cfg-nb"
         title="Nutrition bank"
         subtitle={
           loading
@@ -326,7 +331,7 @@ export function NutritionBankSection({ items, setItems, onToast }) {
               </thead>
               <tbody>
                 <tr className="ua-cfg-nb-add-row">
-                  <td>
+                  <td data-label="Image">
                     <ImagePicker
                       previewUrl={draftPreview}
                       disabled={locked}
@@ -334,7 +339,7 @@ export function NutritionBankSection({ items, setItems, onToast }) {
                       onPick={pickDraftImage}
                     />
                   </td>
-                  <td>
+                  <td data-label="Supplement">
                     <div className="ua-cfg-nb-add__copy">
                       <input
                         type="text"
@@ -354,7 +359,7 @@ export function NutritionBankSection({ items, setItems, onToast }) {
                       />
                     </div>
                   </td>
-                  <td>
+                  <td data-label="Pack size">
                     <input
                       type="text"
                       inputMode="numeric"
@@ -365,20 +370,17 @@ export function NutritionBankSection({ items, setItems, onToast }) {
                       onChange={(event) => setDraft({ ...draft, packSize: event.target.value.replace(/[^\d]/g, "") })}
                     />
                   </td>
-                  <td>
-                    <select
-                      className="ua-cfg-nb-add__input ua-cfg-nb-add__unit"
+                  <td data-label="Unit">
+                    <CfgSelect
+                      className="ua-cfg-nb-add__unit"
+                      ariaLabel="Unit"
                       value={draft.unit}
                       disabled={locked}
-                      aria-label="Unit"
-                      onChange={(event) => setDraft({ ...draft, unit: event.target.value })}
-                    >
-                      {unitOptionsFor(draft.unit).map((unit) => (
-                        <option key={unit} value={unit}>{unit}</option>
-                      ))}
-                    </select>
+                      options={unitSelectOptions(draft.unit)}
+                      onChange={(unit) => setDraft({ ...draft, unit })}
+                    />
                   </td>
-                  <td>
+                  <td data-label="Bottle (Rs.)">
                     <input
                       type="text"
                       inputMode="numeric"
@@ -397,7 +399,7 @@ export function NutritionBankSection({ items, setItems, onToast }) {
                 </tr>
                 {items.map((item) => (
                   <tr key={item.id} className={item.live ? "" : "is-hidden"}>
-                    <td>
+                    <td data-label="Image">
                       <ImagePicker
                         previewUrl={item.image}
                         disabled={locked}
@@ -405,7 +407,7 @@ export function NutritionBankSection({ items, setItems, onToast }) {
                         onPick={(file) => changeImage(item, file)}
                       />
                     </td>
-                    <td>
+                    <td data-label="Supplement">
                       <input
                         type="text"
                         className="ua-cfg-nb-table__name"
@@ -426,7 +428,7 @@ export function NutritionBankSection({ items, setItems, onToast }) {
                         onBlur={() => commitItem(item.id)}
                       />
                     </td>
-                    <td>
+                    <td data-label="Pack size">
                       <input
                         type="text"
                         inputMode="numeric"
@@ -438,20 +440,17 @@ export function NutritionBankSection({ items, setItems, onToast }) {
                         onBlur={() => commitItem(item.id)}
                       />
                     </td>
-                    <td>
-                      <select
+                    <td data-label="Unit">
+                      <CfgSelect
                         className="ua-cfg-nb-table__unit"
+                        ariaLabel={`Unit for ${item.name}`}
                         value={item.unit}
                         disabled={locked}
-                        aria-label={`Unit for ${item.name}`}
-                        onChange={(event) => changeUnit(item, event.target.value)}
-                      >
-                        {unitOptionsFor(item.unit).map((unit) => (
-                          <option key={unit} value={unit}>{unit}</option>
-                        ))}
-                      </select>
+                        options={unitSelectOptions(item.unit)}
+                        onChange={(unit) => changeUnit(item, unit)}
+                      />
                     </td>
-                    <td>
+                    <td data-label="Bottle (Rs.)">
                       <input
                         type="text"
                         inputMode="numeric"
@@ -463,7 +462,7 @@ export function NutritionBankSection({ items, setItems, onToast }) {
                         onBlur={() => commitItem(item.id)}
                       />
                     </td>
-                    <td>
+                    <td data-label="Live">
                       <button
                         type="button"
                         className={`ua-toggle ua-toggle--sm${item.live ? " ua-toggle--on" : ""}`}

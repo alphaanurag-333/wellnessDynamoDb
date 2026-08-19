@@ -24,7 +24,7 @@ function Panel({ title, subtitle, actions, children }) {
   return (
     <section className="ua-cfg-panel">
       <div className="ua-cfg-panel__head">
-        <div>
+        <div className="ua-cfg-panel__copy">
           {title ? <h3 className="ua-cfg-panel__title">{title}</h3> : null}
           {subtitle ? <p className="ua-cfg-panel__sub">{subtitle}</p> : null}
         </div>
@@ -213,19 +213,21 @@ export function LegalSectionsEditor({
         actions={
           loading ? null : (
             <>
-              <span className={`ua-cfg-faq__shown${live ? " is-on" : ""}`}>
-                {live ? "LIVE" : "HIDDEN"}
-              </span>
-              <button
-                type="button"
-                className={`ua-toggle ua-toggle--sm${live ? " ua-toggle--on" : ""}`}
-                aria-pressed={live}
-                aria-label={`${defaultTitle} ${live ? "live" : "hidden"}`}
-                disabled={locked}
-                onClick={togglePageLive}
-              >
-                <span className="ua-toggle__knob" />
-              </button>
+              <div className="ua-cfg-privacy__live">
+                <span className={`ua-cfg-faq__shown${live ? " is-on" : ""}`}>
+                  {live ? "LIVE" : "HIDDEN"}
+                </span>
+                <button
+                  type="button"
+                  className={`ua-toggle ua-toggle--sm${live ? " ua-toggle--on" : ""}`}
+                  aria-pressed={live}
+                  aria-label={`${defaultTitle} ${live ? "live" : "hidden"}`}
+                  disabled={locked}
+                  onClick={togglePageLive}
+                >
+                  <span className="ua-toggle__knob" />
+                </button>
+              </div>
               <button
                 type="button"
                 className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
@@ -331,75 +333,81 @@ export function LegalSectionsEditor({
                 ) : (
                   <h3 className="ua-cfg-lb-card__title">{section.title}</h3>
                 )}
-                <span className={`ua-cfg-faq__shown${section.shown ? " is-on" : ""}`}>
-                  {section.shown ? "Shown" : "Hidden"}
-                </span>
-                <button
-                  type="button"
-                  className={`ua-toggle ua-toggle--sm${section.shown ? " ua-toggle--on" : ""}`}
-                  aria-pressed={section.shown}
-                  aria-label={`${section.title} ${section.shown ? "shown" : "hidden"}`}
-                  disabled={locked}
-                  onClick={() => persist(
-                    sections.map((row) => (row.id === section.id ? { ...row, shown: !row.shown } : row)),
-                    {},
-                    `${section.title} ${section.shown ? "hidden" : "shown"}`
+                <div className="ua-cfg-lb-card__actions">
+                  <div className="ua-cfg-lb-card__shown">
+                    <span className={`ua-cfg-faq__shown${section.shown ? " is-on" : ""}`}>
+                      {section.shown ? "Shown" : "Hidden"}
+                    </span>
+                    <button
+                      type="button"
+                      className={`ua-toggle ua-toggle--sm${section.shown ? " ua-toggle--on" : ""}`}
+                      aria-pressed={section.shown}
+                      aria-label={`${section.title} ${section.shown ? "shown" : "hidden"}`}
+                      disabled={locked}
+                      onClick={() => persist(
+                        sections.map((row) => (row.id === section.id ? { ...row, shown: !row.shown } : row)),
+                        {},
+                        `${section.title} ${section.shown ? "hidden" : "shown"}`
+                      )}
+                    >
+                      <span className="ua-toggle__knob" />
+                    </button>
+                  </div>
+                  {isEditing ? (
+                    <button
+                      type="button"
+                      className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
+                      disabled={locked}
+                      onClick={() => saveEdit(section.id)}
+                    >
+                      Save
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="ua-cfg-btn ua-cfg-btn--ghost"
+                      disabled={locked}
+                      onClick={() => startEdit(section)}
+                    >
+                      Edit
+                    </button>
                   )}
-                >
-                  <span className="ua-toggle__knob" />
-                </button>
-                {isEditing ? (
+                  <div className="ua-cfg-lb-card__moves">
+                    <button
+                      type="button"
+                      className="ua-cfg-icon-btn"
+                      aria-label="Move up"
+                      disabled={locked || index === 0}
+                      onClick={() => moveSection(index, -1)}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className="ua-cfg-icon-btn"
+                      aria-label="Move down"
+                      disabled={locked || index === sections.length - 1}
+                      onClick={() => moveSection(index, 1)}
+                    >
+                      ↓
+                    </button>
+                  </div>
                   <button
                     type="button"
-                    className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
+                    className="ua-cfg-icon-btn ua-cfg-icon-btn--danger"
+                    aria-label={isEditing ? "Cancel" : `Remove ${section.title}`}
                     disabled={locked}
-                    onClick={() => saveEdit(section.id)}
+                    onClick={() => {
+                      if (isEditing) {
+                        cancelEdit();
+                        return;
+                      }
+                      setPendingDelete(section);
+                    }}
                   >
-                    Save
+                    ×
                   </button>
-                ) : (
-                  <button
-                    type="button"
-                    className="ua-cfg-btn ua-cfg-btn--ghost"
-                    disabled={locked}
-                    onClick={() => startEdit(section)}
-                  >
-                    Edit
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className="ua-cfg-icon-btn"
-                  aria-label="Move up"
-                  disabled={locked || index === 0}
-                  onClick={() => moveSection(index, -1)}
-                >
-                  ↑
-                </button>
-                <button
-                  type="button"
-                  className="ua-cfg-icon-btn"
-                  aria-label="Move down"
-                  disabled={locked || index === sections.length - 1}
-                  onClick={() => moveSection(index, 1)}
-                >
-                  ↓
-                </button>
-                <button
-                  type="button"
-                  className="ua-cfg-icon-btn ua-cfg-icon-btn--danger"
-                  aria-label={isEditing ? "Cancel" : `Remove ${section.title}`}
-                  disabled={locked}
-                  onClick={() => {
-                    if (isEditing) {
-                      cancelEdit();
-                      return;
-                    }
-                    setPendingDelete(section);
-                  }}
-                >
-                  ×
-                </button>
+                </div>
               </div>
               <div className="ua-cfg-lb-card__copy">
                 {isEditing ? (

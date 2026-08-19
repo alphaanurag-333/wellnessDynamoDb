@@ -28,7 +28,7 @@ function Panel({ title, subtitle, actions, children }) {
   return (
     <section className="ua-cfg-panel">
       <div className="ua-cfg-panel__head">
-        <div>
+        <div className="ua-cfg-panel__copy">
           {title ? <h3 className="ua-cfg-panel__title">{title}</h3> : null}
           {subtitle ? <p className="ua-cfg-panel__sub">{subtitle}</p> : null}
         </div>
@@ -374,8 +374,9 @@ export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, galler
       <Panel
         title="Where this is live"
         subtitle="Turn it on for the app, the website, or both."
-        actions={<SurfaceToggles editor={editor} busy={busy} onPatch={patchConfig} />}
-      />
+      >
+        <SurfaceToggles editor={editor} busy={busy} onPatch={patchConfig} />
+      </Panel>
 
       {summary}
 
@@ -464,8 +465,10 @@ export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, galler
                   <div className="ua-cfg-rc-item__body">
                     <div className="ua-cfg-bl-item__head">
                       <div className="ua-cfg-bl-item__identity">
-                        <span className="ua-cfg-bl-handle" aria-hidden="true">⠿</span>
-                        <span className="ua-cfg-rc-pill ua-cfg-bl-flag">{postLabel(index)}</span>
+                        <div className="ua-cfg-bl-item__meta">
+                          <span className="ua-cfg-bl-handle" aria-hidden="true">⠿</span>
+                          <span className="ua-cfg-rc-pill ua-cfg-bl-flag">{postLabel(index)}</span>
+                        </div>
                         {editing ? (
                           <input
                             className="ua-cfg-vh-input ua-cfg-rc-title"
@@ -489,37 +492,41 @@ export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, galler
                         )}
                       </div>
                       <div className="ua-cfg-bl-item__actions">
-                        <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>{entry.live ? "LIVE" : "HIDDEN"}</span>
-                        <button
-                          type="button"
-                          className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
-                          aria-pressed={entry.live}
-                          disabled={busy}
-                          onClick={() => togglePostLive(entry)}
-                        >
-                          <span className="ua-toggle__knob" />
-                        </button>
-                        {editing ? (
-                          <>
-                            <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={busy} onClick={() => saveEditedPost(entry)}>Save</button>
-                            <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={() => setEditingId(null)}>Cancel</button>
-                          </>
-                        ) : (
+                        <div className="ua-cfg-bl-item__live">
+                          <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>{entry.live ? "LIVE" : "HIDDEN"}</span>
                           <button
                             type="button"
-                            className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                            className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
+                            aria-pressed={entry.live}
                             disabled={busy}
-                            onClick={() => {
-                              setCreating(false);
-                              setEditingId(entry.id);
-                            }}
+                            onClick={() => togglePostLive(entry)}
                           >
-                            Edit
+                            <span className="ua-toggle__knob" />
                           </button>
-                        )}
-                        <button type="button" className="ua-cfg-icon-btn" aria-label="Move up" disabled={busy || index === 0} onClick={() => movePost(index, -1)}>↑</button>
-                        <button type="button" className="ua-cfg-icon-btn" aria-label="Move down" disabled={busy || index === posts.length - 1} onClick={() => movePost(index, 1)}>↓</button>
-                        <button type="button" className="ua-cfg-icon-btn" aria-label="Delete" disabled={busy} onClick={() => setPendingDelete({ kind: "post", entry })}>×</button>
+                        </div>
+                        <div className="ua-cfg-bl-item__btns">
+                          {editing ? (
+                            <>
+                              <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={busy} onClick={() => saveEditedPost(entry)}>Save</button>
+                              <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={() => setEditingId(null)}>Cancel</button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                              disabled={busy}
+                              onClick={() => {
+                                setCreating(false);
+                                setEditingId(entry.id);
+                              }}
+                            >
+                              Edit
+                            </button>
+                          )}
+                          <button type="button" className="ua-cfg-icon-btn" aria-label="Move up" disabled={busy || index === 0} onClick={() => movePost(index, -1)}>↑</button>
+                          <button type="button" className="ua-cfg-icon-btn" aria-label="Move down" disabled={busy || index === posts.length - 1} onClick={() => movePost(index, 1)}>↓</button>
+                          <button type="button" className="ua-cfg-icon-btn" aria-label="Delete" disabled={busy} onClick={() => setPendingDelete({ kind: "post", entry })}>×</button>
+                        </div>
                       </div>
                     </div>
                   </div>

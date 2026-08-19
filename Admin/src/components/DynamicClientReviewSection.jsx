@@ -19,7 +19,7 @@ function Panel({ title, subtitle, actions, children }) {
   return (
     <section className="ua-cfg-panel">
       <div className="ua-cfg-panel__head">
-        <div>
+        <div className="ua-cfg-panel__copy">
           {title ? <h3 className="ua-cfg-panel__title">{title}</h3> : null}
           {subtitle ? <p className="ua-cfg-panel__sub">{subtitle}</p> : null}
         </div>
@@ -372,31 +372,33 @@ export function DynamicClientReviewSection({ queue, setQueue, published, setPubl
                   >
                     <span className="ua-toggle__knob" />
                   </button>
-                  <button
-                    type="button"
-                    className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
-                    disabled={busy}
-                    onClick={() => setViewingId(entry.id)}
-                  >
-                    View
-                  </button>
-                  <button
-                    type="button"
-                    className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
-                    disabled={busy}
-                    onClick={() => { setViewingId(null); setEditing(entry); }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="ua-cfg-icon-btn"
-                    aria-label={`Delete ${asCopyString(entry.name)}`}
-                    disabled={busy}
-                    onClick={() => setPendingDelete(entry)}
-                  >
-                    ×
-                  </button>
+                  <div className="ua-cfg-cr-row__btns">
+                    <button
+                      type="button"
+                      className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                      disabled={busy}
+                      onClick={() => setViewingId(entry.id)}
+                    >
+                      View
+                    </button>
+                    <button
+                      type="button"
+                      className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                      disabled={busy}
+                      onClick={() => { setViewingId(null); setEditing(entry); }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="ua-cfg-icon-btn"
+                      aria-label={`Delete ${asCopyString(entry.name)}`}
+                      disabled={busy}
+                      onClick={() => setPendingDelete(entry)}
+                    >
+                      ×
+                    </button>
+                  </div>
                 </div>
               </article>
             ))}

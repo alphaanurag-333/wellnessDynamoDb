@@ -7,7 +7,7 @@ function Panel({ title, subtitle, actions, children }) {
   return (
     <section className="ua-cfg-panel">
       <div className="ua-cfg-panel__head">
-        <div>
+        <div className="ua-cfg-panel__copy">
           <h3 className="ua-cfg-panel__title">{title}</h3>
           {subtitle ? <p className="ua-cfg-panel__sub">{subtitle}</p> : null}
         </div>
@@ -33,7 +33,7 @@ function LocationRow({
   const isEditing = Boolean(editing);
 
   function handleKeyDown(event) {
-    if (event.key === "Enter") onSave();
+    if (event.key === "Enter" && event.target.tagName !== "TEXTAREA") onSave();
     if (event.key === "Escape") onCancel();
   }
 
@@ -54,9 +54,9 @@ function LocationRow({
         <strong className="ua-cfg-loc-row__name">{asCopyString(entry.name)}</strong>
       )}
       {isEditing ? (
-        <input
-          type="text"
+        <textarea
           className="ua-cfg-loc-row__address-input"
+          rows={3}
           value={asCopyString(draft.address)}
           placeholder="Full address"
           disabled={locked}
@@ -215,13 +215,14 @@ export function LocationsSection({ locations, setLocations, onToast }) {
   }
 
   function handleAddKeyDown(event) {
-    if (event.key === "Enter") addLocation();
+    if (event.key === "Enter" && event.target.tagName !== "TEXTAREA") addLocation();
     if (event.key === "Escape") closeAdd();
   }
 
   const locked = loading || busy;
 
   return (
+    <div className="ua-cfg-loc">
     <Panel
       title="Locations"
       subtitle={
@@ -274,9 +275,9 @@ export function LocationsSection({ locations, setLocations, onToast }) {
             onChange={(event) => setNewDraft((prev) => ({ ...prev, name: event.target.value }))}
             onKeyDown={handleAddKeyDown}
           />
-          <input
-            type="text"
-            className="ua-cfg-loc-add__input"
+          <textarea
+            className="ua-cfg-loc-add__input ua-cfg-loc-add__input--address"
+            rows={3}
             placeholder="Full address"
             value={asCopyString(newDraft.address)}
             disabled={locked}
@@ -317,5 +318,6 @@ export function LocationsSection({ locations, setLocations, onToast }) {
         ))}
       </div>
     </Panel>
+    </div>
   );
 }

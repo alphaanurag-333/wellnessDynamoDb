@@ -33,7 +33,7 @@ function Panel({ title, subtitle, actions, children }) {
   return (
     <section className="ua-cfg-panel">
       <div className="ua-cfg-panel__head">
-        <div>
+        <div className="ua-cfg-panel__copy">
           {title ? <h3 className="ua-cfg-panel__title">{title}</h3> : null}
           {subtitle ? <p className="ua-cfg-panel__sub">{subtitle}</p> : null}
         </div>
@@ -168,19 +168,17 @@ function TransformationViewModal({ entry, onClose, onEdit }) {
   const points = (entry.dataPoints || []).filter((row) => String(row.value || "").trim());
   return (
     <div className="ua-cp-modal-backdrop" onClick={onClose} role="presentation">
-      <div className="ua-cfg-rc-view ua-cfg-tf-view" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="tf-view-title">
+      <div className="ua-cfg-rc-view ua-cfg-rc-view--sheet ua-cfg-tf-view" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="tf-view-title">
         <div className="ua-cfg-rc-view__head">
           <div>
             <p className="ua-cfg-rc-view__tag">Transformation</p>
             <h3 id="tf-view-title">{asCopyString(entry.name) || "Untitled client"}</h3>
-            <p>
-              {formatRecipeDate(entry.updatedAt)}
-              <span className={`ua-cfg-tf-view__status${entry.live ? " is-live" : ""}`}>
-                {entry.live ? "Live" : "Hidden"}
-              </span>
-            </p>
+            <p>{formatRecipeDate(entry.updatedAt)}</p>
+            <span className={`ua-cfg-tf-view__status${entry.live ? " is-live" : ""}`}>
+              {entry.live ? "Live" : "Hidden"}
+            </span>
           </div>
-          <button type="button" className="ua-cfg-mv-upload-modal__close" aria-label="Close" onClick={onClose}>×</button>
+          <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={onClose}>×</button>
         </div>
         <div className="ua-cfg-tf-view__body">
           <div className="ua-cfg-tf-view__compare">
@@ -622,44 +620,50 @@ export function DynamicTransformationSection({ items, setItems, onToast }) {
                         <p className="ua-cfg-panel__sub">{formatRecipeDate(entry.updatedAt)}</p>
                       </div>
                       <div className="ua-cfg-tf-item__actions">
-                        <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>
-                          {entry.live ? "LIVE" : "HIDDEN"}
-                        </span>
-                        <button
-                          type="button"
-                          className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
-                          aria-pressed={entry.live}
-                          disabled={busy}
-                          onClick={() => toggleLive(entry)}
-                        >
-                          <span className="ua-toggle__knob" />
-                        </button>
-                        <button type="button" className="ua-cfg-icon-btn" disabled={busy || index === 0} onClick={() => moveItem(index, -1)} aria-label="Move up">↑</button>
-                        <button type="button" className="ua-cfg-icon-btn" disabled={busy || index === items.length - 1} onClick={() => moveItem(index, 1)} aria-label="Move down">↓</button>
-                        <button
-                          type="button"
-                          className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
-                          disabled={busy}
-                          onClick={() => setViewingId(entry.id)}
-                        >
-                          View
-                        </button>
-                        {isEditing ? (
-                          <>
-                            <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={busy} onClick={() => saveItem(entry)}>Save</button>
-                            <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={() => { setEditingId(null); loadItems(); }}>Cancel</button>
-                          </>
-                        ) : (
+                        <div className="ua-cfg-tf-item__live">
+                          <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>
+                            {entry.live ? "LIVE" : "HIDDEN"}
+                          </span>
+                          <button
+                            type="button"
+                            className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
+                            aria-pressed={entry.live}
+                            disabled={busy}
+                            onClick={() => toggleLive(entry)}
+                          >
+                            <span className="ua-toggle__knob" />
+                          </button>
+                        </div>
+                        <div className="ua-cfg-tf-item__moves">
+                          <button type="button" className="ua-cfg-icon-btn" disabled={busy || index === 0} onClick={() => moveItem(index, -1)} aria-label="Move up">↑</button>
+                          <button type="button" className="ua-cfg-icon-btn" disabled={busy || index === items.length - 1} onClick={() => moveItem(index, 1)} aria-label="Move down">↓</button>
+                        </div>
+                        <div className="ua-cfg-tf-item__btns">
                           <button
                             type="button"
                             className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
                             disabled={busy}
-                            onClick={() => { setViewingId(null); setEditingId(entry.id); setCreating(false); }}
+                            onClick={() => setViewingId(entry.id)}
                           >
-                            Edit
+                            View
                           </button>
-                        )}
-                        <button type="button" className="ua-cfg-icon-btn" aria-label={`Delete ${entry.name}`} disabled={busy} onClick={() => setPendingDelete(entry)}>×</button>
+                          {isEditing ? (
+                            <>
+                              <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={busy} onClick={() => saveItem(entry)}>Save</button>
+                              <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={() => { setEditingId(null); loadItems(); }}>Cancel</button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                              disabled={busy}
+                              onClick={() => { setViewingId(null); setEditingId(entry.id); setCreating(false); }}
+                            >
+                              Edit
+                            </button>
+                          )}
+                          <button type="button" className="ua-cfg-icon-btn" aria-label={`Delete ${entry.name}`} disabled={busy} onClick={() => setPendingDelete(entry)}>×</button>
+                        </div>
                       </div>
                     </div>
                     {isEditing ? (
@@ -684,7 +688,7 @@ export function DynamicTransformationSection({ items, setItems, onToast }) {
                       </>
                     ) : (
                       <>
-                        {asCopyString(entry.description) ? <p>{asCopyString(entry.description)}</p> : null}
+                        {asCopyString(entry.description) ? <p className="ua-cfg-tf-item__story">{asCopyString(entry.description)}</p> : null}
                         {points.length ? (
                           <div className="ua-cfg-tf-points">
                             {points.map((row) => (

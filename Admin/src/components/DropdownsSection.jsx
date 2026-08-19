@@ -66,17 +66,17 @@ function SupplementMetaFields({ packSize, unit, price, disabled, onPackSize, onU
         disabled={disabled}
         onChange={(event) => onPackSize(event.target.value.replace(/[^\d]/g, ""))}
       />
-      <select
-        className="ua-cfg-dd-row__type"
+      <CfgSelect
+        className="ua-cfg-dd-select"
+        options={unitOptionsFor(unit, SUPPLEMENT_POOL_UNITS).map((option) => ({
+          value: option,
+          label: option,
+        }))}
         value={unit}
         disabled={disabled}
-        aria-label="Unit"
-        onChange={(event) => onUnit(event.target.value)}
-      >
-        {unitOptionsFor(unit, SUPPLEMENT_POOL_UNITS).map((option) => (
-          <option key={option} value={option}>{option}</option>
-        ))}
-      </select>
+        onChange={onUnit}
+        ariaLabel="Unit"
+      />
       <input
         className="ua-cfg-dd-row__input"
         inputMode="numeric"
@@ -94,7 +94,7 @@ function Panel({ title, subtitle, actions, children }) {
   return (
     <section className="ua-cfg-panel">
       <div className="ua-cfg-panel__head">
-        <div>
+        <div className="ua-cfg-panel__copy">
           {title ? <h3 className="ua-cfg-panel__title">{title}</h3> : null}
           {subtitle ? <p className="ua-cfg-panel__sub">{subtitle}</p> : null}
         </div>
@@ -646,7 +646,7 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                 className={`ua-cfg-panel ua-cfg-dd-card${list.wide || supportsIcons || supportsAnswerType || isSupplementPool ? " ua-cfg-dd-card--wide" : ""}`}
               >
                 <div className="ua-cfg-panel__head ua-cfg-dd-card__head">
-                  <div>
+                  <div className="ua-cfg-panel__copy">
                     <h3 className="ua-cfg-panel__title">{asCopyString(list.title)}</h3>
                     <p className="ua-cfg-panel__sub">
                       {supportsIcons
@@ -730,7 +730,7 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                         )}
                         <div className="ua-cfg-dd-row__actions">
                           {isEditing ? (
-                            <>
+                            <div className="ua-cfg-dd-row__btns">
                               <button
                                 type="button"
                                 className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
@@ -747,38 +747,42 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                               >
                                 Save
                               </button>
-                            </>
+                            </div>
                           ) : (
                             <>
-                              <span className={`ua-cfg-faq__shown${entry.on ? " is-on" : ""}`}>
-                                {entry.on ? "LIVE" : "HIDDEN"}
-                              </span>
-                              <button
-                                type="button"
-                                className={`ua-toggle ua-toggle--sm${entry.on ? " ua-toggle--on" : ""}`}
-                                aria-pressed={entry.on}
-                                disabled={busy}
-                                onClick={() => toggleOption(list, entry)}
-                              >
-                                <span className="ua-toggle__knob" />
-                              </button>
-                              <button
-                                type="button"
-                                className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
-                                disabled={busy}
-                                onClick={() => startEdit(list, entry)}
-                              >
-                                Edit
-                              </button>
-                              <button
-                                type="button"
-                                className="ua-cfg-icon-btn"
-                                aria-label={`Remove ${asCopyString(entry.label)}`}
-                                disabled={busy}
-                                onClick={() => askRemoveOption(list, entry)}
-                              >
-                                ×
-                              </button>
+                              <div className="ua-cfg-dd-row__live">
+                                <span className={`ua-cfg-faq__shown${entry.on ? " is-on" : ""}`}>
+                                  {entry.on ? "LIVE" : "HIDDEN"}
+                                </span>
+                                <button
+                                  type="button"
+                                  className={`ua-toggle ua-toggle--sm${entry.on ? " ua-toggle--on" : ""}`}
+                                  aria-pressed={entry.on}
+                                  disabled={busy}
+                                  onClick={() => toggleOption(list, entry)}
+                                >
+                                  <span className="ua-toggle__knob" />
+                                </button>
+                              </div>
+                              <div className="ua-cfg-dd-row__btns">
+                                <button
+                                  type="button"
+                                  className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                                  disabled={busy}
+                                  onClick={() => startEdit(list, entry)}
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  className="ua-cfg-icon-btn"
+                                  aria-label={`Remove ${asCopyString(entry.label)}`}
+                                  disabled={busy}
+                                  onClick={() => askRemoveOption(list, entry)}
+                                >
+                                  ×
+                                </button>
+                              </div>
                             </>
                           )}
                         </div>
