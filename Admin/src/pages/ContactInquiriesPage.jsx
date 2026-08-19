@@ -251,7 +251,7 @@ export function ContactInquiriesPage() {
   if (!canView) {
     return (
       <main className="content ua-page-enter">
-        <PageHeader title="Contact Us" subtitle="You do not have permission to view website inquiries." />
+        <PageHeader title="Contact Inquiries" subtitle="You do not have permission to view website inquiries." />
       </main>
     );
   }
@@ -259,7 +259,7 @@ export function ContactInquiriesPage() {
   return (
     <main className="content ua-page-enter ua-ci-page">
       <PageHeader
-        title="Contact Us"
+        title="Contact Inquiries"
         subtitle="Messages sent from the website contact form."
         meta={(
           <>
