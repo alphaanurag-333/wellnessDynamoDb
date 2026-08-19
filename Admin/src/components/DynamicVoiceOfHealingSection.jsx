@@ -481,7 +481,7 @@ export function DynamicVoiceOfHealingSection({ items, setItems, onToast }) {
               const photo = entry.imagePreview || entry.profileImage;
               const embed = youtubeEmbedUrl(entry.ytLink);
               return (
-                <article key={entry.id} className="ua-cfg-rc-item ua-cfg-vh-item">
+                <article key={entry.id} className={`ua-cfg-rc-item ua-cfg-vh-item${isEditing ? " is-editing" : ""}`}>
                   <div className="ua-cfg-rc-cover-wrap">
                     <button
                       type="button"
