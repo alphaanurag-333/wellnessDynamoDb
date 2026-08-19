@@ -22,12 +22,11 @@ import {
 } from "../api/medicalConditionQuestionApi.js";
 import { MEDICAL_ANSWER_TYPES } from "../data/configDetailData.js";
 import {
-  formatPack,
-  parseBottlePrice,
-  parsePackSize,
-  SUPPLEMENT_POOL_UNITS,
-  unitOptionsFor,
-} from "../data/nutritionBankData.js";
+  DROPDOWN_SEARCH_MAX,
+  labelLimitForList,
+  sanitizeDropdownText,
+  validateDropdownLabel,
+} from "../data/dropdownsConfigData.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { CfgSelect } from "./shared.jsx";
 
@@ -43,52 +42,6 @@ const ANSWER_TYPE_OPTIONS = MEDICAL_ANSWER_TYPES.map((entry) => ({
 }));
 
 const ICON_ACCEPT = "image/jpeg,image/png,image/gif,image/webp,image/jpg";
-const EMPTY_SUPP_DRAFT = { packSize: "", unit: "Caps", price: "" };
-
-function formatSupplementMeta(entry) {
-  const pack = formatPack(entry?.packSize, entry?.unit);
-  const price = Number(entry?.price);
-  const parts = [];
-  if (pack) parts.push(pack);
-  if (Number.isFinite(price) && price > 0) parts.push(`Rs. ${price.toLocaleString("en-IN")}`);
-  return parts.join(" · ");
-}
-
-function SupplementMetaFields({ packSize, unit, price, disabled, onPackSize, onUnit, onPrice }) {
-  return (
-    <>
-      <input
-        className="ua-cfg-dd-row__input"
-        inputMode="numeric"
-        placeholder="Pack size"
-        aria-label="Pack size"
-        value={packSize}
-        disabled={disabled}
-        onChange={(event) => onPackSize(event.target.value.replace(/[^\d]/g, ""))}
-      />
-      <CfgSelect
-        className="ua-cfg-dd-select"
-        options={unitOptionsFor(unit, SUPPLEMENT_POOL_UNITS).map((option) => ({
-          value: option,
-          label: option,
-        }))}
-        value={unit}
-        disabled={disabled}
-        onChange={onUnit}
-        ariaLabel="Unit"
-      />
-      <input
-        className="ua-cfg-dd-row__input"
-        inputMode="numeric"
-        placeholder="Price (Rs.)"
-        aria-label="Price (Rs.)"
-        value={price}
-        disabled={disabled}
-        onChange={(event) => onPrice(event.target.value.replace(/[^\d]/g, ""))}
-      />
-    </>
-  );
-}
 
 function Panel({ title, subtitle, actions, children }) {
   return (
@@ -163,6 +116,15 @@ function answerTypeLabel(value) {
   return MEDICAL_ANSWER_TYPES.find((entry) => entry.id === value)?.label || "Text";
 }
 
+function CharHint({ value, max, error }) {
+  const length = String(value || "").length;
+  return (
+    <span className={`ua-cfg-dd-char${error ? " is-error" : ""}${length >= max ? " is-limit" : ""}`}>
+      {error || `${length}/${max}`}
+    </span>
+  );
+}
+
 function OptionIcon({ icon }) {
   const value = asCopyString(icon);
   if (!value) return <span className="ua-cfg-dd-row__thumb ua-cfg-dd-row__thumb--empty" aria-hidden="true" />;
@@ -186,12 +148,8 @@ export function DropdownsSection({ lists, setLists, onToast }) {
   const [editValue, setEditValue] = useState("");
   const [editAnswerType, setEditAnswerType] = useState("yes_no_text");
   const [answerTypeDrafts, setAnswerTypeDrafts] = useState({});
-  const [suppDrafts, setSuppDrafts] = useState({});
   const [editIconFile, setEditIconFile] = useState(null);
   const [editIconPreview, setEditIconPreview] = useState("");
-  const [editPackSize, setEditPackSize] = useState("");
-  const [editUnit, setEditUnit] = useState("Caps");
-  const [editPrice, setEditPrice] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(null);
@@ -207,7 +165,7 @@ export function DropdownsSection({ lists, setLists, onToast }) {
         adminListMedicalConditionQuestions(null, { limit: 200 }).catch(() => ({ questions: [] })),
       ]);
       const filtered = (rows || []).filter(
-        (list) => !["program-category", "health-concern", "medical-questions"].includes(list.slug),
+        (list) => !["program-category", "health-concern", "medical-questions", "supplement-pool"].includes(list.slug),
       );
       const concerns = concernsResult?.healthConcerns || [];
       const questions = questionsResult?.questions || [];
@@ -247,7 +205,6 @@ export function DropdownsSection({ lists, setLists, onToast }) {
       .filter((list) => (
         list.slug === "health-concern"
         || list.slug === "medical-questions"
-        || list.slug === "supplement-pool"
         || list.options.length > 0
       ) && matchesQuery(list, query));
   }, [lists, filter, query]);
@@ -279,9 +236,6 @@ export function DropdownsSection({ lists, setLists, onToast }) {
     setEditAnswerType(entry.answerType || "yes_no_text");
     setEditIconFile(null);
     setEditIconPreview(asCopyString(entry.icon));
-    setEditPackSize(entry.packSize ? String(entry.packSize) : "");
-    setEditUnit(entry.unit || "Caps");
-    setEditPrice(entry.price ? String(entry.price) : "");
   }
 
   function cancelEdit() {
@@ -291,36 +245,20 @@ export function DropdownsSection({ lists, setLists, onToast }) {
     setEditAnswerType("yes_no_text");
     setEditIconFile(null);
     setEditIconPreview("");
-    setEditPackSize("");
-    setEditUnit("Caps");
-    setEditPrice("");
   }
 
   async function addOption(list) {
-    const label = asCopyString(drafts[list.id]).trim();
-    if (!label || busy) return;
+    const source = lists.find((entry) => entry.id === list.id) ?? list;
+    const labelCheck = validateDropdownLabel(drafts[list.id], { slug: list.slug, options: source.options });
+    if (!labelCheck.ok || busy) {
+      if (!busy && drafts[list.id]?.trim()) onToast(labelCheck.message);
+      return;
+    }
     if (list.slug === "health-concern" && !(iconFiles[list.id] instanceof File)) {
       onToast("Upload an icon image first");
       return;
     }
-    const suppDraft = suppDrafts[list.id] || EMPTY_SUPP_DRAFT;
-    const packSize = parsePackSize(suppDraft.packSize);
-    const unit = String(suppDraft.unit || "").trim();
-    const price = parseBottlePrice(suppDraft.price);
-    if (list.slug === "supplement-pool") {
-      if (!packSize) {
-        onToast("Enter a pack size");
-        return;
-      }
-      if (!unit) {
-        onToast("Choose a unit");
-        return;
-      }
-      if (!price) {
-        onToast("Enter a price (Rs.)");
-        return;
-      }
-    }
+    const label = labelCheck.value;
     setBusy(true);
     try {
       if (list.slug === "health-concern") {
@@ -382,14 +320,10 @@ export function DropdownsSection({ lists, setLists, onToast }) {
         const { list: nextList } = await adminAddConfigDropdownOption(null, list.id, {
           label,
           on: true,
-          ...(list.slug === "supplement-pool" ? { packSize, unit, price } : {}),
         });
         replaceList(nextList);
       }
       setDrafts((prev) => ({ ...prev, [list.id]: "" }));
-      if (list.slug === "supplement-pool") {
-        setSuppDrafts((prev) => ({ ...prev, [list.id]: { ...EMPTY_SUPP_DRAFT } }));
-      }
       onToast("Option added");
     } catch (error) {
       onToast(error?.message || "Failed to add option");
@@ -399,25 +333,17 @@ export function DropdownsSection({ lists, setLists, onToast }) {
   }
 
   async function saveEdit(list, optionId) {
-    const label = asCopyString(editValue).trim();
-    if (!label || busy) return;
-    const packSize = parsePackSize(editPackSize);
-    const unit = String(editUnit || "").trim();
-    const price = parseBottlePrice(editPrice);
-    if (list.slug === "supplement-pool") {
-      if (!packSize) {
-        onToast("Enter a pack size");
-        return;
-      }
-      if (!unit) {
-        onToast("Choose a unit");
-        return;
-      }
-      if (!price) {
-        onToast("Enter a price (Rs.)");
-        return;
-      }
+    const source = lists.find((entry) => entry.id === list.id) ?? list;
+    const labelCheck = validateDropdownLabel(editValue, {
+      slug: list.slug,
+      options: source.options,
+      excludeId: optionId,
+    });
+    if (!labelCheck.ok || busy) {
+      if (!busy && editValue.trim()) onToast(labelCheck.message);
+      return;
     }
+    const label = labelCheck.value;
     setBusy(true);
     try {
       if (list.slug === "health-concern") {
@@ -474,7 +400,6 @@ export function DropdownsSection({ lists, setLists, onToast }) {
       } else {
         const { list: nextList } = await adminUpdateConfigDropdownOption(null, list.id, optionId, {
           label,
-          ...(list.slug === "supplement-pool" ? { packSize, unit, price } : {}),
         });
         replaceList(nextList);
       }
@@ -556,14 +481,19 @@ export function DropdownsSection({ lists, setLists, onToast }) {
     }
   }
 
+  function truncateLabel(raw, max = 60) {
+    const text = asCopyString(raw).trim();
+    return text.length > max ? `${text.slice(0, max)}…` : text;
+  }
+
   function askRemoveOption(list, option) {
     if (busy) return;
     setPendingDelete({
       listId: list.id,
       listSlug: list.slug,
       optionId: option.id,
-      label: asCopyString(option.label),
-      listTitle: asCopyString(list.title),
+      label: truncateLabel(option.label),
+      listTitle: truncateLabel(list.title, 80),
       icon: asCopyString(option.icon),
     });
   }
@@ -607,7 +537,14 @@ export function DropdownsSection({ lists, setLists, onToast }) {
         subtitle={
           loading
             ? "Loading lists from the server…"
-            : `${lists.length} lists · ${optionCount} options · ${hiddenCount} hidden`
+            : "Manage every dropdown list used across the admin panel, app, and website."
+        }
+        actions={
+          loading ? null : (
+            <span className="ua-cfg-dp__count">
+              {lists.length} lists · {optionCount} options · {hiddenCount} hidden
+            </span>
+          )
         }
       >
         <div className="ua-cfg-dd-toolbar">
@@ -616,11 +553,12 @@ export function DropdownsSection({ lists, setLists, onToast }) {
             className="ua-cfg-dd-search"
             placeholder="Search any option or list…"
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            maxLength={DROPDOWN_SEARCH_MAX}
+            onChange={(event) => setSearch(sanitizeDropdownText(event.target.value, DROPDOWN_SEARCH_MAX))}
             aria-label="Search dropdowns"
           />
           <CfgSelect
-            className="ua-cfg-dd-filter"
+            className="ua-cfg-dd-filter ua-cfg-tc-select"
             options={FILTER_OPTIONS}
             value={filter}
             disabled={busy || loading}
@@ -639,11 +577,15 @@ export function DropdownsSection({ lists, setLists, onToast }) {
             const onCount = source.options.filter((entry) => entry.on).length;
             const supportsIcons = list.slug === "health-concern";
             const supportsAnswerType = list.slug === "medical-questions";
-            const isSupplementPool = list.slug === "supplement-pool";
+            const labelMax = labelLimitForList(list.slug);
+            const draftValue = asCopyString(drafts[list.id]);
+            const draftValidation = validateDropdownLabel(draftValue, { slug: list.slug, options: source.options });
+            const canAdd = draftValidation.ok
+              && (!supportsIcons || iconFiles[list.id] instanceof File);
             return (
               <section
                 key={list.id}
-                className={`ua-cfg-panel ua-cfg-dd-card${list.wide || supportsIcons || supportsAnswerType || isSupplementPool ? " ua-cfg-dd-card--wide" : ""}`}
+                className={`ua-cfg-panel ua-cfg-dd-card${list.wide || supportsIcons || supportsAnswerType ? " ua-cfg-dd-card--wide" : ""}`}
               >
                 <div className="ua-cfg-panel__head ua-cfg-dd-card__head">
                   <div className="ua-cfg-panel__copy">
@@ -664,13 +606,20 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                 <div className="ua-cfg-dd-card__list">
                   {list.options.length ? list.options.map((entry) => {
                     const isEditing = editing === `${list.id}:${entry.id}`;
+                    const editValidation = isEditing
+                      ? validateDropdownLabel(editValue, {
+                        slug: list.slug,
+                        options: source.options,
+                        excludeId: entry.id,
+                      })
+                      : null;
                     return (
                       <div
                         key={entry.id}
-                        className={`ua-cfg-dd-row${supportsIcons ? " has-icon" : ""}${supportsAnswerType ? " has-type" : ""}${isSupplementPool ? " has-supp" : ""}${entry.on ? "" : " is-off"}${isEditing ? " is-editing" : ""}`}
+                        className={`ua-cfg-dd-row${supportsIcons ? " has-icon" : ""}${supportsAnswerType ? " has-type" : ""}${entry.on ? "" : " is-off"}${isEditing ? " is-editing" : ""}`}
                       >
                         {isEditing ? (
-                          <div className={`ua-cfg-dd-row__fields${supportsIcons ? " has-icon" : ""}${supportsAnswerType ? " has-type" : ""}${isSupplementPool ? " has-supp" : ""}`}>
+                          <div className={`ua-cfg-dd-row__fields${supportsIcons ? " has-icon" : ""}${supportsAnswerType ? " has-type" : ""}`}>
                             {supportsIcons ? (
                               <IconPicker
                                 previewUrl={editIconPreview}
@@ -684,16 +633,26 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                                 }}
                               />
                             ) : null}
-                            <input
-                              className="ua-cfg-dd-row__input"
-                              value={asCopyString(editValue)}
-                              disabled={busy}
-                              onChange={(event) => setEditValue(event.target.value)}
-                              onKeyDown={(event) => {
-                                if (event.key === "Enter") saveEdit(list, entry.id);
-                                if (event.key === "Escape") cancelEdit();
-                              }}
-                            />
+                            <label className="ua-cfg-dd-field">
+                              <input
+                                className="ua-cfg-dd-row__input"
+                                value={asCopyString(editValue)}
+                                maxLength={labelMax}
+                                disabled={busy}
+                                onChange={(event) => setEditValue(
+                                  sanitizeDropdownText(event.target.value, labelMax),
+                                )}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Enter") saveEdit(list, entry.id);
+                                  if (event.key === "Escape") cancelEdit();
+                                }}
+                              />
+                              <CharHint
+                                value={editValue}
+                                max={labelMax}
+                                error={editValidation?.ok === false ? editValidation.message : ""}
+                              />
+                            </label>
                             {supportsAnswerType ? (
                               <CfgSelect
                                 className="ua-cfg-dd-select"
@@ -704,17 +663,6 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                                 ariaLabel="Answer type"
                               />
                             ) : null}
-                            {isSupplementPool ? (
-                              <SupplementMetaFields
-                                packSize={editPackSize}
-                                unit={editUnit}
-                                price={editPrice}
-                                disabled={busy}
-                                onPackSize={setEditPackSize}
-                                onUnit={setEditUnit}
-                                onPrice={setEditPrice}
-                              />
-                            ) : null}
                           </div>
                         ) : (
                           <div className="ua-cfg-dd-row__main">
@@ -722,9 +670,6 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                             <strong className="ua-cfg-dd-row__label">{asCopyString(entry.label)}</strong>
                             {supportsAnswerType ? (
                               <span className="ua-cfg-dd-row__type-badge">{answerTypeLabel(entry.answerType)}</span>
-                            ) : null}
-                            {isSupplementPool && formatSupplementMeta(entry) ? (
-                              <span className="ua-cfg-dd-row__meta">{formatSupplementMeta(entry)}</span>
                             ) : null}
                           </div>
                         )}
@@ -742,7 +687,7 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                               <button
                                 type="button"
                                 className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
-                                disabled={busy}
+                                disabled={busy || editValidation?.ok === false}
                                 onClick={() => saveEdit(list, entry.id)}
                               >
                                 Save
@@ -794,7 +739,7 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                     </p>
                   )}
                 </div>
-                <div className={`ua-cfg-dd-add${supportsIcons ? " has-icon" : ""}${supportsAnswerType ? " has-type" : ""}${isSupplementPool ? " has-supp" : ""}`}>
+                <div className={`ua-cfg-dd-add${supportsIcons ? " has-icon" : ""}${supportsAnswerType ? " has-type" : ""}`}>
                   {supportsIcons ? (
                     <IconPicker
                       previewUrl={asCopyString(iconPreviews[list.id])}
@@ -804,24 +749,33 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                       onClear={() => clearAddIcon(list.id)}
                     />
                   ) : null}
-                  <input
-                    className="ua-cfg-vh-input ua-cfg-dd-add__input"
-                    placeholder={
-                      supportsIcons
-                        ? "Add a health concern…"
-                        : supportsAnswerType
-                          ? "Add a medical question…"
-                          : isSupplementPool
-                            ? "Add a supplement…"
+                  <label className="ua-cfg-dd-field ua-cfg-dd-add__field">
+                    <input
+                      className="ua-cfg-vh-input ua-cfg-dd-add__input"
+                      placeholder={
+                        supportsIcons
+                          ? "Add a health concern…"
+                          : supportsAnswerType
+                            ? "Add a medical question…"
                             : "Add an option…"
-                    }
-                    value={asCopyString(drafts[list.id])}
-                    disabled={busy}
-                    onChange={(event) => setDrafts((prev) => ({ ...prev, [list.id]: event.target.value }))}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") addOption(list);
-                    }}
-                  />
+                      }
+                      value={draftValue}
+                      maxLength={labelMax}
+                      disabled={busy}
+                      onChange={(event) => setDrafts((prev) => ({
+                        ...prev,
+                        [list.id]: sanitizeDropdownText(event.target.value, labelMax),
+                      }))}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" && canAdd) addOption(list);
+                      }}
+                    />
+                    <CharHint
+                      value={draftValue}
+                      max={labelMax}
+                      error={draftValue.trim() && !draftValidation.ok ? draftValidation.message : ""}
+                    />
+                  </label>
                   {supportsAnswerType ? (
                     <CfgSelect
                       className="ua-cfg-dd-select"
@@ -832,30 +786,10 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                       ariaLabel="Answer type"
                     />
                   ) : null}
-                  {isSupplementPool ? (
-                    <SupplementMetaFields
-                      packSize={asCopyString((suppDrafts[list.id] || EMPTY_SUPP_DRAFT).packSize)}
-                      unit={(suppDrafts[list.id] || EMPTY_SUPP_DRAFT).unit || "Caps"}
-                      price={asCopyString((suppDrafts[list.id] || EMPTY_SUPP_DRAFT).price)}
-                      disabled={busy}
-                      onPackSize={(value) => setSuppDrafts((prev) => ({
-                        ...prev,
-                        [list.id]: { ...EMPTY_SUPP_DRAFT, ...prev[list.id], packSize: value },
-                      }))}
-                      onUnit={(value) => setSuppDrafts((prev) => ({
-                        ...prev,
-                        [list.id]: { ...EMPTY_SUPP_DRAFT, ...prev[list.id], unit: value },
-                      }))}
-                      onPrice={(value) => setSuppDrafts((prev) => ({
-                        ...prev,
-                        [list.id]: { ...EMPTY_SUPP_DRAFT, ...prev[list.id], price: value },
-                      }))}
-                    />
-                  ) : null}
                   <button
                     type="button"
                     className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-tf-add-btn"
-                    disabled={busy}
+                    disabled={busy || !canAdd}
                     onClick={() => addOption(list)}
                   >
                     + Add

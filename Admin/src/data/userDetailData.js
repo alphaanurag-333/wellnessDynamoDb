@@ -280,7 +280,6 @@ export const ACTIVE_SUPPLEMENTS = [
   { name: "B12 + Folate", note: "After lunch", dosages: [{ label: "Noon · 1", tone: "noon" }], date: "05 Sep", daysLeft: 42, urgent: false },
 ];
 
-export const SUPPLEMENT_POOL_SLUG = "supplement-pool";
 
 export const SUPPLEMENT_POOL = [
   { id: "vitd", name: "Vitamin D Plus", pack: "60 Caps", price: 1200 },

@@ -50,6 +50,7 @@ export function PageHeader({
   layout = "default",
 }) {
   const isSplit = layout === "split";
+  const showActions = Boolean(actions) || (!isSplit && autosave);
 
   return (
     <div className={`page-head${isSplit ? " page-head--split" : ""}`}>
@@ -67,10 +68,12 @@ export function PageHeader({
         </div>
         {isSplit && subtitle ? <p className="page-head__sub">{subtitle}</p> : null}
       </div>
-      <div className="page-head__actions">
-        {actions}
-        {!isSplit && autosave ? <AutosaveButton onClick={onAutosave} /> : null}
-      </div>
+      {showActions ? (
+        <div className="page-head__actions">
+          {actions}
+          {!isSplit && autosave ? <AutosaveButton onClick={onAutosave} /> : null}
+        </div>
+      ) : null}
     </div>
   );
 }

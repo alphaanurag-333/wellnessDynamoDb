@@ -1606,15 +1606,7 @@ function DropdownsPreview({ lists = [], surface, item }) {
             <div key={list.id}>
               <strong>{asCopyString(list.title)}</strong>
               <p>
-                {list.options.map((entry) => {
-                  const label = asCopyString(entry.label);
-                  if (list.slug !== "supplement-pool") return label;
-                  const pack = [entry.packSize, entry.unit].filter(Boolean).join(" ");
-                  const price = Number(entry.price) > 0
-                    ? `Rs. ${Number(entry.price).toLocaleString("en-IN")}`
-                    : "";
-                  return [label, pack, price].filter(Boolean).join(" · ");
-                }).join(" · ")}
+                {list.options.map((entry) => asCopyString(entry.label)).join(" · ")}
               </p>
             </div>
           ))}

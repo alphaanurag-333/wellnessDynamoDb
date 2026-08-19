@@ -93,13 +93,6 @@ function userSubline(user) {
   return user.email || "—";
 }
 
-function clipDisplay(text, limit = 10) {
-  const value = String(text || "").trim();
-  if (!value || value === "—") return value || "—";
-  if (value.length <= limit) return value;
-  return `${value.slice(0, limit)}…`;
-}
-
 const PAGE_SIZE = 20;
 
 function buildPageItems(current, total) {
@@ -663,48 +656,47 @@ export function UsersPage() {
               {useScopedUsers ? <span>Your assigned clients</span> : <ScopeChip />}
             </>
           )}
-          actions={(
-            <>
-              <div className="ua-search-wrap">
-                <svg className="ua-search-wrap__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
-                <input
-                  className="ua-search-wrap__input"
-                  placeholder="Search name, email, phone"
-                  value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value);
-                    goToFirstPage();
-                  }}
-                />
-              </div>
-              <select className="header__select ua-users-filter" value={tierFilter} onChange={(e) => setTierFilter(e.target.value)}>
-                {TIER_OPTIONS.map((opt) => (
-                  <option key={opt.label} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-              <select
-                className="header__select ua-users-filter"
-                value={statusFilter}
-                onChange={(e) => {
-                  setStatusFilter(e.target.value);
-                  goToFirstPage();
-                }}
-              >
-                <option value="">All status</option>
-                <option>Active</option>
-                <option>Disabled</option>
-              </select>
-              {canExport ? (
-                <button type="button" className="btn btn--outline ua-users-export" onClick={() => onToast("Exporting CSV…")}>
-                  <ExportIcon /> Export CSV
-                </button>
-              ) : null}
-              {canCreate ? (
-                <OrangeButton onClick={() => onToast("Add user — coming soon")}>+ Add user</OrangeButton>
-              ) : null}
-            </>
-          )}
         />
+
+        <div className="ua-users-toolbar">
+          <div className="ua-search-wrap ua-search-wrap--wide">
+            <svg className="ua-search-wrap__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+            <input
+              className="ua-search-wrap__input"
+              placeholder="Search name, email, phone"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                goToFirstPage();
+              }}
+            />
+          </div>
+          <select className="header__select ua-users-filter" value={tierFilter} onChange={(e) => setTierFilter(e.target.value)}>
+            {TIER_OPTIONS.map((opt) => (
+              <option key={opt.label} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+          <select
+            className="header__select ua-users-filter"
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              goToFirstPage();
+            }}
+          >
+            <option value="">All status</option>
+            <option>Active</option>
+            <option>Disabled</option>
+          </select>
+          {canExport ? (
+            <button type="button" className="btn btn--outline ua-users-export" onClick={() => onToast("Exporting CSV…")}>
+              <ExportIcon /> Export CSV
+            </button>
+          ) : null}
+          {canCreate ? (
+            <OrangeButton onClick={() => onToast("Add user — coming soon")}>+ Add user</OrangeButton>
+          ) : null}
+        </div>
 
         {coachFilter ? (
           <div className="ua-coach-filter">
@@ -742,7 +734,7 @@ export function UsersPage() {
             <div>#</div>
             <div>
               <SortButton
-                label="User name"
+                label="Name"
                 active={sort?.key === "name"}
                 direction={sort?.dir}
                 onClick={() => toggleSort("name")}
@@ -795,9 +787,9 @@ export function UsersPage() {
                   <div className="ua-user-cell">
                     <span className="ua-avatar" style={{ background: avatarColor(i) }}>{userInitials(u.name)}</span>
                     <div className="ua-user-cell__meta">
-                      <div className="ua-user-cell__name" title={u.name}>{clipDisplay(u.name)}</div>
+                      <div className="ua-user-cell__name" title={u.name}>{u.name}</div>
                       <div className="ua-user-cell__sub">
-                        <span className="ua-user-cell__email" title={userSubline(u)}>{clipDisplay(userSubline(u))}</span>
+                        <span className="ua-user-cell__email" title={userSubline(u)}>{userSubline(u)}</span>
                         {u.goal ? (
                           <span className="ua-user-cell__concern" title={u.goal}>{u.goal}</span>
                         ) : null}

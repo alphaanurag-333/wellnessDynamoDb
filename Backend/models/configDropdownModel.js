@@ -123,20 +123,6 @@ const SEED_LISTS = [
       { label: "Lifestyle Counsellor" },
     ],
   },
-  {
-    slug: "supplement-pool",
-    title: "Supplement pool",
-    wide: true,
-    options: [
-      { label: "Vitamin D Plus", packSize: 60, unit: "Caps", price: 1200 },
-      { label: "Whey Protein Isolate", packSize: 1, unit: "Kg", price: 2400 },
-      { label: "Omega-3 Fish Oil", packSize: 120, unit: "Tabs", price: 1200 },
-      { label: "Magnesium Glycinate", packSize: 90, unit: "Caps", price: 900 },
-      { label: "B12 + Folate", packSize: 60, unit: "Tabs", price: 650 },
-      { label: "Probiotic 20B CFU", packSize: 30, unit: "Caps", price: 1100 },
-      { label: "Iron Bisglycinate", packSize: 60, unit: "Caps", price: 750 },
-    ],
-  },
 ];
 
 function normalizeStatus(status, fallback = "active") {
@@ -285,40 +271,6 @@ async function removeRetiredDropdownLists(lists) {
   return remaining;
 }
 
-function optionHasSupplementMeta(option) {
-  return Number(option?.packSize) > 0 || Boolean(String(option?.unit || "").trim()) || Number(option?.price) > 0;
-}
-
-async function backfillSupplementPool(lists) {
-  const list = (lists || []).find((row) => row.slug === "supplement-pool");
-  const seed = SEED_LISTS.find((row) => row.slug === "supplement-pool");
-  if (!list || !seed) return lists || [];
-
-  const seedByLabel = new Map(
-    (seed.options || []).map((opt) => [String(opt.label || "").trim().toLowerCase(), opt]),
-  );
-  let changed = Boolean(seed.wide) && !list.wide;
-  const options = (list.options || []).map((opt, index) => {
-    if (optionHasSupplementMeta(opt)) return opt;
-    const seedOpt = seedByLabel.get(String(opt.label || "").trim().toLowerCase());
-    if (!seedOpt) return opt;
-    changed = true;
-    return normalizeOption({
-      ...opt,
-      packSize: seedOpt.packSize,
-      unit: seedOpt.unit,
-      price: seedOpt.price,
-    }, index);
-  });
-  if (!changed) return lists;
-
-  const updated = await updateDropdown(list.id, {
-    options,
-    ...(seed.wide ? { wide: true } : {}),
-  });
-  return lists.map((row) => (row.id === list.id ? updated : row));
-}
-
 async function ensureSeeded() {
   const existing = await removeRetiredDropdownLists(await listAllUnpaged());
   const have = new Set(existing.map((row) => row.slug));
@@ -346,7 +298,7 @@ async function ensureSeeded() {
     }
   }
 
-  return backfillSupplementPool([...existing, ...created].sort(sortLists));
+  return [...existing, ...created].sort(sortLists);
 }
 
 async function listDropdowns({ page = 1, limit = 50, status, search, seed = true } = {}) {

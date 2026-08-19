@@ -109,18 +109,72 @@ export const DROPDOWN_LISTS = [
       option("wd-6", "Lifestyle Counsellor"),
     ],
   },
-  {
-    id: "supplement-pool",
-    title: "Supplement pool",
-    wide: true,
-    options: [
-      option("sp-1", "Vitamin D Plus", true, { packSize: 60, unit: "Caps", price: 1200 }),
-      option("sp-2", "Whey Protein Isolate", true, { packSize: 1, unit: "Kg", price: 2400 }),
-      option("sp-3", "Omega-3 Fish Oil", true, { packSize: 120, unit: "Tabs", price: 1200 }),
-      option("sp-4", "Magnesium Glycinate", true, { packSize: 90, unit: "Caps", price: 900 }),
-      option("sp-5", "B12 + Folate", true, { packSize: 60, unit: "Tabs", price: 650 }),
-      option("sp-6", "Probiotic 20B CFU", true, { packSize: 30, unit: "Caps", price: 1100 }),
-      option("sp-7", "Iron Bisglycinate", true, { packSize: 60, unit: "Caps", price: 750 }),
-    ],
-  },
 ];
+
+export const DROPDOWN_SEARCH_MAX = 80;
+export const DROPDOWN_LABEL_MAX = 80;
+export const DROPDOWN_HEALTH_CONCERN_MAX = 80;
+export const DROPDOWN_MEDICAL_QUESTION_MAX = 300;
+export const DROPDOWN_MIN_LABEL = 2;
+export const DROPDOWN_PACK_SIZE_MAX = 99999;
+export const DROPDOWN_PRICE_MAX = 999999;
+
+export function labelLimitForList(slug) {
+  if (slug === "medical-questions") return DROPDOWN_MEDICAL_QUESTION_MAX;
+  if (slug === "health-concern") return DROPDOWN_HEALTH_CONCERN_MAX;
+  return DROPDOWN_LABEL_MAX;
+}
+
+export function sanitizeDropdownText(value, maxLen) {
+  return String(value ?? "")
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+    .replace(/[<>]/g, "")
+    .replace(/https?:\/\/\S+/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .slice(0, maxLen);
+}
+
+export function normalizeDropdownLabel(raw, slug) {
+  return sanitizeDropdownText(raw, labelLimitForList(slug)).trim();
+}
+
+export function validateDropdownLabel(raw, { slug, options = [], excludeId } = {}) {
+  const max = labelLimitForList(slug);
+  const value = normalizeDropdownLabel(raw, slug);
+  if (!value) return { ok: false, message: "Label is required", value, max };
+  if (value.length < DROPDOWN_MIN_LABEL) {
+    return { ok: false, message: `Use at least ${DROPDOWN_MIN_LABEL} characters`, value, max };
+  }
+  const duplicate = options.some(
+    (entry) => entry.id !== excludeId
+      && String(entry.label || "").trim().toLowerCase() === value.toLowerCase(),
+  );
+  if (duplicate) {
+    return { ok: false, message: "This option already exists in the list", value, max };
+  }
+  return { ok: true, value, max };
+}
+
+export function sanitizePackSizeInput(value) {
+  const digits = String(value ?? "").replace(/[^\d]/g, "").slice(0, 5);
+  if (!digits) return "";
+  const amount = Math.min(Number(digits), DROPDOWN_PACK_SIZE_MAX);
+  return String(amount);
+}
+
+export function sanitizePriceInput(value) {
+  const digits = String(value ?? "").replace(/[^\d]/g, "").slice(0, 7);
+  if (!digits) return "";
+  const amount = Math.min(Number(digits), DROPDOWN_PRICE_MAX);
+  return String(amount);
+}
+
+export function validateSupplementMeta(packSizeRaw, unitRaw, priceRaw) {
+  const packSize = Number(sanitizePackSizeInput(packSizeRaw)) || 0;
+  const unit = String(unitRaw || "").trim();
+  const price = Number(sanitizePriceInput(priceRaw)) || 0;
+  if (!packSize) return { ok: false, message: "Enter a valid pack size" };
+  if (!unit) return { ok: false, message: "Choose a unit" };
+  if (!price) return { ok: false, message: "Enter a valid price (Rs.)" };
+  return { ok: true, packSize, unit, price };
+}

@@ -7,6 +7,8 @@ import {
 } from "../api/nutritionBankApi.js";
 import {
   emptyNutritionDraft,
+  formatBottlePrice,
+  formatPack,
   NUTRITION_BANK_PAGE_SIZE,
   parseBottlePrice,
   parsePackSize,
@@ -17,28 +19,11 @@ import { ConfirmDialog } from "./ConfirmDialog.jsx";
 
 const IMAGE_ACCEPT = "image/jpeg,image/png,image/gif,image/webp,image/jpg";
 
-function snapshotItem(item) {
-  return {
-    name: String(item?.name || "").trim(),
-    description: String(item?.description || "").trim(),
-    packSize: Number(item?.packSize) || 0,
-    unit: String(item?.unit || "").trim(),
-    price: Number(item?.price) || 0,
-    status: item?.status === "inactive" ? "inactive" : "active",
-    image: item?.image || "",
-  };
-}
-
-function sameSnapshot(a, b) {
-  return (
-    a.name === b.name &&
-    a.description === b.description &&
-    a.packSize === b.packSize &&
-    a.unit === b.unit &&
-    a.price === b.price &&
-    a.status === b.status
-  );
-}
+const STATUS_FILTER_OPTIONS = [
+  { value: "", label: "All statuses" },
+  { value: "active", label: "Live" },
+  { value: "inactive", label: "Hidden" },
+];
 
 function unitSelectOptions(unit) {
   return unitOptionsFor(unit).map((value) => ({ id: value, value, label: value }));
@@ -68,12 +53,22 @@ function ImagePicker({ previewUrl, disabled, onPick, label = "Upload image" }) {
   return (
     <button
       type="button"
-      className={`ua-cfg-nb-thumb${previewUrl ? " has-image" : ""}`}
+      className={`ua-cfg-nb-uploader${previewUrl ? " has-image" : ""}`}
       disabled={disabled}
       aria-label={label}
       onClick={() => inputRef.current?.click()}
     >
-      {previewUrl ? <img src={previewUrl} alt="" /> : <span>+</span>}
+      {previewUrl ? (
+        <>
+          <img src={previewUrl} alt="" />
+          <span className="ua-cfg-nb-uploader__change">Change</span>
+        </>
+      ) : (
+        <span className="ua-cfg-nb-uploader__empty">
+          <span aria-hidden="true">+</span>
+          {label}
+        </span>
+      )}
       <input
         ref={inputRef}
         type="file"
@@ -90,10 +85,222 @@ function ImagePicker({ previewUrl, disabled, onPick, label = "Upload image" }) {
   );
 }
 
+function SupplementFormFields({
+  name,
+  description,
+  packSize,
+  unit,
+  price,
+  previewUrl,
+  disabled,
+  onChange,
+  onPickImage,
+}) {
+  return (
+    <div className="ua-cfg-nb-form">
+      <ImagePicker
+        previewUrl={previewUrl}
+        disabled={disabled}
+        label="Upload image"
+        onPick={onPickImage}
+      />
+      <div className="ua-cfg-nb-form__fields">
+        <label>
+          <span>Name</span>
+          <input
+            type="text"
+            className="ua-cfg-tc-field"
+            placeholder="e.g. Omega-3 fish oil"
+            value={name}
+            disabled={disabled}
+            onChange={(event) => onChange({ name: event.target.value })}
+          />
+        </label>
+        <label className="ua-cfg-nb-form__desc">
+          <span>Description</span>
+          <textarea
+            className="ua-cfg-nb-textarea"
+            rows={3}
+            placeholder="Short note coaches will see"
+            value={description}
+            disabled={disabled}
+            onChange={(event) => onChange({ description: event.target.value })}
+          />
+        </label>
+        <div className="ua-cfg-nb-form__meta">
+          <label>
+            <span>Pack size</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              className="ua-cfg-tc-field"
+              placeholder="e.g. 60"
+              value={packSize}
+              disabled={disabled}
+              onChange={(event) => onChange({ packSize: event.target.value.replace(/[^\d]/g, "") })}
+            />
+          </label>
+          <label>
+            <span>Unit</span>
+            <CfgSelect
+              className="ua-cfg-tc-select"
+              ariaLabel="Unit"
+              value={unit}
+              disabled={disabled}
+              options={unitSelectOptions(unit)}
+              onChange={(nextUnit) => onChange({ unit: nextUnit })}
+            />
+          </label>
+          <label>
+            <span>Bottle (Rs.)</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              className="ua-cfg-tc-field"
+              placeholder="e.g. 1249"
+              value={price}
+              disabled={disabled}
+              onChange={(event) => onChange({ price: event.target.value.replace(/[^\d]/g, "") })}
+            />
+          </label>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NutritionEditModal({ item, busy, onClose, onSave, onToggleLive, onDelete, onToast }) {
+  const [draft, setDraft] = useState(() => ({
+    name: item.name || "",
+    description: item.description || "",
+    packSize: item.packSize ? String(item.packSize) : "",
+    unit: item.unit || "Caps",
+    price: item.price ? String(item.price) : "",
+  }));
+  const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState(item.image || "");
+
+  useEffect(() => {
+    setDraft({
+      name: item.name || "",
+      description: item.description || "",
+      packSize: item.packSize ? String(item.packSize) : "",
+      unit: item.unit || "Caps",
+      price: item.price ? String(item.price) : "",
+    });
+    setFile(null);
+    setPreview((current) => {
+      if (current.startsWith("blob:")) URL.revokeObjectURL(current);
+      return item.image || "";
+    });
+  }, [item.id, item.name, item.description, item.packSize, item.unit, item.price, item.image]);
+
+  useEffect(() => () => {
+    if (preview.startsWith("blob:")) URL.revokeObjectURL(preview);
+  }, [preview]);
+
+  function pickImage(nextFile) {
+    if (!(nextFile instanceof File)) return;
+    setPreview((current) => {
+      if (current.startsWith("blob:")) URL.revokeObjectURL(current);
+      return URL.createObjectURL(nextFile);
+    });
+    setFile(nextFile);
+  }
+
+  async function save() {
+    const name = draft.name.trim();
+    const packSize = parsePackSize(draft.packSize);
+    const unit = String(draft.unit || "").trim();
+    const price = parseBottlePrice(draft.price);
+    if (!name || !packSize || !unit || !price) {
+      onToast("Name, pack size, unit and bottle price are required");
+      return false;
+    }
+    return onSave(
+      {
+        name,
+        description: draft.description.trim() || name,
+        packSize,
+        unit,
+        price,
+      },
+      file,
+      "Supplement saved",
+    );
+  }
+
+  return (
+    <div className="ua-cp-modal-backdrop" onClick={onClose} role="presentation">
+      <div
+        className="ua-cfg-dp-modal ua-cfg-nb-modal"
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-labelledby="ua-cfg-nb-modal-title"
+      >
+        <div className="ua-cfg-dp-modal__head">
+          <div>
+            <h3 id="ua-cfg-nb-modal-title" className="ua-cfg-dp-modal__title">{item.name}</h3>
+            <p className="ua-cfg-dp-modal__sub">Supplement · nutrition bank</p>
+          </div>
+          <div className="ua-cfg-dp-modal__actions">
+            <span className="ua-cfg-dp-modal__live-label">Live</span>
+            <button
+              type="button"
+              className={`ua-toggle ua-toggle--sm${item.live ? " ua-toggle--on" : ""}`}
+              aria-pressed={item.live}
+              disabled={busy}
+              onClick={() => onToggleLive(!item.live)}
+            >
+              <span className="ua-toggle__knob" />
+            </button>
+            <button
+              type="button"
+              className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-dp-modal__delete"
+              disabled={busy}
+              onClick={() => onDelete(item)}
+            >
+              Delete
+            </button>
+            <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={onClose}>
+              ×
+            </button>
+          </div>
+        </div>
+
+        <div className="ua-cfg-nb-modal__body">
+          <SupplementFormFields
+            name={draft.name}
+            description={draft.description}
+            packSize={draft.packSize}
+            unit={draft.unit}
+            price={draft.price}
+            previewUrl={preview}
+            disabled={busy}
+            onChange={(patch) => setDraft((current) => ({ ...current, ...patch }))}
+            onPickImage={pickImage}
+          />
+        </div>
+
+        <div className="ua-cfg-nb-modal__foot">
+          <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={save}>
+            {busy ? "Saving…" : "Save supplement"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function NutritionBankSection({ items, setItems, onToast }) {
   const [draft, setDraft] = useState(emptyNutritionDraft);
   const [draftFile, setDraftFile] = useState(null);
   const [draftPreview, setDraftPreview] = useState("");
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [selectedId, setSelectedId] = useState(null);
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({
     page: 1,
@@ -104,12 +311,9 @@ export function NutritionBankSection({ items, setItems, onToast }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(null);
-  const savedRef = useRef({});
   const itemsRef = useRef(items);
 
-  const rememberSaved = useCallback((rows) => {
-    savedRef.current = Object.fromEntries((rows || []).map((row) => [row.id, snapshotItem(row)]));
-  }, []);
+  const selectedItem = items.find((entry) => entry.id === selectedId) ?? null;
 
   const loadItems = useCallback(async (pageOverride) => {
     const nextPage = pageOverride ?? page;
@@ -118,11 +322,12 @@ export function NutritionBankSection({ items, setItems, onToast }) {
       const { items: rows, pagination: nextPagination } = await adminListNutritionBank(null, {
         page: nextPage,
         limit: NUTRITION_BANK_PAGE_SIZE,
+        status: statusFilter || undefined,
+        search: search.trim() || undefined,
       });
       const next = rows || [];
       setItems(next);
       itemsRef.current = next;
-      rememberSaved(next);
       setPagination({
         page: Number(nextPagination?.page) || nextPage,
         limit: Number(nextPagination?.limit) || NUTRITION_BANK_PAGE_SIZE,
@@ -133,12 +338,19 @@ export function NutritionBankSection({ items, setItems, onToast }) {
       onToast(error?.message || "Failed to load nutrition bank");
       setItems([]);
       itemsRef.current = [];
-      rememberSaved([]);
       setPagination({ page: 1, limit: NUTRITION_BANK_PAGE_SIZE, total: 0, pages: 1 });
     } finally {
       setLoading(false);
     }
-  }, [onToast, page, rememberSaved, setItems]);
+  }, [onToast, page, search, setItems, statusFilter]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPage(1);
+      setSearch(searchInput.trim());
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   useEffect(() => {
     loadItems();
@@ -156,12 +368,18 @@ export function NutritionBankSection({ items, setItems, onToast }) {
     if (draftPreview.startsWith("blob:")) URL.revokeObjectURL(draftPreview);
   }, [draftPreview]);
 
-  function updateItem(id, patch) {
-    setItems((prev) => {
-      const next = prev.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry));
-      itemsRef.current = next;
-      return next;
+  function pickDraftImage(file) {
+    setDraftPreview((current) => {
+      if (current.startsWith("blob:")) URL.revokeObjectURL(current);
+      return file instanceof File ? URL.createObjectURL(file) : "";
     });
+    setDraftFile(file instanceof File ? file : null);
+  }
+
+  function resetAddForm() {
+    setDraft(emptyNutritionDraft());
+    pickDraftImage(null);
+    setShowAddForm(false);
   }
 
   async function persistItem(id, fields, file, successMessage) {
@@ -174,7 +392,6 @@ export function NutritionBankSection({ items, setItems, onToast }) {
         itemsRef.current = next;
         return next;
       });
-      savedRef.current[id] = snapshotItem(updated);
       if (successMessage) onToast(successMessage);
       return true;
     } catch (error) {
@@ -183,60 +400,6 @@ export function NutritionBankSection({ items, setItems, onToast }) {
     } finally {
       setBusy(false);
     }
-  }
-
-  async function commitItem(id) {
-    const item = itemsRef.current.find((entry) => entry.id === id);
-    if (!item?.id || busy) return;
-    const next = {
-      name: String(item.name || "").trim(),
-      description: String(item.description || "").trim(),
-      packSize: Number(item.packSize) || 0,
-      unit: String(item.unit || "").trim(),
-      price: Number(item.price) || 0,
-      status: item.status === "inactive" ? "inactive" : "active",
-    };
-    const saved = savedRef.current[item.id] || snapshotItem(item);
-
-    if (!next.name || !next.unit || !next.packSize || !next.price) {
-      updateItem(item.id, saved);
-      onToast("Name, pack size, unit and bottle price are required");
-      return;
-    }
-    if (!next.description) next.description = next.name;
-    if (sameSnapshot(saved, next)) {
-      if (item.name !== next.name || item.description !== next.description) updateItem(item.id, next);
-      return;
-    }
-
-    const ok = await persistItem(item.id, next);
-    if (!ok) updateItem(item.id, saved);
-  }
-
-  async function changeUnit(item, unit) {
-    updateItem(item.id, { unit });
-    if (busy) return;
-    const ok = await persistItem(item.id, { unit });
-    if (!ok) updateItem(item.id, savedRef.current[item.id] || snapshotItem(item));
-  }
-
-  async function toggleLive(item) {
-    if (busy) return;
-    const live = !item.live;
-    updateItem(item.id, { live, status: live ? "active" : "inactive" });
-    const ok = await persistItem(item.id, { live });
-    if (!ok) updateItem(item.id, savedRef.current[item.id] || snapshotItem(item));
-  }
-
-  async function changeImage(item, file) {
-    if (!(file instanceof File) || busy) return;
-    await persistItem(item.id, {}, file, "Image updated");
-  }
-
-  function pickDraftImage(file) {
-    if (draftPreview.startsWith("blob:")) URL.revokeObjectURL(draftPreview);
-    setDraftFile(file instanceof File ? file : null);
-    setDraftPreview(file instanceof File ? URL.createObjectURL(file) : "");
   }
 
   async function addItem() {
@@ -257,8 +420,7 @@ export function NutritionBankSection({ items, setItems, onToast }) {
         draftFile,
       );
       if (!created) throw new Error("Failed to add supplement");
-      setDraft(emptyNutritionDraft());
-      pickDraftImage(null);
+      resetAddForm();
       onToast(`${name} added to the bank`);
       setPage(1);
       await loadItems(1);
@@ -273,6 +435,7 @@ export function NutritionBankSection({ items, setItems, onToast }) {
     if (!pendingDelete || busy) return;
     const item = pendingDelete;
     setPendingDelete(null);
+    if (selectedId === item.id) setSelectedId(null);
     setBusy(true);
     try {
       await adminDeleteNutritionBankItem(null, item.id);
@@ -292,7 +455,6 @@ export function NutritionBankSection({ items, setItems, onToast }) {
     }
   }
 
-  const locked = busy || loading;
   const liveCount = items.filter((entry) => entry.live).length;
 
   return (
@@ -308,193 +470,75 @@ export function NutritionBankSection({ items, setItems, onToast }) {
         actions={
           loading ? null : (
             <span className="ua-cfg-dp__count">
-              {liveCount} live on this page · {pagination.total} in bank
+              {liveCount} live of {pagination.total}
             </span>
           )
         }
       >
+        <div className="ua-cfg-tc-filters">
+          <input
+            type="search"
+            className="ua-cfg-tc-field"
+            placeholder="Search name or description"
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+          />
+          <CfgSelect
+            className="ua-cfg-tc-select"
+            options={STATUS_FILTER_OPTIONS}
+            value={statusFilter}
+            ariaLabel="Filter by status"
+            onChange={(value) => {
+              setPage(1);
+              setStatusFilter(value);
+            }}
+          />
+        </div>
+
         {loading ? (
           <p className="ua-cfg-panel__sub">Fetching supplements from the server…</p>
-        ) : (
-          <div className="ua-cfg-nb-table-wrap">
-            <table className="ua-cfg-nb-table">
-              <thead>
-                <tr>
-                  <th>Image</th>
-                  <th>Supplement</th>
-                  <th>Pack size</th>
-                  <th>Unit</th>
-                  <th>Bottle (Rs.)</th>
-                  <th>Live</th>
-                  <th aria-hidden="true" />
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="ua-cfg-nb-add-row">
-                  <td data-label="Image">
-                    <ImagePicker
-                      previewUrl={draftPreview}
-                      disabled={locked}
-                      label="Upload supplement image"
-                      onPick={pickDraftImage}
-                    />
-                  </td>
-                  <td data-label="Supplement">
-                    <div className="ua-cfg-nb-add__copy">
-                      <input
-                        type="text"
-                        className="ua-cfg-nb-add__input"
-                        placeholder="Supplement name"
-                        value={draft.name}
-                        disabled={locked}
-                        onChange={(event) => setDraft({ ...draft, name: event.target.value })}
-                      />
-                      <input
-                        type="text"
-                        className="ua-cfg-nb-add__input"
-                        placeholder="Description"
-                        value={draft.description}
-                        disabled={locked}
-                        onChange={(event) => setDraft({ ...draft, description: event.target.value })}
-                      />
-                    </div>
-                  </td>
-                  <td data-label="Pack size">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      className="ua-cfg-nb-add__input ua-cfg-nb-add__pack"
-                      placeholder="Pack"
-                      value={draft.packSize}
-                      disabled={locked}
-                      onChange={(event) => setDraft({ ...draft, packSize: event.target.value.replace(/[^\d]/g, "") })}
-                    />
-                  </td>
-                  <td data-label="Unit">
-                    <CfgSelect
-                      className="ua-cfg-nb-add__unit"
-                      ariaLabel="Unit"
-                      value={draft.unit}
-                      disabled={locked}
-                      options={unitSelectOptions(draft.unit)}
-                      onChange={(unit) => setDraft({ ...draft, unit })}
-                    />
-                  </td>
-                  <td data-label="Bottle (Rs.)">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      className="ua-cfg-nb-add__input ua-cfg-nb-add__input--price"
-                      placeholder="Rs."
-                      value={draft.price}
-                      disabled={locked}
-                      onChange={(event) => setDraft({ ...draft, price: event.target.value })}
-                    />
-                  </td>
-                  <td colSpan={2}>
-                    <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={locked} onClick={addItem}>
-                      + Add supplement
-                    </button>
-                  </td>
-                </tr>
-                {items.map((item) => (
-                  <tr key={item.id} className={item.live ? "" : "is-hidden"}>
-                    <td data-label="Image">
-                      <ImagePicker
-                        previewUrl={item.image}
-                        disabled={locked}
-                        label={`Change image for ${item.name}`}
-                        onPick={(file) => changeImage(item, file)}
-                      />
-                    </td>
-                    <td data-label="Supplement">
-                      <input
-                        type="text"
-                        className="ua-cfg-nb-table__name"
-                        value={item.name}
-                        disabled={locked}
-                        aria-label={`Supplement name for ${item.name}`}
-                        onChange={(event) => updateItem(item.id, { name: event.target.value })}
-                        onBlur={() => commitItem(item.id)}
-                      />
-                      <input
-                        type="text"
-                        className="ua-cfg-nb-table__desc"
-                        value={item.description}
-                        disabled={locked}
-                        aria-label={`Description for ${item.name}`}
-                        placeholder="Description"
-                        onChange={(event) => updateItem(item.id, { description: event.target.value })}
-                        onBlur={() => commitItem(item.id)}
-                      />
-                    </td>
-                    <td data-label="Pack size">
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        className="ua-cfg-nb-table__pack"
-                        value={item.packSize || ""}
-                        disabled={locked}
-                        aria-label={`Pack size for ${item.name}`}
-                        onChange={(event) => updateItem(item.id, { packSize: parsePackSize(event.target.value) })}
-                        onBlur={() => commitItem(item.id)}
-                      />
-                    </td>
-                    <td data-label="Unit">
-                      <CfgSelect
-                        className="ua-cfg-nb-table__unit"
-                        ariaLabel={`Unit for ${item.name}`}
-                        value={item.unit}
-                        disabled={locked}
-                        options={unitSelectOptions(item.unit)}
-                        onChange={(unit) => changeUnit(item, unit)}
-                      />
-                    </td>
-                    <td data-label="Bottle (Rs.)">
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        className="ua-cfg-nb-table__price"
-                        value={item.price || ""}
-                        disabled={locked}
-                        aria-label={`Bottle price for ${item.name}`}
-                        onChange={(event) => updateItem(item.id, { price: parseBottlePrice(event.target.value) })}
-                        onBlur={() => commitItem(item.id)}
-                      />
-                    </td>
-                    <td data-label="Live">
-                      <button
-                        type="button"
-                        className={`ua-toggle ua-toggle--sm${item.live ? " ua-toggle--on" : ""}`}
-                        aria-pressed={item.live}
-                        aria-label={`${item.live ? "Hide" : "Show"} ${item.name}`}
-                        disabled={locked}
-                        onClick={() => toggleLive(item)}
-                      >
-                        <span className="ua-toggle__knob" />
-                      </button>
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        className="ua-cfg-icon-btn ua-cfg-nb-table__delete"
-                        aria-label={`Remove ${item.name}`}
-                        disabled={locked}
-                        onClick={() => setPendingDelete(item)}
-                      >
-                        ×
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        ) : items.length ? (
+          <div className="ua-cfg-nb-grid">
+            {items.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={`ua-cfg-nb-card${selectedId === item.id ? " is-selected" : ""}${item.live ? "" : " is-hidden"}`}
+                onClick={() => setSelectedId(item.id)}
+              >
+                <div className="ua-cfg-nb-card__media">
+                  {item.image ? (
+                    <img src={item.image} alt="" />
+                  ) : (
+                    <span className="ua-cfg-nb-card__placeholder" aria-hidden="true">
+                      {String(item.name || "?").slice(0, 1).toUpperCase()}
+                    </span>
+                  )}
+                </div>
+                <div className="ua-cfg-nb-card__body">
+                  <div className="ua-cfg-nb-card__top">
+                    <strong>{item.name}</strong>
+                    {item.live ? (
+                      <span className="ua-cfg-nb-card__live">Live</span>
+                    ) : (
+                      <span className="ua-cfg-nb-card__hidden">Hidden</span>
+                    )}
+                  </div>
+                  <p className="ua-cfg-nb-card__excerpt">
+                    {item.description && item.description !== item.name ? item.description : "No description yet"}
+                  </p>
+                  <div className="ua-cfg-nb-card__meta">
+                    <span>{item.pack || formatPack(item.packSize, item.unit) || "No pack size"}</span>
+                    <span aria-hidden="true">·</span>
+                    <span>Rs. {formatBottlePrice(item.price)}</span>
+                  </div>
+                </div>
+              </button>
+            ))}
           </div>
+        ) : (
+          <p className="ua-cfg-panel__sub">No supplements in the bank yet. Add one below.</p>
         )}
-
-        {!loading && !items.length ? (
-          <p className="ua-cfg-panel__sub">No supplements in the bank yet. Use the row above to add one.</p>
-        ) : null}
 
         {!loading && pagination.total > 0 ? (
           <ListPagination
@@ -507,6 +551,64 @@ export function NutritionBankSection({ items, setItems, onToast }) {
           />
         ) : null}
       </Panel>
+
+      <Panel
+        title="Add a supplement"
+        subtitle="Name it, set pack size and bottle price, then it joins the bank for every coach."
+        actions={
+          !showAddForm ? (
+            <button
+              type="button"
+              className="ua-cfg-btn ua-cfg-btn--outline"
+              disabled={busy || loading}
+              onClick={() => setShowAddForm(true)}
+            >
+              + New supplement
+            </button>
+          ) : null
+        }
+      >
+        {showAddForm ? (
+          <div className="ua-cfg-nb-add">
+            <SupplementFormFields
+              name={draft.name}
+              description={draft.description}
+              packSize={draft.packSize}
+              unit={draft.unit}
+              price={draft.price}
+              previewUrl={draftPreview}
+              disabled={busy}
+              onChange={(patch) => setDraft((current) => ({ ...current, ...patch }))}
+              onPickImage={pickDraftImage}
+            />
+            <div className="ua-cfg-dp-add__actions">
+              <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={addItem}>
+                {busy ? "Adding…" : "Add to bank"}
+              </button>
+              <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" disabled={busy} onClick={resetAddForm}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </Panel>
+
+      {selectedItem ? (
+        <NutritionEditModal
+          item={selectedItem}
+          busy={busy}
+          onClose={() => setSelectedId(null)}
+          onSave={(fields, file, message) => persistItem(selectedItem.id, fields, file, message)}
+          onToggleLive={(live) => persistItem(
+            selectedItem.id,
+            { live },
+            null,
+            live ? "Supplement is live" : "Supplement hidden",
+          )}
+          onDelete={(item) => setPendingDelete(item)}
+          onToast={onToast}
+        />
+      ) : null}
 
       <ConfirmDialog
         open={!!pendingDelete}
