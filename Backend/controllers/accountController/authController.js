@@ -216,7 +216,8 @@ exports.updateAccountProfile = asyncHandler(async (req, res) => {
   const account = req.account || req.user;
   if (!account?.id) throw new AppError("Authentication required", 401);
 
-  const { name, phone, phoneCountryCode, designation, bio, profileImage, password } = req.body || {};
+  const { name, phone, phoneCountryCode, designation, bio, profileImage, password, address } =
+    req.body || {};
   const updates = {};
 
   if (name !== undefined) updates.name = String(name).trim();
@@ -224,6 +225,7 @@ exports.updateAccountProfile = asyncHandler(async (req, res) => {
   if (phoneCountryCode !== undefined) {
     updates.phoneCountryCode = phoneCountryCode ? String(phoneCountryCode).trim() : null;
   }
+  if (address !== undefined) updates.address = address ? String(address).trim() : null;
   if (designation !== undefined) {
     updates.designation = designation ? String(designation).trim() : null;
   }
@@ -239,6 +241,18 @@ exports.updateAccountProfile = asyncHandler(async (req, res) => {
       await deleteStoredMedia(account.profileImage);
     }
     updates.profileImage = key;
+  }
+
+  if (updates.phone !== undefined || updates.phoneCountryCode !== undefined) {
+    const nextPhone = updates.phone !== undefined ? updates.phone : account.phone;
+    const nextCc =
+      updates.phoneCountryCode !== undefined ? updates.phoneCountryCode : account.phoneCountryCode;
+    if (nextPhone) {
+      const existing = await getAccountByPhone(nextCc, nextPhone);
+      if (existing && existing.id !== account.id) {
+        throw new AppError("This mobile number is already in use", 409);
+      }
+    }
   }
 
   const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);

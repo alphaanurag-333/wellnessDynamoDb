@@ -17483,12 +17483,50 @@
   color: #334155;
 }
 
+.updated-admin .ua-profile-modal__input--edit {
+  background: #fff;
+  color: var(--text);
+}
+
+.updated-admin .ua-profile-modal__input.is-readonly {
+  background: #f4f6fa;
+  color: #334155;
+}
+
+.updated-admin .ua-profile-modal__phone {
+  display: flex;
+  gap: 8px;
+}
+
+.updated-admin .ua-profile-modal__cc {
+  width: 84px;
+  flex-shrink: 0;
+}
+
 .updated-admin .ua-profile-modal__bio {
   padding: 10px 12px;
   font-size: 12.5px;
   line-height: 1.5;
   resize: vertical;
-  background: #f4f6fa;
+  background: #fff;
+}
+
+.updated-admin .ua-profile-modal__form-error {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: #b42318;
+}
+
+.updated-admin .ua-profile-password-modal {
+  width: 420px;
+  max-width: 94vw;
+  padding: 18px 18px 16px;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 30px 80px rgba(16, 35, 63, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .updated-admin .ua-profile-modal__hint {
@@ -17807,7 +17845,8 @@
 .updated-admin .ua-profile-modal__foot {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 12px;
   padding: 12px 20px 18px;
   border-top: 1px solid var(--border-soft);
@@ -17817,7 +17856,8 @@
 .updated-admin .ua-profile-modal__foot-note {
   font-size: 10.5px;
   color: var(--muted-light);
-  max-width: 280px;
+  max-width: none;
+  margin-right: auto;
   line-height: 1.35;
 }
 

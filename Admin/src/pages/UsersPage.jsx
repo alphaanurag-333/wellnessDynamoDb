@@ -96,6 +96,63 @@ function userSubline(user) {
 }
 
 const PAGE_SIZE = 20;
+const EXPORT_PAGE_SIZE = 200;
+
+function csvCell(value) {
+  const text = String(value ?? "");
+  if (/[",\n\r]/.test(text)) return `"${text.replace(/"/g, '""')}"`;
+  return text;
+}
+
+function usersToCsv(rows) {
+  const headers = [
+    "#",
+    "Name",
+    "Email",
+    "Phone",
+    "Health concern",
+    "Tier",
+    "Wellness coach",
+    "Assistant WC",
+    "Last active",
+    "Status",
+    "Joined",
+  ];
+  const lines = [headers.map(csvCell).join(",")];
+  rows.forEach((user, index) => {
+    lines.push([
+      index + 1,
+      user.name,
+      user.email,
+      user.phone,
+      user.goal,
+      tierLabel(user.tier),
+      user.coach || UNASSIGNED_COACH,
+      user.awc || "",
+      user.lastActive || "",
+      user.status,
+      user.joined || "",
+    ].map(csvCell).join(","));
+  });
+  return `\uFEFF${lines.join("\r\n")}`;
+}
+
+function downloadCsv(filename, csvText) {
+  const blob = new Blob([csvText], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function exportFilename() {
+  const stamp = new Date().toISOString().slice(0, 10);
+  return `users-${stamp}.csv`;
+}
 
 function buildPageItems(current, total) {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
@@ -159,6 +216,7 @@ export function UsersPage() {
   const [reloadNonce, setReloadNonce] = useState(0);
   const [openTierMore, setOpenTierMore] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const typeTab = searchParams.get("tab") || "all";
   const tierFilter = searchParams.get("tier") || "";
@@ -204,31 +262,37 @@ export function UsersPage() {
     setReloadNonce((n) => n + 1);
   }, []);
 
+  const listQuery = useMemo(() => {
+    const tabTier = typeTab === "app" ? "maintenance" : undefined;
+    const tabCategory = typeTab === "team" ? "eagle" : undefined;
+    return {
+      search: debouncedSearch || undefined,
+      status: mapUiStatusToApi(statusFilter),
+      userTier: mapUiTierToApi(tierFilter) || tabTier,
+      clientCategory: tabCategory,
+      parentCoachId: coachFilter || undefined,
+    };
+  }, [coachFilter, debouncedSearch, statusFilter, tierFilter, typeTab]);
+
+  const loadUsersPage = useCallback(async (page, limit) => {
+    const params = { ...listQuery, page, limit };
+    return useScopedUsers
+      ? fetchScopedUsers({
+          page: params.page,
+          limit: params.limit,
+          search: params.search,
+          userTier: params.userTier,
+        })
+      : fetchUsers(params);
+  }, [listQuery, useScopedUsers]);
+
   useEffect(() => {
     let cancelled = false;
     async function loadUsers() {
       setLoading(true);
       setLoadError("");
       try {
-        const tabTier = typeTab === "app" ? "maintenance" : undefined;
-        const tabCategory = typeTab === "team" ? "eagle" : undefined;
-        const params = {
-          page: currentPage,
-          limit: PAGE_SIZE,
-          search: debouncedSearch || undefined,
-          status: mapUiStatusToApi(statusFilter),
-          userTier: mapUiTierToApi(tierFilter) || tabTier,
-          clientCategory: tabCategory,
-          parentCoachId: coachFilter || undefined,
-        };
-        const userResult = useScopedUsers
-          ? await fetchScopedUsers({
-              page: params.page,
-              limit: params.limit,
-              search: params.search,
-              userTier: params.userTier,
-            })
-          : await fetchUsers(params);
+        const userResult = await loadUsersPage(currentPage, PAGE_SIZE);
         if (cancelled) return;
         const rows = userResult?.users || [];
         const nextPagination = userResult?.pagination || {
@@ -257,16 +321,7 @@ export function UsersPage() {
     return () => {
       cancelled = true;
     };
-  }, [
-    coachFilter,
-    currentPage,
-    debouncedSearch,
-    reloadNonce,
-    statusFilter,
-    tierFilter,
-    typeTab,
-    useScopedUsers,
-  ]);
+  }, [currentPage, loadUsersPage, reloadNonce]);
 
   const setTypeTab = (tab) => {
     const next = new URLSearchParams(searchParams);
@@ -419,6 +474,46 @@ export function UsersPage() {
 
   const goToFirstPage = () => {
     if (currentPage > 1) setPage(1);
+  };
+
+  const exportCsv = async () => {
+    if (exporting) return;
+    setExporting(true);
+    onToast("Exporting CSV…");
+    try {
+      const first = await loadUsersPage(1, EXPORT_PAGE_SIZE);
+      const collected = [...(first?.users || [])];
+      const pages = Math.max(1, Number(first?.pagination?.pages) || 1);
+      for (let page = 2; page <= pages; page += 1) {
+        const next = await loadUsersPage(page, EXPORT_PAGE_SIZE);
+        collected.push(...(next?.users || []));
+      }
+
+      const exportRows = collected
+        .filter((u) => !deletedUsers.includes(userOverrideKey(u)))
+        .map((u) => enrichUser(u, overrideState));
+
+      if (sort) {
+        const dir = sort.dir === "desc" ? -1 : 1;
+        exportRows.sort((a, b) => (
+          sort.key === "name"
+            ? dir * String(a.name || "").localeCompare(String(b.name || ""))
+            : dir * (lastActiveMinutes(a.lastActive) - lastActiveMinutes(b.lastActive))
+        ));
+      }
+
+      if (!exportRows.length) {
+        onToast("No users to export");
+        return;
+      }
+
+      downloadCsv(exportFilename(), usersToCsv(exportRows));
+      onToast(`Exported ${exportRows.length} user${exportRows.length === 1 ? "" : "s"}`);
+    } catch (err) {
+      onToast(err?.message || "Could not export CSV");
+    } finally {
+      setExporting(false);
+    }
   };
 
   const toggleSort = (key) => {
@@ -694,8 +789,13 @@ export function UsersPage() {
             <option>Disabled</option>
           </select>
           {canExport ? (
-            <button type="button" className="btn btn--outline ua-users-export" onClick={() => onToast("Exporting CSV…")}>
-              <ExportIcon /> Export CSV
+            <button
+              type="button"
+              className="btn btn--outline ua-users-export"
+              onClick={exportCsv}
+              disabled={exporting || loading}
+            >
+              <ExportIcon /> {exporting ? "Exporting…" : "Export CSV"}
             </button>
           ) : null}
           {canCreate ? (

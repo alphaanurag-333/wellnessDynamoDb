@@ -143,6 +143,7 @@ export async function accountUpdateMe(fields = {}, file) {
       if (fields.phoneCountryCode !== undefined) {
         form.append("phoneCountryCode", fields.phoneCountryCode ?? "");
       }
+      if (fields.address !== undefined) form.append("address", fields.address ?? "");
       if (fields.designation !== undefined) form.append("designation", fields.designation ?? "");
       form.append("file", file);
       body = form;
@@ -152,6 +153,7 @@ export async function accountUpdateMe(fields = {}, file) {
       if (fields.name !== undefined) body.name = fields.name;
       if (fields.phone !== undefined) body.phone = fields.phone;
       if (fields.phoneCountryCode !== undefined) body.phoneCountryCode = fields.phoneCountryCode;
+      if (fields.address !== undefined) body.address = fields.address;
       if (fields.designation !== undefined) body.designation = fields.designation;
       if (fields.profileImage !== undefined) body.profileImage = fields.profileImage;
       headers = { ...headers, "Content-Type": "application/json" };

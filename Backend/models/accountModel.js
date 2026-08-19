@@ -198,6 +198,7 @@ function buildAccountItem(input, { id, now } = {}) {
         ? normalizeNullableMediaField(input.profileImage, "profileImage")
         : null,
     bio: normalizeNullableString(input.bio),
+    address: normalizeNullableString(input.address),
     specializationId: normalizeNullableString(input.specializationId),
     country: normalizeNullableString(input.country),
     state: normalizeNullableString(input.state),
@@ -294,6 +295,7 @@ function sanitizeUpdateField(key, value) {
     [
       "name",
       "bio",
+      "address",
       "country",
       "state",
       "city",

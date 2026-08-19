@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { accountUpdateMe } from "../api/accountApi.js";
+import { accountChangePassword, accountUpdateMe } from "../api/accountApi.js";
 import {
   buildCoachProfileContent,
   getMyCoachContent,
@@ -23,9 +23,160 @@ function ReadOnlyField({ label, value, hint }) {
   return (
     <label className="ua-profile-modal__field">
       <span className="ua-profile-modal__label">{label}</span>
-      <input type="text" className="ua-profile-modal__input" value={value || "—"} readOnly />
+      <input type="text" className="ua-profile-modal__input is-readonly" value={value || "—"} readOnly />
       {hint ? <span className="ua-profile-modal__hint">{hint}</span> : null}
     </label>
+  );
+}
+
+function EditableField({ label, value, onChange, hint, disabled, placeholder }) {
+  return (
+    <label className="ua-profile-modal__field">
+      <span className="ua-profile-modal__label">{label}</span>
+      <input
+        type="text"
+        className="ua-profile-modal__input ua-profile-modal__input--edit"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        disabled={disabled}
+        placeholder={placeholder}
+      />
+      {hint ? <span className="ua-profile-modal__hint">{hint}</span> : null}
+    </label>
+  );
+}
+
+function PhoneField({ countryCode, phone, onCountryCode, onPhone, hint, disabled }) {
+  return (
+    <label className="ua-profile-modal__field">
+      <span className="ua-profile-modal__label">Mobile number</span>
+      <div className="ua-profile-modal__phone">
+        <input
+          type="text"
+          className="ua-profile-modal__input ua-profile-modal__input--edit ua-profile-modal__cc"
+          value={countryCode}
+          onChange={(event) => onCountryCode(event.target.value)}
+          disabled={disabled}
+          aria-label="Country code"
+        />
+        <input
+          type="tel"
+          className="ua-profile-modal__input ua-profile-modal__input--edit"
+          value={phone}
+          onChange={(event) => onPhone(event.target.value.replace(/[^\d]/g, ""))}
+          disabled={disabled}
+          placeholder="9820011002"
+          inputMode="numeric"
+        />
+      </div>
+      {hint ? <span className="ua-profile-modal__hint">{hint}</span> : null}
+    </label>
+  );
+}
+
+function PasswordChangeModal({ open, busy, onClose, onSubmit }) {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setError("");
+  }, [open]);
+
+  if (!open) return null;
+
+  function handleSubmit() {
+    if (!currentPassword || !newPassword) {
+      setError("Enter your current and new password.");
+      return;
+    }
+    if (newPassword.length < 8 || newPassword.length > 15) {
+      setError("New password must be 8–15 characters.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError("New password and confirmation do not match.");
+      return;
+    }
+    setError("");
+    onSubmit({ currentPassword, newPassword });
+  }
+
+  return (
+    <div
+      className="ua-team-modal-backdrop ua-team-modal-backdrop--stack"
+      onClick={(event) => {
+        event.stopPropagation();
+        onClose();
+      }}
+      role="presentation"
+    >
+      <div
+        className="ua-profile-password-modal"
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-labelledby="profile-password-title"
+      >
+        <div className="ua-cfg-mv-link-modal__head">
+          <div>
+            <h3 id="profile-password-title" className="ua-cfg-mv-link-modal__title">
+              Change password
+            </h3>
+            <p className="ua-cfg-mv-link-modal__sub">Use 8–15 characters. You will stay signed in.</p>
+          </div>
+          <button type="button" className="ua-cfg-mv-link-modal__close" aria-label="Close" onClick={onClose}>
+            ×
+          </button>
+        </div>
+        <label className="ua-profile-modal__field">
+          <span className="ua-profile-modal__label">Current password</span>
+          <input
+            type="password"
+            className="ua-profile-modal__input ua-profile-modal__input--edit"
+            value={currentPassword}
+            onChange={(event) => setCurrentPassword(event.target.value)}
+            disabled={busy}
+            autoComplete="current-password"
+          />
+        </label>
+        <label className="ua-profile-modal__field">
+          <span className="ua-profile-modal__label">New password</span>
+          <input
+            type="password"
+            className="ua-profile-modal__input ua-profile-modal__input--edit"
+            value={newPassword}
+            onChange={(event) => setNewPassword(event.target.value)}
+            disabled={busy}
+            autoComplete="new-password"
+          />
+        </label>
+        <label className="ua-profile-modal__field">
+          <span className="ua-profile-modal__label">Confirm new password</span>
+          <input
+            type="password"
+            className="ua-profile-modal__input ua-profile-modal__input--edit"
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+            disabled={busy}
+            autoComplete="new-password"
+          />
+        </label>
+        {error ? <p className="ua-profile-modal__form-error">{error}</p> : null}
+        <div className="ua-cfg-mv-link-modal__foot">
+          <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose} disabled={busy}>
+            Cancel
+          </button>
+          <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={handleSubmit}>
+            {busy ? "Saving…" : "Update password"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -270,7 +421,14 @@ export function ProfileModal({ open, onClose, onToast }) {
     [account, activeRole, storedProfile],
   );
   const [bio, setBio] = useState(profile.bio);
+  const [name, setName] = useState(profile.name === "—" ? "" : profile.name);
+  const [phone, setPhone] = useState(profile.phoneDigits || "");
+  const [phoneCountryCode, setPhoneCountryCode] = useState(profile.phoneCountryCode || "+91");
+  const [address, setAddress] = useState(profile.address === "—" ? "" : profile.address);
   const [savingBio, setSavingBio] = useState(false);
+  const [savingDetails, setSavingDetails] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [passwordBusy, setPasswordBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [contentBusy, setContentBusy] = useState(false);
   const [content, setContent] = useState(EMPTY_CONTENT);
@@ -308,6 +466,11 @@ export function ProfileModal({ open, onClose, onToast }) {
     if (!open) return;
     setBio(profile.bio);
     bioBaseline.current = profile.bio;
+    setName(profile.name === "—" ? "" : profile.name);
+    setPhone(profile.phoneDigits || "");
+    setPhoneCountryCode(profile.phoneCountryCode || "+91");
+    setAddress(profile.address === "—" ? "" : profile.address);
+    setPasswordOpen(false);
     setPreview(null);
     setLinkModalOpen(false);
     if (!profile.isCoach) return undefined;
@@ -334,6 +497,42 @@ export function ProfileModal({ open, onClose, onToast }) {
   function openContentLibrary() {
     onClose();
     navigate(UPDATED_ADMIN_PATHS.myContent);
+  }
+
+  async function saveDetails() {
+    const nextName = String(name || "").trim();
+    if (!nextName) {
+      onToast?.("Name is required");
+      return;
+    }
+    setSavingDetails(true);
+    try {
+      const updated = await accountUpdateMe({
+        name: nextName,
+        phone: String(phone || "").trim(),
+        phoneCountryCode: String(phoneCountryCode || "").trim() || "+91",
+        address: String(address || "").trim(),
+      });
+      setAccount(updated);
+      onToast?.("Profile saved");
+    } catch (error) {
+      onToast?.(error?.message || "Could not save profile");
+    } finally {
+      setSavingDetails(false);
+    }
+  }
+
+  async function savePassword({ currentPassword, newPassword }) {
+    setPasswordBusy(true);
+    try {
+      await accountChangePassword({ currentPassword, newPassword });
+      setPasswordOpen(false);
+      onToast?.("Password updated");
+    } catch (error) {
+      onToast?.(error?.message || "Could not change password");
+    } finally {
+      setPasswordBusy(false);
+    }
   }
 
   async function saveBioIfChanged() {
@@ -463,16 +662,34 @@ export function ProfileModal({ open, onClose, onToast }) {
             <div className="ua-profile-modal__card-head">
               <div className="ua-profile-modal__card-title">Your details</div>
               <div className="ua-profile-modal__card-hint">
-                Details are set by admin — you can change your photo
+                Update your name, mobile number and address. Role stays set by access control.
               </div>
             </div>
             <div className="ua-profile-modal__grid">
-              <ReadOnlyField label="Full name" value={profile.name} />
-              <ReadOnlyField label="WhatsApp number" value={profile.whatsapp} hint={profile.whatsappHint} />
-              <ReadOnlyField label="Work email" value={profile.email} />
+              <EditableField
+                label="Full name"
+                value={name}
+                onChange={setName}
+                disabled={savingDetails}
+              />
+              <PhoneField
+                countryCode={phoneCountryCode}
+                phone={phone}
+                onCountryCode={setPhoneCountryCode}
+                onPhone={setPhone}
+                hint={profile.whatsappHint}
+                disabled={savingDetails}
+              />
+              <ReadOnlyField label="Work email" value={profile.email} hint="Email is used to sign in and cannot be changed here." />
               <ReadOnlyField label="Role" value={`${profile.role} · ${profile.roleNote}`} />
             </div>
-            <ReadOnlyField label="Address" value={profile.address} />
+            <EditableField
+              label="Address"
+              value={address}
+              onChange={setAddress}
+              disabled={savingDetails}
+              placeholder="Add your address"
+            />
 
             <div className="ua-profile-modal__photo-row">
               <AvatarMark profile={profile} className="ua-profile-modal__photo-avatar" />
@@ -546,40 +763,68 @@ export function ProfileModal({ open, onClose, onToast }) {
               />
             </>
           ) : (
-            <>
-              <button type="button" className="ua-profile-modal__library" onClick={openContentLibrary}>
-                <span className="ua-profile-modal__library-icon" aria-hidden="true">🎥</span>
-                <span className="ua-profile-modal__library-copy">
-                  <span className="ua-profile-modal__library-title">Coach content library</span>
-                  <span className="ua-profile-modal__library-sub">
-                    Intro videos and commitment letters for every wellness coach and assistant.
-                  </span>
+            <button type="button" className="ua-profile-modal__library" onClick={openContentLibrary}>
+              <span className="ua-profile-modal__library-icon" aria-hidden="true">🎥</span>
+              <span className="ua-profile-modal__library-copy">
+                <span className="ua-profile-modal__library-title">Coach content library</span>
+                <span className="ua-profile-modal__library-sub">
+                  Intro videos and commitment letters for every wellness coach and assistant.
                 </span>
-                <span className="ua-profile-modal__library-open">Open →</span>
-              </button>
-
-              <section className="ua-profile-modal__card">
-                <div className="ua-profile-modal__card-title">Account</div>
-                <div className="ua-profile-modal__account-rows">
-                  <div className="ua-profile-modal__account-row">
-                    <span>Role</span>
-                    <span>{profile.role}</span>
-                  </div>
-                  <div className="ua-profile-modal__account-row">
-                    <span>Member since</span>
-                    <span>{profile.memberSince}</span>
-                  </div>
-                  <div className="ua-profile-modal__account-row">
-                    <span>Last sign-in</span>
-                    <span>{profile.lastSignIn}</span>
-                  </div>
-                </div>
-              </section>
-            </>
+              </span>
+              <span className="ua-profile-modal__library-open">Open →</span>
+            </button>
           )}
+
+          <section className="ua-profile-modal__card">
+            <div className="ua-profile-modal__card-title">Account</div>
+            <div className="ua-profile-modal__account-rows">
+              <div className="ua-profile-modal__account-row">
+                <span>Role</span>
+                <span>{profile.role}</span>
+              </div>
+              <div className="ua-profile-modal__account-row">
+                <span>Member since</span>
+                <span>{profile.memberSince}</span>
+              </div>
+              <div className="ua-profile-modal__account-row">
+                <span>Last sign-in</span>
+                <span>{profile.lastSignIn}</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="ua-profile-modal__password"
+              onClick={() => setPasswordOpen(true)}
+            >
+              Change password
+            </button>
+          </section>
+        </div>
+
+        <div className="ua-profile-modal__foot">
+          <span className="ua-profile-modal__foot-note">
+            Email and role stay managed from Access. Save to update your name, mobile or address.
+          </span>
+          <button
+            type="button"
+            className="ua-profile-modal__upload"
+            disabled={savingDetails}
+            onClick={saveDetails}
+          >
+            {savingDetails ? "Saving…" : "Save details"}
+          </button>
+          <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-profile-modal__close-btn" onClick={onClose}>
+            Close
+          </button>
         </div>
       </div>
 
+      <PasswordChangeModal
+        open={passwordOpen}
+        busy={passwordBusy}
+        onClose={() => setPasswordOpen(false)}
+        onSubmit={savePassword}
+      />
       <IntroLinkModal
         open={linkModalOpen}
         title="My intro video"
