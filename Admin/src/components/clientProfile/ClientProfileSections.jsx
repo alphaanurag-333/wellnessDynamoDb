@@ -24,6 +24,8 @@ export { PresentableSection } from "./PresentableSection.jsx";
 export { ExchangeSection } from "./ExchangeSection.jsx";
 export { ProtocolSection } from "./ProtocolSection.jsx";
 export { GutResetSection } from "./GutResetSection.jsx";
+export { CounsellingSection } from "./CounsellingSection.jsx";
+export { ConsultationSection } from "./ConsultationSection.jsx";
 
 const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 

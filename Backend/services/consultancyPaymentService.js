@@ -86,13 +86,26 @@ async function createConsultancyOrder(userId, { referralCode, paymentMethod = "u
     const useMock = shouldUseMockPayments(gateway);
 
     let reusablePending = existingPending;
-    let mockOrder = null;
-    if (useMock && !verifyMockPayment({ orderId: existingPending.paymentGatewayOrderId })) {
-      mockOrder = createMockOrder({
-        amountInRupees: existingPending.totalAmount,
-        receipt: existingPending.referenceNumber,
-      });
+    const incomingCode = referralCode ? String(referralCode).trim().toUpperCase() : "";
+    const existingCode = existingPending.referralCodeUsed
+      ? String(existingPending.referralCodeUsed).trim().toUpperCase()
+      : "";
+    if (incomingCode && incomingCode !== existingCode) {
+      const preview = await buildCheckoutPreview({ referralCode: incomingCode });
       reusablePending = await updateConsultancyTransaction(existingPending.id, {
+        ...preview.pricing,
+        referralCodeUsed: preview.referralCode,
+        referralCodeValid: preview.referralCodeValid,
+      });
+    }
+
+    let mockOrder = null;
+    if (useMock && !verifyMockPayment({ orderId: reusablePending.paymentGatewayOrderId })) {
+      mockOrder = createMockOrder({
+        amountInRupees: reusablePending.totalAmount,
+        receipt: reusablePending.referenceNumber,
+      });
+      reusablePending = await updateConsultancyTransaction(reusablePending.id, {
         paymentGatewayOrderId: mockOrder.id,
         paymentProvider: "mock",
         failureReason: null,

@@ -63,6 +63,7 @@ export function ClientProfileSidebar({
   hidden,
   showAllTags,
   onToggleTags,
+  compact = false,
 }) {
   const tags = Array.isArray(user?.tags) ? user.tags : [];
   const visibleTags = showAllTags ? tags : tags.slice(0, 2);
@@ -153,10 +154,12 @@ export function ClientProfileSidebar({
           </div>
         </div>
 
-        <div className="ua-cp-sidebar__sub-box">
-          <strong>{user?.subscriptionDays ?? 0}</strong>
-          <span>days left<br />on app subscription</span>
-        </div>
+        {compact ? null : (
+          <div className="ua-cp-sidebar__sub-box">
+            <strong>{user?.subscriptionDays ?? 0}</strong>
+            <span>days left<br />on app subscription</span>
+          </div>
+        )}
 
         <div className="ua-cp-sidebar__menu-label">Menu list</div>
         <nav className="ua-cp-sidebar__nav">

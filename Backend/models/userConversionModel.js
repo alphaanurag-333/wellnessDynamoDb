@@ -20,6 +20,7 @@ const {
   normalizeUserTier: normalizeTier,
   isHealTier,
   isConsultancyOnlyTier,
+  isAlreadyAssignedClient,
 } = require("./userAssignmentLogic");
 
 const IMMUTABLE_HISTORY_FIELDS = [
@@ -98,9 +99,29 @@ function resolveReferralCodeInput(user, referralCode) {
   return fromHistory;
 }
 
+function emptyPendingAssignment() {
+  return resolveConversionAssignment(null, {}, "");
+}
+
+async function resolveEnrollmentAssignment(user, referralCode) {
+  const normalizedReferralCode = resolveReferralCodeInput(user, referralCode);
+  if (!normalizedReferralCode) return emptyPendingAssignment();
+
+  const referralRecord = await getReferralCodeRecord(normalizedReferralCode);
+  const context = await loadReferralContext(referralRecord);
+  try {
+    return resolveConversionAssignment(referralRecord, context, normalizedReferralCode);
+  } catch (err) {
+    if (err?.name === "InvalidReferralCodeError") return emptyPendingAssignment();
+    throw err;
+  }
+}
+
 /**
  * Record successful consultancy payment: consultancy_only tier + coach assignment.
  * Does not upgrade to Seek to Heal (subscription).
+ * Unassigned consultancy_only clients (renewal / first pay without code) still get
+ * assigned when a valid WC/AWC referral is present.
  */
 async function completeConsultancyEnrollment(userId, { referralCode } = {}) {
   const user = await getUserById(userId);
@@ -116,28 +137,22 @@ async function completeConsultancyEnrollment(userId, { referralCode } = {}) {
     throw err;
   }
 
-  if (isConsultancyOnlyTier(user.userTier)) {
+  const alreadyConsultancy = isConsultancyOnlyTier(user.userTier);
+  if (alreadyConsultancy && isAlreadyAssignedClient(user)) {
     return user;
   }
 
-  if (normalizeTier(user.userTier) !== "seek") {
+  if (!alreadyConsultancy && normalizeTier(user.userTier) !== "seek") {
     const err = new Error("User cannot enroll in consultancy from current tier");
     err.name = "InvalidTierError";
     throw err;
   }
 
-  const normalizedReferralCode = resolveReferralCodeInput(user, referralCode);
-  const referralRecord = normalizedReferralCode
-    ? await getReferralCodeRecord(normalizedReferralCode)
-    : null;
-
-  const context = await loadReferralContext(referralRecord);
-  const assignment = resolveConversionAssignment(referralRecord, context, normalizedReferralCode);
+  const assignment = await resolveEnrollmentAssignment(user, referralCode);
   const now = new Date().toISOString();
 
   const updates = {
     userTier: "consultancy_only",
-    consultancyPaidAt: now,
     referredByUserId: assignment.referredByUserId,
     referredByCode: assignment.referredByCode,
     referredByEntityType: assignment.referredByEntityType,
@@ -149,6 +164,9 @@ async function completeConsultancyEnrollment(userId, { referralCode } = {}) {
     assignmentSource: assignment.assignmentSource,
     assignedAt: assignment.assignmentStatus === "assigned" ? now : null,
   };
+  if (!alreadyConsultancy || !user.consultancyPaidAt) {
+    updates.consultancyPaidAt = now;
+  }
 
   const updated = await updateUser(userId, omitExistingHistoryFields(updates, user));
   assertHealUserAssignment(updated);
@@ -364,6 +382,7 @@ async function ensureHealIfProgramPurchased(user) {
 
 module.exports = {
   loadReferralContext,
+  resolveReferralCodeInput,
   completeConsultancyEnrollment,
   convertSeekToHeal,
   convertHealToSeek,

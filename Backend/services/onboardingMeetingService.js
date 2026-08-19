@@ -5,6 +5,7 @@ const STEP_TITLES = {
   reportsBriefing: "Reports Briefing",
   hap: "HAP",
   programInitiation: "Program Initiation",
+  counselling: "Counselling",
 };
 
 function meetingTitle(stepKey, userName) {

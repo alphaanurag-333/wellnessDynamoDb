@@ -14,20 +14,47 @@ export const CLIENT_MENU = [
   { id: "prescription", label: "Wellness Prescription" },
   { id: "presentable", label: "Presentable Pics" },
   { id: "exchange", label: "Energy Exchange" },
+  { id: "counselling", label: "Counselling sessions" },
   { id: "protocol", label: "Protocol Settings" },
   { id: "gut", label: "Gut Reset" },
 ];
 
-/** Reduced menu for future Eagle and Maintenance clients — not applied yet. */
-export const COMPACT_CLIENT_MENU = CLIENT_MENU.filter((item) =>
-  ["personal", "internal", "nutritions", "food"].includes(item.id)
-);
+const PERSONAL_MENU_ITEM = CLIENT_MENU.find((item) => item.id === "personal");
+const INTERNAL_MENU_ITEM = CLIENT_MENU.find((item) => item.id === "internal");
+const EXCHANGE_MENU_ITEM = CLIENT_MENU.find((item) => item.id === "exchange");
+export const CONSULTATION_MENU_ITEM = { id: "consultation", label: "Consultation" };
+
+/** Seek / PWC clients — WC, AWC and other staff see this reduced coaching set. */
+export const COMPACT_CLIENT_MENU = [
+  PERSONAL_MENU_ITEM,
+  INTERNAL_MENU_ITEM,
+  CONSULTATION_MENU_ITEM,
+  EXCHANGE_MENU_ITEM,
+];
+
+export function isFullClientProfileTier(tier) {
+  const t = normalizeTier(tier);
+  return t === "Seek to Heal" || t === "Maintenance";
+}
+
+export function isCompactClientProfileTier(tier) {
+  const t = normalizeTier(tier);
+  return t === "Seek" || t === "Consultancy";
+}
 
 /**
- * Every program client currently gets the full coaching workspace, including
- * Diabetes Reversal. Compact menu for Eagle / Maintenance can be wired later.
+ * HEAL / Maintenance get the full coaching workspace. Seek and PWC stay on
+ * Personal Details, Internal Parameters, Consultation and Energy Exchange
+ * until conversion.
  */
-export function getClientProfileDefinition() {
+export function getClientProfileDefinition(user) {
+  if (isCompactClientProfileTier(user?.tier)) {
+    return {
+      mode: "compact",
+      menu: COMPACT_CLIENT_MENU,
+      defaultSection: "personal",
+    };
+  }
   return {
     mode: "full",
     menu: CLIENT_MENU,
@@ -519,7 +546,7 @@ export function profileFromListUser(row, userId) {
     name: "",
     email: "",
     phone: "",
-    tier: "Seek",
+    tier: "",
     goal: "",
     coach: "— Unassigned —",
     awc: "",
