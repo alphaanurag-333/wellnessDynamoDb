@@ -1,6 +1,6 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
-const { omitExistingHistoryFields } = require("../models/userConversionModel");
+const { omitExistingHistoryFields, resolveReferralCodeInput } = require("../models/userConversionModel");
 
 describe("omitExistingHistoryFields", () => {
   it("drops convertedAt when user already has conversion history", () => {
@@ -45,5 +45,18 @@ describe("omitExistingHistoryFields", () => {
     );
     assert.equal(updates.convertedAt, "2026-07-10T00:00:00.000Z");
     assert.equal(updates.referredByCode, "REF11111");
+  });
+});
+
+describe("resolveReferralCodeInput", () => {
+  it("prefers the payment referral code over registration history", () => {
+    assert.equal(
+      resolveReferralCodeInput({ referredByCode: "OLDCODE1" }, "IRW-WC-980"),
+      "IRW-WC-980"
+    );
+  });
+
+  it("falls back to referredByCode when checkout has no code", () => {
+    assert.equal(resolveReferralCodeInput({ referredByCode: "IRW-WC-980" }, null), "IRW-WC-980");
   });
 });

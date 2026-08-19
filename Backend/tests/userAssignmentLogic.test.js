@@ -6,6 +6,7 @@ const {
   resolveReassignmentPatch,
   isWellnessTrackingTier,
   matchesAssignedClientTier,
+  isAlreadyAssignedClient,
 } = require("../models/userAssignmentLogic");
 
 const COACH_ID = "coach-001";
@@ -56,6 +57,42 @@ describe("resolveConversionAssignment", () => {
     assert.equal(result.referredByEntityId, COACH_ID);
     assert.equal(result.referredByUserId, null);
     assert.equal(result.referredByCode, "COACH123");
+  });
+
+  it("assigns from ReferralCode entityId when the coach record is missing (IRW-WC staff codes)", () => {
+    const referralRecord = {
+      referralCode: "IRW-WC-980",
+      entityType: "wellness_coach",
+      entityId: COACH_ID,
+      ownerCoachId: COACH_ID,
+    };
+
+    const result = resolveConversionAssignment(referralRecord, {}, "irw-wc-980");
+
+    assert.equal(result.assignmentStatus, "assigned");
+    assert.equal(result.assignedCoachId, COACH_ID);
+    assert.equal(result.assignedCoachType, "wellness_coach");
+    assert.equal(result.parentCoachId, COACH_ID);
+    assert.equal(result.referredByCode, "IRW-WC-980");
+    assert.equal(result.assignmentSource, "referral");
+  });
+
+  it("treats a coach with no status as active", () => {
+    const referralRecord = {
+      referralCode: "IRW-WC-980",
+      entityType: "wellness_coach",
+      entityId: COACH_ID,
+      ownerCoachId: COACH_ID,
+    };
+
+    const result = resolveConversionAssignment(
+      referralRecord,
+      { wellnessCoach: { id: COACH_ID, name: "Coach One" } },
+      "IRW-WC-980"
+    );
+
+    assert.equal(result.assignmentStatus, "assigned");
+    assert.equal(result.assignedCoachId, COACH_ID);
   });
 
   it("assigns to assistant and rolls up parent coach when assistant referral code is used", () => {
@@ -281,6 +318,30 @@ describe("validateHealUserAssignment", () => {
       parentCoachId: null,
     });
     assert.equal(result.valid, false);
+  });
+});
+
+describe("isAlreadyAssignedClient", () => {
+  it("is false for pending_admin consultancy clients", () => {
+    assert.equal(
+      isAlreadyAssignedClient({
+        userTier: "consultancy_only",
+        assignmentStatus: "pending_admin",
+      }),
+      false
+    );
+  });
+
+  it("is true when coach assignment fields are complete", () => {
+    assert.equal(
+      isAlreadyAssignedClient({
+        assignmentStatus: "assigned",
+        assignedCoachId: COACH_ID,
+        assignedCoachType: "wellness_coach",
+        parentCoachId: COACH_ID,
+      }),
+      true
+    );
   });
 });
 

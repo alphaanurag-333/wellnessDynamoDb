@@ -25,6 +25,7 @@ import {
   ProtocolSection,
   GutResetSection,
   PersonalDetailsSection,
+  ConsultationSection,
   PlaceholderSection,
 } from "../components/clientProfile/ClientProfileSections.jsx";
 
@@ -79,6 +80,8 @@ function renderSection(section, user, onToast, onNavigate, onUserUpdated, sectio
       return <ProtocolSection user={user} onToast={onToast} />;
     case "gut":
       return <GutResetSection user={user} onToast={onToast} />;
+    case "consultation":
+      return <ConsultationSection user={user} onToast={onToast} />;
     default: {
       const meta = PLACEHOLDER_META[section];
       return meta ? <PlaceholderSection {...meta} /> : <PlaceholderSection title="Section" />;
@@ -253,6 +256,7 @@ export function UserDetailPage() {
           hidden={menuHidden}
           showAllTags={showAllTags}
           onToggleTags={() => setShowAllTags(true)}
+          compact={profileDefinition.mode === "compact"}
         />
         <div className="ua-cp-main" data-drawer-scroll="1">
           <div className="ua-cp-main__inner">

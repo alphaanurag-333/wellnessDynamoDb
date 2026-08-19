@@ -60,6 +60,21 @@ function isPaidClientTier(value) {
   return tier === "consultancy_only" || tier === "heal" || tier === "maintenance";
 }
 
+function isAssignableStaff(entity) {
+  if (!entity) return false;
+  const status = String(entity.status || "active").toLowerCase().trim();
+  return status === "active";
+}
+
+function isAlreadyAssignedClient(user) {
+  return (
+    normalizeAssignmentStatus(user?.assignmentStatus, "") === "assigned" &&
+    Boolean(String(user?.assignedCoachId || "").trim()) &&
+    Boolean(normalizeAssignedCoachType(user?.assignedCoachType)) &&
+    Boolean(String(user?.parentCoachId || "").trim())
+  );
+}
+
 /** Seek, consultancy, and Heal users can use water/steps tracking in the mobile app. */
 function isWellnessTrackingTier(value) {
   return USER_TIERS.has(normalizeUserTier(value));
@@ -107,13 +122,14 @@ function resolveConversionAssignment(referralRecord, context, referralCodeInput)
 
   if (referralRecord.entityType === "wellness_coach") {
     const coach = context.wellnessCoach;
-    if (!coach) {
-      const err = new Error("Referral wellness coach not found");
+    if (coach && !isAssignableStaff(coach)) {
+      const err = new Error("Referral wellness coach is not active");
       err.name = "InvalidReferralCodeError";
       throw err;
     }
-    if (coach.status !== "active") {
-      const err = new Error("Referral wellness coach is not active");
+    const coachId = String(coach?.id || referralRecord.entityId || "").trim();
+    if (!coachId) {
+      const err = new Error("Referral wellness coach not found");
       err.name = "InvalidReferralCodeError";
       throw err;
     }
@@ -122,10 +138,10 @@ function resolveConversionAssignment(referralRecord, context, referralCodeInput)
       referredByUserId: null,
       referredByCode,
       referredByEntityType: "wellness_coach",
-      referredByEntityId: coach.id,
-      assignedCoachId: coach.id,
+      referredByEntityId: coachId,
+      assignedCoachId: coachId,
       assignedCoachType: "wellness_coach",
-      parentCoachId: coach.id,
+      parentCoachId: coachId,
       assignmentStatus: "assigned",
       assignmentSource: "referral",
     };
@@ -133,19 +149,22 @@ function resolveConversionAssignment(referralRecord, context, referralCodeInput)
 
   if (referralRecord.entityType === "assistant_wellness_coach") {
     const assistant = context.assistantWellnessCoach;
-    if (!assistant) {
-      const err = new Error("Referral assistant wellness coach not found");
-      err.name = "InvalidReferralCodeError";
-      throw err;
-    }
-    if (assistant.status !== "active") {
+    if (assistant && !isAssignableStaff(assistant)) {
       const err = new Error("Referral assistant wellness coach is not active");
       err.name = "InvalidReferralCodeError";
       throw err;
     }
 
-    const parentCoachId = String(assistant.wellnessCoachId || "").trim();
-    if (!parentCoachId) {
+    const parentCoachId = String(
+      assistant?.wellnessCoachId || referralRecord.ownerCoachId || ""
+    ).trim();
+    const assistantId = String(assistant?.id || referralRecord.entityId || "").trim();
+    if (!assistantId) {
+      const err = new Error("Referral assistant wellness coach not found");
+      err.name = "InvalidReferralCodeError";
+      throw err;
+    }
+    if (!parentCoachId || parentCoachId === "pending") {
       const err = new Error("Referral assistant has no parent wellness coach");
       err.name = "InvalidReferralCodeError";
       throw err;
@@ -155,8 +174,8 @@ function resolveConversionAssignment(referralRecord, context, referralCodeInput)
       referredByUserId: null,
       referredByCode,
       referredByEntityType: "assistant_wellness_coach",
-      referredByEntityId: assistant.id,
-      assignedCoachId: assistant.id,
+      referredByEntityId: assistantId,
+      assignedCoachId: assistantId,
       assignedCoachType: "assistant_wellness_coach",
       parentCoachId,
       assignmentStatus: "assigned",
@@ -329,6 +348,8 @@ module.exports = {
   isMaintenanceTier,
   isConsultancyOnlyTier,
   isPaidClientTier,
+  isAssignableStaff,
+  isAlreadyAssignedClient,
   isWellnessTrackingTier,
   matchesAssignedClientTier,
   resolveConversionAssignment,
