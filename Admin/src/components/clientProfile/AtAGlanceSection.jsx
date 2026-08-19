@@ -19,6 +19,7 @@ import {
   createOnboardingMeetingSlots,
   fetchOnboardingMeetings,
   patchOnboardingStep,
+  pushOnboardingReminder,
   rejectOnboardingMeetingRequest,
   submitUserRca,
 } from "../../api/onboardingApi.js";
@@ -766,6 +767,7 @@ function OnboardingStatusCard({ user, onToast, onNavigate, onProgressChange, onU
   const [rcaNotes, setRcaNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [remindOpen, setRemindOpen] = useState(false);
+  const [remindBusy, setRemindBusy] = useState(false);
   const [meetings, setMeetings] = useState([]);
 
   const loadMeetings = () => {
@@ -1126,10 +1128,25 @@ function OnboardingStatusCard({ user, onToast, onNavigate, onProgressChange, onU
           nextStepLabel={nextStep.label}
           defaultMessage={remindMessage}
           whatsapp={user.whatsapp}
-          onClose={() => setRemindOpen(false)}
-          onPush={() => {
-            onToast(`Reminder pushed to ${user.name.split(" ")[0]}'s app`);
-            setRemindOpen(false);
+          busy={remindBusy}
+          onClose={() => {
+            if (!remindBusy) setRemindOpen(false);
+          }}
+          onPush={async (message) => {
+            if (!user?.id || remindBusy) return;
+            setRemindBusy(true);
+            try {
+              const data = await pushOnboardingReminder(user.id, {
+                message,
+                stepLabel: nextStep.label,
+              });
+              onToast(data?.message || `Reminder pushed to ${user.name.split(" ")[0]}'s app`);
+              setRemindOpen(false);
+            } catch (err) {
+              onToast(err?.message || "Failed to push reminder");
+            } finally {
+              setRemindBusy(false);
+            }
           }}
           onWhatsApp={() => {
             onToast(`WhatsApp sent to ${user.whatsapp}`);

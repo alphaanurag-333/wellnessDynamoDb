@@ -24104,7 +24104,7 @@
 }
 
 .updated-admin .ua-cp-reflect-question__score {
-  flex: 0 0 210px;
+  flex: 0 0 320px;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -24115,7 +24115,7 @@
 }
 
 .updated-admin .ua-cp-reflect-question__score input {
-  width: 44px;
+  width: 52px;
   height: 32px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -24123,6 +24123,47 @@
   font-size: 13px;
   font-weight: 700;
   color: #16233f;
+}
+
+.updated-admin .ua-cp-reflect-field {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #9aa6b8;
+}
+
+.updated-admin .ua-cp-reflect-tracking {
+  font-size: 12px;
+  font-weight: 700;
+  color: #16233f;
+}
+
+.updated-admin .ua-cp-reflect-yesno {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.updated-admin .ua-cp-reflect-yesno__btn {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #fff;
+  color: #5b6b85;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.updated-admin .ua-cp-reflect-yesno__btn.is-on {
+  border-color: #ec7a45;
+  background: #fff4ec;
+  color: #c2410c;
 }
 
 .updated-admin .ua-cp-reflect-add-question,

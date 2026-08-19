@@ -10,6 +10,9 @@ const {
   countCompletedSteps,
   computePaidOnboardingCompleted,
 } = require("../../utils/paidOnboardingHelpers");
+const {
+  dispatchOnboardingReminderNotification,
+} = require("../../services/notificationDispatchService");
 
 function readUserId(req) {
   return String(req.params.userId || req.params.id || "").trim();
@@ -90,5 +93,45 @@ exports.getUserOnboardingStateController = asyncHandler(async (req, res) => {
     status: true,
     message: "Onboarding state fetched",
     data: buildOnboardingPayload(user),
+  });
+});
+
+exports.pushUserOnboardingReminderController = asyncHandler(async (req, res) => {
+  assertStaffCanMutate(req);
+  const actor = resolveStaffActor(req);
+  const user = await loadStaffUser(req);
+
+  const message = String(req.body?.message || "").trim();
+  if (!message) throw new AppError("message is required", 400);
+  if (message.length > 2000) throw new AppError("message is too long", 400);
+
+  const nextIncompleteStep = getNextIncompleteStep(user.paidOnboardingStepStatus);
+  const stepLabel = String(req.body?.stepLabel || nextIncompleteStep || "").trim();
+
+  const { notification, push } = await dispatchOnboardingReminderNotification({
+    userId: user.id,
+    message,
+    stepLabel,
+    actorUserId: actor.id,
+  });
+
+  const delivered = Boolean(push && !push.skipped && Number(push.successCount) > 0);
+  const noDevice = Boolean(push?.skipped && push?.reason === "no_token");
+
+  return res.status(200).json({
+    status: true,
+    message: delivered
+      ? "Reminder pushed to the app"
+      : noDevice
+        ? "Reminder saved in the app inbox, but this user has no push device registered"
+        : "Reminder saved in the app inbox",
+    notificationId: notification?.id || null,
+    push: {
+      delivered,
+      skipped: Boolean(push?.skipped),
+      reason: push?.reason || null,
+      successCount: Number(push?.successCount) || 0,
+      failureCount: Number(push?.failureCount) || 0,
+    },
   });
 });

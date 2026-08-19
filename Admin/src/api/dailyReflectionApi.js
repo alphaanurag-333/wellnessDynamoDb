@@ -9,8 +9,32 @@ function settingsBase(userId) {
   return `/account/heal-users/${encodeURIComponent(userId)}/daily-reflection-settings`;
 }
 
-function historyBase(userId) {
-  return `/account/heal-users/${encodeURIComponent(userId)}/daily-reflection/history`;
+function reflectionBase(userId) {
+  return `/account/heal-users/${encodeURIComponent(userId)}/daily-reflection`;
+}
+
+function mapActivity(row) {
+  if (!row) return null;
+  const key = String(row.key || "").trim();
+  if (!key) return null;
+  return {
+    key,
+    name: String(row.name || key).trim(),
+    section: String(row.section || "Activities").trim(),
+    unit: String(row.unit || "times"),
+    defaultGoal: Number.isFinite(Number(row.defaultGoal)) ? Number(row.defaultGoal) : 0,
+    enabled: row.enabled === true,
+    goal: Number.isFinite(Number(row.goal)) ? Number(row.goal) : 0,
+    todayValue: Number.isFinite(Number(row.todayValue)) ? Number(row.todayValue) : 0,
+  };
+}
+
+function mapTrackingMetric(row) {
+  return {
+    current: Number(row?.current || 0),
+    goal: Number(row?.goal || 0),
+    percent: row?.percent == null ? null : Number(row.percent),
+  };
 }
 
 function mapQuestion(row) {
@@ -48,12 +72,21 @@ export function mapDailyReflectionSettings(data) {
       }
     : null;
   return {
+    date: String(data?.date || ""),
     sections: (Array.isArray(data?.sections) ? data.sections : []).map(mapSection).filter(Boolean),
     selectedQuestionIds: Array.isArray(data?.selectedQuestionIds)
       ? data.selectedQuestionIds.map((id) => String(id))
       : [],
+    activities: (Array.isArray(data?.activities) ? data.activities : []).map(mapActivity).filter(Boolean),
+    tracking: {
+      steps: mapTrackingMetric(data?.tracking?.steps),
+      water: mapTrackingMetric(data?.tracking?.water),
+      nutrition: mapTrackingMetric(data?.tracking?.nutrition),
+      meal: mapTrackingMetric(data?.tracking?.meal),
+    },
     bedtime: String(data?.bedtime || "22:30"),
     todayScore,
+    todayLog: data?.todayLog || null,
     scoring: data?.scoring || null,
     updatedAt: data?.updatedAt || null,
   };
@@ -70,9 +103,10 @@ export async function fetchUserDailyReflectionSettings(userId) {
   }
 }
 
-export async function saveUserDailyReflectionSettings(userId, { selectedQuestionIds, bedtime } = {}) {
+export async function saveUserDailyReflectionSettings(userId, { selectedQuestionIds, activities, bedtime } = {}) {
   const payload = {};
   if (selectedQuestionIds !== undefined) payload.selectedQuestionIds = selectedQuestionIds;
+  if (activities !== undefined) payload.activities = activities;
   if (bedtime !== undefined) payload.bedtime = bedtime;
   try {
     const { data } = await api.patch(settingsBase(userId), payload, {
@@ -84,11 +118,37 @@ export async function saveUserDailyReflectionSettings(userId, { selectedQuestion
   }
 }
 
+export async function submitUserDailyReflectionScore(userId, { activityValues, gratitudeYes, date } = {}) {
+  try {
+    const { data } = await api.post(reflectionBase(userId), {
+      activityValues,
+      gratitudeYes,
+      date,
+    }, {
+      headers: authHeader(tokenOrStored()),
+    });
+    return mapDailyReflectionSettings(data);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function pushUserDailyReflectionBedtime(userId) {
+  try {
+    const { data } = await api.post(`${reflectionBase(userId)}/bedtime-push`, {}, {
+      headers: authHeader(tokenOrStored()),
+    });
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function fetchUserDailyReflectionHistory(userId, month) {
   const q = new URLSearchParams();
   if (month) q.set("month", month);
   try {
-    const { data } = await api.get(`${historyBase(userId)}${q.toString() ? `?${q}` : ""}`, {
+    const { data } = await api.get(`${reflectionBase(userId)}/history${q.toString() ? `?${q}` : ""}`, {
       headers: authHeader(tokenOrStored()),
     });
     return {

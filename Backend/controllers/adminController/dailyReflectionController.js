@@ -13,13 +13,22 @@ const {
   listCatalogWithSettings,
   listDayLogsForMonth,
   getDayLog,
+  upsertDayLog,
 } = require("../../models/dailyReflectionModel");
 const {
   loadNestedConfig,
   applyUserDrfSelection,
   selectedQuestionIdsFromSections,
 } = require("../../services/drfConfigService");
+const {
+  buildDailyReflectionSnapshot,
+  computeDailyReflectionScore,
+} = require("../../services/dailyReflectionScoreService");
 const { todayDateOnly } = require("../../utils/dateOnly");
+const { resolveStaffActor } = require("../staffAccess");
+const {
+  dispatchDailyReflectionBedtimeNotification,
+} = require("../../services/notificationDispatchService");
 
 const DEFAULT_BEDTIME = "22:30";
 
@@ -55,20 +64,47 @@ function parseSelectedQuestionIds(body) {
   return undefined;
 }
 
+function withTodayValues(catalog, todayLog) {
+  return catalog.map((item) => ({
+    ...item,
+    todayValue:
+      item.unit === "boolean"
+        ? todayLog?.gratitudeYes === true
+          ? 1
+          : 0
+        : Number(todayLog?.activityValues?.[item.key] ?? 0),
+  }));
+}
+
+async function loadDrfBundle() {
+  try {
+    return await loadNestedConfig();
+  } catch (err) {
+    console.error("DRF config load failed:", err?.message || err);
+    return { sections: [], scoring: null };
+  }
+}
+
 async function buildUserDrfForm(userId, settings) {
-  const [bundle, todayLog] = await Promise.all([
-    loadNestedConfig(),
-    getDayLog(userId, todayDateOnly()),
+  const date = todayDateOnly();
+  const [bundle, snapshot, todayLog] = await Promise.all([
+    loadDrfBundle(),
+    buildDailyReflectionSnapshot(userId, date),
+    getDayLog(userId, date),
   ]);
-  const sections = applyUserDrfSelection(bundle.sections, settings.selectedQuestionIds, {
+  const sections = applyUserDrfSelection(bundle.sections || [], settings.selectedQuestionIds, {
     saved: Array.isArray(settings.selectedQuestionIds),
   });
   const selectedQuestionIds = selectedQuestionIdsFromSections(sections);
   return {
+    date,
     sections,
     selectedQuestionIds,
+    activities: withTodayValues(listCatalogWithSettings(settings), todayLog),
+    tracking: snapshot.tracking,
     bedtime: settings.bedtime || DEFAULT_BEDTIME,
     scoring: bundle.scoring,
+    todayLog: todayLog || null,
     todayScore: todayLog?.submittedAt
       ? {
           date: todayLog.date,
@@ -88,7 +124,6 @@ exports.getCoachUserDailyReflectionSettingsController = asyncHandler(async (req,
     status: true,
     message: "Daily reflection settings fetched",
     ...form,
-    activities: listCatalogWithSettings(settings),
     storedSettings: settings.activities,
     updatedAt: settings.updatedAt,
   });
@@ -123,7 +158,7 @@ exports.updateCoachUserDailyReflectionSettingsController = asyncHandler(async (r
     selectedQuestionIds === undefined &&
     bedtime === undefined
   ) {
-    throw new AppError("selectedQuestionIds or bedtime is required", 400);
+    throw new AppError("activities, selectedQuestionIds, or bedtime is required", 400);
   }
 
   if (activities !== undefined && (activities === null || typeof activities !== "object")) {
@@ -134,11 +169,11 @@ exports.updateCoachUserDailyReflectionSettingsController = asyncHandler(async (r
   try {
     if (selectedQuestionIds !== undefined || bedtime !== undefined) {
       const current = await getSettings(userId);
-      const bundle = await loadNestedConfig();
+      const bundle = await loadDrfBundle();
       const nextIds = selectedQuestionIds !== undefined
         ? selectedQuestionIds
         : current.selectedQuestionIds;
-      const sections = applyUserDrfSelection(bundle.sections, nextIds, {
+      const sections = applyUserDrfSelection(bundle.sections || [], nextIds, {
         saved: true,
       });
       updated = await upsertSettingsFields(userId, {
@@ -159,8 +194,70 @@ exports.updateCoachUserDailyReflectionSettingsController = asyncHandler(async (r
     status: true,
     message: "Daily reflection settings updated",
     ...form,
-    activities: listCatalogWithSettings(updated),
     storedSettings: updated.activities,
     updatedAt: updated.updatedAt,
+  });
+});
+
+exports.submitCoachUserDailyReflectionController = asyncHandler(async (req, res) => {
+  const { userId } = await coachContext(req);
+  const date = String(req.body?.date || "").trim() || todayDateOnly();
+  const activityValues = req.body?.activityValues || {};
+  const gratitudeYes = req.body?.gratitudeYes === true;
+
+  let result;
+  try {
+    result = await computeDailyReflectionScore(userId, date, {
+      activityValues,
+      gratitudeYes,
+    });
+  } catch (err) {
+    if (err?.name === "ValidationError") throw new AppError(err.message, 400);
+    throw err;
+  }
+
+  const dayLog = await upsertDayLog(userId, date, {
+    activityValues,
+    gratitudeYes,
+    honestConfirmed: true,
+    breakdown: result.breakdown,
+    score: result.score,
+    submittedAt: new Date().toISOString(),
+  });
+
+  const settings = await getSettings(userId);
+  const form = await buildUserDrfForm(userId, settings);
+
+  return res.status(200).json({
+    status: true,
+    message: "Daily reflection score saved",
+    score: result.score,
+    breakdown: result.breakdown,
+    dayLog,
+    ...form,
+    storedSettings: settings.activities,
+    updatedAt: settings.updatedAt,
+  });
+});
+
+exports.pushCoachUserDailyReflectionBedtimeController = asyncHandler(async (req, res) => {
+  const { userId, user } = await coachContext(req);
+  const settings = await getSettings(userId);
+  const bedtime = settings.bedtime || DEFAULT_BEDTIME;
+  const actor = resolveStaffActor(req);
+
+  const notification = await dispatchDailyReflectionBedtimeNotification({
+    userId,
+    bedtime,
+    clientName: user?.name,
+    coachName: actor.displayName,
+    actorUserId: actor.id,
+  });
+
+  return res.status(200).json({
+    status: true,
+    message: "Bedtime reminder pushed to the app",
+    bedtime,
+    notificationId: notification?.id || null,
   });
 });

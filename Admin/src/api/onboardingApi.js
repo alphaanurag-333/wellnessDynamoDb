@@ -12,6 +12,19 @@ function userPath(userId, suffix = "") {
   return `/account/users/${encodeURIComponent(userId)}${suffix}`;
 }
 
+export async function pushOnboardingReminder(userId, { message, stepLabel } = {}) {
+  try {
+    const { data } = await api.post(
+      userPath(userId, "/onboarding-reminder"),
+      { message, stepLabel },
+      { headers: authHeader() },
+    );
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function patchOnboardingStep(userId, stepKey, status) {
   try {
     const { data } = await api.patch(

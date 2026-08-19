@@ -17,10 +17,12 @@ const KIND_LABELS = {
   diet_plan_assignment: "Diet plan",
   wellness_prescription_assignment: "Prescription",
   onboarding_slots_offered: "Onboarding",
+  onboarding_reminder: "Onboarding",
   onboarding_meeting_confirmed: "Onboarding",
   program_checkout_triggered: "Checkout",
   program_assigned: "Program",
   coach_reminder: "Reminder",
+  daily_reflection_reminder: "Bedtime",
   physical_exercise_assigned: "Exercise",
   mental_wellbeing_assigned: "Wellbeing",
   yoga_assigned: "Yoga",
@@ -66,7 +68,7 @@ function kindColor(kindKey) {
     onboarding_slots_offered: { color: "#ec7a45", bg: "#fff9f4" },
     onboarding_meeting_confirmed: { color: "#ec7a45", bg: "#fff9f4" },
     admin_broadcast: { color: "#5e6ad2", bg: "#eef0fc" },
-    coach_reminder: { color: "#a855f7", bg: "#faf5ff" },
+    daily_reflection_reminder: { color: "#a855f7", bg: "#faf5ff" },
     meal_log_reviewed: { color: "#2b8f5b", bg: "#f7fbf9" },
   };
   return map[kindKey] || { color: "#5e6ad2", bg: "#eef0fc" };
