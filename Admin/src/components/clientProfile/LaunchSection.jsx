@@ -949,6 +949,9 @@ export function LaunchSection({ user, onToast }) {
   const [configLoading, setConfigLoading] = useState(true);
   const [focusAreas, setFocusAreas] = useState([]);
   const [assessments, setAssessments] = useState([]);
+  const launchStepDone = ["done", "skipped"].includes(
+    String(user?.paidOnboardingStepStatus?.launch || "").toLowerCase(),
+  ) || Boolean(user?.paidOnboardingCompleted);
 
   useEffect(() => {
     setTab(tabFromUrl);
@@ -1030,11 +1033,13 @@ export function LaunchSection({ user, onToast }) {
             { id: "prakriti", label: "Prakriti type" },
           ]}
         />
-        <div className="ua-cp-launch-schedule-wrap">
-          <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--launch-schedule" onClick={() => setScheduleOpen(true)}>
-            📅 Schedule LAUNCH meeting
-          </button>
-        </div>
+        {launchStepDone ? null : (
+          <div className="ua-cp-launch-schedule-wrap">
+            <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--launch-schedule" onClick={() => setScheduleOpen(true)}>
+              📅 Schedule LAUNCH meeting
+            </button>
+          </div>
+        )}
       </div>
       {tab === "lifestyle" ? (
         <LifestyleTab

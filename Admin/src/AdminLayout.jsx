@@ -11,6 +11,7 @@ import { useAppSelector } from "./store/hooks.js";
 import { selectAppName } from "./store/slices/appConfigSlice.js";
 import "./ref-animations.css";
 import "./admin.css";
+import "./styles/counsellingSection.css";
 
 export function AdminLayout() {
   const { pathname } = useLocation();

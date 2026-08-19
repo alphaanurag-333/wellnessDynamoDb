@@ -14,6 +14,7 @@ export const CLIENT_MENU = [
   { id: "prescription", label: "Wellness Prescription" },
   { id: "presentable", label: "Presentable Pics" },
   { id: "exchange", label: "Energy Exchange" },
+  { id: "counselling", label: "Counselling sessions" },
   { id: "protocol", label: "Protocol Settings" },
   { id: "gut", label: "Gut Reset" },
 ];

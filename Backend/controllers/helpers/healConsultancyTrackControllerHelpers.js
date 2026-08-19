@@ -23,15 +23,17 @@ function readPagination(req) {
   return { page, limit };
 }
 
-function parseConcernField(body = {}) {
+function parseConcernField(body = {}, { required = true, fallback = null } = {}) {
   const concern = body.concern ?? body.healthConcern ?? body.notes;
-  if (!String(concern || "").trim()) {
+  const text = String(concern || "").trim() || (fallback ? String(fallback).trim() : "");
+  if (!text) {
+    if (!required) return null;
     throw new AppError("concern is required", 400);
   }
-  if (String(concern).trim().length > MAX_CONCERN_LENGTH) {
+  if (text.length > MAX_CONCERN_LENGTH) {
     throw new AppError(`concern must be at most ${MAX_CONCERN_LENGTH} characters`, 400);
   }
-  return String(concern).trim();
+  return text;
 }
 
 function parseOptionalScheduledAt(body = {}) {
@@ -59,9 +61,9 @@ function parseOptionalCoachNotes(body = {}) {
 }
 
 function parseCreateBody(body = {}) {
+  const { DEFAULT_CONCERN } = require("../../utils/counsellingPeriodHelpers");
   return {
-    concern: parseConcernField(body),
-    scheduledAt: parseOptionalScheduledAt(body),
+    concern: parseConcernField(body, { required: false, fallback: DEFAULT_CONCERN }),
   };
 }
 
@@ -144,12 +146,45 @@ function resolveCoachHierarchy(user) {
   };
 }
 
+function parseOfferPeriodsBody(body = {}) {
+  const { normalizePeriodOffers } = require("../../utils/counsellingPeriodHelpers");
+  const raw = body.offers || body.periodOffers || body.availability;
+  let offers;
+  try {
+    offers = normalizePeriodOffers(raw);
+  } catch (err) {
+    handleValidationError(err);
+  }
+  const notesRaw = body.coachNotes ?? body.coach_notes;
+  const coachNotes = notesRaw === undefined ? undefined : parseOptionalCoachNotes(body);
+  return { offers, coachNotes };
+}
+
+function parseSelectPeriodBody(body = {}) {
+  const offerId = String(body.offerId || body.selectedOfferId || "").trim();
+  if (!offerId) throw new AppError("offerId is required", 400);
+  return { offerId };
+}
+
+function parseConfirmTimeBody(body = {}) {
+  const { DEFAULT_DURATION_MINUTES } = require("../../utils/counsellingPeriodHelpers");
+  const scheduledAt = parseOptionalScheduledAt(body);
+  if (!scheduledAt) throw new AppError("scheduledAt is required", 400);
+  return {
+    scheduledAt,
+    durationMinutes: Math.max(15, Number(body.durationMinutes) || DEFAULT_DURATION_MINUTES),
+  };
+}
+
 module.exports = {
   readUserIdParam,
   readPagination,
   parseCreateBody,
   parseCoachCreateBody,
   parseStatusUpdateBody,
+  parseOfferPeriodsBody,
+  parseSelectPeriodBody,
+  parseConfirmTimeBody,
   loadHealUser,
   loadTrackForUser,
   resolveCoachHierarchy,

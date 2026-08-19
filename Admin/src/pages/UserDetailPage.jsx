@@ -25,6 +25,7 @@ import {
   ProtocolSection,
   GutResetSection,
   PersonalDetailsSection,
+  CounsellingSection,
   PlaceholderSection,
 } from "../components/clientProfile/ClientProfileSections.jsx";
 
@@ -79,6 +80,8 @@ function renderSection(section, user, onToast, onNavigate, onUserUpdated, sectio
       return <ProtocolSection user={user} onToast={onToast} />;
     case "gut":
       return <GutResetSection user={user} onToast={onToast} />;
+    case "counselling":
+      return <CounsellingSection user={user} onToast={onToast} />;
     default: {
       const meta = PLACEHOLDER_META[section];
       return meta ? <PlaceholderSection {...meta} /> : <PlaceholderSection title="Section" />;
