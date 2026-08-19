@@ -490,7 +490,7 @@ export function DynamicRealPeopleSection({ items, setItems, onToast }) {
   const viewing = items.find((row) => row.id === viewingId) || null;
 
   return (
-    <div className="ua-cfg-tf ua-cfg-rp">
+    <div className="ua-cfg-rp">
       <Panel
         title="Real People Real Healing"
         subtitle={loading ? "Loading testimonials…" : `${pagination.total} total · ${liveCount} live on this page · health concern + testimonial data points from Dropdowns`}
@@ -618,103 +618,103 @@ export function DynamicRealPeopleSection({ items, setItems, onToast }) {
               const isEditing = editingId === entry.id;
               const photo = entry.imagePreview || entry.profileImage;
               return (
-                <article key={entry.id} className="ua-cfg-rc-item ua-cfg-rp-item">
-                  <div className="ua-cfg-rp-item__top">
-                    <div className="ua-cfg-rc-cover-wrap">
-                      <button
-                        type="button"
-                        className={`ua-cfg-rc-cover ua-cfg-rc-cover--pick${photo ? " is-on" : ""}`}
-                        disabled={busy}
-                        aria-label={photo ? "Replace client photo" : "Add client photo"}
-                        onClick={() => coverInputRefs.current[entry.id]?.click()}
-                      >
-                        {photo ? <img className="ua-cfg-rc-cover__img" src={photo} alt="" /> : <span aria-hidden="true">📷</span>}
-                        <em>{photo ? "Replace" : "Photo"}</em>
-                      </button>
-                      <input
-                        ref={(node) => {
-                          coverInputRefs.current[entry.id] = node;
-                        }}
-                        type="file"
-                        accept="image/*"
-                        hidden
-                        disabled={busy}
-                        onChange={(event) => {
-                          const file = event.target.files?.[0];
-                          event.target.value = "";
-                          if (file) openCrop(file, entry.id);
-                        }}
-                      />
-                    </div>
-                    <div className="ua-cfg-rp-item__identity">
-                      {isEditing ? (
-                        <input
-                          className="ua-cfg-vh-input ua-cfg-rc-title"
-                          value={asCopyString(entry.name)}
-                          disabled={busy}
-                          onChange={(event) => patchItem(entry.id, { name: event.target.value })}
-                        />
-                      ) : (
-                        <strong>{asCopyString(entry.name)}</strong>
-                      )}
-                      <div className="ua-cfg-rp-item__meta">
-                        {isEditing ? (
-                          <>
-                            <ConcernSelect
-                              options={concernOptions}
-                              value={entry.healthConcernId}
-                              disabled={busy}
-                              onChange={(value) => patchItem(entry.id, { healthConcernId: value })}
-                            />
-                            <CfgSelect
-                              className="ua-cfg-rp-select ua-cfg-select--sm"
-                              options={STAR_OPTIONS}
-                              value={entry.stars}
-                              disabled={busy}
-                              ariaLabel="Rating"
-                              onChange={(value) => patchItem(entry.id, { stars: Number(value) })}
-                            />
-                          </>
-                        ) : (
-                          <>
-                            <span className="ua-cfg-rc-pill ua-cfg-rc-pill--cat">
-                              {asCopyString(entry.healthConcernTitle) || concernLabel(entry.healthConcernId) || "Uncategorized"}
-                            </span>
-                            <span className="ua-cfg-cr-stars" aria-label={`${entry.stars} stars`}>
-                              {"★★★★★".slice(0, Math.max(1, Math.min(5, entry.stars || 5)))}
-                            </span>
-                            <p className="ua-cfg-panel__sub">{formatRecipeDate(entry.updatedAt)}</p>
-                          </>
-                        )}
-                      </div>
-                    </div>
+                <article key={entry.id} className={`ua-cfg-rc-item ua-cfg-rp-item${isEditing ? " is-editing" : ""}`}>
+                  <div className="ua-cfg-rc-cover-wrap">
+                    <button
+                      type="button"
+                      className={`ua-cfg-rc-cover ua-cfg-rc-cover--pick${photo ? " is-on" : ""}`}
+                      disabled={busy}
+                      aria-label={photo ? "Replace client photo" : "Add client photo"}
+                      onClick={() => coverInputRefs.current[entry.id]?.click()}
+                    >
+                      {photo ? <img className="ua-cfg-rc-cover__img" src={photo} alt="" /> : <span aria-hidden="true">📷</span>}
+                      <em>{photo ? "Replace" : "Photo"}</em>
+                    </button>
+                    <input
+                      ref={(node) => {
+                        coverInputRefs.current[entry.id] = node;
+                      }}
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      disabled={busy}
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        event.target.value = "";
+                        if (file) openCrop(file, entry.id);
+                      }}
+                    />
                   </div>
-                  <div className="ua-cfg-rp-item__main">
-                    <div className="ua-cfg-rp-item__actions">
-                      <div className="ua-cfg-rp-item__live">
-                        <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>{entry.live ? "LIVE" : "HIDDEN"}</span>
-                        <button type="button" className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`} aria-pressed={entry.live} disabled={busy} onClick={() => toggleLive(entry)}>
-                          <span className="ua-toggle__knob" />
-                        </button>
-                      </div>
-                      <div className="ua-cfg-rp-item__btns">
-                        <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={() => setViewingId(entry.id)}>View</button>
+                  <div className="ua-cfg-rp-item__body">
+                    <div className="ua-cfg-rp-item__head">
+                      <div className="ua-cfg-rp-item__identity">
                         {isEditing ? (
-                          <>
-                            <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={busy} onClick={() => saveItem(entry)}>Save</button>
-                            <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={() => { setEditingId(null); loadItems(); }}>Cancel</button>
-                          </>
-                        ) : (
-                          <button
-                            type="button"
-                            className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                          <input
+                            className="ua-cfg-vh-input ua-cfg-rc-title"
+                            value={asCopyString(entry.name)}
                             disabled={busy}
-                            onClick={() => { setViewingId(null); setEditingId(entry.id); setCreating(false); }}
-                          >
-                            Edit
-                          </button>
+                            onChange={(event) => patchItem(entry.id, { name: event.target.value })}
+                          />
+                        ) : (
+                          <strong>{asCopyString(entry.name)}</strong>
                         )}
-                        <button type="button" className="ua-cfg-icon-btn" aria-label={`Delete ${asCopyString(entry.name)}`} disabled={busy} onClick={() => setPendingDelete(entry)}>×</button>
+                        <div className="ua-cfg-rp-item__meta">
+                          {isEditing ? (
+                            <>
+                              <ConcernSelect
+                                options={concernOptions}
+                                value={entry.healthConcernId}
+                                disabled={busy}
+                                onChange={(value) => patchItem(entry.id, { healthConcernId: value })}
+                              />
+                              <CfgSelect
+                                className="ua-cfg-rp-select ua-cfg-select--sm"
+                                options={STAR_OPTIONS}
+                                value={entry.stars}
+                                disabled={busy}
+                                ariaLabel="Rating"
+                                onChange={(value) => patchItem(entry.id, { stars: Number(value) })}
+                              />
+                            </>
+                          ) : (
+                            <>
+                              <span className="ua-cfg-rc-pill ua-cfg-rc-pill--cat">
+                                {asCopyString(entry.healthConcernTitle) || concernLabel(entry.healthConcernId) || "Uncategorized"}
+                              </span>
+                              <span className="ua-cfg-cr-stars" aria-label={`${entry.stars} stars`}>
+                                {"★★★★★".slice(0, Math.max(1, Math.min(5, entry.stars || 5)))}
+                              </span>
+                              <p className="ua-cfg-panel__sub">{formatRecipeDate(entry.updatedAt)}</p>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <div className="ua-cfg-rp-item__actions">
+                        <div className="ua-cfg-rp-item__live">
+                          <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>{entry.live ? "LIVE" : "HIDDEN"}</span>
+                          <button type="button" className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`} aria-pressed={entry.live} disabled={busy} onClick={() => toggleLive(entry)}>
+                            <span className="ua-toggle__knob" />
+                          </button>
+                        </div>
+                        <div className="ua-cfg-rp-item__btns">
+                          <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={() => setViewingId(entry.id)}>View</button>
+                          {isEditing ? (
+                            <>
+                              <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={busy} onClick={() => saveItem(entry)}>Save</button>
+                              <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={() => { setEditingId(null); loadItems(); }}>Cancel</button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                              disabled={busy}
+                              onClick={() => { setViewingId(null); setEditingId(entry.id); setCreating(false); }}
+                            >
+                              Edit
+                            </button>
+                          )}
+                          <button type="button" className="ua-cfg-icon-btn" aria-label={`Delete ${asCopyString(entry.name)}`} disabled={busy} onClick={() => setPendingDelete(entry)}>×</button>
+                        </div>
                       </div>
                     </div>
                     {isEditing ? (
