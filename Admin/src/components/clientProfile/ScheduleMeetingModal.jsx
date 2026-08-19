@@ -13,6 +13,27 @@ function getModalRoot() {
     || document.querySelector(".updated-admin");
 }
 
+function getCalendarRoot() {
+  return document.querySelector(".updated-admin") || document.body;
+}
+
+function placeCalendarPopover(anchor) {
+  const rect = anchor.getBoundingClientRect();
+  const width = Math.min(280, Math.max(240, window.innerWidth - 16));
+  const height = 328;
+  let left = rect.right - width;
+  if (left < 8) left = 8;
+  if (left + width > window.innerWidth - 8) {
+    left = Math.max(8, window.innerWidth - width - 8);
+  }
+  let top = rect.bottom + 8;
+  if (top + height > window.innerHeight - 8) {
+    const above = rect.top - height - 8;
+    top = above >= 8 ? above : Math.max(8, window.innerHeight - height - 8);
+  }
+  return { top, left, width };
+}
+
 function formatSlotEnd(fromTime, durationMin) {
   const [h, m] = fromTime.split(":").map(Number);
   const total = h * 60 + m + durationMin;
@@ -101,7 +122,7 @@ function groupSlotsByDate(slots) {
   return groups;
 }
 
-export function MiniCalendar({ value, onChange, onClear, onToday }) {
+export function MiniCalendar({ value, onChange, onClear, onToday, className = "", style, calendarRef }) {
   const [viewMonth, setViewMonth] = useState(value.getMonth());
   const [viewYear, setViewYear] = useState(value.getFullYear());
 
@@ -137,7 +158,13 @@ export function MiniCalendar({ value, onChange, onClear, onToday }) {
     && a.getFullYear() === b.getFullYear();
 
   return (
-    <div className="ua-cp-launch-modal__calendar" role="dialog" aria-label="Pick a date">
+    <div
+      ref={calendarRef}
+      className={`ua-cp-launch-modal__calendar${className ? ` ${className}` : ""}`}
+      style={style}
+      role="dialog"
+      aria-label="Pick a date"
+    >
       <div className="ua-cp-launch-modal__calendar-head">
         <button type="button" className="ua-cp-launch-modal__calendar-nav" onClick={() => shiftMonth(-1)} aria-label="Previous month">‹</button>
         <span>{MONTH_FULL[viewMonth]}, {viewYear}</span>
@@ -181,6 +208,8 @@ export function ScheduleMeetingModal({
   onSend,
 }) {
   const laterWrapRef = useRef(null);
+  const calendarRef = useRef(null);
+  const [calendarPos, setCalendarPos] = useState(null);
   const upcomingDates = useMemo(() => {
     const start = new Date();
     start.setHours(0, 0, 0, 0);
@@ -245,12 +274,31 @@ export function ScheduleMeetingModal({
 
   useEffect(() => {
     function onPointerDown(event) {
-      if (!laterWrapRef.current?.contains(event.target)) {
-        setLaterOpen(false);
-      }
+      if (laterWrapRef.current?.contains(event.target)) return;
+      if (calendarRef.current?.contains(event.target)) return;
+      setLaterOpen(false);
     }
     if (laterOpen) document.addEventListener("mousedown", onPointerDown);
     return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [laterOpen]);
+
+  useEffect(() => {
+    if (!laterOpen) {
+      setCalendarPos(null);
+      return undefined;
+    }
+    function updatePos() {
+      const anchor = laterWrapRef.current;
+      if (!anchor) return;
+      setCalendarPos(placeCalendarPopover(anchor));
+    }
+    updatePos();
+    window.addEventListener("resize", updatePos);
+    document.addEventListener("scroll", updatePos, true);
+    return () => {
+      window.removeEventListener("resize", updatePos);
+      document.removeEventListener("scroll", updatePos, true);
+    };
   }, [laterOpen]);
 
   function selectPreset(id) {
@@ -363,17 +411,6 @@ export function ScheduleMeetingModal({
                     <span aria-hidden="true">📅</span>
                   </span>
                 </button>
-                {laterOpen ? (
-                  <MiniCalendar
-                    value={laterDate}
-                    onChange={selectLaterDate}
-                    onClear={() => {
-                      setLaterOpen(false);
-                      selectPreset("d0");
-                    }}
-                    onToday={() => selectLaterDate(new Date())}
-                  />
-                ) : null}
               </div>
             </div>
           </div>
@@ -498,5 +535,29 @@ export function ScheduleMeetingModal({
   );
 
   const root = getModalRoot();
-  return root ? createPortal(modal, root) : modal;
+  const calendarRoot = getCalendarRoot();
+  const calendar = laterOpen && calendarPos
+    ? createPortal(
+      <MiniCalendar
+        calendarRef={calendarRef}
+        className="ua-cp-launch-modal__calendar--popover"
+        style={{ top: calendarPos.top, left: calendarPos.left, width: calendarPos.width }}
+        value={laterDate}
+        onChange={selectLaterDate}
+        onClear={() => {
+          setLaterOpen(false);
+          selectPreset("d0");
+        }}
+        onToday={() => selectLaterDate(new Date())}
+      />,
+      calendarRoot,
+    )
+    : null;
+
+  return (
+    <>
+      {root ? createPortal(modal, root) : modal}
+      {calendar}
+    </>
+  );
 }

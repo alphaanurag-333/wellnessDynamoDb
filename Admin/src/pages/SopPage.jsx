@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
+import { BrandLoader } from "../components/BrandLoader.jsx";
 import { PageHeader } from "../components/shared.jsx";
 import {
   adminCreateSop,
@@ -233,7 +234,7 @@ export function SopPage() {
       />
 
       {loading ? (
-        <div className="ua-sop-empty">Loading SOPs…</div>
+        <BrandLoader variant="page" label="Loading SOPs…" />
       ) : loadError ? (
         <div className="ua-sop-empty">{loadError}</div>
       ) : sorted.length === 0 ? (

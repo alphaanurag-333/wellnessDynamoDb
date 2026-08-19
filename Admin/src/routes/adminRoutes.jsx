@@ -17,6 +17,7 @@ import { CommitmentLettersPage } from "../pages/CommitmentLettersPage.jsx";
 import { AdminNotFoundPage } from "../pages/AdminNotFoundPage.jsx";
 import { UsersLayout } from "../pages/UsersLayout.jsx";
 import { UserDetailPage } from "../pages/UserDetailPage.jsx";
+import { BrandLoader } from "../components/BrandLoader.jsx";
 import { AdminLoginPage } from "../pages/AdminLoginPage.jsx";
 
 function AdminRoot() {
@@ -32,11 +33,7 @@ function ProtectedShell() {
   const { isAuthenticated, bootstrapping } = useViewAs();
 
   if (bootstrapping) {
-    return (
-      <div className="updated-admin" style={{ display: "grid", placeItems: "center", minHeight: "100vh" }}>
-        <p>Loading session…</p>
-      </div>
-    );
+    return <BrandLoader />;
   }
 
   if (!isAuthenticated) {
