@@ -433,7 +433,7 @@ export function TeamMemberPage() {
       <section className="ua-tm-card ua-tm-profile">
         <div className="ua-tm-profile__row">
           <div className="ua-tm-profile__identity">
-            <span className="ua-tm-avatar" style={{ background: avatarColor }}>
+            <span className="ua-tm-avatar" >
               {member.profileImage ? <img src={member.profileImage} alt="" /> : staffInitials(member.name)}
             </span>
             <div className="ua-tm-profile__copy">

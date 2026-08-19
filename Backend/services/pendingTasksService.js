@@ -222,7 +222,9 @@ function bloodReportItems(usersById, reports) {
   const byUser = new Map();
   for (const report of reports || []) {
     const userId = String(report.userId || "").trim();
-    if (!userId) continue;
+    const uploaded = Boolean(report.fileKey || report.fileUrl);
+    if (!userId || !uploaded) continue;
+    if (String(report.reviewStatus || "").toLowerCase() === "reviewed") continue;
     if (!byUser.has(userId)) byUser.set(userId, []);
     byUser.get(userId).push(report);
   }
@@ -238,24 +240,7 @@ function bloodReportItems(usersById, reports) {
       toTaskItem(user, {
         id: `report-${latest?.id || userId}`,
         tag: "BLOOD REPORT",
-        detail: uploaded ? `Report uploaded ${uploaded}` : "Analysis due this week",
-        link: "Analyse",
-        section: "internal",
-      })
-    );
-  }
-
-  for (const user of usersById.values()) {
-    const status = String(user?.paidOnboardingStepStatus?.reportsBriefing || "").toLowerCase();
-    const rca = String(user?.paidOnboardingStepStatus?.rca || "").toLowerCase();
-    if (status !== "pending" && rca !== "pending") continue;
-    if (!COUNSELLING_TIERS.has(normalizeUserTier(user?.userTier))) continue;
-    if (byUser.has(userIdOf(user))) continue;
-    items.push(
-      toTaskItem(user, {
-        id: `report-step-${userIdOf(user)}`,
-        tag: "BLOOD REPORT",
-        detail: "Analysis due this week",
+        detail: uploaded ? `Report uploaded ${uploaded}` : "Report uploaded · analysis due",
         link: "Analyse",
         section: "internal",
       })

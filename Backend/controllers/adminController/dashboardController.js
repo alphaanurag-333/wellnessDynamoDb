@@ -28,14 +28,14 @@ exports.getStaffDashboardStatistics = asyncHandler(async (req, res) => {
   const actor = resolveStaffActor(req);
 
   let statistics;
-  let overview = { programProgress: null, opsOverdue: null };
+  let overview = { programProgress: null, opsOverdue: null, schedule: null, staleRecords: null };
   let community = emptyCommunity();
   try {
     const [roleStats, progress, communityData] = await Promise.all([
       loadRoleStatistics(actor),
       getProgramProgressOverview(actor).catch((err) => {
         console.warn("[dashboard] program progress failed:", err?.message || err);
-        return { programProgress: null, opsOverdue: null };
+        return { programProgress: null, opsOverdue: null, schedule: null, staleRecords: null };
       }),
       getDashboardCommunity(actor).catch((err) => {
         console.warn("[dashboard] community failed:", err?.message || err);
@@ -57,6 +57,8 @@ exports.getStaffDashboardStatistics = asyncHandler(async (req, res) => {
       ...statistics,
       programProgress: overview.programProgress,
       opsOverdue: overview.opsOverdue,
+      schedule: overview.schedule,
+      staleRecords: overview.staleRecords,
       community,
     },
   });

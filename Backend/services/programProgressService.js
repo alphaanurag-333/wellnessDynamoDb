@@ -2,6 +2,8 @@ const { ScanCommand } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../config/db");
 const { listScopedUsers } = require("./pendingTasksService");
 const { getWellnessCoachById } = require("../models/wellnessCoachModel");
+const { listOnboardingMeetingsByCoachId } = require("../models/onboardingMeetingModel");
+const { normalizeUserTier } = require("../models/userAssignmentLogic");
 const {
   queryCoachRecommendedSupplementsByCoachId,
   scanCoachRecommendedSupplements,
@@ -28,6 +30,16 @@ const {
 
 const AVATAR_COLORS = ["#34a56a", "#5e6ad2", "#0d9488", "#ec7a45", "#c2661d", "#7c8aa5", "#a855f7"];
 const SCAN_LIMIT = 8000;
+const LAB_TABLE = "UserLabReport";
+const BLOOD_STALE_DAYS = 180;
+const RECORD_TIERS = new Set(["heal", "maintenance", "consultancy_only"]);
+const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const STEP_LABELS = {
+  launch: "LAUNCH review",
+  hap: "HAP session",
+  reportsBriefing: "Reports briefing",
+  programInitiation: "Program initiation",
+};
 
 function userIdOf(row) {
   return String(row?.id || row?._id || "").trim();
@@ -301,6 +313,164 @@ function buildOpsOverdue(usersById, recommendations) {
   };
 }
 
+function startOfWeek(now = new Date()) {
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - start.getDay());
+  return start;
+}
+
+function endOfWeek(start) {
+  const end = new Date(start);
+  end.setDate(end.getDate() + 7);
+  return end;
+}
+
+function meetingStartIso(meeting) {
+  if (!meeting) return "";
+  if (meeting.status === "time_requested") return meeting.requestedStartAt || "";
+  const slot =
+    (meeting.slots || []).find((item) => item.id === meeting.selectedSlotId) ||
+    (meeting.slots || [])[0];
+  return slot?.startAt || meeting.confirmedAt || "";
+}
+
+function formatMeetingDetail(startAt, stepKey) {
+  const date = startAt ? new Date(startAt) : null;
+  const kind = STEP_LABELS[stepKey] || String(stepKey || "Meeting").replace(/_/g, " ");
+  if (!date || Number.isNaN(date.getTime())) return kind;
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${DOW[date.getDay()]} ${hours}:${minutes} · ${kind}`;
+}
+
+function buildSchedule(usersById, meetings) {
+  const weekStart = startOfWeek();
+  const weekEnd = endOfWeek(weekStart);
+  const people = [];
+
+  for (const meeting of meetings || []) {
+    if (!["confirmed", "slots_offered"].includes(String(meeting.status || ""))) continue;
+    const startIso = meetingStartIso(meeting);
+    const start = startIso ? new Date(startIso) : null;
+    if (!start || Number.isNaN(start.getTime()) || start < weekStart || start >= weekEnd) continue;
+    const userId = String(meeting.userId || "").trim();
+    const user = usersById.get(userId) || { id: userId, name: meeting.userName || "Client" };
+    people.push(
+      toOverduePerson(user, {
+        name: user.name || meeting.userName,
+        detail: formatMeetingDetail(startIso, meeting.stepKey),
+      })
+    );
+  }
+
+  people.sort((a, b) => String(a.detail).localeCompare(String(b.detail)));
+
+  return {
+    title: "Schedule",
+    total: `${people.length} pending`,
+    cells: [
+      {
+        id: "meetings",
+        short: "Meetings",
+        count: people.length,
+        chip: "scheduled",
+        color: "#5e6ad2",
+        tipTitle: "Upcoming meetings",
+        people: people.slice(0, 8),
+      },
+    ],
+  };
+}
+
+function latestReportIso(rows) {
+  let latest = 0;
+  for (const row of rows || []) {
+    if (!row?.fileKey && !row?.fileUrl) continue;
+    const date = new Date(row.reportDate || row.createdAt || 0);
+    if (Number.isNaN(date.getTime())) continue;
+    latest = Math.max(latest, date.getTime());
+  }
+  return latest || null;
+}
+
+function buildStaleRecords(users, labReports) {
+  const reportsByUser = groupByUserId(labReports);
+  const bloodPeople = [];
+
+  for (const user of users || []) {
+    const userId = userIdOf(user);
+    if (!userId) continue;
+    if (!RECORD_TIERS.has(normalizeUserTier(user?.userTier))) continue;
+
+    const latest = latestReportIso(reportsByUser.get(userId) || []);
+    const reference = latest || new Date(user.healPaidAt || user.createdAt || 0).getTime();
+    if (!reference || Number.isNaN(reference)) continue;
+    const ageDays = Math.floor((Date.now() - reference) / 86400000);
+    if (ageDays < BLOOD_STALE_DAYS) continue;
+
+    bloodPeople.push(
+      toOverduePerson(user, {
+        detail: latest ? `${ageDays}d since last test` : "No blood test on file",
+      })
+    );
+  }
+
+  const gutCount = 0;
+  const items = [
+    {
+      id: "blood-test",
+      label: "Blood test",
+      count: bloodPeople.length,
+      note: "Older than 6 months",
+      color: "#0d9488",
+    },
+    {
+      id: "gut-reset",
+      label: "Gut reset",
+      count: gutCount,
+      note: "No reset in 60 days",
+      color: "#a855f7",
+    },
+  ];
+
+  return {
+    total: `${bloodPeople.length + gutCount} due`,
+    items,
+  };
+}
+
+async function loadMeetings(actor, allowedIds) {
+  try {
+    const coachId =
+      actor.role === "wellness_coach"
+        ? actor.id
+        : actor.role === "assistant_wellness_coach" || actor.role === "trainee"
+          ? actor.parentCoachId
+          : null;
+
+    const coachIds = coachId
+      ? [coachId]
+      : [];
+
+    if (!coachIds.length && (actor.role === "admin" || actor.role === "support")) {
+      return [];
+    }
+
+    const lists = await Promise.all(
+      coachIds.map((id) =>
+        listOnboardingMeetingsByCoachId(id, { page: 1, limit: 400 }).catch(() => ({ items: [] }))
+      )
+    );
+    return lists
+      .flatMap((data) => data?.items || [])
+      .filter((row) => inUserSet(row.userId, allowedIds));
+  } catch (err) {
+    console.warn("[programProgress] meetings failed:", err?.message || err);
+    return [];
+  }
+}
+
 async function loadSupplements(actor, allowedIds) {
   try {
     const coachId =
@@ -329,7 +499,7 @@ async function getProgramProgressOverview(actor) {
   const usersById = new Map(users.map((user) => [userIdOf(user), user]).filter(([id]) => id));
   const allowedIds = actor.role === "admin" || actor.role === "support" ? null : new Set(usersById.keys());
 
-  const [coachNames, weightRows, bodyRows, glucoseRows, supplements] = await Promise.all([
+  const [coachNames, weightRows, bodyRows, glucoseRows, supplements, meetings, labReports] = await Promise.all([
     loadCoachNames(users),
     safeScan(WEIGHT_TABLE, { projection: "userId, weightKg, recordedAt, createdAt" }),
     safeScan(BODY_TABLE, {
@@ -340,6 +510,8 @@ async function getProgramProgressOverview(actor) {
       exprNames: { "#gtype": "type", "#gvalue": "value" },
     }),
     loadSupplements(actor, allowedIds),
+    loadMeetings(actor, allowedIds),
+    safeScan(LAB_TABLE, { projection: "userId, reportDate, createdAt, fileKey" }),
   ]);
 
   const filterRows = (rows) =>
@@ -360,6 +532,8 @@ async function getProgramProgressOverview(actor) {
       hba1c,
     },
     opsOverdue: buildOpsOverdue(usersById, supplements),
+    schedule: buildSchedule(usersById, meetings),
+    staleRecords: buildStaleRecords(users, filterRows(labReports)),
   };
 }
 

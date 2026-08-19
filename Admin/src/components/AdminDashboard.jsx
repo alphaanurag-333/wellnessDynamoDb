@@ -199,29 +199,81 @@ function dynamicPendingGroups(baseGroups, statistics) {
     },
     ...baseGroups.slice(1),
   ];
-  const overdue = statistics.opsOverdue;
-  if (!overdue?.cells?.length) return next;
   return next.map((group) => {
-    if (String(group.title || "").toLowerCase() !== "overdue") return group;
-    return {
-      ...group,
-      total: overdue.total || `${asNumber(overdue.cells.reduce((sum, cell) => sum + asNumber(cell.count), 0))} pending`,
-      cells: overdue.cells.map((cell) => ({
-        id: cell.id,
-        short: cell.short,
-        count: asNumber(cell.count),
-        chip: cell.chip,
-        color: cell.color,
-        tipTitle: cell.tipTitle,
-        people: (cell.people || []).map((person) => ({
-          name: person.name,
-          detail: person.detail,
-          initial: person.initial || person.initials,
-          color: person.color,
-        })),
-      })),
-    };
+    const title = String(group.title || "").toLowerCase();
+    if (title === "overdue") {
+      const overdue = statistics.opsOverdue;
+      const liveCells = overdue?.cells?.length
+        ? overdue.cells.map((cell) => ({
+            id: cell.id,
+            short: cell.short,
+            count: asNumber(cell.count),
+            chip: cell.chip,
+            color: cell.color,
+            tipTitle: cell.tipTitle,
+            people: (cell.people || []).map((person) => ({
+              name: person.name,
+              detail: person.detail,
+              initial: person.initial || person.initials,
+              color: person.color,
+            })),
+          }))
+        : group.cells.map((cell) => ({ ...cell, count: 0, people: [] }));
+      const totalCount = liveCells.reduce((sum, cell) => sum + asNumber(cell.count), 0);
+      return {
+        ...group,
+        total: overdue?.total || `${totalCount} pending`,
+        cells: liveCells,
+      };
+    }
+    if (title === "schedule") {
+      const schedule = statistics.schedule;
+      const liveCells = schedule?.cells?.length
+        ? schedule.cells.map((cell) => ({
+            id: cell.id,
+            short: cell.short,
+            count: asNumber(cell.count),
+            chip: cell.chip,
+            color: cell.color,
+            tipTitle: cell.tipTitle,
+            people: (cell.people || []).map((person) => ({
+              name: person.name,
+              detail: person.detail,
+              initial: person.initial || person.initials,
+              color: person.color,
+            })),
+          }))
+        : group.cells.map((cell) => ({ ...cell, count: 0, people: [] }));
+      const totalCount = liveCells.reduce((sum, cell) => sum + asNumber(cell.count), 0);
+      return {
+        ...group,
+        total: schedule?.total || `${totalCount} pending`,
+        cells: liveCells,
+      };
+    }
+    return group;
   });
+}
+
+function liveStaleRecords(statistics, fallbackRecords, fallbackTotal) {
+  if (!statistics) return { records: fallbackRecords, total: fallbackTotal };
+  const live = statistics.staleRecords;
+  if (Array.isArray(live?.items) && live.items.length) {
+    return {
+      records: live.items.map((item) => ({
+        id: item.id,
+        label: item.label,
+        count: asNumber(item.count),
+        note: item.note,
+        color: item.color,
+      })),
+      total: live.total || `${live.items.reduce((sum, item) => sum + asNumber(item.count), 0)} due`,
+    };
+  }
+  return {
+    records: (fallbackRecords || []).map((record) => ({ ...record, count: 0 })),
+    total: "0 due",
+  };
 }
 
 function AppClientCard({ item, onClick }) {
@@ -507,8 +559,13 @@ export function AdminDashboard({
     : fallbackLeaderboard;
   const basePendingGroups = viewAs === "wc" ? WC_PENDING_GROUPS : viewAs === "awc" ? AWC_PENDING_GROUPS : [];
   const pendingGroups = dynamicPendingGroups(basePendingGroups, statisticsForView);
-  const staleRecords = viewAs === "wc" ? WC_STALE_RECORDS : viewAs === "awc" ? AWC_STALE_RECORDS : [];
-  const staleTotal = viewAs === "wc" ? WC_STALE_TOTAL : viewAs === "awc" ? AWC_STALE_TOTAL : "";
+  const fallbackStaleRecords = viewAs === "wc" ? WC_STALE_RECORDS : viewAs === "awc" ? AWC_STALE_RECORDS : [];
+  const fallbackStaleTotal = viewAs === "wc" ? WC_STALE_TOTAL : viewAs === "awc" ? AWC_STALE_TOTAL : "";
+  const { records: staleRecords, total: staleTotal } = liveStaleRecords(
+    statisticsForView,
+    fallbackStaleRecords,
+    fallbackStaleTotal,
+  );
   const scopeLabel = DASH_SCOPE_LABELS[viewAs] ?? "Global";
   const canExport = viewAs === "admin" || viewAs === "wc";
   const [broadcast, setBroadcast] = useState("");
@@ -977,7 +1034,7 @@ export function AdminDashboard({
       ) : null}
 
       {isStaffDash ? (
-        <section className="section">
+        <section className="section" >
           <div className="ua-section-label">
             <div className="ua-section-label__title">Pending Tasks</div>
             <span className="ua-section-label__hint">Hover to see who · click to open the list</span>
@@ -1045,7 +1102,7 @@ export function AdminDashboard({
                   ))}
                 </div>
               </div>
-              <div className="coach-pending-notes">
+              <div style={{display:'none'}} className="coach-pending-notes">
                 <NotesToRemember onToast={onToast} />
               </div>
 
