@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useNavigate, useOutletContext } from "react-router-dom";
+import { BrandLoader } from "../components/BrandLoader.jsx";
 import { CfgSelect, OrangeButton, PageHeader, PillTabs, TableScroll, ListPagination } from "../components/shared.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
@@ -417,7 +418,7 @@ function PoliciesTab({ onToast }) {
         <OrangeButton onClick={() => setEditorPolicy(null)}>+ Create policy</OrangeButton>
       </div>
 
-      {loading ? <p className="ua-page-head__sub">Loading policies…</p> : null}
+      {loading ? <BrandLoader variant="page" label="Loading policies…" /> : null}
       {error ? (
         <div className="ua-section-bar">
           <span>{error}</span>
@@ -805,7 +806,7 @@ function RolesPermissionsTab({ onToast }) {
   }
 
   if (loading) {
-    return <p className="ua-page-head__sub">Loading roles…</p>;
+    return <BrandLoader variant="page" label="Loading roles…" />;
   }
 
   if (error) {
@@ -1344,7 +1345,7 @@ function MembersTab({ onToast }) {
         <div className="ua-ac-members-toolbar__count">{totalLabel}</div>
       </div>
 
-      {loading ? <p className="ua-page-head__sub">Loading members…</p> : null}
+      {loading ? <BrandLoader variant="page" label="Loading members…" /> : null}
       {error ? (
         <div className="ua-section-bar">
           <span>{error}</span>
@@ -1512,7 +1513,7 @@ function ApprovalsTab({ onToast, onCountChange }) {
   return (
     <div className="ua-approvals">
       <p className="ua-page-head__sub">Permission and role requests raised by a Wellness Coach land here.</p>
-      {loading ? <p className="ua-table__muted">Loading requests…</p> : null}
+      {loading ? <BrandLoader variant="page" label="Loading requests…" /> : null}
       {error ? <p className="ua-table__muted">{error}</p> : null}
       {!loading && !error && requests.length === 0 ? (
         <p className="ua-table__muted">No pending permission requests.</p>
@@ -1662,7 +1663,7 @@ function AuditLogTab() {
         <div className="ua-ac-members-toolbar__count">{countLabel}</div>
       </div>
 
-      {loading ? <p className="ua-page-head__sub">Loading audit log…</p> : null}
+      {loading ? <BrandLoader variant="page" label="Loading audit log…" /> : null}
       {error ? (
         <div className="ua-section-bar">
           <span>{error}</span>
@@ -1898,7 +1899,7 @@ export function AccessPage() {
   if (bootstrapping) {
     return (
       <main className="content ua-page-enter">
-        <p>Loading…</p>
+        <BrandLoader variant="page" label="Loading…" />
       </main>
     );
   }

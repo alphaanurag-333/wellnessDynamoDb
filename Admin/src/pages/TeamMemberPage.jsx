@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useOutletContext, useParams, useSearchParams } from "react-router-dom";
+import { BrandLoader } from "../components/BrandLoader.jsx";
 import { CfgSelect, OrangeButton, PageHeader } from "../components/shared.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
@@ -387,7 +388,7 @@ export function TeamMemberPage() {
   if (loading) {
     return (
       <main className="content ua-page-enter">
-        <p>Loading member…</p>
+        <BrandLoader variant="page" label="Loading member…" />
       </main>
     );
   }

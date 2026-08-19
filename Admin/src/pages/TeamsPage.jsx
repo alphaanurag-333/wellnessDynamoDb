@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
+import { BrandLoader } from "../components/BrandLoader.jsx";
 import { OrangeButton, PageHeader, PillTabs, SectionLabel, TableScroll, ListPagination } from "../components/shared.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import {
@@ -388,7 +389,7 @@ export function TeamsPage() {
       <SectionLabel hint="Filter by Access Control role">Team</SectionLabel>
       <PillTabs tabs={tabs} active={roleTab} onChange={setRoleTab} />
 
-      {loading ? <p className="ua-page-head__sub">Loading team…</p> : null}
+      {loading ? <BrandLoader variant="page" label="Loading team…" /> : null}
       {error ? (
         <div className="ua-section-bar">
           <span>{error}</span>

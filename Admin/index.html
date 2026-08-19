@@ -10,9 +10,32 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <link rel="stylesheet" href="/src/index.css" />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="ua-brand-loader" role="status" aria-live="polite" aria-busy="true">
+        <div class="ua-brand-loader__stage">
+          <div class="ua-brand-loader__mark">
+            <span class="ua-brand-loader__orbit" aria-hidden="true"></span>
+            <span class="ua-brand-loader__glow" aria-hidden="true"></span>
+            <img
+              class="ua-brand-loader__logo"
+              src="/irw-loader.png"
+              alt="India Redefining Wellness"
+              width="140"
+              height="140"
+            />
+          </div>
+          <p class="ua-brand-loader__label">Loading session…</p>
+          <div class="ua-brand-loader__dots" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

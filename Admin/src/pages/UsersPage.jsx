@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 import { ExportIcon } from "../components/NavIcons.jsx";
+import { BrandLoader } from "../components/BrandLoader.jsx";
 import { OrangeButton, PageHeader, PillTabs, ScopeChip, TableScroll } from "../components/shared.jsx";
 import {
   TIER_OPTIONS,
@@ -756,10 +757,7 @@ export function UsersPage() {
           </div>
 
           {loading ? (
-            <div className="ua-users-empty">
-              <div className="ua-users-empty__title">Loading clients…</div>
-              <p className="ua-users-empty__sub">Fetching users from the server.</p>
-            </div>
+            <BrandLoader variant="page" label="Loading clients…" />
           ) : rows.length === 0 ? (
             <div className="ua-users-empty">
               <div className="ua-users-empty__icon"><UsersEmptyIcon /></div>

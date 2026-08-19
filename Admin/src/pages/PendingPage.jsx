@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
+import { BrandLoader } from "../components/BrandLoader.jsx";
 import { PageHeader } from "../components/shared.jsx";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
@@ -209,7 +210,7 @@ export function PendingPage() {
       </div>
 
       {loading ? (
-        <div className="pending-page__status" role="status">Loading live client tasks…</div>
+        <BrandLoader variant="page" label="Loading live client tasks…" />
       ) : (
         <div className="pending-queues">
           {queues.map((queue) => (

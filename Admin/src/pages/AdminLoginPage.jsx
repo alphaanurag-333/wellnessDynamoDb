@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import defaultLogo from "../assets/logo/defaultlogo.png";
+import { BrandLoader } from "../components/BrandLoader.jsx";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { useAppSelector } from "../store/hooks.js";
@@ -38,11 +39,7 @@ export function AdminLoginPage() {
   const logoUrl = useAppSelector(selectAdminLogoUrl) || defaultLogo;
 
   if (bootstrapping) {
-    return (
-      <div className="updated-admin ua-login">
-        <div className="ua-login__boot">Loading session…</div>
-      </div>
-    );
+    return <BrandLoader />;
   }
 
   if (isAuthenticated) {

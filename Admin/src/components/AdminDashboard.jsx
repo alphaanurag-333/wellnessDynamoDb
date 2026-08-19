@@ -4,6 +4,7 @@ import { fetchDashboardPayments } from "../api/dashboardApi.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import { CommunityBroadcastModal } from "./CommunityBroadcastModal.jsx";
 import { ExportIcon } from "./NavIcons.jsx";
+import { BrandLoader } from "./BrandLoader.jsx";
 import { AutosaveButton } from "./shared.jsx";
 import { ProgramCategoryModal } from "./ProgramCategoryModal.jsx";
 import { ProgramProgressModal } from "./ProgramProgressModal.jsx";
@@ -771,7 +772,21 @@ export function AdminDashboard({
     openTeamRemind(onboardingRemindCopy(row));
   }
 
-  if (loading || loadError) {
+  if (loading) {
+    return (
+      <main className="content ua-page-enter">
+        <div className="page-head">
+          <div>
+            <h1 className="page-head__title">Dashboard</h1>
+            <p className="page-head__sub"><span className="chip chip--scope">{scopeLabel}</span></p>
+          </div>
+        </div>
+        <BrandLoader variant="page" label="Loading dashboard…" />
+      </main>
+    );
+  }
+
+  if (loadError) {
     return (
       <main className="content ua-page-enter">
         <div className="page-head">
@@ -781,13 +796,9 @@ export function AdminDashboard({
           </div>
         </div>
         <div className="ua-users-empty">
-          <div className="ua-users-empty__title">
-            {loading ? "Loading dashboard…" : "Couldn’t load dashboard"}
-          </div>
-          {loadError ? <p className="ua-users-empty__sub">{loadError}</p> : null}
-          {loadError ? (
-            <button type="button" className="btn btn--outline" onClick={onRetry}>Retry</button>
-          ) : null}
+          <div className="ua-users-empty__title">Couldn’t load dashboard</div>
+          <p className="ua-users-empty__sub">{loadError}</p>
+          <button type="button" className="btn btn--outline" onClick={onRetry}>Retry</button>
         </div>
       </main>
     );

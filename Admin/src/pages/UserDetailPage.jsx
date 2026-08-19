@@ -7,6 +7,7 @@ import {
 } from "../data/userDetailData.js";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { fetchUser } from "../api/usersApi.js";
+import { BrandLoader } from "../components/BrandLoader.jsx";
 import { ClientProfileSidebar, ClientProfileTopbar } from "../components/clientProfile/ClientProfileChrome.jsx";
 import {
   AtAGlanceSection,
@@ -173,7 +174,7 @@ export function UserDetailPage() {
   if (loading && !user) {
     return (
       <div className="ua-cp-drawer" role="status" aria-label="Loading client profile">
-        <p className="ua-page-head__sub" style={{ padding: 24 }}>Loading client…</p>
+        <BrandLoader variant="page" label="Loading client…" />
       </div>
     );
   }
@@ -250,7 +251,7 @@ export function UserDetailPage() {
         <div className="ua-cp-main" data-drawer-scroll="1">
           <div className="ua-cp-main__inner">
             {loading ? (
-              <p className="ua-page-head__sub">Loading client…</p>
+              <BrandLoader variant="page" label="Loading client…" />
             ) : (
               renderSection(section, user, onToast, setSection, (updatedRow) => {
                 setUser(profileFromListUser(updatedRow, userId));
