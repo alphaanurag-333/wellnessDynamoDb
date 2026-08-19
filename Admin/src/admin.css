@@ -1365,7 +1365,7 @@
   max-width: 100%;
   gap: 4px;
   padding: 4px;
-  margin-bottom: 14px;
+  margin-bottom: 0px;
   border: 1px solid rgb(230, 235, 242);
   border-radius: 12px;
   background: rgb(242, 244, 249);
@@ -1491,16 +1491,36 @@
   width: 148px;
   min-width: 0;
   height: auto;
+  padding: 0;
 }
 
 .updated-admin .ua-users-toolbar .ua-users-filter .ua-cfg-select__trigger {
   height: 40px;
-  padding: 0 12px;
+  padding: 0 12px 0 12px;
   border: 1px solid #d5dce8;
   border-radius: 10px;
   font-size: 13px;
   font-weight: 500;
   background: #fff;
+  gap: 8px;
+}
+
+.updated-admin .ua-users-toolbar .ua-users-filter .ua-cfg-select__chev {
+  width: 18px;
+  height: 18px;
+  margin-right: 2px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-size: 0;
+  line-height: 0;
+  color: transparent;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%2316233f' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 12px 8px no-repeat;
+  transition: transform 0.15s ease;
+}
+
+.updated-admin .ua-users-toolbar .ua-users-filter.is-open .ua-cfg-select__chev {
+  transform: rotate(180deg);
 }
 
 .updated-admin .ua-users-toolbar .ua-users-filter.is-open {
@@ -19048,7 +19068,8 @@
 .updated-admin .ua-ac-role-card__inherit {
   margin-top: 6px;
   font-size: 10.5px;
-  color: #5a6b85;
+  color: rgb(138, 127, 214);
+  font-weight: 500;
 }
 
 .updated-admin .ua-ac-role-card__inherit--muted {
