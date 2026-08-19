@@ -189,6 +189,17 @@ export async function triggerCoachCheckout(payload) {
   }
 }
 
+export async function remindCoachCheckout(transactionId) {
+  try {
+    const { data } = await api.post(
+      `/account/coach-checkout/transactions/${encodeURIComponent(transactionId)}/remind`
+    );
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function listCoachCheckoutHistory(userId) {
   try {
     const { data } = await api.get("/account/coach-checkout/transactions", {

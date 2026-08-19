@@ -12,6 +12,7 @@ const {
   isPendingCheckoutOrderReusable,
   buildUserProgramGetPayload,
   toCheckoutHistoryRow,
+  checkoutReminderBlockReason,
 } = require("../services/coachCheckoutService");
 
 function futureIso(ms = 60 * 60 * 1000) {
@@ -305,6 +306,23 @@ describe("checkout payment history rows", () => {
 
     assert.equal(row.status, "paid");
     assert.equal(row.detail, "upi · mock · WD20260818ABC");
+  });
+
+  it("allows a reminder only for unexpired pending checkouts", () => {
+    const pending = {
+      productType: "program",
+      paymentStatus: "pending",
+      linkExpiresAt: futureIso(),
+    };
+    assert.equal(checkoutReminderBlockReason(pending), null);
+    assert.equal(
+      checkoutReminderBlockReason({ ...pending, paymentStatus: "paid" }),
+      "This payment is already complete"
+    );
+    assert.equal(
+      checkoutReminderBlockReason({ ...pending, linkExpiresAt: pastIso() }),
+      "Payment link expired. Trigger a new payment."
+    );
   });
 });
 

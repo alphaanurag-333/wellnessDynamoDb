@@ -3,6 +3,7 @@ import {
   downloadCoachCheckoutInvoice,
   getCoachCheckoutOptions,
   listCoachCheckoutHistory,
+  remindCoachCheckout,
   triggerCoachCheckout,
 } from "../../api/appProgramApi.js";
 import {
@@ -134,6 +135,18 @@ function PaymentRow({ row, onToast }) {
     }
   }
 
+  async function handleRemind() {
+    setBusy(true);
+    try {
+      const result = await remindCoachCheckout(row.id);
+      onToast?.(result?.message || "Payment reminder sent");
+    } catch (error) {
+      onToast?.(error.message || "Could not send payment reminder");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="ua-cp-ex-pay">
       <div className="ua-cp-ex-pay__main">
@@ -157,8 +170,13 @@ function PaymentRow({ row, onToast }) {
           ) : null}
         </div>
         {awaiting ? (
-          <button type="button" className="ua-cp-btn ua-cp-ex-pay__btn ua-cp-ex-pay__btn--remind ua-cp-btn--sm" onClick={() => onToast?.("Payment reminder sent")}>
-            Remind
+          <button
+            type="button"
+            className="ua-cp-btn ua-cp-ex-pay__btn ua-cp-ex-pay__btn--remind ua-cp-btn--sm"
+            onClick={handleRemind}
+            disabled={busy}
+          >
+            {busy ? "Sending…" : "Remind"}
           </button>
         ) : (
           <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-ex-pay__btn ua-cp-btn--sm" onClick={handleInvoice} disabled={busy}>

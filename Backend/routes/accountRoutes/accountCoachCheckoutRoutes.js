@@ -7,6 +7,7 @@ const {
   listRecentPwcController,
   listCoachCheckoutHistoryController,
   getCoachCheckoutInvoiceController,
+  remindCoachCheckoutController,
   triggerCoachCheckoutController,
 } = require("../../controllers/adminController/coachCheckoutController");
 
@@ -18,6 +19,14 @@ router.get("/clients", lookupCoachCheckoutClientController);
 router.get("/staff", listCoachCheckoutStaffController);
 router.get("/pwc", listRecentPwcController);
 router.get("/transactions", listCoachCheckoutHistoryController);
+router.post(
+  "/transactions/:id/remind",
+  authorizeStaff("console.pg.edit", {
+    admin: "programs.edit",
+    wellness_coach: "nav.my-users",
+  }),
+  remindCoachCheckoutController
+);
 router.get("/transactions/:id/invoice", getCoachCheckoutInvoiceController);
 router.post(
   "/trigger",
