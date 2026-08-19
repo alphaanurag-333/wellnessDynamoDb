@@ -243,3 +243,59 @@ export function launchScoringHint(ratings = []) {
   return `Coaches pick one rating per question. Earned = (rating pts ÷ ${maxRating}) × question pts. Domain scores sum to 100 when question pts total 100. Overall = Σ (domain score × domain weight ÷ 100).`;
 }
 
+export function liveLaunchDomains(domains = []) {
+  return (domains || []).filter((domain) => domain && domain.live !== false);
+}
+
+export function liveLaunchQuestions(domain) {
+  return (domain?.questions || []).filter((question) => question && question.enabled !== false);
+}
+
+export function computeLaunchAssessment({ domains = [], ratings = [], ratingByQuestion = {} } = {}) {
+  const liveDomains = liveLaunchDomains(domains);
+  const maxRating = launchMaxRatingPoints(ratings) || 100;
+  let overall = 0;
+
+  const domainRows = liveDomains.map((domain, index) => {
+    const questions = liveLaunchQuestions(domain);
+    const general = launchDomainIsGeneral(domain);
+    let earned = 0;
+    const items = questions.map((question) => {
+      const ratingId = ratingByQuestion[question.id] || "";
+      const rating = ratings.find((row) => String(row.id) === String(ratingId));
+      const qEarned = launchQuestionEarned(question, rating, maxRating);
+      earned += qEarned;
+      return {
+        id: question.id,
+        q: question.name,
+        points: Number(question.points) || 0,
+        earned: qEarned,
+        ratingId,
+        hasInfo: question.hasInfo !== false,
+      };
+    });
+    if (!general) {
+      overall += earned * ((Number(domain.weight) || 0) / 100);
+    }
+    return {
+      id: domain.id,
+      num: index + 1,
+      title: domain.name,
+      questions: questions.length,
+      score: Math.round(earned * 100) / 100,
+      max: 100,
+      weight: Number(domain.weight) || 0,
+      general,
+      items,
+    };
+  });
+
+  return {
+    overall: Math.round(overall * 100) / 100,
+    maxOverall: 100,
+    finalScore: Math.round(overall) / 10,
+    domainRows,
+    maxRating,
+  };
+}
+

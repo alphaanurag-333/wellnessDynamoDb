@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import { CommunityBroadcastModal } from "./CommunityBroadcastModal.jsx";
@@ -28,18 +28,10 @@ import {
   EXP_NOTE,
   EXP_TOTAL,
   FAT_METRICS,
-  FY_MONTH_OPTIONS,
-  FY_OPTIONS,
   GRADIENT_GREEN,
   LEADERBOARD,
-  ONBOARD_DATA,
-  ONBOARD_FY_TOTAL,
   OPS_OVERDUE,
-  PRODUCT_BARS,
   PROG_CATS,
-  REVENUE_CARDS,
-  REVENUE_HERO,
-  REVENUE_TREND,
   UPDATED_ADMIN_PATHS,
   WC_A1C_METRICS,
   WC_APP_CLIENT_STATS,
@@ -79,18 +71,16 @@ import {
   TEAM_STAFF,
   remindSubtitle,
 } from "../data/teamStaffData.js";
+import {
+  PRODUCT_COLORS,
+  findFinancialYear,
+  formatRevenue,
+  resolveRevenueAnalytics,
+} from "../data/revenueAnalytics.js";
 
 function asNumber(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number : 0;
-}
-
-function formatInr(value) {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(asNumber(value));
 }
 
 function dynamicTiers(baseTiers, rows) {
@@ -449,7 +439,15 @@ export function AdminDashboard({
     }
     return team;
   });
-  const activeLeaderboard = viewAs === "wc" ? WC_LEADERBOARD : viewAs === "awc" ? AWC_LEADERBOARD : viewAs === "support" ? WC_LEADERBOARD : LEADERBOARD;
+  const fallbackLeaderboard = viewAs === "wc" ? WC_LEADERBOARD : viewAs === "awc" ? AWC_LEADERBOARD : viewAs === "support" ? WC_LEADERBOARD : LEADERBOARD;
+  const liveCommunity = statistics?.community || null;
+  const birthdayRows = liveCommunity ? (liveCommunity.birthdays || []) : BIRTHDAYS;
+  const champClients = liveCommunity ? (liveCommunity.champions?.clients || []) : CHAMP_CLIENTS;
+  const champCoaches = liveCommunity ? (liveCommunity.champions?.coaches || []) : CHAMP_COACHES;
+  const liveLeaderboard = liveCommunity?.leaderboard;
+  const activeLeaderboard = liveCommunity
+    ? (liveLeaderboard?.rows || [])
+    : fallbackLeaderboard;
   const basePendingGroups = viewAs === "wc" ? WC_PENDING_GROUPS : viewAs === "awc" ? AWC_PENDING_GROUPS : [];
   const pendingGroups = dynamicPendingGroups(basePendingGroups, statisticsForView);
   const staleRecords = viewAs === "wc" ? WC_STALE_RECORDS : viewAs === "awc" ? AWC_STALE_RECORDS : [];
@@ -460,7 +458,9 @@ export function AdminDashboard({
   const [broadcastMeta, setBroadcastMeta] = useState("Last sent 2 days ago");
   const [broadcastModalOpen, setBroadcastModalOpen] = useState(false);
   const [champMonth, setChampMonth] = useState("2026-07");
-  const [selectedMonth, setSelectedMonth] = useState("Jul 2026");
+  const [selectedFyStartYear, setSelectedFyStartYear] = useState(null);
+  const [selectedMonthKey, setSelectedMonthKey] = useState(null);
+  const [productMonthKey, setProductMonthKey] = useState(null);
   const [champExpanded, setChampExpanded] = useState(false);
   const [chName, setChName] = useState("");
   const [chDays, setChDays] = useState("14");
@@ -470,7 +470,16 @@ export function AdminDashboard({
   const [programModalTarget, setProgramModalTarget] = useState(null);
   const [progressModalKey, setProgressModalKey] = useState(null);
 
-  const champ = CHAMP_MONTHS[champMonth] ?? CHAMP_MONTHS["2026-07"];
+  const champMonthOptions = liveCommunity
+    ? (liveLeaderboard?.months || [])
+    : Object.entries(CHAMP_MONTHS).map(([value, data]) => ({ value, label: data.label }));
+  const champ = liveCommunity
+    ? {
+        label: liveLeaderboard?.monthLabel || champMonthOptions[0]?.label || "",
+        champion: liveLeaderboard?.rows?.[0]?.name || "—",
+        score: liveLeaderboard?.rows?.[0]?.score ?? 0,
+      }
+    : (CHAMP_MONTHS[champMonth] ?? CHAMP_MONTHS["2026-07"]);
   const maxScore = activeLeaderboard[0]?.score ?? 1;
   const tierData = coachTiers.map((tier) => ({
     label: tier.label === "PWC ONLY" ? "Consultancy only" : tier.label === "HEAL" ? "Heal (paid)" : tier.label === "SEEK" ? "Seek (free)" : "Maintenance",
@@ -479,65 +488,117 @@ export function AdminDashboard({
   }));
   const tierTotal = tierData.reduce((sum, item) => sum + item.value, 0);
   const tierGradient = buildTierGradient(tierData);
-  const revenueTotal = asNumber(statisticsForView?.revenueAndPayouts);
-  const revenueByMonth = statisticsForView?.charts?.revenueByMonth;
-  const latestRevenue = Array.isArray(revenueByMonth) ? revenueByMonth.at(-1) : null;
-  const previousRevenue = Array.isArray(revenueByMonth) ? revenueByMonth.at(-2) : null;
-  const revenueDelta = previousRevenue?.revenue
-    ? Math.round(((asNumber(latestRevenue?.revenue) - asNumber(previousRevenue.revenue)) / asNumber(previousRevenue.revenue)) * 100)
-    : 0;
-  const revenueHero = statisticsForView && hasAdminStatistics
-    ? {
-      total: formatInr(revenueTotal),
-      scope: "All paid transactions · till today",
-      monthLabel: latestRevenue?.label || "Latest month",
-      monthValue: formatInr(latestRevenue?.revenue),
-      delta: `${revenueDelta >= 0 ? "+" : ""}${revenueDelta}%`,
-      deltaUp: revenueDelta >= 0,
-    }
-    : REVENUE_HERO;
-  const revenueProducts = statisticsForView?.charts?.revenueByProduct;
-  const payingClientCount = ["consultancy_only", "heal", "maintenance"].reduce(
-    (total, key) => total + asNumber(tierRows?.find((row) => row.key === key)?.value),
-    0,
+  const revenueAnalytics = useMemo(
+    () => (isAdminDash ? resolveRevenueAnalytics(hasAdminStatistics ? statisticsForView : null) : null),
+    [isAdminDash, hasAdminStatistics, statisticsForView],
   );
-  const dynamicRevenueCards = Array.isArray(revenueProducts)
-    ? [
-        ...revenueProducts.map((row, index) => ({
-          label: row.name,
-          value: formatInr(row.value),
-          share: revenueTotal ? `${Math.round((asNumber(row.value) / revenueTotal) * 100)}% of total` : "0% of total",
-          pct: revenueTotal ? Math.round((asNumber(row.value) / revenueTotal) * 100) : 0,
-          color: ["#2b8f5b", "#0d9488", "#ec7a45", "#5e6ad2"][index % 4],
-        })),
-        {
-          label: "Avg. per client",
-          value: formatInr(payingClientCount ? revenueTotal / payingClientCount : 0),
-          share: null,
-          pct: 0,
-          color: "#a855f7",
-          isAvg: true,
-        },
-      ]
-    : REVENUE_CARDS;
-  const revenueTrendMax = Math.max(1, ...(revenueByMonth || []).map((row) => asNumber(row.revenue)));
-  const revenueTrend = Array.isArray(revenueByMonth)
-    ? revenueByMonth.map((row, index) => ({
-      label: row.label,
-      total: formatInr(row.revenue),
-      height: Math.round((asNumber(row.revenue) / revenueTrendMax) * 100),
-      active: index === revenueByMonth.length - 1,
-    }))
-    : REVENUE_TREND.map((row) => ({ ...row, height: row.prog }));
-  const productBars = Array.isArray(revenueProducts)
-    ? dynamicRevenueCards.filter((card) => !card.isAvg).map((card) => ({
-      label: card.label,
-      value: card.value,
-      pct: card.pct,
-      color: card.color,
-    }))
-    : PRODUCT_BARS;
-  const onboardMax = useMemo(() => Math.max(...ONBOARD_DATA.map((d) => d.count)), []);
+  const fyOptions = useMemo(() => revenueAnalytics?.financialYears || [], [revenueAnalytics]);
+  const selectedFy = findFinancialYear(revenueAnalytics, selectedFyStartYear);
+  const fyMonths = useMemo(() => selectedFy?.months || [], [selectedFy]);
+
+  useEffect(() => {
+    if (!fyOptions.length) return;
+    const valid = fyOptions.some((fy) => fy.fyStartYear === selectedFyStartYear);
+    if (!valid) {
+      setSelectedFyStartYear(revenueAnalytics.currentFyStartYear ?? fyOptions[0].fyStartYear);
+    }
+  }, [fyOptions, selectedFyStartYear, revenueAnalytics]);
+
+  useEffect(() => {
+    if (!fyMonths.length) return;
+    if (fyMonths.some((row) => row.month === selectedMonthKey)) return;
+    const preferred = fyMonths.find((row) => row.month === revenueAnalytics?.currentMonth) || fyMonths.at(-1);
+    if (preferred) setSelectedMonthKey(preferred.month);
+  }, [fyMonths, selectedMonthKey, revenueAnalytics]);
+
+  useEffect(() => {
+    if (!fyMonths.length) return;
+    const valid = productMonthKey === "all" || fyMonths.some((row) => row.month === productMonthKey);
+    if (valid) return;
+    setProductMonthKey(selectedMonthKey || fyMonths.at(-1)?.month || "all");
+  }, [fyMonths, productMonthKey, selectedMonthKey]);
+
+  useEffect(() => {
+    const month = liveLeaderboard?.monthYear;
+    if (month) setChampMonth(month);
+  }, [liveLeaderboard?.monthYear]);
+
+  const selectedMonthRow = fyMonths.find((row) => row.month === selectedMonthKey) || fyMonths.at(-1) || null;
+  const previousMonthRow = selectedMonthRow
+    ? fyMonths[fyMonths.findIndex((row) => row.month === selectedMonthRow.month) - 1] || null
+    : null;
+  const revenueDelta = previousMonthRow?.total
+    ? Math.round(((asNumber(selectedMonthRow?.total) - asNumber(previousMonthRow.total)) / asNumber(previousMonthRow.total)) * 100)
+    : 0;
+  const revenueHero = {
+    total: formatRevenue(revenueAnalytics?.totalRevenue),
+    scope: `All time · till ${revenueAnalytics?.asOfLabel || "today"}`,
+    monthLabel: selectedMonthRow?.displayLabel || "This month",
+    monthValue: formatRevenue(selectedMonthRow?.total),
+    delta: `${revenueDelta >= 0 ? "+" : ""}${revenueDelta}%`,
+    deltaUp: revenueDelta >= 0,
+  };
+  const dynamicRevenueCards = [
+    ...(revenueAnalytics?.products || []).map((row) => ({
+      label: row.name,
+      value: formatRevenue(row.value),
+      share: `${asNumber(row.pct)}% of total`,
+      pct: asNumber(row.pct),
+      color: row.color || PRODUCT_COLORS[row.key] || PRODUCT_COLORS.program,
+    })),
+    {
+      label: "Avg. per client",
+      value: formatRevenue(revenueAnalytics?.avgPerClient),
+      share: null,
+      pct: 0,
+      color: PRODUCT_COLORS.avg,
+      isAvg: true,
+    },
+  ];
+  const trendMax = Math.max(
+    1,
+    ...fyMonths.flatMap((row) => [asNumber(row.program), asNumber(row.consultancy)]),
+  );
+  const revenueTrend = fyMonths.map((row) => ({
+    month: row.month,
+    label: row.label,
+    total: formatRevenue(row.total),
+    progHeight: Math.round((asNumber(row.program) / trendMax) * 100),
+    consHeight: Math.round((asNumber(row.consultancy) / trendMax) * 100),
+    active: row.month === selectedMonthRow?.month,
+  }));
+  const productMonthRow = fyMonths.find((row) => row.month === productMonthKey);
+  const fyProductTotals = fyMonths.reduce(
+    (acc, row) => {
+      acc.program += asNumber(row.program);
+      acc.consultancy += asNumber(row.consultancy);
+      acc.app += asNumber(row.app);
+      return acc;
+    },
+    { program: 0, consultancy: 0, app: 0 },
+  );
+  const fyProductTotal = fyProductTotals.program + fyProductTotals.consultancy + fyProductTotals.app;
+  const productSource = productMonthKey === "all"
+    ? {
+      products: [
+        { key: "program", name: "Wellness programs", value: fyProductTotals.program, pct: fyProductTotal ? Math.round((fyProductTotals.program / fyProductTotal) * 100) : 0, color: PRODUCT_COLORS.program },
+        { key: "app", name: "App users", value: fyProductTotals.app, pct: fyProductTotal ? Math.round((fyProductTotals.app / fyProductTotal) * 100) : 0, color: PRODUCT_COLORS.app },
+        { key: "consultancy", name: "PWC", value: fyProductTotals.consultancy, pct: fyProductTotal ? Math.round((fyProductTotals.consultancy / fyProductTotal) * 100) : 0, color: PRODUCT_COLORS.consultancy },
+      ],
+    }
+    : { products: productMonthRow?.products || selectedMonthRow?.products || [] };
+  const productBarOrder = { program: 0, app: 1, consultancy: 2 };
+  const productBars = [...(productSource.products || [])]
+    .sort((a, b) => (productBarOrder[a.key] ?? 9) - (productBarOrder[b.key] ?? 9))
+    .map((row) => ({
+      label: row.name,
+      value: formatRevenue(row.value),
+      pct: asNumber(row.pct),
+      color: row.color || PRODUCT_COLORS[row.key] || PRODUCT_COLORS.program,
+    }));
+  const onboardRows = selectedFy?.onboarded || [];
+  const onboardMax = Math.max(1, ...onboardRows.map((row) => asNumber(row.count)));
+  const onboardTotal = asNumber(selectedFy?.onboardedTotal);
   const champPodium = activeLeaderboard.slice(0, 3);
 
   function openBroadcastReview() {
@@ -1177,8 +1238,10 @@ export function AdminDashboard({
                 <div className="champion-split__col">
                   <div className="champion-split__label">Client</div>
                   <div className="champion-scroll">
-                    {CHAMP_CLIENTS.map((c) => (
-                      <div key={c.name} className="champion-mini">
+                    {champClients.length === 0 ? (
+                      <div className="community-card__empty">No client champions yet</div>
+                    ) : champClients.map((c) => (
+                      <div key={c.id || c.name} className="champion-mini">
                         <span className="champion-mini__name">{c.name}</span>
                         <span className="champion-mini__score">{c.score}</span>
                       </div>
@@ -1188,8 +1251,10 @@ export function AdminDashboard({
                 <div className="champion-split__col">
                   <div className="champion-split__label champion-split__label--muted">Wellness coach</div>
                   <div className="champion-scroll champion-scroll--plain">
-                    {CHAMP_COACHES.map((c) => (
-                      <div key={c.name} className="champion-mini champion-mini--plain">
+                    {champCoaches.length === 0 ? (
+                      <div className="community-card__empty">No coach champion yet</div>
+                    ) : champCoaches.map((c) => (
+                      <div key={c.id || c.name} className="champion-mini champion-mini--plain">
                         <span className="champion-mini__name">{c.name}</span>
                         <span className="champion-mini__score">{c.score}</span>
                       </div>
@@ -1203,8 +1268,10 @@ export function AdminDashboard({
           <div className="community-card community-card--birthday">
             <div className="community-card__head"><span>🎂</span> Birthdays</div>
             <div className="birthday-scroll">
-              {BIRTHDAYS.map((b) => (
-                <div key={b.name} className={`birthday-chip${b.isCoach ? " birthday-chip--coach" : ""}`}>
+              {birthdayRows.length === 0 ? (
+                <div className="community-card__empty">No upcoming birthdays</div>
+              ) : birthdayRows.map((b) => (
+                <div key={b.id || `${b.name}-${b.when}`} className={`birthday-chip${b.isCoach ? " birthday-chip--coach" : ""}`}>
                   <span className="birthday-chip__name"><span>{b.mark}</span>{b.name}</span>
                   <span className="birthday-chip__when">{b.when}</span>
                 </div>
@@ -1271,22 +1338,26 @@ export function AdminDashboard({
             <span>🏆</span> Champion leaderboard
             {!champExpanded ? <span className="leaderboard__hint">hover to see the full board</span> : null}
           </div>
-          <select
-            className="header__select"
-            aria-label="Champion month"
-            value={champMonth}
-            onChange={(e) => setChampMonth(e.target.value)}
-          >
-            {Object.entries(CHAMP_MONTHS).map(([value, data]) => (
-              <option key={value} value={value}>{data.label}</option>
-            ))}
-          </select>
+          {champMonthOptions.length ? (
+            <select
+              className="header__select"
+              aria-label="Champion month"
+              value={champMonth}
+              onChange={(e) => setChampMonth(e.target.value)}
+            >
+              {champMonthOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          ) : null}
         </div>
 
         {!champExpanded ? (
           <div className="leaderboard__podium">
-            {champPodium.map((row, i) => (
-              <div key={row.rank} className={`podium-card podium-card--${i + 1}`}>
+            {champPodium.length === 0 ? (
+              <div className="community-card__empty">No reflection scores for this month yet</div>
+            ) : champPodium.map((row, i) => (
+              <div key={row.rank || row.userId || row.name} className={`podium-card podium-card--${i + 1}`}>
                 <span className={`podium-card__rank ${row.rank === 1 ? "rank--1" : row.rank === 2 ? "rank--2" : "rank--3"}`}>{row.rank === 1 ? "1" : row.rank === 2 ? "2" : "3"}</span>
                 <div className="podium-card__info">
                   <div className="podium-card__name">{row.name}</div>
@@ -1296,6 +1367,8 @@ export function AdminDashboard({
               </div>
             ))}
           </div>
+        ) : activeLeaderboard.length === 0 ? (
+          <div className="community-card__empty">No reflection scores for this month yet</div>
         ) : (
           <>
             <div className="leaderboard__hero">
@@ -1306,7 +1379,7 @@ export function AdminDashboard({
               </div>
               <div className="leaderboard__hero-score">
                 <div className="leaderboard__hero-points">{champ.score}</div>
-                <div className="leaderboard__hero-label">points</div>
+                <div className="leaderboard__hero-label">avg score</div>
               </div>
             </div>
 
@@ -1317,7 +1390,7 @@ export function AdminDashboard({
             </div>
               {activeLeaderboard.map((row) => (
                 <div
-                  key={row.rank}
+                  key={row.userId || row.rank}
                   className={`leaderboard__row${row.highlight ? " leaderboard__row--highlight" : ""}`}
                   onClick={() => onToast(`Opening profile for ${row.name}`)}
                   onKeyDown={(e) => e.key === "Enter" && onToast(`Opening profile for ${row.name}`)}
@@ -1340,7 +1413,7 @@ export function AdminDashboard({
               ))}
             </div>
             <p className="leaderboard__foot">
-              ⚙️ Ranked automatically from Daily Reflection scores · {champ.label} · 10 clients
+              ⚙️ Ranked automatically from Daily Reflection scores · {champ.label} · {activeLeaderboard.length} client{activeLeaderboard.length === 1 ? "" : "s"}
             </p>
           </>
         )}
@@ -1387,7 +1460,7 @@ export function AdminDashboard({
           <section className="section">
             <div className="section__head">
               <h2 className="section__title">Revenue Analytics</h2>
-              <span className="section__hint">Overall · till today</span>
+              <span className="section__hint">Overall · till {revenueAnalytics?.asOfLabel || "today"}</span>
             </div>
             <div className="revenue-row">
               <div className="revenue-hero">
@@ -1424,25 +1497,40 @@ export function AdminDashboard({
 
           <section className="section">
             <div className="section__head section__head--charts">
-              <h2 className="section__title">{statisticsForView ? "Revenue history" : "Financial year · Apr → Mar"}</h2>
-              {!statisticsForView ? <div className="chart-controls">
-                <button type="button" className="btn btn--soft" onClick={() => onToast("Opening payments…")}>💳 View payments</button>
-                <select className="header__select" aria-label="Financial year" defaultValue={FY_OPTIONS[0]}>
-                  {FY_OPTIONS.map((fy) => (
-                    <option key={fy}>{fy}</option>
+              <h2 className="section__title">Financial year · Apr → Mar</h2>
+              <div className="chart-controls">
+                <button
+                  type="button"
+                  className="btn btn--soft"
+                  onClick={() => onToast("Opening payments…")}
+                >
+                  💳 View payments
+                </button>
+                <select
+                  className="header__select"
+                  aria-label="Financial year"
+                  value={selectedFyStartYear ?? ""}
+                  onChange={(e) => {
+                    setSelectedFyStartYear(Number(e.target.value));
+                    setSelectedMonthKey(null);
+                    setProductMonthKey(null);
+                  }}
+                >
+                  {fyOptions.map((fy) => (
+                    <option key={fy.fyStartYear} value={fy.fyStartYear}>{fy.label}</option>
                   ))}
                 </select>
                 <select
                   className="header__select"
                   aria-label="Month"
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  value={selectedMonthKey ?? ""}
+                  onChange={(e) => setSelectedMonthKey(e.target.value)}
                 >
-                  {FY_MONTH_OPTIONS.map((m) => (
-                    <option key={m}>{m}</option>
+                  {fyMonths.map((m) => (
+                    <option key={m.month} value={m.month}>{m.displayLabel}</option>
                   ))}
                 </select>
-              </div> : null}
+              </div>
             </div>
 
             <div className="charts-grid">
@@ -1450,39 +1538,62 @@ export function AdminDashboard({
                 <div className="chart-card__head">
                   <div>
                     <div className="chart-card__title">Revenue trend</div>
-                    <div className="chart-card__sub">{statisticsForView ? "Last 6 months · tap a month" : "FY 2026-27 · Apr → Mar · tap a month"}</div>
+                    <div className="chart-card__sub">{selectedFy?.label || "Financial year"} · Apr → Mar · tap a month</div>
                   </div>
                   <div className="chart-legend">
-                    <span><i className="dot dot--green" /> Revenue</span>
+                    <span><i className="dot dot--green" /> Program</span>
+                    <span><i className="dot dot--purple" /> Consultancy</span>
                   </div>
                 </div>
                 <div className="bar-chart bar-chart--dual">
-                  {revenueTrend.map((m) => (
+                  {revenueTrend.length ? revenueTrend.map((m) => (
                     <button
-                      key={m.label}
+                      key={m.month}
                       type="button"
                       className="bar-group"
                       style={{ border: "none", background: "transparent", cursor: "pointer", padding: 0 }}
                       onClick={() => {
-                        setSelectedMonth(`${m.label} 2026`);
-                        onToast(`Selected ${m.label} 2026 revenue`);
+                        setSelectedMonthKey(m.month);
+                        setProductMonthKey(m.month);
                       }}
                     >
                       <span className="bar-group__total">{m.total}</span>
                       <div className="bar-group__bars">
-                        <div className={`bar bar--prog-${m.active ? "active" : "light"}`} style={{ height: `${m.height}%` }} />
+                        <div className={`bar bar--prog-${m.active ? "active" : "light"}`} style={{ height: `${m.progHeight}%` }} />
+                        <div className={`bar bar--cons-${m.active ? "active" : "light"}`} style={{ height: `${m.consHeight}%` }} />
                       </div>
                       <span className={`bar-group__label${m.active ? " bar-group__label--active" : ""}`}>{m.label}</span>
                     </button>
-                  ))}
+                  )) : (
+                    <p className="product-bars__empty">No revenue in this financial year yet.</p>
+                  )}
                 </div>
               </div>
 
               <div className="chart-card">
-                <div className="chart-card__title">Revenue by product</div>
-                <div className="chart-card__sub">{statisticsForView ? "All paid transactions" : selectedMonth}</div>
+                <div className="chart-card__head">
+                  <div>
+                    <div className="chart-card__title">Revenue by product</div>
+                    <div className="chart-card__sub">
+                      {productMonthKey === "all"
+                        ? `${selectedFy?.label || "Full year"} · all months`
+                        : productMonthRow?.displayLabel || selectedMonthRow?.displayLabel}
+                    </div>
+                  </div>
+                  <select
+                    className="header__select chart-card__product-select"
+                    aria-label="Revenue by product period"
+                    value={productMonthKey ?? ""}
+                    onChange={(e) => setProductMonthKey(e.target.value)}
+                  >
+                    <option value="all">{selectedFy?.label || "Full year"}</option>
+                    {fyMonths.map((m) => (
+                      <option key={m.month} value={m.month}>{m.displayLabel}</option>
+                    ))}
+                  </select>
+                </div>
                 <div className="product-bars">
-                  {productBars.map((p) => (
+                  {productBars.length ? productBars.map((p) => (
                     <div key={p.label}>
                       <div className="product-bar__head">
                         <span className="product-bar__label">{p.label}</span>
@@ -1492,14 +1603,18 @@ export function AdminDashboard({
                         <div
                           className="product-bar__fill"
                           style={{
-                            width: `${p.pct}%`,
+                            width: `${Math.max(0, Math.min(100, p.pct))}%`,
                             background: p.color === "#2b8f5b" ? GRADIENT_GREEN : p.color,
                           }}
                         />
                       </div>
-                      <div className="product-bar__pct">{p.pct}% of month</div>
+                      <div className="product-bar__pct">
+                        {p.pct}% of {productMonthKey === "all" ? "year" : "month"}
+                      </div>
                     </div>
-                  ))}
+                  )) : (
+                    <p className="product-bars__empty">No product revenue for this period.</p>
+                  )}
                 </div>
               </div>
 
@@ -1507,22 +1622,31 @@ export function AdminDashboard({
                 <div className="chart-card__head">
                   <div>
                     <div className="chart-card__title">Users onboarded</div>
-                    <div className="chart-card__sub">FY 2026-27 · Apr → Mar</div>
+                    <div className="chart-card__sub">{selectedFy?.label || "Financial year"} · Apr → Mar</div>
                   </div>
-                  <span className="badge badge--green">{ONBOARD_FY_TOTAL} in FY 2026-27</span>
+                  <span className="badge badge--green">{onboardTotal} in {selectedFy?.label || "this FY"}</span>
                 </div>
                 <div className="bar-chart bar-chart--single">
-                  {ONBOARD_DATA.map((m) => (
-                    <div key={m.label} className="bar-group">
+                  {onboardRows.map((m) => (
+                    <button
+                      key={m.month}
+                      type="button"
+                      className="bar-group"
+                      style={{ border: "none", background: "transparent", cursor: "pointer", padding: 0 }}
+                      onClick={() => {
+                        setSelectedMonthKey(m.month);
+                        setProductMonthKey(m.month);
+                      }}
+                    >
                       <span className="bar-group__total">{m.count}</span>
                       <div className="bar-group__bars">
                         <div
-                          className={`bar onboard bar--onboard-${m.active ? "active" : "light"}`}
-                          style={{ height: `${Math.round((m.count / onboardMax) * 100)}%`, width: "55%" }}
+                          className={`bar onboard bar--onboard-${m.month === selectedMonthKey ? "active" : "light"}`}
+                          style={{ height: `${Math.round((asNumber(m.count) / onboardMax) * 100)}%`, width: "55%" }}
                         />
                       </div>
-                      <span className={`bar-group__label${m.active ? " bar-group__label--active" : ""}`}>{m.label}</span>
-                    </div>
+                      <span className={`bar-group__label${m.month === selectedMonthKey ? " bar-group__label--active" : ""}`}>{m.label}</span>
+                    </button>
                   ))}
                 </div>
               </div>

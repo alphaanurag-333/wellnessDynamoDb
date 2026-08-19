@@ -8,6 +8,7 @@ import {
 } from "../../data/internalParametersData.js";
 import {
   createUserTestRecommendation,
+  downloadUserTestRecommendationPdf,
   fetchTestCatalog,
   fetchUserLabReports,
   fetchUserTestRecommendations,
@@ -42,6 +43,89 @@ function formatDisplayDate(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
   return date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function triggerFileDownload(href, filename) {
+  const a = document.createElement("a");
+  a.href = href;
+  a.download = filename || "";
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+function saveBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  triggerFileDownload(url, filename);
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+function testsFromRecommendation(entry) {
+  return (Array.isArray(entry?.tests) ? entry.tests : []).filter((test) => test?.name || test?.testId);
+}
+
+function downloadTextList({ filename, title, reportDate, tests }) {
+  const grouped = new Map();
+  tests.forEach((test) => {
+    const category = String(test.category || "Other").trim() || "Other";
+    if (!grouped.has(category)) grouped.set(category, []);
+    grouped.get(category).push(test.name || test.testId || "Test");
+  });
+  const lines = [title || "Recommended blood tests"];
+  if (reportDate) lines.push(`Report date: ${reportDate}`, "");
+  grouped.forEach((names, category) => {
+    lines.push(category);
+    names.forEach((name) => lines.push(`- ${name}`));
+    lines.push("");
+  });
+  const blob = new Blob([`${lines.join("\n").trim()}\n`], { type: "text/plain;charset=utf-8" });
+  saveBlob(blob, filename);
+}
+
+async function downloadRecommendationList({
+  userId,
+  recommendationId,
+  pdfUrl,
+  reportDate,
+  tests,
+  onToast,
+}) {
+  const datePart = String(reportDate || todayIso()).slice(0, 10);
+  const pdfName = `recommended-tests-${datePart}.pdf`;
+
+  if (userId && recommendationId) {
+    try {
+      const blob = await downloadUserTestRecommendationPdf(userId, recommendationId);
+      if (blob) {
+        saveBlob(blob, pdfName);
+        return;
+      }
+    } catch (err) {
+      if (!pdfUrl && !(tests && tests.length)) {
+        onToast?.(err?.message || "Failed to download list");
+        return;
+      }
+    }
+  }
+
+  if (pdfUrl) {
+    triggerFileDownload(pdfUrl, pdfName);
+    return;
+  }
+
+  if (tests?.length) {
+    downloadTextList({
+      filename: `recommended-tests-${datePart}.txt`,
+      title: "Recommended blood tests",
+      reportDate: formatDisplayDate(reportDate),
+      tests,
+    });
+    return;
+  }
+
+  onToast?.("Select at least one test to download");
 }
 
 function daysFromNow(value) {
@@ -417,6 +501,20 @@ function MockRecommendedTestsTab({ user, onToast }) {
     onToast(`Test list published · sent to ${firstName(user)} on WhatsApp and in the app`);
   }
 
+  function downloadList() {
+    const tests = [];
+    groups.forEach((group) => {
+      flattenTests(group).forEach((name) => {
+        if (selected[`${group.id}:${name}`]) tests.push({ name, category: group.name });
+      });
+    });
+    downloadRecommendationList({
+      reportDate: todayIso(),
+      tests,
+      onToast,
+    });
+  }
+
   return (
     <div className="ua-cp-ip-rec">
       <div className="ua-cp-ip-rec__head">
@@ -430,7 +528,7 @@ function MockRecommendedTestsTab({ user, onToast }) {
           ) : (
             <button type="button" className="ua-cp-btn ua-cp-btn--green" onClick={publish}>Publish</button>
           )}
-          <button type="button" className="ua-cp-btn ua-cp-btn--orange" onClick={() => onToast("Downloading test list")}>↓ Download list</button>
+          <button type="button" className="ua-cp-btn ua-cp-btn--orange" onClick={downloadList}>↓ Download list</button>
         </div>
       </div>
 
@@ -505,14 +603,110 @@ function MockRecommendedTestsTab({ user, onToast }) {
 
 function selectedFromRecommendation(catalog, recommended) {
   const map = {};
-  const slugs = new Set((recommended?.tests || []).map((test) => String(test.testId || "").trim()).filter(Boolean));
+  const assigned = new Set();
+  (recommended?.tests || []).forEach((test) => {
+    [test.testId, test.id, test.catalogId].forEach((value) => {
+      const next = String(value || "").trim();
+      if (next) assigned.add(next);
+    });
+    const name = String(test.name || "").trim().toLowerCase();
+    if (name) assigned.add(`name:${name}`);
+  });
   catalog.forEach((test) => {
-    map[test.id] = slugs.has(String(test.testId || "").trim());
+    const id = String(test.id || "").trim();
+    const testId = String(test.testId || "").trim();
+    const name = String(test.name || "").trim().toLowerCase();
+    map[id] = assigned.has(id) || assigned.has(testId) || Boolean(name && assigned.has(`name:${name}`));
   });
   return map;
 }
 
-function LiveRecommendedTestsTab({ user, catalog, recommended, busy, onToast, onPublish }) {
+function AssignedTestHistory({ userId, current, history, onToast }) {
+  const [expandedId, setExpandedId] = useState(null);
+  const rows = useMemo(() => {
+    const list = [];
+    if (current?.id) list.push({ ...current, status: "current" });
+    (history || []).forEach((entry) => {
+      if (!entry?.id || entry.id === current?.id) return;
+      list.push({ ...entry, status: "replaced" });
+    });
+    return list;
+  }, [current, history]);
+
+  if (!rows.length) {
+    return (
+      <div className="ua-cp-ip-assign-history">
+        <h3 className="ua-cp-ip-assign-history__title">Assigned test history</h3>
+        <p className="ua-cp-ip-assign-history__empty">No test lists have been published for this client yet.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="ua-cp-ip-assign-history">
+      <h3 className="ua-cp-ip-assign-history__title">Assigned test history</h3>
+      <p className="ua-cp-ip-assign-history__intro">Every published list is kept, newest first.</p>
+      {rows.map((entry) => {
+        const tests = testsFromRecommendation(entry);
+        const expanded = expandedId === entry.id;
+        const preview = tests.slice(0, 3).map((test) => test.name || test.testId).filter(Boolean).join(", ");
+        return (
+          <div key={entry.id} className="ua-cp-ip-history__item">
+            <div className="ua-cp-ip-history__row">
+              <div className="ua-cp-ip-history__info">
+                <strong>{formatDisplayDate(entry.reportDate || entry.createdAt)}</strong>
+                <span>
+                  {tests.length} test{tests.length === 1 ? "" : "s"}
+                  {preview ? ` · ${preview}${tests.length > 3 ? "…" : ""}` : ""}
+                </span>
+              </div>
+              <div className="ua-cp-ip-history__actions">
+                <span className={`ua-cp-ip-badge ua-cp-ip-badge--${entry.status === "current" ? "good" : "muted"}`}>
+                  {entry.status === "current" ? "CURRENT" : "PREVIOUS"}
+                </span>
+                <button
+                  type="button"
+                  className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
+                  onClick={() => setExpandedId(expanded ? null : entry.id)}
+                >
+                  {expanded ? "Hide" : "View"}
+                </button>
+                <button
+                  type="button"
+                  className="ua-cp-ip-history__dl"
+                  aria-label={`Download assigned tests ${formatDisplayDate(entry.reportDate)}`}
+                  onClick={() => downloadRecommendationList({
+                    userId,
+                    recommendationId: entry.id,
+                    pdfUrl: entry.pdfUrl,
+                    reportDate: entry.reportDate,
+                    tests,
+                    onToast,
+                  })}
+                >
+                  ↓
+                </button>
+              </div>
+            </div>
+            {expanded ? (
+              <div className="ua-cp-ip-history__markers">
+                {tests.length
+                  ? tests.map((test, index) => (
+                    <span key={`${entry.id}-${test.testId || test.name || index}`} className="ua-cp-ip-marker ua-cp-ip-marker--neutral">
+                      {test.name || test.testId}
+                    </span>
+                  ))
+                  : <span className="ua-cp-ip-assign-history__empty">No tests stored on this assignment.</span>}
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, onToast, onPublish }) {
   const allGroups = useMemo(() => catalogGroups(catalog), [catalog]);
   const [selected, setSelected] = useState(() => selectedFromRecommendation(catalog, recommended));
   const [presets, setPresets] = useState([]);
@@ -615,12 +809,18 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, busy, onToast, on
     return "";
   }
 
-  function downloadList() {
-    if (recommended?.pdfUrl) {
-      window.open(recommended.pdfUrl, "_blank", "noopener,noreferrer");
-      return;
-    }
-    onToast("Publish a list first to generate the PDF");
+  async function downloadList() {
+    const selectedTests = selectedIds
+      .map((id) => catalog.find((test) => test.id === id))
+      .filter(Boolean);
+    await downloadRecommendationList({
+      userId: user?.id,
+      recommendationId: recommended?.id,
+      pdfUrl: recommended?.pdfUrl,
+      reportDate,
+      tests: selectedTests.length ? selectedTests : testsFromRecommendation(recommended),
+      onToast,
+    });
   }
 
   async function publish() {
@@ -750,6 +950,13 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, busy, onToast, on
       ) : (
         <p>No live tests in the catalog yet. Add them under Configs → Blood test catalog.</p>
       )}
+
+      <AssignedTestHistory
+        userId={user?.id}
+        current={recommended}
+        history={history}
+        onToast={onToast}
+      />
     </div>
   );
 }
@@ -1095,6 +1302,7 @@ export function InternalParametersSection({ user, onToast }) {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [reports, setReports] = useState([]);
   const [recommended, setRecommended] = useState(null);
+  const [history, setHistory] = useState([]);
   const [catalog, setCatalog] = useState([]);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -1112,6 +1320,7 @@ export function InternalParametersSection({ user, onToast }) {
 
     if (rec.status === "fulfilled") {
       setRecommended(rec.value?.recommended || rec.value?.recommendation || null);
+      setHistory(Array.isArray(rec.value?.history) ? rec.value.history : []);
     }
     if (labs.status === "fulfilled") {
       setReports(Array.isArray(labs.value) ? labs.value : []);
@@ -1240,6 +1449,7 @@ export function InternalParametersSection({ user, onToast }) {
             user={user}
             catalog={catalog}
             recommended={recommended}
+            history={history}
             busy={busy}
             onToast={onToast}
             onPublish={handlePublish}

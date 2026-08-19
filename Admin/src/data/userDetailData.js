@@ -18,35 +18,20 @@ export const CLIENT_MENU = [
   { id: "gut", label: "Gut Reset" },
 ];
 
+/** Reduced menu for future Eagle and Maintenance clients — not applied yet. */
 export const COMPACT_CLIENT_MENU = CLIENT_MENU.filter((item) =>
   ["personal", "internal", "nutritions", "food"].includes(item.id)
 );
 
-const DIABETES_REVERSAL_CONCERN = "diabetes reversal";
-
-function normalizeConcern(value) {
-  return String(value || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[\s_-]+/g, " ");
-}
-
-/** True when the client registered with Diabetes Reversal as primary concern. */
-export function isDiabetesReversalClient(user) {
-  return normalizeConcern(user?.goal) === DIABETES_REVERSAL_CONCERN;
-}
-
 /**
- * The reduced profile is reserved for Diabetes Reversal clients; every other
- * health concern keeps the complete coaching workspace. Tier still applies, so
- * SEEK, consultancy, and maintenance clients stay on the reduced profile.
+ * Every program client currently gets the full coaching workspace, including
+ * Diabetes Reversal. Compact menu for Eagle / Maintenance can be wired later.
  */
-export function getClientProfileDefinition(user) {
-  const isFullProfile = !isDiabetesReversalClient(user);
+export function getClientProfileDefinition() {
   return {
-    mode: isFullProfile ? "full" : "compact",
-    menu: isFullProfile ? CLIENT_MENU : COMPACT_CLIENT_MENU,
-    defaultSection: isFullProfile ? "glance" : "personal",
+    mode: "full",
+    menu: CLIENT_MENU,
+    defaultSection: "glance",
   };
 }
 

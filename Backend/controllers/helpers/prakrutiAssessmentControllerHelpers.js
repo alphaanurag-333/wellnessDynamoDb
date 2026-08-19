@@ -3,10 +3,12 @@ const { asyncHandler } = require("../../utils/asyncHandler");
 const { PRAKRUTI_TYPES, PRAKRUTI_TYPE_LABELS } = require("../../utils/prakrutiConstants");
 const { listPrakrutiQuestions, listActivePrakrutiQuestions } = require("../../models/prakrutiQuestionModel");
 const { listPrakrutiThingsToAvoid } = require("../../models/prakrutiThingToAvoidModel");
+const { listActivePrakrutiRecommendationsByType } = require("../../models/prakrutiRecommendationModel");
 const {
   getLatestUserPrakrutiAssessmentByUserId,
   upsertUserPrakrutiAssessment,
   enrichAssessmentPublic,
+  queryAssessmentsByUserId,
 } = require("../../models/userPrakrutiAssessmentModel");
 const {
   readUserIdParam,
@@ -18,6 +20,7 @@ const {
   assertHealTierUser,
   handleValidationError,
   resolveCoachIdForUser,
+  resolveStaffActor,
 } = require("./dietPlanControllerHelpers");
 
 function handlePrakrutiValidationError(err) {
@@ -100,8 +103,8 @@ async function assertAdminHealUserAccess(req) {
 function createPrakrutiAssessmentPortalHandlers({ assertHealUserAccess, createdByRole }) {
   return {
     listThingsToAvoidController: asyncHandler(async (req, res) => {
-      await assertHealUserAccess(req);
-      const { page, limit, search } = parseListQuery(req, { defaultLimit: 8, maxLimit: 50 });
+      resolveStaffActor(req);
+      const { page, limit, search } = parseListQuery(req, { defaultLimit: 50, maxLimit: 200 });
       const data = await listPrakrutiThingsToAvoid({ page, limit, status: "active", search });
       return res.status(200).json({
         status: true,
@@ -112,8 +115,8 @@ function createPrakrutiAssessmentPortalHandlers({ assertHealUserAccess, createdB
     }),
 
     listQuestionsController: asyncHandler(async (req, res) => {
-      await assertHealUserAccess(req);
-      const { page, limit, search } = parseListQuery(req, { defaultLimit: 10, maxLimit: 50 });
+      resolveStaffActor(req);
+      const { page, limit, search } = parseListQuery(req, { defaultLimit: 50, maxLimit: 200 });
       const data = await listPrakrutiQuestions({ page, limit, status: "active", search });
       return res.status(200).json({
         status: true,
@@ -123,15 +126,31 @@ function createPrakrutiAssessmentPortalHandlers({ assertHealUserAccess, createdB
       });
     }),
 
+    listRecommendationsController: asyncHandler(async (req, res) => {
+      resolveStaffActor(req);
+      const prakrutiType = String(req.query.prakrutiType || req.query.type || "").trim();
+      if (!prakrutiType) throw new AppError("prakrutiType query parameter is required", 400);
+      const recommendations = await listActivePrakrutiRecommendationsByType(prakrutiType);
+      return res.status(200).json({
+        status: true,
+        message: "Prakruti recommendations fetched successfully",
+        prakrutiType,
+        recommendations,
+      });
+    }),
+
     getAssessmentController: asyncHandler(async (req, res) => {
       const { userId } = await assertHealUserAccess(req);
       const raw = await getLatestUserPrakrutiAssessmentByUserId(userId);
       const assessment = raw ? await enrichAssessmentPublic(raw) : null;
+      const historyRows = await queryAssessmentsByUserId(userId);
+      const history = await Promise.all(historyRows.map((row) => enrichAssessmentPublic(row)));
 
       return res.status(200).json({
         status: true,
         message: assessment ? "Prakruti assessment fetched successfully" : "No Prakruti assessment yet",
         assessment,
+        history: history.filter(Boolean),
         prakrutiTypes: PRAKRUTI_TYPES.map((value) => ({ value, label: PRAKRUTI_TYPE_LABELS[value] })),
       });
     }),
