@@ -92,7 +92,7 @@ function DosageBadge({ label, tone }) {
   return <span className={`ua-cp-dosage ua-cp-dosage--${tone}`}>{label}</span>;
 }
 
-export function PersonalDetailsSection({ user, onToast, onUserUpdated }) {
+export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack = false, onBack }) {
   const [editing, setEditing] = useState(false);
   const [tierBusy, setTierBusy] = useState(false);
   const [saveBusy, setSaveBusy] = useState(false);
@@ -308,21 +308,39 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated }) {
   return (
     <div className="ua-cp-section ua-cp-personal">
       <div className="ua-cp-personal__head">
-        <div className="ua-cp-personal__head-copy">
-          <h2 className="ua-cp-personal__title">Personal details</h2>
-          <p className="ua-cp-personal__email">{user.email}</p>
-        </div>
-        <div className="ua-cp-personal__actions">
-          {editing ? (
-            <>
-              <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={cancelEdit} disabled={saveBusy}>Cancel</button>
-              <button type="button" className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm" onClick={save} disabled={saveBusy}>
-                {saveBusy ? "Saving…" : "Save changes"}
+        {showBack ? (
+          <button
+            type="button"
+            className="ua-cp-section-back"
+            onClick={onBack}
+            title="Back to previous screen"
+          >
+            ‹ Back
+          </button>
+        ) : null}
+        <div className="ua-cp-personal__head-row">
+          <div className="ua-cp-personal__head-copy">
+            <h2 className="ua-cp-personal__title">Personal details</h2>
+            <p className="ua-cp-personal__email">{user.email}</p>
+          </div>
+          <div className="ua-cp-personal__actions">
+            {editing ? (
+              <>
+                <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={cancelEdit} disabled={saveBusy}>Cancel</button>
+                <button type="button" className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm" onClick={save} disabled={saveBusy}>
+                  {saveBusy ? "Saving…" : "Save changes"}
+                </button>
+              </>
+            ) : (
+              <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={() => setEditing(true)}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+                </svg>
+                Edit
               </button>
-            </>
-          ) : (
-            <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={() => setEditing(true)}>✎ Edit</button>
-          )}
+            )}
+          </div>
         </div>
       </div>
       <div className="ua-cp-personal__badges">

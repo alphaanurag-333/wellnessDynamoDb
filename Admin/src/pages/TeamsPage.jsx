@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 import { BrandLoader } from "../components/BrandLoader.jsx";
-import { OrangeButton, PageHeader, PillTabs, SectionLabel, TableScroll, ListPagination } from "../components/shared.jsx";
+import { CfgSelect, OrangeButton, PageHeader, PillTabs, SectionLabel, TableScroll, ListPagination } from "../components/shared.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import {
   STAFF_AVATARS,
@@ -139,69 +139,101 @@ function CreateMemberModal({ open, roles, parentOptions, onClose, onCreated, onT
   }
 
   return (
-    <div className="ua-dialog-backdrop" onClick={onClose} role="presentation">
-      <div className="ua-ac-modal" onClick={(ev) => ev.stopPropagation()} role="dialog" aria-modal="true">
-        <div className="ua-ac-modal__title">Create a team member</div>
-        <p className="ua-ac-modal__body">
-          Accepted roles: Wellness Coach, Assistant WC, Trainee, Support. A temporary password is set automatically.
-        </p>
-        <form onSubmit={handleSubmit}>
-          <label className="ua-ac-field">
-            <span className="ua-ac-field__label">Full name</span>
-            <input className="ua-ac-field__input" value={name} onChange={(e) => setName(e.target.value)} required autoFocus />
-          </label>
-          <label className="ua-ac-field">
-            <span className="ua-ac-field__label">Mobile number</span>
-            <input className="ua-ac-field__input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="9000000000" />
-          </label>
-          <label className="ua-ac-field">
-            <span className="ua-ac-field__label">Email address</span>
-            <input className="ua-ac-field__input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          </label>
-          <label className="ua-ac-field">
-            <span className="ua-ac-field__label">Role</span>
-            <select
-              className="ua-ac-field__input"
-              value={consoleRoleId}
-              onChange={(e) => setConsoleRoleId(e.target.value)}
-              required
-            >
-              {creatableRoles.length === 0 ? (
-                <option value="">No Access Control roles found</option>
-              ) : (
-                creatableRoles.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                  </option>
-                ))
-              )}
-            </select>
-          </label>
-          {needsParent ? (
-            <label className="ua-ac-field">
-              <span className="ua-ac-field__label">
-                Reports to ({baseUiKey === "trainee" ? "Assistant WC" : "Wellness Coach"})
-              </span>
-              <select
-                className="ua-ac-field__input"
-                value={parentAccountId}
-                onChange={(e) => setParentAccountId(e.target.value)}
+    <div className="ua-cp-modal-backdrop" onClick={busy ? undefined : onClose} role="presentation">
+      <div
+        className="ua-teams-create"
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ua-teams-create-title"
+      >
+        <div className="ua-teams-create__head">
+          <div className="ua-teams-create__lead">
+            <span className="ua-teams-create__icon" aria-hidden="true">
+            👤
+            </span>
+            <div className="ua-teams-create__copy">
+              <h2 id="ua-teams-create-title">Create a team member</h2>
+              <p>Works for every role</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="ua-cfg-icon-btn"
+            aria-label="Close"
+            disabled={busy}
+            onClick={onClose}
+          >
+            ×
+          </button>
+        </div>
+        <form className="ua-teams-create__form" onSubmit={handleSubmit}>
+          <div className="ua-teams-create__body">
+            <label className="ua-teams-create__field">
+              <input
+                className="ua-teams-create__input"
+                placeholder="Full name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
                 required
-              >
-                <option value="">Choose coach…</option>
-                {eligibleParents.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} · {c.email}
-                  </option>
-                ))}
-              </select>
+                autoFocus
+              />
             </label>
-          ) : null}
-          <div className="ua-ac-modal__actions">
-            <button type="button" className="btn btn--outline" onClick={onClose} disabled={busy}>
+            <label className="ua-teams-create__field">
+              <input
+                className="ua-teams-create__input"
+                placeholder="Mobile number"
+                value={phone}
+                onChange={(event) => setPhone(event.target.value)}
+              />
+            </label>
+            <label className="ua-teams-create__field">
+              <input
+                className="ua-teams-create__input"
+                placeholder="Email address"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+              />
+            </label>
+            <label className="ua-teams-create__field">
+              <span className="ua-teams-create__label">Role</span>
+              <CfgSelect
+                className="ua-teams-create__select"
+                options={creatableRoles.map((role) => ({ value: role.id, label: role.name }))}
+                value={consoleRoleId}
+                disabled={busy || creatableRoles.length === 0}
+                onChange={setConsoleRoleId}
+                ariaLabel="Role"
+                placeholder="No Access Control roles found"
+              />
+            </label>
+            {needsParent ? (
+              <label className="ua-teams-create__field">
+                <span className="ua-teams-create__label">
+                  Reports to ({baseUiKey === "trainee" ? "Assistant WC" : "Wellness Coach"})
+                </span>
+                <CfgSelect
+                  className="ua-teams-create__select"
+                  options={eligibleParents.map((coach) => ({
+                    value: coach.id,
+                    label: `${coach.name} · ${coach.email}`,
+                  }))}
+                  value={parentAccountId}
+                  disabled={busy}
+                  onChange={setParentAccountId}
+                  ariaLabel="Reports to"
+                  placeholder="Choose coach…"
+                />
+              </label>
+            ) : null}
+          </div>
+          <div className="ua-teams-create__foot">
+            <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose} disabled={busy}>
               Cancel
             </button>
-            <button type="submit" className="ua-ac-modal__primary" disabled={busy || !consoleRoleId}>
+            <button type="submit" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy || !consoleRoleId}>
               {busy ? "Creating…" : "Create member"}
             </button>
           </div>

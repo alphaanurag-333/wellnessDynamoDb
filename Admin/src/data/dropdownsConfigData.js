@@ -111,6 +111,67 @@ export const DROPDOWN_LISTS = [
   },
 ];
 
+export const DROPDOWN_PAGE_ORDER = [
+  "banner-type",
+  "banner-headline",
+  "health-concern",
+  "testimonial-point",
+  "discount-slab",
+  "yoga-category",
+  "recipe-category",
+  "medical-questions",
+  "banner-placement",
+  "leadership-title",
+  "wellness-title",
+];
+
+export const HEALTH_CONCERN_OPTION_ORDER = [
+  "Fat loss",
+  "Diabetes reversal",
+  "Thyroid",
+  "PCOD / PCOS",
+  "Hypertension",
+  "Gut health",
+];
+
+export const MEDICAL_QUESTION_OPTION_ORDER = [
+  "Do you currently have any diagnosed medical conditions?",
+  "Are you currently taking any medications?",
+  "Have you had any surgeries in the past?",
+  "Do you have any physical activity restrictions or injuries?",
+  "Do you have any known allergies (food, medication, environmental)?",
+  "Is there any family history of chronic illness?",
+];
+
+function optionSequenceRank(list, option) {
+  const value = String(option?.label || "").trim().toLowerCase();
+  const seed = list.slug === "health-concern"
+    ? HEALTH_CONCERN_OPTION_ORDER
+    : list.slug === "medical-questions"
+      ? MEDICAL_QUESTION_OPTION_ORDER
+      : (DROPDOWN_LISTS.find((entry) => entry.id === list.slug)?.options || []).map((entry) => entry.label);
+  const index = seed.findIndex((entry) => String(entry).trim().toLowerCase() === value);
+  return index === -1 ? 1000 + (Number(option?.sortOrder) || 0) : index;
+}
+
+export function sortDropdownListsForPage(lists = []) {
+  const rank = (slug) => {
+    const index = DROPDOWN_PAGE_ORDER.indexOf(slug);
+    return index === -1 ? DROPDOWN_PAGE_ORDER.length + 1 : index;
+  };
+  return [...lists]
+    .sort((a, b) => rank(a.slug) - rank(b.slug))
+    .map((list) => ({
+      ...list,
+      wide: list.slug === "medical-questions",
+      options: [...(list.options || [])].sort((a, b) => {
+        const sequence = optionSequenceRank(list, a) - optionSequenceRank(list, b);
+        if (sequence) return sequence;
+        return (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0);
+      }),
+    }));
+}
+
 export const DROPDOWN_SEARCH_MAX = 80;
 export const DROPDOWN_LABEL_MAX = 80;
 export const DROPDOWN_HEALTH_CONCERN_MAX = 80;

@@ -799,19 +799,29 @@ export function UsersPage() {
                     </div>
                   </div>
                   <div className={`ua-users-tier${tierOpen ? " is-open" : ""}`} onClick={(e) => e.stopPropagation()}>
-                    <span className="ua-tier" style={{ background: tier.bg, color: tier.color }}>{tierLabel(u.tier)}</span>
-                    {extraCount > 0 ? (
-                      <button
-                        type="button"
-                        className="ua-tier-more"
-                        aria-expanded={tierOpen}
-                        onClick={() => setOpenTierMore(tierOpen ? null : rowKey)}
+                    <div className="ua-users-tier__primary">
+                      <span
+                        className="ua-tier"
+                        style={{ background: tier.bg, color: tier.color, borderColor: tier.border }}
                       >
-                        {tierOpen ? "Hide" : `+${extraCount} more`}
-                      </button>
-                    ) : null}
+                        {tierLabel(u.tier)}
+                      </span>
+                      {extraCount > 0 ? (
+                        <>
+                          <br />
+                          <button
+                            type="button"
+                            className="ua-tier-more"
+                            aria-expanded={tierOpen}
+                            onClick={() => setOpenTierMore(tierOpen ? null : rowKey)}
+                          >
+                            {tierOpen ? "Hide" : `+${extraCount} more`}
+                          </button>
+                        </>
+                      ) : null}
+                    </div>
                     {tierOpen ? (
-                      <>
+                      <div className="ua-users-tier__more">
                         {canEdit && canConvert ? (
                           <button
                             type="button"
@@ -841,7 +851,7 @@ export function UsersPage() {
                         {canEdit && u.converted ? (
                           <button type="button" className="ua-tier-action ua-tier-action--undo" title="Undo this manual change" onClick={() => revertTier(u)}>undo</button>
                         ) : null}
-                      </>
+                      </div>
                     ) : null}
                   </div>
                   <div onClick={(e) => e.stopPropagation()}>

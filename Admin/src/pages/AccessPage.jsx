@@ -1918,7 +1918,7 @@ export function AccessPage() {
         subtitle={
           <>
             Role baselines, per-user overrides and attachable policies. Precedence:{" "}
-            <b style={{ color: "#d64545" }}>user override</b>
+            <b style={{ color: "#16233f" }}>user override</b>
             {" > "}
             <b style={{ color: "#d64545" }}>policy deny</b>
             {" > "}
