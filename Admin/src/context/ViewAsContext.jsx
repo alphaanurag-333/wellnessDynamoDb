@@ -224,10 +224,19 @@ export function ViewAsProvider({ children }) {
     [auth, dispatch, liveMenuRoles, setViewAsLocal],
   );
 
-  const catalogRoles = useMemo(
-    () => (liveMenuRoles.length ? liveMenuRoles : staticViewAsMenuRoles()),
-    [liveMenuRoles],
-  );
+  const sessionUi = auth?.account
+    ? ROLE_KEY_TO_UI[auth.account.activeRole] || auth.account.activeRoleUi || null
+    : null;
+
+  const catalogRoles = useMemo(() => {
+    const staticRoles = staticViewAsMenuRoles();
+    if (!liveMenuRoles.length) return staticRoles;
+    // /account/access/roles is scoped for WC/AWC (descendants only). Keep
+    // system personas so a signed-in WC is not treated as an unknown role.
+    const byId = new Map(staticRoles.map((role) => [role.id, role]));
+    for (const role of liveMenuRoles) byId.set(role.id, role);
+    return [...byId.values()];
+  }, [liveMenuRoles]);
 
   const availableUiRoles = useMemo(() => {
     if (isSuperAdmin) return catalogRoles;
@@ -241,20 +250,19 @@ export function ViewAsProvider({ children }) {
     () =>
       availableUiRoles.find((role) => role.id === viewAs) ||
       catalogRoles.find((role) => role.id === viewAs) ||
+      availableUiRoles.find((role) => role.id === sessionUi) ||
+      catalogRoles.find((role) => role.id === sessionUi) ||
       catalogRoles[0] ||
       VIEW_AS_ROLES[0],
-    [availableUiRoles, catalogRoles, viewAs],
+    [availableUiRoles, catalogRoles, sessionUi, viewAs],
   );
 
   useEffect(() => {
     if (!liveRolesReady || !catalogRoles.length) return;
     const known = catalogRoles.some((role) => role.id === viewAs);
-    if (!known) setViewAsLocal("admin");
-  }, [catalogRoles, liveRolesReady, setViewAsLocal, viewAs]);
-
-  const sessionUi = auth?.account
-    ? ROLE_KEY_TO_UI[auth.account.activeRole] || auth.account.activeRoleUi
-    : null;
+    if (known) return;
+    setViewAsLocal(sessionUi || "admin");
+  }, [catalogRoles, liveRolesReady, sessionUi, setViewAsLocal, viewAs]);
 
   /** Signed-in Admin (or Super Admin) looking at the Admin console — full section access. */
   const isAdminView = viewAs === "admin" && (isSuperAdmin || sessionUi === "admin");
@@ -298,9 +306,11 @@ export function ViewAsProvider({ children }) {
     () => ({
       viewAs,
       viewAsPersona,
+      sessionUi,
       setViewAs,
       activeRole,
       availableUiRoles,
+      catalogRoles,
       reloadLiveRoles,
       auth,
       account: auth?.account || null,
@@ -323,9 +333,11 @@ export function ViewAsProvider({ children }) {
     [
       viewAs,
       viewAsPersona,
+      sessionUi,
       setViewAs,
       activeRole,
       availableUiRoles,
+      catalogRoles,
       reloadLiveRoles,
       auth,
       isSuperAdmin,

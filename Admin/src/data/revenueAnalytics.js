@@ -208,9 +208,12 @@ export function enrichLivePayments(payments, { clients = [], healthConcerns = []
     const coachName = isPlaceholder(row.coachName, PLACEHOLDER_COACH)
       ? (coachFromClient || row.coachName || "—")
       : row.coachName;
+    const type = String(row.productType || "").toLowerCase();
     let programType = row.programType;
-    if (isPlaceholder(programType, PLACEHOLDER_PROGRAM) && concernTitle) {
-      const type = String(row.productType || "").toLowerCase();
+    const existingLabel = String(programType || "").trim().toLowerCase();
+    if (type === "consultancy" || existingLabel === "pwc" || existingLabel === "consultancy") {
+      programType = "Consultation";
+    } else if (isPlaceholder(programType, PLACEHOLDER_PROGRAM) && concernTitle) {
       programType = type === "subscription" || type === "energy_exchange"
         ? `App user · ${concernTitle}`
         : concernTitle;

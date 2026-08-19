@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Navigate, useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 import { BrandLoader } from "../components/BrandLoader.jsx";
 import { CfgSelect, OrangeButton, PageHeader, PillTabs, TableScroll, ListPagination } from "../components/shared.jsx";
@@ -1570,6 +1571,51 @@ const AUDIT_TYPE_OPTIONS = [
   { value: "activity", label: "Activity" },
 ];
 
+const AUDIT_TEXT_MAX = 50;
+
+function TruncateHover({ text, className = "" }) {
+  const value = text == null || String(text).trim() === "" ? "—" : String(text);
+  const overflow = value !== "—" && value.length > AUDIT_TEXT_MAX;
+  const display = overflow ? `${value.slice(0, AUDIT_TEXT_MAX)}…` : value;
+  const [tip, setTip] = useState(null);
+
+  function placeTip(el) {
+    if (!el || !overflow) return;
+    const r = el.getBoundingClientRect();
+    const maxW = Math.min(420, Math.max(180, window.innerWidth - 24));
+    let left = r.left;
+    if (left + maxW > window.innerWidth - 12) left = window.innerWidth - 12 - maxW;
+    setTip({ top: r.bottom + 8, left: Math.max(12, left), maxW });
+  }
+
+  return (
+    <>
+      <div
+        className={`ua-truncate-tip ${className}`.trim()}
+        onMouseEnter={(e) => placeTip(e.currentTarget)}
+        onMouseLeave={() => setTip(null)}
+        onFocus={(e) => placeTip(e.currentTarget)}
+        onBlur={() => setTip(null)}
+        tabIndex={overflow ? 0 : undefined}
+      >
+        {display}
+      </div>
+      {tip
+        ? createPortal(
+            <div
+              className="ua-truncate-tip__bubble"
+              role="tooltip"
+              style={{ top: tip.top, left: tip.left, maxWidth: tip.maxW }}
+            >
+              {value}
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
+  );
+}
+
 function AuditLogTab() {
   const PAGE_SIZE = 20;
   const [loading, setLoading] = useState(true);
@@ -1699,14 +1745,16 @@ function AuditLogTab() {
                   </span>
                 </div>
                 <div data-label="Event">
-                  <div className="ua-log-text">{entry.text}</div>
-                  {entry.detail ? <div className="ua-log-detail">{entry.detail}</div> : null}
+                  <TruncateHover className="ua-log-text" text={entry.text} />
+                  {entry.detail ? <TruncateHover className="ua-log-detail" text={entry.detail} /> : null}
                 </div>
                 <div data-label="Subject">
-                  <div className="ua-log-subject">{entry.subject || "—"}</div>
-                  {entry.subjectMeta ? <div className="ua-log-detail">{entry.subjectMeta}</div> : null}
+                  <TruncateHover className="ua-log-subject" text={entry.subject} />
+                  {entry.subjectMeta ? <TruncateHover className="ua-log-detail" text={entry.subjectMeta} /> : null}
                 </div>
-                <div className="ua-log-actor" data-label="Actor">{entry.actor || "—"}</div>
+                <div data-label="Actor">
+                  <TruncateHover className="ua-log-actor" text={entry.actor} />
+                </div>
                 <div className="ua-log-when" data-label="When">{formatAuditWhen(entry.createdAt)}</div>
               </div>
             ))}

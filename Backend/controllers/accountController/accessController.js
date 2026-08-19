@@ -17,6 +17,7 @@ const {
   getMembership,
   countAccountsByRoleKey,
   countAccountsByConsoleRoleId,
+  assignedMembershipRoleId,
   toPublicAccount,
 } = require("../../models/accountModel");
 const { listUsersByParentCoachId } = require("../../models/userModel");
@@ -113,6 +114,44 @@ async function resolveAccountRoleKeyFromConsoleRole(startRole) {
     if (current && current.scope !== CONSOLE_SCOPE) break;
   }
   return null;
+}
+
+function isSystemConsoleRole(role) {
+  const key = String(role?.roleKey || "").trim().toLowerCase();
+  return Boolean(key && ROLE_KEY_META[key]);
+}
+
+function accountMatchesConsoleRole(account, selectedRole, primaryAccountRole) {
+  if (!selectedRole) return true;
+  const assignedId = assignedMembershipRoleId(account, primaryAccountRole);
+  if (isSystemConsoleRole(selectedRole)) {
+    return !assignedId || assignedId === selectedRole.id;
+  }
+  return assignedId === selectedRole.id;
+}
+
+function resolveAssignedConsoleRole(account, primaryAccountRole, consoleRoles, roleByKey) {
+  const assignedId = assignedMembershipRoleId(account, primaryAccountRole);
+  if (assignedId) {
+    const found = (consoleRoles || []).find((role) => role.id === assignedId);
+    if (found) return found;
+  }
+  const uiRole = ACCOUNT_TO_UI_ROLE[primaryAccountRole] || primaryAccountRole;
+  return uiRole ? roleByKey[uiRole] || null : null;
+}
+
+function paginateAccounts(accounts, page, limit) {
+  const total = accounts.length;
+  const start = (page - 1) * limit;
+  return {
+    accounts: accounts.slice(start, start + limit),
+    pagination: {
+      page,
+      limit,
+      total,
+      pages: Math.max(1, Math.ceil(total / limit) || 1),
+    },
+  };
 }
 
 function isAccessAdmin(req) {
@@ -395,11 +434,14 @@ async function memberCountForRoleKey(roleKey) {
 
 async function memberCountForConsoleRole(role) {
   if (!role) return 0;
-  if (role.roleKey) {
-    const byKey = await memberCountForRoleKey(role.roleKey);
-    if (byKey > 0) return byKey;
-  }
   try {
+    if (isSystemConsoleRole(role)) {
+      const accountRole = UI_TO_ACCOUNT_ROLE[role.roleKey] || role.roleKey;
+      return await countAccountsByConsoleRoleId(role.id, {
+        accountRoleKey: accountRole,
+        includeUnassigned: true,
+      });
+    }
     return await countAccountsByConsoleRoleId(role.id);
   } catch {
     return 0;
@@ -415,7 +457,7 @@ function describePolicyTarget(attachment) {
 }
 
 exports.getAccessCatalog = asyncHandler(async (req, res) => {
-  assertSuperAdmin(req);
+  assertTeamsReadAccess(req);
   return res.json({
     status: true,
     catalog: getConsolePermissionCatalog(),
@@ -759,11 +801,23 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
   assertTeamsReadAccess(req);
   const search = req.query.search || req.query.q;
   const roleFilter = req.query.roleKey || req.query.role;
-  const accountRoleFilter = roleFilter
-    ? UI_TO_ACCOUNT_ROLE[roleFilter] || roleFilter
-    : undefined;
+  const consoleRoleIdFilter = String(req.query.consoleRoleId || "").trim();
+  let selectedConsoleRole = null;
+  if (consoleRoleIdFilter) {
+    selectedConsoleRole = await getRoleById(consoleRoleIdFilter);
+    if (!selectedConsoleRole || selectedConsoleRole.scope !== CONSOLE_SCOPE) {
+      throw new AppError("Access Control role not found", 404);
+    }
+  }
+  const accountRoleFromConsole = selectedConsoleRole
+    ? await resolveAccountRoleKeyFromConsoleRole(selectedConsoleRole)
+    : null;
+  const accountRoleFilter = accountRoleFromConsole
+    || (roleFilter ? UI_TO_ACCOUNT_ROLE[roleFilter] || roleFilter : undefined);
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 20));
+  const listPage = selectedConsoleRole ? 1 : page;
+  const listLimit = selectedConsoleRole ? 200 : limit;
 
   const visibleRoles = visibleTeamRoleKeys(req);
   let result;
@@ -772,8 +826,8 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
       status: "active",
       search,
       roleKey: accountRoleFilter,
-      page,
-      limit,
+      page: listPage,
+      limit: listLimit,
     });
   } else {
     const direct = await listAccounts({
@@ -810,17 +864,7 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
       }
     }
 
-    const total = scopedAccounts.length;
-    const start = (page - 1) * limit;
-    result = {
-      accounts: scopedAccounts.slice(start, start + limit),
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.max(1, Math.ceil(total / limit)),
-      },
-    };
+    result = { accounts: scopedAccounts };
   }
 
   const { roles: consoleRoles } = await listRoles({
@@ -833,9 +877,8 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
   for (const r of consoleRoles) {
     if (r.roleKey) roleByKey[r.roleKey] = r;
   }
-  const { items: activePolicies } = await listAccessPolicies({ page: 1, limit: 200, status: "active" });
 
-  const members = [];
+  const matchedAccounts = [];
   for (const acc of result.accounts || []) {
     const pub = typeof acc.password === "undefined" ? acc : toPublicAccount(acc);
     const roleKeys = Array.isArray(pub.roleKeys) ? pub.roleKeys : [];
@@ -844,8 +887,27 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
       roleKeys[0] ||
       null;
     if (!(await canViewTeamAccount(req, pub, primaryAccountRole))) continue;
+    if (selectedConsoleRole && !accountMatchesConsoleRole(pub, selectedConsoleRole, primaryAccountRole)) {
+      continue;
+    }
+    matchedAccounts.push({ pub, primaryAccountRole, roleKeys });
+  }
+
+  if (selectedConsoleRole || visibleRoles !== null) {
+    result = paginateAccounts(matchedAccounts, page, limit);
+  } else {
+    result = {
+      accounts: matchedAccounts,
+      pagination: result.pagination,
+    };
+  }
+
+  const { items: activePolicies } = await listAccessPolicies({ page: 1, limit: 200, status: "active" });
+
+  const members = [];
+  for (const { pub, primaryAccountRole, roleKeys } of result.accounts || []) {
     const uiRole = ACCOUNT_TO_UI_ROLE[primaryAccountRole] || primaryAccountRole;
-    const consoleRole = uiRole ? roleByKey[uiRole] : null;
+    const consoleRole = resolveAssignedConsoleRole(pub, primaryAccountRole, consoleRoles, roleByKey);
 
     const overrides =
       getMembership(pub, primaryAccountRole)?.permissionOverrides?.consoleGrants;
@@ -1016,7 +1078,11 @@ exports.getAccessMember = asyncHandler(async (req, res) => {
     page: 1,
     limit: 100,
   });
-  const consoleRole = consoleRoles.find((r) => r.roleKey === uiRole) || null;
+  const roleByKey = {};
+  for (const r of consoleRoles) {
+    if (r.roleKey) roleByKey[r.roleKey] = r;
+  }
+  const consoleRole = resolveAssignedConsoleRole(pub, primaryAccountRole, consoleRoles, roleByKey);
   const membership = getMembership(account, primaryAccountRole);
   const roleGrants = consoleRole ? permissionsToGrantsMap(consoleRole.permissions || []) : {};
   const overrideGrants = membership?.permissionOverrides?.consoleGrants;

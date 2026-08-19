@@ -225,10 +225,11 @@ export function TeamMemberPage() {
   const { memberId } = useParams();
   const [searchParams] = useSearchParams();
   const { showToast: onToast } = useOutletContext();
-  const { isSuperAdmin, viewAs } = useViewAs();
+  const { isSuperAdmin, viewAs, sessionUi } = useViewAs();
   const navigate = useNavigate();
   const permsRef = useRef(null);
-  const requestsApproval = !isSuperAdmin && viewAs === "wc";
+  const actorIsWc = viewAs === "wc" || sessionUi === "wc";
+  const requestsApproval = !isSuperAdmin && actorIsWc;
 
   const [member, setMember] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -264,14 +265,14 @@ export function TeamMemberPage() {
       setAccessRoles(Array.isArray(roles) ? roles : []);
       setMember(m);
       setRoleDraft(m.consoleRoleId || m.primaryRoleKey || "wc");
-      setGrants(editorGrants(m, !isSuperAdmin && viewAs === "wc", rows));
+      setGrants(editorGrants(m, requestsApproval, rows));
       setDirtyPerms(false);
     } catch (err) {
       setError(err?.message || "Failed to load member");
     } finally {
       setLoading(false);
     }
-  }, [memberId, isSuperAdmin, viewAs]);
+  }, [memberId, requestsApproval]);
 
   useEffect(() => {
     load();
@@ -299,10 +300,14 @@ export function TeamMemberPage() {
   const roleMeta = roleChipMeta(activeRole, activeBaseUiKey);
   const granted = countMemberGranted(grants, catalogRows);
   const avatarColor = STAFF_AVATARS[(member?.name?.length || 0) % STAFF_AVATARS.length];
+  const targetIsAwc =
+    member?.primaryRoleKey === "awc" ||
+    member?.accountRoleKey === "assistant_wellness_coach" ||
+    activeBaseUiKey === "awc";
   const canEditPerms =
     Boolean(member) &&
     !member.isSuperAdmin &&
-    (isSuperAdmin || (requestsApproval && member.primaryRoleKey === "awc"));
+    (isSuperAdmin || (requestsApproval && targetIsAwc));
 
   const matrixGroups = useMemo(() => {
     const groups = [];

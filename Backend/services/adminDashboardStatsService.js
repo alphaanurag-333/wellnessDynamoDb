@@ -114,7 +114,7 @@ function formatPaymentDateLabel(iso) {
 }
 
 function paymentProgramLabel(row) {
-  const type = String(row.productType || "").toLowerCase();
+  const type = String(row.productType || "consultancy").toLowerCase();
   const catalog = String(
     row.userSnapshot?.catalogItemName ||
       row.userSnapshot?.programTitle ||
@@ -125,7 +125,7 @@ function paymentProgramLabel(row) {
   const name = catalog || concern;
 
   if (type === "program") return name || "Wellness program";
-  if (type === "consultancy") return name || "PWC";
+  if (type === "consultancy") return "Consultation";
   if (type === "subscription" || type === "energy_exchange") {
     if (!name) return type === "energy_exchange" ? "Energy Exchange" : "App user";
     if (/^app user/i.test(name)) return name;

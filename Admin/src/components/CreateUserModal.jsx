@@ -26,6 +26,21 @@ import {
 
 const IMAGE_MAX_BYTES = 25 * 1024 * 1024;
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+const DOB_MIN_AGE_YEARS = 5;
+
+function toLocalDateOnly(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function maxAllowedDob(yearsBack = DOB_MIN_AGE_YEARS) {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  date.setFullYear(date.getFullYear() - yearsBack);
+  return toLocalDateOnly(date);
+}
 const GENDER_OPTIONS = [
   { value: "male", label: "Male" },
   { value: "female", label: "Female" },
@@ -174,9 +189,10 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
     if (nameErr) next.name = nameErr;
     const emailErr = validateEmail(form.email);
     if (emailErr) next.email = emailErr;
+    const dobMax = maxAllowedDob();
     if (!form.dob) next.dob = "Date of birth is required.";
-    else if (form.dob > new Date().toISOString().slice(0, 10)) {
-      next.dob = "Date of birth cannot be in the future.";
+    else if (form.dob > dobMax) {
+      next.dob = `Date of birth must be at least ${DOB_MIN_AGE_YEARS} years ago.`;
     }
     if (!form.gender) next.gender = "Gender is required.";
     const phoneErr = validatePhoneDigits(form.phone);
@@ -327,12 +343,17 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
                 onChange={(e) => patch({ email: sanitizeEmailInput(e.target.value) })}
               />
             </Field>
-            <Field label="Date of birth" required error={errors.dob}>
+            <Field
+              label="Date of birth"
+              required
+              hint={`Must be at least ${DOB_MIN_AGE_YEARS} years ago.`}
+              error={errors.dob}
+            >
               <input
                 className="ua-create-user__input"
                 type="date"
                 value={form.dob}
-                max={new Date().toISOString().slice(0, 10)}
+                max={maxAllowedDob()}
                 disabled={busy}
                 onChange={(e) => patch({ dob: e.target.value })}
               />

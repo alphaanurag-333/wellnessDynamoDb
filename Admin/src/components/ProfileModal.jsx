@@ -828,6 +828,12 @@ export function ProfileModal({ open, onClose, onToast }) {
                 <span>Last sign-in</span>
                 <span>{profile.lastSignIn}</span>
               </div>
+              {profile.isCoach ? (
+                <div className="ua-profile-modal__account-row">
+                  <span>Referral code</span>
+                  <span>{profile.referralCode || "—"}</span>
+                </div>
+              ) : null}
             </div>
             <button
               type="button"
