@@ -125,7 +125,13 @@ router.post(
   cancelStaffOnboardingMeetingController
 );
 router.get("/:id", protectAccount, clientView, getUserByIdController);
-router.post("/", protectAccount, authorizeStaff("console.cl.edit", { admin: "users.edit" }), optionalUserFile, createUserController);
+router.post(
+  "/",
+  protectAccount,
+  authorizeStaff(["console.cl.create", "console.cl.edit"], { admin: "users.edit" }),
+  optionalUserFile,
+  createUserController
+);
 router.post("/:id/convert-to-heal", protectAccount, authorizeStaff("console.cl.edit", { admin: "users.edit" }), convertUserToHealController);
 router.post("/:id/convert-to-seek", protectAccount, authorizeStaff("console.cl.edit", { admin: "users.edit" }), convertUserToSeekController);
 router.post("/:id/convert-to-maintenance", protectAccount, authorizeStaff("console.cl.edit", { admin: "users.edit" }), convertUserToMaintenanceController);

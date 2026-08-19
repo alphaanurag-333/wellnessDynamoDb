@@ -6,7 +6,6 @@ import {
   NAV_ITEMS,
   UPDATED_ADMIN_PATHS,
   VIEW_AS_ROLES,
-  VIEW_AS_STAFF_TOTAL,
 } from "../data/dashboardData.js";
 import { useAppSelector } from "../store/hooks.js";
 import { selectAdminLogoUrl, selectAppName } from "../store/slices/appConfigSlice.js";
@@ -44,6 +43,7 @@ function ViewAsRolePicker({ collapsed }) {
   const { viewAs, setViewAs, activeRole, availableUiRoles } = useViewAs();
   const [open, setOpen] = useState(false);
   const roles = availableUiRoles?.length ? availableUiRoles : VIEW_AS_ROLES;
+  const staffTotal = roles.reduce((sum, role) => sum + (Number(role.live) || 0), 0);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -112,7 +112,7 @@ function ViewAsRolePicker({ collapsed }) {
           <div className={`sidebar__viewas-menu${collapsed ? " sidebar__viewas-menu--rail" : ""}`} role="menu">
             <div className="sidebar__viewas-menu-head">
               <span>Live roles</span>
-              <span>{VIEW_AS_STAFF_TOTAL} staff</span>
+              <span>{staffTotal} staff</span>
             </div>
             {roles.map((role) => {
               const active = viewAs === role.id;

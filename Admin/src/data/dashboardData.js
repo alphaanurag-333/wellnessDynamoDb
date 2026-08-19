@@ -13,6 +13,7 @@ export const UPDATED_ADMIN_PATHS = {
   sop: "/sop",
   myContent: "/my-content",
   commitmentLetters: (coachId = "anita-rao") => `/my-content/letters/${coachId}`,
+  notifications: "/notifications",
 };
 
 export const NAV_ITEMS = [

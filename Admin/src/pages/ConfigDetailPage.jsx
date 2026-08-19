@@ -370,6 +370,7 @@ function PricingNewForm({
   namePlaceholder,
   inputRef,
   includeDiscount,
+  includeDays,
 }) {
   return (
     <section className="ua-cfg-pricing-new">
@@ -380,7 +381,7 @@ function PricingNewForm({
         </h4>
         <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={onClose}>×</button>
       </div>
-      <div className={`ua-cfg-pricing-new__row${includeDiscount ? " ua-cfg-pricing-new__row--discount" : ""}`}>
+      <div className={`ua-cfg-pricing-new__row${includeDiscount ? " ua-cfg-pricing-new__row--discount" : ""}${includeDays ? " ua-cfg-pricing-new__row--days" : ""}`}>
         <input
           ref={inputRef}
           type="text"
@@ -430,6 +431,21 @@ function PricingNewForm({
             </label>
           </>
         ) : null}
+        {includeDays ? (
+          <label className="ua-cfg-pricing-new__amount">
+            <input
+              type="text"
+              inputMode="numeric"
+              value={draft.days}
+              aria-label="Number of days"
+              onChange={(event) => onChange({
+                ...draft,
+                days: event.target.value.replace(/[^\d]/g, ""),
+              })}
+            />
+            <span className="ua-cfg-pricing-new__amount-label">Days</span>
+          </label>
+        ) : null}
         <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" onClick={onSubmit}>
           Add
         </button>
@@ -439,14 +455,15 @@ function PricingNewForm({
 }
 
 function emptyPricingDraft() {
-  return { name: "", amount: "", discountPercent: "", validityHours: "" };
+  return { name: "", amount: "", discountPercent: "", validityHours: "", days: "" };
 }
 
-function validatePricingDraft(draft, { includeDiscount, onToast }) {
+function validatePricingDraft(draft, { includeDiscount, includeDays, onToast }) {
   const name = draft.name.trim();
   const amount = Number(draft.amount);
   const discountPercent = Number(draft.discountPercent);
   const validityHours = Number(draft.validityHours);
+  const days = Number(draft.days);
   if (!name) {
     onToast("Program name is required");
     return null;
@@ -463,10 +480,15 @@ function validatePricingDraft(draft, { includeDiscount, onToast }) {
     onToast("Enter discount validity in whole hours");
     return null;
   }
+  if (includeDays && draft.days !== "" && (!Number.isInteger(days) || days <= 0)) {
+    onToast("Enter a valid number of days");
+    return null;
+  }
   return {
     name,
     amount,
     ...(includeDiscount ? { discountPercent, validityHours } : {}),
+    ...(includeDays && draft.days !== "" ? { days } : {}),
   };
 }
 
@@ -536,6 +558,7 @@ function PricingPanel({
   formTitle = "New program",
   namePlaceholder = "Program name",
   includeDiscount = false,
+  includeDays = false,
 }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [draft, setDraft] = useState(emptyPricingDraft);
@@ -608,7 +631,7 @@ function PricingPanel({
   }
 
   function submitNewRow() {
-    const next = validatePricingDraft(draft, { includeDiscount, onToast });
+    const next = validatePricingDraft(draft, { includeDiscount, includeDays, onToast });
     if (!next) return;
     const nextRows = [
       ...rows,
@@ -670,6 +693,12 @@ function PricingPanel({
           cancelEdit();
           return;
         }
+      } else if (field === "days") {
+        if (!Number.isInteger(nextValue) || nextValue <= 0) {
+          onToast("Enter a valid number of days");
+          cancelEdit();
+          return;
+        }
       }
     }
 
@@ -714,21 +743,23 @@ function PricingPanel({
             namePlaceholder={namePlaceholder}
             inputRef={nameInputRef}
             includeDiscount={includeDiscount}
+            includeDays={includeDays}
           />
         </div>
       ) : null}
       <div className="ua-cfg-pricing bordercss">
-        <div className={`ua-cfg-pricing__head${includeDiscount ? " ua-cfg-pricing__head--discount" : ""}`}>
+        <div className={`ua-cfg-pricing__head${includeDiscount ? " ua-cfg-pricing__head--discount" : ""}${includeDays ? " ua-cfg-pricing__head--days" : ""}`}>
           <span>Program</span>
           <span>Amount (Rs.)</span>
           {includeDiscount ? <span>Discount</span> : null}
           {includeDiscount ? <span>Valid for</span> : null}
+          {includeDays ? <span>Days</span> : null}
           <span aria-hidden="true" />
         </div>
         {rows.map((row) => (
           <div
             key={row.id}
-            className={`ua-cfg-pricing__row${includeDiscount ? " ua-cfg-pricing__row--discount" : ""}`}
+            className={`ua-cfg-pricing__row${includeDiscount ? " ua-cfg-pricing__row--discount" : ""}${includeDays ? " ua-cfg-pricing__row--days" : ""}`}
           >
             <PricingEditableCell
               row={row}
@@ -785,6 +816,22 @@ function PricingPanel({
                 onSave={saveEdit}
                 onCancel={cancelEdit}
                 inputRef={editingCell?.id === row.id && editingCell?.field === "validityHours" ? amountInputRef : null}
+                disabled={saving}
+                numeric
+              />
+            ) : null}
+            {includeDays ? (
+              <PricingEditableCell
+                row={row}
+                field="days"
+                display={row.days ? `${row.days} days` : "—"}
+                editing={editingCell?.id === row.id && editingCell?.field === "days"}
+                value={editValue}
+                onStart={() => startEdit(row, "days")}
+                onChange={setEditValue}
+                onSave={saveEdit}
+                onCancel={cancelEdit}
+                inputRef={editingCell?.id === row.id && editingCell?.field === "days" ? amountInputRef : null}
                 disabled={saving}
                 numeric
               />
@@ -1581,6 +1628,7 @@ export function ConfigDetailPage() {
               addLabel="+ Add subscription"
               formTitle="New subscription"
               namePlaceholder="Subscription name"
+              includeDays
             />
             <TagCreatePanel
               title="Validity periods available to coaches"

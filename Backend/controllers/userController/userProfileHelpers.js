@@ -26,6 +26,9 @@ const {
 } = require("../../services/accountResolver");
 const { toPublicIntroVideo } = require("../../utils/coachContent");
 const {
+  listSubscriptionsByUserId,
+} = require("../../models/energyExchangeSubscriptionModel");
+const {
   getUserById,
   getUserByEmail,
   getUserByPhone,
@@ -120,6 +123,7 @@ function parseUserFields(body, { requirePassword = false } = {}) {
   const country = body.country !== undefined ? String(body.country || "").trim() || null : undefined;
   const state = body.state !== undefined ? String(body.state || "").trim() || null : undefined;
   const city = body.city !== undefined ? String(body.city || "").trim() || null : undefined;
+  const pincode = body.pincode !== undefined ? String(body.pincode || "").trim() || null : undefined;
   const primaryHealthConcern =
     body.primaryHealthConcern !== undefined
       ? String(body.primaryHealthConcern || "").trim() || null
@@ -183,6 +187,7 @@ function parseUserFields(body, { requirePassword = false } = {}) {
     country: country ?? null,
     state: state ?? null,
     city: city ?? null,
+    pincode: pincode ?? null,
     primaryHealthConcern: primaryHealthConcern ?? null,
     primaryHealthConcernOther: primaryHealthConcernOther ?? null,
     termsAccepted: termsAccepted ?? false,
@@ -308,6 +313,22 @@ async function enrichUser(user, { ensureReferral = true } = {}) {
     } else {
       pub.parentCoach = null;
     }
+  }
+
+  try {
+    const subsResult = await listSubscriptionsByUserId(pub.id, { status: "active", page: 1, limit: 10 });
+    const activeSubs = subsResult?.items || [];
+    const now = new Date();
+    let maxDaysLeft = 0;
+    for (const sub of activeSubs) {
+      if (sub.endsAt) {
+        const diff = Math.ceil((new Date(sub.endsAt) - now) / (1000 * 60 * 60 * 24));
+        if (diff > maxDaysLeft) maxDaysLeft = diff;
+      }
+    }
+    pub.subscriptionDaysLeft = maxDaysLeft > 0 ? maxDaysLeft : 0;
+  } catch (err) {
+    pub.subscriptionDaysLeft = 0;
   }
 
   return pub;

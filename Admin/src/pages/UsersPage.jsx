@@ -34,6 +34,7 @@ import {
 } from "../api/usersApi.js";
 import { fetchTeamMembers } from "../api/teamsApi.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
+import { CreateUserModal } from "../components/CreateUserModal.jsx";
 
 function resolveWcId(user) {
   if (user?.parentCoachId) return String(user.parentCoachId);
@@ -114,22 +115,24 @@ function buildPageItems(current, total) {
 export function UsersPage() {
   const navigate = useNavigate();
   const { showToast: onToast } = useOutletContext();
-  const { activeRole, can, dataScope } = useViewAs();
+  const { activeRole, can, dataScope, viewAs, viewAsPersona } = useViewAs();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const canCreate = can("console.cl.create");
   const canEdit = can("console.cl.edit");
   const canDelete = can("console.cl.delete");
   const canExport = can("console.cl.export");
-  // Reassignment needs both the Teams feature and write access on the client record.
-  const canReassignAwc = can("console.ra.edit") && canEdit;
-  // Moving a client between wellness coaches is only meaningful for roles that
-  // can see every roster — a coach may only pick assistants from their own team.
-  const canReassignWc = canReassignAwc && dataScope === "all";
+  // Admin can assign WC / AWC from this list. WC, AWC, and other staff only see names.
+  const canAssignCoaches =
+    viewAs === "admin" && dataScope === "all" && can("console.ra.edit") && canEdit;
+  const canReassignAwc = canAssignCoaches;
+  const canReassignWc = canAssignCoaches;
   const showRowActions = canEdit || canDelete;
   const isReadOnly = !canEdit && !canDelete && !canCreate;
   // Roles scoped to their own roster read through the hierarchy-aware endpoint.
-  const useScopedUsers = dataScope !== "all";
+  // WC and AWC always use the scoped endpoint — even when an admin previews those roles.
+  const SCOPED_ROLES = new Set(["wc", "awc", "trainee"]);
+  const useScopedUsers = dataScope !== "all" || SCOPED_ROLES.has(viewAs) || SCOPED_ROLES.has(viewAsPersona);
 
   const [users, setUsers] = useState([]);
   const [pagination, setPagination] = useState({
@@ -155,6 +158,7 @@ export function UsersPage() {
   const [selectReset, setSelectReset] = useState(0);
   const [reloadNonce, setReloadNonce] = useState(0);
   const [openTierMore, setOpenTierMore] = useState(null);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const typeTab = searchParams.get("tab") || "all";
   const tierFilter = searchParams.get("tier") || "";
@@ -695,7 +699,7 @@ export function UsersPage() {
             </button>
           ) : null}
           {canCreate ? (
-            <OrangeButton onClick={() => onToast("Add user — coming soon")}>+ Add user</OrangeButton>
+            <OrangeButton onClick={() => setCreateOpen(true)}>+ Add user</OrangeButton>
           ) : null}
         </div>
 
@@ -1035,6 +1039,13 @@ export function UsersPage() {
           </div>
         </div>
       ) : null}
+
+      <CreateUserModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onToast={onToast}
+        onCreated={() => refreshUsers()}
+      />
 
       {deleteTarget ? (
         <div className="ua-dialog-backdrop" onClick={() => !actionBusy && setDeleteTarget(null)} role="presentation">

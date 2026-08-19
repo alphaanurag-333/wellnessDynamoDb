@@ -544,6 +544,7 @@ function PoliciesTab({ onToast }) {
 }
 
 function RolesPermissionsTab({ onToast }) {
+  const { reloadLiveRoles } = useViewAs();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [apiRoles, setApiRoles] = useState([]);
@@ -584,6 +585,7 @@ function RolesPermissionsTab({ onToast }) {
     try {
       const roles = await fetchAccessRoles();
       hydrate(roles);
+      await reloadLiveRoles();
       const firstKey = roles[0] ? roleUiKey(roles[0]) : "admin";
       setSelectedRole((prev) => {
         const stillThere = roles.some((r) => roleUiKey(r) === prev);
@@ -596,7 +598,7 @@ function RolesPermissionsTab({ onToast }) {
     } finally {
       setLoading(false);
     }
-  }, [hydrate]);
+  }, [hydrate, reloadLiveRoles]);
 
   useEffect(() => {
     loadRoles();
@@ -649,10 +651,11 @@ function RolesPermissionsTab({ onToast }) {
       setApiRoles((prev) => prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)));
       setDirty(false);
       onToast("Saved");
+      reloadLiveRoles();
     } catch (err) {
       onToast(err?.message || "Save failed");
     }
-  }, [onToast]);
+  }, [onToast, reloadLiveRoles]);
 
   const scheduleSave = useCallback(() => {
     setDirty(true);

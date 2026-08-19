@@ -19,6 +19,7 @@ import { UsersLayout } from "../pages/UsersLayout.jsx";
 import { UserDetailPage } from "../pages/UserDetailPage.jsx";
 import { BrandLoader } from "../components/BrandLoader.jsx";
 import { AdminLoginPage } from "../pages/AdminLoginPage.jsx";
+import { NotificationsPage } from "../pages/NotificationsPage.jsx";
 
 function AdminRoot() {
   return (
@@ -61,6 +62,7 @@ export const adminRouteTree = (
       <Route path="sop" element={<SopPage />} />
       <Route path="my-content" element={<MyContentPage />} />
       <Route path="my-content/letters/:coachId" element={<CommitmentLettersPage />} />
+      <Route path="notifications" element={<NotificationsPage />} />
       <Route path="*" element={<AdminNotFoundPage />} />
     </Route>
   </Route>

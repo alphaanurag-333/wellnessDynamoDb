@@ -33,9 +33,9 @@ export const PROGRAM_PRICING = [
 ];
 
 export const SUBSCRIPTION_PRICING = [
-  { id: "sub-month", name: "App subscription · monthly", amount: 499 },
-  { id: "sub-year", name: "App subscription · yearly", amount: 4999 },
-  { id: "sub-2y", name: "App subscription · 2 years", amount: 8999 },
+  { id: "sub-month", name: "App subscription · monthly", amount: 499, days: 30 },
+  { id: "sub-year", name: "App subscription · yearly", amount: 4999, days: 365 },
+  { id: "sub-2y", name: "App subscription · 2 years", amount: 8999, days: 730 },
 ];
 
 export const PWC_COMPLETED = [

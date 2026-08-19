@@ -7,13 +7,11 @@ import {
   buildPhotosByAngle,
   buildMeasurementRows,
   buildMetabolicRows,
-  DUMMY_JULY_PERIOD,
   formatHistoryColumns,
   formatPeriodOption,
   formatPhotoDate,
   getHistoryWindow,
   getPeriodOptions,
-  withDummyJulyHistory,
 } from "../../data/bodyAnalyticsData.js";
 
 function getModalRoot() {
@@ -288,7 +286,7 @@ export function BodyAnalyticsSection({ user, onToast }) {
     setLoadError("");
     fetchUserBodyAnalytics(user?.id)
       .then((data) => {
-        if (!cancelled) setBodyAnalytics(withDummyJulyHistory(data));
+        if (!cancelled) setBodyAnalytics(data);
       })
       .catch((error) => {
         if (cancelled) return;
@@ -307,9 +305,6 @@ export function BodyAnalyticsSection({ user, onToast }) {
   useEffect(() => {
     setPeriod((current) => {
       if (current && periodOptions.includes(current)) return current;
-      if (historyMode === "monthly" && periodOptions.includes(DUMMY_JULY_PERIOD)) {
-        return DUMMY_JULY_PERIOD;
-      }
       return periodOptions[0] || "";
     });
   }, [historyMode, periodOptions]);

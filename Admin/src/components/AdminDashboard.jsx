@@ -322,7 +322,8 @@ export function AdminDashboard({
   onRetry,
 }) {
   const navigate = useNavigate();
-  const { viewAs } = useViewAs();
+  const { viewAs: viewAsId, viewAsPersona } = useViewAs();
+  const viewAs = viewAsPersona || viewAsId;
   const isStaffDash = viewAs === "wc" || viewAs === "awc";
   const isSupportDash = viewAs === "support";
   const isFullDash = viewAs === "admin" || isStaffDash;

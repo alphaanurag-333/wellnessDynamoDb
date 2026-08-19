@@ -367,16 +367,45 @@ function LiveReportHistory({ reports, busy, onToast, onReview }) {
       </div>
       {filtered.length ? filtered.map((report) => {
         const reviewed = report.reviewStatus === "reviewed";
+        // Prefer the AI payload itself; `aiStatus` can be inconsistent on older records.
+        const hasAi = Boolean(report.aiAnalysis?.panels?.length);
+        const outOfRange = report.aiAnalysis?.panels?.flatMap((panel) =>
+          (panel.rows || [])
+            .filter((row) => row.tone === "bad" || row.tone === "warn")
+            .map((row) => `${row.name}${row.value && row.value !== "—" ? ` ${row.value}` : ""}${row.rr ? ` (${row.rr})` : ""}`),
+        ) || [];
+        const badgeText = hasAi
+          ? outOfRange.length
+            ? `${outOfRange.length} OUT OF RANGE`
+            : "ALL IN RANGE"
+          : reviewed
+          ? "REVIEWED"
+          : "PENDING";
+        const badgeTone = hasAi
+          ? outOfRange.length
+            ? "bad"
+            : "good"
+          : reviewed
+          ? "good"
+          : "bad";
+        const meta = [
+          report.labName,
+          report.collectionType,
+          report.reviewedByName ? `reviewed by ${report.reviewedByName}` : reviewed ? "reviewed by coach" : null,
+          report.aiAnalysis?.panels?.length ? `${report.aiAnalysis.panels.reduce((s, p) => s + (p.rows?.length || 0), 0)} markers` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ");
         return (
           <div key={report.id} className="ua-cp-ip-history__item">
             <div className="ua-cp-ip-history__row">
               <div className="ua-cp-ip-history__info">
                 <strong>{formatDisplayDate(report.reportDate)}</strong>
-                <span>{reviewed ? "Reviewed by coach" : "Uploaded by client · pending review"}</span>
+                {meta ? <span>{meta}</span> : null}
               </div>
               <div className="ua-cp-ip-history__actions">
-                <span className={`ua-cp-ip-badge ua-cp-ip-badge--${reviewed ? "good" : "bad"}`}>
-                  {reviewed ? "REVIEWED" : "PENDING"}
+                <span className={`ua-cp-ip-badge ua-cp-ip-badge--${badgeTone}`}>
+                  {badgeText}
                 </span>
                 {report.fileUrl ? (
                   <a className="ua-cp-ip-history__dl" href={report.fileUrl} target="_blank" rel="noreferrer" aria-label={`Open report ${report.reportDate}`}>
@@ -397,6 +426,13 @@ function LiveReportHistory({ reports, busy, onToast, onReview }) {
                 ) : null}
               </div>
             </div>
+            {outOfRange.length ? (
+              <div className="ua-cp-ip-history__markers">
+                {outOfRange.map((label) => (
+                  <span key={label} className="ua-cp-ip-marker">{label}</span>
+                ))}
+              </div>
+            ) : null}
           </div>
         );
       }) : <p>No lab reports in this range.</p>}

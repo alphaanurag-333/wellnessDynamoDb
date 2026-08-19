@@ -453,7 +453,7 @@ export function mapApiUserToRow(user, index = 0) {
     assignedProgramTitle,
     assignedProgramStatus,
     assignedCatalogProgramId: String(assignedProgram?.catalogProgramId || "").trim(),
-    subscriptionDays: 0,
+    subscriptionDays: Number(user?.subscriptionDaysLeft) || 0,
     tags: buildTags(user, goal),
     goals: goal ? [goal] : [],
     profileImage: user?.profileImage || "",
@@ -482,6 +482,23 @@ export function mapApiUserToRow(user, index = 0) {
     healPaidAt: user?.healPaidAt || "",
     whatsappSameAsMobile: Boolean(user?.whatsappSameAsMobile),
   };
+}
+
+export async function createUser(fields = {}, profileFile) {
+  const form = new FormData();
+  Object.entries(fields).forEach(([key, value]) => {
+    if (value === undefined || value === null) return;
+    if (typeof value === "boolean") form.append(key, value ? "true" : "false");
+    else form.append(key, String(value));
+  });
+  if (profileFile instanceof File) form.append("file", profileFile);
+
+  try {
+    const { data } = await api.post("/account/users", form, { headers: authHeader() });
+    return mapApiUserToRow(data.user);
+  } catch (error) {
+    normalizeApiError(error);
+  }
 }
 
 export async function fetchUsers({

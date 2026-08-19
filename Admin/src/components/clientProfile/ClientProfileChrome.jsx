@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { CLIENT_NOTIFICATIONS } from "../../data/userDetailData.js";
 import { UPDATED_ADMIN_PATHS } from "../../data/dashboardData.js";
+import { NotificationInboxPanel } from "../NotificationInboxPanel.jsx";
 
 function clientInitials(name) {
   const parts = String(name || "Client").trim().split(/\s+/).filter(Boolean);
@@ -32,21 +32,7 @@ export function ClientProfileTopbar({
   onBack,
   showBack,
   onSave,
-  notifications = CLIENT_NOTIFICATIONS,
 }) {
-  const [bellOpen, setBellOpen] = useState(false);
-  const bellRef = useRef(null);
-  const unreadCount = notifications.items.length;
-
-  useEffect(() => {
-    if (!bellOpen) return undefined;
-    function onDocClick(e) {
-      if (bellRef.current && !bellRef.current.contains(e.target)) setBellOpen(false);
-    }
-    document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
-  }, [bellOpen]);
-
   return (
     <header className="ua-cp-topbar">
       <Link to={UPDATED_ADMIN_PATHS.users} className="ua-cp-topbar__btn">← Users</Link>
@@ -67,45 +53,10 @@ export function ClientProfileTopbar({
               <path d="M7 3v5h8" />
             </svg>
           </button>
-          <div className="ua-cp-topbar__bell-wrap" ref={bellRef}>
-            <button
-              type="button"
-              className="ua-cp-topbar__icon ua-cp-topbar__icon--bell"
-              title="Notifications"
-              aria-label="Notifications"
-              aria-expanded={bellOpen}
-              onClick={() => setBellOpen((o) => !o)}
-            >
-              <span aria-hidden="true">🔔</span>
-              {unreadCount > 0 ? <span className="ua-cp-topbar__badge">{unreadCount}</span> : null}
-            </button>
-            {bellOpen ? (
-              <div className="ua-cp-notif-panel header__notif-panel" role="dialog" aria-label="Notifications">
-                <div className="ua-cp-notif-panel__head">
-                  <span className="ua-cp-notif-panel__title">Notifications</span>
-                  <span className="ua-cp-notif-panel__count">{unreadCount}</span>
-                  <button type="button" className="ua-cp-notif-panel__close" onClick={() => setBellOpen(false)} aria-label="Close">×</button>
-                </div>
-                <div className="ua-cp-notif-panel__last">
-                  <span className="ua-cp-notif-panel__last-icon">{notifications.lastAction.icon}</span>
-                  <div className="ua-cp-notif-panel__last-body">
-                    <div className="ua-cp-notif-panel__last-label">Last action</div>
-                    <div className="ua-cp-notif-panel__last-text">{notifications.lastAction.text}</div>
-                  </div>
-                  <span className="ua-cp-notif-panel__last-time">{notifications.lastAction.time}</span>
-                </div>
-                <div className="ua-cp-notif-panel__list">
-                  {notifications.items.map((n, i) => (
-                    <div key={i} className="ua-cp-notif-panel__item">
-                      <span className="ua-cp-notif-panel__item-icon">{n.icon}</span>
-                      <div className="ua-cp-notif-panel__item-text">{n.text}</div>
-                      <span className="ua-cp-notif-panel__item-time">{n.time}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-          </div>
+          <NotificationInboxPanel
+            wrapClassName="ua-cp-topbar__bell-wrap"
+            btnClassName="ua-cp-topbar__icon ua-cp-topbar__icon--bell"
+          />
       </div>
     </header>
   );

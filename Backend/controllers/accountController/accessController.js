@@ -467,6 +467,8 @@ exports.createAccessRole = asyncHandler(async (req, res) => {
 
   let permissions = [];
   let inherits = inheritFromRoleId || null;
+  let nextNav = Array.isArray(navSections) ? navSections : [];
+  let nextScope = dataScope || "team";
   if (grants !== undefined) {
     permissions = grantsMapToPermissions(grants);
   } else if (inherits) {
@@ -475,6 +477,8 @@ exports.createAccessRole = asyncHandler(async (req, res) => {
       throw new AppError("inheritFromRoleId must be a CONSOLE role", 400);
     }
     permissions = [...(parent.permissions || [])];
+    if (!nextNav.length && Array.isArray(parent.navSections)) nextNav = parent.navSections;
+    if (!dataScope && parent.dataScope) nextScope = parent.dataScope;
   }
 
   const slugBase = normalizeSlug(name);
@@ -489,8 +493,8 @@ exports.createAccessRole = asyncHandler(async (req, res) => {
     description: description || null,
     roleKey: roleKey || null,
     inheritsFromRoleId: inherits,
-    navSections: navSections || [],
-    dataScope: dataScope || "team",
+    navSections: nextNav,
+    dataScope: nextScope,
     locked: false,
   });
 

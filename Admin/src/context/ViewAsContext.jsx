@@ -11,6 +11,7 @@ import {
   ROLE_KEY_TO_UI,
   UI_TO_ROLE_KEY,
 } from "../api/accountApi.js";
+import { fetchAccessRoles } from "../api/accessApi.js";
 import {
   ALL_CONSOLE_PERMISSIONS,
   baselineDataScopeForRole,
@@ -19,6 +20,7 @@ import {
   hasConsolePermission,
   sectionsFromPermissions,
 } from "../utils/permissions.js";
+import { staticViewAsMenuRoles, toViewAsMenuRole } from "../utils/liveRoles.js";
 import { loadAppConfig } from "../store/loadAppConfig.js";
 import { clearAdminProfile, setAdminProfile } from "../store/slices/adminProfileSlice.js";
 
@@ -29,7 +31,7 @@ const ViewAsContext = createContext(null);
 function readStoredViewAs() {
   try {
     const stored = localStorage.getItem(VIEW_AS_STORAGE_KEY);
-    if (stored && VIEW_AS_ROLES.some((role) => role.id === stored)) return stored;
+    if (stored) return stored;
   } catch {
     /* ignore */
   }
@@ -73,6 +75,27 @@ export function ViewAsProvider({ children }) {
   const [viewAs, setViewAsState] = useState(() => uiFromAccount(readAccountAuth()?.account));
   const [bootstrapping, setBootstrapping] = useState(Boolean(readAccountAuth()?.accessToken));
   const [authError, setAuthError] = useState("");
+  const [liveMenuRoles, setLiveMenuRoles] = useState(() => staticViewAsMenuRoles());
+  const [liveRolesReady, setLiveRolesReady] = useState(false);
+
+  const reloadLiveRoles = useCallback(async () => {
+    if (!readAccountAuth()?.accessToken) {
+      setLiveMenuRoles(staticViewAsMenuRoles());
+      setLiveRolesReady(true);
+      return [];
+    }
+    try {
+      const roles = await fetchAccessRoles();
+      const mapped = (Array.isArray(roles) ? roles : []).map(toViewAsMenuRole);
+      setLiveMenuRoles(mapped.length ? mapped : staticViewAsMenuRoles());
+      return mapped;
+    } catch {
+      setLiveMenuRoles(staticViewAsMenuRoles());
+      return [];
+    } finally {
+      setLiveRolesReady(true);
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -89,6 +112,7 @@ export function ViewAsProvider({ children }) {
         setViewAsState(uiFromAccount(account));
         if (account) dispatch(setAdminProfile(account));
         loadAppConfig();
+        await reloadLiveRoles();
       } catch {
         if (!cancelled) {
           clearAccountAuth();
@@ -104,7 +128,7 @@ export function ViewAsProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [dispatch]);
+  }, [dispatch, reloadLiveRoles]);
 
   const setViewAsLocal = useCallback((roleId) => {
     setViewAsState(roleId);
@@ -123,9 +147,10 @@ export function ViewAsProvider({ children }) {
       setViewAsLocal(uiFromAccount(stored.account));
       if (stored?.account) dispatch(setAdminProfile(stored.account));
       loadAppConfig();
+      await reloadLiveRoles();
       return stored;
     },
-    [dispatch, setViewAsLocal],
+    [dispatch, reloadLiveRoles, setViewAsLocal],
   );
 
   const logout = useCallback(() => {
@@ -159,7 +184,7 @@ export function ViewAsProvider({ children }) {
 
   const setViewAs = useCallback(
     async (roleId) => {
-      const roleMeta = VIEW_AS_ROLES.find((r) => r.id === roleId);
+      const roleMeta = liveMenuRoles.find((r) => r.id === roleId);
       if (roleMeta && roleMeta.switchable === false) {
         setViewAsLocal(roleId);
         return { redirectedToAccess: true };
@@ -196,21 +221,36 @@ export function ViewAsProvider({ children }) {
         throw err;
       }
     },
-    [auth, dispatch, setViewAsLocal],
+    [auth, dispatch, liveMenuRoles, setViewAsLocal],
   );
 
-  const activeRole = useMemo(
-    () => VIEW_AS_ROLES.find((role) => role.id === viewAs) ?? VIEW_AS_ROLES[0],
-    [viewAs],
+  const catalogRoles = useMemo(
+    () => (liveMenuRoles.length ? liveMenuRoles : staticViewAsMenuRoles()),
+    [liveMenuRoles],
   );
 
   const availableUiRoles = useMemo(() => {
-    if (isSuperAdmin) return VIEW_AS_ROLES;
+    if (isSuperAdmin) return catalogRoles;
     const roles = auth?.account?.roles;
-    if (!Array.isArray(roles) || roles.length === 0) return VIEW_AS_ROLES;
+    if (!Array.isArray(roles) || roles.length === 0) return catalogRoles;
     const allowed = new Set(roles.map((k) => ROLE_KEY_TO_UI[k] || k));
-    return VIEW_AS_ROLES.filter((r) => allowed.has(r.id) || r.switchable === false);
-  }, [auth, isSuperAdmin]);
+    return catalogRoles.filter((r) => allowed.has(r.id) || r.switchable === false);
+  }, [auth, catalogRoles, isSuperAdmin]);
+
+  const activeRole = useMemo(
+    () =>
+      availableUiRoles.find((role) => role.id === viewAs) ||
+      catalogRoles.find((role) => role.id === viewAs) ||
+      catalogRoles[0] ||
+      VIEW_AS_ROLES[0],
+    [availableUiRoles, catalogRoles, viewAs],
+  );
+
+  useEffect(() => {
+    if (!liveRolesReady || !catalogRoles.length) return;
+    const known = catalogRoles.some((role) => role.id === viewAs);
+    if (!known) setViewAsLocal("admin");
+  }, [catalogRoles, liveRolesReady, setViewAsLocal, viewAs]);
 
   const sessionUi = auth?.account
     ? ROLE_KEY_TO_UI[auth.account.activeRole] || auth.account.activeRoleUi
@@ -229,9 +269,9 @@ export function ViewAsProvider({ children }) {
     if (isAdminView) return [...ALL_CONSOLE_PERMISSIONS];
     const granted = sessionPermissions(auth?.account);
     if (!sessionUi || sessionUi === viewAs) return granted;
-    const preview = new Set(baselinePermissionsForRole(viewAs));
+    const preview = new Set(activeRole?.permissions || []);
     return granted.filter((slug) => preview.has(slug));
-  }, [auth, isAdminView, sessionUi, viewAs]);
+  }, [activeRole, auth, isAdminView, sessionUi, viewAs]);
 
   const can = useCallback(
     (slug) => (isAdminView ? Boolean(slug) : hasConsolePermission(permissions, slug)),
@@ -245,17 +285,23 @@ export function ViewAsProvider({ children }) {
     return sections;
   }, [permissions, hasFullAccess, isAdminView]);
 
+  const viewAsPersona = activeRole?.persona || viewAs;
+
   /** "all" | "team" | "assigned" — how wide the role's client roster is. */
   const dataScope = isAdminView
     ? "all"
-    : String(auth?.account?.dataScope || "").toLowerCase() || baselineDataScopeForRole(sessionUi);
+    : (!activeRole?.system && sessionUi && sessionUi !== viewAs && activeRole?.dataScope)
+      ? String(activeRole.dataScope).toLowerCase()
+      : String(auth?.account?.dataScope || "").toLowerCase() || baselineDataScopeForRole(sessionUi);
 
   const value = useMemo(
     () => ({
       viewAs,
+      viewAsPersona,
       setViewAs,
       activeRole,
       availableUiRoles,
+      reloadLiveRoles,
       auth,
       account: auth?.account || null,
       token: auth?.accessToken || null,
@@ -276,9 +322,11 @@ export function ViewAsProvider({ children }) {
     }),
     [
       viewAs,
+      viewAsPersona,
       setViewAs,
       activeRole,
       availableUiRoles,
+      reloadLiveRoles,
       auth,
       isSuperAdmin,
       hasFullAccess,

@@ -1,50 +1,23 @@
-import { useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import { userInitials } from "../data/usersData.js";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { useAppSelector } from "../store/hooks.js";
 import { selectAdminProfile } from "../store/slices/adminProfileSlice.js";
+import { NotificationInboxPanel } from "./NotificationInboxPanel.jsx";
 
 export function AdminHeader({
-  notifications,
-  unreadCount,
-  notifOpen,
-  inboxLoading = false,
-  onToggleNotif,
-  onCloseNotif,
-  onMarkAllRead,
-  onNotifClick,
   onOpenProfile,
   onOpenMobileNav,
 }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const isDashboard = pathname === UPDATED_ADMIN_PATHS.dashboard || pathname === "/";
-  const panelRef = useRef(null);
-  const btnRef = useRef(null);
   const { activeRole, account } = useViewAs();
   const storedProfile = useAppSelector(selectAdminProfile);
   const profileAccount = storedProfile || account;
   const avatarInitial = userInitials(profileAccount?.name || activeRole.name).charAt(0) || "A";
   const profileImage = profileAccount?.profileImage || null;
-
-  useEffect(() => {
-    if (!notifOpen) return undefined;
-
-    function handleClick(event) {
-      if (
-        panelRef.current?.contains(event.target) ||
-        btnRef.current?.contains(event.target)
-      ) {
-        return;
-      }
-      onCloseNotif();
-    }
-
-    document.addEventListener("click", handleClick);
-    return () => document.removeEventListener("click", handleClick);
-  }, [notifOpen, onCloseNotif]);
 
   return (
     <header className="header">
@@ -78,67 +51,7 @@ export function AdminHeader({
       </div>
 
       <div className="header__actions">
-        <div className="header__notif-wrap">
-          <button
-            ref={btnRef}
-            type="button"
-            className="header__notif-btn"
-            aria-label="Notifications"
-            aria-expanded={notifOpen}
-            onClick={onToggleNotif}
-          >
-            🔔
-            {unreadCount > 0 ? <span className="header__notif-badge">{unreadCount}</span> : null}
-          </button>
-
-          {notifOpen ? (
-            <div ref={panelRef} className="header__notif-panel">
-              <div className="header__notif-head">
-                <span>🔔</span>
-                <div>
-                  <div className="header__notif-title">Notifications</div>
-                  <div className="header__notif-sub">Everything across the console</div>
-                </div>
-                <button
-                  type="button"
-                  className="header__notif-mark"
-                  onClick={onMarkAllRead}
-                  disabled={unreadCount === 0}
-                >
-                  Mark all read
-                </button>
-              </div>
-              {inboxLoading && notifications.length === 0 ? (
-                <div className="header__notif-empty">Loading notifications…</div>
-              ) : null}
-              {!inboxLoading && notifications.length === 0 ? (
-                <div className="header__notif-empty">No console events yet</div>
-              ) : null}
-              {notifications.map((n) => (
-                <button
-                  key={n.id}
-                  type="button"
-                  className="header__notif-item"
-                  style={{ background: n.unread ? "#f9fbfd" : "#fff" }}
-                  onClick={() => onNotifClick(n.id)}
-                >
-                  <span style={{ fontSize: 18 }}>{n.icon}</span>
-                  <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2, textAlign: "left" }}>
-                    <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <span style={{ fontSize: 9, fontWeight: 700, color: "#5e6ad2", background: "#eef0fc", padding: "2px 6px", borderRadius: 4 }}>
-                        {n.kind}
-                      </span>
-                      <span style={{ fontSize: 9.5, color: "#b0bacb" }}>{n.time}</span>
-                    </span>
-                    <span style={{ fontSize: 12, fontWeight: 650, color: "#16233f", lineHeight: 1.35 }}>{n.title}</span>
-                    <span style={{ fontSize: 10.5, color: "#8a97ac" }}>From {n.from}</span>
-                  </span>
-                  <span style={{ color: "#c0c9d6", fontSize: 15 }}>›</span>
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </div>
+        <NotificationInboxPanel />
 
         <div className="header__profile">
           <span

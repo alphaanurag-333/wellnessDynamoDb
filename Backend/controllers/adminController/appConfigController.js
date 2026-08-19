@@ -166,10 +166,15 @@ function normalizeAppSubscriptionPricing(value) {
 
     ids.add(id);
     const clientCategory = String(row?.clientCategory ?? "").trim().toLowerCase();
+    const days = row?.days !== undefined ? Number(row.days) : undefined;
+    if (days !== undefined && (!Number.isInteger(days) || days <= 0)) {
+      throw new AppError(`Subscription ${index + 1} days must be a positive integer`, 400);
+    }
     return {
       id,
       name,
       amount,
+      ...(days !== undefined ? { days } : {}),
       ...(clientCategory && clientCategory !== "individual" ? { clientCategory } : {}),
     };
   });

@@ -11,12 +11,14 @@ function mapProgram(row, index) {
 }
 
 function mapSubscription(row, index) {
-  return {
+  const mapped = {
     id: String(row?.id || `subscription-${index + 1}`),
     name: String(row?.name || "").trim(),
     amount: Number(row?.amount) || 0,
     clientCategory: String(row?.clientCategory || "").trim().toLowerCase(),
   };
+  if (row?.days !== undefined) mapped.days = Number(row.days) || 0;
+  return mapped;
 }
 
 function mapStringOptions(rows, fallback) {
