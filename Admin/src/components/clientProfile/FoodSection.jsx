@@ -13,22 +13,21 @@ import {
   parseFoodDateInput,
   localToday,
   latestBmrTdee,
-  mapDietAssignmentToSections,
   mapMealLogToUi,
   macroPct,
   macroTargetsFromTdee,
   roundMacros,
   sumMealMacros,
 } from "../../data/foodData.js";
-import { fetchUserBodyAnalytics } from "../../api/usersApi.js";
+import { fetchUserBodyAnalytics, fetchUser } from "../../api/usersApi.js";
 import {
-  fetchUserDietPlanAssignments,
   fetchUserMealTracking,
   fetchUserWaterTracking,
   reviewUserMealLog,
   updateUserMealLog,
   updateUserMealTrackingMode,
 } from "../../api/mealTrackingApi.js";
+import { updateUserDietPlanEnabled } from "../../api/dietPlanCatalogApi.js";
 import { MealPhotoModal } from "./MealPhotoModal.jsx";
 import { FoodDateRow, FoodWaterHistoryPicker } from "./FoodDatePicker.jsx";
 import { DietPlanPanel } from "./DietPlanPanel.jsx";
@@ -330,14 +329,15 @@ function WaterGoalBar({ goal, dietPlanOn, editing, draftGoal, onStartEdit, onCan
   );
 }
 
-export function FoodSection({ user, onToast }) {
+export function FoodSection({ user, onToast, onUserUpdated }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const userId = String(user?.id || "").trim();
   const live = isLiveUserId(userId);
   const today = useMemo(() => (live ? localToday() : FOOD_DEMO_TODAY), [live]);
   const mode = searchParams.get("mode") === "detailed" ? "detailed" : "macro";
   const tabParam = searchParams.get("tab");
-  const [dietPlanOn, setDietPlanOn] = useState(!live);
+  const [dietPlanOn, setDietPlanOn] = useState(() => user?.dietPlanEnabled !== false);
+  const [dietPlanBusy, setDietPlanBusy] = useState(false);
   const [meals, setMeals] = useState(live ? [] : FOOD_MEALS);
   const [photoMeal, setPhotoMeal] = useState(null);
   const [waterGoal, setWaterGoal] = useState(8);
@@ -347,11 +347,8 @@ export function FoodSection({ user, onToast }) {
   const [waterRange, setWaterRange] = useState(() => (live ? defaultWaterRange(today) : DEFAULT_WATER_RANGE));
   const [macroTargets, setMacroTargets] = useState(FOOD_MACRO_TARGETS);
   const [waterHistory, setWaterHistory] = useState(null);
-  const [dietAssignment, setDietAssignment] = useState(null);
-  const [dietSections, setDietSections] = useState([]);
   const [mealsLoading, setMealsLoading] = useState(live);
   const [waterLoading, setWaterLoading] = useState(false);
-  const [dietLoading, setDietLoading] = useState(false);
   const [modeBusy, setModeBusy] = useState(false);
   const [busyId, setBusyId] = useState("");
   const jumpedToLatestRef = useRef(false);
@@ -377,14 +374,15 @@ export function FoodSection({ user, onToast }) {
     setSelectedDate(today);
     setWaterRange(live ? defaultWaterRange(today) : DEFAULT_WATER_RANGE);
     setPhotoMeal(null);
-    setDietAssignment(null);
-    setDietSections([]);
     setWaterHistory(null);
     setMacroTargets(FOOD_MACRO_TARGETS);
-    setDietPlanOn(!live);
     setMeals(live ? [] : FOOD_MEALS);
     jumpedToLatestRef.current = false;
   }, [live, today, userId]);
+
+  useEffect(() => {
+    setDietPlanOn(user?.dietPlanEnabled !== false);
+  }, [user?.dietPlanEnabled]);
 
   useEffect(() => {
     if (!live) return undefined;
@@ -479,31 +477,31 @@ export function FoodSection({ user, onToast }) {
     };
   }, [live, onToast, tab, userId, waterRange.from, waterRange.to]);
 
-  useEffect(() => {
-    if (!live || tab !== "diet") return undefined;
-    let cancelled = false;
-    setDietLoading(true);
-    fetchUserDietPlanAssignments(userId)
-      .then((data) => {
-        if (cancelled) return;
-        const recommended = data?.recommended || null;
-        setDietAssignment(recommended);
-        setDietSections(mapDietAssignmentToSections(recommended));
-        setDietPlanOn(Boolean(recommended));
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setDietAssignment(null);
-        setDietSections([]);
-        onToast?.(err?.message || "Failed to load diet plan");
-      })
-      .finally(() => {
-        if (!cancelled) setDietLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [live, onToast, tab, userId]);
+  async function toggleDietPlan() {
+    const next = !dietPlanOn;
+    if (!live) {
+      setDietPlanOn(next);
+      onToast?.(next ? "Diet plan enabled in the client app" : "Diet plan hidden from the client app");
+      return;
+    }
+    if (dietPlanBusy) return;
+    setDietPlanBusy(true);
+    try {
+      const enabled = await updateUserDietPlanEnabled(userId, next);
+      setDietPlanOn(enabled !== false);
+      try {
+        const row = await fetchUser(userId);
+        if (row) onUserUpdated?.(row);
+      } catch {
+        // Toggle already saved; profile refresh is best-effort.
+      }
+      onToast?.(enabled !== false ? "Diet plan enabled in the client app" : "Diet plan hidden from the client app");
+    } catch (err) {
+      onToast?.(err?.message || "Failed to update diet plan visibility");
+    } finally {
+      setDietPlanBusy(false);
+    }
+  }
 
   function setMode(next) {
     setSearchParams((prev) => {
@@ -639,10 +637,9 @@ export function FoodSection({ user, onToast }) {
               type="button"
               className={`ua-toggle${dietPlanOn ? " ua-toggle--on" : ""}`}
               aria-pressed={dietPlanOn}
-              onClick={() => {
-                if (live) return;
-                setDietPlanOn((v) => !v);
-              }}
+              aria-label="Show diet plan in client app"
+              disabled={dietPlanBusy}
+              onClick={toggleDietPlan}
             >
               <span className="ua-toggle__knob" />
             </button>
@@ -742,7 +739,7 @@ export function FoodSection({ user, onToast }) {
         </>
       ) : null}
 
-      {tab === "diet" ? <DietPlanPanel user={user} onToast={onToast} /> : null}
+      {tab === "diet" ? <DietPlanPanel user={user} onToast={onToast} appVisible={dietPlanOn} /> : null}
 
       {photoMeal ? <MealPhotoModal meal={photoMeal} dateLabel={dateLabel} onClose={() => setPhotoMeal(null)} /> : null}
     </div>

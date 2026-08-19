@@ -196,6 +196,18 @@ function averageFromScores(scores) {
   return roundScore(values.reduce((sum, value) => sum + value, 0) / values.length);
 }
 
+async function buildCurrentMonthlyScore(userId, monthYear) {
+  const month = monthYear || todayDateOnly().slice(0, 7);
+  const logs = await listDayLogsForMonth(userId, month);
+  const scores = logs.map((row) => roundScore(row.score));
+
+  return {
+    month,
+    averageScore: averageFromScores(scores),
+    daysSubmitted: scores.length,
+  };
+}
+
 async function buildMonthlyAnalytics(userId, monthCount = 6) {
   const today = todayDateOnly();
   const endMonth = today.slice(0, 7);
@@ -307,6 +319,7 @@ module.exports = {
   resolveScoreBand,
   buildScorePresentation,
   buildDailyReflectionAnalytics,
+  buildCurrentMonthlyScore,
   isValidAnalyticsRange,
   formatDateLabel,
   monthLabel,

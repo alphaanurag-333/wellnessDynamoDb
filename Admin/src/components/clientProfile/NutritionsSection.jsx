@@ -24,6 +24,16 @@ const PERIOD_LABEL = {
   evening: "Evening",
 };
 
+function isHealClientUser(user) {
+  const tier = String(user?.userTier || "").toLowerCase().trim();
+  const label = String(user?.tier || "").toLowerCase().trim();
+  return tier === "heal" || label === "seek to heal";
+}
+
+function isHealGateMessage(message) {
+  return /heal \(paid\)/i.test(String(message || ""));
+}
+
 function todayIsoDate() {
   const d = new Date();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -194,7 +204,7 @@ function DosageCard({ card, canRemove, onRemove }) {
 
 export function NutritionsSection({ user, onToast }) {
   const userId = String(user?.id || "").trim();
-  const isHealClient = String(user?.userTier || "").toLowerCase() === "heal" || user?.tier === "Seek to Heal";
+  const isHealClient = isHealClientUser(user);
   const { can } = useViewAs();
   const canWrite = can("console.diet.create");
   const canRemove = can("console.diet.delete");
@@ -236,38 +246,54 @@ export function NutritionsSection({ user, onToast }) {
     if (!userId) return;
     if (!silent) setLoading(true);
     setError("");
+    const errors = [];
     try {
-      const catalog = await listActiveSupplementPool({ limit: 200 });
-      const nextPool = catalog?.items || [];
-      setPool(nextPool);
-      setAddSupp((current) => current || nextPool[0]?.id || "");
-
-      if (!isHealClient) {
-        setRecommended(null);
-        setHistory([]);
-        setDosages([]);
-        setSelected([]);
-        return;
+      try {
+        const catalog = await listActiveSupplementPool({ limit: 200 });
+        const nextPool = catalog?.items || [];
+        setPool(nextPool);
+        setAddSupp((current) => current || nextPool[0]?.id || "");
+      } catch (err) {
+        setPool([]);
+        errors.push(err?.message || "Failed to load nutrition bank");
       }
 
-      const [recData, dosageData] = await Promise.all([
+      const [recResult, dosageResult] = await Promise.allSettled([
         listUserSupplementRecommendations(userId),
         listUserSupplementDosages(userId),
       ]);
-      const current = recData?.recommended || null;
-      setRecommended(current);
-      setHistory(recData?.history || []);
-      setSelected((current?.items || []).map((item) => ({ ...item })));
-      setFulfilment(current?.deliveryOption === "self_billing" ? "self" : "delivery");
-      setDosages(dosageData?.dosages || []);
-    } catch (err) {
-      setError(err?.message || "Failed to load nutritions");
-      onToast?.(err?.message || "Failed to load nutritions");
+
+      if (recResult.status === "fulfilled") {
+        const current = recResult.value?.recommended || null;
+        setRecommended(current);
+        setHistory(recResult.value?.history || []);
+        setSelected((current?.items || []).map((item) => ({ ...item })));
+        setFulfilment(current?.deliveryOption === "self_billing" ? "self" : "delivery");
+      } else {
+        setRecommended(null);
+        setHistory([]);
+        setSelected([]);
+        const message = recResult.reason?.message || "Failed to load recommendations";
+        if (!isHealGateMessage(message)) errors.push(message);
+      }
+
+      if (dosageResult.status === "fulfilled") {
+        setDosages(dosageResult.value?.dosages || []);
+      } else {
+        setDosages([]);
+        const message = dosageResult.reason?.message || "Failed to load dosages";
+        if (!isHealGateMessage(message)) errors.push(message);
+      }
+
+      if (errors.length) {
+        setError(errors[0]);
+        onToast?.(errors[0]);
+      }
     } finally {
       setLoading(false);
       setPoolLoading(false);
     }
-  }, [isHealClient, onToast, userId]);
+  }, [onToast, userId]);
 
   useEffect(() => {
     load();
@@ -319,6 +345,9 @@ export function NutritionsSection({ user, onToast }) {
     setSaving(true);
     try {
       const existing = activeDosages.find((row) => row.supplementId === addSupp);
+      if (existing) {
+        await stopUserSupplementDosage(userId, existing.id);
+      }
       await createUserSupplementDosage(userId, {
         supplementId: addSupp,
         startDate: addStart || todayIsoDate(),
@@ -328,9 +357,6 @@ export function NutritionsSection({ user, onToast }) {
           mealRelation: addMeal,
         })),
       });
-      if (existing) {
-        await stopUserSupplementDosage(userId, existing.id);
-      }
       const name = pool.find((item) => item.id === addSupp)?.name || "Supplement";
       onToast(`Added ${name} ×${addPeriods.length}`);
       setAddPeriods([]);

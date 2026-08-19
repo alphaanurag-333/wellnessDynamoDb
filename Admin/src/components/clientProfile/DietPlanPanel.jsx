@@ -91,7 +91,7 @@ function AssignedPlanCard({ plan }) {
   );
 }
 
-export function DietPlanPanel({ user, onToast }) {
+export function DietPlanPanel({ user, onToast, appVisible = true }) {
   const userId = String(user?.id || "").trim();
   const isHealClient = String(user?.userTier || "").toLowerCase() === "heal" || user?.tier === "Seek to Heal";
   const { can } = useViewAs();
@@ -196,6 +196,9 @@ export function DietPlanPanel({ user, onToast }) {
 
   return (
     <div className="ua-cp-food-diet">
+      {!appVisible ? (
+        <p className="ua-cp-food-diet__empty">Diet plan is hidden from the client app. Turn the toggle on to show it again.</p>
+      ) : null}
       <div className="ua-cp-food-diet__head">
         <div>
           <strong className="ua-cp-food-diet__title">Personalised diet plan</strong>

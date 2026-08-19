@@ -81,6 +81,26 @@ function isValidDateOnly(value) {
   return parseDateOnly(value) != null;
 }
 
+function historyRangeFromQuery(query, { defaultDays = 14, maxDays = 366 } = {}) {
+  const fromDate = String(query?.from || query?.fromDate || query?.startDate || "").trim();
+  const toDate = String(query?.to || query?.toDate || query?.endDate || "").trim();
+  if (isValidDateOnly(fromDate) && isValidDateOnly(toDate) && fromDate <= toDate) {
+    let days = 1;
+    let cursor = fromDate;
+    while (cursor < toDate && days < maxDays) {
+      const next = addDaysDateOnly(cursor, 1);
+      if (!next || next === cursor) break;
+      cursor = next;
+      days += 1;
+    }
+    return { date: toDate, days, fromDate, toDate };
+  }
+  const dateRaw = String(query?.date || "").trim();
+  const date = isValidDateOnly(dateRaw) ? dateRaw : undefined;
+  const days = Math.min(Math.max(Number(query?.days) || defaultDays, 1), maxDays);
+  return { date, days, fromDate: undefined, toDate: undefined };
+}
+
 module.exports = {
   DATE_ONLY_REGEX,
   toDateOnlyString,
@@ -91,4 +111,5 @@ module.exports = {
   listDateRange,
   dayLabel,
   isValidDateOnly,
+  historyRangeFromQuery,
 };

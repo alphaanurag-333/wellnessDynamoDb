@@ -11,7 +11,10 @@ const {
 const { getSupplementById } = require("../../models/supplementModel");
 const {
   queryLogsByDosageId,
+  queryLogsByUserIdAndDate,
   computeProgressPercent,
+  buildTodayCompletionMap,
+  normalizeLogDate,
 } = require("../../models/userSupplementDosageLogModel");
 const {
   dispatchSupplementDosageAssignedNotification,
@@ -29,13 +32,21 @@ const {
   loadDosageForUser,
 } = require("../helpers/supplementControllerHelpers");
 
-async function hydrateDosagesWithProgress(dosages) {
+async function hydrateDosagesWithProgress(dosages, userId) {
+  const logDate = normalizeLogDate();
+  const todayLogs = await queryLogsByUserIdAndDate(userId, logDate);
   return Promise.all(
     (dosages || []).map(async (dosage) => {
       const logs = await queryLogsByDosageId(dosage.id);
+      const todayCompletion = buildTodayCompletionMap(dosage, todayLogs, logDate);
       return {
         ...dosage,
         progressPercent: computeProgressPercent(dosage, logs),
+        todayCompletion,
+        periods: (dosage.periods || []).map((row) => ({
+          ...row,
+          completed: todayCompletion[row.period] === true,
+        })),
       };
     })
   );
@@ -51,7 +62,7 @@ exports.listCoachUserSupplementDosagesController = asyncHandler(async (req, res)
   assertHealTierUser(user);
 
   const dosages = await listUserSupplementDosagesByUserId(userId);
-  const hydrated = await hydrateDosagesWithProgress(dosages);
+  const hydrated = await hydrateDosagesWithProgress(dosages, userId);
 
   return res.status(200).json({
     status: true,
@@ -84,7 +95,7 @@ exports.createCoachUserSupplementDosageController = asyncHandler(async (req, res
   try {
     dosage = await createUserSupplementDosage({
       userId,
-      coachId: resolveCoachIdForUser(user),
+      coachId: resolveCoachIdForUser(user, actingCoachId),
       supplementId,
       name: supplement.name,
       unit: supplement.unit,

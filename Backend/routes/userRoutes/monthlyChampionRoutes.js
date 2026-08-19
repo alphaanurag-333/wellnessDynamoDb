@@ -4,6 +4,7 @@ const { protectUser } = require("../../middleware/auth");
 const {
   listUserMonthlyChampionsController,
   getMyMonthlyChampionHistoryController,
+  getMyMonthlyChampionStandingController,
   getUserMonthlyChampionByIdController,
 } = require("../../controllers/userController/monthlyChampionController");
 const {
@@ -18,6 +19,7 @@ router.use(protectUser);
 
 router.get("/", listUserMonthlyChampionsController);
 router.get("/mine", getMyMonthlyChampionHistoryController);
+router.get("/standing", getMyMonthlyChampionStandingController);
 router.get("/:postId/comments", listMonthlyChampionCommentsController);
 router.post("/:postId/comments", createMonthlyChampionCommentController);
 router.delete("/:postId/comments/:id", deleteMonthlyChampionCommentController);

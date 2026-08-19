@@ -76,6 +76,21 @@ function isPresentablePicsEnabled(user) {
   return user?.presentablePicsEnabled !== false;
 }
 
+/** Missing field on existing users means the diet plan is visible in the app. */
+function isDietPlanEnabled(user) {
+  return user?.dietPlanEnabled !== false;
+}
+
+/** Missing field on existing users means heart rate is visible in the app. */
+function isHeartRateEnabled(user) {
+  return user?.heartRateEnabled !== false;
+}
+
+/** Missing field on existing users means sleep tracking is visible in the app. */
+function isSleepTrackingEnabled(user) {
+  return user?.sleepTrackingEnabled !== false;
+}
+
 function normalizeDietaryPreference(value) {
   if (value == null || value === "") return null;
   const next = String(value).toLowerCase().trim();
@@ -248,7 +263,10 @@ function sanitizeUpdateField(key, value) {
     key === "energyExchangeEnabled" ||
     key === "programEnabled" ||
     key === "programPurchased" ||
-    key === "presentablePicsEnabled"
+    key === "presentablePicsEnabled" ||
+    key === "dietPlanEnabled" ||
+    key === "heartRateEnabled" ||
+    key === "sleepTrackingEnabled"
   ) {
     return Boolean(value);
   }
@@ -359,6 +377,9 @@ function buildUserItem(input, { id, now } = {}) {
         ? String(input.presentablePicReviewedById).trim() || null
         : null,
     presentablePicsEnabled: input.presentablePicsEnabled !== false,
+    dietPlanEnabled: input.dietPlanEnabled !== false,
+    heartRateEnabled: input.heartRateEnabled !== false,
+    sleepTrackingEnabled: input.sleepTrackingEnabled !== false,
     fcm_id: input.fcm_id != null ? String(input.fcm_id).trim() || null : null,
     status: normalizeStatus(input.status),
     otp: input.otp != null ? String(input.otp) : null,
@@ -874,6 +895,9 @@ module.exports = {
   normalizeWellnessJourneyFor,
   normalizeDob,
   isPresentablePicsEnabled,
+  isDietPlanEnabled,
+  isHeartRateEnabled,
+  isSleepTrackingEnabled,
   buildUserItem,
   toPublicUser,
   createUser,

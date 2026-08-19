@@ -5,8 +5,8 @@ const {
   assertCoachCanAccessUser,
   assertAssistantCanAccessUser,
   assertAdminCanAccessUser,
+  assertStaffCanAccessUser,
   handleValidationError,
-  resolveCoachIdForUser,
 } = require("./dietPlanControllerHelpers");
 const {
   getCoachRecommendedSupplementRecordById,
@@ -31,9 +31,20 @@ function readDosageIdParam(req) {
 }
 
 function assertHealTierUser(user) {
-  if (String(user.userTier || "").toLowerCase() !== "heal") {
+  const tier = String(user?.userTier || "").toLowerCase().trim();
+  if (tier !== "heal") {
     throw new AppError("Supplements can only be assigned to Heal (paid) users", 400);
   }
+}
+
+function resolveCoachIdForUser(user, actingId) {
+  const coachId = String(
+    user?.parentCoachId || user?.assignedCoachId || actingId || ""
+  ).trim();
+  if (!coachId) {
+    throw new AppError("User does not have an assigned coach hierarchy", 400);
+  }
+  return coachId;
 }
 
 function parseRecommendationItems(body) {
@@ -125,6 +136,7 @@ module.exports = {
   assertCoachCanAccessUser,
   assertAssistantCanAccessUser,
   assertAdminCanAccessUser,
+  assertStaffCanAccessUser,
   assertHealTierUser,
   handleValidationError,
   resolveCoachIdForUser,

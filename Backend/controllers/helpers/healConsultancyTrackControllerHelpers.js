@@ -12,6 +12,7 @@ const {
   assertCoachCanAccessUser,
   assertAssistantCanAccessUser,
   assertAdminCanAccessUser,
+  assertStaffCanAccessUser,
   handleValidationError,
 } = require("./reminderControllerHelpers");
 const { assertHealTierUser } = require("./dietPlanControllerHelpers");
@@ -155,6 +156,7 @@ module.exports = {
   assertCoachCanAccessUser,
   assertAssistantCanAccessUser,
   assertAdminCanAccessUser,
+  assertStaffCanAccessUser,
   handleValidationError,
   assertHealTierUser,
 };

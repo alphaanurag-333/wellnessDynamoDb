@@ -7,6 +7,11 @@ const {
   deleteCoachAssignedDietPlan,
 } = require("../../models/coachAssignedDietPlanModel");
 const {
+  updateUser,
+  toPublicUser,
+  isDietPlanEnabled,
+} = require("../../models/userModel");
+const {
   dispatchDietPlanAssignmentNotification,
 } = require("../../services/notificationDispatchService");
 const {
@@ -42,6 +47,42 @@ exports.listCoachUserDietPlanAssignmentsController = asyncHandler(async (req, re
     assignments,
     recommended: assignments[0] || null,
     history: assignments.length > 1 ? assignments.slice(1) : [],
+    dietPlanEnabled: isDietPlanEnabled(user),
+  });
+});
+
+function parseEnabledFlag(body) {
+  const raw = body?.enabled !== undefined ? body.enabled : body?.dietPlanEnabled;
+  if (raw === true || raw === false) return raw;
+  const next = String(raw ?? "").trim().toLowerCase();
+  if (next === "true") return true;
+  if (next === "false") return false;
+  return null;
+}
+
+exports.updateCoachUserDietPlanEnabledController = asyncHandler(async (req, res) => {
+  const actingCoachId = req.auth?.sub;
+  if (!actingCoachId) throw new AppError("Unauthorized", 401);
+
+  const userId = readUserIdParam(req);
+  const user = await loadTargetUser(userId);
+  await assertStaffCanAccessUser(req, user);
+  assertHealTierUser(user);
+
+  const enabled = parseEnabledFlag(req.body);
+  if (enabled == null) {
+    throw new AppError("enabled must be true or false", 400);
+  }
+
+  const updated = await updateUser(userId, { dietPlanEnabled: enabled });
+
+  return res.status(200).json({
+    status: true,
+    message: enabled
+      ? "Diet plan enabled in the client app"
+      : "Diet plan hidden from the client app",
+    dietPlanEnabled: isDietPlanEnabled(updated),
+    user: toPublicUser(updated),
   });
 });
 

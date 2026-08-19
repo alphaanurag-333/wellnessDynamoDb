@@ -1,4 +1,4 @@
-import { FOOD_DEMO_TODAY, formatWaterRangeLabel } from "./foodData.js";
+import { FOOD_DEMO_TODAY, formatFoodDateInput, formatWaterRangeLabel, parseFoodDateInput } from "./foodData.js";
 
 export { FOOD_DEMO_TODAY as BMS_DEMO_TODAY };
 
@@ -123,6 +123,137 @@ export function formatStepsLabel(value) {
 
 export function isHeartOutOfZone(value) {
   return value < BMS_GOALS.heartRestMin || value > BMS_GOALS.heartRestMax;
+}
+
+function parseHistoryDate(row) {
+  const raw = String(row?.date || "").slice(0, 10);
+  const parsed = parseFoodDateInput(raw);
+  if (parsed) return parsed;
+  const fallback = row?.date ? new Date(row.date) : null;
+  return fallback && !Number.isNaN(fallback.getTime()) ? fallback : null;
+}
+
+function heartBpmFromRow(row) {
+  return Number(row?.restingBpm) || Number(row?.averageBpm) || Number(row?.latestBpm) || 0;
+}
+
+function sleepHoursFromRow(row) {
+  return Math.round(((Number(row?.durationMinutes) || 0) / 60) * 10) / 10;
+}
+
+function chartFromHistoryDays(days, from, to, today, todayValue) {
+  const values = days.map((d) => d.value);
+  const avg = values.length
+    ? Math.round((values.reduce((sum, val) => sum + val, 0) / values.length) * 10) / 10
+    : 0;
+  const todayKey = formatFoodDateInput(today);
+  const todayDay = days.some((d) => d.date && formatFoodDateInput(d.date) === todayKey)
+    ? String(today.getDate()).padStart(2, "0")
+    : null;
+
+  return {
+    rangeLabel: formatWaterRangeLabel(from, to),
+    from: new Date(from),
+    to: new Date(to),
+    avg,
+    today: todayValue ?? values[values.length - 1] ?? 0,
+    last: todayValue ?? values[values.length - 1] ?? 0,
+    todayDay,
+    days: days.map(({ day, value, date }) => ({ day, value, date })),
+  };
+}
+
+export function buildStepsChartFromHistory(history, from, to, { today = FOOD_DEMO_TODAY, goal = BMS_GOALS.steps } = {}) {
+  const rows = Array.isArray(history) ? history : [];
+  const days = rows.map((row) => {
+    const date = parseHistoryDate(row);
+    return {
+      day: String(date ? date.getDate() : "").padStart(2, "0"),
+      value: Number(row.stepCount) || 0,
+      date,
+    };
+  });
+  const todayKey = formatFoodDateInput(today);
+  const todayRow = rows.find((row) => String(row.date || "").slice(0, 10) === todayKey);
+  const storedGoal = Number(todayRow?.goalSteps || rows.find((row) => Number(row.goalSteps) > 0)?.goalSteps);
+  const chart = chartFromHistoryDays(
+    days,
+    from,
+    to,
+    today,
+    todayRow ? Number(todayRow.stepCount) || 0 : undefined,
+  );
+  return {
+    ...chart,
+    avg: Math.round(chart.avg),
+    goal: Number.isFinite(storedGoal) && storedGoal > 0 ? storedGoal : goal,
+  };
+}
+
+export function buildHeartChartFromHistory(history, from, to, today = FOOD_DEMO_TODAY) {
+  const rows = Array.isArray(history) ? history : [];
+  const days = rows.map((row) => {
+    const date = parseHistoryDate(row);
+    return {
+      day: String(date ? date.getDate() : "").padStart(2, "0"),
+      value: heartBpmFromRow(row),
+      date,
+    };
+  });
+  const todayKey = formatFoodDateInput(today);
+  const todayRow = rows.find((row) => String(row.date || "").slice(0, 10) === todayKey);
+  const chart = chartFromHistoryDays(
+    days,
+    from,
+    to,
+    today,
+    todayRow ? heartBpmFromRow(todayRow) : undefined,
+  );
+  return { ...chart, avg: Math.round(chart.avg) };
+}
+
+export function buildSleepChartFromHistory(history, from, to, today = FOOD_DEMO_TODAY) {
+  const rows = Array.isArray(history) ? history : [];
+  const days = rows.map((row) => {
+    const date = parseHistoryDate(row);
+    return {
+      day: String(date ? date.getDate() : "").padStart(2, "0"),
+      value: sleepHoursFromRow(row),
+      date,
+    };
+  });
+  const todayKey = formatFoodDateInput(today);
+  const todayRow = rows.find((row) => String(row.date || "").slice(0, 10) === todayKey);
+  return chartFromHistoryDays(
+    days,
+    from,
+    to,
+    today,
+    todayRow ? sleepHoursFromRow(todayRow) : undefined,
+  );
+}
+
+export function buildSleepSummaryFromToday(today, goalHours = BMS_GOALS.sleepHours) {
+  const minutes = Number(today?.durationMinutes) || 0;
+  const sleptHours = sleepHoursFromRow(today);
+  const score = minutes > 0 && goalHours > 0
+    ? Math.min(100, Math.round((sleptHours / goalHours) * 100))
+    : 0;
+  let quality = "No data";
+  if (minutes > 0) {
+    if (score >= 90) quality = "Excellent";
+    else if (score >= 70) quality = "Good";
+    else if (score >= 50) quality = "Fair";
+    else quality = "Poor";
+  }
+  return {
+    score,
+    quality,
+    sleptHours,
+    stages: [],
+    bedTime: today?.bedTime || null,
+    wakeTime: today?.wakeTime || null,
+  };
 }
 
 export const MENTAL_CONTENT = [

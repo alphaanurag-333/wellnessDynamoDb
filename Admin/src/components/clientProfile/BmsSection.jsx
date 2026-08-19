@@ -8,17 +8,42 @@ import {
   BMS_SLEEP_TARGET_HISTORY,
   DEFAULT_BMS_RANGE,
   buildHeartChart,
+  buildHeartChartFromHistory,
   buildSleepChart,
+  buildSleepChartFromHistory,
+  buildSleepSummaryFromToday,
   buildStepsChart,
+  buildStepsChartFromHistory,
   formatStepsLabel,
   isHeartOutOfZone,
 } from "../../data/bmsData.js";
+import { formatFoodDateInput, localToday } from "../../data/foodData.js";
+import {
+  fetchUserHeartRateTracking,
+  fetchUserSleepTracking,
+  fetchUserStepsTracking,
+  updateUserBmsTracking,
+} from "../../api/bmsTrackingApi.js";
+import { fetchUser } from "../../api/usersApi.js";
 import {
   adminListWellnessLibrary,
   assignUserWellnessItems,
   listUserWellnessAssignments,
   unassignUserWellnessItem,
 } from "../../api/wellnessLibraryApi.js";
+
+function isLiveUserId(userId) {
+  if (!userId) return false;
+  const numeric = Number(userId);
+  return !(Number.isFinite(numeric) && numeric > 0 && String(numeric) === String(userId));
+}
+
+function defaultBmsRange(today = localToday()) {
+  const to = new Date(today);
+  const from = new Date(today);
+  from.setDate(from.getDate() - 13);
+  return { from, to };
+}
 
 const BMS_TABS = [
   { id: "steps", label: "Step Tracking" },
@@ -81,28 +106,32 @@ function MetricChartCard({
         </div>
       </div>
       <div className="ua-cp-bms-chart">
-        {days.map((d, index) => {
+        {days.length ? days.map((d, index) => {
           const barClass = getBarClass ? getBarClass(d, index) : (d.day === days[days.length - 1]?.day ? "today" : "default");
+          const safeMax = maxValue > 0 ? maxValue : 1;
           return (
-            <div key={d.day} className="ua-cp-bms-chart__col">
+            <div key={`${d.day}-${index}`} className="ua-cp-bms-chart__col">
               <span className="ua-cp-bms-chart__val">{formatValue(d.value)}</span>
               <div className="ua-cp-bms-chart__bar-wrap">
                 <span
                   className={`ua-cp-bms-chart__bar ua-cp-bms-chart__bar--${barClass}`}
-                  style={{ height: `${Math.max(12, (d.value / maxValue) * 100)}%` }}
+                  style={{ height: `${Math.max(12, (d.value / safeMax) * 100)}%` }}
                 />
               </div>
               <span className="ua-cp-bms-chart__day">{d.day}</span>
             </div>
           );
-        })}
+        }) : (
+          <p className="ua-cp-bms-library-hint">No data in this range.</p>
+        )}
       </div>
     </div>
   );
 }
 
-function StepsPanel({ chart, historyRange, onRangeChange }) {
-  const max = Math.max(...chart.days.map((d) => d.value), chart.goal);
+function StepsPanel({ chart, historyRange, onRangeChange, loading }) {
+  const max = Math.max(...(chart.days.map((d) => d.value)), chart.goal, 1);
+  if (loading) return <p className="ua-cp-bms-library-hint">Loading step tracking…</p>;
 
   return (
     <>
@@ -131,8 +160,8 @@ function StepsPanel({ chart, historyRange, onRangeChange }) {
   );
 }
 
-function HeartPanel({ chart, historyRange, onRangeChange, enabled }) {
-  const max = Math.max(...chart.days.map((d) => d.value), BMS_GOALS.heartRestMax);
+function HeartPanel({ chart, historyRange, onRangeChange, enabled, loading }) {
+  const max = Math.max(...(chart.days.map((d) => d.value)), BMS_GOALS.heartRestMax, 1);
 
   if (!enabled) {
     return (
@@ -141,6 +170,8 @@ function HeartPanel({ chart, historyRange, onRangeChange, enabled }) {
       </div>
     );
   }
+
+  if (loading) return <p className="ua-cp-bms-library-hint">Loading heart rate…</p>;
 
   return (
     <>
@@ -241,8 +272,9 @@ function SleepPanel({
   onCancelGoal,
   onSaveGoal,
   onDraftGoalChange,
+  loading,
 }) {
-  const max = Math.max(...chart.days.map((d) => d.value), sleepGoal + 1);
+  const max = Math.max(...(chart.days.map((d) => d.value)), sleepGoal + 1, 1);
 
   if (!enabled) {
     return (
@@ -251,6 +283,8 @@ function SleepPanel({
       </div>
     );
   }
+
+  if (loading) return <p className="ua-cp-bms-library-hint">Loading sleep tracking…</p>;
 
   return (
     <>
@@ -279,20 +313,22 @@ function SleepPanel({
           <strong>{summary.quality}</strong> sleep quality
           <span>Slept <strong>{summary.sleptHours} h</strong> · goal {sleepGoal} h</span>
         </div>
-        <div className="ua-cp-bms-sleep-stages">
-          {summary.stages.map((stage) => (
-            <div key={stage.id} className="ua-cp-bms-sleep-stage">
-              <div className="ua-cp-bms-sleep-stage__head">
-                <span className={`ua-cp-bms-sleep-stage__dot ua-cp-bms-sleep-stage__dot--${stage.id}`} />
-                <span>{stage.label}</span>
-                <strong>{stage.duration}</strong>
+        {summary.stages?.length ? (
+          <div className="ua-cp-bms-sleep-stages">
+            {summary.stages.map((stage) => (
+              <div key={stage.id} className="ua-cp-bms-sleep-stage">
+                <div className="ua-cp-bms-sleep-stage__head">
+                  <span className={`ua-cp-bms-sleep-stage__dot ua-cp-bms-sleep-stage__dot--${stage.id}`} />
+                  <span>{stage.label}</span>
+                  <strong>{stage.duration}</strong>
+                </div>
+                <div className="ua-cp-bms-sleep-stage__bar">
+                  <span style={{ width: `${stage.pct}%` }} className={`ua-cp-bms-sleep-stage__fill ua-cp-bms-sleep-stage__fill--${stage.id}`} />
+                </div>
               </div>
-              <div className="ua-cp-bms-sleep-stage__bar">
-                <span style={{ width: `${stage.pct}%` }} className={`ua-cp-bms-sleep-stage__fill ua-cp-bms-sleep-stage__fill--${stage.id}`} />
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : null}
       </div>
       <MetricChartCard
         icon="🌙"
@@ -382,21 +418,30 @@ function ContentLibraryPanel({
   );
 }
 
-export function BmsSection({ user, onToast }) {
+export function BmsSection({ user, onToast, onUserUpdated }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
   const tab = BMS_TABS.some((t) => t.id === tabParam) ? tabParam : "steps";
   const userId = String(user?.id || "").trim();
+  const live = isLiveUserId(userId);
+  const today = useMemo(() => (live ? localToday() : DEFAULT_BMS_RANGE.to), [live]);
   const canAssign = String(user?.userTier || "").toLowerCase() === "heal";
 
-  const [heartRateOn, setHeartRateOn] = useState(true);
-  const [sleepTrackingOn, setSleepTrackingOn] = useState(true);
-  const [historyRange, setHistoryRange] = useState(DEFAULT_BMS_RANGE);
+  const [heartRateOn, setHeartRateOn] = useState(() => user?.heartRateEnabled !== false);
+  const [sleepTrackingOn, setSleepTrackingOn] = useState(() => user?.sleepTrackingEnabled !== false);
+  const [toggleBusy, setToggleBusy] = useState(false);
+  const [historyRange, setHistoryRange] = useState(() => (live ? defaultBmsRange(today) : DEFAULT_BMS_RANGE));
   const [sleepGoal, setSleepGoal] = useState(BMS_GOALS.sleepHours);
   const [sleepGoalEditing, setSleepGoalEditing] = useState(false);
   const [sleepGoalDraft, setSleepGoalDraft] = useState(BMS_GOALS.sleepHours);
   const [showTargetHistory, setShowTargetHistory] = useState(false);
   const [clientCanSetSleep] = useState(true);
+  const [stepsHistory, setStepsHistory] = useState(null);
+  const [stepsGoal, setStepsGoal] = useState(BMS_GOALS.steps);
+  const [heartHistory, setHeartHistory] = useState(null);
+  const [sleepHistory, setSleepHistory] = useState(null);
+  const [sleepToday, setSleepToday] = useState(null);
+  const [metricLoading, setMetricLoading] = useState(false);
 
   const [mentalItems, setMentalItems] = useState([]);
   const [yogaItems, setYogaItems] = useState([]);
@@ -408,18 +453,44 @@ export function BmsSection({ user, onToast }) {
   const [yogaFilter, setYogaFilter] = useState("all");
   const [exerciseFilter, setExerciseFilter] = useState("all");
 
-  const stepsChart = useMemo(
-    () => buildStepsChart(historyRange.from, historyRange.to),
-    [historyRange.from, historyRange.to],
-  );
-  const heartChart = useMemo(
-    () => buildHeartChart(historyRange.from, historyRange.to),
-    [historyRange.from, historyRange.to],
-  );
-  const sleepChart = useMemo(
-    () => buildSleepChart(historyRange.from, historyRange.to),
-    [historyRange.from, historyRange.to],
-  );
+  useEffect(() => {
+    setHeartRateOn(user?.heartRateEnabled !== false);
+    setSleepTrackingOn(user?.sleepTrackingEnabled !== false);
+  }, [user?.heartRateEnabled, user?.sleepTrackingEnabled]);
+
+  useEffect(() => {
+    setHistoryRange(live ? defaultBmsRange(today) : DEFAULT_BMS_RANGE);
+    setStepsHistory(null);
+    setHeartHistory(null);
+    setSleepHistory(null);
+    setSleepToday(null);
+  }, [live, today, userId]);
+
+  const stepsChart = useMemo(() => {
+    if (live && stepsHistory) {
+      return buildStepsChartFromHistory(stepsHistory, historyRange.from, historyRange.to, {
+        today,
+        goal: stepsGoal,
+      });
+    }
+    return buildStepsChart(historyRange.from, historyRange.to, today);
+  }, [live, stepsHistory, stepsGoal, historyRange.from, historyRange.to, today]);
+  const heartChart = useMemo(() => {
+    if (live && heartHistory) {
+      return buildHeartChartFromHistory(heartHistory, historyRange.from, historyRange.to, today);
+    }
+    return buildHeartChart(historyRange.from, historyRange.to, today);
+  }, [live, heartHistory, historyRange.from, historyRange.to, today]);
+  const sleepChart = useMemo(() => {
+    if (live && sleepHistory) {
+      return buildSleepChartFromHistory(sleepHistory, historyRange.from, historyRange.to, today);
+    }
+    return buildSleepChart(historyRange.from, historyRange.to, today);
+  }, [live, sleepHistory, historyRange.from, historyRange.to, today]);
+  const sleepSummary = useMemo(() => {
+    if (live) return buildSleepSummaryFromToday(sleepToday, sleepGoal);
+    return BMS_SLEEP_SUMMARY;
+  }, [live, sleepToday, sleepGoal]);
 
   function setTab(next) {
     setSearchParams((prev) => {
@@ -430,6 +501,55 @@ export function BmsSection({ user, onToast }) {
       return p;
     }, { replace: true });
   }
+
+  useEffect(() => {
+    if (!live) return undefined;
+    if (tab !== "steps" && tab !== "heart" && tab !== "sleep") return undefined;
+    let cancelled = false;
+    setMetricLoading(true);
+    const range = {
+      from: formatFoodDateInput(historyRange.from),
+      to: formatFoodDateInput(historyRange.to),
+    };
+    const request = tab === "steps"
+      ? fetchUserStepsTracking(userId, range)
+      : tab === "heart"
+        ? fetchUserHeartRateTracking(userId, range)
+        : fetchUserSleepTracking(userId, range);
+
+    request
+      .then((data) => {
+        if (cancelled) return;
+        const history = data?.history || [];
+        if (tab === "steps") {
+          setStepsHistory(history);
+          const goal = Number(data?.settings?.goalSteps);
+          if (Number.isFinite(goal) && goal > 0) setStepsGoal(goal);
+        } else if (tab === "heart") {
+          setHeartHistory(history);
+        } else {
+          setSleepHistory(history);
+          setSleepToday(data?.today || history[history.length - 1] || null);
+        }
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        if (tab === "steps") setStepsHistory([]);
+        if (tab === "heart") setHeartHistory([]);
+        if (tab === "sleep") {
+          setSleepHistory([]);
+          setSleepToday(null);
+        }
+        onToast(error?.message || "Failed to load tracking data");
+      })
+      .finally(() => {
+        if (!cancelled) setMetricLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [live, onToast, tab, userId, historyRange.from, historyRange.to]);
 
   useEffect(() => {
     const kindByTab = { mental: "mental", yoga: "yoga", exercise: "exercise" };
@@ -465,6 +585,43 @@ export function BmsSection({ user, onToast }) {
       cancelled = true;
     };
   }, [tab, userId, canAssign, onToast]);
+
+  async function toggleTracking(kind, next) {
+    if (!live) {
+      if (kind === "heart") setHeartRateOn(next);
+      else setSleepTrackingOn(next);
+      onToast(next
+        ? `${kind === "heart" ? "Heart rate" : "Sleep tracking"} enabled in the client app`
+        : `${kind === "heart" ? "Heart rate" : "Sleep tracking"} hidden from the client app`);
+      return;
+    }
+    if (toggleBusy) return;
+    const prevHeart = heartRateOn;
+    const prevSleep = sleepTrackingOn;
+    if (kind === "heart") setHeartRateOn(next);
+    else setSleepTrackingOn(next);
+    setToggleBusy(true);
+    try {
+      await updateUserBmsTracking(userId, kind === "heart"
+        ? { heartRateEnabled: next }
+        : { sleepTrackingEnabled: next });
+      try {
+        const row = await fetchUser(userId);
+        if (row) onUserUpdated?.(row);
+      } catch {
+        // Toggle already saved; profile refresh is best-effort.
+      }
+      onToast(next
+        ? `${kind === "heart" ? "Heart rate" : "Sleep tracking"} enabled in the client app`
+        : `${kind === "heart" ? "Heart rate" : "Sleep tracking"} hidden from the client app`);
+    } catch (error) {
+      setHeartRateOn(prevHeart);
+      setSleepTrackingOn(prevSleep);
+      onToast(error?.message || "Failed to update tracking visibility");
+    } finally {
+      setToggleBusy(false);
+    }
+  }
 
   async function toggleContent(kind, item) {
     if (!userId) return;
@@ -533,7 +690,8 @@ export function BmsSection({ user, onToast }) {
               type="button"
               className={`ua-toggle${heartRateOn ? " ua-toggle--on" : ""}`}
               aria-pressed={heartRateOn}
-              onClick={() => setHeartRateOn((v) => !v)}
+              onClick={() => toggleTracking("heart", !heartRateOn)}
+              disabled={toggleBusy}
             >
               <span className="ua-toggle__knob" />
             </button>
@@ -544,7 +702,8 @@ export function BmsSection({ user, onToast }) {
               type="button"
               className={`ua-toggle${sleepTrackingOn ? " ua-toggle--on" : ""}`}
               aria-pressed={sleepTrackingOn}
-              onClick={() => setSleepTrackingOn((v) => !v)}
+              onClick={() => toggleTracking("sleep", !sleepTrackingOn)}
+              disabled={toggleBusy}
             >
               <span className="ua-toggle__knob" />
             </button>
@@ -555,7 +714,12 @@ export function BmsSection({ user, onToast }) {
       <PillTabs size="md" active={activeTab} onChange={setTab} tabs={visibleTabs} />
 
       {activeTab === "steps" ? (
-        <StepsPanel chart={stepsChart} historyRange={historyRange} onRangeChange={setHistoryRange} />
+        <StepsPanel
+          chart={stepsChart}
+          historyRange={historyRange}
+          onRangeChange={setHistoryRange}
+          loading={live && metricLoading && !stepsHistory}
+        />
       ) : null}
 
       {activeTab === "heart" ? (
@@ -564,13 +728,14 @@ export function BmsSection({ user, onToast }) {
           historyRange={historyRange}
           onRangeChange={setHistoryRange}
           enabled={heartRateOn}
+          loading={live && metricLoading && !heartHistory}
         />
       ) : null}
 
       {activeTab === "sleep" ? (
         <SleepPanel
           chart={sleepChart}
-          summary={BMS_SLEEP_SUMMARY}
+          summary={sleepSummary}
           historyRange={historyRange}
           onRangeChange={setHistoryRange}
           enabled={sleepTrackingOn}
@@ -586,6 +751,7 @@ export function BmsSection({ user, onToast }) {
           onCancelGoal={() => setSleepGoalEditing(false)}
           onSaveGoal={saveSleepGoal}
           onDraftGoalChange={setSleepGoalDraft}
+          loading={live && metricLoading && !sleepHistory}
         />
       ) : null}
 
