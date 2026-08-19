@@ -565,7 +565,7 @@ export function DynamicTransformationSection({ items, setItems, onToast }) {
           </section>
         ) : null}
 
-        <div className="ua-cfg-rc-toolbar">
+        {/* <div className="ua-cfg-rc-toolbar">
           <input
             type="search"
             className="ua-cfg-dd-search"
@@ -574,7 +574,7 @@ export function DynamicTransformationSection({ items, setItems, onToast }) {
             onChange={(event) => setSearch(event.target.value)}
             aria-label="Search transformations"
           />
-        </div>
+        </div> */}
 
         {items.length ? (
           <div className={`ua-cfg-rc-list${loading ? " is-loading" : ""}`}>
@@ -582,7 +582,7 @@ export function DynamicTransformationSection({ items, setItems, onToast }) {
               const isEditing = editingId === entry.id;
               const points = (entry.dataPoints || []).filter((row) => String(row.value || "").trim());
               return (
-                <article key={entry.id} className="ua-cfg-rc-item ua-cfg-tf-item">
+                <article key={entry.id} className={`ua-cfg-rc-item ua-cfg-tf-item${isEditing ? " is-editing" : ""}`}>
                   <div className="ua-cfg-tf-pair">
                     {[["old", "Before", entry.oldImage], ["new", "After", entry.newImage]].map(([kind, label, src]) => (
                       <div key={kind} className="ua-cfg-rc-cover-wrap">

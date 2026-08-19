@@ -73,8 +73,8 @@ function CoverPick({ previewUrl, disabled, compact, onPick }) {
         }
       }}
     >
-      {filled ? <img src={previewUrl} alt="" /> : <span aria-hidden="true">🖼</span>}
-      <em>{filled ? "Replace" : "Cover"}</em>
+      {filled ? <img src={previewUrl} alt="" /> : <span aria-hidden="true">🖼️</span>}
+      <em>{filled ? "Replace" : "Cover image"}</em>
       <input
         ref={inputRef}
         type="file"
@@ -374,9 +374,8 @@ export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, galler
       <Panel
         title="Where this is live"
         subtitle="Turn it on for the app, the website, or both."
-      >
-        <SurfaceToggles editor={editor} busy={busy} onPatch={patchConfig} />
-      </Panel>
+        actions={<SurfaceToggles editor={editor} busy={busy} onPatch={patchConfig} />}
+      />
 
       {summary}
 
@@ -404,7 +403,7 @@ export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, galler
         {creating ? (
           <section className="ua-cfg-rc-new">
             <div className="ua-cfg-rc-new__head">
-              <strong><span aria-hidden="true">✎</span> New post</strong>
+              <strong><span aria-hidden="true">📝</span> New post</strong>
               <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={() => setCreating(false)}>×</button>
             </div>
             <div className="ua-cfg-bl-new__grid">
@@ -456,6 +455,7 @@ export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, galler
               const editing = editingId === entry.id;
               return (
                 <article key={entry.id} className={`ua-cfg-rc-item ua-cfg-bl-item${editing ? " is-editing" : ""}`}>
+                  <span className="ua-cfg-bl-handle" aria-hidden="true">⠿</span>
                   <CoverPick
                     previewUrl={entry.coverImage}
                     disabled={busy}
@@ -466,7 +466,6 @@ export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, galler
                     <div className="ua-cfg-bl-item__head">
                       <div className="ua-cfg-bl-item__identity">
                         <div className="ua-cfg-bl-item__meta">
-                          <span className="ua-cfg-bl-handle" aria-hidden="true">⠿</span>
                           <span className="ua-cfg-rc-pill ua-cfg-bl-flag">{postLabel(index)}</span>
                         </div>
                         {editing ? (

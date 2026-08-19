@@ -307,7 +307,6 @@ export function DynamicClientReviewSection({ queue, setQueue, published, setPubl
                     <Stars count={entry.rating} />
                     <em className="ua-cfg-cr-pending">Pending</em>
                   </div>
-                  <p>{asCopyString(entry.quote)}</p>
                 </div>
                 <div className="ua-cfg-cr-row__actions">
                   <button
@@ -335,6 +334,7 @@ export function DynamicClientReviewSection({ queue, setQueue, published, setPubl
                     Reject
                   </button>
                 </div>
+                {asCopyString(entry.quote) ? <p className="ua-cfg-cr-row__quote">{asCopyString(entry.quote)}</p> : null}
               </article>
             ))}
           </div>
@@ -357,7 +357,6 @@ export function DynamicClientReviewSection({ queue, setQueue, published, setPubl
                     <strong>{asCopyString(entry.name)}</strong>
                     <Stars count={entry.rating} />
                   </div>
-                  <p>{asCopyString(entry.quote)}</p>
                 </div>
                 <div className="ua-cfg-cr-row__actions">
                   <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>
@@ -400,6 +399,7 @@ export function DynamicClientReviewSection({ queue, setQueue, published, setPubl
                     </button>
                   </div>
                 </div>
+                {asCopyString(entry.quote) ? <p className="ua-cfg-cr-row__quote">{asCopyString(entry.quote)}</p> : null}
               </article>
             ))}
           </div>
