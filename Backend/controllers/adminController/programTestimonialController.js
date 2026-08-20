@@ -16,12 +16,28 @@ const {
   updateProgramTestimonial,
   deleteProgramTestimonial,
   listProgramTestimonials,
+  reorderProgramTestimonials,
   normalizeStatus,
   normalizeType,
+  normalizeSortOrder,
+  SORT_ORDER_MIN,
+  SORT_ORDER_MAX,
 } = require("../../models/programTestimonialModel");
 
 const ALLOWED_STATUS = ["active", "inactive"];
 const S3_FOLDER = "program-testimonials";
+
+function validateSortOrder(value) {
+  if (value === undefined || value === null || value === "") return undefined;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < SORT_ORDER_MIN || n > SORT_ORDER_MAX || Math.floor(n) !== n) {
+    throw new AppError(
+      `sortOrder must be a whole number between ${SORT_ORDER_MIN} and ${SORT_ORDER_MAX}`,
+      400,
+    );
+  }
+  return normalizeSortOrder(n);
+}
 
 exports.listProgramTestimonialsController = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, status, type, search } = req.query;
@@ -48,6 +64,7 @@ exports.createProgramTestimonialController = asyncHandler(async (req, res) => {
   const name = String(req.body.name || "").trim();
   const description = String(req.body.description || "").trim();
   const status = normalizeStatus(req.body.status, "active");
+  const sortOrder = validateSortOrder(req.body.sortOrder);
 
   let type;
   try {
@@ -77,6 +94,7 @@ exports.createProgramTestimonialController = asyncHandler(async (req, res) => {
     profileImage,
     type,
     status,
+    sortOrder,
   });
 
   return res.status(201).json({
@@ -109,6 +127,9 @@ exports.updateProgramTestimonialController = asyncHandler(async (req, res) => {
     } catch (err) {
       throw new AppError(err.message || "type is required", 400);
     }
+  }
+  if (req.body.sortOrder !== undefined) {
+    updates.sortOrder = validateSortOrder(req.body.sortOrder);
   }
 
   const profileImageRaw = parseProfileImageFromBody(req.body);
@@ -158,6 +179,30 @@ exports.updateProgramTestimonialController = asyncHandler(async (req, res) => {
     message: "Program testimonial updated successfully",
     programTestimonial,
   });
+});
+
+exports.reorderProgramTestimonialsController = asyncHandler(async (req, res) => {
+  const orderedIds = req.body.orderedIds ?? req.body.order ?? req.body.ids;
+  if (!Array.isArray(orderedIds) || !orderedIds.length) {
+    throw new AppError("orderedIds must be a non-empty array", 400);
+  }
+
+  try {
+    const programTestimonials = await reorderProgramTestimonials(orderedIds);
+    return res.status(200).json({
+      status: true,
+      message: "Program testimonials reordered",
+      programTestimonials,
+    });
+  } catch (err) {
+    if (err?.statusCode === 404 || String(err.message || "").startsWith("Program testimonial not found")) {
+      throw new AppError(err.message || "Program testimonial not found", 404);
+    }
+    if (err?.message === "orderedIds must be unique" || err?.message === "orderedIds is required") {
+      throw new AppError(err.message, 400);
+    }
+    throw err;
+  }
 });
 
 exports.deleteProgramTestimonialController = asyncHandler(async (req, res) => {

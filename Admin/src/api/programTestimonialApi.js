@@ -11,6 +11,7 @@ export function mapProgramTestimonial(row) {
   if (!row) return null;
   const id = row.id || row._id;
   if (!id) return null;
+  const sortOrder = Number(row.sortOrder);
   return {
     id,
     name: String(row.name || "").trim(),
@@ -21,6 +22,7 @@ export function mapProgramTestimonial(row) {
     hasPhoto: Boolean(row.profileImage),
     live: row.status !== "inactive",
     status: row.status === "inactive" ? "inactive" : "active",
+    sortOrder: Number.isFinite(sortOrder) ? sortOrder : 9999,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -57,6 +59,9 @@ function appendFields(form, fields) {
     form.append("description", String(fields.description || "").trim());
   }
   if (fields.type !== undefined) form.append("type", String(fields.type || "").trim());
+  if (fields.sortOrder !== undefined && fields.sortOrder !== null && fields.sortOrder !== "") {
+    form.append("sortOrder", String(fields.sortOrder));
+  }
   if (fields.status !== undefined) form.append("status", String(fields.status));
   else if (fields.live !== undefined) {
     form.append("status", fields.live ? "active" : "inactive");
@@ -70,6 +75,9 @@ function jsonFields(fields) {
     payload.description = String(fields.description || "").trim();
   }
   if (fields.type !== undefined) payload.type = String(fields.type || "").trim();
+  if (fields.sortOrder !== undefined && fields.sortOrder !== null && fields.sortOrder !== "") {
+    payload.sortOrder = Number(fields.sortOrder);
+  }
   if (fields.status !== undefined) payload.status = String(fields.status);
   else if (fields.live !== undefined) payload.status = fields.live ? "active" : "inactive";
   return payload;
@@ -109,6 +117,21 @@ export async function adminDeleteProgramTestimonial(token, id) {
     await api.delete(`${BASE}/${encodeURIComponent(id)}`, {
       headers: authHeader(tokenOrStored(token)),
     });
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function adminReorderProgramTestimonials(token, orderedIds) {
+  try {
+    const { data } = await api.put(
+      `${BASE}/reorder`,
+      { orderedIds },
+      { headers: authHeader(tokenOrStored(token)) },
+    );
+    return (Array.isArray(data.programTestimonials) ? data.programTestimonials : [])
+      .map(mapProgramTestimonial)
+      .filter(Boolean);
   } catch (error) {
     normalizeApiError(error);
   }

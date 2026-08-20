@@ -6,13 +6,18 @@ export function PageEnter({ children }) {
   return <div className="ua-page-enter">{children}</div>;
 }
 
-export function BackLink({ label = "Dashboard", to = UPDATED_ADMIN_PATHS.dashboard }) {
+export function BackLink({
+  label = "Dashboard",
+  to = UPDATED_ADMIN_PATHS.dashboard,
+  /** When set, replaces the default "Back to {label}" copy (Figma uses plain "Back"). */
+  text,
+}) {
   return (
     <Link to={to} className="ua-back-link">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M15 18l-6-6 6-6" />
       </svg>
-      Back to {label}
+      {text ?? `Back to ${label}`}
     </Link>
   );
 }
@@ -79,9 +84,9 @@ export function PillTabs({ tabs, active, onChange, size = "sm" }) {
   );
 }
 
-export function OrangeButton({ children, onClick, type = "button" }) {
+export function OrangeButton({ children, onClick, type = "button", disabled = false }) {
   return (
-    <button type={type} className="ua-btn-orange" onClick={onClick}>
+    <button type={type} className="ua-btn-orange" onClick={onClick} disabled={disabled}>
       {children}
     </button>
   );

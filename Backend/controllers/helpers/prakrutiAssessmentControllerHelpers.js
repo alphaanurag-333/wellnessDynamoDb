@@ -63,6 +63,14 @@ function parseScores(body) {
   };
 }
 
+function parseTextList(body, key) {
+  if (body?.[key] === undefined) return undefined;
+  if (!Array.isArray(body[key])) {
+    throw new AppError(`${key} must be an array`, 400);
+  }
+  return body[key].map((t) => String(t || "").trim()).filter(Boolean);
+}
+
 function buildQuestionsCsv(user, userId, questions) {
   const escapeCsv = (value) => {
     const s = String(value ?? "");
@@ -188,6 +196,8 @@ function createPrakrutiAssessmentPortalHandlers({ assertHealUserAccess, createdB
           prakrutiType,
           thingToAvoidIds: parseThingToAvoidIds(req.body) ?? [],
           selectedQuestionIds: parseSelectedQuestionIds(req.body) ?? [],
+          recommendationTexts: parseTextList(req.body, "recommendationTexts") ?? [],
+          avoidTexts: parseTextList(req.body, "avoidTexts") ?? [],
           scores: parseScores(req.body) ?? null,
           forceNew: Boolean(req.body.forceNew),
           createdByRole: req.auth?.role || createdByRole,

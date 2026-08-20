@@ -116,15 +116,18 @@ export function loadCoachLetterLibrary(coachId, coachName, apiLetter) {
   const saved = store[coachId];
   if (saved?.letters) {
     const url = saved.signature?.url || "";
+    const letters = Array.isArray(saved.letters) ? saved.letters : [];
+    const signedCount = letters.filter((row) => row.signed).length;
     return {
       liveId: saved.liveId ?? null,
       signature: {
         name: saved.signature?.name || coachName,
         drawnOn: saved.signature?.drawnOn || "",
         url,
-        onFile: Boolean(url),
+        // Figma "ON FILE" when an image exists or letters were signed with a signature.
+        onFile: Boolean(url) || Boolean(saved.signature?.onFile) || signedCount > 0,
       },
-      letters: Array.isArray(saved.letters) ? saved.letters : [],
+      letters,
     };
   }
 
