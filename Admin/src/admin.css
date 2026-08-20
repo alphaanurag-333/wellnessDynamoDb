@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --brand-green: linear-gradient(135deg, rgb(52, 165, 106), rgb(124, 199, 154));
   --brand-green-solid: rgb(43, 143, 91);
   --brand-blue: #16233f;
@@ -887,7 +887,7 @@
   background: #eef0fc;
 }
 
-/* ── Notifications page ─────────────────────────────────────────── */
+/* â”€â”€ Notifications page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .updated-admin .npage {
   max-width: 720px;
   margin: 0 auto;
@@ -2072,7 +2072,7 @@
   font-size: 19px;
 }
 
-/* Team cards — one row, extra roles scroll horizontally */
+/* Team cards â€” one row, extra roles scroll horizontally */
 .updated-admin .team-row {
   display: flex;
   flex-wrap: nowrap;
@@ -3662,7 +3662,7 @@
   white-space: nowrap;
 }
 
-/* Wellness Coach — pending tasks */
+/* Wellness Coach â€” pending tasks */
 .updated-admin .coach-pending-section {
   display: flex;
   flex-direction: column;
@@ -4250,7 +4250,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  /* Figma: list grows with items — no visible scrollbar chrome */
+  /* Figma: list grows with items â€” no visible scrollbar chrome */
   max-height: none;
   overflow: visible;
   position: relative;
@@ -6224,7 +6224,7 @@
   background: #fdeaea;
 }
 
-/* Dashboard — never show silent mock/demo metrics as if they were live */
+/* Dashboard â€” never show silent mock/demo metrics as if they were live */
 .updated-admin .ua-dash-data-banner {
   margin: 0 0 16px;
   padding: 12px 14px;
@@ -9318,7 +9318,7 @@
 }
 
 
-/* â”€â”€ Client profile (user detail) â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Client profile (user detail) Ã¢â€â‚¬Ã¢â€â‚¬ */
 .updated-admin--client-profile .sidebar,
 .updated-admin--client-profile .header {
   display: none;
@@ -9753,7 +9753,7 @@
   border: 1px solid #e6ebf2;
   border-radius: 9px;
   background: #fff;
-  color: #5e6ad2;
+  color: #5c6bc0;
   font-size: 13px;
   font-weight: 650;
   cursor: pointer;
@@ -9762,6 +9762,7 @@
   flex: 0 0 auto;
   width: auto;
   max-width: max-content;
+  box-shadow: 0 2px 8px rgba(18, 31, 61, 0.06);
 }
 
 .updated-admin .ua-cp-sidebar__tags {
@@ -18773,7 +18774,7 @@ scrollbar-width: thin;
 
 
 
-/* ── SOP Library ─────────────────────────────────────────── */
+/* â”€â”€ SOP Library â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .updated-admin .ua-sop-page .page-head__sub {
   max-width: 540px;
 }
@@ -19910,7 +19911,7 @@ scrollbar-width: thin;
   color: rgb(90, 107, 133);
 }
 
-/* My Content — matches Figma admin My Content */
+/* My Content â€” matches Figma admin My Content */
 .updated-admin .ua-my-content {
   min-width: 0;
   max-width: 100%;
@@ -20168,7 +20169,7 @@ scrollbar-width: thin;
   }
 }
 
-/* Commitment letters — Figma layout */
+/* Commitment letters â€” Figma layout */
 .updated-admin .ua-commit__head {
   display: flex;
   align-items: flex-start;
@@ -20783,7 +20784,7 @@ scrollbar-width: thin;
 
 
 
-/* ── Access Control RBAC (screenshot UI) ─────────────────── */
+/* â”€â”€ Access Control RBAC (screenshot UI) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .updated-admin .ua-ac-page .page-head__sub {
   max-width: 100%;
   line-height: 1.5;
@@ -20945,7 +20946,7 @@ scrollbar-width: thin;
   display: flex;
   align-items: center;
   gap: 7px;
-  margin-bottom: 3px;
+  margin-bottom: 1px;
 }
 
 .updated-admin .ua-ac-role-card__dot {
@@ -20958,7 +20959,7 @@ scrollbar-width: thin;
 .updated-admin .ua-ac-role-card__name {
   flex: 1;
   min-width: 0;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 750;
   color: var(--text);
   white-space: nowrap;
@@ -20982,7 +20983,7 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-ac-role-card__inherit {
-  margin-top: 6px;
+  margin-top: 2px;
   font-size: 10.5px;
   color: rgb(138, 127, 214);
   font-weight: 500;
@@ -21734,7 +21735,7 @@ scrollbar-width: thin;
   background: #fdeeee;
 }
 
-/* Access Control — Members tab */
+/* Access Control â€” Members tab */
 .updated-admin .ua-ac-members .ua-table-scroll,
 .updated-admin .ua-table-card--ac-members {
   overflow: visible;
@@ -22126,7 +22127,7 @@ scrollbar-width: thin;
   }
 }
 
-/* —— Team member detail —— */
+/* â€”â€” Team member detail â€”â€” */
 .updated-admin .ua-tm-page {
   max-width: 1120px;
   min-width: 0;
@@ -24743,7 +24744,7 @@ scrollbar-width: thin;
 
 
 
-/* —— Admin console login —— */
+/* â€”â€” Admin console login â€”â€” */
 .updated-admin.ua-login {
   min-height: 100vh;
   display: grid;
@@ -25180,7 +25181,7 @@ scrollbar-width: thin;
 
 
 
-/* Health Progress — tracker management */
+/* Health Progress â€” tracker management */
 .updated-admin .ua-cp-hptrack {
   display: flex;
   flex-direction: column;
@@ -26755,76 +26756,91 @@ scrollbar-width: thin;
 
 
 
-/* Daily Reflection form */
+/* Daily Reflection Form */
 .updated-admin .ua-cp-reflect {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
   width: 100%;
 }
 
 .updated-admin .ua-cp-reflect__head {
   text-align: center;
+  margin: 4px 0 2px;
 }
 
 .updated-admin .ua-cp-reflect__title {
   margin: 0;
   font-size: 22px;
   font-weight: 800;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #16233f;
+  color: #121f3d;
+  line-height: 1.2;
 }
 
 .updated-admin .ua-cp-reflect__sub {
-  margin: 6px 0 0;
+  margin: 8px 0 0;
   font-size: 13px;
-  color: #8a97ac;
+  font-weight: 500;
+  color: #8e9aaf;
+  line-height: 1.45;
 }
 
 .updated-admin .ua-cp-reflect-score {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 16px 20px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #1a2744 0%, #243656 100%);
+  gap: 20px;
+  width: min(100%, 560px);
+  max-width: 100%;
+  margin-inline: auto;
+  align-self: center;
+  box-sizing: border-box;
+  padding: 22px 28px;
+  border-radius: 18px;
+  background: #121f3d;
+  box-shadow: 0 10px 28px rgba(18, 31, 61, 0.22);
   color: #fff;
+  min-width: 0;
 }
 
 .updated-admin .ua-cp-reflect-score__left span {
   display: block;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
-  opacity: 0.85;
-  margin-bottom: 4px;
+  color: #9aa8bc;
+  margin-bottom: 6px;
 }
 
 .updated-admin .ua-cp-reflect-score__left strong {
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
+  color: #b7c2d4;
 }
 
 .updated-admin .ua-cp-reflect-score__right {
   display: flex;
   align-items: baseline;
-  gap: 4px;
+  gap: 6px;
   flex-shrink: 0;
+  color: #fff;
 }
 
 .updated-admin .ua-cp-reflect-score__right strong {
-  font-size: 36px;
+  font-size: 40px;
   font-weight: 800;
   line-height: 1;
+  letter-spacing: -0.02em;
+  color: #fff;
 }
 
 .updated-admin .ua-cp-reflect-score__right span {
   font-size: 18px;
-  font-weight: 600;
-  opacity: 0.9;
+  font-weight: 700;
+  color: #fff;
 }
 
 .updated-admin .ua-cp-reflect-callouts {
@@ -26843,27 +26859,40 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cp-reflect-callout--app {
-  background: #f5f3ff;
-  border-color: #ddd6fe;
+  background: #eef4ff;
+  border-color: #c7d7f5;
 }
 
 .updated-admin .ua-cp-reflect-callout--champ {
-  background: #fffbeb;
-  border-color: #fde68a;
+  background: #fff8e8;
+  border-color: #f0d9a0;
+}
+
+.updated-admin .ua-cp-reflect-callout__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
 }
 
 .updated-admin .ua-cp-reflect-callout__icon {
   font-size: 16px;
+  line-height: 1.4;
+  flex-shrink: 0;
 }
 
 .updated-admin .ua-cp-reflect-callout p {
-  margin: 6px 0 0;
+  margin: 0;
   font-size: 12.5px;
   line-height: 1.5;
-  color: #4a5568;
+  color: rgb(74, 83, 168);
 }
 
-.updated-admin .ua-cp-reflect-callout p strong {
+.updated-admin .ua-cp-reflect-callout--app p strong {
+  color: rgb(74, 83, 168);
+  font-weight: 700;
+}
+
+.updated-admin .ua-cp-reflect-callout--champ p strong {
   color: #a16207;
 }
 
@@ -26879,14 +26908,48 @@ scrollbar-width: thin;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 10px;
+  padding: 7px 12px;
   border-radius: 9px;
   background: #fff;
-  border: 1px solid #ddd6fe;
+  border: 1px solid #d0d7e6;
   font-size: 12px;
   font-weight: 600;
-  color: #5e6ad2;
+  color: #5b6b85;
   position: relative;
+  cursor: pointer;
+}
+
+.updated-admin .ua-cp-reflect-bedtime__label {
+  color: rgb(138, 143, 192);
+  font-weight: 700;
+}
+
+.updated-admin .ua-cp-reflect-bedtime__value {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: rgb(58, 63, 143);
+  font-weight: 700;
+}
+
+.updated-admin .ua-cp-reflect-bedtime__clock {
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid #8a97ac;
+  border-radius: 50%;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.updated-admin .ua-cp-reflect-bedtime__clock::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 4.5px;
+  width: 1.5px;
+  height: 4px;
+  background: #8a97ac;
+  border-radius: 1px;
 }
 
 .updated-admin .ua-cp-reflect-bedtime input[type="time"] {
@@ -26958,18 +27021,27 @@ scrollbar-width: thin;
   padding: 0;
   cursor: pointer;
   color: #8a97ac;
-  font-size: 18px;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
 }
 
 .updated-admin .ua-cp-reflect-section__chev {
   display: inline-block;
-  transform: rotate(90deg);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid #9aa6b8;
+  transform: rotate(-90deg);
   transition: transform 0.15s ease;
 }
 
 .updated-admin .ua-cp-reflect-section__chev--open {
-  transform: rotate(-90deg);
+  transform: rotate(0deg);
 }
 
 .updated-admin .ua-cp-reflect-section__badge {
@@ -26978,8 +27050,8 @@ scrollbar-width: thin;
   justify-content: center;
   width: 24px;
   height: 24px;
-  border-radius: 999px;
-  background: #e0e7ff;
+  border-radius: 6px;
+  background: #e8ecff;
   color: #5e6ad2;
   font-size: 11px;
   font-weight: 800;
@@ -26989,12 +27061,27 @@ scrollbar-width: thin;
 .updated-admin .ua-cp-reflect-section__title {
   flex: 1;
   min-width: 0;
-  border: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
   background: none;
   font-size: 14px;
   font-weight: 800;
   color: #16233f;
-  padding: 4px 0;
+  padding: 4px 6px;
+  font-family: inherit;
+}
+
+.updated-admin .ua-cp-reflect-section__title:hover:not([readonly]),
+.updated-admin .ua-cp-reflect-section__title:focus {
+  border-color: #c4b5fd;
+  background: #faf5ff;
+  outline: none;
+}
+
+.updated-admin .ua-cp-reflect-section__title[readonly] {
+  color: #16233f;
+  opacity: 1;
+  cursor: default;
 }
 
 .updated-admin .ua-cp-reflect-section__title--readonly {
@@ -27007,61 +27094,118 @@ scrollbar-width: thin;
 .updated-admin .ua-cp-reflect-section__meta {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   flex-shrink: 0;
 }
 
 .updated-admin .ua-cp-reflect-section__wt {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 10px;
+  gap: 6px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.04em;
-  color: #8a97ac;
+  color: #5e6ad2;
 }
 
 .updated-admin .ua-cp-reflect-section__wt input {
-  width: 42px;
-  height: 28px;
-  border: 1px solid var(--border);
+  width: 48px;
+  height: 30px;
+  border: 1px solid #d5dbe8;
   border-radius: 6px;
   padding: 0 6px;
   font-size: 12px;
   font-weight: 700;
   text-align: center;
+  color: #16233f;
+  background: #fff;
+  font-family: inherit;
+}
+
+.updated-admin .ua-cp-reflect-section__wt input:focus {
+  outline: none;
+  border-color: #a5b4fc;
+}
+
+.updated-admin .ua-cp-reflect-section__wt input[readonly] {
+  background: #fff;
+  color: #16233f;
 }
 
 .updated-admin .ua-cp-reflect-section__pill {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   font-size: 11px;
   font-weight: 700;
   padding: 4px 10px;
   border-radius: 999px;
-  background: #f3f4f6;
-  color: #6b7280;
+  background: #eef1f6;
+  color: #5b6b85;
   white-space: nowrap;
 }
 
 .updated-admin .ua-cp-reflect-section__points {
-  color: #6b7280;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #16233f;
+  font-size: 13px;
+  font-weight: 700;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  white-space: nowrap;
+}
+
+.updated-admin .ua-cp-reflect-lock {
+  display: inline-block;
+  width: 10px;
+  height: 12px;
+  border: 1.5px solid #8a97ac;
+  border-radius: 2px 2px 3px 3px;
+  position: relative;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.updated-admin .ua-cp-reflect-lock::before {
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: 1px;
+  width: 5px;
+  height: 5px;
+  border: 1.5px solid #8a97ac;
+  border-bottom: none;
+  border-radius: 5px 5px 0 0;
 }
 
 .updated-admin .ua-cp-reflect-section__remove,
 .updated-admin .ua-cp-reflect-question__remove {
   border: none;
   background: none;
-  color: #9aa6b8;
+  color: #c45c3e;
   cursor: pointer;
   font-size: 18px;
   line-height: 1;
   padding: 0 2px;
+  opacity: 0.75;
+}
+
+.updated-admin .ua-cp-reflect-section__remove:hover,
+.updated-admin .ua-cp-reflect-question__remove:hover {
+  opacity: 1;
+}
+
+.updated-admin .ua-cp-reflect-section__remove:disabled,
+.updated-admin .ua-cp-reflect-question__remove:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .updated-admin .ua-cp-reflect-section__body {
-  padding: 4px 0;
+  padding: 4px 0 8px;
 }
 
 .updated-admin .ua-cp-reflect-question {
@@ -27073,7 +27217,7 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cp-reflect-question:last-of-type {
-  border-bottom: none;
+  border-bottom: 1px solid #f0f2f6;
 }
 
 .updated-admin .ua-cp-reflect-question__num {
@@ -27091,37 +27235,34 @@ scrollbar-width: thin;
   padding: 8px 10px;
   font-size: 13px;
   font-weight: 600;
-  color: #16233f;
+  color: #5b6b85;
   background: transparent;
+  font-family: inherit;
   transition: border-color 0.15s, background 0.15s;
 }
 
-.updated-admin .ua-cp-reflect-question__text:hover,
+.updated-admin .ua-cp-reflect-question__text:hover:not([readonly]),
 .updated-admin .ua-cp-reflect-question__text:focus {
   border-color: #c4b5fd;
   background: #faf5ff;
   outline: none;
+  color: #16233f;
 }
 
-.updated-admin .ua-cp-reflect-question__text--readonly {
-  display: block;
-  border-color: transparent;
-  background: transparent;
+.updated-admin .ua-cp-reflect-question__text[readonly] {
+  color: #5b6b85;
+  opacity: 1;
   cursor: default;
 }
 
-.updated-admin .ua-cp-reflect-question__text--readonly:hover,
-.updated-admin .ua-cp-reflect-question__text--readonly:focus {
+.updated-admin .ua-cp-reflect-question__text[readonly]:hover,
+.updated-admin .ua-cp-reflect-question__text[readonly]:focus {
   border-color: transparent;
   background: transparent;
 }
 
-.updated-admin .ua-cp-reflect-question.is-off .ua-cp-reflect-question__text--readonly {
-  color: #8a97ac;
-}
-
 .updated-admin .ua-cp-reflect-question__score {
-  flex: 0 0 320px;
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -27132,55 +27273,26 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cp-reflect-question__score input {
-  width: 52px;
+  width: 48px;
   height: 32px;
-  border: 1px solid var(--border);
+  border: 1px solid #d5dbe8;
   border-radius: 8px;
   text-align: center;
   font-size: 13px;
   font-weight: 700;
   color: #16233f;
-}
-
-.updated-admin .ua-cp-reflect-field {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #9aa6b8;
-}
-
-.updated-admin .ua-cp-reflect-tracking {
-  font-size: 12px;
-  font-weight: 700;
-  color: #16233f;
-}
-
-.updated-admin .ua-cp-reflect-yesno {
-  display: inline-flex;
-  gap: 4px;
-}
-
-.updated-admin .ua-cp-reflect-yesno__btn {
-  height: 28px;
-  padding: 0 10px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
   background: #fff;
-  color: #5b6b85;
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
+  font-family: inherit;
 }
 
-.updated-admin .ua-cp-reflect-yesno__btn.is-on {
-  border-color: #ec7a45;
-  background: #fff4ec;
-  color: #c2410c;
+.updated-admin .ua-cp-reflect-question__score input:focus {
+  outline: none;
+  border-color: #a5b4fc;
+}
+
+.updated-admin .ua-cp-reflect-question__score input[readonly] {
+  background: #fff;
+  color: #16233f;
 }
 
 .updated-admin .ua-cp-reflect-add-question,
@@ -27190,13 +27302,19 @@ scrollbar-width: thin;
   justify-content: center;
   margin: 10px 16px 14px;
   padding: 10px 16px;
-  border: 1px dashed #c7d2fe;
+  border: 1px dashed #b8c4f0;
   border-radius: 10px;
   background: #fff;
   color: #5e6ad2;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
+}
+
+.updated-admin .ua-cp-reflect-add-question:disabled,
+.updated-admin .ua-cp-reflect-add-section:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .updated-admin .ua-cp-reflect-foot {
@@ -27213,22 +27331,25 @@ scrollbar-width: thin;
 .updated-admin .ua-cp-reflect-foot .ua-cp-reflect-add-section {
   margin: 0;
   width: 100%;
+  min-height: 44px;
 }
 
 .updated-admin .ua-cp-reflect-save {
   width: 100%;
+  min-height: 44px;
   font-weight: 700;
 }
 
 .updated-admin .ua-cp-reflect-modal {
   width: min(440px, calc(100vw - 32px));
-  padding: 22px 24px 20px;
-  border-radius: 16px;
+  padding: 28px 32px 24px;
+  border-radius: 20px;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.2);
 }
 
 .updated-admin .ua-cp-reflect-modal__eyebrow {
   margin: 0 0 8px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -27246,15 +27367,15 @@ scrollbar-width: thin;
   margin: 0 0 10px;
   font-size: 20px;
   font-weight: 800;
-  color: #16233f;
+  color: #0f172a;
   line-height: 1.35;
 }
 
 .updated-admin .ua-cp-reflect-modal__body {
-  margin: 0 0 18px;
-  font-size: 13px;
+  margin: 0 0 22px;
+  font-size: 15px;
   line-height: 1.5;
-  color: #6b7280;
+  color: #94a3b8;
 }
 
 .updated-admin .ua-cp-reflect-modal__foot {
@@ -27270,6 +27391,104 @@ scrollbar-width: thin;
   font-weight: 700;
 }
 
+@media (max-width: 720px) {
+  .updated-admin .ua-cp-reflect {
+    gap: 14px;
+  }
+
+  .updated-admin .ua-cp-reflect__title {
+    font-size: 18px;
+    letter-spacing: 0.05em;
+  }
+
+  .updated-admin .ua-cp-reflect__sub {
+    font-size: 12px;
+    padding: 0 4px;
+  }
+
+  .updated-admin .ua-cp-reflect-score {
+    width: 100%;
+    max-width: 100%;
+    margin-inline: auto;
+    align-self: center;
+    padding: 16px 18px;
+    gap: 12px;
+    border-radius: 16px;
+  }
+
+  .updated-admin .ua-cp-reflect-score__left {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .updated-admin .ua-cp-reflect-score__left span {
+    font-size: 10px;
+    letter-spacing: 0.06em;
+  }
+
+  .updated-admin .ua-cp-reflect-score__left strong {
+    font-size: 13px;
+  }
+
+  .updated-admin .ua-cp-reflect-score__right strong {
+    font-size: 32px;
+  }
+
+  .updated-admin .ua-cp-reflect-score__right span {
+    font-size: 15px;
+  }
+
+  .updated-admin .ua-cp-reflect-callouts,
+  .updated-admin .ua-cp-reflect-foot {
+    grid-template-columns: 1fr;
+  }
+
+  .updated-admin .ua-cp-reflect-section__head {
+    flex-wrap: wrap;
+  }
+
+  .updated-admin .ua-cp-reflect-section__meta {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .updated-admin .ua-cp-reflect-question {
+    flex-wrap: wrap;
+  }
+
+  .updated-admin .ua-cp-reflect-question__score {
+    width: 100%;
+    justify-content: flex-end;
+    padding-left: 32px;
+  }
+}
+
+@media (max-width: 480px) {
+  .updated-admin .ua-cp-reflect-score {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 10px;
+    padding: 18px 16px;
+  }
+
+  .updated-admin .ua-cp-reflect-score__left {
+    width: 100%;
+  }
+
+  .updated-admin .ua-cp-reflect-score__left span {
+    margin-bottom: 4px;
+  }
+
+  .updated-admin .ua-cp-reflect-score__right {
+    justify-content: center;
+  }
+
+  .updated-admin .ua-cp-reflect-score__right strong {
+    font-size: 36px;
+  }
+}
 
 
 /* Wellness Prescription */
@@ -27807,7 +28026,7 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cp-present-panel {
-  padding: 16px 18px;
+  padding: 12px 18px;
   border-radius: 14px;
   background: #fff;
   border: 1px solid #e3e9f2;
@@ -28559,10 +28778,10 @@ scrollbar-width: thin;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
   height: 40px;
-  padding: 0 12px;
+  padding: 0 10px 0 12px;
   border: 1px solid #e3e9f2;
   border-radius: 10px;
   background: #fff;
@@ -28570,6 +28789,7 @@ scrollbar-width: thin;
   font: inherit;
   font-size: 13px;
   font-weight: 600;
+  line-height: 1;
   cursor: pointer;
   text-align: left;
 }
@@ -28585,12 +28805,33 @@ scrollbar-width: thin;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  line-height: 1.25;
 }
 
 .updated-admin .ua-cp-ex-select__chev {
   flex-shrink: 0;
-  font-size: 11px;
-  color: #8a97ac;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  font-size: 0;
+  line-height: 0;
+  color: #16233f;
+  transition: transform 0.15s ease;
+}
+
+.updated-admin .ua-cp-ex-select__chev::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-1.5px) rotate(45deg);
+  box-sizing: border-box;
+}
+
+.updated-admin .ua-cp-ex-select__trigger--open .ua-cp-ex-select__chev {
+  transform: rotate(180deg);
 }
 
 .updated-admin .ua-cp-ex-select__menu {
@@ -29741,7 +29982,7 @@ scrollbar-width: thin;
 
 
 
-/* ── Config detail pages ── */
+/* â”€â”€ Config detail pages â”€â”€ */
 .updated-admin .ua-cfg-detail__body {
   display: flex;
   flex-direction: column;
@@ -33054,7 +33295,7 @@ scrollbar-width: thin;
 
 
 
-/* ── Onboarding video config ── */
+/* â”€â”€ Onboarding video config â”€â”€ */
 .updated-admin .ua-cfg-onb {
   display: flex;
   flex-direction: column;
@@ -33656,7 +33897,7 @@ scrollbar-width: thin;
 
 
 
-/* ── Medical questionnaire config ── */
+/* â”€â”€ Medical questionnaire config â”€â”€ */
 .updated-admin .ua-cfg-mq {
   min-width: 0;
   max-width: 100%;
@@ -34003,7 +34244,7 @@ scrollbar-width: thin;
   font-weight: 600;
 }
 
-/* ── Health progress trackers config ── */
+/* â”€â”€ Health progress trackers config â”€â”€ */
 .updated-admin .ua-cfg-hp {
   display: flex;
   flex-direction: column;
@@ -34252,7 +34493,7 @@ scrollbar-width: thin;
 
 
 
-/* ── Diet plans config ── */
+/* â”€â”€ Diet plans config â”€â”€ */
 .updated-admin .ua-cfg-dp__count {
   font-size: 13px;
   font-weight: 600;
@@ -34841,7 +35082,7 @@ scrollbar-width: thin;
 
 
 
-/* ── Nutrition bank config ── */
+/* â”€â”€ Nutrition bank config â”€â”€ */
 .updated-admin .ua-cfg-nb {
   min-width: 0;
   margin-bottom: 14px;
@@ -35373,7 +35614,7 @@ scrollbar-width: thin;
   }
 }
 
-/* ── DRF activity bank ─────────────────────────────────────────────── */
+/* â”€â”€ DRF activity bank â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .updated-admin .ua-cfg-drf {
   min-width: 0;
@@ -35918,7 +36159,7 @@ scrollbar-width: thin;
 
 
 
-/* ── Wellness prescription bank ─────────────────────────────────────── */
+/* â”€â”€ Wellness prescription bank â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .updated-admin .ua-cfg-rx__count {
   font-size: 13px;
@@ -36295,7 +36536,7 @@ scrollbar-width: thin;
 
 
 
-/* ── Commitment letter ───────────────────────────────────────────────── */
+/* â”€â”€ Commitment letter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .updated-admin .ua-cfg-cl__textarea {
   width: 100%;
@@ -36592,7 +36833,7 @@ scrollbar-width: thin;
 
 
 
-/* ── Gallery config ─────────────────────────────────────────────────── */
+/* â”€â”€ Gallery config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .updated-admin .ua-cfg-gl-tabs {
   display: flex;
@@ -36992,7 +37233,7 @@ scrollbar-width: thin;
 
 
 
-/* Pending Tasks — shared role queue. Sections keep stable data attributes so
+/* Pending Tasks â€” shared role queue. Sections keep stable data attributes so
    future Access Control settings can toggle them independently. */
 .updated-admin .pending-page {
   background: #f1f4fb;
@@ -37295,7 +37536,7 @@ scrollbar-width: thin;
 
 
 
-/* ── LAUNCH assessment config ─────────────────────────────────────── */
+/* â”€â”€ LAUNCH assessment config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .updated-admin .ua-cfg-launch-ratings,
 .updated-admin .ua-cfg-launch-domains {
@@ -37685,7 +37926,7 @@ scrollbar-width: thin;
 
 
 
-/* ── AI enable config ───────────────────────────────────────────────── */
+/* â”€â”€ AI enable config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .updated-admin .ua-cfg-ai__title {
   display: inline-flex;
@@ -41799,7 +42040,7 @@ scrollbar-width: thin;
 
 
 
-/* ── Transformation config ── */
+/* â”€â”€ Transformation config â”€â”€ */
 .updated-admin .ua-cfg-tf {
   display: flex;
   flex-direction: column;
@@ -42691,7 +42932,7 @@ scrollbar-width: thin;
 
 
 
-/* ── Client review config ── */
+/* â”€â”€ Client review config â”€â”€ */
 .updated-admin .ua-cfg-cr {
   display: flex;
   flex-direction: column;
@@ -43215,7 +43456,7 @@ scrollbar-width: thin;
 
 
 
-/* ── Real People config ── */
+/* â”€â”€ Real People config â”€â”€ */
 .updated-admin .ua-cfg-rp {
   display: flex;
   flex-direction: column;
@@ -43774,7 +44015,7 @@ scrollbar-width: thin;
 
 
 
-/* ── Voice of Healing config ── */
+/* â”€â”€ Voice of Healing config â”€â”€ */
 .updated-admin .ua-cfg-vh {
   display: flex;
   flex-direction: column;
@@ -44234,7 +44475,7 @@ scrollbar-width: thin;
 
 
 
-/* ── Co-Founder message config ── */
+/* â”€â”€ Co-Founder message config â”€â”€ */
 .updated-admin .ua-cfg-cf {
   display: flex;
   flex-direction: column;
@@ -47949,7 +48190,7 @@ scrollbar-width: thin;
 }
 
 
-/* ── Responsive (standard breakpoints) ── */
+/* â”€â”€ Responsive (standard breakpoints) â”€â”€ */
 @media (min-width: 1400px) {
   .updated-admin .ua-cal-days-row {
     grid-template-columns: repeat(7, minmax(0, 0.07fr));

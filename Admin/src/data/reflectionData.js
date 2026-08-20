@@ -1,74 +1,67 @@
 export const DEFAULT_BEDTIME = "22:30";
 
-export const TRACKING_ROWS = [
-  { key: "steps", name: "Steps", unit: "steps" },
-  { key: "water", name: "Water", unit: "glasses" },
-  { key: "nutrition", name: "Nutritions", unit: "doses" },
-  { key: "meal", name: "Meal tracking", unit: "meals" },
-];
-
-export function unitLabel(unit) {
-  if (unit === "cycles") return "cycles";
-  if (unit === "times") return "times";
-  if (unit === "mins") return "mins";
-  if (unit === "boolean") return "yes / no";
-  return unit || "";
-}
-
-export function groupActivities(activities = []) {
-  const groups = [];
-  const index = new Map();
-  for (const activity of activities) {
-    const name = activity.section || "Activities";
-    if (!index.has(name)) {
-      index.set(name, groups.length);
-      groups.push({ id: name, name, activities: [] });
-    }
-    groups[index.get(name)].activities.push(activity);
-  }
-  return groups;
-}
-
-export function activitiesPayload(activities = []) {
-  const payload = {};
-  for (const activity of activities) {
-    payload[activity.key] = {
-      enabled: Boolean(activity.enabled),
-      goal: Number(activity.goal) || 0,
-    };
-  }
-  return payload;
-}
-
-export function selectedQuestionCount(sections = []) {
-  return sections.reduce(
-    (sum, section) => sum + (section.questions || []).filter((question) => question.selected).length,
-    0,
-  );
-}
-
-export function totalQuestionCount(sections = []) {
-  return sections.reduce((sum, section) => sum + (section.questions || []).length, 0);
-}
-
-export function selectedSectionPoints(section) {
+export function sectionPoints(section) {
   const questions = section?.questions || [];
-  const earned = questions.reduce((sum, question) => (
-    question.selected ? sum + (Number(question.points) || 0) : sum
-  ), 0);
-  const max = questions.reduce((sum, question) => sum + (Number(question.points) || 0), 0);
+  const earned = questions.reduce((sum, q) => sum + Number(q.score || 0), 0);
+  const max = questions.reduce((sum, q) => sum + Number(q.max || 10), 0);
   return {
     earned,
     max,
-    label: `${earned} / ${max} pts`,
+    label: `${earned} / ${max}`,
   };
 }
 
-export function selectedWeightage(sections = []) {
-  return sections.reduce((sum, section) => {
-    const hasSelected = (section.questions || []).some((question) => question.selected);
-    return hasSelected ? sum + (Number(section.weight) || 0) : sum;
-  }, 0);
+export function totalWeightage(sections = []) {
+  return sections.reduce((sum, s) => sum + Number(s.weight || 0), 0);
+}
+
+export function totalReflectionPoints(sections = []) {
+  return sections.reduce(
+    (acc, section) => {
+      const pts = sectionPoints(section);
+      return { earned: acc.earned + pts.earned, max: acc.max + pts.max };
+    },
+    { earned: 0, max: 0 },
+  );
+}
+
+export function scoreOutOfTen(earned, max) {
+  if (!(max > 0)) return 0;
+  return Math.round((Number(earned) / Number(max)) * 100) / 10;
+}
+
+export function mapApiSectionsToForm(sections = []) {
+  return (sections || [])
+    .map((section) => {
+      const questions = (section.questions || [])
+        .filter((question) => question.selected !== false || question.fixed)
+        .map((question) => ({
+          id: question.id,
+          text: question.name || question.text || "",
+          score: Number.isFinite(Number(question.score)) ? Number(question.score) : 7,
+          max: Number.isFinite(Number(question.max)) ? Number(question.max) : 10,
+          fixed: Boolean(question.fixed),
+          selected: true,
+          fromBank: true,
+        }));
+      return {
+        id: section.id,
+        title: section.name || section.title || "Section",
+        weight: Number(section.weight) || 0,
+        locked: Boolean(section.fixed),
+        expanded: true,
+        questions,
+      };
+    })
+    .filter((section) => section.questions.length > 0);
+}
+
+export function selectedQuestionIdsFromForm(sections = []) {
+  return sections.flatMap((section) =>
+    (section.questions || [])
+      .filter((question) => question.selected !== false && question.fromBank)
+      .map((question) => question.id),
+  );
 }
 
 export function formatBedtime(value) {
