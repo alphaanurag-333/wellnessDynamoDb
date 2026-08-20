@@ -1,7 +1,7 @@
 const config = require("../config");
 const { getUserById, updateUser } = require("../models/userModel");
 const { isConsultancyOnlyTier } = require("../models/userAssignmentLogic");
-const { ensureHealIfProgramPurchased } = require("../models/userConversionModel");
+const { ensureHealIfProgramPurchased, convertSeekToHeal } = require("../models/userConversionModel");
 const { getActiveRazorpayGateway } = require("./consultancyPricingService");
 const { previewProgramCheckout } = require("./programPricingService");
 const {
@@ -38,6 +38,10 @@ const {
 } = require("./coachCheckoutService");
 const { applyPaidSubscriptionOutcome } = require("./subscriptionPaymentService");
 const { resolveSubscriptionPlanForPayment } = require("./subscriptionCategoryService");
+const { grantBundledFyAppSubscription } = require("./energyExchangeEntitlementService");
+const {
+  buildEaglePaidOnboardingCompleteUpdates,
+} = require("../utils/paidOnboardingHelpers");
 
 function logPaymentFailure({ transactionId, userId, reason }) {
   console.error("[ProgramPayment] payment failed", {
@@ -75,10 +79,15 @@ async function createProgramOrder(userId, { paymentMethod = "upi" } = {}) {
   }
 
   const offer = getActiveCoachCheckoutOffer(user, "program");
+  // Assigned / offered programs can be bought without consultancy (Eagle Seek flow).
+  // Seek with no offer and no purchasable assignment still cannot buy.
   if (!offer && !isConsultancyOnlyTier(user.userTier)) {
-    const err = new Error("Complete consultancy payment before purchasing a Wellness Program");
-    err.name = "ConsultancyRequiredError";
-    throw err;
+    const assigned = await getPurchasableProgramForUser(userId);
+    if (!assigned) {
+      const err = new Error("Complete consultancy payment before purchasing a Wellness Program");
+      err.name = "ConsultancyRequiredError";
+      throw err;
+    }
   }
 
   if (user.programPurchased) {
@@ -283,6 +292,39 @@ async function findUserProgramForTransaction(user, transaction) {
   );
 }
 
+async function resolvePurchasedProgramType(user, transaction) {
+  const snapshotType = String(
+    transaction?.userSnapshot?.catalogProgramType || ""
+  )
+    .trim()
+    .toLowerCase();
+  if (snapshotType === "eagle" || snapshotType === "goal_based" || snapshotType === "lifetime") {
+    return snapshotType;
+  }
+
+  const catalogItemId = String(transaction?.userSnapshot?.catalogItemId || "").trim();
+  if (catalogItemId) {
+    const appConfig = await getAppConfig();
+    const rows = Array.isArray(appConfig?.app_program_pricing)
+      ? appConfig.app_program_pricing
+      : [];
+    const match = rows.find((row) => String(row?.id || "") === catalogItemId);
+    const type = String(match?.programType || "").trim().toLowerCase();
+    if (type === "eagle" || type === "goal_based" || type === "lifetime") return type;
+  }
+
+  const userProgram =
+    (await findUserProgramForTransaction(user, transaction)) ||
+    (await getPurchasableProgramForUser(user.id)) ||
+    (await getActiveProgramForUser(user.id)) ||
+    null;
+  const programType = String(userProgram?.programType || "").trim().toLowerCase();
+  if (programType === "eagle" || programType === "goal_based" || programType === "lifetime") {
+    return programType;
+  }
+  return "goal_based";
+}
+
 async function applyPaidProgramEntitlements(user, transaction, paidAt) {
   const userProgram = await findUserProgramForTransaction(user, transaction);
   if (userProgram) {
@@ -294,29 +336,66 @@ async function applyPaidProgramEntitlements(user, transaction, paidAt) {
     });
   }
 
+  const programType = await resolvePurchasedProgramType(user, transaction);
+  const isEagle = programType === "eagle";
+
   await updateUser(user.id, {
     programPurchased: true,
     programPurchasedAt: user.programPurchasedAt || paidAt,
     assignedProgramId: userProgram?.id || user.assignedProgramId || null,
     pendingCoachCheckout: {},
+    ...(isEagle
+      ? {
+          clientCategory: "eagle",
+          ...buildEaglePaidOnboardingCompleteUpdates(),
+        }
+      : {}),
   });
 
   const refreshed = await getUserById(user.id);
-  await ensureHealIfProgramPurchased({
-    ...refreshed,
-    programPurchased: true,
-  });
+  if (isEagle) {
+    try {
+      // Eagle buyers are typically Seek — no consultancy step.
+      await convertSeekToHeal(refreshed.id, { allowFromSeek: true });
+    } catch (err) {
+      if (err?.name !== "AlreadyConvertedError") {
+        console.error("[ProgramPayment] eagle convertSeekToHeal failed", err.message);
+        throw err;
+      }
+    }
+    // Re-apply eagle onboarding skip after any heal conversion side effects.
+    await updateUser(refreshed.id, {
+      clientCategory: "eagle",
+      ...buildEaglePaidOnboardingCompleteUpdates(),
+    });
+  } else {
+    await ensureHealIfProgramPurchased({
+      ...refreshed,
+      programPurchased: true,
+    });
+  }
 
   const bundled = transaction?.userSnapshot?.bundledSubscription;
-  if (bundled?.enabled && (bundled.itemId || bundled.itemName)) {
-    const plan = await resolveSubscriptionPlanForPayment({
-      catalogItemId: bundled.itemId || null,
-      catalogItemName: bundled.itemName || "",
-    });
-    const latest = await getUserById(user.id);
-    await applyPaidSubscriptionOutcome(latest || refreshed, plan);
-    if (plan.clientCategory === "eagle") {
-      await updateUser(user.id, { clientCategory: "eagle" });
+  if (bundled?.enabled && !isEagle) {
+    const isFyBundle =
+      bundled.kind === "fy_energy_exchange" ||
+      bundled.itemId === "fy-current" ||
+      (!bundled.days && Array.isArray(bundled.fyOffsets));
+
+    if (isFyBundle || bundled.itemId || bundled.itemName) {
+      const latest = await getUserById(user.id);
+      if (isFyBundle || bundled.kind === "fy_energy_exchange" || bundled.itemId === "fy-current") {
+        await grantBundledFyAppSubscription(latest || refreshed, transaction, bundled);
+      } else {
+        const plan = await resolveSubscriptionPlanForPayment({
+          catalogItemId: bundled.itemId || null,
+          catalogItemName: bundled.itemName || "",
+        });
+        await applyPaidSubscriptionOutcome(latest || refreshed, plan);
+        if (plan.clientCategory === "eagle") {
+          await updateUser(user.id, { clientCategory: "eagle" });
+        }
+      }
     }
   }
 }

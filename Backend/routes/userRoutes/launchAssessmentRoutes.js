@@ -1,6 +1,6 @@
 const express = require("express");
 const { protectUser } = require("../../middleware/auth");
-const { requireHealTier } = require("../../middleware/tierGuards");
+const { requireHealTier, forbidEagleClient } = require("../../middleware/tierGuards");
 const {
   getMyLaunchScoresController,
   getMyLaunchAssessmentByDateController,
@@ -9,8 +9,8 @@ const {
 
 const router = express.Router();
 
-router.get("/scores", protectUser, requireHealTier, getMyLaunchScoresController);
-router.get("/by-date", protectUser, requireHealTier, getMyLaunchAssessmentByDateController);
-router.get("/:assessmentId", protectUser, requireHealTier, getMyLaunchAssessmentByIdController);
+router.get("/scores", protectUser, requireHealTier, forbidEagleClient, getMyLaunchScoresController);
+router.get("/by-date", protectUser, requireHealTier, forbidEagleClient, getMyLaunchAssessmentByDateController);
+router.get("/:assessmentId", protectUser, requireHealTier, forbidEagleClient, getMyLaunchAssessmentByIdController);
 
 module.exports = router;

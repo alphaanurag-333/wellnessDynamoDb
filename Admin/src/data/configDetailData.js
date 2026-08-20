@@ -26,17 +26,20 @@ export const FAQ_ITEMS = [
 ];
 
 export const PROGRAM_PRICING = [
-  { id: "fat-loss", name: "Fat Loss", amount: 24999, discountPercent: 0, validityHours: 24 },
-  { id: "diabetes", name: "Diabetes Reversal", amount: 29999, discountPercent: 0, validityHours: 24 },
-  { id: "thyroid", name: "Thyroid Care", amount: 22999, discountPercent: 0, validityHours: 24 },
-  { id: "pcod", name: "PCOD / PCOS", amount: 26999, discountPercent: 0, validityHours: 24 },
+  { id: "fat-loss", name: "Fat Loss", amount: 24999, discountPercent: 0, validityHours: 24, programType: "goal_based" },
+  { id: "diabetes", name: "Diabetes Reversal", amount: 29999, discountPercent: 0, validityHours: 24, programType: "goal_based" },
+  { id: "thyroid", name: "Thyroid Care", amount: 22999, discountPercent: 0, validityHours: 24, programType: "goal_based" },
+  { id: "pcod", name: "PCOD / PCOS", amount: 26999, discountPercent: 0, validityHours: 24, programType: "goal_based" },
 ];
 
-export const SUBSCRIPTION_PRICING = [
-  { id: "sub-month", name: "App subscription · monthly", amount: 499, days: 30 },
-  { id: "sub-year", name: "App subscription · yearly", amount: 4999, days: 365 },
-  { id: "sub-2y", name: "App subscription · 2 years", amount: 8999, days: 730 },
-];
+/** @deprecated Days-based SKUs removed — app subscriptions are FY / Energy Exchange. */
+export const SUBSCRIPTION_PRICING = [];
+
+export const APP_SUBSCRIPTION_FY_DEFAULTS = {
+  monthlyAmount: "200",
+  fyStartMonth: "4",
+  fyDiscounts: { "1": 0, "2": 0, "3": 5, "4": 10 },
+};
 
 export const PWC_COMPLETED = [
   { id: "pwc-1", name: "Madhupriya Bilas", initials: "MB", consult: "Fat Loss consult", code: "IRW-WC-544", coach: "Anita Rao", ago: "2h ago" },

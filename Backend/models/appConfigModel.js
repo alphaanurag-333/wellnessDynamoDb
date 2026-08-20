@@ -305,11 +305,8 @@ async function createAppConfig() {
     consultancy_amount: "",
     subscription_amount: "",
     app_program_pricing: [],
-    app_subscription_pricing: [
-      { id: "sub-month", name: "App subscription · monthly", amount: 499, days: 30 },
-      { id: "sub-year", name: "App subscription · yearly", amount: 4999, days: 365 },
-      { id: "sub-2y", name: "App subscription · 2 years", amount: 8999, days: 730 },
-    ],
+    // Legacy catalog (days SKUs deprecated). FY pricing lives in energy_exchange_* fields.
+    app_subscription_pricing: [],
     app_program_validity_periods: ["24 hours", "48 hours", "72 hours"],
     app_program_discount_slabs: [
       { pct: 10, label: "standard" },

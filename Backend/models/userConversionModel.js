@@ -19,6 +19,7 @@ const {
   assertHealUserAssignment,
   normalizeUserTier: normalizeTier,
   isHealTier,
+  isMaintenanceTier,
   isConsultancyOnlyTier,
   isAlreadyAssignedClient,
 } = require("./userAssignmentLogic");
@@ -228,6 +229,12 @@ async function convertSeekToHeal(userId, { referralCode, allowFromSeek = false }
     throw err;
   }
 
+  if (tier === "maintenance") {
+    const err = new Error("Maintenance clients renew via FY app subscription, not Heal conversion");
+    err.name = "InvalidTierError";
+    throw err;
+  }
+
   const normalizedReferralCode = resolveReferralCodeInput(user, referralCode);
   const referralRecord = normalizedReferralCode
     ? await getReferralCodeRecord(normalizedReferralCode)
@@ -337,10 +344,22 @@ async function convertHealToMaintenance(userId) {
     err.name = "InvalidTierError";
     throw err;
   }
-  return updateUser(userId, {
+  const updated = await updateUser(userId, {
     userTier: "maintenance",
     paidOnboardingCompleted: true,
   });
+
+  // Keep / grant current-FY app access from prior Heal membership; enable renewals.
+  try {
+    const {
+      ensureCurrentFyAccessForMaintenance,
+    } = require("../services/energyExchangeEntitlementService");
+    await ensureCurrentFyAccessForMaintenance(updated);
+  } catch (err) {
+    console.error("[convertHealToMaintenance] FY access ensure failed", err.message);
+  }
+
+  return getUserById(userId);
 }
 
 async function convertMaintenanceToHeal(userId) {
@@ -360,12 +379,15 @@ async function convertMaintenanceToHeal(userId) {
 
 /**
  * Program purchase unlocks the paid Heal home (10-step onboarding).
- * Existing purchasers who were left on consultancy_only are upgraded here
- * without resetting onboarding progress.
+ * Existing purchasers who were left on consultancy_only (or seek with allowFromSeek)
+ * are upgraded here without resetting onboarding progress.
+ *
+ * Maintenance users keep programPurchased=true from their Heal era — never auto-upgrade them.
  */
 async function ensureHealIfProgramPurchased(user) {
   if (!user?.id || !user.programPurchased) return user;
   if (isHealTier(user.userTier)) return user;
+  if (isMaintenanceTier(user.userTier)) return user;
   try {
     return await convertSeekToHeal(user.id, {
       allowFromSeek: normalizeTier(user.userTier) === "seek",

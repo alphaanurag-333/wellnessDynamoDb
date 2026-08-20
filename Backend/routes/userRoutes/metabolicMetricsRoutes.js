@@ -1,6 +1,6 @@
 const express = require("express");
 const { protectUser } = require("../../middleware/auth");
-const { requireHealTier } = require("../../middleware/tierGuards");
+const { requireHealTier, forbidEagleClient } = require("../../middleware/tierGuards");
 const {
   createMetabolicMetricController,
   listMetabolicMetricHistoryController,
@@ -10,7 +10,7 @@ const {
 
 const router = express.Router();
 
-router.use(protectUser, requireHealTier);
+router.use(protectUser, requireHealTier, forbidEagleClient);
 
 router.get("/profile", getMetabolicMetricsProfileController);
 router.get("/dashboard", getMetabolicMetricsDashboardController);

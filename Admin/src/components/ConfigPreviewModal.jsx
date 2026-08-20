@@ -179,13 +179,24 @@ function ProgramPreview({ rows, surface, item }) {
   );
 }
 
-function SubscriptionPreview({ rows, surface, item }) {
+function SubscriptionPreview({ fySettings, surface, item }) {
+  const monthly = fySettings?.monthlyAmount || "—";
+  const month = fySettings?.fyStartMonth || "4";
+  const discounts = fySettings?.fyDiscounts || {};
+  const rows = [
+    { id: "monthly", name: `Monthly rate · ₹${monthly}`, amount: Number(monthly) || 0 },
+    { id: "fy", name: `FY starts month ${month}`, amount: 0 },
+    { id: "d1", name: `Current FY discount · ${discounts["1"] ?? 0}%`, amount: 0 },
+    { id: "d2", name: `Next FY discount · ${discounts["2"] ?? 0}%`, amount: 0 },
+    { id: "d3", name: `Next-to-next FY · ${discounts["3"] ?? 0}%`, amount: 0 },
+    { id: "d4", name: `Third successive FY · ${discounts["4"] ?? 0}%`, amount: 0 },
+  ];
   return (
     <PreviewStage surface={surface} item={item}>
       {surface === "web" ? (
-        <ContentPreviewWeb title="Subscription pricing" rows={rows} />
+        <ContentPreviewWeb title="FY app subscription" rows={rows} />
       ) : (
-        <AppContentPreviewPhone title="Subscriptions" rows={rows} />
+        <AppContentPreviewPhone title="FY subscriptions" rows={rows} />
       )}
     </PreviewStage>
   );
@@ -1746,7 +1757,13 @@ function renderPreviewBody(item, surface, previewState) {
     case "app-program":
       return <ProgramPreview rows={previewState.programRows ?? []} surface={surface} item={item} />;
     case "app-subscriptions":
-      return <SubscriptionPreview rows={previewState.subscriptionRows ?? []} surface={surface} item={item} />;
+      return (
+        <SubscriptionPreview
+          fySettings={previewState.fySubscriptionSettings ?? {}}
+          surface={surface}
+          item={item}
+        />
+      );
     case "app-gst":
       return (
         <GstPreview

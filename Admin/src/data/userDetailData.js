@@ -23,7 +23,9 @@ export const CLIENT_MENU = [
 const PERSONAL_MENU_ITEM = CLIENT_MENU.find((item) => item.id === "personal");
 const MEDICAL_MENU_ITEM = CLIENT_MENU.find((item) => item.id === "medical");
 const INTERNAL_MENU_ITEM = CLIENT_MENU.find((item) => item.id === "internal");
+const NUTRITIONS_MENU_ITEM = CLIENT_MENU.find((item) => item.id === "nutritions");
 const EXCHANGE_MENU_ITEM = CLIENT_MENU.find((item) => item.id === "exchange");
+const COUNSELLING_MENU_ITEM = CLIENT_MENU.find((item) => item.id === "counselling");
 export const CONSULTATION_MENU_ITEM = { id: "consultation", label: "Consultation" };
 
 /** Seek / PWC clients — WC, AWC and other staff see this reduced coaching set. */
@@ -34,6 +36,24 @@ export const COMPACT_CLIENT_MENU = [
   CONSULTATION_MENU_ITEM,
   EXCHANGE_MENU_ITEM,
 ];
+
+/**
+ * Eagle clients — Personal Details, Internal Parameters, Nutritions,
+ * Counselling sessions, plus Energy Exchange for FY / program billing.
+ */
+export const EAGLE_CLIENT_MENU = [
+  PERSONAL_MENU_ITEM,
+  INTERNAL_MENU_ITEM,
+  NUTRITIONS_MENU_ITEM,
+  COUNSELLING_MENU_ITEM,
+  EXCHANGE_MENU_ITEM,
+];
+
+export function isEagleClientProfile(user) {
+  const category = String(user?.clientCategory || "").toLowerCase().trim();
+  if (category === "eagle") return true;
+  return String(user?.utype || "").toLowerCase().trim() === "team";
+}
 
 export function isFullClientProfileTier(tier) {
   const t = normalizeTier(tier);
@@ -46,11 +66,18 @@ export function isCompactClientProfileTier(tier) {
 }
 
 /**
- * HEAL / Maintenance get the full coaching workspace. Seek and PWC stay on
- * Personal Details, Internal Parameters, Consultation and Energy Exchange
- * until conversion.
+ * Eagle: Personal Details, Internal Parameters, Nutritions, Counselling, Energy Exchange.
+ * HEAL / Maintenance (non-eagle): full coaching workspace.
+ * Seek and PWC: compact set until conversion.
  */
 export function getClientProfileDefinition(user) {
+  if (isEagleClientProfile(user)) {
+    return {
+      mode: "eagle",
+      menu: EAGLE_CLIENT_MENU,
+      defaultSection: "personal",
+    };
+  }
   if (isCompactClientProfileTier(user?.tier)) {
     return {
       mode: "compact",

@@ -1,6 +1,6 @@
 const express = require("express");
 const { protectUser } = require("../../middleware/auth");
-const { requireHealTier } = require("../../middleware/tierGuards");
+const { requireHealTier, forbidEagleClient } = require("../../middleware/tierGuards");
 const { optionalCommitmentLetterFile } = require("../../middleware/authMultipart");
 const {
   getUserCommitmentLetterTemplateController,
@@ -11,9 +11,9 @@ const {
 
 const router = express.Router();
 
-router.get("/template", protectUser, requireHealTier, getUserCommitmentLetterTemplateController);
-router.get("/", protectUser, requireHealTier, getUserCommitmentLetterController);
-router.post("/", protectUser, requireHealTier, optionalCommitmentLetterFile, submitUserCommitmentLetterController);
-router.patch("/", protectUser, requireHealTier, optionalCommitmentLetterFile, resubmitUserCommitmentLetterController);
+router.get("/template", protectUser, requireHealTier, forbidEagleClient, getUserCommitmentLetterTemplateController);
+router.get("/", protectUser, requireHealTier, forbidEagleClient, getUserCommitmentLetterController);
+router.post("/", protectUser, requireHealTier, forbidEagleClient, optionalCommitmentLetterFile, submitUserCommitmentLetterController);
+router.patch("/", protectUser, requireHealTier, forbidEagleClient, optionalCommitmentLetterFile, resubmitUserCommitmentLetterController);
 
 module.exports = router;

@@ -27,6 +27,7 @@ import { PaymentGatewaySection } from "../components/PaymentGatewaySection.jsx";
 import { LanguageDisableSection } from "../components/LanguageDisableSection.jsx";
 import { GstSection } from "../components/GstSection.jsx";
 import { ConsultancyAmountSection } from "../components/ConsultancyAmountSection.jsx";
+import { AppSubscriptionFySection } from "../components/AppSubscriptionFySection.jsx";
 import { DpaSection } from "../components/DpaSection.jsx";
 import { AppTosSection } from "../components/AppTosSection.jsx";
 import { PrivacyPolicySection } from "../components/PrivacyPolicySection.jsx";
@@ -97,6 +98,7 @@ import { useViewAs } from "../context/ViewAsContext.jsx";
 import { DEFAULT_HEALTH_PROGRESS_TRACKERS } from "../data/healthProgressData.js";
 import {
   APP_HEAL_PERIODS,
+  APP_SUBSCRIPTION_FY_DEFAULTS,
   DISCOUNT_SLABS,
   PROGRAM_PRICING,
   SUBSCRIPTION_PRICING,
@@ -380,6 +382,12 @@ const SUBSCRIPTION_TYPE_OPTIONS = [
   { value: "eagle", label: "Eagle" },
 ];
 
+const PROGRAM_TYPE_OPTIONS = [
+  { value: "goal_based", label: "Goal based" },
+  { value: "lifetime", label: "Lifetime" },
+  { value: "eagle", label: "Eagle" },
+];
+
 function subscriptionTypeFromRow(row) {
   const explicit = String(row?.clientCategory || "").trim().toLowerCase();
   if (explicit === "eagle") return "eagle";
@@ -390,6 +398,11 @@ function clientCategoryFromType(type) {
   const value = String(type || "").trim().toLowerCase();
   if (value === "eagle") return "eagle";
   return "";
+}
+
+function programTypeFromRow(row) {
+  const value = String(row?.programType || row?.type || "goal_based").trim().toLowerCase();
+  return PROGRAM_TYPE_OPTIONS.some((option) => option.value === value) ? value : "goal_based";
 }
 
 function PricingNewForm({
@@ -403,6 +416,7 @@ function PricingNewForm({
   includeDiscount,
   includeDays,
   includeType,
+  includeProgramType,
 }) {
   return (
     <section className="ua-cfg-pricing-new">
@@ -413,7 +427,7 @@ function PricingNewForm({
         </h4>
         <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={onClose}>×</button>
       </div>
-      <div className={`ua-cfg-pricing-new__row${includeDiscount ? " ua-cfg-pricing-new__row--discount" : ""}${includeDays ? " ua-cfg-pricing-new__row--days" : ""}${includeType ? " ua-cfg-pricing-new__row--type" : ""}`}>
+      <div className={`ua-cfg-pricing-new__row${includeDiscount ? " ua-cfg-pricing-new__row--discount" : ""}${includeDays ? " ua-cfg-pricing-new__row--days" : ""}${includeType || includeProgramType ? " ua-cfg-pricing-new__row--type" : ""}`}>
         <input
           ref={inputRef}
           type="text"
@@ -430,6 +444,19 @@ function PricingNewForm({
               onChange={(event) => onChange({ ...draft, type: event.target.value })}
             >
               {SUBSCRIPTION_TYPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+        {includeProgramType ? (
+          <label className="ua-cfg-pricing-new__type">
+            <select
+              value={draft.programType || "goal_based"}
+              aria-label="Program type"
+              onChange={(event) => onChange({ ...draft, programType: event.target.value })}
+            >
+              {PROGRAM_TYPE_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
               ))}
             </select>
@@ -500,16 +527,25 @@ function PricingNewForm({
 }
 
 function emptyPricingDraft() {
-  return { name: "", amount: "", discountPercent: "", validityHours: "", days: "", type: "normal" };
+  return {
+    name: "",
+    amount: "",
+    discountPercent: "",
+    validityHours: "",
+    days: "",
+    type: "normal",
+    programType: "goal_based",
+  };
 }
 
-function validatePricingDraft(draft, { includeDiscount, includeDays, includeType, onToast }) {
+function validatePricingDraft(draft, { includeDiscount, includeDays, includeType, includeProgramType, onToast }) {
   const name = draft.name.trim();
   const amount = Number(draft.amount);
   const discountPercent = Number(draft.discountPercent);
   const validityHours = Number(draft.validityHours);
   const days = Number(draft.days);
   const type = String(draft.type || "normal").trim().toLowerCase();
+  const programType = String(draft.programType || "goal_based").trim().toLowerCase();
   if (!name) {
     onToast("Program name is required");
     return null;
@@ -534,12 +570,17 @@ function validatePricingDraft(draft, { includeDiscount, includeDays, includeType
     onToast("Select a valid subscription type");
     return null;
   }
+  if (includeProgramType && !PROGRAM_TYPE_OPTIONS.some((option) => option.value === programType)) {
+    onToast("Select a valid program type");
+    return null;
+  }
   return {
     name,
     amount,
     ...(includeDiscount ? { discountPercent, validityHours } : {}),
     ...(includeDays && draft.days !== "" ? { days } : {}),
     ...(includeType ? { clientCategory: clientCategoryFromType(type) } : {}),
+    ...(includeProgramType ? { programType } : {}),
   };
 }
 
@@ -611,6 +652,7 @@ function PricingPanel({
   includeDiscount = false,
   includeDays = false,
   includeType = false,
+  includeProgramType = false,
 }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [draft, setDraft] = useState(emptyPricingDraft);
@@ -683,7 +725,13 @@ function PricingPanel({
   }
 
   function submitNewRow() {
-    const next = validatePricingDraft(draft, { includeDiscount, includeDays, includeType, onToast });
+    const next = validatePricingDraft(draft, {
+      includeDiscount,
+      includeDays,
+      includeType,
+      includeProgramType,
+      onToast,
+    });
     if (!next) return;
     const nextRows = [
       ...rows,
@@ -702,6 +750,17 @@ function PricingPanel({
     if (subscriptionTypeFromRow(row) === type) return;
     const nextRows = rows.map((entry) => (
       entry.id === row.id ? { ...entry, clientCategory: clientCategoryFromType(type) } : entry
+    ));
+    commitRows(nextRows, `${row.name} type updated`);
+  }
+
+  function changeRowProgramType(row, nextType) {
+    if (saving) return;
+    const type = String(nextType || "goal_based").trim().toLowerCase();
+    if (programTypeFromRow(row) === type) return;
+    if (!PROGRAM_TYPE_OPTIONS.some((option) => option.value === type)) return;
+    const nextRows = rows.map((entry) => (
+      entry.id === row.id ? { ...entry, programType: type } : entry
     ));
     commitRows(nextRows, `${row.name} type updated`);
   }
@@ -807,13 +866,14 @@ function PricingPanel({
             includeDiscount={includeDiscount}
             includeDays={includeDays}
             includeType={includeType}
+            includeProgramType={includeProgramType}
           />
         </div>
       ) : null}
       <div className="ua-cfg-pricing bordercss">
-        <div className={`ua-cfg-pricing__head${includeDiscount ? " ua-cfg-pricing__head--discount" : ""}${includeDays ? " ua-cfg-pricing__head--days" : ""}${includeType ? " ua-cfg-pricing__head--type" : ""}`}>
+        <div className={`ua-cfg-pricing__head${includeDiscount ? " ua-cfg-pricing__head--discount" : ""}${includeDays ? " ua-cfg-pricing__head--days" : ""}${includeType || includeProgramType ? " ua-cfg-pricing__head--type" : ""}`}>
           <span>Program</span>
-          {includeType ? <span>Type</span> : null}
+          {includeType || includeProgramType ? <span>Type</span> : null}
           <span>Amount (Rs.)</span>
           {includeDiscount ? <span>Discount</span> : null}
           {includeDiscount ? <span>Valid for</span> : null}
@@ -823,7 +883,7 @@ function PricingPanel({
         {rows.map((row) => (
           <div
             key={row.id}
-            className={`ua-cfg-pricing__row${includeDiscount ? " ua-cfg-pricing__row--discount" : ""}${includeDays ? " ua-cfg-pricing__row--days" : ""}${includeType ? " ua-cfg-pricing__row--type" : ""}`}
+            className={`ua-cfg-pricing__row${includeDiscount ? " ua-cfg-pricing__row--discount" : ""}${includeDays ? " ua-cfg-pricing__row--days" : ""}${includeType || includeProgramType ? " ua-cfg-pricing__row--type" : ""}`}
           >
             <PricingEditableCell
               row={row}
@@ -847,6 +907,20 @@ function PricingPanel({
                   onChange={(event) => changeRowType(row, event.target.value)}
                 >
                   {SUBSCRIPTION_TYPE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+            {includeProgramType ? (
+              <label className="ua-cfg-pricing__type">
+                <select
+                  value={programTypeFromRow(row)}
+                  aria-label={`Program type for ${row.name}`}
+                  disabled={saving}
+                  onChange={(event) => changeRowProgramType(row, event.target.value)}
+                >
+                  {PROGRAM_TYPE_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>{option.label}</option>
                   ))}
                 </select>
@@ -1268,6 +1342,7 @@ export function ConfigDetailPage() {
   const [faqItems, setFaqItems] = useState([]);
   const [programRows, setProgramRows] = useState(PROGRAM_PRICING);
   const [subRows, setSubRows] = useState(SUBSCRIPTION_PRICING);
+  const [fySubscriptionSettings, setFySubscriptionSettings] = useState(APP_SUBSCRIPTION_FY_DEFAULTS);
   const [programValidityPeriods, setProgramValidityPeriods] = useState(VALIDITY_PERIODS);
   const [programDiscountSlabs, setProgramDiscountSlabs] = useState(DISCOUNT_SLABS);
   const [subscriptionValidityPeriods, setSubscriptionValidityPeriods] = useState(VALIDITY_PERIODS);
@@ -1632,6 +1707,7 @@ export function ConfigDetailPage() {
               onToast={onToast}
               onPersist={(nextRows) => persistPricingRows("program", nextRows)}
               includeDiscount
+              includeProgramType
             />
             <TagCreatePanel
               title="App Heal feature validity"
@@ -1672,31 +1748,14 @@ export function ConfigDetailPage() {
       case "app-subscriptions":
         return (
           <>
-            <ExchangeClientSection
+            <AppSubscriptionFySection
+              settings={fySubscriptionSettings}
+              setSettings={setFySubscriptionSettings}
               onToast={onToast}
-              programOptions={subRows}
-              programLabel="Subscription"
-              showAppHeal={false}
-              productType="subscription"
-              discountSlabs={subscriptionDiscountSlabs}
-              appHealPeriods={appHealPeriods}
-              validityPeriods={subscriptionValidityPeriods}
-            />
-            <PricingPanel
-              title="Subscription pricing & discount validity"
-              rows={subRows}
-              setRows={setSubRows}
-              onToast={onToast}
-              onPersist={(nextRows) => persistPricingRows("subscription", nextRows)}
-              addLabel="+ Add subscription"
-              formTitle="New subscription"
-              namePlaceholder="Subscription name"
-              includeDays
-              includeType
             />
             <TagCreatePanel
-              title="Validity periods available to coaches"
-              subtitle="These appear in the coach's validity dropdown at checkout."
+              title="Checkout link validity periods"
+              subtitle="Used when a coach triggers a payment link (hours until unpaid offer expires). Does not set FY entitlement length."
               items={subscriptionValidityPeriods}
               setItems={setSubscriptionValidityPeriods}
               placeholder="e.g. 96 hours"
@@ -1708,7 +1767,7 @@ export function ConfigDetailPage() {
             />
             <TagCreatePanel
               title="Discount slabs available to coaches"
-              subtitle="These appear in the coach's discount dropdown."
+              subtitle="These appear in the coach's discount dropdown for checkout offers."
               items={subscriptionDiscountSlabs}
               setItems={setSubscriptionDiscountSlabs}
               placeholder="e.g. 30% · launch"
@@ -2196,6 +2255,7 @@ export function ConfigDetailPage() {
           faqItems,
           programRows,
           subscriptionRows: subRows,
+          fySubscriptionSettings,
           gstOn,
           gstPercent,
           consultancySettings,

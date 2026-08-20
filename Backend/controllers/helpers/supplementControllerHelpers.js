@@ -30,10 +30,11 @@ function readDosageIdParam(req) {
   return String(req.params.dosageId || req.params.id || "").trim();
 }
 
+const { isStaffPaidFeatureTier } = require("../../services/paidFeatureAccessService");
+
 function assertHealTierUser(user) {
-  const tier = String(user?.userTier || "").toLowerCase().trim();
-  if (tier !== "heal") {
-    throw new AppError("Supplements can only be assigned to Heal (paid) users", 400);
+  if (!isStaffPaidFeatureTier(user)) {
+    throw new AppError("Supplements can only be assigned to Heal or Maintenance (paid) users", 400);
   }
 }
 

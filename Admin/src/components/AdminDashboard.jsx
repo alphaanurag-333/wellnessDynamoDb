@@ -464,15 +464,16 @@ export function AdminDashboard({
   const coachTierTotal = coachTiers.reduce((sum, tier) => sum + tier.value, 0);
   const tierCardTitle = isStaffDash ? "Your clients by tier" : "Clients by tier";
   const baseAppClientStats = viewAs === "wc" ? WC_APP_CLIENT_STATS : viewAs === "awc" ? AWC_APP_CLIENT_STATS : APP_CLIENT_STATS;
-  const appClientStats = baseAppClientStats.map((item) => (
-    item.tierFilter === "Maintenance" && tierRows?.some((row) => row.key === "maintenance")
-      ? { ...item, value: asNumber(tierRows.find((row) => row.key === "maintenance")?.value) }
-      : statisticsForView
-        ? (item.tierFilter
-          ? { ...item, value: asNumber(tierRows?.find((row) => row.key === "maintenance")?.value) }
-          : { ...item, value: "—", tag: "No live source configured" })
-        : { ...item, value: 0 }
-  ));
+  const appClientStats = baseAppClientStats.map((item) => {
+    if (!statisticsForView) return { ...item, value: 0 };
+    if (item.categoryFilter === "eagle" || item.short === "Eagles") {
+      return { ...item, value: asNumber(statisticsForView.eagleUsers) };
+    }
+    if (item.tierFilter === "Maintenance") {
+      return { ...item, value: asNumber(tierRows?.find((row) => row.key === "maintenance")?.value) };
+    }
+    return { ...item, value: "—", tag: "No live source configured" };
+  });
   const subscribedCount = asNumber(tierRows?.find((row) => row.key === "heal")?.value);
   const expTotal = subscribedCount;
   const everydayWellnessConcern = healthConcerns?.find(

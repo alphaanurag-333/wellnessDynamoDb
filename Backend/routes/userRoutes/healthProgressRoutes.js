@@ -1,6 +1,6 @@
 const express = require("express");
 const { protectUser } = require("../../middleware/auth");
-const { requireHealTier } = require("../../middleware/tierGuards");
+const { requireHealTier, forbidEagleClient } = require("../../middleware/tierGuards");
 const {
   optionalHealthProgressWeightPicFile,
   optionalHealthProgressGlucosePicFile,
@@ -24,7 +24,7 @@ const {
 
 const router = express.Router();
 
-router.use(protectUser, requireHealTier);
+router.use(protectUser, requireHealTier, forbidEagleClient);
 
 router.get("/settings", getHealthProgressSettingsController);
 

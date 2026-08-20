@@ -142,7 +142,7 @@ describe("coach program offer DTO", () => {
     });
   });
 
-  it("exposes a bundled app subscription included in the same price", () => {
+  it("exposes a bundled FY app subscription included in the same price", () => {
     const dto = toPublicCoachProgramOffer({
       productType: "program",
       itemId: "diabetes",
@@ -151,17 +151,21 @@ describe("coach program offer DTO", () => {
       netPayable: 27000,
       bundledSubscription: {
         enabled: true,
-        itemId: "sub-year",
-        itemName: "App subscription · yearly",
-        days: 365,
+        kind: "fy_energy_exchange",
+        itemId: "fy-current",
+        itemName: "Current financial year app subscription",
+        fyOffsets: [0],
+        monthlyAmount: 200,
       },
       transactionId: "txn-10",
     });
 
     assert.deepEqual(dto.bundledSubscription, {
-      itemId: "sub-year",
-      itemName: "App subscription · yearly",
-      days: 365,
+      kind: "fy_energy_exchange",
+      itemId: "fy-current",
+      itemName: "Current financial year app subscription",
+      fyOffsets: [0],
+      monthlyAmount: 200,
       includedInProgramPrice: true,
     });
   });

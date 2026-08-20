@@ -1,6 +1,6 @@
 const express = require("express");
 const { protectUser } = require("../../middleware/auth");
-const { requireHealTier } = require("../../middleware/tierGuards");
+const { requireHealTier, forbidEagleClient } = require("../../middleware/tierGuards");
 const {
   getUserAssignedDietPlansController,
   getUserAssignedDietPlanByIdController,
@@ -8,7 +8,7 @@ const {
 
 const router = express.Router();
 
-router.get("/assigned", protectUser, requireHealTier, getUserAssignedDietPlansController);
-router.get("/assigned/:id", protectUser, requireHealTier, getUserAssignedDietPlanByIdController);
+router.get("/assigned", protectUser, requireHealTier, forbidEagleClient, getUserAssignedDietPlansController);
+router.get("/assigned/:id", protectUser, requireHealTier, forbidEagleClient, getUserAssignedDietPlanByIdController);
 
 module.exports = router;

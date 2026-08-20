@@ -14,7 +14,7 @@ const {
 
 const TABLE = "ProgramCatalog";
 const ALLOWED_STATUS = ["active", "inactive"];
-const PROGRAM_TYPES = new Set(["goal_based", "lifetime"]);
+const PROGRAM_TYPES = new Set(["goal_based", "lifetime", "eagle"]);
 const STATUS = new Set(ALLOWED_STATUS);
 
 function withLegacyId(item) {

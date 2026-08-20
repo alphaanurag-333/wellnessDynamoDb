@@ -75,7 +75,7 @@ export const WC_COACH_TIERS = [
 export const WC_COACH_TIER_TOTAL = WC_COACH_TIERS.reduce((sum, t) => sum + t.value, 0);
 
 export const WC_APP_CLIENT_STATS = [
-  { short: "Eagles", value: 4, tag: "Corporate & family", bar: "#a855f7", accent: "#9333ea", bg: "#a855f7", iconKey: "eagles", link: `${UPDATED_ADMIN_PATHS.users}?tab=team`, tierFilter: "" },
+  { short: "Eagles", value: 4, tag: "Corporate & family", bar: "#a855f7", accent: "#9333ea", bg: "#a855f7", iconKey: "eagles", link: `${UPDATED_ADMIN_PATHS.users}?tab=team`, tierFilter: "", categoryFilter: "eagle" },
   { short: "Maintenance", value: 8, tag: "Post-heal upkeep", bar: "#ec7a45", accent: "#c2661d", bg: "#ec7a45", iconKey: "users", link: UPDATED_ADMIN_PATHS.users, tierFilter: "Maintenance" },
 ];
 
@@ -380,7 +380,7 @@ export const TIER_DATA = COACH_TIERS.map((t) => ({
 }));
 
 export const APP_CLIENT_STATS = [
-  { short: "Eagles", value: 3, tag: "Corporate & family", bar: "#a855f7", accent: "#9333ea", bg: "#a855f7", iconKey: "eagles", link: `${UPDATED_ADMIN_PATHS.users}?tab=team`, tierFilter: "" },
+  { short: "Eagles", value: 3, tag: "Corporate & family", bar: "#a855f7", accent: "#9333ea", bg: "#a855f7", iconKey: "eagles", link: `${UPDATED_ADMIN_PATHS.users}?tab=team`, tierFilter: "", categoryFilter: "eagle" },
   { short: "Maintenance", value: 2, tag: "Post-heal upkeep", bar: "#ec7a45", accent: "#c2661d", bg: "#ec7a45", iconKey: "users", link: UPDATED_ADMIN_PATHS.users, tierFilter: "Maintenance" },
 ];
 
