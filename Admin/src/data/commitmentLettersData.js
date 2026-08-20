@@ -46,6 +46,10 @@ function writeStore(next) {
   }
 }
 
+/**
+ * @deprecated Demo Figma seed — never use as a live library fallback.
+ * Prefer buildEmptyLibrary() when API/local data is missing.
+ */
 export function buildSeedLibrary(coachName = "Coach") {
   const letters = FIGMA_LETTER_SEED.map((row) => ({
     ...row,
@@ -127,7 +131,7 @@ export function loadCoachLetterLibrary(coachId, coachName, apiLetter) {
   if (apiLetter?.fileUrl) {
     return buildLibraryFromApiLetter(coachName, apiLetter);
   }
-  return buildSeedLibrary(coachName || "Coach");
+  return buildEmptyLibrary(coachName || "Coach");
 }
 
 export function saveCoachLetterLibrary(coachId, library) {
@@ -176,5 +180,5 @@ export function getCommitmentCoach(id) {
 }
 
 export function getCommitmentData(coachId, fallbackName = "Coach") {
-  return buildSeedLibrary(fallbackName);
+  return buildEmptyLibrary(fallbackName);
 }

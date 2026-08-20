@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   buildOnboardingRemindMessage,
-  ONBOARDING_INITIAL_DONE,
-  ONBOARDING_STEP_NOTES,
   ONBOARDING_STEPS,
 } from "../../data/userDetailData.js";
 import {
@@ -675,19 +673,21 @@ function buildInitialDone(user) {
     return seed;
   }
 
-  const seed = { ...ONBOARDING_INITIAL_DONE };
-  if (user.n !== 1 && user.onboardingDone) {
+  // Live only: never seed Madhupriya demo steps 1–5 as complete.
+  const seed = {};
+  const doneCount = Number(user?.onboardingDone) || 0;
+  if (doneCount > 0) {
     ONBOARDING_STEPS.forEach((step, idx) => {
-      if (idx < user.onboardingDone) seed[step.n] = true;
+      if (idx < doneCount) seed[step.n] = true;
     });
   }
   return seed;
 }
 
 function buildInitialStepNotes(doneMap) {
-  const notes = { ...ONBOARDING_STEP_NOTES };
-  if (!doneMap[5]) delete notes[5];
-  return notes;
+  // Do not copy ONBOARDING_STEP_NOTES seed stamps — only session/API notes.
+  void doneMap;
+  return {};
 }
 
 function formatOnboardingStamp(date = new Date()) {

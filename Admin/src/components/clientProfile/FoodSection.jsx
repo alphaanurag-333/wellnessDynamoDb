@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PillTabs } from "../shared.jsx";
 import {
-  FOOD_MACRO_TARGETS,
   buildWaterChartFromHistory,
   formatFoodDateInput,
   formatFoodDateLabel,
@@ -375,7 +374,7 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
   const [waterGoalDraft, setWaterGoalDraft] = useState(8);
   const [selectedDate, setSelectedDate] = useState(today);
   const [waterRange, setWaterRange] = useState(() => defaultWaterRange(today));
-  const [macroTargets, setMacroTargets] = useState(FOOD_MACRO_TARGETS);
+  const [macroTargets, setMacroTargets] = useState(() => macroTargetsFromTdee(0, 0));
   const [waterHistory, setWaterHistory] = useState(null);
   const [mealsLoading, setMealsLoading] = useState(live);
   const [waterLoading, setWaterLoading] = useState(false);
@@ -408,7 +407,7 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
     setWaterRange(defaultWaterRange(today));
     setPhotoMeal(null);
     setWaterHistory(null);
-    setMacroTargets(FOOD_MACRO_TARGETS);
+    setMacroTargets(macroTargetsFromTdee(0, 0));
     setMeals([]);
     jumpedToLatestRef.current = false;
     setEditAfterAiId("");

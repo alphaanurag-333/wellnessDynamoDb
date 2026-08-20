@@ -234,8 +234,12 @@ export const REVIEW_HISTORY = {
   ],
 };
 
-export function getReviewHistory(userId) {
-  return REVIEW_HISTORY[Number(userId)] || REVIEW_HISTORY[1] || [];
+/**
+ * @deprecated Seed review notes must never be shown as live client history.
+ * Always returns []. Prefer user.reviewHistory from the API when available.
+ */
+export function getReviewHistory(_userId) {
+  return [];
 }
 
 export const METABOLIC_SNAPSHOT = [

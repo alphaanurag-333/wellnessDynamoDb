@@ -13,12 +13,10 @@ import { PaymentsModal } from "./PaymentsModal.jsx";
 import { StatIcon } from "./DashboardIcons.jsx";
 import {
   A1C_METRICS,
-  ALERT_SERIOUS_COUNT,
   APP_CLIENT_STATS,
   APP_USER_PROG_CARD,
   CHALLENGE_AUDIENCE_OPTIONS,
   CHALLENGE_DAY_OPTIONS,
-  CLIENT_ALERTS,
   COACH_TIERS,
   DASH_SCOPE_LABELS,
   EXP_CARDS,
@@ -42,7 +40,6 @@ import {
   AWC_PENDING_GROUPS,
   AWC_STALE_RECORDS,
   SUPPORT_QUICK_INSIGHTS,
-  alertStyles,
   buildTierGradient,
 } from "../data/dashboardData.js";
 import { UNASSIGNED_COACH } from "../data/usersData.js";
@@ -553,7 +550,7 @@ export function AdminDashboard({
   );
   const scopeLabel = DASH_SCOPE_LABELS[viewAs] ?? "Global";
   const [broadcast, setBroadcast] = useState("");
-  const [broadcastMeta, setBroadcastMeta] = useState("Last sent 2 days ago");
+  const [broadcastMeta, setBroadcastMeta] = useState("No broadcasts sent yet");
   const [broadcastModalOpen, setBroadcastModalOpen] = useState(false);
   const [champMonth, setChampMonth] = useState("2026-07");
   const [selectedFyStartYear, setSelectedFyStartYear] = useState(null);
@@ -1685,42 +1682,6 @@ export function AdminDashboard({
             </p>
           </>
         )}
-      </section>
-
-      <section className="section d-none" style={{ display: "none" }}>
-        <div className="section__head">
-          <h2 className="section__title">Client updates</h2>
-          <span className="section__hint">
-            Needs attention across your roster
-            {ALERT_SERIOUS_COUNT > 0 ? (
-              <span className="client-alerts__badge">{ALERT_SERIOUS_COUNT} urgent</span>
-            ) : null}
-          </span>
-        </div>
-        <div className="client-alerts">
-          {CLIENT_ALERTS.map((alert) => {
-            const styles = alertStyles(alert.severity);
-            return (
-              <button
-                key={`${alert.name}-${alert.time}`}
-                type="button"
-                className="client-alert cdact"
-                style={{ background: styles.bg, borderColor: styles.border }}
-                onClick={() => onToast(`Opening profile for ${alert.name}`)}
-              >
-                <span className="client-alert__avatar" style={{ background: styles.dot }}>{alert.initial}</span>
-                <span className="client-alert__body">
-                  <span className="client-alert__top">
-                    <span className="client-alert__name">{alert.name}</span>
-                    <span className="client-alert__tag" style={{ color: styles.fg, borderColor: styles.border }}>{alert.label}</span>
-                    <span className="client-alert__time">{alert.time}</span>
-                  </span>
-                  <span className="client-alert__msg">{alert.msg}</span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
       </section>
 
       {isAdminDash ? (

@@ -7,7 +7,6 @@ import {
   pushUserDailyReflectionBedtime,
 } from "../../api/dailyReflectionApi.js";
 import {
-  DEFAULT_BEDTIME,
   TRACKING_ROWS,
   activitiesPayload,
   formatBedtime,
@@ -198,8 +197,8 @@ export function ReflectionSection({ user, onToast }) {
   const [activities, setActivities] = useState([]);
   const [savedSettingsKey, setSavedSettingsKey] = useState("");
   const [tracking, setTracking] = useState(null);
-  const [bedtime, setBedtime] = useState(DEFAULT_BEDTIME);
-  const [savedBedtime, setSavedBedtime] = useState(DEFAULT_BEDTIME);
+  const [bedtime, setBedtime] = useState("");
+  const [savedBedtime, setSavedBedtime] = useState("");
   const [todayScore, setTodayScore] = useState(null);
   const [date, setDate] = useState("");
   const [expanded, setExpanded] = useState(() => new Set(["tracking"]));
@@ -221,8 +220,8 @@ export function ReflectionSection({ user, onToast }) {
     setActivities(nextActivities);
     setSavedSettingsKey(snapshotKey(nextActivities));
     setTracking(data?.tracking || null);
-    setBedtime(data?.bedtime || DEFAULT_BEDTIME);
-    setSavedBedtime(data?.bedtime || DEFAULT_BEDTIME);
+    setBedtime(data?.bedtime || "");
+    setSavedBedtime(data?.bedtime || "");
     setTodayScore(data?.todayScore || null);
     setDate(data?.date || "");
   }

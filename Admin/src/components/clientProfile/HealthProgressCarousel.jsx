@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { getHealthPrograms } from "../../data/healthProgressData.js";
 
 function InsightCell({ item }) {
   const toneClass = item.tone ? ` ua-cp-prog-ins__cell--${item.tone}` : "";
@@ -81,9 +80,8 @@ function ProgramCard({ program, onOpen }) {
 }
 
 export function HealthProgressCarousel({ userId, programs: programsProp, onNavigate, initialIndex = 0 }) {
-  const programs = Array.isArray(programsProp)
-    ? programsProp
-    : getHealthPrograms(userId);
+  // Live programs only — never fall back to getHealthPrograms seed cards.
+  const programs = Array.isArray(programsProp) ? programsProp : [];
   const [index, setIndex] = useState(initialIndex);
   const hasMany = programs.length > 1;
   const active = programs[index] ?? programs[0];
