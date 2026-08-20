@@ -61,13 +61,6 @@ function padTimePart(n) {
   return String(n).padStart(2, "0");
 }
 
-function nextRoundedStartTime(date = new Date()) {
-  const next = new Date(date);
-  next.setSeconds(0, 0);
-  next.setMinutes(next.getMinutes() < 30 ? 30 : 60, 0, 0);
-  return `${padTimePart(next.getHours())}:${padTimePart(next.getMinutes())}`;
-}
-
 function formatDateKey(date) {
   return `${date.getFullYear()}-${padTimePart(date.getMonth() + 1)}-${padTimePart(date.getDate())}`;
 }
@@ -86,13 +79,17 @@ function uniqueDateCount(slots) {
 }
 
 function slotFromIso(slot) {
-  const start = new Date(slot.startAt || slot.start_at);
-  const end = new Date(slot.endAt || slot.end_at);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+  const start = new Date(slot.startAt || slot.start_at || slot.start || "");
+  if (Number.isNaN(start.getTime())) return null;
+  let end = new Date(slot.endAt || slot.end_at || slot.end || "");
+  if (Number.isNaN(end.getTime())) {
+    end = new Date(start.getTime() + 45 * 60000);
+  }
   const fromTime = `${padTimePart(start.getHours())}:${padTimePart(start.getMinutes())}`;
   const toTime = `${padTimePart(end.getHours())}:${padTimePart(end.getMinutes())}`;
   return {
     key: slot.id || `${start.toISOString()}-${end.toISOString()}`,
+    id: slot.id,
     dateKey: formatDateKey(start),
     dateLabel: formatShortDate(start),
     range: `${fromTime}–${toTime}`,
@@ -101,7 +98,7 @@ function slotFromIso(slot) {
   };
 }
 
-function slotsFromMeeting(meeting) {
+export function slotsFromMeeting(meeting) {
   return (meeting?.slots || []).map(slotFromIso).filter(Boolean);
 }
 
@@ -120,6 +117,146 @@ function groupSlotsByDate(slots) {
   }
   groups.sort((a, b) => a.key.localeCompare(b.key));
   return groups;
+}
+
+function formatClockLabel(time24) {
+  if (!time24) return "--:--";
+  const [hRaw, m] = time24.split(":");
+  const h = Number(hRaw);
+  if (!Number.isFinite(h)) return "--:--";
+  const h12 = h % 12 || 12;
+  const ap = h >= 12 ? "PM" : "AM";
+  return `${padTimePart(h12)}:${m} ${ap}`;
+}
+
+function parseTimeToDraft(time24) {
+  const [hRaw, mRaw] = String(time24 || "09:00").split(":");
+  const h24 = Number(hRaw);
+  const mi = Number(mRaw);
+  const safeH = Number.isFinite(h24) ? h24 : 9;
+  const safeM = Number.isFinite(mi) ? mi : 0;
+  return {
+    h: (safeH % 12) || 12,
+    m: safeM,
+    ap: safeH >= 12 ? "PM" : "AM",
+  };
+}
+
+function draftTo24(draft) {
+  let h = draft.h % 12;
+  if (draft.ap === "PM") h += 12;
+  return `${padTimePart(h)}:${padTimePart(draft.m)}`;
+}
+
+const CLOCK_ICON = (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5l3 2" />
+  </svg>
+);
+
+function AnalogClockPicker({ target, initialTime, onCancel, onSet }) {
+  const seed = parseTimeToDraft(initialTime || "09:00");
+  const [step, setStep] = useState("h");
+  const [draft, setDraft] = useState(seed);
+
+  const nums = useMemo(() => (
+    step === "h"
+      ? Array.from({ length: 12 }, (_, i) => ({ v: i + 1, label: String(i + 1) }))
+      : Array.from({ length: 12 }, (_, i) => ({ v: i * 5, label: padTimePart(i * 5) }))
+  ), [step]);
+
+  const selIdx = step === "h"
+    ? (draft.h === 12 ? 11 : draft.h - 1)
+    : ((Math.round(draft.m / 5) % 12) + 11) % 12;
+  const handDeg = (selIdx + 1) * 30 - 90;
+
+  function pickNum(value) {
+    if (step === "h") {
+      setDraft((d) => ({ ...d, h: value }));
+      setStep("m");
+      return;
+    }
+    setDraft((d) => ({ ...d, m: value }));
+  }
+
+  return (
+    <div className="ua-cp-clock-backdrop" onClick={onCancel} role="presentation">
+      <div
+        className="ua-cp-clock"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-label="Pick a time"
+      >
+        <div className="ua-cp-clock__head">
+          <div className="ua-cp-clock__digits">
+            <button
+              type="button"
+              className={`ua-cp-clock__digit${step === "h" ? " ua-cp-clock__digit--on" : ""}`}
+              onClick={() => setStep("h")}
+            >
+              {padTimePart(draft.h)}
+            </button>
+            <span className="ua-cp-clock__colon">:</span>
+            <button
+              type="button"
+              className={`ua-cp-clock__digit${step === "m" ? " ua-cp-clock__digit--on" : ""}`}
+              onClick={() => setStep("m")}
+            >
+              {padTimePart(draft.m)}
+            </button>
+          </div>
+          <div className="ua-cp-clock__ampm">
+            <button
+              type="button"
+              className={`ua-cp-clock__ampm-btn${draft.ap === "AM" ? " ua-cp-clock__ampm-btn--on" : ""}`}
+              onClick={() => setDraft((d) => ({ ...d, ap: "AM" }))}
+            >
+              AM
+            </button>
+            <button
+              type="button"
+              className={`ua-cp-clock__ampm-btn${draft.ap === "PM" ? " ua-cp-clock__ampm-btn--on" : ""}`}
+              onClick={() => setDraft((d) => ({ ...d, ap: "PM" }))}
+            >
+              PM
+            </button>
+          </div>
+        </div>
+
+        <div className="ua-cp-clock__face">
+          <span className="ua-cp-clock__center" />
+          <span className="ua-cp-clock__hand" style={{ transform: `rotate(${handDeg}deg)` }} />
+          {nums.map((n, i) => {
+            const ang = ((i + 1) * 30 - 90) * (Math.PI / 180);
+            const r = 62;
+            const x = 86 + r * Math.cos(ang);
+            const y = 86 + r * Math.sin(ang);
+            const on = i === selIdx;
+            return (
+              <button
+                key={`${step}-${n.v}`}
+                type="button"
+                className={`ua-cp-clock__num${on ? " ua-cp-clock__num--on" : ""}`}
+                style={{ left: x, top: y }}
+                onClick={() => pickNum(n.v)}
+              >
+                {n.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="ua-cp-clock__foot">
+          <span>{step === "h" ? "Pick the hour" : "Pick the minutes"}</span>
+          <div>
+            <button type="button" className="ua-cp-clock__cancel" onClick={onCancel}>Cancel</button>
+            <button type="button" className="ua-cp-clock__set" onClick={() => onSet(draftTo24(draft), target)}>Set</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function MiniCalendar({ value, onChange, onClear, onToday, className = "", style, calendarRef }) {
@@ -238,16 +375,15 @@ export function ScheduleMeetingModal({
   );
   const [hold, setHold] = useState("24 hours");
   const [note, setNote] = useState(existingMeeting?.coachNote || defaultNote);
-  const [fromTime, setFromTime] = useState(() => nextRoundedStartTime());
-  const [toTime, setToTime] = useState(() => formatSlotEnd(nextRoundedStartTime(), Number(existingMeeting?.durationMinutes) || defaultDuration));
-  const [slots, setSlots] = useState(() => slotsFromMeeting(existingMeeting));
+  const [fromTime, setFromTime] = useState("");
+  const [toTime, setToTime] = useState("");
+  const [slots, setSlots] = useState([]);
+  const [clockFor, setClockFor] = useState(null);
   const dateCount = uniqueDateCount(slots);
   const slotsByDate = useMemo(() => groupSlotsByDate(slots), [slots]);
+  const firstName = String(user?.name || "client").split(" ")[0];
 
   useEffect(() => {
-    const next = slotsFromMeeting(existingMeeting);
-    if (!next.length) return;
-    setSlots((prev) => (prev.length ? prev : next));
     if (existingMeeting?.coachNote) setNote(existingMeeting.coachNote);
     if (existingMeeting?.durationMinutes) {
       setDuration(Number(existingMeeting.durationMinutes));
@@ -266,11 +402,14 @@ export function ScheduleMeetingModal({
 
   useEffect(() => {
     function onKeyDown(event) {
-      if (event.key === "Escape") onClose?.();
+      if (event.key === "Escape") {
+        if (clockFor) setClockFor(null);
+        else onClose?.();
+      }
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
+  }, [onClose, clockFor]);
 
   useEffect(() => {
     function onPointerDown(event) {
@@ -350,15 +489,26 @@ export function ScheduleMeetingModal({
     setSlots((prev) => prev.filter((s) => s.key !== key));
   }
 
-  function handleSend() {
-    const pending = buildSlotFromForm();
-    const nextSlots = [...slots];
-    if (pending && !nextSlots.some((s) => s.key === pending.key)) {
-      nextSlots.push(pending);
-      setSlots(nextSlots);
+  function handleClockSet(time24, target) {
+    if (target === "start") {
+      setFromTime(time24);
+      setToTime(formatSlotEnd(time24, duration));
+    } else {
+      setToTime(time24);
     }
-    if (!nextSlots.length) return;
-    onSend?.({ slots: nextSlots, note, hold, duration, date: activeDate });
+    setClockFor(null);
+  }
+
+  function handleSend() {
+    if (!slots.length) return;
+    const prior = slotsFromMeeting(existingMeeting);
+    const merged = [...prior];
+    for (const slot of slots) {
+      if (!merged.some((s) => s.key === slot.key || (s.startAt === slot.startAt && s.endAt === slot.endAt))) {
+        merged.push(slot);
+      }
+    }
+    onSend?.({ slots: merged, note, hold, duration, date: activeDate });
   }
 
   const modal = (
@@ -370,7 +520,7 @@ export function ScheduleMeetingModal({
         aria-labelledby="schedule-meeting-title"
       >
         <div className="ua-cp-launch-modal__head">
-          <div className="ua-cp-launch-modal__icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgb(94, 106, 210)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v16H3z"></path><path d="M3 10h18"></path><path d="M8 3v4"></path><path d="M16 3v4"></path></svg></div>
+          <div className="ua-cp-launch-modal__icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgb(94, 106, 210)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 5h18v16H3z"></path><path d="M3 10h18"></path><path d="M8 3v4"></path><path d="M16 3v4"></path></svg></div>
           <div className="ua-cp-launch-modal__head-copy">
             <div id="schedule-meeting-title" className="ua-cp-modal__title">{title}</div>
             <div className="ua-cp-modal__sub">With {user.name} · offer a few slots, they pick one</div>
@@ -418,50 +568,51 @@ export function ScheduleMeetingModal({
           <div className="ua-cp-launch-modal__section">
             <div className="ua-cp-launch-modal__row-label ua-cp-launch-modal__row-label--stack">
               <span className="ua-cp-launch-modal__row-label-main">Slots to offer · {slotsDayLabel}</span>
-              <span className="ua-cp-launch-modal__hint">Set a start time — the end fills in from the duration</span>
+              <span className="ua-cp-launch-modal__hint">
+                {fromTime
+                  ? `Ends at ${formatClockLabel(toTime || formatSlotEnd(fromTime, duration))} · ${duration} min`
+                  : "Set a start time — the end fills in from the duration"}
+              </span>
             </div>
-            <div className="ua-cp-launch-modal__slot-row">
-              <label className="ua-cp-launch-modal__time-field">
-                From
-                <input
-                  type="time"
-                  value={fromTime}
-                  onChange={(e) => {
-                    setFromTime(e.target.value);
-                    if (e.target.value) setToTime(formatSlotEnd(e.target.value, duration));
-                  }}
-                />
-              </label>
-              <label className="ua-cp-launch-modal__time-field">
-                to
-                <input
-                  type="time"
-                  value={toTime}
-                  readOnly
-                  tabIndex={-1}
-                />
-              </label>
+            <div className="ua-cp-launch-modal__slot-row ua-cp-launch-modal__slot-row--clock">
+              <span className="ua-cp-launch-modal__slot-inline-label">From</span>
               <button
                 type="button"
-                className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm ua-cp-launch-modal__add-slot"
+                className={`ua-cp-launch-modal__time-btn${clockFor === "start" ? " ua-cp-launch-modal__time-btn--active" : ""}${fromTime ? "" : " ua-cp-launch-modal__time-btn--empty"}`}
+                onClick={() => setClockFor("start")}
+              >
+                <span>{formatClockLabel(fromTime)}</span>
+                {CLOCK_ICON}
+              </button>
+              <span className="ua-cp-launch-modal__slot-inline-label">to</span>
+              <button
+                type="button"
+                className={`ua-cp-launch-modal__time-btn${clockFor === "end" ? " ua-cp-launch-modal__time-btn--active" : ""}${toTime ? "" : " ua-cp-launch-modal__time-btn--empty"}`}
+                onClick={() => setClockFor("end")}
+              >
+                <span>{formatClockLabel(toTime)}</span>
+                {CLOCK_ICON}
+              </button>
+              <button
+                type="button"
+                className={`ua-cp-launch-modal__add-slot-btn${fromTime ? " ua-cp-launch-modal__add-slot-btn--on" : ""}`}
                 disabled={!fromTime}
                 onClick={addSlot}
               >
                 + Add slot
               </button>
-              <label className="ua-cp-launch-modal__duration-field">
-                Duration
-                <select
-                  value={duration}
-                  onChange={(e) => {
-                    const next = Number(e.target.value);
-                    setDuration(next);
-                    if (fromTime) setToTime(formatSlotEnd(fromTime, next));
-                  }}
-                >
-                  {DURATION_OPTIONS.map((m) => <option key={m} value={m}>{m} min</option>)}
-                </select>
-              </label>
+              <select
+                className="ua-cp-launch-modal__duration-select"
+                value={duration}
+                title="Duration — sets the end time"
+                onChange={(e) => {
+                  const next = Number(e.target.value);
+                  setDuration(next);
+                  if (fromTime) setToTime(formatSlotEnd(fromTime, next));
+                }}
+              >
+                {DURATION_OPTIONS.map((m) => <option key={m} value={m}>{m} min</option>)}
+              </select>
             </div>
             {slots.length ? (
               <div className="ua-cp-launch-modal__offering">
@@ -500,7 +651,7 @@ export function ScheduleMeetingModal({
               ))}
             </div>
             <p className="ua-cp-launch-modal__hold-note">
-              If {user.name.split(" ")[0]} does not pick a slot within {hold}, every held slot is released and your calendar frees up.
+              If {firstName} does not pick a slot within {hold}, every held slot is released and your calendar frees up.
             </p>
           </div>
 
@@ -514,23 +665,30 @@ export function ScheduleMeetingModal({
           <span>
             {slots.length
               ? `${slots.length} slot${slots.length === 1 ? "" : "s"} held across ${dateCount} date${dateCount === 1 ? "" : "s"}`
-              : fromTime
-                ? "Ready to send the time above"
-                : "Pick a start time, then send"}
+              : "Nothing held yet"}
           </span>
           <div>
             <button type="button" className="ua-cp-btn ua-cp-btn--outline" onClick={onClose}>Cancel</button>
             <button
               type="button"
-              className="ua-cp-btn ua-cp-btn--primary"
-              disabled={!slots.length && !fromTime}
+              className={`ua-cp-btn ua-cp-btn--primary${slots.length ? "" : " ua-cp-btn--primary-disabled"}`}
+              disabled={!slots.length}
               onClick={handleSend}
             >
-              Send slot
+              Send slot{slots.length > 1 ? "s" : ""}
             </button>
           </div>
         </div>
       </div>
+
+      {clockFor ? (
+        <AnalogClockPicker
+          target={clockFor}
+          initialTime={clockFor === "start" ? (fromTime || "09:00") : (toTime || fromTime || "09:00")}
+          onCancel={() => setClockFor(null)}
+          onSet={handleClockSet}
+        />
+      ) : null}
     </div>
   );
 

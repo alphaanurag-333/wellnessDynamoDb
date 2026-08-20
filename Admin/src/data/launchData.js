@@ -324,4 +324,4 @@ export const SCHEDULE_DATES = [
 
 export const HOLD_OPTIONS = ["6 hours", "12 hours", "24 hours", "48 hours", "7 days"];
 
-export const DURATION_OPTIONS = [30, 45, 60, 90];
+export const DURATION_OPTIONS = [15, 30, 45, 60, 75, 90];

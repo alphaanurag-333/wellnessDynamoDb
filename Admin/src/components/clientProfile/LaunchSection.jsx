@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { PillTabs } from "../shared.jsx";
 import { suggestRating } from "../../data/launchData.js";
 import { computeLaunchAssessment } from "../../data/launchConfigData.js";
-import { ScheduleMeetingModal } from "./ScheduleMeetingModal.jsx";
+import { ScheduleMeetingModal, slotsFromMeeting } from "./ScheduleMeetingModal.jsx";
 import { ScoringReferenceModal } from "./ScoringReferenceModal.jsx";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 import { useViewAs } from "../../context/ViewAsContext.jsx";
 import {
+  cancelOnboardingMeeting,
   createOnboardingMeetingSlots,
   fetchLaunchAssessmentConfig,
   fetchLaunchFocusAreas,
@@ -89,6 +90,9 @@ function ratingIdForTone(ratings, tone) {
 }
 
 function ScoreCard({ overall, maxOverall, finalScore }) {
+  const scoreOutOf10 = Number.isFinite(Number(finalScore))
+    ? Number(finalScore).toFixed(1)
+    : "0.0";
   return (
     <div className="ua-cp-launch-score">
       <div className="ua-cp-launch-score__copy">
@@ -96,7 +100,7 @@ function ScoreCard({ overall, maxOverall, finalScore }) {
         <span className="ua-cp-launch-score__pts">{overall} / {maxOverall} points</span>
       </div>
       <div className="ua-cp-launch-score__val">
-        <strong>{finalScore}</strong>
+        <strong>{scoreOutOf10}</strong>
         <span>/ 10</span>
       </div>
     </div>
@@ -104,10 +108,9 @@ function ScoreCard({ overall, maxOverall, finalScore }) {
 }
 
 function PrakritiCard({ prakriti }) {
-  const BAR_MAX = 10;
-  const showBars = prakriti.scores && (
-    prakriti.scores.vata != null || prakriti.scores.pitta != null || prakriti.scores.kapha != null
-  );
+  const scores = prakriti.scores || {};
+  const total = Math.max(1, (Number(scores.vata) || 0) + (Number(scores.pitta) || 0) + (Number(scores.kapha) || 0));
+  const showBars = scores.vata != null || scores.pitta != null || scores.kapha != null;
   return (
     <div className="ua-cp-launch-prakriti-card">
       <div className="ua-cp-launch-prakriti-card__top">
@@ -120,22 +123,25 @@ function PrakritiCard({ prakriti }) {
       {showBars ? (
         <div className="ua-cp-launch-prakriti-card__bars">
           {[
-            { key: "vata", label: "Vāta", tone: "blue", val: prakriti.scores.vata || 0 },
-            { key: "pitta", label: "Pitta", tone: "orange", val: prakriti.scores.pitta || 0 },
-            { key: "kapha", label: "Kapha", tone: "green", val: prakriti.scores.kapha || 0 },
-          ].map((d) => (
-            <div key={d.key} className="ua-cp-launch-prakriti-bar">
-              <span className={`ua-cp-launch-prakriti-bar__dot ua-cp-launch-prakriti-bar__dot--${d.tone}`} />
-              <span className="ua-cp-launch-prakriti-bar__label">{d.label}</span>
-              <div className="ua-cp-launch-prakriti-bar__track">
-                <span
-                  className={`ua-cp-launch-prakriti-bar__fill ua-cp-launch-prakriti-bar__fill--${d.tone}`}
-                  style={{ width: `${Math.min(100, (d.val / BAR_MAX) * 100)}%` }}
-                />
+            { key: "vata", label: "Vāta", tone: "blue", val: Number(scores.vata) || 0 },
+            { key: "pitta", label: "Pitta", tone: "orange", val: Number(scores.pitta) || 0 },
+            { key: "kapha", label: "Kapha", tone: "green", val: Number(scores.kapha) || 0 },
+          ].map((d) => {
+            const pct = Math.round((d.val / total) * 100);
+            return (
+              <div key={d.key} className="ua-cp-launch-prakriti-bar">
+                <span className={`ua-cp-launch-prakriti-bar__dot ua-cp-launch-prakriti-bar__dot--${d.tone}`} />
+                <span className="ua-cp-launch-prakriti-bar__label">{d.label}</span>
+                <div className="ua-cp-launch-prakriti-bar__track">
+                  <span
+                    className={`ua-cp-launch-prakriti-bar__fill ua-cp-launch-prakriti-bar__fill--${d.tone}`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                <span className="ua-cp-launch-prakriti-bar__val">{d.val} · {pct}%</span>
               </div>
-              <span className="ua-cp-launch-prakriti-bar__val">{d.val} / {BAR_MAX}</span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : null}
     </div>
@@ -163,6 +169,97 @@ function AttemptControls({
           {rerunLabel}
         </button>
       ) : null}
+    </div>
+  );
+}
+
+function LaunchHeldBanner({
+  meeting,
+  firstName,
+  canSchedule,
+  onOfferMore,
+  onRelease,
+  onWithdrawSlot,
+}) {
+  const status = String(meeting?.status || "").toLowerCase();
+  const slots = slotsFromMeeting(meeting);
+  const count = slots.length || (meeting?.slots || []).length || 0;
+  const times = slots.map(formatHeldMetaTime).filter(Boolean).join(" · ");
+  const meta = [
+    times,
+    `${Number(meeting?.durationMinutes) || 60} min`,
+    "Video call",
+    `offered by ${offeredByLabel(meeting)}`,
+  ].filter(Boolean).join(" · ");
+  const left = releaseCountdown(meeting?.holdExpiresAt);
+  let expiry = `${firstName} picks one in the app — the rest release on their own.`;
+  if (left === "expired") expiry += " Hold has expired.";
+  else if (left) expiry += ` Auto-releases in ${left} if there is no reply.`;
+
+  return (
+    <div className="ua-cp-launch-meet ua-cp-launch-meet--held">
+      <div className="ua-cp-launch-meet__top">
+        <div className="ua-cp-launch-meet__copy">
+          <strong>
+            {status === "time_requested"
+              ? `Client requested a time · awaiting ${firstName}`
+              : `${count} slot${count === 1 ? "" : "s"} held · awaiting ${firstName}`}
+          </strong>
+          <span>{meta || "Waiting for client to pick a slot."}</span>
+        </div>
+        {canSchedule ? (
+          <div className="ua-cp-launch-meet__actions">
+            <button type="button" className="ua-cp-launch-meet__btn" onClick={onOfferMore}>
+              Offer more slots
+            </button>
+            <button type="button" className="ua-cp-launch-meet__btn ua-cp-launch-meet__btn--ghost" onClick={onRelease}>
+              Release slots
+            </button>
+          </div>
+        ) : null}
+      </div>
+      {slots.length ? (
+        <div className="ua-cp-launch-meet__chips">
+          {slots.map((slot) => (
+            <span key={slot.key} className="ua-cp-launch-meet__chip">
+              {formatHeldChip(slot)}
+              {canSchedule ? (
+                <button type="button" title="Withdraw this slot" onClick={() => onWithdrawSlot?.(slot.key)} aria-label="Withdraw slot">×</button>
+              ) : null}
+            </span>
+          ))}
+        </div>
+      ) : null}
+      <p className="ua-cp-launch-meet__expiry">{expiry}</p>
+    </div>
+  );
+}
+
+function LaunchBookedBanner({ meeting, canSchedule, onOpenCalendar, onCancel }) {
+  const when = formatBookedWhen(meeting);
+  return (
+    <div className="ua-cp-launch-meet ua-cp-launch-meet--booked">
+      <div className="ua-cp-launch-meet__copy">
+        <strong>{when ? `LAUNCH meeting confirmed · ${when}` : "LAUNCH meeting booked"}</strong>
+        <span>
+          {[
+            `${Number(meeting?.durationMinutes) || 60} min`,
+            "Video call",
+            `with ${offeredByLabel(meeting)}`,
+            "blocked in your calendar",
+          ].join(" · ")}
+        </span>
+      </div>
+      <div className="ua-cp-launch-meet__actions">
+        <button type="button" className="ua-cp-launch-meet__btn ua-cp-launch-meet__btn--booked" onClick={onOpenCalendar}>
+          Open calendar ›
+        </button>
+        {canSchedule ? (
+          <button type="button" className="ua-cp-launch-meet__btn ua-cp-launch-meet__btn--ghost" onClick={onCancel}>
+            Cancel
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -472,6 +569,7 @@ function LifestyleTab({
   onAssessmentsChange,
   focusAreas,
   canWrite = true,
+  meetingBanner = null,
 }) {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [openDomains, setOpenDomains] = useState(() => new Set());
@@ -607,28 +705,40 @@ function LifestyleTab({
   }
 
   if (loading) {
-    return <p className="ua-cp-launch-prakriti-hint">Loading LAUNCH config…</p>;
+    return (
+      <>
+        {meetingBanner}
+        <p className="ua-cp-launch-prakriti-hint">Loading LAUNCH config…</p>
+      </>
+    );
   }
 
   if (!totals.domainRows.length) {
     return (
-      <p className="ua-cp-launch-prakriti-hint">
-        No live LAUNCH domains yet. Add them in Configs → LAUNCH.
-      </p>
+      <>
+        {meetingBanner}
+        <p className="ua-cp-launch-prakriti-hint">
+          No live LAUNCH domains yet. Add them in Configs → LAUNCH.
+        </p>
+      </>
     );
   }
 
   if (!ratingOptions.length) {
     return (
-      <p className="ua-cp-launch-prakriti-hint">
-        LAUNCH ratings are missing. Add Excellent / Good / Fair / Poor in Configs → LAUNCH.
-      </p>
+      <>
+        {meetingBanner}
+        <p className="ua-cp-launch-prakriti-hint">
+          LAUNCH ratings are missing. Add Excellent / Good / Fair / Poor in Configs → LAUNCH.
+        </p>
+      </>
     );
   }
 
   return (
     <>
-      <div className="ua-cp-launch-hero ua-cp-launch-col">
+      <div className={`ua-cp-launch-hero ua-cp-launch-col${meetingBanner ? " ua-cp-launch-hero--with-meet" : ""}`}>
+        {meetingBanner}
         <ScoreCard overall={totals.overall} maxOverall={totals.maxOverall} finalScore={totals.finalScore} />
         <AttemptControls
           attempt={attempt || 1}
@@ -713,7 +823,7 @@ function LifestyleTab({
   );
 }
 
-function PrakritiTab({ user, onToast, canWrite = true }) {
+function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
   const [loading, setLoading] = useState(true);
   const [questions, setQuestions] = useState([]);
   const [types, setTypes] = useState([]);
@@ -886,7 +996,12 @@ function PrakritiTab({ user, onToast, canWrite = true }) {
   }
 
   if (loading) {
-    return <p className="ua-cp-launch-prakriti-hint">Loading Prakriti config…</p>;
+    return (
+      <>
+        {meetingBanner}
+        <p className="ua-cp-launch-prakriti-hint">Loading Prakriti config…</p>
+      </>
+    );
   }
 
   return (
@@ -896,7 +1011,8 @@ function PrakritiTab({ user, onToast, canWrite = true }) {
           ? "Tick the statements that describe the client. The dosha with the most ticks is their dominant Prakṛti."
           : "Use the interview questions from the Prakriti catalog, then save the matching type, recommendations, and things to avoid."}
       </p>
-      <div className="ua-cp-launch-hero ua-cp-launch-hero--narrow ua-cp-launch-col">
+      <div className={`ua-cp-launch-hero ua-cp-launch-hero--narrow ua-cp-launch-col${meetingBanner ? " ua-cp-launch-hero--with-meet" : ""}`}>
+        {meetingBanner}
         <PrakritiCard
           prakriti={{
             dominant: typeLabel,
@@ -1061,7 +1177,60 @@ function PrakritiTab({ user, onToast, canWrite = true }) {
   );
 }
 
+function offeredByLabel(meeting) {
+  const role = String(meeting?.createdByRole || "").toLowerCase();
+  if (role.includes("admin")) return "Admin desk";
+  return "Wellness coach";
+}
+
+function releaseCountdown(iso) {
+  if (!iso) return "";
+  const ms = new Date(iso).getTime() - Date.now();
+  if (Number.isNaN(ms)) return "";
+  if (ms <= 0) return "expired";
+  const hours = Math.floor(ms / 3600000);
+  const mins = Math.floor((ms % 3600000) / 60000);
+  return `${hours} h ${mins} min`;
+}
+
+function holdLabelFromExpires(iso) {
+  const ms = new Date(iso || 0).getTime() - Date.now();
+  if (!Number.isFinite(ms) || ms <= 0) return "6 hours";
+  const hours = ms / 3600000;
+  if (hours <= 6) return "6 hours";
+  if (hours <= 12) return "12 hours";
+  if (hours <= 24) return "24 hours";
+  if (hours <= 48) return "48 hours";
+  return "7 days";
+}
+
+function formatHeldChip(slot) {
+  const start = new Date(slot?.startAt || slot?.start || "");
+  if (Number.isNaN(start.getTime())) return "";
+  const day = `${String(start.getDate()).padStart(2, "0")} ${start.toLocaleString("en-GB", { month: "short" })}`;
+  const time = `${String(start.getHours()).padStart(2, "0")}:${String(start.getMinutes()).padStart(2, "0")}`;
+  return `${day} · ${time}`;
+}
+
+function formatHeldMetaTime(slot) {
+  const start = new Date(slot?.startAt || slot?.start || "");
+  if (Number.isNaN(start.getTime())) return "";
+  const day = `${String(start.getDate()).padStart(2, "0")} ${start.toLocaleString("en-GB", { month: "short" })}`;
+  const time = `${String(start.getHours()).padStart(2, "0")}:${String(start.getMinutes()).padStart(2, "0")}`;
+  return `${day} ${time}`;
+}
+
+function formatBookedWhen(meeting) {
+  const selected = (meeting?.slots || []).find((s) => s.selected || s.confirmed) || meeting?.slots?.[0];
+  const start = new Date(selected?.startAt || meeting?.confirmedAt || "");
+  if (Number.isNaN(start.getTime())) return "";
+  const date = `${String(start.getDate()).padStart(2, "0")} ${start.toLocaleString("en-GB", { month: "short" })} ${start.getFullYear()}`;
+  const time = `${String(start.getHours()).padStart(2, "0")}:${String(start.getMinutes()).padStart(2, "0")}`;
+  return `${date} at ${time}`;
+}
+
 export function LaunchSection({ user, onToast, onUserUpdated }) {
+  const navigate = useNavigate();
   const { canEdit, canCreate } = useClientSectionPermissions("launch");
   const { can } = useViewAs();
   const canWrite = canEdit || canCreate;
@@ -1075,23 +1244,73 @@ export function LaunchSection({ user, onToast, onUserUpdated }) {
   const [configLoading, setConfigLoading] = useState(true);
   const [focusAreas, setFocusAreas] = useState([]);
   const [assessments, setAssessments] = useState([]);
+  const [nowTick, setNowTick] = useState(() => Date.now());
 
   const meetingStatus = String(launchMeeting?.status || "").toLowerCase();
   const meetingHeld = ["slots_offered", "time_requested"].includes(meetingStatus);
   const meetingBooked = ["booked", "confirmed", "scheduled"].includes(meetingStatus);
+  const firstName = String(user?.name || "client").split(" ")[0];
+  const heldSlots = useMemo(() => slotsFromMeeting(launchMeeting), [launchMeeting]);
 
-  function formatMeetingSlot(slot) {
-    const start = slot?.startAt || slot?.start || "";
-    if (!start) return "";
-    const d = new Date(start);
-    if (Number.isNaN(d.getTime())) return String(start);
-    return d.toLocaleString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+  useEffect(() => {
+    if (!meetingHeld || !launchMeeting?.holdExpiresAt) return undefined;
+    const id = window.setInterval(() => setNowTick(Date.now()), 30000);
+    return () => window.clearInterval(id);
+  }, [meetingHeld, launchMeeting?.holdExpiresAt]);
+
+  async function releaseLaunchSlots() {
+    if (!launchMeeting?.id || !user?.id) return;
+    try {
+      await cancelOnboardingMeeting(user.id, launchMeeting.id);
+      setLaunchMeeting(null);
+      onToast("Slots released");
+    } catch (err) {
+      onToast(err?.message || "Failed to release slots");
+    }
   }
+
+  async function withdrawHeldSlot(slotKey) {
+    if (!launchMeeting || !user?.id) return;
+    const remaining = heldSlots.filter((s) => s.key !== slotKey);
+    try {
+      if (!remaining.length) {
+        await cancelOnboardingMeeting(user.id, launchMeeting.id);
+        setLaunchMeeting(null);
+        onToast("Slot withdrawn · offer released");
+        return;
+      }
+      const meeting = await createOnboardingMeetingSlots(user.id, {
+        stepKey: "launch",
+        slots: remaining.map((s) => ({ startAt: s.startAt, endAt: s.endAt })),
+        note: launchMeeting.coachNote || "",
+        hold: holdLabelFromExpires(launchMeeting.holdExpiresAt),
+        durationMinutes: Number(launchMeeting.durationMinutes) || 60,
+      });
+      setLaunchMeeting(meeting || null);
+      onToast("Slot withdrawn");
+    } catch (err) {
+      onToast(err?.message || "Failed to withdraw slot");
+    }
+  }
+
+  const meetingBanner = meetingHeld && launchMeeting ? (
+    <LaunchHeldBanner
+      key={`held-${launchMeeting.id}-${nowTick}`}
+      meeting={launchMeeting}
+      firstName={firstName}
+      canSchedule={canSchedule}
+      onOfferMore={() => setScheduleOpen(true)}
+      onRelease={releaseLaunchSlots}
+      onWithdrawSlot={withdrawHeldSlot}
+    />
+  ) : meetingBooked && launchMeeting ? (
+    <LaunchBookedBanner
+      meeting={launchMeeting}
+      canSchedule={canSchedule}
+      onOpenCalendar={() => navigate("/calendar")}
+      onCancel={releaseLaunchSlots}
+    />
+  ) : null;
 
   useEffect(() => {
     setTab(tabFromUrl);
@@ -1182,31 +1401,6 @@ export function LaunchSection({ user, onToast, onUserUpdated }) {
             </button>
           </div>
         ) : null}
-        {meetingHeld && launchMeeting ? (
-          <div className="ua-cp-launch-meet ua-cp-launch-meet--held">
-            <div className="ua-cp-launch-meet__copy">
-              <strong>{meetingStatus === "time_requested" ? "Client requested a time" : "Slots offered"}</strong>
-              <span>{(launchMeeting.slots || []).slice(0, 3).map(formatMeetingSlot).filter(Boolean).join(" · ") || "Waiting for client to pick a slot."}</span>
-            </div>
-            {canSchedule ? (
-              <button type="button" className="ua-cp-launch-meet__btn" onClick={() => setScheduleOpen(true)}>
-                Offer more slots
-              </button>
-            ) : null}
-          </div>
-        ) : null}
-        {meetingBooked && launchMeeting ? (
-          <div className="ua-cp-launch-meet ua-cp-launch-meet--booked">
-            <div className="ua-cp-launch-meet__copy">
-              <strong>LAUNCH meeting booked</strong>
-              <span>
-                {formatMeetingSlot((launchMeeting.slots || []).find((s) => s.selected || s.confirmed) || launchMeeting.slots?.[0])
-                  || launchMeeting.note
-                  || "See calendar for details."}
-              </span>
-            </div>
-          </div>
-        ) : null}
       </div>
       {tab === "lifestyle" ? (
         <LifestyleTab
@@ -1219,9 +1413,10 @@ export function LaunchSection({ user, onToast, onUserUpdated }) {
           onAssessmentsChange={setAssessments}
           focusAreas={focusAreas}
           canWrite={canWrite}
+          meetingBanner={meetingBanner}
         />
       ) : (
-        <PrakritiTab user={user} onToast={onToast} canWrite={canWrite} />
+        <PrakritiTab user={user} onToast={onToast} canWrite={canWrite} meetingBanner={meetingBanner} />
       )}
       {scheduleOpen ? (
         <ScheduleMeetingModal

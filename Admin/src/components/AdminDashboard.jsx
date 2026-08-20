@@ -945,6 +945,14 @@ export function AdminDashboard({
     onToast(`Opening profile for ${row.userName}`);
   }
 
+  function openLeaderboardClient(row) {
+    if (row?.userId) {
+      navigate(UPDATED_ADMIN_PATHS.userDetail(row.userId));
+      return;
+    }
+    onToast(`Opening profile for ${row?.name || "client"}`);
+  }
+
   function goPending(focus = "") {
     const qs = focus ? `?focus=${encodeURIComponent(focus)}` : "";
     navigate(`${UPDATED_ADMIN_PATHS.pending}${qs}`);
@@ -1628,7 +1636,14 @@ export function AdminDashboard({
             {champPodium.length === 0 ? (
               <div className="community-card__empty">No reflection scores for this month yet</div>
             ) : champPodium.map((row, i) => (
-              <div key={row.rank || row.userId || row.name} className={`podium-card podium-card--${i + 1}`}>
+              <div
+                key={row.rank || row.userId || row.name}
+                className={`podium-card podium-card--${i + 1}`}
+                onClick={() => openLeaderboardClient(row)}
+                onKeyDown={(e) => e.key === "Enter" && openLeaderboardClient(row)}
+                role="button"
+                tabIndex={0}
+              >
                 <span className={`podium-card__rank ${row.rank === 1 ? "rank--1" : row.rank === 2 ? "rank--2" : "rank--3"}`}>{row.rank === 1 ? "1" : row.rank === 2 ? "2" : "3"}</span>
                 <div className="podium-card__info">
                   <div className="podium-card__name">{row.name}</div>
@@ -1663,8 +1678,8 @@ export function AdminDashboard({
                 <div
                   key={`${row.userId || row.name || "row"}-${row.rank ?? rowIdx}`}
                   className={`leaderboard__row${row.highlight ? " leaderboard__row--highlight" : ""}`}
-                  onClick={() => onToast(`Opening profile for ${row.name}`)}
-                  onKeyDown={(e) => e.key === "Enter" && onToast(`Opening profile for ${row.name}`)}
+                  onClick={() => openLeaderboardClient(row)}
+                  onKeyDown={(e) => e.key === "Enter" && openLeaderboardClient(row)}
                   role="button"
                   tabIndex={0}
                 >
