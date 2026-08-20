@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { UPDATED_ADMIN_PATHS } from "../../data/dashboardData.js";
 import { NotificationInboxPanel } from "../NotificationInboxPanel.jsx";
 import { useViewAs } from "../../context/ViewAsContext.jsx";
@@ -32,12 +32,19 @@ export function ClientProfileTopbar({
   onToggleMenu,
   onSave,
 }) {
+  const navigate = useNavigate();
   const { can } = useViewAs();
   const canEditPii = can("console.pii.edit");
 
   return (
     <header className="ua-cp-topbar">
-      <Link to={UPDATED_ADMIN_PATHS.users} className="ua-cp-topbar__btn">← Users</Link>
+      <button
+        type="button"
+        className="ua-cp-topbar__btn"
+        onClick={() => navigate(UPDATED_ADMIN_PATHS.users, { replace: true })}
+      >
+        ← Users
+      </button>
       <button type="button" className="ua-cp-topbar__btn ua-cp-topbar__btn--menu" onClick={onToggleMenu} title="Toggle menu">
         {menuHidden ? "▥ Show menu" : "▤ Hide menu"}
       </button>

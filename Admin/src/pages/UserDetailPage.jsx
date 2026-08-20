@@ -218,7 +218,7 @@ export function UserDetailPage() {
               ? `“/users/${userId}” is a legacy numeric demo id. Sample clients are never shown as live profiles — open a real UUID from Users.`
               : (loadError || "This client could not be loaded from the API.")}
           </p>
-          <Link to={UPDATED_ADMIN_PATHS.users} className="btn btn--outline">
+          <Link to={UPDATED_ADMIN_PATHS.users} replace className="btn btn--outline">
             Back to Users
           </Link>
         </div>

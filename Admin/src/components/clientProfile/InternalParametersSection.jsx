@@ -241,6 +241,48 @@ function SummaryCards({ lastReport, nextDue, alertText, historyCount, historyOpe
   );
 }
 
+function ReportHistoryEmptyModal({ clientName, onClose }) {
+  const name = clientName || "this client";
+  return (
+    <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={onClose} role="presentation">
+      <div
+        className="ua-cp-modal ua-cp-ip-history-empty-modal"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-labelledby="ip-history-empty-title"
+        aria-describedby="ip-history-empty-body"
+      >
+        <div className="ua-cp-modal__head">
+          <div>
+            <div id="ip-history-empty-title" className="ua-cp-modal__title">Report history</div>
+            <div className="ua-cp-modal__sub">{name} · lab report uploads</div>
+          </div>
+          <button type="button" className="ua-cp-modal__close" onClick={onClose} aria-label="Close">×</button>
+        </div>
+        <div className="ua-cp-ip-history-empty" id="ip-history-empty-body">
+          <span className="ua-cp-ip-history-empty__icon" aria-hidden="true">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <path d="M14 2v6h6" />
+              <path d="M9 13h6" />
+              <path d="M9 17h4" />
+            </svg>
+          </span>
+          <strong>No report submitted yet</strong>
+          <p>
+            {name} hasn&apos;t uploaded a lab report. When they do, it will appear here for review and analysis.
+          </p>
+        </div>
+        <div className="ua-cp-ip-history-empty__actions">
+          <button type="button" className="ua-cp-btn ua-cp-btn--green" onClick={onClose}>
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MockReportHistory({ onToast }) {
   const [range, setRange] = useState("all");
   const [fromDate, setFromDate] = useState("");
@@ -1354,6 +1396,7 @@ function LiveReportAnalysisTab({
   onAnalyze,
   onSaveAnalysis,
   onToast,
+  clientName,
   canEdit = true,
   canUpload = true,
   canExport = true,
@@ -1406,9 +1449,23 @@ function LiveReportAnalysisTab({
   }, [selected?.id, selected?.aiAnalysedAt, selected?.updatedAt]);
 
   if (!selected) {
+    const name = clientName || "The client";
     return (
-      <div className="ua-cp-ip-report">
-        <p>No blood report uploaded yet. The client can submit a PDF from Internal Parameters in the app.</p>
+      <div className="ua-cp-ip-report ua-cp-ip-report--empty">
+        <div className="ua-cp-ip-report-empty">
+          <span className="ua-cp-ip-report-empty__icon" aria-hidden="true">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <path d="M14 2v6h6" />
+              <path d="M9 13h6" />
+              <path d="M9 17h4" />
+            </svg>
+          </span>
+          <strong>No report submitted yet</strong>
+          <p>
+            {name} hasn&apos;t uploaded a blood report. They can submit a PDF from Internal Parameters in the app — it will show up here for review and AI analysis.
+          </p>
+        </div>
       </div>
     );
   }
@@ -1746,6 +1803,7 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
   const canEditOnboarding = can("console.cl.edit");
   const [tab, setTab] = useState("tests");
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyEmptyOpen, setHistoryEmptyOpen] = useState(false);
   const [reports, setReports] = useState([]);
   const [recommended, setRecommended] = useState(null);
   const [history, setHistory] = useState([]);
@@ -1884,6 +1942,17 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
   const nextDueIso = latestReport ? addDaysIso(latestReport.reportDate, 90) : "";
   const nextDays = nextDueIso ? daysFromNow(nextDueIso) : null;
   const pendingCount = reports.filter((report) => report.reviewStatus !== "reviewed").length;
+  const historyCount = live ? reports.length : INTERNAL_PARAMS.reportHistory.length;
+
+  function handleToggleHistory() {
+    if (historyCount === 0) {
+      setHistoryOpen(false);
+      setHistoryEmptyOpen(true);
+      return;
+    }
+    setHistoryEmptyOpen(false);
+    setHistoryOpen((open) => !open);
+  }
 
   return (
     <div className="ua-cp-section ua-cp-internal">
@@ -1911,22 +1980,29 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
               : "Starts after the first report",
           }}
           alertText={pendingCount ? `${pendingCount} report${pendingCount === 1 ? "" : "s"} pending review` : null}
-          historyCount={reports.length}
+          historyCount={historyCount}
           historyOpen={historyOpen}
-          onToggleHistory={() => setHistoryOpen((open) => !open)}
+          onToggleHistory={handleToggleHistory}
         />
       ) : (
         <SummaryCards
           lastReport={INTERNAL_PARAMS.lastReport}
           nextDue={INTERNAL_PARAMS.nextDue}
           alertText={INTERNAL_PARAMS.outOfRangeAlert}
-          historyCount={INTERNAL_PARAMS.reportHistory.length}
+          historyCount={historyCount}
           historyOpen={historyOpen}
-          onToggleHistory={() => setHistoryOpen((open) => !open)}
+          onToggleHistory={handleToggleHistory}
         />
       )}
 
-      {historyOpen ? (
+      {historyEmptyOpen ? (
+        <ReportHistoryEmptyModal
+          clientName={firstName(user)}
+          onClose={() => setHistoryEmptyOpen(false)}
+        />
+      ) : null}
+
+      {historyOpen && historyCount > 0 ? (
         live ? (
           <LiveReportHistory reports={reports} busy={busy} onToast={onToast} onReview={handleReview} />
         ) : (
@@ -1967,6 +2043,7 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
           onAnalyze={handleAnalyze}
           onSaveAnalysis={handleSaveAnalysis}
           onToast={onToast}
+          clientName={firstName(user)}
           canEdit={canEdit}
           canUpload={canUpload}
           canExport={canExport}

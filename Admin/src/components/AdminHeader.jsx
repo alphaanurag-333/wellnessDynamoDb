@@ -14,11 +14,30 @@ export function AdminHeader({
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const isDashboard = pathname === UPDATED_ADMIN_PATHS.dashboard || pathname === "/";
+  const isUsersList = pathname === UPDATED_ADMIN_PATHS.users;
+  const isUserDetail = /^\/users\/[^/]+$/.test(pathname);
   const { activeRole, account } = useViewAs();
   const storedProfile = useAppSelector(selectAdminProfile);
   const profileAccount = storedProfile || account;
   const avatarInitial = userInitials(profileAccount?.name || activeRole.name).charAt(0) || "A";
   const profileImage = profileAccount?.profileImage || null;
+
+  function handleBack() {
+    // Client profile ↔ users list used to bounce via history. Use stable parents instead.
+    if (isUserDetail) {
+      navigate(UPDATED_ADMIN_PATHS.users, { replace: true });
+      return;
+    }
+    if (isUsersList) {
+      navigate(UPDATED_ADMIN_PATHS.dashboard);
+      return;
+    }
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    navigate(UPDATED_ADMIN_PATHS.dashboard);
+  }
 
   return (
     <header className="header">
@@ -37,7 +56,7 @@ export function AdminHeader({
           type="button"
           className="header__back"
           title="Go back"
-          onClick={() => navigate(-1)}
+          onClick={handleBack}
         >
           ‹ <span className="header__back-label">Back</span>
         </button>
