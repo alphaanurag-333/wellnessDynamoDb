@@ -12,6 +12,7 @@ const { queryMealLogsByCoachId } = require("../models/mealTrackingModel");
 const { listUserCommitmentLetters } = require("../models/userCommitmentLetterModel");
 const { listClientTestimonials } = require("../models/clientTestimonials");
 const { normalizeUserTier } = require("../models/userAssignmentLogic");
+const { getSubscriptionExpiryStats } = require("./subscriptionExpiryStats");
 
 const RECENT_LIMIT = 5;
 const IST_TZ = "Asia/Kolkata";
@@ -169,6 +170,9 @@ async function getCoachDashboardStats(coachId) {
   const recentClients = takeRecent(clients).map(toDashboardClient).filter(Boolean);
   const recentAssistants = takeRecent(assistants).map(toDashboardAssistant).filter(Boolean);
   const coachProfile = toPublicWellnessCoach(coach);
+  const subscriptionExpiry = await getSubscriptionExpiryStats({
+    userIds: clients.map((user) => user.id).filter(Boolean),
+  });
 
   const charts = {
     teamOverview: [
@@ -202,6 +206,7 @@ async function getCoachDashboardStats(coachId) {
     healClients,
     consultancyClients,
     healthConcernCounts,
+    subscriptionExpiry,
     registeredToday,
     totalAssistants,
     activeAssistants,

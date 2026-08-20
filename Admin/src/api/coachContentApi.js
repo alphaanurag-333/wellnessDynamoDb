@@ -300,15 +300,16 @@ export function formatIntroVideoMeta(intro = {}) {
   const hasVideo = Boolean(intro.videoUrl || intro.linkUrl || intro.hasMedia);
   if (!hasVideo) return "Not uploaded yet";
   const uploadedLabel = formatContentDate(intro.uploadedAt);
-  const fallback =
-    uploadedLabel
-      ? `uploaded ${uploadedLabel}`
-      : intro.sourceType === "link"
-        ? "Linked video"
-        : intro.version
-          ? `v${intro.version}`
-          : "Uploaded";
-  return [intro.duration, fallback].filter(Boolean).join(" · ") || "Uploaded";
+  const parts = [];
+  if (intro.duration) parts.push(intro.duration);
+  if (uploadedLabel) {
+    parts.push(`Uploaded ${uploadedLabel}`);
+  } else if (intro.sourceType === "link") {
+    parts.push("Linked video");
+  } else {
+    parts.push("Uploaded");
+  }
+  return parts.join(" · ") || "Uploaded";
 }
 
 export function buildCoachProfileContent(account, letterConfig = {}) {

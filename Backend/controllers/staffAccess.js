@@ -7,6 +7,7 @@ const {
   listUsersByAssignedCoachId,
 } = require("../models/userModel");
 const { matchesAssignedClientTier } = require("../models/userAssignmentLogic");
+const { getSubscriptionExpiryStats } = require("../services/subscriptionExpiryStats");
 
 const CLINICAL_ROLES = Object.freeze([
   "admin",
@@ -17,6 +18,13 @@ const CLINICAL_ROLES = Object.freeze([
 
 const READ_ONLY_ROLES = new Set(["trainee"]);
 const NO_CLIENT_ROLES = new Set(["support"]);
+
+async function resolveSubscriptionExpiryUserIds(windowDays) {
+  const days = Number(windowDays);
+  if (!Number.isFinite(days) || days <= 0) return null;
+  const expiry = await getSubscriptionExpiryStats({ windowDays: days });
+  return Array.isArray(expiry.userIds) ? expiry.userIds : [];
+}
 
 function resolveStaffActor(req) {
   const id = String(req.auth?.sub || "").trim();
@@ -116,11 +124,29 @@ async function assertStaffCanAssignCoach(req, userId, { assignedCoachId, assigne
   return actor;
 }
 
-async function listHealUsersForStaff(req, { page = 1, limit = 20, search, scope = "all", userTier = "client" } = {}) {
+async function listHealUsersForStaff(
+  req,
+  { page = 1, limit = 20, search, scope = "all", userTier = "client", subscriptionExpiryDays } = {},
+) {
   const actor = resolveStaffActor(req);
+  const subscriptionExpiryUserIds = await resolveSubscriptionExpiryUserIds(subscriptionExpiryDays);
+  if (Array.isArray(subscriptionExpiryUserIds) && subscriptionExpiryUserIds.length === 0) {
+    const safePage = Math.max(1, Number(page) || 1);
+    const safeLimit = Math.min(200, Math.max(1, Number(limit) || 20));
+    return {
+      users: [],
+      pagination: { page: safePage, limit: safeLimit, total: 0, pages: 1 },
+    };
+  }
 
   if (actor.role === "admin") {
-    const data = await listUsers({ page: 1, limit: 10000, search, assignmentStatus: "assigned" });
+    const data = await listUsers({
+      page: 1,
+      limit: 10000,
+      search,
+      assignmentStatus: "assigned",
+      subscriptionExpiryUserIds,
+    });
     const rows = (data.users || []).filter((row) => matchesAssignedClientTier(row.userTier, userTier));
     const safePage = Math.max(1, Number(page) || 1);
     const safeLimit = Math.min(200, Math.max(1, Number(limit) || 20));
@@ -134,7 +160,14 @@ async function listHealUsersForStaff(req, { page = 1, limit = 20, search, scope 
   }
 
   if (actor.role === "wellness_coach") {
-    return listUsersByParentCoachId(actor.id, { page, limit, search, userTier, scope });
+    return listUsersByParentCoachId(actor.id, {
+      page,
+      limit,
+      search,
+      userTier,
+      scope,
+      subscriptionExpiryUserIds,
+    });
   }
 
   if (actor.role === "assistant_wellness_coach") {
@@ -147,6 +180,7 @@ async function listHealUsersForStaff(req, { page = 1, limit = 20, search, scope 
       limit,
       search,
       userTier,
+      subscriptionExpiryUserIds,
     });
   }
 
@@ -154,7 +188,14 @@ async function listHealUsersForStaff(req, { page = 1, limit = 20, search, scope 
     if (!actor.parentCoachId) {
       throw new AppError("Trainee is not linked to a wellness coach", 400);
     }
-    return listUsersByParentCoachId(actor.parentCoachId, { page, limit, search, userTier, scope });
+    return listUsersByParentCoachId(actor.parentCoachId, {
+      page,
+      limit,
+      search,
+      userTier,
+      scope,
+      subscriptionExpiryUserIds,
+    });
   }
 
   throw new AppError("Forbidden", 403);

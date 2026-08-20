@@ -26,6 +26,7 @@ const { readUserIdParam } = require("../helpers/reminderControllerHelpers");
 const {
   dispatchPresentablePicRequestNotification,
 } = require("../../services/notificationDispatchService");
+const { getSubscriptionExpiryStats } = require("../../services/subscriptionExpiryStats");
 
 const PRESENTABLE_PHOTO_REQUEST_TYPES = new Set([
   "Front pose · gym",
@@ -35,10 +36,25 @@ const PRESENTABLE_PHOTO_REQUEST_TYPES = new Set([
   "Progress comparison",
 ]);
 
+async function resolveSubscriptionExpiryUserIds(query = {}) {
+  const windowDays = Number(query.subscriptionExpiryDays);
+  if (!Number.isFinite(windowDays) || windowDays <= 0) return null;
+  const expiry = await getSubscriptionExpiryStats({ windowDays });
+  return Array.isArray(expiry.userIds) ? expiry.userIds : [];
+}
+
 exports.listUsersController = asyncHandler(async (req, res) => {
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 20));
   const { status, search, userTier, assignmentStatus, parentCoachId, clientCategory } = req.query;
+  const subscriptionExpiryUserIds = await resolveSubscriptionExpiryUserIds(req.query);
+  if (Array.isArray(subscriptionExpiryUserIds) && subscriptionExpiryUserIds.length === 0) {
+    return res.status(200).json({
+      status: true,
+      users: [],
+      pagination: { page, limit, total: 0, pages: 1 },
+    });
+  }
   const data = parentCoachId
     ? await listUsersByParentCoachId(parentCoachId, {
         page,
@@ -46,8 +62,18 @@ exports.listUsersController = asyncHandler(async (req, res) => {
         search,
         userTier: userTier || "all",
         clientCategory,
+        subscriptionExpiryUserIds,
       })
-    : await listUsers({ page, limit, status, search, userTier, assignmentStatus, clientCategory });
+    : await listUsers({
+        page,
+        limit,
+        status,
+        search,
+        userTier,
+        assignmentStatus,
+        clientCategory,
+        subscriptionExpiryUserIds,
+      });
   const users = await Promise.all(data.users.map((u) => enrichUser(u, { ensureReferral: false })));
   return res.status(200).json({ status: true, users, pagination: data.pagination });
 });

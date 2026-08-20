@@ -1068,7 +1068,7 @@ function OnboardingStatusCard({ user, onToast, onNavigate, onProgressChange, onU
                   startAt: s.startAt,
                   endAt: s.endAt,
                 })),
-                note: payload?.note || scheduleModal.defaultNote,
+                note: payload?.note || "",
                 hold: payload?.hold || "24 hours",
                 durationMinutes: payload?.duration,
               });

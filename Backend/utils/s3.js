@@ -5,6 +5,7 @@ const {
   PutObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadObjectCommand,
 } = require("@aws-sdk/client-s3");
 const config = require("../config");
 const AppError = require("./AppError");
@@ -244,6 +245,28 @@ async function deleteStoredMedia(key) {
   }
 }
 
+/** ISO timestamp of when the object was last modified on S3, or "". */
+async function getObjectLastModified(key) {
+  const objectKey = normalizeStoredMedia(key);
+  if (!objectKey) return "";
+  try {
+    assertS3Configured();
+    const result = await s3Client.send(
+      new HeadObjectCommand({
+        Bucket: config.awsS3BucketName,
+        Key: objectKey,
+      })
+    );
+    const modified = result?.LastModified;
+    if (!modified) return "";
+    const date = modified instanceof Date ? modified : new Date(modified);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toISOString();
+  } catch {
+    return "";
+  }
+}
+
 module.exports = {
   s3Client,
   getPublicBaseUrl,
@@ -259,6 +282,7 @@ module.exports = {
   uploadMulterField,
   uploadFileFromRequest,
   deleteStoredMedia,
+  getObjectLastModified,
   getStoredObjectBuffer,
   sendStoredObjectAsAttachment,
 };

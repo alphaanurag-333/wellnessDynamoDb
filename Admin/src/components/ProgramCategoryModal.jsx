@@ -18,6 +18,18 @@ function ClientRow({ row, onOpen }) {
   );
 }
 
+function isImageIcon(icon) {
+  const value = String(icon || "").trim();
+  return /^(https?:|blob:|data:|\/)/i.test(value);
+}
+
+function HeadIcon({ icon }) {
+  if (isImageIcon(icon)) {
+    return <img src={icon} alt="" />;
+  }
+  return icon || "👥";
+}
+
 export function ProgramCategoryModal({ open, program, onClose, onOpenClient }) {
   if (!open || !program) return null;
 
@@ -38,7 +50,9 @@ export function ProgramCategoryModal({ open, program, onClose, onOpenClient }) {
         aria-labelledby="prog-cat-modal-title"
       >
         <div className="ua-team-modal__head">
-          <span className="ua-team-modal__head-icon" aria-hidden="true">👥</span>
+          <span className="ua-team-modal__head-icon" aria-hidden="true">
+            <HeadIcon icon={program.icon} />
+          </span>
           <div className="ua-team-modal__head-copy">
             <div id="prog-cat-modal-title" className="ua-team-modal__title">{program.label}</div>
             <div className="ua-team-modal__sub">{subtitle}</div>

@@ -13,6 +13,7 @@ const { DEFAULT_FY_START_MONTH } = require("./energyExchangePricingService");
 const { ScanCommand } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../config/db");
 const { countAcrossPartitions } = require("../utils/dynamoCount");
+const { getSubscriptionExpiryStats } = require("./subscriptionExpiryStats");
 
 const STATUS_INDEX = "StatusCreatedAtIndex";
 const IST_TZ = "Asia/Kolkata";
@@ -622,10 +623,13 @@ async function getAdminDashboardStats() {
     (fy) => fy.fyStartYear === revenueAnalytics.currentFyStartYear,
   );
 
-  const teamRoles = await buildTeamRoleCards({
-    pendingUserAssignments,
-    pendingCoachApprovals,
-  });
+  const [teamRoles, subscriptionExpiry] = await Promise.all([
+    buildTeamRoleCards({
+      pendingUserAssignments,
+      pendingCoachApprovals,
+    }),
+    getSubscriptionExpiryStats(),
+  ]);
 
   return {
     totalUsers,
@@ -636,6 +640,7 @@ async function getAdminDashboardStats() {
     pendingCoachApprovals,
     pendingUserAssignments,
     healthConcernCounts,
+    subscriptionExpiry,
     registeredToday: {
       count: registeredTodayCount,
     },

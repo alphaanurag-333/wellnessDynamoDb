@@ -374,7 +374,7 @@ export function ScheduleMeetingModal({
     Number(existingMeeting?.durationMinutes) || defaultDuration,
   );
   const [hold, setHold] = useState("24 hours");
-  const [note, setNote] = useState(existingMeeting?.coachNote || defaultNote);
+  const [note, setNote] = useState(existingMeeting?.coachNote || "");
   const [fromTime, setFromTime] = useState("");
   const [toTime, setToTime] = useState("");
   const [slots, setSlots] = useState([]);
@@ -657,7 +657,13 @@ export function ScheduleMeetingModal({
 
           <div className="ua-cp-launch-modal__section">
             <span className="ua-cp-launch-modal__label">Note for the client</span>
-            <textarea className="ua-cp-launch-modal__note" value={note} onChange={(e) => setNote(e.target.value)} rows={3} />
+            <textarea
+              className="ua-cp-launch-modal__note"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder={defaultNote || "Add a short note for the client"}
+              rows={3}
+            />
           </div>
         </div>
 

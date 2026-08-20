@@ -552,8 +552,8 @@ function NamespaceSearch({ groups, namespaces, onAdd, onToast }) {
 }
 
 function MockRecommendedTestsTab({ user, onToast, canEdit = true, canExport = true }) {
-  const [presets, setPresets] = useState(["Fat Loss", "Diabetes Reversal"]);
-  const [focusedPreset, setFocusedPreset] = useState("Diabetes Reversal");
+  const [presets, setPresets] = useState(["Fat Loss"]);
+  const [focusedPreset, setFocusedPreset] = useState("Fat Loss");
   const [published, setPublished] = useState(false);
   const [dirty, setDirty] = useState(true);
 
@@ -580,7 +580,7 @@ function MockRecommendedTestsTab({ user, onToast, canEdit = true, canExport = tr
   function togglePreset(goal) {
     setFocusedPreset(goal);
     setPresets((prev) => {
-      const next = prev.includes(goal) ? prev.filter((g) => g !== goal) : [...prev, goal];
+      const next = prev.includes(goal) ? [] : [goal];
       onToast(next.includes(goal) ? `${goal} preset applied` : `Removed ${goal} preset`);
       return next;
     });
@@ -588,9 +588,7 @@ function MockRecommendedTestsTab({ user, onToast, canEdit = true, canExport = tr
   }
 
   function presetClass(goal) {
-    if (focusedPreset === goal && presets.includes(goal)) return " ua-cp-ip-preset__pill--focus";
-    if (presets.includes(goal)) return " ua-cp-ip-preset__pill--applied";
-    return "";
+    return presets.includes(goal) ? " ua-cp-ip-preset__pill--applied" : "";
   }
 
   function toggleTest(key) {
@@ -916,31 +914,34 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
 
   function togglePreset(goal) {
     setFocusedPreset(goal);
-    const categories = new Set((GOAL_PRESET_CATEGORIES[goal] || []).map((c) => c.toLowerCase()));
-    setPresets((prev) => {
-      const applying = !prev.includes(goal);
-      const next = applying ? [...prev, goal] : prev.filter((g) => g !== goal);
-      if (applying) {
-        setSelected((current) => {
-          const copy = { ...current };
-          catalog.forEach((test) => {
-            if (categories.has(String(test.category || "").toLowerCase())) copy[test.id] = true;
-          });
-          return copy;
-        });
-        markDirty();
-        onToast(`${goal} preset applied`);
-      } else {
-        onToast(`Removed ${goal} preset`);
-      }
-      return next;
+    const applying = !presets.includes(goal);
+    const next = applying ? [goal] : [];
+    setPresets(next);
+
+    const allPresetCategories = new Set(
+      Object.values(GOAL_PRESET_CATEGORIES)
+        .flat()
+        .map((c) => String(c || "").toLowerCase()),
+    );
+    const categories = new Set(
+      (GOAL_PRESET_CATEGORIES[goal] || []).map((c) => String(c || "").toLowerCase()),
+    );
+
+    setSelected((current) => {
+      const copy = { ...current };
+      catalog.forEach((test) => {
+        const cat = String(test.category || "").toLowerCase();
+        if (!allPresetCategories.has(cat)) return;
+        copy[test.id] = applying && categories.has(cat);
+      });
+      return copy;
     });
+    markDirty();
+    onToast(applying ? `${goal} preset applied` : `Removed ${goal} preset`);
   }
 
   function presetClass(goal) {
-    if (focusedPreset === goal && presets.includes(goal)) return " ua-cp-ip-preset__pill--focus";
-    if (presets.includes(goal)) return " ua-cp-ip-preset__pill--applied";
-    return "";
+    return presets.includes(goal) ? " ua-cp-ip-preset__pill--applied" : "";
   }
 
   async function downloadList() {

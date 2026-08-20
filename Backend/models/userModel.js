@@ -635,7 +635,16 @@ async function deleteUser(id) {
 
 async function listUsersByParentCoachId(
   parentCoachId,
-  { page = 1, limit = 20, search, userTier = "client", scope = "all", unpaginated = false, clientCategory } = {}
+  {
+    page = 1,
+    limit = 20,
+    search,
+    userTier = "client",
+    scope = "all",
+    unpaginated = false,
+    clientCategory,
+    subscriptionExpiryUserIds,
+  } = {}
 ) {
   const coachId = String(parentCoachId || "").trim();
   if (!coachId) {
@@ -648,6 +657,20 @@ async function listUsersByParentCoachId(
   const normalizedTier = String(userTier || "client").toLowerCase().trim();
   const normalizedScope = String(scope || "all").toLowerCase().trim();
   const normalizedCategory = clientCategory ? normalizeClientCategory(clientCategory, "") : "";
+  const expiryIdSet = Array.isArray(subscriptionExpiryUserIds)
+    ? new Set(
+        subscriptionExpiryUserIds
+          .map((id) => String(id || "").trim())
+          .filter(Boolean),
+      )
+    : null;
+
+  if (expiryIdSet && !expiryIdSet.size) {
+    return {
+      users: [],
+      pagination: { page: safePage, limit: safeLimit, total: 0, pages: 1 },
+    };
+  }
 
   const { Items = [] } = await docClient.send(
     new QueryCommand({
@@ -664,6 +687,10 @@ async function listUsersByParentCoachId(
       row.status !== "deleted" &&
       matchesAssignedClientTier(row.userTier, normalizedTier)
   );
+
+  if (expiryIdSet) {
+    rows = rows.filter((row) => expiryIdSet.has(String(row.id || "").trim()));
+  }
 
   if (normalizedScope === "direct") {
     rows = rows.filter(
@@ -1085,7 +1112,15 @@ async function buildReferralOverview({ topLimit = 25, recentLimit = 40 } = {}) {
 
 async function listUsersByAssignedCoachId(
   assignedCoachId,
-  { parentCoachId, page = 1, limit = 20, search, userTier = "client", unpaginated = false } = {}
+  {
+    parentCoachId,
+    page = 1,
+    limit = 20,
+    search,
+    userTier = "client",
+    unpaginated = false,
+    subscriptionExpiryUserIds,
+  } = {}
 ) {
   const assigneeId = String(assignedCoachId || "").trim();
   const ownerCoachId = String(parentCoachId || "").trim();
@@ -1097,6 +1132,20 @@ async function listUsersByAssignedCoachId(
   const safeLimit = Math.min(200, Math.max(1, Number(limit) || 20));
   const normalizedSearch = String(search || "").trim().toLowerCase();
   const normalizedTier = String(userTier || "client").toLowerCase().trim();
+  const expiryIdSet = Array.isArray(subscriptionExpiryUserIds)
+    ? new Set(
+        subscriptionExpiryUserIds
+          .map((id) => String(id || "").trim())
+          .filter(Boolean),
+      )
+    : null;
+
+  if (expiryIdSet && !expiryIdSet.size) {
+    return {
+      users: [],
+      pagination: { page: safePage, limit: safeLimit, total: 0, pages: 1 },
+    };
+  }
 
   const { Items = [] } = await docClient.send(
     new QueryCommand({
@@ -1114,6 +1163,10 @@ async function listUsersByAssignedCoachId(
     if (normalizeAssignedCoachType(row.assignedCoachType) !== "assistant_wellness_coach") return false;
     return matchesAssignedClientTier(row.userTier, normalizedTier);
   });
+
+  if (expiryIdSet) {
+    rows = rows.filter((row) => expiryIdSet.has(String(row.id || "").trim()));
+  }
 
   if (normalizedSearch) {
     rows = rows.filter(
@@ -1202,11 +1255,80 @@ async function listUsersWithBirthdayOnDate(dateOnly) {
   return [...byId.values()].filter((user) => userBirthdayMatchesDate(user.dob, dateOnly));
 }
 
-async function listUsers({ page = 1, limit = 20, status, search, userTier, assignmentStatus, clientCategory } = {}) {
+async function listUsers({
+  page = 1,
+  limit = 20,
+  status,
+  search,
+  userTier,
+  assignmentStatus,
+  clientCategory,
+  subscriptionExpiryUserIds,
+} = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const normalizedTier = userTier ? normalizeUserTier(userTier, "") : "";
   const normalizedAssignment = assignmentStatus ? normalizeAssignmentStatus(assignmentStatus) : "";
   const normalizedCategory = clientCategory ? normalizeClientCategory(clientCategory, "") : "";
+  const expiryIdSet = Array.isArray(subscriptionExpiryUserIds)
+    ? new Set(
+        subscriptionExpiryUserIds
+          .map((id) => String(id || "").trim())
+          .filter(Boolean),
+      )
+    : null;
+
+  if (expiryIdSet) {
+    if (!expiryIdSet.size) {
+      const safePage = Math.max(1, Number(page) || 1);
+      const safeLimit = Math.min(200, Math.max(1, Number(limit) || 20));
+      return {
+        users: [],
+        pagination: { page: safePage, limit: safeLimit, total: 0, pages: 1 },
+      };
+    }
+
+    const fetched = await Promise.all([...expiryIdSet].map((id) => getUserById(id)));
+    let users = fetched
+      .filter(Boolean)
+      .map(withLegacyId)
+      .filter((row) => row.status !== "deleted");
+
+    if (normalizedStatus) {
+      users = users.filter((row) => normalizeStatus(row.status) === normalizedStatus);
+    }
+    if (normalizedTier) {
+      users = users.filter((row) => normalizeUserTier(row.userTier) === normalizedTier);
+    }
+    if (normalizedAssignment) {
+      users = users.filter(
+        (row) => normalizeAssignmentStatus(row.assignmentStatus) === normalizedAssignment,
+      );
+    }
+    if (normalizedCategory) {
+      users = users.filter(
+        (row) => normalizeClientCategory(row.clientCategory) === normalizedCategory,
+      );
+    }
+
+    const searchFilter = buildContainsFilter(["name", "email", "phone"], search);
+    const normalizedSearch = String(searchFilter.search || "").trim().toLowerCase();
+    if (normalizedSearch) {
+      users = users.filter(
+        (row) =>
+          String(row.name || "").toLowerCase().includes(normalizedSearch) ||
+          String(row.email || "").toLowerCase().includes(normalizedSearch) ||
+          String(row.phone || "").includes(normalizedSearch),
+      );
+    }
+
+    users.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+    const paged = paginateItems(users, page, limit, 200);
+    return {
+      users: paged.items,
+      pagination: paged.pagination,
+    };
+  }
+
   const needsPostFilter = Boolean(normalizedTier || normalizedAssignment || normalizedCategory);
   const searchFilter = buildContainsFilter(["name", "email", "phone"], search);
 

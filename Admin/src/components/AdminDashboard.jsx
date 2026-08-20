@@ -21,7 +21,6 @@ import {
   DASH_SCOPE_LABELS,
   EXP_CARDS,
   EXP_NOTE,
-  SUBSCRIBED_NOTE,
   FAT_METRICS,
   GRADIENT_GREEN,
   OPS_OVERDUE,
@@ -489,8 +488,19 @@ export function AdminDashboard({
           : { ...item, value: "—", tag: "No live source configured" })
         : { ...item, value: 0 }
   ));
-  const subscribedCount = asNumber(tierRows?.find((row) => row.key === "heal")?.value);
-  const expTotal = subscribedCount;
+  const subscriptionExpiry = statisticsForView?.subscriptionExpiry || null;
+  const expWindowDays = asNumber(subscriptionExpiry?.windowDays) || 15;
+  const expTotal = statisticsForView
+    ? asNumber(subscriptionExpiry?.count)
+    : 0;
+  const expSoonestDays = statisticsForView && subscriptionExpiry?.soonestDays != null
+    ? asNumber(subscriptionExpiry.soonestDays)
+    : null;
+  const expSubLabel = !statisticsForView || expTotal <= 0
+    ? "none ending soon"
+    : expSoonestDays != null
+      ? `soonest in ${expSoonestDays} day${expSoonestDays === 1 ? "" : "s"}`
+      : "ending within window";
   const registeredTodayLive = statisticsForView?.registeredToday || null;
   const registeredTodayRows = useMemo(() => {
     if (!Array.isArray(clients)) return null;
@@ -790,6 +800,9 @@ export function AdminDashboard({
     const params = new URLSearchParams();
     if (filters.tab) params.set("tab", filters.tab);
     if (filters.tier) params.set("tier", filters.tier);
+    if (filters.subscriptionExpiryDays) {
+      params.set("subscriptionExpiry", String(filters.subscriptionExpiryDays));
+    }
     const qs = params.toString();
     navigate(`${UPDATED_ADMIN_PATHS.users}${qs ? `?${qs}` : ""}`);
   }
@@ -912,11 +925,12 @@ export function AdminDashboard({
 
   const programModal = useMemo(() => {
     if (!programModalTarget) return null;
-    const { key, label, registeredToday } = programModalTarget;
+    const { key, label, registeredToday, icon } = programModalTarget;
     if (registeredToday) {
       // AppUser card: every user who registered today (IST), any health concern.
       return {
         label: label || APP_USER_PROG_CARD.label,
+        icon: icon || APP_USER_PROG_CARD.icon,
         rows: registeredTodayRows || [],
         registeredToday: true,
       };
@@ -925,7 +939,7 @@ export function AdminDashboard({
     const rows = clientsByConcern
       ? (clientsByConcern.get(concernKey(key)) ?? clientsByConcern.get(concernKey(label)) ?? [])
       : [];
-    return { label, rows };
+    return { label, icon, rows };
   }, [clientsByConcern, registeredTodayRows, programModalTarget]);
   const progressModal = liveProgress
     ? buildLiveProgressModal(progressModalKey, liveProgress)
@@ -943,6 +957,7 @@ export function AdminDashboard({
     setProgramModalTarget({
       key,
       label,
+      icon: card?.icon || "",
       registeredToday,
     });
   }
@@ -1134,7 +1149,7 @@ export function AdminDashboard({
 
             <div className="expiry-card">
               <div className="expiry-card__head">
-                <span className="expiry-card__title">{statisticsForView ? "Subscribed users" : "Expiring in 15 days"}</span>
+                <span className="expiry-card__title">{`Expiring in ${expWindowDays} days`}</span>
                 <span className="expiry-card__total">
                   {`${expTotal} total`}
                 </span>
@@ -1145,7 +1160,7 @@ export function AdminDashboard({
                     key={e.label}
                     type="button"
                     className="expiry-cell cdact"
-                    onClick={() => goUsers({ tier: e.tierFilter || "Seek to Heal" })}
+                    onClick={() => goUsers({ subscriptionExpiryDays: expWindowDays })}
                   >
                     <span className="expiry-cell__label">
                       <span className="expiry-cell__dot expiry-cell__dot--pulse" style={{ background: e.color }} />
@@ -1154,13 +1169,13 @@ export function AdminDashboard({
                     <span className="expiry-cell__value">
                       <span style={{ color: "black" }}>{expTotal}</span>
                       <span className="expiry-cell__sub">
-                        {statisticsForView ? "Active Heal subscriptions" : e.sub}
+                        {expSubLabel}
                       </span>
                     </span>
                   </button>
                 ))}
               </div>
-              <p className="expiry-card__note">{statisticsForView ? SUBSCRIBED_NOTE : EXP_NOTE}</p>
+              <p className="expiry-card__note">{EXP_NOTE}</p>
             </div>
           </div>
         </section>
@@ -1283,7 +1298,9 @@ export function AdminDashboard({
               style={{ background: appUserProgramCard.bg, borderColor: appUserProgramCard.border }}
               onClick={() => openProgramCategory(appUserProgramCard)}
             >
-              <span className="prog-cat__icon" style={{ background: "#fff" }}>{appUserProgramCard.icon}</span>
+              <span className="prog-cat__icon" style={{ background: "#fff" }}>
+                <CategoryIcon icon={appUserProgramCard.icon} />
+              </span>
               <span className="prog-cat__label">{appUserProgramCard.label}</span>
               <span className="prog-cat__count">{appUserProgramCard.count}</span>
             </button>
@@ -1379,7 +1396,9 @@ export function AdminDashboard({
               style={{ background: appUserProgramCard.bg, borderColor: appUserProgramCard.border }}
               onClick={() => openProgramCategory(appUserProgramCard)}
             >
-              <span className="prog-cat__icon" style={{ background: "#fff" }}>{appUserProgramCard.icon}</span>
+              <span className="prog-cat__icon" style={{ background: "#fff" }}>
+                <CategoryIcon icon={appUserProgramCard.icon} />
+              </span>
               <span className="prog-cat__label">{appUserProgramCard.label}</span>
               <span className="prog-cat__count" style={{ color: appUserProgramCard.accent }}>{appUserProgramCard.count}</span>
             </button>

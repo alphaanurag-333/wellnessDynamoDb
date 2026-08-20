@@ -2217,8 +2217,29 @@
 }
 
 .updated-admin .ua-team-modal__head-icon {
-  font-size: 17px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-size: 18px;
   line-height: 1;
+  overflow: hidden;
+  background: #f4f5fe;
+  border: 1px solid rgba(94, 106, 210, 0.18);
+  box-sizing: border-box;
+  padding: 4px;
+}
+
+.updated-admin .ua-team-modal__head-icon img {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  object-position: center;
+  display: block;
 }
 
 .updated-admin .ua-team-modal__head-copy {
@@ -4413,7 +4434,7 @@
 
 .updated-admin .prog-cat {
   flex: 0 0 auto;
-  min-width: 126px;
+  min-width: 132px;
   text-align: left;
   border-radius: 10px;
   padding: 10px 11px;
@@ -4421,7 +4442,7 @@
   font: inherit;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
   border: 1px solid transparent;
   transition: transform 0.15s, box-shadow 0.15s;
   background: #fff;
@@ -4433,23 +4454,29 @@
 }
 
 .updated-admin .prog-cat__icon {
-  width: 24px;
-  height: 24px;
-  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
   display: grid;
   place-items: center;
-  font-size: 15px;
+  font-size: 20px;
+  line-height: 1;
   overflow: hidden;
-  background: #f4f5fe;
+  flex-shrink: 0;
+  background: #fff;
   border: 1px solid rgba(94, 106, 210, 0.2);
+  box-sizing: border-box;
+  padding: 4px;
 }
 
 .updated-admin .prog-cat__icon img {
   width: 100%;
   height: 100%;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
+  object-position: center;
   display: block;
-
 }
 
 .updated-admin .prog-cat__label {
@@ -15174,9 +15201,9 @@ scrollbar-width: thin;
 .updated-admin .ua-cp-ip-preset__pill {
   height: 30px;
   padding: 0 12px;
-  border: 1px solid #dcdff7;
+  border: 1.5px solid #dcdff7;
   border-radius: 999px;
-  background: #fff;
+  background: #f7f8ff;
   color: #5e6ad2;
   font-size: 11.5px;
   font-weight: 700;
@@ -15185,17 +15212,11 @@ scrollbar-width: thin;
   line-height: 1;
 }
 
-.updated-admin .ua-cp-ip-preset__pill--applied {
-  background: #2b8f5b;
-  border-color: #2b8f5b;
-  color: #fff;
-}
-
+.updated-admin .ua-cp-ip-preset__pill--applied,
 .updated-admin .ua-cp-ip-preset__pill--focus {
-  background: #fff;
-  border-color: #5e6ad2;
-  color: #5e6ad2;
-  box-shadow: 0 0 0 1px #5e6ad2;
+  background: #2b8f5b;
+  border: 2.5px solid #111827;
+  color: #fff;
 }
 
 .updated-admin .ua-cp-ip-search-wrap {
@@ -19008,7 +19029,7 @@ scrollbar-width: thin;
   border: 1px solid #e6ebf2;
   border-radius: 16px;
   box-shadow: 0 22px 60px rgba(16, 35, 63, 0.22);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .updated-admin .ua-sop-modal__head {
@@ -19141,6 +19162,53 @@ scrollbar-width: thin;
 .updated-admin .ua-sop-field__input.is-invalid,
 .updated-admin .ua-sop-field__textarea.is-invalid {
   border-color: #e11d48;
+}
+
+.updated-admin .ua-sop-field__select {
+  width: 100%;
+  min-width: 0;
+}
+
+.updated-admin .ua-sop-field__select .ua-cfg-select__trigger {
+  height: auto;
+  min-height: 44px;
+  padding: 11px 13px;
+  border: 1px solid #e3e8f0;
+  border-radius: 10px;
+  background: #fafbfd;
+  color: #16233f;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.updated-admin .ua-sop-field__select.is-open .ua-cfg-select__trigger,
+.updated-admin .ua-sop-field__select .ua-cfg-select__trigger:focus-visible {
+  border-color: #a8b6f5;
+  box-shadow: 0 0 0 3px rgba(94, 106, 210, 0.12);
+  background: #fff;
+}
+
+.updated-admin .ua-sop-field__select.is-invalid .ua-cfg-select__trigger {
+  border-color: #e11d48;
+}
+
+.updated-admin .ua-sop-field__select .ua-cfg-select__menu {
+  width: 100%;
+  max-width: none;
+  max-height: min(240px, 50vh);
+  padding: 6px;
+  border-radius: 12px;
+  box-shadow: 0 14px 32px rgba(16, 35, 63, 0.16);
+}
+
+.updated-admin .ua-sop-field__select .ua-cfg-select__option {
+  width: 100%;
+  text-align: left;
+}
+
+.updated-admin .ua-sop-modal__body:has(.ua-cfg-select.is-open) {
+  position: relative;
+  z-index: 2;
 }
 
 .updated-admin .ua-sop-modal__actions {
