@@ -111,7 +111,13 @@ export function ViewAsProvider({ children }) {
         const account = await accountMe();
         if (cancelled) return;
         setAuth(readAccountAuth());
-        setViewAsState(uiFromAccount(account));
+        const nextView = uiFromAccount(account);
+        setViewAsState(nextView);
+        try {
+          localStorage.setItem(VIEW_AS_STORAGE_KEY, nextView);
+        } catch {
+          /* ignore */
+        }
         if (account) dispatch(setAdminProfile(account));
         loadAppConfig();
         await reloadLiveRoles();
@@ -292,6 +298,13 @@ export function ViewAsProvider({ children }) {
     setViewAsLocal(sessionUi || "admin");
   }, [catalogRoles, liveRolesReady, sessionUi, setViewAsLocal, viewAs]);
 
+  // Non-admin staff must never stay on a stale ua-view-as=admin from a prior session.
+  useEffect(() => {
+    if (!sessionUi || sessionUi === "admin") return;
+    if (isSuperAdmin) return;
+    if (viewAs === "admin") setViewAsLocal(sessionUi);
+  }, [isSuperAdmin, sessionUi, setViewAsLocal, viewAs]);
+
   /** Signed-in Admin (or Super Admin) looking at the Admin console — full section access. */
   const isAdminView = viewAs === "admin" && (isSuperAdmin || sessionUi === "admin");
   const hasFullAccess = isSuperAdmin && viewAs === "admin";
@@ -348,6 +361,7 @@ export function ViewAsProvider({ children }) {
       token: auth?.accessToken || null,
       isAuthenticated: Boolean(auth?.accessToken),
       isSuperAdmin,
+      isAdminView,
       hasFullAccess,
       permissions,
       can,
@@ -375,6 +389,7 @@ export function ViewAsProvider({ children }) {
       reloadLiveRoles,
       auth,
       isSuperAdmin,
+      isAdminView,
       hasFullAccess,
       permissions,
       can,

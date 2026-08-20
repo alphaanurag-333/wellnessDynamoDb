@@ -97,9 +97,11 @@ function VideoPreview({ item }) {
 export function MyContentPage() {
   const { showToast } = useOutletContext();
   const navigate = useNavigate();
-  const { viewAs, account } = useViewAs();
-  const isAdmin = viewAs === "admin";
-  const isCoachView = COACH_VIEW_ROLES.has(viewAs);
+  const { account, isAdminView, sessionUi, viewAsPersona } = useViewAs();
+  // Prefer session persona so AWC/WC are not treated as admin when ua-view-as is stale.
+  const coachPersona = viewAsPersona || sessionUi;
+  const isAdmin = Boolean(isAdminView);
+  const isCoachView = COACH_VIEW_ROLES.has(coachPersona);
   const [coaches, setCoaches] = useState([]);
   const [letterConfig, setLetterConfig] = useState({ text: "", version: 1 });
   const [loading, setLoading] = useState(true);

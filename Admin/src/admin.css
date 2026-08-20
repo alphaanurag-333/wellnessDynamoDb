@@ -5648,14 +5648,14 @@
   grid-template-columns:
     40px
     minmax(220px, 2.4fr)
-    minmax(154px, 168px)
+    minmax(210px, 250px)
     minmax(160px, 1.1fr)
     minmax(160px, 1.1fr)
     minmax(110px, 0.8fr)
     minmax(96px, 0.7fr)
     72px;
-  width: max(100%, 1140px);
-  min-width: 1140px;
+  width: max(100%, 1220px);
+  min-width: 1220px;
   max-width: none;
   box-sizing: border-box;
   padding: 12px 16px;
@@ -5667,7 +5667,7 @@
   grid-template-columns:
     40px
     minmax(220px, 2.4fr)
-    minmax(154px, 168px)
+    minmax(210px, 250px)
     minmax(160px, 1.1fr)
     minmax(160px, 1.1fr)
     minmax(110px, 0.8fr)
@@ -30500,6 +30500,16 @@ scrollbar-width: thin;
   grid-template-columns: minmax(180px, 1fr) 120px 90px 32px;
 }
 
+.updated-admin .ua-cfg-pricing__head--days.ua-cfg-pricing__head--type,
+.updated-admin .ua-cfg-pricing__row--days.ua-cfg-pricing__row--type {
+  grid-template-columns: minmax(160px, 1fr) 120px 120px 90px 32px;
+}
+
+.updated-admin .ua-cfg-pricing__head--type:not(.ua-cfg-pricing__head--days),
+.updated-admin .ua-cfg-pricing__row--type:not(.ua-cfg-pricing__row--days) {
+  grid-template-columns: minmax(160px, 1fr) 120px 120px 32px;
+}
+
 .updated-admin .ua-cfg-pricing__name-btn,
 .updated-admin .ua-cfg-pricing__amount-btn {
   justify-self: stretch;
@@ -30632,6 +30642,75 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cfg-pricing-new__row--days {
   grid-template-columns: minmax(180px, 1fr) 150px 110px auto;
+}
+
+.updated-admin .ua-cfg-pricing-new__row--days.ua-cfg-pricing-new__row--type {
+  grid-template-columns: minmax(160px, 1fr) 130px 150px 110px auto;
+}
+
+.updated-admin .ua-cfg-pricing-new__row--type:not(.ua-cfg-pricing-new__row--days) {
+  grid-template-columns: minmax(160px, 1fr) 130px 160px auto;
+}
+
+.updated-admin .ua-cfg-pricing-new__type {
+  position: relative;
+  display: block;
+}
+
+.updated-admin .ua-cfg-pricing-new__type select,
+.updated-admin .ua-cfg-pricing__type select {
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, #9aa6b8 50%),
+    linear-gradient(135deg, #9aa6b8 50%, transparent 50%);
+  background-position: calc(100% - 18px) calc(50% - 2px), calc(100% - 12px) calc(50% - 2px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+}
+
+.updated-admin .ua-cfg-pricing-new__type select {
+  height: 40px;
+  padding: 0 36px 0 14px;
+  border: 1px solid #c9d3e3;
+  border-radius: 10px;
+  background-color: #fff;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.updated-admin .ua-cfg-pricing-new__type select:focus {
+  outline: none;
+  border-color: #5e6ad2;
+  box-shadow: 0 0 0 3px rgba(94, 106, 210, 0.12);
+}
+
+.updated-admin .ua-cfg-pricing__type {
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-pricing__type select {
+  width: 100%;
+  height: 32px;
+  padding: 0 28px 0 8px;
+  border: 1px solid #d8dff5;
+  border-radius: 6px;
+  background-color: #fff;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.updated-admin .ua-cfg-pricing__type select:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.updated-admin .ua-cfg-pricing__type select:focus {
+  outline: none;
+  border-color: #5e6ad2;
+  box-shadow: 0 0 0 3px rgba(94, 106, 210, 0.12);
 }
 
 .updated-admin .ua-cfg-pricing-new__name {
@@ -49517,7 +49596,8 @@ scrollbar-width: thin;
 
   .updated-admin .ua-cfg-pricing__head,
   .updated-admin .ua-cfg-pricing__head--discount,
-  .updated-admin .ua-cfg-pricing__head--days {
+  .updated-admin .ua-cfg-pricing__head--days,
+  .updated-admin .ua-cfg-pricing__head--type {
     display: none;
   }
 
@@ -49600,6 +49680,36 @@ scrollbar-width: thin;
     align-self: start;
   }
 
+  .updated-admin .ua-cfg-pricing__row--days.ua-cfg-pricing__row--type {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 32px;
+    grid-template-areas:
+      "name name name"
+      "type amount del"
+      "days days del";
+    min-width: 0;
+  }
+
+  .updated-admin .ua-cfg-pricing__row--days.ua-cfg-pricing__row--type > :nth-child(1) {
+    grid-area: name;
+  }
+
+  .updated-admin .ua-cfg-pricing__row--days.ua-cfg-pricing__row--type > :nth-child(2) {
+    grid-area: type;
+  }
+
+  .updated-admin .ua-cfg-pricing__row--days.ua-cfg-pricing__row--type > :nth-child(3) {
+    grid-area: amount;
+  }
+
+  .updated-admin .ua-cfg-pricing__row--days.ua-cfg-pricing__row--type > :nth-child(4) {
+    grid-area: days;
+  }
+
+  .updated-admin .ua-cfg-pricing__row--days.ua-cfg-pricing__row--type > :nth-child(5) {
+    grid-area: del;
+    align-self: start;
+  }
+
   .updated-admin .ua-cfg-pricing__name-btn {
     white-space: normal;
     overflow: visible;
@@ -49625,7 +49735,8 @@ scrollbar-width: thin;
 
   .updated-admin .ua-cfg-pricing-new__row,
   .updated-admin .ua-cfg-pricing-new__row--discount,
-  .updated-admin .ua-cfg-pricing-new__row--days {
+  .updated-admin .ua-cfg-pricing-new__row--days,
+  .updated-admin .ua-cfg-pricing-new__row--type {
     grid-template-columns: 1fr;
   }
 
@@ -51306,10 +51417,11 @@ scrollbar-width: thin;
   }
 
   .updated-admin .ua-users-page .ua-user-cell__name {
-    white-space: normal;
-    overflow: visible;
-    text-overflow: unset;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     text-align: left;
+    max-width: 40ch;
   }
 
   .updated-admin .ua-users-page .ua-user-cell__sub {
@@ -51493,7 +51605,8 @@ scrollbar-width: thin;
 
   .updated-admin .ua-cfg-pricing-new__row,
   .updated-admin .ua-cfg-pricing-new__row--discount,
-  .updated-admin .ua-cfg-pricing-new__row--days {
+  .updated-admin .ua-cfg-pricing-new__row--days,
+  .updated-admin .ua-cfg-pricing-new__row--type {
     grid-template-columns: 1fr;
   }
 
@@ -51504,7 +51617,9 @@ scrollbar-width: thin;
   .updated-admin .ua-cfg-pricing__head--discount,
   .updated-admin .ua-cfg-pricing__row--discount,
   .updated-admin .ua-cfg-pricing__head--days,
-  .updated-admin .ua-cfg-pricing__row--days {
+  .updated-admin .ua-cfg-pricing__row--days,
+  .updated-admin .ua-cfg-pricing__head--type,
+  .updated-admin .ua-cfg-pricing__row--type {
     min-width: 0;
   }
 

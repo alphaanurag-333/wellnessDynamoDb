@@ -375,6 +375,23 @@ function ClientLookupPanel({
   );
 }
 
+const SUBSCRIPTION_TYPE_OPTIONS = [
+  { value: "normal", label: "Normal" },
+  { value: "eagle", label: "Eagle" },
+];
+
+function subscriptionTypeFromRow(row) {
+  const explicit = String(row?.clientCategory || "").trim().toLowerCase();
+  if (explicit === "eagle") return "eagle";
+  return "normal";
+}
+
+function clientCategoryFromType(type) {
+  const value = String(type || "").trim().toLowerCase();
+  if (value === "eagle") return "eagle";
+  return "";
+}
+
 function PricingNewForm({
   draft,
   onChange,
@@ -385,6 +402,7 @@ function PricingNewForm({
   inputRef,
   includeDiscount,
   includeDays,
+  includeType,
 }) {
   return (
     <section className="ua-cfg-pricing-new">
@@ -395,7 +413,7 @@ function PricingNewForm({
         </h4>
         <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={onClose}>×</button>
       </div>
-      <div className={`ua-cfg-pricing-new__row${includeDiscount ? " ua-cfg-pricing-new__row--discount" : ""}${includeDays ? " ua-cfg-pricing-new__row--days" : ""}`}>
+      <div className={`ua-cfg-pricing-new__row${includeDiscount ? " ua-cfg-pricing-new__row--discount" : ""}${includeDays ? " ua-cfg-pricing-new__row--days" : ""}${includeType ? " ua-cfg-pricing-new__row--type" : ""}`}>
         <input
           ref={inputRef}
           type="text"
@@ -404,6 +422,19 @@ function PricingNewForm({
           placeholder={namePlaceholder}
           onChange={(event) => onChange({ ...draft, name: event.target.value })}
         />
+        {includeType ? (
+          <label className="ua-cfg-pricing-new__type">
+            <select
+              value={draft.type || "normal"}
+              aria-label="Subscription type"
+              onChange={(event) => onChange({ ...draft, type: event.target.value })}
+            >
+              {SUBSCRIPTION_TYPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </label>
+        ) : null}
         <label className="ua-cfg-pricing-new__amount">
           <input
             type="text"
@@ -469,15 +500,16 @@ function PricingNewForm({
 }
 
 function emptyPricingDraft() {
-  return { name: "", amount: "", discountPercent: "", validityHours: "", days: "" };
+  return { name: "", amount: "", discountPercent: "", validityHours: "", days: "", type: "normal" };
 }
 
-function validatePricingDraft(draft, { includeDiscount, includeDays, onToast }) {
+function validatePricingDraft(draft, { includeDiscount, includeDays, includeType, onToast }) {
   const name = draft.name.trim();
   const amount = Number(draft.amount);
   const discountPercent = Number(draft.discountPercent);
   const validityHours = Number(draft.validityHours);
   const days = Number(draft.days);
+  const type = String(draft.type || "normal").trim().toLowerCase();
   if (!name) {
     onToast("Program name is required");
     return null;
@@ -498,11 +530,16 @@ function validatePricingDraft(draft, { includeDiscount, includeDays, onToast }) 
     onToast("Enter a valid number of days");
     return null;
   }
+  if (includeType && !SUBSCRIPTION_TYPE_OPTIONS.some((option) => option.value === type)) {
+    onToast("Select a valid subscription type");
+    return null;
+  }
   return {
     name,
     amount,
     ...(includeDiscount ? { discountPercent, validityHours } : {}),
     ...(includeDays && draft.days !== "" ? { days } : {}),
+    ...(includeType ? { clientCategory: clientCategoryFromType(type) } : {}),
   };
 }
 
@@ -573,6 +610,7 @@ function PricingPanel({
   namePlaceholder = "Program name",
   includeDiscount = false,
   includeDays = false,
+  includeType = false,
 }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [draft, setDraft] = useState(emptyPricingDraft);
@@ -645,7 +683,7 @@ function PricingPanel({
   }
 
   function submitNewRow() {
-    const next = validatePricingDraft(draft, { includeDiscount, includeDays, onToast });
+    const next = validatePricingDraft(draft, { includeDiscount, includeDays, includeType, onToast });
     if (!next) return;
     const nextRows = [
       ...rows,
@@ -656,6 +694,16 @@ function PricingPanel({
     ];
     closeAddForm();
     commitRows(nextRows, `${next.name} added`);
+  }
+
+  function changeRowType(row, nextType) {
+    if (saving) return;
+    const type = String(nextType || "normal").trim().toLowerCase();
+    if (subscriptionTypeFromRow(row) === type) return;
+    const nextRows = rows.map((entry) => (
+      entry.id === row.id ? { ...entry, clientCategory: clientCategoryFromType(type) } : entry
+    ));
+    commitRows(nextRows, `${row.name} type updated`);
   }
 
   function saveEdit() {
@@ -758,12 +806,14 @@ function PricingPanel({
             inputRef={nameInputRef}
             includeDiscount={includeDiscount}
             includeDays={includeDays}
+            includeType={includeType}
           />
         </div>
       ) : null}
       <div className="ua-cfg-pricing bordercss">
-        <div className={`ua-cfg-pricing__head${includeDiscount ? " ua-cfg-pricing__head--discount" : ""}${includeDays ? " ua-cfg-pricing__head--days" : ""}`}>
+        <div className={`ua-cfg-pricing__head${includeDiscount ? " ua-cfg-pricing__head--discount" : ""}${includeDays ? " ua-cfg-pricing__head--days" : ""}${includeType ? " ua-cfg-pricing__head--type" : ""}`}>
           <span>Program</span>
+          {includeType ? <span>Type</span> : null}
           <span>Amount (Rs.)</span>
           {includeDiscount ? <span>Discount</span> : null}
           {includeDiscount ? <span>Valid for</span> : null}
@@ -773,7 +823,7 @@ function PricingPanel({
         {rows.map((row) => (
           <div
             key={row.id}
-            className={`ua-cfg-pricing__row${includeDiscount ? " ua-cfg-pricing__row--discount" : ""}${includeDays ? " ua-cfg-pricing__row--days" : ""}`}
+            className={`ua-cfg-pricing__row${includeDiscount ? " ua-cfg-pricing__row--discount" : ""}${includeDays ? " ua-cfg-pricing__row--days" : ""}${includeType ? " ua-cfg-pricing__row--type" : ""}`}
           >
             <PricingEditableCell
               row={row}
@@ -788,6 +838,20 @@ function PricingPanel({
               inputRef={editingCell?.id === row.id && editingCell?.field === "name" ? amountInputRef : null}
               disabled={saving}
             />
+            {includeType ? (
+              <label className="ua-cfg-pricing__type">
+                <select
+                  value={subscriptionTypeFromRow(row)}
+                  aria-label={`Type for ${row.name}`}
+                  disabled={saving}
+                  onChange={(event) => changeRowType(row, event.target.value)}
+                >
+                  {SUBSCRIPTION_TYPE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
             <PricingEditableCell
               row={row}
               field="amount"
@@ -1628,6 +1692,7 @@ export function ConfigDetailPage() {
               formTitle="New subscription"
               namePlaceholder="Subscription name"
               includeDays
+              includeType
             />
             <TagCreatePanel
               title="Validity periods available to coaches"

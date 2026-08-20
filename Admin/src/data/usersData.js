@@ -280,6 +280,16 @@ export function listTierMoveOptions(tier, ageDays) {
   return options;
 }
 
+/** Heal ↔ Maintenance is the only cleanly reversible pair for session Undo. */
+export function canUndoTierMove(fromTier, toTier) {
+  const from = normalizeTier(fromTier);
+  const to = normalizeTier(toTier);
+  return (
+    (from === "Seek to Heal" && to === "Maintenance")
+    || (from === "Maintenance" && to === "Seek to Heal")
+  );
+}
+
 export function lastActiveMinutes(value) {
   if (!value || value === "—") return 1e9;
   const match = /(\d+)\s*(m|h|d)/.exec(String(value) || "");
