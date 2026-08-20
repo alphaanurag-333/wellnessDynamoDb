@@ -2230,6 +2230,7 @@
   border: 1px solid rgba(94, 106, 210, 0.18);
   box-sizing: border-box;
   padding: 4px;
+  color: #5e6ad2;
 }
 
 .updated-admin .ua-team-modal__head-icon img {
@@ -2277,6 +2278,15 @@
   background: #4f57c9;
 }
 
+.updated-admin .ua-team-modal__remind-all:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.updated-admin .ua-team-modal__remind-all:disabled:hover {
+  background: #5e6ad2;
+}
+
 .updated-admin .ua-team-modal__close {
   width: 30px;
   height: 30px;
@@ -2296,6 +2306,13 @@
   scrollbar-width: thin;
 }
 
+.updated-admin .ua-team-roster-empty {
+  padding: 22px 8px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--muted-light);
+}
+
 .updated-admin .ua-team-modal__body--remind {
   padding-top: 14px;
 }
@@ -2304,14 +2321,16 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 11px;
-  margin-bottom: 6px;
-  border: 1px solid var(--border-soft);
-  border-radius: 9px;
-  background: #fbfcfe;
+  padding: 12px 2px;
+  margin-bottom: 0;
+  border: none;
+  border-bottom: 1px solid var(--border-soft);
+  border-radius: 0;
+  background: transparent;
 }
 
 .updated-admin .ua-team-roster-row:last-child {
+  border-bottom: none;
   margin-bottom: 0;
 }
 
@@ -2321,7 +2340,7 @@
 }
 
 .updated-admin .ua-team-roster-row__name {
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 650;
   color: var(--text);
 }
@@ -2333,14 +2352,14 @@
 }
 
 .updated-admin .ua-team-roster-row__remind {
-  height: 28px;
-  padding: 0 10px;
+  height: 30px;
+  padding: 0 12px;
   border-radius: 8px;
   border: 1px solid #dcdff7;
-  background: #eef0fc;
+  background: #fff;
   color: #5e6ad2;
   font-weight: 650;
-  font-size: 11px;
+  font-size: 11.5px;
   cursor: pointer;
   white-space: nowrap;
   font-family: inherit;
@@ -2348,7 +2367,7 @@
 
 .updated-admin .ua-team-roster-row__remind:hover {
   border-color: #c5cbe8;
-  background: #e4e8fb;
+  background: #eef0fc;
 }
 
 .updated-admin .ua-team-modal__foot {

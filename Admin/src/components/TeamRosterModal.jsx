@@ -2,12 +2,15 @@ export function TeamRosterModal({
   open,
   title,
   sectionTitle,
-  rows,
+  rows = [],
+  loading = false,
   onClose,
   onRemindAll,
   onRemindOne,
 }) {
   if (!open) return null;
+
+  const list = Array.isArray(rows) ? rows : [];
 
   return (
     <div className="ua-team-modal-backdrop" onClick={onClose} role="presentation">
@@ -23,7 +26,12 @@ export function TeamRosterModal({
             <div id="team-roster-title" className="ua-team-modal__title">{title}</div>
             <div className="ua-team-modal__sub">{sectionTitle}</div>
           </div>
-          <button type="button" className="ua-team-modal__remind-all" onClick={onRemindAll}>
+          <button
+            type="button"
+            className="ua-team-modal__remind-all"
+            onClick={onRemindAll}
+            disabled={loading || list.length === 0}
+          >
             🔔 Remind all
           </button>
           <button type="button" className="ua-team-modal__close" onClick={onClose} aria-label="Close">
@@ -32,21 +40,27 @@ export function TeamRosterModal({
         </div>
 
         <div className="ua-team-modal__body">
-          {rows.map((row) => (
-            <div key={row.name} className="ua-team-roster-row">
-              <div className="ua-team-roster-row__copy">
-                <div className="ua-team-roster-row__name">{row.name}</div>
-                <div className="ua-team-roster-row__detail">{row.detail}</div>
+          {loading ? (
+            <div className="ua-team-roster-empty">Loading team members…</div>
+          ) : list.length === 0 ? (
+            <div className="ua-team-roster-empty">No active members in this role yet.</div>
+          ) : (
+            list.map((row, index) => (
+              <div key={row.id || `${row.name}-${index}`} className="ua-team-roster-row">
+                <div className="ua-team-roster-row__copy">
+                  <div className="ua-team-roster-row__name">{row.name}</div>
+                  {row.detail ? <div className="ua-team-roster-row__detail">{row.detail}</div> : null}
+                </div>
+                <button
+                  type="button"
+                  className="ua-team-roster-row__remind"
+                  onClick={() => onRemindOne?.(row)}
+                >
+                  🔔 Remind
+                </button>
               </div>
-              <button
-                type="button"
-                className="ua-team-roster-row__remind"
-                onClick={() => onRemindOne(row)}
-              >
-                🔔 Remind
-              </button>
-            </div>
-          ))}
+            ))
+          )}
         </div>
 
         <div className="ua-team-modal__foot">

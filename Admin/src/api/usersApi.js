@@ -479,6 +479,7 @@ export function mapApiUserToRow(user, index = 0) {
     heartRateEnabled: user?.heartRateEnabled !== false,
     sleepTrackingEnabled: user?.sleepTrackingEnabled !== false,
     referralCode: String(user?.referralCode || "").trim(),
+    referredByCode: String(user?.referredByCode || "").trim(),
     userTier: String(user?.userTier || "").toLowerCase(),
     parentCoachId: user?.parentCoachId || user?.parentCoach?.id || "",
     assignedCoachId: user?.assignedCoachId || user?.assignedCoach?.id || "",
