@@ -4125,7 +4125,7 @@
   padding: 11px 12px 10px;
   box-shadow: var(--shadow);
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .updated-admin .ops-challenge__head {
@@ -4243,16 +4243,16 @@
   flex-direction: column;
   position: relative;
   overflow: visible;
-  /* min-height: 66px; */
+  min-height: 0;
 }
 
 .updated-admin .ops-challenge__list-items {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-height: 66px;
-  overflow-y: auto;
-  scrollbar-width: thin;
+  /* Figma: list grows with items — no visible scrollbar chrome */
+  max-height: none;
+  overflow: visible;
   position: relative;
   z-index: 1;
 }
@@ -4521,6 +4521,7 @@
   width: 100%;
   align-items: center;
   gap: 10px;
+  cursor: pointer;
   background: #fff;
   border: 1px solid #f6e6bb;
   border-radius: 11px;
@@ -15754,7 +15755,13 @@ scrollbar-width: thin;
   box-sizing: border-box;
 }
 
-.updated-admin .ua-cp-launch-hero .ua-cp-launch-score,
+.updated-admin .ua-cp-launch-hero .ua-cp-launch-score {
+  margin: 0 auto 6px;
+  width: auto;
+  max-width: 100%;
+  align-self: center;
+}
+
 .updated-admin .ua-cp-launch-hero .ua-cp-launch-prakriti-card {
   margin: 0;
   width: 100%;
@@ -15802,16 +15809,18 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cp-launch-score {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  align-self: center;
   gap: 16px;
   padding: 14px 22px;
   border-radius: 14px;
   background: linear-gradient(180deg, #0f1d3a 0%, #16233f 100%);
   color: #fff;
-  margin: 0;
-  width: 100%;
+  margin: 0 auto 6px;
+  width: auto;
+  max-width: 100%;
   box-sizing: border-box;
   box-shadow: 0 6px 18px rgba(16, 35, 63, 0.22);
 }
@@ -15823,8 +15832,9 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cp-launch-score__copy {
-  flex: 1 1 180px;
+  flex: 0 1 auto;
   min-width: 0;
+  text-align: right;
 }
 
 .updated-admin .ua-cp-launch-score__actions {
@@ -16727,26 +16737,64 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cp-launch-meet {
   width: 100%;
-  max-width: 680px;
+  max-width: none;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: stretch;
   gap: 10px;
-  flex-wrap: wrap;
-  padding: 12px 15px;
+  padding: 14px 16px;
   border-radius: 12px;
   box-sizing: border-box;
+  margin: 0;
 }
 
 .updated-admin .ua-cp-launch-meet--held {
   background: #fff;
   border: 1px solid #f2e2a8;
   box-shadow: 0 1px 2px rgba(16, 35, 63, 0.04);
+  padding-bottom: 28px;
 }
 
 .updated-admin .ua-cp-launch-meet--booked {
   background: #f2fbf6;
   border: 1px solid #cdeede;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 15px;
+}
+
+.updated-admin .ua-cp-launch-hero--with-meet {
+  gap: 0;
+}
+
+.updated-admin .ua-cp-launch-hero--with-meet > .ua-cp-launch-meet--held + .ua-cp-launch-score,
+.updated-admin .ua-cp-launch-hero--with-meet > .ua-cp-launch-meet--held + .ua-cp-launch-prakriti-card {
+  margin-top: -10px;
+  position: relative;
+  z-index: 2;
+}
+
+.updated-admin .ua-cp-launch-hero--with-meet > .ua-cp-launch-score {
+  margin-bottom: 12px;
+}
+
+.updated-admin .ua-cp-launch-hero--with-meet > .ua-cp-launch-prakriti-card {
+  margin-bottom: 12px;
+}
+
+.updated-admin .ua-cp-launch-hero--with-meet > .ua-cp-launch-meet--booked {
+  margin-bottom: 12px;
+}
+
+.updated-admin .ua-cp-launch-meet__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .updated-admin .ua-cp-launch-meet__copy {
@@ -16770,10 +16818,18 @@ scrollbar-width: thin;
   font-size: 11.5px;
   color: #9a7a00;
   margin-top: 2px;
+  line-height: 1.45;
 }
 
 .updated-admin .ua-cp-launch-meet--booked .ua-cp-launch-meet__copy span {
   color: #5a8f74;
+}
+
+.updated-admin .ua-cp-launch-meet__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .updated-admin .ua-cp-launch-meet__btn {
@@ -16787,6 +16843,59 @@ scrollbar-width: thin;
   font-size: 11.5px;
   cursor: pointer;
   font-family: inherit;
+  white-space: nowrap;
+}
+
+.updated-admin .ua-cp-launch-meet__btn--ghost {
+  border-color: #e6ebf2;
+  background: #fff;
+  color: #8a97ac;
+  font-weight: 640;
+}
+
+.updated-admin .ua-cp-launch-meet__btn--booked {
+  border-color: #cdeede;
+  background: #fff;
+  color: #1f7a4d;
+}
+
+.updated-admin .ua-cp-launch-meet__chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.updated-admin .ua-cp-launch-meet__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 9px 0 11px;
+  border-radius: 8px;
+  border: 1px dashed #e6c86a;
+  background: #fdf9ee;
+  color: #8a6a10;
+  font-size: 11.5px;
+  font-weight: 700;
+  font-family: inherit;
+}
+
+.updated-admin .ua-cp-launch-meet__chip button {
+  border: none;
+  background: transparent;
+  padding: 0 0 0 2px;
+  color: #b6a068;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.updated-admin .ua-cp-launch-meet__expiry {
+  margin: 0;
+  font-size: 10.5px;
+  color: #9aa6b8;
+  line-height: 1.4;
 }
 
 .updated-admin .ua-cp-launch-rating-pill {
@@ -18171,6 +18280,270 @@ scrollbar-width: thin;
   display: flex;
   gap: 8px;
   flex-shrink: 0;
+}
+
+.updated-admin .ua-cp-launch-modal__slot-row--clock {
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.updated-admin .ua-cp-launch-modal__slot-inline-label {
+  font-size: 11px;
+  color: #9aa6b8;
+  flex: 0 0 auto;
+}
+
+.updated-admin .ua-cp-launch-modal__time-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 38px;
+  padding: 0 9px;
+  border-radius: 9px;
+  border: 1px solid #e6ebf2;
+  background: #fff;
+  color: #16233f;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.updated-admin .ua-cp-launch-modal__time-btn--empty {
+  color: #b6c1d1;
+}
+
+.updated-admin .ua-cp-launch-modal__time-btn--active {
+  border-color: #5e6ad2;
+}
+
+.updated-admin .ua-cp-launch-modal__add-slot-btn {
+  height: 38px;
+  padding: 0 12px;
+  flex: 0 0 auto;
+  border-radius: 9px;
+  border: none;
+  font-weight: 700;
+  font-size: 12px;
+  font-family: inherit;
+  white-space: nowrap;
+  background: #cdd5e0;
+  color: #fff;
+  cursor: default;
+}
+
+.updated-admin .ua-cp-launch-modal__add-slot-btn--on {
+  background: #5e6ad2;
+  cursor: pointer;
+}
+
+.updated-admin .ua-cp-launch-modal__duration-select {
+  height: 38px;
+  padding: 0 26px 0 10px;
+  border: 1px solid #e6ebf2;
+  border-radius: 9px;
+  background: #fff;
+  font-size: 12.5px;
+  font-weight: 650;
+  color: #5a6b85;
+  cursor: pointer;
+  outline: none;
+  font-family: inherit;
+  flex: 0 0 auto;
+}
+
+.updated-admin .ua-cp-btn--primary-disabled,
+.updated-admin .ua-cp-btn--primary:disabled {
+  background: #cdd5e0 !important;
+  border-color: #cdd5e0 !important;
+  color: #fff !important;
+  cursor: default;
+  box-shadow: none !important;
+}
+
+.updated-admin .ua-cp-clock-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background: rgba(16, 35, 63, 0.34);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.updated-admin .ua-cp-clock {
+  width: 260px;
+  max-width: 92vw;
+  background: #fff;
+  border-radius: 16px;
+  padding: 14px 16px 12px;
+  box-shadow: 0 24px 60px rgba(16, 35, 63, 0.35);
+}
+
+.updated-admin .ua-cp-clock__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.updated-admin .ua-cp-clock__digits {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.updated-admin .ua-cp-clock__digit {
+  border: none;
+  background: transparent;
+  font-size: 28px;
+  font-weight: 750;
+  color: #b6c1d1;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0;
+  line-height: 1;
+}
+
+.updated-admin .ua-cp-clock__digit--on {
+  color: #5e6ad2;
+}
+
+.updated-admin .ua-cp-clock__colon {
+  font-size: 16px;
+  font-weight: 750;
+  color: #b6c1d1;
+}
+
+.updated-admin .ua-cp-clock__ampm {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.updated-admin .ua-cp-clock__ampm-btn {
+  height: 24px;
+  min-width: 40px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid #e6ebf2;
+  background: #fff;
+  color: #8a97ac;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.updated-admin .ua-cp-clock__ampm-btn--on {
+  background: #5e6ad2;
+  border-color: #5e6ad2;
+  color: #fff;
+}
+
+.updated-admin .ua-cp-clock__face {
+  position: relative;
+  width: 172px;
+  height: 172px;
+  border-radius: 50%;
+  background: #f5f7fb;
+  margin: 0 auto;
+}
+
+.updated-admin .ua-cp-clock__center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: #5e6ad2;
+  z-index: 2;
+}
+
+.updated-admin .ua-cp-clock__hand {
+  position: absolute;
+  top: 86px;
+  left: 86px;
+  width: 54px;
+  height: 2px;
+  margin-top: -1px;
+  background: #5e6ad2;
+  opacity: 0.55;
+  transform-origin: 0 50%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.updated-admin .ua-cp-clock__num {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #16233f;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  font-family: inherit;
+  display: grid;
+  place-items: center;
+  z-index: 3;
+}
+
+.updated-admin .ua-cp-clock__num--on {
+  background: #5e6ad2;
+  color: #fff;
+}
+
+.updated-admin .ua-cp-clock__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 9px;
+  font-size: 10px;
+  color: #9aa6b8;
+}
+
+.updated-admin .ua-cp-clock__foot > div {
+  display: flex;
+  gap: 7px;
+}
+
+.updated-admin .ua-cp-clock__cancel {
+  height: 30px;
+  padding: 0 11px;
+  border: 1px solid #e6ebf2;
+  border-radius: 8px;
+  background: #fff;
+  color: #8a97ac;
+  font-weight: 640;
+  font-size: 11.5px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.updated-admin .ua-cp-clock__set {
+  height: 30px;
+  padding: 0 13px;
+  border: none;
+  border-radius: 8px;
+  background: #5e6ad2;
+  color: #fff;
+  font-weight: 700;
+  font-size: 11.5px;
+  cursor: pointer;
+  font-family: inherit;
 }
 
 
@@ -49536,6 +49909,12 @@ scrollbar-width: thin;
     gap: 8px;
   }
 
+  .updated-admin .ua-cp-modal--launch .ua-cp-launch-modal__slot-row--clock {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
   .updated-admin .ua-cp-modal--launch .ua-cp-launch-modal__time-field,
   .updated-admin .ua-cp-modal--launch .ua-cp-launch-modal__duration-field {
     min-width: 0;
@@ -49548,10 +49927,20 @@ scrollbar-width: thin;
     width: 100%;
   }
 
-  .updated-admin .ua-cp-modal--launch .ua-cp-launch-modal__add-slot {
+  .updated-admin .ua-cp-modal--launch .ua-cp-launch-modal__time-btn {
+    flex: 1 1 calc(50% - 28px);
+    min-width: 110px;
+  }
+
+  .updated-admin .ua-cp-modal--launch .ua-cp-launch-modal__add-slot,
+  .updated-admin .ua-cp-modal--launch .ua-cp-launch-modal__add-slot-btn {
     width: 100%;
     justify-content: center;
-    height: 34px;
+    height: 38px;
+  }
+
+  .updated-admin .ua-cp-modal--launch .ua-cp-launch-modal__duration-select {
+    width: 100%;
   }
 
   .updated-admin .ua-cp-modal--launch .ua-cp-launch-modal__holds {
@@ -49622,8 +50011,10 @@ scrollbar-width: thin;
   }
 
   .updated-admin .ua-cp-launch .ua-cp-launch-score:not(.ua-cp-launch-score--save) {
-    align-items: flex-start;
-    gap: 12px;
+    align-items: center;
+    gap: 14px;
+    width: auto;
+    max-width: 100%;
   }
 
   .updated-admin .ua-cp-launch .ua-cp-launch-score__val strong {
@@ -51338,13 +51729,15 @@ scrollbar-width: thin;
   }
 
   .updated-admin .ua-cp-launch-score {
-    padding: 16px 18px;
+    padding: 14px 18px;
     gap: 12px;
   }
 
   .updated-admin .ua-cp-launch .ua-cp-launch-score:not(.ua-cp-launch-score--save) {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    align-items: center;
+    width: auto;
+    max-width: 100%;
   }
 
   .updated-admin .ua-cp-launch-score--save {

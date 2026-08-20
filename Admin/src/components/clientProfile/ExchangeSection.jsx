@@ -202,7 +202,7 @@ function subscriptionLabel(item) {
 }
 
 export function ExchangeSection({ user, onToast }) {
-  const { canCreate, canToggle, canEdit } = useClientSectionPermissions("exchange");
+  const { canCreate } = useClientSectionPermissions("exchange");
   const [programs, setPrograms] = useState([]);
   const [discounts, setDiscounts] = useState([]);
   const [validityPeriods, setValidityPeriods] = useState([]);
@@ -210,7 +210,6 @@ export function ExchangeSection({ user, onToast }) {
   const [program, setProgram] = useState(null);
   const [discount, setDiscount] = useState(null);
   const [validity, setValidity] = useState(null);
-  const [includeSubscription, setIncludeSubscription] = useState(true);
   const [subscription, setSubscription] = useState(null);
   const [openField, setOpenField] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -244,7 +243,6 @@ export function ExchangeSection({ user, onToast }) {
         setDiscount(nextDiscounts[0] || null);
         setValidity(nextValidity[0] || null);
         setSubscription(nextSubscriptions[0] || null);
-        setIncludeSubscription(nextSubscriptions.length > 0);
       })
       .catch((error) => {
         if (!active) return;
@@ -257,7 +255,6 @@ export function ExchangeSection({ user, onToast }) {
         setDiscount(null);
         setValidity(null);
         setSubscription(null);
-        setIncludeSubscription(false);
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -305,19 +302,11 @@ export function ExchangeSection({ user, onToast }) {
       : 0;
   const summary = paymentSummary(history);
   const firstName = user?.name?.split(" ")[0] || "Client";
-  const bundledOn = includeSubscription && Boolean(subscription);
+  const bundledOn = Boolean(subscription);
   const canTrigger = canCreate && Boolean(user?.id && program && discount && validity && !loading && !triggering);
 
   function closeMenus() {
     setOpenField(null);
-  }
-
-  function toggleSubscription() {
-    if (!canToggle || !subscriptions.length) return;
-    const next = !includeSubscription;
-    setIncludeSubscription(next);
-    if (next && !subscription) setSubscription(subscriptions[0] || null);
-    closeMenus();
   }
 
   async function handleTrigger() {
@@ -364,7 +353,7 @@ export function ExchangeSection({ user, onToast }) {
           <>
         <div className="ua-cp-ex-panel__head">
           <strong>Trigger a payment</strong>
-          <p>Pick a program and a discount slab — both come from what admin set in Energy Exchange; the value follows. App subscription, if enabled, is included in the same price.</p>
+          <p>Pick a program and a discount slab — both come from what admin set in Energy Exchange; the value follows. App subscription is included in the same price.</p>
         </div>
         <div className="ua-cp-ex-form__grid">
           <FieldSelect
@@ -401,38 +390,16 @@ export function ExchangeSection({ user, onToast }) {
             <span className="ua-cp-ex-field__label">Value</span>
             <div className="ua-cp-ex-field__value">{program && discount ? formatRupee(value) : "—"}</div>
           </div>
-          <div className="ua-cp-ex-field">
-            <span className="ua-cp-ex-field__label">App subscription</span>
-            <div className={`ua-cp-ex-sub${bundledOn ? " ua-cp-ex-sub--on" : ""}`}>
-              <button
-                type="button"
-                className={`ua-toggle ua-toggle--sm${bundledOn ? " ua-toggle--on" : ""}`}
-                aria-pressed={bundledOn}
-                aria-label="Include app subscription"
-                disabled={loading || !subscriptions.length || !canToggle}
-                onClick={toggleSubscription}
-              >
-                <span className="ua-toggle__knob" />
-              </button>
-              {bundledOn ? (
-                <FieldSelect
-                  bare
-                  label=""
-                  value={subscriptionLabel(subscription)}
-                  options={subscriptions}
-                  open={openField === "subscription"}
-                  disabled={loading || subscriptions.length < 2}
-                  onToggle={(next) => setOpenField(next ? "subscription" : null)}
-                  onSelect={(next) => { setSubscription(next); closeMenus(); }}
-                  getLabel={subscriptionLabel}
-                />
-              ) : (
-                <span className="ua-cp-ex-sub__off">
-                  {loading ? "Loading…" : subscriptions.length ? "Off" : "None published"}
-                </span>
-              )}
-            </div>
-          </div>
+          <FieldSelect
+            label="App subscription"
+            value={loading ? "Loading…" : subscription ? subscriptionLabel(subscription) : "None published"}
+            options={subscriptions}
+            open={openField === "subscription"}
+            disabled={loading || !subscriptions.length}
+            onToggle={(next) => setOpenField(next ? "subscription" : null)}
+            onSelect={(next) => { setSubscription(next); closeMenus(); }}
+            getLabel={subscriptionLabel}
+          />
         </div>
         <div className="ua-cp-ex-form__actions">
           <button
