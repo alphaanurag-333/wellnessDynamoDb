@@ -7,6 +7,7 @@ const {
   getAdminActivityById,
   countUnreadAdminActivities,
   toInboxItem,
+  matchesInboxVisibility,
 } = require("../../models/adminActivityModel");
 const {
   markActivityRead,
@@ -30,10 +31,8 @@ function resolveAccountId(req) {
   );
 }
 
-function isActivityVisible(activity, subjectUserIds) {
-  if (!(subjectUserIds instanceof Set)) return true;
-  const uid = String(activity?.subjectUserId || "").trim();
-  return Boolean(uid && subjectUserIds.has(uid));
+function isActivityVisible(activity, accountId, subjectUserIds) {
+  return matchesInboxVisibility(activity, accountId, subjectUserIds);
 }
 
 exports.listAdminInboxController = asyncHandler(async (req, res) => {
@@ -78,7 +77,7 @@ exports.markAdminInboxItemReadController = asyncHandler(async (req, res) => {
 
   const activity = await getAdminActivityById(req.params.id);
   const subjectUserIds = await listStaffClientIdSet(req);
-  if (!activity || activity.status !== "active" || !isActivityVisible(activity, subjectUserIds)) {
+  if (!activity || activity.status !== "active" || !isActivityVisible(activity, accountId, subjectUserIds)) {
     throw new AppError("Notification not found", 404);
   }
 
@@ -97,7 +96,7 @@ exports.markAllAdminInboxReadController = asyncHandler(async (req, res) => {
   if (!accountId) throw new AppError("Unauthorized", 401);
 
   const subjectUserIds = await listStaffClientIdSet(req);
-  const activityIds = await listAdminActivityIds({ limit: 200, subjectUserIds });
+  const activityIds = await listAdminActivityIds({ limit: 200, subjectUserIds, accountId });
   await markAllActivitiesRead(accountId, activityIds);
 
   return res.status(200).json({
@@ -113,7 +112,7 @@ exports.getAdminInboxItemController = asyncHandler(async (req, res) => {
 
   const activity = await getAdminActivityById(req.params.id);
   const subjectUserIds = await listStaffClientIdSet(req);
-  if (!activity || activity.status !== "active" || !isActivityVisible(activity, subjectUserIds)) {
+  if (!activity || activity.status !== "active" || !isActivityVisible(activity, accountId, subjectUserIds)) {
     throw new AppError("Notification not found", 404);
   }
 

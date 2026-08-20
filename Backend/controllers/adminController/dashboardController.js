@@ -6,6 +6,7 @@ const { getCoachDashboardStats } = require("../../services/coachDashboardStatsSe
 const { getAssistantDashboardStats } = require("../../services/assistantDashboardStatsService");
 const { getProgramProgressOverview } = require("../../services/programProgressService");
 const { getDashboardCommunity, emptyCommunity } = require("../../services/dashboardCommunityService");
+const { sendTeamReminders } = require("../../services/teamReminderService");
 
 async function loadRoleStatistics(actor) {
   if (actor.role === "admin" || actor.role === "support") {
@@ -85,5 +86,21 @@ exports.listStaffDashboardPayments = asyncHandler(async (req, res) => {
     message: "Dashboard payments fetched",
     month,
     payments,
+  });
+});
+
+exports.sendTeamRemindersController = asyncHandler(async (req, res) => {
+  const actor = resolveStaffActor(req);
+  const message = String(req.body?.message || "").trim();
+  const accountIds = Array.isArray(req.body?.accountIds) ? req.body.accountIds : [];
+  const sent = await sendTeamReminders({ actor, accountIds, message });
+  const count = sent.length;
+  return res.status(200).json({
+    status: true,
+    message: count === 1
+      ? `Notification sent to ${sent[0].name}`
+      : `Notification sent to ${count} recipients`,
+    sentCount: count,
+    recipients: sent,
   });
 });

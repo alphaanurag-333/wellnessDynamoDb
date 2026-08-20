@@ -15,6 +15,7 @@ const KINDS = new Set([
   "meal",
   "lab",
   "coach",
+  "reminder",
   "system",
 ]);
 
@@ -27,6 +28,7 @@ const KIND_META = {
   meal: { label: "Meal", icon: "🍽️", fromDefault: "Client" },
   lab: { label: "Lab", icon: "🧪", fromDefault: "Client" },
   coach: { label: "Coach", icon: "🩺", fromDefault: "Coach" },
+  reminder: { label: "Reminder", icon: "🔔", fromDefault: "Admin" },
   system: { label: "System", icon: "🔔", fromDefault: "System" },
 };
 
@@ -67,6 +69,7 @@ async function createAdminActivity({
   actorName = null,
   subjectUserId = null,
   subjectUserName = null,
+  recipientAccountId = null,
   referenceType = null,
   referenceId = null,
   href = null,
@@ -94,6 +97,7 @@ async function createAdminActivity({
   if (actorName) item.actorName = String(actorName).trim();
   if (subjectUserId) item.subjectUserId = String(subjectUserId).trim();
   if (subjectUserName) item.subjectUserName = String(subjectUserName).trim();
+  if (recipientAccountId) item.recipientAccountId = String(recipientAccountId).trim();
   if (referenceType) item.referenceType = String(referenceType).trim();
   if (referenceId) item.referenceId = String(referenceId).trim();
   if (href) item.href = String(href).trim();
@@ -121,7 +125,11 @@ async function getAdminActivityById(id) {
   return Item || null;
 }
 
-function matchesSubjectScope(row, subjectUserIds) {
+function matchesInboxVisibility(row, accountId, subjectUserIds) {
+  const recipientId = String(row?.recipientAccountId || "").trim();
+  if (recipientId) {
+    return recipientId === String(accountId || "").trim();
+  }
   if (!(subjectUserIds instanceof Set)) return true;
   const uid = String(row?.subjectUserId || "").trim();
   return Boolean(uid && subjectUserIds.has(uid));
@@ -134,49 +142,44 @@ async function listAdminActivities({
   accountId,
   subjectUserIds = null,
 } = {}) {
-  const scoped = subjectUserIds instanceof Set;
-  const inMemoryPage = unreadOnly || scoped;
-
-  const { items, pagination } = await queryPartition({
+  const { items } = await queryPartition({
     tableName: TABLE,
     indexName: "StatusCreatedAtIndex",
     partitionKeyName: "status",
     partitionKeyValue: "active",
     scanIndexForward: false,
-    page: inMemoryPage ? 1 : page,
-    limit: inMemoryPage ? Math.min(200, Math.max(limit, 50)) : limit,
+    page: 1,
+    limit: 200,
     maxLimit: 200,
   });
 
-  const scopedItems = items.filter((row) => matchesSubjectScope(row, subjectUserIds));
+  const scopedItems = items.filter((row) =>
+    matchesInboxVisibility(row, accountId, subjectUserIds)
+  );
   const ids = scopedItems.map((row) => row.id);
   const readMap = accountId ? await getReadMapForAccount(accountId, ids) : new Map();
 
   let notifications = scopedItems.map((row) => toInboxItem(row, readMap)).filter(Boolean);
-  if (inMemoryPage) {
-    if (unreadOnly) {
-      notifications = notifications.filter((row) => row.unread);
-    }
-    const safePage = Math.max(1, Number(page) || 1);
-    const safeLimit = Math.min(200, Math.max(1, Number(limit) || 30));
-    const skip = (safePage - 1) * safeLimit;
-    const total = notifications.length;
-    notifications = notifications.slice(skip, skip + safeLimit);
-    return {
-      notifications,
-      pagination: {
-        page: safePage,
-        limit: safeLimit,
-        total,
-        pages: Math.max(1, Math.ceil(total / safeLimit)),
-      },
-    };
+  if (unreadOnly) {
+    notifications = notifications.filter((row) => row.unread);
   }
-
-  return { notifications, pagination };
+  const safePage = Math.max(1, Number(page) || 1);
+  const safeLimit = Math.min(200, Math.max(1, Number(limit) || 30));
+  const skip = (safePage - 1) * safeLimit;
+  const total = notifications.length;
+  notifications = notifications.slice(skip, skip + safeLimit);
+  return {
+    notifications,
+    pagination: {
+      page: safePage,
+      limit: safeLimit,
+      total,
+      pages: Math.max(1, Math.ceil(total / safeLimit)),
+    },
+  };
 }
 
-async function listAdminActivityIds({ limit = 200, subjectUserIds = null } = {}) {
+async function listAdminActivityIds({ limit = 200, subjectUserIds = null, accountId = null } = {}) {
   const { items } = await queryPartition({
     tableName: TABLE,
     indexName: "StatusCreatedAtIndex",
@@ -188,7 +191,7 @@ async function listAdminActivityIds({ limit = 200, subjectUserIds = null } = {})
     maxLimit: 500,
   });
   return items
-    .filter((row) => matchesSubjectScope(row, subjectUserIds))
+    .filter((row) => matchesInboxVisibility(row, accountId, subjectUserIds))
     .map((row) => row.id)
     .filter(Boolean);
 }
@@ -215,4 +218,5 @@ module.exports = {
   countUnreadAdminActivities,
   toInboxItem,
   normalizeKind,
+  matchesInboxVisibility,
 };

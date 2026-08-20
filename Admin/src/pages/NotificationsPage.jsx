@@ -33,6 +33,7 @@ const KIND_LABELS = {
   internal_parameters_recommendation: "Parameters",
   internal_parameters_upload: "Parameters",
   admin_broadcast: "Broadcast",
+  reminder: "Reminder",
   health_tool: "Health tool",
   recipe: "Recipe",
 };

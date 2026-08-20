@@ -201,8 +201,6 @@ export function PendingPage() {
       <PageHeader
         title="Pending Tasks"
         subtitle="Everything waiting on you, grouped by what it needs. Each list scrolls on its own."
-        autosave
-        onAutosave={() => showToast("Saved")}
       />
 
       {loadError ? (

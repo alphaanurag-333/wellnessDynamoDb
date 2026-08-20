@@ -75,8 +75,6 @@ export function ConfigsPage() {
       <PageHeader
         title="Configs"
         subtitle="Configuration groups scoped to the app, the web, or shared across both."
-        autosave
-        onAutosave={() => onToast("Saved")}
       />
 
       <div className="ua-config-toolbar">

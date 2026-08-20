@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchDashboardPayments } from "../api/dashboardApi.js";
+import { pushOnboardingReminder } from "../api/onboardingApi.js";
+import { fetchTeamMembers, sendTeamReminder } from "../api/teamsApi.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import { CommunityBroadcastModal } from "./CommunityBroadcastModal.jsx";
-import { ExportIcon } from "./NavIcons.jsx";
 import { BrandLoader } from "./BrandLoader.jsx";
-import { AutosaveButton } from "./shared.jsx";
 import { ProgramCategoryModal } from "./ProgramCategoryModal.jsx";
 import { ProgramProgressModal } from "./ProgramProgressModal.jsx";
 import { TeamRemindModal } from "./TeamRemindModal.jsx";
@@ -70,6 +70,7 @@ import {
   onboardingRemindCopy,
 } from "../data/programProgressData.js";
 import {
+  DEFAULT_REMIND_MESSAGE,
   TEAM_STAFF,
   remindSubtitle,
 } from "../data/teamStaffData.js";
@@ -568,7 +569,6 @@ export function AdminDashboard({
     fallbackStaleTotal,
   );
   const scopeLabel = DASH_SCOPE_LABELS[viewAs] ?? "Global";
-  const canExport = viewAs === "admin" || viewAs === "wc";
   const [broadcast, setBroadcast] = useState("");
   const [broadcastMeta, setBroadcastMeta] = useState("Last sent 2 days ago");
   const [broadcastModalOpen, setBroadcastModalOpen] = useState(false);
@@ -582,6 +582,7 @@ export function AdminDashboard({
   const [chAud, setChAud] = useState("all");
   const [chRunning, setChRunning] = useState([]);
   const [remindModal, setRemindModal] = useState(null);
+  const [remindBusy, setRemindBusy] = useState(false);
   const [programModalTarget, setProgramModalTarget] = useState(null);
   const [progressModalKey, setProgressModalKey] = useState(null);
   const [paymentsModalOpen, setPaymentsModalOpen] = useState(false);
@@ -796,19 +797,120 @@ export function AdminDashboard({
     navigate(`${UPDATED_ADMIN_PATHS.users}${qs ? `?${qs}` : ""}`);
   }
 
-  function openTeamRemind({ title, subtitle, recipients, defaultMessage }) {
-    setRemindModal({ title, subtitle, recipients, defaultMessage, message: defaultMessage });
+  function openTeamRemind(payload) {
+    const defaultMessage = payload?.defaultMessage ?? "";
+    setRemindModal({
+      ...payload,
+      defaultMessage,
+      message: payload?.message ?? defaultMessage,
+    });
   }
 
-  function openRemindAll(roleId) {
+  async function handleRemindPush() {
+    if (!remindModal || remindBusy) return;
+
+    if (remindModal.kind === "onboarding") {
+      if (!remindModal.userId) {
+        onToast("Cannot send reminder — client id is missing");
+        return;
+      }
+      const message = String(remindModal.message || "").trim();
+      if (!message) {
+        onToast("Write a reminder message first");
+        return;
+      }
+      setRemindBusy(true);
+      try {
+        const data = await pushOnboardingReminder(remindModal.userId, {
+          message,
+          stepLabel: remindModal.stepLabel,
+        });
+        const first = String(remindModal.recipients?.[0] || "client").split(" ")[0];
+        onToast(data?.message || `Reminder pushed to ${first}'s app`);
+        setRemindModal(null);
+      } catch (err) {
+        onToast(err?.message || "Failed to push reminder");
+      } finally {
+        setRemindBusy(false);
+      }
+      return;
+    }
+
+    const accountIds = Array.isArray(remindModal.accountIds) ? remindModal.accountIds : [];
+    const message = String(remindModal.message || "").trim();
+    if (!message) {
+      onToast("Write a reminder message first");
+      return;
+    }
+    if (!accountIds.length) {
+      onToast("No team members to notify");
+      return;
+    }
+
+    setRemindBusy(true);
+    try {
+      const data = await sendTeamReminder({ accountIds, message });
+      onToast(data?.message || `Notification sent to ${accountIds.length} recipient(s)`);
+      setRemindModal(null);
+    } catch (err) {
+      onToast(err?.message || "Failed to send notification");
+    } finally {
+      setRemindBusy(false);
+    }
+  }
+
+  function isActiveTeamMember(member) {
+    if (!member?.id) return false;
+    if (String(member.status || "").toLowerCase() === "inactive") return false;
+    return String(member.displayStatus || "").toLowerCase() !== "pending";
+  }
+
+  async function openRemindAll(team) {
+    const consoleRoleId = team?.consoleRoleId;
+    const roleId = team?.roleId;
     const staff = TEAM_STAFF[roleId];
-    if (!staff) return;
+    const defaultMessage = staff?.defaultRemindMessage || DEFAULT_REMIND_MESSAGE;
+    const title = staff?.defaultRemindAllTitle || "Remind everyone";
+    const rosterTitle = staff?.rosterTitle || team?.label || "Team";
+
+    const remindKey = String(consoleRoleId || roleId || team?.label || "team");
     openTeamRemind({
-      title: staff.defaultRemindAllTitle,
-      subtitle: remindSubtitle(staff.rosterTitle, staff.roster.length),
-      recipients: staff.roster.map((row) => row.name),
-      defaultMessage: staff.defaultRemindMessage,
+      kind: "team",
+      remindKey,
+      title,
+      subtitle: remindSubtitle(rosterTitle, 0),
+      recipients: [],
+      accountIds: [],
+      defaultMessage,
+      recipientsLoading: true,
+      consoleRoleId,
     });
+
+    try {
+      const data = await fetchTeamMembers({
+        consoleRoleId: consoleRoleId || undefined,
+        roleKey: !consoleRoleId ? roleId : undefined,
+        page: 1,
+        limit: 200,
+      });
+      const members = (data?.members || []).filter(isActiveTeamMember);
+      setRemindModal((prev) => {
+        if (!prev || prev.kind !== "team" || prev.remindKey !== remindKey) return prev;
+        return {
+          ...prev,
+          recipients: members.map((row) => row.name),
+          accountIds: members.map((row) => row.id),
+          subtitle: remindSubtitle(rosterTitle, members.length),
+          recipientsLoading: false,
+        };
+      });
+    } catch (err) {
+      setRemindModal((prev) => {
+        if (!prev || prev.remindKey !== remindKey) return prev;
+        return null;
+      });
+      onToast(err?.message || "Could not load team members");
+    }
   }
 
   const programModal = useMemo(() => {
@@ -920,14 +1022,6 @@ export function AdminDashboard({
           <p className="page-head__sub">
             <span className="chip chip--scope">{scopeLabel}</span> Updated just now
           </p>
-        </div>
-        <div className="page-head__actions">
-          {canExport ? (
-            <button type="button" className="btn btn--outline" onClick={() => onToast("Exporting dashboard report…")}>
-              <ExportIcon /> Export report
-            </button>
-          ) : null}
-          <AutosaveButton onClick={() => onToast("Saved")} />
         </div>
       </div>
 
@@ -1495,7 +1589,7 @@ export function AdminDashboard({
                     type="button"
                     className="team-card__bell"
                     title="Send reminder"
-                    onClick={() => openRemindAll(team.roleId)}
+                    onClick={() => openRemindAll(team)}
                   >
                     🔔
                   </button>
@@ -1888,19 +1982,23 @@ export function AdminDashboard({
         title={remindModal?.title ?? ""}
         subtitle={remindModal?.subtitle ?? ""}
         recipients={remindModal?.recipients ?? []}
+        recipientsLoading={Boolean(remindModal?.recipientsLoading)}
         message={remindModal?.message ?? ""}
         defaultMessage={remindModal?.defaultMessage ?? ""}
+        busy={remindBusy}
+        actionLabel={remindModal?.kind === "onboarding" ? "Push to app" : "Send Notification"}
+        actionIcon={remindModal?.kind === "onboarding" ? "📱" : "🔔"}
         onMessageChange={(message) => setRemindModal((prev) => (prev ? { ...prev, message } : prev))}
         onReset={() => setRemindModal((prev) => (prev ? { ...prev, message: prev.defaultMessage } : prev))}
-        onPush={() => {
-          onToast(`Push sent to ${remindModal?.recipients.length ?? 0} recipient(s)`);
-          setRemindModal(null);
-        }}
+        onPush={handleRemindPush}
         onWhatsApp={() => {
+          if (remindBusy) return;
           onToast(`WhatsApp sent to ${remindModal?.recipients.length ?? 0} recipient(s)`);
           setRemindModal(null);
         }}
-        onClose={() => setRemindModal(null)}
+        onClose={() => {
+          if (!remindBusy) setRemindModal(null);
+        }}
       />
 
       <CommunityBroadcastModal
