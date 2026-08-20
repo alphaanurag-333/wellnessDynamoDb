@@ -251,7 +251,7 @@ export function NotificationsPage() {
       <div className="npage__body">
         {loading ? (
           <div className="npage__loader">
-            <BrandLoader />
+            {/* <BrandLoader /> */}
           </div>
         ) : displayed.length === 0 ? (
           <div className="npage__empty">

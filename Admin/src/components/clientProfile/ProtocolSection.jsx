@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  PROTOCOL_MAX_POINTS,
+  PROTOCOL_MAX_POINT_LENGTH,
   PROTOCOL_ONBOARDING_STEP,
   pointCountLabel,
+  sanitizeProtocolPoint,
+  validateProtocolPoint,
+  validateProtocolPoints,
 } from "../../data/protocolSettingsData.js";
 import {
   fetchUserProtocolSettings,
@@ -30,7 +35,7 @@ function HistoryVersionCard({ entry, expanded, onToggle, onRestore }) {
             {entry.points.map((point, index) => (
               <li key={`${entry.id}-${index}`}>
                 <span className="ua-cp-proto-ver__list-num">{index + 1}</span>
-                <span>{point}</span>
+                <span className="ua-cp-proto-ver__list-text">{point}</span>
               </li>
             ))}
           </ol>
@@ -51,6 +56,9 @@ export function ProtocolSection({ user, onToast }) {
   const [savedPoints, setSavedPoints] = useState([]);
   const [history, setHistory] = useState([]);
   const [draft, setDraft] = useState("");
+  const [draftError, setDraftError] = useState("");
+  const [pointErrors, setPointErrors] = useState([]);
+  const [formError, setFormError] = useState("");
   const [expandedVersion, setExpandedVersion] = useState(null);
   const [loading, setLoading] = useState(Boolean(userId));
   const [saving, setSaving] = useState(false);
@@ -59,7 +67,15 @@ export function ProtocolSection({ user, onToast }) {
   const clientName = user?.name?.split(" ")[0] || "Client";
   const dirty = !pointsEqual(workingPoints, savedPoints);
   const latestVersion = history[0]?.version ?? null;
-  const canSave = dirty && workingPoints.some((point) => point.trim()) && !saving && !loading;
+  const atPointLimit = workingPoints.length >= PROTOCOL_MAX_POINTS;
+  const draftValidation = validateProtocolPoint(draft, { required: false });
+  const draftLiveError = draft.trim().length >= 2 ? draftValidation : "";
+  const canAddDraft = Boolean(draft.trim()) && !draftValidation && !atPointLimit && !loading && !saving;
+  const pointsValidation = useMemo(
+    () => validateProtocolPoints(workingPoints),
+    [workingPoints]
+  );
+  const canSave = dirty && pointsValidation.ok && !saving && !loading;
 
   const workingMeta = useMemo(() => {
     const count = workingPoints.length;
@@ -81,19 +97,28 @@ export function ProtocolSection({ user, onToast }) {
       setHistory([]);
       setLoading(false);
       setLoadError("");
+      setPointErrors([]);
+      setFormError("");
+      setDraftError("");
       return undefined;
     }
 
     let cancelled = false;
     setLoading(true);
     setLoadError("");
+    setPointErrors([]);
+    setFormError("");
+    setDraftError("");
 
     fetchUserProtocolSettings(userId)
       .then((data) => {
         if (cancelled) return;
-        const points = data?.current?.points || [];
+        const points = (data?.current?.points || []).map((point) =>
+          sanitizeProtocolPoint(point)
+        );
         setWorkingPoints([...points]);
         setSavedPoints([...points]);
+        setPointErrors(points.map((point) => validateProtocolPoint(point, { required: false })));
         setHistory(data?.history || []);
         setExpandedVersion(data?.current?.version ?? null);
       })
@@ -112,36 +137,73 @@ export function ProtocolSection({ user, onToast }) {
   }, [onToast, userId]);
 
   function updatePoint(index, value) {
-    setWorkingPoints((list) => list.map((point, i) => (i === index ? value : point)));
+    const next = sanitizeProtocolPoint(value);
+    setWorkingPoints((list) => list.map((point, i) => (i === index ? next : point)));
+    setPointErrors((list) => {
+      const nextErrors = [...list];
+      nextErrors[index] = validateProtocolPoint(next);
+      return nextErrors;
+    });
+    setFormError("");
   }
 
   function removePoint(index) {
     setWorkingPoints((list) => list.filter((_, i) => i !== index));
+    setPointErrors((list) => list.filter((_, i) => i !== index));
+    setFormError("");
   }
 
   function addPoint() {
-    const text = draft.trim();
-    if (!text) return;
+    if (atPointLimit) {
+      const message = `A protocol cannot have more than ${PROTOCOL_MAX_POINTS} points.`;
+      setDraftError(message);
+      onToast?.(message);
+      return;
+    }
+
+    const text = sanitizeProtocolPoint(draft).trim();
+    const error = validateProtocolPoint(text);
+    if (error) {
+      setDraftError(error);
+      onToast?.(error);
+      return;
+    }
+
     setWorkingPoints((list) => [...list, text]);
+    setPointErrors((list) => [...list, ""]);
     setDraft("");
+    setDraftError("");
+    setFormError("");
   }
 
   function discardChanges() {
     setWorkingPoints([...savedPoints]);
+    setPointErrors([]);
+    setFormError("");
+    setDraftError("");
     onToast?.("Changes discarded");
   }
 
   async function saveVersion() {
-    const points = workingPoints.map((point) => point.trim()).filter(Boolean);
-    if (!points.length || !userId || saving) return;
+    if (!userId || saving) return;
+
+    const validation = validateProtocolPoints(workingPoints);
+    if (!validation.ok) {
+      setPointErrors(validation.errors || []);
+      setFormError(validation.message);
+      onToast?.(validation.message);
+      return;
+    }
 
     setSaving(true);
+    setFormError("");
     try {
-      const data = await saveUserProtocolSettings(userId, points);
-      const nextPoints = data?.current?.points || points;
+      const data = await saveUserProtocolSettings(userId, validation.points);
+      const nextPoints = data?.current?.points || validation.points;
       setHistory(data?.history || []);
       setWorkingPoints([...nextPoints]);
       setSavedPoints([...nextPoints]);
+      setPointErrors([]);
       setExpandedVersion(data?.current?.version ?? null);
       onToast?.(data?.current?.version
         ? `Protocol saved as v${data.current.version}`
@@ -154,7 +216,10 @@ export function ProtocolSection({ user, onToast }) {
   }
 
   function restoreVersion(entry) {
-    setWorkingPoints([...entry.points]);
+    const points = (entry.points || []).map((point) => sanitizeProtocolPoint(point));
+    setWorkingPoints([...points]);
+    setPointErrors([]);
+    setFormError("");
     onToast?.(`Restored v${entry.version} into working protocol`);
   }
 
@@ -193,7 +258,7 @@ export function ProtocolSection({ user, onToast }) {
               </button>
             ) : (
               <button type="button" className="btncolorss ua-cp-btn ua-cp-btn--muted ua-cp-btn--sm" disabled>
-                {saving ? "Saving…" : "Saved"}
+                {saving ? "Saving…" : dirty ? "Fix to save" : "Saved"}
               </button>
             )}
               </>
@@ -205,45 +270,78 @@ export function ProtocolSection({ user, onToast }) {
           <p className="ua-page-head__sub" style={{ margin: "8px 0 0" }}>Loading protocol…</p>
         ) : null}
 
+        {formError ? (
+          <p className="ua-cp-proto__error" role="alert">{formError}</p>
+        ) : null}
+
         {workingPoints.length ? (
           <div className="ua-cp-proto-points">
-            {workingPoints.map((point, index) => (
-              <div key={`point-${index}`} className="ua-cp-proto-point">
-                <span className="ua-cp-proto-point__num">{index + 1}</span>
-                <input
-                  type="text"
-                  className="ua-cp-proto-point__text"
-                  value={point}
-                  onChange={(e) => updatePoint(index, e.target.value)}
-                  disabled={saving || !canWrite}
-                />
-                {canWrite ? (
-                  <button type="button" className="ua-cp-proto-point__remove" onClick={() => removePoint(index)} aria-label="Remove point">×</button>
-                ) : null}
-              </div>
-            ))}
+            {workingPoints.map((point, index) => {
+              const error = pointErrors[index] || "";
+              return (
+                <div key={`point-${index}`} className="ua-cp-proto-point-wrap">
+                  <div className="ua-cp-proto-point">
+                    <span className="ua-cp-proto-point__num">{index + 1}</span>
+                    <input
+                      type="text"
+                      className={`ua-cp-proto-point__text${error ? " ua-cp-proto-point__text--error" : ""}`}
+                      value={point}
+                      maxLength={PROTOCOL_MAX_POINT_LENGTH}
+                      onChange={(e) => updatePoint(index, e.target.value)}
+                      disabled={saving || !canWrite}
+                      aria-invalid={Boolean(error)}
+                    />
+                    {canWrite ? (
+                      <button type="button" className="ua-cp-proto-point__remove" onClick={() => removePoint(index)} aria-label="Remove point">×</button>
+                    ) : null}
+                  </div>
+                  {error ? <p className="ua-cp-proto__error ua-cp-proto__error--inline">{error}</p> : null}
+                </div>
+              );
+            })}
           </div>
         ) : null}
 
         {canWrite ? (
-        <div className="ua-cp-proto-add">
-          <input
-            type="text"
-            className="ua-cp-proto-add__input"
-            placeholder="Add a protocol point"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") addPoint(); }}
-            disabled={loading || saving}
-          />
-          <button
-            type="button"
-            className={`ua-cp-btn ua-cp-btn--sm${draft.trim() ? " ua-cp-btn--primary btncolor" : " ua-cp-btn--muted btncolors"}`}
-            disabled={!draft.trim() || loading || saving}
-            onClick={addPoint}
-          >
-            + Add point
-          </button>
+        <div className="ua-cp-proto-add-wrap">
+          <div className="ua-cp-proto-add">
+            <input
+              type="text"
+              className={`ua-cp-proto-add__input${(draftError || draftLiveError) ? " ua-cp-proto-add__input--error" : ""}`}
+              placeholder="Add a protocol point"
+              value={draft}
+              maxLength={PROTOCOL_MAX_POINT_LENGTH}
+              onChange={(e) => {
+                setDraft(sanitizeProtocolPoint(e.target.value));
+                setDraftError("");
+              }}
+              onKeyDown={(e) => { if (e.key === "Enter") addPoint(); }}
+              disabled={loading || saving || atPointLimit}
+              aria-invalid={Boolean(draftError || draftLiveError)}
+            />
+            <button
+              type="button"
+              className={`ua-cp-btn ua-cp-btn--sm${canAddDraft ? " ua-cp-btn--primary btncolor" : " ua-cp-btn--muted btncolors"}`}
+              disabled={!canAddDraft}
+              onClick={addPoint}
+            >
+              + Add point
+            </button>
+          </div>
+          <div className="ua-cp-proto-add__meta">
+            <span className={(draftError || draftLiveError) ? "ua-cp-proto__error" : "ua-cp-proto__hint"}>
+              {draftError
+                || draftLiveError
+                || (atPointLimit
+                  ? `Maximum of ${PROTOCOL_MAX_POINTS} points reached.`
+                  : `Max ${PROTOCOL_MAX_POINT_LENGTH} characters · ${workingPoints.length}/${PROTOCOL_MAX_POINTS} points`)}
+            </span>
+            {draft.trim() ? (
+              <span className="ua-cp-proto__hint">
+                {draft.length}/{PROTOCOL_MAX_POINT_LENGTH}
+              </span>
+            ) : null}
+          </div>
         </div>
         ) : null}
       </div>
