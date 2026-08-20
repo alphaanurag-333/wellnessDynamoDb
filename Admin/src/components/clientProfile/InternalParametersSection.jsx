@@ -16,7 +16,9 @@ import {
   reviewUserLabReport,
   analyzeUserLabReport,
   updateUserLabReportAnalysis,
+  patchOnboardingStep,
 } from "../../api/onboardingApi.js";
+import { useViewAs } from "../../context/ViewAsContext.jsx";
 
 const GOAL_PRESET_CATEGORIES = {
   "Fat Loss": ["Cardiac", "Diabetes"],
@@ -1346,7 +1348,19 @@ function MockReportAnalysisTab({ onToast }) {
   );
 }
 
-function LiveReportAnalysisTab({ reports, busy, onAnalyze, onSaveAnalysis, onToast, canEdit = true, canUpload = true, canExport = true }) {
+function LiveReportAnalysisTab({
+  reports,
+  busy,
+  onAnalyze,
+  onSaveAnalysis,
+  onToast,
+  canEdit = true,
+  canUpload = true,
+  canExport = true,
+  showMarkStepComplete = false,
+  stepBusy = false,
+  onMarkStepComplete,
+}) {
   const [selectedId, setSelectedId] = useState(reports[0]?.id || null);
 
   useEffect(() => {
@@ -1471,6 +1485,23 @@ function LiveReportAnalysisTab({ reports, busy, onAnalyze, onSaveAnalysis, onToa
 
       {selected.aiStatus === "failed" && selected.aiError ? (
         <p className="ua-cp-ip-rec__sub">{selected.aiError}</p>
+      ) : null}
+
+      {analysed && showMarkStepComplete ? (
+        <div className="ua-cp-ip-banner ua-cp-ip-banner--step">
+          <div>
+            <strong>Internal Parameters step is still pending</strong>
+            <span>Mark this onboarding step complete here, or from At a Glance.</span>
+          </div>
+          <button
+            type="button"
+            className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm"
+            disabled={busy || stepBusy}
+            onClick={onMarkStepComplete}
+          >
+            {stepBusy ? "Marking…" : "Mark Step as Completed"}
+          </button>
+        </div>
       ) : null}
 
       {analysed ? (
@@ -1709,8 +1740,10 @@ function LiveReportAnalysisTab({ reports, busy, onAnalyze, onSaveAnalysis, onToa
   );
 }
 
-export function InternalParametersSection({ user, onToast }) {
+export function InternalParametersSection({ user, onToast, onUserUpdated }) {
+  const { can } = useViewAs();
   const { canEdit, canUpload, canExport } = useClientSectionPermissions("internal");
+  const canEditOnboarding = can("console.cl.edit");
   const [tab, setTab] = useState("tests");
   const [historyOpen, setHistoryOpen] = useState(false);
   const [reports, setReports] = useState([]);
@@ -1718,10 +1751,16 @@ export function InternalParametersSection({ user, onToast }) {
   const [history, setHistory] = useState([]);
   const [catalog, setCatalog] = useState([]);
   const [busy, setBusy] = useState(false);
+  const [stepBusy, setStepBusy] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const userId = user?.id;
   const live = Boolean(userId && !/^\d+$/.test(String(userId)));
+  const stepStatus = String(user?.paidOnboardingStepStatus?.internalParameter || "pending").toLowerCase();
+  const internalStepPending =
+    !user?.paidOnboardingCompleted
+    && stepStatus !== "done"
+    && stepStatus !== "skipped";
 
   const reload = async () => {
     if (!live) return;
@@ -1800,6 +1839,28 @@ export function InternalParametersSection({ user, onToast }) {
       throw err;
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function handleMarkStepComplete() {
+    if (!userId || !live) return;
+    setStepBusy(true);
+    try {
+      const data = await patchOnboardingStep(userId, "internalParameter", "done");
+      const nextStatus = data?.paidOnboardingStepStatus || {
+        ...user.paidOnboardingStepStatus,
+        internalParameter: "done",
+      };
+      onUserUpdated?.({
+        ...user,
+        paidOnboardingStepStatus: nextStatus,
+        paidOnboardingCompleted: Boolean(data?.paidOnboardingCompleted),
+      });
+      onToast?.("Internal Parameters marked complete");
+    } catch (err) {
+      onToast?.(err?.message || "Failed to mark step complete");
+    } finally {
+      setStepBusy(false);
     }
   }
 
@@ -1909,6 +1970,9 @@ export function InternalParametersSection({ user, onToast }) {
           canEdit={canEdit}
           canUpload={canUpload}
           canExport={canExport}
+          showMarkStepComplete={internalStepPending && canEditOnboarding}
+          stepBusy={stepBusy}
+          onMarkStepComplete={handleMarkStepComplete}
         />
       ) : (
         <MockReportAnalysisTab onToast={onToast} />

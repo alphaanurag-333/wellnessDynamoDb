@@ -15,11 +15,16 @@ const {
   SCORE_MIN,
   SCORE_MAX,
 } = require("../../models/userLaunchAssessmentModel");
+const { updateUser, getUserById } = require("../../models/userModel");
 const {
   isLiveDomain,
   isEnabledQuestion,
   summarizeConfig,
 } = require("../../services/launchScoreService");
+const {
+  markStepDone,
+  computePaidOnboardingCompleted,
+} = require("../../utils/paidOnboardingHelpers");
 const {
   readUserIdParam,
   loadTargetUser,
@@ -32,6 +37,23 @@ const {
   resolveCoachIdForUser,
   resolveStaffActor,
 } = require("./dietPlanControllerHelpers");
+
+async function persistLaunchStepDone(user) {
+  const userId = String(user?.id || "").trim();
+  if (!userId) return null;
+
+  const fresh = (await getUserById(userId)) || user;
+  const current = String(fresh?.paidOnboardingStepStatus?.launch || "").toLowerCase();
+  if (current === "done" || current === "skipped") {
+    return fresh;
+  }
+
+  const nextStatus = markStepDone(fresh.paidOnboardingStepStatus, "launch");
+  return updateUser(userId, {
+    paidOnboardingStepStatus: nextStatus,
+    paidOnboardingCompleted: computePaidOnboardingCompleted(nextStatus),
+  });
+}
 
 function handleLaunchValidationError(err) {
   if (err?.name === "ValidationError") throw new AppError(err.message, 400);
@@ -280,6 +302,8 @@ function createLaunchAssessmentPortalHandlers({ assertHealUserAccess, createdByR
         handleLaunchValidationError(err);
       }
 
+      await persistLaunchStepDone(user);
+
       return res.status(201).json({
         status: true,
         message: "LAUNCH score saved successfully",
@@ -288,7 +312,7 @@ function createLaunchAssessmentPortalHandlers({ assertHealUserAccess, createdByR
     }),
 
     updateAssessmentController: asyncHandler(async (req, res) => {
-      const { userId } = await assertHealUserAccess(req);
+      const { userId, user } = await assertHealUserAccess(req);
       const assessmentId = String(req.params.assessmentId || "").trim();
       if (!assessmentId) throw new AppError("assessmentId is required", 400);
 
@@ -324,6 +348,8 @@ function createLaunchAssessmentPortalHandlers({ assertHealUserAccess, createdByR
         if (err instanceof AppError) throw err;
         handleLaunchValidationError(err);
       }
+
+      await persistLaunchStepDone(user);
 
       return res.status(200).json({
         status: true,
