@@ -8,7 +8,14 @@ const {
   getUserCommitmentLetterRecordById,
   resubmitUserCommitmentLetter,
 } = require("../../models/userCommitmentLetterModel");
-const { uploadFileFromRequest, deleteStoredMedia } = require("../../utils/s3");
+const {
+  uploadFileFromRequest,
+  deleteStoredMedia,
+  uploadBufferToS3,
+  resolvePublicUrl,
+} = require("../../utils/s3");
+const { resolveCommitmentLetterText } = require("../../utils/coachContent");
+const { generateCommitmentLetterPdf } = require("../../utils/commitmentLetterPdf");
 const { resolveAssignedCoachForUser } = require("../helpers/mealTrackingControllerHelpers");
 const {
   assertPdfUpload,
@@ -16,6 +23,7 @@ const {
 } = require("../helpers/commitmentLetterControllerHelpers");
 
 const S3_FOLDER = "user-commitment-letters";
+const TEMPLATE_PDF_FOLDER = "commitment-letter-templates";
 
 async function uploadCommitmentLetterPdf(req) {
   assertPdfUpload(req);
@@ -24,21 +32,51 @@ async function uploadCommitmentLetterPdf(req) {
   return fileKey;
 }
 
+async function buildTemplatePdfPayload(userId) {
+  const [config, user] = await Promise.all([getAppConfig(), getUserById(userId)]);
+  if (!user) throw new AppError("User not found", 404);
+
+  const publicConfig = toPublicAppConfig(config) || {};
+  const text = resolveCommitmentLetterText(publicConfig.commitment_letter_text);
+  if (!text) {
+    throw new AppError("Commitment letter template is not available yet", 404);
+  }
+
+  const version = Math.max(1, Number(publicConfig.commitment_letter_version) || 1);
+  const pdfBuffer = await generateCommitmentLetterPdf({
+    text,
+    clientName: user.name || "",
+    version,
+    appName: publicConfig.app_name || "India Redefining Wellness",
+  });
+
+  const pdfKey = await uploadBufferToS3({
+    buffer: pdfBuffer,
+    contentType: "application/pdf",
+    folder: TEMPLATE_PDF_FOLDER,
+    originalName: `commitment-letter-v${version}.pdf`,
+  });
+  if (!pdfKey) throw new AppError("Failed to generate commitment letter PDF", 500);
+
+  const templateUrl = resolvePublicUrl(pdfKey);
+  if (!templateUrl) {
+    throw new AppError("Failed to resolve commitment letter PDF URL", 500);
+  }
+
+  return { text, version, templateUrl };
+}
+
 exports.getUserCommitmentLetterTemplateController = asyncHandler(async (req, res) => {
   const userId = req.auth?.sub;
   if (!userId) throw new AppError("Unauthorized", 401);
 
-  const config = await getAppConfig();
-  const publicConfig = toPublicAppConfig(config);
-  const templateUrl = publicConfig?.commitment_letter_template || "";
-
-  if (!templateUrl) {
-    throw new AppError("Commitment letter template is not available yet", 404);
-  }
+  const { text, version, templateUrl } = await buildTemplatePdfPayload(userId);
 
   return res.status(200).json({
     status: true,
     message: "Commitment letter template fetched",
+    text,
+    version,
     templateUrl,
   });
 });
@@ -63,7 +101,8 @@ exports.submitUserCommitmentLetterController = asyncHandler(async (req, res) => 
   if (!user) throw new AppError("User not found", 404);
 
   const config = await getAppConfig();
-  if (!config?.commitment_letter_template) {
+  const letterText = resolveCommitmentLetterText(config?.commitment_letter_text);
+  if (!letterText) {
     throw new AppError("Commitment letter template is not configured yet", 400);
   }
 
