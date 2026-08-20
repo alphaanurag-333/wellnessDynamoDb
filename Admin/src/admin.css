@@ -1377,7 +1377,7 @@
 }
 
 .updated-admin .ua-users-top .ua-pill-tabs--lg .ua-pill-tabs__btn {
-  height: 36px;
+  height: 28px;
   padding: 0 14px;
   border-radius: 8px;
   background: transparent;
@@ -2835,7 +2835,7 @@
 }
 
 .updated-admin .ua-team-remind__label {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -2873,7 +2873,14 @@
   border-radius: 999px;
   padding: 4px 10px;
 }
-
+.backgrounrd {
+  background: rgb(238, 240, 252) !important;
+  color: rgb(94, 106, 210) !important;
+}
+.backgrounrd:hover {
+  background: rgb(227, 230, 251) !important;
+  color: rgb(94, 106, 210) !important;
+}
 .updated-admin .ua-team-remind__message {
   width: 100%;
   box-sizing: border-box;
@@ -2926,12 +2933,13 @@
 }
 
 .updated-admin .ua-team-remind__whatsapp {
-  background: linear-gradient(rgb(63, 194, 106), rgb(46, 171, 87));
-  color: #fff;
+  border: 1px solid rgb(191, 227, 205);
+    background: rgb(238, 250, 242);
+    color: rgb(31, 122, 77);
 }
 
 .updated-admin .ua-team-remind__whatsapp:hover {
-  background: linear-gradient(rgb(63, 194, 106), rgb(46, 171, 87));
+  background: rgb(238, 250, 242);
 }
 
 .updated-admin .ua-client-remind-modal .ua-team-modal__body--remind {
@@ -9523,7 +9531,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 36px;
+  height: 32px;
   padding: 0 13px;
   margin: 0 0 16px;
   border: 1px solid #e6ebf2;
@@ -9600,21 +9608,24 @@
   border: none;
   border-radius: 10px;
   background: transparent;
-  color: #5a6b85;
-  font-size: 12.5px;
-  font-weight: 600;
+  color: rgb(47, 111, 214);
+  font-size: 13px;
+  font-weight: 700;
   text-align: left;
   cursor: pointer;
 }
 
 .updated-admin .ua-cp-sidebar__link--active {
-  background: #eef0fc;
-  color: #4f57c9;
+  background:rgb(238, 244, 255);
+  color:rgb(22, 35, 63);
+  border-radius: 9px;
   font-weight: 700;
+  padding: 11px 12px;
+
 }
 
 .updated-admin .ua-cp-sidebar__link--accent {
-  color: #5e6ad2;
+  color: rgb(47, 111, 214);
   font-weight: 800;
 }
 
@@ -9867,7 +9878,7 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  margin-bottom: 16px;
+  margin-bottom: 5px;
   background: #f4f6fb;
   border: 1px dashed #d5dcec;
   border-radius: 11px;
@@ -9886,7 +9897,7 @@
   border: none;
   background: transparent;
   padding: 8px 16px;
-  border-radius: 999px;
+  border-radius: 7px;
   font-size: 12.5px;
   font-weight: 700;
   color: #6b7891;
@@ -11015,7 +11026,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 16px;
+  padding: 9px 16px;
   background: #fff;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -11023,7 +11034,7 @@
 }
 
 .updated-admin .ua-cp-onboard-pill__icon {
-  font-size: 22px;
+  font-size: 15px;
 }
 
 .updated-admin .ua-cp-onboard-pill__key {
@@ -11325,9 +11336,29 @@
   margin: 14px 0 0;
   font-size: 11px;
   color: #9aa6b8;
-  font-style: italic;
+  /* font-style: italic; */
 }
 
+.btncolorss {
+  background: rgb(205, 213, 224) !important;
+}
+.btncolors {
+  height: 38px !important;
+    padding: 0px 14px !important;
+    background: rgb(205, 213, 224) !important;
+}
+.btncolor {
+  background: rgb(43, 143, 91) !important;
+  height: 38px !important;
+    padding: 0px 14px !important;
+}
+.colers {
+  background: rgb(255, 255, 255) !important;
+  color: rgb(90, 107, 133) !important;
+}
+.colored {
+  background: rgb(43, 143, 91) !important;
+}
 .updated-admin .ua-cp-metrics {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -13804,9 +13835,10 @@
 .updated-admin .ua-cp-seg {
   display: inline-flex;
   padding: 3px;
-  border-radius: 999px;
-  background: #e8edf5;
+  border-radius: 9px;
+  background: rgb(242, 244, 249);
   gap: 2px;
+  border: 1px solid rgb(230, 235, 242);
 }
 
 .updated-admin .ua-cp-seg--xs {
@@ -13817,7 +13849,7 @@
   border: none;
   background: transparent;
   padding: 6px 14px;
-  border-radius: 999px;
+  border-radius: 7px;
   font-size: 12px;
   font-weight: 700;
   color: #6b7891;
@@ -26836,10 +26868,10 @@ scrollbar-width: thin;
   width: 24px;
   height: 24px;
   border-radius: 999px;
-  background: #dcfce7;
-  color: #166534;
+  background: rgb(242, 251, 246);
+  color:rgb(43, 143, 91);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 900;
   flex-shrink: 0;
 }
 
