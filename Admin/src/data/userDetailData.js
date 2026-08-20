@@ -1,4 +1,4 @@
-import { USERS, canDowngradeTier, nextTier, tierLabel, tierStyle, normalizeTier } from "./usersData.js";
+import { canDowngradeTier, nextTier, tierLabel, tierStyle, normalizeTier } from "./usersData.js";
 
 export const CLIENT_MENU = [
   { id: "glance", label: "At a Glance" },
@@ -459,40 +459,6 @@ export const ORDER_HISTORY = [
   { date: "20 Jun 2026", items: "Omega-3 Fish Oil × 2", type: "Self billing", amount: 2400, status: "Bill uploaded", tone: "purple" },
 ];
 
-const PROFILE_DETAILS = {
-  1: {
-    dob: "12 Mar 1991",
-    phone: "+91 90000 10000",
-    whatsapp: "+91 90000 20000",
-    address: "Flat 101, Green Meadows, Baner Road, Pune, Maharashtra 411000",
-    state: "Maharashtra (India)",
-    joined: "19 Jul 2026",
-    joinedAgo: "3 days ago",
-    lastReviewed: "4 days ago",
-    lastUpdated: "22 Jul",
-    onboardingDone: 5,
-    onboardingTotal: 10,
-    onboardingPct: 50,
-    lifestyleScore: 7.2,
-    prakriti: "Vata",
-    dailyScore: 91,
-    monthlyScore: 291,
-    monthlyRank: "1st of 24",
-    healthGoal: "Fat Loss",
-    healthMetric: "",
-    healthValue: "76.8 kg",
-    healthDelta: "▼ 0.8 kg · trending down",
-    healthIcon: "🔥",
-    termsIp: "49.43.219.121",
-    termsAccepted: "19 Jul 2026, 12:50 IST",
-    programs: 1,
-    programLabel: "LM",
-    subscriptionDays: 236,
-    tags: ["Fat Loss", "Diabetes Reversal", "Thyroid Care"],
-    goals: ["Fat Loss", "Diabetes Reversal"],
-  },
-};
-
 function emptyProfileExtras(goal = "") {
   return {
     dob: "",
@@ -609,23 +575,12 @@ export function profileFromListUser(row, userId) {
   };
 }
 
-export function getUserProfile(userId) {
-  const raw = String(userId || "").trim();
-  if (!raw) return null;
-  const id = Number(raw);
-  const base = Number.isFinite(id) && id > 0 ? USERS.find((u) => u.n === id) : null;
-  if (!base) return profileFromListUser(null, raw);
-  const extra = PROFILE_DETAILS[id] || emptyProfileExtras(base.goal);
-  if (!PROFILE_DETAILS[id]) {
-    extra.programs = 1;
-    extra.programLabel = "LM";
-    extra.subscriptionDays = 180;
-  }
-  return {
-    ...base,
-    ...extra,
-    tierStyle: tierStyle(base.tier),
-  };
+/**
+ * @deprecated Seed USERS must never be served as live client profiles.
+ * Always returns null — open real UUID clients via the API only.
+ */
+export function getUserProfile(_userId) {
+  return null;
 }
 
 export const DEFAULT_REMINDERS = [

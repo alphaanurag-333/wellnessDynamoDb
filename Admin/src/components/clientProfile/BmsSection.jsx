@@ -5,15 +5,10 @@ import { PillTabs } from "../shared.jsx";
 import { FoodWaterHistoryPicker } from "./FoodDatePicker.jsx";
 import {
   BMS_GOALS,
-  BMS_SLEEP_SUMMARY,
   BMS_SLEEP_TARGET_HISTORY,
-  DEFAULT_BMS_RANGE,
-  buildHeartChart,
   buildHeartChartFromHistory,
-  buildSleepChart,
   buildSleepChartFromHistory,
   buildSleepSummaryFromToday,
-  buildStepsChart,
   buildStepsChartFromHistory,
   formatStepsLabel,
   isHeartOutOfZone,
@@ -32,11 +27,10 @@ import {
   listUserWellnessAssignments,
   unassignUserWellnessItem,
 } from "../../api/wellnessLibraryApi.js";
+import { isMockNumericId } from "../../utils/isMockNumericId.js";
 
 function isLiveUserId(userId) {
-  if (!userId) return false;
-  const numeric = Number(userId);
-  return !(Number.isFinite(numeric) && numeric > 0 && String(numeric) === String(userId));
+  return Boolean(userId) && !isMockNumericId(userId);
 }
 
 function defaultBmsRange(today = localToday()) {
@@ -426,13 +420,13 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
   const tab = BMS_TABS.some((t) => t.id === tabParam) ? tabParam : "steps";
   const userId = String(user?.id || "").trim();
   const live = isLiveUserId(userId);
-  const today = useMemo(() => (live ? localToday() : DEFAULT_BMS_RANGE.to), [live]);
+  const today = useMemo(() => localToday(), []);
   const canAssign = String(user?.userTier || "").toLowerCase() === "heal";
 
   const [heartRateOn, setHeartRateOn] = useState(() => user?.heartRateEnabled !== false);
   const [sleepTrackingOn, setSleepTrackingOn] = useState(() => user?.sleepTrackingEnabled !== false);
   const [toggleBusy, setToggleBusy] = useState(false);
-  const [historyRange, setHistoryRange] = useState(() => (live ? defaultBmsRange(today) : DEFAULT_BMS_RANGE));
+  const [historyRange, setHistoryRange] = useState(() => defaultBmsRange(today));
   const [sleepGoal, setSleepGoal] = useState(BMS_GOALS.sleepHours);
   const [sleepGoalEditing, setSleepGoalEditing] = useState(false);
   const [sleepGoalDraft, setSleepGoalDraft] = useState(BMS_GOALS.sleepHours);
@@ -461,38 +455,28 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
   }, [user?.heartRateEnabled, user?.sleepTrackingEnabled]);
 
   useEffect(() => {
-    setHistoryRange(live ? defaultBmsRange(today) : DEFAULT_BMS_RANGE);
+    setHistoryRange(defaultBmsRange(today));
     setStepsHistory(null);
     setHeartHistory(null);
     setSleepHistory(null);
     setSleepToday(null);
   }, [live, today, userId]);
 
-  const stepsChart = useMemo(() => {
-    if (live && stepsHistory) {
-      return buildStepsChartFromHistory(stepsHistory, historyRange.from, historyRange.to, {
-        today,
-        goal: stepsGoal,
-      });
-    }
-    return buildStepsChart(historyRange.from, historyRange.to, today);
-  }, [live, stepsHistory, stepsGoal, historyRange.from, historyRange.to, today]);
-  const heartChart = useMemo(() => {
-    if (live && heartHistory) {
-      return buildHeartChartFromHistory(heartHistory, historyRange.from, historyRange.to, today);
-    }
-    return buildHeartChart(historyRange.from, historyRange.to, today);
-  }, [live, heartHistory, historyRange.from, historyRange.to, today]);
-  const sleepChart = useMemo(() => {
-    if (live && sleepHistory) {
-      return buildSleepChartFromHistory(sleepHistory, historyRange.from, historyRange.to, today);
-    }
-    return buildSleepChart(historyRange.from, historyRange.to, today);
-  }, [live, sleepHistory, historyRange.from, historyRange.to, today]);
-  const sleepSummary = useMemo(() => {
-    if (live) return buildSleepSummaryFromToday(sleepToday, sleepGoal);
-    return BMS_SLEEP_SUMMARY;
-  }, [live, sleepToday, sleepGoal]);
+  const stepsChart = useMemo(() => (
+    buildStepsChartFromHistory(live ? (stepsHistory || []) : [], historyRange.from, historyRange.to, {
+      today,
+      goal: stepsGoal,
+    })
+  ), [live, stepsHistory, stepsGoal, historyRange.from, historyRange.to, today]);
+  const heartChart = useMemo(() => (
+    buildHeartChartFromHistory(live ? (heartHistory || []) : [], historyRange.from, historyRange.to, today)
+  ), [live, heartHistory, historyRange.from, historyRange.to, today]);
+  const sleepChart = useMemo(() => (
+    buildSleepChartFromHistory(live ? (sleepHistory || []) : [], historyRange.from, historyRange.to, today)
+  ), [live, sleepHistory, historyRange.from, historyRange.to, today]);
+  const sleepSummary = useMemo(() => (
+    buildSleepSummaryFromToday(live ? sleepToday : null, sleepGoal)
+  ), [live, sleepToday, sleepGoal]);
 
   function setTab(next) {
     setSearchParams((prev) => {

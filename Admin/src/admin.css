@@ -6223,6 +6223,50 @@
   background: #fdeaea;
 }
 
+/* Dashboard — never show silent mock/demo metrics as if they were live */
+.updated-admin .ua-dash-data-banner {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid #f0d0cc;
+  background: #fff8f7;
+  color: #7a2e26;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.updated-admin .ua-dash-data-banner--muted {
+  border-color: #e6ebf2;
+  background: #f7f9fc;
+  color: #5a6b85;
+}
+
+.updated-admin .ua-dash-data-banner strong {
+  font-weight: 750;
+}
+
+.updated-admin .ua-dash-revenue-empty {
+  background: #fff;
+  border: 1px dashed #d8dee9;
+  border-radius: 14px;
+  padding: 28px 20px;
+  text-align: center;
+}
+
+.updated-admin .ua-dash-revenue-empty__title {
+  font-size: 15px;
+  font-weight: 750;
+  color: #16233f;
+}
+
+.updated-admin .ua-dash-revenue-empty__sub {
+  margin: 8px auto 16px;
+  max-width: 420px;
+  font-size: 12.5px;
+  color: #8a97ac;
+  line-height: 1.5;
+}
+
 .updated-admin .ua-users-empty {
   padding: 64px 20px;
   text-align: center;

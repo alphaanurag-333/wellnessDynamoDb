@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Navigate, useOutletContext, useParams, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useOutletContext, useParams, useSearchParams } from "react-router-dom";
 import {
   getClientProfileDefinition,
-  getUserProfile,
   profileFromListUser,
 } from "../data/userDetailData.js";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
@@ -14,6 +13,7 @@ import { useViewAs } from "../context/ViewAsContext.jsx";
 import {
   filterClientProfileMenu,
 } from "../utils/clientProfilePermissions.js";
+import { isMockNumericId } from "../utils/isMockNumericId.js";
 import {
   AtAGlanceSection,
   BodyAnalyticsSection,
@@ -100,11 +100,6 @@ function renderSection(section, user, onToast, onNavigate, onUserUpdated, sectio
   }
 }
 
-function isMockNumericId(userId) {
-  const numeric = Number(userId);
-  return Number.isFinite(numeric) && numeric > 0 && String(numeric) === String(userId);
-}
-
 export function UserDetailPage() {
   const { userId } = useParams();
   const { showToast: onToast } = useOutletContext();
@@ -112,9 +107,14 @@ export function UserDetailPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [menuHidden, setMenuHidden] = useState(false);
   const [showAllTags, setShowAllTags] = useState(false);
-  const [user, setUser] = useState(() => getUserProfile(userId));
+  const demoRouteBlocked = isMockNumericId(userId);
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(() => Boolean(userId) && !isMockNumericId(userId));
-  const [loadError, setLoadError] = useState("");
+  const [loadError, setLoadError] = useState(() => (
+    isMockNumericId(userId)
+      ? "Demo profile URLs are disabled. Real clients use UUID ids from the API."
+      : ""
+  ));
   const sectionHistory = useRef([]);
 
   useEffect(() => {
@@ -127,14 +127,16 @@ export function UserDetailPage() {
       return undefined;
     }
 
+    // `/users/1` style ids were local seed profiles — never show them as live clients.
     if (isMockNumericId(userId)) {
-      setUser(getUserProfile(userId));
+      setUser(null);
       setLoading(false);
+      setLoadError("Demo profile URLs are disabled. Real clients use UUID ids from the API.");
       return undefined;
     }
 
     setLoading(true);
-    setUser(profileFromListUser(null, userId));
+    setUser(null);
 
     fetchUser(userId)
       .then((row) => {
@@ -149,7 +151,7 @@ export function UserDetailPage() {
       .catch((err) => {
         if (cancelled) return;
         setLoadError(err?.message || "Failed to load user");
-        setUser(profileFromListUser(null, userId));
+        setUser(null);
         onToast?.(err?.message || "Failed to load user");
       })
       .finally(() => {
@@ -203,6 +205,26 @@ export function UserDetailPage() {
     setSearchParams,
     user,
   ]);
+
+  if (demoRouteBlocked || (!loading && !user && loadError)) {
+    return (
+      <div className="ua-cp-drawer" role="status" aria-label="Client profile unavailable">
+        <div className="ua-users-empty" style={{ paddingTop: 80 }}>
+          <div className="ua-users-empty__title">
+            {demoRouteBlocked ? "Demo profile unavailable" : "Client not found"}
+          </div>
+          <p className="ua-users-empty__sub">
+            {demoRouteBlocked
+              ? `“/users/${userId}” is a legacy numeric demo id. Sample clients are never shown as live profiles — open a real UUID from Users.`
+              : (loadError || "This client could not be loaded from the API.")}
+          </p>
+          <Link to={UPDATED_ADMIN_PATHS.users} className="btn btn--outline">
+            Back to Users
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   if (!loading && !user) {
     return <Navigate to={UPDATED_ADMIN_PATHS.users} replace />;

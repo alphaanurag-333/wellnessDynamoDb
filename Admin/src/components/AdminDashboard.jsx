@@ -16,57 +16,40 @@ import {
   ALERT_SERIOUS_COUNT,
   APP_CLIENT_STATS,
   APP_USER_PROG_CARD,
-  BIRTHDAYS,
   CHALLENGE_AUDIENCE_OPTIONS,
   CHALLENGE_DAY_OPTIONS,
-  CHAMP_CLIENTS,
-  CHAMP_COACHES,
-  CHAMP_MONTHS,
   CLIENT_ALERTS,
-  COMM_ONB_COUNT,
   COACH_TIERS,
   DASH_SCOPE_LABELS,
   EXP_CARDS,
   EXP_NOTE,
-  EXP_TOTAL,
   SUBSCRIBED_NOTE,
   FAT_METRICS,
   GRADIENT_GREEN,
-  LEADERBOARD,
   OPS_OVERDUE,
   PROG_CATS,
   UPDATED_ADMIN_PATHS,
   WC_A1C_METRICS,
   WC_APP_CLIENT_STATS,
   WC_COACH_TIERS,
-  WC_COMM_ONB_COUNT,
-  WC_EXP_TOTAL,
   WC_FAT_METRICS,
-  WC_LEADERBOARD,
   WC_PENDING_GROUPS,
   WC_STALE_RECORDS,
-  WC_STALE_TOTAL,
   AWC_A1C_METRICS,
   AWC_APP_CLIENT_STATS,
   AWC_COACH_TIERS,
-  AWC_COMM_ONB_COUNT,
-  AWC_EXP_TOTAL,
   AWC_FAT_METRICS,
-  AWC_LEADERBOARD,
   AWC_PENDING_GROUPS,
   AWC_STALE_RECORDS,
-  AWC_STALE_TOTAL,
   SUPPORT_QUICK_INSIGHTS,
   alertStyles,
   buildTierGradient,
 } from "../data/dashboardData.js";
-import { getProgramCategoryModal } from "../data/programCategoryData.js";
 import { UNASSIGNED_COACH } from "../data/usersData.js";
 import {
   A1C_METRIC_KEYS,
   FAT_METRIC_KEYS,
   buildLiveProgressModal,
-  getProgressModal,
   onboardingRemindCopy,
 } from "../data/programProgressData.js";
 import {
@@ -78,7 +61,6 @@ import {
   PRODUCT_COLORS,
   findFinancialYear,
   formatRevenue,
-  paymentsForMonth,
   enrichLivePayments,
   resolveRevenueAnalytics,
 } from "../data/revenueAnalytics.js";
@@ -141,17 +123,19 @@ function teamCardsFromRoles(roles, { excludeIds = [], statisticsForView } = {}) 
 }
 
 function dynamicTiers(baseTiers, rows) {
-  if (!Array.isArray(rows)) return baseTiers;
-  const values = new Map(rows.map((row) => [row.key, asNumber(row.value)]));
   const keyByFilter = {
     Seek: "seek",
     Consultancy: "consultancy_only",
     "Seek to Heal": "heal",
     Maintenance: "maintenance",
   };
-  const next = baseTiers.map((tier) => ({
+  const values = Array.isArray(rows)
+    ? new Map(rows.map((row) => [row.key, asNumber(row.value)]))
+    : null;
+  const next = (baseTiers || []).map((tier) => ({
     ...tier,
-    value: values.get(keyByFilter[tier.tierFilter]) ?? 0,
+    // Live only: missing API tier rows → 0, never keep demo seed counts.
+    value: values ? (values.get(keyByFilter[tier.tierFilter]) ?? 0) : 0,
   }));
   const total = next.reduce((sum, tier) => sum + tier.value, 0);
   return next.map((tier) => ({
@@ -439,7 +423,7 @@ export function AdminDashboard({
     if (!Array.isArray(healthConcerns)) {
       return PROG_CATS.map((category) => ({
         ...category,
-        count: statistics ? 0 : category.count,
+        count: 0,
         modalKey: category.label,
         modalLabel: category.label,
       }));
@@ -486,13 +470,14 @@ export function AdminDashboard({
   const appClientStats = baseAppClientStats.map((item) => (
     item.tierFilter === "Maintenance" && tierRows?.some((row) => row.key === "maintenance")
       ? { ...item, value: asNumber(tierRows.find((row) => row.key === "maintenance")?.value) }
-      : statisticsForView && !item.tierFilter
-        ? { ...item, value: "—", tag: "No live source configured" }
-        : item
+      : statisticsForView
+        ? (item.tierFilter
+          ? { ...item, value: asNumber(tierRows?.find((row) => row.key === "maintenance")?.value) }
+          : { ...item, value: "—", tag: "No live source configured" })
+        : { ...item, value: 0 }
   ));
-  const fallbackExpTotal = viewAs === "wc" ? WC_EXP_TOTAL : viewAs === "awc" ? AWC_EXP_TOTAL : EXP_TOTAL;
   const subscribedCount = asNumber(tierRows?.find((row) => row.key === "heal")?.value);
-  const expTotal = statisticsForView ? subscribedCount : fallbackExpTotal;
+  const expTotal = subscribedCount;
   const everydayWellnessConcern = healthConcerns?.find(
     (option) => String(option.label || "").trim().toLowerCase() === "everyday wellness",
   );
@@ -503,42 +488,33 @@ export function AdminDashboard({
   );
   const appUserProgramCard = {
     ...APP_USER_PROG_CARD,
-    ...(statisticsForView ? { count: everydayWellnessCount } : null),
+    count: statisticsForView ? everydayWellnessCount : 0,
     modalKey: everydayWellnessConcern?.id || APP_USER_PROG_CARD.label,
     modalLabel: everydayWellnessConcern?.label || APP_USER_PROG_CARD.label,
   };
-  const fallbackOnbCount = viewAs === "wc" ? WC_COMM_ONB_COUNT : viewAs === "awc" ? AWC_COMM_ONB_COUNT : COMM_ONB_COUNT;
   const fallbackFatMetrics = viewAs === "wc" ? WC_FAT_METRICS : viewAs === "awc" ? AWC_FAT_METRICS : FAT_METRICS;
   const fallbackA1cMetrics = viewAs === "wc" ? WC_A1C_METRICS : viewAs === "awc" ? AWC_A1C_METRICS : A1C_METRICS;
   const liveProgress = statisticsForView?.programProgress || null;
   const commOnbCount = liveProgress
     ? asNumber(liveProgress.onboarding?.count)
-    : statisticsForView
-      ? 0
-      : fallbackOnbCount;
+    : 0;
   const fatMetrics = fallbackFatMetrics.map((metric) => ({
     ...metric,
     count: liveProgress
       ? asNumber(liveProgress.fatLoss?.[FAT_METRIC_KEYS[metric.label]]?.count)
-      : statisticsForView
-        ? 0
-        : metric.count,
+      : 0,
   }));
   const a1cMetrics = fallbackA1cMetrics.map((metric) => ({
     ...metric,
     count: liveProgress
       ? asNumber(liveProgress.hba1c?.[A1C_METRIC_KEYS[metric.label]]?.count)
-      : statisticsForView
-        ? 0
-        : metric.count,
+      : 0,
   }));
-  const opsOverdue = statisticsForView?.opsOverdue || (statisticsForView
-    ? {
-      title: OPS_OVERDUE.title,
-      total: "0 pending",
-      cells: OPS_OVERDUE.cells.map((cell) => ({ ...cell, count: 0, people: [] })),
-    }
-    : OPS_OVERDUE);
+  const opsOverdue = statisticsForView?.opsOverdue || {
+    title: OPS_OVERDUE.title,
+    total: "0 pending",
+    cells: OPS_OVERDUE.cells.map((cell) => ({ ...cell, count: 0, people: [] })),
+  };
   const excludeTeamIds = viewAs === "wc" ? ["wc"] : [];
   const liveTeamRoles = statisticsForView?.teamRoles;
   const catalogTeamCards = Array.isArray(liveTeamRoles)
@@ -550,23 +526,30 @@ export function AdminDashboard({
         { excludeIds: excludeTeamIds, statisticsForView },
       );
   const teamCards = catalogTeamCards;
-  const fallbackLeaderboard = viewAs === "wc" ? WC_LEADERBOARD : viewAs === "awc" ? AWC_LEADERBOARD : viewAs === "support" ? WC_LEADERBOARD : LEADERBOARD;
   const liveCommunity = statistics?.community || null;
-  const birthdayRows = liveCommunity ? (liveCommunity.birthdays || []) : BIRTHDAYS;
-  const champClients = liveCommunity ? (liveCommunity.champions?.clients || []) : CHAMP_CLIENTS;
-  const champCoaches = liveCommunity ? (liveCommunity.champions?.coaches || []) : CHAMP_COACHES;
+  const birthdayRows = liveCommunity ? (liveCommunity.birthdays || []) : [];
+  const champClients = liveCommunity ? (liveCommunity.champions?.clients || []) : [];
+  const champCoaches = liveCommunity ? (liveCommunity.champions?.coaches || []) : [];
   const liveLeaderboard = liveCommunity?.leaderboard;
-  const activeLeaderboard = liveCommunity
-    ? (liveLeaderboard?.rows || [])
-    : fallbackLeaderboard;
+  const activeLeaderboard = liveCommunity ? (liveLeaderboard?.rows || []) : [];
   const basePendingGroups = viewAs === "wc" ? WC_PENDING_GROUPS : viewAs === "awc" ? AWC_PENDING_GROUPS : [];
-  const pendingGroups = dynamicPendingGroups(basePendingGroups, statisticsForView);
-  const fallbackStaleRecords = viewAs === "wc" ? WC_STALE_RECORDS : viewAs === "awc" ? AWC_STALE_RECORDS : [];
-  const fallbackStaleTotal = viewAs === "wc" ? WC_STALE_TOTAL : viewAs === "awc" ? AWC_STALE_TOTAL : "";
+  const pendingGroups = dynamicPendingGroups(
+    basePendingGroups.map((group) => ({
+      ...group,
+      total: statisticsForView ? group.total : "0 pending",
+      cells: (group.cells || []).map((cell) => (
+        statisticsForView ? cell : { ...cell, count: 0, people: [] }
+      )),
+    })),
+    statisticsForView,
+  );
   const { records: staleRecords, total: staleTotal } = liveStaleRecords(
     statisticsForView,
-    fallbackStaleRecords,
-    fallbackStaleTotal,
+    (viewAs === "wc" ? WC_STALE_RECORDS : viewAs === "awc" ? AWC_STALE_RECORDS : []).map((record) => ({
+      ...record,
+      count: 0,
+    })),
+    "0 due",
   );
   const scopeLabel = DASH_SCOPE_LABELS[viewAs] ?? "Global";
   const [broadcast, setBroadcast] = useState("");
@@ -590,16 +573,14 @@ export function AdminDashboard({
   const [paymentsLoading, setPaymentsLoading] = useState(false);
   const [paymentsError, setPaymentsError] = useState("");
 
-  const champMonthOptions = liveCommunity
-    ? (liveLeaderboard?.months || [])
-    : Object.entries(CHAMP_MONTHS).map(([value, data]) => ({ value, label: data.label }));
+  const champMonthOptions = liveCommunity ? (liveLeaderboard?.months || []) : [];
   const champ = liveCommunity
     ? {
         label: liveLeaderboard?.monthLabel || champMonthOptions[0]?.label || "",
         champion: liveLeaderboard?.rows?.[0]?.name || "—",
         score: liveLeaderboard?.rows?.[0]?.score ?? 0,
       }
-    : (CHAMP_MONTHS[champMonth] ?? CHAMP_MONTHS["2026-07"]);
+    : { label: "", champion: "—", score: 0 };
   const maxScore = activeLeaderboard[0]?.score ?? 1;
   const tierData = coachTiers.map((tier) => ({
     label: tier.label === "PWC ONLY" ? "Consultancy only" : tier.label === "HEAL" ? "Heal (paid)" : tier.label === "SEEK" ? "Seek (free)" : "Maintenance",
@@ -609,9 +590,10 @@ export function AdminDashboard({
   const tierTotal = tierData.reduce((sum, item) => sum + item.value, 0);
   const tierGradient = buildTierGradient(tierData);
   const revenueAnalytics = useMemo(
-    () => (isAdminDash ? resolveRevenueAnalytics(hasAdminStatistics ? statisticsForView : null) : null),
+    () => (isAdminDash && hasAdminStatistics ? resolveRevenueAnalytics(statisticsForView) : null),
     [isAdminDash, hasAdminStatistics, statisticsForView],
   );
+  const revenueUnavailable = isAdminDash && !revenueAnalytics;
   const fyOptions = useMemo(() => revenueAnalytics?.financialYears || [], [revenueAnalytics]);
   const selectedFy = findFinancialYear(revenueAnalytics, selectedFyStartYear);
   const fyMonths = useMemo(() => selectedFy?.months || [], [selectedFy]);
@@ -655,14 +637,8 @@ export function AdminDashboard({
       })
       .catch((error) => {
         if (cancelled) return;
-        const fallback = enrichLivePayments(
-          paymentsForMonth(revenueAnalytics, selectedMonthKey),
-          { clients, healthConcerns },
-        );
-        setMonthPayments(fallback);
-        if (!fallback.length) {
-          setPaymentsError(error?.message || "Couldn’t load payments for this month.");
-        }
+        setMonthPayments([]);
+        setPaymentsError(error?.message || "Couldn’t load payments for this month.");
       })
       .finally(() => {
         if (!cancelled) setPaymentsLoading(false);
@@ -670,7 +646,7 @@ export function AdminDashboard({
     return () => {
       cancelled = true;
     };
-  }, [paymentsModalOpen, selectedMonthKey, clients, healthConcerns, revenueAnalytics]);
+  }, [paymentsModalOpen, selectedMonthKey, clients, healthConcerns]);
 
   const selectedMonthRow = fyMonths.find((row) => row.month === selectedMonthKey) || fyMonths.at(-1) || null;
   const previousMonthRow = selectedMonthRow
@@ -916,19 +892,24 @@ export function AdminDashboard({
   const programModal = useMemo(() => {
     if (!programModalTarget) return null;
     const { key, label } = programModalTarget;
-    if (!clientsByConcern) return getProgramCategoryModal(label);
-    const rows = clientsByConcern.get(concernKey(key)) ?? clientsByConcern.get(concernKey(label)) ?? [];
+    // Live clients only — never fall back to seed/mock program lists.
+    const rows = clientsByConcern
+      ? (clientsByConcern.get(concernKey(key)) ?? clientsByConcern.get(concernKey(label)) ?? [])
+      : [];
     return { label, rows };
   }, [clientsByConcern, programModalTarget]);
   const progressModal = liveProgress
     ? buildLiveProgressModal(progressModalKey, liveProgress)
-    : getProgressModal(progressModalKey);
+    : null;
 
   function openProgramCategory(card) {
     const key = card?.modalKey || card?.label;
     const label = card?.modalLabel || card?.label;
     if (!key && !label) return;
-    if (!clientsByConcern && !getProgramCategoryModal(label)) return;
+    if (!clientsByConcern) {
+      onToast("Client list unavailable — live roster did not load.");
+      return;
+    }
     setProgramModalTarget({ key, label });
   }
 
@@ -942,11 +923,10 @@ export function AdminDashboard({
   }
 
   function openProgressModal(key) {
-    if (liveProgress) {
-      setProgressModalKey(key);
+    if (!liveProgress) {
+      onToast("Program progress data is unavailable right now.");
       return;
     }
-    if (!getProgressModal(key)) return;
     setProgressModalKey(key);
   }
 
@@ -1025,17 +1005,33 @@ export function AdminDashboard({
         </div>
       </div>
 
+      {isAdminDash && revenueUnavailable ? (
+        <div className="ua-dash-data-banner" role="status">
+          <strong>Revenue data unavailable.</strong>
+          {" "}
+          Live analytics did not load from the API. Totals are not shown — sample figures are never used.
+        </div>
+      ) : null}
+
+      {!statisticsForView && isFullDash ? (
+        <div className="ua-dash-data-banner ua-dash-data-banner--muted" role="status">
+          <strong>Live dashboard metrics unavailable.</strong>
+          {" "}
+          User and progress cards show zeros until statistics load successfully.
+        </div>
+      ) : null}
+
       {isSupportDash ? (
         <section className="section">
           <div className="ua-section-label">
             <div className="ua-section-label__title">Quick insights</div>
-            <span className="ua-section-label__hint">Tap a card to jump to its section</span>
+            <span className="ua-section-label__hint">Jump to Configs · live counts not wired yet</span>
           </div>
           <div className="insights-row">
             {SUPPORT_QUICK_INSIGHTS.map((item) => (
               <QuickInsightCard
                 key={item.label}
-                item={item}
+                item={{ ...item, value: "—", sub: "Live count unavailable" }}
                 onClick={() => goConfigs(item.label)}
               />
             ))}
@@ -1114,7 +1110,7 @@ export function AdminDashboard({
                       {e.label}
                     </span>
                     <span className="expiry-cell__value">
-                      <span style={{ color: "black" }}>{statisticsForView || isStaffDash ? expTotal : e.value}</span>
+                      <span style={{ color: "black" }}>{expTotal}</span>
                       <span className="expiry-cell__sub">
                         {statisticsForView ? "Active Heal subscriptions" : e.sub}
                       </span>
@@ -1732,8 +1728,25 @@ export function AdminDashboard({
           <section className="section">
             <div className="section__head">
               <h2 className="section__title">Revenue Analytics</h2>
-              <span className="section__hint">Overall · till {revenueAnalytics?.asOfLabel || "today"}</span>
+              <span className="section__hint">
+                {revenueUnavailable
+                  ? "Unavailable · live API required"
+                  : `Overall · till ${revenueAnalytics?.asOfLabel || "today"}`}
+              </span>
             </div>
+            {revenueUnavailable ? (
+              <div className="ua-dash-revenue-empty">
+                <div className="ua-dash-revenue-empty__title">Revenue data unavailable</div>
+                <p className="ua-dash-revenue-empty__sub">
+                  The API did not return revenue analytics for this session. Demo numbers are not shown.
+                </p>
+                {onRetry ? (
+                  <button type="button" className="btn btn--outline" onClick={onRetry}>
+                    Retry dashboard
+                  </button>
+                ) : null}
+              </div>
+            ) : (
             <div className="revenue-row">
               <div className="revenue-hero">
                 <div className="revenue-hero__label">Total revenue</div>
@@ -1765,8 +1778,10 @@ export function AdminDashboard({
                 ))}
               </div>
             </div>
+            )}
           </section>
 
+          {!revenueUnavailable ? (
           <section className="section">
             <div className="section__head section__head--charts">
               <h2 className="section__title">Financial year · Apr → Mar</h2>
@@ -1949,6 +1964,7 @@ export function AdminDashboard({
               </div>
             </div>
           </section>
+          ) : null}
         </>
       ) : null}
 

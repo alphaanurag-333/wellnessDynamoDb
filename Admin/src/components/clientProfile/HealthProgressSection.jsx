@@ -10,15 +10,10 @@ import {
   updateHealthProgressSettings,
 } from "../../api/healthProgressApi.js";
 import {
-  BP_WEEKLY,
   CLIENT_HEALTH_TRACKERS,
   CLIENT_TRACKING_FILTER_OPTIONS,
-  CONDITION_PHOTOS,
-  FATLOSS_JOURNEY,
-  GLUCOSE_WEEKLY,
-  MENSTRUAL_CYCLES,
-  WEIGHT_PHOTOS,
 } from "../../data/healthProgressData.js";
+import { isMockNumericId } from "../../utils/isMockNumericId.js";
 
 const BODY_PART_LABELS = {
   face: "Face",
@@ -32,11 +27,6 @@ const BODY_PART_LABELS = {
 };
 
 const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-function isMockNumericId(userId) {
-  const numeric = Number(userId);
-  return Number.isFinite(numeric) && numeric > 0 && String(numeric) === String(userId);
-}
 
 function formatDisplayDate(value) {
   if (!value) return "—";
@@ -95,64 +85,6 @@ function bodyPartLabel(row) {
   const key = String(row?.bodyPart || "").toLowerCase();
   if (key === "other" && row?.bodyPartOther) return String(row.bodyPartOther);
   return BODY_PART_LABELS[key] || key || "Condition";
-}
-
-function parseMockDate(label) {
-  if (!label) return new Date().toISOString();
-  const parsed = new Date(label);
-  if (!Number.isNaN(parsed.getTime())) return parsed.toISOString();
-  const fallback = new Date(`${label} 2026`);
-  return Number.isNaN(fallback.getTime()) ? new Date().toISOString() : fallback.toISOString();
-}
-
-function mockWeightLogs() {
-  const journey = FATLOSS_JOURNEY.dates.map((label, index) => ({
-    id: `mock-w-${index}`,
-    weightKg: FATLOSS_JOURNEY.values[index],
-    recordedAt: parseMockDate(label),
-    weightPicUrl: null,
-  }));
-  const photos = WEIGHT_PHOTOS.map((photo, index) => ({
-    id: photo.id,
-    weightKg: photo.weight,
-    recordedAt: parseMockDate(photo.date),
-    weightPicUrl: index < 3 ? "mock" : null,
-  }));
-  return [...photos, ...journey];
-}
-
-function mockGlucoseLogs() {
-  return GLUCOSE_WEEKLY.dates.flatMap((label, index) => [
-    { id: `mock-fbs-${index}`, type: "fbs", value: GLUCOSE_WEEKLY.fbs[index], recordedAt: parseMockDate(label) },
-    { id: `mock-ppbs-${index}`, type: "ppbs", value: GLUCOSE_WEEKLY.ppbs[index], recordedAt: parseMockDate(label) },
-  ]);
-}
-
-function mockBpLogs() {
-  return BP_WEEKLY.dates.map((label, index) => ({
-    id: `mock-bp-${index}`,
-    sys: BP_WEEKLY.systolic[index],
-    dia: BP_WEEKLY.diastolic[index],
-    recordedAt: parseMockDate(label),
-  }));
-}
-
-function mockCycleLogs() {
-  return MENSTRUAL_CYCLES.map((row) => ({
-    id: row.id,
-    startDate: parseMockDate(row.date).slice(0, 10),
-    endDate: parseMockDate(row.date).slice(0, 10),
-    recordedAt: parseMockDate(row.date),
-  }));
-}
-
-function mockConditionLogs() {
-  return CONDITION_PHOTOS.map((photo, index) => ({
-    id: photo.id,
-    bodyPart: ["face", "skin", "belly"][index % 3],
-    recordedAt: parseMockDate(photo.date),
-    picUrl: null,
-  }));
 }
 
 function ChartPlot({ children }) {
@@ -945,7 +877,7 @@ export function HealthProgressSection({ user, onToast }) {
   const userId = user?.id;
   const isMock = isMockNumericId(userId);
 
-  const [trackers, setTrackers] = useState(() => CLIENT_HEALTH_TRACKERS.map((row) => ({ ...row, enabled: isMock })));
+  const [trackers, setTrackers] = useState(() => CLIENT_HEALTH_TRACKERS.map((row) => ({ ...row, enabled: false })));
   const [isFemale, setIsFemale] = useState(true);
   const [search, setSearch] = useState("");
   const [trackingFilter, setTrackingFilter] = useState("all");
@@ -953,17 +885,7 @@ export function HealthProgressSection({ user, onToast }) {
   const [logsLoading, setLogsLoading] = useState(false);
   const [error, setError] = useState("");
   const [savingId, setSavingId] = useState("");
-  const [logs, setLogs] = useState(() => (
-    isMock
-      ? {
-          weight: mockWeightLogs(),
-          glucose: mockGlucoseLogs(),
-          bp: mockBpLogs(),
-          menstrual: mockCycleLogs(),
-          condition: mockConditionLogs(),
-        }
-      : EMPTY_LOGS
-  ));
+  const [logs, setLogs] = useState(EMPTY_LOGS);
 
   const liveCount = trackers.filter((t) => t.enabled).length;
   const enabledKey = trackers.filter((t) => t.enabled).map((t) => t.featureKey).sort().join(",");
@@ -987,15 +909,9 @@ export function HealthProgressSection({ user, onToast }) {
   useEffect(() => {
     if (!userId || isMock) {
       setLoading(false);
-      setError("");
-      setTrackers(CLIENT_HEALTH_TRACKERS.map((row) => ({ ...row, enabled: true })));
-      setLogs({
-        weight: mockWeightLogs(),
-        glucose: mockGlucoseLogs(),
-        bp: mockBpLogs(),
-        menstrual: mockCycleLogs(),
-        condition: mockConditionLogs(),
-      });
+      setError(isMock ? "Demo profile ids cannot load health progress." : "");
+      setTrackers(CLIENT_HEALTH_TRACKERS.map((row) => ({ ...row, enabled: false })));
+      setLogs(EMPTY_LOGS);
       return undefined;
     }
 
@@ -1095,7 +1011,8 @@ export function HealthProgressSection({ user, onToast }) {
     const nextEnabled = !tracker.enabled;
     setTrackers((list) => list.map((row) => (row.id === id ? { ...row, enabled: nextEnabled } : row)));
     if (isMock) {
-      onToast?.("Tracker updated");
+      onToast?.("Demo profiles cannot update trackers.");
+      setTrackers((list) => list.map((row) => (row.id === id ? { ...row, enabled: tracker.enabled } : row)));
       return;
     }
     setSavingId(id);

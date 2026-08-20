@@ -2,11 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PillTabs } from "../shared.jsx";
 import {
-  FOOD_DEMO_TODAY,
   FOOD_MACRO_TARGETS,
-  FOOD_MEALS,
-  DEFAULT_WATER_RANGE,
-  buildWaterChart,
   buildWaterChartFromHistory,
   formatFoodDateInput,
   formatFoodDateLabel,
@@ -33,11 +29,10 @@ import { MealPhotoModal } from "./MealPhotoModal.jsx";
 import { FoodDateRow, FoodWaterHistoryPicker } from "./FoodDatePicker.jsx";
 import { DietPlanPanel } from "./DietPlanPanel.jsx";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
+import { isMockNumericId } from "../../utils/isMockNumericId.js";
 
 function isLiveUserId(userId) {
-  if (!userId) return false;
-  const numeric = Number(userId);
-  return !(Number.isFinite(numeric) && numeric > 0 && String(numeric) === String(userId));
+  return Boolean(userId) && !isMockNumericId(userId);
 }
 
 function defaultWaterRange(today = localToday()) {
@@ -368,18 +363,18 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const userId = String(user?.id || "").trim();
   const live = isLiveUserId(userId);
-  const today = useMemo(() => (live ? localToday() : FOOD_DEMO_TODAY), [live]);
+  const today = useMemo(() => localToday(), []);
   const mode = searchParams.get("mode") === "detailed" ? "detailed" : "macro";
   const tabParam = searchParams.get("tab");
   const [dietPlanOn, setDietPlanOn] = useState(() => user?.dietPlanEnabled !== false);
   const [dietPlanBusy, setDietPlanBusy] = useState(false);
-  const [meals, setMeals] = useState(live ? [] : FOOD_MEALS);
+  const [meals, setMeals] = useState([]);
   const [photoMeal, setPhotoMeal] = useState(null);
   const [waterGoal, setWaterGoal] = useState(8);
   const [waterGoalEditing, setWaterGoalEditing] = useState(false);
   const [waterGoalDraft, setWaterGoalDraft] = useState(8);
   const [selectedDate, setSelectedDate] = useState(today);
-  const [waterRange, setWaterRange] = useState(() => (live ? defaultWaterRange(today) : DEFAULT_WATER_RANGE));
+  const [waterRange, setWaterRange] = useState(() => defaultWaterRange(today));
   const [macroTargets, setMacroTargets] = useState(FOOD_MACRO_TARGETS);
   const [waterHistory, setWaterHistory] = useState(null);
   const [mealsLoading, setMealsLoading] = useState(live);
@@ -394,7 +389,8 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
     if (live && waterHistory) {
       return buildWaterChartFromHistory(waterHistory, waterRange.from, waterRange.to, today);
     }
-    return buildWaterChart(waterRange.from, waterRange.to, today);
+    // Never fall back to seed/demo water series for non-live ids.
+    return buildWaterChartFromHistory([], waterRange.from, waterRange.to, today);
   }, [live, today, waterHistory, waterRange.from, waterRange.to]);
 
   const tab = useMemo(() => {
@@ -409,11 +405,11 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
 
   useEffect(() => {
     setSelectedDate(today);
-    setWaterRange(live ? defaultWaterRange(today) : DEFAULT_WATER_RANGE);
+    setWaterRange(defaultWaterRange(today));
     setPhotoMeal(null);
     setWaterHistory(null);
     setMacroTargets(FOOD_MACRO_TARGETS);
-    setMeals(live ? [] : FOOD_MEALS);
+    setMeals([]);
     jumpedToLatestRef.current = false;
     setEditAfterAiId("");
   }, [live, today, userId]);
@@ -441,7 +437,7 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
 
   useEffect(() => {
     if (!live) {
-      setMeals(FOOD_MEALS);
+      setMeals([]);
       setMealsLoading(false);
       return undefined;
     }

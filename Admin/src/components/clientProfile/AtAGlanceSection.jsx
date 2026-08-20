@@ -28,6 +28,7 @@ import { ChampionCelebrationOverlay } from "./ChampionCelebrationOverlay.jsx";
 import { ReviewHistoryModal } from "./ReviewHistoryModal.jsx";
 import { HealthProgressCarousel } from "./HealthProgressCarousel.jsx";
 import { ScheduleMeetingModal } from "./ScheduleMeetingModal.jsx";
+import { isMockNumericId } from "../../utils/isMockNumericId.js";
 import { DailyMetricModal } from "./DailyMetricModal.jsx";
 import { useViewAs } from "../../context/ViewAsContext.jsx";
 
@@ -432,7 +433,7 @@ function CommsBlock({ user, onToast, reminders, setReminders, onOpenList, canEdi
       return;
     }
     if (isMock) {
-      onToast("Message sent");
+      onToast("Demo profiles cannot send messages.");
       return;
     }
 
@@ -465,19 +466,7 @@ function CommsBlock({ user, onToast, reminders, setReminders, onOpenList, canEdi
       return;
     }
     if (isMock) {
-      setReminders((list) => [
-        ...list,
-        {
-          id: `mock-${Date.now()}`,
-          name,
-          time,
-          days: reminderDays,
-          isCoachAssigned: true,
-          isActive: true,
-        },
-      ]);
-      setReminder("");
-      onToast("Reminder set");
+      onToast("Demo profiles cannot set reminders.");
       return;
     }
 
@@ -1371,7 +1360,7 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
           onClose={() => setRemindersOpen(false)}
           onDelete={async (id) => {
             if (isMockNumericId(user?.id)) {
-              setReminders((list) => list.filter((x) => x.id !== id));
+              onToast("Demo profiles cannot delete reminders.");
               return;
             }
             setDeletingReminderId(id);
@@ -1389,9 +1378,4 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
       ) : null}
     </div>
   );
-}
-
-function isMockNumericId(userId) {
-  const numeric = Number(userId);
-  return Number.isFinite(numeric) && numeric > 0 && String(numeric) === String(userId);
 }
