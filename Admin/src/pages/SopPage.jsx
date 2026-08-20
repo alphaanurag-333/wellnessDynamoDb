@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { BrandLoader } from "../components/BrandLoader.jsx";
 import { PageHeader } from "../components/shared.jsx";
+import { useViewAs } from "../context/ViewAsContext.jsx";
 import {
   adminCreateSop,
   adminDeleteSop,
@@ -195,6 +196,10 @@ function SopFormModal({ mode, initial, saving, onClose, onSubmit }) {
 
 export function SopPage() {
   const { showToast } = useOutletContext();
+  const { can } = useViewAs();
+  const canCreate = can("console.sop.create");
+  const canEdit = can("console.sop.edit");
+  const canDelete = can("console.sop.delete");
   const [sops, setSops] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -288,9 +293,11 @@ export function SopPage() {
         title="SOP"
         subtitle="Written by the Admin desk. Wellness coaches read these — they cannot change them."
         actions={
-          <button type="button" className="ua-sop-btn-new" onClick={() => setModal({ mode: "create", sop: null })}>
-            + New SOP
-          </button>
+          canCreate ? (
+            <button type="button" className="ua-sop-btn-new" onClick={() => setModal({ mode: "create", sop: null })}>
+              + New SOP
+            </button>
+          ) : null
         }
       />
 
@@ -331,21 +338,25 @@ export function SopPage() {
                     >
                       {open ? "Hide" : "Read"}
                     </button>
-                    <button
-                      type="button"
-                      className="ua-sop-action ua-sop-action--edit"
-                      onClick={() => setModal({ mode: "edit", sop })}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      className="ua-sop-action ua-sop-action--icon"
-                      aria-label={`Delete ${sop.title}`}
-                      onClick={() => setDeleteAsk(sop)}
-                    >
-                      ×
-                    </button>
+                    {canEdit ? (
+                      <button
+                        type="button"
+                        className="ua-sop-action ua-sop-action--edit"
+                        onClick={() => setModal({ mode: "edit", sop })}
+                      >
+                        Edit
+                      </button>
+                    ) : null}
+                    {canDelete ? (
+                      <button
+                        type="button"
+                        className="ua-sop-action ua-sop-action--icon"
+                        aria-label={`Delete ${sop.title}`}
+                        onClick={() => setDeleteAsk(sop)}
+                      >
+                        ×
+                      </button>
+                    ) : null}
                   </div>
                 </div>
 

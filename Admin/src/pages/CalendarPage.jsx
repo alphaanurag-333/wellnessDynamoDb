@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { PageHeader } from "../components/shared.jsx";
+import { useViewAs } from "../context/ViewAsContext.jsx";
 import { BlockTimeModal } from "../components/clientProfile/BlockTimeModal.jsx";
 import { MiniCalendar, ScheduleMeetingModal } from "../components/clientProfile/ScheduleMeetingModal.jsx";
 import {
@@ -163,6 +164,11 @@ function mapCalendarMeetings(meetings) {
 
 export function CalendarPage() {
   const { showToast: onToast } = useOutletContext();
+  const { can } = useViewAs();
+  const canBlockTime =
+    can("console.avail.create") || can("console.avail.edit") || can("console.avail.delete");
+  const canManageMeetings =
+    can("console.cal.create") || can("console.cal.edit") || can("console.cal.delete");
   const jumpRef = useRef(null);
   const gridColRef = useRef(null);
   const today = useMemo(() => {
@@ -261,7 +267,7 @@ export function CalendarPage() {
   }
 
   function openBlock(entry, date) {
-    if (entry.type !== "blocked") return;
+    if (!canBlockTime || entry.type !== "blocked") return;
     if (date) setSelectedDate(date);
     setBlockDraft({
       id: entry.id,
@@ -272,7 +278,7 @@ export function CalendarPage() {
   }
 
   function onGridMouseDown(event) {
-    if (event.button !== 0 || event.target.closest(".ua-cal-event")) return;
+    if (!canBlockTime || event.button !== 0 || event.target.closest(".ua-cal-event")) return;
     const col = gridColRef.current;
     if (!col) return;
     const start = minsFromPointer(event.clientY, col, hourStart, hourPx);
@@ -451,13 +457,13 @@ export function CalendarPage() {
                         key={entry.id}
                         className={`ua-cal-event ua-cal-event--${entry.type}${short ? " ua-cal-event--short" : ""}`}
                         style={eventStyle(entry.start, entry.end, hourStart, hourPx)}
-                        onClick={() => { if (!entry.preview) openBlock(entry); }}
+                        onClick={() => { if (!entry.preview && canBlockTime) openBlock(entry); }}
                       >
                         <div className="ua-cal-event__label">
                           {short && entry.type === "blocked" ? `${entry.start}–${entry.end} ${entry.label}` : entry.label}
                         </div>
                         {short ? null : <div className="ua-cal-event__sub">{entry.start}–{entry.end}</div>}
-                        {entry.canDelete ? (
+                        {entry.canDelete && can("console.avail.delete") ? (
                           <button
                             type="button"
                             className="ua-cal-event__x"
@@ -496,21 +502,23 @@ export function CalendarPage() {
                     <div className="ua-cal-slot__meta">{entry.kind} · {entry.mode}</div>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
-                  onClick={async () => {
-                    try {
-                      await cancelOnboardingMeeting(entry.userId, entry.id);
-                      onToast(`${entry.name} cancelled`);
-                      loadMeetings();
-                    } catch (err) {
-                      onToast(err?.message || "Failed to cancel");
-                    }
-                  }}
-                >
-                  Cancel
-                </button>
+                {canManageMeetings ? (
+                  <button
+                    type="button"
+                    className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                    onClick={async () => {
+                      try {
+                        await cancelOnboardingMeeting(entry.userId, entry.id);
+                        onToast(`${entry.name} cancelled`);
+                        loadMeetings();
+                      } catch (err) {
+                        onToast(err?.message || "Failed to cancel");
+                      }
+                    }}
+                  >
+                    Cancel
+                  </button>
+                ) : null}
               </div>
             )) : <div className="ua-cal-empty">Nothing confirmed yet</div>}
           </section>
@@ -532,22 +540,26 @@ export function CalendarPage() {
               </div>
               <div className="ua-cal-offer__hint">Only {entry.name.split(" ")[0]} can confirm these slots</div>
               <div className="ua-cal-offer__actions">
-                <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" onClick={() => setScheduleFor({ ...entry, kind: "offer" })}>Offer more</button>
-                <button
-                  type="button"
-                  className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm"
-                  onClick={async () => {
-                    try {
-                      await cancelOnboardingMeeting(entry.userId, entry.id);
-                      onToast("Offer released");
-                      loadMeetings();
-                    } catch (err) {
-                      onToast(err?.message || "Failed to release offer");
-                    }
-                  }}
-                >
-                  Release all
-                </button>
+                {canManageMeetings ? (
+                  <>
+                    <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" onClick={() => setScheduleFor({ ...entry, kind: "offer" })}>Offer more</button>
+                    <button
+                      type="button"
+                      className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm"
+                      onClick={async () => {
+                        try {
+                          await cancelOnboardingMeeting(entry.userId, entry.id);
+                          onToast("Offer released");
+                          loadMeetings();
+                        } catch (err) {
+                          onToast(err?.message || "Failed to release offer");
+                        }
+                      }}
+                    >
+                      Release all
+                    </button>
+                  </>
+                ) : null}
               </div>
             </section>
           ))}

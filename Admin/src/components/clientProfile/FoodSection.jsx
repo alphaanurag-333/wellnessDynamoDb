@@ -26,11 +26,13 @@ import {
   reviewUserMealLog,
   updateUserMealLog,
   updateUserMealTrackingMode,
+  analyzeUserMealLog,
 } from "../../api/mealTrackingApi.js";
 import { updateUserDietPlanEnabled } from "../../api/dietPlanCatalogApi.js";
 import { MealPhotoModal } from "./MealPhotoModal.jsx";
 import { FoodDateRow, FoodWaterHistoryPicker } from "./FoodDatePicker.jsx";
 import { DietPlanPanel } from "./DietPlanPanel.jsx";
+import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 
 function isLiveUserId(userId) {
   if (!userId) return false;
@@ -126,13 +128,31 @@ function MacroMini({ tone, label, value, unit, editing, onChange }) {
   );
 }
 
+function CameraIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 8h3l2-2h6l2 2h3v11H4z" />
+      <circle cx="12" cy="13" r="3.2" />
+    </svg>
+  );
+}
+
+function SparkIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 2l1.6 6.4L20 10l-6.4 1.6L12 18l-1.6-6.4L4 10l6.4-1.6L12 2z" />
+    </svg>
+  );
+}
+
 function MealCard({
   meal,
   mode,
-  live,
   busy,
+  analyzing,
+  autoEdit,
+  canEdit,
   onSubmitAi,
-  onApprove,
   onSaveEdit,
   onOpenPhoto,
   onToast,
@@ -140,11 +160,17 @@ function MealCard({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(meal.macros || { protein: 0, carbs: 0, fat: 0, calories: 0 });
   const shown = editing ? draft : (meal.macros || draft);
-  const showMacros = Boolean(meal.macros) && (meal.aiStatus === "review" || meal.aiStatus === "approved" || meal.aiStatus === "rejected" || editing);
+  const needsAi = meal.aiStatus === "none";
+  const declined = meal.aiStatus === "declined";
+  const showMacros = Boolean(meal.macros) && !needsAi && !declined;
 
   useEffect(() => {
     if (meal.macros) setDraft(meal.macros);
   }, [meal.macros]);
+
+  useEffect(() => {
+    if (autoEdit) setEditing(true);
+  }, [autoEdit]);
 
   function startEdit() {
     setDraft(meal.macros || { protein: 0, carbs: 0, fat: 0, calories: 0 });
@@ -166,21 +192,26 @@ function MealCard({
     .join(" · ");
 
   return (
-    <div className={`ua-cp-food-meal${meal.aiStatus === "review" ? " ua-cp-food-meal--review" : ""}${editing ? " ua-cp-food-meal--edit" : ""}`}>
+    <div className={`ua-cp-food-meal${meal.aiStatus === "review" ? " ua-cp-food-meal--review" : ""}${editing ? " ua-cp-food-meal--edit" : ""}${declined ? " ua-cp-food-meal--declined" : ""}`}>
       <div className="ua-cp-food-meal__main">
         <button type="button" className="ua-cp-food-meal__photo" onClick={() => onOpenPhoto(meal)} aria-label={`View ${meal.name} photo`}>
           {meal.photoUrl ? (
             <img src={meal.photoUrl} alt="" className="ua-cp-food-meal__photo-img" />
           ) : (
-            <span className="ua-cp-food-meal__photo-icon" aria-hidden="true">📷</span>
+            <span className="ua-cp-food-meal__photo-icon" aria-hidden="true"><CameraIcon /></span>
           )}
           <span className="ua-cp-food-meal__photo-swap" aria-hidden="true">⇄</span>
         </button>
         <div className="ua-cp-food-meal__info">
           <strong>{meal.name}</strong>
           <span>{subtitle}</span>
-          {meal.description ? (
+          {meal.description && !declined ? (
             <p className="ua-cp-food-meal__desc">{meal.description}</p>
+          ) : null}
+          {declined && meal.declineMessage ? (
+            <p className="ua-cp-food-meal__decline">{meal.declineMessage}</p>
+          ) : meal.photoAiStatus === "failed" && meal.declineMessage ? (
+            <p className="ua-cp-food-meal__decline">{meal.declineMessage}</p>
           ) : null}
           {mode === "detailed" && meal.detailedTags?.length ? (
             <div className="ua-cp-food-meal__tags">
@@ -191,27 +222,22 @@ function MealCard({
           ) : null}
         </div>
         <div className="ua-cp-food-meal__actions">
-          {editing ? (
-            <>
-              <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" disabled={busy} onClick={() => setEditing(false)}>Cancel</button>
-              <button type="button" className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm" disabled={busy} onClick={saveEdit}>Save</button>
-            </>
-          ) : meal.aiStatus === "review" ? (
-            <>
+          {canEdit ? (
+            editing ? (
+              <>
+                <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" disabled={busy} onClick={() => setEditing(false)}>Cancel</button>
+                <button type="button" className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm" disabled={busy} onClick={saveEdit}>Save</button>
+              </>
+            ) : meal.aiStatus === "review" || meal.aiStatus === "approved" ? (
               <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" disabled={busy} onClick={startEdit}>Edit</button>
-              <button type="button" className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm" disabled={busy} onClick={() => onApprove(meal.id)}>Approve</button>
-            </>
-          ) : meal.aiStatus === "approved" ? (
-            <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" disabled={busy} onClick={startEdit}>Edit</button>
-          ) : meal.aiStatus === "rejected" ? (
-            <span className="ua-cp-food-meal__status">Rejected</span>
-          ) : live ? (
-            <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" disabled={busy} onClick={startEdit}>Edit</button>
-          ) : (
-            <button type="button" className="ua-cp-btn ua-cp-btn--ai" onClick={() => onSubmitAi(meal.id)}>
-              <span aria-hidden="true">✦</span> Submit to AI
-            </button>
-          )}
+            ) : meal.aiStatus === "rejected" ? (
+              <span className="ua-cp-food-meal__status">Rejected</span>
+            ) : (
+              <button type="button" className="ua-cp-btn ua-cp-btn--ai" disabled={busy || analyzing} onClick={() => onSubmitAi(meal.id)}>
+                <SparkIcon /> {analyzing ? "Analyzing…" : "Submit to AI"}
+              </button>
+            )
+          ) : null}
         </div>
       </div>
       {showMacros ? (
@@ -226,7 +252,7 @@ function MealCard({
   );
 }
 
-function MealsPanel({ meals, mode, live, busyId, dayTotal, listLabel, dateLabel, loading, onSubmitAi, onApprove, onSaveEdit, onOpenPhoto, onToast }) {
+function MealsPanel({ meals, mode, live, busyId, analyzingId, editAfterAiId, dayTotal, listLabel, dateLabel, loading, canEdit, onSubmitAi, onSaveEdit, onOpenPhoto, onToast }) {
   return (
     <div className="ua-cp-food-meals">
       <div className="ua-cp-food-meals__head">
@@ -241,10 +267,11 @@ function MealsPanel({ meals, mode, live, busyId, dayTotal, listLabel, dateLabel,
             key={meal.id}
             meal={meal}
             mode={mode}
-            live={live}
             busy={busyId === meal.id}
+            analyzing={analyzingId === meal.id}
+            autoEdit={editAfterAiId === meal.id}
+            canEdit={canEdit}
             onSubmitAi={onSubmitAi}
-            onApprove={onApprove}
             onSaveEdit={onSaveEdit}
             onOpenPhoto={onOpenPhoto}
             onToast={onToast}
@@ -337,6 +364,7 @@ function WaterGoalBar({ goal, dietPlanOn, editing, draftGoal, onStartEdit, onCan
 }
 
 export function FoodSection({ user, onToast, onUserUpdated }) {
+  const { canEdit } = useClientSectionPermissions("food");
   const [searchParams, setSearchParams] = useSearchParams();
   const userId = String(user?.id || "").trim();
   const live = isLiveUserId(userId);
@@ -358,6 +386,7 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
   const [waterLoading, setWaterLoading] = useState(false);
   const [modeBusy, setModeBusy] = useState(false);
   const [busyId, setBusyId] = useState("");
+  const [editAfterAiId, setEditAfterAiId] = useState("");
   const jumpedToLatestRef = useRef(false);
 
   const dateLabel = formatFoodDateLabel(selectedDate, today);
@@ -376,6 +405,7 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
 
   const consumed = useMemo(() => roundMacros(sumMealMacros(meals)), [meals]);
   const dayTotal = consumed.calories;
+  const showMacroCard = meals.some((meal) => meal.aiStatus === "review" || meal.aiStatus === "approved");
 
   useEffect(() => {
     setSelectedDate(today);
@@ -385,6 +415,7 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
     setMacroTargets(FOOD_MACRO_TARGETS);
     setMeals(live ? [] : FOOD_MEALS);
     jumpedToLatestRef.current = false;
+    setEditAfterAiId("");
   }, [live, today, userId]);
 
   useEffect(() => {
@@ -542,59 +573,79 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
     }, { replace: true });
   }
 
-  function submitAi(id) {
-    setMeals((list) => list.map((m) => (
-      m.id === id
-        ? {
-          ...m,
-          aiStatus: "review",
-          macros: m.macros || { protein: 12, carbs: 45, fat: 8, calories: 320 },
-        }
-        : m
-    )));
-    onToast("Submitted to AI for macro analysis");
-  }
-
-  async function approveMeal(id) {
+  async function submitAi(id) {
     const meal = meals.find((m) => m.id === id);
     if (!meal) return;
+    if (live && !meal.photoUrl) {
+      onToast("This meal has no photo to analyse");
+      return;
+    }
     if (!live) {
-      setMeals((list) => list.map((m) => (m.id === id ? { ...m, aiStatus: "approved" } : m)));
-      onToast("Meal approved");
+      setMeals((list) => list.map((m) => (
+        m.id === id
+          ? {
+            ...m,
+            aiStatus: "review",
+            photoAiStatus: "analysed",
+            reviewStatus: "pending",
+            macros: m.macros || { protein: 4, carbs: 22, fat: 1, calories: 118 },
+            declineMessage: "",
+          }
+          : m
+      )));
+      onToast("Meal photo analysed. Review the macros and save.");
+      setEditAfterAiId(id);
       return;
     }
     setBusyId(id);
     try {
-      const updated = await reviewUserMealLog(id, {
-        status: "approved",
-        proteinGm: meal.macros?.protein,
-        fatsGm: meal.macros?.fat,
-        carbsGm: meal.macros?.carbs,
-        caloriesKcal: meal.macros?.calories,
-      });
-      setMeals((list) => list.map((m) => (m.id === id ? mapMealLogToUi(updated) : m)));
-      onToast("Meal approved");
+      const result = await analyzeUserMealLog(userId, id);
+      if (!result?.mealLog) return;
+      const mapped = mapMealLogToUi(result.mealLog);
+      setMeals((list) => list.map((m) => (m.id === id ? mapped : m)));
+      if (result.related === false) {
+        setEditAfterAiId("");
+        onToast(result.message || "Image declined as unrelated. Macros set to 0.");
+      } else {
+        setEditAfterAiId(id);
+        onToast(result.message || "Meal photo analysed. Review the macros and save.");
+      }
     } catch (err) {
-      onToast(err?.message || "Failed to approve meal");
+      onToast(err?.message || "Failed to analyse meal photo");
     } finally {
       setBusyId("");
     }
   }
 
   async function saveMealEdit(id, macros) {
+    const meal = meals.find((m) => m.id === id);
     if (!live) {
-      setMeals((list) => list.map((m) => (m.id === id ? { ...m, macros, aiStatus: "review" } : m)));
+      setMeals((list) => list.map((m) => (
+        m.id === id
+          ? { ...m, macros, aiStatus: "approved", reviewStatus: "approved", photoAiStatus: "analysed" }
+          : m
+      )));
       return;
     }
     setBusyId(id);
     try {
-      const updated = await updateUserMealLog(userId, id, {
+      let updated = await updateUserMealLog(userId, id, {
         proteinGm: macros.protein,
         fatsGm: macros.fat,
         carbsGm: macros.carbs,
         caloriesKcal: macros.calories,
       });
+      if (meal?.reviewStatus === "pending") {
+        updated = await reviewUserMealLog(id, {
+          status: "approved",
+          proteinGm: macros.protein,
+          fatsGm: macros.fat,
+          carbsGm: macros.carbs,
+          caloriesKcal: macros.calories,
+        });
+      }
       setMeals((list) => list.map((m) => (m.id === id ? mapMealLogToUi(updated) : m)));
+      setEditAfterAiId("");
     } catch (err) {
       onToast(err?.message || "Failed to save meal macros");
       throw err;
@@ -634,8 +685,11 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
                 { id: "detailed", label: "Detailed" },
               ]}
               value={mode}
-              disabled={modeBusy}
-              onChange={setMode}
+              disabled={modeBusy || !canEdit}
+              onChange={(next) => {
+                if (!canEdit) return;
+                setMode(next);
+              }}
             />
           </div>
           <div className="ua-cp-food__control ua-cp-food__control--diet">
@@ -645,7 +699,7 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
               className={`ua-toggle${dietPlanOn ? " ua-toggle--on" : ""}`}
               aria-pressed={dietPlanOn}
               aria-label="Show diet plan in client app"
-              disabled={dietPlanBusy}
+              disabled={dietPlanBusy || !canEdit}
               onClick={toggleDietPlan}
             >
               <span className="ua-toggle__knob" />
@@ -669,18 +723,20 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
             onDateChange={setSelectedDate}
             onToday={() => setSelectedDate(today)}
           />
-          <TargetedMacrosCard consumed={consumed} targets={macroTargets} />
+          {showMacroCard ? <TargetedMacrosCard consumed={consumed} targets={macroTargets} /> : null}
           <MealsPanel
             meals={meals}
             mode="macro"
             live={live}
             busyId={busyId}
+            analyzingId={busyId}
+            editAfterAiId={editAfterAiId}
             dayTotal={dayTotal}
             listLabel="meals"
             dateLabel={dateLabel}
             loading={mealsLoading}
+            canEdit={canEdit}
             onSubmitAi={submitAi}
-            onApprove={approveMeal}
             onSaveEdit={saveMealEdit}
             onOpenPhoto={setPhotoMeal}
             onToast={onToast}
@@ -696,18 +752,20 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
             onDateChange={setSelectedDate}
             onToday={() => setSelectedDate(today)}
           />
-          <TargetedMacrosCard consumed={consumed} targets={macroTargets} />
+          {showMacroCard ? <TargetedMacrosCard consumed={consumed} targets={macroTargets} /> : null}
           <MealsPanel
             meals={meals}
             mode="detailed"
             live={live}
             busyId={busyId}
+            analyzingId={busyId}
+            editAfterAiId={editAfterAiId}
             dayTotal={dayTotal}
             listLabel="logged food"
             dateLabel={dateLabel}
             loading={mealsLoading}
+            canEdit={canEdit}
             onSubmitAi={submitAi}
-            onApprove={approveMeal}
             onSaveEdit={saveMealEdit}
             onOpenPhoto={setPhotoMeal}
             onToast={onToast}
@@ -731,7 +789,7 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
               dietPlanOn={dietPlanOn}
               editing={waterGoalEditing}
               draftGoal={waterGoalDraft}
-              canEdit={!live}
+              canEdit={canEdit && !live}
               onStartEdit={() => { setWaterGoalDraft(waterGoal); setWaterGoalEditing(true); }}
               onCancel={() => setWaterGoalEditing(false)}
               onSave={saveWaterGoal}

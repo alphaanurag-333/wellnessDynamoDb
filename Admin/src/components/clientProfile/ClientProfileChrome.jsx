@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { UPDATED_ADMIN_PATHS } from "../../data/dashboardData.js";
 import { NotificationInboxPanel } from "../NotificationInboxPanel.jsx";
+import { useViewAs } from "../../context/ViewAsContext.jsx";
 
 function clientInitials(name) {
   const parts = String(name || "Client").trim().split(/\s+/).filter(Boolean);
@@ -31,6 +32,9 @@ export function ClientProfileTopbar({
   onToggleMenu,
   onSave,
 }) {
+  const { can } = useViewAs();
+  const canEditPii = can("console.pii.edit");
+
   return (
     <header className="ua-cp-topbar">
       <Link to={UPDATED_ADMIN_PATHS.users} className="ua-cp-topbar__btn">← Users</Link>
@@ -39,13 +43,15 @@ export function ClientProfileTopbar({
       </button>
       <div className="ua-cp-topbar__title">Client profile</div>
       <div className="ua-cp-topbar__actions">
-          <button type="button" className="ua-cp-topbar__icon ua-cp-topbar__icon--save" title="Save profile" onClick={onSave} aria-label="Save">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
-              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-              <path d="M17 21v-8H7v8" />
-              <path d="M7 3v5h8" />
-            </svg>
-          </button>
+          {canEditPii ? (
+            <button type="button" className="ua-cp-topbar__icon ua-cp-topbar__icon--save" title="Save profile" onClick={onSave} aria-label="Save">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                <path d="M17 21v-8H7v8" />
+                <path d="M7 3v5h8" />
+              </svg>
+            </button>
+          ) : null}
           <NotificationInboxPanel
             wrapClassName="ua-cp-topbar__bell-wrap"
             btnClassName="ua-cp-topbar__icon ua-cp-topbar__icon--bell"

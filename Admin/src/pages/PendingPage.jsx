@@ -99,7 +99,8 @@ export function PendingPage() {
   const { showToast } = useOutletContext();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { viewAs, account, dataScope } = useViewAs();
+  const { viewAs, account, dataScope, can } = useViewAs();
+  const canEditNotes = can("console.pt.edit");
   const noteKey = useMemo(
     () => `ua-pending-note:${account?.id || viewAs || "staff"}`,
     [account?.id, viewAs],
@@ -237,16 +238,22 @@ export function PendingPage() {
         <div className="pending-notes__head">
           <strong><span aria-hidden="true">📌</span> Notes to remember</strong>
           <div>
-            <button type="button" onClick={() => setLocked((value) => !value)}>
-              {locked ? "Locked" : "Editing"}
-            </button>
-            <button type="button" disabled={!dirty} onClick={() => setNote(savedNote)}>Reset</button>
-            <button type="button" disabled={!dirty} onClick={saveNote}>{dirty ? "Save" : "Saved"}</button>
+            {canEditNotes ? (
+              <>
+                <button type="button" onClick={() => setLocked((value) => !value)}>
+                  {locked ? "Locked" : "Editing"}
+                </button>
+                <button type="button" disabled={!dirty} onClick={() => setNote(savedNote)}>Reset</button>
+                <button type="button" disabled={!dirty} onClick={saveNote}>{dirty ? "Save" : "Saved"}</button>
+              </>
+            ) : (
+              <button type="button" disabled>Locked</button>
+            )}
           </div>
         </div>
         <textarea
           value={note}
-          readOnly={locked}
+          readOnly={locked || !canEditNotes}
           onChange={(event) => setNote(event.target.value)}
           placeholder="Anything to pick up later…"
           aria-label="Notes to remember"

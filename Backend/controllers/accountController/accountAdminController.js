@@ -36,6 +36,11 @@ const {
 const DEFAULT_TEMP_PASSWORD = process.env.SEED_STAFF_PASSWORD || "Admin@12345";
 const CONSOLE_SCOPE = "CONSOLE";
 const REFERRAL_STAFF_ROLES = new Set(["wellness_coach", "assistant_wellness_coach"]);
+const COACH_CLIENT_COUNT_ROLE_KEYS = new Set([
+  "wellness_coach",
+  "assistant_wellness_coach",
+  "trainee",
+]);
 
 function accountRoleKeyFromDataScope(dataScope) {
   const scope = String(dataScope || "").toLowerCase();
@@ -195,9 +200,25 @@ exports.listAccountsHandler = asyncHandler(async (req, res) => {
     parentAccountId: req.query.parentAccountId,
     specializationId: req.query.specializationId,
   });
+  const queryRoleKey = normalizeRoleKey(req.query.roleKey);
+  const includeClientCounts =
+    queryRoleKey && COACH_CLIENT_COUNT_ROLE_KEYS.has(queryRoleKey);
+  let accounts = result.accounts || [];
+  if (includeClientCounts && accounts.length) {
+    accounts = await Promise.all(
+      accounts.map(async (account) => {
+        try {
+          const clientCount = await countAssignedClients(account);
+          return { ...account, clientCount };
+        } catch {
+          return { ...account, clientCount: 0 };
+        }
+      }),
+    );
+  }
   return res.json({
     status: true,
-    accounts: result.accounts || [],
+    accounts,
     pagination: result.pagination,
   });
 });

@@ -72,6 +72,7 @@ const {
   updateCoachUserMealLogController,
   deleteCoachUserMealLogController,
   updateCoachUserMealTrackingModeController,
+  analyzeCoachUserMealLogController,
 } = require("../../controllers/adminController/mealTrackingController");
 const {
   listCoachUserLaunchFocusAreasController,
@@ -261,6 +262,7 @@ const mealWrite = staff("console.diet.edit", { admin: "users.clientHub.tracking.
 router.get("/:userId/meal-tracking", meal, listCoachUserMealTrackingController);
 router.post("/:userId/meal-tracking", mealWrite, optionalMealPhotoFile, createCoachUserMealLogController);
 router.put("/:userId/meal-tracking/:logId", mealWrite, optionalMealPhotoFile, updateCoachUserMealLogController);
+router.post("/:userId/meal-tracking/:logId/analyze", mealWrite, analyzeCoachUserMealLogController);
 router.delete("/:userId/meal-tracking/:logId", staff("console.diet.delete", { admin: "users.clientHub.tracking.meal-tracking", coach: "clientTab.tracking.meal-tracking" }), deleteCoachUserMealLogController);
 router.patch("/:userId/meal-tracking-mode", mealWrite, updateCoachUserMealTrackingModeController);
 

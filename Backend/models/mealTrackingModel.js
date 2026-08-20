@@ -36,6 +36,7 @@ const LOGGED_BY_ROLES = new Set([
 ]);
 
 const VALID_STATUSES = new Set(["pending_review", "approved", "rejected"]);
+const VALID_AI_STATUSES = new Set(["none", "analysed", "declined", "failed"]);
 
 const REVIEWED_BY_ROLES = new Set([
   "wellness_coach",
@@ -45,6 +46,17 @@ const REVIEWED_BY_ROLES = new Set([
 function normalizeStatus(value, fallback = "approved") {
   const next = String(value || fallback).trim().toLowerCase();
   return VALID_STATUSES.has(next) ? next : fallback;
+}
+
+function normalizeAiStatus(value, fallback = "none") {
+  const next = String(value || fallback).trim().toLowerCase();
+  return VALID_AI_STATUSES.has(next) ? next : fallback;
+}
+
+function normalizeAiError(value) {
+  if (value === undefined || value === null) return null;
+  const next = String(value).trim();
+  return next ? next.slice(0, 500) : null;
 }
 
 function normalizeReviewedByRole(value) {
@@ -191,6 +203,10 @@ function toMealLogPublic(item) {
     loggedById: item.loggedById ?? null,
     coachId: item.coachId ?? null,
     status: normalizeStatus(item.status, "approved"),
+    aiStatus: normalizeAiStatus(item.aiStatus),
+    aiError: item.aiError ?? null,
+    aiAnalysedAt: item.aiAnalysedAt ?? null,
+    aiAnalysedById: item.aiAnalysedById ?? null,
     assignedCoachId: item.assignedCoachId ?? null,
     assignedCoachType: item.assignedCoachType ?? null,
     reviewedAt: item.reviewedAt ?? null,
@@ -283,6 +299,9 @@ async function createMealLog({
     loggedByRole: role,
     loggedById: String(loggedById || "").trim() || null,
     status: resolvedStatus,
+    aiStatus: "none",
+    aiError: null,
+    aiAnalysedAt: null,
     assignedCoachId: assignedCoachId ? String(assignedCoachId).trim() : null,
     assignedCoachType: assignedCoachType
       ? String(assignedCoachType).trim().toLowerCase()
@@ -386,6 +405,21 @@ async function updateMealLog(id, updates) {
   }
   if (updates.rejectionReason !== undefined) {
     addField("rejectionReason", normalizeRejectionReason(updates.rejectionReason));
+  }
+  if (updates.aiStatus !== undefined) {
+    addField("aiStatus", normalizeAiStatus(updates.aiStatus));
+  }
+  if (updates.aiError !== undefined) {
+    addField("aiError", normalizeAiError(updates.aiError));
+  }
+  if (updates.aiAnalysedAt !== undefined) {
+    addField("aiAnalysedAt", updates.aiAnalysedAt || null);
+  }
+  if (updates.aiAnalysedById !== undefined) {
+    addField(
+      "aiAnalysedById",
+      updates.aiAnalysedById ? String(updates.aiAnalysedById).trim() : null
+    );
   }
 
   const { Attributes } = await docClient.send(
@@ -660,6 +694,7 @@ module.exports = {
   TABLE,
   VALID_CATEGORIES,
   VALID_STATUSES,
+  VALID_AI_STATUSES,
   normalizeCategory,
   normalizeMealType,
   normalizeEntryTime,
@@ -667,6 +702,7 @@ module.exports = {
   normalizeMacro,
   normalizeItems,
   normalizeStatus,
+  normalizeAiStatus,
   toMealLogPublic,
   createMealLog,
   getMealLogById,

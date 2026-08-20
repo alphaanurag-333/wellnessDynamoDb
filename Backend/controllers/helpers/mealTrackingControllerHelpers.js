@@ -12,14 +12,6 @@ const {
 
 const S3_FOLDER = "meal-tracking";
 
-/** Placeholder macros until AI photo-scanning is integrated. */
-const DUMMY_MACROS = {
-  proteinGm: 20,
-  fatsGm: 10,
-  carbsGm: 30,
-  caloriesKcal: 250,
-};
-
 function resolveAssignedCoachForUser(user) {
   const assignedCoachType = String(user?.assignedCoachType || "").trim().toLowerCase();
   const assignedCoachId = String(user?.assignedCoachId || "").trim();
@@ -113,6 +105,5 @@ module.exports = {
   handleValidationError,
   uploadMealPhoto,
   resolveCoachIdForUser,
-  DUMMY_MACROS,
   resolveAssignedCoachForUser,
 };

@@ -56,17 +56,18 @@ function accountIsAdminRole(account) {
 }
 
 /**
- * Slugs the current session may actually use.
- * Admin always receives the full catalog — WC / AWC section grants must not
- * leak into an admin session. Other roles whose template predates the console
- * catalog fall back to the role baseline, matching the API.
+ * Slugs the signed-in account's active role receives from the API.
+ * Super Admin is only treated as all-powerful while viewing the Admin console
+ * (see isAdminView). Member overrides from Access Control live on account.permissions.
  */
 function sessionPermissions(account) {
   if (!account) return [];
-  if (accountIsAdminRole(account)) return [...ALL_CONSOLE_PERMISSIONS];
+  const activeKey = account.activeRole || account.defaultRoleKey;
+  const activeUi = ROLE_KEY_TO_UI[activeKey] || account.activeRoleUi;
+  if (activeKey === "admin" || activeUi === "admin") return [...ALL_CONSOLE_PERMISSIONS];
   const granted = Array.isArray(account.permissions) ? account.permissions : [];
   if (granted.some((slug) => String(slug).startsWith("console."))) return granted;
-  return baselinePermissionsForRole(ROLE_KEY_TO_UI[account.activeRole] || account.activeRoleUi);
+  return baselinePermissionsForRole(activeUi || "wc");
 }
 
 export function ViewAsProvider({ children }) {
@@ -180,6 +181,15 @@ export function ViewAsProvider({ children }) {
     return account;
   }, [dispatch]);
 
+  useEffect(() => {
+    if (!auth?.accessToken) return undefined;
+    const syncPermissions = () => {
+      refreshAccount().catch(() => {});
+    };
+    window.addEventListener("focus", syncPermissions);
+    return () => window.removeEventListener("focus", syncPermissions);
+  }, [auth?.accessToken, refreshAccount]);
+
   const isSuperAdmin = accountIsSuperAdmin(auth?.account);
 
   const setViewAs = useCallback(
@@ -269,17 +279,18 @@ export function ViewAsProvider({ children }) {
   const hasFullAccess = isSuperAdmin && viewAs === "admin";
 
   /**
-   * Live grants for the console. Admin always gets every catalog slug.
-   * While a Super Admin previews another role the session is narrowed to that
-   * role's baseline so the preview never shows more than WC / AWC can do.
+   * Live grants for the console. Admin view always gets every catalog slug.
+   * Signed-in staff use API-resolved permissions (includes member overrides).
+   * Super Admin previewing another persona uses that role's Access Control template.
    */
   const permissions = useMemo(() => {
     if (isAdminView) return [...ALL_CONSOLE_PERMISSIONS];
-    const granted = sessionPermissions(auth?.account);
-    if (!sessionUi || sessionUi === viewAs) return granted;
-    const preview = new Set(activeRole?.permissions || []);
-    return granted.filter((slug) => preview.has(slug));
-  }, [activeRole, auth, isAdminView, sessionUi, viewAs]);
+    if (!sessionUi || sessionUi === viewAs) return sessionPermissions(auth?.account);
+    if (Array.isArray(activeRole?.permissions) && activeRole.permissions.length) {
+      return activeRole.permissions;
+    }
+    return baselinePermissionsForRole(viewAs);
+  }, [activeRole, auth?.account, isAdminView, sessionUi, viewAs]);
 
   const can = useCallback(
     (slug) => (isAdminView ? Boolean(slug) : hasConsolePermission(permissions, slug)),

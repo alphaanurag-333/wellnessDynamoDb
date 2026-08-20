@@ -363,7 +363,7 @@ export function mapAccountToMyContentCoach(account, letterConfig = {}, index = 0
     id: account?.id,
     name: account?.name || "Unnamed coach",
     role: COACH_ROLE_LABELS[roleKey] || "Coach",
-    clients: Number.isFinite(clients) && clients > 0 ? clients : null,
+    clients: Number.isFinite(clients) ? clients : null,
     initial: initialsFromName(account?.name),
     color: AVATAR_COLORS[index % AVATAR_COLORS.length],
     liveLabel: `${liveCount} OF 2 LIVE`,

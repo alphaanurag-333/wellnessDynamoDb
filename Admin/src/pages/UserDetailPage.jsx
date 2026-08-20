@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useOutletContext, useParams, useSearchParams } from "react-router-dom";
 import {
   getClientProfileDefinition,
@@ -9,6 +9,11 @@ import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { fetchUser } from "../api/usersApi.js";
 import { BrandLoader } from "../components/BrandLoader.jsx";
 import { ClientProfileSidebar, ClientProfileTopbar } from "../components/clientProfile/ClientProfileChrome.jsx";
+import { ClientProfileSectionGate } from "../components/clientProfile/ClientProfileSectionGate.jsx";
+import { useViewAs } from "../context/ViewAsContext.jsx";
+import {
+  filterClientProfileMenu,
+} from "../utils/clientProfilePermissions.js";
 import {
   AtAGlanceSection,
   BodyAnalyticsSection,
@@ -25,10 +30,10 @@ import {
   ProtocolSection,
   GutResetSection,
   PersonalDetailsSection,
-  CounsellingSection,
   ConsultationSection,
   PlaceholderSection,
 } from "../components/clientProfile/ClientProfileSections.jsx";
+import { CounsellingSection } from "../components/clientProfile/CounsellingSection.jsx";
 
 const PLACEHOLDER_META = {
   food: { title: "Food & Water Tracking", subtitle: "Meals, hydration & nutrition logs." },
@@ -83,6 +88,8 @@ function renderSection(section, user, onToast, onNavigate, onUserUpdated, sectio
       return <GutResetSection user={user} onToast={onToast} />;
     case "consultation":
       return <ConsultationSection user={user} onToast={onToast} />;
+    case "counselling":
+      return <CounsellingSection user={user} onToast={onToast} />;
     default: {
       const meta = PLACEHOLDER_META[section]; 
       return meta ? <PlaceholderSection {...meta} /> : <PlaceholderSection title="Section" />;
@@ -98,6 +105,7 @@ function isMockNumericId(userId) {
 export function UserDetailPage() {
   const { userId } = useParams();
   const { showToast: onToast } = useOutletContext();
+  const { can } = useViewAs();
   const [searchParams, setSearchParams] = useSearchParams();
   const [menuHidden, setMenuHidden] = useState(false);
   const [showAllTags, setShowAllTags] = useState(false);
@@ -150,12 +158,26 @@ export function UserDetailPage() {
     };
   }, [onToast, userId]);
 
-  const profileDefinition = getClientProfileDefinition(user);
+  const profileDefinition = useMemo(() => {
+    const base = getClientProfileDefinition(user);
+    const menu = filterClientProfileMenu(base.menu, can);
+    let defaultSection = base.defaultSection;
+    if (!menu.some((item) => item.id === defaultSection)) {
+      defaultSection = menu[0]?.id || base.defaultSection;
+    }
+    return { ...base, menu, defaultSection };
+  }, [user, can]);
+
   const requestedSection = searchParams.get("section");
   const allowedSectionIds = profileDefinition.menu.map((item) => item.id);
-  const section = requestedSection && allowedSectionIds.includes(requestedSection)
-    ? requestedSection
-    : profileDefinition.defaultSection;
+  const section =
+    requestedSection && allowedSectionIds.includes(requestedSection)
+      ? requestedSection
+      : profileDefinition.defaultSection;
+  const activeMenuItem =
+    profileDefinition.menu.find((item) => item.id === section) ||
+    profileDefinition.menu[0] ||
+    null;
 
   useEffect(() => {
     if (loading || !user || !requestedSection || allowedSectionIds.includes(requestedSection)) {
@@ -275,9 +297,11 @@ export function UserDetailPage() {
                     ‹ Back
                   </button>
                 ) : null}
-                {renderSection(section, user, onToast, setSection, (updatedRow) => {
-                  setUser(profileFromListUser(updatedRow, userId));
-                }, { showBack, onBack: goBack })}
+                <ClientProfileSectionGate section={section} label={activeMenuItem?.label}>
+                  {renderSection(section, user, onToast, setSection, (updatedRow) => {
+                    setUser(profileFromListUser(updatedRow, userId));
+                  }, { showBack, onBack: goBack })}
+                </ClientProfileSectionGate>
               </>
             )}
           </div>

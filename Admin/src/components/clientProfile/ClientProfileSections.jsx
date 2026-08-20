@@ -6,6 +6,7 @@ import { LaunchSection } from "./LaunchSection.jsx";
 import { FoodSection } from "./FoodSection.jsx";
 import { BmsSection } from "./BmsSection.jsx";
 import { NutritionsSection } from "./NutritionsSection.jsx";
+import { useViewAs } from "../../context/ViewAsContext.jsx";
 import { getTierActions } from "../../data/userDetailData.js";
 import { tierBadgeClass, tierBadgeStyle, tierLabel, normalizeTier } from "../../data/usersData.js";
 import { adminListHealthConcerns } from "../../api/healthConcernApi.js";
@@ -96,11 +97,18 @@ function DosageBadge({ label, tone }) {
 }
 
 export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack = false, onBack }) {
+  const { can } = useViewAs();
+  const canEditPii = can("console.pii.edit");
+  const canEditClient = can("console.cl.edit");
   const [editing, setEditing] = useState(false);
   const [tierBusy, setTierBusy] = useState(false);
   const [saveBusy, setSaveBusy] = useState(false);
   const [goalOptions, setGoalOptions] = useState([]);
   const [form, setForm] = useState(() => formFromUser(user));
+
+  useEffect(() => {
+    if (!canEditPii && editing) setEditing(false);
+  }, [canEditPii, editing]);
 
   useEffect(() => {
     if (!editing) setForm(formFromUser(user));
@@ -156,7 +164,7 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
   }
 
   async function save() {
-    if (!userId || saveBusy) return;
+    if (!canEditPii || !userId || saveBusy) return;
     const name = String(form.name || "").trim();
     if (!name) {
       onToast("Full name is required");
@@ -325,28 +333,30 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
             <p className="ua-cp-personal__email">{user.email}</p>
           </div>
           <div className="ua-cp-personal__actions">
-            {editing ? (
-              <>
-                <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={cancelEdit} disabled={saveBusy}>Cancel</button>
-                <button type="button" className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm" onClick={save} disabled={saveBusy}>
-                  {saveBusy ? "Saving…" : "Save changes"}
+            {canEditPii ? (
+              editing ? (
+                <>
+                  <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={cancelEdit} disabled={saveBusy}>Cancel</button>
+                  <button type="button" className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm" onClick={save} disabled={saveBusy}>
+                    {saveBusy ? "Saving…" : "Save changes"}
+                  </button>
+                </>
+              ) : (
+                <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={() => setEditing(true)}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M12 20h9" />
+                    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+                  </svg>
+                  Edit
                 </button>
-              </>
-            ) : (
-              <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={() => setEditing(true)}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M12 20h9" />
-                  <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
-                </svg>
-                Edit
-              </button>
-            )}
+              )
+            ) : null}
           </div>
         </div>
       </div>
       <div className="ua-cp-personal__badges">
         <span className={`ua-cp-tier-badge ua-cp-tier-badge--${tierBadgeClass(currentTier)}`} style={tierBadgeTone}>{displayTierLabel}</span>
-        {tierActions.canConvert ? (
+        {canEditClient && tierActions.canConvert ? (
           <button
             type="button"
             className="ua-cp-tier-action ua-cp-tier-action--up"
@@ -357,7 +367,7 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
             {tierActions.convertLabel}
           </button>
         ) : null}
-        {tierActions.canDowngrade ? (
+        {canEditClient && tierActions.canDowngrade ? (
           <button
             type="button"
             className="ua-cp-tier-action ua-cp-tier-action--down"

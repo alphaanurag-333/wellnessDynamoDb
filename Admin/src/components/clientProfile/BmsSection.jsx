@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 import { PillTabs } from "../shared.jsx";
 import { FoodWaterHistoryPicker } from "./FoodDatePicker.jsx";
 import {
@@ -419,6 +420,7 @@ function ContentLibraryPanel({
 }
 
 export function BmsSection({ user, onToast, onUserUpdated }) {
+  const { canEdit, canCreate, canDelete } = useClientSectionPermissions("bms");
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
   const tab = BMS_TABS.some((t) => t.id === tabParam) ? tabParam : "steps";
@@ -625,6 +627,8 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
 
   async function toggleContent(kind, item) {
     if (!userId) return;
+    if (item.inApp && item.assignmentId && !canDelete) return;
+    if (!item.inApp && !canCreate) return;
     if (!canAssign) {
       onToast("Content can only be assigned to Heal clients");
       return;
@@ -690,8 +694,8 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
               type="button"
               className={`ua-toggle${heartRateOn ? " ua-toggle--on" : ""}`}
               aria-pressed={heartRateOn}
-              onClick={() => toggleTracking("heart", !heartRateOn)}
-              disabled={toggleBusy}
+              onClick={() => canEdit && toggleTracking("heart", !heartRateOn)}
+              disabled={toggleBusy || !canEdit}
             >
               <span className="ua-toggle__knob" />
             </button>
@@ -702,8 +706,8 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
               type="button"
               className={`ua-toggle${sleepTrackingOn ? " ua-toggle--on" : ""}`}
               aria-pressed={sleepTrackingOn}
-              onClick={() => toggleTracking("sleep", !sleepTrackingOn)}
-              disabled={toggleBusy}
+              onClick={() => canEdit && toggleTracking("sleep", !sleepTrackingOn)}
+              disabled={toggleBusy || !canEdit}
             >
               <span className="ua-toggle__knob" />
             </button>

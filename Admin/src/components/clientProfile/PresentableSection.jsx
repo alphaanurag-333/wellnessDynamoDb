@@ -7,7 +7,7 @@ import {
   requestUserPresentablePic,
   patchUserPresentablePicsSettings,
 } from "../../api/onboardingApi.js";
-import { fetchUser } from "../../api/usersApi.js";
+import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 
 function isLiveUserId(userId) {
   const raw = String(userId || "").trim();
@@ -274,7 +274,7 @@ function photoStatusMeta(status) {
   return { label: "PENDING APPROVAL", tone: "pending" };
 }
 
-function PhotoCard({ photo, onToast, onApprove, onReject, reviewBusy, onView }) {
+function PhotoCard({ photo, onToast, onApprove, onReject, reviewBusy, onView, canReview }) {
   const status = photoStatusMeta(photo.status);
   const pending = photo?.reviewable !== false && status.tone === "pending";
 
@@ -318,7 +318,7 @@ function PhotoCard({ photo, onToast, onApprove, onReject, reviewBusy, onView }) 
               View
             </button>
           )}
-          {pending ? (
+          {pending && canReview ? (
             <div className="ua-cp-present-photo__actions">
               <button
                 type="button"
@@ -337,6 +337,8 @@ function PhotoCard({ photo, onToast, onApprove, onReject, reviewBusy, onView }) 
                 Reject
               </button>
             </div>
+          ) : pending ? (
+            <span className="ua-cp-present-photo__locked">Pending review</span>
           ) : (
             <span className="ua-cp-present-photo__locked">Review complete</span>
           )}
@@ -347,6 +349,7 @@ function PhotoCard({ photo, onToast, onApprove, onReject, reviewBusy, onView }) 
 }
 
 export function PresentableSection({ user, onToast, onUserUpdated }) {
+  const { canEdit } = useClientSectionPermissions("presentable");
   const [featureEnabled, setFeatureEnabled] = useState(() => user?.presentablePicsEnabled !== false);
   const [letter, setLetter] = useState(null);
   const [letterLoading, setLetterLoading] = useState(() => isLiveUserId(user?.id));
@@ -561,6 +564,7 @@ export function PresentableSection({ user, onToast, onUserUpdated }) {
           <h2 className="ua-cp-present__title">Presentable pics</h2>
           <p className="ua-cp-present__sub">Approve client photos for testimonials and marketing. Rejections are final.</p>
         </div>
+        {canEdit ? (
         <button
           type="button"
           className="ua-cp-btn ua-cp-btn--primary ua-cp-present__request"
@@ -569,6 +573,7 @@ export function PresentableSection({ user, onToast, onUserUpdated }) {
         >
           🔔 Request a photo
         </button>
+        ) : null}
       </div>
 
       <div className="ua-cp-present-stack">
@@ -582,6 +587,7 @@ export function PresentableSection({ user, onToast, onUserUpdated }) {
                   : "Disabled in app — client cannot upload new presentable photos."}
               </p>
             </div>
+            {canEdit ? (
             <button
               type="button"
               className={`ua-toggle${featureEnabled ? " ua-toggle--on" : ""}`}
@@ -592,6 +598,7 @@ export function PresentableSection({ user, onToast, onUserUpdated }) {
             >
               <span className="ua-toggle__knob" />
             </button>
+            ) : null}
           </div>
         </div>
 
@@ -689,6 +696,7 @@ export function PresentableSection({ user, onToast, onUserUpdated }) {
                     onApprove={() => setConfirmTarget({ type: "approve-photo" })}
                     onReject={() => setConfirmTarget({ type: "reject-photo" })}
                     onView={() => openView(photo.url, photo.label)}
+                    canReview={canEdit}
                   />
                 ))}
               </div>
