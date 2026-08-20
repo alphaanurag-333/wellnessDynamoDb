@@ -2051,6 +2051,7 @@
 .updated-admin .team-row {
   display: flex;
   flex-wrap: nowrap;
+  align-items: stretch;
   gap: 9px;
   padding: 6px 2px 12px;
   min-width: 0;
@@ -2099,10 +2100,19 @@
   transform: translateY(-2px);
 }
 
+.updated-admin .team-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 22px;
+  flex: 1 1 auto;
+}
+
 .updated-admin .team-card__actions {
   display: flex;
+  align-items: center;
   gap: 5px;
-  margin-top: 2px;
+  margin-top: auto;
 }
 
 .updated-admin .team-card__view {
@@ -4200,7 +4210,7 @@
   flex-direction: column;
   position: relative;
   overflow: visible;
-  min-height: 66px;
+  /* min-height: 66px; */
 }
 
 .updated-admin .ops-challenge__list-items {
@@ -12907,6 +12917,7 @@
   margin-bottom: 14px;
   overflow-x: auto;
   max-width: 100%;
+  scrollbar-width: thin;
 }
 
 .updated-admin .ua-pill-tabs--md .ua-pill-tabs__btn {
@@ -13964,6 +13975,7 @@
   -webkit-overflow-scrolling: touch;
   max-width: 100%;
   box-shadow: 0 1px 2px rgba(16, 35, 63, 0.04);
+scrollbar-width: thin;
 }
 
 .updated-admin .ua-cp-ba-table {
@@ -19108,6 +19120,7 @@
   gap: 10px;
   overflow-x: auto;
   padding-bottom: 4px;
+  scrollbar-width: thin;
 }
 
 .updated-admin .ua-ac-role-card {
@@ -19563,6 +19576,7 @@
 
 .updated-admin .ua-ac-matrix__scroll {
   overflow-x: auto;
+  scrollbar-width: thin;
 }
 
 .updated-admin .ua-ac-matrix__cols,
@@ -21825,12 +21839,34 @@
 }
 
 .updated-admin .ua-tm-role-change__select .ua-cfg-select__trigger {
+  display: flex;
+  align-items: center;
   height: 38px;
+  padding: 0 10px 0 12px;
   border: 1px solid rgb(203, 213, 230);
   border-right: 0;
   border-radius: 10px 0 0 10px;
   font-size: 13px;
   font-weight: 650;
+  gap: 8px;
+}
+
+.updated-admin .ua-tm-role-change__select .ua-cfg-select__chev {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-size: 0;
+  line-height: 0;
+  color: transparent;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%2316233f' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 12px 8px no-repeat;
+  transition: transform 0.15s ease;
+}
+
+.updated-admin .ua-tm-role-change__select.is-open .ua-cfg-select__chev {
+  transform: rotate(180deg);
 }
 
 .updated-admin .ua-tm-role-change__select.is-open .ua-cfg-select__trigger,
@@ -24080,6 +24116,8 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  container-type: inline-size;
+  container-name: ua-hp-condition;
 }
 
 .updated-admin .ua-cp-hptrack-condition-bar {
@@ -24172,26 +24210,44 @@
 }
 
 .updated-admin .ua-cp-hptrack-view-history {
-  border: 1px solid #dfe3f9;
+  border: 1px solid rgb(203, 213, 230);
   background: #fff;
   border-radius: 9px;
   padding: 7px 14px;
   font-size: 12px;
   font-weight: 700;
-  color: #5e6ad2;
+  color: rgb(94, 106, 210);
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .updated-admin .ua-cp-hptrack-photo-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 16px;
+  min-width: 0;
 }
 
 .updated-admin .ua-cp-hptrack-photo-card {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+  min-width: 0;
+}
+
+.updated-admin .ua-cp-hptrack-comparison .ua-cp-hptrack-photo-card {
+  width: 208px;
+  max-width: 100%;
+  flex: 0 0 208px;
+}
+
+.updated-admin .ua-cp-hptrack-photo-card__label {
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8a97ac;
 }
 
 .updated-admin .ua-cp-hptrack-photo-card__media {
@@ -24201,14 +24257,35 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 148px;
-  padding: 20px 16px;
+  aspect-ratio: 3 / 4;
+  width: 100%;
+  min-height: 0;
+  padding: 0;
   border-radius: 12px;
-  background: linear-gradient(160deg, #eef2ff 0%, #e0e7ff 55%, #dbeafe 100%);
+  background: #1c2740;
   overflow: hidden;
+  cursor: default;
 }
 
-.updated-admin .ua-cp-hptrack-photo-card__img,
+.updated-admin .ua-cp-hptrack-photo-card__media[role="button"] {
+  cursor: pointer;
+}
+
+.updated-admin .ua-cp-hptrack-photo-card--empty .ua-cp-hptrack-photo-card__media {
+  background: #f6f8fc;
+  border: 1px dashed #d5dce8;
+  cursor: default;
+}
+
+.updated-admin .ua-cp-hptrack-photo-card__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #1c2740;
+}
+
 .updated-admin .ua-cp-hptrack-weight-photo-card__img {
   position: absolute;
   inset: 0;
@@ -24254,9 +24331,16 @@
 }
 
 .updated-admin .ua-cp-hptrack-photo-card__media strong {
-  font-size: 14px;
-  font-weight: 800;
-  color: #16233f;
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  z-index: 1;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.72);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .updated-admin .ua-cp-hptrack-photo-card__actions {
@@ -24266,7 +24350,39 @@
 }
 
 .updated-admin .ua-cp-hptrack-photo-card__actions--view {
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.updated-admin .ua-cp-hptrack-photo-card__open {
+  width: 100%;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid rgb(203, 213, 230);
+  border-radius: 10px;
+  background: #fff;
+  color: rgb(94, 106, 210);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.updated-admin .ua-cp-hptrack-photo-card__open:disabled {
+  color: #8a97ac;
+  cursor: default;
+}
+
+.updated-admin .ua-cp-hptrack-photo-card__empty-copy {
+  margin: 0;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12.5px;
+  font-weight: 650;
+  color: #8a97ac;
+  text-align: center;
 }
 
 .updated-admin .ua-cp-hptrack-photo-card__approve,
@@ -24315,7 +24431,13 @@
 }
 
 .updated-admin .ua-cp-hptrack-photo-card--compact .ua-cp-hptrack-photo-card__media {
-  min-height: 120px;
+  aspect-ratio: 3 / 4;
+}
+
+@container ua-hp-condition (max-width: 640px) {
+  .updated-admin .ua-cp-hptrack-comparison .ua-cp-hptrack-photo-card {
+    flex: 0 1 208px;
+  }
 }
 
 .updated-admin .ua-cp-hptrack-history-modal {
@@ -25939,7 +26061,31 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 8px;
+}
+
+.updated-admin .ua-cp-present-modal--request .ua-cp-present-modal__foot {
+  flex-wrap: nowrap;
+  margin-top: 4px;
+}
+
+.updated-admin .ua-cp-present-modal--request .ua-cp-present-modal__foot .ua-cp-btn {
+  width: auto;
+  min-width: 7.5rem;
+  flex: 0 0 auto;
+  height: 36px;
+}
+
+.updated-admin .ua-cp-present-modal--request .ua-cp-present-modal__foot .ua-cp-btn--outline {
+  background: #fff;
+  color: rgb(94, 106, 210);
+  border: 1px solid rgb(203, 213, 230);
+}
+
+.updated-admin .ua-cp-present-modal--request .ua-cp-present-modal__foot .ua-cp-btn--primary {
+  background: rgb(94, 106, 210);
+  color: #fff;
+  border: 1px solid rgb(94, 106, 210);
 }
 
 .updated-admin .ua-cp-present-modal__confirm--danger {
@@ -27302,23 +27448,38 @@
 .updated-admin .ua-cp-gut-timeline {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
   gap: 10px;
   margin: 12px 0;
 }
 
 .updated-admin .ua-cp-gut-timeline__card {
-  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr);
+  grid-template-rows: 16px 18px;
+  column-gap: 8px;
+  row-gap: 6px;
+  align-items: center;
+  padding: 12px 14px;
   border-radius: 10px;
   background: #f8fafc;
   border: 1px solid #eef1f6;
+  box-sizing: border-box;
 }
 
 .updated-admin .ua-cp-gut-timeline__dot {
+  grid-column: 1;
+  grid-row: 1;
   display: block;
   width: 8px;
   height: 8px;
+  margin: 0;
   border-radius: 50%;
-  margin-bottom: 6px;
+  align-self: center;
+}
+
+.updated-admin .ua-cp-gut-timeline__copy {
+  display: contents;
 }
 
 .updated-admin .ua-cp-gut-timeline__card--start .ua-cp-gut-timeline__dot {
@@ -27334,19 +27495,32 @@
 }
 
 .updated-admin .ua-cp-gut-timeline__label {
+  grid-column: 2;
+  grid-row: 1;
   display: block;
+  min-height: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.04em;
+  line-height: 16px;
   text-transform: uppercase;
   color: #8a97ac;
 }
 
 .updated-admin .ua-cp-gut-timeline__card strong {
+  grid-column: 2;
+  grid-row: 2;
   display: block;
-  margin-top: 4px;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 13px;
   font-weight: 800;
+  line-height: 18px;
   color: #16233f;
 }
 
@@ -45736,6 +45910,18 @@
     flex: 1 1 auto;
   }
 
+  .updated-admin .ua-cp-present-modal--request .ua-cp-present-modal__foot {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .updated-admin .ua-cp-present-modal--request .ua-cp-present-modal__foot .ua-cp-btn {
+    width: auto;
+    flex: 0 0 auto;
+  }
+
   .updated-admin .ua-cp-present-photo__foot {
     display: grid;
     grid-template-columns: 1fr;
@@ -45798,8 +45984,7 @@
 
 
   .updated-admin .ua-cp-gut-stats,
-  .updated-admin .ua-cp-gut-dates,
-  .updated-admin .ua-cp-gut-timeline {
+  .updated-admin .ua-cp-gut-dates {
     grid-template-columns: 1fr 1fr;
   }
 
@@ -46603,7 +46788,6 @@
     grid-template-columns: 1fr;
   }
 
-  .updated-admin .ua-cp-hptrack-photo-grid,
   .updated-admin .ua-cp-hptrack-history-modal__grid,
   .updated-admin .ua-cp-hptrack-weight-history-modal__grid {
     grid-template-columns: 1fr;
@@ -49164,6 +49348,18 @@
 
   .updated-admin .ua-cp-present-modal__foot .ua-cp-btn {
     width: 100%;
+  }
+
+  .updated-admin .ua-cp-present-modal--request .ua-cp-present-modal__foot {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .updated-admin .ua-cp-present-modal--request .ua-cp-present-modal__foot .ua-cp-btn {
+    width: auto;
+    flex: 0 0 auto;
   }
 
   .updated-admin .ua-cp-rx-card__head {
@@ -52958,5 +53154,9 @@
     width: 168px;
     min-width: 168px;
     max-width: 168px;
+  }
+
+  .updated-admin .ua-cp-hptrack-comparison .ua-cp-hptrack-photo-card {
+    flex: 0 1 208px;
   }
 }
