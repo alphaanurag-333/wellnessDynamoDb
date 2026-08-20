@@ -6,7 +6,7 @@ export const PHOTO_ANGLES = [
 
 export const BODY_ANALYTICS = {
   weeklyHint: "Weekly data uses the latest saved value in each week. Empty weeks still appear in the last 3 columns.",
-  monthlyHint: "Δ = latest month − previous month. Previous month shown for reference.",
+  monthlyHint: "Monthly data uses the latest saved value in each month. Empty months still appear in the last 3 columns. Δ = latest − previous.",
 };
 
 const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
@@ -25,9 +25,18 @@ const METABOLIC_FIELDS = [
   { label: "BMR", field: "bmr", suffix: " kcal", decimals: 0 },
   { label: "TDEE", field: "tdee", suffix: " kcal", decimals: 0 },
   { label: "Body fat %", field: "bodyFatPercent", suffix: "%", decimals: 1 },
+  { label: "Visceral fat %", field: "visceralFatPercent", suffix: "%", decimals: 1 },
+  { label: "Est. visceral fat", field: "estimatedVisceralFat", decimals: 0 },
+  { label: "Waist-height ratio", field: "waistHeightRatio", decimals: 2 },
 ];
 
+function hasNumericValue(value) {
+  if (value == null || value === "") return false;
+  return Number.isFinite(Number(value));
+}
+
 function parseNum(value) {
+  if (!hasNumericValue(value) && typeof value !== "string") return null;
   const number = Number.parseFloat(String(value).replace(/[^\d.-]/g, ""));
   return Number.isFinite(number) ? number : null;
 }
@@ -85,14 +94,23 @@ export function getPeriodOptions(bodyAnalytics, mode) {
     ...(bodyAnalytics?.measurements || []),
     ...(bodyAnalytics?.metabolicMetrics || []),
   ];
-  return [...new Set(records.map((row) => periodKey(row.recordedAt, mode)).filter(Boolean))]
+  return [...new Set(records.map((row) => periodKey(row.recordedAt || row.createdAt, mode)).filter(Boolean))]
     .sort((a, b) => b.localeCompare(a));
 }
 
+function currentPeriodKey(mode, now = new Date()) {
+  if (mode === "monthly") {
+    return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}`;
+  }
+  const copy = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const day = copy.getDay() || 7;
+  copy.setDate(copy.getDate() - day + 1);
+  return `${copy.getFullYear()}-${pad2(copy.getMonth() + 1)}-${pad2(copy.getDate())}`;
+}
+
 export function getHistoryWindow(mode, anchor, count = 3) {
-  if (!anchor) return [];
-  const keys = [anchor];
-  let current = anchor;
+  let current = anchor || currentPeriodKey(mode);
+  const keys = [current];
   for (let i = 1; i < count; i += 1) {
     current = previousPeriodKey(current, mode);
     if (!current) break;
@@ -101,53 +119,41 @@ export function getHistoryWindow(mode, anchor, count = 3) {
   return keys;
 }
 
-function latestByPeriod(records, mode) {
-  const byPeriod = {};
-  const sorted = [...(records || [])].sort((a, b) =>
-    String(b.recordedAt || "").localeCompare(String(a.recordedAt || "")),
-  );
-  for (const row of sorted) {
-    const key = periodKey(row.recordedAt, mode);
-    if (key && !byPeriod[key]) byPeriod[key] = row;
-  }
-  return byPeriod;
-}
-
 function formatValue(value, suffix = "", decimals = 1) {
-  const number = Number(value);
-  if (!Number.isFinite(number)) return "-";
+  const number = parseNum(value);
+  if (number == null) return "-";
   return `${number.toFixed(decimals)}${suffix}`;
 }
 
+function latestMetricValueByPeriod(records, mode, field) {
+  const values = {};
+  const sorted = [...(records || [])].sort((a, b) =>
+    String(b.recordedAt || b.createdAt || "").localeCompare(String(a.recordedAt || a.createdAt || "")),
+  );
+  for (const row of sorted) {
+    const key = periodKey(row.recordedAt || row.createdAt, mode);
+    if (key && values[key] == null && hasNumericValue(row[field])) {
+      values[key] = row[field];
+    }
+  }
+  return values;
+}
+
 export function buildMeasurementRows(records, mode, unit, columns) {
-  const history = latestByPeriod(records, mode);
   const unitSuffix = unit === "cm" ? "cm" : "in";
   const divisor = unit === "cm" ? 1 : 2.54;
 
   return MEASURE_FIELDS.map(({ label, field }) => {
+    const history = latestMetricValueByPeriod(records, mode, field);
     const values = columns.map((column) => {
-      const raw = history[column]?.[field];
-      return Number.isFinite(Number(raw)) ? formatValue(Number(raw) / divisor, "", 1) : "-";
+      const raw = history[column];
+      return hasNumericValue(raw) ? formatValue(Number(raw) / divisor, "", 1) : "-";
     });
     const latest = values[0];
     const previous = values[1];
     const delta = columns.length >= 2 ? formatDelta(latest, previous, unitSuffix) : "-";
     return { label, values, delta, tone: deltaTone(delta) };
   });
-}
-
-function latestMetricValueByPeriod(records, mode, field) {
-  const values = {};
-  const sorted = [...(records || [])].sort((a, b) =>
-    String(b.recordedAt || "").localeCompare(String(a.recordedAt || "")),
-  );
-  for (const row of sorted) {
-    const key = periodKey(row.recordedAt, mode);
-    if (key && values[key] == null && Number.isFinite(Number(row[field]))) {
-      values[key] = row[field];
-    }
-  }
-  return values;
 }
 
 export function buildMetabolicRows(records, mode, columns) {

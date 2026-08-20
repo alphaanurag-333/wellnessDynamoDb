@@ -19,6 +19,7 @@ const {
 } = require("../../services/accountResolver");
 const { sendCoachAssignmentNotifications } = require("../../utils/whatsapp");
 const { emitCoachAssigned } = require("../../services/adminActivityService");
+const { buildPaidOnboardingResetUpdates } = require("../../utils/paidOnboardingHelpers");
 
 const { enrichUser } = require("../userController/userProfileHelpers");
 const {
@@ -165,16 +166,10 @@ exports.assignHealUserController = asyncHandler(async (req, res) => {
       }
     }
     if (!user.healPaidAt) {
-      const onboardingPatches =
-        user.paidOnboardingCompleted === true
-          ? { healPaidAt: new Date().toISOString() }
-          : {
-              healPaidAt: new Date().toISOString(),
-              paidOnboardingCompleted: false,
-              paidOnboardingStep: "register",
-              paidOnboardingStepStatus: null,
-            };
-      user = await updateUser(user.id, onboardingPatches);
+      user = await updateUser(user.id, {
+        healPaidAt: new Date().toISOString(),
+        ...buildPaidOnboardingResetUpdates(),
+      });
     }
   }
 

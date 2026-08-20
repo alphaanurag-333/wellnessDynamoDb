@@ -1341,7 +1341,6 @@ export function AdminDashboard({
                 </button>
               </div>
               <div className="ops-challenge__list">
-                <div className="ops-challenge__list-inner" aria-hidden="true">IRW</div>
                 <div className="ops-challenge__list-items">
                   {chRunning.length === 0 ? (
                     <div className="ops-challenge__empty">
