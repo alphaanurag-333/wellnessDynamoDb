@@ -21,7 +21,7 @@
     "seed:testimonials": "node --use-system-ca scripts/seedTestimonials.js --confirm",
     "seed:static-pages": "node --use-system-ca scripts/seedStaticPages.js",
     "seed:specializations": "node --use-system-ca scripts/seedSpecializations.js",
-                       "seed:programs": "node --use-system-ca scripts/seedProgramCatalog.js",
+    "seed:programs": "node --use-system-ca scripts/seedProgramCatalog.js",
     "delete:static-pages": "node --use-system-ca scripts/deleteStaticPages.js",
     "seed:diet-plan-catalog": "node scripts/seedDietPlanCatalog.js",
     "seed:diet-plan-book": "node scripts/seedDietPlanBook.js",
@@ -70,6 +70,7 @@
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.1.1",
     "node-cron": "^3.0.3",
+    "otplib": "^13.4.1",
     "pdfkit": "^0.19.1",
     "uuid": "^14.0.0"
   }

@@ -17,7 +17,31 @@ import {
   saveTeamMemberPermissions,
   setAccessMemberRole,
 } from "../api/teamsApi.js";
+import {
+  saveCoachIntroLive,
+  saveCoachIntroVideo,
+  saveCoachLetterLive,
+  saveMyIntroLive,
+  saveMyIntroVideo,
+  saveMyLetterLive,
+  validateIntroVideoFile,
+} from "../api/coachContentApi.js";
 import { resolveBaseUiRoleKey, SYSTEM_TEAM_UI_KEYS } from "../utils/liveRoles.js";
+
+function ContentToggle({ live, disabled, onChange }) {
+  return (
+    <button
+      type="button"
+      className={`ua-my-content__toggle${live ? " ua-my-content__toggle--on" : ""}`}
+      aria-pressed={live}
+      aria-label={live ? "Live in app" : "Hidden in app"}
+      disabled={disabled}
+      onClick={onChange}
+    >
+      <span className="ua-my-content__toggle-knob" />
+    </button>
+  );
+}
 
 const SYSTEM_TEAM_ROLE_KEYS = [...SYSTEM_TEAM_UI_KEYS];
 
@@ -186,9 +210,10 @@ export function TeamMemberPage() {
   const { memberId } = useParams();
   const [searchParams] = useSearchParams();
   const { showToast: onToast } = useOutletContext();
-  const { isSuperAdmin, viewAs, sessionUi } = useViewAs();
+  const { account, isSuperAdmin, viewAs, sessionUi } = useViewAs();
   const navigate = useNavigate();
   const permsRef = useRef(null);
+  const videoRef = useRef(null);
   const actorIsWc = viewAs === "wc" || sessionUi === "wc";
   const requestsApproval = !isSuperAdmin && actorIsWc;
 
@@ -206,6 +231,7 @@ export function TeamMemberPage() {
   const [catalogRows, setCatalogRows] = useState(PERM_CATALOG);
   const [permActs, setPermActs] = useState(PERM_ACTS);
   const [totalSlots, setTotalSlots] = useState(TOTAL_PERM_SLOTS);
+  const [contentBusyKey, setContentBusyKey] = useState("");
   const catalogRef = useRef(PERM_CATALOG);
 
   const load = useCallback(async () => {
@@ -349,6 +375,118 @@ export function TeamMemberPage() {
     } finally {
       setSavingPerms(false);
     }
+  }
+
+  const isOwnProfile = Boolean(account?.id && memberId && account.id === memberId);
+  const canEditContent = viewAs === "admin" || isOwnProfile;
+
+  function mapContentFromAccount(nextAccount, previous = []) {
+    const intro = nextAccount?.coach_content?.intro || {};
+    const letter = nextAccount?.coach_content?.letter || {};
+    const hasVideo = Boolean(intro.videoUrl || intro.linkUrl);
+    const hasLetter = Boolean(letter.fileUrl);
+    const prevById = Object.fromEntries((previous || []).map((row) => [row.id, row]));
+    return [
+      {
+        id: "intro",
+        kind: "video",
+        title: "Intro video",
+        live: Boolean(intro.live) && hasVideo,
+        hasMedia: hasVideo,
+        meta: hasVideo
+          ? [intro.duration, intro.sourceType === "link" ? "Linked video" : intro.version ? `v${intro.version}` : "Uploaded"]
+              .filter(Boolean)
+              .join(" · ") || "Uploaded"
+          : "Not uploaded",
+        url: intro.videoUrl || intro.linkUrl || null,
+      },
+      {
+        id: "letter",
+        kind: "letter",
+        title: "Commitment letter",
+        live: Boolean(letter.live) && hasLetter,
+        hasMedia: hasLetter,
+        meta: hasLetter
+          ? [letter.signedAt ? `Signed ${new Date(letter.signedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}` : "Uploaded", "PDF"]
+              .filter(Boolean)
+              .join(" · ")
+          : prevById.letter?.meta || "Not uploaded",
+        url: letter.fileUrl || null,
+      },
+    ];
+  }
+
+  async function runContentSave(itemId, work, successMessage) {
+    if (!member?.id || contentBusyKey) return;
+    setContentBusyKey(itemId);
+    try {
+      const result = await work();
+      const nextAccount = result?.account || result;
+      if (nextAccount?.coach_content) {
+        setMember((prev) =>
+          prev
+            ? {
+                ...prev,
+                content: mapContentFromAccount(nextAccount, prev.content),
+              }
+            : prev,
+        );
+      } else {
+        await load();
+      }
+      if (successMessage) onToast(successMessage);
+    } catch (err) {
+      onToast(err?.message || "Could not update content");
+    } finally {
+      setContentBusyKey("");
+    }
+  }
+
+  function toggleContentItem(item) {
+    if (!canEditContent) return;
+    if (!item.hasMedia) {
+      onToast(item.kind === "video" ? "Upload a video before going live" : "Upload a signed letter before going live");
+      return;
+    }
+    const nextLive = !item.live;
+    if (item.kind === "video") {
+      runContentSave(
+        item.id,
+        () => (isOwnProfile ? saveMyIntroLive(nextLive) : saveCoachIntroLive(member.id, nextLive)),
+        nextLive ? "Intro video is live in the app" : "Intro video is hidden",
+      );
+      return;
+    }
+    runContentSave(
+      item.id,
+      () => (isOwnProfile ? saveMyLetterLive(nextLive) : saveCoachLetterLive(member.id, nextLive)),
+      nextLive ? "Commitment letter is live in the app" : "Commitment letter is hidden",
+    );
+  }
+
+  function startContentUpload(item) {
+    if (!canEditContent) return;
+    if (item.kind === "letter") {
+      navigate(UPDATED_ADMIN_PATHS.commitmentLetters(member.id));
+      return;
+    }
+    videoRef.current?.click();
+  }
+
+  function handleIntroVideoSelected(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !member?.id) return;
+    const invalid = validateIntroVideoFile(file);
+    if (invalid) {
+      onToast(invalid);
+      return;
+    }
+    runContentSave(
+      "intro",
+      () => (isOwnProfile ? saveMyIntroVideo(file) : saveCoachIntroVideo(member.id, file)),
+      "Intro video uploaded",
+    );
   }
 
   if (loading) {
@@ -544,64 +682,93 @@ export function TeamMemberPage() {
             <div className="ua-tm-section-head__title">Content</div>
             <div className="ua-tm-section-head__hint">
               {contentLive} of {contentItems.length} live for clients
+              {canEditContent ? " — upload, replace or hide any of them" : ""}
             </div>
           </div>
           <div className="ua-tm-content-list">
-            {contentItems.map((item) => (
-              <div key={item.id} className="ua-tm-content-row">
-                <div
-                  className={`ua-tm-content-row__icon${item.kind === "letter" ? " ua-tm-content-row__icon--doc" : ""}`}
-                  aria-hidden="true"
-                >
-                  {item.kind === "letter" ? (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                      <path d="M14 2v6h6" />
-                      <path d="M8 13h8" />
-                      <path d="M8 17h5" />
-                    </svg>
-                  ) : (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M23 7l-7 5 7 5V7z" />
-                      <rect x="1" y="5" width="15" height="14" rx="2" />
-                    </svg>
-                  )}
-                </div>
-                <div className="ua-tm-content-row__body">
-                  <div className="ua-tm-content-row__title">{item.title}</div>
-                  <div className="ua-tm-content-row__meta">{item.meta || "Not uploaded"}</div>
-                </div>
-                <span className={`ua-tm-content-row__live${item.live ? "" : " ua-tm-content-row__live--off"}`}>
-                  {item.live ? "Live in app" : "Not uploaded"}
-                </span>
-                <div className="ua-tm-content-row__actions">
-                  <button
-                    type="button"
-                    className="ua-tm-content-row__btn ua-tm-content-row__btn--view"
-                    onClick={() => {
-                      if (item.kind === "letter") {
-                        navigate(UPDATED_ADMIN_PATHS.commitmentLetters(member.id));
-                        return;
-                      }
-                      navigate(UPDATED_ADMIN_PATHS.myContent);
-                    }}
+            {contentItems.map((item) => {
+              const busy = contentBusyKey === item.id;
+              const hasMedia = Boolean(item.hasMedia ?? item.url);
+              return (
+                <div key={item.id} className={`ua-tm-content-row${item.live ? " is-live" : ""}`}>
+                  <div
+                    className={`ua-tm-content-row__icon${item.kind === "letter" ? " ua-tm-content-row__icon--doc" : ""}`}
+                    aria-hidden="true"
                   >
-                    View
-                  </button>
-                  <button
-                    type="button"
-                    className="ua-tm-content-row__btn ua-tm-content-row__btn--download"
-                    disabled={!item.url}
-                    onClick={() => {
-                      if (item.url) window.open(item.url, "_blank", "noopener,noreferrer");
-                    }}
-                  >
-                    Download
-                  </button>
+                    {item.kind === "letter" ? (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <path d="M14 2v6h6" />
+                        <path d="M8 13h8" />
+                        <path d="M8 17h5" />
+                      </svg>
+                    ) : (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M23 7l-7 5 7 5V7z" />
+                        <rect x="1" y="5" width="15" height="14" rx="2" />
+                      </svg>
+                    )}
+                  </div>
+                  <div className="ua-tm-content-row__body">
+                    <div className="ua-tm-content-row__title">{item.title}</div>
+                    <div className="ua-tm-content-row__meta">{item.meta || "Not uploaded"}</div>
+                  </div>
+                  <span className={`ua-tm-content-row__live${item.live ? "" : " ua-tm-content-row__live--off"}`}>
+                    {item.live ? "Live in app" : "Hidden"}
+                  </span>
+                  <div className="ua-tm-content-row__actions">
+                    <button
+                      type="button"
+                      className="ua-tm-content-row__btn ua-tm-content-row__btn--view"
+                      disabled={busy}
+                      onClick={() => {
+                        if (item.kind === "letter") {
+                          navigate(UPDATED_ADMIN_PATHS.commitmentLetters(member.id));
+                          return;
+                        }
+                        if (item.url) {
+                          window.open(item.url, "_blank", "noopener,noreferrer");
+                          return;
+                        }
+                        onToast("No intro video uploaded yet");
+                      }}
+                    >
+                      View
+                    </button>
+                    {canEditContent ? (
+                      <button
+                        type="button"
+                        className="ua-tm-content-row__btn ua-tm-content-row__btn--download"
+                        disabled={busy}
+                        onClick={() => startContentUpload(item)}
+                      >
+                        {busy ? "Saving…" : hasMedia ? "Replace" : "Upload"}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="ua-tm-content-row__btn ua-tm-content-row__btn--download"
+                        disabled={!item.url}
+                        onClick={() => {
+                          if (item.url) window.open(item.url, "_blank", "noopener,noreferrer");
+                        }}
+                      >
+                        Download
+                      </button>
+                    )}
+                    {canEditContent ? (
+                      <ContentToggle
+                        live={Boolean(item.live)}
+                        disabled={busy}
+                        onChange={() => toggleContentItem({ ...item, hasMedia })}
+                      />
+                    ) : null}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
+          <input ref={videoRef} type="file" accept="video/*" hidden onChange={handleIntroVideoSelected} />
         </section>
       ) : null}
 

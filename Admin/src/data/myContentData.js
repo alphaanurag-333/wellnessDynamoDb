@@ -6,7 +6,7 @@ export const MY_CONTENT_COACHES = [
     clients: 18,
     initial: "AR",
     color: "#34a56a",
-    liveLabel: "2 OF 2 LIVE",
+    liveLabel: "2 of 2 live",
     items: [
       {
         id: "intro",
@@ -36,7 +36,7 @@ export const MY_CONTENT_COACHES = [
     clients: 14,
     initial: "PN",
     color: "#5e6ad2",
-    liveLabel: "2 OF 2 LIVE",
+    liveLabel: "2 of 2 live",
     items: [
       {
         id: "intro",
@@ -66,7 +66,7 @@ export const MY_CONTENT_COACHES = [
     clients: 11,
     initial: "VS",
     color: "#0d9488",
-    liveLabel: "1 OF 2 LIVE",
+    liveLabel: "1 of 2 live",
     items: [
       {
         id: "intro",

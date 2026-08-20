@@ -22,7 +22,6 @@ const {
 } = require("../../models/accountModel");
 const { listUsersByParentCoachId } = require("../../models/userModel");
 const { ensureEntityReferralCode } = require("../../models/referralCodeModel");
-const { listUserCommitmentLetters } = require("../../models/userCommitmentLetterModel");
 const {
   getConsolePermissionCatalog,
   grantsMapToPermissions,
@@ -1016,6 +1015,10 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
     let clientCount = null;
     let awcCount = null;
     let parentName = null;
+    let parentAccountId =
+      pub.parentAccountId ||
+      getMembership(pub, primaryAccountRole)?.parentAccountId ||
+      null;
 
     try {
       if (primaryAccountRole === "wellness_coach") {
@@ -1033,10 +1036,7 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
         primaryAccountRole === "assistant_wellness_coach" ||
         primaryAccountRole === "trainee"
       ) {
-        const parentId =
-          pub.parentAccountId ||
-          getMembership(pub, primaryAccountRole)?.parentAccountId ||
-          null;
+        const parentId = parentAccountId;
         if (parentId) {
           const parent = await getAccountById(parentId);
           parentName = parent?.name || null;
@@ -1071,11 +1071,13 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
       displayStatus,
       approvalStatus: pub.approvalStatus || null,
       isSuperAdmin: Boolean(pub.isSuperAdmin),
+      totpRequired: Boolean(pub.totpRequired),
+      totpConfigured: Boolean(pub.totpConfigured),
       roleKeys,
       primaryRoleKey: uiRole,
       accountRoleKey: primaryAccountRole,
       consoleRoleId: consoleRole?.id || null,
-      parentAccountId: pub.parentAccountId || null,
+      parentAccountId,
       parentName,
       clientCount,
       awcCount,
@@ -1104,46 +1106,56 @@ function formatCountLabel(count, singular, plural) {
   return `${n} ${n === 1 ? singular : plural}`;
 }
 
-async function buildMemberContent(accountId) {
-  const items = [
+async function buildMemberContent(accountOrPublic) {
+  const coachContent =
+    accountOrPublic?.coach_content && typeof accountOrPublic.coach_content === "object"
+      ? accountOrPublic.coach_content
+      : {};
+  const intro = coachContent.intro || {};
+  const letter = coachContent.letter || {};
+  const videoUrl = String(intro.videoUrl || "").trim();
+  const linkUrl = String(intro.linkUrl || "").trim();
+  const letterUrl = String(letter.fileUrl || "").trim();
+  const hasVideo = Boolean(videoUrl || linkUrl);
+  const hasLetter = Boolean(letterUrl);
+
+  const formatDate = (iso) => {
+    if (!iso) return "";
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  };
+
+  const signedLabel = formatDate(letter.signedAt);
+  const videoMeta = hasVideo
+    ? [intro.duration, intro.sourceType === "link" ? "Linked video" : intro.version ? `v${intro.version}` : "Uploaded"]
+        .filter(Boolean)
+        .join(" · ") || "Uploaded"
+    : "Not uploaded";
+  const letterMeta = hasLetter
+    ? [signedLabel ? `Signed ${signedLabel}` : "Uploaded", "PDF"].filter(Boolean).join(" · ")
+    : "Not uploaded";
+
+  return [
     {
       id: "intro",
       kind: "video",
       title: "Intro video",
-      live: false,
-      meta: "Not uploaded",
-      url: null,
+      live: Boolean(intro.live) && hasVideo,
+      hasMedia: hasVideo,
+      meta: videoMeta,
+      url: videoUrl || linkUrl || null,
     },
     {
       id: "letter",
       kind: "letter",
       title: "Commitment letter",
-      live: false,
-      meta: "Not uploaded",
-      url: null,
+      live: Boolean(letter.live) && hasLetter,
+      hasMedia: hasLetter,
+      meta: letterMeta,
+      url: letterUrl || null,
     },
   ];
-
-  try {
-    const data = await listUserCommitmentLetters({
-      managedByCoachId: accountId,
-      page: 1,
-      limit: 1,
-    });
-    const letters = Array.isArray(data.commitmentLetters) ? data.commitmentLetters : [];
-    const total = Number(data.pagination?.total || letters.length || 0);
-    const latest = letters[0];
-    const latestUrl = String(latest?.pdfUrl || latest?.fileUrl || latest?.url || "").trim();
-    if (latestUrl) items[1].url = latestUrl;
-    if (total > 0) {
-      items[1].live = true;
-      items[1].meta = `${formatCountLabel(total, "client letter", "client letters")} on file`;
-    }
-  } catch {
-    /* letters table / GSI may not exist yet */
-  }
-
-  return items;
 }
 
 exports.getAccessMember = asyncHandler(async (req, res) => {
@@ -1266,6 +1278,8 @@ exports.getAccessMember = asyncHandler(async (req, res) => {
             ? "Pending"
             : "Active",
       isSuperAdmin: Boolean(pub.isSuperAdmin),
+      totpRequired: Boolean(pub.totpRequired),
+      totpConfigured: Boolean(pub.totpConfigured),
       primaryRoleKey: uiRole,
       accountRoleKey: primaryAccountRole,
       consoleRoleId: consoleRole?.id || null,
@@ -1282,7 +1296,7 @@ exports.getAccessMember = asyncHandler(async (req, res) => {
             : ROLE_KEY_META[uiRole]?.name || uiRole,
       content:
         primaryAccountRole === "wellness_coach" || primaryAccountRole === "assistant_wellness_coach"
-          ? await buildMemberContent(pub.id)
+          ? await buildMemberContent(pub)
           : [],
       grants,
       roleGrants,

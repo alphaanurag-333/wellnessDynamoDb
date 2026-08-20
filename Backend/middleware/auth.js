@@ -56,8 +56,13 @@ function parseAccessToken(req) {
     throw new AppError("Authentication required", 401);
   }
   try {
-    return verifyAccessToken(token);
-  } catch {
+    const payload = verifyAccessToken(token);
+    if (payload?.purpose === "mfa") {
+      throw new AppError("Invalid or expired token", 401);
+    }
+    return payload;
+  } catch (err) {
+    if (err instanceof AppError) throw err;
     throw new AppError("Invalid or expired token", 401);
   }
 }

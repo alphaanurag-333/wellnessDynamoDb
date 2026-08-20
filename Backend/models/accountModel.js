@@ -231,6 +231,15 @@ function buildAccountItem(input, { id, now } = {}) {
       input.resetPasswordExpire != null && input.resetPasswordExpire !== ""
         ? String(input.resetPasswordExpire)
         : null,
+    totpSecret:
+      input.totpSecret != null && String(input.totpSecret).trim()
+        ? String(input.totpSecret).trim()
+        : null,
+    totpRequired: Boolean(input.totpRequired),
+    totpVerifiedAt:
+      input.totpVerifiedAt != null && String(input.totpVerifiedAt).trim()
+        ? String(input.totpVerifiedAt).trim()
+        : null,
     createdAt: stamp,
     updatedAt: stamp,
   };
@@ -254,6 +263,9 @@ function toPublicAccount(account) {
       .filter(Boolean);
   }
   pub.aiEnabled = normalizeVisibleFlag(account.aiEnabled, true);
+  pub.totpRequired = Boolean(account.totpRequired);
+  pub.totpConfigured = Boolean(account.totpSecret);
+  if (account.totpVerifiedAt) pub.totpVerifiedAt = account.totpVerifiedAt;
   pub.coach_content = toPublicCoachContent(account.coach_content);
   return pub;
 }
@@ -280,6 +292,15 @@ function sanitizeUpdateField(key, value) {
     return normalizeApprovalStatus(value);
   }
   if (key === "webVisible" || key === "appVisible" || key === "aiEnabled") return normalizeVisibleFlag(value, true);
+  if (key === "totpRequired") return Boolean(value);
+  if (key === "totpSecret") {
+    if (value == null || value === "") return null;
+    return String(value).trim() || null;
+  }
+  if (key === "totpVerifiedAt") {
+    if (value == null || value === "") return null;
+    return String(value).trim() || null;
+  }
   if (key === "isSuperAdmin") return Boolean(value);
   if (key === "defaultRoleKey") {
     if (value == null || value === "") return null;

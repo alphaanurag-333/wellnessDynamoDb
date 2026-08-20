@@ -19,6 +19,7 @@ function toPublicProfile(doc) {
   delete o.pendingPhoneCountryCode;
   delete o.pendingWhatsappPhone;
   delete o.pendingWhatsappCountryCode;
+  delete o.totpSecret;
   return o;
 }
 

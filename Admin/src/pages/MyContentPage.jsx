@@ -1,64 +1,25 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Navigate, useOutletContext } from "react-router-dom";
-import { fetchAccessRoles } from "../api/accessApi.js";
-import { ROLE_KEY_TO_UI, UI_TO_ROLE_KEY } from "../api/accountApi.js";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Navigate, useNavigate, useOutletContext } from "react-router-dom";
 import { BrandLoader } from "../components/BrandLoader.jsx";
-import { BackLink, OrangeButton, PillTabs } from "../components/shared.jsx";
+import { IconVideo } from "../components/DashboardIcons.jsx";
+import { BackLink, OrangeButton } from "../components/shared.jsx";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import {
+  getMyCoachContent,
   listMyContentCoaches,
   mapAccountToMyContentCoach,
   saveCoachIntroLive,
   saveCoachIntroVideo,
-  saveCoachLetterFile,
   saveCoachLetterLive,
+  saveMyIntroLive,
+  saveMyIntroVideo,
+  saveMyLetterLive,
   validateIntroVideoFile,
-  validateLetterPdfFile,
   videoPreviewSrc,
 } from "../api/coachContentApi.js";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 
-const CONTENT_ROLE_UI_KEYS = new Set(["wc", "awc", "trainee"]);
-
-const FALLBACK_ROLE_TABS = [
-  { id: "wellness_coach", label: "Wellness Coach", roleKey: "wellness_coach" },
-  { id: "assistant_wellness_coach", label: "Assistant WC", roleKey: "assistant_wellness_coach" },
-  { id: "trainee", label: "Trainee", roleKey: "trainee" },
-];
-
-function resolveBaseUiRoleKey(role, allRoles) {
-  const byId = Object.fromEntries((allRoles || []).map((row) => [row.id, row]));
-  let current = role;
-  const seen = new Set();
-  while (current) {
-    const currentId = current.id || current.roleKey;
-    if (!currentId || seen.has(currentId)) break;
-    seen.add(currentId);
-    const key = String(current.roleKey || "").toLowerCase();
-    if (UI_TO_ROLE_KEY[key]) return key;
-    if (ROLE_KEY_TO_UI[key]) return ROLE_KEY_TO_UI[key];
-    current = current.inheritsFromRoleId ? byId[current.inheritsFromRoleId] : null;
-  }
-  return null;
-}
-
-function contentRoleTabs(accessRoles) {
-  const live = (accessRoles || [])
-    .filter((role) => {
-      const base = resolveBaseUiRoleKey(role, accessRoles);
-      return CONTENT_ROLE_UI_KEYS.has(base);
-    })
-    .map((role) => ({
-      id: role.id || role.roleKey,
-      label: role.name || role.roleKey,
-      roleKey:
-        role.roleKey ||
-        UI_TO_ROLE_KEY[resolveBaseUiRoleKey(role, accessRoles)] ||
-        role.id,
-      count: Number(role.memberCount) || 0,
-    }));
-  return live.length ? live : FALLBACK_ROLE_TABS;
-}
+const COACH_VIEW_ROLES = new Set(["wc", "awc", "trainee"]);
 
 function ContentToggle({ live, disabled, onChange }) {
   return (
@@ -72,6 +33,17 @@ function ContentToggle({ live, disabled, onChange }) {
     >
       <span className="ua-my-content__toggle-knob" />
     </button>
+  );
+}
+
+function ContentFileIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <path d="M14 2v6h6" />
+      <path d="M8 13h8" />
+      <path d="M8 17h6" />
+    </svg>
   );
 }
 
@@ -120,88 +92,42 @@ function VideoPreview({ item }) {
   );
 }
 
-function LetterPreview({ item }) {
-  return (
-    <div className="ua-profile-preview__letter">
-      <p className="ua-profile-preview__kicker">v{item.version || 1}</p>
-      <div className="ua-profile-preview__letter-text">
-        {item.text?.trim() || "The current commitment letter text is not available yet."}
-      </div>
-      {item.signedAt ? (
-        <p className="ua-profile-preview__meta">
-          Signed {new Date(item.signedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-        </p>
-      ) : null}
-      {item.fileUrl ? (
-        <iframe title="Signed commitment letter" className="ua-profile-preview__pdf" src={item.fileUrl} />
-      ) : (
-        <p className="ua-profile-preview__empty">Upload a signed PDF to attach it here.</p>
-      )}
-      {item.fileUrl ? (
-        <a className="ua-profile-modal__upload" href={item.fileUrl} target="_blank" rel="noreferrer">
-          Open signed PDF
-        </a>
-      ) : null}
-    </div>
-  );
-}
-
 export function MyContentPage() {
   const { showToast } = useOutletContext();
+  const navigate = useNavigate();
   const { viewAs, account } = useViewAs();
+  const isAdmin = viewAs === "admin";
+  const isCoachView = COACH_VIEW_ROLES.has(viewAs);
   const [coaches, setCoaches] = useState([]);
   const [letterConfig, setLetterConfig] = useState({ text: "", version: 1 });
-  const [accessRoles, setAccessRoles] = useState([]);
-  const [roleTab, setRoleTab] = useState(FALLBACK_ROLE_TABS[0].id);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [reloadNonce, setReloadNonce] = useState(0);
   const [busyKey, setBusyKey] = useState("");
   const [preview, setPreview] = useState(null);
   const videoRef = useRef(null);
-  const letterRef = useRef(null);
   const uploadTarget = useRef(null);
 
-  const tabs = useMemo(() => contentRoleTabs(accessRoles), [accessRoles]);
-  const activeTab = tabs.find((tab) => tab.id === roleTab) || tabs[0];
-  const apiRoleKey = UI_TO_ROLE_KEY[activeTab?.roleKey] || activeTab?.roleKey || "wellness_coach";
-
   useEffect(() => {
-    if (viewAs !== "admin") return undefined;
-    let cancelled = false;
-    fetchAccessRoles()
-      .then((roles) => {
-        if (!cancelled) setAccessRoles(Array.isArray(roles) ? roles : []);
-      })
-      .catch(() => {
-        if (!cancelled) setAccessRoles([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [viewAs]);
-
-  useEffect(() => {
-    if (!tabs.length) return;
-    if (tabs.some((tab) => tab.id === roleTab)) return;
-    const preferred = tabs.find((tab) => {
-      const key = UI_TO_ROLE_KEY[tab.roleKey] || tab.roleKey;
-      return key === "wellness_coach";
-    });
-    setRoleTab(preferred?.id || tabs[0].id);
-  }, [roleTab, tabs]);
-
-  useEffect(() => {
-    if (viewAs !== "admin" || !apiRoleKey) return undefined;
+    if (!isAdmin && !isCoachView) return undefined;
     let cancelled = false;
     async function loadMembers() {
       setLoading(true);
       setError("");
       try {
-        const result = await listMyContentCoaches({ roleKey: apiRoleKey });
-        if (cancelled) return;
-        setCoaches(result.coaches || []);
-        setLetterConfig(result.letterConfig || { text: "", version: 1 });
+        if (isAdmin) {
+          const result = await listMyContentCoaches();
+          if (cancelled) return;
+          setCoaches(result.coaches || []);
+          setLetterConfig(result.letterConfig || { text: "", version: 1 });
+        } else {
+          const payload = await getMyCoachContent();
+          if (cancelled) return;
+          const nextAccount = payload?.account || account;
+          const config = payload?.letter || { text: "", version: 1 };
+          setLetterConfig(config);
+          setCoaches(nextAccount ? [mapAccountToMyContentCoach(nextAccount, config, 0)] : []);
+        }
       } catch (err) {
         if (cancelled) return;
         setError(err?.message || "Could not load coach content");
@@ -214,16 +140,18 @@ export function MyContentPage() {
     return () => {
       cancelled = true;
     };
-  }, [apiRoleKey, reloadNonce, viewAs]);
+  }, [account, isAdmin, isCoachView, reloadNonce]);
 
   const load = useCallback(() => {
     setReloadNonce((n) => n + 1);
   }, []);
 
-  if (viewAs !== "admin") {
-    const ownId = account?.id;
-    if (!ownId) return <Navigate to={UPDATED_ADMIN_PATHS.dashboard} replace />;
-    return <Navigate to={UPDATED_ADMIN_PATHS.commitmentLetters(ownId)} replace />;
+  if (!isAdmin && !isCoachView) {
+    return <Navigate to={UPDATED_ADMIN_PATHS.dashboard} replace />;
+  }
+
+  if (!isAdmin && !account?.id) {
+    return <Navigate to={UPDATED_ADMIN_PATHS.dashboard} replace />;
   }
 
   function applyAccount(accountId, nextAccount) {
@@ -240,7 +168,8 @@ export function MyContentPage() {
     if (busyKey) return;
     setBusyKey(key);
     try {
-      const nextAccount = await work();
+      const result = await work();
+      const nextAccount = result?.account || result;
       applyAccount(accountId, nextAccount);
       if (successMessage) showToast(successMessage);
     } catch (err) {
@@ -250,33 +179,53 @@ export function MyContentPage() {
     }
   }
 
+  function openLetters(coach) {
+    navigate(UPDATED_ADMIN_PATHS.commitmentLetters(coach.id));
+  }
+
   function toggleItem(coach, item) {
     if (!item.hasMedia) {
       showToast(item.kind === "video" ? "Upload a video before going live" : "Upload a signed letter before going live");
       return;
     }
     const nextLive = !item.live;
+    const own = !isAdmin && coach.id === account?.id;
     if (item.kind === "video") {
       runSave(
         coach.id,
         item.id,
-        () => saveCoachIntroLive(coach.id, nextLive),
-        nextLive ? `${coach.name}'s intro video is live in the app` : `${coach.name}'s intro video is hidden`,
+        () => (own ? saveMyIntroLive(nextLive) : saveCoachIntroLive(coach.id, nextLive)),
+        nextLive
+          ? own
+            ? "Intro video is live in the app"
+            : `${coach.name}'s intro video is live in the app`
+          : own
+            ? "Intro video is hidden"
+            : `${coach.name}'s intro video is hidden`,
       );
       return;
     }
     runSave(
       coach.id,
       item.id,
-      () => saveCoachLetterLive(coach.id, nextLive),
-      nextLive ? `${coach.name}'s commitment letter is live in the app` : `${coach.name}'s commitment letter is hidden`,
+      () => (own ? saveMyLetterLive(nextLive) : saveCoachLetterLive(coach.id, nextLive)),
+      nextLive
+        ? own
+          ? "Commitment letter is live in the app"
+          : `${coach.name}'s commitment letter is live in the app`
+        : own
+          ? "Commitment letter is hidden"
+          : `${coach.name}'s commitment letter is hidden`,
     );
   }
 
   function startUpload(coach, item) {
+    if (item.kind === "letter") {
+      openLetters(coach);
+      return;
+    }
     uploadTarget.current = { coachId: coach.id, kind: item.kind };
-    if (item.kind === "letter") letterRef.current?.click();
-    else videoRef.current?.click();
+    videoRef.current?.click();
   }
 
   function handleVideoSelected(event) {
@@ -291,27 +240,22 @@ export function MyContentPage() {
       return;
     }
     const coach = coaches.find((row) => row.id === coachId);
-    runSave(coachId, "intro", () => saveCoachIntroVideo(coachId, file), `Intro video uploaded for ${coach?.name || "coach"}`);
-  }
-
-  function handleLetterSelected(event) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    const coachId = uploadTarget.current?.coachId;
-    uploadTarget.current = null;
-    if (!file || !coachId) return;
-    const invalid = validateLetterPdfFile(file);
-    if (invalid) {
-      showToast(invalid);
-      return;
-    }
-    const coach = coaches.find((row) => row.id === coachId);
-    runSave(coachId, "letter", () => saveCoachLetterFile(coachId, file), `Commitment letter uploaded for ${coach?.name || "coach"}`);
+    const own = !isAdmin && coachId === account?.id;
+    runSave(
+      coachId,
+      "intro",
+      () => (own ? saveMyIntroVideo(file) : saveCoachIntroVideo(coachId, file)),
+      own ? "Intro video uploaded" : `Intro video uploaded for ${coach?.name || "coach"}`,
+    );
   }
 
   function viewItem(coach, item) {
+    if (item.kind === "letter") {
+      openLetters(coach);
+      return;
+    }
     if (!item.hasMedia) {
-      showToast(item.kind === "video" ? "No intro video uploaded yet" : "No commitment letter uploaded yet");
+      showToast("No intro video uploaded yet");
       return;
     }
     setPreview({ coachId: coach.id, kind: item.kind });
@@ -319,6 +263,9 @@ export function MyContentPage() {
 
   const previewCoach = preview ? coaches.find((coach) => coach.id === preview.coachId) : null;
   const previewItem = previewCoach?.items.find((item) => item.kind === preview?.kind);
+  const pageSubtitle = isAdmin
+    ? "Intro videos and commitment letters for every coach. Upload, replace or hide any of them."
+    : "Your intro video and commitment letter. Upload, replace or turn one on to show it to your clients.";
 
   return (
     <main className="content ua-page-enter ua-my-content">
@@ -326,14 +273,8 @@ export function MyContentPage() {
       <div className="ua-my-content__head">
         <div>
           <h1 className="page-head__title">My Content</h1>
-          <p className="page-head__sub">
-            Intro videos and commitment letters for every coach. Upload, replace or hide any of them.
-          </p>
+          <p className="page-head__sub">{pageSubtitle}</p>
         </div>
-      </div>
-
-      <div className="ua-my-content__tabs">
-        <PillTabs tabs={tabs} active={activeTab?.id || roleTab} onChange={setRoleTab} />
       </div>
 
       {loading ? <BrandLoader variant="page" label="Loading coach content…" /> : null}
@@ -345,7 +286,7 @@ export function MyContentPage() {
       ) : null}
 
       {!loading && !error && !coaches.length ? (
-        <p className="page-head__sub">No people in this role yet.</p>
+        <p className="page-head__sub">{isAdmin ? "No coaches with content yet." : "Could not load your content yet."}</p>
       ) : null}
 
       {!loading && !error ? (
@@ -360,63 +301,67 @@ export function MyContentPage() {
                   <div className="ua-my-content__coach-name">{coach.name}</div>
                   <div className="ua-my-content__coach-meta">
                     {coach.role}
-                    {coach.clients != null ? ` · ${coach.clients} clients` : ""}
+                    {coach.meta ? ` · ${coach.meta}` : ""}
                   </div>
                 </div>
-                <span className="ua-my-content__live-badge">{coach.liveLabel}</span>
+                <span className={`ua-my-content__live-badge${coach.liveCount ? "" : " is-empty"}`}>
+                  {coach.liveLabel}
+                </span>
               </div>
 
-              {coach.items.map((item) => {
-                const busy = busyKey === `${coach.id}:${item.id}`;
-                return (
-                  <div key={item.id} className="ua-my-content__item">
-                    <span className="ua-my-content__item-icon" aria-hidden="true">
-                      {item.kind === "video" ? "🎥" : "📄"}
-                    </span>
-                    <div className="ua-my-content__item-copy">
-                      <div className="ua-my-content__item-title">{item.title}</div>
-                      <div className="ua-my-content__item-meta">{item.meta}</div>
-                    </div>
-                    {item.hasMedia ? (
-                      <span
-                        className={`ua-my-content__item-status${item.live ? " is-live" : " is-hidden"}`}
-                      >
-                        {item.live ? "LIVE IN APP" : "HIDDEN"}
+              <div className="ua-my-content__coach-body">
+                {coach.items.map((item) => {
+                  const busy = busyKey === `${coach.id}:${item.id}`;
+                  return (
+                    <div
+                      key={item.id}
+                      className={`ua-my-content__item${item.live ? " is-live" : ""}`}
+                    >
+                      <span className="ua-my-content__item-icon" aria-hidden="true">
+                        {item.kind === "video" ? <IconVideo /> : <ContentFileIcon />}
                       </span>
-                    ) : null}
-                    <div className="ua-my-content__item-actions">
-                      <button
-                        type="button"
-                        className="ua-my-content__btn ua-my-content__btn--ghost"
-                        disabled={busy}
-                        onClick={() => viewItem(coach, item)}
-                      >
-                        {item.secondaryAction}
-                      </button>
-                      <button
-                        type="button"
-                        className="ua-my-content__btn ua-my-content__btn--primary"
-                        disabled={busy}
-                        onClick={() => startUpload(coach, item)}
-                      >
-                        {busy ? "Saving…" : item.primaryAction}
-                      </button>
-                      <ContentToggle
-                        live={item.live}
-                        disabled={busy || !item.hasMedia}
-                        onChange={() => toggleItem(coach, item)}
-                      />
+                      <div className="ua-my-content__item-copy">
+                        <div className="ua-my-content__item-title">
+                          {isAdmin ? item.title : item.kind === "video" ? "My intro video" : "My commitment letter"}
+                        </div>
+                        <div className="ua-my-content__item-meta">{item.meta}</div>
+                      </div>
+                      <span className={`ua-my-content__item-status${item.live ? " is-live" : ""}`}>
+                        {item.live ? "Live in app" : "Hidden"}
+                      </span>
+                      <div className="ua-my-content__item-actions">
+                        <button
+                          type="button"
+                          className="ua-my-content__btn ua-my-content__btn--ghost"
+                          disabled={busy}
+                          onClick={() => viewItem(coach, item)}
+                        >
+                          View
+                        </button>
+                        <button
+                          type="button"
+                          className="ua-my-content__btn ua-my-content__btn--primary"
+                          disabled={busy}
+                          onClick={() => startUpload(coach, item)}
+                        >
+                          {busy ? "Saving…" : item.primaryAction}
+                        </button>
+                        <ContentToggle
+                          live={item.live}
+                          disabled={busy}
+                          onChange={() => toggleItem(coach, item)}
+                        />
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </section>
           ))}
         </div>
       ) : null}
 
       <input ref={videoRef} type="file" accept="video/*" hidden onChange={handleVideoSelected} />
-      <input ref={letterRef} type="file" accept="application/pdf,.pdf" hidden onChange={handleLetterSelected} />
 
       <ContentPreviewModal
         open={Boolean(previewItem)}
@@ -424,7 +369,6 @@ export function MyContentPage() {
         onClose={() => setPreview(null)}
       >
         {previewItem?.kind === "video" ? <VideoPreview item={previewItem} /> : null}
-        {previewItem?.kind === "letter" ? <LetterPreview item={previewItem} /> : null}
       </ContentPreviewModal>
     </main>
   );
