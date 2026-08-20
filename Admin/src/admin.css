@@ -14677,6 +14677,32 @@ scrollbar-width: thin;
   color: #2b8f5b;
 }
 
+.updated-admin .ua-cp-ip-banner--step {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: #f0faf4;
+  border-color: #bfe6cf;
+  color: #1f6b45;
+}
+
+.updated-admin .ua-cp-ip-banner--step strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1f6b45;
+}
+
+.updated-admin .ua-cp-ip-banner--step span {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #3d7a5a;
+}
+
 .updated-admin .ua-cp-ip-rec__actions {
   display: flex;
   align-items: flex-end;

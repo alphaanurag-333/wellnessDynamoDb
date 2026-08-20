@@ -17,6 +17,7 @@ import {
   fetchPrakrutiThingsToAvoid,
   fetchUserLaunchAssessments,
   fetchUserPrakrutiAssessment,
+  patchOnboardingStep,
   saveUserLaunchAssessment,
   saveUserPrakrutiAssessment,
   updateUserLaunchAssessment,
@@ -424,6 +425,7 @@ function typeFromDoshaScores(scores) {
 function LifestyleTab({
   user,
   onToast,
+  onUserUpdated,
   config,
   loading,
   assessments,
@@ -529,6 +531,33 @@ function LifestyleTab({
         ...(assessments || []).filter((row) => row.id !== saved.id),
       ];
       onAssessmentsChange(next);
+
+      const launchStatus = String(user?.paidOnboardingStepStatus?.launch || "").toLowerCase();
+      const shouldCompleteLaunch =
+        !user?.paidOnboardingCompleted
+        && launchStatus !== "done"
+        && launchStatus !== "skipped"
+        && !/^\d+$/.test(String(userId));
+
+      if (shouldCompleteLaunch) {
+        try {
+          const data = await patchOnboardingStep(userId, "launch", "done");
+          const nextStatus = data?.paidOnboardingStepStatus || {
+            ...user.paidOnboardingStepStatus,
+            launch: "done",
+          };
+          onUserUpdated?.({
+            ...user,
+            paidOnboardingStepStatus: nextStatus,
+            paidOnboardingCompleted: Boolean(data?.paidOnboardingCompleted),
+          });
+        } catch (stepErr) {
+          onToast(stepErr?.message || "Assessment saved, but failed to mark LAUNCH complete");
+          setSaving(false);
+          return;
+        }
+      }
+
       onToast("LAUNCH assessment saved");
     } catch (err) {
       onToast(err?.message || "Failed to save LAUNCH assessment");
@@ -954,7 +983,7 @@ function PrakritiTab({ user, onToast, canWrite = true }) {
   );
 }
 
-export function LaunchSection({ user, onToast }) {
+export function LaunchSection({ user, onToast, onUserUpdated }) {
   const { canEdit, canCreate } = useClientSectionPermissions("launch");
   const { can } = useViewAs();
   const canWrite = canEdit || canCreate;
@@ -1064,6 +1093,7 @@ export function LaunchSection({ user, onToast }) {
         <LifestyleTab
           user={user}
           onToast={onToast}
+          onUserUpdated={onUserUpdated}
           config={config}
           loading={configLoading}
           assessments={assessments}
