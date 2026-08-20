@@ -2,7 +2,6 @@ const {
   PutCommand,
   GetCommand,
   UpdateCommand,
-  DeleteCommand,
   QueryCommand,
   ScanCommand,
 } = require("@aws-sdk/lib-dynamodb");
@@ -370,13 +369,40 @@ async function countCoachesByRoleId(roleId) {
 }
 
 async function deleteWellnessCoach(id) {
-  await docClient.send(
-    new DeleteCommand({
+  const current = await getWellnessCoachRecordById(id);
+  if (!current) {
+    const err = new Error("Wellness coach not found");
+    err.name = "NotFoundError";
+    throw err;
+  }
+  if (String(current.status || "").toLowerCase() === "deleted") {
+    return current;
+  }
+
+  const now = new Date().toISOString();
+  const { Attributes } = await docClient.send(
+    new UpdateCommand({
       TableName: TABLE,
       Key: { id },
-      ConditionExpression: "attribute_exists(id)",
+      UpdateExpression:
+        "SET #status = :deleted, deletedAt = :deletedAt, updatedAt = :updatedAt, " +
+        "deletedEmail = if_not_exists(email, :empty), " +
+        "deletedPhoneKey = if_not_exists(phoneKey, :empty) " +
+        "REMOVE email, phoneKey, password, otp, otpExpire, resetPasswordToken, " +
+        "resetPasswordExpire, fcmId, profileImage",
+      ExpressionAttributeNames: { "#status": "status" },
+      ExpressionAttributeValues: {
+        ":deleted": "deleted",
+        ":deletedAt": now,
+        ":updatedAt": now,
+        ":empty": "",
+      },
+      ConditionExpression:
+        "attribute_exists(id) AND (attribute_not_exists(#status) OR #status <> :deleted)",
+      ReturnValues: "ALL_NEW",
     })
   );
+  return withLegacyId(Attributes || { id, status: "deleted" });
 }
 
 async function listWellnessCoaches({

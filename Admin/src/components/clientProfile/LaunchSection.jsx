@@ -91,7 +91,7 @@ function ratingIdForTone(ratings, tone) {
 function ScoreCard({ overall, maxOverall, finalScore }) {
   return (
     <div className="ua-cp-launch-score">
-      <div>
+      <div className="ua-cp-launch-score__copy">
         <span className="ua-cp-launch-score__label">Final life score</span>
         <span className="ua-cp-launch-score__pts">{overall} / {maxOverall} points</span>
       </div>
@@ -104,8 +104,10 @@ function ScoreCard({ overall, maxOverall, finalScore }) {
 }
 
 function PrakritiCard({ prakriti }) {
-  const max = Math.max(10, ...Object.values(prakriti.scores || {}), 1);
-  const showBars = prakriti.scores && (prakriti.scores.vata || prakriti.scores.pitta || prakriti.scores.kapha);
+  const BAR_MAX = 10;
+  const showBars = prakriti.scores && (
+    prakriti.scores.vata != null || prakriti.scores.pitta != null || prakriti.scores.kapha != null
+  );
   return (
     <div className="ua-cp-launch-prakriti-card">
       <div className="ua-cp-launch-prakriti-card__top">
@@ -126,9 +128,12 @@ function PrakritiCard({ prakriti }) {
               <span className={`ua-cp-launch-prakriti-bar__dot ua-cp-launch-prakriti-bar__dot--${d.tone}`} />
               <span className="ua-cp-launch-prakriti-bar__label">{d.label}</span>
               <div className="ua-cp-launch-prakriti-bar__track">
-                <span className={`ua-cp-launch-prakriti-bar__fill ua-cp-launch-prakriti-bar__fill--${d.tone}`} style={{ width: `${(d.val / max) * 100}%` }} />
+                <span
+                  className={`ua-cp-launch-prakriti-bar__fill ua-cp-launch-prakriti-bar__fill--${d.tone}`}
+                  style={{ width: `${Math.min(100, (d.val / BAR_MAX) * 100)}%` }}
+                />
               </div>
-              <span className="ua-cp-launch-prakriti-bar__val">{d.val} / {max}</span>
+              <span className="ua-cp-launch-prakriti-bar__val">{d.val} / {BAR_MAX}</span>
             </div>
           ))}
         </div>
@@ -137,15 +142,23 @@ function PrakritiCard({ prakriti }) {
   );
 }
 
-function AttemptControls({ attempt, historyCount, historyOpen, onToggleHistory, onRerun, rerunLabel = "Re-run assessment" }) {
+function AttemptControls({
+  attempt,
+  historyCount,
+  historyOpen,
+  onToggleHistory,
+  onRerun,
+  rerunLabel = "Re-run assessment",
+  variant = "lifestyle",
+}) {
   return (
-    <div className="ua-cp-launch-controls">
+    <div className={`ua-cp-launch-controls${variant === "prakriti" ? " ua-cp-launch-controls--prakriti" : ""}`}>
       <span className="ua-cp-launch-controls__attempt">Attempt {attempt}</span>
       <button type="button" className="ua-cp-launch-controls__btn" onClick={onToggleHistory}>
         {historyOpen ? `Hide history · ${historyCount}` : `History · ${historyCount}`}
       </button>
       {onRerun ? (
-        <button type="button" className="ua-cp-launch-controls__rerun" onClick={onRerun}>
+        <button type="button" className="ua-cp-launch-controls__rerun" onClick={onRerun} title="Archive this result and start a fresh pass">
           <span className="ua-cp-launch-controls__rerun-icon" aria-hidden="true">↻</span>
           {rerunLabel}
         </button>
@@ -222,6 +235,9 @@ function DomainAccordion({
                 {domain.items.map((item, i) => {
                   const rating = ratings[item.id] ?? item.ratingId;
                   const reply = replies[item.id] ?? "";
+                  const selected = ratingOptions.find((opt) => opt.id === rating);
+                  const selectedTone = selected?.tone || selected?.id || "default";
+                  const selectedLabel = (selected?.badge || selected?.name || selected?.label || "").toUpperCase();
                   return (
                     <tr key={item.id}>
                       <td className="ua-cp-launch-qtable__q" data-label="Question">
@@ -237,43 +253,64 @@ function DomainAccordion({
                               reply,
                             })}
                             aria-label="Open scoring reference"
+                            title="Scoring reference"
                           >
                             i
                           </button>
                         ) : null}
                       </td>
                       <td className="ua-cp-launch-qtable__reply" data-label="User reply · coach notes">
-                        <input
-                          className="ua-cp-launch-qtable__input"
-                          value={reply}
-                          onChange={(e) => onReplyChange(item.id, e.target.value)}
-                          placeholder="User reply or coach notes…"
-                          aria-label={`Reply for question ${i + 1}`}
-                          disabled={!canWrite}
-                        />
+                        {canWrite ? (
+                          <input
+                            className="ua-cp-launch-qtable__input"
+                            value={reply}
+                            onChange={(e) => onReplyChange(item.id, e.target.value)}
+                            placeholder="User reply or coach notes…"
+                            aria-label={`Reply for question ${i + 1}`}
+                          />
+                        ) : (
+                          <span className="ua-cp-launch-qtable__reply-text">{reply || "—"}</span>
+                        )}
                         {reply.trim() ? (
                           <span className="ua-cp-launch-qtable__reply-note">Noted by coach</span>
                         ) : null}
                       </td>
                       <td className="ua-cp-launch-qtable__rating" data-label="Coach rating">
-                        <div className="ua-cp-launch-ratings">
-                          {ratingOptions.map((opt) => (
-                            <button
-                              key={opt.id}
-                              type="button"
-                              className={`ua-cp-launch-rating ua-cp-launch-rating--${opt.tone || "default"}${rating === opt.id ? " ua-cp-launch-rating--active" : ""}`}
-                              onClick={() => onRate(item.id, opt.id)}
-                              disabled={!canWrite}
-                            >
-                              {opt.name || opt.label}
-                            </button>
-                          ))}
-                        </div>
-                        <div className="ua-cp-launch-qtable__score-row">
-                          <span className="ua-cp-launch-qtable__score-label">Score</span>
-                          <span className="ua-cp-launch-qtable__score">{item.earned}</span>
-                          <span className="ua-cp-launch-qtable__score-max">/ {item.points}</span>
-                        </div>
+                        {canWrite ? (
+                          <>
+                            <div className="ua-cp-launch-ratings">
+                              {ratingOptions.map((opt) => (
+                                <button
+                                  key={opt.id}
+                                  type="button"
+                                  className={`ua-cp-launch-rating ua-cp-launch-rating--${opt.tone || "default"}${rating === opt.id ? " ua-cp-launch-rating--active" : ""}`}
+                                  onClick={() => onRate(item.id, opt.id)}
+                                  title={`${opt.points ?? ""} points`}
+                                >
+                                  {(opt.badge || opt.name || opt.label || "").toUpperCase()}
+                                </button>
+                              ))}
+                            </div>
+                            <div className="ua-cp-launch-qtable__score-row">
+                              <span className="ua-cp-launch-qtable__score-label">Score</span>
+                              <span className="ua-cp-launch-qtable__score">{item.earned}</span>
+                              <span className="ua-cp-launch-qtable__score-max">/ {item.points}</span>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            {selected ? (
+                              <span className={`ua-cp-launch-rating-pill ua-cp-launch-rating-pill--${selectedTone}`}>
+                                {selectedLabel}
+                              </span>
+                            ) : (
+                              <span className="ua-cp-launch-rating-pill ua-cp-launch-rating-pill--empty">—</span>
+                            )}
+                            <div className="ua-cp-launch-qtable__score-plain">
+                              {item.earned} / {item.points}
+                            </div>
+                          </>
+                        )}
                       </td>
                       <td className="ua-cp-launch-qtable__weight" data-label="Weightage">
                         <span>{item.points}</span>
@@ -305,7 +342,10 @@ function FocusAreas({ autoPoints, catalog, selectedFocus, onToggleFocus, extraPo
   return (
     <div className="ua-cp-launch-focus">
       <div className="ua-cp-launch-focus__head">
-        <span className="ua-cp-launch-focus__title">✓ Areas to focus</span>
+        <div className="ua-cp-launch-focus__title-row">
+          <span className="ua-cp-launch-focus__icon" aria-hidden="true">◎</span>
+          <span className="ua-cp-launch-focus__title">Areas to focus</span>
+        </div>
         <span className="ua-cp-launch-focus__sub">Domains scoring under 50% are flagged automatically. Add or remove points as needed.</span>
       </div>
       {merged.length ? (
@@ -324,7 +364,7 @@ function FocusAreas({ autoPoints, catalog, selectedFocus, onToggleFocus, extraPo
         <div className="ua-cp-launch-focus__empty">No focus areas — all domains are above 50%.</div>
       )}
       {canWrite && catalog.length ? (
-        <div className="ua-cp-ip-history__markers" style={{ marginTop: 12, marginBottom: 8 }}>
+        <div className="ua-cp-launch-focus__catalog">
           {catalog.map((area) => {
             const id = area.id || area._id;
             const active = selectedFocus.includes(id);
@@ -332,7 +372,7 @@ function FocusAreas({ autoPoints, catalog, selectedFocus, onToggleFocus, extraPo
               <button
                 key={id}
                 type="button"
-                className={`ua-cp-ip-marker${active ? " ua-cp-ip-badge--green" : ""}`}
+                className={`ua-cp-launch-focus__chip${active ? " ua-cp-launch-focus__chip--on" : ""}`}
                 onClick={() => onToggleFocus(id)}
               >
                 {area.title || area.name || id}
@@ -368,24 +408,24 @@ function DoshaColumn({ dosha, onToggle, canWrite = true }) {
         </div>
         <span className="ua-cp-launch-dosha__score">
           <strong>{dosha.score}</strong>
-          <span>/{dosha.max || 10}</span>
+          <span>/10</span>
         </span>
       </div>
       <div className="ua-cp-launch-dosha__list">
         {dosha.statements.map((s) => (
-          <label key={s.id || s.text} className="ua-cp-launch-dosha__item">
-            <input
-              type="checkbox"
-              className="ua-cp-launch-dosha__input"
-              checked={s.checked}
-              onChange={() => onToggle(dosha.id, s.id || s.text)}
-              disabled={!canWrite}
-            />
+          <button
+            key={s.id || s.text}
+            type="button"
+            className={`ua-cp-launch-dosha__item${s.checked ? " ua-cp-launch-dosha__item--on" : ""}`}
+            onClick={() => canWrite && onToggle(dosha.id, s.id || s.text)}
+            disabled={!canWrite}
+            aria-pressed={s.checked}
+          >
             <span className={`ua-cp-launch-dosha__check${s.checked ? " ua-cp-launch-dosha__check--on" : ""}`} aria-hidden="true">
               {s.checked ? "✓" : ""}
             </span>
             <span className="ua-cp-launch-dosha__text">{s.text}</span>
-          </label>
+          </button>
         ))}
       </div>
     </div>
@@ -600,15 +640,15 @@ function LifestyleTab({
         {historyOpen ? (
           <HistoryTable
             rows={history}
-            footnote="Every save archives the result. Re-run starts a fresh scoring pass."
+            footnote="Every re-run archives the previous result. Nothing is overwritten."
           />
         ) : null}
       </div>
       {canWrite ? (
-      <div className="ua-cp-launch-score" style={{ marginBottom: 16 }}>
-        <div>
-          <span className="ua-cp-launch-score__label">Save this attempt from Configs → LAUNCH scoring</span>
-          {latest != null ? <span className="ua-cp-launch-score__pts">Latest {latest.totalScore}</span> : null}
+      <div className="ua-cp-launch-savebar">
+        <div className="ua-cp-launch-savebar__copy">
+          <span className="ua-cp-launch-savebar__label">Save this attempt</span>
+          {latest != null ? <span className="ua-cp-launch-savebar__meta">Latest score {latest.totalScore}</span> : null}
         </div>
         <button
           type="button"
@@ -624,6 +664,7 @@ function LifestyleTab({
         <button type="button" className="ua-cp-launch-questions__expand-btn" onClick={expandAll}>Expand all</button>
         <button type="button" className="ua-cp-launch-questions__expand-btn" onClick={collapseAll}>Collapse all</button>
       </div>
+      <div className="ua-cp-launch-domains">
       {totals.domainRows.map((d) => (
         <DomainAccordion
           key={d.id}
@@ -644,6 +685,7 @@ function LifestyleTab({
           canWrite={canWrite}
         />
       ))}
+      </div>
       <FocusAreas
         autoPoints={autoPoints}
         catalog={focusAreas}
@@ -684,6 +726,7 @@ function PrakritiTab({ user, onToast, canWrite = true }) {
   const [checked, setChecked] = useState({});
   const [historyOpen, setHistoryOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [forceNew, setForceNew] = useState(false);
 
   const doshaMode = isDoshaCatalog(questions);
 
@@ -710,6 +753,15 @@ function PrakritiTab({ user, onToast, canWrite = true }) {
         const type = data?.assessment?.prakrutiType || "";
         setSelectedType(type);
         setSelectedAvoid(data?.assessment?.thingToAvoidIds || []);
+        const selectedIds = data?.assessment?.selectedQuestionIds || [];
+        if (Array.isArray(selectedIds) && selectedIds.length) {
+          const nextChecked = {};
+          selectedIds.forEach((id) => { nextChecked[id] = true; });
+          setChecked(nextChecked);
+        } else {
+          setChecked({});
+        }
+        setForceNew(false);
       })
       .catch((err) => {
         if (!cancelled) onToast(err?.message || "Failed to load Prakriti config");
@@ -748,7 +800,7 @@ function PrakritiTab({ user, onToast, canWrite = true }) {
         ...DOSHA_META[id],
         statements,
         score: statements.filter((s) => s.checked).length,
-        max: statements.length || 10,
+        max: Math.max(statements.length, 10),
       };
     });
   }, [checked, doshaMode, questions]);
@@ -779,20 +831,23 @@ function PrakritiTab({ user, onToast, canWrite = true }) {
 
   const history = [...historyRows]
     .sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")))
-    .map((row, index, arr) => ({
-      attempt: arr.length - index,
-      type: row.prakrutiTypeLabel || row.prakrutiType,
-      scores: (row.thingsToAvoidTitles || []).slice(0, 2).join(" · ") || "—",
-      role: historyRole(row.createdByRole),
-      by: historyRole(row.createdByRole) === "ADMIN" ? "Admin desk" : "Wellness coach",
-      date: formatLaunchDate(row.updatedAt || row.createdAt),
-    }));
+    .map((row, index, arr) => {
+      const sc = row.scores || {};
+      const scoreDetail = (sc.vata != null || sc.pitta != null || sc.kapha != null)
+        ? `V ${sc.vata || 0} · P ${sc.pitta || 0} · K ${sc.kapha || 0}`
+        : ((row.thingsToAvoidTitles || []).slice(0, 2).join(" · ") || "—");
+      return {
+        attempt: arr.length - index,
+        type: row.prakrutiTypeLabel || row.prakrutiType,
+        scores: scoreDetail,
+        role: historyRole(row.createdByRole),
+        by: historyRole(row.createdByRole) === "ADMIN" ? "Admin desk" : "Wellness coach",
+        date: formatLaunchDate(row.updatedAt || row.createdAt),
+      };
+    });
 
   function toggleStatement(doshaId, statementId) {
-    setChecked((prev) => {
-      const next = { ...prev, [statementId]: !prev[statementId] };
-      return next;
-    });
+    setChecked((prev) => ({ ...prev, [statementId]: !prev[statementId] }));
   }
 
   useEffect(() => {
@@ -811,12 +866,17 @@ function PrakritiTab({ user, onToast, canWrite = true }) {
     }
     try {
       setSaving(true);
+      const selectedQuestionIds = Object.keys(checked).filter((id) => checked[id]);
       const saved = await saveUserPrakrutiAssessment(userId, {
         prakrutiType,
         thingToAvoidIds: selectedAvoid,
+        selectedQuestionIds,
+        scores: doshaMode ? scores : undefined,
+        forceNew,
       });
       setAssessment(saved);
       setHistoryRows((prev) => [saved, ...prev.filter((row) => row.id !== saved.id)]);
+      setForceNew(false);
       onToast("Prakriti assessment saved");
     } catch (err) {
       onToast(err?.message || "Failed to save Prakriti assessment");
@@ -833,7 +893,7 @@ function PrakritiTab({ user, onToast, canWrite = true }) {
     <div className="ua-cp-launch-prakriti-body">
       <p className="ua-cp-launch-prakriti-hint">
         {doshaMode
-          ? "Tick the statements from Configs that describe the client. The dosha with the most ticks is their dominant Prakṛti."
+          ? "Tick the statements that describe the client. The dosha with the most ticks is their dominant Prakṛti."
           : "Use the interview questions from the Prakriti catalog, then save the matching type, recommendations, and things to avoid."}
       </p>
       <div className="ua-cp-launch-hero ua-cp-launch-hero--narrow ua-cp-launch-col">
@@ -845,29 +905,38 @@ function PrakritiTab({ user, onToast, canWrite = true }) {
           }}
         />
         <AttemptControls
-          attempt={Math.max(history.length, 1)}
+          attempt={Math.max(history.length + (forceNew ? 1 : 0), 1)}
           historyCount={history.length}
           historyOpen={historyOpen}
           onToggleHistory={() => setHistoryOpen((o) => !o)}
+          onRerun={canWrite ? () => {
+            setChecked({});
+            setSelectedType("");
+            setSelectedAvoid([]);
+            setForceNew(true);
+            setHistoryOpen(true);
+            onToast("New Prakriti attempt started · previous result stays in history");
+          } : null}
+          variant="prakriti"
         />
         {historyOpen ? (
           <HistoryTable
             rows={history}
             variant="prakriti"
-            footnote="Saved Prakriti results come from the client assessment history."
+            footnote="Every re-run archives the previous result. Nothing is overwritten."
           />
         ) : null}
       </div>
 
-      {canWrite && types.length ? (
-        <div className="ua-cp-ip-history__markers" style={{ marginBottom: 16 }}>
+      {!doshaMode && canWrite && types.length ? (
+        <div className="ua-cp-launch-type-picks">
           {types.map((type) => {
             const active = selectedType === type.value;
             return (
               <button
                 key={type.value}
                 type="button"
-                className={`ua-cp-ip-marker${active ? " ua-cp-ip-badge--green" : ""}`}
+                className={`ua-cp-launch-type-pick${active ? " ua-cp-launch-type-pick--on" : ""}`}
                 onClick={() => setSelectedType(type.value)}
               >
                 {type.label}
@@ -875,25 +944,6 @@ function PrakritiTab({ user, onToast, canWrite = true }) {
             );
           })}
         </div>
-      ) : null}
-
-      {canWrite ? (
-      <div className="ua-cp-launch-score" style={{ marginBottom: 16 }}>
-        <div>
-          <span className="ua-cp-launch-score__label">Save Prakriti from catalog settings</span>
-          {assessment?.prakrutiTypeLabel ? (
-            <span className="ua-cp-launch-score__pts">Latest {assessment.prakrutiTypeLabel}</span>
-          ) : null}
-        </div>
-        <button
-          type="button"
-          className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm"
-          disabled={saving || !(selectedType || inferredType)}
-          onClick={savePrakriti}
-        >
-          {saving ? "Saving…" : "Save Prakriti"}
-        </button>
-      </div>
       ) : null}
 
       {doshaMode ? (
@@ -930,17 +980,15 @@ function PrakritiTab({ user, onToast, canWrite = true }) {
           <div className="ua-cp-launch-guide__head">
             <div>
               <strong>Recommendations</strong>
-              <span>From Prakriti catalog for {typeLabel}.</span>
+              <span>Diet &amp; lifestyle guidance suited to this Prakṛti.</span>
             </div>
-            {activeType ? <span className="ua-cp-launch-guide__tag">FOR {String(typeLabel).toUpperCase()}</span> : null}
+            {activeType ? <span className="ua-cp-launch-guide__tag">For {typeLabel}</span> : null}
           </div>
           <div className="ua-cp-launch-guide__list">
             {recommendations.length ? recommendations.map((item) => (
               <div key={item.id} className="ua-cp-launch-guide__item">
                 <span className="ua-cp-launch-guide__bullet ua-cp-launch-guide__bullet--rec" />
-                <span className="ua-cp-launch-guide__input" style={{ border: "none", background: "transparent" }}>
-                  {item.title}
-                </span>
+                <span className="ua-cp-launch-guide__text">{item.title}</span>
               </div>
             )) : (
               <p className="ua-cp-launch-history__foot">No recommendations for this type yet.</p>
@@ -951,7 +999,7 @@ function PrakritiTab({ user, onToast, canWrite = true }) {
           <div className="ua-cp-launch-guide__head">
             <div>
               <strong>Things to avoid</strong>
-              <span>Select catalog items that apply to this client.</span>
+              <span>Foods &amp; habits that aggravate this Prakṛti.</span>
             </div>
           </div>
           <div className="ua-cp-launch-guide__list">
@@ -959,19 +1007,25 @@ function PrakritiTab({ user, onToast, canWrite = true }) {
               const id = item.id || item._id;
               const on = selectedAvoid.includes(id);
               return (
-                <label key={id} className="ua-cp-launch-guide__item">
-                  <input
-                    type="checkbox"
-                    checked={on}
-                    onChange={() => setSelectedAvoid((prev) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={`ua-cp-launch-guide__item ua-cp-launch-guide__item--btn${on ? " ua-cp-launch-guide__item--on" : ""}`}
+                  onClick={() => {
+                    if (!canWrite) return;
+                    setSelectedAvoid((prev) => (
                       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-                    ))}
-                  />
-                  <span className="ua-cp-launch-guide__bullet ua-cp-launch-guide__bullet--avoid" />
-                  <span className="ua-cp-launch-guide__input" style={{ border: "none", background: "transparent" }}>
-                    {item.title}
+                    ));
+                  }}
+                  disabled={!canWrite}
+                  aria-pressed={on}
+                >
+                  <span className={`ua-cp-launch-guide__tick${on ? " ua-cp-launch-guide__tick--on" : ""}`} aria-hidden="true">
+                    {on ? "✓" : ""}
                   </span>
-                </label>
+                  <span className="ua-cp-launch-guide__bullet ua-cp-launch-guide__bullet--avoid" />
+                  <span className="ua-cp-launch-guide__text">{item.title}</span>
+                </button>
               );
             }) : (
               <p className="ua-cp-launch-history__foot">No things-to-avoid items in the catalog yet.</p>
@@ -979,6 +1033,30 @@ function PrakritiTab({ user, onToast, canWrite = true }) {
           </div>
         </div>
       </div>
+
+      {canWrite ? (
+        <div className="ua-cp-launch-savebar ua-cp-launch-savebar--prakriti">
+          <div className="ua-cp-launch-savebar__copy">
+            <span className="ua-cp-launch-savebar__label">Save Prakriti assessment</span>
+            {assessment?.prakrutiTypeLabel ? (
+              <span className="ua-cp-launch-savebar__meta">
+                Latest {assessment.prakrutiTypeLabel}
+                {forceNew ? " · next save starts a new attempt" : ""}
+              </span>
+            ) : (
+              <span className="ua-cp-launch-savebar__meta">Ticks update the dominant type live</span>
+            )}
+          </div>
+          <button
+            type="button"
+            className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm"
+            disabled={saving || !(selectedType || inferredType)}
+            onClick={savePrakriti}
+          >
+            {saving ? "Saving…" : "Save Prakriti"}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -997,9 +1075,23 @@ export function LaunchSection({ user, onToast, onUserUpdated }) {
   const [configLoading, setConfigLoading] = useState(true);
   const [focusAreas, setFocusAreas] = useState([]);
   const [assessments, setAssessments] = useState([]);
-  const launchStepDone = ["done", "skipped"].includes(
-    String(user?.paidOnboardingStepStatus?.launch || "").toLowerCase(),
-  ) || Boolean(user?.paidOnboardingCompleted);
+
+  const meetingStatus = String(launchMeeting?.status || "").toLowerCase();
+  const meetingHeld = ["slots_offered", "time_requested"].includes(meetingStatus);
+  const meetingBooked = ["booked", "confirmed", "scheduled"].includes(meetingStatus);
+
+  function formatMeetingSlot(slot) {
+    const start = slot?.startAt || slot?.start || "";
+    if (!start) return "";
+    const d = new Date(start);
+    if (Number.isNaN(d.getTime())) return String(start);
+    return d.toLocaleString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
 
   useEffect(() => {
     setTab(tabFromUrl);
@@ -1047,11 +1139,11 @@ export function LaunchSection({ user, onToast, onUserUpdated }) {
     fetchOnboardingMeetings(userId)
       .then((rows) => {
         if (cancelled) return;
+        const active = new Set(["slots_offered", "time_requested", "booked", "confirmed", "scheduled"]);
         const meeting = (rows || []).find((row) => (
-          row.stepKey === "launch"
-          && ["slots_offered", "time_requested"].includes(row.status)
-        ));
-        setLaunchMeeting(meeting || null);
+          row.stepKey === "launch" && active.has(String(row.status || "").toLowerCase())
+        )) || null;
+        setLaunchMeeting(meeting);
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -1083,13 +1175,38 @@ export function LaunchSection({ user, onToast, onUserUpdated }) {
             ]}
           />
         </div>
-        {launchStepDone || !canSchedule ? null : (
+        {canSchedule && !meetingBooked && !meetingHeld ? (
           <div className="ua-cp-launch-schedule-wrap">
             <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--launch-schedule" onClick={() => setScheduleOpen(true)}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 5h18v16H3z"></path><path d="M3 10h18"></path><path d="M8 3v4"></path><path d="M16 3v4"></path></svg> Schedule LAUNCH meeting
             </button>
           </div>
-        )}
+        ) : null}
+        {meetingHeld && launchMeeting ? (
+          <div className="ua-cp-launch-meet ua-cp-launch-meet--held">
+            <div className="ua-cp-launch-meet__copy">
+              <strong>{meetingStatus === "time_requested" ? "Client requested a time" : "Slots offered"}</strong>
+              <span>{(launchMeeting.slots || []).slice(0, 3).map(formatMeetingSlot).filter(Boolean).join(" · ") || "Waiting for client to pick a slot."}</span>
+            </div>
+            {canSchedule ? (
+              <button type="button" className="ua-cp-launch-meet__btn" onClick={() => setScheduleOpen(true)}>
+                Offer more slots
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+        {meetingBooked && launchMeeting ? (
+          <div className="ua-cp-launch-meet ua-cp-launch-meet--booked">
+            <div className="ua-cp-launch-meet__copy">
+              <strong>LAUNCH meeting booked</strong>
+              <span>
+                {formatMeetingSlot((launchMeeting.slots || []).find((s) => s.selected || s.confirmed) || launchMeeting.slots?.[0])
+                  || launchMeeting.note
+                  || "See calendar for details."}
+              </span>
+            </div>
+          </div>
+        ) : null}
       </div>
       {tab === "lifestyle" ? (
         <LifestyleTab

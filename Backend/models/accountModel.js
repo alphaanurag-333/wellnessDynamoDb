@@ -2,7 +2,6 @@ const {
   PutCommand,
   GetCommand,
   UpdateCommand,
-  DeleteCommand,
   QueryCommand,
   ScanCommand,
 } = require("@aws-sdk/lib-dynamodb");
@@ -409,7 +408,9 @@ async function getAccountByEmail(email) {
       Limit: 1,
     })
   );
-  return Items?.[0] || null;
+  const item = Items?.[0] || null;
+  if (item && String(item.status || "").toLowerCase() === "deleted") return null;
+  return item;
 }
 
 async function getAccountByPhone(phoneCountryCode, phone) {
@@ -424,7 +425,9 @@ async function getAccountByPhone(phoneCountryCode, phone) {
       Limit: 1,
     })
   );
-  return Items?.[0] || null;
+  const item = Items?.[0] || null;
+  if (item && String(item.status || "").toLowerCase() === "deleted") return null;
+  return item;
 }
 
 async function updateAccount(id, updates) {
@@ -562,15 +565,52 @@ async function updateAccount(id, updates) {
   return Attributes || null;
 }
 
+/**
+ * Soft-delete an Account (Teams / staff). Keeps the row for audit; clears login identifiers
+ * so email/phone can be reused. Does not hard-delete.
+ */
 async function deleteAccount(id) {
-  await docClient.send(
-    new DeleteCommand({
+  const current = await getAccountById(id);
+  if (!current) {
+    const err = new Error("Account not found");
+    err.name = "NotFoundError";
+    throw err;
+  }
+  if (String(current.status || "").toLowerCase() === "deleted") {
+    return current;
+  }
+
+  const now = new Date().toISOString();
+  const memberships = (Array.isArray(current.memberships) ? current.memberships : []).map((m) => ({
+    ...m,
+    status: "inactive",
+  }));
+
+  const { Attributes } = await docClient.send(
+    new UpdateCommand({
       TableName: TABLE,
       Key: { id },
-      ConditionExpression: "attribute_exists(id)",
+      UpdateExpression:
+        "SET #status = :deleted, deletedAt = :deletedAt, updatedAt = :updatedAt, " +
+        "memberships = :memberships, " +
+        "deletedEmail = if_not_exists(email, :empty), " +
+        "deletedPhoneKey = if_not_exists(phoneKey, :empty) " +
+        "REMOVE email, phoneKey, password, otp, otpExpire, resetPasswordToken, " +
+        "resetPasswordExpire, totpSecret, totpVerifiedAt, fcmId, profileImage",
+      ExpressionAttributeNames: { "#status": "status" },
+      ExpressionAttributeValues: {
+        ":deleted": "deleted",
+        ":deletedAt": now,
+        ":updatedAt": now,
+        ":memberships": memberships,
+        ":empty": "",
+      },
+      ConditionExpression:
+        "attribute_exists(id) AND (attribute_not_exists(#status) OR #status <> :deleted)",
+      ReturnValues: "ALL_NEW",
     })
   );
-  return { deleted: true };
+  return Attributes || { id, status: "deleted", deleted: true };
 }
 
 async function addMembership(id, membership) {
@@ -672,6 +712,16 @@ async function listAccounts({
   const exprNames = {};
   const exprValues = {};
 
+  // Soft-deleted staff stay in Dynamo for audit but must not appear in team/hierarchy lists.
+  if (!normalizedStatus && partitionKeyName !== "status") {
+    exprNames["#status"] = "status";
+    exprValues[":deletedStatus"] = "deleted";
+    filterExpression = appendFilter(
+      filterExpression,
+      "(attribute_not_exists(#status) OR #status <> :deletedStatus)"
+    );
+  }
+
   if (normalizedStatus && partitionKeyName !== "status") {
     exprNames["#status"] = "status";
     exprValues[":status"] = normalizedStatus;
@@ -704,6 +754,9 @@ async function listAccounts({
 
   const searchFn = searchTerm
     ? (item, term) => {
+        if (String(item.status || "").toLowerCase() === "deleted" && normalizedStatus !== "deleted") {
+          return false;
+        }
         if (normalizedStatus && normalizeStatus(item.status, "") !== normalizedStatus) return false;
         if (
           normalizedApproval &&

@@ -42,6 +42,16 @@ function toUserPrakrutiAssessmentPublic(item, thingsToAvoid = null, recommendati
   if (!row) return null;
   const thingToAvoidIds = normalizeThingToAvoidIds(row.thingToAvoidIds);
   const type = normalizePrakrutiType(row.prakrutiType) || row.prakrutiType;
+  const selectedQuestionIds = Array.isArray(row.selectedQuestionIds)
+    ? row.selectedQuestionIds.map((id) => String(id || "").trim()).filter(Boolean)
+    : [];
+  const scores = row.scores && typeof row.scores === "object"
+    ? {
+        vata: Number(row.scores.vata) || 0,
+        pitta: Number(row.scores.pitta) || 0,
+        kapha: Number(row.scores.kapha) || 0,
+      }
+    : null;
 
   const base = {
     id: row.id,
@@ -51,6 +61,8 @@ function toUserPrakrutiAssessmentPublic(item, thingsToAvoid = null, recommendati
     prakrutiType: type,
     prakrutiTypeLabel: prakrutiTypeLabel(type),
     thingToAvoidIds,
+    selectedQuestionIds,
+    scores,
     createdByRole: normalizeCreatedByRole(row.createdByRole),
     createdById: row.createdById,
     createdAt: row.createdAt,
@@ -126,6 +138,9 @@ async function upsertUserPrakrutiAssessment({
   coachId,
   prakrutiType,
   thingToAvoidIds = [],
+  selectedQuestionIds = [],
+  scores = null,
+  forceNew = false,
   createdByRole,
   createdById,
 }) {
@@ -138,14 +153,26 @@ async function upsertUserPrakrutiAssessment({
 
   const type = normalizePrakrutiTypeField(prakrutiType);
   const validatedIds = await validateActiveThingToAvoidIds(thingToAvoidIds);
+  const questionIds = Array.isArray(selectedQuestionIds)
+    ? [...new Set(selectedQuestionIds.map((id) => String(id || "").trim()).filter(Boolean))]
+    : [];
+  const nextScores = scores && typeof scores === "object"
+    ? {
+        vata: Number(scores.vata) || 0,
+        pitta: Number(scores.pitta) || 0,
+        kapha: Number(scores.kapha) || 0,
+      }
+    : null;
   const now = new Date().toISOString();
 
-  const existing = await getLatestUserPrakrutiAssessmentByUserId(uid);
+  const existing = forceNew ? null : await getLatestUserPrakrutiAssessmentByUserId(uid);
 
   if (existing) {
     const exprNames = {
       "#prakrutiType": "prakrutiType",
       "#thingToAvoidIds": "thingToAvoidIds",
+      "#selectedQuestionIds": "selectedQuestionIds",
+      "#scores": "scores",
       "#coachId": "coachId",
       "#createdByRole": "createdByRole",
       "#createdById": "createdById",
@@ -154,6 +181,8 @@ async function upsertUserPrakrutiAssessment({
     const exprValues = {
       ":prakrutiType": type,
       ":thingToAvoidIds": validatedIds,
+      ":selectedQuestionIds": questionIds,
+      ":scores": nextScores,
       ":coachId": String(coachId || "").trim(),
       ":createdByRole": normalizeCreatedByRole(createdByRole),
       ":createdById": String(createdById || "").trim(),
@@ -165,7 +194,7 @@ async function upsertUserPrakrutiAssessment({
         TableName: TABLE,
         Key: { id: existing.id },
         UpdateExpression:
-          "SET #prakrutiType = :prakrutiType, #thingToAvoidIds = :thingToAvoidIds, #coachId = :coachId, #createdByRole = :createdByRole, #createdById = :createdById, #updatedAt = :updatedAt",
+          "SET #prakrutiType = :prakrutiType, #thingToAvoidIds = :thingToAvoidIds, #selectedQuestionIds = :selectedQuestionIds, #scores = :scores, #coachId = :coachId, #createdByRole = :createdByRole, #createdById = :createdById, #updatedAt = :updatedAt",
         ExpressionAttributeNames: exprNames,
         ExpressionAttributeValues: exprValues,
         ConditionExpression: "attribute_exists(id)",
@@ -181,6 +210,8 @@ async function upsertUserPrakrutiAssessment({
     coachId: String(coachId || "").trim(),
     prakrutiType: type,
     thingToAvoidIds: validatedIds,
+    selectedQuestionIds: questionIds,
+    scores: nextScores,
     createdByRole: normalizeCreatedByRole(createdByRole),
     createdById: String(createdById || "").trim(),
     createdAt: now,

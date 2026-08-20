@@ -43,6 +43,26 @@ function parseThingToAvoidIds(body) {
   return body.thingToAvoidIds;
 }
 
+function parseSelectedQuestionIds(body) {
+  if (body?.selectedQuestionIds === undefined) return undefined;
+  if (!Array.isArray(body.selectedQuestionIds)) {
+    throw new AppError("selectedQuestionIds must be an array", 400);
+  }
+  return body.selectedQuestionIds.map((id) => String(id || "").trim()).filter(Boolean);
+}
+
+function parseScores(body) {
+  if (body?.scores === undefined) return undefined;
+  if (!body.scores || typeof body.scores !== "object") {
+    throw new AppError("scores must be an object", 400);
+  }
+  return {
+    vata: Number(body.scores.vata) || 0,
+    pitta: Number(body.scores.pitta) || 0,
+    kapha: Number(body.scores.kapha) || 0,
+  };
+}
+
 function buildQuestionsCsv(user, userId, questions) {
   const escapeCsv = (value) => {
     const s = String(value ?? "");
@@ -167,6 +187,9 @@ function createPrakrutiAssessmentPortalHandlers({ assertHealUserAccess, createdB
           coachId: resolveCoachIdForUser(user),
           prakrutiType,
           thingToAvoidIds: parseThingToAvoidIds(req.body) ?? [],
+          selectedQuestionIds: parseSelectedQuestionIds(req.body) ?? [],
+          scores: parseScores(req.body) ?? null,
+          forceNew: Boolean(req.body.forceNew),
           createdByRole: req.auth?.role || createdByRole,
           createdById: actingId,
         });
@@ -207,6 +230,8 @@ const adminHandlers = staffHandlers;
 module.exports = {
   handlePrakrutiValidationError,
   parseThingToAvoidIds,
+  parseSelectedQuestionIds,
+  parseScores,
   createPrakrutiAssessmentPortalHandlers,
   staffHandlers,
   coachHandlers,

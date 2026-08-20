@@ -1036,7 +1036,7 @@ export function TeamsPage() {
         open={Boolean(deletingMember)}
         tag="Teams"
         title={deletingMember ? `Delete ${deletingMember.name}?` : "Delete team member?"}
-        body="This only works if no users are assigned to this team member. If anyone is assigned, they must be reassigned first."
+        body="This is a soft delete. It only works if no clients are assigned and no one reports to them in the hierarchy (for example Assistant WC under Wellness Coach, or Trainee under Assistant WC). Reassign those people first."
         cancelLabel="Cancel"
         confirmLabel={deleteBusy ? "Deleting…" : "Delete user"}
         confirmTone="danger"

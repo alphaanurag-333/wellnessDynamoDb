@@ -409,8 +409,9 @@ exports.updateAccountHandler = asyncHandler(async (req, res) => {
 });
 
 /**
- * Delete a staff Account (Teams page).
- * Refuses if any clients are assigned, or if other staff report to this member.
+ * Soft-delete a staff Account (Teams page).
+ * Blocks when any client is assigned, or when hierarchy children report to this member
+ * (e.g. AWC under WC, Trainee under AWC). Never hard-deletes the row.
  */
 exports.deleteAccountHandler = asyncHandler(async (req, res) => {
   if (!req.auth?.isSuperAdmin) {
@@ -419,6 +420,9 @@ exports.deleteAccountHandler = asyncHandler(async (req, res) => {
 
   const account = await getAccountById(req.params.id);
   if (!account) throw new AppError("Account not found", 404);
+  if (String(account.status || "").toLowerCase() === "deleted") {
+    throw new AppError("Account is already deleted", 404);
+  }
   if (account.isSuperAdmin) {
     throw new AppError("This account cannot be deleted", 403);
   }
@@ -437,14 +441,68 @@ exports.deleteAccountHandler = asyncHandler(async (req, res) => {
 
   const reportingStaff = await countReportingStaff(account.id);
   if (reportingStaff > 0) {
-    const label = reportingStaff === 1 ? "team member reports" : "team members report";
+    const role = primaryAccountRoleKey(account);
+    const childLabel =
+      role === "wellness_coach"
+        ? "assistant wellness coach(es) or trainee(s)"
+        : role === "assistant_wellness_coach"
+          ? "trainee(s)"
+          : "team member(s)";
     throw new AppError(
-      `Cannot delete: ${reportingStaff} ${label} to this person. Reassign them first.`,
+      `Cannot delete: ${reportingStaff} ${childLabel} still report to this person. Reassign them first.`,
       400
     );
   }
 
-  await deleteAccount(account.id);
+  const roleKey = primaryAccountRoleKey(account);
+  if (roleKey === "wellness_coach") {
+    try {
+      const { countAssistantsByWellnessCoachId } = require("../../models/assistantWellnessCoachModel");
+      const legacyAssistants = await countAssistantsByWellnessCoachId(account.id);
+      if (legacyAssistants > 0) {
+        throw new AppError(
+          `Cannot delete: ${legacyAssistants} assistant wellness coach(es) are still assigned. Reassign them first.`,
+          400
+        );
+      }
+    } catch (err) {
+      if (err instanceof AppError) throw err;
+      console.error("[deleteAccount] legacy assistant check:", err.message);
+    }
+  }
+
+  try {
+    await deleteAccount(account.id);
+  } catch (err) {
+    if (err?.name === "NotFoundError" || err?.name === "ConditionalCheckFailedException") {
+      throw new AppError("Account not found", 404);
+    }
+    throw err;
+  }
+
+  // Best-effort: soft-delete mirrored legacy coach rows (same id) when present.
+  try {
+    const { getWellnessCoachRecordById, deleteWellnessCoach } = require("../../models/wellnessCoachModel");
+    const legacyCoach = await getWellnessCoachRecordById(account.id);
+    if (legacyCoach && String(legacyCoach.status || "").toLowerCase() !== "deleted") {
+      await deleteWellnessCoach(account.id);
+    }
+  } catch (err) {
+    console.error("[softDelete] legacy WellnessCoach:", err.message);
+  }
+  try {
+    const {
+      getAssistantWellnessCoachRecordById,
+      deleteAssistantWellnessCoach,
+    } = require("../../models/assistantWellnessCoachModel");
+    const legacyAssistant = await getAssistantWellnessCoachRecordById(account.id);
+    if (legacyAssistant && String(legacyAssistant.status || "").toLowerCase() !== "deleted") {
+      await deleteAssistantWellnessCoach(account.id);
+    }
+  } catch (err) {
+    console.error("[softDelete] legacy AssistantWellnessCoach:", err.message);
+  }
+
   return res.json({
     status: true,
     message: "Team member deleted",
@@ -549,6 +607,7 @@ async function applyCoachContentPatch(req, account) {
     nextIntro.linkUrl = sourceIntro.linkUrl;
     nextIntro.coverKey = sourceIntro.coverKey || nextIntro.coverKey;
     nextIntro.duration = sourceIntro.duration || nextIntro.duration;
+    nextIntro.uploadedAt = new Date().toISOString();
     if (!nextIntro.title) nextIntro.title = sourceIntro.title;
     if (!nextIntro.description) nextIntro.description = sourceIntro.description;
     nextIntro.version += 1;
@@ -565,6 +624,7 @@ async function applyCoachContentPatch(req, account) {
     nextIntro.sourceType = "link";
     nextIntro.linkUrl = linkUrl;
     nextIntro.galleryPickId = "";
+    nextIntro.uploadedAt = new Date().toISOString();
     nextIntro.version += 1;
     introTouched = true;
   }
@@ -586,6 +646,10 @@ async function applyCoachContentPatch(req, account) {
     nextIntro.sourceType = "upload";
     nextIntro.linkUrl = "";
     nextIntro.galleryPickId = "";
+    nextIntro.uploadedAt = new Date().toISOString();
+    if (req.body.duration === undefined) {
+      nextIntro.duration = "";
+    }
     if (!coverFile && nextIntro.coverKey) {
       await replaceMediaKey(nextIntro.coverKey, "");
       nextIntro.coverKey = "";

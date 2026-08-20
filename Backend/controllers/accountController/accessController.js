@@ -1127,8 +1127,18 @@ async function buildMemberContent(accountOrPublic) {
   };
 
   const signedLabel = formatDate(letter.signedAt);
+  const uploadedLabel = formatDate(intro.uploadedAt);
   const videoMeta = hasVideo
-    ? [intro.duration, intro.sourceType === "link" ? "Linked video" : intro.version ? `v${intro.version}` : "Uploaded"]
+    ? [
+        intro.duration,
+        uploadedLabel
+          ? `uploaded ${uploadedLabel}`
+          : intro.sourceType === "link"
+            ? "Linked video"
+            : intro.version
+              ? `v${intro.version}`
+              : "Uploaded",
+      ]
         .filter(Boolean)
         .join(" · ") || "Uploaded"
     : "Not uploaded";

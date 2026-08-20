@@ -3,6 +3,7 @@ import {
   normalizeCommitmentLetterText,
 } from "../data/commitmentLetterData.js";
 import { MEASUREMENT_IMAGE_MAX_SIZE_MB, MEASUREMENT_VIDEO_MAX_SIZE_MB } from "../data/measurementVideoData.js";
+import { readVideoFileDuration } from "../data/wellnessLibraryData.js";
 
 const AVATAR_COLORS = ["#22c55e", "#8b5cf6", "#14b8a6", "#f97316", "#a78bfa", "#a16207", "#3b82f6", "#ec4899"];
 const MY_CONTENT_AVATAR_COLORS = ["#34a56a", "#5e6ad2", "#0d9488", "#ec7a45", "#a855f7", "#c2661d"];
@@ -163,6 +164,8 @@ export async function saveCoachIntroLink(accountId, url) {
 export async function saveCoachIntroVideo(accountId, file) {
   const fd = new FormData();
   fd.append("intro_video", file);
+  const duration = await readVideoFileDuration(file);
+  if (duration) fd.append("duration", duration);
   try {
     const { data } = await api.patch(`/account/accounts/${encodeURIComponent(accountId)}/coach-content`, fd);
     return data?.account;
@@ -293,6 +296,21 @@ function formatContentDate(iso) {
   return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
+export function formatIntroVideoMeta(intro = {}) {
+  const hasVideo = Boolean(intro.videoUrl || intro.linkUrl || intro.hasMedia);
+  if (!hasVideo) return "Not uploaded yet";
+  const uploadedLabel = formatContentDate(intro.uploadedAt);
+  const fallback =
+    uploadedLabel
+      ? `uploaded ${uploadedLabel}`
+      : intro.sourceType === "link"
+        ? "Linked video"
+        : intro.version
+          ? `v${intro.version}`
+          : "Uploaded";
+  return [intro.duration, fallback].filter(Boolean).join(" · ") || "Uploaded";
+}
+
 export function buildCoachProfileContent(account, letterConfig = {}) {
   const intro = account?.coach_content?.intro || {};
   const letter = account?.coach_content?.letter || {};
@@ -305,17 +323,17 @@ export function buildCoachProfileContent(account, letterConfig = {}) {
       id: "intro",
       kind: "video",
       title: "My intro video",
-      meta: hasVideo
-        ? [intro.duration, intro.sourceType === "link" ? "Linked video" : intro.version ? `v${intro.version}` : "Uploaded"]
-            .filter(Boolean)
-            .join(" · ")
-        : "Not uploaded yet",
+      meta: formatIntroVideoMeta(intro),
       live: Boolean(intro.live) && hasVideo,
       hasMedia: hasVideo,
       videoUrl: intro.videoUrl || "",
       linkUrl: intro.linkUrl || "",
       coverUrl: intro.coverUrl || "",
       description: intro.description || "",
+      duration: intro.duration || "",
+      uploadedAt: intro.uploadedAt || "",
+      version: Number(intro.version) || 0,
+      sourceType: intro.sourceType || "",
     },
     letter: {
       id: "letter",
@@ -448,6 +466,8 @@ export async function getMyCoachContent() {
 export async function saveMyIntroVideo(file) {
   const fd = new FormData();
   fd.append("intro_video", file);
+  const duration = await readVideoFileDuration(file);
+  if (duration) fd.append("duration", duration);
   try {
     const { data } = await api.patch("/account/auth/me/coach-content", fd);
     return data;

@@ -25,10 +25,11 @@ const { countAssistantsByWellnessCoachId } = require("../../models/assistantWell
 const { getSpecializationById } = require("../../models/specializationModel");
 const { assertPasswordPolicy } = require("../../utils/passwordPolicy");
 const { assertBioPolicy } = require("../../utils/bioPolicy");
-const { normalizeEmail, normalizePhone, normalizeCountryCode } = require("../../models/userModel");
+const { normalizeEmail, normalizePhone, normalizeCountryCode, listUsersByParentCoachId } = require("../../models/userModel");
 const { getRoleById, normalizeScope } = require("../../models/roleModel");
 const { normalizeOverrides } = require("../../utils/coachPermissions");
 const { isValidCoachPermission } = require("../../config/coachPermissionCatalog");
+const { getAccountById, deleteAccount, listAccounts } = require("../../models/accountModel");
 
 const S3_FOLDER = "wellness-coach";
 
@@ -334,24 +335,57 @@ exports.updateWellnessCoachController = asyncHandler(async (req, res) => {
 exports.deleteWellnessCoachController = asyncHandler(async (req, res) => {
   const current = await getWellnessCoachRecordById(req.params.id);
   if (!current) throw new AppError("Wellness coach not found", 404);
+  if (String(current.status || "").toLowerCase() === "deleted") {
+    throw new AppError("Wellness coach not found", 404);
+  }
 
   const assistantCount = await countAssistantsByWellnessCoachId(current.id);
   if (assistantCount > 0) {
     throw new AppError(
-      "Cannot delete wellness coach while assistants are assigned. Remove assistants first.",
+      "Cannot delete wellness coach while assistants are assigned. Reassign or remove assistants first.",
       409
     );
   }
 
-  if (current.profileImage) await deleteStoredMedia(current.profileImage);
+  const accountChildren = await listAccounts({
+    parentAccountId: current.id,
+    page: 1,
+    limit: 1,
+  });
+  const reportingStaff = Number(accountChildren.pagination?.total || 0);
+  if (reportingStaff > 0) {
+    throw new AppError(
+      `Cannot delete: ${reportingStaff} assistant wellness coach(es) or trainee(s) still report to this person. Reassign them first.`,
+      400
+    );
+  }
+
+  const clients = await listUsersByParentCoachId(current.id, { page: 1, limit: 1, scope: "all" });
+  const assignedUsers = Number(clients.pagination?.total || 0);
+  if (assignedUsers > 0) {
+    const label = assignedUsers === 1 ? "user is" : "users are";
+    throw new AppError(
+      `Cannot delete: ${assignedUsers} ${label} assigned to this wellness coach. Reassign them first.`,
+      400
+    );
+  }
 
   try {
     await deleteWellnessCoach(current.id);
   } catch (err) {
-    if (err?.name === "ConditionalCheckFailedException") {
+    if (err?.name === "NotFoundError" || err?.name === "ConditionalCheckFailedException") {
       throw new AppError("Wellness coach not found", 404);
     }
     throw err;
+  }
+
+  try {
+    const account = await getAccountById(current.id);
+    if (account && String(account.status || "").toLowerCase() !== "deleted") {
+      await deleteAccount(current.id);
+    }
+  } catch (err) {
+    console.error("[softDelete] Account mirror for WellnessCoach:", err.message);
   }
 
   return res.status(200).json({
