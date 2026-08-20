@@ -1510,7 +1510,7 @@ export function AdminDashboard({
                 </div>
                 <div className="champion-split__col">
                   <div className="champion-split__label champion-split__label--muted">Wellness coach</div>
-                  <div className="champion-scroll champion-scroll--plain">
+                  <div className="champion-scroll">
                     {champCoaches.length === 0 ? (
                       <div className="community-card__empty">No coach champion yet</div>
                     ) : champCoaches.map((c) => (

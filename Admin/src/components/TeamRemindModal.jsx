@@ -96,7 +96,7 @@ export function TeamRemindModal({
           <button type="button" className="ua-team-remind__push" disabled={pushDisabled} onClick={onPush}>
             <span aria-hidden="true">{actionIcon}</span> {busy ? "Sending…" : actionLabel}
           </button>
-          <button type="button" className="ua-team-remind__whatsapp" disabled={busy} onClick={onWhatsApp}>
+          <button type="button" style={{color:"white",background:"linear-gradient(rgb(63, 194, 106), rgb(46, 171, 87))"}} className="ua-team-remind__whatsapp" disabled={busy} onClick={onWhatsApp}>
             <span aria-hidden="true">💬</span> Send on WhatsApp
           </button>
         </div>

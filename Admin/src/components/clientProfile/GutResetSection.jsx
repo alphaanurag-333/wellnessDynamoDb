@@ -35,7 +35,7 @@ function PresetSelect({ value, onChange }) {
         aria-expanded={open}
       >
         {value || "Load preset…"}
-        <span aria-hidden="true">▾</span>
+        <span className="ua-cp-gut-preset__chev" aria-hidden="true" />
       </button>
       {open ? (
         <ul className="ua-cp-gut-preset__menu">
@@ -100,7 +100,7 @@ function HistoryResetCard({ entry, expanded, onToggle }) {
           <strong>Reset · {formatGutDate(entry.startDate)}</strong>
           <span className="ua-cp-gut-history__by">by {entry.author}</span>
         </div>
-        <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={onToggle}>
+        <button style={{color:"rgb(94, 106, 210)"}} type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={onToggle}>
           {expanded ? "Hide plan" : `View plan · ${entry.points.length}`}
         </button>
       </div>
@@ -280,7 +280,7 @@ export function GutResetSection({ user, onToast }) {
           />
           <button
             type="button"
-            className={`ua-cp-btn ua-cp-btn--sm${pointDraft.trim() ? " ua-cp-btn--primary" : " ua-cp-btn--muted"}`}
+            className={`ua-cp-btn ua-cp-btn--sm ua-cp-gut-add__btn${pointDraft.trim() ? " ua-cp-btn--primary" : " ua-cp-btn--muted"}`}
             disabled={!pointDraft.trim()}
             onClick={addPoint}
           >
