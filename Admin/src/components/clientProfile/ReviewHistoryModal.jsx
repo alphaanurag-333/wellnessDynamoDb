@@ -42,8 +42,8 @@ export function ReviewHistoryModal({ user, onClose, onNavigate }) {
 
         <div className="ua-cp-review-modal__list">
           {entries.length === 0 ? (
-            <div className="ua-cp-review-item ua-cp-review-item--empty" style={{ padding: "24px 8px", textAlign: "center" }}>
-              <p className="ua-cp-review-item__note" style={{ margin: 0 }}>
+            <div className="ua-cp-review-modal__empty">
+              <p className="ua-cp-review-modal__empty-text">
                 No review history from the API yet. Sample coach notes are not shown.
               </p>
             </div>

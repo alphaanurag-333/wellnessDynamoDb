@@ -369,6 +369,22 @@ function concernKey(value) {
   return String(value || "").trim().toLowerCase();
 }
 
+function dayKeyIst(value) {
+  if (!value) return "";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+  return year && month && day ? `${year}-${month}-${day}` : "";
+}
+
 function clientRowFromUser(user) {
   const coach = String(user.coach || "").trim();
   return {
@@ -475,19 +491,27 @@ export function AdminDashboard({
   ));
   const subscribedCount = asNumber(tierRows?.find((row) => row.key === "heal")?.value);
   const expTotal = subscribedCount;
-  const everydayWellnessConcern = healthConcerns?.find(
-    (option) => String(option.label || "").trim().toLowerCase() === "everyday wellness",
-  );
-  const everydayWellnessCount = asNumber(
-    statisticsForView?.healthConcernCounts?.[
-      everydayWellnessConcern?.id ?? everydayWellnessConcern?.value
-    ],
-  );
+  const registeredTodayLive = statisticsForView?.registeredToday || null;
+  const registeredTodayRows = useMemo(() => {
+    if (!Array.isArray(clients)) return null;
+    const todayKey = dayKeyIst(new Date());
+    return clients
+      .filter((user) => dayKeyIst(user.createdAt) === todayKey)
+      .map(clientRowFromUser);
+  }, [clients]);
+  const registeredTodayCount = statisticsForView
+    ? (
+      registeredTodayLive && Object.hasOwn(registeredTodayLive, "count")
+        ? asNumber(registeredTodayLive.count)
+        : (registeredTodayRows?.length ?? 0)
+    )
+    : 0;
   const appUserProgramCard = {
     ...APP_USER_PROG_CARD,
-    count: statisticsForView ? everydayWellnessCount : 0,
-    modalKey: everydayWellnessConcern?.id || APP_USER_PROG_CARD.label,
-    modalLabel: everydayWellnessConcern?.label || APP_USER_PROG_CARD.label,
+    count: registeredTodayCount,
+    modalKey: "registered-today",
+    modalLabel: APP_USER_PROG_CARD.label,
+    registeredToday: true,
   };
   const fallbackFatMetrics = viewAs === "wc" ? WC_FAT_METRICS : viewAs === "awc" ? AWC_FAT_METRICS : FAT_METRICS;
   const fallbackA1cMetrics = viewAs === "wc" ? WC_A1C_METRICS : viewAs === "awc" ? AWC_A1C_METRICS : A1C_METRICS;
@@ -888,13 +912,21 @@ export function AdminDashboard({
 
   const programModal = useMemo(() => {
     if (!programModalTarget) return null;
-    const { key, label } = programModalTarget;
+    const { key, label, registeredToday } = programModalTarget;
+    if (registeredToday) {
+      // AppUser card: every user who registered today (IST), any health concern.
+      return {
+        label: label || APP_USER_PROG_CARD.label,
+        rows: registeredTodayRows || [],
+        registeredToday: true,
+      };
+    }
     // Live clients only — never fall back to seed/mock program lists.
     const rows = clientsByConcern
       ? (clientsByConcern.get(concernKey(key)) ?? clientsByConcern.get(concernKey(label)) ?? [])
       : [];
     return { label, rows };
-  }, [clientsByConcern, programModalTarget]);
+  }, [clientsByConcern, registeredTodayRows, programModalTarget]);
   const progressModal = liveProgress
     ? buildLiveProgressModal(progressModalKey, liveProgress)
     : null;
@@ -903,11 +935,16 @@ export function AdminDashboard({
     const key = card?.modalKey || card?.label;
     const label = card?.modalLabel || card?.label;
     if (!key && !label) return;
-    if (!clientsByConcern) {
+    const registeredToday = Boolean(card?.registeredToday);
+    if (!clientsByConcern && !registeredToday) {
       onToast("Client list unavailable — live roster did not load.");
       return;
     }
-    setProgramModalTarget({ key, label });
+    setProgramModalTarget({
+      key,
+      label,
+      registeredToday,
+    });
   }
 
   function openProgramClient(row) {
@@ -1238,7 +1275,7 @@ export function AdminDashboard({
           <div className="prog-cats__appuser">
             <div className="prog-cats__appuser-head">
               <span className="prog-cats__appuser-label">AppUser</span>
-              <span className="prog-cats__appuser-tag">Fixed</span>
+              <span className="prog-cats__appuser-tag">Today</span>
             </div>
             <button
               type="button"
@@ -1334,7 +1371,7 @@ export function AdminDashboard({
           <div className="prog-cats__appuser">
             <div className="prog-cats__appuser-head">
               <span className="prog-cats__appuser-label">AppUser</span>
-              <span className="prog-cats__appuser-tag">Fixed</span>
+              <span className="prog-cats__appuser-tag">Today</span>
             </div>
             <button
               type="button"

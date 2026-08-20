@@ -12405,6 +12405,20 @@
   padding: 16px 18px 18px;
 }
 
+.updated-admin .ua-cp-review-modal__empty {
+  padding: 28px 12px;
+  text-align: center;
+}
+
+.updated-admin .ua-cp-review-modal__empty-text {
+  margin: 0;
+  max-width: 36ch;
+  margin-inline: auto;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #5a6b85;
+}
+
 .updated-admin .ua-cp-review-item {
   display: grid;
   grid-template-columns: 16px minmax(0, 1fr);

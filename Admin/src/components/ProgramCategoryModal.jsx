@@ -23,7 +23,10 @@ export function ProgramCategoryModal({ open, program, onClose, onOpenClient }) {
 
   const rows = program.rows ?? [];
   const total = rows.length;
-  const subtitle = `${total} client${total === 1 ? "" : "s"} registered · tap a row to open their profile`;
+  const registeredToday = Boolean(program.registeredToday || program.enrolledToday);
+  const subtitle = registeredToday
+    ? `${total} client${total === 1 ? "" : "s"} registered today · tap a row to open their profile`
+    : `${total} client${total === 1 ? "" : "s"} registered · tap a row to open their profile`;
   const hasGroups = Array.isArray(program.groups) && program.groups.length > 0;
 
   return (
@@ -67,7 +70,11 @@ export function ProgramCategoryModal({ open, program, onClose, onOpenClient }) {
               </div>
             ))
           ) : total === 0 ? (
-            <div className="ua-prog-cat-modal__empty">No clients registered for this health concern yet.</div>
+            <div className="ua-prog-cat-modal__empty">
+              {registeredToday
+                ? "No users registered today yet."
+                : "No clients registered for this health concern yet."}
+            </div>
           ) : (
             <>
               <ClientTableHead />
