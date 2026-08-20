@@ -171,7 +171,7 @@ export function FoodWaterHistoryPicker({ range, onApply, today = localToday() })
   return (
     <div className="ua-cp-food-water-history-wrap" ref={wrapRef}>
       <button type="button" className="ua-cp-food-water-history" onClick={() => setOpen((o) => !o)}>
-        <span className="ua-cp-food-water-history__icon" aria-hidden="true">📅</span>
+        <span className="ua-cp-food-water-history__icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgb(18, 184, 134)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg></span>
         <span className="ua-cp-food-water-history__text">{label}</span>
         <span className="ua-cp-food-water-history__suffix">· History</span>
       </button>

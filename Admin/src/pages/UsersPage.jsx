@@ -250,6 +250,11 @@ export function UsersPage() {
   const typeTab = searchParams.get("tab") || "all";
   const tierFilter = searchParams.get("tier") || "";
   const coachFilter = searchParams.get("coach") || "";
+  const subscriptionExpiryParam = Number(searchParams.get("subscriptionExpiry"));
+  const subscriptionExpiryDays =
+    Number.isFinite(subscriptionExpiryParam) && subscriptionExpiryParam > 0
+      ? Math.floor(subscriptionExpiryParam)
+      : null;
   const pageParam = Number(searchParams.get("page"));
   const currentPage = Number.isFinite(pageParam) && pageParam > 0 ? Math.floor(pageParam) : 1;
 
@@ -296,7 +301,8 @@ export function UsersPage() {
     status: mapUiStatusToApi(statusFilter),
     userTier: mapUiTierToApi(tierFilter),
     parentCoachId: coachFilter || undefined,
-  }), [coachFilter, debouncedSearch, statusFilter, tierFilter]);
+    subscriptionExpiryDays: subscriptionExpiryDays || undefined,
+  }), [coachFilter, debouncedSearch, statusFilter, subscriptionExpiryDays, tierFilter]);
 
   const listQuery = useMemo(() => {
     const extra = extraQueryForTypeTab(typeTab, baseListQuery.userTier);
@@ -315,6 +321,7 @@ export function UsersPage() {
           limit: params.limit,
           search: params.search,
           userTier: params.userTier,
+          subscriptionExpiryDays: params.subscriptionExpiryDays,
         })
       : fetchUsers(params);
   }, [listQuery, useScopedUsers]);
@@ -373,6 +380,7 @@ export function UsersPage() {
                 limit: 1,
                 search: params.search,
                 userTier: params.userTier,
+                subscriptionExpiryDays: params.subscriptionExpiryDays,
               })
             : await fetchUsers({ ...params, page: 1, limit: 1 });
           return Number(result?.pagination?.total) || 0;
@@ -419,6 +427,13 @@ export function UsersPage() {
   const clearCoachFilter = () => {
     const next = new URLSearchParams(searchParams);
     next.delete("coach");
+    next.delete("page");
+    setSearchParams(next, { replace: true });
+  };
+
+  const clearSubscriptionExpiryFilter = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("subscriptionExpiry");
     next.delete("page");
     setSearchParams(next, { replace: true });
   };
@@ -919,6 +934,22 @@ export function UsersPage() {
               Coach: {teamMembers.find((m) => String(m.id) === String(coachFilter))?.name || coachFilter}
             </span>
             <button type="button" className="ua-coach-filter__clear" title="Clear coach filter" onClick={clearCoachFilter}>×</button>
+          </div>
+        ) : null}
+
+        {subscriptionExpiryDays ? (
+          <div className="ua-coach-filter">
+            <span className="ua-coach-filter__label">
+              Subscription expiring in {subscriptionExpiryDays} days
+            </span>
+            <button
+              type="button"
+              className="ua-coach-filter__clear"
+              title="Clear subscription expiry filter"
+              onClick={clearSubscriptionExpiryFilter}
+            >
+              ×
+            </button>
           </div>
         ) : null}
 

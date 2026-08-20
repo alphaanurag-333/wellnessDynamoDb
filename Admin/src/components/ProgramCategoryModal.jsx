@@ -18,12 +18,27 @@ function ClientRow({ row, onOpen }) {
   );
 }
 
+function isImageIcon(icon) {
+  const value = String(icon || "").trim();
+  return /^(https?:|blob:|data:|\/)/i.test(value);
+}
+
+function HeadIcon({ icon }) {
+  if (isImageIcon(icon)) {
+    return <img src={icon} alt="" />;
+  }
+  return icon || "👥";
+}
+
 export function ProgramCategoryModal({ open, program, onClose, onOpenClient }) {
   if (!open || !program) return null;
 
   const rows = program.rows ?? [];
   const total = rows.length;
-  const subtitle = `${total} client${total === 1 ? "" : "s"} registered · tap a row to open their profile`;
+  const registeredToday = Boolean(program.registeredToday || program.enrolledToday);
+  const subtitle = registeredToday
+    ? `${total} client${total === 1 ? "" : "s"} registered today · tap a row to open their profile`
+    : `${total} client${total === 1 ? "" : "s"} registered · tap a row to open their profile`;
   const hasGroups = Array.isArray(program.groups) && program.groups.length > 0;
 
   return (
@@ -35,7 +50,9 @@ export function ProgramCategoryModal({ open, program, onClose, onOpenClient }) {
         aria-labelledby="prog-cat-modal-title"
       >
         <div className="ua-team-modal__head">
-          <span className="ua-team-modal__head-icon" aria-hidden="true">👥</span>
+          <span className="ua-team-modal__head-icon" aria-hidden="true">
+            <HeadIcon icon={program.icon} />
+          </span>
           <div className="ua-team-modal__head-copy">
             <div id="prog-cat-modal-title" className="ua-team-modal__title">{program.label}</div>
             <div className="ua-team-modal__sub">{subtitle}</div>
@@ -67,7 +84,11 @@ export function ProgramCategoryModal({ open, program, onClose, onOpenClient }) {
               </div>
             ))
           ) : total === 0 ? (
-            <div className="ua-prog-cat-modal__empty">No clients registered for this health concern yet.</div>
+            <div className="ua-prog-cat-modal__empty">
+              {registeredToday
+                ? "No users registered today yet."
+                : "No clients registered for this health concern yet."}
+            </div>
           ) : (
             <>
               <ClientTableHead />

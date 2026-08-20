@@ -85,10 +85,10 @@ function TargetedMacrosCard({ consumed, targets }) {
   return (
     <div className="ua-cp-food-macros-card">
       <div className="ua-cp-food-macros-card__head">
-        <span className="ua-cp-food-macros-card__title">Targeted macros · consumed vs target</span>
+        <span className="ua-cp-food-macros-card__title">Targeted macros <font style={{color:"rgb(154, 166, 184)"}}>· consumed vs target </font></span>
         <div className="ua-cp-food-macros-card__badges">
-          <span className="ua-cp-food-meta-badge">BMR {(targets.bmr || 0).toLocaleString()} kcal</span>
-          <span className="ua-cp-food-meta-badge">TDEE {(targets.tdee || 0).toLocaleString()} kcal</span>
+          <span className="ua-cp-food-meta-badge"><font style={{color:"rgb(154, 166, 184)"}}>BMR</font> {(targets.bmr || 0).toLocaleString()} kcal</span>
+          <span className="ua-cp-food-meta-badge"><font style={{color:"rgb(154, 166, 184)"}}>TDEE</font> {(targets.tdee || 0).toLocaleString()} kcal</span>
         </div>
       </div>
       <div className="ua-cp-food-macros-card__grid">
@@ -192,9 +192,9 @@ function MealCard({
           {meal.photoUrl ? (
             <img src={meal.photoUrl} alt="" className="ua-cp-food-meal__photo-img" />
           ) : (
-            <span className="ua-cp-food-meal__photo-icon" aria-hidden="true"><CameraIcon /></span>
+            <span className="ua-cp-food-meal__photo-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgb(138, 151, 172)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><path d="M12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8"></path></svg></span>
           )}
-          <span className="ua-cp-food-meal__photo-swap" aria-hidden="true">⇄</span>
+          <span className="ua-cp-food-meal__photo-swap" aria-hidden="true">⤢</span>
         </button>
         <div className="ua-cp-food-meal__info">
           <strong>{meal.name}</strong>
@@ -249,9 +249,9 @@ function MealCard({
 function MealsPanel({ meals, mode, live, busyId, analyzingId, editAfterAiId, dayTotal, listLabel, dateLabel, loading, canEdit, onSubmitAi, onSaveEdit, onOpenPhoto, onToast }) {
   return (
     <div className="ua-cp-food-meals">
-      <div className="ua-cp-food-meals__head">
+      <div style={{color:"rgb(22, 35, 63)"}} className="ua-cp-food-meals__head">
         <span>{dateLabel} · {listLabel}</span>
-        <span>Day total: <strong>{dayTotal} kcal</strong></span>
+        <span><font style={{color:"rgb(138, 151, 172)"}}>Day total:</font> <strong>{dayTotal} kcal</strong></span>
       </div>
       {loading ? (
         <p className="ua-page-head__sub">Loading meals…</p>
@@ -464,7 +464,7 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
                 setSelectedDate(nextDate);
               }
             })
-            .catch(() => {});
+            .catch(() => { });
         }
       })
       .catch((err) => {

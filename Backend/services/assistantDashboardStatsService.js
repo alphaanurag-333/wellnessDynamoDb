@@ -7,8 +7,35 @@ const { queryMealLogsByCoachId } = require("../models/mealTrackingModel");
 const { listUserCommitmentLetters } = require("../models/userCommitmentLetterModel");
 const { listClientTestimonials } = require("../models/clientTestimonials");
 const { normalizeUserTier } = require("../models/userAssignmentLogic");
+const { getSubscriptionExpiryStats } = require("./subscriptionExpiryStats");
 
 const RECENT_LIMIT = 5;
+const IST_TZ = "Asia/Kolkata";
+
+function dayKeyFromDate(date = new Date()) {
+  const d = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(d.getTime())) return "";
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: IST_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(d);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+  return year && month && day ? `${year}-${month}-${day}` : "";
+}
+
+function countRegisteredToday(clients) {
+  const todayKey = dayKeyFromDate(new Date());
+  if (!todayKey) return 0;
+  let count = 0;
+  for (const user of clients || []) {
+    if (dayKeyFromDate(user.createdAt) === todayKey) count += 1;
+  }
+  return count;
+}
 
 function sortByRecent(items) {
   return [...(items || [])].sort((a, b) => {
@@ -108,6 +135,7 @@ async function getAssistantDashboardStats(assistantId) {
   const healClients = tierCounts.heal;
   const consultancyClients = tierCounts.consultancy_only;
   const healthConcernCounts = countClientsByHealthConcern(clients);
+  const registeredToday = { count: countRegisteredToday(clients) };
   const totalClients = clientData.pagination?.total ?? clients.length;
 
   const pendingMealApprovals = filterForAssistant(mealLogs, assistantId).length;
@@ -123,6 +151,9 @@ async function getAssistantDashboardStats(assistantId) {
     pendingMealApprovals + pendingCommitmentLetters + pendingTestimonials;
 
   const recentClients = takeRecent(clients).map(toDashboardClient).filter(Boolean);
+  const subscriptionExpiry = await getSubscriptionExpiryStats({
+    userIds: clients.map((user) => user.id).filter(Boolean),
+  });
 
   const parentCoach = await getWellnessCoachByIdResolved(parentCoachId);
   const assistantProfile = {
@@ -158,6 +189,8 @@ async function getAssistantDashboardStats(assistantId) {
     healClients,
     consultancyClients,
     healthConcernCounts,
+    subscriptionExpiry,
+    registeredToday,
     pendingApprovals,
     pendingMealApprovals,
     pendingTestimonials,

@@ -479,6 +479,7 @@ export function mapApiUserToRow(user, index = 0) {
     heartRateEnabled: user?.heartRateEnabled !== false,
     sleepTrackingEnabled: user?.sleepTrackingEnabled !== false,
     referralCode: String(user?.referralCode || "").trim(),
+    referredByCode: String(user?.referredByCode || "").trim(),
     userTier: String(user?.userTier || "").toLowerCase(),
     parentCoachId: user?.parentCoachId || user?.parentCoach?.id || "",
     assignedCoachId: user?.assignedCoachId || user?.assignedCoach?.id || "",
@@ -527,6 +528,7 @@ export async function fetchUsers({
   assignmentStatus,
   parentCoachId,
   clientCategory,
+  subscriptionExpiryDays,
 } = {}) {
   const q = new URLSearchParams();
   q.set("page", String(page));
@@ -537,6 +539,7 @@ export async function fetchUsers({
   if (assignmentStatus) q.set("assignmentStatus", assignmentStatus);
   if (parentCoachId) q.set("parentCoachId", String(parentCoachId).trim());
   if (clientCategory) q.set("clientCategory", String(clientCategory).trim());
+  if (subscriptionExpiryDays) q.set("subscriptionExpiryDays", String(subscriptionExpiryDays));
 
   try {
     const { data } = await api.get(`/account/users?${q}`, { headers: authHeader() });
@@ -551,13 +554,21 @@ export async function fetchUsers({
 }
 
 /** Role-scoped clients for WC/AWC/trainee console sessions. */
-export async function fetchScopedUsers({ page = 1, limit = 20, search, scope = "all", userTier } = {}) {
+export async function fetchScopedUsers({
+  page = 1,
+  limit = 20,
+  search,
+  scope = "all",
+  userTier,
+  subscriptionExpiryDays,
+} = {}) {
   const q = new URLSearchParams();
   q.set("page", String(page));
   q.set("limit", String(limit));
   if (search && String(search).trim()) q.set("search", String(search).trim());
   if (scope) q.set("scope", String(scope));
   if (userTier) q.set("userTier", userTier);
+  if (subscriptionExpiryDays) q.set("subscriptionExpiryDays", String(subscriptionExpiryDays));
 
   try {
     const { data } = await api.get(`/account/heal-users?${q}`, {

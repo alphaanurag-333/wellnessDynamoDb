@@ -20,6 +20,7 @@ const {
   normalizeCoachContent,
   introHasMedia,
   letterHasFile,
+  ensureIntroUploadedAt,
   asBool,
   asString,
 } = require("../../utils/coachContent");
@@ -208,11 +209,37 @@ exports.listAccountsHandler = asyncHandler(async (req, res) => {
   if (includeClientCounts && accounts.length) {
     accounts = await Promise.all(
       accounts.map(async (account) => {
+        let next = account;
         try {
           const clientCount = await countAssignedClients(account);
-          return { ...account, clientCount };
+          next = { ...account, clientCount };
         } catch {
-          return { ...account, clientCount: 0 };
+          next = { ...account, clientCount: 0 };
+        }
+        const intro = next?.coach_content?.intro || {};
+        const hasVideo = Boolean(intro.videoUrl || intro.linkUrl);
+        if (!hasVideo || intro.uploadedAt) return next;
+        try {
+          const raw = await getAccountById(next.id);
+          if (!raw) return next;
+          const content = normalizeCoachContent(raw.coach_content);
+          const ensured = await ensureIntroUploadedAt(content.intro);
+          if (!ensured.changed) return next;
+          await updateAccount(raw.id, {
+            coach_content: { intro: ensured.intro, letter: content.letter },
+          });
+          return {
+            ...next,
+            coach_content: {
+              ...(next.coach_content || {}),
+              intro: {
+                ...(next.coach_content?.intro || {}),
+                uploadedAt: ensured.intro.uploadedAt,
+              },
+            },
+          };
+        } catch {
+          return next;
         }
       }),
     );
@@ -572,7 +599,7 @@ function isPdfMime(mimetype = "") {
 
 async function applyCoachContentPatch(req, account) {
   const current = normalizeCoachContent(account.coach_content);
-  const nextIntro = { ...current.intro };
+  let nextIntro = { ...current.intro };
   const nextLetter = { ...current.letter };
   let introTouched = false;
   let letterTouched = false;
@@ -739,6 +766,9 @@ async function applyCoachContentPatch(req, account) {
     throw new AppError("At least one coach content field is required", 400);
   }
 
+  const ensured = await ensureIntroUploadedAt(nextIntro);
+  nextIntro = ensured.intro;
+
   return updateAccount(account.id, {
     coach_content: {
       intro: nextIntro,
@@ -791,8 +821,15 @@ exports.patchCoachContentHandler = asyncHandler(async (req, res) => {
 });
 
 exports.getMyCoachContentHandler = asyncHandler(async (req, res) => {
-  const account = req.account || (await getAccountById(req.auth?.sub));
+  let account = req.account || (await getAccountById(req.auth?.sub));
   if (!account) throw new AppError("Account not found", 404);
+  const content = normalizeCoachContent(account.coach_content);
+  const ensured = await ensureIntroUploadedAt(content.intro);
+  if (ensured.changed) {
+    account = await updateAccount(account.id, {
+      coach_content: { intro: ensured.intro, letter: content.letter },
+    });
+  }
   const config = await getAppConfig();
   return res.json({
     status: true,

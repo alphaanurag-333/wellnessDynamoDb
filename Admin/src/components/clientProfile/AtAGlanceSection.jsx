@@ -158,7 +158,6 @@ function PreviewToggle({ mode, onChange }) {
       <span className="ua-cp-preview-bar__label">Preview</span>
       <button type="button" className={`ua-cp-preview-tab${mode === "onboarding" ? " ua-cp-preview-tab--active" : ""}`} onClick={() => onChange("onboarding")}>Onboarding view</button>
       <button type="button" className={`ua-cp-preview-tab${mode === "onboarded" ? " ua-cp-preview-tab--active" : ""}`} onClick={() => onChange("onboarded")}>Onboarded view</button>
-      <span className="ua-cp-preview-bar__hint">demo toggle — real dashboards switch automatically</span>
     </div>
   );
 }
@@ -1068,7 +1067,7 @@ function OnboardingStatusCard({ user, onToast, onNavigate, onProgressChange, onU
                   startAt: s.startAt,
                   endAt: s.endAt,
                 })),
-                note: payload?.note || scheduleModal.defaultNote,
+                note: payload?.note || "",
                 hold: payload?.hold || "24 hours",
                 durationMinutes: payload?.duration,
               });

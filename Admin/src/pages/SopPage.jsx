@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { BrandLoader } from "../components/BrandLoader.jsx";
-import { PageHeader } from "../components/shared.jsx";
+import { CfgSelect, PageHeader } from "../components/shared.jsx";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import {
   adminCreateSop,
@@ -134,24 +134,24 @@ function SopFormModal({ mode, initial, saving, onClose, onSubmit }) {
             )}
           </label>
 
-          <label className="ua-sop-field">
+          <div className="ua-sop-field">
             <span className="ua-sop-field__label">Category *</span>
-            <select
-              className={`ua-sop-field__input${errors.category ? " is-invalid" : ""}`}
+            <CfgSelect
+              className={`ua-sop-field__select${errors.category ? " is-invalid" : ""}`}
+              ariaLabel="Category"
               value={form.category}
-              onChange={(e) => {
-                setForm((f) => ({ ...f, category: e.target.value }));
+              options={SOP_CATEGORIES.map((c) => ({
+                id: c.id,
+                value: c.id,
+                label: c.label,
+              }))}
+              onChange={(value) => {
+                setForm((f) => ({ ...f, category: value }));
                 clearError("category");
               }}
-            >
-              {SOP_CATEGORIES.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
+            />
             {errors.category ? <span className="ua-sop-field__error">{errors.category}</span> : null}
-          </label>
+          </div>
 
           <label className="ua-sop-field">
             <span className="ua-sop-field__label-row">

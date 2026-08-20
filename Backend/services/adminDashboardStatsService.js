@@ -13,6 +13,7 @@ const { DEFAULT_FY_START_MONTH } = require("./energyExchangePricingService");
 const { ScanCommand } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../config/db");
 const { countAcrossPartitions } = require("../utils/dynamoCount");
+const { getSubscriptionExpiryStats } = require("./subscriptionExpiryStats");
 
 const STATUS_INDEX = "StatusCreatedAtIndex";
 const IST_TZ = "Asia/Kolkata";
@@ -127,6 +128,21 @@ function monthKeyFromDate(date = new Date()) {
   const year = parts.find((part) => part.type === "year")?.value;
   const month = parts.find((part) => part.type === "month")?.value;
   return year && month ? `${year}-${month}` : "";
+}
+
+function dayKeyFromDate(date = new Date()) {
+  const d = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(d.getTime())) return "";
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: IST_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(d);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+  return year && month && day ? `${year}-${month}-${day}` : "";
 }
 
 function formatMonthLabel(monthKey) {
@@ -455,6 +471,8 @@ async function scanUserAnalytics() {
   const counts = new Map();
   const onboardedByMonth = {};
   const usersById = new Map();
+  let registeredTodayCount = 0;
+  const todayKey = dayKeyFromDate(new Date());
   let lastKey;
 
   do {
@@ -475,19 +493,20 @@ async function scanUserAnalytics() {
 
     for (const user of Items) {
       const id = String(user.id || "").trim();
+      const concernId = String(user.primaryHealthConcern?.id || user.primaryHealthConcern || "").trim();
       if (id) {
         usersById.set(id, {
           name: String(user.name || "").trim(),
           parentCoachId: String(user.parentCoachId || "").trim(),
           assignedCoachId: String(user.assignedCoachId || "").trim(),
           assignedCoachType: String(user.assignedCoachType || "").trim(),
-          primaryHealthConcern: String(
-            user.primaryHealthConcern?.id || user.primaryHealthConcern || "",
-          ).trim(),
+          primaryHealthConcern: concernId,
         });
       }
-      const concernId = String(user.primaryHealthConcern?.id || user.primaryHealthConcern || "").trim();
       if (concernId) counts.set(concernId, (counts.get(concernId) || 0) + 1);
+      if (todayKey && dayKeyFromDate(user.createdAt) === todayKey) {
+        registeredTodayCount += 1;
+      }
       const monthKey = monthKeyFromDate(user.createdAt);
       if (monthKey) onboardedByMonth[monthKey] = (onboardedByMonth[monthKey] || 0) + 1;
     }
@@ -498,6 +517,7 @@ async function scanUserAnalytics() {
     healthConcernCounts: Object.fromEntries(counts),
     onboardedByMonth,
     usersById,
+    registeredTodayCount,
   };
 }
 
@@ -560,7 +580,12 @@ async function getAdminDashboardStats() {
     scanUserAnalytics(),
   ]);
 
-  const { healthConcernCounts, onboardedByMonth, usersById = new Map() } = userAnalytics;
+  const {
+    healthConcernCounts,
+    onboardedByMonth,
+    usersById = new Map(),
+    registeredTodayCount = 0,
+  } = userAnalytics;
   const payingClientCount = healUsers + consultancyUsers + maintenanceUsers;
   const coachIds = [
     ...(paidTransactions || []).map((row) => row.parentCoachId),
@@ -598,10 +623,13 @@ async function getAdminDashboardStats() {
     (fy) => fy.fyStartYear === revenueAnalytics.currentFyStartYear,
   );
 
-  const teamRoles = await buildTeamRoleCards({
-    pendingUserAssignments,
-    pendingCoachApprovals,
-  });
+  const [teamRoles, subscriptionExpiry] = await Promise.all([
+    buildTeamRoleCards({
+      pendingUserAssignments,
+      pendingCoachApprovals,
+    }),
+    getSubscriptionExpiryStats(),
+  ]);
 
   return {
     totalUsers,
@@ -612,6 +640,10 @@ async function getAdminDashboardStats() {
     pendingCoachApprovals,
     pendingUserAssignments,
     healthConcernCounts,
+    subscriptionExpiry,
+    registeredToday: {
+      count: registeredTodayCount,
+    },
     revenueAndPayouts: revenue.totalAmount,
     consultancyRevenue: productRevenueMap.consultancy ?? 0,
     programRevenue: productRevenueMap.program ?? 0,

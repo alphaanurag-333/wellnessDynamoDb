@@ -273,7 +273,7 @@ exports.listHealUsersByCoachController = asyncHandler(async (req, res) => {
 });
 
 exports.listHealUsersForStaffController = asyncHandler(async (req, res) => {
-  const { search, scope = "all", userTier } = req.query;
+  const { search, scope = "all", userTier, subscriptionExpiryDays } = req.query;
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 20));
   const data = await listHealUsersForStaff(req, {
@@ -282,6 +282,7 @@ exports.listHealUsersForStaffController = asyncHandler(async (req, res) => {
     search,
     scope,
     userTier: userTier || "client",
+    subscriptionExpiryDays,
   });
   const users = await Promise.all(data.users.map((u) => enrichUser(u, { ensureReferral: false })));
 

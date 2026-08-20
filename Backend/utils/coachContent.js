@@ -1,4 +1,4 @@
-const { normalizeStoredMedia, resolvePublicUrl } = require("./s3");
+const { normalizeStoredMedia, resolvePublicUrl, getObjectLastModified } = require("./s3");
 
 const INTRO_SOURCE_TYPES = new Set(["upload", "link", "gallery"]);
 
@@ -157,6 +157,27 @@ function letterHasFile(letter) {
   return Boolean(normalizeLetterSignoff(letter).fileKey);
 }
 
+/**
+ * Ensure intro.uploadedAt is set when media exists.
+ * Prefers S3 LastModified for uploaded files; falls back to now for links.
+ * Returns { intro, changed }.
+ */
+async function ensureIntroUploadedAt(intro) {
+  const normalized = normalizeIntroVideo(intro);
+  if (!introHasMedia(normalized) || normalized.uploadedAt) {
+    return { intro: normalized, changed: false };
+  }
+  let uploadedAt = "";
+  if (normalized.videoKey) {
+    uploadedAt = await getObjectLastModified(normalized.videoKey);
+  }
+  if (!uploadedAt) uploadedAt = new Date().toISOString();
+  return {
+    intro: { ...normalized, uploadedAt },
+    changed: true,
+  };
+}
+
 module.exports = {
   DEFAULT_COMMITMENT_LETTER_TEXT,
   LEGACY_COMMITMENT_LETTER_TEXT,
@@ -171,6 +192,7 @@ module.exports = {
   toPublicCoachContent,
   introHasMedia,
   letterHasFile,
+  ensureIntroUploadedAt,
   asBool,
   asString,
   asInt,

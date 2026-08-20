@@ -2217,17 +2217,30 @@
 }
 
 .updated-admin .ua-team-modal__head-icon {
-  width: 30px;
-  height: 30px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  background: #eef0fc;
-  color: #5e6ad2;
-  font-size: 15px;
-  line-height: 1;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
   flex-shrink: 0;
+  font-size: 18px;
+  line-height: 1;
+  overflow: hidden;
+  background: #f4f5fe;
+  border: 1px solid rgba(94, 106, 210, 0.18);
+  box-sizing: border-box;
+  padding: 4px;
+  color: #5e6ad2;
+}
+
+.updated-admin .ua-team-modal__head-icon img {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  object-position: center;
+  display: block;
 }
 
 .updated-admin .ua-team-modal__head-copy {
@@ -4440,7 +4453,7 @@
 
 .updated-admin .prog-cat {
   flex: 0 0 auto;
-  min-width: 126px;
+  min-width: 132px;
   text-align: left;
   border-radius: 10px;
   padding: 10px 11px;
@@ -4448,7 +4461,7 @@
   font: inherit;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
   border: 1px solid transparent;
   transition: transform 0.15s, box-shadow 0.15s;
   background: #fff;
@@ -4460,23 +4473,29 @@
 }
 
 .updated-admin .prog-cat__icon {
-  width: 24px;
-  height: 24px;
-  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
   display: grid;
   place-items: center;
-  font-size: 15px;
+  font-size: 20px;
+  line-height: 1;
   overflow: hidden;
-  background: #f4f5fe;
+  flex-shrink: 0;
+  background: #fff;
   border: 1px solid rgba(94, 106, 210, 0.2);
+  box-sizing: border-box;
+  padding: 4px;
 }
 
 .updated-admin .prog-cat__icon img {
   width: 100%;
   height: 100%;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
+  object-position: center;
   display: block;
-
 }
 
 .updated-admin .prog-cat__label {
@@ -12369,12 +12388,14 @@
 }
 
 .updated-admin .ua-cp-review-modal {
-  width: min(520px, 100%);
-  max-height: min(80vh, 640px);
+  width: min(540px, 100%);
+  max-height: min(82vh, 680px);
   display: flex;
   flex-direction: column;
   padding: 0;
   overflow: hidden;
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(16, 35, 63, 0.22);
 }
 
 .updated-admin .ua-cp-review-modal__head {
@@ -12382,8 +12403,9 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  padding: 18px 18px 14px;
-  border-bottom: 1px solid var(--border-soft);
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid #eef1f6;
+  flex-shrink: 0;
 }
 
 .updated-admin .ua-cp-review-modal__identity {
@@ -12394,23 +12416,29 @@
 }
 
 .updated-admin .ua-cp-review-modal__icon {
-  font-size: 18px;
-  line-height: 1;
-  margin-top: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  color: #1f2a37;
+  flex-shrink: 0;
 }
 
 .updated-admin .ua-cp-review-modal__title {
   font-size: 18px;
   font-weight: 800;
   letter-spacing: -0.02em;
-  color: var(--text);
+  color: #1a2332;
   line-height: 1.15;
 }
 
 .updated-admin .ua-cp-review-modal__sub {
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--muted);
+  margin-top: 5px;
+  font-size: 12.5px;
+  color: #8a97ac;
+  line-height: 1.35;
 }
 
 .updated-admin .ua-cp-review-modal__close {
@@ -12418,25 +12446,64 @@
   height: 28px;
   border: none;
   border-radius: 8px;
-  background: #f1f4f8;
-  color: #8a97ac;
-  font-size: 18px;
+  background: transparent;
+  color: #9aa6b8;
+  font-size: 22px;
   line-height: 1;
   cursor: pointer;
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.updated-admin .ua-cp-review-modal__close:hover {
+  background: #f1f4f8;
+  color: #5a6b85;
 }
 
 .updated-admin .ua-cp-review-modal__list {
   flex: 1;
   overflow-y: auto;
-  padding: 16px 18px 18px;
+  padding: 8px 20px 20px;
+  scrollbar-width: thin;
+  scrollbar-color: #d5dbe6 transparent;
+}
+
+.updated-admin .ua-cp-review-modal__list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.updated-admin .ua-cp-review-modal__list::-webkit-scrollbar-thumb {
+  background: #d5dbe6;
+  border-radius: 999px;
+}
+
+.updated-admin .ua-cp-review-modal__empty {
+  padding: 28px 12px;
+  text-align: center;
+}
+
+.updated-admin .ua-cp-review-modal__empty-text {
+  margin: 0;
+  max-width: 36ch;
+  margin-inline: auto;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #5a6b85;
 }
 
 .updated-admin .ua-cp-review-item {
   display: grid;
-  grid-template-columns: 16px minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: 14px minmax(0, 1fr);
+  gap: 14px;
   align-items: start;
+}
+
+.updated-admin .ua-cp-review-item--empty {
+  display: block;
+  padding: 28px 8px;
+  text-align: center;
 }
 
 .updated-admin .ua-cp-review-item+.ua-cp-review-item {
@@ -12445,7 +12512,7 @@
 
 .updated-admin .ua-cp-review-item__rail {
   position: relative;
-  width: 16px;
+  width: 14px;
   align-self: stretch;
 }
 
@@ -12454,80 +12521,95 @@
   z-index: 1;
   width: 9px;
   height: 9px;
-  margin: 4px auto 0;
+  margin: 6px auto 0;
   border-radius: 50%;
   background: #5e6ad2;
   display: block;
+  box-shadow: 0 0 0 3px #fff;
 }
 
 .updated-admin .ua-cp-review-item__line {
   position: absolute;
-  top: 13px;
-  bottom: 0;
+  top: 16px;
+  bottom: -2px;
   left: 50%;
   transform: translateX(-50%);
-  width: 2px;
+  width: 1.5px;
   background: #e3e8f2;
   border-radius: 999px;
 }
 
 .updated-admin .ua-cp-review-item__body {
   min-width: 0;
-  padding-bottom: 18px;
+  padding: 2px 0 16px;
+  border-bottom: 1px solid #eef1f6;
 }
 
 .updated-admin .ua-cp-review-item:last-child .ua-cp-review-item__body {
-  padding-bottom: 0;
+  border-bottom: none;
+  padding-bottom: 4px;
 }
 
 .updated-admin .ua-cp-review-item__top {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 6px;
+  min-height: 24px;
 }
 
-.updated-admin .ua-cp-review-item__meta strong {
-  display: block;
+.updated-admin .ua-cp-review-item__date {
   font-size: 14px;
   font-weight: 800;
-  color: var(--text);
-  line-height: 1.2;
+  color: #1a2332;
+  line-height: 1.25;
 }
 
-.updated-admin .ua-cp-review-item__meta span {
-  display: block;
-  margin-top: 2px;
-  font-size: 11px;
-  color: var(--muted);
+.updated-admin .ua-cp-review-item__by {
+  margin-top: 3px;
+  font-size: 11.5px;
+  color: #8a97ac;
+  line-height: 1.3;
 }
 
 .updated-admin .ua-cp-review-item__rx {
   flex: 0 0 auto;
-  border: 1px solid #ddd3f9;
-  background: #f4f2ff;
-  color: #6d4fd0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #dcd6f7;
+  background: #f3f1ff;
+  color: #5e6ad2;
   border-radius: 999px;
-  padding: 4px 10px;
+  padding: 4px 9px 4px 7px;
   font: inherit;
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
   cursor: pointer;
-  line-height: 1.3;
+  line-height: 1.2;
+}
+
+.updated-admin .ua-cp-review-item__rx svg:last-child {
+  opacity: 0.85;
 }
 
 .updated-admin .ua-cp-review-item__rx:hover {
   background: #ebe7ff;
+  border-color: #cfc7f2;
 }
 
 .updated-admin .ua-cp-review-item__note {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #4a5a73;
+  padding-right: 2px;
+}
+
+.updated-admin .ua-cp-review-item--empty .ua-cp-review-item__note {
   margin: 0;
-  font-size: 12.5px;
-  line-height: 1.45;
-  color: #5a6b85;
-  padding-right: 4px;
+  color: #8a97ac;
 }
 
 .updated-admin .ua-cp-personal {
@@ -13270,38 +13352,60 @@
 }
 
 .updated-admin .ua-cp-nutritions__sub {
-  margin: 4px 0 12px;
+  margin: 4px 0 0px;
   color: var(--muted);
   font-size: 13px;
 }
 
 .updated-admin .ua-pill-tabs--md {
   display: inline-flex;
+  align-items: center;
+  gap: 0;
   padding: 4px;
-  border-radius: 999px;
-  background: #f5f5f5;
-  /* background: #e8edf5; */
+  border-radius: 12px;
+  background: #f0f2f5;
+  border: 1px solid #e2e8f0;
   margin-bottom: 5px;
   overflow-x: auto;
   max-width: 100%;
+  width: fit-content;
   scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
 }
 
 .updated-admin .ua-pill-tabs--md .ua-pill-tabs__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
   border: none;
   background: transparent;
-  padding: 8px 18px;
-  border-radius: 999px;
+  padding: 0 18px;
+  border-radius: 8px;
   font-size: 13px;
-  font-weight: 700;
-  color: #6b7891;
+  font-weight: 500;
+  color: #949ca9;
   cursor: pointer;
+  box-shadow: none;
+  line-height: 1;
+  white-space: nowrap;
+  transition: color 0.12s, background 0.12s, box-shadow 0.12s;
+}
+
+.updated-admin .ua-pill-tabs--md .ua-pill-tabs__btn:hover {
+  color: #5a6b85;
 }
 
 .updated-admin .ua-pill-tabs--md .ua-pill-tabs__btn--active {
   background: #fff;
-  color: var(--text);
-  box-shadow: 0 1px 4px rgba(16, 35, 63, 0.08);
+  color: #333e48;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(16, 35, 63, 0.08);
+}
+
+/* Nutritions: keep Recommendation / Dosage identical in both states */
+.updated-admin .ua-cp-nutritions > .ua-pill-tabs--md {
+  margin-top: 2px;
 }
 
 .updated-admin .ua-cp-rec-block,
@@ -13526,14 +13630,14 @@
 .updated-admin .ua-cp-dosage-hint {
   font-size: 12.5px;
   color: var(--muted);
-  margin: 0 0 12px;
+  margin: 0 0 0px;
 }
 
 .updated-admin .ua-cp-dosage-add {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 14px;
+  margin-bottom: 0px;
 }
 
 .updated-admin .ua-cp-dosage-add select,
@@ -15187,9 +15291,9 @@ scrollbar-width: thin;
 .updated-admin .ua-cp-ip-preset__pill {
   height: 30px;
   padding: 0 12px;
-  border: 1px solid #dcdff7;
+  border: 1.5px solid #dcdff7;
   border-radius: 999px;
-  background: #fff;
+  background: #f7f8ff;
   color: #5e6ad2;
   font-size: 11.5px;
   font-weight: 700;
@@ -15198,17 +15302,11 @@ scrollbar-width: thin;
   line-height: 1;
 }
 
-.updated-admin .ua-cp-ip-preset__pill--applied {
-  background: #2b8f5b;
-  border-color: #2b8f5b;
-  color: #fff;
-}
-
+.updated-admin .ua-cp-ip-preset__pill--applied,
 .updated-admin .ua-cp-ip-preset__pill--focus {
-  background: #fff;
-  border-color: #5e6ad2;
-  color: #5e6ad2;
-  box-shadow: 0 0 0 1px #5e6ad2;
+  background: #2b8f5b;
+  border: 2.5px solid #111827;
+  color: #fff;
 }
 
 .updated-admin .ua-cp-ip-search-wrap {
@@ -19049,7 +19147,7 @@ scrollbar-width: thin;
   border: 1px solid #e6ebf2;
   border-radius: 16px;
   box-shadow: 0 22px 60px rgba(16, 35, 63, 0.22);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .updated-admin .ua-sop-modal__head {
@@ -19182,6 +19280,53 @@ scrollbar-width: thin;
 .updated-admin .ua-sop-field__input.is-invalid,
 .updated-admin .ua-sop-field__textarea.is-invalid {
   border-color: #e11d48;
+}
+
+.updated-admin .ua-sop-field__select {
+  width: 100%;
+  min-width: 0;
+}
+
+.updated-admin .ua-sop-field__select .ua-cfg-select__trigger {
+  height: auto;
+  min-height: 44px;
+  padding: 11px 13px;
+  border: 1px solid #e3e8f0;
+  border-radius: 10px;
+  background: #fafbfd;
+  color: #16233f;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.updated-admin .ua-sop-field__select.is-open .ua-cfg-select__trigger,
+.updated-admin .ua-sop-field__select .ua-cfg-select__trigger:focus-visible {
+  border-color: #a8b6f5;
+  box-shadow: 0 0 0 3px rgba(94, 106, 210, 0.12);
+  background: #fff;
+}
+
+.updated-admin .ua-sop-field__select.is-invalid .ua-cfg-select__trigger {
+  border-color: #e11d48;
+}
+
+.updated-admin .ua-sop-field__select .ua-cfg-select__menu {
+  width: 100%;
+  max-width: none;
+  max-height: min(240px, 50vh);
+  padding: 6px;
+  border-radius: 12px;
+  box-shadow: 0 14px 32px rgba(16, 35, 63, 0.16);
+}
+
+.updated-admin .ua-sop-field__select .ua-cfg-select__option {
+  width: 100%;
+  text-align: left;
+}
+
+.updated-admin .ua-sop-modal__body:has(.ua-cfg-select.is-open) {
+  position: relative;
+  z-index: 2;
 }
 
 .updated-admin .ua-sop-modal__actions {
@@ -22284,7 +22429,7 @@ scrollbar-width: thin;
 .updated-admin .ua-cp-food .ua-pill-tabs--md .ua-pill-tabs__btn {
   flex: 0 0 auto;
   white-space: nowrap;
-  padding: 8px 14px;
+  padding: 0 14px;
 }
 
 .updated-admin .ua-cp-food-date-row {
@@ -22372,10 +22517,10 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cp-food-meta-badge {
-  padding: 4px 8px;
+  padding: 5px 8px;
   border-radius: 6px;
-  background: #eef0fc;
-  color: #5e6ad2;
+  background: rgb(238, 240, 252);
+  color: rgb(94, 106, 210);
   font-size: 10px;
   font-weight: 700;
   white-space: nowrap;
@@ -22559,13 +22704,14 @@ scrollbar-width: thin;
   position: absolute;
   right: 2px;
   bottom: 2px;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
-  background: #eef0fc;
-  border: 1px solid #dcdff7;
-  color: #5e6ad2;
-  font-size: 9px;
+  background: rgb(94, 106, 210);
+  
+  border: 2px solid rgb(255, 255, 255);
+  color: rgb(255, 255, 255);
+  font-size: 10px;
   display: grid;
   place-items: center;
 }
@@ -24077,6 +24223,8 @@ scrollbar-width: thin;
   border-color: #fde0e0;
 }
 
+
+
 .updated-admin .ua-cp-bms-goal-pill__label,
 .updated-admin .ua-cp-bms-zone-pill__label {
   font-size: 10px;
@@ -24139,8 +24287,14 @@ scrollbar-width: thin;
   height: 34px;
   border-radius: 10px;
   font-size: 16px;
-  line-height: 1;
+  line-height: 0;
   text-align: center;
+}
+
+.updated-admin .ua-cp-bms-chart-card__icon svg {
+  display: block;
+  width: 18px;
+  height: 18px;
 }
 
 .updated-admin .ua-cp-bms-chart-card__icon--teal {
@@ -24251,14 +24405,16 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cp-bms-sleep-goal {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
-  padding: 8px 12px;
+  padding: 8px 14px;
   border-radius: 999px;
-  background: #f3f5fd;
-  border: 1px solid #dfe3f9;
+  background: #eef0fc;
+  border: 1px solid #dcdff7;
+  font-size: 13px;
+  color: #4a5568;
 }
 
 .updated-admin .ua-cp-bms-sleep-goal__label {
@@ -24266,64 +24422,74 @@ scrollbar-width: thin;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #8a97ac;
-}
-
-.updated-admin .ua-cp-bms-sleep-goal__text {
-  font-size: 13px;
-  color: #4a5568;
-}
-
-.updated-admin .ua-cp-bms-sleep-goal__text strong {
   color: #5e6ad2;
+}
+
+.updated-admin .ua-cp-bms-sleep-goal__value {
+  font-size: 13px;
+  font-weight: 800;
+  color: #16233f;
 }
 
 .updated-admin .ua-cp-bms-sleep-goal__input {
   width: 48px;
-  padding: 4px 8px;
-  border: 1px solid #dfe3f9;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid #fff;
   border-radius: 8px;
-  font-size: 13px;
-  font-weight: 700;
+  background: #fff;
+  font-size: 14px;
+  font-weight: 800;
   text-align: center;
-  color: #5e6ad2;
+  color: #16233f;
+  font-family: inherit;
 }
 
 .updated-admin .ua-cp-bms-sleep-goal__unit {
-  font-size: 13px;
-  color: #6b7280;
+  font-size: 12px;
+  font-weight: 650;
+  color: #16233f;
 }
 
-.updated-admin .ua-cp-bms-sleep-goal__set,
-.updated-admin .ua-cp-bms-sleep-goal__cancel {
+.updated-admin .ua-cp-bms-sleep-goal__set {
   border: none;
-  background: none;
+  background: #fff;
+  border-radius: 999px;
+  padding: 5px 12px;
   font-size: 12px;
   font-weight: 700;
   color: #5e6ad2;
   cursor: pointer;
-  padding: 0;
+  font-family: inherit;
+  line-height: 1;
 }
 
 .updated-admin .ua-cp-bms-sleep-goal__cancel {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 700;
   color: #8a97ac;
+  cursor: pointer;
+  font-family: inherit;
 }
 
 .updated-admin .ua-cp-bms-sleep-goal__badge {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   padding: 4px 10px;
   border-radius: 999px;
+  white-space: nowrap;
 }
 
 .updated-admin .ua-cp-bms-sleep-goal__badge--ok {
-  background: #f0faf4;
+  background: #e7f6ee;
   color: #2b8f5b;
-  border: 1px solid #d9f0e3;
 }
 
 .updated-admin .ua-cp-bms-sleep-goal__badge--locked {
-  background: #fff5f5;
+  background: #fff0f0;
   color: #d64545;
   border: 1px solid #fde0e0;
 }
@@ -24606,32 +24772,58 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cp-bms-library-toolbar__count {
   font-size: 13px;
+  font-weight: 500;
+  color: #949ca9;
+}
+
+.updated-admin .ua-cp-bms-library-toolbar__count strong {
   font-weight: 700;
   color: #5e6ad2;
 }
 
 .updated-admin .ua-cp-bms-filters {
   display: inline-flex;
-  gap: 6px;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: 0;
+  padding: 4px;
+  border-radius:12px;
+  background: #f0f2f5;
+  border: 1px solid #e2e8f0;
+  flex-wrap: nowrap;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 
 .updated-admin .ua-cp-bms-filters__btn {
-  padding: 6px 14px;
-  border-radius: 999px;
-  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  padding: 0 16px;
+  border-radius: 7px;
+  border: none;
   background: transparent;
   font-size: 13px;
-  font-weight: 600;
-  color: #6b7280;
+  font-weight: 500;
+  color: #949ca9;
   cursor: pointer;
+  box-shadow: none;
+  line-height: 1;
+  white-space: nowrap;
+  transition: color 0.12s, background 0.12s, box-shadow 0.12s;
+}
+
+.updated-admin .ua-cp-bms-filters__btn:hover {
+  color: #5a6b85;
 }
 
 .updated-admin .ua-cp-bms-filters__btn--active {
   background: #fff;
-  border-color: #d8dee8;
-  color: #16233f;
-  box-shadow: 0 1px 3px rgba(22, 35, 63, 0.06);
+  border: none;
+  color: #333e48;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(16, 35, 63, 0.08);
 }
 
 .updated-admin .ua-cp-bms-library-hint {
@@ -25175,7 +25367,8 @@ scrollbar-width: thin;
   padding: 14px 16px;
   border-radius: 14px;
   background: #fff;
-  border: 1px solid #e3e9f2;
+  border: 1px solid rgb(197, 208, 245);
+  box-shadow: rgb(197, 208, 245) 0px 0px 0px 1px;
 }
 
 .updated-admin .ua-cp-bms-content-card__thumb {
@@ -52301,7 +52494,7 @@ scrollbar-width: thin;
 
   .updated-admin .ua-cp-food .ua-pill-tabs--md .ua-pill-tabs__btn {
     flex: 0 0 auto;
-    padding: 8px 12px;
+    padding: 0 12px;
     font-size: 12px;
     white-space: nowrap;
   }

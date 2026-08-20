@@ -1132,12 +1132,10 @@ async function buildMemberContent(accountOrPublic) {
     ? [
         intro.duration,
         uploadedLabel
-          ? `uploaded ${uploadedLabel}`
+          ? `Uploaded ${uploadedLabel}`
           : intro.sourceType === "link"
             ? "Linked video"
-            : intro.version
-              ? `v${intro.version}`
-              : "Uploaded",
+            : "Uploaded",
       ]
         .filter(Boolean)
         .join(" · ") || "Uploaded"

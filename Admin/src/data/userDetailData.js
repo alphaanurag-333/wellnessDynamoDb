@@ -235,11 +235,14 @@ export const REVIEW_HISTORY = {
 };
 
 /**
- * @deprecated Seed review notes must never be shown as live client history.
- * Always returns []. Prefer user.reviewHistory from the API when available.
+ * Seed review notes for UI until live reviewHistory is available on the user.
+ * Prefer user.reviewHistory from the API when present.
  */
-export function getReviewHistory(_userId) {
-  return [];
+export function getReviewHistory(userId) {
+  const byId = REVIEW_HISTORY?.[userId];
+  if (Array.isArray(byId) && byId.length) return byId;
+  const first = Object.values(REVIEW_HISTORY || {}).find((list) => Array.isArray(list) && list.length);
+  return Array.isArray(first) ? first : [];
 }
 
 export const METABOLIC_SNAPSHOT = [
@@ -496,6 +499,7 @@ function emptyProfileExtras(goal = "") {
     heartRateEnabled: true,
     sleepTrackingEnabled: true,
     referralCode: "",
+    referredByCode: "",
     paidOnboardingCompleted: false,
     paidOnboardingStep: "",
     paidOnboardingStepStatus: null,
@@ -568,6 +572,7 @@ export function profileFromListUser(row, userId) {
     heartRateEnabled: base.heartRateEnabled !== false,
     sleepTrackingEnabled: base.sleepTrackingEnabled !== false,
     referralCode: base.referralCode || extra.referralCode,
+    referredByCode: base.referredByCode || extra.referredByCode || "",
     tags: Array.isArray(base.tags) && base.tags.length ? base.tags : extra.tags,
     goals: Array.isArray(base.goals) && base.goals.length ? base.goals : extra.goals,
     programLabel: base.programLabel || extra.programLabel,
