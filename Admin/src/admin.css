@@ -1803,9 +1803,20 @@
 }
 
 .updated-admin .tier-card__cells {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
   gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  padding-bottom: 2px;
+}
+
+.updated-admin .tier-card__cells > .tier-cell {
+  flex: 0 0 auto;
+  min-width: 7.5rem;
 }
 
 .updated-admin .expiry-card__cells {
@@ -49899,7 +49910,14 @@ scrollbar-width: thin;
   }
 
   .updated-admin .tier-card__cells {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  .updated-admin .tier-card__cells > .tier-cell {
+    flex: 0 0 auto;
+    min-width: 7.25rem;
   }
 
   .updated-admin .ua-cp-metabolic-row {
