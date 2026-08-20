@@ -1,6 +1,6 @@
 import { STAFF_BY_ROLE } from "./teamsData.js";
 
-const DEFAULT_REMIND_MESSAGE =
+export const DEFAULT_REMIND_MESSAGE =
   "A quick nudge on your pending items — please take a look when you get a moment.";
 
 const TEAM_META = {

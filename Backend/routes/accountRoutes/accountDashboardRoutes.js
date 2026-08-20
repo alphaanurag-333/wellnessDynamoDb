@@ -1,7 +1,11 @@
 const express = require("express");
 const { protectAccount } = require("../../middleware/auth");
 const { authorizeStaff } = require("../../middleware/authorize");
-const { getStaffDashboardStatistics, listStaffDashboardPayments } = require("../../controllers/adminController/dashboardController");
+const {
+  getStaffDashboardStatistics,
+  listStaffDashboardPayments,
+  sendTeamRemindersController,
+} = require("../../controllers/adminController/dashboardController");
 const { listPendingTasksController } = require("../../controllers/adminController/pendingTasksController");
 
 const router = express.Router();
@@ -39,6 +43,13 @@ router.get(
     support: "nav.dashboard",
   }),
   listPendingTasksController
+);
+
+router.post(
+  "/team-reminders",
+  protectAccount,
+  dashboardViewAuth,
+  sendTeamRemindersController
 );
 
 module.exports = router;

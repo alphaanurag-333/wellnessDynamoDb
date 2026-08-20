@@ -6,18 +6,6 @@ export function PageEnter({ children }) {
   return <div className="ua-page-enter">{children}</div>;
 }
 
-export function AutosaveButton({ onClick }) {
-  return (
-    <button type="button" className="ua-autosave-btn" title="Autosaved · click to save now" onClick={onClick}>
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-        <path d="M17 21v-8H7v8" />
-        <path d="M7 3v5h8" />
-      </svg>
-    </button>
-  );
-}
-
 export function BackLink({ label = "Dashboard", to = UPDATED_ADMIN_PATHS.dashboard }) {
   return (
     <Link to={to} className="ua-back-link">
@@ -45,12 +33,10 @@ export function PageHeader({
   meta,
   backLink,
   backTo,
-  autosave,
-  onAutosave,
   layout = "default",
 }) {
   const isSplit = layout === "split";
-  const showActions = Boolean(actions) || autosave;
+  const showActions = Boolean(actions);
 
   return (
     <div className={`page-head${isSplit ? " page-head--split" : ""}`}>
@@ -66,7 +52,6 @@ export function PageHeader({
       {showActions ? (
         <div className="page-head__actions">
           {actions}
-          {autosave ? <AutosaveButton onClick={onAutosave} /> : null}
         </div>
       ) : null}
     </div>

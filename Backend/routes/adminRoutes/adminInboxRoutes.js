@@ -11,7 +11,7 @@ const {
 
 const router = express.Router();
 
-router.use(protectAccount, requireActiveRole(...CLINICAL_ROLES));
+router.use(protectAccount, requireActiveRole(...CLINICAL_ROLES, "support"));
 
 router.get("/", listAdminInboxController);
 router.get("/unread-count", getAdminInboxUnreadCountController);

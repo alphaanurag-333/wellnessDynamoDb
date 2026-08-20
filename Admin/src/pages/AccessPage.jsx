@@ -2240,8 +2240,6 @@ export function AccessPage() {
             role default.
           </>
         }
-        autosave
-        onAutosave={() => onToast("Saved")}
       />
 
       <PillTabs tabs={tabs} active={tab} onChange={setTab} size="lg" />

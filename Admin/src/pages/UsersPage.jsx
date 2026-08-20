@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 import { ExportIcon } from "../components/NavIcons.jsx";
 import { BrandLoader } from "../components/BrandLoader.jsx";
-import { AutosaveButton, CfgSelect, OrangeButton, PageHeader, PillTabs, ScopeChip, TableScroll } from "../components/shared.jsx";
+import { CfgSelect, OrangeButton, PageHeader, PillTabs, ScopeChip, TableScroll } from "../components/shared.jsx";
 import {
   TIER_OPTIONS,
   UNASSIGNED_COACH,
@@ -840,7 +840,6 @@ export function UsersPage() {
                 {canCreate ? (
                   <OrangeButton onClick={() => setCreateOpen(true)}>+ Add user</OrangeButton>
                 ) : null}
-                <AutosaveButton onClick={() => onToast("Saved")} />
               </div>
             </div>
           )}

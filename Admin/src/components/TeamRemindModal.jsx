@@ -3,8 +3,12 @@ export function TeamRemindModal({
   title,
   subtitle,
   recipients,
+  recipientsLoading = false,
   message,
   defaultMessage,
+  busy = false,
+  actionLabel = "Send Notification",
+  actionIcon = "🔔",
   onMessageChange,
   onReset,
   onPush,
@@ -14,9 +18,19 @@ export function TeamRemindModal({
   if (!open) return null;
 
   const canReset = message !== defaultMessage;
+  const recipientNames = (recipients || []).map((row) =>
+    typeof row === "string" ? row : row?.name
+  ).filter(Boolean);
+  const pushDisabled = busy || recipientsLoading || !String(message || "").trim() || recipientNames.length === 0;
 
   return (
-    <div className="ua-team-modal-backdrop ua-team-modal-backdrop--stack" onClick={onClose} role="presentation">
+    <div
+      className="ua-team-modal-backdrop ua-team-modal-backdrop--stack"
+      onClick={() => {
+        if (!busy) onClose?.();
+      }}
+      role="presentation"
+    >
       <div
         className="ua-team-modal ua-team-modal--remind"
         onClick={(e) => e.stopPropagation()}
@@ -29,7 +43,13 @@ export function TeamRemindModal({
             <div id="team-remind-title" className="ua-team-modal__title">{title}</div>
             <div className="ua-team-modal__sub">{subtitle}</div>
           </div>
-          <button type="button" className="ua-team-modal__close" onClick={onClose} aria-label="Close">
+          <button
+            type="button"
+            className="ua-team-modal__close"
+            onClick={onClose}
+            disabled={busy}
+            aria-label="Close"
+          >
             ×
           </button>
         </div>
@@ -38,9 +58,15 @@ export function TeamRemindModal({
           <div className="ua-team-remind__section">
             <div className="ua-team-remind__label">Recipients</div>
             <div className="ua-team-remind__chips">
-              {recipients.map((name) => (
-                <span key={name} className="ua-team-remind__chip">{name}</span>
-              ))}
+              {recipientsLoading ? (
+                <span className="ua-team-remind__chip">Loading…</span>
+              ) : recipientNames.length === 0 ? (
+                <span className="ua-team-remind__chip">No recipients</span>
+              ) : (
+                recipientNames.map((name, index) => (
+                  <span key={`${name}-${index}`} className="ua-team-remind__chip">{name}</span>
+                ))
+              )}
             </div>
           </div>
 
@@ -50,7 +76,7 @@ export function TeamRemindModal({
               <button
                 type="button"
                 className={`ua-team-remind__reset${canReset ? "" : " ua-team-remind__reset--muted"}`}
-                disabled={!canReset}
+                disabled={!canReset || busy}
                 onClick={onReset}
               >
                 Reset to suggested
@@ -61,15 +87,16 @@ export function TeamRemindModal({
               value={message}
               onChange={(e) => onMessageChange(e.target.value)}
               rows={4}
+              disabled={busy}
             />
           </div>
         </div>
 
         <div className="ua-team-remind__actions">
-          <button type="button" className="ua-team-remind__push" onClick={onPush}>
-            <span aria-hidden="true">📱</span> Push to app
+          <button type="button" className="ua-team-remind__push" disabled={pushDisabled} onClick={onPush}>
+            <span aria-hidden="true">{actionIcon}</span> {busy ? "Sending…" : actionLabel}
           </button>
-          <button type="button" className="ua-team-remind__whatsapp" onClick={onWhatsApp}>
+          <button type="button" className="ua-team-remind__whatsapp" disabled={busy} onClick={onWhatsApp}>
             <span aria-hidden="true">💬</span> Send on WhatsApp
           </button>
         </div>

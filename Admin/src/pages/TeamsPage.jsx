@@ -12,7 +12,7 @@ import {
   TEAM_ROLE_TABS_BASE,
   staffInitials,
 } from "../data/teamsData.js";
-import { createTeamMember, deleteTeamMember, fetchTeamMembers, listTeamParentOptions, setAccessMemberRole, updateTeamMember } from "../api/teamsApi.js";
+import { createTeamMember, deleteTeamMember, fetchTeamMembers, listTeamParentOptions, sendTeamReminder, setAccessMemberRole, updateTeamMember } from "../api/teamsApi.js";
 import { fetchAccessRoles } from "../api/accessApi.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import {
@@ -407,6 +407,7 @@ export function TeamsPage() {
   const [deletingMember, setDeletingMember] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [remindModal, setRemindModal] = useState(null);
+  const [remindBusy, setRemindBusy] = useState(false);
   const [parentOptions, setParentOptions] = useState([]);
   const [reloadNonce, setReloadNonce] = useState(0);
 
@@ -417,6 +418,7 @@ export function TeamsPage() {
       title: `Remind ${name}`,
       subtitle: [roleName, member?.meta].filter(Boolean).join(" · "),
       recipients: [name],
+      accountIds: member?.id ? [member.id] : [],
       defaultMessage,
       message: defaultMessage,
     });
@@ -595,8 +597,6 @@ export function TeamsPage() {
               ? "Trainees assigned below you."
               : "Each team = 1 Wellness Coach + N assistants + assigned clients. Manage every staff role below."
         }
-        autosave
-        onAutosave={() => onToast("Saved")}
         actions={isSuperAdmin ? (
           <OrangeButton onClick={() => setCreateOpen(true)}>+ Create team member</OrangeButton>
         ) : null}
@@ -785,17 +785,40 @@ export function TeamsPage() {
         recipients={remindModal?.recipients ?? []}
         message={remindModal?.message ?? ""}
         defaultMessage={remindModal?.defaultMessage ?? ""}
+        busy={remindBusy}
         onMessageChange={(message) => setRemindModal((prev) => (prev ? { ...prev, message } : prev))}
         onReset={() => setRemindModal((prev) => (prev ? { ...prev, message: prev.defaultMessage } : prev))}
-        onPush={() => {
-          onToast(`Push sent to ${remindModal?.recipients.length ?? 0} recipient(s)`);
-          setRemindModal(null);
+        onPush={async () => {
+          if (!remindModal || remindBusy) return;
+          const message = String(remindModal.message || "").trim();
+          const accountIds = Array.isArray(remindModal.accountIds) ? remindModal.accountIds : [];
+          if (!message) {
+            onToast("Write a reminder message first");
+            return;
+          }
+          if (!accountIds.length) {
+            onToast("No team member to notify");
+            return;
+          }
+          setRemindBusy(true);
+          try {
+            const data = await sendTeamReminder({ accountIds, message });
+            onToast(data?.message || `Notification sent to ${remindModal.recipients?.length ?? 0} recipient(s)`);
+            setRemindModal(null);
+          } catch (err) {
+            onToast(err?.message || "Failed to send notification");
+          } finally {
+            setRemindBusy(false);
+          }
         }}
         onWhatsApp={() => {
+          if (remindBusy) return;
           onToast(`WhatsApp sent to ${remindModal?.recipients.length ?? 0} recipient(s)`);
           setRemindModal(null);
         }}
-        onClose={() => setRemindModal(null)}
+        onClose={() => {
+          if (!remindBusy) setRemindModal(null);
+        }}
       />
     </main>
   );

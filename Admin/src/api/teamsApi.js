@@ -12,6 +12,19 @@ function authHeader() {
 
 export { fetchAccessMembers as fetchTeamMembers, setAccessMemberRole };
 
+export async function sendTeamReminder({ accountIds, message } = {}) {
+  try {
+    const { data } = await api.post(
+      "/account/dashboard/team-reminders",
+      { accountIds, message },
+      { headers: authHeader() },
+    );
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function fetchTeamMember(id) {
   try {
     const { data } = await api.get(`/account/access/members/${encodeURIComponent(id)}`, {

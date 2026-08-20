@@ -183,11 +183,16 @@ export function buildLiveProgressModal(modalKey, programProgress) {
 }
 
 export function onboardingRemindCopy(row) {
-  const first = row.name.split(" ")[0];
+  const first = String(row?.name || "there").split(" ")[0];
+  const step = String(row?.step || "").trim();
+  const stepLabel = step.includes(" · ") ? step.split(" · ").slice(1).join(" · ").trim() : step;
   return {
+    kind: "onboarding",
+    userId: row?.userId || null,
+    stepLabel,
     title: `Remind ${row.name}`,
     subtitle: `Onboarding · ${row.step} · coach ${row.coach}`,
-    recipients: [row.name, row.coach],
+    recipients: [row.name],
     defaultMessage: `Hi ${first}, you're one step away — ${row.step}. Finish it whenever you're ready and your coach will take it from there.`,
   };
 }
