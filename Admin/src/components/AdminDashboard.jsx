@@ -9,6 +9,7 @@ import { BrandLoader } from "./BrandLoader.jsx";
 import { ProgramCategoryModal } from "./ProgramCategoryModal.jsx";
 import { ProgramProgressModal } from "./ProgramProgressModal.jsx";
 import { TeamRemindModal } from "./TeamRemindModal.jsx";
+import { TeamRosterModal } from "./TeamRosterModal.jsx";
 import { PaymentsModal } from "./PaymentsModal.jsx";
 import { StatIcon } from "./DashboardIcons.jsx";
 import {
@@ -53,6 +54,7 @@ import {
   DEFAULT_REMIND_MESSAGE,
   TEAM_STAFF,
   remindSubtitle,
+  staffRemindMessage,
 } from "../data/teamStaffData.js";
 import {
   PRODUCT_COLORS,
@@ -563,6 +565,7 @@ export function AdminDashboard({
   const [chRunning, setChRunning] = useState([]);
   const [remindModal, setRemindModal] = useState(null);
   const [remindBusy, setRemindBusy] = useState(false);
+  const [rosterModal, setRosterModal] = useState(null);
   const [programModalTarget, setProgramModalTarget] = useState(null);
   const [progressModalKey, setProgressModalKey] = useState(null);
   const [paymentsModalOpen, setPaymentsModalOpen] = useState(false);
@@ -884,6 +887,64 @@ export function AdminDashboard({
       });
       onToast(err?.message || "Could not load team members");
     }
+  }
+
+  async function openTeamRoster(team) {
+    const consoleRoleId = team?.consoleRoleId;
+    const roleId = team?.roleId;
+    const staff = TEAM_STAFF[roleId];
+    const rosterKey = String(consoleRoleId || roleId || team?.label || "team");
+
+    setRosterModal({
+      key: rosterKey,
+      team,
+      title: staff?.rosterTitle || `Total ${team?.label || "team"}`,
+      sectionTitle: staff?.sectionTitle || team?.label || "",
+      rows: [],
+      loading: true,
+    });
+
+    try {
+      const data = await fetchTeamMembers({
+        consoleRoleId: consoleRoleId || undefined,
+        roleKey: !consoleRoleId ? roleId : undefined,
+        page: 1,
+        limit: 200,
+      });
+      const members = (data?.members || []).filter(isActiveTeamMember);
+      setRosterModal((prev) => {
+        if (!prev || prev.key !== rosterKey) return prev;
+        return {
+          ...prev,
+          loading: false,
+          rows: members.map((row) => ({
+            id: row.id,
+            name: row.name || "Team member",
+            detail: row.meta || "",
+          })),
+        };
+      });
+    } catch (err) {
+      setRosterModal((prev) => {
+        if (!prev || prev.key !== rosterKey) return prev;
+        return null;
+      });
+      onToast(err?.message || "Could not load team members");
+    }
+  }
+
+  function openRosterRemindOne(row) {
+    const name = row?.name || "team member";
+    const defaultMessage = staffRemindMessage(name);
+    const roleLabel = rosterModal?.sectionTitle || rosterModal?.team?.label || "Team";
+    openTeamRemind({
+      kind: "team",
+      title: `Remind ${name}`,
+      subtitle: [roleLabel, row?.detail].filter(Boolean).join(" · "),
+      recipients: [name],
+      accountIds: row?.id ? [row.id] : [],
+      defaultMessage,
+    });
   }
 
   const programModal = useMemo(() => {
@@ -1581,14 +1642,7 @@ export function AdminDashboard({
                   <button
                     type="button"
                     className="team-card__view"
-                    onClick={() => {
-                      const role = team.consoleRoleId || team.roleId;
-                      navigate(
-                        role
-                          ? `${UPDATED_ADMIN_PATHS.teams}?role=${encodeURIComponent(role)}`
-                          : UPDATED_ADMIN_PATHS.teams,
-                      );
-                    }}
+                    onClick={() => openTeamRoster(team)}
                   >
                     View
                   </button>
@@ -1973,6 +2027,19 @@ export function AdminDashboard({
         onClose={() => setProgressModalKey(null)}
         onOpenClient={openProgressClient}
         onRemind={openOnboardingRemind}
+      />
+
+      <TeamRosterModal
+        open={!!rosterModal}
+        title={rosterModal?.title ?? ""}
+        sectionTitle={rosterModal?.sectionTitle ?? ""}
+        rows={rosterModal?.rows ?? []}
+        loading={Boolean(rosterModal?.loading)}
+        onClose={() => setRosterModal(null)}
+        onRemindAll={() => {
+          if (rosterModal?.team) openRemindAll(rosterModal.team);
+        }}
+        onRemindOne={openRosterRemindOne}
       />
 
       <TeamRemindModal
