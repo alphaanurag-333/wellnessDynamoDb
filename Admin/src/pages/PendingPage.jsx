@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useOutletContext } from "react-router-dom";
+import { useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 import { BrandLoader } from "../components/BrandLoader.jsx";
 import { PageHeader } from "../components/shared.jsx";
 import { useViewAs } from "../context/ViewAsContext.jsx";
@@ -98,6 +98,7 @@ function PendingQueue({ queue, onOpen, onItem }) {
 export function PendingPage() {
   const { showToast } = useOutletContext();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { viewAs, account, dataScope } = useViewAs();
   const noteKey = useMemo(
     () => `ua-pending-note:${account?.id || viewAs || "staff"}`,
@@ -154,6 +155,16 @@ export function PendingPage() {
       cancelled = true;
     };
   }, [account?.id, dataScope, viewAs]);
+
+  useEffect(() => {
+    if (loading) return;
+    const focus = String(searchParams.get("focus") || "").trim();
+    if (!focus) return;
+    const sectionId = focus === "delivery" ? "orders" : focus;
+    const node = document.querySelector(`[data-pending-section="${sectionId}"]`);
+    if (!node) return;
+    node.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [loading, searchParams]);
 
   const queues = useMemo(
     () => QUEUE_META.map((meta) => ({

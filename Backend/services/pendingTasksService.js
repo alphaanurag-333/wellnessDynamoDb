@@ -93,6 +93,30 @@ function formatPlacedDetail(iso) {
   return `Placed ${date.getDate()} ${MONTHS[date.getMonth()]} · in transit`;
 }
 
+function formatOrderProducts(rec) {
+  const names = (rec?.items || [])
+    .map((item) => {
+      const name = String(item?.name || "").trim();
+      const qty = Number(item?.qty) || 0;
+      if (!name) return "";
+      return qty > 1 ? `${name} × ${qty}` : name;
+    })
+    .filter(Boolean);
+  if (names.length === 0) return "Supplements";
+  if (names.length <= 2) return names.join(" · ");
+  return `${names.slice(0, 2).join(" · ")} +${names.length - 2} more`;
+}
+
+function formatOrderAmount(rec) {
+  const total = Number(rec?.billingTotal);
+  if (!Number.isFinite(total) || total <= 0) return "";
+  return `Rs. ${Math.round(total).toLocaleString("en-IN")}`;
+}
+
+function formatOrderDetail(rec, suffix) {
+  return [formatOrderProducts(rec), formatOrderAmount(rec), suffix].filter(Boolean).join(" · ");
+}
+
 function startOfWeek(now = new Date()) {
   const start = new Date(now);
   start.setHours(0, 0, 0, 0);
@@ -313,7 +337,10 @@ function orderItems(usersById, recommendations) {
         toTaskItem(user, {
           id: `order-place-${rec.id}`,
           tag: "NOT PLACED",
-          detail: `Client asked you to order · ${formatDaysAgo(rec.deliveryRequestedAt) || "recently"}`,
+          detail: formatOrderDetail(
+            rec,
+            `Client asked you to order · ${formatDaysAgo(rec.deliveryRequestedAt) || "recently"}`
+          ),
           link: "Place order",
           section: "nutritions",
         })
@@ -323,7 +350,7 @@ function orderItems(usersById, recommendations) {
         toTaskItem(user, {
           id: `order-deliver-${rec.id}`,
           tag: "NOT DELIVERED",
-          detail: formatPlacedDetail(rec.billUploadedAt || rec.updatedAt),
+          detail: formatOrderDetail(rec, formatPlacedDetail(rec.billUploadedAt || rec.updatedAt)),
           link: "Update log",
           section: "nutritions",
         })

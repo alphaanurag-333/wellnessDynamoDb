@@ -37,6 +37,14 @@ const DEFAULT_TEMP_PASSWORD = process.env.SEED_STAFF_PASSWORD || "Admin@12345";
 const CONSOLE_SCOPE = "CONSOLE";
 const REFERRAL_STAFF_ROLES = new Set(["wellness_coach", "assistant_wellness_coach"]);
 
+function accountRoleKeyFromDataScope(dataScope) {
+  const scope = String(dataScope || "").toLowerCase();
+  if (scope === "assigned") return "wellness_coach";
+  if (scope === "team") return "assistant_wellness_coach";
+  if (scope === "all") return "support";
+  return "wellness_coach";
+}
+
 async function resolveAccountRoleKeyFromConsoleRole(startRole) {
   let current = startRole;
   const seen = new Set();
@@ -45,14 +53,20 @@ async function resolveAccountRoleKeyFromConsoleRole(startRole) {
     seen.add(current.id);
 
     const uiKey = String(current.roleKey || "").trim().toLowerCase();
-    if (uiKey) {
+    // Skip admin so custom roles that inherit from Admin still map to a staff account role.
+    if (uiKey && uiKey !== "admin") {
       const mapped = UI_TO_ACCOUNT_ROLE[uiKey] || normalizeRoleKey(uiKey);
-      if (mapped) return mapped;
+      if (mapped && mapped !== "admin") return mapped;
     }
 
     if (!current.inheritsFromRoleId) break;
     current = await getRoleById(current.inheritsFromRoleId);
     if (current && current.scope !== CONSOLE_SCOPE) break;
+  }
+  // Standalone / admin-inherited custom CONSOLE roles: use dataScope as staff persona.
+  const startKey = String(startRole?.roleKey || "").trim().toLowerCase();
+  if (startRole && (!startKey || !UI_TO_ACCOUNT_ROLE[startKey])) {
+    return accountRoleKeyFromDataScope(startRole.dataScope);
   }
   return null;
 }
@@ -103,10 +117,7 @@ async function resolveCreateRoleTarget({ rawRole, consoleRoleId }) {
   }
 
   if (!accountRoleKey || accountRoleKey === "admin") {
-    throw new AppError(
-      "Choose a non-admin Access Control role (or a custom role that inherits from one)",
-      400
-    );
+    throw new AppError("Choose a non-admin Access Control role", 400);
   }
 
   if (!consoleRole) {

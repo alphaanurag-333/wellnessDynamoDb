@@ -151,12 +151,14 @@ exports.triggerCoachCheckoutController = asyncHandler(async (req, res) => {
     discountLabel: body.discountLabel ?? body.discount_label ?? body.discount?.label,
     linkValidity: body.linkValidity ?? body.link_validity,
     appHealValidity: body.appHealValidity ?? body.app_heal_validity,
+    includeAppSubscription: body.includeAppSubscription ?? body.include_app_subscription,
+    subscriptionItemId: body.subscriptionItemId ?? body.subscription_item_id,
     wellnessCoachId: body.wellnessCoachId ?? body.wellness_coach_id,
     assistantCoachId: body.assistantCoachId ?? body.assistant_coach_id,
     actor,
   });
 
-  if (productType === "program") {
+  if (productType === "program" || productType === "subscription") {
     dispatchProgramCheckoutTriggeredNotificationAsync({
       userId,
       programName: result.offer?.itemName,

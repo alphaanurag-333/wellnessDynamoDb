@@ -17,23 +17,9 @@ import {
   saveTeamMemberPermissions,
   setAccessMemberRole,
 } from "../api/teamsApi.js";
+import { resolveBaseUiRoleKey, SYSTEM_TEAM_UI_KEYS } from "../utils/liveRoles.js";
 
-const SYSTEM_TEAM_ROLE_KEYS = ["wc", "awc", "support", "trainee"];
-
-function resolveBaseUiRoleKey(role, allRoles) {
-  const byId = Object.fromEntries((allRoles || []).map((r) => [r.id, r]));
-  let current = role;
-  const seen = new Set();
-  while (current) {
-    const currentId = current.id || current.roleKey;
-    if (!currentId || seen.has(currentId)) break;
-    seen.add(currentId);
-    const key = String(current.roleKey || "").toLowerCase();
-    if (SYSTEM_TEAM_ROLE_KEYS.includes(key)) return key;
-    current = current.inheritsFromRoleId ? byId[current.inheritsFromRoleId] : null;
-  }
-  return null;
-}
+const SYSTEM_TEAM_ROLE_KEYS = [...SYSTEM_TEAM_UI_KEYS];
 
 function catalogRowsFromApi(catalog) {
   if (!Array.isArray(catalog?.features) || !catalog.features.length) return PERM_CATALOG;

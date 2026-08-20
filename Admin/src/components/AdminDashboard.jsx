@@ -93,27 +93,17 @@ const TEAM_PENDING_BY_ROLE = Object.fromEntries(
   [...DASH_ROLE_CARDS, ...WC_TEAM_CARDS].map((card) => [card.roleId, card.pending]),
 );
 
-function teamCardsFromRoles(roles, { excludeIds = [], statisticsForView, hasAdminStatistics, hasStaffStatistics } = {}) {
+function teamCardsFromRoles(roles, { excludeIds = [] } = {}) {
   const skip = new Set(["admin", ...excludeIds]);
   return (roles || [])
     .filter((role) => role && !skip.has(role.id))
     .map((role) => {
       const staticCard = DASH_ROLE_CARDS.find((card) => card.roleId === role.id);
-      let value = asNumber(role.live);
-      if (!value && staticCard && !statisticsForView) value = asNumber(staticCard.value);
-      if (role.id === "wc" && hasAdminStatistics) {
-        value = asNumber(statisticsForView?.activeWellnessCoaches);
-      } else if (role.id === "awc") {
-        const statsValue = hasStaffStatistics
-          ? statisticsForView?.totalAssistants
-          : statisticsForView?.activeAssistants;
-        if (statsValue != null) value = asNumber(statsValue);
-      }
       return {
         label: role.name,
         roleId: role.id,
         consoleRoleId: role.dbId || role.id,
-        value,
+        value: asNumber(role.live),
         accent: role.color || staticCard?.accent || "#5e6ad2",
         bar: role.color || staticCard?.bar || "#5e6ad2",
         pending: TEAM_PENDING_BY_ROLE[role.id] || [],
@@ -355,7 +345,8 @@ export function AdminDashboard({
 }) {
   const navigate = useNavigate();
   const { viewAs: viewAsId, viewAsPersona, catalogRoles } = useViewAs();
-  const viewAs = viewAsPersona || viewAsId;
+  // Prefer the selected View-as id for admin; persona is only for custom staff roles.
+  const viewAs = viewAsId === "admin" ? "admin" : (viewAsPersona || viewAsId);
   const isStaffDash = viewAs === "wc" || viewAs === "awc";
   const isSupportDash = viewAs === "support";
   const isFullDash = viewAs === "admin" || isStaffDash;
@@ -470,9 +461,6 @@ export function AdminDashboard({
   const fallbackTeamCards = viewAs === "wc" ? WC_TEAM_CARDS : DASH_ROLE_CARDS;
   const catalogTeamCards = teamCardsFromRoles(catalogRoles, {
     excludeIds: viewAs === "wc" ? ["wc"] : [],
-    statisticsForView,
-    hasAdminStatistics,
-    hasStaffStatistics,
   });
   const teamCards = catalogTeamCards.length ? catalogTeamCards : fallbackTeamCards;
   const fallbackLeaderboard = viewAs === "wc" ? WC_LEADERBOARD : viewAs === "awc" ? AWC_LEADERBOARD : viewAs === "support" ? WC_LEADERBOARD : LEADERBOARD;

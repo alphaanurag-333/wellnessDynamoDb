@@ -7902,7 +7902,14 @@
   background: #eef0fc;
   color: #5e6ad2;
   font-size: 12px;
+  line-height: 1;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  font-family: inherit;
 }
 
 .updated-admin .ua-team-actions__perm {
@@ -7915,6 +7922,19 @@
   font-weight: 650;
   font-size: 11px;
   cursor: pointer;
+}
+
+.updated-admin .ua-team-actions__icon {
+  width: 28px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.updated-admin .ua-team-actions__icon svg {
+  display: block;
 }
 
 .updated-admin .ua-team-actions__perm--danger {
@@ -8053,6 +8073,12 @@
   outline: none;
   border-color: #5e6ad2;
   box-shadow: 0 0 0 3px rgba(94, 106, 210, 0.12);
+}
+
+.updated-admin .ua-teams-create__input.is-readonly {
+  background: #f4f6fa;
+  color: #334155;
+  cursor: default;
 }
 
 .updated-admin .ua-teams-create__input.is-invalid,
@@ -8274,14 +8300,15 @@
   }
 
   .updated-admin .ua-teams-page .ua-team-actions {
-    justify-content: stretch;
+    justify-content: flex-end;
     flex-wrap: wrap;
   }
 
-  .updated-admin .ua-teams-page .ua-team-actions__perm {
+  .updated-admin .ua-teams-page .ua-team-actions__perm:not(.ua-team-actions__icon) {
     display: inline-flex;
     align-items: center;
-    width: 100%;
+    flex: 1 1 auto;
+    min-width: 0;
     justify-content: center;
   }
 }
@@ -26173,6 +26200,14 @@
   box-shadow: 0 1px 3px rgba(22, 35, 63, 0.04);
 }
 
+.updated-admin .ua-cp-ex-panel__head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .updated-admin .ua-cp-ex-panel__head strong {
   display: block;
   font-size: 15px;
@@ -26189,9 +26224,54 @@
 
 .updated-admin .ua-cp-ex-form__grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.85fr);
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.9fr) minmax(0, 0.85fr) minmax(0, 0.7fr) minmax(0, 1.2fr);
   gap: 12px;
   align-items: end;
+}
+
+.updated-admin .ua-cp-ex-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 8px 0 10px;
+  border: 1px solid #e3e9f2;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.updated-admin .ua-cp-ex-sub--on {
+  border-color: #c7d2fe;
+  background: #f7f8ff;
+}
+
+.updated-admin .ua-cp-ex-sub .ua-cp-ex-select {
+  flex: 1;
+  min-width: 0;
+}
+
+.updated-admin .ua-cp-ex-sub .ua-cp-ex-select__trigger {
+  height: 36px;
+  padding: 0 8px;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.updated-admin .ua-cp-ex-sub .ua-cp-ex-select__trigger:disabled {
+  cursor: default;
+  opacity: 1;
+  color: #16233f;
+}
+
+.updated-admin .ua-cp-ex-sub__off {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  color: #8a97ac;
 }
 
 .updated-admin .ua-cp-ex-field {
@@ -51834,9 +51914,13 @@
     overflow-wrap: anywhere;
   }
 
-  .updated-admin .ua-teams-page .ua-team-actions,
-  .updated-admin .ua-teams-page .ua-team-actions__perm {
+  .updated-admin .ua-teams-page .ua-team-actions {
     width: 100%;
+    justify-content: flex-end;
+  }
+
+  .updated-admin .ua-teams-page .ua-team-actions__perm:not(.ua-team-actions__icon) {
+    flex: 1 1 auto;
     justify-content: center;
   }
 }

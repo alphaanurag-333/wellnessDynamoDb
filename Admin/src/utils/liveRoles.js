@@ -9,6 +9,9 @@ import {
 
 const SYSTEM_UI_IDS = new Set(VIEW_AS_ROLES.map((role) => role.id));
 
+/** Staff team UI keys — excludes admin (Access Control only). */
+export const SYSTEM_TEAM_UI_KEYS = new Set(["wc", "awc", "trainee", "support"]);
+
 export function accessRoleViewId(role) {
   if (!role) return null;
   if (role.roleKey && ROLE_KEY_TO_UI[role.roleKey]) return ROLE_KEY_TO_UI[role.roleKey];
@@ -16,13 +19,43 @@ export function accessRoleViewId(role) {
 }
 
 export function personaForAccessRole(role) {
-  const mapped = role?.roleKey ? ROLE_KEY_TO_UI[role.roleKey] : null;
-  if (mapped) return mapped;
+  const key = String(role?.roleKey || "").toLowerCase();
+  const mapped = key ? ROLE_KEY_TO_UI[key] : null;
+  // Admin console must keep the admin dashboard (Revenue Analytics, ops, etc.).
+  // Do not fall through to dataScope "all" → "support".
+  if (key === "admin" || mapped === "admin") return "admin";
+  if (key && SYSTEM_TEAM_UI_KEYS.has(key)) return key;
+  if (mapped && SYSTEM_TEAM_UI_KEYS.has(mapped)) return mapped;
+  // Custom roles: pick the closest staff layout from data scope.
   const scope = String(role?.dataScope || "").toLowerCase();
   if (scope === "assigned") return "wc";
   if (scope === "team") return "awc";
   if (scope === "all") return "support";
   return "wc";
+}
+
+/**
+ * Resolve a staff UI role (wc / awc / trainee / support) for Teams.
+ * Walks inheritance, skips admin, then falls back to dataScope for custom roles
+ * (standalone or admin-inherited) so they still appear like Access Control.
+ */
+export function resolveBaseUiRoleKey(role, allRoles) {
+  if (!role) return null;
+  const byId = Object.fromEntries((allRoles || []).map((r) => [r.id, r]));
+  let current = role;
+  const seen = new Set();
+  while (current) {
+    const currentId = current.id || current.roleKey;
+    if (!currentId || seen.has(currentId)) break;
+    seen.add(currentId);
+    const key = String(current.roleKey || "").toLowerCase();
+    if (SYSTEM_TEAM_UI_KEYS.has(key)) return key;
+    const fromAccount = key ? ROLE_KEY_TO_UI[key] : null;
+    if (fromAccount && SYSTEM_TEAM_UI_KEYS.has(fromAccount)) return fromAccount;
+    current = current.inheritsFromRoleId ? byId[current.inheritsFromRoleId] : null;
+  }
+  if (String(role.roleKey || "").toLowerCase() === "admin") return null;
+  return personaForAccessRole(role);
 }
 
 export function permissionsFromAccessRole(role) {

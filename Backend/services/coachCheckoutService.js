@@ -2,7 +2,11 @@ const AppError = require("../utils/AppError");
 const { getAppConfig } = require("../models/appConfigModel");
 const { getUserById, updateUser } = require("../models/userModel");
 const { getReferralCodeRecord } = require("../models/referralCodeModel");
-const { isStaffReferralEntityType, normalizeReferralCode } = require("../utils/referralCode");
+const {
+  isStaffReferralCode,
+  isStaffReferralEntityType,
+  normalizeReferralCode,
+} = require("../utils/referralCode");
 const { listWellnessCoaches } = require("../models/wellnessCoachModel");
 const { listAssistantWellnessCoaches } = require("../models/assistantWellnessCoachModel");
 const { listAccounts } = require("../models/accountModel");
@@ -25,7 +29,10 @@ const {
   shouldUseMockPayments,
 } = require("../utils/paymentGateway");
 const { isConsultancyOnlyTier, isHealTier, isMaintenanceTier } = require("../models/userAssignmentLogic");
-const { resolveSubscriptionPlanFromItem } = require("./subscriptionCategoryService");
+const {
+  resolveSubscriptionPlanFromItem,
+  findSubscriptionCatalogItem,
+} = require("./subscriptionCategoryService");
 
 const HOURS_BY_UNIT = {
   hour: 1,
@@ -150,6 +157,37 @@ function getExpiredCoachCheckoutOffer(user, productType, now = Date.now()) {
   return offer;
 }
 
+function isEnabledFlag(value) {
+  if (value === true || value === 1) return true;
+  const normalized = String(value ?? "").trim().toLowerCase();
+  return normalized === "true" || normalized === "1" || normalized === "yes";
+}
+
+function resolveBundledSubscription(config, { includeAppSubscription, subscriptionItemId } = {}) {
+  const requestedId = String(subscriptionItemId || "").trim();
+  const enabled =
+    includeAppSubscription === undefined && requestedId
+      ? true
+      : isEnabledFlag(includeAppSubscription);
+  if (!enabled) return null;
+
+  const rows = Array.isArray(config?.app_subscription_pricing)
+    ? config.app_subscription_pricing
+    : [];
+  const item = findSubscriptionCatalogItem(config, requestedId) || rows[0] || null;
+  if (!item) {
+    throw new AppError("Publish an App Subscription in Configs before including it", 400);
+  }
+
+  return {
+    enabled: true,
+    itemId: String(item.id),
+    itemName: String(item.name || "").trim(),
+    days: Number(item.days) || 0,
+    includedInProgramPrice: true,
+  };
+}
+
 function toPublicCoachProgramOffer(offer) {
   if (!offer || typeof offer !== "object") return null;
   const amount = Number(offer.amount) || 0;
@@ -157,6 +195,7 @@ function toPublicCoachProgramOffer(offer) {
     offer.netPayable == null || offer.netPayable === ""
       ? amount
       : Number(offer.netPayable) || 0;
+  const bundled = offer.bundledSubscription?.enabled ? offer.bundledSubscription : null;
   return {
     source: "coach_checkout",
     productType: offer.productType || "program",
@@ -169,6 +208,14 @@ function toPublicCoachProgramOffer(offer) {
     linkValidity: offer.linkValidity || "",
     expiresAt: offer.expiresAt || null,
     appHealValidity: offer.appHealValidity || null,
+    bundledSubscription: bundled
+      ? {
+          itemId: bundled.itemId || null,
+          itemName: bundled.itemName || "",
+          days: Number(bundled.days) || 0,
+          includedInProgramPrice: true,
+        }
+      : null,
     transactionId: offer.transactionId || null,
     payable: true,
   };
@@ -343,6 +390,33 @@ function coachNameById(staff, coachId) {
   return staff.coaches.find((row) => String(row.id) === String(coachId))?.name || "";
 }
 
+function findStaffReferralCode(staff, id) {
+  if (!id) return "";
+  const key = String(id);
+  const coach = staff.coaches.find((row) => String(row.id) === key);
+  if (coach?.referralCode) return normalizeReferralCode(coach.referralCode);
+  const assistant = staff.assistants.find((row) => String(row.id) === key);
+  return normalizeReferralCode(assistant?.referralCode);
+}
+
+/** Prefer the WC/AWC code used to assign the client, not the client's own 8-char code. */
+function resolvePwcStaffReferralCode(user = {}, staff, fallbackCoachId = "") {
+  const referred = normalizeReferralCode(user.referredByCode);
+  if (isStaffReferralCode(referred)) return referred;
+
+  const assignedType = String(user.assignedCoachType || "").toLowerCase();
+  if (assignedType === "assistant_wellness_coach") {
+    const assistantCode = findStaffReferralCode(staff, user.assignedCoachId);
+    if (assistantCode) return assistantCode;
+  }
+
+  return (
+    findStaffReferralCode(staff, user.assignedCoachId) ||
+    findStaffReferralCode(staff, user.parentCoachId || fallbackCoachId) ||
+    ""
+  );
+}
+
 async function listRecentPwc({ coachId, hours = 24 } = {}) {
   const since = new Date(Date.now() - Number(hours) * 60 * 60 * 1000).toISOString();
   const staff = await listCheckoutStaff();
@@ -431,13 +505,16 @@ async function listRecentPwc({ coachId, hours = 24 } = {}) {
       try {
         const user = await getUserById(row.userId);
         if (!user) return row;
+        const staffCode = resolvePwcStaffReferralCode(user, staff, row.coachId);
         return {
           ...row,
           name: user.name || row.name,
           initials: initialsFromName(user.name || row.name),
-          code: user.referralCode || row.code,
-          coach: row.coach || coachNameById(staff, user.parentCoachId),
-          coachId: row.coachId || user.parentCoachId || "",
+          code: staffCode,
+          clientCode: user.referralCode || "",
+          client: toPublicClient(user),
+          coach: row.coach || coachNameById(staff, user.parentCoachId || user.assignedCoachId),
+          coachId: row.coachId || user.parentCoachId || user.assignedCoachId || "",
         };
       } catch {
         return row;
@@ -483,6 +560,8 @@ async function triggerCoachCheckout({
   discountLabel,
   linkValidity,
   appHealValidity,
+  includeAppSubscription,
+  subscriptionItemId,
   wellnessCoachId,
   assistantCoachId,
   actor,
@@ -549,6 +628,11 @@ async function triggerCoachCheckout({
     }
   }
 
+  const bundledSubscription =
+    type === "program"
+      ? resolveBundledSubscription(config, { includeAppSubscription, subscriptionItemId })
+      : null;
+
   const validityHours = parseDurationToHours(linkValidity);
   const expiresAt = validityHours
     ? new Date(Date.now() + validityHours * 60 * 60 * 1000).toISOString()
@@ -585,6 +669,7 @@ async function triggerCoachCheckout({
     discountPercent: pct,
     discountLabel: String(discountLabel || "").trim(),
     appHealValidity: type === "program" ? appHealValidity || null : null,
+    bundledSubscription,
     linkValidity,
   };
 
@@ -656,6 +741,7 @@ async function triggerCoachCheckout({
     linkValidity,
     expiresAt,
     appHealValidity: type === "program" ? appHealValidity || null : null,
+    bundledSubscription,
     wellnessCoachId: parentCoachId,
     assistantCoachId: resolvedAssistantId,
     transactionId: transaction.id,
@@ -736,10 +822,14 @@ function toCheckoutHistoryRow(transaction, now = Date.now()) {
 
   return {
     id: transaction.id,
-    program:
-      transaction.userSnapshot?.catalogItemName ||
-      transaction.userSnapshot?.programTitle ||
-      (type === "subscription" ? "App subscription" : "Wellness Program"),
+    program: (() => {
+      const name =
+        transaction.userSnapshot?.catalogItemName ||
+        transaction.userSnapshot?.programTitle ||
+        (type === "subscription" ? "App subscription" : "Wellness Program");
+      const bundledName = transaction.userSnapshot?.bundledSubscription?.itemName;
+      return type === "program" && bundledName ? `${name} + ${bundledName}` : name;
+    })(),
     status: paid ? "paid" : "awaiting",
     date: formatCheckoutHistoryDate(transaction.paidAt || transaction.createdAt),
     detail,
@@ -779,5 +869,6 @@ module.exports = {
   lookupClientByReferralCode,
   listCheckoutStaff,
   listRecentPwc,
+  resolvePwcStaffReferralCode,
   triggerCoachCheckout,
 };
