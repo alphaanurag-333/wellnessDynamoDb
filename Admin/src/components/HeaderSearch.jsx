@@ -71,8 +71,8 @@ export function HeaderSearch() {
     if (canUsers) bits.push("users");
     if (canTeams) bits.push("teams");
     if (canAccess) bits.push("policies");
-    if (canConfigs) bits.push("configs");
-    if (canSop) bits.push("SOPs");
+    // if (canConfigs) bits.push("configs");
+    // if (canSop) bits.push("SOPs");
     if (!bits.length) return "Search pages…";
     return `Search ${bits.join(", ")}…`;
   }, [canAccess, canConfigs, canSop, canTeams, canUsers, compact]);

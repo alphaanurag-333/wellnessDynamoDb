@@ -1210,7 +1210,7 @@ export function AdminDashboard({
       {isFullDash && !isStaffDash ? (
       <section className="section">
         <div className="section__head">
-          <h2 className="section__title">Health concern : clients</h2>
+          <h2 className="section__title">Program categories : clients</h2>
           <span className="section__hint">Clients registered per health concern · tap to see who</span>
         </div>
         <div className="prog-cats prog-cats--v2">
