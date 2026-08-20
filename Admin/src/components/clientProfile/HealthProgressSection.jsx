@@ -62,8 +62,9 @@ function sortByDateDesc(items, key = "recordedAt") {
 }
 
 function applyRange(logs, range, key = "recordedAt") {
-  if (range !== "4w") return logs;
-  const cutoff = Date.now() - 28 * 24 * 60 * 60 * 1000;
+  const weeks = { "4w": 4, "8w": 8, "12w": 12 }[range];
+  if (!weeks) return logs;
+  const cutoff = Date.now() - weeks * 7 * 24 * 60 * 60 * 1000;
   return logs.filter((row) => new Date(row[key] || 0).getTime() >= cutoff);
 }
 
@@ -87,11 +88,14 @@ function bodyPartLabel(row) {
   return BODY_PART_LABELS[key] || key || "Condition";
 }
 
-function ChartPlot({ children }) {
+function ChartPlot({ children, minWidthPx }) {
   return (
     <div className="ua-cp-hptrack-chart-plot">
       <div className="ua-cp-hptrack-chart-scroll">
-        <div className="ua-cp-hptrack-chart-scroll__inner">
+        <div
+          className="ua-cp-hptrack-chart-scroll__inner"
+          style={minWidthPx ? { minWidth: `max(100%, ${minWidthPx}px)` } : undefined}
+        >
           {children}
         </div>
       </div>
@@ -103,50 +107,75 @@ function EmptyLogs({ label }) {
   return <p className="ua-cp-hptrack-empty">No {label} logged yet.</p>;
 }
 
-function FatLossJourneyChart({ dates, values, color = "#ec7a45" }) {
+function FatLossJourneyChart({ dates, values, color = "#e98c64" }) {
   if (!values.length) return null;
   const max = Math.max(...values);
   const min = Math.min(...values);
-  const range = max - min || 1;
-  const heights = values.map((v) => Math.max(16, ((v - min) / range) * 68 + 16));
+  const span = max - min || 1;
+  // Bars grow from baseline; leave headroom for value labels above points
+  const heights = values.map((v) => Math.max(20, ((v - min) / span) * 58 + 20));
+  const paleBar = "#fbe5d6";
+  const n = values.length;
 
+  // Equal columns, no flex gap — x centers must match column midpoints exactly
   const linePoints = heights
     .map((h, i) => {
-      const x = ((i + 0.5) / values.length) * 100;
+      const x = ((i + 0.5) / n) * 100;
       const y = 100 - h;
       return `${x},${y}`;
     })
     .join(" ");
 
   return (
-    <ChartPlot>
+    <ChartPlot minWidthPx={n * 52}>
       <div className="ua-cp-hptrack-fatloss-chart">
-        <svg className="ua-cp-hptrack-fatloss-chart__line" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-          <polyline points={linePoints} fill="none" stroke={color} strokeWidth="2" vectorEffect="non-scaling-stroke" />
-        </svg>
-        <div className="ua-cp-hptrack-fatloss-chart__cols">
-          {values.map((value, index) => (
-            <div key={`${dates[index]}-${index}`} className="ua-cp-hptrack-fatloss-chart__col">
-              <span className="ua-cp-hptrack-fatloss-chart__val" style={{ color }}>{value}</span>
-              <div className="ua-cp-hptrack-fatloss-chart__bar-area">
-                <span
-                  className="ua-cp-hptrack-fatloss-chart__bar"
-                  style={{
-                    height: `${heights[index]}%`,
-                    background: index === values.length - 1 ? color : `${color}40`,
-                  }}
-                />
-                <span
-                  className="ua-cp-hptrack-fatloss-chart__dot"
-                  style={{
-                    bottom: `calc(${heights[index]}% - 6px)`,
-                    borderColor: color,
-                    background: index === values.length - 1 ? color : "#fff",
-                  }}
-                />
+        <div className="ua-cp-hptrack-fatloss-chart__plot">
+          <svg className="ua-cp-hptrack-fatloss-chart__line" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            <polyline
+              points={linePoints}
+              fill="none"
+              stroke={color}
+              strokeWidth="2.5"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
+          <div className="ua-cp-hptrack-fatloss-chart__cols">
+            {values.map((value, index) => (
+              <div key={`${dates[index]}-${index}`} className="ua-cp-hptrack-fatloss-chart__col">
+                <div className="ua-cp-hptrack-fatloss-chart__bar-area">
+                  <span
+                    className="ua-cp-hptrack-fatloss-chart__val"
+                    style={{
+                      color,
+                      bottom: `calc(${heights[index]}% + 12px)`,
+                    }}
+                  >
+                    {value}
+                  </span>
+                  <span
+                    className="ua-cp-hptrack-fatloss-chart__bar"
+                    style={{
+                      height: `${heights[index]}%`,
+                      background: paleBar,
+                    }}
+                  />
+                  <span
+                    className="ua-cp-hptrack-fatloss-chart__dot"
+                    style={{
+                      bottom: `${heights[index]}%`,
+                      borderColor: color,
+                    }}
+                  />
+                </div>
               </div>
-              <span className="ua-cp-hptrack-fatloss-chart__day">{dates[index]}</span>
-            </div>
+            ))}
+          </div>
+        </div>
+        <div className="ua-cp-hptrack-fatloss-chart__days">
+          {dates.map((date, index) => (
+            <span key={`${date}-${index}`} className="ua-cp-hptrack-fatloss-chart__day">{date}</span>
           ))}
         </div>
       </div>
@@ -493,8 +522,10 @@ function FatLossPanel({ logs }) {
         <div className="ua-cp-hptrack-chart-card__head ua-cp-hptrack-chart-card__head--blue">
           <strong>Client fatloss journey</strong>
           <select className="ua-cp-hptrack-select" value={range} onChange={(e) => setRange(e.target.value)}>
-            <option value="all">All since onboarding</option>
             <option value="4w">Last 4 weeks</option>
+            <option value="8w">Last 8 weeks</option>
+            <option value="12w">Last 12 weeks</option>
+            <option value="all">All since onboarding</option>
           </select>
         </div>
         {series.values.length ? (

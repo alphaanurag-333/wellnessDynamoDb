@@ -8,6 +8,7 @@ import {
 import {
   DEFAULT_BEDTIME,
   formatBedtime,
+  formatUnlockTime,
   mapApiSectionsToForm,
   scoreOutOfTen,
   sectionPoints,
@@ -167,7 +168,7 @@ function ReflectionSectionCard({
             />
           </label>
           <span className="ua-cp-reflect-section__points">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14v10H5z"></path><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+            <span className="ua-cp-reflect-lock" aria-hidden="true" />
             {points.label}
           </span>
           <button
@@ -232,7 +233,15 @@ export function ReflectionSection({ user, onToast }) {
 
   const clientName = user?.name?.split(" ")[0] || "Client";
   const weightTotal = useMemo(() => totalWeightage(sections), [sections]);
-  const pointTotals = useMemo(() => totalReflectionPoints(sections), [sections]);
+  const pointTotals = useMemo(() => {
+    if (todayScore && Number(todayScore.maxScore) > 0) {
+      return {
+        earned: Number(todayScore.score || 0),
+        max: Number(todayScore.maxScore || 0),
+      };
+    }
+    return totalReflectionPoints(sections);
+  }, [sections, todayScore]);
   const displayScore = useMemo(
     () => scoreOutOfTen(pointTotals.earned, pointTotals.max),
     [pointTotals],
@@ -398,17 +407,16 @@ export function ReflectionSection({ user, onToast }) {
         <p className="ua-cp-reflect__sub">Scored daily check-in · monthly totals decide the champion</p>
       </div>
 
-<div style={{justifyContent:"center"}}>
-      <div style={{width:"max-content"}} className="ua-cp-reflect-score">
+      <div className="ua-cp-reflect-score">
         <div className="ua-cp-reflect-score__left">
           <span>Today&apos;s reflection score</span>
           <strong>{pointsLabel}</strong>
         </div>
+        <div className="ua-cp-reflect-score__divider" aria-hidden="true" />
         <div className="ua-cp-reflect-score__right">
           <strong>{Number(displayScore || 0).toFixed(1)}</strong>
           <span>/ 10</span>
         </div>
-      </div>
       </div>
 
       <div className="ua-cp-reflect-callouts">
@@ -416,7 +424,7 @@ export function ReflectionSection({ user, onToast }) {
           <div className="ua-cp-reflect-callout__row">
             <span className="ua-cp-reflect-callout__icon" aria-hidden="true">🔔</span>
             <p>
-              Unlocks in the app <strong>30 min before bedtime</strong> (~{formatBedtime(bedtime)}) and a reminder is sent{" "}
+              Unlocks in the app <strong>30 min before bedtime</strong> (~{formatUnlockTime(bedtime)}) and a reminder is sent{" "}
               <strong>every night before bed.</strong>
             </p>
           </div>
@@ -430,8 +438,8 @@ export function ReflectionSection({ user, onToast }) {
                 onChange={(e) => setBedtime(e.target.value)}
               />
               <span className="ua-cp-reflect-bedtime__value">
-                <span className="ua-cp-reflect-bedtime__clock" aria-hidden="true" />
                 {formatBedtime(bedtime)}
+                <span className="ua-cp-reflect-bedtime__clock" aria-hidden="true" />
               </span>
             </label>
             <button
@@ -447,7 +455,7 @@ export function ReflectionSection({ user, onToast }) {
         <div className="ua-cp-reflect-callout ua-cp-reflect-callout--champ">
           <div className="ua-cp-reflect-callout__row">
             <span className="ua-cp-reflect-callout__icon" aria-hidden="true">🏁</span>
-            <p style={{color:"rgb(138, 109, 0)"}}>
+            <p>
               Championship counts from the <strong>1st of each month</strong>. <strong>Gut Reset</strong> days are excluded.
             </p>
           </div>
@@ -456,7 +464,7 @@ export function ReflectionSection({ user, onToast }) {
 
       <div className="ua-cp-reflect-weightage">
         <span>Total weightage</span>
-        <strong className={weightTotal === 100 ? "ua-cp-reflect-weightage__ok" : ""}>{weightTotal} / 100</strong>
+        <strong className="ua-cp-reflect-weightage__ok">{weightTotal} / 100</strong>
       </div>
 
       {loading ? (
