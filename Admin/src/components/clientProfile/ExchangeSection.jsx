@@ -95,7 +95,7 @@ function FieldSelect({ label, value, options, open, disabled, onToggle, onSelect
         aria-haspopup="listbox"
       >
         <span className="ua-cp-ex-select__value">{value}</span>
-        {disabled ? null : <span className="ua-cp-ex-select__chev" aria-hidden="true">▾</span>}
+        {disabled ? null : <span className="ua-cp-ex-select__chev" aria-hidden="true" />}
       </button>
       {open ? (
         <ul className="ua-cp-ex-select__menu" role="listbox">
