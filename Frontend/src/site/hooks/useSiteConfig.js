@@ -34,6 +34,8 @@ function pick(...values) {
 function formatMetric(value) {
   const s = str(value);
   if (!s) return "";
+  // Keep display-ready admin values (e.g. "8.5K+", "10,000+") as entered.
+  if (/[kKmM+]/.test(s) || /[^\d.,]/.test(s.replace(/,/g, ""))) return s;
   const num = Number(s.replace(/,/g, ""));
   if (!Number.isFinite(num)) return s;
   if (num >= 10000) return `${Math.round(num / 1000)}K+`;
@@ -42,9 +44,20 @@ function formatMetric(value) {
 }
 
 function formatRating(value) {
-  const num = Number(str(value));
-  if (!Number.isFinite(num)) return "";
+  const s = str(value);
+  if (!s) return "";
+  const num = Number(s.replace(/[^\d.]/g, ""));
+  if (!Number.isFinite(num)) return s;
   return num % 1 === 0 ? String(num) : num.toFixed(1);
+}
+
+function formatSuccessRate(value) {
+  const s = str(value);
+  if (!s) return "";
+  if (/%\s*$/.test(s)) return s;
+  const num = Number(s.replace(/[^\d.]/g, ""));
+  if (Number.isFinite(num)) return `${num % 1 === 0 ? String(num) : num.toFixed(1)}%`;
+  return s;
 }
 
 function formatAmount(amount) {
@@ -187,17 +200,18 @@ export function useSiteConfig() {
       ctaHref: mobileApp.primaryUrl,
     };
 
+    // Driven by Admin → Configs → Google review (`common-google-review` / App Config).
     const stats = [
       {
         key: "rating",
         value: formatRating(config?.average_rating),
         label: "Average Rating",
         showStars: true,
-        rating: Number(config?.average_rating) || 0,
+        rating: Number(str(config?.average_rating).replace(/[^\d.]/g, "")) || 0,
       },
       {
         key: "success",
-        value: config?.success_rate ? `${str(config.success_rate)}%` : "",
+        value: formatSuccessRate(config?.success_rate),
         label: "Success Rate",
         showStars: false,
       },
