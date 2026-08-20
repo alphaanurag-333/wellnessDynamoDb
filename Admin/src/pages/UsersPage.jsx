@@ -9,10 +9,9 @@ import {
   USER_TYPE_TAB_DEFS,
   avatarColor,
   enrichUser,
-  canConvertTier,
-  canDowngradeTier,
   conversionPrompt,
   lastActiveMinutes,
+  listTierMoveOptions,
   nextTier,
   prevTier,
   tierLabel,
@@ -25,6 +24,7 @@ import {
   assignUserCoach,
   deleteUser,
   fetchScopedUsers,
+  fetchUser,
   fetchUsers,
   mapUiStatusToApi,
   mapUiTierToApi,
@@ -229,7 +229,6 @@ export function UsersPage() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [disableTarget, setDisableTarget] = useState(null);
   const [conversionAsk, setConversionAsk] = useState(null);
-  const [conversionMenu, setConversionMenu] = useState(null);
   const [reassignAsk, setReassignAsk] = useState(null);
   const [actionBusy, setActionBusy] = useState(false);
   const [selectReset, setSelectReset] = useState(0);
@@ -250,10 +249,10 @@ export function UsersPage() {
   }, [search]);
 
   useEffect(() => {
-    if (disableTarget || deleteTarget || reassignAsk || conversionAsk || conversionMenu) {
+    if (disableTarget || deleteTarget || reassignAsk || conversionAsk) {
       document.activeElement?.blur?.();
     }
-  }, [disableTarget, deleteTarget, reassignAsk, conversionAsk, conversionMenu]);
+  }, [disableTarget, deleteTarget, reassignAsk, conversionAsk]);
 
   useEffect(() => {
     if (!canReassignAwc) {
@@ -620,6 +619,12 @@ export function UsersPage() {
       } else {
         updated = await moveUserToSeek(key);
       }
+      try {
+        const fresh = await fetchUser(key);
+        if (fresh) updated = { ...updated, ...fresh };
+      } catch {
+        // Conversion already succeeded; keep the payload if status refresh fails.
+      }
       setUsers((prev) => prev.map((row) => (
         userOverrideKey(row) === key ? { ...row, ...updated } : row
       )));
@@ -887,7 +892,7 @@ export function UsersPage() {
                 onClick={() => toggleSort("name")}
               />
             </div>
-            <div>Tier</div>
+            <div className="ua-users-tier-head">Tier</div>
             <div>Wellness coach</div>
             <div>Assistant WC</div>
             <div>
@@ -915,9 +920,7 @@ export function UsersPage() {
             rows.map((u, i) => {
               const tier = tierStyle(u.tier);
               const tone = u.off || u.status === "Disabled" ? "red" : u.status === "Active" ? "green" : "muted";
-              const canConvert = canEdit && canConvertTier(u.tier);
-              const canDowngrade = canEdit && canDowngradeTier(u.tier, u.ageDays);
-              const extraCount = Number(canConvert) + Number(canDowngrade);
+              const tierMoves = canEdit ? listTierMoveOptions(u.tier, u.ageDays) : [];
               const rowKey = userOverrideKey(u) || u.name;
 
               return (
@@ -946,20 +949,18 @@ export function UsersPage() {
                     >
                       {tierLabel(u.tier)}
                     </span>
-                    {extraCount > 0 ? (
+                    {tierMoves.map((move) => (
                       <button
+                        key={`${rowKey}-${move.direction}-${move.target}`}
                         type="button"
-                        className="ua-tier-more"
+                        className={`ua-tier-action ua-tier-action--${move.direction}`}
+                        title={move.title}
                         disabled={actionBusy}
-                        onClick={() => {
-                          if (canConvert && !canDowngrade) convertTier(u);
-                          else if (!canConvert && canDowngrade) downgradeTier(u);
-                          else setConversionMenu(u);
-                        }}
+                        onClick={() => (move.direction === "up" ? convertTier(u) : downgradeTier(u))}
                       >
-                        +{extraCount} more
+                        {move.label}
                       </button>
-                    ) : null}
+                    ))}
                   </div>
                   <div onClick={(e) => e.stopPropagation()}>
                     {!canReassignWc ? (
@@ -1126,55 +1127,6 @@ export function UsersPage() {
               >
                 {actionBusy ? "Assigning…" : "Confirm"}
               </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {conversionMenu ? (
-        <div className="ua-dialog-backdrop" onClick={() => !actionBusy && setConversionMenu(null)} role="presentation">
-          <div
-            className="ua-dialog ua-dialog--confirm"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="convert-menu-title"
-          >
-            <div className="ua-dialog__kicker">Conversion</div>
-            <div id="convert-menu-title" className="ua-dialog__title ua-dialog__title--confirm">
-              Change {conversionMenu.name}&rsquo;s tier?
-            </div>
-            <p className="ua-dialog__body">
-              Choose how to convert {conversionMenu.name}. You will confirm the change on the next step.
-            </p>
-            <div className="ua-dialog__actions ua-dialog__actions--stack">
-              {canConvertTier(conversionMenu.tier) ? (
-                <button
-                  type="button"
-                  className="ua-dialog__btn-primary"
-                  onClick={() => {
-                    const user = conversionMenu;
-                    setConversionMenu(null);
-                    convertTier(user);
-                  }}
-                >
-                  {conversionPrompt(conversionMenu, "up").confirm}
-                </button>
-              ) : null}
-              {canDowngradeTier(conversionMenu.tier, conversionMenu.ageDays) ? (
-                <button
-                  type="button"
-                  className="btn btn--outline"
-                  onClick={() => {
-                    const user = conversionMenu;
-                    setConversionMenu(null);
-                    downgradeTier(user);
-                  }}
-                >
-                  {conversionPrompt(conversionMenu, "down").confirm}
-                </button>
-              ) : null}
-              <button type="button" className="btn btn--outline" onClick={() => setConversionMenu(null)}>Cancel</button>
             </div>
           </div>
         </div>

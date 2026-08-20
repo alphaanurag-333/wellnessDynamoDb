@@ -370,7 +370,7 @@ export function ScheduleMeetingModal({
         aria-labelledby="schedule-meeting-title"
       >
         <div className="ua-cp-launch-modal__head">
-          <div className="ua-cp-launch-modal__icon">📅</div>
+          <div className="ua-cp-launch-modal__icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgb(94, 106, 210)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v16H3z"></path><path d="M3 10h18"></path><path d="M8 3v4"></path><path d="M16 3v4"></path></svg></div>
           <div className="ua-cp-launch-modal__head-copy">
             <div id="schedule-meeting-title" className="ua-cp-modal__title">{title}</div>
             <div className="ua-cp-modal__sub">With {user.name} · offer a few slots, they pick one</div>

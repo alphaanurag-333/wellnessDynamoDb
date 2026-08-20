@@ -221,9 +221,14 @@ function PasswordChangeModal({ open, busy, onClose, onSubmit }) {
 function AvatarMark({ profile, className }) {
   if (profile.profileImage) {
     return (
-      <span className={`${className} ${className}--image`} aria-hidden="true">
-        <img src={profile.profileImage} alt="" />
-      </span>
+      <img
+        className={`${className} ${className}--image`}
+        src={profile.profileImage}
+        alt=""
+        width="52"
+        height="52"
+        draggable="false"
+      />
     );
   }
   return (
