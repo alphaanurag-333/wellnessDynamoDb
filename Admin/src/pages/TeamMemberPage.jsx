@@ -166,44 +166,19 @@ function buildClientCards(member) {
   const seek = member.clientStats?.seek ?? 0;
   const heal = member.clientStats?.heal ?? 0;
   const pwc = member.clientStats?.consultancy_only ?? 0;
+  const maintenance = member.clientStats?.maintenance ?? 0;
   const other = member.clientStats?.other ?? 0;
   const awc = member.awcCount ?? 0;
+  const share = (part) => (total ? pct(part, total) : null);
 
   return [
-    { key: "total", label: "Total users", value: String(total), sub: "All assigned", tone: "blue", bar: true },
-    {
-      key: "seek",
-      label: "Seek users",
-      value: total ? `${seek} (${pct(seek, total)}%)` : "0",
-      sub: "Free tier",
-      tone: "amber",
-      bar: true,
-    },
-    {
-      key: "heal",
-      label: "Heal users",
-      value: total ? `${heal} (${pct(heal, total)}%)` : "0",
-      sub: "Paid programs",
-      tone: "green",
-      bar: true,
-    },
-    {
-      key: "other",
-      label: "Other",
-      value: total ? `${other} (${pct(other, total)}%)` : "0",
-      sub: "Corporate & family",
-      tone: "purple",
-      bar: true,
-    },
-    {
-      key: "pwc",
-      label: "PWC",
-      value: total ? `${pwc} (${pct(pwc, total)}%)` : "0",
-      sub: "Consults booked",
-      tone: "navy",
-      bar: true,
-    },
-    { key: "awc", label: "AWCs", value: String(awc), sub: "Assistant coaches", tone: "ink", bar: true },
+    { key: "total", label: "Total users", count: total, pct: null, bar: 100, sub: "All assigned", tone: "blue" },
+    { key: "seek", label: "Seek users", count: seek, pct: share(seek), bar: share(seek) || 0, sub: "Free tier", tone: "amber" },
+    { key: "heal", label: "Heal users", count: heal, pct: share(heal), bar: share(heal) || 0, sub: "Paid programs", tone: "green" },
+    { key: "other", label: "Eagles", count: other, pct: share(other), bar: share(other) || 0, sub: "Corporate & family", tone: "purple" },
+    { key: "maintenance", label: "Maintenance", count: maintenance, pct: share(maintenance), bar: share(maintenance) || 0, sub: "Post-heal upkeep", tone: "orange" },
+    { key: "pwc", label: "PWC", count: pwc, pct: share(pwc), bar: share(pwc) || 0, sub: "Consults booked", tone: "navy" },
+    { key: "awc", label: "AWCs", count: awc, pct: total ? pct(awc, total) : null, bar: total ? pct(awc, total) : 0, sub: "Assistant coaches", tone: "ink" },
   ];
 }
 
@@ -548,10 +523,15 @@ export function TeamMemberPage() {
                   navigate(`${UPDATED_ADMIN_PATHS.users}?coach=${encodeURIComponent(member.id)}`)
                 }
               >
-                <div className="ua-tm-stat__label">{card.label}</div>
-                <div className="ua-tm-stat__value">{card.value}</div>
+                <div className="ua-tm-stat__label" style={{color:"black"}}>{card.label}</div>
+                <div className="ua-tm-stat__value">
+                  <strong>{card.count}</strong>
+                  {card.pct != null ? <span className="ua-tm-stat__pct">{card.pct}%</span> : null}
+                </div>
+                <span className="ua-tm-stat__bar" aria-hidden="true">
+                  <span style={{ width: `${Math.max(0, Math.min(100, card.bar || 0))}%` }} />
+                </span>
                 <div className="ua-tm-stat__sub">{card.sub}</div>
-                {card.bar ? <span className="ua-tm-stat__bar" aria-hidden="true" /> : null}
               </button>
             ))}
           </div>
@@ -573,7 +553,19 @@ export function TeamMemberPage() {
                   className={`ua-tm-content-row__icon${item.kind === "letter" ? " ua-tm-content-row__icon--doc" : ""}`}
                   aria-hidden="true"
                 >
-                  {item.kind === "letter" ? "▤" : "▶"}
+                  {item.kind === "letter" ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <path d="M14 2v6h6" />
+                      <path d="M8 13h8" />
+                      <path d="M8 17h5" />
+                    </svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M23 7l-7 5 7 5V7z" />
+                      <rect x="1" y="5" width="15" height="14" rx="2" />
+                    </svg>
+                  )}
                 </div>
                 <div className="ua-tm-content-row__body">
                   <div className="ua-tm-content-row__title">{item.title}</div>
@@ -585,7 +577,7 @@ export function TeamMemberPage() {
                 <div className="ua-tm-content-row__actions">
                   <button
                     type="button"
-                    className="ua-tm-link-btn"
+                    className="ua-tm-content-row__btn ua-tm-content-row__btn--view"
                     onClick={() => {
                       if (item.kind === "letter") {
                         navigate(UPDATED_ADMIN_PATHS.commitmentLetters(member.id));
@@ -598,7 +590,7 @@ export function TeamMemberPage() {
                   </button>
                   <button
                     type="button"
-                    className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                    className="ua-tm-content-row__btn ua-tm-content-row__btn--download"
                     disabled={!item.url}
                     onClick={() => {
                       if (item.url) window.open(item.url, "_blank", "noopener,noreferrer");
