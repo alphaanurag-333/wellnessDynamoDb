@@ -302,7 +302,7 @@ function QuickInsightCard({ item, onClick }) {
         </span>
         <span className="stat-card__label">{item.label}</span>
       </div>
-      <div className="stat-card__value" style={{ color: item.accent }}>{item.value}</div>
+      <div className="stat-card__value" style={{ color: "black" }}>{item.value}</div>
       {item.sub ? <div className="stat-card__sub">{item.sub}</div> : null}
     </button>
   );
