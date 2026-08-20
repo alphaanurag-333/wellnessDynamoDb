@@ -27,9 +27,64 @@ const {
   toPublicAssistant,
 } = require("../../models/assistantWellnessCoachModel");
 const { assertPasswordPolicy } = require("../../utils/passwordPolicy");
-const { normalizeEmail, normalizePhone, normalizeCountryCode } = require("../../models/userModel");
+const {
+  normalizeEmail,
+  normalizePhone,
+  normalizeCountryCode,
+  listUsersByAssignedCoachId,
+} = require("../../models/userModel");
+const { getAccountById, deleteAccount, listAccounts } = require("../../models/accountModel");
 
 const S3_FOLDER = "assistant-wellness-coach";
+
+async function assertAssistantCanBeDeleted(assistant) {
+  if (!assistant) throw new AppError("Assistant wellness coach not found", 404);
+  if (String(assistant.status || "").toLowerCase() === "deleted") {
+    throw new AppError("Assistant wellness coach not found", 404);
+  }
+
+  const reporting = await listAccounts({
+    parentAccountId: assistant.id,
+    page: 1,
+    limit: 1,
+  });
+  const reportingStaff = Number(reporting.pagination?.total || 0);
+  if (reportingStaff > 0) {
+    throw new AppError(
+      `Cannot delete: ${reportingStaff} trainee(s) still report to this assistant. Reassign them first.`,
+      400
+    );
+  }
+
+  const parentCoachId = String(assistant.wellnessCoachId || assistant.parentAccountId || "").trim();
+  if (parentCoachId) {
+    const clients = await listUsersByAssignedCoachId(assistant.id, {
+      parentCoachId,
+      page: 1,
+      limit: 1,
+    });
+    const assignedUsers = Number(clients.pagination?.total || 0);
+    if (assignedUsers > 0) {
+      const label = assignedUsers === 1 ? "user is" : "users are";
+      throw new AppError(
+        `Cannot delete: ${assignedUsers} ${label} assigned to this assistant. Reassign them first.`,
+        400
+      );
+    }
+  }
+}
+
+async function softDeleteAssistantAndAccount(assistantId) {
+  await deleteAssistantWellnessCoach(assistantId);
+  try {
+    const account = await getAccountById(assistantId);
+    if (account && String(account.status || "").toLowerCase() !== "deleted") {
+      await deleteAccount(assistantId);
+    }
+  } catch (err) {
+    console.error("[softDelete] Account mirror for AssistantWellnessCoach:", err.message);
+  }
+}
 
 async function assertCoachExists(wellnessCoachId) {
   const coach = await getWellnessCoachById(wellnessCoachId);
@@ -290,13 +345,12 @@ exports.deleteAssistantController = asyncHandler(async (req, res) => {
   const current = await getAssistantWellnessCoachRecordById(id);
   if (!current) throw new AppError("Assistant wellness coach not found", 404);
   assertAssistantBelongsToCoach(current, coachId);
-
-  if (current.profileImage) await deleteStoredMedia(current.profileImage);
+  await assertAssistantCanBeDeleted(current);
 
   try {
-    await deleteAssistantWellnessCoach(current.id);
+    await softDeleteAssistantAndAccount(current.id);
   } catch (err) {
-    if (err?.name === "ConditionalCheckFailedException") {
+    if (err?.name === "NotFoundError" || err?.name === "ConditionalCheckFailedException") {
       throw new AppError("Assistant wellness coach not found", 404);
     }
     throw err;
@@ -460,13 +514,12 @@ exports.deleteMyAssistantController = asyncHandler(async (req, res) => {
   const current = await getAssistantWellnessCoachRecordById(req.params.id);
   if (!current) throw new AppError("Assistant not found", 404);
   if (current.wellnessCoachId !== coachId) throw new AppError("Assistant not found", 404);
-
-  if (current.profileImage) await deleteStoredMedia(current.profileImage);
+  await assertAssistantCanBeDeleted(current);
 
   try {
-    await deleteAssistantWellnessCoach(current.id);
+    await softDeleteAssistantAndAccount(current.id);
   } catch (err) {
-    if (err?.name === "ConditionalCheckFailedException") {
+    if (err?.name === "NotFoundError" || err?.name === "ConditionalCheckFailedException") {
       throw new AppError("Assistant not found", 404);
     }
     throw err;

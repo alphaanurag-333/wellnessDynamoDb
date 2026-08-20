@@ -157,6 +157,9 @@ exports.loginAccount = asyncHandler(async (req, res) => {
   if (!matched) {
     throw new AppError("Invalid credentials", 401);
   }
+  if (account.status === "deleted") {
+    throw new AppError("Account has been deleted", 401);
+  }
   if (account.status === "inactive" || account.status === "blocked") {
     throw new AppError("Account is inactive", 403);
   }
@@ -201,6 +204,9 @@ exports.verifyAccountLoginTotp = asyncHandler(async (req, res) => {
   const account = await getAccountById(accountId);
   if (!account) {
     throw new AppError("Account not found", 401);
+  }
+  if (account.status === "deleted") {
+    throw new AppError("Account has been deleted", 401);
   }
   if (account.status === "inactive" || account.status === "blocked") {
     throw new AppError("Account is inactive", 403);
@@ -256,6 +262,9 @@ exports.refreshAccountToken = asyncHandler(async (req, res) => {
   const account = await getAccountById(subject);
   if (!account) {
     throw new AppError("Account not found", 401);
+  }
+  if (account.status === "deleted") {
+    throw new AppError("Account has been deleted", 401);
   }
   if (account.status === "inactive" || account.status === "blocked") {
     throw new AppError("Account is inactive", 403);
@@ -447,6 +456,9 @@ exports.sendAccountLoginOtp = asyncHandler(async (req, res) => {
   const account = await getAccountByPhone(phoneCountryCode, phone);
   if (!account) {
     throw new AppError("No account found with this mobile number", 404);
+  }
+  if (account.status === "deleted") {
+    throw new AppError("Account has been deleted", 401);
   }
   if (account.status === "inactive") {
     throw new AppError("Account is inactive", 403);

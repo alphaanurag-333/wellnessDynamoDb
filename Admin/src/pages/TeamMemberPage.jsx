@@ -18,6 +18,7 @@ import {
   setAccessMemberRole,
 } from "../api/teamsApi.js";
 import {
+  formatIntroVideoMeta,
   saveCoachIntroLive,
   saveCoachIntroVideo,
   saveCoachLetterLive,
@@ -393,11 +394,7 @@ export function TeamMemberPage() {
         title: "Intro video",
         live: Boolean(intro.live) && hasVideo,
         hasMedia: hasVideo,
-        meta: hasVideo
-          ? [intro.duration, intro.sourceType === "link" ? "Linked video" : intro.version ? `v${intro.version}` : "Uploaded"]
-              .filter(Boolean)
-              .join(" · ") || "Uploaded"
-          : "Not uploaded",
+        meta: formatIntroVideoMeta(intro),
         url: intro.videoUrl || intro.linkUrl || null,
       },
       {

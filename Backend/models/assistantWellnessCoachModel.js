@@ -2,7 +2,6 @@ const {
   PutCommand,
   GetCommand,
   UpdateCommand,
-  DeleteCommand,
   QueryCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require("uuid");
@@ -230,16 +229,17 @@ async function populateWellnessCoaches(assistants) {
 }
 
 async function countAssistantsByWellnessCoachId(wellnessCoachId) {
-  const { Count } = await docClient.send(
+  const { Items = [] } = await docClient.send(
     new QueryCommand({
       TableName: TABLE,
       IndexName: "WellnessCoachIndex",
       KeyConditionExpression: "wellnessCoachId = :wellnessCoachId",
       ExpressionAttributeValues: { ":wellnessCoachId": wellnessCoachId },
-      Select: "COUNT",
+      ProjectionExpression: "id, #status",
+      ExpressionAttributeNames: { "#status": "status" },
     })
   );
-  return Count ?? 0;
+  return Items.filter((row) => String(row?.status || "").toLowerCase() !== "deleted").length;
 }
 
 async function createAssistantWellnessCoach(fields) {
@@ -364,13 +364,40 @@ async function updateAssistantWellnessCoach(id, updates) {
 }
 
 async function deleteAssistantWellnessCoach(id) {
-  await docClient.send(
-    new DeleteCommand({
+  const current = await getAssistantWellnessCoachRecordById(id);
+  if (!current) {
+    const err = new Error("Assistant wellness coach not found");
+    err.name = "NotFoundError";
+    throw err;
+  }
+  if (String(current.status || "").toLowerCase() === "deleted") {
+    return current;
+  }
+
+  const now = new Date().toISOString();
+  const { Attributes } = await docClient.send(
+    new UpdateCommand({
       TableName: TABLE,
       Key: { id },
-      ConditionExpression: "attribute_exists(id)",
+      UpdateExpression:
+        "SET #status = :deleted, deletedAt = :deletedAt, updatedAt = :updatedAt, " +
+        "deletedEmail = if_not_exists(email, :empty), " +
+        "deletedPhoneKey = if_not_exists(phoneKey, :empty) " +
+        "REMOVE email, phoneKey, password, otp, otpExpire, resetPasswordToken, " +
+        "resetPasswordExpire, fcmId, profileImage",
+      ExpressionAttributeNames: { "#status": "status" },
+      ExpressionAttributeValues: {
+        ":deleted": "deleted",
+        ":deletedAt": now,
+        ":updatedAt": now,
+        ":empty": "",
+      },
+      ConditionExpression:
+        "attribute_exists(id) AND (attribute_not_exists(#status) OR #status <> :deleted)",
+      ReturnValues: "ALL_NEW",
     })
   );
+  return withLegacyId(Attributes || { id, status: "deleted" });
 }
 
 async function listAssistantsByWellnessCoachId(
@@ -397,7 +424,9 @@ async function listAssistantsByWellnessCoachId(
     })
   );
 
-  let rows = Items.map(withLegacyId);
+  let rows = Items.map(withLegacyId).filter(
+    (row) => String(row?.status || "").toLowerCase() !== "deleted"
+  );
 
   if (normalizedStatus) {
     rows = rows.filter((r) => r.status === normalizedStatus);

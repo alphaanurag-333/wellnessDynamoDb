@@ -128,6 +128,29 @@ export function readVideoFileDuration(file) {
   });
 }
 
+export function readVideoUrlDuration(src) {
+  return new Promise((resolve) => {
+    const url = String(src || "").trim();
+    if (!url) {
+      resolve("");
+      return;
+    }
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    const finish = (value) => {
+      video.removeAttribute("src");
+      video.load();
+      resolve(value);
+    };
+    video.onloadedmetadata = () => {
+      const duration = Number.isFinite(video.duration) ? durationFromSeconds(video.duration) : "";
+      finish(duration);
+    };
+    video.onerror = () => finish("");
+    video.src = url;
+  });
+}
+
 export function displayTypeLabel(type) {
   if (type === "audio") return "Audio";
   if (type === "ytlink") return "YouTube";

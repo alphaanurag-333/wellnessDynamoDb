@@ -106,17 +106,23 @@ async function resolveAccountById(id) {
 
   if (dualReadEnabled()) {
     const account = await getAccountById(id);
-    if (account) return account;
+    if (account && String(account.status || "").toLowerCase() !== "deleted") return account;
   }
 
   const admin = await getAdminById(id);
-  if (admin) return legacyAdminToAccountShape(admin);
+  if (admin && String(admin.status || "").toLowerCase() !== "deleted") {
+    return legacyAdminToAccountShape(admin);
+  }
 
   const coach = await getWellnessCoachRecordById(id);
-  if (coach) return legacyCoachToAccountShape(coach);
+  if (coach && String(coach.status || "").toLowerCase() !== "deleted") {
+    return legacyCoachToAccountShape(coach);
+  }
 
   const assistant = await getAssistantWellnessCoachRecordById(id);
-  if (assistant) return legacyAssistantToAccountShape(assistant);
+  if (assistant && String(assistant.status || "").toLowerCase() !== "deleted") {
+    return legacyAssistantToAccountShape(assistant);
+  }
 
   return null;
 }
@@ -126,17 +132,23 @@ async function resolveAccountByEmail(email) {
 
   if (dualReadEnabled()) {
     const account = await getAccountByEmail(email);
-    if (account) return account;
+    if (account && String(account.status || "").toLowerCase() !== "deleted") return account;
   }
 
   const admin = await getAdminByEmail(email);
-  if (admin) return legacyAdminToAccountShape(admin);
+  if (admin && String(admin.status || "").toLowerCase() !== "deleted") {
+    return legacyAdminToAccountShape(admin);
+  }
 
   const coach = await getWellnessCoachByEmail(email);
-  if (coach) return legacyCoachToAccountShape(coach);
+  if (coach && String(coach.status || "").toLowerCase() !== "deleted") {
+    return legacyCoachToAccountShape(coach);
+  }
 
   const assistant = await getAssistantByEmail(email);
-  if (assistant) return legacyAssistantToAccountShape(assistant);
+  if (assistant && String(assistant.status || "").toLowerCase() !== "deleted") {
+    return legacyAssistantToAccountShape(assistant);
+  }
 
   return null;
 }
@@ -151,28 +163,41 @@ async function resolveStaffByIdForRole(id, roleKey) {
 
   if (dualReadEnabled()) {
     const account = await getAccountById(id);
-    if (account && hasActiveMembership(account, key)) {
+    if (
+      account &&
+      String(account.status || "").toLowerCase() !== "deleted" &&
+      hasActiveMembership(account, key)
+    ) {
       return account;
     }
   }
 
   if (key === "admin") {
     const admin = await getAdminById(id);
-    return admin ? legacyAdminToAccountShape(admin) : null;
+    if (!admin || String(admin.status || "").toLowerCase() === "deleted") return null;
+    return legacyAdminToAccountShape(admin);
   }
   if (key === "wellness_coach") {
     const coach = await getWellnessCoachRecordById(id);
-    return coach ? legacyCoachToAccountShape(coach) : null;
+    if (!coach || String(coach.status || "").toLowerCase() === "deleted") return null;
+    return legacyCoachToAccountShape(coach);
   }
   if (key === "assistant_wellness_coach") {
     const assistant = await getAssistantWellnessCoachRecordById(id);
-    return assistant ? legacyAssistantToAccountShape(assistant) : null;
+    if (!assistant || String(assistant.status || "").toLowerCase() === "deleted") return null;
+    return legacyAssistantToAccountShape(assistant);
   }
 
   // trainee / support only exist on Account
   if (dualReadEnabled()) {
     const account = await getAccountById(id);
-    if (account && hasActiveMembership(account, key)) return account;
+    if (
+      account &&
+      String(account.status || "").toLowerCase() !== "deleted" &&
+      hasActiveMembership(account, key)
+    ) {
+      return account;
+    }
   }
   return null;
 }

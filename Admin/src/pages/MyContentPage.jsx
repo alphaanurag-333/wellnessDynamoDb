@@ -5,6 +5,7 @@ import { IconVideo } from "../components/DashboardIcons.jsx";
 import { BackLink, OrangeButton } from "../components/shared.jsx";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import {
+  formatIntroVideoMeta,
   getMyCoachContent,
   listMyContentCoaches,
   mapAccountToMyContentCoach,
@@ -17,6 +18,7 @@ import {
   validateIntroVideoFile,
   videoPreviewSrc,
 } from "../api/coachContentApi.js";
+import { readVideoUrlDuration } from "../data/wellnessLibraryData.js";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 
 const COACH_VIEW_ROLES = new Set(["wc", "awc", "trainee"]);
@@ -107,6 +109,7 @@ export function MyContentPage() {
   const [preview, setPreview] = useState(null);
   const videoRef = useRef(null);
   const uploadTarget = useRef(null);
+  const probedDurationIds = useRef(new Set());
 
   useEffect(() => {
     if (!isAdmin && !isCoachView) return undefined;
@@ -118,6 +121,7 @@ export function MyContentPage() {
         if (isAdmin) {
           const result = await listMyContentCoaches();
           if (cancelled) return;
+          probedDurationIds.current = new Set();
           setCoaches(result.coaches || []);
           setLetterConfig(result.letterConfig || { text: "", version: 1 });
         } else {
@@ -125,6 +129,7 @@ export function MyContentPage() {
           if (cancelled) return;
           const nextAccount = payload?.account || account;
           const config = payload?.letter || { text: "", version: 1 };
+          probedDurationIds.current = new Set();
           setLetterConfig(config);
           setCoaches(nextAccount ? [mapAccountToMyContentCoach(nextAccount, config, 0)] : []);
         }
@@ -141,6 +146,46 @@ export function MyContentPage() {
       cancelled = true;
     };
   }, [account, isAdmin, isCoachView, reloadNonce]);
+
+  useEffect(() => {
+    if (loading || !coaches.length) return undefined;
+    let cancelled = false;
+    async function enrichDurations() {
+      const targets = coaches
+        .map((coach) => {
+          const item = coach.items?.find((row) => row.kind === "video");
+          if (!item?.videoUrl || item.duration || probedDurationIds.current.has(coach.id)) return null;
+          probedDurationIds.current.add(coach.id);
+          return { coachId: coach.id, videoUrl: item.videoUrl };
+        })
+        .filter(Boolean);
+      if (!targets.length) return;
+      const updates = [];
+      for (const target of targets) {
+        const duration = await readVideoUrlDuration(target.videoUrl);
+        if (duration) updates.push({ coachId: target.coachId, duration });
+      }
+      if (cancelled || !updates.length) return;
+      setCoaches((prev) =>
+        prev.map((coach) => {
+          const match = updates.find((row) => row.coachId === coach.id);
+          if (!match) return coach;
+          return {
+            ...coach,
+            items: coach.items.map((item) => {
+              if (item.kind !== "video") return item;
+              const next = { ...item, duration: match.duration };
+              return { ...next, meta: formatIntroVideoMeta(next) };
+            }),
+          };
+        }),
+      );
+    }
+    enrichDurations();
+    return () => {
+      cancelled = true;
+    };
+  }, [coaches, loading]);
 
   const load = useCallback(() => {
     setReloadNonce((n) => n + 1);

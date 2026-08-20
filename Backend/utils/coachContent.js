@@ -54,6 +54,7 @@ function emptyIntroVideo() {
     live: false,
     version: 0,
     duration: "",
+    uploadedAt: "",
     galleryPickId: "",
   };
 }
@@ -81,6 +82,7 @@ function normalizeIntroVideo(raw) {
     live: asBool(src.live, false),
     version: asInt(src.version, 0),
     duration: asString(src.duration),
+    uploadedAt: asString(src.uploadedAt),
     galleryPickId: asString(src.galleryPickId),
   };
 }
@@ -120,6 +122,7 @@ function toPublicIntroVideo(intro) {
     live,
     version: normalized.version,
     duration: normalized.duration,
+    uploadedAt: normalized.uploadedAt,
     galleryPickId: normalized.galleryPickId,
   };
 }
