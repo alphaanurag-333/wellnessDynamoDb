@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 import { BrandLoader } from "../components/BrandLoader.jsx";
 import { ConfirmDialog } from "../components/ConfirmDialog.jsx";
+import { TeamRemindModal } from "../components/TeamRemindModal.jsx";
 import { CfgSelect, OrangeButton, PageHeader, PillTabs, SectionLabel, TableScroll, ListPagination } from "../components/shared.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import {
@@ -11,9 +12,8 @@ import {
   TEAM_ROLE_TABS_BASE,
   staffInitials,
 } from "../data/teamsData.js";
-import { createTeamMember, deleteTeamMember, fetchTeamMembers, listTeamParentOptions, updateTeamMember } from "../api/teamsApi.js";
+import { createTeamMember, deleteTeamMember, fetchTeamMembers, listTeamParentOptions, setAccessMemberRole, updateTeamMember } from "../api/teamsApi.js";
 import { fetchAccessRoles } from "../api/accessApi.js";
-import { UI_TO_ROLE_KEY } from "../api/accountApi.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import {
   EMAIL_MAX_LEN,
@@ -28,35 +28,54 @@ import {
   validatePersonName,
   validatePhoneDigits,
 } from "../utils/personFieldValidation.js";
+import { resolveBaseUiRoleKey, SYSTEM_TEAM_UI_KEYS } from "../utils/liveRoles.js";
 
-const SYSTEM_TEAM_ROLE_KEYS = new Set(["wc", "awc", "trainee", "support"]);
+const SYSTEM_TEAM_ROLE_KEYS = SYSTEM_TEAM_UI_KEYS;
 const PAGE_SIZE = 20;
 const ALL_TAB_ID = "all";
 const ROLE_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+const ACTION_ICON = {
+  width: 14,
+  height: 14,
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 1.8,
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+  "aria-hidden": true,
+};
+
+function IconEditProfile() {
+  return (
+    <svg {...ACTION_ICON}>
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  );
+}
+
+function IconDeleteMember() {
+  return (
+    <svg {...ACTION_ICON}>
+      <path d="M3 6h18" />
+      <path d="M8 6V4h8v2" />
+      <path d="M19 6l-1 14H6L5 6" />
+      <path d="M10 11v6" />
+      <path d="M14 11v6" />
+    </svg>
+  );
+}
+
+function memberRemindMessage(name) {
+  const first = String(name || "").trim().split(/\s+/)[0] || "there";
+  return `Hi ${first}, a quick reminder on your pending items — please take a look when you get a moment.`;
+}
+
 function isAdminAccessRole(role) {
   const key = String(role?.roleKey || "").toLowerCase();
   return key === "admin";
-}
-
-function isSystemTeamRole(role) {
-  const key = String(role?.roleKey || "").toLowerCase();
-  return SYSTEM_TEAM_ROLE_KEYS.has(key);
-}
-
-/** Walk inheritance to a system UI role key (wc / awc / trainee / support). */
-function resolveBaseUiRoleKey(role, allRoles) {
-  const byId = Object.fromEntries((allRoles || []).map((r) => [r.id, r]));
-  let current = role;
-  const seen = new Set();
-  while (current) {
-    if (seen.has(current.id)) break;
-    seen.add(current.id);
-    const key = String(current.roleKey || "").toLowerCase();
-    if (key && UI_TO_ROLE_KEY[key]) return key;
-    current = current.inheritsFromRoleId ? byId[current.inheritsFromRoleId] : null;
-  }
-  return null;
 }
 
 function roleChipMeta(role, fallbackKey = "wc") {
@@ -126,19 +145,20 @@ function CreateMemberModal({ open, member, roles, parentOptions, onClose, onSave
   const eligibleParents = useMemo(
     () =>
       (parentOptions || []).filter((account) =>
-        account.roleKeys?.includes(parentRoleKey),
+        account.roleKeys?.includes(parentRoleKey) &&
+        (!member?.id || account.id !== member.id),
       ),
-    [parentOptions, parentRoleKey],
+    [parentOptions, parentRoleKey, member?.id],
   );
 
   useEffect(() => {
-    if (!open || isEdit || !needsParent) return;
+    if (!open || !needsParent) return;
     setParentAccountId((current) =>
       eligibleParents.some((parent) => parent.id === current)
         ? current
         : eligibleParents[0]?.id || "",
     );
-  }, [open, isEdit, needsParent, parentRoleKey, eligibleParents]);
+  }, [open, needsParent, parentRoleKey, eligibleParents]);
 
   if (!open) return null;
 
@@ -148,10 +168,12 @@ function CreateMemberModal({ open, member, roles, parentOptions, onClose, onSave
     if (nameErr) next.name = nameErr;
     const phoneErr = validatePhoneDigits(phone);
     if (phoneErr) next.phone = phoneErr;
-    const emailErr = validateEmail(email);
-    if (emailErr) next.email = emailErr;
-    if (!isEdit && !consoleRoleId) next.role = "Pick a role.";
-    if (!isEdit && needsParent && !parentAccountId) {
+    if (!isEdit) {
+      const emailErr = validateEmail(email);
+      if (emailErr) next.email = emailErr;
+    }
+    if (!consoleRoleId) next.role = "Pick a role.";
+    if (needsParent && !parentAccountId) {
       next.parent = `Pick a ${baseUiKey === "trainee" ? "Assistant WC" : "Wellness Coach"} this person reports to.`;
     }
     setErrors(next);
@@ -166,10 +188,19 @@ function CreateMemberModal({ open, member, roles, parentOptions, onClose, onSave
       if (isEdit) {
         const result = await updateTeamMember(member.id, {
           name: name.trim(),
-          email: email.trim(),
           phone: phone.trim(),
           phoneCountryCode: member.phoneCountryCode || "+91",
         });
+        const roleChanged = consoleRoleId !== (member.consoleRoleId || "");
+        const nextParent = needsParent ? parentAccountId : "";
+        const parentChanged = nextParent !== (member.parentAccountId || "");
+        if (roleChanged || parentChanged) {
+          await setAccessMemberRole(member.id, {
+            consoleRoleId,
+            roleKey: selectedRole?.roleKey || baseUiKey || undefined,
+            parentAccountId: needsParent ? parentAccountId : null,
+          });
+        }
         onToast(`Updated ${result.account?.name || name.trim()}`);
         onSaved(result.account);
         onClose();
@@ -214,7 +245,7 @@ function CreateMemberModal({ open, member, roles, parentOptions, onClose, onSave
             </span>
             <div className="ua-teams-create__copy">
               <h2 id="ua-teams-create-title">{isEdit ? "Edit profile" : "Create a team member"}</h2>
-              <p>{isEdit ? "Update name, phone, and email" : "Works for every role"}</p>
+              <p>{isEdit ? "Same fields as create · email cannot be changed" : "Works for every role"}</p>
             </div>
           </div>
           <button
@@ -276,22 +307,25 @@ function CreateMemberModal({ open, member, roles, parentOptions, onClose, onSave
                 Email address <span aria-hidden="true">*</span>
               </span>
               <input
-                className={`ua-teams-create__input${errors.email ? " is-invalid" : ""}`}
+                className={`ua-teams-create__input${errors.email ? " is-invalid" : ""}${isEdit ? " is-readonly" : ""}`}
                 placeholder="name@company.com"
                 type="email"
                 autoComplete="email"
                 value={email}
                 maxLength={EMAIL_MAX_LEN}
-                onChange={(event) => {
+                readOnly={isEdit}
+                aria-readonly={isEdit ? "true" : undefined}
+                onChange={isEdit ? undefined : (event) => {
                   setEmail(sanitizeEmailInput(event.target.value));
                   clearError("email");
                 }}
               />
               {errors.email ? <span className="ua-teams-create__error">{errors.email}</span> : (
-                <span className="ua-teams-create__hint">Max {EMAIL_MAX_LEN} characters</span>
+                <span className="ua-teams-create__hint">
+                  {isEdit ? "Email is used to sign in and cannot be changed" : `Max ${EMAIL_MAX_LEN} characters`}
+                </span>
               )}
             </label>
-            {isEdit ? null : (
             <label className="ua-teams-create__field">
               <span className="ua-teams-create__label">
                 Role <span aria-hidden="true">*</span>
@@ -310,8 +344,7 @@ function CreateMemberModal({ open, member, roles, parentOptions, onClose, onSave
               />
               {errors.role ? <span className="ua-teams-create__error">{errors.role}</span> : null}
             </label>
-            )}
-            {!isEdit && needsParent ? (
+            {needsParent ? (
               <label className="ua-teams-create__field">
                 <span className="ua-teams-create__label">
                   Reports to ({baseUiKey === "trainee" ? "Assistant WC" : "Wellness Coach"}){" "}
@@ -340,8 +373,8 @@ function CreateMemberModal({ open, member, roles, parentOptions, onClose, onSave
             <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose} disabled={busy}>
               Cancel
             </button>
-            <button type="submit" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy || (!isEdit && !consoleRoleId)}>
-              {busy ? (isEdit ? "Saving…" : "Creating…") : isEdit ? "Save profile" : "Create member"}
+            <button type="submit" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy || !consoleRoleId}>
+              {busy ? (isEdit ? "Saving…" : "Creating…") : isEdit ? "Save changes" : "Create member"}
             </button>
           </div>
         </form>
@@ -353,8 +386,9 @@ function CreateMemberModal({ open, member, roles, parentOptions, onClose, onSave
 export function TeamsPage() {
   const { showToast: onToast } = useOutletContext();
   const { isSuperAdmin, viewAs, sessionUi } = useViewAs();
-  const actorIsWc = viewAs === "wc" || sessionUi === "wc";
-  const actorIsAwc = viewAs === "awc" || sessionUi === "awc";
+  const teamsPersona = isSuperAdmin ? viewAs : sessionUi || viewAs;
+  const actorIsWc = teamsPersona === "wc";
+  const actorIsAwc = teamsPersona === "awc";
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [members, setMembers] = useState([]);
@@ -372,17 +406,33 @@ export function TeamsPage() {
   const [editingMember, setEditingMember] = useState(null);
   const [deletingMember, setDeletingMember] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [remindModal, setRemindModal] = useState(null);
   const [parentOptions, setParentOptions] = useState([]);
   const [reloadNonce, setReloadNonce] = useState(0);
+
+  function openMemberRemind(member, roleName) {
+    const name = member?.name || "team member";
+    const defaultMessage = memberRemindMessage(name);
+    setRemindModal({
+      title: `Remind ${name}`,
+      subtitle: [roleName, member?.meta].filter(Boolean).join(" · "),
+      recipients: [name],
+      defaultMessage,
+      message: defaultMessage,
+    });
+  }
 
   const teamRoles = useMemo(
     () =>
       (accessRoles || []).filter((role) => {
         if (isAdminAccessRole(role)) return false;
         const baseUiKey = resolveBaseUiRoleKey(role, accessRoles);
-        return Boolean(baseUiKey && SYSTEM_TEAM_ROLE_KEYS.has(baseUiKey));
+        if (!baseUiKey || !SYSTEM_TEAM_ROLE_KEYS.has(baseUiKey)) return false;
+        if (actorIsAwc) return baseUiKey === "trainee";
+        if (actorIsWc) return baseUiKey === "awc" || baseUiKey === "trainee";
+        return true;
       }),
-    [accessRoles],
+    [accessRoles, actorIsAwc, actorIsWc],
   );
 
   const createRoles = teamRoles;
@@ -481,11 +531,11 @@ export function TeamsPage() {
   }, [currentPage, error, loading, pagination.pages]);
 
   useEffect(() => {
-    if (!createOpen) return;
+    if (!createOpen && !editingMember) return;
     listTeamParentOptions()
       .then(setParentOptions)
       .catch(() => setParentOptions([]));
-  }, [createOpen]);
+  }, [createOpen, editingMember]);
 
   const tabs = useMemo(() => {
     const roleTabs = teamRoles.length
@@ -494,21 +544,35 @@ export function TeamsPage() {
           label: r.name,
           count: r.memberCount || 0,
         }))
-      : TEAM_ROLE_TABS_BASE.map((t) => ({ ...t, count: 0 }));
+      : actorIsAwc || actorIsWc
+        ? []
+        : TEAM_ROLE_TABS_BASE.map((t) => ({ ...t, count: 0 }));
     const allCount = roleTabs.reduce((sum, tab) => sum + (Number(tab.count) || 0), 0);
     return [{ id: ALL_TAB_ID, label: "All", count: allCount }, ...roleTabs];
-  }, [teamRoles]);
+  }, [actorIsAwc, actorIsWc, teamRoles]);
 
   useEffect(() => {
     if (!teamRoles.length) return;
     if (isAllTab) return;
-    if (!teamRoles.some((r) => r.id === roleTab) && !TEAM_ROLE_META[roleTab]) {
+    if (!teamRoles.some((r) => r.id === roleTab || r.roleKey === roleTab)) {
       setRoleTab(ALL_TAB_ID);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamRoles, roleTab, isAllTab]);
 
-  const rows = members;
+  const rows = useMemo(() => {
+    if (!actorIsAwc) return members;
+    return members.filter((m) => {
+      const accessRole =
+        (m.consoleRoleId && roleById[m.consoleRoleId]) ||
+        teamRoles.find((r) => r.roleKey && r.roleKey === m.primaryRoleKey) ||
+        null;
+      const baseUi =
+        (accessRole && resolveBaseUiRoleKey(accessRole, teamRoles)) ||
+        String(m.primaryRoleKey || "").toLowerCase();
+      return baseUi === "trainee";
+    });
+  }, [actorIsAwc, members, roleById, teamRoles]);
 
   const baseUiForCol = activeRole
     ? resolveBaseUiRoleKey(activeRole, teamRoles) || activeRole.roleKey
@@ -622,17 +686,30 @@ export function TeamsPage() {
                       <>
                         <button
                           type="button"
-                          className="ua-team-actions__perm"
-                          onClick={() => setEditingMember(s)}
+                          className="ua-team-actions__bell"
+                          title="Send reminder"
+                          aria-label={`Send reminder to ${s.name}`}
+                          onClick={() => openMemberRemind(s, meta.name)}
                         >
-                          Edit profile
+                          🔔
                         </button>
                         <button
                           type="button"
-                          className="ua-team-actions__perm ua-team-actions__perm--danger"
+                          className="ua-team-actions__perm ua-team-actions__icon"
+                          title="Edit profile"
+                          aria-label={`Edit profile for ${s.name}`}
+                          onClick={() => setEditingMember(s)}
+                        >
+                          <IconEditProfile />
+                        </button>
+                        <button
+                          type="button"
+                          className="ua-team-actions__perm ua-team-actions__perm--danger ua-team-actions__icon"
+                          title="Delete"
+                          aria-label={`Delete ${s.name}`}
                           onClick={() => setDeletingMember(s)}
                         >
-                          Delete
+                          <IconDeleteMember />
                         </button>
                       </>
                     ) : null}
@@ -699,6 +776,26 @@ export function TeamsPage() {
             setDeleteBusy(false);
           }
         }}
+      />
+
+      <TeamRemindModal
+        open={Boolean(remindModal)}
+        title={remindModal?.title ?? ""}
+        subtitle={remindModal?.subtitle ?? ""}
+        recipients={remindModal?.recipients ?? []}
+        message={remindModal?.message ?? ""}
+        defaultMessage={remindModal?.defaultMessage ?? ""}
+        onMessageChange={(message) => setRemindModal((prev) => (prev ? { ...prev, message } : prev))}
+        onReset={() => setRemindModal((prev) => (prev ? { ...prev, message: prev.defaultMessage } : prev))}
+        onPush={() => {
+          onToast(`Push sent to ${remindModal?.recipients.length ?? 0} recipient(s)`);
+          setRemindModal(null);
+        }}
+        onWhatsApp={() => {
+          onToast(`WhatsApp sent to ${remindModal?.recipients.length ?? 0} recipient(s)`);
+          setRemindModal(null);
+        }}
+        onClose={() => setRemindModal(null)}
       />
     </main>
   );

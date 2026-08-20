@@ -414,4 +414,5 @@ module.exports = {
   verifySubscriptionPayment,
   finalizePaidSubscriptionTransaction,
   resolveSubscriptionPlanFromTransaction,
+  applyPaidSubscriptionOutcome,
 };

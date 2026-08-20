@@ -36,6 +36,8 @@ const {
   isPendingCheckoutOrderReusable,
   toPublicCoachProgramOffer,
 } = require("./coachCheckoutService");
+const { applyPaidSubscriptionOutcome } = require("./subscriptionPaymentService");
+const { resolveSubscriptionPlanForPayment } = require("./subscriptionCategoryService");
 
 function logPaymentFailure({ transactionId, userId, reason }) {
   console.error("[ProgramPayment] payment failed", {
@@ -174,6 +176,7 @@ async function createProgramOrder(userId, { paymentMethod = "upi" } = {}) {
       programType: program.programType,
       catalogItemId: offer?.itemId || preview.offer?.itemId || program.catalogProgramId || null,
       catalogItemName: offer?.itemName || preview.offer?.itemName || program.title || "",
+      bundledSubscription: offer?.bundledSubscription || existingPending?.userSnapshot?.bundledSubscription || null,
     },
   };
 
@@ -303,6 +306,19 @@ async function applyPaidProgramEntitlements(user, transaction, paidAt) {
     ...refreshed,
     programPurchased: true,
   });
+
+  const bundled = transaction?.userSnapshot?.bundledSubscription;
+  if (bundled?.enabled && (bundled.itemId || bundled.itemName)) {
+    const plan = await resolveSubscriptionPlanForPayment({
+      catalogItemId: bundled.itemId || null,
+      catalogItemName: bundled.itemName || "",
+    });
+    const latest = await getUserById(user.id);
+    await applyPaidSubscriptionOutcome(latest || refreshed, plan);
+    if (plan.clientCategory === "eagle") {
+      await updateUser(user.id, { clientCategory: "eagle" });
+    }
+  }
 }
 
 async function finalizePaidProgramTransaction(transaction, { paymentId, provider }) {

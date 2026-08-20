@@ -96,6 +96,14 @@ function accountPrimaryUiRole(account) {
   return primary ? ACCOUNT_TO_UI_ROLE[primary] || primary : null;
 }
 
+function accountRoleKeyFromDataScope(dataScope) {
+  const scope = String(dataScope || "").toLowerCase();
+  if (scope === "assigned") return "wellness_coach";
+  if (scope === "team") return "assistant_wellness_coach";
+  if (scope === "all") return "support";
+  return "wellness_coach";
+}
+
 async function resolveAccountRoleKeyFromConsoleRole(startRole) {
   let current = startRole;
   const seen = new Set();
@@ -104,14 +112,20 @@ async function resolveAccountRoleKeyFromConsoleRole(startRole) {
     seen.add(current.id);
 
     const uiKey = String(current.roleKey || "").trim().toLowerCase();
-    if (uiKey) {
-      const mapped = UI_TO_ACCOUNT_ROLE[uiKey] || uiKey;
-      if (mapped) return mapped;
+    // Skip admin so custom roles that inherit from Admin still map to a staff account role.
+    if (uiKey && uiKey !== "admin") {
+      const mapped = UI_TO_ACCOUNT_ROLE[uiKey] || null;
+      if (mapped && mapped !== "admin") return mapped;
     }
 
     if (!current.inheritsFromRoleId) break;
     current = await getRoleById(current.inheritsFromRoleId);
     if (current && current.scope !== CONSOLE_SCOPE) break;
+  }
+  // Standalone / admin-inherited custom CONSOLE roles: use dataScope as staff persona.
+  const startKey = String(startRole?.roleKey || "").trim().toLowerCase();
+  if (startRole && (!startKey || !ROLE_KEY_META[startKey])) {
+    return accountRoleKeyFromDataScope(startRole.dataScope);
   }
   return null;
 }
@@ -355,30 +369,81 @@ function applyConsoleGrantsToMembership(account, primaryAccountRole, { grants, r
   return memberships;
 }
 
+function actorAccountRole(req) {
+  const raw = String(req.auth?.role || "").trim().toLowerCase();
+  return UI_TO_ACCOUNT_ROLE[raw] || raw;
+}
+
 function visibleTeamRoleKeys(req) {
-  if (req.auth?.isSuperAdmin || req.auth?.role === "admin") return null;
-  return TEAM_DESCENDANT_ROLES[String(req.auth?.role || "")] || new Set();
+  if (req.auth?.isSuperAdmin || actorAccountRole(req) === "admin") return null;
+  return TEAM_DESCENDANT_ROLES[actorAccountRole(req)] || new Set();
+}
+
+function teamParentId(account, primaryRole) {
+  const fromAccount = String(account?.parentAccountId || "").trim();
+  if (fromAccount) return fromAccount;
+  return String(getMembership(account, primaryRole)?.parentAccountId || "").trim();
 }
 
 async function canViewTeamAccount(req, account, primaryRole) {
   const visibleRoles = visibleTeamRoleKeys(req);
   if (visibleRoles === null) return true;
-  if (!visibleRoles.has(primaryRole)) return false;
+  const accountRole = UI_TO_ACCOUNT_ROLE[primaryRole] || primaryRole;
+  if (!visibleRoles.has(accountRole)) return false;
+  if (String(account?.id || "") === String(req.auth?.sub || "")) return false;
 
   const viewerId = String(req.auth?.sub || "");
-  const parentId = String(account?.parentAccountId || "");
-  if (parentId === viewerId) return true;
+  const parentId = teamParentId(account, accountRole);
+  if (parentId && parentId === viewerId) return true;
 
   // A WC also sees trainees attached beneath one of their direct AWCs.
-  if (req.auth?.role === "wellness_coach" && primaryRole === "trainee" && parentId) {
+  if (actorAccountRole(req) === "wellness_coach" && accountRole === "trainee" && parentId) {
     const parent = await getAccountById(parentId);
+    const parentRoleKeys = Array.isArray(parent?.roleKeys) ? parent.roleKeys : [];
     return (
-      Array.isArray(parent?.roleKeys) &&
-      parent.roleKeys.includes("assistant_wellness_coach") &&
-      String(parent.parentAccountId || "") === viewerId
+      parentRoleKeys.includes("assistant_wellness_coach") &&
+      teamParentId(parent, "assistant_wellness_coach") === viewerId
     );
   }
   return false;
+}
+
+async function collectScopedTeamAccounts(req, { search, accountRoleFilter } = {}) {
+  const direct = await listAccounts({
+    status: "active",
+    search,
+    roleKey: accountRoleFilter,
+    parentAccountId: req.auth.sub,
+    page: 1,
+    limit: 200,
+  });
+  const scopedAccounts = [...(direct.accounts || [])];
+
+  if (
+    actorAccountRole(req) === "wellness_coach" &&
+    (!accountRoleFilter || accountRoleFilter === "trainee")
+  ) {
+    const directAssistants = await listAccounts({
+      status: "active",
+      parentAccountId: req.auth.sub,
+      roleKey: "assistant_wellness_coach",
+      page: 1,
+      limit: 200,
+    });
+    for (const assistant of directAssistants.accounts || []) {
+      const trainees = await listAccounts({
+        status: "active",
+        search,
+        parentAccountId: assistant.id,
+        roleKey: "trainee",
+        page: 1,
+        limit: 200,
+      });
+      scopedAccounts.push(...(trainees.accounts || []));
+    }
+  }
+
+  return scopedAccounts;
 }
 
 /** Teams page + member directory — scoped to roles below the signed-in member. */
@@ -484,17 +549,36 @@ exports.listAccessRoles = asyncHandler(async (req, res) => {
   });
 
   const visibleRoles = visibleTeamRoleKeys(req);
-  const scopedRoles =
-    visibleRoles === null
-      ? roles
-      : roles.filter((role) => {
-          const accountRole = UI_TO_ACCOUNT_ROLE[role.roleKey] || role.roleKey;
-          return visibleRoles.has(accountRole);
-        });
+  const scopedRoles = [];
+  for (const role of roles) {
+    if (visibleRoles === null) {
+      scopedRoles.push(role);
+      continue;
+    }
+    const accountRole = await resolveAccountRoleKeyFromConsoleRole(role);
+    if (accountRole && visibleRoles.has(accountRole)) scopedRoles.push(role);
+  }
 
   const enriched = [];
   for (const role of scopedRoles) {
-    const count = await memberCountForConsoleRole(role);
+    let count = 0;
+    if (visibleRoles === null) {
+      count = await memberCountForConsoleRole(role);
+    } else {
+      const accountRole = await resolveAccountRoleKeyFromConsoleRole(role);
+      const scoped = await collectScopedTeamAccounts(req, { accountRoleFilter: accountRole });
+      for (const acc of scoped) {
+        const pub = typeof acc.password === "undefined" ? acc : toPublicAccount(acc);
+        const roleKeys = Array.isArray(pub.roleKeys) ? pub.roleKeys : [];
+        const primaryAccountRole =
+          (pub.defaultRoleKey && roleKeys.includes(pub.defaultRoleKey) && pub.defaultRoleKey) ||
+          roleKeys[0] ||
+          null;
+        if (!(await canViewTeamAccount(req, pub, primaryAccountRole))) continue;
+        if (!accountMatchesConsoleRole(pub, role, primaryAccountRole)) continue;
+        count += 1;
+      }
+    }
     enriched.push(toAccessRole(role, count));
   }
 
@@ -851,6 +935,14 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
   const listLimit = selectedConsoleRole ? 200 : limit;
 
   const visibleRoles = visibleTeamRoleKeys(req);
+  if (visibleRoles !== null && accountRoleFilter && !visibleRoles.has(accountRoleFilter)) {
+    return res.json({
+      status: true,
+      members: [],
+      pagination: { page, limit, total: 0, pages: 1 },
+    });
+  }
+
   let result;
   if (visibleRoles === null) {
     result = await listAccounts({
@@ -861,41 +953,9 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
       limit: listLimit,
     });
   } else {
-    const direct = await listAccounts({
-      status: "active",
-      search,
-      roleKey: accountRoleFilter,
-      parentAccountId: req.auth.sub,
-      page: 1,
-      limit: 200,
-    });
-    const scopedAccounts = [...(direct.accounts || [])];
-
-    if (
-      req.auth.role === "wellness_coach" &&
-      (!accountRoleFilter || accountRoleFilter === "trainee")
-    ) {
-      const directAssistants = await listAccounts({
-        status: "active",
-        parentAccountId: req.auth.sub,
-        roleKey: "assistant_wellness_coach",
-        page: 1,
-        limit: 200,
-      });
-      for (const assistant of directAssistants.accounts || []) {
-        const trainees = await listAccounts({
-          status: "active",
-          search,
-          parentAccountId: assistant.id,
-          roleKey: "trainee",
-          page: 1,
-          limit: 200,
-        });
-        scopedAccounts.push(...(trainees.accounts || []));
-      }
-    }
-
-    result = { accounts: scopedAccounts };
+    result = {
+      accounts: await collectScopedTeamAccounts(req, { search, accountRoleFilter }),
+    };
   }
 
   const { roles: consoleRoles } = await listRoles({
@@ -1503,6 +1563,33 @@ exports.setAccessMemberRole = asyncHandler(async (req, res) => {
     }
   }
 
+  let parentId = null;
+  if (accountRoleKey === "assistant_wellness_coach" || accountRoleKey === "trainee") {
+    const requestedParent = req.body?.parentAccountId;
+    parentId =
+      requestedParent !== undefined
+        ? String(requestedParent || "").trim() || null
+        : account.parentAccountId || getMembership(account, accountRoleKey)?.parentAccountId || null;
+    if (!parentId) {
+      throw new AppError("parentAccountId is required for assistants and trainees", 400);
+    }
+    if (parentId === String(account.id)) {
+      throw new AppError("A team member cannot report to themselves", 400);
+    }
+    const parent = await getAccountById(parentId);
+    if (!parent) throw new AppError("Parent team member not found", 404);
+    const requiredParentRole =
+      accountRoleKey === "assistant_wellness_coach" ? "wellness_coach" : "assistant_wellness_coach";
+    if (!parent.roleKeys?.includes(requiredParentRole)) {
+      throw new AppError(
+        accountRoleKey === "trainee"
+          ? "A trainee must report to an Assistant WC"
+          : "An Assistant WC must report to a Wellness Coach",
+        400
+      );
+    }
+  }
+
   // Replace memberships with the selected primary role (v1 single primary)
   const memberships = [
     {
@@ -1510,10 +1597,7 @@ exports.setAccessMemberRole = asyncHandler(async (req, res) => {
       roleId: consoleRole.id,
       permissionOverrides: null,
       status: "active",
-      parentAccountId:
-        accountRoleKey === "assistant_wellness_coach" || accountRoleKey === "trainee"
-          ? account.parentAccountId || getMembership(account, accountRoleKey)?.parentAccountId || null
-          : null,
+      parentAccountId: parentId,
     },
   ];
 

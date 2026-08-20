@@ -425,7 +425,8 @@ export function AdminDashboard({
 }) {
   const navigate = useNavigate();
   const { viewAs: viewAsId, viewAsPersona, liveMenuRoles, liveRolesReady } = useViewAs();
-  const viewAs = viewAsPersona || viewAsId;
+  // Prefer the selected View-as id for admin; persona is only for custom staff roles.
+  const viewAs = viewAsId === "admin" ? "admin" : (viewAsPersona || viewAsId);
   const isStaffDash = viewAs === "wc" || viewAs === "awc";
   const isSupportDash = viewAs === "support";
   const isFullDash = viewAs === "admin" || isStaffDash;

@@ -14,12 +14,13 @@ import {
   programLabel,
 } from "../../data/exchangeData.js";
 
-function mapPrograms(rows) {
+function mapCatalog(rows) {
   return (Array.isArray(rows) ? rows : [])
     .map((row) => ({
       id: String(row?.id || ""),
       name: String(row?.name || "").trim(),
       price: Number(row?.amount ?? row?.price) || 0,
+      days: Number(row?.days) || 0,
     }))
     .filter((row) => row.id && row.name);
 }
@@ -71,7 +72,7 @@ function ConfirmModal({ open, title, body, confirming, onClose, onConfirm }) {
   );
 }
 
-function FieldSelect({ label, value, options, open, disabled, onToggle, onSelect, getLabel }) {
+function FieldSelect({ label, value, options, open, disabled, onToggle, onSelect, getLabel, bare = false }) {
   const ref = useRef(null);
 
   useEffect(() => {
@@ -82,39 +83,45 @@ function FieldSelect({ label, value, options, open, disabled, onToggle, onSelect
     return () => document.removeEventListener("mousedown", onPointerDown);
   }, [open, onToggle]);
 
+  const select = (
+    <div className="ua-cp-ex-select" ref={bare ? ref : undefined}>
+      <button
+        type="button"
+        className={`ua-cp-ex-select__trigger${open ? " ua-cp-ex-select__trigger--open" : ""}`}
+        onClick={() => !disabled && onToggle(!open)}
+        disabled={disabled}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+      >
+        <span className="ua-cp-ex-select__value">{value}</span>
+        {disabled ? null : <span className="ua-cp-ex-select__chev" aria-hidden="true">▾</span>}
+      </button>
+      {open ? (
+        <ul className="ua-cp-ex-select__menu" role="listbox">
+          {options.map((option) => (
+            <li key={option.id}>
+              <button
+                type="button"
+                className="ua-cp-ex-select__option"
+                role="option"
+                aria-selected={getLabel(option) === value}
+                onClick={() => onSelect(option)}
+              >
+                {getLabel(option)}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+
+  if (bare) return select;
+
   return (
     <div className="ua-cp-ex-field" ref={ref}>
-      <span className="ua-cp-ex-field__label">{label}</span>
-      <div className="ua-cp-ex-select">
-        <button
-          type="button"
-          className={`ua-cp-ex-select__trigger${open ? " ua-cp-ex-select__trigger--open" : ""}`}
-          onClick={() => !disabled && onToggle(!open)}
-          disabled={disabled}
-          aria-expanded={open}
-          aria-haspopup="listbox"
-        >
-          <span className="ua-cp-ex-select__value">{value}</span>
-          <span className="ua-cp-ex-select__chev" aria-hidden="true">▾</span>
-        </button>
-        {open ? (
-          <ul className="ua-cp-ex-select__menu" role="listbox">
-            {options.map((option) => (
-              <li key={option.id}>
-                <button
-                  type="button"
-                  className="ua-cp-ex-select__option"
-                  role="option"
-                  aria-selected={getLabel(option) === value}
-                  onClick={() => onSelect(option)}
-                >
-                  {getLabel(option)}
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-      </div>
+      {label ? <span className="ua-cp-ex-field__label">{label}</span> : null}
+      {select}
     </div>
   );
 }
@@ -188,13 +195,21 @@ function PaymentRow({ row, onToast }) {
   );
 }
 
+function subscriptionLabel(item) {
+  if (!item) return "Off";
+  return item.days > 0 ? `${item.name} · ${item.days} days` : item.name;
+}
+
 export function ExchangeSection({ user, onToast }) {
   const [programs, setPrograms] = useState([]);
   const [discounts, setDiscounts] = useState([]);
   const [validityPeriods, setValidityPeriods] = useState([]);
+  const [subscriptions, setSubscriptions] = useState([]);
   const [program, setProgram] = useState(null);
   const [discount, setDiscount] = useState(null);
   const [validity, setValidity] = useState(null);
+  const [includeSubscription, setIncludeSubscription] = useState(true);
+  const [subscription, setSubscription] = useState(null);
   const [openField, setOpenField] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -215,15 +230,19 @@ export function ExchangeSection({ user, onToast }) {
     })
       .then((options) => {
         if (!active) return;
-        const nextPrograms = mapPrograms(options.programPricing);
+        const nextPrograms = mapCatalog(options.programPricing);
         const nextDiscounts = mapDiscounts(options.programDiscountSlabs);
         const nextValidity = mapValidity(options.programValidityPeriods);
+        const nextSubscriptions = mapCatalog(options.subscriptionPricing);
         setPrograms(nextPrograms);
         setDiscounts(nextDiscounts);
         setValidityPeriods(nextValidity);
+        setSubscriptions(nextSubscriptions);
         setProgram(nextPrograms[0] || null);
         setDiscount(nextDiscounts[0] || null);
         setValidity(nextValidity[0] || null);
+        setSubscription(nextSubscriptions[0] || null);
+        setIncludeSubscription(nextSubscriptions.length > 0);
       })
       .catch((error) => {
         if (!active) return;
@@ -231,9 +250,12 @@ export function ExchangeSection({ user, onToast }) {
         setPrograms([]);
         setDiscounts([]);
         setValidityPeriods([]);
+        setSubscriptions([]);
         setProgram(null);
         setDiscount(null);
         setValidity(null);
+        setSubscription(null);
+        setIncludeSubscription(false);
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -281,10 +303,19 @@ export function ExchangeSection({ user, onToast }) {
       : 0;
   const summary = paymentSummary(history);
   const firstName = user?.name?.split(" ")[0] || "Client";
+  const bundledOn = includeSubscription && Boolean(subscription);
   const canTrigger = Boolean(user?.id && program && discount && validity && !loading && !triggering);
 
   function closeMenus() {
     setOpenField(null);
+  }
+
+  function toggleSubscription() {
+    if (!subscriptions.length) return;
+    const next = !includeSubscription;
+    setIncludeSubscription(next);
+    if (next && !subscription) setSubscription(subscriptions[0] || null);
+    closeMenus();
   }
 
   async function handleTrigger() {
@@ -298,6 +329,8 @@ export function ExchangeSection({ user, onToast }) {
         discountPercent: discount.pct,
         discountLabel: discount.label,
         linkValidity: validity.label,
+        includeAppSubscription: bundledOn,
+        subscriptionItemId: bundledOn ? subscription.id : null,
       });
       setConfirmOpen(false);
       onToast?.(result.message || `${program.name} triggered in app`);
@@ -327,7 +360,7 @@ export function ExchangeSection({ user, onToast }) {
       <div className="ua-cp-ex-panel">
         <div className="ua-cp-ex-panel__head">
           <strong>Trigger a payment</strong>
-          <p>Pick a program and a discount slab — both come from what admin set in Energy Exchange; the value follows.</p>
+          <p>Pick a program and a discount slab — both come from what admin set in Energy Exchange; the value follows. App subscription, if enabled, is included in the same price.</p>
         </div>
         <div className="ua-cp-ex-form__grid">
           <FieldSelect
@@ -364,6 +397,38 @@ export function ExchangeSection({ user, onToast }) {
             <span className="ua-cp-ex-field__label">Value</span>
             <div className="ua-cp-ex-field__value">{program && discount ? formatRupee(value) : "—"}</div>
           </div>
+          <div className="ua-cp-ex-field">
+            <span className="ua-cp-ex-field__label">App subscription</span>
+            <div className={`ua-cp-ex-sub${bundledOn ? " ua-cp-ex-sub--on" : ""}`}>
+              <button
+                type="button"
+                className={`ua-toggle ua-toggle--sm${bundledOn ? " ua-toggle--on" : ""}`}
+                aria-pressed={bundledOn}
+                aria-label="Include app subscription"
+                disabled={loading || !subscriptions.length}
+                onClick={toggleSubscription}
+              >
+                <span className="ua-toggle__knob" />
+              </button>
+              {bundledOn ? (
+                <FieldSelect
+                  bare
+                  label=""
+                  value={subscriptionLabel(subscription)}
+                  options={subscriptions}
+                  open={openField === "subscription"}
+                  disabled={loading || subscriptions.length < 2}
+                  onToggle={(next) => setOpenField(next ? "subscription" : null)}
+                  onSelect={(next) => { setSubscription(next); closeMenus(); }}
+                  getLabel={subscriptionLabel}
+                />
+              ) : (
+                <span className="ua-cp-ex-sub__off">
+                  {loading ? "Loading…" : subscriptions.length ? "Off" : "None published"}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
         <div className="ua-cp-ex-form__actions">
           <button
@@ -380,7 +445,7 @@ export function ExchangeSection({ user, onToast }) {
               : emptyConfig
                 ? "Publish Program, Discount, and Link validity on Configs → App Program before triggering a payment."
                 : program && discount && validity
-                  ? `Listed at ${formatRupee(program.price)} · ${discount.pct}% discount applied · the payment link expires in ${validity.label.toLowerCase()} if unpaid; the invoice generates on success.`
+                  ? `Listed at ${formatRupee(program.price)} · ${discount.pct}% discount applied${bundledOn ? ` · ${subscriptionLabel(subscription)} included in the same price` : ""} · the payment link expires in ${validity.label.toLowerCase()} if unpaid; the invoice generates on success.`
                   : "Loading published App Program options…"}
           </p>
         </div>
@@ -415,7 +480,7 @@ export function ExchangeSection({ user, onToast }) {
         open={confirmOpen}
         title={`Send this payment to ${firstName}'s app?`}
         body={program && discount
-          ? `${program.name} · ${formatRupee(value)} after ${discount.pct}% discount. They get a notification straight away and the invoice generates when they pay.`
+          ? `${program.name}${bundledOn ? ` + ${subscriptionLabel(subscription)}` : ""} · ${formatRupee(value)} after ${discount.pct}% discount${bundledOn ? ", with app subscription included in the same price" : ""}. They get a notification straight away and the invoice generates when they pay.`
           : null}
         confirming={triggering}
         onClose={() => !triggering && setConfirmOpen(false)}

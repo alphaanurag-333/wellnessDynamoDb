@@ -1,6 +1,6 @@
 const { TABLE: USER_TABLE, getUserById } = require("../models/userModel");
 const { TABLE: COACH_TABLE, getWellnessCoachById } = require("../models/wellnessCoachModel");
-const { TABLE: ASSISTANT_TABLE } = require("../models/assistantWellnessCoachModel");
+const { countAccountsByRoleKey } = require("../models/accountModel");
 const { TABLE: PROGRAM_TABLE } = require("../models/programCatalogModel");
 const { listRoles } = require("../models/roleModel");
 const { countAccountsByConsoleRoleId } = require("../models/accountModel");
@@ -531,18 +531,8 @@ async function getAdminDashboardStats() {
       partitionKeyName: "status",
       partitionValues: ["active"],
     }),
-    countAcrossPartitions({
-      tableName: COACH_TABLE,
-      indexName: STATUS_INDEX,
-      partitionKeyName: "status",
-      partitionValues: ["active"],
-    }),
-    countAcrossPartitions({
-      tableName: ASSISTANT_TABLE,
-      indexName: STATUS_INDEX,
-      partitionKeyName: "status",
-      partitionValues: ["active"],
-    }),
+    countAccountsByRoleKey("wellness_coach"),
+    countAccountsByRoleKey("assistant_wellness_coach"),
     countAcrossPartitions({
       tableName: COACH_TABLE,
       indexName: STATUS_INDEX,
