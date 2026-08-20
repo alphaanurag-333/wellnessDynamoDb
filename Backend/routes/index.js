@@ -47,6 +47,7 @@ const adminVideoTestimonialsRoutes = require("./adminRoutes/adminVideoTestimonia
 const adminRealPeopleTestimonialRoutes = require("./adminRoutes/adminRealPeopleTestimonialRoutes");
 const adminCofounderMessageRoutes = require("./adminRoutes/adminCofounderMessageRoutes");
 const adminContactInquiryRoutes = require("./adminRoutes/adminContactInquiryRoutes");
+const adminReferralTreeRoutes = require("./adminRoutes/adminReferralTreeRoutes");
 const adminEnergyExchangeRoutes = require("./adminRoutes/adminEnergyExchangeRoutes");
 const adminProgramCatalogRoutes = require("./adminRoutes/adminProgramCatalogRoutes");
 const publicAppConfigRoutes = require("./publicRoutes/publicAppConfigRoutes");
@@ -156,6 +157,7 @@ router.use("/admin/video-testimonials", adminVideoTestimonialsRoutes);
 router.use("/admin/real-people-testimonials", adminRealPeopleTestimonialRoutes);
 router.use("/admin/cofounder-message", adminCofounderMessageRoutes);
 router.use("/admin/contact-inquiries", adminContactInquiryRoutes);
+router.use("/admin/referral-tree", adminReferralTreeRoutes);
 router.use("/admin/energy-exchange", adminEnergyExchangeRoutes);
 router.use("/admin/programs", adminProgramCatalogRoutes);
 router.use("/admin/health-concerns", adminHealthConcernRoutes);

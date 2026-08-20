@@ -21,6 +21,7 @@ import { BrandLoader } from "../components/BrandLoader.jsx";
 import { AdminLoginPage } from "../pages/AdminLoginPage.jsx";
 import { NotificationsPage } from "../pages/NotificationsPage.jsx";
 import { ContactInquiriesPage } from "../pages/ContactInquiriesPage.jsx";
+import { ReferralTreePage } from "../pages/ReferralTreePage.jsx";
 
 function AdminRoot() {
   return (
@@ -62,6 +63,7 @@ export const adminRouteTree = (
       <Route path="pending" element={<PendingPage />} />
       <Route path="sop" element={<SopPage />} />
       <Route path="contact-inquiries" element={<ContactInquiriesPage />} />
+      <Route path="referral-tree" element={<ReferralTreePage />} />
       <Route path="my-content" element={<MyContentPage />} />
       <Route path="my-content/letters/:coachId" element={<CommitmentLettersPage />} />
       <Route path="notifications" element={<NotificationsPage />} />

@@ -12,6 +12,7 @@ export const UPDATED_ADMIN_PATHS = {
   pending: "/pending",
   sop: "/sop",
   contactInquiries: "/contact-inquiries",
+  referralTree: "/referral-tree",
   myContent: "/my-content",
   commitmentLetters: (coachId = "anita-rao") => `/my-content/letters/${coachId}`,
   notifications: "/notifications",
@@ -20,6 +21,7 @@ export const UPDATED_ADMIN_PATHS = {
 export const NAV_ITEMS = [
   { id: "dashboard", label: "Dashboard", icon: "grid", path: UPDATED_ADMIN_PATHS.dashboard },
   { id: "users", label: "User Management", icon: "users", path: UPDATED_ADMIN_PATHS.users },
+  { id: "referral-tree", label: "Referral Tree", icon: "git-branch", path: UPDATED_ADMIN_PATHS.referralTree },
   { id: "access", label: "Access Control", icon: "shield", path: UPDATED_ADMIN_PATHS.access, adminOnly: true },
   { id: "teams", label: "Teams", icon: "layers", path: UPDATED_ADMIN_PATHS.teams },
   { id: "calendar", label: "Calendar", icon: "calendar", path: UPDATED_ADMIN_PATHS.calendar },
