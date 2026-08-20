@@ -17,9 +17,11 @@ function readAssignmentIdParam(req) {
   return String(req.params.assignmentId || req.params.id || "").trim();
 }
 
+const { isStaffPaidFeatureTier } = require("../../services/paidFeatureAccessService");
+
 function assertHealTierUser(user) {
-  if (String(user.userTier || "").toLowerCase() !== "heal") {
-    throw new AppError("Physical exercises can only be assigned to Heal (paid) users", 400);
+  if (!isStaffPaidFeatureTier(user)) {
+    throw new AppError("Physical exercises can only be assigned to Heal or Maintenance (paid) users", 400);
   }
 }
 

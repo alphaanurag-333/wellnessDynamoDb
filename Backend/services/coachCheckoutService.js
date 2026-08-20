@@ -31,7 +31,6 @@ const {
 const { isConsultancyOnlyTier, isHealTier, isMaintenanceTier } = require("../models/userAssignmentLogic");
 const {
   resolveSubscriptionPlanFromItem,
-  findSubscriptionCatalogItem,
 } = require("./subscriptionCategoryService");
 
 const HOURS_BY_UNIT = {
@@ -171,19 +170,14 @@ function resolveBundledSubscription(config, { includeAppSubscription, subscripti
       : isEnabledFlag(includeAppSubscription);
   if (!enabled) return null;
 
-  const rows = Array.isArray(config?.app_subscription_pricing)
-    ? config.app_subscription_pricing
-    : [];
-  const item = findSubscriptionCatalogItem(config, requestedId) || rows[0] || null;
-  if (!item) {
-    throw new AppError("Publish an App Subscription in Configs before including it", 400);
-  }
-
+  const monthlyAmount = Number(config?.energy_exchange_monthly_amount) || 0;
   return {
     enabled: true,
-    itemId: String(item.id),
-    itemName: String(item.name || "").trim(),
-    days: Number(item.days) || 0,
+    kind: "fy_energy_exchange",
+    itemId: "fy-current",
+    itemName: "Current financial year app subscription",
+    fyOffsets: [0],
+    monthlyAmount,
     includedInProgramPrice: true,
   };
 }
@@ -201,6 +195,7 @@ function toPublicCoachProgramOffer(offer) {
     productType: offer.productType || "program",
     itemId: offer.itemId || null,
     itemName: offer.itemName || "",
+    programType: offer.catalogProgramType || offer.programType || null,
     amount,
     discountPercent: Number(offer.discountPercent) || 0,
     discountLabel: String(offer.discountLabel || "").trim(),
@@ -208,11 +203,14 @@ function toPublicCoachProgramOffer(offer) {
     linkValidity: offer.linkValidity || "",
     expiresAt: offer.expiresAt || null,
     appHealValidity: offer.appHealValidity || null,
+    catalogProgramType: offer.catalogProgramType || offer.programType || null,
     bundledSubscription: bundled
       ? {
+          kind: bundled.kind || "fy_energy_exchange",
           itemId: bundled.itemId || null,
           itemName: bundled.itemName || "",
-          days: Number(bundled.days) || 0,
+          fyOffsets: Array.isArray(bundled.fyOffsets) ? bundled.fyOffsets : [0],
+          monthlyAmount: Number(bundled.monthlyAmount) || 0,
           includedInProgramPrice: true,
         }
       : null,
@@ -285,6 +283,7 @@ function buildUserProgramGetPayload({ user, assignedProgram, offer, pricing } = 
       program: {
         id: publicOffer.itemId,
         title: publicOffer.itemName,
+        programType: publicOffer.programType || publicOffer.catalogProgramType || null,
         price: netPayable,
         listPrice: publicOffer.amount,
         currency: breakdown?.currency || "INR",
@@ -666,6 +665,7 @@ async function triggerCoachCheckout({
     catalogItemId: item.id,
     catalogItemName: item.name,
     catalogAmount: item.amount,
+    catalogProgramType: item.programType || null,
     discountPercent: pct,
     discountLabel: String(discountLabel || "").trim(),
     appHealValidity: type === "program" ? appHealValidity || null : null,
@@ -734,6 +734,8 @@ async function triggerCoachCheckout({
     productType: type,
     itemId: item.id,
     itemName: item.name,
+    programType: item.programType || null,
+    catalogProgramType: item.programType || null,
     amount: item.amount,
     discountPercent: pct,
     discountLabel: String(discountLabel || "").trim(),

@@ -113,6 +113,7 @@ function normalizeAppProgramPricing(value) {
     throw new AppError("app_program_pricing must be an array", 400);
   }
 
+  const allowedProgramTypes = new Set(["goal_based", "lifetime", "eagle"]);
   const ids = new Set();
   return parsed.map((row, index) => {
     const name = String(row?.name ?? "").trim();
@@ -120,6 +121,10 @@ function normalizeAppProgramPricing(value) {
     const discountPercent = Number(row?.discountPercent);
     const validityHours = Number(row?.validityHours);
     const id = String(row?.id || `program-${index + 1}`).trim();
+    const rawProgramType = String(row?.programType ?? row?.type ?? "goal_based")
+      .trim()
+      .toLowerCase();
+    const programType = allowedProgramTypes.has(rawProgramType) ? rawProgramType : "goal_based";
 
     if (!id || ids.has(id)) {
       throw new AppError("Each program must have a unique id", 400);
@@ -138,7 +143,7 @@ function normalizeAppProgramPricing(value) {
     }
 
     ids.add(id);
-    return { id, name, amount, discountPercent, validityHours };
+    return { id, name, amount, discountPercent, validityHours, programType };
   });
 }
 
@@ -148,6 +153,8 @@ function normalizeAppSubscriptionPricing(value) {
     throw new AppError("app_subscription_pricing must be an array", 400);
   }
 
+  // Days-based SKUs are deprecated. Empty catalog is valid; FY pricing uses
+  // energy_exchange_monthly_amount / fy discounts. Keep rows only for legacy reads.
   const ids = new Set();
   return parsed.map((row, index) => {
     const name = String(row?.name ?? "").trim();
@@ -174,15 +181,11 @@ function normalizeAppSubscriptionPricing(value) {
         400
       );
     }
-    const days = row?.days !== undefined ? Number(row.days) : undefined;
-    if (days !== undefined && (!Number.isInteger(days) || days <= 0)) {
-      throw new AppError(`Subscription ${index + 1} days must be a positive integer`, 400);
-    }
+    // Ignore `days` — entitlements are FY-based via Energy Exchange.
     return {
       id,
       name,
       amount,
-      ...(days !== undefined ? { days } : {}),
       ...(clientCategory ? { clientCategory } : {}),
     };
   });

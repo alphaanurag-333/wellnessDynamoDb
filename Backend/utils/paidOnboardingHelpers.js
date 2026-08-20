@@ -243,6 +243,18 @@ function buildPaidOnboardingResetUpdates() {
   };
 }
 
+/** Eagle clients skip the 10-step wizard — mark everything done. */
+function buildEaglePaidOnboardingCompleteUpdates() {
+  const status = Object.fromEntries(
+    STORED_ONBOARDING_STATUS_KEYS.map((key) => [key, "done"])
+  );
+  return {
+    paidOnboardingCompleted: true,
+    paidOnboardingStep: "done",
+    paidOnboardingStepStatus: status,
+  };
+}
+
 module.exports = {
   USER_ALLOWED_PAID_ONBOARDING_STEPS,
   PAID_ONBOARDING_STATUS_KEYS,
@@ -271,4 +283,5 @@ module.exports = {
   publicCanonicalStepStatus,
   buildOnboardingStatusUpdates,
   buildPaidOnboardingResetUpdates,
+  buildEaglePaidOnboardingCompleteUpdates,
 };

@@ -4,6 +4,7 @@ const {
   requirePaidOnboardingPending,
   requirePaidOnboardingAccess,
   requireHealTier,
+  forbidEagleClient,
 } = require("../../middleware/tierGuards");
 const {
   optionalUserFile,
@@ -56,6 +57,6 @@ router.post(
   submitMedicalConditionsController
 );
 router.post("/skip-step", requirePaidOnboardingPending, skipOnboardingStepController);
-router.post("/launch/complete", requireHealTier, completeLaunchController);
+router.post("/launch/complete", requireHealTier, forbidEagleClient, completeLaunchController);
 
 module.exports = router;

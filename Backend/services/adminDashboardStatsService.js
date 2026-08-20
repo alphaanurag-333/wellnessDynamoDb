@@ -467,6 +467,18 @@ async function countUsersByTier(tier) {
   });
 }
 
+async function countUsersByClientCategory(category) {
+  return countAcrossPartitions({
+    tableName: USER_TABLE,
+    indexName: STATUS_INDEX,
+    partitionKeyName: "status",
+    partitionValues: ["active", "inactive", "blocked"],
+    filterExpression: "#clientCategory = :clientCategory",
+    exprNames: { "#clientCategory": "clientCategory" },
+    exprValues: { ":clientCategory": category },
+  });
+}
+
 async function scanUserAnalytics() {
   const counts = new Map();
   const onboardedByMonth = {};
@@ -537,6 +549,7 @@ async function getAdminDashboardStats() {
     healUsers,
     consultancyUsers,
     maintenanceUsers,
+    eagleUsers,
     userAnalytics,
   ] = await Promise.all([
     countAcrossPartitions({
@@ -577,6 +590,7 @@ async function getAdminDashboardStats() {
     countUsersByTier("heal"),
     countUsersByTier("consultancy_only"),
     countUsersByTier("maintenance"),
+    countUsersByClientCategory("eagle"),
     scanUserAnalytics(),
   ]);
 
@@ -633,6 +647,7 @@ async function getAdminDashboardStats() {
 
   return {
     totalUsers,
+    eagleUsers,
     activePrograms,
     activeWellnessCoaches,
     activeAssistants,

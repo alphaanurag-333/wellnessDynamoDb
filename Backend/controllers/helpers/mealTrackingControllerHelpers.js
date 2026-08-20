@@ -56,10 +56,12 @@ function parseMealLogBody(body) {
   return payload;
 }
 
+const { isStaffPaidFeatureTier } = require("../../services/paidFeatureAccessService");
+
 function assertHealTierUser(user) {
-  if (String(user.userTier || "").toLowerCase() !== "heal") {
+  if (!isStaffPaidFeatureTier(user)) {
     throw new AppError(
-      "Meal tracking is only available for Heal (paid) users",
+      "Meal tracking is only available for Heal or Maintenance (paid) users",
       400
     );
   }

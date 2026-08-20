@@ -16,6 +16,7 @@ const {
   handleValidationError,
 } = require("./reminderControllerHelpers");
 const { assertHealTierUser } = require("./dietPlanControllerHelpers");
+const { isEagleClientCategory } = require("../../models/userAssignmentLogic");
 
 function readPagination(req) {
   const page = Math.max(1, Number(req.query.page) || 1);
@@ -122,7 +123,10 @@ function parseStatusUpdateBody(body = {}) {
 
 async function loadHealUser(userId) {
   const user = await loadTargetUser(userId);
-  assertHealTierUser(user);
+  // Eagle clients may book counselling sessions even when not on Heal tier.
+  if (!isEagleClientCategory(user?.clientCategory)) {
+    assertHealTierUser(user);
+  }
   return user;
 }
 

@@ -2,7 +2,8 @@ const config = require("../config");
 const { getAppConfig } = require("../models/appConfigModel");
 const { getUserById, updateUser } = require("../models/userModel");
 const { convertSeekToHeal } = require("../models/userConversionModel");
-const { isConsultancyOnlyTier, isHealTier } = require("../models/userAssignmentLogic");
+const { isConsultancyOnlyTier, isHealTier, isMaintenanceTier } = require("../models/userAssignmentLogic");
+const { ensureEnergyExchangeProgramForUser } = require("./energyExchangeEntitlementService");
 const { getActiveRazorpayGateway } = require("./consultancyPricingService");
 const { previewCheckout } = require("./energyExchangePricingService");
 const {
@@ -58,22 +59,29 @@ async function createEnergyExchangeOrder(userId, { fyStartYears, paymentMethod =
     throw err;
   }
 
-  if (isHealTier(user.userTier)) {
-    const err = new Error("Energy Exchange purchase requires a non-heal account");
-    err.name = "AlreadyConvertedError";
-    throw err;
-  }
+  const isMaintenance = isMaintenanceTier(user.userTier);
 
-  if (!isConsultancyOnlyTier(user.userTier)) {
-    const err = new Error("Complete consultancy payment before purchasing Energy Exchange");
-    err.name = "ConsultancyRequiredError";
-    throw err;
-  }
+  if (isMaintenance) {
+    // Maintenance renewals: FY app subscription only (no Heal conversion).
+    await ensureEnergyExchangeProgramForUser(user);
+  } else {
+    if (isHealTier(user.userTier)) {
+      const err = new Error("Energy Exchange purchase requires a non-heal account");
+      err.name = "AlreadyConvertedError";
+      throw err;
+    }
 
-  if (!user.programPurchased) {
-    const err = new Error("Complete your Wellness Program purchase before Energy Exchange");
-    err.name = "ProgramRequiredError";
-    throw err;
+    if (!isConsultancyOnlyTier(user.userTier)) {
+      const err = new Error("Complete consultancy payment before purchasing Energy Exchange");
+      err.name = "ConsultancyRequiredError";
+      throw err;
+    }
+
+    if (!user.programPurchased) {
+      const err = new Error("Complete your Wellness Program purchase before Energy Exchange");
+      err.name = "ProgramRequiredError";
+      throw err;
+    }
   }
 
   const preview = await previewEnergyExchangeCheckout(userId, { fyStartYears });
@@ -237,6 +245,7 @@ async function finalizePaidEnergyExchangeTransaction(transaction, { paymentId, p
     throw err;
   }
 
+  const isMaintenance = isMaintenanceTier(user.userTier);
   const paidAt = new Date().toISOString();
   const { item: paidRecord, alreadyPaid } = await markTransactionPaidIfPending(transaction.id, {
     paymentGatewayPaymentId: paymentId || null,
@@ -244,7 +253,7 @@ async function finalizePaidEnergyExchangeTransaction(transaction, { paymentId, p
     paidAt,
     userSnapshot: {
       ...(transaction.userSnapshot || {}),
-      userTier: "heal",
+      userTier: isMaintenance ? "maintenance" : "heal",
     },
   });
 
@@ -261,19 +270,37 @@ async function finalizePaidEnergyExchangeTransaction(transaction, { paymentId, p
 
   await _activateSubscriptionsForTransaction(transaction.id);
 
-  try {
-    await convertSeekToHeal(user.id);
-  } catch (err) {
-    if (err?.name !== "AlreadyConvertedError") {
-      console.error("[EnergyExchangePayment] convertSeekToHeal failed", err.message);
-      throw err;
+  if (isMaintenance) {
+    // Renewals: keep Maintenance tier and existing paid onboarding.
+    await updateUser(user.id, {
+      energyExchangeEnabled: true,
+      pendingCoachCheckout: {},
+    });
+  } else {
+    try {
+      await convertSeekToHeal(user.id);
+    } catch (err) {
+      if (err?.name !== "AlreadyConvertedError") {
+        console.error("[EnergyExchangePayment] convertSeekToHeal failed", err.message);
+        throw err;
+      }
+    }
+
+    // Never restart paid onboarding if the client already finished it (e.g. renewals).
+    if (user.paidOnboardingCompleted) {
+      await updateUser(user.id, {
+        energyExchangeEnabled: true,
+        healPaidAt: user.healPaidAt || paidAt,
+        pendingCoachCheckout: {},
+      });
+    } else {
+      await updateUser(user.id, {
+        ...buildPaidOnboardingResetUpdates(),
+        healPaidAt: paidAt,
+        energyExchangeEnabled: true,
+      });
     }
   }
-
-  await updateUser(user.id, {
-    ...buildPaidOnboardingResetUpdates(),
-    healPaidAt: paidAt,
-  });
 
   const fresh = await getConsultancyTransactionById(transaction.id);
   return toPublicTransactionWithInvoice(fresh);

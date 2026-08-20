@@ -9,9 +9,11 @@ const {
 } = require("./reminderControllerHelpers");
 const { assertStaffCanAccessUser, resolveStaffActor } = require("../staffAccess");
 
+const { isStaffPaidFeatureTier } = require("../../services/paidFeatureAccessService");
+
 function assertHealTierUser(user) {
-  if (String(user.userTier || "").toLowerCase() !== "heal") {
-    throw new AppError("Diet plans can only be assigned to Heal (paid) users", 400);
+  if (!isStaffPaidFeatureTier(user)) {
+    throw new AppError("Diet plans can only be assigned to Heal or Maintenance (paid) users", 400);
   }
 }
 

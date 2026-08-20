@@ -11,7 +11,7 @@ const { listUsersByParentCoachId, toPublicUser } = require("../models/userModel"
 const { queryMealLogsByCoachId } = require("../models/mealTrackingModel");
 const { listUserCommitmentLetters } = require("../models/userCommitmentLetterModel");
 const { listClientTestimonials } = require("../models/clientTestimonials");
-const { normalizeUserTier } = require("../models/userAssignmentLogic");
+const { normalizeUserTier, isEagleClientCategory } = require("../models/userAssignmentLogic");
 const { getSubscriptionExpiryStats } = require("./subscriptionExpiryStats");
 
 const RECENT_LIMIT = 5;
@@ -153,6 +153,7 @@ async function getCoachDashboardStats(coachId) {
   const clients = clientData.users || [];
   const assistants = assistantData.assistants || [];
   const tierCounts = countClientsByTier(clients);
+  const eagleUsers = clients.filter((user) => isEagleClientCategory(user?.clientCategory)).length;
   const healClients = tierCounts.heal;
   const consultancyClients = tierCounts.consultancy_only;
   const healthConcernCounts = countClientsByHealthConcern(clients);
@@ -203,6 +204,7 @@ async function getCoachDashboardStats(coachId) {
 
   return {
     totalClients,
+    eagleUsers,
     healClients,
     consultancyClients,
     healthConcernCounts,

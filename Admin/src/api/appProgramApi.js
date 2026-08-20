@@ -1,12 +1,18 @@
 import api, { normalizeApiError } from "../api.js";
 
 function mapProgram(row, index) {
+  const programType = String(row?.programType || row?.type || "goal_based")
+    .trim()
+    .toLowerCase();
   return {
     id: String(row?.id || `program-${index + 1}`),
     name: String(row?.name || "").trim(),
     amount: Number(row?.amount) || 0,
     discountPercent: Number(row?.discountPercent) || 0,
     validityHours: Number(row?.validityHours) || 0,
+    programType: ["goal_based", "lifetime", "eagle"].includes(programType)
+      ? programType
+      : "goal_based",
   };
 }
 

@@ -6,6 +6,13 @@ import {
   remindCoachCheckout,
   triggerCoachCheckout,
 } from "../../api/appProgramApi.js";
+import {
+  createEnergyExchangeProgram,
+  enableEnergyExchangeProgram,
+  listEnergyExchangePrograms,
+  updateEnergyExchangeProgram,
+} from "../../api/energyExchangeProgramApi.js";
+import { getAppSubscriptionFy } from "../../api/appSubscriptionFyApi.js";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 import {
   discountLabel,
@@ -21,7 +28,7 @@ function mapCatalog(rows) {
       id: String(row?.id || ""),
       name: String(row?.name || "").trim(),
       price: Number(row?.amount ?? row?.price) || 0,
-      days: Number(row?.days) || 0,
+      programType: String(row?.programType || "goal_based").trim().toLowerCase(),
     }))
     .filter((row) => row.id && row.name);
 }
@@ -196,21 +203,20 @@ function PaymentRow({ row, onToast }) {
   );
 }
 
-function subscriptionLabel(item) {
-  if (!item) return "Off";
-  return item.days > 0 ? `${item.name} · ${item.days} days` : item.name;
-}
+const FY_INCLUDE_OPTIONS = [
+  { id: "on", label: "Include current FY (pro-rata)" },
+  { id: "off", label: "Off" },
+];
 
 export function ExchangeSection({ user, onToast }) {
   const { canCreate } = useClientSectionPermissions("exchange");
   const [programs, setPrograms] = useState([]);
   const [discounts, setDiscounts] = useState([]);
   const [validityPeriods, setValidityPeriods] = useState([]);
-  const [subscriptions, setSubscriptions] = useState([]);
   const [program, setProgram] = useState(null);
   const [discount, setDiscount] = useState(null);
   const [validity, setValidity] = useState(null);
-  const [subscription, setSubscription] = useState(null);
+  const [includeFySubscription, setIncludeFySubscription] = useState(true);
   const [openField, setOpenField] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -219,30 +225,35 @@ export function ExchangeSection({ user, onToast }) {
   const [history, setHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [historyError, setHistoryError] = useState("");
+  const [eeProgram, setEeProgram] = useState(null);
+  const [eeLoading, setEeLoading] = useState(false);
+  const [eeBusy, setEeBusy] = useState(false);
+  const [fyMonthly, setFyMonthly] = useState("");
 
   useEffect(() => {
     let active = true;
     setLoading(true);
     setLoadError("");
-    getCoachCheckoutOptions({
-      validityPeriods: [],
-      discountSlabs: [],
-      appHealPeriods: [],
-    })
-      .then((options) => {
+    Promise.all([
+      getCoachCheckoutOptions({
+        validityPeriods: [],
+        discountSlabs: [],
+        appHealPeriods: [],
+      }),
+      getAppSubscriptionFy().catch(() => null),
+    ])
+      .then(([options, fy]) => {
         if (!active) return;
         const nextPrograms = mapCatalog(options.programPricing);
         const nextDiscounts = mapDiscounts(options.programDiscountSlabs);
         const nextValidity = mapValidity(options.programValidityPeriods);
-        const nextSubscriptions = mapCatalog(options.subscriptionPricing);
         setPrograms(nextPrograms);
         setDiscounts(nextDiscounts);
         setValidityPeriods(nextValidity);
-        setSubscriptions(nextSubscriptions);
         setProgram(nextPrograms[0] || null);
         setDiscount(nextDiscounts[0] || null);
         setValidity(nextValidity[0] || null);
-        setSubscription(nextSubscriptions[0] || null);
+        if (fy?.monthlyAmount) setFyMonthly(fy.monthlyAmount);
       })
       .catch((error) => {
         if (!active) return;
@@ -250,11 +261,9 @@ export function ExchangeSection({ user, onToast }) {
         setPrograms([]);
         setDiscounts([]);
         setValidityPeriods([]);
-        setSubscriptions([]);
         setProgram(null);
         setDiscount(null);
         setValidity(null);
-        setSubscription(null);
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -271,6 +280,7 @@ export function ExchangeSection({ user, onToast }) {
       setHistory([]);
       setHistoryError("");
       setHistoryLoading(false);
+      setEeProgram(null);
       return undefined;
     }
 
@@ -290,6 +300,22 @@ export function ExchangeSection({ user, onToast }) {
         if (active) setHistoryLoading(false);
       });
 
+    setEeLoading(true);
+    listEnergyExchangePrograms(user.id)
+      .then((rows) => {
+        if (!active) return;
+        const list = Array.isArray(rows) ? rows : [];
+        const enabled = list.find((p) => p.enabled) || list[0] || null;
+        setEeProgram(enabled);
+      })
+      .catch(() => {
+        if (!active) return;
+        setEeProgram(null);
+      })
+      .finally(() => {
+        if (active) setEeLoading(false);
+      });
+
     return () => {
       active = false;
     };
@@ -302,11 +328,45 @@ export function ExchangeSection({ user, onToast }) {
       : 0;
   const summary = paymentSummary(history);
   const firstName = user?.name?.split(" ")[0] || "Client";
-  const bundledOn = Boolean(subscription);
   const canTrigger = canCreate && Boolean(user?.id && program && discount && validity && !loading && !triggering);
 
   function closeMenus() {
     setOpenField(null);
+  }
+
+  async function refreshEeProgram() {
+    if (!user?.id) return;
+    const rows = await listEnergyExchangePrograms(user.id);
+    const list = Array.isArray(rows) ? rows : [];
+    setEeProgram(list.find((p) => p.enabled) || list[0] || null);
+  }
+
+  async function handleEnableEe() {
+    if (!user?.id || eeBusy) return;
+    setEeBusy(true);
+    try {
+      if (eeProgram?.id) {
+        if (!eeProgram.enabled) {
+          await enableEnergyExchangeProgram(eeProgram.id);
+        }
+        await updateEnergyExchangeProgram(eeProgram.id, {
+          monthlyAmount: Number(fyMonthly) || eeProgram.monthlyAmount,
+          enabled: true,
+        });
+      } else {
+        await createEnergyExchangeProgram({
+          userId: user.id,
+          enabled: true,
+          monthlyAmount: Number(fyMonthly) || undefined,
+        });
+      }
+      await refreshEeProgram();
+      onToast?.("FY app subscription (Energy Exchange) enabled for this client");
+    } catch (error) {
+      onToast?.(error.message || "Could not enable Energy Exchange");
+    } finally {
+      setEeBusy(false);
+    }
   }
 
   async function handleTrigger() {
@@ -320,8 +380,8 @@ export function ExchangeSection({ user, onToast }) {
         discountPercent: discount.pct,
         discountLabel: discount.label,
         linkValidity: validity.label,
-        includeAppSubscription: bundledOn,
-        subscriptionItemId: bundledOn ? subscription.id : null,
+        includeAppSubscription: includeFySubscription,
+        subscriptionItemId: includeFySubscription ? "fy-current" : null,
       });
       setConfirmOpen(false);
       onToast?.(result.message || `${program.name} triggered in app`);
@@ -340,12 +400,45 @@ export function ExchangeSection({ user, onToast }) {
   }
 
   const emptyConfig = !loading && !loadError && (!programs.length || !discounts.length || !validityPeriods.length);
+  const fyIncludeLabel = includeFySubscription
+    ? FY_INCLUDE_OPTIONS[0].label
+    : FY_INCLUDE_OPTIONS[1].label;
 
   return (
     <div className="ua-cp-section ua-cp-ex">
       <div className="ua-cp-ex__head">
         <h2 className="ua-cp-ex__title">Energy Exchange</h2>
-        <p className="ua-cp-ex__sub">Program payments for this client. Download any invoice, or trigger a fresh payment into their app.</p>
+        <p className="ua-cp-ex__sub">Program payments and FY app subscription for this client.</p>
+      </div>
+
+      <div className="ua-cp-ex-panel">
+        <div className="ua-cp-ex-panel__head">
+          <strong>FY app subscription program</strong>
+          <p>
+            Financial-year plans (pro-rata current FY @ ₹{fyMonthly || "—"}/month). Enable so the client can buy or renew in the app.
+          </p>
+        </div>
+        <div className="ua-cp-ex-form__actions" style={{ justifyContent: "flex-start", gap: "0.75rem" }}>
+          <span className="ua-cp-ex-form__note" style={{ margin: 0 }}>
+            {eeLoading
+              ? "Loading…"
+              : eeProgram?.enabled
+                ? `Enabled · ₹${eeProgram.monthlyAmount || fyMonthly || "—"}/month`
+                : eeProgram
+                  ? "Program exists but disabled"
+                  : "Not enabled yet"}
+          </span>
+          {canCreate ? (
+            <button
+              type="button"
+              className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
+              onClick={handleEnableEe}
+              disabled={eeBusy || eeLoading}
+            >
+              {eeBusy ? "Saving…" : eeProgram?.enabled ? "Refresh from FY defaults" : "Enable FY subscription"}
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div className="ua-cp-ex-panel">
@@ -353,7 +446,7 @@ export function ExchangeSection({ user, onToast }) {
           <>
         <div className="ua-cp-ex-panel__head">
           <strong>Trigger a payment</strong>
-          <p>Pick a program and a discount slab — both come from what admin set in Energy Exchange; the value follows. App subscription is included in the same price.</p>
+          <p>Pick a program and a discount slab. Optionally include the current FY app subscription in the same program price.</p>
         </div>
         <div className="ua-cp-ex-form__grid">
           <FieldSelect
@@ -391,14 +484,17 @@ export function ExchangeSection({ user, onToast }) {
             <div className="ua-cp-ex-field__value">{program && discount ? formatRupee(value) : "—"}</div>
           </div>
           <FieldSelect
-            label="App subscription"
-            value={loading ? "Loading…" : subscription ? subscriptionLabel(subscription) : "None published"}
-            options={subscriptions}
+            label="App subscription (FY)"
+            value={fyIncludeLabel}
+            options={FY_INCLUDE_OPTIONS}
             open={openField === "subscription"}
-            disabled={loading || !subscriptions.length}
+            disabled={loading}
             onToggle={(next) => setOpenField(next ? "subscription" : null)}
-            onSelect={(next) => { setSubscription(next); closeMenus(); }}
-            getLabel={subscriptionLabel}
+            onSelect={(next) => {
+              setIncludeFySubscription(next.id === "on");
+              closeMenus();
+            }}
+            getLabel={(option) => option.label}
           />
         </div>
         <div className="ua-cp-ex-form__actions">
@@ -416,7 +512,7 @@ export function ExchangeSection({ user, onToast }) {
               : emptyConfig
                 ? "Publish Program, Discount, and Link validity on Configs → App Program before triggering a payment."
                 : program && discount && validity
-                  ? `Listed at ${formatRupee(program.price)} · ${discount.pct}% discount applied${bundledOn ? ` · ${subscriptionLabel(subscription)} included in the same price` : ""} · the payment link expires in ${validity.label.toLowerCase()} if unpaid; the invoice generates on success.`
+                  ? `Listed at ${formatRupee(program.price)} · ${discount.pct}% discount applied${includeFySubscription ? " · current FY app subscription included in the same price" : ""} · the payment link expires in ${validity.label.toLowerCase()} if unpaid; the invoice generates on success.`
                   : "Loading published App Program options…"}
           </p>
         </div>
@@ -457,7 +553,7 @@ export function ExchangeSection({ user, onToast }) {
         open={confirmOpen}
         title={`Send this payment to ${firstName}'s app?`}
         body={program && discount
-          ? `${program.name}${bundledOn ? ` + ${subscriptionLabel(subscription)}` : ""} · ${formatRupee(value)} after ${discount.pct}% discount${bundledOn ? ", with app subscription included in the same price" : ""}. They get a notification straight away and the invoice generates when they pay.`
+          ? `${program.name}${includeFySubscription ? " + current FY app subscription" : ""} · ${formatRupee(value)} after ${discount.pct}% discount${includeFySubscription ? ", with FY subscription included in the same price" : ""}. They get a notification straight away and the invoice generates when they pay.`
           : null}
         confirming={triggering}
         onClose={() => !triggering && setConfirmOpen(false)}
