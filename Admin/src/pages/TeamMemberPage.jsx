@@ -33,13 +33,13 @@ function ContentToggle({ live, disabled, onChange }) {
   return (
     <button
       type="button"
-      className={`ua-my-content__toggle${live ? " ua-my-content__toggle--on" : ""}`}
+      className={`ua-toggle ua-toggle--sm${live ? " ua-toggle--on" : ""}`}
       aria-pressed={live}
       aria-label={live ? "Live in app" : "Hidden in app"}
       disabled={disabled}
       onClick={onChange}
     >
-      <span className="ua-my-content__toggle-knob" />
+      <span className="ua-toggle__knob" />
     </button>
   );
 }
@@ -645,7 +645,8 @@ export function TeamMemberPage() {
           <div className="ua-tm-section-head">
             <div className="ua-tm-section-head__title">Clients & team</div>
             <div className="ua-tm-section-head__hint">
-              {member.clientCount ?? 0} clients assigned — tap a card to view them
+              {member.clientCount ?? 0} <font style={{color:"rgb(154, 166, 184)"}}>
+                clients assigned — tap a card to view them</font>
             </div>
           </div>
           <div className="ua-tm-stat-grid">
@@ -677,9 +678,9 @@ export function TeamMemberPage() {
         <section className="ua-tm-card">
           <div className="ua-tm-section-head">
             <div className="ua-tm-section-head__title">Content</div>
-            <div className="ua-tm-section-head__hint">
+            <div className="ua-tm-section-head__hint" style={{color:"rgb(154, 166, 184)"}}>
               {contentLive} of {contentItems.length} live for clients
-              {canEditContent ? " — upload, replace or hide any of them" : ""}
+              {/* {canEditContent ? " — upload, replace or hide any of them" : ""} */}
             </div>
           </div>
           <div className="ua-tm-content-list">
@@ -781,8 +782,8 @@ export function TeamMemberPage() {
           </div>
           <div className="ua-tm-perms__actions">
             <span className="ua-tm-perms__count">
-              {granted} of {member.totalSlots || totalSlots} granted
-              {member.hasOverrides ? " · personal override" : ""}
+              {granted} <font style={{color:"rgb(154, 166, 184)"}}>of {member.totalSlots || totalSlots} granted</font>
+              {/* {member.hasOverrides ? " · personal override" : ""} */}
             </span>
             <button type="button" className="ua-tm-perms__reset" onClick={handleResetPerms} disabled={savingPerms || !canEditPerms}>
               <span aria-hidden="true">↺</span> Reset to default
