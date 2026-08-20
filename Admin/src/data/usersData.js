@@ -218,6 +218,14 @@ export function conversionPrompt(user, direction) {
       kicker: "Conversion",
     };
   }
+  if (t === "Consultancy") {
+    return {
+      title: `Move ${name} from PWC to SEEK?`,
+      body: `This ends consultancy entitlements. ${name}’s history stays on the account.`,
+      confirm: "Move to SEEK",
+      kicker: "Conversion",
+    };
+  }
   return {
     title: `Move ${name} from HEAL to SEEK?`,
     body: `This ends paid coaching entitlements. ${name}’s history stays on the account.`,
@@ -234,9 +242,42 @@ export function prevTier(tier) {
 
 export function canDowngradeTier(tier, ageDays) {
   const t = normalizeTier(tier);
-  // Heal → Seek and Maintenance → Heal are backed by account conversion APIs.
+  // Heal → Seek, PWC → Seek, and Maintenance → Heal are the downgrade paths.
   void ageDays;
-  return t === "Seek to Heal" || t === "Maintenance";
+  return t === "Seek to Heal" || t === "Maintenance" || t === "Consultancy";
+}
+
+/** Inline TIER-column actions: current badge stays put; these are the move options. */
+export function listTierMoveOptions(tier, ageDays) {
+  const t = normalizeTier(tier);
+  const options = [];
+  if (canConvertTier(t)) {
+    const target = nextTier(t);
+    options.push({
+      direction: "up",
+      target,
+      label: `→ ${tierLabel(target)}`,
+      title: t === "Seek to Heal"
+        ? "Move this client into MAINTENANCE — for when every goal has been achieved"
+        : t === "Consultancy"
+          ? "Convert this client from PWC to HEAL"
+          : "Convert this client from SEEK to HEAL when payment did not go through",
+    });
+  }
+  if (canDowngradeTier(t, ageDays)) {
+    const target = prevTier(t);
+    options.push({
+      direction: "down",
+      target,
+      label: `↓ ${tierLabel(target)}`,
+      title: t === "Maintenance"
+        ? "Move this client back to HEAL — for when maintenance was entered too early"
+        : t === "Consultancy"
+          ? "Move this client back down to SEEK — ends consultancy entitlements"
+          : "Move this client back down to SEEK — ends paid coaching entitlements",
+    });
+  }
+  return options;
 }
 
 export function lastActiveMinutes(value) {
