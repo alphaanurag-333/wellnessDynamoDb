@@ -1153,8 +1153,11 @@ export function AdminDashboard({
                         </span>
                         <span className="ptile__tip" role="tooltip">
                           <span className="ptile__tip-title">{cell.tipTitle}</span>
-                          {cell.people.map((person) => (
-                            <span key={person.name} className="ptile__person">
+                          {cell.people.map((person, personIdx) => (
+                            <span
+                              key={`${cell.id}-${person.userId || person.name || "person"}-${personIdx}`}
+                              className="ptile__person"
+                            >
                               <span className="ptile__avatar" style={{ background: person.color }}>{person.initial}</span>
                               <span className="ptile__person-name">{person.name}</span>
                               <span className="ptile__person-detail">{person.detail}</span>
@@ -1209,9 +1212,9 @@ export function AdminDashboard({
         <div className="prog-cats prog-cats--v2">
           <div className="prog-cats__main">
             <div className="prog-cats__scroll">
-              {programCards.map((p) => (
+              {programCards.map((p, index) => (
                 <button
-                  key={p.id || p.value || p.label}
+                  key={p.id || p.value || `${p.label}-${index}`}
                   type="button"
                   className="prog-cat"
                   style={{ background: p.bg, borderColor: p.border }}
@@ -1305,9 +1308,9 @@ export function AdminDashboard({
         <div className="prog-cats prog-cats--v2">
           <div className="prog-cats__main">
             <div className="prog-cats__scroll">
-              {programCards.map((p) => (
+              {programCards.map((p, index) => (
                 <button
-                  key={p.id || p.value || p.label}
+                  key={p.id || p.value || `${p.label}-${index}`}
                   type="button"
                   className="prog-cat"
                   style={{ background: p.bg, borderColor: p.border }}
@@ -1370,8 +1373,11 @@ export function AdminDashboard({
                     </span>
                     <span className="ops-tile__tip" role="tooltip">
                       <span className="ops-tile__tip-title">{cell.tipTitle}</span>
-                      {(cell.people || []).map((person) => (
-                        <span key={person.userId || person.name} className="ops-tile__person">
+                      {(cell.people || []).map((person, personIdx) => (
+                        <span
+                          key={`${cell.id}-${person.userId || person.name || "person"}-${personIdx}`}
+                          className="ops-tile__person"
+                        >
                           <span className="ops-tile__avatar" style={{ background: person.color }}>{person.initial}</span>
                           <span className="ops-tile__person-name">{person.name}</span>
                           <span className="ops-tile__person-detail">{person.detail}</span>
@@ -1653,9 +1659,9 @@ export function AdminDashboard({
             <div className="leaderboard__table-head">
               <div>#</div><div>Client</div><div>Score</div><div>Days</div>
             </div>
-              {activeLeaderboard.map((row) => (
+              {activeLeaderboard.map((row, rowIdx) => (
                 <div
-                  key={row.userId || row.rank}
+                  key={`${row.userId || row.name || "row"}-${row.rank ?? rowIdx}`}
                   className={`leaderboard__row${row.highlight ? " leaderboard__row--highlight" : ""}`}
                   onClick={() => onToast(`Opening profile for ${row.name}`)}
                   onKeyDown={(e) => e.key === "Enter" && onToast(`Opening profile for ${row.name}`)}
