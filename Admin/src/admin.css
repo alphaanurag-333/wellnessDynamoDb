@@ -7879,31 +7879,65 @@
 
 .updated-admin .ua-team-actions {
   display: flex;
-  gap: 6px;
+  align-items: center;
   justify-content: flex-end;
-  flex-wrap: wrap;
 }
 
-.updated-admin .ua-team-actions__bell {
-  width: 28px;
-  height: 28px;
+.updated-admin .ua-team-actions__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.updated-admin .ua-team-actions__btn,
+.updated-admin .ua-teams-page .ua-team-actions__btn {
+  box-sizing: border-box;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  max-width: 32px;
+  max-height: 32px;
+  margin: 0;
+  padding: 0;
   border-radius: 8px;
   border: 1px solid #dcdff7;
   background: #eef0fc;
   color: #5e6ad2;
-  font-size: 12px;
-  line-height: 1;
+  font-size: 13px;
+  line-height: 0;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  padding: 0;
+  flex: 0 0 32px;
   font-family: inherit;
 }
 
-.updated-admin .ua-team-actions__perm {
-  height: 28px;
+.updated-admin .ua-team-actions__btn svg,
+.updated-admin .ua-teams-page .ua-team-actions__btn svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+  flex-shrink: 0;
+}
+
+.updated-admin .ua-team-actions__btn--danger,
+.updated-admin .ua-teams-page .ua-team-actions__btn--danger {
+  color: #c0392b;
+  border-color: #f0d0cc;
+  background: #fff8f7;
+}
+
+.updated-admin .ua-team-actions__link,
+.updated-admin .ua-teams-page .ua-team-actions__link {
+  box-sizing: border-box;
+  height: 32px;
+  min-height: 32px;
   padding: 0 10px;
   border-radius: 8px;
   border: 1px solid var(--border);
@@ -7911,26 +7945,15 @@
   color: #5e6ad2;
   font-weight: 650;
   font-size: 11px;
+  line-height: 1;
   cursor: pointer;
-}
-
-.updated-admin .ua-team-actions__icon {
-  width: 28px;
-  padding: 0;
+  width: auto;
+  white-space: nowrap;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-}
-
-.updated-admin .ua-team-actions__icon svg {
-  display: block;
-}
-
-.updated-admin .ua-team-actions__perm--danger {
-  color: #c0392b;
-  border-color: #f0d0cc;
-  background: #fff8f7;
+  flex: 0 0 auto;
+  font-family: inherit;
 }
 
 .updated-admin .ua-teams-page {
@@ -8024,8 +8047,9 @@
   flex-direction: column;
   gap: 12px;
   padding: 16px 18px;
-  overflow: visible;
+  overflow-y: auto;
   min-height: 0;
+  flex: 1 1 auto;
 }
 
 .updated-admin .ua-teams-create__field {
@@ -8121,7 +8145,17 @@
 }
 
 .updated-admin .ua-teams-create .ua-cfg-select__chev {
-  color: #8a97ac;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-size: 0;
+  line-height: 0;
+  color: transparent;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%2316233f' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 12px 8px no-repeat;
+  transition: transform 0.15s ease;
 }
 
 .updated-admin .ua-teams-create .ua-cfg-select.is-open .ua-cfg-select__chev {
@@ -8153,7 +8187,8 @@
 
 .updated-admin .ua-teams-create__foot {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  align-items: center;
   justify-content: flex-end;
   gap: 8px;
   margin: 0;
@@ -8164,12 +8199,22 @@
 }
 
 .updated-admin .ua-teams-create__foot .ua-cfg-btn {
+  width: auto;
   min-width: 7.5rem;
+  flex: 0 0 auto;
 }
 
 .updated-admin .ua-teams-create__foot .ua-cfg-btn--outline {
-  color: rgb(94, 106, 210);
+  background: #fff;
+  color: rgb(90, 107, 133);
   border: 1px solid rgb(203, 213, 230);
+}
+
+.updated-admin .ua-teams-create__foot .ua-cfg-btn--primary {
+  margin-top: 0;
+  background: rgb(94, 106, 210);
+  color: #fff;
+  border: 1px solid rgb(94, 106, 210);
 }
 
 @media (max-width: 980px) {
@@ -8302,16 +8347,14 @@
   }
 
   .updated-admin .ua-teams-page .ua-team-actions {
-    justify-content: flex-end;
-    flex-wrap: wrap;
+    justify-content: flex-start;
+    align-items: center;
   }
 
-  .updated-admin .ua-teams-page .ua-team-actions__perm:not(.ua-team-actions__icon) {
-    display: inline-flex;
+  .updated-admin .ua-teams-page .ua-team-actions__row {
+    justify-content: flex-start;
     align-items: center;
-    flex: 1 1 auto;
-    min-width: 0;
-    justify-content: center;
+    gap: 6px;
   }
 }
 
@@ -12912,7 +12955,7 @@
   border-radius: 999px;
   background: #f5f5f5;
   /* background: #e8edf5; */
-  margin-bottom: 14px;
+  margin-bottom: 5px;
   overflow-x: auto;
   max-width: 100%;
   scrollbar-width: thin;
@@ -14254,7 +14297,7 @@ scrollbar-width: thin;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto minmax(0, 1fr);
   gap: 12px;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 5px;
 }
 
 .updated-admin .ua-cp-ip-summary__meta {
@@ -14544,7 +14587,7 @@ scrollbar-width: thin;
   border: 1px solid #e6ebf2;
   border-radius: 12px;
   padding: 16px;
-  margin-top: 14px;
+  margin-top: 0px;
   box-shadow: 0 1px 2px rgba(16, 35, 63, 0.04);
 }
 
@@ -16946,19 +16989,26 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cp-scoring-ref__row--excellent {
-  background: #edf8f1;
+  background: rgb(231, 246, 238);
+  border:1px solid rgb(205, 238, 222) !important;
+}
+.borde {
+  border:1px solid rgb(205, 238, 222) !important;
 }
 
 .updated-admin .ua-cp-scoring-ref__row--good {
-  background: #eef0fc;
+  background: rgb(238, 240, 252);
+  border:1px solid rgb(220, 223, 247);
 }
 
 .updated-admin .ua-cp-scoring-ref__row--average {
-  background: #fff8e8;
+  background: rgb(251, 243, 223);
+  border:1px solid rgb(242, 226, 168);
 }
 
 .updated-admin .ua-cp-scoring-ref__row--poor {
-  background: #fff0f0;
+  background: rgb(253, 234, 234);
+  border:1px solid rgb(246, 208, 209);
 }
 
 .updated-admin .ua-cp-scoring-ref__row-label {
@@ -47977,7 +48027,7 @@ scrollbar-width: thin;
   .updated-admin .ua-cp-modal--launch {
     width: calc(100% - 8px);
     max-height: calc(100dvh - 16px);
-    padding: 14px 14px 12px;
+    padding: 10px 14px 12px;
   }
 
   .updated-admin .ua-cp-scoring-ref__meta {
@@ -52156,15 +52206,16 @@ scrollbar-width: thin;
     overflow-wrap: anywhere;
   }
 
-  .updated-admin .ua-teams-page .ua-team-actions,
-  .updated-admin .ua-teams-page .ua-team-actions__perm {
-    width: 100%;
-    justify-content: flex-end;
+  .updated-admin .ua-teams-page .ua-team-actions {
+    width: auto;
+    justify-content: flex-start;
+    align-items: center;
   }
 
-  .updated-admin .ua-teams-page .ua-team-actions__perm:not(.ua-team-actions__icon) {
-    flex: 1 1 auto;
-    justify-content: center;
+  .updated-admin .ua-teams-page .ua-team-actions__row {
+    justify-content: flex-start;
+    align-items: center;
+    gap: 6px;
   }
 }
 
@@ -52188,9 +52239,16 @@ scrollbar-width: thin;
     font-size: 16px;
   }
 
+  .updated-admin .ua-teams-create__foot {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+  }
+
   .updated-admin .ua-teams-create__foot .ua-cfg-btn {
-    flex: 1 1 100%;
-    min-width: 0;
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 7.5rem;
   }
 }
 
@@ -52199,9 +52257,16 @@ scrollbar-width: thin;
     width: min(440px, calc(100vw - 24px));
   }
 
+  .updated-admin .ua-teams-create__foot {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+  }
+
   .updated-admin .ua-teams-create__foot .ua-cfg-btn {
-    flex: 1 1 100%;
-    min-width: 0;
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 7.5rem;
   }
 }
 
@@ -53168,6 +53233,7 @@ scrollbar-width: thin;
   .updated-admin .ua-teams-page .ua-table--teams.ua-table__row > [data-label] {
     display: grid;
     grid-template-columns: 64px minmax(0, 1fr);
+    align-items: center;
     justify-items: start;
     min-width: 0;
   }
@@ -53178,6 +53244,12 @@ scrollbar-width: thin;
     max-width: 100%;
     justify-self: start;
     white-space: nowrap;
+  }
+
+  .updated-admin .ua-teams-page .ua-team-actions__row {
+    justify-content: flex-start;
+    align-items: center;
+    gap: 6px;
   }
 }
 
@@ -53191,6 +53263,7 @@ scrollbar-width: thin;
   .updated-admin .ua-teams-page .ua-table--teams.ua-table__row > [data-label] {
     display: grid;
     grid-template-columns: 64px minmax(0, 1fr);
+    align-items: center;
     justify-items: start;
     min-width: 0;
   }
@@ -53201,6 +53274,12 @@ scrollbar-width: thin;
     max-width: 100%;
     justify-self: start;
     white-space: nowrap;
+  }
+
+  .updated-admin .ua-teams-page .ua-team-actions__row {
+    justify-content: flex-start;
+    align-items: center;
+    gap: 6px;
   }
 }
 

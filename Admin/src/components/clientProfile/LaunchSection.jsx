@@ -1036,7 +1036,7 @@ export function LaunchSection({ user, onToast }) {
         {launchStepDone ? null : (
           <div className="ua-cp-launch-schedule-wrap">
             <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--launch-schedule" onClick={() => setScheduleOpen(true)}>
-              📅 Schedule LAUNCH meeting
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v16H3z"></path><path d="M3 10h18"></path><path d="M8 3v4"></path><path d="M16 3v4"></path></svg> Schedule LAUNCH meeting
             </button>
           </div>
         )}

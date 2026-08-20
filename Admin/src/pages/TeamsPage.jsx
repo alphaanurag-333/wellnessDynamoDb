@@ -682,44 +682,46 @@ export function TeamsPage() {
                     </span>
                   </div>
                   <div className="ua-team-actions" data-label="Actions" onClick={(e) => e.stopPropagation()}>
-                    {isSuperAdmin ? (
-                      <>
-                        <button
-                          type="button"
-                          className="ua-team-actions__bell"
-                          title="Send reminder"
-                          aria-label={`Send reminder to ${s.name}`}
-                          onClick={() => openMemberRemind(s, meta.name)}
-                        >
-                          🔔
-                        </button>
-                        <button
-                          type="button"
-                          className="ua-team-actions__perm ua-team-actions__icon"
-                          title="Edit profile"
-                          aria-label={`Edit profile for ${s.name}`}
-                          onClick={() => setEditingMember(s)}
-                        >
-                          <IconEditProfile />
-                        </button>
-                        <button
-                          type="button"
-                          className="ua-team-actions__perm ua-team-actions__perm--danger ua-team-actions__icon"
-                          title="Delete"
-                          aria-label={`Delete ${s.name}`}
-                          onClick={() => setDeletingMember(s)}
-                        >
-                          <IconDeleteMember />
-                        </button>
-                      </>
-                    ) : null}
-                    <button
-                      type="button"
-                      className="ua-team-actions__perm"
-                      onClick={() => openMember(s.id, isSuperAdmin || actorIsWc ? "permissions" : undefined)}
-                    >
-                      {isSuperAdmin || actorIsWc ? "Permissions" : "View members"} ›
-                    </button>
+                    <div className="ua-team-actions__row">
+                      {isSuperAdmin ? (
+                        <>
+                          <button
+                            type="button"
+                            className="ua-team-actions__btn"
+                            title="Send reminder"
+                            aria-label={`Send reminder to ${s.name}`}
+                            onClick={() => openMemberRemind(s, meta.name)}
+                          >
+                            🔔
+                          </button>
+                          <button
+                            type="button"
+                            className="ua-team-actions__btn"
+                            title="Edit profile"
+                            aria-label={`Edit profile for ${s.name}`}
+                            onClick={() => setEditingMember(s)}
+                          >
+                            <IconEditProfile />
+                          </button>
+                          <button
+                            type="button"
+                            className="ua-team-actions__btn ua-team-actions__btn--danger"
+                            title="Delete"
+                            aria-label={`Delete ${s.name}`}
+                            onClick={() => setDeletingMember(s)}
+                          >
+                            <IconDeleteMember />
+                          </button>
+                        </>
+                      ) : null}
+                      <button
+                        type="button"
+                        className="ua-team-actions__link"
+                        onClick={() => openMember(s.id, isSuperAdmin || actorIsWc ? "permissions" : undefined)}
+                      >
+                        {isSuperAdmin || actorIsWc ? "Permissions" : "View members"} ›
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
