@@ -1019,7 +1019,7 @@ export function AdminDashboard({
                       {e.label}
                     </span>
                     <span className="expiry-cell__value">
-                      <span style={{ color: e.color }}>{statisticsForView || isStaffDash ? expTotal : e.value}</span>
+                      <span style={{ color: "black" }}>{statisticsForView || isStaffDash ? expTotal : e.value}</span>
                       <span className="expiry-cell__sub">
                         {statisticsForView ? "Active Heal subscriptions" : e.sub}
                       </span>
@@ -1277,7 +1277,7 @@ export function AdminDashboard({
                       <span className="ops-tile__short">{cell.short}</span>
                     </span>
                     <span className="ops-tile__count-row">
-                      <span className="ops-tile__count" style={{ color: cell.color }}>{cell.count}</span>
+                      <span className="ops-tile__count" style={{ color: "black" }}>{cell.count}</span>
                       <span className="ops-tile__chip">{cell.chip}</span>
                     </span>
                     <span className="ops-tile__tip" role="tooltip">
@@ -1468,7 +1468,7 @@ export function AdminDashboard({
                   <span className="stat-card__label">{team.label}</span>
                 </div>
                 <div className="stat-card__value" >{team.value}</div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <div className="team-card__tags">
                   {(team.pending || []).map((tag) => (
                     <span key={tag.label} className="tag" style={{ background: tag.bg, color: tag.color, borderColor: tag.color }}>
                       {tag.label}

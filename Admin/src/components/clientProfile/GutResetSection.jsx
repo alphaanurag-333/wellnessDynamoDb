@@ -63,18 +63,24 @@ function TimelineCards({ entry }) {
     <div className="ua-cp-gut-timeline">
       <div className="ua-cp-gut-timeline__card ua-cp-gut-timeline__card--start">
         <span className="ua-cp-gut-timeline__dot" aria-hidden="true" />
-        <span className="ua-cp-gut-timeline__label">Start</span>
-        <strong>{formatGutDate(entry.startDate)}</strong>
+        <div className="ua-cp-gut-timeline__copy">
+          <span className="ua-cp-gut-timeline__label">Start</span>
+          <strong>{formatGutDate(entry.startDate)}</strong>
+        </div>
       </div>
       <div className="ua-cp-gut-timeline__card ua-cp-gut-timeline__card--fruit">
         <span className="ua-cp-gut-timeline__dot" aria-hidden="true" />
-        <span className="ua-cp-gut-timeline__label">Fruit &amp; veggie</span>
-        <strong>{formatGutDate(entry.fruitVegDate)}</strong>
+        <div className="ua-cp-gut-timeline__copy">
+          <span className="ua-cp-gut-timeline__label">Fruit &amp; veggie</span>
+          <strong>{formatGutDate(entry.fruitVegDate)}</strong>
+        </div>
       </div>
       <div className="ua-cp-gut-timeline__card ua-cp-gut-timeline__card--water">
         <span className="ua-cp-gut-timeline__dot" aria-hidden="true" />
-        <span className="ua-cp-gut-timeline__label">Water fasting</span>
-        <strong>{formatGutDate(entry.waterFastDate)}</strong>
+        <div className="ua-cp-gut-timeline__copy">
+          <span className="ua-cp-gut-timeline__label">Water fasting</span>
+          <strong>{formatGutDate(entry.waterFastDate)}</strong>
+        </div>
       </div>
     </div>
   );

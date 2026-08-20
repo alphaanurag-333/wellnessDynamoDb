@@ -253,8 +253,8 @@ function RequestPhotoModal({ open, onClose, onConfirm, busy }) {
           </select>
         </label>
         <div className="ua-cp-present-modal__foot">
-          <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={onClose} disabled={busy}>Cancel</button>
-          <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm" onClick={() => onConfirm(selected)} disabled={busy}>
+          <button type="button" className="ua-cp-btn ua-cp-btn--outline" onClick={onClose} disabled={busy}>Cancel</button>
+          <button type="button" className="ua-cp-btn ua-cp-btn--primary" onClick={() => onConfirm(selected)} disabled={busy}>
             {busy ? "Sending…" : "Send request"}
           </button>
         </div>

@@ -407,14 +407,26 @@ function WeightPhotoHistoryModal({ open, photos, onClose }) {
   );
 }
 
-function ConditionPhotoCard({ photo }) {
+function ConditionPhotoCard({ photo, label }) {
   const openPhoto = () => {
     if (photo.url) window.open(photo.url, "_blank", "noopener,noreferrer");
   };
 
   return (
-    <div className="ua-cp-hptrack-photo-card">
-      <div className="ua-cp-hptrack-photo-card__media">
+    <article className="ua-cp-hptrack-photo-card">
+      {label ? <span className="ua-cp-hptrack-photo-card__label">{label}</span> : null}
+      <div
+        className="ua-cp-hptrack-photo-card__media"
+        role={photo.url ? "button" : undefined}
+        tabIndex={photo.url ? 0 : undefined}
+        onClick={photo.url ? openPhoto : undefined}
+        onKeyDown={photo.url ? (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openPhoto();
+          }
+        } : undefined}
+      >
         {photo.url ? (
           <img className="ua-cp-hptrack-photo-card__img" src={photo.url} alt={photo.date} />
         ) : (
@@ -428,11 +440,28 @@ function ConditionPhotoCard({ photo }) {
         <strong>{photo.date}</strong>
       </div>
       <div className="ua-cp-hptrack-photo-card__actions ua-cp-hptrack-photo-card__actions--view">
-        <button type="button" className="ua-cp-hptrack-photo-card__download" onClick={openPhoto} disabled={!photo.url}>
+        <button type="button" className="ua-cp-hptrack-photo-card__open" onClick={openPhoto} disabled={!photo.url}>
           {photo.url ? "Open photo" : "No photo"}
         </button>
       </div>
-    </div>
+    </article>
+  );
+}
+
+function ConditionEmptySlot({ label }) {
+  return (
+    <article className="ua-cp-hptrack-photo-card ua-cp-hptrack-photo-card--empty">
+      {label ? <span className="ua-cp-hptrack-photo-card__label">{label}</span> : null}
+      <div className="ua-cp-hptrack-photo-card__media">
+        <span className="ua-cp-hptrack-photo-card__camera" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+            <circle cx="12" cy="13" r="4" />
+          </svg>
+        </span>
+      </div>
+      <p className="ua-cp-hptrack-photo-card__empty-copy">No earlier photo yet</p>
+    </article>
   );
 }
 
@@ -872,11 +901,18 @@ function ConditionPanel({ logs }) {
           <span>Latest comparison</span>
           <button type="button" className="ua-cp-hptrack-view-history" onClick={() => setHistoryOpen(true)}>View history</button>
         </div>
-        <div className="ua-cp-hptrack-photo-grid">
-          {latest.length ? latest.map((photo) => (
-            <ConditionPhotoCard key={photo.id} photo={photo} />
-          )) : <EmptyLogs label="photos for this body part" />}
-        </div>
+        {!latest.length ? (
+          <EmptyLogs label="photos for this body part" />
+        ) : (
+          <div className="ua-cp-hptrack-photo-grid">
+            <ConditionPhotoCard photo={latest[0]} label="Latest" />
+            {latest[1] ? (
+              <ConditionPhotoCard photo={latest[1]} label="Previous" />
+            ) : (
+              <ConditionEmptySlot label="Previous" />
+            )}
+          </div>
+        )}
       </div>
 
       <ConditionHistoryModal
