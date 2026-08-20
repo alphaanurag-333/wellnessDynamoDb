@@ -1,6 +1,6 @@
 import defaultLogo from "../assets/logo/defaultlogo.png";
 
-export function BrandLoader({ label = "Loading Wellness Admin...", variant = "screen" }) {
+export function BrandLoader({ label = "Loading Wellness Console...", variant = "screen" }) {
   const isPage = variant === "page";
 
   return (
