@@ -22,6 +22,7 @@ const {
   isConsultancyOnlyTier,
   isAlreadyAssignedClient,
 } = require("./userAssignmentLogic");
+const { buildPaidOnboardingResetUpdates } = require("../utils/paidOnboardingHelpers");
 
 const IMMUTABLE_HISTORY_FIELDS = [
   "convertedAt",
@@ -313,9 +314,7 @@ async function convertHealToSeek(userId) {
     assignmentSource: null,
     assignedAt: null,
     healPaidAt: null,
-    paidOnboardingCompleted: false,
-    paidOnboardingStep: null,
-    paidOnboardingStepStatus: null,
+    ...buildPaidOnboardingResetUpdates(),
     energyExchangeEnabled: false,
     programEnabled: false,
     programPurchased: false,

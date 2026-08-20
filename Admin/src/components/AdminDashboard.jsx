@@ -425,7 +425,8 @@ export function AdminDashboard({
 }) {
   const navigate = useNavigate();
   const { viewAs: viewAsId, viewAsPersona, liveMenuRoles, liveRolesReady } = useViewAs();
-  const viewAs = viewAsPersona || viewAsId;
+  // Prefer the selected View-as id for admin; persona is only for custom staff roles.
+  const viewAs = viewAsId === "admin" ? "admin" : (viewAsPersona || viewAsId);
   const isStaffDash = viewAs === "wc" || viewAs === "awc";
   const isSupportDash = viewAs === "support";
   const isFullDash = viewAs === "admin" || isStaffDash;
@@ -1341,7 +1342,6 @@ export function AdminDashboard({
                 </button>
               </div>
               <div className="ops-challenge__list">
-                <div className="ops-challenge__list-inner" aria-hidden="true">IRW</div>
                 <div className="ops-challenge__list-items">
                   {chRunning.length === 0 ? (
                     <div className="ops-challenge__empty">

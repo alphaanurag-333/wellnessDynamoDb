@@ -882,7 +882,7 @@ export function UsersPage() {
             <div>#</div>
             <div>
               <SortButton
-                label="Name"
+                label="User Name"
                 active={sort?.key === "name"}
                 direction={sort?.dir}
                 onClick={() => toggleSort("name")}

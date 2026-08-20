@@ -1,6 +1,6 @@
 const { getUserById, updateUser } = require("../models/userModel");
 const { convertSeekToHeal } = require("../models/userConversionModel");
-const { normalizeUserTier } = require("../models/userAssignmentLogic");
+const { normalizeUserTier, isHealTier } = require("../models/userAssignmentLogic");
 const {
   listActiveProgramCatalog,
   getProgramCatalogRecordById,
@@ -20,6 +20,7 @@ const {
 } = require("../models/energyExchangeProgramModel");
 const { getAppConfig } = require("../models/appConfigModel");
 const { emitPendingAssignment } = require("./adminActivityService");
+const { buildPaidOnboardingResetUpdates } = require("../utils/paidOnboardingHelpers");
 
 function normalizeProgramLookupText(value) {
   return String(value || "")
@@ -224,34 +225,39 @@ async function adminConvertUserToHeal(userId, { referralCode, catalogProgramId }
   }
 
   const tier = normalizeUserTier(userBefore.userTier);
-  const user = await convertSeekToHeal(userId, {
-    referralCode,
-    allowFromSeek: tier === "seek",
-  });
+  let user;
+  try {
+    user = await convertSeekToHeal(userId, {
+      referralCode,
+      allowFromSeek: tier === "seek",
+    });
+  } catch (err) {
+    if (err?.name !== "AlreadyConvertedError") throw err;
+    user = await getUserById(userId);
+    if (!user || !isHealTier(user.userTier)) throw err;
+  }
 
   const now = new Date().toISOString();
-  let refreshed = user;
-
-  if (String(user.parentCoachId || "").trim()) {
-    refreshed = await setupPaidClientEntitlements(user, { catalogProgramId, now });
-  }
-
-  const patches = {
+  const onboardingPatches = {
     healPaidAt: now,
-    paidOnboardingCompleted: false,
-    paidOnboardingStep: "register",
-    paidOnboardingStepStatus: null,
+    ...buildPaidOnboardingResetUpdates(),
   };
-
-  if (!refreshed.consultancyPaidAt) {
-    patches.consultancyPaidAt = now;
+  if (!user.consultancyPaidAt) {
+    onboardingPatches.consultancyPaidAt = now;
   }
 
-  const updated = await updateUser(userId, patches);
-  if (String(updated.assignmentStatus || "").trim() === "pending_admin") {
-    emitPendingAssignment(updated);
+  // Reset wizard state before entitlements so a catalog/program error cannot
+  // leave paidOnboardingCompleted=true from the previous Heal membership.
+  let refreshed = await updateUser(userId, onboardingPatches);
+
+  if (String(refreshed.parentCoachId || "").trim()) {
+    refreshed = await setupPaidClientEntitlements(refreshed, { catalogProgramId, now });
   }
-  return updated;
+
+  if (String(refreshed.assignmentStatus || "").trim() === "pending_admin") {
+    emitPendingAssignment(refreshed);
+  }
+  return refreshed;
 }
 
 module.exports = {

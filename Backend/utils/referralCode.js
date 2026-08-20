@@ -45,6 +45,13 @@ function isStaffReferralEntityType(entityType) {
   );
 }
 
+function isStaffReferralCode(code) {
+  const normalized = normalizeReferralCode(code);
+  return Object.values(STAFF_REFERRAL_PREFIX_BY_ENTITY).some((prefix) =>
+    normalized.startsWith(`${prefix}-`)
+  );
+}
+
 /**
  * Generate a referral code for the given entity.
  * Users keep the legacy random alphabet codes; WC/AWC use IRW-*-NNN.
@@ -66,4 +73,5 @@ module.exports = {
   generateStaffReferralCode,
   generateReferralCodeForEntity,
   isStaffReferralEntityType,
+  isStaffReferralCode,
 };

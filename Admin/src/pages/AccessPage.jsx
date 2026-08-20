@@ -52,6 +52,13 @@ function roleUiKey(role) {
   return role?.roleKey || role?.id;
 }
 
+function isAdminAccessRole(role) {
+  if (!role) return false;
+  const key = String(role.roleKey || role.id || "").toLowerCase();
+  const name = String(role.name || "").trim().toLowerCase();
+  return key === "admin" || name === "admin";
+}
+
 function capitalizeScope(value) {
   const v = String(value || "all").toLowerCase();
   if (v === "all") return "All";
@@ -931,7 +938,7 @@ function RolesPermissionsTab({ onToast }) {
   }
 
   async function resetRole() {
-    if (!role || role.locked) return;
+    if (!role || isAdminAccessRole(role) || role.locked) return;
     setResetBusy(true);
     const key = role.roleKey || role.id;
     const nextGrants = cloneGrants(grants);
@@ -987,6 +994,7 @@ function RolesPermissionsTab({ onToast }) {
   }
 
   const canDeleteRole = Boolean(role && !role.system && !role.locked && !ROLE_META[role.roleKey || role.id]);
+  const isAdminRole = isAdminAccessRole(role);
 
   async function confirmDeleteRole() {
     if (!deleteTarget) return;
@@ -1099,7 +1107,13 @@ function RolesPermissionsTab({ onToast }) {
                 </button>
               ))}
             </div>
-            <button type="button" className="ua-ac-btn-ghost" onClick={() => setResetOpen(true)} disabled={role.locked}>
+            <button
+              type="button"
+              className="ua-ac-btn-ghost"
+              onClick={() => setResetOpen(true)}
+              disabled={isAdminRole}
+              title={isAdminRole ? "Admin is locked and cannot be reset" : "Reset this role to its default permissions"}
+            >
               Reset to default
             </button>
             {canDeleteRole ? (

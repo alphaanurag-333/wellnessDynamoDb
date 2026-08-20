@@ -13,6 +13,7 @@ const {
   buildUserProgramGetPayload,
   toCheckoutHistoryRow,
   checkoutReminderBlockReason,
+  resolvePwcStaffReferralCode,
 } = require("../services/coachCheckoutService");
 
 function futureIso(ms = 60 * 60 * 1000) {
@@ -135,8 +136,33 @@ describe("coach program offer DTO", () => {
       linkValidity: "48 hours",
       expiresAt: "2026-08-18T12:00:00.000Z",
       appHealValidity: "1 year",
+      bundledSubscription: null,
       transactionId: "txn-9",
       payable: true,
+    });
+  });
+
+  it("exposes a bundled app subscription included in the same price", () => {
+    const dto = toPublicCoachProgramOffer({
+      productType: "program",
+      itemId: "diabetes",
+      itemName: "Diabetes Reversal",
+      amount: 29999,
+      netPayable: 27000,
+      bundledSubscription: {
+        enabled: true,
+        itemId: "sub-year",
+        itemName: "App subscription · yearly",
+        days: 365,
+      },
+      transactionId: "txn-10",
+    });
+
+    assert.deepEqual(dto.bundledSubscription, {
+      itemId: "sub-year",
+      itemName: "App subscription · yearly",
+      days: 365,
+      includedInProgramPrice: true,
     });
   });
 
@@ -348,5 +374,54 @@ describe("pending order reuse", () => {
       }),
       false
     );
+  });
+});
+
+describe("PWC staff referral display", () => {
+  const staff = {
+    coaches: [{ id: "coach-1", name: "Rahul Mehta", referralCode: "IRW-WC-980" }],
+    assistants: [{ id: "awc-1", name: "E", referralCode: "IRW-AWC-470", wellnessCoachId: "coach-1" }],
+  };
+
+  it("uses the WC/AWC code the client was referred with", () => {
+    assert.equal(
+      resolvePwcStaffReferralCode({ referredByCode: "IRW-WC-980", referralCode: "LLSC4Y8F" }, staff),
+      "IRW-WC-980"
+    );
+  });
+
+  it("uses the assigned assistant's AWC code when referredBy is not staff", () => {
+    assert.equal(
+      resolvePwcStaffReferralCode(
+        {
+          referralCode: "7WDW4JST",
+          assignedCoachId: "awc-1",
+          assignedCoachType: "assistant_wellness_coach",
+          parentCoachId: "coach-1",
+        },
+        staff
+      ),
+      "IRW-AWC-470"
+    );
+  });
+
+  it("falls back to the assigned wellness coach code", () => {
+    assert.equal(
+      resolvePwcStaffReferralCode(
+        {
+          referralCode: "8TAJKDAQ",
+          assignedCoachId: "coach-1",
+          assignedCoachType: "wellness_coach",
+          parentCoachId: "coach-1",
+        },
+        staff,
+        "coach-1"
+      ),
+      "IRW-WC-980"
+    );
+  });
+
+  it("does not display the client's own 8-character code", () => {
+    assert.equal(resolvePwcStaffReferralCode({ referralCode: "CSUYX8HL" }, staff), "");
   });
 });

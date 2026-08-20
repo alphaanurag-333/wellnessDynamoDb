@@ -26,6 +26,7 @@ const {
   shouldUseMockPayments,
 } = require("../utils/paymentGateway");
 const { emitPaymentReceived } = require("./adminActivityService");
+const { buildPaidOnboardingResetUpdates } = require("../utils/paidOnboardingHelpers");
 const {
   toPublicTransactionWithInvoice,
 } = require("../utils/consultancyInvoiceResponse");
@@ -270,8 +271,7 @@ async function finalizePaidEnergyExchangeTransaction(transaction, { paymentId, p
   }
 
   await updateUser(user.id, {
-    paidOnboardingCompleted: false,
-    paidOnboardingStep: "register",
+    ...buildPaidOnboardingResetUpdates(),
     healPaidAt: paidAt,
   });
 

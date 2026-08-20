@@ -171,7 +171,7 @@ function Panel({ title, subtitle, actions, children, className = "" }) {
 
 function ClientLookupPanel({
   onToast,
-  externalCode,
+  externalPwc,
   programOptions,
   programLabel = "Program",
   showAppHeal = true,
@@ -212,10 +212,23 @@ function ClientLookupPanel({
   }
 
   useEffect(() => {
-    if (!externalCode) return undefined;
+    if (!externalPwc) return undefined;
     let active = true;
-    setCode(externalCode);
-    lookupCoachCheckoutClient(externalCode)
+    setCode(externalPwc.code || "");
+    if (externalPwc.client) {
+      setClient(externalPwc.client);
+      setProgramId("");
+      onToast("Client loaded");
+      return () => {
+        active = false;
+      };
+    }
+    const lookupKey = String(externalPwc.clientCode || "").trim();
+    if (!lookupKey) {
+      onToast("No client found for that code");
+      return undefined;
+    }
+    lookupCoachCheckoutClient(lookupKey)
       .then((hit) => {
         if (!active) return;
         setClient(hit);
@@ -228,7 +241,7 @@ function ClientLookupPanel({
     return () => {
       active = false;
     };
-  }, [externalCode, onToast]);
+  }, [externalPwc, onToast]);
 
   async function lookup() {
     try {
@@ -1039,7 +1052,7 @@ function PwcPanel({ onToast, onUseCode, coaches }) {
               type="button"
               className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
               onClick={() => {
-                onUseCode?.(row.code);
+                onUseCode?.({ ...row, usedAt: Date.now() });
                 onToast(`Loaded ${row.code}`);
               }}
             >
@@ -1062,7 +1075,7 @@ function ExchangeClientSection({
   validityPeriods,
   productType = "program",
 }) {
-  const [referralCode, setReferralCode] = useState(null);
+  const [pwcLookup, setPwcLookup] = useState(null);
   const [coaches, setCoaches] = useState([]);
   const [assistants, setAssistants] = useState([]);
 
@@ -1084,10 +1097,10 @@ function ExchangeClientSection({
 
   return (
     <>
-      <PwcPanel onToast={onToast} onUseCode={setReferralCode} coaches={coaches} />
+      <PwcPanel onToast={onToast} onUseCode={setPwcLookup} coaches={coaches} />
       <ClientLookupPanel
         onToast={onToast}
-        externalCode={referralCode}
+        externalPwc={pwcLookup}
         programOptions={programOptions}
         programLabel={programLabel}
         showAppHeal={showAppHeal}

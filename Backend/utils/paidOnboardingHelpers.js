@@ -234,6 +234,15 @@ function buildOnboardingStatusUpdates(nextStatus) {
   };
 }
 
+/** Wipe client + coach onboarding so a re-upgraded Heal user can start the wizard again. */
+function buildPaidOnboardingResetUpdates() {
+  return {
+    paidOnboardingCompleted: false,
+    paidOnboardingStep: "register",
+    paidOnboardingStepStatus: defaultPaidOnboardingStepStatus(),
+  };
+}
+
 module.exports = {
   USER_ALLOWED_PAID_ONBOARDING_STEPS,
   PAID_ONBOARDING_STATUS_KEYS,
@@ -261,4 +270,5 @@ module.exports = {
   advanceWizardStep,
   publicCanonicalStepStatus,
   buildOnboardingStatusUpdates,
+  buildPaidOnboardingResetUpdates,
 };

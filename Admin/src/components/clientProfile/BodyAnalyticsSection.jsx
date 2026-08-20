@@ -320,8 +320,13 @@ export function BodyAnalyticsSection({ user, onToast }) {
   );
 
   const measureRows = useMemo(
-    () => buildMeasurementRows(bodyAnalytics?.measurements, historyMode, unit, historyWindow),
-    [bodyAnalytics?.measurements, historyMode, historyWindow, unit],
+    () => buildMeasurementRows(
+      [...(bodyAnalytics?.measurements || []), ...(bodyAnalytics?.metabolicMetrics || [])],
+      historyMode,
+      unit,
+      historyWindow,
+    ),
+    [bodyAnalytics?.measurements, bodyAnalytics?.metabolicMetrics, historyMode, historyWindow, unit],
   );
 
   const metabolicRows = useMemo(
