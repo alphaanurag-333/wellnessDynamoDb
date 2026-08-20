@@ -26,6 +26,7 @@ const PERM_CATALOG = [
   ["Configs", "Banners & slots", "bn", ["view", "create", "edit", "toggle"], "configs"],
   ["Configs", "App & web configs", "cf", ["view", "edit", "toggle"], "configs"],
   ["Configs", "Roles & policies", "rp", ["view", "create", "edit", "delete"], "configs"],
+  ["Referral Tree", "Referral genealogy", "rt", ["view"], "referral-tree"],
 ];
 
 const AC_SECTIONS = [
@@ -36,6 +37,7 @@ const AC_SECTIONS = [
   { id: "pending", label: "Pending Tasks" },
   { id: "sop", label: "SOP" },
   { id: "configs", label: "Configs" },
+  { id: "referral-tree", label: "Referral Tree" },
   { id: "access", label: "Access Control" },
 ];
 
@@ -115,6 +117,7 @@ const DEFAULT_CONSOLE_GRANTS = {
     avail: ["view", "edit", "toggle"],
     pt: ["view", "edit", "toggle"],
     sop: ["view"],
+    rt: ["view"],
   },
   awc: {
     dash: ["view"],
@@ -145,8 +148,8 @@ const DEFAULT_CONSOLE_GRANTS = {
 };
 
 const DEFAULT_NAV_SECTIONS = {
-  admin: ["dashboard", "users", "access", "teams", "calendar", "pending", "sop", "configs"],
-  wc: ["dashboard", "users", "teams", "calendar", "pending", "sop"],
+  admin: ["dashboard", "users", "access", "teams", "calendar", "pending", "sop", "configs", "referral-tree"],
+  wc: ["dashboard", "users", "teams", "calendar", "pending", "sop", "referral-tree"],
   awc: ["dashboard", "users", "teams", "calendar", "pending", "sop"],
   trainee: ["dashboard", "users", "pending", "sop"],
   support: ["dashboard", "pending", "configs"],

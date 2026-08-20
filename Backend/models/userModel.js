@@ -26,7 +26,12 @@ const { computeDobMonthDay, birthdayQueryMonthDays, userBirthdayMatchesDate } = 
 const TABLE = "User";
 
 /** GSI partition keys must be omitted when unset — DynamoDB rejects NULL index keys. */
-const SPARSE_GSI_ATTRIBUTES = new Set(["parentCoachId", "dobMonthDay"]);
+const SPARSE_GSI_ATTRIBUTES = new Set([
+  "parentCoachId",
+  "dobMonthDay",
+  "referredByUserId",
+  "referredByEntityId",
+]);
 
 const USER_ALLOWED_STATUS = ["active", "inactive", "blocked"];
 const USER_ALLOWED_GENDERS = ["male", "female", "other", "boy", "girl", "guess"];
@@ -695,6 +700,389 @@ async function listUsersByParentCoachId(
   };
 }
 
+function toReferralTreeNode(user, depth = 0, extras = {}) {
+  if (!user) return null;
+  return {
+    id: user.id,
+    name: user.name || null,
+    email: user.email || null,
+    referralCode: user.referralCode || null,
+    userTier: user.userTier || null,
+    status: user.status || null,
+    referredByUserId: user.referredByUserId || null,
+    referredByCode: user.referredByCode || null,
+    referredByEntityType: user.referredByEntityType || null,
+    referredByEntityId: user.referredByEntityId || null,
+    createdAt: user.createdAt || null,
+    nodeKind: extras.nodeKind || "user",
+    depth,
+    children: [],
+    ...extras,
+  };
+}
+
+async function queryReferralIndex(indexName, keyName, keyValue, { limit = 500 } = {}) {
+  const parentId = String(keyValue || "").trim();
+  if (!parentId) return [];
+
+  const safeLimit = Math.min(1000, Math.max(1, Number(limit) || 500));
+  const rows = [];
+  let lastKey;
+
+  do {
+    const { Items = [], LastEvaluatedKey } = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE,
+        IndexName: indexName,
+        KeyConditionExpression: `${keyName} = :key`,
+        ExpressionAttributeValues: { ":key": parentId },
+        ScanIndexForward: true,
+        ExclusiveStartKey: lastKey,
+      })
+    );
+
+    for (const item of Items) {
+      const row = withLegacyId(item);
+      if (row?.status === "deleted") continue;
+      rows.push(row);
+      if (rows.length >= safeLimit) break;
+    }
+
+    lastKey = rows.length >= safeLimit ? undefined : LastEvaluatedKey;
+  } while (lastKey);
+
+  return rows;
+}
+
+async function listUsersByReferredByUserId(referredByUserId, { limit = 500 } = {}) {
+  return queryReferralIndex("ReferredByUserIndex", "referredByUserId", referredByUserId, { limit });
+}
+
+async function listUsersByReferredByEntityIdFallback(entityId, { limit = 500 } = {}) {
+  const parentId = String(entityId || "").trim();
+  if (!parentId) return [];
+  const safeLimit = Math.min(1000, Math.max(1, Number(limit) || 500));
+
+  const { items } = await listByPartitionKey({
+    tableName: TABLE,
+    indexName: "StatusCreatedAtIndex",
+    statusPartitions: ["active", "inactive", "blocked"],
+    scanIndexForward: true,
+    page: 1,
+    limit: Number.MAX_SAFE_INTEGER,
+    maxLimit: Number.MAX_SAFE_INTEGER,
+  });
+
+  const rows = [];
+  for (const item of items) {
+    const row = withLegacyId(item);
+    if (!row || row.status === "deleted") continue;
+    if (String(row.referredByEntityId || "").trim() !== parentId) continue;
+    rows.push(row);
+    if (rows.length >= safeLimit) break;
+  }
+  return rows;
+}
+
+async function listUsersByReferredByEntityId(entityId, { limit = 500 } = {}) {
+  try {
+    return await queryReferralIndex("ReferredByEntityIndex", "referredByEntityId", entityId, { limit });
+  } catch (err) {
+    const msg = String(err?.message || err?.name || "");
+    if (/cannot be found|ResourceNotFound|ValidationException|Specified index/i.test(msg)) {
+      return listUsersByReferredByEntityIdFallback(entityId, { limit });
+    }
+    throw err;
+  }
+}
+
+async function attachPeerDownlines(seedNodes, { maxDepth, maxNodes, nodeCountRef, seen }) {
+  let truncated = false;
+  const queue = seedNodes
+    .filter((node) => node.depth < maxDepth)
+    .map((node) => ({ node, userId: node.id }));
+
+  while (queue.length > 0) {
+    const { node, userId } = queue.shift();
+    if (node.depth >= maxDepth) continue;
+    if (nodeCountRef.count >= maxNodes) {
+      truncated = true;
+      break;
+    }
+
+    const remaining = maxNodes - nodeCountRef.count;
+    const children = await listUsersByReferredByUserId(userId, { limit: remaining + 1 });
+    if (children.length > remaining) truncated = true;
+
+    for (const child of children.slice(0, remaining)) {
+      if (seen.has(child.id)) continue;
+      seen.add(child.id);
+      const childNode = toReferralTreeNode(child, node.depth + 1);
+      node.children.push(childNode);
+      nodeCountRef.count += 1;
+      if (nodeCountRef.count >= maxNodes) {
+        truncated = true;
+        break;
+      }
+      if (childNode.depth < maxDepth) {
+        queue.push({ node: childNode, userId: child.id });
+      }
+    }
+
+    if (truncated && nodeCountRef.count >= maxNodes) break;
+  }
+
+  return truncated;
+}
+
+async function buildReferralTree(rootUserId, { maxDepth = 5, maxNodes = 500 } = {}) {
+  const rootId = String(rootUserId || "").trim();
+  if (!rootId) {
+    return { root: null, meta: { maxDepth: 0, nodeCount: 0, truncated: false, mode: "user" } };
+  }
+
+  const safeMaxDepth = Math.min(20, Math.max(0, Number(maxDepth) || 5));
+  const safeMaxNodes = Math.min(2000, Math.max(1, Number(maxNodes) || 500));
+
+  const rootUser = await getUserById(rootId);
+  if (!rootUser || rootUser.status === "deleted") {
+    return { root: null, meta: { maxDepth: safeMaxDepth, nodeCount: 0, truncated: false, mode: "user" } };
+  }
+
+  const root = toReferralTreeNode(rootUser, 0);
+  const seen = new Set([root.id]);
+  const nodeCountRef = { count: 1 };
+  const truncated = await attachPeerDownlines([root], {
+    maxDepth: safeMaxDepth,
+    maxNodes: safeMaxNodes,
+    nodeCountRef,
+    seen,
+  });
+
+  return {
+    root,
+    meta: {
+      maxDepth: safeMaxDepth,
+      nodeCount: nodeCountRef.count,
+      truncated,
+      mode: "user",
+    },
+  };
+}
+
+async function buildCoachReferralTree(entityId, entityMeta = {}, { maxDepth = 5, maxNodes = 500 } = {}) {
+  const rootId = String(entityId || "").trim();
+  if (!rootId) {
+    return { root: null, meta: { maxDepth: 0, nodeCount: 0, truncated: false, mode: "coach" } };
+  }
+
+  const safeMaxDepth = Math.min(20, Math.max(0, Number(maxDepth) || 5));
+  const safeMaxNodes = Math.min(2000, Math.max(1, Number(maxNodes) || 500));
+
+  const entityType = String(entityMeta.entityType || "wellness_coach").toLowerCase();
+  const nodeKind = entityType === "assistant_wellness_coach" ? "awc" : "coach";
+
+  const root = {
+    id: rootId,
+    name: entityMeta.name || null,
+    email: entityMeta.email || null,
+    referralCode: entityMeta.referralCode || null,
+    userTier: null,
+    status: entityMeta.status || null,
+    referredByUserId: null,
+    referredByCode: null,
+    referredByEntityType: null,
+    referredByEntityId: null,
+    createdAt: entityMeta.createdAt || null,
+    nodeKind,
+    entityType,
+    depth: 0,
+    children: [],
+  };
+
+  const seen = new Set([root.id]);
+  const nodeCountRef = { count: 1 };
+  let truncated = false;
+
+  if (safeMaxDepth >= 1 && nodeCountRef.count < safeMaxNodes) {
+    const remaining = safeMaxNodes - nodeCountRef.count;
+    const direct = await listUsersByReferredByEntityId(rootId, { limit: remaining + 1 });
+    if (direct.length > remaining) truncated = true;
+
+    const seedNodes = [];
+    for (const child of direct.slice(0, remaining)) {
+      if (seen.has(child.id)) continue;
+      seen.add(child.id);
+      const childNode = toReferralTreeNode(child, 1, {
+        joinedViaCode: child.referredByCode || entityMeta.referralCode || null,
+      });
+      root.children.push(childNode);
+      nodeCountRef.count += 1;
+      seedNodes.push(childNode);
+      if (nodeCountRef.count >= safeMaxNodes) {
+        truncated = true;
+        break;
+      }
+    }
+
+    if (nodeCountRef.count < safeMaxNodes) {
+      const peerTruncated = await attachPeerDownlines(seedNodes, {
+        maxDepth: safeMaxDepth,
+        maxNodes: safeMaxNodes,
+        nodeCountRef,
+        seen,
+      });
+      truncated = truncated || peerTruncated;
+    }
+  }
+
+  return {
+    root,
+    meta: {
+      maxDepth: safeMaxDepth,
+      nodeCount: nodeCountRef.count,
+      truncated,
+      mode: "coach",
+      directCount: root.children.length,
+    },
+  };
+}
+
+function entityTypeBucket(entityType) {
+  const key = String(entityType || "").toLowerCase().trim();
+  if (key === "user") return "peer";
+  if (key === "wellness_coach") return "coach";
+  if (key === "assistant_wellness_coach") return "awc";
+  return "other";
+}
+
+async function buildReferralOverview({ topLimit = 25, recentLimit = 40 } = {}) {
+  const safeTop = Math.min(100, Math.max(1, Number(topLimit) || 25));
+  const safeRecent = Math.min(100, Math.max(1, Number(recentLimit) || 40));
+
+  const { items } = await listByPartitionKey({
+    tableName: TABLE,
+    indexName: "StatusCreatedAtIndex",
+    statusPartitions: ["active", "inactive", "blocked"],
+    scanIndexForward: false,
+    page: 1,
+    limit: Number.MAX_SAFE_INTEGER,
+    maxLimit: Number.MAX_SAFE_INTEGER,
+  });
+
+  const users = items.map(withLegacyId).filter((row) => row && row.status !== "deleted");
+  const byId = new Map(users.map((row) => [row.id, row]));
+
+  let totalWithReferral = 0;
+  let peerReferred = 0;
+  let coachReferred = 0;
+  let awcReferred = 0;
+  let otherReferred = 0;
+  const directCounts = new Map();
+  const staffDirectCounts = new Map(); // entityId -> { count, entityType, code }
+  const attributed = [];
+
+  for (const user of users) {
+    const referredByUserId = user.referredByUserId ? String(user.referredByUserId).trim() : "";
+    const referredByEntityId = user.referredByEntityId ? String(user.referredByEntityId).trim() : "";
+    const hasAttribution = Boolean(
+      referredByUserId || user.referredByCode || user.referredByEntityType || referredByEntityId
+    );
+    if (!hasAttribution) continue;
+
+    totalWithReferral += 1;
+    attributed.push(user);
+
+    const bucket = referredByUserId ? "peer" : entityTypeBucket(user.referredByEntityType);
+    if (bucket === "peer") peerReferred += 1;
+    else if (bucket === "coach") coachReferred += 1;
+    else if (bucket === "awc") awcReferred += 1;
+    else otherReferred += 1;
+
+    if (referredByUserId) {
+      directCounts.set(referredByUserId, (directCounts.get(referredByUserId) || 0) + 1);
+    }
+
+    if (referredByEntityId && (bucket === "coach" || bucket === "awc")) {
+      const prev = staffDirectCounts.get(referredByEntityId) || {
+        count: 0,
+        entityType: user.referredByEntityType || null,
+        code: user.referredByCode || null,
+      };
+      prev.count += 1;
+      if (!prev.entityType && user.referredByEntityType) prev.entityType = user.referredByEntityType;
+      if (!prev.code && user.referredByCode) prev.code = user.referredByCode;
+      staffDirectCounts.set(referredByEntityId, prev);
+    }
+  }
+
+  attributed.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+
+  const topReferrers = [...directCounts.entries()]
+    .sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])))
+    .slice(0, safeTop)
+    .map(([id, directCount]) => {
+      const user = byId.get(id);
+      return {
+        id,
+        name: user?.name || null,
+        email: user?.email || null,
+        referralCode: user?.referralCode || null,
+        userTier: user?.userTier || null,
+        status: user?.status || null,
+        directCount,
+        missing: !user,
+      };
+    });
+
+  const topStaffReferrers = [...staffDirectCounts.entries()]
+    .sort((a, b) => b[1].count - a[1].count || String(a[0]).localeCompare(String(b[0])))
+    .slice(0, safeTop)
+    .map(([id, info]) => ({
+      id,
+      name: null,
+      email: null,
+      referralCode: info.code || null,
+      entityType: info.entityType || null,
+      directCount: info.count,
+    }));
+
+  const recentReferrals = attributed.slice(0, safeRecent).map((user) => {
+    const referrerId = user.referredByUserId ? String(user.referredByUserId).trim() : "";
+    const referrer = referrerId ? byId.get(referrerId) : null;
+    return {
+      id: user.id,
+      name: user.name || null,
+      referralCode: user.referralCode || null,
+      userTier: user.userTier || null,
+      status: user.status || null,
+      referredByUserId: referrerId || null,
+      referredByEntityId: user.referredByEntityId || null,
+      referredByCode: user.referredByCode || null,
+      referredByEntityType: user.referredByEntityType || null,
+      createdAt: user.createdAt || null,
+      referrerName: referrer?.name || null,
+      referrerCode: referrer?.referralCode || user.referredByCode || null,
+    };
+  });
+
+  return {
+    summary: {
+      totalUsers: users.length,
+      totalWithReferral,
+      peerReferred,
+      coachReferred,
+      awcReferred,
+      otherReferred,
+      referrersWithDownline: directCounts.size,
+      staffReferrersWithDownline: staffDirectCounts.size,
+    },
+    topReferrers,
+    topStaffReferrers,
+    recentReferrals,
+  };
+}
+
 async function listUsersByAssignedCoachId(
   assignedCoachId,
   { parentCoachId, page = 1, limit = 20, search, userTier = "client", unpaginated = false } = {}
@@ -907,6 +1295,11 @@ module.exports = {
   updateUser,
   deleteUser,
   listUsersByParentCoachId,
+  listUsersByReferredByUserId,
+  listUsersByReferredByEntityId,
+  buildReferralTree,
+  buildCoachReferralTree,
+  buildReferralOverview,
   listUsersByAssignedCoachId,
   listPendingAssignmentUsers,
   listUsers,

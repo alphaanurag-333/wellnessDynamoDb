@@ -29,6 +29,7 @@ export const PERM_CATALOG = [
   ["Configs", "Banners & slots", "bn", ["view", "create", "edit", "toggle"], "configs"],
   ["Configs", "App & web configs", "cf", ["view", "edit", "toggle"], "configs"],
   ["Configs", "Roles & policies", "rp", ["view", "create", "edit", "delete"], "configs"],
+  ["Referral Tree", "Referral genealogy", "rt", ["view"], "referral-tree"],
 ];
 
 export const AC_SECTIONS = [
@@ -39,6 +40,7 @@ export const AC_SECTIONS = [
   { id: "pending", label: "Pending Tasks" },
   { id: "sop", label: "SOP" },
   { id: "configs", label: "Configs" },
+  { id: "referral-tree", label: "Referral Tree" },
 ];
 
 export const TOTAL_PERM_SLOTS = PERM_CATALOG.reduce((n, row) => n + row[3].length, 0);
@@ -49,8 +51,8 @@ export const TOTAL_PERM_SLOTS = PERM_CATALOG.reduce((n, row) => n + row[3].lengt
  * permissions (see utils/permissions.js).
  */
 export const DEFAULT_VIEWS = {
-  admin: ["dashboard", "users", "teams", "calendar", "pending", "sop", "configs"],
-  wc: ["dashboard", "users", "teams", "calendar", "pending", "sop"],
+  admin: ["dashboard", "users", "teams", "calendar", "pending", "sop", "configs", "referral-tree"],
+  wc: ["dashboard", "users", "teams", "calendar", "pending", "sop", "referral-tree"],
   awc: ["dashboard", "users", "teams", "calendar", "pending", "sop"],
   trainee: ["dashboard", "users", "pending", "sop"],
   support: ["dashboard", "pending", "configs"],
@@ -98,6 +100,7 @@ export const DEFAULT_GRANTS = {
     avail: ["view", "edit", "toggle"],
     pt: ["view", "edit", "toggle"],
     sop: ["view"],
+    rt: ["view"],
   },
   trainee: {
     dash: ["view"],

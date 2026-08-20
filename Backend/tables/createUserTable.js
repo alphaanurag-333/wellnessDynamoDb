@@ -14,6 +14,8 @@ async function createUserTable() {
       { AttributeName: "status", AttributeType: "S" },
       { AttributeName: "createdAt", AttributeType: "S" },
       { AttributeName: "parentCoachId", AttributeType: "S" },
+      { AttributeName: "referredByUserId", AttributeType: "S" },
+      { AttributeName: "referredByEntityId", AttributeType: "S" },
     ],
     GlobalSecondaryIndexes: [
       {
@@ -38,6 +40,22 @@ async function createUserTable() {
         IndexName: "ParentCoachIndex",
         KeySchema: [
           { AttributeName: "parentCoachId", KeyType: "HASH" },
+          { AttributeName: "createdAt", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+      {
+        IndexName: "ReferredByUserIndex",
+        KeySchema: [
+          { AttributeName: "referredByUserId", KeyType: "HASH" },
+          { AttributeName: "createdAt", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+      {
+        IndexName: "ReferredByEntityIndex",
+        KeySchema: [
+          { AttributeName: "referredByEntityId", KeyType: "HASH" },
           { AttributeName: "createdAt", KeyType: "RANGE" },
         ],
         Projection: { ProjectionType: "ALL" },

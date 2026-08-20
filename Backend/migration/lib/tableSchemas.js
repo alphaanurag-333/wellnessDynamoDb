@@ -857,6 +857,8 @@ const TABLE_DEFINITIONS = [
       { AttributeName: "createdAt", AttributeType: "S" },
       { AttributeName: "parentCoachId", AttributeType: "S" },
       { AttributeName: "dobMonthDay", AttributeType: "S" },
+      { AttributeName: "referredByUserId", AttributeType: "S" },
+      { AttributeName: "referredByEntityId", AttributeType: "S" },
     ],
     GlobalSecondaryIndexes: [
       {
@@ -882,6 +884,22 @@ const TABLE_DEFINITIONS = [
         IndexName: "DobMonthDayIndex",
         KeySchema: [
           { AttributeName: "dobMonthDay", KeyType: "HASH" },
+          { AttributeName: "createdAt", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+      {
+        IndexName: "ReferredByUserIndex",
+        KeySchema: [
+          { AttributeName: "referredByUserId", KeyType: "HASH" },
+          { AttributeName: "createdAt", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+      {
+        IndexName: "ReferredByEntityIndex",
+        KeySchema: [
+          { AttributeName: "referredByEntityId", KeyType: "HASH" },
           { AttributeName: "createdAt", KeyType: "RANGE" },
         ],
         Projection: { ProjectionType: "ALL" },

@@ -92,6 +92,17 @@ export function NavIcon({ name }) {
           <path d="M10 9H8" />
         </svg>
       );
+    case "git-branch":
+      return (
+        <svg {...iconProps}>
+          <circle cx="6" cy="6" r="2.5" />
+          <circle cx="18" cy="6" r="2.5" />
+          <circle cx="6" cy="18" r="2.5" />
+          <path d="M6 8.5v7" />
+          <path d="M8.5 6h7" />
+          <path d="M15.5 8.2c-2.2 2.4-5.5 4.3-9.5 4.8" />
+        </svg>
+      );
     case "logout":
       return (
         <svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" className="sidebar__icon" aria-hidden="true">
