@@ -359,14 +359,22 @@ export function ContactInquiriesPage() {
                       <strong>{name}</strong>
                     </div>
                     <div data-label="Contact">
-                      <div className="ua-ci-clip">{row.email || "—"}</div>
-                      <div className="ua-table__muted ua-ci-clip">{row.phone || "—"}</div>
+                      <div className="ua-ci-contact">
+                        <div className="ua-ci-clip">{row.email || "—"}</div>
+                        <div className="ua-table__muted ua-ci-clip">{row.phone || "—"}</div>
+                      </div>
                     </div>
-                    <div className="ua-ci-clip" data-label="Enquiry">{inquiryTypeLabel(row.inquiryType)}</div>
-                    <div className="ua-ci-clip" data-label="Message" title={row.message || ""}>
-                      {clipInquiryMessage(row.message)}
+                    <div data-label="Enquiry">
+                      <div className="ua-ci-clip">{inquiryTypeLabel(row.inquiryType)}</div>
                     </div>
-                    <div className="ua-table__muted" data-label="Received">{formatInquiryDate(row.createdAt)}</div>
+                    <div data-label="Message" title={row.message || ""}>
+                      <div className="ua-ci-clip ua-ci-message-preview">
+                        {clipInquiryMessage(row.message)}
+                      </div>
+                    </div>
+                    <div data-label="Received">
+                      <div className="ua-table__muted">{formatInquiryDate(row.createdAt)}</div>
+                    </div>
                     <div data-label="Status">
                       <StatusBadge tone={statusTone(row.status)}>
                         {inquiryStatusLabel(row.status)}

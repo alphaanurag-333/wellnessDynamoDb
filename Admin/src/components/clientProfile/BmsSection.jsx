@@ -124,6 +124,12 @@ function MetricChartCard({
   );
 }
 
+function StepsIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgb(18, 184, 134)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+  );
+}
+
 function StepsPanel({ chart, historyRange, onRangeChange, loading }) {
   const max = Math.max(...(chart.days.map((d) => d.value)), chart.goal, 1);
   if (loading) return <p className="ua-cp-bms-library-hint">Loading step tracking…</p>;
@@ -133,12 +139,12 @@ function StepsPanel({ chart, historyRange, onRangeChange, loading }) {
       <div className="ua-cp-bms-toolbar">
         <FoodWaterHistoryPicker range={historyRange} onRangeChange={onRangeChange} />
         <div className="ua-cp-bms-goal-pill">
-          <span className="ua-cp-bms-goal-pill__label">Goal</span>
-          <strong>{chart.goal.toLocaleString()} steps / day</strong>
+          <span className="ua-cp-bms-goal-pill__label" style={{color:"rgb(15, 158, 117)"}}>Goal</span>
+          <strong style={{color:"rgb(22, 35, 63)"}}>{chart.goal.toLocaleString()} steps / day</strong>
         </div>
       </div>
       <MetricChartCard
-        icon="👟"
+        icon={<StepsIcon />}
         iconTone="teal"
         title="Step tracking"
         rangeLabel={chart.rangeLabel}
@@ -173,8 +179,8 @@ function HeartPanel({ chart, historyRange, onRangeChange, enabled, loading }) {
       <div className="ua-cp-bms-toolbar">
         <FoodWaterHistoryPicker range={historyRange} onRangeChange={onRangeChange} />
         <div className="ua-cp-bms-zone-pill">
-          <span className="ua-cp-bms-zone-pill__label">Resting zone</span>
-          <strong>{BMS_GOALS.heartRestMin}–{BMS_GOALS.heartRestMax} bpm</strong>
+          <span className="ua-cp-bms-zone-pill__label" style={{color:"#d64545"}}>Resting zone</span>
+          <strong style={{color:"rgb(22, 35, 63)"}}>{BMS_GOALS.heartRestMin}–{BMS_GOALS.heartRestMax} bpm</strong>
         </div>
       </div>
       <MetricChartCard
@@ -230,7 +236,8 @@ function SleepGoalBar({
         </>
       ) : (
         <>
-          <span className="ua-cp-bms-sleep-goal__text">Goal <strong>{goal}</strong> h / night</span>
+          <span className="ua-cp-bms-sleep-goal__label">Goal</span>
+          <strong className="ua-cp-bms-sleep-goal__value">{goal} h / night</strong>
           <button type="button" className="ua-cp-bms-sleep-goal__set" onClick={onStartEdit}>Set target</button>
           {clientCanSet ? (
             <span className="ua-cp-bms-sleep-goal__badge ua-cp-bms-sleep-goal__badge--ok">Client can set in app</span>
@@ -395,7 +402,9 @@ function ContentLibraryPanel({
     <>
       <div className="ua-cp-bms-library-toolbar">
         <SegFilter options={filterOptions} value={filter} onChange={onFilterChange} />
-        <span className="ua-cp-bms-library-toolbar__count">{selectedCount} selected for user app</span>
+        <span className="ua-cp-bms-library-toolbar__count">
+          <strong>{selectedCount}</strong> selected for user app
+        </span>
       </div>
       <p className="ua-cp-bms-library-hint">{hint}</p>
       {loading ? (
