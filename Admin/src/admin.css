@@ -25881,11 +25881,24 @@ scrollbar-width: thin;
   border: 1px solid #e8ecf4;
 }
 
+.updated-admin .ua-cp-hptrack-chart-card--orange .ua-cp-hptrack-chart-plot {
+  background: #fff;
+  border: none;
+  border-radius: 0;
+  padding: 8px 4px 0;
+}
+
 .updated-admin .ua-cp-hptrack-chart-scroll {
   overflow-x: auto;
+  overflow-y: hidden;
   padding-bottom: 6px;
   scrollbar-width: thin;
-  scrollbar-color: #c5cdd8 #eef1f6;
+  scrollbar-color: #b8c2d1 #e4e8f0;
+}
+
+.updated-admin .ua-cp-hptrack-chart-card--orange .ua-cp-hptrack-chart-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #b8c2d1 #e4e8f0;
 }
 
 .updated-admin .ua-cp-hptrack-chart-scroll::-webkit-scrollbar {
@@ -25893,23 +25906,35 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cp-hptrack-chart-scroll::-webkit-scrollbar-track {
-  background: #eef1f6;
+  background: #e4e8f0;
   border-radius: 999px;
 }
 
 .updated-admin .ua-cp-hptrack-chart-scroll::-webkit-scrollbar-thumb {
-  background: #c5cdd8;
+  background: #b8c2d1;
   border-radius: 999px;
 }
 
 .updated-admin .ua-cp-hptrack-chart-scroll__inner {
   width: 100%;
   min-width: 100%;
+  box-sizing: border-box;
 }
 
 .updated-admin .ua-cp-hptrack-fatloss-chart {
   position: relative;
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.updated-admin .ua-cp-hptrack-fatloss-chart__plot {
+  position: relative;
+  width: 100%;
+  height: 148px;
+  overflow-x: clip;
+  overflow-y: visible;
 }
 
 .updated-admin .ua-cp-hptrack-trend-line {
@@ -25927,6 +25952,22 @@ scrollbar-width: thin;
   width: 100%;
 }
 
+.updated-admin .ua-cp-hptrack-fatloss-chart__cols {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  align-items: stretch;
+  gap: 0;
+}
+
+.updated-admin .ua-cp-hptrack-fatloss-chart__days {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 0;
+  min-height: 16px;
+}
+
 .updated-admin .ua-cp-hptrack-fatloss-chart__col,
 .updated-admin .ua-cp-hptrack-trend-line__col,
 .updated-admin .ua-cp-hptrack-bar-trend__col,
@@ -25937,6 +25978,12 @@ scrollbar-width: thin;
   flex-direction: column;
   align-items: center;
   gap: 4px;
+}
+
+.updated-admin .ua-cp-hptrack-fatloss-chart__col {
+  min-width: 48px;
+  gap: 0;
+  height: 100%;
 }
 
 .updated-admin .ua-cp-hptrack-group-chart__col {
@@ -25952,6 +25999,19 @@ scrollbar-width: thin;
   line-height: 1.2;
 }
 
+.updated-admin .ua-cp-hptrack-fatloss-chart__val {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 4;
+  line-height: 1;
+}
+
 .updated-admin .ua-cp-hptrack-fatloss-chart__bar-area,
 .updated-admin .ua-cp-hptrack-trend-line__plot,
 .updated-admin .ua-cp-hptrack-bar-trend__bar-wrap,
@@ -25965,6 +26025,10 @@ scrollbar-width: thin;
   z-index: 1;
 }
 
+.updated-admin .ua-cp-hptrack-fatloss-chart__bar-area {
+  height: 100%;
+}
+
 .updated-admin .ua-cp-hptrack-group-chart__bars {
   gap: 3px;
 }
@@ -25975,6 +26039,15 @@ scrollbar-width: thin;
   max-width: 40px;
   border-radius: 6px 6px 2px 2px;
   min-height: 10px;
+}
+
+.updated-admin .ua-cp-hptrack-fatloss-chart__bar {
+  width: 26px;
+  max-width: 26px;
+  min-width: 26px;
+  flex: 0 0 26px;
+  border-radius: 999px 999px 0 0;
+  min-height: 20px;
 }
 
 .updated-admin .ua-cp-hptrack-fatloss-chart__dot,
@@ -25990,15 +26063,23 @@ scrollbar-width: thin;
   box-sizing: border-box;
 }
 
+.updated-admin .ua-cp-hptrack-fatloss-chart__dot {
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  border-width: 2.5px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.9);
+  transform: translate(-50%, 50%);
+}
+
 .updated-admin .ua-cp-hptrack-fatloss-chart__line {
   position: absolute;
-  left: 0;
-  right: 0;
-  top: 22px;
-  height: 96px;
+  inset: 0;
   width: 100%;
+  height: 100%;
   pointer-events: none;
   z-index: 2;
+  overflow: hidden;
 }
 
 .updated-admin .ua-cp-hptrack-fatloss-chart__day,
@@ -26008,6 +26089,17 @@ scrollbar-width: thin;
   font-size: 9px;
   color: #9aa6b8;
   white-space: nowrap;
+}
+
+.updated-admin .ua-cp-hptrack-fatloss-chart__day {
+  flex: 1 1 0;
+  min-width: 48px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #8a94a6;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .updated-admin .ua-cp-hptrack-trend-line__svg {
@@ -26096,7 +26188,7 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cp-hptrack-chart-card--orange {
-  border-color: #fce4d6;
+  border-color: #e3e9f2;
   background: #fff;
 }
 
@@ -26113,11 +26205,6 @@ scrollbar-width: thin;
 .updated-admin .ua-cp-hptrack-chart-card--teal {
   border-color: #b8ece4;
   background: #fff;
-}
-
-.updated-admin .ua-cp-hptrack-chart-card--orange .ua-cp-hptrack-chart-plot {
-  background: #f0f2f9;
-  border-color: #e8ecf4;
 }
 
 .updated-admin .ua-cp-hptrack-chart-card--red .ua-cp-hptrack-chart-plot {
@@ -26157,11 +26244,18 @@ scrollbar-width: thin;
   letter-spacing: 0.03em;
 }
 
+.updated-admin .ua-cp-hptrack-chart-card__head--blue {
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #eef1f6;
+}
+
 .updated-admin .ua-cp-hptrack-chart-card__head--blue strong {
-  color: #5e6ad2;
+  color: #3b66bc;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   font-size: 12px;
+  font-weight: 700;
 }
 
 .updated-admin .ua-cp-hptrack-chart-card__target {
@@ -27180,6 +27274,7 @@ scrollbar-width: thin;
   flex-direction: column;
   gap: 16px;
   width: 100%;
+  min-width: 0;
 }
 
 .updated-admin .ua-cp-reflect__head {
@@ -27209,8 +27304,8 @@ scrollbar-width: thin;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  width: min(100%, 560px);
+  gap: 0;
+  width: min(100%, 520px);
   max-width: 100%;
   margin-inline: auto;
   align-self: center;
@@ -27220,7 +27315,12 @@ scrollbar-width: thin;
   background: #121f3d;
   box-shadow: 0 10px 28px rgba(18, 31, 61, 0.22);
   color: #fff;
+}
+
+.updated-admin .ua-cp-reflect-score__left {
   min-width: 0;
+  flex: 1 1 auto;
+  padding-right: 24px;
 }
 
 .updated-admin .ua-cp-reflect-score__left span {
@@ -27236,7 +27336,14 @@ scrollbar-width: thin;
 .updated-admin .ua-cp-reflect-score__left strong {
   font-size: 15px;
   font-weight: 600;
-  color: #b7c2d4;
+  color: #c5cedc;
+}
+
+.updated-admin .ua-cp-reflect-score__divider {
+  width: 1px;
+  align-self: stretch;
+  background: rgba(255, 255, 255, 0.16);
+  flex-shrink: 0;
 }
 
 .updated-admin .ua-cp-reflect-score__right {
@@ -27245,6 +27352,7 @@ scrollbar-width: thin;
   gap: 6px;
   flex-shrink: 0;
   color: #fff;
+  padding-left: 24px;
 }
 
 .updated-admin .ua-cp-reflect-score__right strong {
@@ -27263,27 +27371,34 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cp-reflect-callouts {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
 }
 
 .updated-admin .ua-cp-reflect-callout {
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   padding: 14px 16px;
   border-radius: 12px;
   border: 1px solid;
 }
 
 .updated-admin .ua-cp-reflect-callout--app {
-  background: #eef4ff;
-  border-color: #c7d7f5;
+  background: #f0f2ff;
+  border-color: #dce1f5;
 }
 
 .updated-admin .ua-cp-reflect-callout--champ {
-  background: #fff8e8;
-  border-color: #f0d9a0;
+  background: #fff9e6;
+  border-color: #f0e4b0;
+  justify-content: center;
 }
 
 .updated-admin .ua-cp-reflect-callout__row {
@@ -27296,6 +27411,7 @@ scrollbar-width: thin;
   font-size: 16px;
   line-height: 1.4;
   flex-shrink: 0;
+  margin-top: 1px;
 }
 
 .updated-admin .ua-cp-reflect-callout p {
@@ -27305,21 +27421,40 @@ scrollbar-width: thin;
   color: rgb(74, 83, 168);
 }
 
+.updated-admin .ua-cp-reflect-callout--app p {
+  color: #4a5ba9;
+}
+
 .updated-admin .ua-cp-reflect-callout--app p strong {
-  color: rgb(74, 83, 168);
+  color: #3f4f9c;
   font-weight: 700;
 }
 
+.updated-admin .ua-cp-reflect-callout--champ p {
+  color: #8c6d1f;
+}
+
 .updated-admin .ua-cp-reflect-callout--champ p strong {
-  color: #a16207;
+  color: #7a5c14;
+  font-weight: 700;
 }
 
 .updated-admin .ua-cp-reflect-callout__actions {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-top: 12px;
+  margin-top: auto;
+  padding-top: 12px;
   flex-wrap: wrap;
+}
+
+.updated-admin .ua-cp-reflect-callout__actions .ua-cp-btn--primary {
+  background: #5e6ad2;
+  border-color: #5e6ad2;
+  color: #fff;
+  border-radius: 9px;
+  font-weight: 700;
+  padding: 8px 14px;
 }
 
 .updated-admin .ua-cp-reflect-bedtime {
@@ -27353,7 +27488,7 @@ scrollbar-width: thin;
 .updated-admin .ua-cp-reflect-bedtime__clock {
   width: 12px;
   height: 12px;
-  border: 1.5px solid #8a97ac;
+  border: 1.5px solid #4a5568;
   border-radius: 50%;
   position: relative;
   flex-shrink: 0;
@@ -27366,7 +27501,18 @@ scrollbar-width: thin;
   left: 4.5px;
   width: 1.5px;
   height: 4px;
-  background: #8a97ac;
+  background: #4a5568;
+  border-radius: 1px;
+}
+
+.updated-admin .ua-cp-reflect-bedtime__clock::after {
+  content: "";
+  position: absolute;
+  top: 4.5px;
+  left: 5px;
+  width: 3px;
+  height: 1.5px;
+  background: #4a5568;
   border-radius: 1px;
 }
 
@@ -27385,18 +27531,15 @@ scrollbar-width: thin;
   gap: 8px;
   font-size: 12px;
   color: #8a97ac;
+  font-weight: 600;
 }
 
-.updated-admin .ua-cp-reflect-weightage strong {
+.updated-admin .ua-cp-reflect-weightage strong,
+.updated-admin .ua-cp-reflect-weightage__ok {
   font-size: 12px;
   font-weight: 800;
   padding: 4px 10px;
   border-radius: 999px;
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.updated-admin .ua-cp-reflect-weightage__ok {
   background: #dcfce7 !important;
   color: #166534 !important;
 }
@@ -27405,6 +27548,8 @@ scrollbar-width: thin;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  width: 100%;
+  min-width: 0;
 }
 
 .updated-admin .ua-cp-reflect-section {
@@ -27468,7 +27613,7 @@ scrollbar-width: thin;
   justify-content: center;
   width: 24px;
   height: 24px;
-  border-radius: 6px;
+  border-radius: 50%;
   background: #e8ecff;
   color: #5e6ad2;
   font-size: 11px;
@@ -27603,17 +27748,19 @@ scrollbar-width: thin;
 .updated-admin .ua-cp-reflect-question__remove {
   border: none;
   background: none;
-  color: #c45c3e;
+  color: #9aa6b8;
   cursor: pointer;
   font-size: 18px;
   line-height: 1;
   padding: 0 2px;
-  opacity: 0.75;
+  opacity: 0.85;
+  flex-shrink: 0;
 }
 
 .updated-admin .ua-cp-reflect-section__remove:hover,
 .updated-admin .ua-cp-reflect-question__remove:hover {
   opacity: 1;
+  color: #c45c3e;
 }
 
 .updated-admin .ua-cp-reflect-section__remove:disabled,
@@ -27809,6 +27956,21 @@ scrollbar-width: thin;
   font-weight: 700;
 }
 
+@media (max-width: 960px) {
+  .updated-admin .ua-cp-reflect-callouts {
+    grid-template-columns: 1fr;
+  }
+
+  .updated-admin .ua-cp-reflect-callout--champ {
+    justify-content: flex-start;
+  }
+
+  .updated-admin .ua-cp-reflect-callout__actions {
+    margin-top: 12px;
+    padding-top: 0;
+  }
+}
+
 @media (max-width: 720px) {
   .updated-admin .ua-cp-reflect {
     gap: 14px;
@@ -27826,17 +27988,18 @@ scrollbar-width: thin;
 
   .updated-admin .ua-cp-reflect-score {
     width: 100%;
+    min-width: 0;
     max-width: 100%;
     margin-inline: auto;
     align-self: center;
     padding: 16px 18px;
-    gap: 12px;
     border-radius: 16px;
   }
 
   .updated-admin .ua-cp-reflect-score__left {
     min-width: 0;
     flex: 1 1 auto;
+    padding-right: 16px;
   }
 
   .updated-admin .ua-cp-reflect-score__left span {
@@ -27848,6 +28011,10 @@ scrollbar-width: thin;
     font-size: 13px;
   }
 
+  .updated-admin .ua-cp-reflect-score__right {
+    padding-left: 16px;
+  }
+
   .updated-admin .ua-cp-reflect-score__right strong {
     font-size: 32px;
   }
@@ -27856,22 +28023,32 @@ scrollbar-width: thin;
     font-size: 15px;
   }
 
-  .updated-admin .ua-cp-reflect-callouts,
   .updated-admin .ua-cp-reflect-foot {
     grid-template-columns: 1fr;
   }
 
   .updated-admin .ua-cp-reflect-section__head {
     flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .updated-admin .ua-cp-reflect-section__head-left {
+    width: 100%;
   }
 
   .updated-admin .ua-cp-reflect-section__meta {
     width: 100%;
     justify-content: flex-end;
+    flex-wrap: wrap;
   }
 
   .updated-admin .ua-cp-reflect-question {
     flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .updated-admin .ua-cp-reflect-question__text {
+    flex: 1 1 calc(100% - 36px);
   }
 
   .updated-admin .ua-cp-reflect-question__score {
@@ -27887,24 +28064,58 @@ scrollbar-width: thin;
     align-items: center;
     justify-content: center;
     text-align: center;
-    gap: 10px;
+    gap: 12px;
     padding: 18px 16px;
   }
 
   .updated-admin .ua-cp-reflect-score__left {
     width: 100%;
+    padding-right: 0;
   }
 
   .updated-admin .ua-cp-reflect-score__left span {
     margin-bottom: 4px;
   }
 
+  .updated-admin .ua-cp-reflect-score__divider {
+    width: 48px;
+    height: 1px;
+    align-self: center;
+  }
+
   .updated-admin .ua-cp-reflect-score__right {
     justify-content: center;
+    padding-left: 0;
   }
 
   .updated-admin .ua-cp-reflect-score__right strong {
     font-size: 36px;
+  }
+
+  .updated-admin .ua-cp-reflect-callout {
+    padding: 14px;
+  }
+
+  .updated-admin .ua-cp-reflect-callout__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .updated-admin .ua-cp-reflect-bedtime {
+    width: 100%;
+    justify-content: space-between;
+    box-sizing: border-box;
+  }
+
+  .updated-admin .ua-cp-reflect-callout__actions .ua-cp-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .updated-admin .ua-cp-reflect-add-question,
+  .updated-admin .ua-cp-reflect-add-section {
+    width: calc(100% - 32px);
+    box-sizing: border-box;
   }
 }
 
@@ -49913,34 +50124,6 @@ scrollbar-width: thin;
 
   .updated-admin .ua-cp-hptrack-list__row {
     grid-template-columns: 10px 1fr auto auto;
-  }
-
-
-  .updated-admin .ua-cp-reflect-callouts {
-    grid-template-columns: 1fr;
-  }
-
-  .updated-admin .ua-cp-reflect-section__head {
-    flex-wrap: wrap;
-  }
-
-  .updated-admin .ua-cp-reflect-section__meta {
-    width: 100%;
-    justify-content: flex-end;
-  }
-
-  .updated-admin .ua-cp-reflect-question {
-    flex-wrap: wrap;
-  }
-
-  .updated-admin .ua-cp-reflect-question__score {
-    flex: 1 1 100%;
-    padding-left: 32px;
-    justify-content: flex-end;
-  }
-
-  .updated-admin .ua-cp-reflect-foot {
-    grid-template-columns: 1fr;
   }
 
 
