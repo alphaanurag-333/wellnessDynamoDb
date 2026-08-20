@@ -559,7 +559,7 @@ function LifestyleTab({
 
   return (
     <>
-      <div className="ua-cp-launch-hero">
+      <div className="ua-cp-launch-hero ua-cp-launch-col">
         <ScoreCard overall={totals.overall} maxOverall={totals.maxOverall} finalScore={totals.finalScore} />
         <AttemptControls
           attempt={attempt || 1}
@@ -807,7 +807,7 @@ function PrakritiTab({ user, onToast, canWrite = true }) {
           ? "Tick the statements from Configs that describe the client. The dosha with the most ticks is their dominant Prakṛti."
           : "Use the interview questions from the Prakriti catalog, then save the matching type, recommendations, and things to avoid."}
       </p>
-      <div className="ua-cp-launch-hero ua-cp-launch-hero--narrow">
+      <div className="ua-cp-launch-hero ua-cp-launch-hero--narrow ua-cp-launch-col">
         <PrakritiCard
           prakriti={{
             dominant: typeLabel,
@@ -1041,21 +1041,23 @@ export function LaunchSection({ user, onToast }) {
 
   return (
     <div className={`ua-cp-section ua-cp-launch${tab === "prakriti" ? " ua-cp-launch--prakriti" : " ua-cp-launch--lifestyle"}`}>
-      <div className="ua-cp-launch-top">
+      <div className="ua-cp-launch-top ua-cp-launch-col">
         <LaunchHeader />
-        <PillTabs
-          size="md"
-          active={tab}
-          onChange={handleTabChange}
-          tabs={[
-            { id: "lifestyle", label: "Lifestyle score" },
-            { id: "prakriti", label: "Prakriti type" },
-          ]}
-        />
+        <div className="ua-cp-launch-tabs">
+          <PillTabs
+            size="md"
+            active={tab}
+            onChange={handleTabChange}
+            tabs={[
+              { id: "lifestyle", label: "Lifestyle score" },
+              { id: "prakriti", label: "Prakriti type" },
+            ]}
+          />
+        </div>
         {launchStepDone || !canSchedule ? null : (
           <div className="ua-cp-launch-schedule-wrap">
             <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--launch-schedule" onClick={() => setScheduleOpen(true)}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v16H3z"></path><path d="M3 10h18"></path><path d="M8 3v4"></path><path d="M16 3v4"></path></svg> Schedule LAUNCH meeting
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 5h18v16H3z"></path><path d="M3 10h18"></path><path d="M8 3v4"></path><path d="M16 3v4"></path></svg> Schedule LAUNCH meeting
             </button>
           </div>
         )}

@@ -49,7 +49,7 @@ function EditableField({ label, value, onChange, hint, disabled, placeholder }) 
 function PhoneField({ countryCode, phone, onCountryCode, onPhone, hint, disabled }) {
   return (
     <label className="ua-profile-modal__field">
-      <span className="ua-profile-modal__label">Mobile number</span>
+      <span className="ua-profile-modal__label">WhatsApp number</span>
       <div className="ua-profile-modal__phone">
         <input
           type="text"
@@ -395,51 +395,59 @@ function CoachContentCard({ video, letter, busy, onToggle, onView, onUpload, onU
               className={`ua-profile-modal__content-icon${item.kind === "letter" ? " is-letter" : " is-video"}`}
               aria-hidden="true"
             >
-              {item.kind === "video" ? "🎥" : "📄"}
+              {item.kind === "letter" ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <path d="M14 2v6h6" />
+                  <path d="M8 13h8" />
+                  <path d="M8 17h5" />
+                </svg>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M23 7l-7 5 7 5V7z" />
+                  <rect x="1" y="5" width="15" height="14" rx="2" />
+                </svg>
+              )}
             </span>
             <div className="ua-profile-modal__content-copy">
               <div className="ua-profile-modal__content-title">{item.title}</div>
               <div className="ua-profile-modal__content-meta">{item.meta}</div>
             </div>
-            {item.live ? <span className="ua-profile-modal__content-live">LIVE IN APP</span> : null}
-            <div className="ua-profile-modal__content-actions">
-              <button
-                type="button"
-                className="ua-profile-modal__upload"
-                disabled={busy}
-                onClick={() => onView(item)}
-              >
-                View
-              </button>
-              <button
-                type="button"
-                className="ua-profile-modal__upload"
-                disabled={busy}
-                onClick={() => onUpload(item)}
-              >
-                {item.kind === "video"
-                  ? item.hasMedia
-                    ? "Replace"
-                    : "Upload"
-                  : item.hasMedia
-                    ? "Replace"
-                    : "Upload"}
-              </button>
-              {item.kind === "video" ? (
+            <div className="ua-profile-modal__content-side">
+              {item.live ? <span className="ua-profile-modal__content-live">LIVE IN APP</span> : null}
+              <div className="ua-profile-modal__content-actions">
                 <button
                   type="button"
                   className="ua-profile-modal__upload"
                   disabled={busy}
-                  onClick={() => onUseLink(item)}
+                  onClick={() => onView(item)}
                 >
-                  Use link
+                  View
                 </button>
-              ) : null}
-              <ContentToggle
-                live={item.live}
-                disabled={busy || !item.hasMedia}
-                onChange={() => onToggle(item)}
-              />
+                <button
+                  type="button"
+                  className="ua-profile-modal__upload"
+                  disabled={busy}
+                  onClick={() => onUpload(item)}
+                >
+                  {item.hasMedia ? "Replace" : "Upload"}
+                </button>
+                {item.kind === "video" ? (
+                  <button
+                    type="button"
+                    className="ua-profile-modal__upload"
+                    disabled={busy}
+                    onClick={() => onUseLink(item)}
+                  >
+                    Use link
+                  </button>
+                ) : null}
+                <ContentToggle
+                  live={item.live}
+                  disabled={busy || !item.hasMedia}
+                  onChange={() => onToggle(item)}
+                />
+              </div>
             </div>
           </div>
         ))}
@@ -802,14 +810,19 @@ export function ProfileModal({ open, onClose, onToast }) {
             </>
           ) : (
             <button type="button" className="ua-profile-modal__library" onClick={openContentLibrary}>
-              <span className="ua-profile-modal__library-icon" aria-hidden="true">🎥</span>
+              <span className="ua-profile-modal__library-icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M23 7l-7 5 7 5V7z" />
+                  <rect x="1" y="5" width="15" height="14" rx="2" />
+                </svg>
+              </span>
               <span className="ua-profile-modal__library-copy">
                 <span className="ua-profile-modal__library-title">Coach content library</span>
                 <span className="ua-profile-modal__library-sub">
                   Intro videos and commitment letters for every wellness coach and assistant.
                 </span>
               </span>
-              <span className="ua-profile-modal__library-open">Open →</span>
+              <span className="ua-profile-modal__library-open">Open</span>
             </button>
           )}
 
@@ -846,20 +859,22 @@ export function ProfileModal({ open, onClose, onToast }) {
         </div>
 
         <div className="ua-profile-modal__foot">
-          <span className="ua-profile-modal__foot-note">
+          <p className="ua-profile-modal__foot-note">
             Email and role stay managed from Access. Save to update your name, mobile or address.
-          </span>
-          <button
-            type="button"
-            className="ua-profile-modal__upload"
-            disabled={savingDetails}
-            onClick={saveDetails}
-          >
-            {savingDetails ? "Saving…" : "Save details"}
-          </button>
-          <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-profile-modal__close-btn" onClick={onClose}>
-            Close
-          </button>
+          </p>
+          <div className="ua-profile-modal__foot-actions">
+            <button
+              type="button"
+              className="ua-profile-modal__upload"
+              disabled={savingDetails}
+              onClick={saveDetails}
+            >
+              {savingDetails ? "Saving…" : "Save details"}
+            </button>
+            <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-profile-modal__close-btn" onClick={onClose}>
+              Close
+            </button>
+          </div>
         </div>
       </div>
 

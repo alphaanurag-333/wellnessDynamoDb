@@ -64,13 +64,13 @@ function ContentToggle({ live, disabled, onChange }) {
   return (
     <button
       type="button"
-      className={`ua-my-content__toggle${live ? " ua-my-content__toggle--on" : ""}`}
+      className={`ua-toggle ua-toggle--sm${live ? " ua-toggle--on" : ""}`}
       aria-pressed={live}
       aria-label={live ? "Live in app" : "Hidden in app"}
       disabled={disabled}
       onClick={onChange}
     >
-      <span className="ua-my-content__toggle-knob" />
+      <span className="ua-toggle__knob" />
     </button>
   );
 }
@@ -366,50 +366,71 @@ export function MyContentPage() {
                 <span className="ua-my-content__live-badge">{coach.liveLabel}</span>
               </div>
 
+              <div className="ua-my-content__items">
               {coach.items.map((item) => {
                 const busy = busyKey === `${coach.id}:${item.id}`;
                 return (
                   <div key={item.id} className="ua-my-content__item">
-                    <span className="ua-my-content__item-icon" aria-hidden="true">
-                      {item.kind === "video" ? "🎥" : "📄"}
+                    <span
+                      className={`ua-my-content__item-icon${item.kind === "letter" ? " is-letter" : " is-video"}`}
+                      aria-hidden="true"
+                    >
+                      {item.kind === "letter" ? (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                          <path d="M14 2v6h6" />
+                          <path d="M8 13h8" />
+                          <path d="M8 17h5" />
+                        </svg>
+                      ) : (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M23 7l-7 5 7 5V7z" />
+                          <rect x="1" y="5" width="15" height="14" rx="2" />
+                        </svg>
+                      )}
                     </span>
                     <div className="ua-my-content__item-copy">
                       <div className="ua-my-content__item-title">{item.title}</div>
                       <div className="ua-my-content__item-meta">{item.meta}</div>
                     </div>
-                    {item.hasMedia ? (
-                      <span
-                        className={`ua-my-content__item-status${item.live ? " is-live" : " is-hidden"}`}
-                      >
-                        {item.live ? "LIVE IN APP" : "HIDDEN"}
-                      </span>
-                    ) : null}
-                    <div className="ua-my-content__item-actions">
-                      <button
-                        type="button"
-                        className="ua-my-content__btn ua-my-content__btn--ghost"
-                        disabled={busy}
-                        onClick={() => viewItem(coach, item)}
-                      >
-                        {item.secondaryAction}
-                      </button>
-                      <button
-                        type="button"
-                        className="ua-my-content__btn ua-my-content__btn--primary"
-                        disabled={busy}
-                        onClick={() => startUpload(coach, item)}
-                      >
-                        {busy ? "Saving…" : item.primaryAction}
-                      </button>
-                      <ContentToggle
-                        live={item.live}
-                        disabled={busy || !item.hasMedia}
-                        onChange={() => toggleItem(coach, item)}
-                      />
+                    <div className="ua-my-content__item-side">
+                      {item.hasMedia ? (
+                        <span
+                          className={`ua-my-content__item-status${item.live ? " is-live" : " is-hidden"}`}
+                        >
+                          {item.live ? "LIVE IN APP" : "HIDDEN"}
+                        </span>
+                      ) : (
+                        <span className="ua-my-content__item-status is-hidden">Not uploaded</span>
+                      )}
+                      <div className="ua-my-content__item-actions">
+                        <button
+                          type="button"
+                          className="ua-my-content__btn ua-my-content__btn--ghost"
+                          disabled={busy}
+                          onClick={() => viewItem(coach, item)}
+                        >
+                          View
+                        </button>
+                        <button
+                          type="button"
+                          className="ua-my-content__btn ua-my-content__btn--primary"
+                          disabled={busy}
+                          onClick={() => startUpload(coach, item)}
+                        >
+                          {busy ? "Saving…" : item.primaryAction}
+                        </button>
+                        <ContentToggle
+                          live={item.live}
+                          disabled={busy || !item.hasMedia}
+                          onChange={() => toggleItem(coach, item)}
+                        />
+                      </div>
                     </div>
                   </div>
                 );
               })}
+              </div>
             </section>
           ))}
         </div>

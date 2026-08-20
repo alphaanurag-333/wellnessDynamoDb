@@ -1070,7 +1070,7 @@ export function AdminDashboard({
                   >
                     <span className="tier-cell__label">
                       <span className="tier-cell__dot" style={{ background: t.color }} />
-                      {t.label}
+                      <span className="tier-cell__name">{t.label}</span>
                     </span>
                     <span className="tier-cell__value">
                       <span>{t.value}</span>
