@@ -5,7 +5,7 @@
 const express = require("express");
 const { protectAccount, requireActiveRole } = require("../../middleware/auth");
 const { authorizeStaff } = require("../../middleware/authorize");
-const { optionalMealPhotoFile, optionalUserFile } = require("../../middleware/authMultipart");
+const { optionalMealPhotoFile, optionalUserFile, optionalSupplementBillFile } = require("../../middleware/authMultipart");
 const { CLINICAL_ROLES } = require("../../controllers/staffAccess");
 const {
   listHealUsersForStaffController,
@@ -60,6 +60,9 @@ const {
   listCoachUserSupplementRecommendationsController,
   createCoachUserSupplementRecommendationController,
   deleteCoachUserSupplementRecommendationController,
+  upsertCoachUserSupplementFulfilmentOrderController,
+  uploadCoachUserSupplementFulfilmentOrderBillController,
+  deleteCoachUserSupplementFulfilmentOrderController,
 } = require("../../controllers/adminController/supplementRecommendationController");
 const {
   listCoachUserSupplementDosagesController,
@@ -250,6 +253,27 @@ const suppWrite = staff("console.diet.create", { admin: "users.clientHub.wellnes
 router.get("/:userId/supplement-recommendations", supp, listCoachUserSupplementRecommendationsController);
 router.post("/:userId/supplement-recommendations", suppWrite, createCoachUserSupplementRecommendationController);
 router.delete("/:userId/supplement-recommendations/:recommendationId", staff("console.diet.delete", { admin: "users.clientHub.wellness.supplement-recommendations", coach: "clientTab.wellness.supplement-recommendations" }), deleteCoachUserSupplementRecommendationController);
+router.post(
+  "/:userId/supplement-recommendations/:recommendationId/fulfilment-orders",
+  suppWrite,
+  upsertCoachUserSupplementFulfilmentOrderController
+);
+router.put(
+  "/:userId/supplement-recommendations/:recommendationId/fulfilment-orders/:orderId",
+  suppWrite,
+  upsertCoachUserSupplementFulfilmentOrderController
+);
+router.post(
+  "/:userId/supplement-recommendations/:recommendationId/fulfilment-orders/:orderId/bill",
+  suppWrite,
+  optionalSupplementBillFile,
+  uploadCoachUserSupplementFulfilmentOrderBillController
+);
+router.delete(
+  "/:userId/supplement-recommendations/:recommendationId/fulfilment-orders/:orderId",
+  staff("console.diet.delete", { admin: "users.clientHub.wellness.supplement-recommendations", coach: "clientTab.wellness.supplement-recommendations" }),
+  deleteCoachUserSupplementFulfilmentOrderController
+);
 
 const dosage = staff("console.diet.view", { admin: "users.clientHub.wellness.supplement-dosage", coach: "clientTab.wellness.supplement-dosage" });
 const dosageWrite = staff("console.diet.create", { admin: "users.clientHub.wellness.supplement-dosage", coach: "clientTab.wellness.supplement-dosage" });

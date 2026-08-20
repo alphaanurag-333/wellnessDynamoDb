@@ -5,12 +5,15 @@ import { formatLongDate } from "../../api/usersApi.js";
 import {
   createUserSupplementDosage,
   createUserSupplementRecommendation,
+  deleteUserSupplementFulfilmentOrder,
   listActiveSupplementPool,
   listUserSupplementDosages,
   listUserSupplementRecommendations,
   stopUserSupplementDosage,
+  uploadUserSupplementFulfilmentOrderBill,
+  upsertUserSupplementFulfilmentOrder,
 } from "../../api/supplementAssignmentApi.js";
-import { formatSupplementOption } from "../../data/userDetailData.js";
+import { createDraftOrder, formatSupplementOption } from "../../data/userDetailData.js";
 
 const PERIOD_OPTIONS = [
   { id: "morning", label: "Morning" },
@@ -74,6 +77,21 @@ function sameItems(a = [], b = []) {
   ));
 }
 
+function mapApiOrderToUi(order, index) {
+  return {
+    id: order.id,
+    number: index + 1,
+    items: (order.items || []).map((item) => ({ ...item })),
+    placedOn: order.placedOn || "",
+    vendor: order.vendor || "",
+    tracking: order.tracking || "",
+    expectedDelivery: order.expectedDelivery || "",
+    billName: order.billName || "",
+    billPdfUrl: order.billPdfUrl || "",
+    saved: true,
+  };
+}
+
 function recommendationToHistoryRow(rec) {
   const items = (rec.items || []).map((item) => `${item.name} × ${item.qty}`).join(" · ");
   const selfBilling = rec.deliveryOption === "self_billing";
@@ -134,13 +152,10 @@ function FulfilmentStatus({ recommendation }) {
     );
   }
 
-  const selfBilling = recommendation.deliveryOption === "self_billing";
   const requestedOn = formatLongDate(recommendation.deliveryRequestedAt);
   const billedOn = formatLongDate(recommendation.billUploadedAt);
-  const statusLabel = selfBilling
-    ? (billedOn ? "Bill uploaded" : "Awaiting bill")
-    : (requestedOn ? "Delivery requested" : "Awaiting client request");
-  const statusTone = billedOn || requestedOn ? "saved" : "pending";
+  const statusLabel = billedOn ? "Bill uploaded" : "Awaiting bill";
+  const statusTone = billedOn ? "saved" : "pending";
 
   return (
     <div className="ua-cp-nut-log">
@@ -148,24 +163,345 @@ function FulfilmentStatus({ recommendation }) {
         <strong>Fulfilment status</strong>
         <span className={`ua-cp-nut-log__status ua-cp-nut-log__status--${statusTone}`}>{statusLabel}</span>
       </div>
-      {selfBilling ? (
-        <p className="ua-cp-nut-log__hint">
-          {billedOn
-            ? `Client uploaded a purchase bill on ${billedOn}.`
-            : "The client will buy these supplements and upload a PDF bill in the app."}
-        </p>
-      ) : (
-        <p className="ua-cp-nut-log__hint">
-          {requestedOn
-            ? `Client asked you to order this on ${requestedOn}.`
-            : "The client can request delivery from you in the app after this recommendation is saved."}
-        </p>
-      )}
+      <p className="ua-cp-nut-log__hint">
+        {billedOn
+          ? `Client uploaded a purchase bill on ${billedOn}.`
+          : "The client will buy these supplements and upload a PDF bill in the app."}
+      </p>
       {recommendation.billPdfUrl ? (
         <a className="ua-cp-nut-log__add" href={recommendation.billPdfUrl} target="_blank" rel="noreferrer">
           Open uploaded bill
         </a>
       ) : null}
+      {requestedOn ? (
+        <p className="ua-cp-nut-log__hint">Delivery was previously requested on {requestedOn}.</p>
+      ) : null}
+    </div>
+  );
+}
+
+function BillUploadModal({ open, onClose, onAttach }) {
+  const inputRef = useRef(null);
+  const [file, setFile] = useState(null);
+
+  useEffect(() => {
+    if (!open) setFile(null);
+  }, [open]);
+
+  if (!open) return null;
+
+  function handleFile(event) {
+    const next = event.target.files?.[0] || null;
+    setFile(next);
+  }
+
+  return (
+    <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={onClose} role="presentation">
+      <div className="ua-cp-modal ua-cp-nut-bill-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="bill-modal-title">
+        <div className="ua-cp-nut-bill-modal__head">
+          <div>
+            <h3 id="bill-modal-title">Upload purchase bill</h3>
+            <p>PDF or image only · up to 10 MB</p>
+          </div>
+          <button type="button" className="ua-cp-nut-bill-modal__close" onClick={onClose} aria-label="Close">×</button>
+        </div>
+        <button type="button" className="ua-cp-nut-bill-modal__drop" onClick={() => inputRef.current?.click()}>
+          <span className="ua-cp-nut-bill-modal__icon" aria-hidden="true">↑</span>
+          <strong>{file?.name || "Choose a file"}</strong>
+          <span>Accepted: .pdf, .jpg, .png, .heic</span>
+        </button>
+        <input ref={inputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.heic" hidden onChange={handleFile} />
+        <div className="ua-cp-nut-bill-modal__foot">
+          <button type="button" className="ua-cp-btn ua-cp-btn--outline" onClick={onClose}>Cancel</button>
+          <button
+            type="button"
+            className="ua-cp-btn ua-cp-btn--primary"
+            disabled={!file}
+            onClick={() => {
+              onAttach(file);
+              onClose();
+            }}
+          >
+            Attach bill
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OrderItemRow({ item, disabled, onQtyChange, onRemove }) {
+  return (
+    <div className="ua-cp-nut-order-item">
+      <div>
+        <strong>{item.name}</strong>
+        <span>{packPriceLabel(item, { each: true }) || "—"}</span>
+      </div>
+      <div className="ua-cp-nut-order-item__qty">
+        <button type="button" disabled={disabled} onClick={() => onQtyChange(Math.max(1, item.qty - 1))}>−</button>
+        <span>{item.qty}</span>
+        <button type="button" disabled={disabled} onClick={() => onQtyChange(item.qty + 1)}>+</button>
+      </div>
+      <strong className="ua-cp-nut-order-item__total">Rs. {((Number(item.price) || 0) * item.qty).toLocaleString("en-IN")}</strong>
+      <button type="button" className="ua-cp-nut-order-item__remove" disabled={disabled} onClick={onRemove} aria-label="Remove item">×</button>
+    </div>
+  );
+}
+
+function CoachOrderCard({
+  order,
+  pool,
+  selected,
+  disabled,
+  onUpdate,
+  onRemove,
+  onSave,
+  onOpenBill,
+}) {
+  const [itemPick, setItemPick] = useState("");
+  const total = order.items.reduce((sum, item) => sum + (Number(item.price) || 0) * item.qty, 0);
+  const availableItems = useMemo(
+    () => (pool || []).filter((item) => !order.items.some((row) => row.id === item.id)),
+    [order.items, pool],
+  );
+
+  function addItem() {
+    const item = (pool || []).find((s) => s.id === itemPick);
+    if (!item) return;
+    onUpdate({
+      ...order,
+      saved: false,
+      items: (() => {
+        const existing = order.items.find((x) => x.id === item.id);
+        if (existing) {
+          return order.items.map((x) => (x.id === item.id ? { ...x, qty: x.qty + 1 } : x));
+        }
+        return [...order.items, { ...item, qty: 1 }];
+      })(),
+    });
+    setItemPick("");
+  }
+
+  function copyRecommendation() {
+    onUpdate({
+      ...order,
+      saved: false,
+      items: selected.map((s) => ({ ...s })),
+    });
+  }
+
+  function patch(fields) {
+    onUpdate({ ...order, saved: false, ...fields });
+  }
+
+  return (
+    <div className="ua-cp-nut-order-card">
+      <div className="ua-cp-nut-order-card__head">
+        <div className="ua-cp-nut-order-card__title-wrap">
+          <span className="ua-cp-nut-order-card__num">#{order.number}</span>
+          <div>
+            <strong>{order.saved ? "Order logged" : "New order (not saved)"}</strong>
+            <span>Add the vendor and the date you placed it</span>
+          </div>
+        </div>
+        <div className="ua-cp-nut-order-card__actions">
+          <span className="ua-cp-nut-order-card__badge">{order.saved ? "Saved" : "Draft"}</span>
+          {!disabled ? (
+            <button type="button" className="ua-cp-nut-order-card__close" onClick={onRemove} aria-label="Remove order">×</button>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="ua-cp-nut-order-card__items-head">
+        <span>Items in this order</span>
+        <strong>Rs. {total.toLocaleString("en-IN")}</strong>
+      </div>
+
+      {order.items.length ? (
+        <div className="ua-cp-nut-order-card__items">
+          {order.items.map((item) => (
+            <OrderItemRow
+              key={item.id}
+              item={item}
+              disabled={disabled}
+              onQtyChange={(qty) => patch({
+                items: order.items.map((x) => (x.id === item.id ? { ...x, qty } : x)),
+              })}
+              onRemove={() => patch({
+                items: order.items.filter((x) => x.id !== item.id),
+              })}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="ua-cp-nut-order-card__empty">
+          No items yet — pick from the list below, or copy the client&apos;s recommendation.
+        </div>
+      )}
+
+      <div className="ua-cp-nut-order-card__add-row">
+        <select
+          value={itemPick}
+          disabled={disabled || !availableItems.length}
+          onChange={(e) => setItemPick(e.target.value)}
+        >
+          <option value="">
+            {availableItems.length ? "+ Add item…" : order.items.length ? "All pool items added" : "+ Add item…"}
+          </option>
+          {availableItems.map((s) => (
+            <option key={s.id} value={s.id}>{formatSupplementOption(s)}</option>
+          ))}
+        </select>
+        <button
+          type="button"
+          className="ua-cp-nut-order-card__copy"
+          disabled={disabled || !selected.length}
+          onClick={copyRecommendation}
+        >
+          Copy recommendation
+        </button>
+        <button
+          type="button"
+          className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
+          disabled={disabled || !itemPick}
+          onClick={addItem}
+        >
+          Add
+        </button>
+      </div>
+
+      <div className="ua-cp-nut-order-card__fields">
+        <label className="ua-cp-nut-order-field">
+          <span>Order placed on</span>
+          <input
+            type="date"
+            data-allow-future="true"
+            value={order.placedOn}
+            disabled={disabled}
+            onChange={(e) => patch({ placedOn: e.target.value })}
+          />
+        </label>
+        <label className="ua-cp-nut-order-field">
+          <span>Vendor / source</span>
+          <input
+            type="text"
+            placeholder="e.g. Wellness Store, Amw"
+            value={order.vendor}
+            disabled={disabled}
+            onChange={(e) => patch({ vendor: e.target.value })}
+          />
+        </label>
+        <label className="ua-cp-nut-order-field">
+          <span>Tracking / AWB</span>
+          <input
+            type="text"
+            placeholder="Optional"
+            value={order.tracking}
+            disabled={disabled}
+            onChange={(e) => patch({ tracking: e.target.value })}
+          />
+        </label>
+        <label className="ua-cp-nut-order-field">
+          <span>Expected delivery</span>
+          <input
+            type="date"
+            data-allow-future="true"
+            value={order.expectedDelivery}
+            disabled={disabled}
+            onChange={(e) => patch({ expectedDelivery: e.target.value })}
+          />
+        </label>
+      </div>
+
+      <div className="ua-cp-nut-order-card__bill">
+        <div>
+          <strong>{order.billName || "No purchase bill uploaded"}</strong>
+          <span>Upload the vendor invoice or payment receipt (PDF or image)</span>
+          {order.billPdfUrl ? (
+            <a href={order.billPdfUrl} target="_blank" rel="noreferrer">Open uploaded bill</a>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
+          disabled={disabled}
+          onClick={onOpenBill}
+        >
+          {order.billName ? "Replace bill" : "Upload bill"}
+        </button>
+      </div>
+
+      <div className="ua-cp-nut-order-card__foot">
+        <span>{order.saved ? "Saved to log" : "Not saved yet"}</span>
+        {!disabled ? (
+          <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm" onClick={onSave}>
+            Save log
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function CoachFulfilmentLog({
+  orders,
+  pool,
+  selected,
+  disabled,
+  onAddOrder,
+  onUpdateOrder,
+  onRemoveOrder,
+  onSaveOrder,
+  onAttachBill,
+}) {
+  const [billOrderId, setBillOrderId] = useState(null);
+  const hasDraft = orders.some((o) => !o.saved);
+  const statusLabel = orders.length === 0 ? "Not ordered yet" : hasDraft ? "Draft order" : "Orders logged";
+
+  return (
+    <div className="ua-cp-nut-log">
+      <div className="ua-cp-nut-log__head">
+        <strong>Coach fulfilment log</strong>
+        <span className={`ua-cp-nut-log__status ua-cp-nut-log__status--${orders.length === 0 ? "pending" : hasDraft ? "draft" : "saved"}`}>
+          {statusLabel}
+        </span>
+      </div>
+      <p className="ua-cp-nut-log__hint">
+        The client asked you to order it. Log each order you place — date, vendor and bill. Delivered orders move to the history below.
+      </p>
+
+      {orders.length === 0 ? (
+        <div className="ua-cp-nut-log__empty">
+          No order logged yet. Add one once you place it with the vendor.
+        </div>
+      ) : (
+        orders.map((order) => (
+          <CoachOrderCard
+            key={order.id}
+            order={order}
+            pool={pool}
+            selected={selected}
+            disabled={disabled}
+            onUpdate={onUpdateOrder}
+            onRemove={() => onRemoveOrder(order.id)}
+            onSave={() => onSaveOrder(order.id)}
+            onOpenBill={() => setBillOrderId(order.id)}
+          />
+        ))
+      )}
+
+      {!disabled ? (
+        <button type="button" className="ua-cp-nut-log__add" onClick={onAddOrder}>+ Add order</button>
+      ) : null}
+
+      <BillUploadModal
+        open={Boolean(billOrderId)}
+        onClose={() => setBillOrderId(null)}
+        onAttach={(fileName) => {
+          if (!billOrderId) return;
+          onAttachBill(billOrderId, fileName);
+        }}
+      />
     </div>
   );
 }
@@ -217,6 +553,7 @@ export function NutritionsSection({ user, onToast }) {
   const [error, setError] = useState("");
   const [selected, setSelected] = useState([]);
   const [fulfilment, setFulfilment] = useState("delivery");
+  const [coachOrders, setCoachOrders] = useState([]);
   const [recommended, setRecommended] = useState(null);
   const [history, setHistory] = useState([]);
   const [dosages, setDosages] = useState([]);
@@ -239,8 +576,17 @@ export function NutritionsSection({ user, onToast }) {
   );
   const dirty = useMemo(() => {
     const savedOption = recommended?.deliveryOption === "self_billing" ? "self" : "delivery";
-    return !sameItems(selected, recommended?.items || []) || fulfilment !== savedOption;
-  }, [fulfilment, recommended, selected]);
+    const itemsOrOptionChanged = !sameItems(selected, recommended?.items || []) || fulfilment !== savedOption;
+    const hasUnsyncedOrders = fulfilment === "delivery" && coachOrders.some((order) => (
+      !order.saved
+      && order.items.length
+      && String(order.placedOn || "").trim()
+      && String(order.vendor || "").trim()
+    ));
+    return itemsOrOptionChanged || hasUnsyncedOrders;
+  }, [coachOrders, fulfilment, recommended, selected]);
+
+  const canSaveAndSync = Boolean(canWrite && isHealClient && selected.length && !saving);
 
   const load = useCallback(async ({ silent = false } = {}) => {
     if (!userId) return;
@@ -269,10 +615,22 @@ export function NutritionsSection({ user, onToast }) {
         setHistory(recResult.value?.history || []);
         setSelected((current?.items || []).map((item) => ({ ...item })));
         setFulfilment(current?.deliveryOption === "self_billing" ? "self" : "delivery");
+        const savedOrders = (current?.deliveryOption === "coach_delivery"
+          ? (current?.fulfilmentOrders || [])
+          : []
+        ).map(mapApiOrderToUi);
+        setCoachOrders(
+          savedOrders.length
+            ? savedOrders
+            : current?.deliveryOption === "self_billing"
+              ? []
+              : [createDraftOrder(1)]
+        );
       } else {
         setRecommended(null);
         setHistory([]);
         setSelected([]);
+        setCoachOrders([]);
         const message = recResult.reason?.message || "Failed to load recommendations";
         if (!isHealGateMessage(message)) errors.push(message);
       }
@@ -320,6 +678,131 @@ export function NutritionsSection({ user, onToast }) {
     onToast(`${item.name} added`);
   }
 
+  function addCoachOrder() {
+    setCoachOrders((list) => [...list, createDraftOrder(list.length + 1)]);
+  }
+
+  function updateCoachOrder(updated) {
+    setCoachOrders((list) => list.map((o) => (o.id === updated.id ? updated : o)));
+  }
+
+  async function removeCoachOrder(id) {
+    const order = coachOrders.find((o) => o.id === id);
+    if (!order) return;
+
+    if (order.saved && recommended?.id && !String(order.id).startsWith("order-")) {
+      setSaving(true);
+      try {
+        const nextRec = await deleteUserSupplementFulfilmentOrder(userId, recommended.id, order.id);
+        setRecommended(nextRec || recommended);
+        setCoachOrders((list) => list.filter((o) => o.id !== id).map((o, index) => ({ ...o, number: index + 1 })));
+        onToast("Order removed");
+      } catch (err) {
+        onToast?.(err?.message || "Could not remove order");
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
+    setCoachOrders((list) => list.filter((o) => o.id !== id).map((o, index) => ({ ...o, number: index + 1 })));
+  }
+
+  async function saveCoachOrder(id) {
+    const order = coachOrders.find((o) => o.id === id);
+    if (!order) return;
+    if (!order.items.length) {
+      onToast?.("Add at least one item to this order");
+      return;
+    }
+    if (!String(order.placedOn || "").trim() || !String(order.vendor || "").trim()) {
+      onToast?.("Enter order date and vendor before saving");
+      return;
+    }
+    if (!recommended?.id || recommended.deliveryOption !== "coach_delivery") {
+      onToast?.("Save & sync the coach-delivery recommendation first");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const isLocalDraft = String(order.id).startsWith("order-");
+      const result = await upsertUserSupplementFulfilmentOrder(userId, recommended.id, {
+        ...order,
+        id: isLocalDraft ? undefined : order.id,
+      });
+      if (result?.recommendation) setRecommended(result.recommendation);
+      if (result?.order) {
+        setCoachOrders((list) => list.map((o, index) => (
+          o.id === id
+            ? mapApiOrderToUi(result.order, index)
+            : { ...o, number: index + 1 }
+        )));
+      }
+      onToast("Order log saved & synced to user app");
+    } catch (err) {
+      onToast?.(err?.message || "Could not save order log");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function attachBill(orderId, file) {
+    if (!file) return;
+    const order = coachOrders.find((o) => o.id === orderId);
+    if (!order) return;
+    if (!recommended?.id || recommended.deliveryOption !== "coach_delivery") {
+      onToast?.("Save & sync the coach-delivery recommendation first");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      let serverOrderId = order.saved && !String(order.id).startsWith("order-") ? order.id : "";
+      if (!serverOrderId) {
+        if (!order.items.length || !order.placedOn || !order.vendor) {
+          onToast?.("Fill items, date and vendor, then save the order before uploading a bill");
+          return;
+        }
+        const saved = await upsertUserSupplementFulfilmentOrder(userId, recommended.id, {
+          ...order,
+          id: undefined,
+        });
+        if (saved?.recommendation) setRecommended(saved.recommendation);
+        serverOrderId = saved?.order?.id || "";
+        if (saved?.order) {
+          setCoachOrders((list) => list.map((o, index) => (
+            o.id === orderId ? mapApiOrderToUi(saved.order, index) : { ...o, number: index + 1 }
+          )));
+        }
+      }
+      if (!serverOrderId) {
+        onToast?.("Could not prepare order for bill upload");
+        return;
+      }
+
+      const result = await uploadUserSupplementFulfilmentOrderBill(
+        userId,
+        recommended.id,
+        serverOrderId,
+        file,
+      );
+      if (result?.recommendation) setRecommended(result.recommendation);
+      if (result?.order) {
+        setCoachOrders((list) => list.map((o, index) => (
+          String(o.id) === String(serverOrderId) || o.id === orderId
+            ? mapApiOrderToUi(result.order, index)
+            : { ...o, number: index + 1 }
+        )));
+      }
+      onToast("Bill uploaded & synced to user app");
+    } catch (err) {
+      onToast?.(err?.message || "Could not upload bill");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function saveRecommendation() {
     if (!selected.length) {
       onToast?.("Pick at least one supplement");
@@ -327,14 +810,49 @@ export function NutritionsSection({ user, onToast }) {
     }
     setSaving(true);
     try {
-      await createUserSupplementRecommendation(userId, {
+      // Always create a fresh recommendation so the user app receives a sync/push.
+      const nextRecommendation = await createUserSupplementRecommendation(userId, {
         items: selected,
         deliveryOption: fulfilment,
       });
-      onToast("Saved & synced to user app");
+      let recommendationId = nextRecommendation?.id || "";
+      if (nextRecommendation) setRecommended(nextRecommendation);
+
+      let syncedOrders = 0;
+      if (fulfilment === "delivery" && recommendationId) {
+        const readyOrders = coachOrders.filter((order) => (
+          order.items.length
+          && String(order.placedOn || "").trim()
+          && String(order.vendor || "").trim()
+        ));
+
+        for (const order of readyOrders) {
+          const result = await upsertUserSupplementFulfilmentOrder(userId, recommendationId, {
+            ...order,
+            id: undefined,
+          });
+          if (result?.recommendation) {
+            setRecommended(result.recommendation);
+            recommendationId = result.recommendation.id;
+          }
+          syncedOrders += 1;
+        }
+
+        const skipped = coachOrders.length - readyOrders.length;
+        if (skipped > 0 && readyOrders.length === 0) {
+          onToast?.("Recommendation synced. Add items, date and vendor on each order to sync fulfilment logs.");
+        }
+      }
+
       await load({ silent: true });
+
+      if (syncedOrders > 0) {
+        onToast(`Saved & synced to user app · ${syncedOrders} order${syncedOrders === 1 ? "" : "s"}. Check the client app.`);
+      } else {
+        onToast("Saved & synced to user app. Check supplements in the client app.");
+      }
     } catch (err) {
-      onToast?.(err?.message || "Could not save recommendation");
+      onToast?.(err?.message || "Could not save & sync");
     } finally {
       setSaving(false);
     }
@@ -385,8 +903,32 @@ export function NutritionsSection({ user, onToast }) {
 
   const historyRows = useMemo(() => {
     const rows = [];
-    if (recommended) rows.push(recommendationToHistoryRow(recommended));
-    history.forEach((entry) => rows.push(recommendationToHistoryRow(entry)));
+    const pushOrderRows = (rec) => {
+      (rec?.fulfilmentOrders || []).forEach((order) => {
+        const orderItems = Array.isArray(order.items) ? order.items : [];
+        const amount = order.billingTotal
+          || orderItems.reduce((sum, item) => sum + (Number(item.price) || 0) * item.qty, 0);
+        const items = orderItems.map((item) => `${item.name} × ${item.qty}`).join(" · ");
+        rows.push({
+          id: `${rec.id}-${order.id}`,
+          date: formatLongDate(order.placedOn) || "—",
+          items: items || "Supplements",
+          type: order.vendor ? `Coach delivery · ${order.vendor}` : "Coach delivery",
+          amount,
+          status: order.billName || order.billPdfUrl ? "Bill uploaded" : "Order logged",
+          tone: order.billName || order.billPdfUrl ? "purple" : "green",
+        });
+      });
+    };
+
+    if (recommended) {
+      pushOrderRows(recommended);
+      rows.push(recommendationToHistoryRow(recommended));
+    }
+    history.forEach((entry) => {
+      pushOrderRows(entry);
+      rows.push(recommendationToHistoryRow(entry));
+    });
     return rows;
   }, [history, recommended]);
 
@@ -465,7 +1007,10 @@ export function NutritionsSection({ user, onToast }) {
           <div className="ua-cp-fulfil">
             <div className="ua-cp-fulfil__label">Fulfilment option (shown in user app)</div>
             <div className="ua-cp-fulfil__options">
-              <button type="button" disabled={!canWrite || saving || !isHealClient} className={`ua-cp-fulfil__opt${fulfilment === "delivery" ? " ua-cp-fulfil__opt--active" : ""}`} onClick={() => setFulfilment("delivery")}>
+              <button type="button" disabled={!canWrite || saving || !isHealClient} className={`ua-cp-fulfil__opt${fulfilment === "delivery" ? " ua-cp-fulfil__opt--active" : ""}`} onClick={() => {
+                setFulfilment("delivery");
+                setCoachOrders((list) => (list.length ? list : [createDraftOrder(1)]));
+              }}>
                 <strong>Send it to me</strong>
                 <span>Request delivery from coach</span>
               </button>
@@ -475,13 +1020,27 @@ export function NutritionsSection({ user, onToast }) {
               </button>
             </div>
 
-            <FulfilmentStatus recommendation={recommended} />
+            {fulfilment === "delivery" ? (
+              <CoachFulfilmentLog
+                orders={coachOrders}
+                pool={pool}
+                selected={selected}
+                disabled={!canWrite || saving || !isHealClient}
+                onAddOrder={addCoachOrder}
+                onUpdateOrder={updateCoachOrder}
+                onRemoveOrder={removeCoachOrder}
+                onSaveOrder={saveCoachOrder}
+                onAttachBill={attachBill}
+              />
+            ) : (
+              <FulfilmentStatus recommendation={recommended} />
+            )}
 
             {canWrite && isHealClient ? (
               <button
                 type="button"
                 className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--block"
-                disabled={saving || !selected.length || (!dirty && Boolean(recommended))}
+                disabled={!canSaveAndSync}
                 onClick={saveRecommendation}
               >
                 {saving ? "Saving…" : "Save & sync to user app"}

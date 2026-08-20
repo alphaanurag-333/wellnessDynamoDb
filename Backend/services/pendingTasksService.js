@@ -314,10 +314,12 @@ function orderItems(usersById, recommendations) {
     if (!userId) continue;
 
     const requested = Boolean(rec.deliveryRequestedAt);
-    const billed = Boolean(rec.billUploadedAt || rec.billPdfUrl || rec.billPdfKey);
-    if (!requested && !billed) continue;
+    const fulfilmentOrders = Array.isArray(rec.fulfilmentOrders) ? rec.fulfilmentOrders : [];
+    const hasLoggedOrder = fulfilmentOrders.length > 0;
+    const selfBilled = Boolean(rec.billUploadedAt || rec.billPdfUrl || rec.billPdfKey);
+    if (!requested && !hasLoggedOrder && !selfBilled) continue;
 
-    if (requested && !billed) {
+    if (requested && !hasLoggedOrder && !selfBilled) {
       items.push(
         toTaskItem(user, {
           id: `order-place-${rec.id}`,
@@ -330,12 +332,19 @@ function orderItems(usersById, recommendations) {
           section: "nutritions",
         })
       );
-    } else if (billed) {
+    } else if (hasLoggedOrder || selfBilled) {
+      const latestOrder = fulfilmentOrders[fulfilmentOrders.length - 1];
+      const placedAt =
+        latestOrder?.billUploadedAt ||
+        latestOrder?.updatedAt ||
+        latestOrder?.placedOn ||
+        rec.billUploadedAt ||
+        rec.updatedAt;
       items.push(
         toTaskItem(user, {
           id: `order-deliver-${rec.id}`,
           tag: "NOT DELIVERED",
-          detail: formatOrderDetail(rec, formatPlacedDetail(rec.billUploadedAt || rec.updatedAt)),
+          detail: formatOrderDetail(rec, formatPlacedDetail(placedAt)),
           link: "Update log",
           section: "nutritions",
         })

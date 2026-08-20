@@ -36,6 +36,7 @@ const FCM_TYPE_BY_KIND = {
   supplement_dosage_assigned: "supplement_dosage_notification",
   supplement_delivery_requested: "supplement_delivery_requested_notification",
   supplement_bill_uploaded: "supplement_bill_uploaded_notification",
+  supplement_order_logged: "supplement_order_logged_notification",
   meal_log_submitted: "meal_log_submitted_notification",
   meal_log_reviewed: "meal_log_reviewed_notification",
   monthly_champion: "monthly_champion_notification",
@@ -549,6 +550,32 @@ async function dispatchSupplementDosageAssignedNotification({
   return notification;
 }
 
+async function dispatchSupplementOrderLoggedNotification({
+  userId,
+  coachName,
+  recommendationId,
+  orderId,
+  vendor,
+}) {
+  const name = String(coachName || "Your coach").trim() || "Your coach";
+  const source = String(vendor || "").trim();
+  const message = source
+    ? `${name} placed your supplement order with ${source}.`
+    : `${name} placed your supplement order.`;
+
+  const notification = await createTargetedNotification({
+    userId,
+    kind: "supplement_order_logged",
+    message,
+    referenceId: orderId ? String(orderId) : recommendationId ? String(recommendationId) : null,
+    referenceType: "coach_supplement_fulfilment_order",
+    title: "Supplement order placed",
+  });
+
+  runPushSafely(deliverTargetedPush(userId, notification));
+  return notification;
+}
+
 async function dispatchSupplementDeliveryRequestedCoachNotification({ user, recommendationId }) {
   const tokens = await collectCoachFcmTokensForUser(user);
   if (tokens.length === 0) {
@@ -890,6 +917,7 @@ module.exports = {
   dispatchWellnessYogaAssignedNotification,
   dispatchSupplementRecommendedNotification,
   dispatchSupplementDosageAssignedNotification,
+  dispatchSupplementOrderLoggedNotification,
   dispatchSupplementDeliveryRequestedCoachNotification,
   dispatchSupplementDeliveryRequestedCoachNotificationAsync,
   dispatchSupplementBillUploadedCoachNotification,

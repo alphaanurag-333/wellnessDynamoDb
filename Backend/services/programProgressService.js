@@ -269,19 +269,28 @@ function buildOpsOverdue(usersById, recommendations) {
     if (!user) continue;
 
     const requested = Boolean(rec.deliveryRequestedAt);
-    const billed = Boolean(rec.billUploadedAt || rec.billPdfUrl || rec.billPdfKey);
-    if (!requested && !billed) continue;
+    const fulfilmentOrders = Array.isArray(rec.fulfilmentOrders) ? rec.fulfilmentOrders : [];
+    const hasLoggedOrder = fulfilmentOrders.length > 0;
+    const selfBilled = Boolean(rec.billUploadedAt || rec.billPdfUrl || rec.billPdfKey);
+    if (!requested && !hasLoggedOrder && !selfBilled) continue;
 
-    if (requested && !billed) {
+    if (requested && !hasLoggedOrder && !selfBilled) {
       orders.push(
         toOverduePerson(user, {
           detail: `Requested ${formatDaysAgoShort(rec.deliveryRequestedAt)}`,
         })
       );
-    } else if (billed) {
+    } else if (hasLoggedOrder || selfBilled) {
+      const latestOrder = fulfilmentOrders[fulfilmentOrders.length - 1];
       delivery.push(
         toOverduePerson(user, {
-          detail: formatPlacedDetail(rec.billUploadedAt || rec.updatedAt),
+          detail: formatPlacedDetail(
+            latestOrder?.billUploadedAt ||
+              latestOrder?.updatedAt ||
+              latestOrder?.placedOn ||
+              rec.billUploadedAt ||
+              rec.updatedAt
+          ),
         })
       );
     }

@@ -65,9 +65,87 @@ function computeBillingTotal(items) {
   );
 }
 
+function normalizeIsoDate(value, fieldName) {
+  const raw = String(value || "").trim();
+  if (!raw) {
+    const err = new Error(`${fieldName} is required`);
+    err.name = "ValidationError";
+    throw err;
+  }
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) {
+    const err = new Error(`${fieldName} must be a valid date`);
+    err.name = "ValidationError";
+    throw err;
+  }
+  return d.toISOString().slice(0, 10);
+}
+
+function normalizeOptionalIsoDate(value, fieldName) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  return normalizeIsoDate(raw, fieldName);
+}
+
+function toFulfilmentOrderPublic(order) {
+  if (!order || !order.id) return null;
+  const items = Array.isArray(order.items) ? order.items : [];
+  return {
+    id: String(order.id),
+    items,
+    billingTotal: Number(order.billingTotal) || computeBillingTotal(items),
+    placedOn: String(order.placedOn || "").trim(),
+    vendor: String(order.vendor || "").trim(),
+    tracking: String(order.tracking || "").trim(),
+    expectedDelivery: String(order.expectedDelivery || "").trim(),
+    billPdfKey: order.billPdfKey ?? null,
+    billPdfUrl: order.billPdfKey ? resolvePublicUrl(order.billPdfKey) : null,
+    billFileName: String(order.billFileName || "").trim(),
+    billUploadedAt: order.billUploadedAt ?? null,
+    status: String(order.status || "logged").trim() || "logged",
+    createdAt: order.createdAt,
+    updatedAt: order.updatedAt,
+  };
+}
+
+function readFulfilmentOrders(record) {
+  return (Array.isArray(record?.fulfilmentOrders) ? record.fulfilmentOrders : [])
+    .map((row) => toFulfilmentOrderPublic(row))
+    .filter(Boolean);
+}
+
+function normalizeFulfilmentOrderInput(payload = {}, { existing = null } = {}) {
+  const items = normalizeItems(payload.items);
+  const placedOn = normalizeIsoDate(payload.placedOn, "placedOn");
+  const vendor = String(payload.vendor || "").trim();
+  if (!vendor) {
+    const err = new Error("vendor is required");
+    err.name = "ValidationError";
+    throw err;
+  }
+
+  const now = new Date().toISOString();
+  return {
+    id: String(existing?.id || payload.id || uuidv4()).trim(),
+    items,
+    billingTotal: computeBillingTotal(items),
+    placedOn,
+    vendor,
+    tracking: String(payload.tracking || "").trim(),
+    expectedDelivery: normalizeOptionalIsoDate(payload.expectedDelivery, "expectedDelivery"),
+    billPdfKey: existing?.billPdfKey ?? null,
+    billFileName: String(existing?.billFileName || payload.billFileName || "").trim(),
+    billUploadedAt: existing?.billUploadedAt ?? null,
+    status: String(payload.status || existing?.status || "logged").trim() || "logged",
+    createdAt: existing?.createdAt || now,
+    updatedAt: now,
+  };
+}
+
 function toCoachRecommendedSupplementPublic(item) {
   const row = withLegacyId(item);
   if (!row) return null;
+  const fulfilmentOrders = readFulfilmentOrders(row);
   return {
     id: row.id,
     _id: row._id,
@@ -80,6 +158,7 @@ function toCoachRecommendedSupplementPublic(item) {
     billPdfKey: row.billPdfKey ?? null,
     billPdfUrl: row.billPdfKey ? resolvePublicUrl(row.billPdfKey) : null,
     billUploadedAt: row.billUploadedAt ?? null,
+    fulfilmentOrders,
     createdByRole: normalizeCreatedByRole(row.createdByRole),
     createdById: row.createdById,
     createdAt: row.createdAt,
@@ -200,6 +279,7 @@ async function createCoachRecommendedSupplement({
     deliveryRequestedAt: null,
     billPdfKey: null,
     billUploadedAt: null,
+    fulfilmentOrders: [],
     createdByRole: normalizeCreatedByRole(createdByRole),
     createdById: creatorId,
     createdAt: now,
@@ -297,6 +377,155 @@ async function saveBillPdf(id, billPdfKey) {
   return toCoachRecommendedSupplementPublic(Attributes);
 }
 
+async function assertCoachDeliveryRecommendation(record) {
+  if (!record) {
+    const err = new Error("Recommendation not found");
+    err.name = "NotFoundError";
+    throw err;
+  }
+  if (record.deliveryOption !== "coach_delivery") {
+    const err = new Error("Fulfilment orders are only available for coach delivery recommendations");
+    err.name = "ValidationError";
+    throw err;
+  }
+}
+
+async function upsertFulfilmentOrder(recommendationId, payload) {
+  const record = await getCoachRecommendedSupplementRecordById(recommendationId);
+  await assertCoachDeliveryRecommendation(record);
+
+  const orders = Array.isArray(record.fulfilmentOrders) ? [...record.fulfilmentOrders] : [];
+  const orderId = String(payload?.id || "").trim();
+  const existingIndex = orderId
+    ? orders.findIndex((row) => String(row.id) === orderId)
+    : -1;
+  const existing = existingIndex >= 0 ? orders[existingIndex] : null;
+  const nextOrder = normalizeFulfilmentOrderInput(payload, { existing });
+
+  if (existingIndex >= 0) {
+    orders[existingIndex] = nextOrder;
+  } else {
+    orders.push(nextOrder);
+  }
+
+  const now = new Date().toISOString();
+  const { Attributes } = await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE,
+      Key: { id: recommendationId },
+      UpdateExpression: "SET fulfilmentOrders = :fulfilmentOrders, updatedAt = :updatedAt",
+      ExpressionAttributeValues: {
+        ":fulfilmentOrders": orders,
+        ":updatedAt": now,
+      },
+      ConditionExpression: "attribute_exists(id)",
+      ReturnValues: "ALL_NEW",
+    })
+  );
+
+  const recommendation = toCoachRecommendedSupplementPublic(Attributes);
+  return {
+    recommendation,
+    order: recommendation.fulfilmentOrders.find((row) => row.id === nextOrder.id) || null,
+  };
+}
+
+async function saveFulfilmentOrderBill(recommendationId, orderId, billPdfKey, billFileName = "") {
+  const record = await getCoachRecommendedSupplementRecordById(recommendationId);
+  await assertCoachDeliveryRecommendation(record);
+
+  const oid = String(orderId || "").trim();
+  const key = String(billPdfKey || "").trim();
+  if (!oid) {
+    const err = new Error("orderId is required");
+    err.name = "ValidationError";
+    throw err;
+  }
+  if (!key) {
+    const err = new Error("billPdfKey is required");
+    err.name = "ValidationError";
+    throw err;
+  }
+
+  const orders = Array.isArray(record.fulfilmentOrders) ? [...record.fulfilmentOrders] : [];
+  const index = orders.findIndex((row) => String(row.id) === oid);
+  if (index < 0) {
+    const err = new Error("Fulfilment order not found");
+    err.name = "NotFoundError";
+    throw err;
+  }
+
+  const existing = orders[index];
+  if (existing.billPdfKey && existing.billPdfKey !== key) {
+    await deleteStoredMedia(existing.billPdfKey);
+  }
+
+  const now = new Date().toISOString();
+  orders[index] = {
+    ...existing,
+    billPdfKey: key,
+    billFileName: String(billFileName || existing.billFileName || "").trim(),
+    billUploadedAt: now,
+    updatedAt: now,
+  };
+
+  const { Attributes } = await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE,
+      Key: { id: recommendationId },
+      UpdateExpression: "SET fulfilmentOrders = :fulfilmentOrders, updatedAt = :updatedAt",
+      ExpressionAttributeValues: {
+        ":fulfilmentOrders": orders,
+        ":updatedAt": now,
+      },
+      ConditionExpression: "attribute_exists(id)",
+      ReturnValues: "ALL_NEW",
+    })
+  );
+
+  const recommendation = toCoachRecommendedSupplementPublic(Attributes);
+  return {
+    recommendation,
+    order: recommendation.fulfilmentOrders.find((row) => row.id === oid) || null,
+  };
+}
+
+async function deleteFulfilmentOrder(recommendationId, orderId) {
+  const record = await getCoachRecommendedSupplementRecordById(recommendationId);
+  await assertCoachDeliveryRecommendation(record);
+
+  const oid = String(orderId || "").trim();
+  const orders = Array.isArray(record.fulfilmentOrders) ? [...record.fulfilmentOrders] : [];
+  const index = orders.findIndex((row) => String(row.id) === oid);
+  if (index < 0) {
+    const err = new Error("Fulfilment order not found");
+    err.name = "NotFoundError";
+    throw err;
+  }
+
+  const [removed] = orders.splice(index, 1);
+  if (removed?.billPdfKey) {
+    await deleteStoredMedia(removed.billPdfKey);
+  }
+
+  const now = new Date().toISOString();
+  const { Attributes } = await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE,
+      Key: { id: recommendationId },
+      UpdateExpression: "SET fulfilmentOrders = :fulfilmentOrders, updatedAt = :updatedAt",
+      ExpressionAttributeValues: {
+        ":fulfilmentOrders": orders,
+        ":updatedAt": now,
+      },
+      ConditionExpression: "attribute_exists(id)",
+      ReturnValues: "ALL_NEW",
+    })
+  );
+
+  return toCoachRecommendedSupplementPublic(Attributes);
+}
+
 async function deleteCoachRecommendedSupplement(id) {
   const record = await getCoachRecommendedSupplementRecordById(id);
   if (!record) {
@@ -307,6 +536,11 @@ async function deleteCoachRecommendedSupplement(id) {
 
   if (record.billPdfKey) {
     await deleteStoredMedia(record.billPdfKey);
+  }
+  for (const order of Array.isArray(record.fulfilmentOrders) ? record.fulfilmentOrders : []) {
+    if (order?.billPdfKey) {
+      await deleteStoredMedia(order.billPdfKey);
+    }
   }
 
   await docClient.send(
@@ -330,8 +564,12 @@ module.exports = {
   scanCoachRecommendedSupplements,
   markDeliveryRequested,
   saveBillPdf,
+  upsertFulfilmentOrder,
+  saveFulfilmentOrderBill,
+  deleteFulfilmentOrder,
   deleteCoachRecommendedSupplement,
   toCoachRecommendedSupplementPublic,
+  toFulfilmentOrderPublic,
   normalizeDeliveryOption,
   normalizeCreatedByRole,
   computeBillingTotal,
