@@ -1155,6 +1155,7 @@ async function buildMemberContent(accountOrPublic) {
       hasMedia: hasVideo,
       meta: videoMeta,
       url: videoUrl || linkUrl || null,
+      downloadUrl: videoUrl || null,
     },
     {
       id: "letter",
@@ -1164,6 +1165,7 @@ async function buildMemberContent(accountOrPublic) {
       hasMedia: hasLetter,
       meta: letterMeta,
       url: letterUrl || null,
+      downloadUrl: letterUrl || null,
     },
   ];
 }

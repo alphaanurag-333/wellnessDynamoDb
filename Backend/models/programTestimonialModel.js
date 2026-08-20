@@ -16,7 +16,6 @@ const {
   listByPartitionKey,
   buildContainsFilter,
   appendFilter,
-  sortByCreatedAtDesc,
 } = require("../utils/dynamoList");
 
 const TABLE = "ProgramTestimonials";
@@ -27,6 +26,8 @@ const TYPES = new Set([
   "thyroid_care",
   "gut_health",
 ]);
+const SORT_ORDER_MIN = 0;
+const SORT_ORDER_MAX = 100000;
 
 const TYPE_LABELS = {
   diabetes_reversal: "Diabetes Reversal",
@@ -38,6 +39,19 @@ const TYPE_LABELS = {
 function normalizeStatus(value, fallback = "active") {
   const next = String(value || fallback).toLowerCase().trim();
   return STATUS.has(next) ? next : fallback;
+}
+
+function normalizeSortOrder(value, fallback = 0) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < SORT_ORDER_MIN) return fallback;
+  return Math.min(Math.floor(n), SORT_ORDER_MAX);
+}
+
+function sortProgramTestimonialsByOrder(a, b) {
+  const orderA = normalizeSortOrder(a?.sortOrder, 9999);
+  const orderB = normalizeSortOrder(b?.sortOrder, 9999);
+  if (orderA !== orderB) return orderA - orderB;
+  return String(b?.createdAt || "").localeCompare(String(a?.createdAt || ""));
 }
 
 function normalizeType(value) {
@@ -88,7 +102,33 @@ function sanitizeUpdateField(key, value) {
   if (["name", "description"].includes(field)) return String(value).trim();
   if (field === "type") return normalizeType(value);
   if (field === "status") return normalizeStatus(value);
+  if (field === "sortOrder") return normalizeSortOrder(value);
   return value;
+}
+
+async function listAllProgramTestimonialsUnpaged() {
+  const result = await listByPartitionKey({
+    tableName: TABLE,
+    indexName: "StatusCreatedAtIndex",
+    partitionKeyName: "status",
+    partitionKeyValue: undefined,
+    scanIndexForward: false,
+    page: 1,
+    limit: Number.MAX_SAFE_INTEGER,
+    maxLimit: Number.MAX_SAFE_INTEGER,
+    sortFn: sortProgramTestimonialsByOrder,
+  });
+  return result.items || [];
+}
+
+async function nextSortOrder() {
+  const items = await listAllProgramTestimonialsUnpaged();
+  if (!items.length) return 1;
+  const max = items.reduce((acc, item) => {
+    const order = normalizeSortOrder(item.sortOrder, 0);
+    return order > acc ? order : acc;
+  }, 0);
+  return Math.min(max + 1, SORT_ORDER_MAX);
 }
 
 async function createProgramTestimonial({
@@ -98,9 +138,14 @@ async function createProgramTestimonial({
   profile_image,
   type,
   status = "active",
+  sortOrder,
 }) {
   const now = new Date().toISOString();
   const imageKey = normalizeProfileImageField(profileImage ?? profile_image);
+  const resolvedOrder =
+    sortOrder === undefined || sortOrder === null || sortOrder === ""
+      ? await nextSortOrder()
+      : normalizeSortOrder(sortOrder);
   const item = {
     id: uuidv4(),
     name: String(name || "").trim(),
@@ -108,6 +153,7 @@ async function createProgramTestimonial({
     profileImage: imageKey,
     type: normalizeType(type),
     status: normalizeStatus(status),
+    sortOrder: resolvedOrder,
     createdAt: now,
     updatedAt: now,
   };
@@ -233,7 +279,7 @@ async function listProgramTestimonials({ page = 1, limit = 10, status, type, sea
     page,
     limit,
     maxLimit: 200,
-    sortFn: sortByCreatedAtDesc,
+    sortFn: sortProgramTestimonialsByOrder,
   });
 
   return {
@@ -242,16 +288,55 @@ async function listProgramTestimonials({ page = 1, limit = 10, status, type, sea
   };
 }
 
+/**
+ * Persist display order. `orderedIds` is the full list in desired order (1-based sortOrder).
+ */
+async function reorderProgramTestimonials(orderedIds = []) {
+  const ids = Array.isArray(orderedIds)
+    ? orderedIds.map((id) => String(id || "").trim()).filter(Boolean)
+    : [];
+
+  if (!ids.length) {
+    throw new Error("orderedIds is required");
+  }
+
+  const unique = new Set(ids);
+  if (unique.size !== ids.length) {
+    throw new Error("orderedIds must be unique");
+  }
+
+  const existing = await listAllProgramTestimonialsUnpaged();
+  const byId = new Map(existing.map((item) => [item.id, item]));
+
+  for (const id of ids) {
+    if (!byId.has(id)) {
+      const err = new Error(`Program testimonial not found: ${id}`);
+      err.statusCode = 404;
+      throw err;
+    }
+  }
+
+  const updated = await Promise.all(
+    ids.map((id, index) => updateProgramTestimonial(id, { sortOrder: index + 1 })),
+  );
+
+  return updated.sort(sortProgramTestimonialsByOrder);
+}
+
 module.exports = {
   TABLE,
   TYPES,
   TYPE_LABELS,
+  SORT_ORDER_MIN,
+  SORT_ORDER_MAX,
   normalizeStatus,
   normalizeType,
+  normalizeSortOrder,
   createProgramTestimonial,
   getProgramTestimonialById,
   getProgramTestimonialRecordById,
   updateProgramTestimonial,
   deleteProgramTestimonial,
   listProgramTestimonials,
+  reorderProgramTestimonials,
 };

@@ -9,11 +9,18 @@ const {
   createProgramTestimonialController,
   updateProgramTestimonialController,
   deleteProgramTestimonialController,
+  reorderProgramTestimonialsController,
 } = require("../../controllers/adminController/programTestimonialController");
 
 const router = express.Router();
 
 router.get("/", protectAccount, authorizeStaff("console.ct.view", { admin: "program-testimonials.view" }), listProgramTestimonialsController);
+router.put(
+  "/reorder",
+  protectAccount,
+  authorizeStaff("console.ct.edit", { admin: "program-testimonials.edit" }),
+  reorderProgramTestimonialsController
+);
 router.get(
   "/:id",
   protectAccount,

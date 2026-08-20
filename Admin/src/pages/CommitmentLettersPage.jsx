@@ -38,6 +38,26 @@ function FileIcon({ live = false }) {
   );
 }
 
+function PreviewPlaceholderIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <path d="M21 15l-5-5L5 21" />
+    </svg>
+  );
+}
+
+function SignaturePlaceholderIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <path d="M21 15l-5-5L5 21" />
+    </svg>
+  );
+}
+
 function TrashIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -190,10 +210,12 @@ export function CommitmentLettersPage() {
   const draft = letters.find((letter) => !letter.signed) || null;
   const signedCount = letters.filter((letter) => letter.signed).length;
   const hasSignatureImage = Boolean(library?.signature?.url);
+  const signatureOnFile = hasSignatureImage || Boolean(library?.signature?.onFile) || signedCount > 0;
   const featuredPreviewSrc = featured?.previewUrl || featured?.fileUrl || "";
   const hasFeaturedPreview = Boolean(featuredPreviewSrc);
   const featuredPreviewIsImage = featured?.previewType === "image"
     || (Boolean(featured?.previewUrl) && featured?.previewType !== "pdf");
+  const contentBackTo = isAdminLibrary || isCoachView ? UPDATED_ADMIN_PATHS.myContent : UPDATED_ADMIN_PATHS.dashboard;
 
   if (!isAdminLibrary && routeCoachId && ownId && routeCoachId !== ownId) {
     return <Navigate to={UPDATED_ADMIN_PATHS.commitmentLetters(ownId)} replace />;
@@ -554,10 +576,7 @@ export function CommitmentLettersPage() {
   if (loading) {
     return (
       <main className="content ua-page-enter ua-commit">
-          <BackLink
-          label={isAdminLibrary || isCoachView ? "My Content" : "Dashboard"}
-          to={isAdminLibrary || isCoachView ? UPDATED_ADMIN_PATHS.myContent : UPDATED_ADMIN_PATHS.dashboard}
-        />
+        <BackLink text="Back" to={contentBackTo} />
         <BrandLoader variant="page" label="Loading commitment letters…" />
       </main>
     );
@@ -566,10 +585,7 @@ export function CommitmentLettersPage() {
   if (!coachId || !library) {
     return (
       <main className="content ua-page-enter ua-commit">
-        <BackLink
-          label={isAdminLibrary || isCoachView ? "My Content" : "Dashboard"}
-          to={isAdminLibrary || isCoachView ? UPDATED_ADMIN_PATHS.myContent : UPDATED_ADMIN_PATHS.dashboard}
-        />
+        <BackLink text="Back" to={contentBackTo} />
         <div className="ua-commit__head">
           <div className="ua-commit__head-copy">
             <h1 className="page-head__title">Commitment Letters</h1>
@@ -582,10 +598,7 @@ export function CommitmentLettersPage() {
 
   return (
     <main className="content ua-page-enter ua-commit">
-      <BackLink
-        label={isAdminLibrary || isCoachView ? "My Content" : "Dashboard"}
-        to={isAdminLibrary || isCoachView ? UPDATED_ADMIN_PATHS.myContent : UPDATED_ADMIN_PATHS.dashboard}
-      />
+      <BackLink text="Back" to={contentBackTo} />
 
       <div className="ua-commit__head">
         <div className="ua-commit__head-copy">
@@ -626,12 +639,19 @@ export function CommitmentLettersPage() {
             <div className="ua-commit__featured-kicker">This is what clients see today</div>
             {featured ? (
               <div className="ua-commit__featured-body">
-                <button
-                  type="button"
-                  className={`ua-commit__preview${canEdit ? " is-uploadable" : ""}${hasFeaturedPreview ? " has-media" : ""}`}
-                  disabled={!canEdit || busy}
-                  onClick={() => canEdit && startUpload("preview")}
-                  aria-label={hasFeaturedPreview ? "Replace letter preview" : "Upload letter preview"}
+                <div
+                  className={`ua-commit__preview${hasFeaturedPreview ? " has-media" : ""}`}
+                  role={hasFeaturedPreview ? "button" : undefined}
+                  tabIndex={hasFeaturedPreview ? 0 : undefined}
+                  onClick={() => hasFeaturedPreview && viewLetter(featured)}
+                  onKeyDown={(event) => {
+                    if (!hasFeaturedPreview) return;
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      viewLetter(featured);
+                    }
+                  }}
+                  aria-label={hasFeaturedPreview ? `View ${featured.name}` : "Letter preview"}
                 >
                   {hasFeaturedPreview ? (
                     featuredPreviewIsImage ? (
@@ -641,11 +661,11 @@ export function CommitmentLettersPage() {
                     )
                   ) : (
                     <span className="ua-commit__preview-hint">
-                      <strong>{canEdit ? "Upload preview" : "Letter preview"}</strong>
-                      {canEdit ? <em>PDF or image</em> : null}
+                      <PreviewPlaceholderIcon />
+                      <strong>Letter preview</strong>
                     </span>
                   )}
-                </button>
+                </div>
                 <div className="ua-commit__featured-info">
                   <div className="ua-commit__featured-title">{featured.name}</div>
                   <div className="ua-commit__featured-note">{featuredMeta(featured, coachName)}</div>
@@ -659,7 +679,7 @@ export function CommitmentLettersPage() {
                     <button type="button" className="ua-commit__btn ua-commit__btn--ghost" onClick={() => viewLetter(featured)}>
                       View
                     </button>
-                    <button type="button" className="ua-commit__btn ua-commit__btn--primary" onClick={() => downloadOne(featured)}>
+                    <button type="button" className="ua-commit__btn ua-commit__btn--orange" onClick={() => downloadOne(featured)}>
                       Download
                     </button>
                     {canEdit ? (
@@ -667,18 +687,40 @@ export function CommitmentLettersPage() {
                         type="button"
                         className="ua-commit__btn ua-commit__btn--ghost"
                         disabled={busy}
-                        onClick={() => startUpload(hasFeaturedPreview ? "replace-live" : "preview")}
+                        onClick={() => startUpload("replace-live")}
                       >
-                        {hasFeaturedPreview ? "Replace" : "Upload"}
+                        Replace
                       </button>
                     ) : null}
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="ua-commit__featured-empty">
-                <div className="ua-commit__featured-title">Nothing live yet</div>
-                <div className="ua-commit__featured-note">Sign a letter below and set it live to show it to clients.</div>
+              <div className="ua-commit__featured-body">
+                <div className="ua-commit__preview">
+                  <span className="ua-commit__preview-hint">
+                    <PreviewPlaceholderIcon />
+                    <strong>Letter preview</strong>
+                  </span>
+                </div>
+                <div className="ua-commit__featured-info">
+                  <div className="ua-commit__featured-title">Nothing live yet</div>
+                  <div className="ua-commit__featured-note">
+                    Sign a letter below and set it live to show it to clients.
+                  </div>
+                  {canEdit ? (
+                    <div className="ua-commit__featured-actions">
+                      <button
+                        type="button"
+                        className="ua-commit__btn ua-commit__btn--orange"
+                        disabled={busy}
+                        onClick={() => startUpload("new")}
+                      >
+                        Upload letter
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
               </div>
             )}
           </section>
@@ -708,7 +750,7 @@ export function CommitmentLettersPage() {
                     <button type="button" className="ua-commit__btn ua-commit__btn--ghost" onClick={() => viewLetter(letter)}>
                       View
                     </button>
-                    <button type="button" className="ua-commit__btn ua-commit__btn--primary" onClick={() => downloadOne(letter)}>
+                    <button type="button" className="ua-commit__btn ua-commit__btn--orange" onClick={() => downloadOne(letter)}>
                       Download
                     </button>
                     {canEdit && !letter.live && letter.signed ? (
@@ -739,33 +781,27 @@ export function CommitmentLettersPage() {
           <section className="ua-commit__aside-card">
             <div className="ua-commit__aside-label">Signature</div>
             <div className="ua-commit__signature-panel">
-              <button
-                type="button"
-                className={`ua-commit__signature-box${canEdit ? " is-uploadable" : ""}${hasSignatureImage ? " has-media" : ""}`}
-                disabled={!canEdit || busy}
-                onClick={() => canEdit && startUpload("signature")}
-                aria-label={hasSignatureImage ? "Replace signature" : "Upload signature"}
-              >
+              <div className={`ua-commit__signature-box${hasSignatureImage ? " has-media" : ""}`}>
                 {hasSignatureImage ? (
                   <img src={library.signature.url} alt={`${coachName} signature`} />
                 ) : (
                   <span className="ua-commit__preview-hint">
-                    <strong>{canEdit ? "Upload signature" : "No signature"}</strong>
-                    {canEdit ? <em>PNG or JPG</em> : null}
+                    <SignaturePlaceholderIcon />
+                    <strong>{signatureOnFile ? "Signature on file" : "No signature yet"}</strong>
                   </span>
                 )}
-              </button>
+              </div>
               <div className="ua-commit__signature-foot">
                 <div>
                   <div className="ua-commit__signature-name">{library.signature?.name || coachName}</div>
                   <p className="ua-commit__signature-meta">
-                    {hasSignatureImage
-                      ? `Drawn ${library.signature.drawnOn || "—"} · used on ${signedCount} letters`
+                    {signatureOnFile
+                      ? `Drawn ${library.signature?.drawnOn || "—"} · used on ${signedCount} letters`
                       : "No signature saved yet"}
                   </p>
                 </div>
-                <span className={`ua-commit__badge${hasSignatureImage ? " ua-commit__badge--green" : " ua-commit__badge--gray"}`}>
-                  {hasSignatureImage ? "ON FILE" : "MISSING"}
+                <span className={`ua-commit__badge${signatureOnFile ? " ua-commit__badge--green" : " ua-commit__badge--gray"}`}>
+                  {signatureOnFile ? "ON FILE" : "MISSING"}
                 </span>
               </div>
             </div>
@@ -776,7 +812,7 @@ export function CommitmentLettersPage() {
                 disabled={busy}
                 onClick={() => startUpload("signature")}
               >
-                {hasSignatureImage ? "Replace signature" : "Upload signature"}
+                {signatureOnFile ? "Replace signature" : "Upload signature"}
               </button>
             ) : null}
           </section>
@@ -785,13 +821,24 @@ export function CommitmentLettersPage() {
             <section className="ua-commit__aside-card">
               <div className="ua-commit__aside-label">Sign a letter</div>
               <p className="ua-commit__signature-meta">
-                {draft ? `“${draft.name}” is waiting for a signature.` : "Every letter here is already signed."}
+                {draft
+                  ? `“${draft.name}” is waiting for a signature.`
+                  : letters.length
+                    ? "Every letter here is already signed."
+                    : "Upload a letter first, then sign the draft here."}
               </p>
               <button
                 type="button"
-                className={`ua-commit__sign-auto${draft ? " is-ready" : ""}`}
-                disabled={!draft || busy}
-                onClick={() => (draft ? requestSign(draft) : null)}
+                className={`ua-commit__sign-auto${draft && signatureOnFile ? " is-ready" : ""}`}
+                disabled={!draft || !signatureOnFile || busy}
+                onClick={() => (draft && signatureOnFile ? requestSign(draft) : null)}
+                title={
+                  !draft
+                    ? "No draft waiting for a signature"
+                    : !signatureOnFile
+                      ? "Upload a signature first"
+                      : undefined
+                }
               >
                 <span className="ua-commit__sign-auto-title">Sign with saved signature</span>
                 <span className="ua-commit__sign-auto-sub">Attaches it to the page and stamps the date</span>
@@ -799,6 +846,7 @@ export function CommitmentLettersPage() {
               <button
                 type="button"
                 className="ua-commit__sign-option"
+                disabled={!draft && !featured && !letters[0]}
                 onClick={() => downloadOne(draft || featured || letters[0])}
               >
                 <span className="ua-commit__sign-option-title">Download to sign by hand</span>

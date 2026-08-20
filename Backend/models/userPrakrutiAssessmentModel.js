@@ -37,6 +37,11 @@ function normalizePrakrutiTypeField(value) {
   return type;
 }
 
+function normalizeTextList(value) {
+  if (!Array.isArray(value)) return [];
+  return value.map((t) => String(t || "").trim()).filter(Boolean);
+}
+
 function toUserPrakrutiAssessmentPublic(item, thingsToAvoid = null, recommendations = null) {
   const row = withLegacyId(item);
   if (!row) return null;
@@ -45,6 +50,8 @@ function toUserPrakrutiAssessmentPublic(item, thingsToAvoid = null, recommendati
   const selectedQuestionIds = Array.isArray(row.selectedQuestionIds)
     ? row.selectedQuestionIds.map((id) => String(id || "").trim()).filter(Boolean)
     : [];
+  const recommendationTexts = normalizeTextList(row.recommendationTexts);
+  const avoidTexts = normalizeTextList(row.avoidTexts);
   const scores = row.scores && typeof row.scores === "object"
     ? {
         vata: Number(row.scores.vata) || 0,
@@ -62,6 +69,8 @@ function toUserPrakrutiAssessmentPublic(item, thingsToAvoid = null, recommendati
     prakrutiTypeLabel: prakrutiTypeLabel(type),
     thingToAvoidIds,
     selectedQuestionIds,
+    recommendationTexts,
+    avoidTexts,
     scores,
     createdByRole: normalizeCreatedByRole(row.createdByRole),
     createdById: row.createdById,
@@ -71,11 +80,15 @@ function toUserPrakrutiAssessmentPublic(item, thingsToAvoid = null, recommendati
 
   if (thingsToAvoid !== null) {
     base.thingsToAvoid = thingsToAvoid;
-    base.thingsToAvoidTitles = thingsToAvoid.map((t) => t.title);
+    base.thingsToAvoidTitles = avoidTexts.length
+      ? avoidTexts
+      : thingsToAvoid.map((t) => t.title);
   }
   if (recommendations !== null) {
     base.recommendations = recommendations;
-    base.recommendationTitles = recommendations.map((r) => r.title);
+    base.recommendationTitles = recommendationTexts.length
+      ? recommendationTexts
+      : recommendations.map((r) => r.title);
   }
 
   return base;
@@ -139,6 +152,8 @@ async function upsertUserPrakrutiAssessment({
   prakrutiType,
   thingToAvoidIds = [],
   selectedQuestionIds = [],
+  recommendationTexts = [],
+  avoidTexts = [],
   scores = null,
   forceNew = false,
   createdByRole,
@@ -156,6 +171,8 @@ async function upsertUserPrakrutiAssessment({
   const questionIds = Array.isArray(selectedQuestionIds)
     ? [...new Set(selectedQuestionIds.map((id) => String(id || "").trim()).filter(Boolean))]
     : [];
+  const nextRecommendationTexts = normalizeTextList(recommendationTexts);
+  const nextAvoidTexts = normalizeTextList(avoidTexts);
   const nextScores = scores && typeof scores === "object"
     ? {
         vata: Number(scores.vata) || 0,
@@ -172,6 +189,8 @@ async function upsertUserPrakrutiAssessment({
       "#prakrutiType": "prakrutiType",
       "#thingToAvoidIds": "thingToAvoidIds",
       "#selectedQuestionIds": "selectedQuestionIds",
+      "#recommendationTexts": "recommendationTexts",
+      "#avoidTexts": "avoidTexts",
       "#scores": "scores",
       "#coachId": "coachId",
       "#createdByRole": "createdByRole",
@@ -182,6 +201,8 @@ async function upsertUserPrakrutiAssessment({
       ":prakrutiType": type,
       ":thingToAvoidIds": validatedIds,
       ":selectedQuestionIds": questionIds,
+      ":recommendationTexts": nextRecommendationTexts,
+      ":avoidTexts": nextAvoidTexts,
       ":scores": nextScores,
       ":coachId": String(coachId || "").trim(),
       ":createdByRole": normalizeCreatedByRole(createdByRole),
@@ -194,7 +215,7 @@ async function upsertUserPrakrutiAssessment({
         TableName: TABLE,
         Key: { id: existing.id },
         UpdateExpression:
-          "SET #prakrutiType = :prakrutiType, #thingToAvoidIds = :thingToAvoidIds, #selectedQuestionIds = :selectedQuestionIds, #scores = :scores, #coachId = :coachId, #createdByRole = :createdByRole, #createdById = :createdById, #updatedAt = :updatedAt",
+          "SET #prakrutiType = :prakrutiType, #thingToAvoidIds = :thingToAvoidIds, #selectedQuestionIds = :selectedQuestionIds, #recommendationTexts = :recommendationTexts, #avoidTexts = :avoidTexts, #scores = :scores, #coachId = :coachId, #createdByRole = :createdByRole, #createdById = :createdById, #updatedAt = :updatedAt",
         ExpressionAttributeNames: exprNames,
         ExpressionAttributeValues: exprValues,
         ConditionExpression: "attribute_exists(id)",
@@ -211,6 +232,8 @@ async function upsertUserPrakrutiAssessment({
     prakrutiType: type,
     thingToAvoidIds: validatedIds,
     selectedQuestionIds: questionIds,
+    recommendationTexts: nextRecommendationTexts,
+    avoidTexts: nextAvoidTexts,
     scores: nextScores,
     createdByRole: normalizeCreatedByRole(createdByRole),
     createdById: String(createdById || "").trim(),

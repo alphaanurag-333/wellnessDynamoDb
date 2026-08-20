@@ -33,15 +33,40 @@ function ContentToggle({ live, disabled, onChange }) {
   return (
     <button
       type="button"
-      className={`ua-my-content__toggle${live ? " ua-my-content__toggle--on" : ""}`}
+      className={`ua-toggle ua-toggle--sm${live ? " ua-toggle--on" : ""}`}
       aria-pressed={live}
       aria-label={live ? "Live in app" : "Hidden in app"}
       disabled={disabled}
       onClick={onChange}
     >
-      <span className="ua-my-content__toggle-knob" />
+      <span className="ua-toggle__knob" />
     </button>
   );
+}
+
+function downloadContentFile(url, filename) {
+  if (!url) return false;
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename || "";
+  a.target = "_blank";
+  a.rel = "noreferrer";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  return true;
+}
+
+function contentDownloadName(item) {
+  if (item?.kind === "letter") return "commitment-letter.pdf";
+  try {
+    const path = new URL(item.downloadUrl).pathname;
+    const base = path.split("/").pop();
+    if (base && /\.\w+$/.test(base)) return decodeURIComponent(base);
+  } catch {
+    /* ignore */
+  }
+  return "intro-video.mp4";
 }
 
 const SYSTEM_TEAM_ROLE_KEYS = [...SYSTEM_TEAM_UI_KEYS];
@@ -396,6 +421,7 @@ export function TeamMemberPage() {
         hasMedia: hasVideo,
         meta: formatIntroVideoMeta(intro),
         url: intro.videoUrl || intro.linkUrl || null,
+        downloadUrl: intro.videoUrl || null,
       },
       {
         id: "letter",
@@ -409,6 +435,7 @@ export function TeamMemberPage() {
               .join(" · ")
           : prevById.letter?.meta || "Not uploaded",
         url: letter.fileUrl || null,
+        downloadUrl: letter.fileUrl || null,
       },
     ];
   }
@@ -529,8 +556,16 @@ export function TeamMemberPage() {
       <section className="ua-tm-card ua-tm-profile">
         <div className="ua-tm-profile__row">
           <div className="ua-tm-profile__identity">
-            <span className="ua-tm-avatar" >
-              {member.profileImage ? <img src={member.profileImage} alt="" /> : staffInitials(member.name)}
+            <span
+              className="ua-tm-avatar"
+              style={member.profileImage ? undefined : { background: avatarColor }}
+              aria-hidden={member.profileImage ? undefined : true}
+            >
+              {member.profileImage ? (
+                <img src={member.profileImage} alt="" />
+              ) : (
+                staffInitials(member.name)
+              )}
             </span>
             <div className="ua-tm-profile__copy">
               <div className="ua-tm-profile__name-row">
@@ -732,27 +767,40 @@ export function TeamMemberPage() {
                     >
                       View
                     </button>
+                    <button
+                      type="button"
+                      className="ua-tm-content-row__btn ua-tm-content-row__btn--download"
+                      disabled={busy || !item.downloadUrl}
+                      onClick={() => {
+                        if (!item.downloadUrl) {
+                          onToast(
+                            item.kind === "letter"
+                              ? "No commitment letter to download"
+                              : "No intro video to download",
+                          );
+                          return;
+                        }
+                        if (downloadContentFile(item.downloadUrl, contentDownloadName(item))) {
+                          onToast(
+                            item.kind === "letter"
+                              ? "Commitment letter download started"
+                              : "Intro video download started",
+                          );
+                        }
+                      }}
+                    >
+                      Download
+                    </button>
                     {canEditContent ? (
                       <button
                         type="button"
-                        className="ua-tm-content-row__btn ua-tm-content-row__btn--download"
+                        className="ua-tm-content-row__btn ua-tm-content-row__btn--primary"
                         disabled={busy}
                         onClick={() => startContentUpload(item)}
                       >
                         {busy ? "Saving…" : hasMedia ? "Replace" : "Upload"}
                       </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="ua-tm-content-row__btn ua-tm-content-row__btn--download"
-                        disabled={!item.url}
-                        onClick={() => {
-                          if (item.url) window.open(item.url, "_blank", "noopener,noreferrer");
-                        }}
-                      >
-                        Download
-                      </button>
-                    )}
+                    ) : null}
                     {canEditContent ? (
                       <ContentToggle
                         live={Boolean(item.live)}

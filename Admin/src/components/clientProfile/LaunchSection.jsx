@@ -26,17 +26,17 @@ import {
 
 const DOSHA_KEYS = ["vata", "pitta", "kapha"];
 const DOSHA_META = {
-  vata: { letter: "V", name: "Vāta", sub: "AIR + SPACE", tone: "blue", elements: "Air + Space" },
-  pitta: { letter: "P", name: "Pitta", sub: "FIRE + WATER", tone: "orange", elements: "Fire + Water" },
-  kapha: { letter: "K", name: "Kapha", sub: "EARTH + WATER", tone: "green", elements: "Earth + Water" },
+  vata: { letter: "V", name: "Vāta", sub: "Air + Space", tone: "blue", elements: "Air + Space" },
+  pitta: { letter: "P", name: "Pitta", sub: "Fire + Water", tone: "orange", elements: "Fire + Water" },
+  kapha: { letter: "K", name: "Kapha", sub: "Earth + Water", tone: "green", elements: "Earth + Water" },
 };
 const PRAKRITI_ELEMENTS = {
   vata: "Air + Space",
   pitta: "Fire + Water",
   kapha: "Earth + Water",
-  vata_pitta: "Air + Fire",
-  pitta_kapha: "Fire + Earth",
-  kapha_vata: "Earth + Air",
+  vata_pitta: "Air + Space · Fire + Water",
+  pitta_kapha: "Fire + Water · Earth + Water",
+  kapha_vata: "Earth + Water · Air + Space",
   sama_prakriti: "Balanced",
 };
 
@@ -138,7 +138,7 @@ function PrakritiCard({ prakriti }) {
                     style={{ width: `${pct}%` }}
                   />
                 </div>
-                <span className="ua-cp-launch-prakriti-bar__val">{d.val} · {pct}%</span>
+                <span className="ua-cp-launch-prakriti-bar__val">{d.val} / 10</span>
               </div>
             );
           })}
@@ -548,15 +548,25 @@ function typeFromDoshaScores(scores) {
     .sort((a, b) => b.score - a.score);
   const top = ranked[0];
   const second = ranked[1];
-  if (!top || top.score <= 0) return "";
-  if (ranked.every((row) => row.score === top.score)) return "sama_prakriti";
-  if (second && top.score === second.score) {
+  if (!top || top.score <= 0) return { type: "", label: "", elements: "" };
+  // Figma: within 1 point of the runner-up → dual prakṛti (higher score named first)
+  if (second && top.score - second.score <= 1) {
     const pair = [top.key, second.key].sort().join("_");
-    if (pair === "pitta_vata") return "vata_pitta";
-    if (pair === "kapha_pitta") return "pitta_kapha";
-    if (pair === "kapha_vata") return "kapha_vata";
+    let type = "";
+    if (pair === "pitta_vata") type = "vata_pitta";
+    else if (pair === "kapha_pitta") type = "pitta_kapha";
+    else if (pair === "kapha_vata") type = "kapha_vata";
+    return {
+      type,
+      label: `${DOSHA_META[top.key].name}-${DOSHA_META[second.key].name}`,
+      elements: `${DOSHA_META[top.key].elements} · ${DOSHA_META[second.key].elements}`,
+    };
   }
-  return top.key;
+  return {
+    type: top.key,
+    label: DOSHA_META[top.key].name,
+    elements: DOSHA_META[top.key].elements,
+  };
 }
 
 function LifestyleTab({
@@ -828,15 +838,17 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
   const [questions, setQuestions] = useState([]);
   const [types, setTypes] = useState([]);
   const [thingsToAvoid, setThingsToAvoid] = useState([]);
-  const [recommendations, setRecommendations] = useState([]);
+  const [catalogRecommendations, setCatalogRecommendations] = useState([]);
   const [assessment, setAssessment] = useState(null);
   const [historyRows, setHistoryRows] = useState([]);
   const [selectedType, setSelectedType] = useState("");
-  const [selectedAvoid, setSelectedAvoid] = useState([]);
+  const [recItems, setRecItems] = useState([]);
+  const [avoidItems, setAvoidItems] = useState([]);
   const [checked, setChecked] = useState({});
   const [historyOpen, setHistoryOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [forceNew, setForceNew] = useState(false);
+  const [listsTouched, setListsTouched] = useState(false);
 
   const doshaMode = isDoshaCatalog(questions);
 
@@ -862,7 +874,21 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
         setHistoryRows(Array.isArray(data?.history) ? data.history : []);
         const type = data?.assessment?.prakrutiType || "";
         setSelectedType(type);
-        setSelectedAvoid(data?.assessment?.thingToAvoidIds || []);
+        const savedRec = data?.assessment?.recommendationTexts
+          || data?.assessment?.recommendationTitles
+          || [];
+        const savedAvoid = data?.assessment?.avoidTexts
+          || data?.assessment?.thingsToAvoidTitles
+          || [];
+        setRecItems(Array.isArray(savedRec) ? savedRec : []);
+        setAvoidItems(Array.isArray(savedAvoid) && savedAvoid.length
+          ? savedAvoid
+          : (Array.isArray(avoid) ? avoid.map((a) => a.title).filter(Boolean) : []));
+        setListsTouched(Boolean(
+          (Array.isArray(data?.assessment?.recommendationTexts) && data.assessment.recommendationTexts.length)
+          || (Array.isArray(data?.assessment?.avoidTexts) && data.assessment.avoidTexts.length)
+          || (Array.isArray(savedRec) && savedRec.length)
+        ));
         const selectedIds = data?.assessment?.selectedQuestionIds || [];
         if (Array.isArray(selectedIds) && selectedIds.length) {
           const nextChecked = {};
@@ -885,21 +911,29 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
   useEffect(() => {
     const userId = user?.id;
     if (!userId || !selectedType) {
-      setRecommendations([]);
+      setCatalogRecommendations([]);
       return undefined;
     }
     let cancelled = false;
     fetchPrakrutiRecommendations(userId, selectedType)
-      .then((rows) => { if (!cancelled) setRecommendations(rows || []); })
-      .catch(() => { if (!cancelled) setRecommendations([]); });
+      .then((rows) => {
+        if (cancelled) return;
+        const titles = (rows || []).map((r) => r.title).filter(Boolean);
+        setCatalogRecommendations(titles);
+        if (!listsTouched) setRecItems(titles);
+      })
+      .catch(() => {
+        if (!cancelled) setCatalogRecommendations([]);
+      });
     return () => { cancelled = true; };
-  }, [user?.id, selectedType]);
+  }, [user?.id, selectedType, listsTouched]);
 
   const doshas = useMemo(() => {
     if (!doshaMode) return [];
     return DOSHA_KEYS.map((id) => {
       const statements = questions
         .filter((q) => categoryKey(q.category) === id)
+        .sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0))
         .map((q) => ({
           id: q.id,
           text: q.question || q.name,
@@ -921,12 +955,17 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
     kapha: doshas.find((d) => d.id === "kapha")?.score || 0,
   };
 
-  const inferredType = doshaMode ? typeFromDoshaScores(scores) : selectedType;
-  const activeType = selectedType || inferredType;
-  const typeLabel = types.find((t) => t.value === activeType)?.label
+  const inferred = doshaMode ? typeFromDoshaScores(scores) : { type: selectedType, label: "", elements: "" };
+  const activeType = selectedType || inferred.type;
+  const typeLabel = inferred.label
+    || types.find((t) => t.value === activeType)?.label
     || DOSHA_META[activeType]?.name
     || activeType
     || "—";
+  const typeElements = inferred.elements
+    || PRAKRITI_ELEMENTS[activeType]
+    || DOSHA_META[activeType]?.elements
+    || "";
 
   const groupedQuestions = useMemo(() => {
     const groups = new Map();
@@ -962,14 +1001,14 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
 
   useEffect(() => {
     if (!doshaMode) return;
-    const nextType = typeFromDoshaScores(scores);
-    if (nextType && nextType !== selectedType) setSelectedType(nextType);
+    const next = typeFromDoshaScores(scores);
+    if (next.type !== selectedType) setSelectedType(next.type || "");
   }, [doshaMode, scores.vata, scores.pitta, scores.kapha]);
 
   async function savePrakriti() {
     const userId = user?.id;
     if (!userId) return;
-    const prakrutiType = selectedType || inferredType;
+    const prakrutiType = selectedType || inferred.type;
     if (!prakrutiType) {
       onToast("Select a Prakriti type first");
       return;
@@ -979,7 +1018,9 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
       const selectedQuestionIds = Object.keys(checked).filter((id) => checked[id]);
       const saved = await saveUserPrakrutiAssessment(userId, {
         prakrutiType,
-        thingToAvoidIds: selectedAvoid,
+        thingToAvoidIds: [],
+        recommendationTexts: recItems.map((t) => String(t || "").trim()).filter(Boolean),
+        avoidTexts: avoidItems.map((t) => String(t || "").trim()).filter(Boolean),
         selectedQuestionIds,
         scores: doshaMode ? scores : undefined,
         forceNew,
@@ -987,6 +1028,7 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
       setAssessment(saved);
       setHistoryRows((prev) => [saved, ...prev.filter((row) => row.id !== saved.id)]);
       setForceNew(false);
+      setListsTouched(true);
       onToast("Prakriti assessment saved");
     } catch (err) {
       onToast(err?.message || "Failed to save Prakriti assessment");
@@ -1016,7 +1058,7 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
         <PrakritiCard
           prakriti={{
             dominant: typeLabel,
-            elements: PRAKRITI_ELEMENTS[activeType] || DOSHA_META[activeType]?.elements || "",
+            elements: typeElements,
             scores: doshaMode ? scores : { vata: 0, pitta: 0, kapha: 0 },
           }}
         />
@@ -1028,7 +1070,9 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
           onRerun={canWrite ? () => {
             setChecked({});
             setSelectedType("");
-            setSelectedAvoid([]);
+            setRecItems(catalogRecommendations.length ? catalogRecommendations : []);
+            setAvoidItems(thingsToAvoid.map((a) => a.title).filter(Boolean));
+            setListsTouched(false);
             setForceNew(true);
             setHistoryOpen(true);
             onToast("New Prakriti attempt started · previous result stays in history");
@@ -1101,15 +1145,53 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
             {activeType ? <span className="ua-cp-launch-guide__tag">For {typeLabel}</span> : null}
           </div>
           <div className="ua-cp-launch-guide__list">
-            {recommendations.length ? recommendations.map((item) => (
-              <div key={item.id} className="ua-cp-launch-guide__item">
+            {recItems.length ? recItems.map((text, index) => (
+              <div key={`rec-${index}`} className="ua-cp-launch-guide__item">
                 <span className="ua-cp-launch-guide__bullet ua-cp-launch-guide__bullet--rec" />
-                <span className="ua-cp-launch-guide__text">{item.title}</span>
+                {canWrite ? (
+                  <input
+                    className="ua-cp-launch-guide__input"
+                    value={text}
+                    onChange={(e) => {
+                      setListsTouched(true);
+                      const value = e.target.value;
+                      setRecItems((prev) => prev.map((row, i) => (i === index ? value : row)));
+                    }}
+                    aria-label={`Recommendation ${index + 1}`}
+                  />
+                ) : (
+                  <span className="ua-cp-launch-guide__text">{text}</span>
+                )}
+                {canWrite ? (
+                  <button
+                    type="button"
+                    className="ua-cp-launch-guide__remove"
+                    title="Remove"
+                    onClick={() => {
+                      setListsTouched(true);
+                      setRecItems((prev) => prev.filter((_, i) => i !== index));
+                    }}
+                  >
+                    ×
+                  </button>
+                ) : null}
               </div>
             )) : (
               <p className="ua-cp-launch-history__foot">No recommendations for this type yet.</p>
             )}
           </div>
+          {canWrite ? (
+            <button
+              type="button"
+              className="ua-cp-launch-guide__add ua-cp-launch-guide__add--rec"
+              onClick={() => {
+                setListsTouched(true);
+                setRecItems((prev) => [...prev, ""]);
+              }}
+            >
+              + Add recommendation
+            </button>
+          ) : null}
         </div>
         <div className="ua-cp-launch-guide ua-cp-launch-guide--avoid">
           <div className="ua-cp-launch-guide__head">
@@ -1119,34 +1201,53 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
             </div>
           </div>
           <div className="ua-cp-launch-guide__list">
-            {thingsToAvoid.length ? thingsToAvoid.map((item) => {
-              const id = item.id || item._id;
-              const on = selectedAvoid.includes(id);
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  className={`ua-cp-launch-guide__item ua-cp-launch-guide__item--btn${on ? " ua-cp-launch-guide__item--on" : ""}`}
-                  onClick={() => {
-                    if (!canWrite) return;
-                    setSelectedAvoid((prev) => (
-                      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-                    ));
-                  }}
-                  disabled={!canWrite}
-                  aria-pressed={on}
-                >
-                  <span className={`ua-cp-launch-guide__tick${on ? " ua-cp-launch-guide__tick--on" : ""}`} aria-hidden="true">
-                    {on ? "✓" : ""}
-                  </span>
-                  <span className="ua-cp-launch-guide__bullet ua-cp-launch-guide__bullet--avoid" />
-                  <span className="ua-cp-launch-guide__text">{item.title}</span>
-                </button>
-              );
-            }) : (
-              <p className="ua-cp-launch-history__foot">No things-to-avoid items in the catalog yet.</p>
+            {avoidItems.length ? avoidItems.map((text, index) => (
+              <div key={`avoid-${index}`} className="ua-cp-launch-guide__item">
+                <span className="ua-cp-launch-guide__bullet ua-cp-launch-guide__bullet--avoid" />
+                {canWrite ? (
+                  <input
+                    className="ua-cp-launch-guide__input"
+                    value={text}
+                    onChange={(e) => {
+                      setListsTouched(true);
+                      const value = e.target.value;
+                      setAvoidItems((prev) => prev.map((row, i) => (i === index ? value : row)));
+                    }}
+                    aria-label={`Thing to avoid ${index + 1}`}
+                  />
+                ) : (
+                  <span className="ua-cp-launch-guide__text">{text}</span>
+                )}
+                {canWrite ? (
+                  <button
+                    type="button"
+                    className="ua-cp-launch-guide__remove"
+                    title="Remove"
+                    onClick={() => {
+                      setListsTouched(true);
+                      setAvoidItems((prev) => prev.filter((_, i) => i !== index));
+                    }}
+                  >
+                    ×
+                  </button>
+                ) : null}
+              </div>
+            )) : (
+              <p className="ua-cp-launch-history__foot">No things-to-avoid items yet.</p>
             )}
           </div>
+          {canWrite ? (
+            <button
+              type="button"
+              className="ua-cp-launch-guide__add ua-cp-launch-guide__add--avoid"
+              onClick={() => {
+                setListsTouched(true);
+                setAvoidItems((prev) => [...prev, ""]);
+              }}
+            >
+              + Add item
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -1166,7 +1267,7 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
           <button
             type="button"
             className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm"
-            disabled={saving || !(selectedType || inferredType)}
+            disabled={saving || !(selectedType || inferred.type)}
             onClick={savePrakriti}
           >
             {saving ? "Saving…" : "Save Prakriti"}
