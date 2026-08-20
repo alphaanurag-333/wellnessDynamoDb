@@ -32,6 +32,7 @@ const {
   generateUniqueReferralCode,
   registerReferralCode,
 } = require("../../models/referralCodeModel");
+const { generateTotpSecret, buildOtpauthUrl } = require("../../utils/totp");
 
 const DEFAULT_TEMP_PASSWORD = process.env.SEED_STAFF_PASSWORD || "Admin@12345";
 const CONSOLE_SCOPE = "CONSOLE";
@@ -249,6 +250,7 @@ exports.createAccountHandler = asyncHandler(async (req, res) => {
     roleKey: rawRole,
     consoleRoleId,
     parentAccountId,
+    totpRequired: totpRequiredRaw,
   } = req.body || {};
 
   if (!name || !String(name).trim()) throw new AppError("name is required", 400);
@@ -298,6 +300,9 @@ exports.createAccountHandler = asyncHandler(async (req, res) => {
     referralCode = await generateUniqueReferralCode({ entityType: accountRoleKey });
   }
 
+  const totpSecret = generateTotpSecret();
+  const totpRequired = Boolean(totpRequiredRaw);
+
   const account = await createAccount({
     name: String(name).trim(),
     email: normalized,
@@ -309,6 +314,8 @@ exports.createAccountHandler = asyncHandler(async (req, res) => {
     defaultRoleKey: accountRoleKey,
     parentAccountId: parentId,
     referralCode,
+    totpSecret,
+    totpRequired,
     memberships: [
       {
         roleKey: accountRoleKey,
@@ -336,6 +343,8 @@ exports.createAccountHandler = asyncHandler(async (req, res) => {
     message: "Team member created",
     account: toPublicAccount(account),
     temporaryPassword: password ? undefined : tempPassword,
+    totpSecret,
+    totpOtpauthUrl: buildOtpauthUrl({ secret: totpSecret, email: account.email }),
   });
 });
 
@@ -738,5 +747,78 @@ exports.patchMyCoachContentHandler = asyncHandler(async (req, res) => {
     message: "Coach content updated",
     account: toPublicAccount(updated),
     letter: letterTemplatePayload(await getAppConfig()),
+  });
+});
+
+/**
+ * Toggle Force 2FA (TOTP) for a team member. Super Admin only.
+ * Body: { totpRequired: boolean }
+ * When enabling without a secret, generates one and returns it once.
+ */
+exports.patchAccountTotpHandler = asyncHandler(async (req, res) => {
+  if (!req.auth?.isSuperAdmin) {
+    throw new AppError("Only the Super Admin can manage team 2FA", 403);
+  }
+
+  const account = await getAccountById(req.params.id);
+  if (!account) throw new AppError("Account not found", 404);
+  if (account.isSuperAdmin) {
+    throw new AppError("This account cannot be edited here", 403);
+  }
+
+  if (typeof req.body?.totpRequired !== "boolean") {
+    throw new AppError("totpRequired (boolean) is required", 400);
+  }
+
+  const totpRequired = req.body.totpRequired;
+  const patch = { totpRequired };
+  let issuedSecret = null;
+
+  if (totpRequired && !account.totpSecret) {
+    issuedSecret = generateTotpSecret();
+    patch.totpSecret = issuedSecret;
+    patch.totpVerifiedAt = null;
+  }
+
+  const updated = await updateAccount(account.id, patch);
+  const body = {
+    status: true,
+    message: totpRequired ? "Authenticator required for login" : "Authenticator not required for login",
+    account: toPublicAccount(updated),
+  };
+  if (issuedSecret) {
+    body.totpSecret = issuedSecret;
+    body.totpOtpauthUrl = buildOtpauthUrl({ secret: issuedSecret, email: updated.email });
+  }
+  return res.json(body);
+});
+
+/**
+ * Regenerate authenticator secret for a team member. Super Admin only.
+ * Returns the new secret once — previous codes stop working.
+ */
+exports.regenerateAccountTotpHandler = asyncHandler(async (req, res) => {
+  if (!req.auth?.isSuperAdmin) {
+    throw new AppError("Only the Super Admin can regenerate team 2FA keys", 403);
+  }
+
+  const account = await getAccountById(req.params.id);
+  if (!account) throw new AppError("Account not found", 404);
+  if (account.isSuperAdmin) {
+    throw new AppError("This account cannot be edited here", 403);
+  }
+
+  const totpSecret = generateTotpSecret();
+  const updated = await updateAccount(account.id, {
+    totpSecret,
+    totpVerifiedAt: null,
+  });
+
+  return res.json({
+    status: true,
+    message: "Authenticator key regenerated — share the new key with the team member",
+    account: toPublicAccount(updated),
+    totpSecret,
+    totpOtpauthUrl: buildOtpauthUrl({ secret: totpSecret, email: updated.email }),
   });
 });

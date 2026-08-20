@@ -3,6 +3,7 @@ import { useDispatch } from "react-redux";
 import { VIEW_AS_ROLES } from "../data/dashboardData.js";
 import {
   accountLogin,
+  accountLoginTotp,
   accountMe,
   accountSwitchRole,
   clearAccountAuth,
@@ -143,7 +144,24 @@ export function ViewAsProvider({ children }) {
   const login = useCallback(
     async ({ email, password, activeRole }) => {
       setAuthError("");
-      const stored = await accountLogin({ email, password, activeRole });
+      const result = await accountLogin({ email, password, activeRole });
+      if (result?.mfaRequired) {
+        return result;
+      }
+      setAuth(result);
+      setViewAsLocal(uiFromAccount(result.account));
+      if (result?.account) dispatch(setAdminProfile(result.account));
+      loadAppConfig();
+      await reloadLiveRoles();
+      return result;
+    },
+    [dispatch, reloadLiveRoles, setViewAsLocal],
+  );
+
+  const completeTotpLogin = useCallback(
+    async ({ mfaToken, code }) => {
+      setAuthError("");
+      const stored = await accountLoginTotp({ mfaToken, code });
       setAuth(stored);
       setViewAsLocal(uiFromAccount(stored.account));
       if (stored?.account) dispatch(setAdminProfile(stored.account));
@@ -339,6 +357,7 @@ export function ViewAsProvider({ children }) {
       authError,
       setAuthError,
       login,
+      completeTotpLogin,
       logout,
       setAccount,
       UI_TO_ROLE_KEY,
@@ -364,6 +383,7 @@ export function ViewAsProvider({ children }) {
       bootstrapping,
       authError,
       login,
+      completeTotpLogin,
       logout,
       setAccount,
     ],

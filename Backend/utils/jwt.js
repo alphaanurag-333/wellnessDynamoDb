@@ -34,3 +34,19 @@ exports.createTokenPair = (payload) => ({
   accessToken: exports.signAccessToken(payload),
   refreshToken: exports.signRefreshToken(payload),
 });
+
+/** Short-lived challenge token between password success and TOTP verify. */
+exports.signMfaToken = (payload) =>
+  jwt.sign(
+    { ...payload, purpose: "mfa" },
+    getAccessSecret(),
+    { expiresIn: config.jwtMfaExpiresIn || "5m" }
+  );
+
+exports.verifyMfaToken = (token) => {
+  const payload = jwt.verify(token, getAccessSecret());
+  if (payload?.purpose !== "mfa") {
+    throw new Error("Invalid MFA token purpose");
+  }
+  return payload;
+};

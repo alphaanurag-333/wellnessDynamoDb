@@ -786,10 +786,21 @@ export function ProfileModal({ open, onClose, onToast }) {
                 letter={content.letter}
                 busy={contentBusy}
                 onToggle={toggleContent}
-                onView={(item) => setPreview(item.kind)}
+                onView={(item) => {
+                  if (item.kind === "letter") {
+                    onClose();
+                    navigate(UPDATED_ADMIN_PATHS.commitmentLetters(account?.id || "me"));
+                    return;
+                  }
+                  setPreview(item.kind);
+                }}
                 onUpload={(item) => {
-                  if (item.kind === "letter") letterRef.current?.click();
-                  else videoRef.current?.click();
+                  if (item.kind === "letter") {
+                    onClose();
+                    navigate(UPDATED_ADMIN_PATHS.commitmentLetters(account?.id || "me"));
+                    return;
+                  }
+                  videoRef.current?.click();
                 }}
                 onUseLink={() => setLinkModalOpen(true)}
               />
@@ -840,6 +851,12 @@ export function ProfileModal({ open, onClose, onToast }) {
               <div className="ua-profile-modal__account-row">
                 <span>Last sign-in</span>
                 <span>{profile.lastSignIn}</span>
+              </div>
+              <div className="ua-profile-modal__account-row">
+                <span>Two-factor</span>
+                <span className={profile.totpRequired ? "ua-profile-modal__2fa is-on" : "ua-profile-modal__2fa"}>
+                  {profile.twoFactorStatus}
+                </span>
               </div>
               {profile.isCoach ? (
                 <div className="ua-profile-modal__account-row">

@@ -58,6 +58,32 @@ export async function createTeamMember(payload) {
   }
 }
 
+export async function setTeamMemberTotp(id, { totpRequired }) {
+  try {
+    const { data } = await api.patch(
+      `/account/accounts/${encodeURIComponent(id)}/totp`,
+      { totpRequired: Boolean(totpRequired) },
+      { headers: authHeader() },
+    );
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function regenerateTeamMemberTotp(id) {
+  try {
+    const { data } = await api.post(
+      `/account/accounts/${encodeURIComponent(id)}/totp/regenerate`,
+      {},
+      { headers: authHeader() },
+    );
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function updateTeamMember(id, payload) {
   try {
     const { data } = await api.patch(`/account/accounts/${encodeURIComponent(id)}`, payload, {

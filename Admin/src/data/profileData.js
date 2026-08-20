@@ -102,11 +102,16 @@ export function buildProfileFromAccount(account, activeRole) {
       profileImage: "",
       hasPhone: false,
       isCoach: isCoachProfileRole(activeRole?.id),
+      totpRequired: false,
+      totpConfigured: false,
+      twoFactorStatus: "Disabled",
     };
   }
 
   const whatsapp = formatPhone(account.phoneCountryCode, account.phone);
   const hasPhone = Boolean(String(account.phone || "").trim());
+  const totpRequired = Boolean(account.totpRequired);
+  const totpConfigured = Boolean(account.totpConfigured ?? account.totpSecret);
 
   return {
     id: account.id || "",
@@ -130,6 +135,13 @@ export function buildProfileFromAccount(account, activeRole) {
     profileImage: account.profileImage || "",
     hasPhone,
     isCoach: isCoachProfileRole(activeRole?.id),
+    totpRequired,
+    totpConfigured,
+    twoFactorStatus: totpRequired
+      ? totpConfigured
+        ? "Enabled · authenticator app"
+        : "Enabled · key pending"
+      : "Disabled",
   };
 }
 

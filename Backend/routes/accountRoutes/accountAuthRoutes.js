@@ -10,6 +10,7 @@ const {
   changeAccountPassword,
   sendAccountLoginOtp,
   verifyAccountLoginOtp,
+  verifyAccountLoginTotp,
   registerCoachAccount,
 } = require("../../controllers/accountController/authController");
 const {
@@ -21,6 +22,7 @@ const { optionalAdminFile, optionalCoachContentFiles } = require("../../middlewa
 const router = express.Router();
 
 router.post("/login", loginAccount);
+router.post("/login/totp", verifyAccountLoginTotp);
 router.post("/refresh-token", refreshAccountToken);
 router.post("/otp/send", sendAccountLoginOtp);
 router.post("/otp/verify", verifyAccountLoginOtp);

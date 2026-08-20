@@ -27,6 +27,11 @@ module.exports = {
   otpLength: Number(process.env.OTP_LENGTH) || 6,
   otpExpiresMinutes: Number(process.env.OTP_EXPIRES_MINUTES) || 10,
 
+  /** Google Authenticator (TOTP) for staff portal login */
+  totpIssuer: process.env.TOTP_ISSUER || "Wellness Admin",
+  jwtMfaExpiresIn: process.env.JWT_MFA_EXPIRES_IN || "5m",
+  totpMaxFailedAttempts: Number(process.env.TOTP_MAX_FAILED_ATTEMPTS) || 5,
+
   awsRegion: process.env.AWS_REGION || "ap-south-1",
   awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID,
   awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,

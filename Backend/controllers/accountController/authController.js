@@ -1,7 +1,7 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
 const { comparePassword, hashPassword } = require("../../utils/password");
-const { createTokenPair, verifyRefreshToken } = require("../../utils/jwt");
+const { createTokenPair, verifyRefreshToken, signMfaToken, verifyMfaToken } = require("../../utils/jwt");
 const { assertPasswordPolicy } = require("../../utils/passwordPolicy");
 const {
   uploadFileFromRequest,
@@ -26,6 +26,7 @@ const {
 const { normalizeRoleKey, ROLE_KEY_TO_UI } = require("../../config/accountRoles");
 const { normalizeEmail, normalizePhone, normalizeCountryCode } = require("../../models/userModel");
 const { generateOtp, getOtpExpiryDate, isOtpExpired, deliverOtp } = require("../../utils/otp");
+const { verifyTotp } = require("../../utils/totp");
 const {
   generateUniqueReferralCode,
   registerReferralCode,
@@ -35,6 +36,55 @@ const config = require("../../config");
 
 const S3_FOLDER = "account";
 const REFERRAL_STAFF_ROLES = new Set(["wellness_coach", "assistant_wellness_coach"]);
+
+/** In-memory failed TOTP attempts: accountId → { count, resetAt } */
+const totpFailBuckets = new Map();
+
+function getTotpFailBucket(accountId) {
+  const now = Date.now();
+  const existing = totpFailBuckets.get(accountId);
+  if (!existing || existing.resetAt <= now) {
+    const bucket = { count: 0, resetAt: now + 15 * 60 * 1000 };
+    totpFailBuckets.set(accountId, bucket);
+    return bucket;
+  }
+  return existing;
+}
+
+function assertTotpNotLocked(accountId) {
+  const bucket = getTotpFailBucket(accountId);
+  const max = config.totpMaxFailedAttempts || 5;
+  if (bucket.count >= max) {
+    throw new AppError("Too many invalid authenticator codes. Try again in 15 minutes.", 429);
+  }
+}
+
+function recordTotpFailure(accountId) {
+  const bucket = getTotpFailBucket(accountId);
+  bucket.count += 1;
+}
+
+function clearTotpFailures(accountId) {
+  totpFailBuckets.delete(accountId);
+}
+
+function accountNeedsTotp(account) {
+  return Boolean(account?.totpRequired && account?.totpSecret);
+}
+
+function sendMfaChallenge(res, account, roleKey) {
+  const mfaToken = signMfaToken({
+    sub: account.id,
+    role: roleKey,
+  });
+  return res.status(200).json({
+    status: true,
+    message: "Authenticator code required",
+    mfaRequired: true,
+    mfaMethod: "totp",
+    mfaToken,
+  });
+}
 
 function withRoleAliases(publicAccount, activeRole) {
   return {
@@ -114,6 +164,72 @@ exports.loginAccount = asyncHandler(async (req, res) => {
   const roleKey = pickDefaultActiveRole(account, activeRole);
   if (!roleKey) {
     throw new AppError("No eligible role available for login", 403);
+  }
+
+  if (accountNeedsTotp(account)) {
+    return sendMfaChallenge(res, account, roleKey);
+  }
+
+  return sendAccountAuthResponse(res, 200, account, roleKey);
+});
+
+/**
+ * Complete staff login after password/OTP when TOTP is required.
+ * Body: { mfaToken, code }
+ */
+exports.verifyAccountLoginTotp = asyncHandler(async (req, res) => {
+  const mfaToken = String(req.body?.mfaToken || "").trim();
+  const code = String(req.body?.code || req.body?.otp || "").trim();
+  if (!mfaToken || !code) {
+    throw new AppError("mfaToken and code are required", 400);
+  }
+
+  let payload;
+  try {
+    payload = verifyMfaToken(mfaToken);
+  } catch {
+    throw new AppError("Invalid or expired authenticator session. Sign in again.", 401);
+  }
+
+  const accountId = payload?.sub || payload?.id;
+  if (!accountId) {
+    throw new AppError("Invalid authenticator session", 401);
+  }
+
+  assertTotpNotLocked(accountId);
+
+  const account = await getAccountById(accountId);
+  if (!account) {
+    throw new AppError("Account not found", 401);
+  }
+  if (account.status === "inactive" || account.status === "blocked") {
+    throw new AppError("Account is inactive", 403);
+  }
+  if (!accountNeedsTotp(account)) {
+    throw new AppError("Authenticator is not required for this account", 400);
+  }
+
+  if (!verifyTotp(account.totpSecret, code)) {
+    recordTotpFailure(accountId);
+    throw new AppError("Invalid authenticator code", 401);
+  }
+
+  clearTotpFailures(accountId);
+
+  const roleKey =
+    pickDefaultActiveRole(account, payload.role) || pickDefaultActiveRole(account);
+  if (!roleKey) {
+    throw new AppError("No eligible role available for login", 403);
+  }
+
+  if (!account.totpVerifiedAt) {
+    try {
+      const verifiedAt = new Date().toISOString();
+      await updateAccount(account.id, { totpVerifiedAt: verifiedAt });
+      account.totpVerifiedAt = verifiedAt;
+    } catch (err) {
+      console.error("[verifyAccountLoginTotp] totpVerifiedAt update failed", err.message);
+    }
   }
 
   return sendAccountAuthResponse(res, 200, account, roleKey);
@@ -376,6 +492,10 @@ exports.verifyAccountLoginOtp = asyncHandler(async (req, res) => {
   const roleKey = pickDefaultActiveRole(account, activeRole);
   if (!roleKey) {
     throw new AppError("No eligible role available for login", 403);
+  }
+
+  if (accountNeedsTotp(account)) {
+    return sendMfaChallenge(res, account, roleKey);
   }
 
   return sendAccountAuthResponse(res, 200, account, roleKey);

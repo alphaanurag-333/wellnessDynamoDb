@@ -29,14 +29,18 @@ function EyeIcon({ off = false }) {
 }
 
 export function AdminLoginPage() {
-  const { login, isAuthenticated, bootstrapping, authError, setAuthError } = useViewAs();
+  const { login, completeTotpLogin, isAuthenticated, bootstrapping, authError, setAuthError } = useViewAs();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [mfaToken, setMfaToken] = useState("");
+  const [totpCode, setTotpCode] = useState("");
   const appName = useAppSelector(selectAppName);
   const logoUrl = useAppSelector(selectAdminLogoUrl) || defaultLogo;
+
+  const mfaStep = Boolean(mfaToken);
 
   if (bootstrapping) {
     return <BrandLoader />;
@@ -51,13 +55,29 @@ export function AdminLoginPage() {
     setBusy(true);
     setAuthError("");
     try {
-      await login({ email, password });
+      if (mfaStep) {
+        await completeTotpLogin({ mfaToken, code: totpCode });
+        navigate(UPDATED_ADMIN_PATHS.dashboard, { replace: true });
+        return;
+      }
+      const result = await login({ email, password });
+      if (result?.mfaRequired && result?.mfaToken) {
+        setMfaToken(result.mfaToken);
+        setTotpCode("");
+        return;
+      }
       navigate(UPDATED_ADMIN_PATHS.dashboard, { replace: true });
     } catch (err) {
       setAuthError(err?.message || "Login failed");
     } finally {
       setBusy(false);
     }
+  }
+
+  function backToPassword() {
+    setMfaToken("");
+    setTotpCode("");
+    setAuthError("");
   }
 
   return (
@@ -79,46 +99,69 @@ export function AdminLoginPage() {
           <div className="ua-login__kicker">Admin console</div>
           <h1 className="ua-login__title">{appName}</h1>
           <p className="ua-login__sub">
-            Sign in to manage users, teams, and console access.
+            {mfaStep
+              ? "Enter the 6-digit code from Google Authenticator."
+              : "Sign in to manage users, teams, and console access."}
           </p>
         </div>
 
-        <label className="ua-login__field">
-          <span className="ua-login__label">Email</span>
-          <input
-            className="ua-login__input"
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="username"
-            placeholder="you@irwellness.in"
-          />
-        </label>
-
-        <label className="ua-login__field">
-          <span className="ua-login__label">Password</span>
-          <div className="ua-login__password">
+        {mfaStep ? (
+          <label className="ua-login__field">
+            <span className="ua-login__label">Authenticator code</span>
             <input
               className="ua-login__input"
-              type={passwordVisible ? "text" : "password"}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              autoComplete="one-time-code"
               required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              placeholder="Enter your password"
+              maxLength={6}
+              value={totpCode}
+              onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              placeholder="000000"
+              autoFocus
             />
-            <button
-              type="button"
-              className="ua-login__eye"
-              onClick={() => setPasswordVisible((v) => !v)}
-              aria-label={passwordVisible ? "Hide password" : "Show password"}
-              aria-pressed={passwordVisible}
-            >
-              <EyeIcon off={passwordVisible} />
-            </button>
-          </div>
-        </label>
+          </label>
+        ) : (
+          <>
+            <label className="ua-login__field">
+              <span className="ua-login__label">Email</span>
+              <input
+                className="ua-login__input"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="username"
+                placeholder="you@irwellness.in"
+              />
+            </label>
+
+            <label className="ua-login__field">
+              <span className="ua-login__label">Password</span>
+              <div className="ua-login__password">
+                <input
+                  className="ua-login__input"
+                  type={passwordVisible ? "text" : "password"}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  placeholder="Enter your password"
+                />
+                <button
+                  type="button"
+                  className="ua-login__eye"
+                  onClick={() => setPasswordVisible((v) => !v)}
+                  aria-label={passwordVisible ? "Hide password" : "Show password"}
+                  aria-pressed={passwordVisible}
+                >
+                  <EyeIcon off={passwordVisible} />
+                </button>
+              </div>
+            </label>
+          </>
+        )}
 
         {authError ? (
           <div className="ua-login__error" role="alert">
@@ -126,9 +169,15 @@ export function AdminLoginPage() {
           </div>
         ) : null}
 
-        <button type="submit" className="ua-login__submit" disabled={busy}>
-          {busy ? "Signing in…" : "Sign in"}
+        <button type="submit" className="ua-login__submit" disabled={busy || (mfaStep && totpCode.length !== 6)}>
+          {busy ? (mfaStep ? "Verifying…" : "Signing in…") : mfaStep ? "Verify code" : "Sign in"}
         </button>
+
+        {mfaStep ? (
+          <button type="button" className="ua-login__back" disabled={busy} onClick={backToPassword}>
+            ← Back to password
+          </button>
+        ) : null}
       </form>
     </div>
   );

@@ -59,6 +59,32 @@ export async function accountLogin({ email, password, activeRole }) {
     const body = { email, password };
     if (activeRole) body.activeRole = UI_TO_ROLE_KEY[activeRole] || activeRole;
     const { data } = await api.post("/account/auth/login", body);
+    if (data?.mfaRequired) {
+      return {
+        mfaRequired: true,
+        mfaMethod: data.mfaMethod || "totp",
+        mfaToken: data.mfaToken,
+        message: data.message,
+      };
+    }
+    const stored = {
+      accessToken: data.accessToken,
+      refreshToken: data.refreshToken,
+      account: data.account,
+    };
+    writeAccountAuth(stored);
+    return stored;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function accountLoginTotp({ mfaToken, code }) {
+  try {
+    const { data } = await api.post("/account/auth/login/totp", {
+      mfaToken,
+      code: String(code || "").trim(),
+    });
     const stored = {
       accessToken: data.accessToken,
       refreshToken: data.refreshToken,

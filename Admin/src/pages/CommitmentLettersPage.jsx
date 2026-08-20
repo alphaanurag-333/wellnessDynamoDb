@@ -1,15 +1,73 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useNavigate, useOutletContext, useParams } from "react-router-dom";
+import { BrandLoader } from "../components/BrandLoader.jsx";
 import { ConfirmDialog } from "../components/ConfirmDialog.jsx";
 import { BackLink, OrangeButton } from "../components/shared.jsx";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import {
-  COMMITMENT_COACHES,
-  getCommitmentCoach,
-  getCommitmentData,
+  featuredMeta,
+  formatFileSize,
+  formatLetterDate,
+  letterRowMeta,
+  loadCoachLetterLibrary,
+  nextLetterVersion,
+  saveCoachLetterLibrary,
 } from "../data/commitmentLettersData.js";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
-import { myContentForCoach } from "../data/myContentData.js";
+import {
+  getMyCoachContent,
+  listMyContentCoaches,
+  saveCoachLetterFile,
+  saveCoachLetterLive,
+  saveMyLetterFile,
+  saveMyLetterLive,
+  validateIntroCoverFile,
+  validateLetterPdfFile,
+} from "../api/coachContentApi.js";
+
+function FileIcon({ live = false }) {
+  return (
+    <span className={`ua-commit__list-icon${live ? " is-live" : ""}`} aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <path d="M14 2v6h6" />
+        <path d="M8 13h8" />
+        <path d="M8 17h6" />
+      </svg>
+    </span>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 6h18" />
+      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6" />
+      <path d="M14 11v6" />
+    </svg>
+  );
+}
+
+function openLetterUrl(url) {
+  if (!url) return false;
+  window.open(url, "_blank", "noopener,noreferrer");
+  return true;
+}
+
+function downloadLetter(letter) {
+  if (!letter?.fileUrl) return false;
+  const a = document.createElement("a");
+  a.href = letter.fileUrl;
+  a.download = `${letter.name || "commitment-letter"}.pdf`;
+  a.target = "_blank";
+  a.rel = "noreferrer";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  return true;
+}
 
 export function CommitmentLettersPage() {
   const { showToast } = useOutletContext();
@@ -17,26 +75,174 @@ export function CommitmentLettersPage() {
   const { viewAs, account } = useViewAs();
   const { coachId: routeCoachId } = useParams();
   const isAdminLibrary = viewAs === "admin";
-  const ownContent = myContentForCoach(account?.name);
-  const coachId = isAdminLibrary ? (routeCoachId || ownContent.id) : ownContent.id;
-  const [liveByCoach, setLiveByCoach] = useState({ "anita-rao": "v3", "priya-nair": "v2", "vikram-sethi": "v1" });
+
+  const [coaches, setCoaches] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [library, setLibrary] = useState(null);
   const [confirm, setConfirm] = useState(null);
 
-  const coach = getCommitmentCoach(coachId);
-  const data = getCommitmentData(coachId, account?.name || coach.name);
-  const liveId = liveByCoach[coachId] ?? data.featuredId;
-  const coachName = isAdminLibrary ? coach.name : (account?.name || coach.name);
+  const uploadRef = useRef(null);
+  const replaceLiveRef = useRef(null);
+  const previewRef = useRef(null);
+  const signedCopyRef = useRef(null);
+  const signatureRef = useRef(null);
 
-  const letters = useMemo(
-    () => data.letters.map((letter) => ({ ...letter, live: letter.id === liveId })),
-    [data.letters, liveId],
-  );
+  const ownId = account?.id;
+  const coachId = isAdminLibrary ? (routeCoachId || coaches[0]?.id || ownId) : ownId;
+  const activeCoach = coaches.find((row) => row.id === coachId) || null;
+  const coachName = activeCoach?.name || account?.name || "Coach";
+  const isOwnLetters = Boolean(ownId && coachId && ownId === coachId);
+  const canEdit = isAdminLibrary || ((viewAs === "wc" || viewAs === "awc" || viewAs === "trainee") && isOwnLetters);
 
-  const featured = letters.find((letter) => letter.live) ?? letters.find((letter) => letter.id === data.featuredId) ?? letters[0];
-  const draft = letters.find((letter) => letter.status === "draft");
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      try {
+        if (isAdminLibrary) {
+          const result = await listMyContentCoaches();
+          if (cancelled) return;
+          const rows = (result.coaches || []).map((coach) => ({
+            id: coach.id,
+            name: coach.name,
+            letter: coach.items?.find((item) => item.kind === "letter") || null,
+          }));
+          setCoaches(rows);
+        } else if (ownId) {
+          const payload = await getMyCoachContent().catch(() => null);
+          if (cancelled) return;
+          const coachLetter = payload?.account?.coach_content?.letter || null;
+          const mappedLetter = coachLetter
+            ? {
+                fileUrl: coachLetter.fileUrl || "",
+                hasMedia: Boolean(coachLetter.fileUrl),
+                signedAt: coachLetter.signedAt || "",
+                live: Boolean(coachLetter.live),
+                version: coachLetter.signedVersion || 1,
+              }
+            : null;
+          setCoaches([
+            {
+              id: ownId,
+              name: payload?.account?.name || account?.name || "Coach",
+              letter: mappedLetter,
+            },
+          ]);
+        } else {
+          setCoaches([]);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          showToast(err?.message || "Could not load coaches");
+          setCoaches([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [account?.name, isAdminLibrary, ownId, showToast]);
 
-  if (!isAdminLibrary && routeCoachId && routeCoachId !== ownContent.id) {
-    return <Navigate to={UPDATED_ADMIN_PATHS.commitmentLetters(ownContent.id)} replace />;
+  useEffect(() => {
+    if (!coachId) {
+      setLibrary(null);
+      return;
+    }
+    const coach = coaches.find((row) => row.id === coachId);
+    const apiLetter = coach?.letter
+      ? {
+          fileUrl: coach.letter.fileUrl,
+          signed: coach.letter.hasMedia,
+          signedAt: coach.letter.signedAt,
+          live: coach.letter.live,
+          signedVersion: coach.letter.version,
+        }
+      : null;
+    setLibrary(loadCoachLetterLibrary(coachId, coach?.name || coachName, apiLetter));
+  }, [coachId, coachName, coaches]);
+
+  useEffect(() => {
+    if (!isAdminLibrary || loading || !coaches.length) return;
+    const exists = coaches.some((row) => row.id === routeCoachId);
+    if (!routeCoachId || !exists) {
+      navigate(UPDATED_ADMIN_PATHS.commitmentLetters(coaches[0].id), { replace: true });
+    }
+  }, [coaches, isAdminLibrary, loading, navigate, routeCoachId]);
+
+  const letters = useMemo(() => {
+    if (!library) return [];
+    return (library.letters || []).map((letter) => ({
+      ...letter,
+      live: letter.id === library.liveId,
+    }));
+  }, [library]);
+
+  const featured = letters.find((letter) => letter.live) || null;
+  const draft = letters.find((letter) => !letter.signed) || null;
+  const signedCount = letters.filter((letter) => letter.signed).length;
+  const hasSignatureImage = Boolean(library?.signature?.url);
+  const featuredPreviewSrc = featured?.previewUrl || featured?.fileUrl || "";
+  const hasFeaturedPreview = Boolean(featuredPreviewSrc);
+  const featuredPreviewIsImage = featured?.previewType === "image"
+    || (Boolean(featured?.previewUrl) && featured?.previewType !== "pdf");
+
+  if (!isAdminLibrary && routeCoachId && ownId && routeCoachId !== ownId) {
+    return <Navigate to={UPDATED_ADMIN_PATHS.commitmentLetters(ownId)} replace />;
+  }
+
+  if (!isAdminLibrary && !ownId) {
+    return <Navigate to={UPDATED_ADMIN_PATHS.dashboard} replace />;
+  }
+
+  function patchLibrary(updater) {
+    setLibrary((prev) => {
+      if (!prev) return prev;
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      saveCoachLetterLibrary(coachId, next);
+      return next;
+    });
+  }
+
+  async function syncLiveToApi(file) {
+    if (!coachId || !file) return;
+    try {
+      setBusy(true);
+      if (isOwnLetters) {
+        await saveMyLetterFile(file);
+        await saveMyLetterLive(true);
+      } else {
+        await saveCoachLetterFile(coachId, file);
+        await saveCoachLetterLive(coachId, true);
+      }
+    } catch (err) {
+      showToast(err?.message || "Saved locally — could not sync live letter to server");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function viewLetter(letter) {
+    if (letter?.fileUrl && openLetterUrl(letter.fileUrl)) {
+      showToast(`Opening ${letter.name}`);
+      return;
+    }
+    showToast(`Opening ${letter?.name || "the letter"}`);
+  }
+
+  function downloadOne(letter) {
+    if (!letter) {
+      showToast("No letter to download");
+      return;
+    }
+    if (letter.fileUrl && downloadLetter(letter)) {
+      showToast(`Downloading ${letter.name} · ${letter.size}`);
+      return;
+    }
+    showToast(`Downloading ${letter.name}${letter.size ? ` · ${letter.size}` : ""}`);
   }
 
   function requestSetLive(letter) {
@@ -44,9 +250,22 @@ export function CommitmentLettersPage() {
       kind: "live",
       letter,
       tag: "COMMITMENT LETTER",
-      title: `Make ${letter.label} the live one?`,
+      title: `Make ${letter.name} the live one?`,
       body: "Clients see this version in the app from now on. The current live letter stays in the list.",
       confirmLabel: "Yes, set it live",
+      confirmTone: "primary",
+    });
+  }
+
+  function requestDelete(letter) {
+    setConfirm({
+      kind: "delete",
+      letter,
+      tag: "DELETE",
+      title: `Delete ${letter.name}?`,
+      body: "It disappears from this list for good. The live letter is untouched.",
+      confirmLabel: "Yes, delete it",
+      confirmTone: "danger",
     });
   }
 
@@ -55,31 +274,312 @@ export function CommitmentLettersPage() {
       kind: "sign",
       letter,
       tag: "SIGNATURE",
-      title: `Sign ${letter.label} with your saved signature?`,
+      title: `Sign ${letter.name} with your saved signature?`,
       body: "Your signature on file is placed on the signature line and today's date is stamped beside it. You can still download the signed copy afterwards.",
       confirmLabel: "Yes, sign it",
+      confirmTone: "primary",
     });
   }
 
-  function handleConfirm() {
-    if (!confirm) return;
-    if (confirm.kind === "live") {
-      setLiveByCoach((prev) => ({ ...prev, [coachId]: confirm.letter.id }));
-      showToast(`${confirm.letter.label} is now live in the app`);
-    } else {
-      showToast(`${confirm.letter.label} signed with saved signature`);
-    }
+  async function handleConfirm() {
+    if (!confirm || !library) return;
+    const { kind, letter } = confirm;
     setConfirm(null);
+
+    if (kind === "live") {
+      patchLibrary((prev) => ({ ...prev, liveId: letter.id }));
+      if (letter.fileUrl) {
+        try {
+          setBusy(true);
+          if (isOwnLetters) await saveMyLetterLive(true);
+          else await saveCoachLetterLive(coachId, true);
+        } catch (err) {
+          showToast(err?.message || "Live letter updated locally");
+        } finally {
+          setBusy(false);
+        }
+      }
+      showToast(`${letter.name} is live for ${coachName.split(" ")[0]}`);
+      return;
+    }
+
+    if (kind === "delete") {
+      patchLibrary((prev) => ({
+        ...prev,
+        letters: prev.letters.filter((row) => row.id !== letter.id),
+        liveId: prev.liveId === letter.id ? null : prev.liveId,
+      }));
+      showToast(`${letter.name} deleted`);
+      return;
+    }
+
+    if (kind === "sign") {
+      const today = formatLetterDate(new Date());
+      patchLibrary((prev) => ({
+        ...prev,
+        letters: prev.letters.map((row) =>
+          row.id === letter.id
+            ? {
+                ...row,
+                signed: true,
+                date: today,
+                name: `Commitment letter ${row.ver}`,
+                by: coachName,
+              }
+            : row,
+        ),
+        signature: {
+          ...prev.signature,
+          name: coachName,
+          onFile: true,
+          drawnOn: prev.signature?.drawnOn || today,
+        },
+      }));
+      showToast(`${letter.name} signed · set it live when you're ready`);
+    }
+  }
+
+  function startUpload(mode) {
+    if (!canEdit) return;
+    if (mode === "replace-live") replaceLiveRef.current?.click();
+    else if (mode === "preview") previewRef.current?.click();
+    else if (mode === "signed-copy") signedCopyRef.current?.click();
+    else if (mode === "signature") signatureRef.current?.click();
+    else uploadRef.current?.click();
+  }
+
+  function isImageFile(file) {
+    return String(file?.type || "").toLowerCase().startsWith("image/");
+  }
+
+  function isPdfFile(file) {
+    const type = String(file?.type || "").toLowerCase();
+    const name = String(file?.name || "").toLowerCase();
+    return type === "application/pdf" || name.endsWith(".pdf");
+  }
+
+  function onPreviewSelected(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !library || !featured) return;
+    if (!isPdfFile(file) && !isImageFile(file)) {
+      showToast("Upload a PDF or image for the letter preview");
+      return;
+    }
+    if (isPdfFile(file)) {
+      const invalid = validateLetterPdfFile(file);
+      if (invalid) {
+        showToast(invalid);
+        return;
+      }
+    } else {
+      const invalid = validateIntroCoverFile(file);
+      if (invalid) {
+        showToast(invalid);
+        return;
+      }
+    }
+    const objectUrl = URL.createObjectURL(file);
+    const today = formatLetterDate(new Date());
+    const previewType = isImageFile(file) ? "image" : "pdf";
+    patchLibrary((prev) => ({
+      ...prev,
+      letters: prev.letters.map((row) =>
+        row.id === featured.id
+          ? {
+              ...row,
+              previewUrl: objectUrl,
+              previewType,
+              fileUrl: previewType === "pdf" ? objectUrl : row.fileUrl || objectUrl,
+              size: formatFileSize(file.size),
+              date: row.date || today,
+            }
+          : row,
+      ),
+    }));
+    if (previewType === "pdf") {
+      syncLiveToApi(file);
+    }
+    showToast(featured.previewUrl || featured.fileUrl ? "Letter preview replaced" : "Letter preview uploaded");
+  }
+
+  function onNewLetterSelected(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !library) return;
+    const invalid = validateLetterPdfFile(file);
+    if (invalid) {
+      showToast(invalid);
+      return;
+    }
+    const verNum = nextLetterVersion(library.letters);
+    const ver = `v${verNum}`;
+    const row = {
+      id: `u-${Date.now()}`,
+      name: `Commitment letter ${ver} (draft)`,
+      ver,
+      date: formatLetterDate(new Date()),
+      size: formatFileSize(file.size),
+      signed: false,
+      live: false,
+      by: coachName,
+      fileUrl: URL.createObjectURL(file),
+    };
+    patchLibrary((prev) => ({
+      ...prev,
+      letters: [row, ...prev.letters],
+    }));
+    showToast(`Added ${row.name}`);
+  }
+
+  async function onReplaceLiveSelected(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !library) return;
+    const invalid = validateLetterPdfFile(file);
+    if (invalid) {
+      showToast(invalid);
+      return;
+    }
+    const verNum = nextLetterVersion(library.letters);
+    const ver = `v${verNum}`;
+    const today = formatLetterDate(new Date());
+    const row = {
+      id: `r-${Date.now()}`,
+      name: `Commitment letter ${ver}`,
+      ver,
+      date: today,
+      size: formatFileSize(file.size),
+      signed: true,
+      live: true,
+      by: coachName,
+      fileUrl: URL.createObjectURL(file),
+    };
+    patchLibrary((prev) => ({
+      ...prev,
+      liveId: row.id,
+      letters: [row, ...prev.letters],
+    }));
+    await syncLiveToApi(file);
+    showToast(`Replaced live letter with ${row.name}`);
+  }
+
+  function onSignedCopySelected(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !library) return;
+    const type = String(file.type || "").toLowerCase();
+    const name = String(file.name || "").toLowerCase();
+    const isPdf = type === "application/pdf" || name.endsWith(".pdf");
+    const isImage = type.startsWith("image/");
+    if (!isPdf && !isImage) {
+      showToast("Upload a PDF or image");
+      return;
+    }
+    if (isPdf) {
+      const invalid = validateLetterPdfFile(file);
+      if (invalid) {
+        showToast(invalid);
+        return;
+      }
+    } else {
+      const invalid = validateIntroCoverFile(file);
+      if (invalid) {
+        showToast(invalid);
+        return;
+      }
+    }
+
+    const target = draft || letters[0];
+    if (!target) {
+      showToast("Upload a letter first");
+      return;
+    }
+    const today = formatLetterDate(new Date());
+    patchLibrary((prev) => ({
+      ...prev,
+      letters: prev.letters.map((row) =>
+        row.id === target.id
+          ? {
+              ...row,
+              signed: true,
+              date: today,
+              size: formatFileSize(file.size),
+              name: `Commitment letter ${row.ver}`,
+              fileUrl: URL.createObjectURL(file),
+              by: coachName,
+            }
+          : row,
+      ),
+      signature: {
+        ...prev.signature,
+        onFile: true,
+        name: coachName,
+        drawnOn: prev.signature?.drawnOn || today,
+      },
+    }));
+    showToast(`Signed copy attached to ${target.name}`);
+  }
+
+  function onSignatureSelected(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !library) return;
+    const invalid = validateIntroCoverFile(file);
+    if (invalid) {
+      showToast(invalid);
+      return;
+    }
+    patchLibrary((prev) => ({
+      ...prev,
+      signature: {
+        name: coachName,
+        drawnOn: formatLetterDate(new Date()),
+        url: URL.createObjectURL(file),
+        onFile: true,
+      },
+    }));
+    showToast(`Signature updated for ${coachName}`);
+  }
+
+  if (loading) {
+    return (
+      <main className="content ua-page-enter ua-commit">
+        <BackLink
+          label={isAdminLibrary ? "My Content" : "Dashboard"}
+          to={isAdminLibrary ? UPDATED_ADMIN_PATHS.myContent : UPDATED_ADMIN_PATHS.dashboard}
+        />
+        <BrandLoader variant="page" label="Loading commitment letters…" />
+      </main>
+    );
+  }
+
+  if (!coachId || !library) {
+    return (
+      <main className="content ua-page-enter ua-commit">
+        <BackLink
+          label={isAdminLibrary ? "My Content" : "Dashboard"}
+          to={isAdminLibrary ? UPDATED_ADMIN_PATHS.myContent : UPDATED_ADMIN_PATHS.dashboard}
+        />
+        <div className="ua-commit__head">
+          <div className="ua-commit__head-copy">
+            <h1 className="page-head__title">Commitment Letters</h1>
+            <p className="page-head__sub">No coaches available yet.</p>
+          </div>
+        </div>
+      </main>
+    );
   }
 
   return (
-    <main className="content ua-page-enter">
+    <main className="content ua-page-enter ua-commit">
       <BackLink
         label={isAdminLibrary ? "My Content" : "Dashboard"}
         to={isAdminLibrary ? UPDATED_ADMIN_PATHS.myContent : UPDATED_ADMIN_PATHS.dashboard}
       />
+
       <div className="ua-commit__head">
-        <div>
+        <div className="ua-commit__head-copy">
           <h1 className="page-head__title">Commitment Letters</h1>
           <p className="page-head__sub">
             {isAdminLibrary
@@ -91,90 +591,137 @@ export function CommitmentLettersPage() {
           {isAdminLibrary ? (
             <select
               className="ua-commit__coach-select"
-              value={coachId}
+              value={coachId || ""}
               onChange={(e) => {
-                const next = e.target.value;
-                navigate(UPDATED_ADMIN_PATHS.commitmentLetters(next), { replace: true });
+                navigate(UPDATED_ADMIN_PATHS.commitmentLetters(e.target.value), { replace: true });
               }}
             >
-              {COMMITMENT_COACHES.map((row) => (
-                <option key={row.id} value={row.id}>{row.name}</option>
+              {coaches.map((row) => (
+                <option key={row.id} value={row.id}>
+                  {row.name}
+                </option>
               ))}
             </select>
           ) : null}
-          <OrangeButton onClick={() => showToast("Upload letter — coming soon")}>+ Upload letter</OrangeButton>
+          {canEdit ? (
+            <OrangeButton disabled={busy} onClick={() => startUpload("new")}>
+              + Upload letter
+            </OrangeButton>
+          ) : null}
         </div>
       </div>
 
       <div className="ua-commit__layout">
         <div className="ua-commit__main">
-          {featured ? (
-            <section className="ua-commit__featured">
-              <div className="ua-commit__featured-head">
-                <div>
-                  <div className="ua-commit__featured-title">{featured.label}</div>
-                  <div className="ua-commit__featured-note">
-                    {featured.status === "signed"
-                      ? `Signed ${featured.signed} by ${coachName}`
-                      : featured.signed}
-                  </div>
-                </div>
-                <div className="ua-commit__featured-head-end">
-                  <div className="ua-commit__featured-kicker">This is what clients see today</div>
+          <section className={`ua-commit__featured${featured ? " is-live" : ""}`}>
+            <div className="ua-commit__featured-kicker">This is what clients see today</div>
+            {featured ? (
+              <div className="ua-commit__featured-body">
+                <button
+                  type="button"
+                  className={`ua-commit__preview${canEdit ? " is-uploadable" : ""}${hasFeaturedPreview ? " has-media" : ""}`}
+                  disabled={!canEdit || busy}
+                  onClick={() => canEdit && startUpload("preview")}
+                  aria-label={hasFeaturedPreview ? "Replace letter preview" : "Upload letter preview"}
+                >
+                  {hasFeaturedPreview ? (
+                    featuredPreviewIsImage ? (
+                      <img src={featuredPreviewSrc} alt={`${featured.name} preview`} />
+                    ) : (
+                      <iframe title={featured.name} src={featuredPreviewSrc} />
+                    )
+                  ) : (
+                    <span className="ua-commit__preview-hint">
+                      <strong>{canEdit ? "Upload preview" : "Letter preview"}</strong>
+                      {canEdit ? <em>PDF or image</em> : null}
+                    </span>
+                  )}
+                </button>
+                <div className="ua-commit__featured-info">
+                  <div className="ua-commit__featured-title">{featured.name}</div>
+                  <div className="ua-commit__featured-note">{featuredMeta(featured, coachName)}</div>
                   <div className="ua-commit__badges">
-                    {featured.status === "signed" ? <span className="ua-commit__badge ua-commit__badge--green">Signed</span> : null}
-                    <span className="ua-commit__badge ua-commit__badge--gray">{featured.id}</span>
+                    <span className={`ua-commit__badge${featured.signed ? " ua-commit__badge--green" : " ua-commit__badge--amber"}`}>
+                      {featured.signed ? "Signed" : "Not signed"}
+                    </span>
+                    <span className="ua-commit__badge ua-commit__badge--gray">{featured.ver}</span>
+                  </div>
+                  <div className="ua-commit__featured-actions">
+                    <button type="button" className="ua-commit__btn ua-commit__btn--ghost" onClick={() => viewLetter(featured)}>
+                      View
+                    </button>
+                    <button type="button" className="ua-commit__btn ua-commit__btn--primary" onClick={() => downloadOne(featured)}>
+                      Download
+                    </button>
+                    {canEdit ? (
+                      <button
+                        type="button"
+                        className="ua-commit__btn ua-commit__btn--ghost"
+                        disabled={busy}
+                        onClick={() => startUpload(hasFeaturedPreview ? "replace-live" : "preview")}
+                      >
+                        {hasFeaturedPreview ? "Replace" : "Upload"}
+                      </button>
+                    ) : null}
                   </div>
                 </div>
               </div>
-              <div className="ua-commit__preview">Letter preview</div>
-              <div className="ua-commit__featured-actions">
-                <button type="button" className="ua-commit__btn ua-commit__btn--ghost" onClick={() => showToast("View letter")}>View</button>
-                <button type="button" className="ua-commit__btn ua-commit__btn--ghost" onClick={() => showToast("Download letter")}>Download</button>
-                <button type="button" className="ua-commit__btn ua-commit__btn--primary" onClick={() => showToast("Replace letter")}>Replace</button>
+            ) : (
+              <div className="ua-commit__featured-empty">
+                <div className="ua-commit__featured-title">Nothing live yet</div>
+                <div className="ua-commit__featured-note">Sign a letter below and set it live to show it to clients.</div>
               </div>
-            </section>
-          ) : (
-            <section className="ua-commit__featured">
-              <div className="ua-commit__featured-title">No live letter yet</div>
-              <div className="ua-commit__featured-note">Upload a signed letter for clients to see.</div>
-            </section>
-          )}
+            )}
+          </section>
 
           <section className="ua-commit__list-card">
             <div className="ua-commit__list-title">
               All letters
-              <span>{letters.length} {letters.length === 1 ? "version" : "versions"}</span>
+              <span>
+                {letters.length} {letters.length === 1 ? "version" : "versions"}
+              </span>
             </div>
-            {letters.length ? letters.map((letter) => (
-              <div key={letter.id} className="ua-commit__list-row">
-                <span className="ua-commit__list-icon" aria-hidden="true">📄</span>
-                <div className="ua-commit__list-copy">
-                  <div className="ua-commit__list-label">{letter.label}</div>
-                  <div className="ua-commit__list-meta">
-                    {letter.status === "signed" ? `Signed ${letter.signed}` : letter.signed} · {letter.size}
+            {letters.length ? (
+              letters.map((letter) => (
+                <div key={letter.id} className={`ua-commit__list-row${letter.live ? " is-live" : ""}`}>
+                  <FileIcon live={letter.live} />
+                  <div className="ua-commit__list-copy">
+                    <div className="ua-commit__list-label-row">
+                      <span className="ua-commit__list-label">{letter.name}</span>
+                      <span className={`ua-commit__tag${letter.signed ? " ua-commit__tag--green" : " ua-commit__tag--amber"}`}>
+                        {letter.signed ? "SIGNED" : "AWAITING SIGNATURE"}
+                      </span>
+                      {letter.live ? <span className="ua-commit__tag ua-commit__tag--live">LIVE</span> : null}
+                    </div>
+                    <div className="ua-commit__list-meta">{letterRowMeta(letter)}</div>
+                  </div>
+                  <div className="ua-commit__list-actions">
+                    <button type="button" className="ua-commit__btn ua-commit__btn--ghost" onClick={() => viewLetter(letter)}>
+                      View
+                    </button>
+                    <button type="button" className="ua-commit__btn ua-commit__btn--primary" onClick={() => downloadOne(letter)}>
+                      Download
+                    </button>
+                    {canEdit && !letter.live && letter.signed ? (
+                      <button type="button" className="ua-commit__btn ua-commit__btn--green" onClick={() => requestSetLive(letter)}>
+                        Set live
+                      </button>
+                    ) : null}
+                    {canEdit && !letter.live ? (
+                      <button
+                        type="button"
+                        className="ua-commit__delete"
+                        aria-label={`Delete ${letter.name}`}
+                        onClick={() => requestDelete(letter)}
+                      >
+                        <TrashIcon />
+                      </button>
+                    ) : null}
                   </div>
                 </div>
-                <div className="ua-commit__list-tags">
-                  {letter.status === "signed" ? <span className="ua-commit__tag ua-commit__tag--green">SIGNED</span> : null}
-                  {letter.status === "draft" ? <span className="ua-commit__tag ua-commit__tag--amber">AWAITING SIGNATURE</span> : null}
-                  {letter.live ? <span className="ua-commit__tag ua-commit__tag--blue">LIVE</span> : null}
-                </div>
-                <div className="ua-commit__list-actions">
-                  <button type="button" className="ua-commit__btn ua-commit__btn--ghost" onClick={() => showToast("View letter")}>View</button>
-                  <button type="button" className="ua-commit__btn ua-commit__btn--ghost" onClick={() => showToast("Download letter")}>Download</button>
-                  {!letter.live && letter.status === "signed" ? (
-                    <button type="button" className="ua-commit__btn ua-commit__btn--green" onClick={() => requestSetLive(letter)}>
-                      Set live
-                    </button>
-                  ) : null}
-                  {!letter.live ? (
-                    <button type="button" className="ua-commit__delete" aria-label="Delete letter" onClick={() => showToast("Delete letter")}>🗑</button>
-                  ) : null}
-                </div>
-              </div>
-            )) : (
-              <p className="page-head__sub" style={{ padding: "12px 16px" }}>No letters uploaded yet.</p>
+              ))
+            ) : (
+              <p className="ua-commit__empty">No letters uploaded yet.</p>
             )}
           </section>
         </div>
@@ -182,48 +729,98 @@ export function CommitmentLettersPage() {
         <aside className="ua-commit__aside">
           <section className="ua-commit__aside-card">
             <div className="ua-commit__aside-label">Signature</div>
-            <div className="ua-commit__signature-box">Signature on file</div>
-            <div className="ua-commit__signature-name">{data.signatureName || coachName}</div>
-            <span className="ua-commit__badge ua-commit__badge--green">ON FILE</span>
-            {data.drawnOn ? (
-              <p className="ua-commit__signature-meta">
-                Drawn {data.drawnOn} · used on {data.usedOn || 0} letters
-              </p>
+            <div className="ua-commit__signature-panel">
+              <button
+                type="button"
+                className={`ua-commit__signature-box${canEdit ? " is-uploadable" : ""}${hasSignatureImage ? " has-media" : ""}`}
+                disabled={!canEdit || busy}
+                onClick={() => canEdit && startUpload("signature")}
+                aria-label={hasSignatureImage ? "Replace signature" : "Upload signature"}
+              >
+                {hasSignatureImage ? (
+                  <img src={library.signature.url} alt={`${coachName} signature`} />
+                ) : (
+                  <span className="ua-commit__preview-hint">
+                    <strong>{canEdit ? "Upload signature" : "No signature"}</strong>
+                    {canEdit ? <em>PNG or JPG</em> : null}
+                  </span>
+                )}
+              </button>
+              <div className="ua-commit__signature-foot">
+                <div>
+                  <div className="ua-commit__signature-name">{library.signature?.name || coachName}</div>
+                  <p className="ua-commit__signature-meta">
+                    {hasSignatureImage
+                      ? `Drawn ${library.signature.drawnOn || "—"} · used on ${signedCount} letters`
+                      : "No signature saved yet"}
+                  </p>
+                </div>
+                <span className={`ua-commit__badge${hasSignatureImage ? " ua-commit__badge--green" : " ua-commit__badge--gray"}`}>
+                  {hasSignatureImage ? "ON FILE" : "MISSING"}
+                </span>
+              </div>
+            </div>
+            {canEdit ? (
+              <button
+                type="button"
+                className="ua-commit__btn ua-commit__btn--ghost ua-commit__btn--block"
+                disabled={busy}
+                onClick={() => startUpload("signature")}
+              >
+                {hasSignatureImage ? "Replace signature" : "Upload signature"}
+              </button>
             ) : null}
-            <button type="button" className="ua-commit__btn ua-commit__btn--ghost ua-commit__btn--block" onClick={() => showToast("Replace signature")}>
-              Replace signature
-            </button>
           </section>
 
-          <section className="ua-commit__aside-card">
-            <div className="ua-commit__aside-label">Sign a letter</div>
-            {draft ? (
+          {canEdit ? (
+            <section className="ua-commit__aside-card">
+              <div className="ua-commit__aside-label">Sign a letter</div>
               <p className="ua-commit__signature-meta">
-                “{draft.label}” is waiting for a signature.
+                {draft ? `“${draft.name}” is waiting for a signature.` : "Every letter here is already signed."}
               </p>
-            ) : (
-              <p className="ua-commit__signature-meta">No draft is waiting for a signature.</p>
-            )}
-            <button
-              type="button"
-              className="ua-commit__btn ua-commit__btn--green ua-commit__btn--block"
-              onClick={() => {
-                if (draft) requestSign(draft);
-                else showToast("No draft letter awaiting signature");
-              }}
-            >
-              Sign with saved signature
-            </button>
-            <p className="ua-commit__signature-meta">Attaches the saved signature and stamps the date.</p>
-            <button type="button" className="ua-commit__btn ua-commit__btn--ghost ua-commit__btn--block" onClick={() => showToast("Download to sign by hand")}>
-              Download to sign by hand
-            </button>
-            <div className="ua-commit__upload-box" onClick={() => showToast("Upload a signed copy")}>
-              <span>Upload a signed copy</span>
-            </div>
-          </section>
+              <button
+                type="button"
+                className={`ua-commit__sign-auto${draft ? " is-ready" : ""}`}
+                disabled={!draft || busy}
+                onClick={() => (draft ? requestSign(draft) : null)}
+              >
+                <span className="ua-commit__sign-auto-title">Sign with saved signature</span>
+                <span className="ua-commit__sign-auto-sub">Attaches it to the page and stamps the date</span>
+              </button>
+              <button
+                type="button"
+                className="ua-commit__sign-option"
+                onClick={() => downloadOne(draft || featured || letters[0])}
+              >
+                <span className="ua-commit__sign-option-title">Download to sign by hand</span>
+                <span className="ua-commit__sign-option-sub">Print, sign, then upload the scan below</span>
+              </button>
+              <button type="button" className="ua-commit__sign-upload" onClick={() => startUpload("signed-copy")}>
+                <span className="ua-commit__sign-option-title">Upload a signed copy</span>
+                <span className="ua-commit__sign-option-sub">PDF or image, replaces the unsigned draft</span>
+              </button>
+            </section>
+          ) : null}
         </aside>
       </div>
+
+      <input ref={uploadRef} type="file" accept="application/pdf,.pdf" hidden onChange={onNewLetterSelected} />
+      <input ref={replaceLiveRef} type="file" accept="application/pdf,.pdf" hidden onChange={onReplaceLiveSelected} />
+      <input
+        ref={previewRef}
+        type="file"
+        accept="application/pdf,.pdf,image/*"
+        hidden
+        onChange={onPreviewSelected}
+      />
+      <input
+        ref={signedCopyRef}
+        type="file"
+        accept="application/pdf,.pdf,image/*"
+        hidden
+        onChange={onSignedCopySelected}
+      />
+      <input ref={signatureRef} type="file" accept="image/*" hidden onChange={onSignatureSelected} />
 
       <ConfirmDialog
         open={!!confirm}
@@ -231,6 +828,7 @@ export function CommitmentLettersPage() {
         title={confirm?.title ?? ""}
         body={confirm?.body}
         confirmLabel={confirm?.confirmLabel ?? "Confirm"}
+        confirmTone={confirm?.confirmTone || "primary"}
         onCancel={() => setConfirm(null)}
         onConfirm={handleConfirm}
       />

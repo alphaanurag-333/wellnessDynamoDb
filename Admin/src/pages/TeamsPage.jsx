@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import QRCode from "qrcode";
 import { useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 import { BrandLoader } from "../components/BrandLoader.jsx";
 import { ConfirmDialog } from "../components/ConfirmDialog.jsx";
@@ -12,7 +13,17 @@ import {
   TEAM_ROLE_TABS_BASE,
   staffInitials,
 } from "../data/teamsData.js";
-import { createTeamMember, deleteTeamMember, fetchTeamMembers, listTeamParentOptions, sendTeamReminder, setAccessMemberRole, updateTeamMember } from "../api/teamsApi.js";
+import {
+  createTeamMember,
+  deleteTeamMember,
+  fetchTeamMembers,
+  listTeamParentOptions,
+  regenerateTeamMemberTotp,
+  sendTeamReminder,
+  setAccessMemberRole,
+  setTeamMemberTotp,
+  updateTeamMember,
+} from "../api/teamsApi.js";
 import { fetchAccessRoles } from "../api/accessApi.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import {
@@ -46,6 +57,17 @@ const ACTION_ICON = {
   strokeLinejoin: "round",
   "aria-hidden": true,
 };
+
+async function copyText(value) {
+  const text = String(value || "");
+  if (!text) return false;
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function IconEditProfile() {
   return (
@@ -94,7 +116,121 @@ function nationalPhoneDigits(value) {
   return digits.slice(-PHONE_NATIONAL_LEN);
 }
 
-function CreateMemberModal({ open, member, roles, parentOptions, onClose, onSaved, onToast }) {
+function CredentialsModal({ open, payload, onClose, onToast }) {
+  const [qrDataUrl, setQrDataUrl] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    async function buildQr() {
+      if (!open || !payload?.totpOtpauthUrl) {
+        setQrDataUrl("");
+        return;
+      }
+      try {
+        const url = await QRCode.toDataURL(payload.totpOtpauthUrl, {
+          width: 180,
+          margin: 1,
+          errorCorrectionLevel: "M",
+        });
+        if (!cancelled) setQrDataUrl(url);
+      } catch {
+        if (!cancelled) setQrDataUrl("");
+      }
+    }
+    buildQr();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, payload?.totpOtpauthUrl]);
+
+  if (!open || !payload) return null;
+
+  async function handleCopy(label, value) {
+    const ok = await copyText(value);
+    onToast?.(ok ? `${label} copied` : `Could not copy ${label.toLowerCase()}`);
+  }
+
+  return (
+    <div className="ua-cp-modal-backdrop" onClick={onClose} role="presentation">
+      <div
+        className="ua-teams-creds"
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ua-teams-creds-title"
+      >
+        <div className="ua-teams-creds__head">
+          <div className="ua-teams-creds__copy">
+            <h2 id="ua-teams-creds-title">Share login credentials</h2>
+            <p>
+              {payload.name
+                ? `Give ${payload.name} these details offline. The authenticator key is shown once.`
+                : "Share these details offline. The authenticator key is shown once."}
+            </p>
+          </div>
+          <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={onClose}>
+            ×
+          </button>
+        </div>
+        <div className="ua-teams-creds__body">
+          <p className="ua-teams-creds__warn">
+            Store or share securely now. Use Regenerate key later if the member loses access.
+          </p>
+          {payload.temporaryPassword ? (
+            <div className="ua-teams-creds__field">
+              <span className="ua-teams-creds__label">Temporary password</span>
+              <div className="ua-teams-creds__row">
+                <code className="ua-teams-creds__value">{payload.temporaryPassword}</code>
+                <button
+                  type="button"
+                  className="ua-cfg-btn ua-cfg-btn--outline"
+                  onClick={() => handleCopy("Password", payload.temporaryPassword)}
+                >
+                  Copy
+                </button>
+              </div>
+            </div>
+          ) : null}
+          {payload.totpSecret ? (
+            <div className="ua-teams-creds__field">
+              <span className="ua-teams-creds__label">Authenticator key</span>
+              <div className="ua-teams-creds__row">
+                <code className="ua-teams-creds__value">{payload.totpSecret}</code>
+                <button
+                  type="button"
+                  className="ua-cfg-btn ua-cfg-btn--outline"
+                  onClick={() => handleCopy("Authenticator key", payload.totpSecret)}
+                >
+                  Copy
+                </button>
+              </div>
+            </div>
+          ) : null}
+          {qrDataUrl ? (
+            <img className="ua-teams-creds__qr" src={qrDataUrl} alt="Authenticator QR code" />
+          ) : null}
+        </div>
+        <div className="ua-teams-creds__foot">
+          <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" onClick={onClose}>
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CreateMemberModal({
+  open,
+  member,
+  roles,
+  parentOptions,
+  isSuperAdmin,
+  onClose,
+  onSaved,
+  onToast,
+  onCredentials,
+}) {
   const creatableRoles = useMemo(
     () => (roles || []).filter((r) => !isAdminAccessRole(r)),
     [roles],
@@ -104,8 +240,10 @@ function CreateMemberModal({ open, member, roles, parentOptions, onClose, onSave
   const [email, setEmail] = useState("");
   const [consoleRoleId, setConsoleRoleId] = useState("");
   const [parentAccountId, setParentAccountId] = useState("");
+  const [totpRequired, setTotpRequired] = useState(false);
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);
+  const [totpBusy, setTotpBusy] = useState(false);
 
   function clearError(key) {
     setErrors((prev) => {
@@ -117,25 +255,39 @@ function CreateMemberModal({ open, member, roles, parentOptions, onClose, onSave
   }
 
   const isEdit = Boolean(member?.id);
+  const memberId = member?.id || "";
+  const memberParentId = member?.parentAccountId || "";
 
+  // Edit: reset only when opening / switching members (not on roles reload or totp updates).
   useEffect(() => {
-    if (!open) return;
+    if (!open || !member?.id) return;
     setErrors({});
-    if (member?.id) {
-      setName(sanitizePersonName(member.name || ""));
-      setPhone(nationalPhoneDigits(member.phone));
-      setEmail(sanitizeEmailInput(member.email || ""));
-      setConsoleRoleId(member.consoleRoleId || "");
-      setParentAccountId(member.parentAccountId || "");
-      return;
-    }
+    setName(sanitizePersonName(member.name || ""));
+    setPhone(nationalPhoneDigits(member.phone));
+    setEmail(sanitizeEmailInput(member.email || ""));
+    setConsoleRoleId(member.consoleRoleId || "");
+    setParentAccountId(member.parentAccountId || "");
+    setTotpRequired(Boolean(member.totpRequired));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, memberId]);
+
+  // Create: reset when opening create modal.
+  useEffect(() => {
+    if (!open || memberId) return;
+    setErrors({});
     setName("");
     setPhone("");
     setEmail("");
     const defaultRole = creatableRoles.find((r) => r.roleKey === "wc") || creatableRoles[0];
     setConsoleRoleId(defaultRole?.id || "");
     setParentAccountId("");
-  }, [open, creatableRoles, member]);
+    setTotpRequired(false);
+  }, [open, memberId, creatableRoles]);
+
+  useEffect(() => {
+    if (!open || !memberId) return;
+    setTotpRequired(Boolean(member?.totpRequired));
+  }, [open, memberId, member?.totpRequired]);
 
   const selectedRole = creatableRoles.find((r) => r.id === consoleRoleId) || null;
   const baseUiKey = selectedRole ? resolveBaseUiRoleKey(selectedRole, creatableRoles) : null;
@@ -146,19 +298,27 @@ function CreateMemberModal({ open, member, roles, parentOptions, onClose, onSave
     () =>
       (parentOptions || []).filter((account) =>
         account.roleKeys?.includes(parentRoleKey) &&
-        (!member?.id || account.id !== member.id),
+        (!memberId || account.id !== memberId),
       ),
-    [parentOptions, parentRoleKey, member?.id],
+    [parentOptions, parentRoleKey, memberId],
   );
 
   useEffect(() => {
     if (!open || !needsParent) return;
-    setParentAccountId((current) =>
-      eligibleParents.some((parent) => parent.id === current)
-        ? current
-        : eligibleParents[0]?.id || "",
-    );
-  }, [open, needsParent, parentRoleKey, eligibleParents]);
+    // Don't wipe Reports To while parent options are still loading.
+    if (!eligibleParents.length) return;
+    setParentAccountId((current) => {
+      if (current && eligibleParents.some((parent) => parent.id === current)) {
+        return current;
+      }
+      if (memberParentId && eligibleParents.some((parent) => parent.id === memberParentId)) {
+        return memberParentId;
+      }
+      // Create: default to first coach. Edit: keep empty so we don't reassign by accident.
+      if (!isEdit) return eligibleParents[0]?.id || "";
+      return current || "";
+    });
+  }, [open, needsParent, parentRoleKey, eligibleParents, memberParentId, isEdit]);
 
   if (!open) return null;
 
@@ -193,16 +353,33 @@ function CreateMemberModal({ open, member, roles, parentOptions, onClose, onSave
         });
         const roleChanged = consoleRoleId !== (member.consoleRoleId || "");
         const nextParent = needsParent ? parentAccountId : "";
-        const parentChanged = nextParent !== (member.parentAccountId || "");
-        if (roleChanged || parentChanged) {
+        const existingParent = member.parentAccountId || "";
+        const parentChanged = nextParent !== existingParent;
+        // Avoid clearing Reports To when the dropdown is empty due to loading/race.
+        const shouldUpdateRole =
+          roleChanged ||
+          (parentChanged && (!needsParent || Boolean(parentAccountId) || !existingParent));
+        if (shouldUpdateRole) {
           await setAccessMemberRole(member.id, {
             consoleRoleId,
             roleKey: selectedRole?.roleKey || baseUiKey || undefined,
-            parentAccountId: needsParent ? parentAccountId : null,
+            parentAccountId: needsParent ? parentAccountId || null : null,
           });
         }
-        onToast(`Updated ${result.account?.name || name.trim()}`);
-        onSaved(result.account);
+        let account = result.account;
+        if (isSuperAdmin && totpRequired !== Boolean(member.totpRequired)) {
+          const totpResult = await setTeamMemberTotp(member.id, { totpRequired });
+          account = totpResult.account || account;
+          if (totpResult.totpSecret) {
+            onCredentials?.({
+              name: account?.name || name.trim(),
+              totpSecret: totpResult.totpSecret,
+              totpOtpauthUrl: totpResult.totpOtpauthUrl,
+            });
+          }
+        }
+        onToast(`Updated ${account?.name || name.trim()}`);
+        onSaved(account);
         onClose();
         return;
       }
@@ -214,14 +391,19 @@ function CreateMemberModal({ open, member, roles, parentOptions, onClose, onSave
         consoleRoleId,
         roleKey: selectedRole?.roleKey || baseUiKey || undefined,
         parentAccountId: needsParent ? parentAccountId : undefined,
+        totpRequired: isSuperAdmin ? totpRequired : false,
       });
-      onToast(
-        result.temporaryPassword
-          ? `Created ${result.account?.name} · temp password ${result.temporaryPassword}`
-          : `Created ${result.account?.name}`,
-      );
+      onToast(`Created ${result.account?.name || name.trim()}`);
       onSaved(result.account);
       onClose();
+      if (result.temporaryPassword || result.totpSecret) {
+        onCredentials?.({
+          name: result.account?.name || name.trim(),
+          temporaryPassword: result.temporaryPassword,
+          totpSecret: result.totpSecret,
+          totpOtpauthUrl: result.totpOtpauthUrl,
+        });
+      }
     } catch (err) {
       onToast(err?.message || (isEdit ? "Update failed" : "Create failed"));
     } finally {
@@ -229,8 +411,27 @@ function CreateMemberModal({ open, member, roles, parentOptions, onClose, onSave
     }
   }
 
+  async function handleRegenerateTotp() {
+    if (!member?.id || !isSuperAdmin) return;
+    setTotpBusy(true);
+    try {
+      const result = await regenerateTeamMemberTotp(member.id);
+      onToast("Authenticator key regenerated");
+      onSaved(result.account);
+      onCredentials?.({
+        name: result.account?.name || member.name,
+        totpSecret: result.totpSecret,
+        totpOtpauthUrl: result.totpOtpauthUrl,
+      });
+    } catch (err) {
+      onToast(err?.message || "Could not regenerate authenticator key");
+    } finally {
+      setTotpBusy(false);
+    }
+  }
+
   return (
-    <div className="ua-cp-modal-backdrop" onClick={busy ? undefined : onClose} role="presentation">
+    <div className="ua-cp-modal-backdrop" onClick={busy || totpBusy ? undefined : onClose} role="presentation">
       <div
         className="ua-teams-create"
         onClick={(event) => event.stopPropagation()}
@@ -252,7 +453,7 @@ function CreateMemberModal({ open, member, roles, parentOptions, onClose, onSave
             type="button"
             className="ua-cfg-icon-btn"
             aria-label="Close"
-            disabled={busy}
+            disabled={busy || totpBusy}
             onClick={onClose}
           >
             ×
@@ -368,12 +569,44 @@ function CreateMemberModal({ open, member, roles, parentOptions, onClose, onSave
                 {errors.parent ? <span className="ua-teams-create__error">{errors.parent}</span> : null}
               </label>
             ) : null}
+            {isSuperAdmin ? (
+              <div className="ua-teams-create__field">
+                <label className="ua-teams-create__check">
+                  <input
+                    type="checkbox"
+                    checked={totpRequired}
+                    disabled={busy || totpBusy}
+                    onChange={(event) => setTotpRequired(event.target.checked)}
+                  />
+                  <span className="ua-teams-create__check-copy">
+                    <strong>Require authenticator for login</strong>
+                    <span>
+                      {isEdit
+                        ? "When on, this member must enter a Google Authenticator code after password."
+                        : "Generate a key to share. Login will require the authenticator code when enabled."}
+                    </span>
+                  </span>
+                </label>
+                {isEdit ? (
+                  <div className="ua-teams-2fa-actions">
+                    <button
+                      type="button"
+                      className="ua-cfg-btn ua-cfg-btn--outline"
+                      disabled={busy || totpBusy}
+                      onClick={handleRegenerateTotp}
+                    >
+                      {totpBusy ? "Regenerating…" : "Regenerate authenticator key"}
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </div>
           <div className="ua-teams-create__foot">
-            <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose} disabled={busy}>
+            <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose} disabled={busy || totpBusy}>
               Cancel
             </button>
-            <button type="submit" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy || !consoleRoleId}>
+            <button type="submit" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy || totpBusy || !consoleRoleId}>
               {busy ? (isEdit ? "Saving…" : "Creating…") : isEdit ? "Save changes" : "Create member"}
             </button>
           </div>
@@ -413,6 +646,7 @@ export function TeamsPage() {
   const [remindBusy, setRemindBusy] = useState(false);
   const [parentOptions, setParentOptions] = useState([]);
   const [reloadNonce, setReloadNonce] = useState(0);
+  const [credentialsModal, setCredentialsModal] = useState(null);
 
   function openMemberRemind(member, roleName) {
     const name = member?.name || "team member";
@@ -536,11 +770,11 @@ export function TeamsPage() {
   }, [currentPage, error, loading, pagination.pages]);
 
   useEffect(() => {
-    if (!createOpen && !editingMember) return;
+    if (!createOpen && !editingMember?.id) return;
     listTeamParentOptions()
       .then(setParentOptions)
       .catch(() => setParentOptions([]));
-  }, [createOpen, editingMember]);
+  }, [createOpen, editingMember?.id]);
 
   const tabs = useMemo(() => {
     const roleTabs = teamRoles.length
@@ -676,13 +910,22 @@ export function TeamsPage() {
                   </div>
                   <div className="ua-table__load" data-label={col3}>{s.meta}</div>
                   <div data-label="Status">
-                    <span
-                      className={`ua-status-pill${
-                        s.displayStatus === "Pending" ? " ua-status-pill--amber" : " ua-status-pill--green"
-                      }`}
-                    >
-                      {s.displayStatus || "Active"}
-                    </span>
+                    <div className="ua-team-status-stack">
+                      <span
+                        className={`ua-status-pill${
+                          s.displayStatus === "Pending" ? " ua-status-pill--amber" : " ua-status-pill--green"
+                        }`}
+                      >
+                        {s.displayStatus || "Active"}
+                      </span>
+                      <span
+                        className={`ua-status-pill${
+                          s.totpRequired ? " ua-status-pill--2fa" : " ua-status-pill--2fa-off"
+                        }`}
+                      >
+                        {s.totpRequired ? "2FA on" : "2FA off"}
+                      </span>
+                    </div>
                   </div>
                   <div className="ua-team-actions" data-label="Actions" onClick={(e) => e.stopPropagation()}>
                     <div className="ua-team-actions__row">
@@ -755,11 +998,37 @@ export function TeamsPage() {
         member={editingMember}
         roles={createRoles}
         parentOptions={parentOptions}
+        isSuperAdmin={isSuperAdmin}
         onClose={() => {
           setCreateOpen(false);
           setEditingMember(null);
         }}
-        onSaved={() => load()}
+        onSaved={(account) => {
+          if (account?.id) {
+            setEditingMember((prev) =>
+              prev?.id === account.id
+                ? {
+                    ...prev,
+                    // Keep list-member fields (parentAccountId, meta, etc.); only refresh 2FA flags.
+                    totpRequired: Boolean(account.totpRequired),
+                    totpConfigured: Boolean(account.totpConfigured),
+                    name: account.name || prev.name,
+                    phone: account.phone ?? prev.phone,
+                    phoneCountryCode: account.phoneCountryCode || prev.phoneCountryCode,
+                  }
+                : prev,
+            );
+          }
+          load();
+        }}
+        onToast={onToast}
+        onCredentials={(payload) => setCredentialsModal(payload)}
+      />
+
+      <CredentialsModal
+        open={Boolean(credentialsModal)}
+        payload={credentialsModal}
+        onClose={() => setCredentialsModal(null)}
         onToast={onToast}
       />
 

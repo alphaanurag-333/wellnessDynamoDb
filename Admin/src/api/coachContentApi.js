@@ -5,6 +5,8 @@ import {
 import { MEASUREMENT_IMAGE_MAX_SIZE_MB, MEASUREMENT_VIDEO_MAX_SIZE_MB } from "../data/measurementVideoData.js";
 
 const AVATAR_COLORS = ["#22c55e", "#8b5cf6", "#14b8a6", "#f97316", "#a78bfa", "#a16207", "#3b82f6", "#ec4899"];
+const MY_CONTENT_AVATAR_COLORS = ["#34a56a", "#5e6ad2", "#0d9488", "#ec7a45", "#a855f7", "#c2661d"];
+const MY_CONTENT_ROLE_KEYS = ["wellness_coach", "assistant_wellness_coach", "trainee"];
 
 function initialsFromName(name) {
   const parts = String(name || "")
@@ -359,32 +361,57 @@ export function mapAccountToMyContentCoach(account, letterConfig = {}, index = 0
   const liveCount = [video, letter].filter((item) => item.live).length;
   const clients = Number(account?.clientCount);
   const roleKey = primaryCoachRoleKey(account);
+  const supportName =
+    account?.supportsCoachName ||
+    account?.supportedCoachName ||
+    account?.assistantOfName ||
+    account?.wellnessCoachName ||
+    "";
+  const meta =
+    Number.isFinite(clients) && clients > 0
+      ? `${clients} clients`
+      : supportName
+        ? `supports ${supportName}`
+        : "";
   return {
     id: account?.id,
     name: account?.name || "Unnamed coach",
     role: COACH_ROLE_LABELS[roleKey] || "Coach",
+    meta,
     clients: Number.isFinite(clients) ? clients : null,
     initial: initialsFromName(account?.name),
-    color: AVATAR_COLORS[index % AVATAR_COLORS.length],
-    liveLabel: `${liveCount} OF 2 LIVE`,
+    color: MY_CONTENT_AVATAR_COLORS[index % MY_CONTENT_AVATAR_COLORS.length],
+    liveCount,
+    liveLabel: `${liveCount} of 2 live`,
     items: [video, letter],
   };
 }
 
-export async function listMyContentCoaches({ roleKey = "wellness_coach", letterConfig } = {}) {
+export async function listMyContentCoaches({
+  roleKey,
+  roleKeys = MY_CONTENT_ROLE_KEYS,
+  letterConfig,
+} = {}) {
   try {
     const config = letterConfig || (await getCommitmentLetterConfig().catch(() => ({ text: "", version: 1 })));
-    const { accounts } = await listWellnessCoachAccounts({
-      page: 1,
-      limit: 200,
-      roleKey: roleKey || "wellness_coach",
-    });
+    const keys = roleKey
+      ? [roleKey]
+      : Array.isArray(roleKeys) && roleKeys.length
+        ? roleKeys
+        : MY_CONTENT_ROLE_KEYS;
+    const batches = await Promise.all(
+      keys.map((key) =>
+        listWellnessCoachAccounts({ page: 1, limit: 200, roleKey: key }).catch(() => ({ accounts: [] })),
+      ),
+    );
     const unique = [];
     const seen = new Set();
-    for (const account of accounts || []) {
-      if (!account?.id || seen.has(account.id)) continue;
-      seen.add(account.id);
-      unique.push(account);
+    for (const batch of batches) {
+      for (const account of batch.accounts || []) {
+        if (!account?.id || seen.has(account.id)) continue;
+        seen.add(account.id);
+        unique.push(account);
+      }
     }
     const coaches = unique
       .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), undefined, { sensitivity: "base" }))
