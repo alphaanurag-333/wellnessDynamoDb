@@ -377,7 +377,13 @@ export function MyContentPage() {
                       <div className="ua-my-content__item-title">{item.title}</div>
                       <div className="ua-my-content__item-meta">{item.meta}</div>
                     </div>
-                    {item.live ? <span className="ua-my-content__item-live">LIVE IN APP</span> : null}
+                    {item.hasMedia ? (
+                      <span
+                        className={`ua-my-content__item-status${item.live ? " is-live" : " is-hidden"}`}
+                      >
+                        {item.live ? "LIVE IN APP" : "HIDDEN"}
+                      </span>
+                    ) : null}
                     <div className="ua-my-content__item-actions">
                       <button
                         type="button"

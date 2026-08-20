@@ -18615,16 +18615,26 @@ scrollbar-width: thin;
   margin-top: 2px;
 }
 
-.updated-admin .ua-my-content__item-live {
+.updated-admin .ua-my-content__item-status {
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.04em;
-  color: #2b8f5b;
-  background: #e7f6ee;
-  border: 1px solid #cdeede;
   border-radius: 6px;
   padding: 3px 7px;
   white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.updated-admin .ua-my-content__item-status.is-live {
+  color: #2b8f5b;
+  background: #e7f6ee;
+  border: 1px solid #cdeede;
+}
+
+.updated-admin .ua-my-content__item-status.is-hidden {
+  color: #6b7789;
+  background: #f2f5fa;
+  border: 1px solid #e2e8f0;
 }
 
 .updated-admin .ua-my-content__item-actions {
@@ -46418,7 +46428,7 @@ scrollbar-width: thin;
     grid-area: copy;
   }
 
-  .updated-admin .ua-my-content__item-live {
+  .updated-admin .ua-my-content__item-status {
     grid-area: live;
     align-self: start;
   }
