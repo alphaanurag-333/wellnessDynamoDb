@@ -9,6 +9,7 @@ import { InboxProvider } from "./context/InboxContext.jsx";
 import { useViewAs } from "./context/ViewAsContext.jsx";
 import { useAppSelector } from "./store/hooks.js";
 import { selectAppName } from "./store/slices/appConfigSlice.js";
+import { installAdminDateLimits } from "./utils/adminDateLimits.js";
 import "./ref-animations.css";
 import "./admin.css";
 import "./styles/counsellingSection.css";
@@ -43,6 +44,8 @@ export function AdminLayout() {
     const timer = window.setTimeout(() => setToastVisible(false), 2600);
     return () => window.clearTimeout(timer);
   }, [toastVisible, toast]);
+
+  useEffect(() => installAdminDateLimits(document), []);
 
   const isClientProfile = /^\/users\/[^/]+$/.test(pathname) && pathname !== UPDATED_ADMIN_PATHS.users;
   const appName = useAppSelector(selectAppName);

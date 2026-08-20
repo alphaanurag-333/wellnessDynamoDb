@@ -1,7 +1,7 @@
 export const PHOTO_ANGLES = [
-  { label: "Front", urlKey: "frontPicUrl" },
-  { label: "Right", urlKey: "rightPicUrl" },
-  { label: "Left", urlKey: "leftPicUrl" },
+  { label: "Front", urlKey: "frontPicUrl", slug: "front" },
+  { label: "Right", urlKey: "rightPicUrl", slug: "right" },
+  { label: "Left", urlKey: "leftPicUrl", slug: "left" },
 ];
 
 export const BODY_ANALYTICS = {
@@ -212,6 +212,8 @@ export function buildPhotosByAngle(photos) {
       .filter((photo) => photo[angle.urlKey])
       .map((photo) => ({
         id: `${photo.id || photo._id}-${angle.label}`,
+        photoId: String(photo.id || photo._id || ""),
+        angle: angle.slug,
         date: formatPhotoDate(photo.recordedAt),
         url: photo[angle.urlKey],
       })),

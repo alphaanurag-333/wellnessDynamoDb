@@ -644,6 +644,45 @@ export async function fetchUserBodyAnalytics(id) {
   }
 }
 
+export async function downloadUserProgressPhoto(userId, photoId, angle, filename) {
+  try {
+    const q = new URLSearchParams();
+    if (filename) q.set("filename", filename);
+    const { data } = await api.get(
+      `/account/users/${encodeURIComponent(userId)}/body-analytics/photos/${encodeURIComponent(photoId)}/${encodeURIComponent(angle)}/download${q.toString() ? `?${q}` : ""}`,
+      {
+        headers: authHeader(),
+        responseType: "blob",
+      },
+    );
+    if (!(data instanceof Blob) || data.size === 0) {
+      throw new Error("Could not download photo");
+    }
+    if (data.type && data.type.includes("application/json")) {
+      const text = await data.text();
+      let message = "Could not download photo";
+      try {
+        message = JSON.parse(text)?.message || message;
+      } catch {
+        /* ignore */
+      }
+      throw new Error(message);
+    }
+    return data;
+  } catch (error) {
+    if (error?.response?.data instanceof Blob) {
+      try {
+        const text = await error.response.data.text();
+        const parsed = JSON.parse(text);
+        if (parsed?.message) throw new Error(parsed.message);
+      } catch (inner) {
+        if (inner?.message && !(inner instanceof SyntaxError)) throw inner;
+      }
+    }
+    normalizeApiError(error);
+  }
+}
+
 export async function updateUserStatus(id, status) {
   try {
     const { data } = await api.patch(

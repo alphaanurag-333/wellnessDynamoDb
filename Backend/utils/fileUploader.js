@@ -19,10 +19,13 @@ const allowedTypes = [
   "video/webm",
   // Audio
   "audio/mpeg",
+  "audio/mp3",
   "audio/wav",
+  "audio/x-wav",
   "audio/ogg",
   "audio/webm",
   "audio/mp4",
+  "audio/x-m4a",
   "audio/aac",
   // Documents
   "application/pdf",

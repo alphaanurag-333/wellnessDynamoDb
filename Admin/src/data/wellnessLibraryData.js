@@ -1,9 +1,12 @@
 export const WELLNESS_LIBRARY_PAGE_SIZE = 20;
 export const WELLNESS_VIDEO_MAX_MB = 25;
+export const WELLNESS_AUDIO_MAX_MB = 25;
 export const WELLNESS_VIDEO_ACCEPT = "video/mp4,video/webm,video/quicktime,video/x-msvideo";
+export const WELLNESS_AUDIO_ACCEPT = "audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a,audio/wav,audio/x-wav,audio/aac,audio/ogg,audio/webm";
 
 export const WELLNESS_LIBRARY_TYPES = [
   { value: "video", label: "Video (Upload file)" },
+  { value: "audio", label: "Audio (Upload file)" },
   { value: "ytlink", label: "YT Link (YouTube URL)" },
 ];
 
@@ -13,7 +16,7 @@ export const WELLNESS_LIBRARY_KINDS = {
     title: "Mental & Emotional Wellbeing",
     noun: "item",
     nouns: "items",
-    subtitle: "Private library of videos. Coaches pick which appear in a client’s app.",
+    subtitle: "Private library of videos and audios. Coaches pick which appear in a client’s app.",
     addLabel: "+ Add item",
     newLabel: "New wellbeing item",
     emoji: "🧠",
@@ -128,6 +131,34 @@ export function readVideoFileDuration(file) {
   });
 }
 
+export function readAudioFileDuration(file) {
+  return new Promise((resolve) => {
+    if (!(file instanceof File)) {
+      resolve("");
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    const audio = document.createElement("audio");
+    audio.preload = "metadata";
+    audio.onloadedmetadata = () => {
+      const duration = Number.isFinite(audio.duration) ? durationFromSeconds(audio.duration) : "";
+      URL.revokeObjectURL(url);
+      resolve(duration);
+    };
+    audio.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve("");
+    };
+    audio.src = url;
+  });
+}
+
+export function readMediaFileDuration(file, type = "video") {
+  return String(type || "").toLowerCase() === "audio"
+    ? readAudioFileDuration(file)
+    : readVideoFileDuration(file);
+}
+
 export function readVideoUrlDuration(src) {
   return new Promise((resolve) => {
     const url = String(src || "").trim();
@@ -168,7 +199,7 @@ export function mapWellnessLibraryItem(row) {
   const type = resolveLibraryType(row.type || row.mediaType);
   const ytLink = String(row.ytLink || (type === "ytlink" ? row.link : "") || "").trim();
   const fileUrl = type === "video" || type === "audio"
-    ? String(row.file || (type === "video" ? row.link : "") || "").trim()
+    ? String(row.file || row.link || "").trim()
     : "";
   return {
     id: String(id),

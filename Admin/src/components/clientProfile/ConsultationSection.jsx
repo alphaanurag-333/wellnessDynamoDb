@@ -1,11 +1,28 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchConsultancyClient } from "../../api/usersApi.js";
+import { UNASSIGNED_COACH } from "../../data/usersData.js";
 
 function initialsFromName(name) {
-  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  const parts = String(name || "")
+    .replace(/[—–]/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter((part) => part && !/^unassigned$/i.test(part));
   if (!parts.length) return "?";
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
+
+function isUnassignedCoach(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return true;
+  if (raw === UNASSIGNED_COACH) return true;
+  const normalized = raw
+    .replace(/[—–]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+  return !normalized || normalized === "unassigned";
 }
 
 function formatWhen(value) {
@@ -99,14 +116,17 @@ export function ConsultationSection({ user }) {
   const [sessions, setSessions] = useState([]);
   const [nextLabel, setNextLabel] = useState("");
 
-  const coachName = String(user?.coach || "").replace(/^—\s*/, "").trim() || "Unassigned";
+  const unassigned = isUnassignedCoach(user?.coach);
+  const coachName = unassigned ? "Unassigned" : String(user?.coach || "").trim();
   const coachRole = user?.assignedCoachType === "assistant_wellness_coach"
     ? "Assistant Wellness Coach"
     : "Wellness Coach";
   const completedCount = sessions.filter((row) => row.statusKey === "completed").length;
-  const coachSub = user?.awc
-    ? `AWC · ${user.awc}`
-    : coachRole;
+  const coachSub = unassigned
+    ? "No wellness coach assigned yet"
+    : user?.awc
+      ? `AWC · ${user.awc}`
+      : coachRole;
 
   useEffect(() => {
     let cancelled = false;
@@ -152,15 +172,32 @@ export function ConsultationSection({ user }) {
       <h2 className="ua-cp-consult__title">Consultation</h2>
 
       <div className="ua-cp-consult__label">Assigned wellness coach</div>
-      <div className="ua-cp-consult__coach">
-        <div className="ua-cp-consult__avatar" aria-hidden="true">{initialsFromName(coachName)}</div>
+      <div className={`ua-cp-consult__coach${unassigned ? " ua-cp-consult__coach--unassigned" : ""}`}>
+        <div
+          className={`ua-cp-consult__avatar${unassigned ? " ua-cp-consult__avatar--unassigned" : ""}`}
+          aria-hidden="true"
+        >
+          {unassigned ? (
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+              <circle cx="12" cy="8" r="3.25" />
+              <path d="M5.5 18.5c1.6-3.1 4-4.6 6.5-4.6s4.9 1.5 6.5 4.6" strokeLinecap="round" />
+            </svg>
+          ) : (
+            initialsFromName(coachName)
+          )}
+        </div>
         <div className="ua-cp-consult__coach-meta">
           <div className="ua-cp-consult__coach-name">{coachName}</div>
           <div className="ua-cp-consult__coach-spec">{coachSub}</div>
-          <div className="ua-cp-consult__coach-sessions">
-            {completedCount} session{completedCount === 1 ? "" : "s"} completed
-          </div>
+          {!unassigned ? (
+            <div className="ua-cp-consult__coach-sessions">
+              {completedCount} session{completedCount === 1 ? "" : "s"} completed
+            </div>
+          ) : null}
         </div>
+        {unassigned ? (
+          <span className="ua-cp-consult__status ua-cp-consult__status--unassigned">Not assigned</span>
+        ) : null}
       </div>
 
       <div className="ua-cp-consult__label">PWC fixed consultations</div>

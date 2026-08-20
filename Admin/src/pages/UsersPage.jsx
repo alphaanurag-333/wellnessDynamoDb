@@ -56,6 +56,24 @@ function truncateUserName(name, max = USER_NAME_MAX_CHARS) {
   return `${text.slice(0, max)}...`;
 }
 
+function UserListAvatar({ name, profileImage, colorIndex }) {
+  const [broken, setBroken] = useState(false);
+  const showPhoto = Boolean(profileImage) && !broken;
+  return (
+    <span
+      className={`ua-avatar${showPhoto ? " ua-avatar--photo" : ""}`}
+      style={showPhoto ? undefined : { background: avatarColor(colorIndex) }}
+      aria-hidden={showPhoto ? undefined : true}
+    >
+      {showPhoto ? (
+        <img src={profileImage} alt="" onError={() => setBroken(true)} />
+      ) : (
+        userInitials(name)
+      )}
+    </span>
+  );
+}
+
 function extraQueryForTypeTab(tabId, baseUserTier) {
   if (tabId === "app") return { userTier: baseUserTier || "maintenance" };
   if (tabId === "team") return { clientCategory: "eagle" };
@@ -1031,7 +1049,11 @@ export function UsersPage() {
                 >
                   <div className="ua-table__muted">{u.n}</div>
                   <div className="ua-user-cell">
-                    <span className="ua-avatar" style={{ background: avatarColor(i) }}>{userInitials(u.name)}</span>
+                    <UserListAvatar
+                      name={u.name}
+                      profileImage={u.profileImage}
+                      colorIndex={i}
+                    />
                     <div className="ua-user-cell__meta">
                       <div className="ua-user-cell__name" title={u.name || undefined}>
                         {truncateUserName(u.name)}

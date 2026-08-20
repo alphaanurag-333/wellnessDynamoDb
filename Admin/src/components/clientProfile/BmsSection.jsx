@@ -137,7 +137,7 @@ function StepsPanel({ chart, historyRange, onRangeChange, loading }) {
   return (
     <>
       <div className="ua-cp-bms-toolbar">
-        <FoodWaterHistoryPicker range={historyRange} onRangeChange={onRangeChange} />
+        <FoodWaterHistoryPicker range={historyRange} onRangeChange={onRangeChange} tone="teal" />
         <div className="ua-cp-bms-goal-pill">
           <span className="ua-cp-bms-goal-pill__label" style={{color:"rgb(15, 158, 117)"}}>Goal</span>
           <strong style={{color:"rgb(22, 35, 63)"}}>{chart.goal.toLocaleString()} steps / day</strong>
@@ -177,7 +177,7 @@ function HeartPanel({ chart, historyRange, onRangeChange, enabled, loading }) {
   return (
     <>
       <div className="ua-cp-bms-toolbar">
-        <FoodWaterHistoryPicker range={historyRange} onRangeChange={onRangeChange} />
+        <FoodWaterHistoryPicker range={historyRange} onRangeChange={onRangeChange} tone="heart" />
         <div className="ua-cp-bms-zone-pill">
           <span className="ua-cp-bms-zone-pill__label" style={{color:"#d64545"}}>Resting zone</span>
           <strong style={{color:"rgb(22, 35, 63)"}}>{BMS_GOALS.heartRestMin}–{BMS_GOALS.heartRestMax} bpm</strong>
@@ -291,7 +291,7 @@ function SleepPanel({
   return (
     <>
       <div className="ua-cp-bms-toolbar">
-        <FoodWaterHistoryPicker range={historyRange} onRangeChange={onRangeChange} />
+        <FoodWaterHistoryPicker range={historyRange} onRangeChange={onRangeChange} tone="sleep" />
         <SleepGoalBar
           goal={sleepGoal}
           editing={sleepGoalEditing}

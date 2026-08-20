@@ -546,7 +546,7 @@ export function NutritionsSection({ user, onToast }) {
               <option value="after">After meal</option>
               <option value="before">Before meal</option>
             </select>
-            <input type="date" value={addStart} onChange={(e) => setAddStart(e.target.value)} className="ua-cp-dosage-date" disabled={!canWrite || saving || !isHealClient} />
+            <input type="date" data-allow-future="true" value={addStart} onChange={(e) => setAddStart(e.target.value)} className="ua-cp-dosage-date" disabled={!canWrite || saving || !isHealClient} />
             {canWrite && isHealClient ? (
               <button type="button" className="ua-cp-btn ua-cp-btn--primary" disabled={!addSupp || !addPeriods.length || saving} onClick={addDosageCard}>
                 {saving ? "Saving…" : `Add${addPeriods.length ? ` ×${addPeriods.length}` : ""}`}

@@ -156,7 +156,8 @@ function MealCard({
   const shown = editing ? draft : (meal.macros || draft);
   const needsAi = meal.aiStatus === "none";
   const declined = meal.aiStatus === "declined";
-  const showMacros = Boolean(meal.macros) && !needsAi && !declined;
+  const canManualInsert = needsAi || declined;
+  const showMacros = editing || (Boolean(meal.macros) && !needsAi && !declined);
 
   useEffect(() => {
     if (meal.macros) setDraft(meal.macros);
@@ -175,7 +176,7 @@ function MealCard({
     try {
       await onSaveEdit(meal.id, draft);
       setEditing(false);
-      onToast("Meal macros saved");
+      onToast(canManualInsert ? "Macros inserted manually" : "Meal macros saved");
     } catch {
       // Error toast is handled by the parent save handler.
     }
@@ -227,9 +228,19 @@ function MealCard({
             ) : meal.aiStatus === "rejected" ? (
               <span className="ua-cp-food-meal__status">Rejected</span>
             ) : (
-              <button type="button" className="ua-cp-btn ua-cp-btn--ai" disabled={busy || analyzing} onClick={() => onSubmitAi(meal.id)}>
-                <SparkIcon /> {analyzing ? "Analyzing…" : "Submit to AI"}
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
+                  disabled={busy || analyzing}
+                  onClick={startEdit}
+                >
+                  Manual insert
+                </button>
+                <button type="button" className="ua-cp-btn ua-cp-btn--ai" disabled={busy || analyzing} onClick={() => onSubmitAi(meal.id)}>
+                  <SparkIcon /> {analyzing ? "Analyzing…" : "Submit to AI"}
+                </button>
+              </>
             )
           ) : null}
         </div>

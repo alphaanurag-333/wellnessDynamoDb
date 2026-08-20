@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { fetchUserBodyAnalytics } from "../../api/usersApi.js";
+import { downloadUserProgressPhoto, fetchUserBodyAnalytics } from "../../api/usersApi.js";
 import {
   BODY_ANALYTICS,
   PHOTO_ANGLES,
@@ -110,30 +110,28 @@ function photoFileName(photo, angle) {
   return `${angle}-${datePart}.${ext}`;
 }
 
-function triggerAnchorDownload(href, filename) {
+function triggerBlobDownload(blob, filename) {
+  const objectUrl = URL.createObjectURL(blob);
   const link = document.createElement("a");
-  link.href = href;
+  link.href = objectUrl;
   link.download = filename;
   link.rel = "noopener noreferrer";
   document.body.appendChild(link);
   link.click();
   link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
 }
 
-async function downloadPhotoFile(url, filename) {
-  try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error("Could not download photo");
-    const blob = await response.blob();
-    const objectUrl = URL.createObjectURL(blob);
-    triggerAnchorDownload(objectUrl, filename);
-    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
-  } catch {
-    triggerAnchorDownload(url, filename);
+async function downloadPhotoFile(userId, photo, angleLabel) {
+  const filename = photoFileName(photo, angleLabel);
+  if (!userId || !photo?.photoId || !photo?.angle) {
+    throw new Error("Could not download photo");
   }
+  const blob = await downloadUserProgressPhoto(userId, photo.photoId, photo.angle, filename);
+  triggerBlobDownload(blob, filename);
 }
 
-function PhotoModal({ angle, photos, onClose, onToast }) {
+function PhotoModal({ userId, angle, photos, onClose, onToast }) {
   const [preview, setPreview] = useState(null);
   const [busy, setBusy] = useState("");
 
@@ -154,10 +152,10 @@ function PhotoModal({ angle, photos, onClose, onToast }) {
     if (!photo?.url || busy) return;
     setBusy(photo.id);
     try {
-      await downloadPhotoFile(photo.url, photoFileName(photo, angle));
+      await downloadPhotoFile(userId, photo, angle);
       onToast?.(`Saved ${angle} photo (${photo.date})`);
-    } catch {
-      onToast?.("Could not download photo");
+    } catch (error) {
+      onToast?.(error?.message || "Could not download photo");
     } finally {
       setBusy("");
     }
@@ -169,11 +167,11 @@ function PhotoModal({ angle, photos, onClose, onToast }) {
     try {
       for (const photo of photos) {
         if (!photo.url) continue;
-        await downloadPhotoFile(photo.url, photoFileName(photo, angle));
+        await downloadPhotoFile(userId, photo, angle);
       }
       onToast?.(`Downloaded ${photos.length} ${angle} photo${photos.length === 1 ? "" : "s"}`);
-    } catch {
-      onToast?.("Could not download photos");
+    } catch (error) {
+      onToast?.(error?.message || "Could not download photos");
     } finally {
       setBusy("");
     }
@@ -415,6 +413,7 @@ export function BodyAnalyticsSection({ user, onToast }) {
 
       {photoAngle ? (
         <PhotoModal
+          userId={user?.id}
           angle={photoAngle}
           photos={photosByAngle[photoAngle] || []}
           onClose={() => setPhotoAngle(null)}

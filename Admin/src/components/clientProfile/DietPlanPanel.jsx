@@ -235,6 +235,7 @@ export function DietPlanPanel({ user, onToast, appVisible = true }) {
               <input
                 type="date"
                 value={startDate}
+                data-allow-future="true"
                 onChange={(e) => setStartDate(e.target.value)}
               />
             </label>

@@ -3,9 +3,7 @@ const { asyncHandler } = require("../../utils/asyncHandler");
 const {
   readUserIdParam,
   loadTargetUser,
-  assertCoachCanAccessUser,
   assertStaffCanAccessUser,
-  assertHealTierUser,
 } = require("../helpers/healthProgressControllerHelpers");
 const {
   getCoachInsightByUserId,
@@ -19,7 +17,6 @@ async function coachContext(req) {
   const userId = readUserIdParam(req);
   const user = await loadTargetUser(userId);
   await assertStaffCanAccessUser(req, user);
-  assertHealTierUser(user);
   return { userId, user, actingCoachId };
 }
 

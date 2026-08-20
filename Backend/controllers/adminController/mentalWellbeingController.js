@@ -67,14 +67,14 @@ exports.createMentalWellbeingController = asyncHandler(async (req, res) => {
   if (!title) throw new AppError("title is required", 400);
   if (title.length > TITLE_MAX_LEN) throw new AppError(`title cannot exceed ${TITLE_MAX_LEN} characters`, 400);
   if (!MENTAL_WELLBEING_ALLOWED_TYPE.includes(type)) {
-    throw new AppError("type must be video or ytlink", 400);
+    throw new AppError("type must be video, audio, or ytlink", 400);
   }
   if (!MENTAL_WELLBEING_ALLOWED_STATUS.includes(status)) {
     throw new AppError("status must be active or inactive", 400);
   }
   if (!thumbnail) throw new AppError("thumbnail is required", 400);
   if (String(rawDuration).trim() && !normalizeDuration(rawDuration)) {
-    throw new AppError("video time must look like 5:12 (minutes:seconds), not a number", 400);
+    throw new AppError("time must look like 5:12 (minutes:seconds), not a number", 400);
   }
 
   let ytLink = "";
@@ -87,12 +87,14 @@ exports.createMentalWellbeingController = asyncHandler(async (req, res) => {
     duration = await resolveDuration({ duration: rawDuration, ytLink });
   } else {
     file = uploadedFile ?? parseMediaKeyFromBody(req.body.file, "file") ?? "";
-    if (!file) throw new AppError("Upload a video file", 400);
+    if (!file) {
+      throw new AppError(type === "audio" ? "Upload an audio file" : "Upload a video file", 400);
+    }
     duration = normalizeDuration(rawDuration);
   }
 
   if (!duration) {
-    throw new AppError("Could not detect video time. Enter time as 5:12 (minutes:seconds).", 400);
+    throw new AppError("Could not detect media time. Enter time as 5:12 (minutes:seconds).", 400);
   }
 
   const item = await createMentalWellbeing({ title, type, ytLink, file, thumbnail, duration, status });
@@ -121,7 +123,7 @@ exports.updateMentalWellbeingController = asyncHandler(async (req, res) => {
   if (req.body.type !== undefined) {
     const type = resolveLibraryType(req.body.type, current.type);
     if (!MENTAL_WELLBEING_ALLOWED_TYPE.includes(type)) {
-      throw new AppError("type must be video or ytlink", 400);
+      throw new AppError("type must be video, audio, or ytlink", 400);
     }
     updates.type = type;
   }
@@ -165,7 +167,9 @@ exports.updateMentalWellbeingController = asyncHandler(async (req, res) => {
     } else {
       file = "";
     }
-    if (!file) throw new AppError("Upload a video file", 400);
+    if (!file) {
+      throw new AppError(nextType === "audio" ? "Upload an audio file" : "Upload a video file", 400);
+    }
     if (current.file && current.file !== file) await deleteStoredMedia(current.file);
     if (file !== current.file || typeChanged) updates.file = file;
     updates.ytLink = "";
@@ -175,13 +179,13 @@ exports.updateMentalWellbeingController = asyncHandler(async (req, res) => {
   const ytLinkChanged = nextType === "ytlink" && ytLink !== (current.ytLink || "");
   if (rawDuration !== undefined) {
     if (String(rawDuration).trim() && !normalizeDuration(rawDuration)) {
-      throw new AppError("video time must look like 5:12 (minutes:seconds), not a number", 400);
+      throw new AppError("time must look like 5:12 (minutes:seconds), not a number", 400);
     }
     const duration = nextType === "ytlink"
       ? await resolveDuration({ duration: rawDuration, ytLink })
       : normalizeDuration(rawDuration, current.duration);
     if (!duration) {
-      throw new AppError("Could not detect video time. Enter time as 5:12 (minutes:seconds).", 400);
+      throw new AppError("Could not detect media time. Enter time as 5:12 (minutes:seconds).", 400);
     }
     updates.duration = duration;
   } else if (ytLinkChanged) {

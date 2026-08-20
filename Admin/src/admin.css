@@ -5853,6 +5853,18 @@
   font-weight: 800;
   color: #fff;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.updated-admin .ua-avatar--photo {
+  background: #eef0f6;
+}
+
+.updated-admin .ua-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .updated-admin .ua-avatar--staff {
@@ -13011,6 +13023,17 @@
   margin-bottom: 24px;
 }
 
+.updated-admin .ua-cp-consult__coach--unassigned {
+  background: #fafbfd;
+  border-style: dashed;
+  border-color: #d9e0ea;
+}
+
+.updated-admin .ua-cp-consult__coach-meta {
+  flex: 1;
+  min-width: 0;
+}
+
 .updated-admin .ua-cp-consult__avatar {
   width: 44px;
   height: 44px;
@@ -13023,6 +13046,12 @@
   font-size: 13px;
   font-weight: 800;
   flex: 0 0 auto;
+}
+
+.updated-admin .ua-cp-consult__avatar--unassigned {
+  background: #eef1f6;
+  color: #8a97ac;
+  border: 1px solid #e1e6ef;
 }
 
 .updated-admin .ua-cp-consult__avatar--sm {
@@ -13045,6 +13074,10 @@
   font-size: 14px;
   font-weight: 700;
   color: #16233f;
+}
+
+.updated-admin .ua-cp-consult__coach--unassigned .ua-cp-consult__coach-name {
+  color: #5a6b85;
 }
 
 .updated-admin .ua-cp-consult__coach-spec,
@@ -13147,6 +13180,12 @@
 .updated-admin .ua-cp-consult__status--cancelled {
   color: #7a8799;
   background: #eef1f6;
+}
+
+.updated-admin .ua-cp-consult__status--unassigned {
+  background: #eef1f6;
+  color: #6b7c93;
+  border: 1px solid #dfe5ee;
 }
 
 .updated-admin .ua-cp-consult__row-who {
@@ -22879,8 +22918,8 @@ scrollbar-width: thin;
   gap: 8px;
   height: 40px;
   padding: 0 14px;
-  border: 1px solid #e6ebf2;
-  border-radius: 10px;
+  border: 1.5px solid #16233f;
+  border-radius: 12px;
   background: #fff;
   font-size: 12px;
   font-weight: 650;
@@ -22891,13 +22930,22 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cp-food-water-history:hover {
-  border-color: #cdd5e6;
+  border-color: #16233f;
   background: #fafbfc;
 }
 
 .updated-admin .ua-cp-food-water-history__icon {
-  font-size: 14px;
+  display: inline-flex;
   flex-shrink: 0;
+  color: #12b886;
+}
+
+.updated-admin .ua-cp-hist--heart .ua-cp-food-water-history__icon {
+  color: #e03131;
+}
+
+.updated-admin .ua-cp-hist--sleep .ua-cp-food-water-history__icon {
+  color: #5e6ad2;
 }
 
 .updated-admin .ua-cp-food-water-history__text {
@@ -22907,6 +22955,152 @@ scrollbar-width: thin;
 .updated-admin .ua-cp-food-water-history__suffix {
   color: #8a97ac;
   font-weight: 650;
+}
+
+.updated-admin .ua-cp-hist-cal {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 40;
+  width: min(300px, calc(100vw - 48px));
+  padding: 14px 14px 12px;
+  border: 1px solid #e8edf5;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 14px 36px rgba(16, 35, 63, 0.14);
+}
+
+.updated-admin .ua-cp-hist-cal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.updated-admin .ua-cp-hist-cal__head strong {
+  font-size: 14px;
+  font-weight: 800;
+  color: #16233f;
+}
+
+.updated-admin .ua-cp-hist-cal__nav {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 999px;
+  background: #f3f5f9;
+  color: #8a97ac;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.updated-admin .ua-cp-hist-cal__nav:hover:not(:disabled) {
+  background: #e8ecf4;
+  color: #16233f;
+}
+
+.updated-admin .ua-cp-hist-cal__nav:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.updated-admin .ua-cp-hist-cal__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.updated-admin .ua-cp-hist-cal__dow {
+  font-size: 11px;
+  font-weight: 700;
+  color: #9aa6b8;
+  text-align: center;
+  padding: 6px 0 4px;
+}
+
+.updated-admin .ua-cp-hist-cal__day {
+  height: 34px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 650;
+  color: #16233f;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.updated-admin .ua-cp-hist-cal__day--empty {
+  pointer-events: none;
+}
+
+.updated-admin .ua-cp-hist-cal__day.is-disabled,
+.updated-admin .ua-cp-hist-cal__day:disabled {
+  color: #c5cdd9;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.updated-admin .ua-cp-hist-cal__day.is-selected {
+  background: #12b886;
+  color: #fff;
+  font-weight: 800;
+}
+
+.updated-admin .ua-cp-hist--heart .ua-cp-hist-cal__day.is-selected {
+  background: #e03131;
+}
+
+.updated-admin .ua-cp-hist--sleep .ua-cp-hist-cal__day.is-selected {
+  background: #5e6ad2;
+}
+
+.updated-admin .ua-cp-hist-cal__foot {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.updated-admin .ua-cp-hist-cal__jump,
+.updated-admin .ua-cp-hist-cal__apply {
+  height: 38px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.updated-admin .ua-cp-hist-cal__jump {
+  border: 1px solid #e1e6ef;
+  background: #fff;
+  color: #12b886;
+}
+
+.updated-admin .ua-cp-hist--heart .ua-cp-hist-cal__jump {
+  color: #e03131;
+}
+
+.updated-admin .ua-cp-hist--sleep .ua-cp-hist-cal__jump {
+  color: #5e6ad2;
+}
+
+.updated-admin .ua-cp-hist-cal__apply {
+  border: none;
+  background: #12b886;
+  color: #fff;
+}
+
+.updated-admin .ua-cp-hist--heart .ua-cp-hist-cal__apply {
+  background: #e03131;
+}
+
+.updated-admin .ua-cp-hist--sleep .ua-cp-hist-cal__apply {
+  background: #5e6ad2;
 }
 
 .updated-admin .ua-cp-food-water-range {
@@ -23304,6 +23498,13 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cp-food-date-cal__day--today:not(.ua-cp-food-date-cal__day--selected) {
   box-shadow: inset 0 0 0 1px #5e6ad2;
+}
+
+.updated-admin .ua-cp-food-date-cal__day--disabled,
+.updated-admin .ua-cp-food-date-cal__day:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .updated-admin .ua-cp-food-date-cal__foot {
@@ -25375,6 +25576,16 @@ scrollbar-width: thin;
   border-radius: 999px;
   background: #f3f5fd;
   color: #5e6ad2;
+}
+
+.updated-admin .ua-cp-bms-content-card__type--audio {
+  background: #ecfeff;
+  color: #0e7490;
+}
+
+.updated-admin .ua-cp-bms-content-card__type--ytlink {
+  background: #fef2f2;
+  color: #b91c1c;
 }
 
 .updated-admin .ua-cp-bms-content-card__duration {
@@ -47155,6 +47366,11 @@ scrollbar-width: thin;
 .updated-admin .ua-cfg-rc-pill--video {
   background: #f3e8ff;
   color: #6d28d9;
+}
+
+.updated-admin .ua-cfg-rc-pill--audio {
+  background: #ecfeff;
+  color: #0e7490;
 }
 
 .updated-admin .ua-cfg-rc-item__row em {

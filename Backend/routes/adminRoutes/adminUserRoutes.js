@@ -45,6 +45,7 @@ const {
 } = require("../../controllers/adminController/onboardingMeetingController");
 const {
   getUserBodyAnalyticsController,
+  downloadUserProgressPhotoController,
 } = require("../../controllers/adminController/bodyAnalyticsController");
 
 const router = express.Router();
@@ -71,6 +72,12 @@ router.get(
   protectAccount,
   clientView,
   getUserBodyAnalyticsController
+);
+router.get(
+  "/:id/body-analytics/photos/:photoId/:angle/download",
+  protectAccount,
+  clientView,
+  downloadUserProgressPhotoController
 );
 router.get("/:id/water-tracking", protectAccount, authorizeStaff("console.cl.view", { admin: "users.view" }), getUserWaterTrackingHistoryController);
 router.get("/:id/steps-tracking", protectAccount, authorizeStaff("console.cl.view", { admin: "users.view" }), getUserStepsTrackingHistoryController);

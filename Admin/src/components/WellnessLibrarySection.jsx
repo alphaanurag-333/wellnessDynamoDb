@@ -11,6 +11,8 @@ import {
   WELLNESS_LIBRARY_KINDS,
   WELLNESS_LIBRARY_PAGE_SIZE,
   WELLNESS_LIBRARY_TYPES,
+  WELLNESS_AUDIO_ACCEPT,
+  WELLNESS_AUDIO_MAX_MB,
   WELLNESS_VIDEO_ACCEPT,
   WELLNESS_VIDEO_MAX_MB,
   displayTypeLabel,
@@ -18,7 +20,7 @@ import {
   isBareNumber,
   isValidDuration,
   isValidYoutubeUrl,
-  readVideoFileDuration,
+  readMediaFileDuration,
   resolveLibraryType,
   sanitizeTimeInput,
 } from "../data/wellnessLibraryData.js";
@@ -32,6 +34,7 @@ const TYPE_FILTERS = [
   { value: "", label: "All types" },
   { value: "ytlink", label: "YouTube" },
   { value: "video", label: "Uploaded video" },
+  { value: "audio", label: "Uploaded audio" },
 ];
 
 function snapshotItem(item) {
@@ -61,9 +64,11 @@ function revokeBlobUrl(url) {
 
 function LibraryViewModal({ entry, viewTag, itemNoun, onClose, onEdit }) {
   if (!entry) return null;
-  const isVideo = resolveLibraryType(entry.type) === "video";
-  const embed = !isVideo ? youtubeEmbedUrl(entry.ytLink) : "";
-  const videoSrc = isVideo ? entry.fileUrl : "";
+  const type = resolveLibraryType(entry.type);
+  const isVideo = type === "video";
+  const isAudio = type === "audio";
+  const embed = type === "ytlink" ? youtubeEmbedUrl(entry.ytLink) : "";
+  const mediaSrc = isVideo || isAudio ? entry.fileUrl : "";
   return (
     <div className="ua-cp-modal-backdrop" onClick={onClose} role="presentation">
       <div className="ua-cfg-rc-view ua-cfg-rc-view--sheet ua-cfg-lib-view" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="library-view-title">
@@ -82,13 +87,13 @@ function LibraryViewModal({ entry, viewTag, itemNoun, onClose, onEdit }) {
           <dl className="ua-cfg-rc-view__meta">
             <div>
               <dt>Type</dt>
-              <dd>{isVideo ? "Uploaded video" : "YouTube link"}</dd>
+              <dd>{displayTypeLabel(entry.type)}</dd>
             </div>
             <div>
-              <dt>{isVideo ? "Video" : "YouTube"}</dt>
+              <dt>{isAudio ? "Audio" : isVideo ? "Video" : "YouTube"}</dt>
               <dd>
-                {isVideo && videoSrc ? (
-                  <a href={videoSrc} target="_blank" rel="noreferrer">{videoSrc}</a>
+                {(isVideo || isAudio) && mediaSrc ? (
+                  <a href={mediaSrc} target="_blank" rel="noreferrer">{mediaSrc}</a>
                 ) : entry.ytLink ? (
                   <a href={entry.ytLink} target="_blank" rel="noreferrer">{entry.ytLink}</a>
                 ) : "—"}
@@ -116,8 +121,10 @@ function LibraryViewModal({ entry, viewTag, itemNoun, onClose, onEdit }) {
                 allowFullScreen
               />
             </div>
-          ) : videoSrc ? (
-            <video className="ua-cfg-rc-view__player" src={videoSrc} controls preload="metadata" />
+          ) : isAudio && mediaSrc ? (
+            <audio className="ua-cfg-rc-view__player" src={mediaSrc} controls preload="metadata" />
+          ) : mediaSrc ? (
+            <video className="ua-cfg-rc-view__player" src={mediaSrc} controls preload="metadata" />
           ) : null}
         </div>
         <div className="ua-cfg-rc-view__foot">
@@ -189,13 +196,18 @@ function CoverDrop({ previewUrl, disabled, label = "Cover photo", onPick, onRemo
   );
 }
 
-function VideoDrop({ previewUrl, embedUrl, fileName, disabled, onPick, onRemove }) {
+function MediaDrop({ mode = "video", previewUrl, embedUrl, fileName, disabled, onPick, onRemove }) {
   const inputRef = useRef(null);
+  const isAudio = mode === "audio";
   const filled = Boolean(previewUrl || embedUrl || fileName);
+  const label = isAudio ? "Audio file" : "Video file";
+  const accept = isAudio ? WELLNESS_AUDIO_ACCEPT : WELLNESS_VIDEO_ACCEPT;
 
   return (
     <div className={`ua-cfg-tf-drop ua-cfg-tf-drop--after ua-cfg-rc-dropbox${filled ? " is-on" : ""}`}>
-      {previewUrl ? (
+      {previewUrl && isAudio ? (
+        <audio className="ua-cfg-tf-drop__img ua-cfg-rc-video-preview" src={previewUrl} controls preload="metadata" />
+      ) : previewUrl ? (
         <video className="ua-cfg-tf-drop__img ua-cfg-rc-video-preview" src={previewUrl} controls preload="metadata" />
       ) : embedUrl ? (
         <iframe
@@ -206,23 +218,23 @@ function VideoDrop({ previewUrl, embedUrl, fileName, disabled, onPick, onRemove 
           allowFullScreen
         />
       ) : null}
-      <span className="ua-cfg-tf-drop__icon" aria-hidden="true">▶</span>
-      <p className="ua-cfg-tf-drop__label">{fileName || "Video file"}</p>
+      <span className="ua-cfg-tf-drop__icon" aria-hidden="true">{isAudio ? "♪" : "▶"}</span>
+      <p className="ua-cfg-tf-drop__label">{fileName || label}</p>
       <button
         type="button"
         className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-drop__btn"
         disabled={disabled}
         onClick={() => inputRef.current?.click()}
       >
-        {previewUrl || fileName ? "Replace video" : "Upload video"}
+        {previewUrl || fileName ? `Replace ${isAudio ? "audio" : "video"}` : `Upload ${isAudio ? "audio" : "video"}`}
       </button>
       {filled && onRemove ? (
-        <button type="button" className="ua-cfg-rc-media-x" aria-label="Remove video" disabled={disabled} onClick={onRemove}>×</button>
+        <button type="button" className="ua-cfg-rc-media-x" aria-label={`Remove ${isAudio ? "audio" : "video"}`} disabled={disabled} onClick={onRemove}>×</button>
       ) : null}
       <input
         ref={inputRef}
         type="file"
-        accept={WELLNESS_VIDEO_ACCEPT}
+        accept={accept}
         hidden
         disabled={disabled}
         onChange={(event) => {
@@ -375,10 +387,12 @@ export function WellnessLibrarySection({ kind, onToast }) {
     });
   }
 
-  function assertVideoFile(file) {
+  function assertMediaFile(file, type = "video") {
     if (!(file instanceof File)) return false;
-    if (file.size > WELLNESS_VIDEO_MAX_MB * 1024 * 1024) {
-      onToast(`Video must be ${WELLNESS_VIDEO_MAX_MB} MB or smaller`);
+    const isAudio = resolveLibraryType(type) === "audio";
+    const maxMb = isAudio ? WELLNESS_AUDIO_MAX_MB : WELLNESS_VIDEO_MAX_MB;
+    if (file.size > maxMb * 1024 * 1024) {
+      onToast(`${isAudio ? "Audio" : "Video"} must be ${maxMb} MB or smaller`);
       return false;
     }
     return true;
@@ -438,7 +452,7 @@ export function WellnessLibrarySection({ kind, onToast }) {
     }
     const staged = editFilesRef.current[item.id]?.videoFile;
     if (!item.hasFile && !(staged instanceof File)) {
-      onToast("Upload a video file");
+      onToast(next.type === "audio" ? "Upload an audio file" : "Upload a video file");
       return "";
     }
     if (isValidDuration(next.duration)) return next.duration;
@@ -503,20 +517,21 @@ export function WellnessLibrarySection({ kind, onToast }) {
     await persistItem(item.id, {}, { thumbnailFile: file }, "Cover updated");
   }
 
-  async function pickEditVideo(item, file) {
-    if (!assertVideoFile(file) || busy) return;
+  async function pickEditMedia(item, file, type = "video") {
+    const mediaType = resolveLibraryType(type) === "audio" ? "audio" : "video";
+    if (!assertMediaFile(file, mediaType) || busy) return;
     setDetecting(item.id);
-    const duration = await readVideoFileDuration(file);
+    const duration = await readMediaFileDuration(file, mediaType);
     setDetecting("");
     editFilesRef.current[item.id] = { ...(editFilesRef.current[item.id] || {}), videoFile: file };
     updateItem(item.id, {
-      type: "video",
+      type: mediaType,
       ytLink: "",
       duration: duration || item.duration,
       hasFile: true,
       fileUrl: URL.createObjectURL(file),
     });
-    if (!duration) onToast("Could not detect video time. Enter time as 5:12");
+    if (!duration) onToast(`Could not detect ${mediaType} time. Enter time as 5:12`);
   }
 
   function pickDraftImage(file) {
@@ -525,23 +540,28 @@ export function WellnessLibrarySection({ kind, onToast }) {
     setDraftPreview(file instanceof File ? URL.createObjectURL(file) : "");
   }
 
-  async function pickDraftVideo(file) {
-    if (!assertVideoFile(file)) return;
+  async function pickDraftMedia(file, type = "video") {
+    const mediaType = resolveLibraryType(type) === "audio" ? "audio" : "video";
+    if (!assertMediaFile(file, mediaType)) return;
     revokeBlobUrl(draftVideoPreview);
     setDraftVideo(file);
     setDraftVideoPreview(URL.createObjectURL(file));
     setDetecting("draft");
-    const duration = await readVideoFileDuration(file);
+    const duration = await readMediaFileDuration(file, mediaType);
     setDetecting("");
-    setDraft((prev) => ({ ...prev, type: "video", duration: duration || "", ytLink: "" }));
-    if (!duration) onToast("Could not detect video time. Enter time as 5:12");
+    setDraft((prev) => ({ ...prev, type: mediaType, duration: duration || "", ytLink: "" }));
+    if (!duration) onToast(`Could not detect ${mediaType} time. Enter time as 5:12`);
   }
 
   function clearDraftVideo() {
     revokeBlobUrl(draftVideoPreview);
     setDraftVideo(null);
     setDraftVideoPreview("");
-    setDraft((prev) => ({ ...prev, type: "ytlink", duration: prev.ytLink ? prev.duration : "" }));
+    setDraft((prev) => ({
+      ...prev,
+      type: prev.type === "audio" || prev.type === "video" ? "ytlink" : prev.type,
+      duration: prev.ytLink ? prev.duration : "",
+    }));
   }
 
   async function detectDraftYoutube(url) {
@@ -560,7 +580,11 @@ export function WellnessLibrarySection({ kind, onToast }) {
       duration: "",
       ytLink: nextType === "ytlink" ? prev.ytLink : "",
     }));
-    if (nextType !== "video") clearDraftVideo();
+    if (nextType === "ytlink" || nextType === "video" || nextType === "audio") {
+      revokeBlobUrl(draftVideoPreview);
+      setDraftVideo(null);
+      setDraftVideoPreview("");
+    }
   }
 
   function commitDraftTime() {
@@ -609,12 +633,12 @@ export function WellnessLibrarySection({ kind, onToast }) {
         if (duration) setDraft((prev) => ({ ...prev, duration }));
       }
     } else if (!(draftVideo instanceof File)) {
-      onToast("Upload a video file");
+      onToast(type === "audio" ? "Upload an audio file" : "Upload a video file");
       return;
     }
 
     if (!isValidDuration(duration)) {
-      onToast("Could not detect video time. Enter time as 5:12");
+      onToast("Could not detect media time. Enter time as 5:12");
       return;
     }
 
@@ -632,7 +656,7 @@ export function WellnessLibrarySection({ kind, onToast }) {
         },
         {
           thumbnailFile: draftThumb,
-          videoFile: type === "video" ? draftVideo : undefined,
+          videoFile: type === "video" || type === "audio" ? draftVideo : undefined,
         },
       );
       if (!created) throw new Error("Failed to add item");
@@ -731,12 +755,16 @@ export function WellnessLibrarySection({ kind, onToast }) {
                   onPick={pickDraftImage}
                   onRemove={() => pickDraftImage(null)}
                 />
-                <VideoDrop
+                <MediaDrop
+                  mode={draft.type === "audio" ? "audio" : "video"}
                   previewUrl={draftVideoPreview}
-                  embedUrl={draftVideo ? "" : youtubeEmbedUrl(draft.ytLink)}
+                  embedUrl={draftVideo || draft.type === "audio" || draft.type === "video" ? "" : youtubeEmbedUrl(draft.ytLink)}
                   fileName={draftVideo?.name || ""}
                   disabled={locked}
-                  onPick={pickDraftVideo}
+                  onPick={(file) => {
+                    const inferred = String(file?.type || "").startsWith("audio/") ? "audio" : draft.type === "audio" ? "audio" : "video";
+                    pickDraftMedia(file, inferred);
+                  }}
                   onRemove={clearDraftVideo}
                 />
               </div>
@@ -782,7 +810,7 @@ export function WellnessLibrarySection({ kind, onToast }) {
                     value={draft.duration}
                     detecting={detecting === "draft"}
                     disabled={locked}
-                    ariaLabel="Video time"
+                    ariaLabel="Media time"
                     onChange={(duration) => setDraft((prev) => ({ ...prev, duration }))}
                     onBlur={commitDraftTime}
                   />
@@ -880,7 +908,7 @@ export function WellnessLibrarySection({ kind, onToast }) {
                           <strong>{item.title}</strong>
                         )}
                         <div className="ua-cfg-rc-item__meta">
-                          <span className={`ua-cfg-rc-pill ua-cfg-rc-pill--${item.type === "ytlink" ? "video" : "video"}`}>
+                          <span className={`ua-cfg-rc-pill ua-cfg-rc-pill--${item.type === "audio" ? "audio" : "video"}`}>
                             {displayTypeLabel(item.type)}
                           </span>
                           {item.duration ? (
@@ -961,12 +989,20 @@ export function WellnessLibrarySection({ kind, onToast }) {
                     {editing ? (
                       <div className="ua-cfg-rc-edit">
                         <div className="ua-cfg-rc-edit__media">
-                          <VideoDrop
+                          <MediaDrop
+                            mode={item.type === "audio" ? "audio" : "video"}
                             previewUrl={item.fileUrl || ""}
-                            embedUrl={item.fileUrl ? "" : youtubeEmbedUrl(item.ytLink)}
-                            fileName={stagedFile?.name || (item.hasFile ? "Uploaded video" : "")}
+                            embedUrl={item.fileUrl || item.type === "audio" || item.type === "video" ? "" : youtubeEmbedUrl(item.ytLink)}
+                            fileName={stagedFile?.name || (item.hasFile ? (item.type === "audio" ? "Uploaded audio" : "Uploaded video") : "")}
                             disabled={locked}
-                            onPick={(file) => pickEditVideo(item, file)}
+                            onPick={(file) => {
+                              const inferred = String(file?.type || "").startsWith("audio/")
+                                ? "audio"
+                                : item.type === "audio"
+                                  ? "audio"
+                                  : "video";
+                              pickEditMedia(item, file, inferred);
+                            }}
                             onRemove={() => {
                               delete editFilesRef.current[item.id];
                               updateItem(item.id, { type: "ytlink", fileUrl: "", hasFile: false });
@@ -980,10 +1016,13 @@ export function WellnessLibrarySection({ kind, onToast }) {
                                 options={WELLNESS_LIBRARY_TYPES}
                                 value={resolveLibraryType(item.type)}
                                 disabled={locked}
-                                onChange={(type) => updateItem(item.id, {
-                                  type: resolveLibraryType(type),
-                                  ytLink: resolveLibraryType(type) === "ytlink" ? item.ytLink : "",
-                                })}
+                                onChange={(type) => {
+                                  const nextType = resolveLibraryType(type);
+                                  updateItem(item.id, {
+                                    type: nextType,
+                                    ytLink: nextType === "ytlink" ? item.ytLink : "",
+                                  });
+                                }}
                                 ariaLabel={`Type for ${item.title}`}
                                 placeholder="Choose type"
                               />
@@ -1003,7 +1042,7 @@ export function WellnessLibrarySection({ kind, onToast }) {
                                 value={item.duration}
                                 detecting={detecting === item.id}
                                 disabled={locked}
-                                ariaLabel={`Video time for ${item.title}`}
+                                ariaLabel={`Time for ${item.title}`}
                                 onChange={(duration) => updateItem(item.id, { duration })}
                               />
                             </label>

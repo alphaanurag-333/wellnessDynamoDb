@@ -231,15 +231,15 @@ export function GutResetSection({ user, onToast }) {
         <div className="ua-cp-gut-dates">
           <label className="ua-cp-gut-date">
             <span>Start date</span>
-            <input type="date" value={draft.startDate} onChange={(e) => setDraft((c) => ({ ...c, startDate: e.target.value }))} />
+            <input type="date" data-allow-future="true" value={draft.startDate} onChange={(e) => setDraft((c) => ({ ...c, startDate: e.target.value }))} />
           </label>
           <label className="ua-cp-gut-date">
             <span>Fruit &amp; veggie date</span>
-            <input type="date" value={draft.fruitVegDate} onChange={(e) => setDraft((c) => ({ ...c, fruitVegDate: e.target.value }))} />
+            <input type="date" data-allow-future="true" value={draft.fruitVegDate} onChange={(e) => setDraft((c) => ({ ...c, fruitVegDate: e.target.value }))} />
           </label>
           <label className="ua-cp-gut-date">
             <span>Water fasting date</span>
-            <input type="date" value={draft.waterFastDate} onChange={(e) => setDraft((c) => ({ ...c, waterFastDate: e.target.value }))} />
+            <input type="date" data-allow-future="true" value={draft.waterFastDate} onChange={(e) => setDraft((c) => ({ ...c, waterFastDate: e.target.value }))} />
           </label>
         </div>
 

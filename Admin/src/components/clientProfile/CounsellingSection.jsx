@@ -220,7 +220,7 @@ export function CounsellingSection({ user, onToast }) {
               <div className="ua-cp-counselling__row">
                 <label>
                   Date
-                  <input type="date" value={offerDate} onChange={(e) => setOfferDate(e.target.value)} />
+                  <input type="date" data-allow-future="true" value={offerDate} onChange={(e) => setOfferDate(e.target.value)} />
                 </label>
               </div>
               <div className="ua-cp-counselling__chips">

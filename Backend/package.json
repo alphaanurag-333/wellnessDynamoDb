@@ -15,6 +15,7 @@
     "seed:wellness-team-notes": "node --use-system-ca scripts/seedWellnessTeamNotes.js",
     "seed:wellness-content": "node scripts/seedWellnessContent.js",
     "seed:wellness-libraries": "node --use-system-ca scripts/seedWellnessLibraries.js --confirm",
+    "seed:mental-audio": "node --use-system-ca scripts/seedMentalWellbeingAudio.js",
     "seed:health-recipes-yoga": "node --use-system-ca scripts/seedHealthRecipesAndYoga.js --confirm",
     "seed:test-catalog": "node scripts/seedTestCatalog.js",
     "seed:video-testimonials": "node --use-system-ca scripts/seedVideoTestimonials.js",

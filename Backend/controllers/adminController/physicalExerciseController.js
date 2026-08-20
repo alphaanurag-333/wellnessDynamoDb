@@ -68,14 +68,14 @@ exports.createPhysicalExerciseController = asyncHandler(async (req, res) => {
 
   if (!title) throw new AppError("title is required", 400);
   if (!PHYSICAL_EXERCISE_ALLOWED_TYPE.includes(type)) {
-    throw new AppError("type must be video or ytlink", 400);
+    throw new AppError("type must be video, audio, or ytlink", 400);
   }
   if (!PHYSICAL_EXERCISE_ALLOWED_STATUS.includes(status)) {
     throw new AppError("status must be active or inactive", 400);
   }
   if (!thumbnail) throw new AppError("thumbnail is required", 400);
   if (String(rawDuration).trim() && !normalizeDuration(rawDuration)) {
-    throw new AppError("video time must look like 5:12 (minutes:seconds), not a number", 400);
+    throw new AppError("time must look like 5:12 (minutes:seconds), not a number", 400);
   }
 
   let link = "";
@@ -89,12 +89,14 @@ exports.createPhysicalExerciseController = asyncHandler(async (req, res) => {
     duration = await resolveDuration({ duration: rawDuration, ytLink });
   } else {
     link = uploadedVideo ?? parseMediaKeyFromBody(req.body.link, "link") ?? "";
-    if (!link || isValidYoutubeUrl(link)) throw new AppError("Upload a video file", 400);
+    if (!link || isValidYoutubeUrl(link)) {
+      throw new AppError(type === "audio" ? "Upload an audio file" : "Upload a video file", 400);
+    }
     duration = normalizeDuration(rawDuration);
   }
 
   if (!duration) {
-    throw new AppError("Could not detect video time. Enter time as 5:12 (minutes:seconds).", 400);
+    throw new AppError("Could not detect media time. Enter time as 5:12 (minutes:seconds).", 400);
   }
 
   const physicalExercise = await createPhysicalExercise({
@@ -138,7 +140,7 @@ exports.updatePhysicalExerciseController = asyncHandler(async (req, res) => {
   if (req.body.type !== undefined) {
     const type = resolveLibraryType(req.body.type, current.type);
     if (!PHYSICAL_EXERCISE_ALLOWED_TYPE.includes(type)) {
-      throw new AppError("type must be video or ytlink", 400);
+      throw new AppError("type must be video, audio, or ytlink", 400);
     }
     updates.type = type;
   }
@@ -175,17 +177,19 @@ exports.updatePhysicalExerciseController = asyncHandler(async (req, res) => {
     newLink = parseMediaKeyFromBody(req.body.link, "link") ?? "";
     ytLink = "";
   } else if (typeChanged) {
-    newLink = current.type === "video" ? current.link : "";
+    newLink = (current.type === "video" || current.type === "audio") ? current.link : "";
     ytLink = "";
   }
-  if (nextType === "video" && !newLink) throw new AppError("Upload a video file", 400);
+  if ((nextType === "video" || nextType === "audio") && !newLink) {
+    throw new AppError(nextType === "audio" ? "Upload an audio file" : "Upload a video file", 400);
+  }
 
   if (typeChanged || newLink !== current.link || uploadedVideo || ytLink !== (current.ytLink || "")) {
     updates.link = newLink;
     updates.ytLink = nextType === "ytlink" ? ytLink : "";
   }
 
-  if (current.type === "video" && current.link && current.link !== newLink) {
+  if ((current.type === "video" || current.type === "audio") && current.link && current.link !== newLink) {
     await deleteStoredMedia(current.link);
   }
 
@@ -193,13 +197,13 @@ exports.updatePhysicalExerciseController = asyncHandler(async (req, res) => {
   const ytLinkChanged = nextType === "ytlink" && ytLink !== (current.ytLink || current.link || "");
   if (rawDuration !== undefined) {
     if (String(rawDuration).trim() && !normalizeDuration(rawDuration)) {
-      throw new AppError("video time must look like 5:12 (minutes:seconds), not a number", 400);
+      throw new AppError("time must look like 5:12 (minutes:seconds), not a number", 400);
     }
     const duration = nextType === "ytlink"
       ? await resolveDuration({ duration: rawDuration, ytLink })
       : normalizeDuration(rawDuration, current.duration);
     if (!duration) {
-      throw new AppError("Could not detect video time. Enter time as 5:12 (minutes:seconds).", 400);
+      throw new AppError("Could not detect media time. Enter time as 5:12 (minutes:seconds).", 400);
     }
     updates.duration = duration;
   } else if (ytLinkChanged) {

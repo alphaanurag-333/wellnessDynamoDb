@@ -322,6 +322,8 @@ function mealPhotoAiStatus(log) {
 
 function mealUiStatus(reviewStatus, photoAiStatus) {
   if (reviewStatus === "rejected") return "rejected";
+  // Coach-approved macros (incl. manual insert) win over pending AI photo state.
+  if (reviewStatus === "approved") return "approved";
   if (photoAiStatus === "declined") return "declined";
   if (photoAiStatus === "none" || photoAiStatus === "failed") return "none";
   if (reviewStatus === "pending") return "review";
