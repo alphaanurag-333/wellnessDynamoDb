@@ -20732,6 +20732,22 @@ scrollbar-width: thin;
 .updated-admin .ua-cp-food-meal__photo-icon {
   font-size: 18px;
   opacity: 0.45;
+  color: #9aa6b8;
+  display: grid;
+  place-items: center;
+}
+
+.updated-admin .ua-cp-food-meal__decline {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 650;
+  color: #b42318;
+}
+
+.updated-admin .ua-cp-food-meal--declined {
+  border-color: #f5c2c0;
+  background: #fff8f7;
 }
 
 .updated-admin .ua-cp-food-meal__photo-img {

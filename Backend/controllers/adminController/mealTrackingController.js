@@ -21,6 +21,8 @@ const {
 const { assertStaffCanAccessUser } = require("../staffAccess");
 const { isValidDateOnly } = require("../../utils/dateOnly");
 const { updateUser, toPublicUser, normalizeMealTrackingMode } = require("../../models/userModel");
+const { analyzeMealPhoto } = require("../../services/mealPhotoAiService");
+const { ZERO_MACROS } = require("../../utils/mealPhotoAi");
 
 exports.adminGetUserMealTrackingController = asyncHandler(async (req, res) => {
   const userId = readUserIdParam(req);
@@ -223,5 +225,67 @@ exports.updateCoachUserMealTrackingModeController = asyncHandler(async (req, res
     message: "Meal tracking mode updated successfully",
     user: toPublicUser(updated),
     mealTrackingMode: mode,
+  });
+});
+
+exports.analyzeCoachUserMealLogController = asyncHandler(async (req, res) => {
+  const actingCoachId = req.auth?.sub;
+  if (!actingCoachId) throw new AppError("Unauthorized", 401);
+
+  const userId = readUserIdParam(req);
+  const logId = readLogIdParam(req);
+  const user = await loadTargetUser(userId);
+  await assertStaffCanAccessUser(req, user);
+  assertHealTierUser(user);
+
+  const record = await getMealLogRecordById(logId);
+  if (!record || String(record.userId || "") !== String(userId)) {
+    throw new AppError("Meal log not found", 404);
+  }
+  if (!record.photoKey) {
+    throw new AppError("This meal has no photo to analyse", 422);
+  }
+
+  let analysis;
+  try {
+    analysis = await analyzeMealPhoto({
+      fileKey: record.photoKey,
+      category: record.category,
+      mealType: record.mealType,
+      description: record.description,
+    });
+  } catch (err) {
+    await updateMealLog(logId, {
+      aiStatus: "failed",
+      aiError: err?.message || "AI analysis failed",
+      aiAnalysedAt: new Date().toISOString(),
+      aiAnalysedById: actingCoachId,
+    }).catch(() => {});
+    if (err instanceof AppError) throw err;
+    throw new AppError(err?.message || "AI analysis failed", 502);
+  }
+
+  const declined = analysis.related === false;
+  const mealLog = await updateMealLog(logId, {
+    proteinGm: declined ? ZERO_MACROS.proteinGm : analysis.proteinGm,
+    fatsGm: declined ? ZERO_MACROS.fatsGm : analysis.fatsGm,
+    carbsGm: declined ? ZERO_MACROS.carbsGm : analysis.carbsGm,
+    caloriesKcal: declined ? ZERO_MACROS.caloriesKcal : analysis.caloriesKcal,
+    items: declined ? [] : analysis.items,
+    description: declined ? record.description : (analysis.description ?? record.description),
+    rejectionReason: declined ? analysis.message : null,
+    aiStatus: declined ? "declined" : "analysed",
+    aiError: declined ? analysis.message : null,
+    aiAnalysedAt: new Date().toISOString(),
+    aiAnalysedById: actingCoachId,
+  });
+
+  return res.status(200).json({
+    status: true,
+    related: analysis.related,
+    message: declined
+      ? analysis.message
+      : "Meal photo analysed. Review the macros and save.",
+    mealLog,
   });
 });

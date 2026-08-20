@@ -385,10 +385,13 @@ function CreateMemberModal({ open, member, roles, parentOptions, onClose, onSave
 
 export function TeamsPage() {
   const { showToast: onToast } = useOutletContext();
-  const { isSuperAdmin, viewAs, sessionUi } = useViewAs();
+  const { isSuperAdmin, viewAs, sessionUi, can } = useViewAs();
   const teamsPersona = isSuperAdmin ? viewAs : sessionUi || viewAs;
   const actorIsWc = teamsPersona === "wc";
   const actorIsAwc = teamsPersona === "awc";
+  const canCreateMember = can("console.tm.create");
+  const canEditMember = can("console.tm.edit");
+  const canDeleteMember = can("console.tm.delete");
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [members, setMembers] = useState([]);
@@ -597,7 +600,7 @@ export function TeamsPage() {
               ? "Trainees assigned below you."
               : "Each team = 1 Wellness Coach + N assistants + assigned clients. Manage every staff role below."
         }
-        actions={isSuperAdmin ? (
+        actions={canCreateMember ? (
           <OrangeButton onClick={() => setCreateOpen(true)}>+ Create team member</OrangeButton>
         ) : null}
       />
@@ -683,35 +686,41 @@ export function TeamsPage() {
                   </div>
                   <div className="ua-team-actions" data-label="Actions" onClick={(e) => e.stopPropagation()}>
                     <div className="ua-team-actions__row">
-                      {isSuperAdmin ? (
+                      {canEditMember || canDeleteMember ? (
                         <>
-                          <button
-                            type="button"
-                            className="ua-team-actions__btn"
-                            title="Send reminder"
-                            aria-label={`Send reminder to ${s.name}`}
-                            onClick={() => openMemberRemind(s, meta.name)}
-                          >
-                            🔔
-                          </button>
-                          <button
-                            type="button"
-                            className="ua-team-actions__btn"
-                            title="Edit profile"
-                            aria-label={`Edit profile for ${s.name}`}
-                            onClick={() => setEditingMember(s)}
-                          >
-                            <IconEditProfile />
-                          </button>
-                          <button
-                            type="button"
-                            className="ua-team-actions__btn ua-team-actions__btn--danger"
-                            title="Delete"
-                            aria-label={`Delete ${s.name}`}
-                            onClick={() => setDeletingMember(s)}
-                          >
-                            <IconDeleteMember />
-                          </button>
+                          {canEditMember ? (
+                            <button
+                              type="button"
+                              className="ua-team-actions__btn"
+                              title="Send reminder"
+                              aria-label={`Send reminder to ${s.name}`}
+                              onClick={() => openMemberRemind(s, meta.name)}
+                            >
+                              🔔
+                            </button>
+                          ) : null}
+                          {canEditMember ? (
+                            <button
+                              type="button"
+                              className="ua-team-actions__btn"
+                              title="Edit profile"
+                              aria-label={`Edit profile for ${s.name}`}
+                              onClick={() => setEditingMember(s)}
+                            >
+                              <IconEditProfile />
+                            </button>
+                          ) : null}
+                          {canDeleteMember ? (
+                            <button
+                              type="button"
+                              className="ua-team-actions__btn ua-team-actions__btn--danger"
+                              title="Delete"
+                              aria-label={`Delete ${s.name}`}
+                              onClick={() => setDeletingMember(s)}
+                            >
+                              <IconDeleteMember />
+                            </button>
+                          ) : null}
                         </>
                       ) : null}
                       <button

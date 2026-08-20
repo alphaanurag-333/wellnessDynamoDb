@@ -13,8 +13,11 @@ export const FOOD_MEALS = [
     name: "Functional juice",
     time: "7:30 AM",
     detailedTags: ["1 glass amla-beetroot juice", "5 g chia seeds"],
-    macros: { protein: 4, carbs: 22, fat: 1, calories: 118 },
-    aiStatus: "review",
+    macros: null,
+    photoUrl: "",
+    photoAiStatus: "none",
+    reviewStatus: "pending",
+    aiStatus: "none",
   },
   {
     id: "breakfast",
@@ -22,6 +25,9 @@ export const FOOD_MEALS = [
     time: "9:00 AM",
     detailedTags: ["2 egg whites", "1 slice multigrain toast", "1 tsp ghee"],
     macros: null,
+    photoUrl: "",
+    photoAiStatus: "none",
+    reviewStatus: "pending",
     aiStatus: "none",
   },
   {
@@ -30,6 +36,9 @@ export const FOOD_MEALS = [
     time: "1:10 PM",
     detailedTags: ["1 bowl dal", "2 rotis", "salad"],
     macros: null,
+    photoUrl: "",
+    photoAiStatus: "none",
+    reviewStatus: "pending",
     aiStatus: "none",
   },
   {
@@ -38,6 +47,9 @@ export const FOOD_MEALS = [
     time: "4:30 PM",
     detailedTags: ["Handful almonds", "Green tea"],
     macros: null,
+    photoUrl: "",
+    photoAiStatus: "none",
+    reviewStatus: "pending",
     aiStatus: "none",
   },
   {
@@ -46,6 +58,9 @@ export const FOOD_MEALS = [
     time: "8:00 PM",
     detailedTags: ["Grilled paneer", "Sauteed vegetables"],
     macros: null,
+    photoUrl: "",
+    photoAiStatus: "none",
+    reviewStatus: "pending",
     aiStatus: "none",
   },
 ];
@@ -213,7 +228,10 @@ export function macroPct(consumed, target) {
 export function sumMealMacros(meals) {
   return meals.reduce(
     (acc, meal) => {
-      if (!meal.macros || meal.aiStatus === "rejected") return acc;
+      if (!meal.macros) return acc;
+      if (meal.reviewStatus === "rejected" || meal.aiStatus === "rejected") return acc;
+      if (meal.photoAiStatus === "declined" || meal.photoAiStatus === "none" || meal.photoAiStatus === "failed") return acc;
+      if (meal.aiStatus === "none" || meal.aiStatus === "declined") return acc;
       return {
         protein: acc.protein + meal.macros.protein,
         carbs: acc.carbs + meal.macros.carbs,
@@ -284,12 +302,30 @@ export function formatMealEntryTime(hhmm) {
   return `${hour12}:${String(minutes).padStart(2, "0")} ${suffix}`;
 }
 
-function mealStatusToAi(status) {
+function mealReviewStatus(status) {
   const next = String(status || "approved").toLowerCase();
-  if (next === "pending_review") return "review";
+  if (next === "pending_review") return "pending";
   if (next === "rejected") return "rejected";
-  if (next === "approved") return "approved";
-  return "none";
+  return "approved";
+}
+
+function mealPhotoAiStatus(log) {
+  const explicit = String(log?.aiStatus || "").toLowerCase();
+  if (explicit === "analysed" || explicit === "declined" || explicit === "failed" || explicit === "none") {
+    return explicit;
+  }
+  const review = mealReviewStatus(log?.status);
+  if (review === "rejected") return "declined";
+  if (review === "pending" && String(log?.loggedByRole || "") === "user") return "none";
+  return "analysed";
+}
+
+function mealUiStatus(reviewStatus, photoAiStatus) {
+  if (reviewStatus === "rejected") return "rejected";
+  if (photoAiStatus === "declined") return "declined";
+  if (photoAiStatus === "none" || photoAiStatus === "failed") return "none";
+  if (reviewStatus === "pending") return "review";
+  return "approved";
 }
 
 export function mapMealLogToUi(log) {
@@ -309,6 +345,10 @@ export function mapMealLogToUi(log) {
   const description = String(log?.description || "").trim();
   const detailedTags = itemTags;
   const loggedBy = String(log?.loggedByRole || "") === "user" ? "entered by client" : "logged by coach";
+  const reviewStatus = mealReviewStatus(log?.status);
+  const photoAiStatus = mealPhotoAiStatus(log);
+  const uiStatus = mealUiStatus(reviewStatus, photoAiStatus);
+  const hasCountableMacros = photoAiStatus === "analysed" || reviewStatus === "approved";
 
   return {
     id: String(log?.id || log?._id || ""),
@@ -316,14 +356,19 @@ export function mapMealLogToUi(log) {
     time: formatMealEntryTime(log?.entryTime),
     description,
     detailedTags,
-    macros: roundMacros({
-      protein: log?.proteinGm,
-      carbs: log?.carbsGm,
-      fat: log?.fatsGm,
-      calories: log?.caloriesKcal,
-    }),
-    aiStatus: mealStatusToAi(log?.status),
+    macros: hasCountableMacros
+      ? roundMacros({
+        protein: log?.proteinGm,
+        carbs: log?.carbsGm,
+        fat: log?.fatsGm,
+        calories: log?.caloriesKcal,
+      })
+      : null,
+    aiStatus: uiStatus,
+    reviewStatus,
+    photoAiStatus,
     photoUrl: log?.photoUrl || "",
+    declineMessage: String(log?.aiError || log?.rejectionReason || "").trim(),
     loggedBy,
     date: log?.date || "",
   };

@@ -6,6 +6,7 @@ import {
   countSelected,
   flattenTests,
 } from "../../data/internalParametersData.js";
+import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 import {
   createUserTestRecommendation,
   downloadUserTestRecommendationPdf,
@@ -202,6 +203,8 @@ function catalogGroups(catalog) {
 }
 
 function EditActions({ editing, onEdit, onCancel, onSave }) {
+  const { canEdit } = useClientSectionPermissions("internal");
+  if (!canEdit) return null;
   if (editing) {
     return (
       <div className="ua-cp-ip-edit-actions">
@@ -504,7 +507,7 @@ function NamespaceSearch({ groups, namespaces, onAdd, onToast }) {
   );
 }
 
-function MockRecommendedTestsTab({ user, onToast }) {
+function MockRecommendedTestsTab({ user, onToast, canEdit = true, canExport = true }) {
   const [presets, setPresets] = useState(["Fat Loss", "Diabetes Reversal"]);
   const [focusedPreset, setFocusedPreset] = useState("Diabetes Reversal");
   const [published, setPublished] = useState(false);
@@ -610,10 +613,12 @@ function MockRecommendedTestsTab({ user, onToast }) {
         <div className="ua-cp-ip-rec__actions">
           {published && !dirty ? (
             <button type="button" className="ua-cp-btn ua-cp-btn--muted" disabled>Published</button>
-          ) : (
+          ) : canEdit ? (
             <button type="button" className="ua-cp-btn ua-cp-btn--green" onClick={publish}>Publish</button>
-          )}
+          ) : null}
+          {canExport ? (
           <button type="button" className="ua-cp-btn ua-cp-btn--orange" onClick={downloadList}>↓ Download list</button>
+          ) : null}
         </div>
       </div>
 
@@ -791,7 +796,7 @@ function AssignedTestHistory({ userId, current, history, onToast }) {
   );
 }
 
-function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, onToast, onPublish }) {
+function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, onToast, onPublish, canEdit = true, canExport = true }) {
   const allGroups = useMemo(() => catalogGroups(catalog), [catalog]);
   const [selected, setSelected] = useState(() => selectedFromRecommendation(catalog, recommended));
   const [presets, setPresets] = useState([]);
@@ -933,12 +938,14 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
           </label>
           {published ? (
             <button type="button" className="ua-cp-btn ua-cp-btn--muted" disabled>Published</button>
-          ) : (
+          ) : canEdit ? (
             <button type="button" className="ua-cp-btn ua-cp-btn--green" disabled={busy} onClick={publish}>
               {busy ? "Publishing…" : "Publish"}
             </button>
-          )}
+          ) : null}
+          {canExport ? (
           <button type="button" className="ua-cp-btn ua-cp-btn--orange" onClick={downloadList}>↓ Download list</button>
+          ) : null}
         </div>
       </div>
 
@@ -1339,7 +1346,7 @@ function MockReportAnalysisTab({ onToast }) {
   );
 }
 
-function LiveReportAnalysisTab({ reports, busy, onAnalyze, onSaveAnalysis, onToast }) {
+function LiveReportAnalysisTab({ reports, busy, onAnalyze, onSaveAnalysis, onToast, canEdit = true, canUpload = true, canExport = true }) {
   const [selectedId, setSelectedId] = useState(reports[0]?.id || null);
 
   useEffect(() => {
@@ -1436,12 +1443,13 @@ function LiveReportAnalysisTab({ reports, busy, onAnalyze, onSaveAnalysis, onToa
                 <span>Added by client · {formatDisplayDate(report.reportDate)} · {reportAiStatusText(report)}</span>
               </div>
               <div className="ua-cp-ip-upload__actions" onClick={(event) => event.stopPropagation()}>
-                {report.fileUrl ? (
+                {canExport && report.fileUrl ? (
                   <a className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" href={report.fileUrl} target="_blank" rel="noreferrer">↓ Download</a>
                 ) : null}
                 {reportAnalysed && report.aiStatus === "analysed" ? (
                   <span className="ua-cp-ip-badge ua-cp-ip-badge--good">AI analysed</span>
                 ) : null}
+                {canUpload ? (
                 <button
                   type="button"
                   className="ua-cp-btn ua-cp-btn--ai ua-cp-btn--sm"
@@ -1454,6 +1462,7 @@ function LiveReportAnalysisTab({ reports, busy, onAnalyze, onSaveAnalysis, onToa
                 >
                   <span aria-hidden="true">⚡</span> {busy && isSelected ? "Reading report…" : reportAnalysed ? "Resubmit to AI" : "Submit to AI"}
                 </button>
+                ) : null}
               </div>
             </div>
           );
@@ -1701,6 +1710,7 @@ function LiveReportAnalysisTab({ reports, busy, onAnalyze, onSaveAnalysis, onToa
 }
 
 export function InternalParametersSection({ user, onToast }) {
+  const { canEdit, canUpload, canExport } = useClientSectionPermissions("internal");
   const [tab, setTab] = useState("tests");
   const [historyOpen, setHistoryOpen] = useState(false);
   const [reports, setReports] = useState([]);
@@ -1883,9 +1893,11 @@ export function InternalParametersSection({ user, onToast }) {
             busy={busy}
             onToast={onToast}
             onPublish={handlePublish}
+            canEdit={canEdit}
+            canExport={canExport}
           />
         ) : (
-          <MockRecommendedTestsTab user={user} onToast={onToast} />
+          <MockRecommendedTestsTab user={user} onToast={onToast} canEdit={canEdit} canExport={canExport} />
         )
       ) : live ? (
         <LiveReportAnalysisTab
@@ -1894,6 +1906,9 @@ export function InternalParametersSection({ user, onToast }) {
           onAnalyze={handleAnalyze}
           onSaveAnalysis={handleSaveAnalysis}
           onToast={onToast}
+          canEdit={canEdit}
+          canUpload={canUpload}
+          canExport={canExport}
         />
       ) : (
         <MockReportAnalysisTab onToast={onToast} />

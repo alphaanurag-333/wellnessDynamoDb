@@ -29,6 +29,7 @@ import { ReviewHistoryModal } from "./ReviewHistoryModal.jsx";
 import { HealthProgressCarousel } from "./HealthProgressCarousel.jsx";
 import { ScheduleMeetingModal } from "./ScheduleMeetingModal.jsx";
 import { DailyMetricModal } from "./DailyMetricModal.jsx";
+import { useViewAs } from "../../context/ViewAsContext.jsx";
 
 const EMPTY_SNAPSHOT = [
   { label: "Age", value: "—", tone: "default" },
@@ -388,7 +389,7 @@ function formatCoachInsightTime(iso) {
   return date.toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
-function CommsBlock({ user, onToast, reminders, setReminders, onOpenList }) {
+function CommsBlock({ user, onToast, reminders, setReminders, onOpenList, canEdit = true }) {
   const userId = String(user?.id || "").trim();
   const isMock = isMockNumericId(userId);
   const [message, setMessage] = useState("");
@@ -500,6 +501,8 @@ function CommsBlock({ user, onToast, reminders, setReminders, onOpenList }) {
 
   return (
     <div className="ua-cp-comms-stack">
+      {canEdit ? (
+      <>
       <div className="ua-cp-comms__bar ua-cp-comms__bar--message">
         <span className="ua-cp-comms__label">💬 Message {user.name}</span>
         <input
@@ -587,6 +590,10 @@ function CommsBlock({ user, onToast, reminders, setReminders, onOpenList }) {
           List ({reminders.length})
         </button>
       </div>
+      </>
+      ) : (
+        <p className="ua-cp-placeholder__note">You do not have permission to send messages or set reminders.</p>
+      )}
     </div>
   );
 }
@@ -708,10 +715,20 @@ function priorStepsDone(steps, n) {
 }
 
 function StepToggle({ done, current, onClick }) {
+  const className = `ua-cp-onboard-step__toggle${done ? " ua-cp-onboard-step__toggle--done" : current ? " ua-cp-onboard-step__toggle--current" : ""}`;
+  if (!onClick) {
+    return (
+      <span className={className} aria-hidden="true">
+        {done ? (
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+        ) : null}
+      </span>
+    );
+  }
   return (
     <button
       type="button"
-      className={`ua-cp-onboard-step__toggle${done ? " ua-cp-onboard-step__toggle--done" : current ? " ua-cp-onboard-step__toggle--current" : ""}`}
+      className={className}
       title={done ? "Mark as not done" : "Mark complete"}
       onClick={onClick}
       aria-label={done ? "Mark step not done" : "Mark step complete"}
@@ -759,7 +776,7 @@ function resolveStepAction(step, steps) {
   return { label: "Mark done", tone: "ghost" };
 }
 
-function OnboardingStatusCard({ user, onToast, onNavigate, onProgressChange, onUserUpdated }) {
+function OnboardingStatusCard({ user, onToast, onNavigate, onProgressChange, onUserUpdated, canEdit = true, canCalEdit = true }) {
   const [doneMap, setDoneMap] = useState(() => buildInitialDone(user));
   const [stepNotes, setStepNotes] = useState(() => buildInitialStepNotes(buildInitialDone(user)));
   const [scheduleModal, setScheduleModal] = useState(null);
@@ -869,6 +886,10 @@ function OnboardingStatusCard({ user, onToast, onNavigate, onProgressChange, onU
       return;
     }
     if (step.action?.startsWith("schedule-")) {
+      if (!canCalEdit) {
+        onToast("You do not have permission to schedule meetings");
+        return;
+      }
       const existing = meetings.find((row) => (
         row.stepKey === step.key
         && ["slots_offered", "time_requested"].includes(row.status)
@@ -892,7 +913,7 @@ function OnboardingStatusCard({ user, onToast, onNavigate, onProgressChange, onU
           <div className="ua-cp-onboard-card__title"><span>🧭</span> Onboarding status</div>
           <div className="ua-cp-onboard-card__actions">
             <span className="ua-cp-onboard-card__count">{doneCount} / {total} done</span>
-            {nextStep ? (
+            {canEdit && nextStep ? (
               <button
                 type="button"
                 className="backgrounrd ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm ua-cp-onboard-card__remind"
@@ -971,7 +992,7 @@ function OnboardingStatusCard({ user, onToast, onNavigate, onProgressChange, onU
                 <StepToggle
                   done={step.done}
                   current={isCurrent}
-                  onClick={() => toggleStep(step.n)}
+                  onClick={canEdit ? () => toggleStep(step.n) : undefined}
                 />
                 <div className="ua-cp-onboard-step__copy">
                   <span className={`ua-cp-onboard-step__label${step.done ? " ua-cp-onboard-step__label--done" : ""}`}>
@@ -980,7 +1001,7 @@ function OnboardingStatusCard({ user, onToast, onNavigate, onProgressChange, onU
                   {note ? <div className="ua-cp-onboard-step__note">{note}</div> : null}
                   {meetingNote ? <div className="ua-cp-onboard-step__note">{meetingNote}</div> : null}
                 </div>
-                {meeting?.status === "time_requested" ? (
+                {canCalEdit && meeting?.status === "time_requested" ? (
                   <div className="ua-cp-onboard-step__btns">
                     <button
                       type="button"
@@ -1021,7 +1042,7 @@ function OnboardingStatusCard({ user, onToast, onNavigate, onProgressChange, onU
                       Reject
                     </button>
                   </div>
-                ) : action ? (
+                ) : canEdit && action ? (
                   <button
                     type="button"
                     className={`ua-cp-onboard-step__btn ua-cp-onboard-step__btn--${action.tone}`}
@@ -1203,6 +1224,9 @@ function RemindersModal({ user, reminders, deletingId, onClose, onDelete }) {
 }
 
 export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
+  const { can } = useViewAs();
+  const canEditClient = can("console.cl.edit");
+  const canCalEdit = can("console.cal.edit") || can("console.cal.create");
   const inProgress = user.paidOnboardingCompleted
     ? false
     : (user.onboardingDone ?? 0) < (user.onboardingTotal ?? 7);
@@ -1313,6 +1337,7 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
             reminders={reminders}
             setReminders={setReminders}
             onOpenList={() => setRemindersOpen(true)}
+            canEdit={canEditClient}
           />
         </>
       ) : (
@@ -1324,6 +1349,8 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
             onNavigate={onNavigate}
             onProgressChange={setOnboardingProgress}
             onUserUpdated={onUserUpdated}
+            canEdit={canEditClient}
+            canCalEdit={canCalEdit}
           />
         </>
       )}

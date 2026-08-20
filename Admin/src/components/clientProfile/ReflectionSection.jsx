@@ -192,12 +192,8 @@ function snapshotKey(activities) {
 export function ReflectionSection({ user, onToast }) {
   const userId = String(user?.id || "").trim();
   const isHealClient = String(user?.userTier || "").toLowerCase() === "heal" || user?.tier === "Seek to Heal";
-  const { can, viewAs } = useViewAs();
-  const canEdit =
-    can("console.diet.edit") ||
-    viewAs === "wc" ||
-    viewAs === "awc" ||
-    viewAs === "admin";
+  const { can } = useViewAs();
+  const canEdit = can("console.diet.edit");
 
   const [activities, setActivities] = useState([]);
   const [savedSettingsKey, setSavedSettingsKey] = useState("");

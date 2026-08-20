@@ -13,7 +13,6 @@ const {
   parseMealLogBody,
   uploadMealPhoto,
   handleValidationError,
-  DUMMY_MACROS,
   resolveAssignedCoachForUser,
 } = require("../helpers/mealTrackingControllerHelpers");
 const {
@@ -84,7 +83,10 @@ exports.createUserMealLogController = asyncHandler(async (req, res) => {
       userId,
       coachId: coachAssignment.coachId,
       ...payload,
-      ...DUMMY_MACROS,
+      proteinGm: payload.proteinGm ?? 0,
+      fatsGm: payload.fatsGm ?? 0,
+      carbsGm: payload.carbsGm ?? 0,
+      caloriesKcal: payload.caloriesKcal ?? 0,
       ...(photoKey !== undefined ? { photoKey } : {}),
       loggedByRole: "user",
       loggedById: userId,

@@ -42,6 +42,23 @@ export async function updateUserMealLog(userId, logId, payload) {
   }
 }
 
+export async function analyzeUserMealLog(userId, logId) {
+  try {
+    const { data } = await api.post(
+      healUserPath(userId, `/meal-tracking/${encodeURIComponent(logId)}/analyze`),
+      {},
+      { headers: authHeader() },
+    );
+    return {
+      mealLog: data.mealLog,
+      related: data.related !== false,
+      message: data.message || "",
+    };
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function reviewUserMealLog(logId, payload) {
   try {
     const { data } = await api.patch(

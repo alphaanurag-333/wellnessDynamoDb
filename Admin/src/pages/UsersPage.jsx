@@ -1230,12 +1230,14 @@ export function UsersPage() {
         </div>
       ) : null}
 
-      <CreateUserModal
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onToast={onToast}
-        onCreated={() => refreshUsers()}
-      />
+      {canCreate ? (
+        <CreateUserModal
+          open={createOpen}
+          onClose={() => setCreateOpen(false)}
+          onToast={onToast}
+          onCreated={() => refreshUsers()}
+        />
+      ) : null}
 
       {deleteTarget ? (
         <div className="ua-dialog-backdrop" onClick={() => !actionBusy && setDeleteTarget(null)} role="presentation">

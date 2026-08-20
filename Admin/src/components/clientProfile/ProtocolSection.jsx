@@ -7,6 +7,7 @@ import {
   fetchUserProtocolSettings,
   saveUserProtocolSettings,
 } from "../../api/protocolSettingsApi.js";
+import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 
 function pointsEqual(a, b) {
   return JSON.stringify(a) === JSON.stringify(b);
@@ -43,6 +44,8 @@ function HistoryVersionCard({ entry, expanded, onToggle, onRestore }) {
 }
 
 export function ProtocolSection({ user, onToast }) {
+  const { canEdit, canCreate } = useClientSectionPermissions("protocol");
+  const canWrite = canEdit || canCreate;
   const userId = String(user?.id || "").trim();
   const [workingPoints, setWorkingPoints] = useState([]);
   const [savedPoints, setSavedPoints] = useState([]);
@@ -174,6 +177,8 @@ export function ProtocolSection({ user, onToast }) {
             <span className="ua-cp-proto-work__meta">{workingMeta}</span>
           </div>
           <div className="ua-cp-proto-work__actions">
+            {canWrite ? (
+              <>
             <button
               type="button"
               className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm colers"
@@ -191,6 +196,8 @@ export function ProtocolSection({ user, onToast }) {
                 {saving ? "Saving…" : "Saved"}
               </button>
             )}
+              </>
+            ) : null}
           </div>
         </div>
 
@@ -208,14 +215,17 @@ export function ProtocolSection({ user, onToast }) {
                   className="ua-cp-proto-point__text"
                   value={point}
                   onChange={(e) => updatePoint(index, e.target.value)}
-                  disabled={saving}
+                  disabled={saving || !canWrite}
                 />
-                <button type="button" className="ua-cp-proto-point__remove" onClick={() => removePoint(index)} aria-label="Remove point">×</button>
+                {canWrite ? (
+                  <button type="button" className="ua-cp-proto-point__remove" onClick={() => removePoint(index)} aria-label="Remove point">×</button>
+                ) : null}
               </div>
             ))}
           </div>
         ) : null}
 
+        {canWrite ? (
         <div className="ua-cp-proto-add">
           <input
             type="text"
@@ -235,6 +245,7 @@ export function ProtocolSection({ user, onToast }) {
             + Add point
           </button>
         </div>
+        ) : null}
       </div>
 
       <div className="ua-cp-proto-history">

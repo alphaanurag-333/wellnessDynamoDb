@@ -6,6 +6,7 @@ import {
   remindCoachCheckout,
   triggerCoachCheckout,
 } from "../../api/appProgramApi.js";
+import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 import {
   discountLabel,
   discountedPrice,
@@ -201,6 +202,7 @@ function subscriptionLabel(item) {
 }
 
 export function ExchangeSection({ user, onToast }) {
+  const { canCreate, canToggle, canEdit } = useClientSectionPermissions("exchange");
   const [programs, setPrograms] = useState([]);
   const [discounts, setDiscounts] = useState([]);
   const [validityPeriods, setValidityPeriods] = useState([]);
@@ -304,14 +306,14 @@ export function ExchangeSection({ user, onToast }) {
   const summary = paymentSummary(history);
   const firstName = user?.name?.split(" ")[0] || "Client";
   const bundledOn = includeSubscription && Boolean(subscription);
-  const canTrigger = Boolean(user?.id && program && discount && validity && !loading && !triggering);
+  const canTrigger = canCreate && Boolean(user?.id && program && discount && validity && !loading && !triggering);
 
   function closeMenus() {
     setOpenField(null);
   }
 
   function toggleSubscription() {
-    if (!subscriptions.length) return;
+    if (!canToggle || !subscriptions.length) return;
     const next = !includeSubscription;
     setIncludeSubscription(next);
     if (next && !subscription) setSubscription(subscriptions[0] || null);
@@ -358,6 +360,8 @@ export function ExchangeSection({ user, onToast }) {
       </div>
 
       <div className="ua-cp-ex-panel">
+        {canCreate ? (
+          <>
         <div className="ua-cp-ex-panel__head">
           <strong>Trigger a payment</strong>
           <p>Pick a program and a discount slab — both come from what admin set in Energy Exchange; the value follows. App subscription, if enabled, is included in the same price.</p>
@@ -368,7 +372,7 @@ export function ExchangeSection({ user, onToast }) {
             value={loading ? "Loading…" : program ? programLabel(program) : "No programs published"}
             options={programs}
             open={openField === "program"}
-            disabled={loading || !programs.length}
+            disabled={loading || !programs.length || !canCreate}
             onToggle={(next) => setOpenField(next ? "program" : null)}
             onSelect={(next) => { setProgram(next); closeMenus(); }}
             getLabel={programLabel}
@@ -405,7 +409,7 @@ export function ExchangeSection({ user, onToast }) {
                 className={`ua-toggle ua-toggle--sm${bundledOn ? " ua-toggle--on" : ""}`}
                 aria-pressed={bundledOn}
                 aria-label="Include app subscription"
-                disabled={loading || !subscriptions.length}
+                disabled={loading || !subscriptions.length || !canToggle}
                 onClick={toggleSubscription}
               >
                 <span className="ua-toggle__knob" />
@@ -449,6 +453,12 @@ export function ExchangeSection({ user, onToast }) {
                   : "Loading published App Program options…"}
           </p>
         </div>
+          </>
+        ) : (
+          <p className="ua-cp-ex-form__note" role="note">
+            You can view payment history below. Triggering new program payments requires Program assignment → create permission.
+          </p>
+        )}
       </div>
 
       <div className="ua-cp-ex-panel">

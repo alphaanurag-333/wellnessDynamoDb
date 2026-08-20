@@ -5,6 +5,7 @@ import {
   formatGutDate,
   gutResetSummary,
 } from "../../data/gutResetData.js";
+import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 
 const EMPTY_DRAFT = {
   startDate: "",
@@ -121,6 +122,8 @@ function HistoryResetCard({ entry, expanded, onToggle }) {
 }
 
 export function GutResetSection({ user, onToast }) {
+  const { canCreate, canEdit } = useClientSectionPermissions("gut");
+  const canWrite = canCreate || canEdit;
   const [history, setHistory] = useState(GUT_RESET_HISTORY);
   const [draft, setDraft] = useState(EMPTY_DRAFT);
   const [pointDraft, setPointDraft] = useState("");
@@ -223,6 +226,8 @@ export function GutResetSection({ user, onToast }) {
           </span>
         </div>
 
+        {canWrite ? (
+        <>
         <div className="ua-cp-gut-dates">
           <label className="ua-cp-gut-date">
             <span>Start date</span>
@@ -298,6 +303,10 @@ export function GutResetSection({ user, onToast }) {
             </button>
           </div>
         </div>
+        </>
+        ) : (
+          <p className="ua-cp-placeholder__note">You do not have permission to create or edit gut reset plans.</p>
+        )}
       </div>
 
       <div className="ua-cp-gut-history-wrap">

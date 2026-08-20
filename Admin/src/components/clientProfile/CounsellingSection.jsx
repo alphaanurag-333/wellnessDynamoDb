@@ -5,6 +5,7 @@ import {
   offerHealConsultancyPeriods,
   updateHealConsultancyTrack,
 } from "../../api/counsellingApi.js";
+import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 
 const PERIODS = [
   { key: "morning", label: "Morning", range: "08:00–12:00" },
@@ -63,6 +64,8 @@ function windowBounds(offer) {
 }
 
 export function CounsellingSection({ user, onToast }) {
+  const { canCreate, canEdit, canDelete } = useClientSectionPermissions("counselling");
+  const canManage = canCreate || canEdit;
   const userId = String(user?.id || user?._id || "").trim();
   const [tracks, setTracks] = useState([]);
   const [activeTrack, setActiveTrack] = useState(null);
@@ -211,7 +214,7 @@ export function CounsellingSection({ user, onToast }) {
           </div>
           {activeTrack.concern ? <p className="ua-cp-counselling__concern">{activeTrack.concern}</p> : null}
 
-          {activeTrack.status === "requested" || activeTrack.status === "periods_offered" ? (
+          {canManage && (activeTrack.status === "requested" || activeTrack.status === "periods_offered") ? (
             <div className="ua-cp-counselling__block">
               <h3>Share availability</h3>
               <div className="ua-cp-counselling__row">
@@ -275,7 +278,7 @@ export function CounsellingSection({ user, onToast }) {
             <p className="ua-cp-counselling__muted">Waiting for the client to pick a period.</p>
           ) : null}
 
-          {activeTrack.status === "period_selected" && selectedOffer ? (
+          {canEdit && activeTrack.status === "period_selected" && selectedOffer ? (
             <div className="ua-cp-counselling__block">
               <h3>Confirm a fixed time</h3>
               <p className="ua-cp-counselling__muted">
@@ -319,18 +322,24 @@ export function CounsellingSection({ user, onToast }) {
                   Open Zoom
                 </a>
               ) : null}
+              {canEdit || canDelete ? (
               <div className="ua-cp-counselling__actions">
+                {canEdit ? (
                 <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm" onClick={() => patchStatus("completed")} disabled={busy}>
                   Mark completed
                 </button>
+                ) : null}
+                {canDelete ? (
                 <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={() => patchStatus("cancelled")} disabled={busy}>
                   Cancel
                 </button>
+                ) : null}
               </div>
+              ) : null}
             </div>
           ) : null}
 
-          {activeTrack.status !== "scheduled" ? (
+          {canDelete && activeTrack.status !== "scheduled" ? (
             <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={() => patchStatus("cancelled")} disabled={busy}>
               Cancel request
             </button>

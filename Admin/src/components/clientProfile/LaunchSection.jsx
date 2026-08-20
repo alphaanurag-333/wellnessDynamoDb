@@ -5,6 +5,8 @@ import { suggestRating } from "../../data/launchData.js";
 import { computeLaunchAssessment } from "../../data/launchConfigData.js";
 import { ScheduleMeetingModal } from "./ScheduleMeetingModal.jsx";
 import { ScoringReferenceModal } from "./ScoringReferenceModal.jsx";
+import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
+import { useViewAs } from "../../context/ViewAsContext.jsx";
 import {
   createOnboardingMeetingSlots,
   fetchLaunchAssessmentConfig,
@@ -182,6 +184,7 @@ function DomainAccordion({
   onRate,
   onReplyChange,
   onOpenScoring,
+  canWrite = true,
 }) {
   const pct = domain.max ? Math.round((domain.score / domain.max) * 100) : 0;
   return (
@@ -245,6 +248,7 @@ function DomainAccordion({
                           onChange={(e) => onReplyChange(item.id, e.target.value)}
                           placeholder="User reply or coach notes…"
                           aria-label={`Reply for question ${i + 1}`}
+                          disabled={!canWrite}
                         />
                         {reply.trim() ? (
                           <span className="ua-cp-launch-qtable__reply-note">Noted by coach</span>
@@ -258,6 +262,7 @@ function DomainAccordion({
                               type="button"
                               className={`ua-cp-launch-rating ua-cp-launch-rating--${opt.tone || "default"}${rating === opt.id ? " ua-cp-launch-rating--active" : ""}`}
                               onClick={() => onRate(item.id, opt.id)}
+                              disabled={!canWrite}
                             >
                               {opt.name || opt.label}
                             </button>
@@ -284,7 +289,7 @@ function DomainAccordion({
   );
 }
 
-function FocusAreas({ autoPoints, catalog, selectedFocus, onToggleFocus, extraPoints, onAddPoint, onRemovePoint, onToast }) {
+function FocusAreas({ autoPoints, catalog, selectedFocus, onToggleFocus, extraPoints, onAddPoint, onRemovePoint, onToast, canWrite = true }) {
   const [point, setPoint] = useState("");
   const merged = [...autoPoints, ...extraPoints];
 
@@ -308,7 +313,7 @@ function FocusAreas({ autoPoints, catalog, selectedFocus, onToggleFocus, extraPo
             <div key={`${item}-${index}`} className="ua-cp-launch-focus__item">
               <span className="ua-cp-launch-focus__bullet" aria-hidden="true" />
               <span className="ua-cp-launch-focus__text">{item}</span>
-              {index >= autoPoints.length ? (
+              {canWrite && index >= autoPoints.length ? (
                 <button type="button" className="ua-cp-launch-focus__remove" onClick={() => onRemovePoint(index - autoPoints.length)} aria-label="Remove focus point">×</button>
               ) : null}
             </div>
@@ -317,7 +322,7 @@ function FocusAreas({ autoPoints, catalog, selectedFocus, onToggleFocus, extraPo
       ) : (
         <div className="ua-cp-launch-focus__empty">No focus areas — all domains are above 50%.</div>
       )}
-      {catalog.length ? (
+      {canWrite && catalog.length ? (
         <div className="ua-cp-ip-history__markers" style={{ marginTop: 12, marginBottom: 8 }}>
           {catalog.map((area) => {
             const id = area.id || area._id;
@@ -335,6 +340,7 @@ function FocusAreas({ autoPoints, catalog, selectedFocus, onToggleFocus, extraPo
           })}
         </div>
       ) : null}
+      {canWrite ? (
       <div className="ua-cp-launch-focus__add">
         <input
           type="text"
@@ -345,11 +351,12 @@ function FocusAreas({ autoPoints, catalog, selectedFocus, onToggleFocus, extraPo
         />
         <button type="button" className="ua-cp-launch-focus__add-btn" onClick={addPoint}>Add point</button>
       </div>
+      ) : null}
     </div>
   );
 }
 
-function DoshaColumn({ dosha, onToggle }) {
+function DoshaColumn({ dosha, onToggle, canWrite = true }) {
   return (
     <div className={`ua-cp-launch-dosha ua-cp-launch-dosha--${dosha.tone}`}>
       <div className="ua-cp-launch-dosha__head">
@@ -371,6 +378,7 @@ function DoshaColumn({ dosha, onToggle }) {
               className="ua-cp-launch-dosha__input"
               checked={s.checked}
               onChange={() => onToggle(dosha.id, s.id || s.text)}
+              disabled={!canWrite}
             />
             <span className={`ua-cp-launch-dosha__check${s.checked ? " ua-cp-launch-dosha__check--on" : ""}`} aria-hidden="true">
               {s.checked ? "✓" : ""}
@@ -421,6 +429,7 @@ function LifestyleTab({
   assessments,
   onAssessmentsChange,
   focusAreas,
+  canWrite = true,
 }) {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [openDomains, setOpenDomains] = useState(() => new Set());
@@ -557,7 +566,7 @@ function LifestyleTab({
           historyCount={history.length}
           historyOpen={historyOpen}
           onToggleHistory={() => setHistoryOpen((o) => !o)}
-          onRerun={rerunAssessment}
+          onRerun={canWrite ? rerunAssessment : null}
         />
         {historyOpen ? (
           <HistoryTable
@@ -566,6 +575,7 @@ function LifestyleTab({
           />
         ) : null}
       </div>
+      {canWrite ? (
       <div className="ua-cp-launch-score" style={{ marginBottom: 16 }}>
         <div>
           <span className="ua-cp-launch-score__label">Save this attempt from Configs → LAUNCH scoring</span>
@@ -580,6 +590,7 @@ function LifestyleTab({
           {saving ? "Saving…" : "Save assessment"}
         </button>
       </div>
+      ) : null}
       <div className="ua-cp-launch-domains-toolbar">
         <button type="button" className="ua-cp-launch-questions__expand-btn" onClick={expandAll}>Expand all</button>
         <button type="button" className="ua-cp-launch-questions__expand-btn" onClick={collapseAll}>Collapse all</button>
@@ -601,6 +612,7 @@ function LifestyleTab({
           onRate={handleRate}
           onReplyChange={(key, val) => setReplies((r) => ({ ...r, [key]: val }))}
           onOpenScoring={setScoringRef}
+          canWrite={canWrite}
         />
       ))}
       <FocusAreas
@@ -614,6 +626,7 @@ function LifestyleTab({
         onAddPoint={(item) => setExtraPoints((list) => [...list, item])}
         onRemovePoint={(index) => setExtraPoints((list) => list.filter((_, i) => i !== index))}
         onToast={onToast}
+        canWrite={canWrite}
       />
       {scoringRef ? (
         <ScoringReferenceModal
@@ -629,7 +642,7 @@ function LifestyleTab({
   );
 }
 
-function PrakritiTab({ user, onToast }) {
+function PrakritiTab({ user, onToast, canWrite = true }) {
   const [loading, setLoading] = useState(true);
   const [questions, setQuestions] = useState([]);
   const [types, setTypes] = useState([]);
@@ -817,7 +830,7 @@ function PrakritiTab({ user, onToast }) {
         ) : null}
       </div>
 
-      {types.length ? (
+      {canWrite && types.length ? (
         <div className="ua-cp-ip-history__markers" style={{ marginBottom: 16 }}>
           {types.map((type) => {
             const active = selectedType === type.value;
@@ -835,6 +848,7 @@ function PrakritiTab({ user, onToast }) {
         </div>
       ) : null}
 
+      {canWrite ? (
       <div className="ua-cp-launch-score" style={{ marginBottom: 16 }}>
         <div>
           <span className="ua-cp-launch-score__label">Save Prakriti from catalog settings</span>
@@ -851,11 +865,12 @@ function PrakritiTab({ user, onToast }) {
           {saving ? "Saving…" : "Save Prakriti"}
         </button>
       </div>
+      ) : null}
 
       {doshaMode ? (
         <div className="ua-cp-launch-dosha-grid">
           {doshas.map((d) => (
-            <DoshaColumn key={d.id} dosha={d} onToggle={toggleStatement} />
+            <DoshaColumn key={d.id} dosha={d} onToggle={toggleStatement} canWrite={canWrite} />
           ))}
         </div>
       ) : groupedQuestions.length ? (
@@ -940,6 +955,10 @@ function PrakritiTab({ user, onToast }) {
 }
 
 export function LaunchSection({ user, onToast }) {
+  const { canEdit, canCreate } = useClientSectionPermissions("launch");
+  const { can } = useViewAs();
+  const canWrite = canEdit || canCreate;
+  const canSchedule = can("console.cal.create");
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get("tab") === "prakriti" ? "prakriti" : "lifestyle";
   const [tab, setTab] = useState(tabFromUrl);
@@ -1033,7 +1052,7 @@ export function LaunchSection({ user, onToast }) {
             { id: "prakriti", label: "Prakriti type" },
           ]}
         />
-        {launchStepDone ? null : (
+        {launchStepDone || !canSchedule ? null : (
           <div className="ua-cp-launch-schedule-wrap">
             <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--launch-schedule" onClick={() => setScheduleOpen(true)}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v16H3z"></path><path d="M3 10h18"></path><path d="M8 3v4"></path><path d="M16 3v4"></path></svg> Schedule LAUNCH meeting
@@ -1050,9 +1069,10 @@ export function LaunchSection({ user, onToast }) {
           assessments={assessments}
           onAssessmentsChange={setAssessments}
           focusAreas={focusAreas}
+          canWrite={canWrite}
         />
       ) : (
-        <PrakritiTab user={user} onToast={onToast} />
+        <PrakritiTab user={user} onToast={onToast} canWrite={canWrite} />
       )}
       {scheduleOpen ? (
         <ScheduleMeetingModal
