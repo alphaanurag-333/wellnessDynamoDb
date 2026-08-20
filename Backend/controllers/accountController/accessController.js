@@ -1191,6 +1191,7 @@ exports.getAccessMember = asyncHandler(async (req, res) => {
     seek: 0,
     heal: 0,
     consultancy_only: 0,
+    maintenance: 0,
     other: 0,
   };
   if (primaryAccountRole === "wellness_coach") {
@@ -1204,6 +1205,7 @@ exports.getAccessMember = asyncHandler(async (req, res) => {
         if (tier === "seek") clientStats.seek += 1;
         else if (tier === "heal") clientStats.heal += 1;
         else if (tier === "consultancy_only") clientStats.consultancy_only += 1;
+        else if (tier === "maintenance") clientStats.maintenance += 1;
         else clientStats.other += 1;
       }
       const children = await listAccounts({

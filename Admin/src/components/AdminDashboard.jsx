@@ -1211,7 +1211,7 @@ export function AdminDashboard({
       <section className="section">
         <div className="section__head">
           <h2 className="section__title">Program categories : clients</h2>
-          <span className="section__hint">Clients registered per health concern · tap to see who</span>
+          <span className="section__hint">Clients registered per program · tap to see who</span>
         </div>
         <div className="prog-cats prog-cats--v2">
           <div className="prog-cats__main">

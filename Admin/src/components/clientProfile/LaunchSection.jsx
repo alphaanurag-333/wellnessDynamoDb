@@ -191,7 +191,7 @@ function DomainAccordion({
     <div className={`ua-cp-launch-domain${open ? " ua-cp-launch-domain--open" : ""}`}>
       <button type="button" className="ua-cp-launch-domain__head" onClick={onToggle}>
         <div className="ua-cp-launch-domain__subhead">
-          <span className="ua-cp-launch-domain__chev">{open ? "▾" : "▸"}</span>
+          <span className="ua-cp-launch-domain__chev" aria-hidden="true" />
           <span className="ua-cp-launch-domain__num">{domain.num}</span>
           <strong className="ua-cp-launch-domain__title">{domain.title}</strong>
         </div>
