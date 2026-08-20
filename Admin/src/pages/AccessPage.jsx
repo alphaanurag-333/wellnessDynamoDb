@@ -184,13 +184,13 @@ function CreateRoleModal({ roles, onClose, onCreate }) {
           <button type="button" className="btn btn--outline" onClick={onClose}>
             Cancel
           </button>
-          <button
+          <button style={{background:"rgb(52, 165, 106)"}}
             type="button"
             className="ua-ac-modal__primary"
             disabled={!name.trim()}
             onClick={() => onCreate({ name: name.trim(), inheritFromRoleId: inheritFrom || null })}
           >
-            Create role
+            Create
           </button>
         </div>
       </div>
@@ -616,50 +616,47 @@ function PoliciesTab({ onToast }) {
             {policies.map((policy) => (
               <div key={policy.id} className="ua-policy-card">
                 <div className="ua-policy-card__head">
-                  <div>
+                  <div className="ua-policy-card__title-block">
                     <div className="ua-policy-card__name">{policy.name}</div>
-                    <div className="ua-policy-card__desc">{policy.desc}</div>
+                    {policy.desc ? <div className="ua-policy-card__desc">{policy.desc}</div> : null}
                   </div>
                   <span className={`ua-policy-card__scope ua-policy-card__scope--${String(policy.effect || policy.scope || "deny").toLowerCase()}`}>
                     {policy.scope}
                   </span>
                 </div>
                 <div className="ua-policy-card__rules">
-                  {policy.rules.map((rule, index) => (
+                  {(policy.rules || []).map((rule, index) => (
                     <div key={`${policy.id}-${rule.featureId}-${rule.effect}-${rule.action}-${index}`} className="ua-policy-card__rule">
                       <span className={`ua-rule-badge ua-rule-badge--${String(rule.type || rule.effect || "deny").toLowerCase()}`}>
                         {rule.type || String(rule.effect || "deny").toUpperCase()}
                       </span>
-                      <span>{rule.text}</span>
+                      <span className="ua-policy-card__rule-text">{rule.text}</span>
                     </div>
                   ))}
                 </div>
-                <div className="ua-policy-card__attachments">
-                  <span className="ua-policy-card__attachments-label">Attached to</span>
-                  <div className="ua-policy-card__chips">
-                    {policy.attachments?.length ? (
-                      policy.attachments.map((attachment) => (
-                        <span key={attachment.id} className="ua-policy-card__chip">
-                          {policyAttachmentLabel(attachment)}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="ua-policy-card__empty">Nobody yet</span>
-                    )}
-                  </div>
-                </div>
                 <div className="ua-policy-card__foot">
-                  <span>
-                    Attached to <b>{policy.attachedCount || 0}</b>
-                  </span>
-                  <div>
+                  <div className="ua-policy-card__attachments">
+                    <span className="ua-policy-card__attachments-label">Attached to</span>
+                    <div className="ua-policy-card__chips">
+                      {policy.attachments?.length ? (
+                        policy.attachments.map((attachment) => (
+                          <span key={attachment.id} className="ua-policy-card__chip">
+                            {policyAttachmentLabel(attachment)}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="ua-policy-card__empty">Nobody yet</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="ua-policy-card__actions">
                     <button type="button" className="ua-soft-btn" onClick={() => setEditorPolicy(policy)}>
                       Edit
                     </button>
                     <button type="button" className="ua-soft-btn" onClick={() => setDeleteTarget(policy)}>
                       Delete
                     </button>
-                    <button type="button" className="ua-green-btn" onClick={() => setAttachPolicyTarget(policy)}>
+                    <button type="button" className="ua-soft-btn ua-soft-btn--attach" onClick={() => setAttachPolicyTarget(policy)}>
                       Attach
                     </button>
                   </div>

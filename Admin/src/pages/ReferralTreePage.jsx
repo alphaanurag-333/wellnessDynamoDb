@@ -486,15 +486,21 @@ export function ReferralTreePage() {
                               loadTree({ rootEntityId: row.id, mode: "coach" });
                             }}
                           >
-                            <div className="ua-rt-cell-name">
+                            <div className="ua-rt-cell-name" data-label="Staff">
                               <span className="ua-rt-ellipsis" title={fullName}>
                                 {shortLabel(fullName, 32)}
                               </span>
                             </div>
-                            <div className="ua-rt-mono">{row.referralCode || "—"}</div>
-                            <div>{entityLabel(row.entityType)}</div>
-                            <div className="ua-rt-direct">{row.directCount}</div>
-                            <div className="ua-rt-open">Tree →</div>
+                            <div className="ua-rt-mono" data-label="Code">
+                              {row.referralCode || "—"}
+                            </div>
+                            <div data-label="Role">{entityLabel(row.entityType)}</div>
+                            <div className="ua-rt-direct" data-label="Direct">
+                              {row.directCount}
+                            </div>
+                            <div className="ua-rt-open" data-label="">
+                              Tree →
+                            </div>
                           </button>
                         );
                       })}
@@ -525,7 +531,7 @@ export function ReferralTreePage() {
                             loadTree({ rootUserId: row.id, mode: "user" });
                           }}
                         >
-                          <div className="ua-rt-cell-name">
+                          <div className="ua-rt-cell-name" data-label="Referrer">
                             <span className="ua-rt-ellipsis" title={fullName}>
                               {shortLabel(fullName, 32)}
                             </span>
@@ -539,10 +545,16 @@ export function ReferralTreePage() {
                               </Link>
                             ) : null}
                           </div>
-                          <div className="ua-rt-mono">{row.referralCode || "—"}</div>
-                          <div>{tierLabel(row.userTier)}</div>
-                          <div className="ua-rt-direct">{row.directCount}</div>
-                          <div className="ua-rt-open">Tree →</div>
+                          <div className="ua-rt-mono" data-label="Code">
+                            {row.referralCode || "—"}
+                          </div>
+                          <div data-label="Tier">{tierLabel(row.userTier)}</div>
+                          <div className="ua-rt-direct" data-label="Direct">
+                            {row.directCount}
+                          </div>
+                          <div className="ua-rt-open" data-label="">
+                            Tree →
+                          </div>
                         </button>
                       );
                     })}
@@ -574,7 +586,7 @@ export function ReferralTreePage() {
                         : row.referrerCode || row.referredByCode || "—";
                       return (
                         <div key={row.id} className="ua-table ua-table--rt-recent ua-table__row">
-                          <div className="ua-rt-cell-name">
+                          <div className="ua-rt-cell-name" data-label="Client">
                             {canOpenUser ? (
                               <Link
                                 className="ua-rt-name ua-rt-ellipsis"
@@ -590,7 +602,7 @@ export function ReferralTreePage() {
                             )}
                             <span className="ua-rt-sub">{tierLabel(row.userTier)}</span>
                           </div>
-                          <div className="ua-rt-via">
+                          <div className="ua-rt-via" data-label="Joined via">
                             {row.referredByUserId ? (
                               <button
                                 type="button"
@@ -621,8 +633,10 @@ export function ReferralTreePage() {
                               </span>
                             )}
                           </div>
-                          <div>{entityLabel(row.referredByEntityType)}</div>
-                          <div className="ua-rt-when">{formatWhen(row.createdAt)}</div>
+                          <div data-label="Source">{entityLabel(row.referredByEntityType)}</div>
+                          <div className="ua-rt-when" data-label="When">
+                            {formatWhen(row.createdAt)}
+                          </div>
                         </div>
                       );
                     })}

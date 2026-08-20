@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 
@@ -103,10 +104,24 @@ function OrgBranch({ node, collapsedMap, onToggle, canOpenUser }) {
 
 /** Classic top-down org chart with connector lines. */
 export function ReferralOrgTree({ root, collapsedMap, onToggle, canOpenUser }) {
+  const scrollRef = useRef(null);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const center = () => {
+      const max = el.scrollWidth - el.clientWidth;
+      if (max > 0) el.scrollLeft = Math.round(max / 2);
+    };
+    center();
+    const id = window.requestAnimationFrame(center);
+    return () => window.cancelAnimationFrame(id);
+  }, [root, collapsedMap]);
+
   if (!root) return null;
 
   return (
-    <div className="ua-org-scroll">
+    <div className="ua-org-scroll" ref={scrollRef}>
       <ul className="ua-org-tree">
         <OrgBranch
           node={root}

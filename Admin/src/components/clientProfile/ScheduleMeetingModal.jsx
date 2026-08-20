@@ -155,6 +155,15 @@ const CLOCK_ICON = (
   </svg>
 );
 
+const CALENDAR_ICON = (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M3 5h18v16H3z" />
+    <path d="M3 10h18" />
+    <path d="M8 3v4" />
+    <path d="M16 3v4" />
+  </svg>
+);
+
 function AnalogClockPicker({ target, initialTime, onCancel, onSet }) {
   const seed = parseTimeToDraft(initialTime || "09:00");
   const [step, setStep] = useState("h");
@@ -549,17 +558,17 @@ export function ScheduleMeetingModal({
               <div className="ua-cp-launch-modal__later-wrap" ref={laterWrapRef}>
                 <button
                   type="button"
-                  className={`ua-cp-launch-modal__later${dateMode === "later" ? " ua-cp-launch-modal__later--active" : ""}`}
+                  className={`ua-cp-launch-modal__later${dateMode === "later" ? " ua-cp-launch-modal__later--active" : ""}${laterOpen ? " ua-cp-launch-modal__later--open" : ""}`}
                   onClick={() => {
                     setDateMode("later");
                     setLaterOpen((open) => !open);
                   }}
                 >
-                  <span className="ua-cp-launch-modal__later-label">Later</span>
-                  <span className="ua-cp-launch-modal__later-date">
-                    {formatDdMmYyyy(laterDate)}
-                    <span aria-hidden="true">📅</span>
+                  <span className="ua-cp-launch-modal__later-copy">
+                    <span className="ua-cp-launch-modal__later-label">Later</span>
+                    <span className="ua-cp-launch-modal__later-date" style={{color:"rgb(94, 106, 210)"}}>{formatDdMmYyyy(laterDate)}</span>
                   </span>
+                  <span className="ua-cp-launch-modal__later-icon">{CALENDAR_ICON}</span>
                 </button>
               </div>
             </div>

@@ -998,7 +998,7 @@ export function UsersPage() {
               />
             </div>
             <div>Status</div>
-            {showRowActions ? <div /> : null}
+            {showRowActions ? <div className="ua-users-row-actions" aria-hidden="true" /> : null}
           </div>
 
           {loading ? (
@@ -1051,33 +1051,37 @@ export function UsersPage() {
                     >
                       {tierLabel(u.tier)}
                     </span>
-                    {tierMoves.map((move) => (
-                      <button
-                        key={`${rowKey}-${move.direction}-${move.target}`}
-                        type="button"
-                        className={`ua-tier-action ua-tier-action--${move.direction}`}
-                        title={move.title}
-                        disabled={actionBusy}
-                        onClick={() => (move.direction === "up" ? convertTier(u) : downgradeTier(u))}
-                      >
-                        {move.label}
-                      </button>
-                    ))}
-                    {showTierUndo ? (
-                      <button
-                        type="button"
-                        className="ua-tier-action ua-tier-action--undo"
-                        title={`Undo — restore ${tierLabel(tierUndo.fromTier)}`}
-                        disabled={actionBusy}
-                        onClick={() => undoTier(u)}
-                      >
-                        undo
-                      </button>
+                    {tierMoves.length || showTierUndo ? (
+                      <div className="ua-users-tier__moves">
+                        {tierMoves.map((move) => (
+                          <button
+                            key={`${rowKey}-${move.direction}-${move.target}`}
+                            type="button"
+                            className={`ua-tier-action ua-tier-action--${move.direction}`}
+                            title={move.title}
+                            disabled={actionBusy}
+                            onClick={() => (move.direction === "up" ? convertTier(u) : downgradeTier(u))}
+                          >
+                            {move.label}
+                          </button>
+                        ))}
+                        {showTierUndo ? (
+                          <button
+                            type="button"
+                            className="ua-tier-action ua-tier-action--undo"
+                            title={`Undo — restore ${tierLabel(tierUndo.fromTier)}`}
+                            disabled={actionBusy}
+                            onClick={() => undoTier(u)}
+                          >
+                            undo
+                          </button>
+                        ) : null}
+                      </div>
                     ) : null}
                   </div>
-                  <div onClick={(e) => e.stopPropagation()}>
+                  <div className="ua-users-coach" onClick={(e) => e.stopPropagation()}>
                     {!canReassignWc ? (
-                      <span>{u.coach || UNASSIGNED_COACH}</span>
+                      <span className="ua-users-coach__text">{u.coach || UNASSIGNED_COACH}</span>
                     ) : (
                       <select
                         key={`${rowKey}-wc-${resolveWcId(u)}-${selectReset}`}
@@ -1092,9 +1096,9 @@ export function UsersPage() {
                       </select>
                     )}
                   </div>
-                  <div onClick={(e) => e.stopPropagation()}>
+                  <div className="ua-users-coach" onClick={(e) => e.stopPropagation()}>
                     {!canReassignAwc ? (
-                      <span>{u.awc || "—"}</span>
+                      <span className="ua-users-coach__text">{u.awc || "—"}</span>
                     ) : (
                       <select
                         key={`${rowKey}-awc-${resolveAwcId(u)}-${selectReset}`}
@@ -1109,8 +1113,8 @@ export function UsersPage() {
                       </select>
                     )}
                   </div>
-                  <div className="ua-table__muted">{u.lastActive || "—"}</div>
-                  <div>
+                  <div className="ua-table__muted ua-users-last-active">{u.lastActive || "—"}</div>
+                  <div className="ua-users-status">
                     <span className={`ua-status-badge ua-status-badge--${tone}`}>
                       <span className="ua-status-badge__dot" />
                       {u.status}
