@@ -895,7 +895,7 @@ function OnboardingStatusCard({ user, onToast, onNavigate, onProgressChange, onU
             {nextStep ? (
               <button
                 type="button"
-                className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm ua-cp-onboard-card__remind"
+                className="backgrounrd ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm ua-cp-onboard-card__remind"
                 onClick={() => setRemindOpen(true)}
               >
                 🔔 Remind

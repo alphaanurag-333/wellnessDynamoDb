@@ -176,18 +176,18 @@ export function ProtocolSection({ user, onToast }) {
           <div className="ua-cp-proto-work__actions">
             <button
               type="button"
-              className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
+              className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm colers"
               disabled={!dirty || saving || loading}
               onClick={discardChanges}
             >
               Discard changes
             </button>
             {canSave ? (
-              <button type="button" className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm" onClick={saveVersion} disabled={saving}>
+              <button type="button" className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm colored" onClick={saveVersion} disabled={saving}>
                 {saving ? "Saving…" : "Save version"}
               </button>
             ) : (
-              <button type="button" className="ua-cp-btn ua-cp-btn--muted ua-cp-btn--sm" disabled>
+              <button type="button" className="btncolorss ua-cp-btn ua-cp-btn--muted ua-cp-btn--sm" disabled>
                 {saving ? "Saving…" : "Saved"}
               </button>
             )}
@@ -228,7 +228,7 @@ export function ProtocolSection({ user, onToast }) {
           />
           <button
             type="button"
-            className={`ua-cp-btn ua-cp-btn--sm${draft.trim() ? " ua-cp-btn--primary" : " ua-cp-btn--muted"}`}
+            className={`ua-cp-btn ua-cp-btn--sm${draft.trim() ? " ua-cp-btn--primary btncolor" : " ua-cp-btn--muted btncolors"}`}
             disabled={!draft.trim() || loading || saving}
             onClick={addPoint}
           >
