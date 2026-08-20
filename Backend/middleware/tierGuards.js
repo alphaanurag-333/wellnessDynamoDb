@@ -71,8 +71,28 @@ const requirePaidOnboardingPending = asyncHandler(async (req, res, next) => {
   next();
 });
 
+/**
+ * Allows paid body-analytics updates both during and after onboarding
+ * (sidebar: body measurements, 180° view, medical conditions).
+ */
+const requirePaidOnboardingAccess = asyncHandler(async (req, res, next) => {
+  const userId = req.auth?.sub || req.user?.id;
+  if (!userId) throw new AppError("Unauthorized", 401);
+
+  const user = await getUserById(userId);
+  if (!user) throw new AppError("User not found", 401);
+
+  if (!canAccessPaidOnboardingWizard(user)) {
+    throw new AppError("Complete payment before starting onboarding", 403);
+  }
+
+  req.currentUser = user;
+  next();
+});
+
 module.exports = {
   requireHealTier,
   requirePaidOnboardingComplete,
   requirePaidOnboardingPending,
+  requirePaidOnboardingAccess,
 };

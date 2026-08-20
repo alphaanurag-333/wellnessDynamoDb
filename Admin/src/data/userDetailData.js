@@ -4,6 +4,7 @@ export const CLIENT_MENU = [
   { id: "glance", label: "At a Glance" },
   { id: "personal", label: "Personal Details" },
   { id: "body", label: "Body Analytics" },
+  { id: "medical", label: "Medical Conditions" },
   { id: "internal", label: "Internal Parameters" },
   { id: "launch", label: "LAUNCH", accent: true },
   { id: "food", label: "Food & Water Tracking" },
@@ -20,6 +21,7 @@ export const CLIENT_MENU = [
 ];
 
 const PERSONAL_MENU_ITEM = CLIENT_MENU.find((item) => item.id === "personal");
+const MEDICAL_MENU_ITEM = CLIENT_MENU.find((item) => item.id === "medical");
 const INTERNAL_MENU_ITEM = CLIENT_MENU.find((item) => item.id === "internal");
 const EXCHANGE_MENU_ITEM = CLIENT_MENU.find((item) => item.id === "exchange");
 export const CONSULTATION_MENU_ITEM = { id: "consultation", label: "Consultation" };
@@ -27,6 +29,7 @@ export const CONSULTATION_MENU_ITEM = { id: "consultation", label: "Consultation
 /** Seek / PWC clients — WC, AWC and other staff see this reduced coaching set. */
 export const COMPACT_CLIENT_MENU = [
   PERSONAL_MENU_ITEM,
+  MEDICAL_MENU_ITEM,
   INTERNAL_MENU_ITEM,
   CONSULTATION_MENU_ITEM,
   EXCHANGE_MENU_ITEM,

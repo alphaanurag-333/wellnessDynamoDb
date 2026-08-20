@@ -27,6 +27,9 @@ const {
   getUserEnergyExchangeAdminController,
 } = require("../../controllers/adminController/userEnergyExchangeController");
 const {
+  getUserMedicalConditionsAdminController,
+} = require("../../controllers/adminController/userMedicalConditionController");
+const {
   getUserAtAGlanceController,
 } = require("../../controllers/adminController/atAGlanceController");
 const {
@@ -88,6 +91,12 @@ router.get(
   protectAccount,
   authorizeStaff("console.cl.view", { admin: "users.view" }),
   getUserEnergyExchangeAdminController
+);
+router.get(
+  "/:id/medical-conditions",
+  protectAccount,
+  clientView,
+  getUserMedicalConditionsAdminController
 );
 router.patch(
   "/:id/onboarding-steps/:stepKey",

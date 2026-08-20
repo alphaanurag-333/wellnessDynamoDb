@@ -306,17 +306,23 @@ exports.submitBodyMeasurementsController = asyncHandler(async (req, res) => {
 
   const currentStatus = normalizePaidOnboardingStepStatus(user.paidOnboardingStepStatus);
   const nextStatus = markStepDone(currentStatus, "bodyMeasurement");
-  const nextWizardStep = wizardStepAfterBodyComplete(user.paidOnboardingStep);
+  const alreadyCompleted = Boolean(user.paidOnboardingCompleted);
+  const nextWizardStep = alreadyCompleted
+    ? user.paidOnboardingStep || "done"
+    : wizardStepAfterBodyComplete(user.paidOnboardingStep);
 
   const updated = await updateUser(userId, {
     paidOnboardingStepStatus: nextStatus,
     paidOnboardingStep: nextWizardStep,
-    paidOnboardingCompleted: computePaidOnboardingCompleted(nextStatus),
+    paidOnboardingCompleted:
+      alreadyCompleted || computePaidOnboardingCompleted(nextStatus),
   });
 
   return res.status(201).json({
     status: true,
-    message: "Body measurements saved. Continue with your 180 view.",
+    message: alreadyCompleted
+      ? "Body measurements updated"
+      : "Body measurements saved. Continue with your 180 view.",
     data: {
       bodyMeasurement: toPublicBodyMeasurement(measurement),
       paidOnboardingStep: updated.paidOnboardingStep,
@@ -369,17 +375,23 @@ exports.submitMedicalConditionsController = asyncHandler(async (req, res) => {
 
   const currentStatus = normalizePaidOnboardingStepStatus(user.paidOnboardingStepStatus);
   const nextStatus = markStepDone(currentStatus, "medicalConditions");
-  const nextWizardStep = wizardStepAfterMedicalComplete(user.paidOnboardingStep);
+  const alreadyCompleted = Boolean(user.paidOnboardingCompleted);
+  const nextWizardStep = alreadyCompleted
+    ? user.paidOnboardingStep || "done"
+    : wizardStepAfterMedicalComplete(user.paidOnboardingStep);
 
   const updated = await updateUser(userId, {
     paidOnboardingStepStatus: nextStatus,
     paidOnboardingStep: nextWizardStep,
-    paidOnboardingCompleted: computePaidOnboardingCompleted(nextStatus),
+    paidOnboardingCompleted:
+      alreadyCompleted || computePaidOnboardingCompleted(nextStatus),
   });
 
   return res.status(201).json({
     status: true,
-    message: "Medical conditions saved",
+    message: alreadyCompleted
+      ? "Medical conditions updated"
+      : "Medical conditions saved",
     data: {
       medicalCondition: toPublicMedicalCondition(condition),
       paidOnboardingCompleted: Boolean(updated.paidOnboardingCompleted),

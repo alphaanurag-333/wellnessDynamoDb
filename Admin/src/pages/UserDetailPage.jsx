@@ -31,6 +31,7 @@ import {
   GutResetSection,
   PersonalDetailsSection,
   ConsultationSection,
+  MedicalConditionsSection,
   PlaceholderSection,
 } from "../components/clientProfile/ClientProfileSections.jsx";
 import { CounsellingSection } from "../components/clientProfile/CounsellingSection.jsx";
@@ -62,6 +63,8 @@ function renderSection(section, user, onToast, onNavigate, onUserUpdated, sectio
       );
     case "body":
       return <BodyAnalyticsSection user={user} onToast={onToast} />;
+    case "medical":
+      return <MedicalConditionsSection user={user} onToast={onToast} />;
     case "internal":
       return <InternalParametersSection user={user} onToast={onToast} onUserUpdated={onUserUpdated} />;
     case "launch":

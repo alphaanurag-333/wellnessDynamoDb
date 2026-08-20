@@ -12616,6 +12616,127 @@
   border-color: #e6ebf2;
 }
 
+.updated-admin .ua-cp-medical {
+  padding: 4px 0 28px;
+}
+
+.updated-admin .ua-cp-medical__head {
+  margin-bottom: 18px;
+}
+
+.updated-admin .ua-cp-medical__title {
+  margin: 0 0 6px;
+  font-size: 19px;
+  font-weight: 740;
+  letter-spacing: -0.02em;
+  color: #16233f;
+}
+
+.updated-admin .ua-cp-medical__sub,
+.updated-admin .ua-cp-medical__empty,
+.updated-admin .ua-cp-medical__details {
+  margin: 0;
+  font-size: 12.5px;
+  color: #8a97ac;
+  line-height: 1.45;
+}
+
+.updated-admin .ua-cp-medical__empty {
+  padding: 18px 16px;
+  background: #f7f9fc;
+  border: 1px solid #eef1f6;
+  border-radius: 11px;
+}
+
+.updated-admin .ua-cp-medical__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.updated-admin .ua-cp-medical__row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 15px;
+  background: #f7f9fc;
+  border: 1px solid #eef1f6;
+  border-radius: 11px;
+}
+
+.updated-admin .ua-cp-medical__num {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #e7effb;
+  color: #3f74b5;
+  font-size: 11px;
+  font-weight: 800;
+  margin-top: 1px;
+}
+
+.updated-admin .ua-cp-medical__body {
+  min-width: 0;
+  flex: 1;
+}
+
+.updated-admin .ua-cp-medical__question {
+  font-size: 13.5px;
+  font-weight: 650;
+  color: #16233f;
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+
+.updated-admin .ua-cp-medical__answer-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.updated-admin .ua-cp-medical__answer {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  background: #eef1f6;
+  color: #5a6b85;
+}
+
+.updated-admin .ua-cp-medical__answer--yes {
+  background: #e8f6ee;
+  color: #1f7a45;
+}
+
+.updated-admin .ua-cp-medical__answer--no {
+  background: #f3f5f8;
+  color: #6b778c;
+}
+
+.updated-admin .ua-cp-medical__answer--neutral {
+  background: #eef1f6;
+  color: #42526b;
+  border-radius: 8px;
+  padding: 6px 10px;
+  white-space: pre-wrap;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.updated-admin .ua-cp-medical__details {
+  margin-top: 8px;
+  color: #5a6b85;
+  white-space: pre-wrap;
+}
+
 .updated-admin .ua-cp-consult {
   padding: 4px 0 28px;
 }

@@ -2,6 +2,7 @@ const express = require("express");
 const { protectUser } = require("../../middleware/auth");
 const {
   requirePaidOnboardingPending,
+  requirePaidOnboardingAccess,
   requireHealTier,
 } = require("../../middleware/tierGuards");
 const {
@@ -34,23 +35,24 @@ router.post(
   optionalUserFile,
   submitProfileController
 );
+// Sidebar-editable body analytics: allowed during and after onboarding
 router.post(
   "/body-measurements",
-  requirePaidOnboardingPending,
+  requirePaidOnboardingAccess,
   optionalWeightPicFile,
   submitBodyMeasurementsController
 );
 router.post(
   "/progress-photos",
-  requirePaidOnboardingPending,
+  requirePaidOnboardingAccess,
   optionalProgressPhotoFiles,
   createProgressPhotoController
 );
-router.get("/progress-photos", requirePaidOnboardingPending, listProgressPhotosController);
+router.get("/progress-photos", requirePaidOnboardingAccess, listProgressPhotosController);
 router.get("/medical-questions", getMedicalQuestionsController);
 router.post(
   "/medical-conditions",
-  requirePaidOnboardingPending,
+  requirePaidOnboardingAccess,
   submitMedicalConditionsController
 );
 router.post("/skip-step", requirePaidOnboardingPending, skipOnboardingStepController);

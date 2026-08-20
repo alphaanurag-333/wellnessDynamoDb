@@ -96,10 +96,23 @@ function parseIso(iso) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+/** Calendar YYYY-MM-DD in admin timezone (India). */
+function calendarDayKey(date) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+/** Whole calendar days since join (IST), not rolling 24h windows. */
 function ageDaysFrom(iso) {
   const d = parseIso(iso);
   if (!d) return 0;
-  return Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000));
+  const joined = new Date(`${calendarDayKey(d)}T00:00:00Z`);
+  const today = new Date(`${calendarDayKey(new Date())}T00:00:00Z`);
+  return Math.max(0, Math.round((today.getTime() - joined.getTime()) / 86400000));
 }
 
 /** Relative date label suitable for profile activity badges. */
@@ -588,6 +601,18 @@ export async function fetchUserAtAGlance(id) {
       { headers: authHeader() },
     );
     return data.glance || null;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function fetchUserMedicalConditions(id) {
+  try {
+    const { data } = await api.get(
+      `/account/users/${encodeURIComponent(id)}/medical-conditions`,
+      { headers: authHeader() },
+    );
+    return data.medicalCondition || null;
   } catch (error) {
     normalizeApiError(error);
   }

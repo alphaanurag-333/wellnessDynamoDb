@@ -6,6 +6,7 @@ export const CLIENT_PROFILE_SECTIONS = {
   glance: { view: "console.cl.view" },
   personal: { view: "console.pii.view", edit: "console.pii.edit" },
   body: { view: "console.body.view", edit: "console.body.edit", upload: "console.body.upload" },
+  medical: { view: "console.pii.view" },
   internal: {
     view: "console.rep.view",
     edit: "console.rep.edit",
@@ -62,6 +63,7 @@ const SECTION_LABELS = {
   glance: "At a Glance",
   personal: "Personal Details",
   body: "Body Analytics",
+  medical: "Medical Conditions",
   internal: "Internal Parameters",
   launch: "LAUNCH",
   food: "Food & Water Tracking",

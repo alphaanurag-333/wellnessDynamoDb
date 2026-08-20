@@ -61,17 +61,21 @@ exports.createProgressPhotoController = asyncHandler(async (req, res) => {
 
   const currentStatus = normalizePaidOnboardingStepStatus(user.paidOnboardingStepStatus);
   const nextStatus = markStepDone(currentStatus, "progressPhotos180");
-  const nextWizardStep = wizardStepAfterPhotosComplete(user.paidOnboardingStep);
+  const alreadyCompleted = Boolean(user.paidOnboardingCompleted);
+  const nextWizardStep = alreadyCompleted
+    ? user.paidOnboardingStep || "done"
+    : wizardStepAfterPhotosComplete(user.paidOnboardingStep);
 
   const updated = await updateUser(userId, {
     paidOnboardingStepStatus: nextStatus,
     paidOnboardingStep: nextWizardStep,
-    paidOnboardingCompleted: computePaidOnboardingCompleted(nextStatus),
+    paidOnboardingCompleted:
+      alreadyCompleted || computePaidOnboardingCompleted(nextStatus),
   });
 
   return res.status(201).json({
     status: true,
-    message: "Progress photos saved",
+    message: alreadyCompleted ? "Progress photos updated" : "Progress photos saved",
     data: {
       progressPhoto: toPublicProgressPhoto(photo),
       paidOnboardingStep: updated.paidOnboardingStep,
