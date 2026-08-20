@@ -17,6 +17,12 @@ import {
   moveMaintenanceUserToHeal,
   updateUserPersonalDetails,
 } from "../../api/usersApi.js";
+import {
+  PERSON_NAME_MAX_LEN,
+  blockPersonNameDigitKeyDown,
+  sanitizePersonName,
+  validatePersonName,
+} from "../../utils/personFieldValidation.js";
 
 export { AtAGlanceSection, BodyAnalyticsSection, InternalParametersSection, LaunchSection, FoodSection, BmsSection, NutritionsSection };
 export { HealthProgressSection } from "./HealthProgressSection.jsx";
@@ -166,9 +172,10 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
 
   async function save() {
     if (!canEditPii || !userId || saveBusy) return;
-    const name = String(form.name || "").trim();
-    if (!name) {
-      onToast("Full name is required");
+    const name = sanitizePersonName(form.name).trim();
+    const nameError = validatePersonName(name);
+    if (nameError) {
+      onToast(nameError);
       return;
     }
 
@@ -303,6 +310,18 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
             <option key={opt.id} value={opt.id}>{opt.title}</option>
           ))}
         </select>
+      );
+    }
+    if (f.key === "name") {
+      return (
+        <input
+          className="ua-cp-field__input"
+          value={form.name ?? ""}
+          maxLength={PERSON_NAME_MAX_LEN}
+          disabled={saveBusy}
+          onKeyDown={blockPersonNameDigitKeyDown}
+          onChange={(e) => setForm((prev) => ({ ...prev, name: sanitizePersonName(e.target.value) }))}
+        />
       );
     }
     return (

@@ -159,12 +159,13 @@ function HistoryRow({ entry, expanded, onToggle, onRestore, canRestore }) {
       <div className="ua-cp-rx-history__row">
         <span className="ua-cp-rx-history__date">{entry.dateLabel}</span>
         <div className="ua-cp-rx-history__badges">
-          {entry.status === "current" ? (
+          {entry.status === "current" && entry.unsaved ? (
+            <span className="ua-cp-rx-badge ua-cp-rx-badge--unsaved">CURRENT · UNSAVED</span>
+          ) : entry.status === "current" ? (
             <span className="ua-cp-rx-badge ua-cp-rx-badge--current">CURRENT</span>
           ) : (
             <span className="ua-cp-rx-badge ua-cp-rx-badge--replaced">REPLACED</span>
           )}
-          {entry.unsaved ? <span className="ua-cp-rx-badge ua-cp-rx-badge--unsaved">UNSAVED</span> : null}
         </div>
         <span className="ua-cp-rx-history__title">{entry.title}</span>
         <span className="ua-cp-rx-history__meta">{entry.points} points · by {entry.author}</span>

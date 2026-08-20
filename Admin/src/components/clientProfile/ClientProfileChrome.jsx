@@ -105,7 +105,9 @@ export function ClientProfileSidebar({
       <div className="ua-cp-sidebar__mobile-card">
         <ClientAvatar user={user} />
         <div className="ua-cp-sidebar__mobile-meta">
-          <div className="ua-cp-sidebar__mobile-name">{user?.name || "Client"}</div>
+          <div className="ua-cp-sidebar__mobile-name" title={user?.name || "Client"}>
+            {user?.name || "Client"}
+          </div>
           <div className="ua-cp-sidebar__mobile-sub">{programLabel} · {programs} programs</div>
           <button
             type="button"
@@ -144,7 +146,9 @@ export function ClientProfileSidebar({
           <div className="ua-cp-sidebar__profile-row">
             <ClientAvatar user={user} className="ua-cp-sidebar__avatar--desktop" />
             <div className="ua-cp-sidebar__info">
-              <div className="ua-cp-sidebar__name">{user?.name || "Client"}</div>
+              <div className="ua-cp-sidebar__name" title={user?.name || "Client"}>
+                {user?.name || "Client"}
+              </div>
               <div className="ua-cp-sidebar__sub">
                 {programLabel} · {programs} {programs === 1 ? "program" : "programs"}
               </div>
