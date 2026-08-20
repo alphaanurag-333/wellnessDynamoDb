@@ -9,10 +9,12 @@ import {
   USER_TYPE_TAB_DEFS,
   avatarColor,
   enrichUser,
+  canUndoTierMove,
   conversionPrompt,
   lastActiveMinutes,
   listTierMoveOptions,
   nextTier,
+  normalizeTier,
   prevTier,
   tierLabel,
   tierStyle,
@@ -46,6 +48,13 @@ const STATUS_FILTER_OPTIONS = [
 ];
 
 const EMPTY_TAB_COUNTS = { all: 0, individual: 0, team: 0, app: 0 };
+const USER_NAME_MAX_CHARS = 40;
+
+function truncateUserName(name, max = USER_NAME_MAX_CHARS) {
+  const text = String(name || "").trim();
+  if (text.length <= max) return text;
+  return `${text.slice(0, max)}...`;
+}
 
 function extraQueryForTypeTab(tabId, baseUserTier) {
   if (tabId === "app") return { userTier: baseUserTier || "maintenance" };
@@ -224,6 +233,7 @@ export function UsersPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [sort, setSort] = useState(null);
   const [tierOverrides, setTierOverrides] = useState({});
+  const [tierUndoByKey, setTierUndoByKey] = useState({});
   const [disabledUsers, setDisabledUsers] = useState([]);
   const [deletedUsers, setDeletedUsers] = useState([]);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -607,6 +617,8 @@ export function UsersPage() {
     if (!ask?.user) return;
     const user = ask.user;
     const key = userOverrideKey(user);
+    const fromTier = user.tier;
+    const toTier = ask.direction === "up" ? nextTier(fromTier) : prevTier(fromTier);
     setActionBusy(true);
     try {
       let updated;
@@ -628,12 +640,63 @@ export function UsersPage() {
       setUsers((prev) => prev.map((row) => (
         userOverrideKey(row) === key ? { ...row, ...updated } : row
       )));
+      setTierUndoByKey((prev) => {
+        const next = { ...prev };
+        if (canUndoTierMove(fromTier, toTier)) {
+          next[key] = { fromTier, toTier };
+        } else {
+          delete next[key];
+        }
+        return next;
+      });
       onToast(ask.direction === "up"
         ? `${user.name} converted to ${tierLabel(nextTier(user.tier))}`
         : `${user.name} moved to ${tierLabel(prevTier(user.tier))}`);
       setConversionAsk(null);
     } catch (err) {
       onToast(err?.message || "Could not convert this client");
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const undoTier = async (user) => {
+    const key = userOverrideKey(user);
+    const undo = tierUndoByKey[key];
+    if (!undo || !canUndoTierMove(undo.fromTier, undo.toTier)) return;
+    if (normalizeTier(user.tier) !== normalizeTier(undo.toTier)) {
+      setTierUndoByKey((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      return;
+    }
+    setActionBusy(true);
+    try {
+      let updated;
+      if (normalizeTier(undo.fromTier) === "Seek to Heal" && normalizeTier(undo.toTier) === "Maintenance") {
+        updated = await moveMaintenanceUserToHeal(key);
+      } else {
+        updated = await moveUserToMaintenance(key);
+      }
+      try {
+        const fresh = await fetchUser(key);
+        if (fresh) updated = { ...updated, ...fresh };
+      } catch {
+        // Undo already succeeded; keep the payload if status refresh fails.
+      }
+      setUsers((prev) => prev.map((row) => (
+        userOverrideKey(row) === key ? { ...row, ...updated } : row
+      )));
+      setTierUndoByKey((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      onToast(`${user.name} restored to ${tierLabel(undo.fromTier)}`);
+    } catch (err) {
+      onToast(err?.message || "Could not undo this conversion");
     } finally {
       setActionBusy(false);
     }
@@ -922,6 +985,12 @@ export function UsersPage() {
               const tone = u.off || u.status === "Disabled" ? "red" : u.status === "Active" ? "green" : "muted";
               const tierMoves = canEdit ? listTierMoveOptions(u.tier, u.ageDays) : [];
               const rowKey = userOverrideKey(u) || u.name;
+              const tierUndo = canEdit ? tierUndoByKey[userOverrideKey(u) || rowKey] : null;
+              const showTierUndo = Boolean(
+                tierUndo
+                && normalizeTier(u.tier) === normalizeTier(tierUndo.toTier)
+                && canUndoTierMove(tierUndo.fromTier, tierUndo.toTier),
+              );
 
               return (
                 <div
@@ -933,7 +1002,9 @@ export function UsersPage() {
                   <div className="ua-user-cell">
                     <span className="ua-avatar" style={{ background: avatarColor(i) }}>{userInitials(u.name)}</span>
                     <div className="ua-user-cell__meta">
-                      <div className="ua-user-cell__name" title={u.name}>{u.name}</div>
+                      <div className="ua-user-cell__name" title={u.name || undefined}>
+                        {truncateUserName(u.name)}
+                      </div>
                       <div className="ua-user-cell__sub">
                         <span className="ua-user-cell__email" title={userSubline(u)}>{userSubline(u)}</span>
                         {u.goal ? (
@@ -961,6 +1032,17 @@ export function UsersPage() {
                         {move.label}
                       </button>
                     ))}
+                    {showTierUndo ? (
+                      <button
+                        type="button"
+                        className="ua-tier-action ua-tier-action--undo"
+                        title={`Undo — restore ${tierLabel(tierUndo.fromTier)}`}
+                        disabled={actionBusy}
+                        onClick={() => undoTier(u)}
+                      >
+                        undo
+                      </button>
+                    ) : null}
                   </div>
                   <div onClick={(e) => e.stopPropagation()}>
                     {!canReassignWc ? (

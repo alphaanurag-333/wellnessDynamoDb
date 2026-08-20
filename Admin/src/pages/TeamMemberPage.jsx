@@ -211,7 +211,7 @@ export function TeamMemberPage() {
   const { memberId } = useParams();
   const [searchParams] = useSearchParams();
   const { showToast: onToast } = useOutletContext();
-  const { account, isSuperAdmin, viewAs, sessionUi } = useViewAs();
+  const { account, isSuperAdmin, isAdminView, viewAs, sessionUi } = useViewAs();
   const navigate = useNavigate();
   const permsRef = useRef(null);
   const videoRef = useRef(null);
@@ -379,7 +379,7 @@ export function TeamMemberPage() {
   }
 
   const isOwnProfile = Boolean(account?.id && memberId && account.id === memberId);
-  const canEditContent = viewAs === "admin" || isOwnProfile;
+  const canEditContent = Boolean(isAdminView) || isOwnProfile;
 
   function mapContentFromAccount(nextAccount, previous = []) {
     const intro = nextAccount?.coach_content?.intro || {};

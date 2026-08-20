@@ -165,7 +165,15 @@ function normalizeAppSubscriptionPricing(value) {
     }
 
     ids.add(id);
-    const clientCategory = String(row?.clientCategory ?? "").trim().toLowerCase();
+    const rawType = String(row?.clientCategory ?? row?.type ?? "").trim().toLowerCase();
+    const clientCategory =
+      rawType === "normal" || rawType === "individual" ? "" : rawType;
+    if (clientCategory && clientCategory !== "eagle") {
+      throw new AppError(
+        `Subscription ${index + 1} type must be normal or eagle`,
+        400
+      );
+    }
     const days = row?.days !== undefined ? Number(row.days) : undefined;
     if (days !== undefined && (!Number.isInteger(days) || days <= 0)) {
       throw new AppError(`Subscription ${index + 1} days must be a positive integer`, 400);
@@ -175,7 +183,7 @@ function normalizeAppSubscriptionPricing(value) {
       name,
       amount,
       ...(days !== undefined ? { days } : {}),
-      ...(clientCategory && clientCategory !== "individual" ? { clientCategory } : {}),
+      ...(clientCategory ? { clientCategory } : {}),
     };
   });
 }

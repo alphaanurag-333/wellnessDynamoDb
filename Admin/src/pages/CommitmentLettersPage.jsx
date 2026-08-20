@@ -69,12 +69,17 @@ function downloadLetter(letter) {
   return true;
 }
 
+const COACH_VIEW_ROLES = new Set(["wc", "awc", "trainee"]);
+
 export function CommitmentLettersPage() {
   const { showToast } = useOutletContext();
   const navigate = useNavigate();
-  const { viewAs, account } = useViewAs();
+  const { account, isAdminView, sessionUi, viewAsPersona } = useViewAs();
   const { coachId: routeCoachId } = useParams();
-  const isAdminLibrary = viewAs === "admin";
+  // Use signed-in session / persona — not a stale ua-view-as=admin from a prior login.
+  const coachPersona = viewAsPersona || sessionUi;
+  const isAdminLibrary = Boolean(isAdminView);
+  const isCoachView = COACH_VIEW_ROLES.has(coachPersona);
 
   const [coaches, setCoaches] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -93,7 +98,7 @@ export function CommitmentLettersPage() {
   const activeCoach = coaches.find((row) => row.id === coachId) || null;
   const coachName = activeCoach?.name || account?.name || "Coach";
   const isOwnLetters = Boolean(ownId && coachId && ownId === coachId);
-  const canEdit = isAdminLibrary || ((viewAs === "wc" || viewAs === "awc" || viewAs === "trainee") && isOwnLetters);
+  const canEdit = isAdminLibrary || (isCoachView && isOwnLetters);
 
   useEffect(() => {
     let cancelled = false;
@@ -195,6 +200,10 @@ export function CommitmentLettersPage() {
   }
 
   if (!isAdminLibrary && !ownId) {
+    return <Navigate to={UPDATED_ADMIN_PATHS.dashboard} replace />;
+  }
+
+  if (!isAdminLibrary && !isCoachView) {
     return <Navigate to={UPDATED_ADMIN_PATHS.dashboard} replace />;
   }
 
@@ -545,9 +554,9 @@ export function CommitmentLettersPage() {
   if (loading) {
     return (
       <main className="content ua-page-enter ua-commit">
-        <BackLink
-          label={isAdminLibrary ? "My Content" : "Dashboard"}
-          to={isAdminLibrary ? UPDATED_ADMIN_PATHS.myContent : UPDATED_ADMIN_PATHS.dashboard}
+          <BackLink
+          label={isAdminLibrary || isCoachView ? "My Content" : "Dashboard"}
+          to={isAdminLibrary || isCoachView ? UPDATED_ADMIN_PATHS.myContent : UPDATED_ADMIN_PATHS.dashboard}
         />
         <BrandLoader variant="page" label="Loading commitment letters…" />
       </main>
@@ -558,8 +567,8 @@ export function CommitmentLettersPage() {
     return (
       <main className="content ua-page-enter ua-commit">
         <BackLink
-          label={isAdminLibrary ? "My Content" : "Dashboard"}
-          to={isAdminLibrary ? UPDATED_ADMIN_PATHS.myContent : UPDATED_ADMIN_PATHS.dashboard}
+          label={isAdminLibrary || isCoachView ? "My Content" : "Dashboard"}
+          to={isAdminLibrary || isCoachView ? UPDATED_ADMIN_PATHS.myContent : UPDATED_ADMIN_PATHS.dashboard}
         />
         <div className="ua-commit__head">
           <div className="ua-commit__head-copy">
@@ -574,8 +583,8 @@ export function CommitmentLettersPage() {
   return (
     <main className="content ua-page-enter ua-commit">
       <BackLink
-        label={isAdminLibrary ? "My Content" : "Dashboard"}
-        to={isAdminLibrary ? UPDATED_ADMIN_PATHS.myContent : UPDATED_ADMIN_PATHS.dashboard}
+        label={isAdminLibrary || isCoachView ? "My Content" : "Dashboard"}
+        to={isAdminLibrary || isCoachView ? UPDATED_ADMIN_PATHS.myContent : UPDATED_ADMIN_PATHS.dashboard}
       />
 
       <div className="ua-commit__head">
