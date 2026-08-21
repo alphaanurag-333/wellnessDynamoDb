@@ -317,54 +317,68 @@ function RecipeViewModal({ entry, onClose, onEdit, viewTag = "Health recipe", it
   if (!entry) return null;
   const embed = youtubeEmbedUrl(entry.videoLink);
   const isVideo = entry.apiType === "video" || entry.type === "VIDEO";
+  const mediaHref = isVideo && entry.video ? entry.video : entry.videoLink;
   return (
     <div className="ua-cp-modal-backdrop" onClick={onClose} role="presentation">
       <div className="ua-cfg-rc-view ua-cfg-rc-view--sheet ua-cfg-recipes-view" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="recipe-view-title">
         <div className="ua-cfg-rc-view__head">
-          <div>
+          <div className="ua-cfg-recipes-view__intro">
             <p className="ua-cfg-rc-view__tag">{viewTag}</p>
             <h3 id="recipe-view-title">{asCopyString(entry.title) || `Untitled ${itemNoun.toLowerCase()}`}</h3>
-            <p>{asCopyString(entry.categoryLabel || entry.category) || "Uncategorized"} · {entry.live ? "Live" : "Hidden"}</p>
+            <p className="ua-cfg-recipes-view__meta">
+              <span>{asCopyString(entry.categoryLabel || entry.category) || "Uncategorized"}</span>
+              <span className={`ua-cfg-tf-view__status${entry.live ? " is-live" : ""}`}>
+                {entry.live ? "Live" : "Hidden"}
+              </span>
+            </p>
           </div>
           <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={onClose}>×</button>
         </div>
-        <div className="ua-cfg-rc-view__body">
-        <div className="ua-cfg-rc-view__media">
-          {entry.thumbnail ? <img src={entry.thumbnail} alt="" /> : <div className="ua-cfg-rc-view__media-empty">No cover</div>}
-        </div>
-        {asCopyString(entry.description) ? <p className="ua-cfg-rc-view__copy">{asCopyString(entry.description)}</p> : null}
-        {showSpecs ? <SpecChips specs={entry.videoSpecification} /> : null}
-        <dl className="ua-cfg-rc-view__meta">
-          <div>
-            <dt>Type</dt>
-            <dd>{isVideo ? "Uploaded video" : "YouTube link"}</dd>
-          </div>
-          <div>
-            <dt>{isVideo ? "Video" : "YouTube"}</dt>
-            <dd>
-              {isVideo && entry.video ? (
-                <a href={entry.video} target="_blank" rel="noreferrer">{entry.video}</a>
-              ) : entry.videoLink ? (
-                <a href={entry.videoLink} target="_blank" rel="noreferrer">{entry.videoLink}</a>
-              ) : "—"}
-            </dd>
-          </div>
-          <div>
-            <dt>Created</dt>
-            <dd>{formatRecipeDate(entry.createdAt)}</dd>
-          </div>
-          <div>
-            <dt>Updated</dt>
-            <dd>{formatRecipeDate(entry.updatedAt)}</dd>
-          </div>
-        </dl>
-        {embed ? (
-          <div className="ua-cfg-rc-view__embed">
-            <iframe title={asCopyString(entry.title) || `${itemNoun} video`} src={embed} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
-          </div>
-        ) : isVideo && entry.video ? (
-          <video className="ua-cfg-rc-view__player" src={entry.video} controls preload="metadata" />
-        ) : null}
+        <div className="ua-cfg-recipes-view__body">
+          {entry.thumbnail ? (
+            <div className="ua-cfg-rc-view__media ua-cfg-rc-view__media--photo">
+              <img src={entry.thumbnail} alt="" />
+            </div>
+          ) : (
+            <div className="ua-cfg-rc-view__media">
+              <div className="ua-cfg-rc-view__media-empty">No cover</div>
+            </div>
+          )}
+          {asCopyString(entry.description) ? (
+            <p className="ua-cfg-rc-view__copy">{asCopyString(entry.description)}</p>
+          ) : (
+            <p className="ua-cfg-rc-view__copy ua-cfg-recipes-view__empty">No description yet.</p>
+          )}
+          {showSpecs ? <SpecChips specs={entry.videoSpecification} /> : null}
+          <dl className="ua-cfg-rc-view__meta">
+            <div>
+              <dt>Type</dt>
+              <dd>{isVideo ? "Uploaded video" : "YouTube link"}</dd>
+            </div>
+            <div>
+              <dt>{isVideo ? "Video" : "YouTube"}</dt>
+              <dd>
+                {mediaHref ? (
+                  <a href={mediaHref} target="_blank" rel="noreferrer">{mediaHref}</a>
+                ) : "—"}
+              </dd>
+            </div>
+            <div>
+              <dt>Created</dt>
+              <dd>{formatRecipeDate(entry.createdAt)}</dd>
+            </div>
+            <div>
+              <dt>Updated</dt>
+              <dd>{formatRecipeDate(entry.updatedAt)}</dd>
+            </div>
+          </dl>
+          {embed ? (
+            <div className="ua-cfg-rc-view__embed">
+              <iframe title={asCopyString(entry.title) || `${itemNoun} video`} src={embed} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+            </div>
+          ) : isVideo && entry.video ? (
+            <video className="ua-cfg-rc-view__player" src={entry.video} controls preload="metadata" />
+          ) : null}
         </div>
         <div className="ua-cfg-rc-view__foot">
           <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose}>Close</button>

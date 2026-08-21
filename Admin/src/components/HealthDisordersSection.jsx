@@ -343,34 +343,19 @@ export function HealthDisordersSection({ onToast }) {
         }
         actions={
           loading ? null : (
-            <button style={{    border: "1px dashed rgb(203, 213, 230)",
-              background: "rgb(255, 255, 255)",
-              color: "rgb(94, 106, 210)", height: "32px"}}
+            <button
               type="button"
-              className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
-              disabled={locked}
+              className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-tf-add-btn"
+              disabled={locked || creating}
               onClick={() => {
                 cancelEdit();
-                setShowAdd(true);
+                setCreating(true);
               }}
             >
               + Add disorder
             </button>
           )
         }
-        actions={(
-          <button
-            type="button"
-            className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-tf-add-btn"
-            disabled={locked}
-            onClick={() => {
-              cancelEdit();
-              setCreating(true);
-            }}
-          >
-            + Add disorder
-          </button>
-        )}
       >
         {creating ? (
           <section className="ua-cfg-rc-new">
@@ -425,7 +410,7 @@ export function HealthDisordersSection({ onToast }) {
                 </span>
                 <textarea
                   className="ua-cfg-tf-story ua-cfg-bl-edit__desc"
-                  rows={3}
+                  rows={2}
                   placeholder="Short description shown with this disorder…"
                   value={draft.description}
                   maxLength={DESCRIPTION_MAX_LEN}
@@ -443,30 +428,9 @@ export function HealthDisordersSection({ onToast }) {
                   disabled={locked}
                   onChange={(symptoms) => setDraft((prev) => ({ ...prev, symptoms }))}
                 />
-                <div className="ua-cfg-hd-form__actions">
-                  <button style={{height: "32px"}}
-                    type="button"
-                    className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm"
-                    disabled={locked}
-                    onClick={() => {
-                      setShowAdd(false);
-                      setDraft(EMPTY_DRAFT);
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button style={{height: "32px"}}
-                    type="button"
-                    className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
-                    disabled={locked}
-                    onClick={addItem}
-                  >
-                    {busy ? "Saving…" : "Save"}
-                  </button>
-                </div>
               </div>
               <div className="ua-cfg-bl-new-foot">
-                <button
+                {/* <button
                   type="button"
                   className="ua-cfg-btn ua-cfg-btn--outline"
                   disabled={locked}
@@ -476,7 +440,7 @@ export function HealthDisordersSection({ onToast }) {
                   }}
                 >
                   Cancel
-                </button>
+                </button> */}
                 <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={locked} onClick={addItem}>
                   {busy && creating ? "Saving…" : "Add disorder"}
                 </button>
@@ -544,7 +508,7 @@ export function HealthDisordersSection({ onToast }) {
                               </span>
                               <textarea
                                 className="ua-cfg-tf-story ua-cfg-bl-edit__desc"
-                                rows={3}
+                                rows={2}
                                 placeholder="Enter description"
                                 value={entry.description}
                                 maxLength={DESCRIPTION_MAX_LEN}

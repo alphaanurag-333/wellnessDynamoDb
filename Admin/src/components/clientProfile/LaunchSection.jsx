@@ -377,7 +377,7 @@ function DomainAccordion({
                       </td>
                       <td className="ua-cp-launch-qtable__rating" data-label="Coach rating">
                         {canWrite ? (
-                          <>
+                          <div className="ua-cp-launch-qtable__rating-row">
                             <div className="ua-cp-launch-ratings">
                               {ratingOptions.map((opt) => (
                                 <button
@@ -396,9 +396,9 @@ function DomainAccordion({
                               <span className="ua-cp-launch-qtable__score">{item.earned}</span>
                               <span className="ua-cp-launch-qtable__score-max">/ {item.points}</span>
                             </div>
-                          </>
+                          </div>
                         ) : (
-                          <>
+                          <div className="ua-cp-launch-qtable__rating-row">
                             {selected ? (
                               <span className={`ua-cp-launch-rating-pill ua-cp-launch-rating-pill--${selectedTone}`}>
                                 {selectedLabel}
@@ -409,7 +409,7 @@ function DomainAccordion({
                             <div className="ua-cp-launch-qtable__score-plain">
                               {item.earned} / {item.points}
                             </div>
-                          </>
+                          </div>
                         )}
                       </td>
                       <td className="ua-cp-launch-qtable__weight" data-label="Weightage">
