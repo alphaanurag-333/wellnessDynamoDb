@@ -11,6 +11,7 @@ import {
   TRACKING_ROWS,
   activitiesPayload,
   formatBedtime,
+  formatUnlockTime,
   groupActivities,
   unitLabel,
 } from "../../data/reflectionData.js";
@@ -148,12 +149,10 @@ function ReflectionSectionCard({
   const selectedCount = (section.activities || []).filter((activity) => activity.enabled).length;
 
   return (
-    <div className="ua-cp-reflect-section">
-      <div className="ua-cp-reflect-section__head">
+    <div className={`ua-cp-reflect-section${expanded ? " is-open" : ""}`}>
+      <button type="button" className="ua-cp-reflect-section__head" onClick={onToggle} aria-expanded={expanded}>
         <div className="ua-cp-reflect-section__head-left">
-          <button type="button" className="ua-cp-reflect-section__toggle" onClick={onToggle} aria-expanded={expanded}>
-            <span className={`ua-cp-reflect-section__chev${expanded ? " ua-cp-reflect-section__chev--open" : ""}`} aria-hidden="true">›</span>
-          </button>
+          <span className={`ua-cp-reflect-section__chev${expanded ? " ua-cp-reflect-section__chev--open" : ""}`} aria-hidden="true" />
           <span className="ua-cp-reflect-section__badge">{index + 1}</span>
           <span className="ua-cp-reflect-section__title ua-cp-reflect-section__title--readonly">{section.name}</span>
         </div>
@@ -162,7 +161,7 @@ function ReflectionSectionCard({
             {selectedCount} of {(section.activities || []).length} in app
           </span>
         </div>
-      </div>
+      </button>
       {expanded ? (
         <div className="ua-cp-reflect-section__body">
           {(section.activities || []).map((activity, qIndex) => (
@@ -435,20 +434,25 @@ export function ReflectionSection({ user, onToast }) {
 
       <div className="ua-cp-reflect-callouts">
         <div className="ua-cp-reflect-callout ua-cp-reflect-callout--app">
-          <span className="ua-cp-reflect-callout__icon" aria-hidden="true">🔔</span>
-          <p>
-            Unlocks in the app 30 min before bedtime (~{formatBedtime(bedtime)}) and a reminder is sent every night before bed.
-          </p>
+          <div className="ua-cp-reflect-callout__row">
+            <span className="ua-cp-reflect-callout__icon" aria-hidden="true">🔔</span>
+            <p>
+              Unlocks in the app <strong>30 min before bedtime</strong> (~{formatUnlockTime(bedtime)}) and a reminder is sent{" "}
+              <strong>every night before bed.</strong>
+            </p>
+          </div>
           <div className="ua-cp-reflect-callout__actions">
             <label className="ua-cp-reflect-bedtime">
-              Bedtime
+              <span className="ua-cp-reflect-bedtime__label">Bedtime</span>
+              <span className="ua-cp-reflect-bedtime__value">{formatBedtime(bedtime)}</span>
+              <span className="ua-cp-reflect-bedtime__chev" aria-hidden="true" />
               <input
                 type="time"
                 value={bedtime}
                 disabled={!canEdit || busy}
                 onChange={(e) => setBedtime(e.target.value)}
+                aria-label="Bedtime"
               />
-              <span>{formatBedtime(bedtime)}</span>
             </label>
             <button
               type="button"
@@ -461,10 +465,12 @@ export function ReflectionSection({ user, onToast }) {
           </div>
         </div>
         <div className="ua-cp-reflect-callout ua-cp-reflect-callout--champ">
-          <span className="ua-cp-reflect-callout__icon" aria-hidden="true">🏁</span>
-          <p>
-            Championship counts from the <strong>1st of each month</strong>. <strong>Gut Reset</strong> days are excluded.
-          </p>
+          <div className="ua-cp-reflect-callout__row">
+            <span className="ua-cp-reflect-callout__icon" aria-hidden="true">🏁</span>
+            <p>
+              Championship counts from the <strong>1st of each month</strong>. <strong>Gut Reset</strong> days are excluded.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -483,12 +489,10 @@ export function ReflectionSection({ user, onToast }) {
         <p className="ua-cp-bms-library-hint">{loadError}</p>
       ) : (
         <div className="ua-cp-reflect-sections">
-          <div className="ua-cp-reflect-section">
-            <div className="ua-cp-reflect-section__head">
+          <div className={`ua-cp-reflect-section${expanded.has("tracking") ? " is-open" : ""}`}>
+            <button type="button" className="ua-cp-reflect-section__head" onClick={() => toggleSection("tracking")} aria-expanded={expanded.has("tracking")}>
               <div className="ua-cp-reflect-section__head-left">
-                <button type="button" className="ua-cp-reflect-section__toggle" onClick={() => toggleSection("tracking")} aria-expanded={expanded.has("tracking")}>
-                  <span className={`ua-cp-reflect-section__chev${expanded.has("tracking") ? " ua-cp-reflect-section__chev--open" : ""}`} aria-hidden="true">›</span>
-                </button>
+                <span className={`ua-cp-reflect-section__chev${expanded.has("tracking") ? " ua-cp-reflect-section__chev--open" : ""}`} aria-hidden="true" />
                 <span className="ua-cp-reflect-section__badge">1</span>
                 <span className="ua-cp-reflect-section__title ua-cp-reflect-section__title--readonly">Auto tracking</span>
               </div>
@@ -497,7 +501,7 @@ export function ReflectionSection({ user, onToast }) {
                   <span aria-hidden="true">🔒</span> From app trackers
                 </span>
               </div>
-            </div>
+            </button>
             {expanded.has("tracking") ? (
               <div className="ua-cp-reflect-section__body">
                 {TRACKING_ROWS.map((row, index) => (

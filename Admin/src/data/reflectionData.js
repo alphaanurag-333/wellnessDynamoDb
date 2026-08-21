@@ -80,3 +80,13 @@ export function formatBedtime(value) {
   const display = hour % 12 || 12;
   return `${display}:${m || "00"} ${suffix}`;
 }
+
+export function formatUnlockTime(value) {
+  const raw = value || DEFAULT_BEDTIME;
+  const [h, m] = String(raw).split(":").map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return formatBedtime(raw);
+  const total = ((h * 60 + m) - 30 + 24 * 60) % (24 * 60);
+  const unlockH = Math.floor(total / 60);
+  const unlockM = String(total % 60).padStart(2, "0");
+  return formatBedtime(`${String(unlockH).padStart(2, "0")}:${unlockM}`);
+}

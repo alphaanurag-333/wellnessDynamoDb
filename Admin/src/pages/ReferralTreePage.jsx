@@ -404,7 +404,7 @@ export function ReferralTreePage() {
 
       {showOverview && overviewLoading ? (
         <div className="ua-rt-loading">
-          <BrandLoader />
+          <BrandLoader  variant="page" label="Loading…"/>
         </div>
       ) : null}
 
