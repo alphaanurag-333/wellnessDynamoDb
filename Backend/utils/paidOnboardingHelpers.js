@@ -54,10 +54,6 @@ const SKIP_KEY_TO_WIZARD_STEP = {
   medicalConditions: "medical",
 };
 
-function isStatusComplete(value) {
-  return value === "done" || value === "skipped";
-}
-
 function normalizePaidOnboardingStep(value) {
   if (value == null || value === "") return null;
   let next = String(value).toLowerCase().trim();
@@ -77,10 +73,9 @@ function syncDerivedOnboardingSteps(status) {
   if (status.profileSetup === "done" && status.personalDetails !== "done") {
     status.personalDetails = "done";
   }
-  const allBodyDone = BODY_ANALYTICS_SUBKEYS.every((key) => isStatusComplete(status[key]));
-  if (allBodyDone && status.bodyAnalytics !== "done") {
-    status.bodyAnalytics = "done";
-  }
+  // Parent completes only when every sub-screen is done (skipped does not count).
+  const allBodyDone = BODY_ANALYTICS_SUBKEYS.every((key) => status[key] === "done");
+  status.bodyAnalytics = allBodyDone ? "done" : "pending";
   return status;
 }
 
