@@ -917,9 +917,10 @@ export function HealthProgressSection({ user, onToast }) {
   const [error, setError] = useState("");
   const [savingId, setSavingId] = useState("");
   const [logs, setLogs] = useState(EMPTY_LOGS);
+  const loadedLogKeysRef = useRef(new Set());
 
   const liveCount = trackers.filter((t) => t.enabled).length;
-  const enabledKey = trackers.filter((t) => t.enabled).map((t) => t.featureKey).sort().join(",");
+  const enabledKey = trackers.filter((t) => t.enabled).map((t) => t.featureKey).filter(Boolean).sort().join(",");
 
   const filteredTrackers = useMemo(() => {
     let list = trackers;
@@ -931,7 +932,10 @@ export function HealthProgressSection({ user, onToast }) {
     return list;
   }, [trackers, trackingFilter, search]);
 
-  const enabledTrackers = trackers.filter((t) => t.enabled);
+  const enabledTrackers = useMemo(
+    () => trackers.filter((t) => t.enabled),
+    [trackers],
+  );
   const visibleDetailTrackers = useMemo(() => {
     if (trackingFilter === "all") return enabledTrackers;
     return enabledTrackers.filter((t) => t.id === trackingFilter);
@@ -943,12 +947,15 @@ export function HealthProgressSection({ user, onToast }) {
       setError(isMock ? "Demo profile ids cannot load health progress." : "");
       setTrackers(CLIENT_HEALTH_TRACKERS.map((row) => ({ ...row, enabled: false })));
       setLogs(EMPTY_LOGS);
+      loadedLogKeysRef.current = new Set();
       return undefined;
     }
 
     let cancelled = false;
     setLoading(true);
     setError("");
+    loadedLogKeysRef.current = new Set();
+    setLogs(EMPTY_LOGS);
     fetchHealthProgressSettings(userId)
       .then((result) => {
         if (cancelled || !result) return;
@@ -972,40 +979,63 @@ export function HealthProgressSection({ user, onToast }) {
 
   useEffect(() => {
     if (!userId || isMock || loading) return undefined;
-    const enabled = Object.fromEntries(trackers.map((row) => [row.featureKey, row.enabled]));
+
+    const enabledSet = new Set(enabledKey.split(",").filter(Boolean));
+    const fetchers = [
+      { key: "weightPic", logKey: "weight", enabled: enabledSet.has("weightPic"), load: () => fetchWeightLogs(userId) },
+      { key: "glucose", logKey: "glucose", enabled: enabledSet.has("glucose"), load: () => fetchGlucoseLogs(userId) },
+      { key: "bloodPressure", logKey: "bp", enabled: enabledSet.has("bloodPressure"), load: () => fetchBloodPressureLogs(userId) },
+      { key: "menstrualCycle", logKey: "menstrual", enabled: enabledSet.has("menstrualCycle"), load: () => fetchMenstrualCycleLogs(userId) },
+      { key: "conditionComparison", logKey: "condition", enabled: enabledSet.has("conditionComparison"), load: () => fetchConditionLogs(userId) },
+    ];
+
+    const toClear = fetchers.filter((row) => !row.enabled && loadedLogKeysRef.current.has(row.key));
+    if (toClear.length) {
+      toClear.forEach((row) => loadedLogKeysRef.current.delete(row.key));
+      setLogs((prev) => {
+        const next = { ...prev };
+        toClear.forEach((row) => {
+          next[row.logKey] = [];
+        });
+        return next;
+      });
+    }
+
+    const toLoad = fetchers.filter((row) => row.enabled && !loadedLogKeysRef.current.has(row.key));
+    if (!toLoad.length) return undefined;
+
     let cancelled = false;
-    setLogsLoading(true);
-    Promise.all([
-      enabled.weightPic ? fetchWeightLogs(userId) : Promise.resolve([]),
-      enabled.glucose ? fetchGlucoseLogs(userId) : Promise.resolve([]),
-      enabled.bloodPressure ? fetchBloodPressureLogs(userId) : Promise.resolve([]),
-      enabled.menstrualCycle ? fetchMenstrualCycleLogs(userId) : Promise.resolve([]),
-      enabled.conditionComparison ? fetchConditionLogs(userId) : Promise.resolve([]),
-    ])
-      .then(([weight, glucose, bp, menstrual, condition]) => {
-        if (cancelled) return;
-        setLogs({
-          weight: weight || [],
-          glucose: glucose || [],
-          bp: bp || [],
-          menstrual: menstrual || [],
-          condition: condition || [],
+    const isInitialLoad = loadedLogKeysRef.current.size === 0;
+    // Reserve keys immediately so a second effect pass does not double-fetch.
+    toLoad.forEach((row) => loadedLogKeysRef.current.add(row.key));
+    if (isInitialLoad) setLogsLoading(true);
+
+    Promise.all(toLoad.map((row) => row.load().then((rows) => ({ logKey: row.logKey, key: row.key, rows: rows || [] }))))
+      .then((results) => {
+        if (cancelled) {
+          toLoad.forEach((row) => loadedLogKeysRef.current.delete(row.key));
+          return;
+        }
+        setLogs((prev) => {
+          const next = { ...prev };
+          results.forEach((row) => {
+            next[row.logKey] = row.rows;
+          });
+          return next;
         });
       })
       .catch((err) => {
-        if (!cancelled) {
-          setLogs(EMPTY_LOGS);
-          onToast?.(err.message || "Could not load health progress logs");
-        }
+        toLoad.forEach((row) => loadedLogKeysRef.current.delete(row.key));
+        if (!cancelled) onToast?.(err.message || "Could not load health progress logs");
       })
       .finally(() => {
-        if (!cancelled) setLogsLoading(false);
+        if (!cancelled && isInitialLoad) setLogsLoading(false);
       });
 
     return () => {
       cancelled = true;
     };
-  }, [userId, isMock, loading, enabledKey]);
+  }, [userId, isMock, loading, enabledKey, onToast]);
 
   useEffect(() => {
     if (trackingFilter === "all") return undefined;
@@ -1013,7 +1043,7 @@ export function HealthProgressSection({ user, onToast }) {
     if (!el) return undefined;
     const timer = window.setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "start" }), 120);
     return () => window.clearTimeout(timer);
-  }, [trackingFilter, visibleDetailTrackers.length]);
+  }, [trackingFilter]);
 
   useEffect(() => {
     const programMap = {
@@ -1040,7 +1070,11 @@ export function HealthProgressSection({ user, onToast }) {
       return;
     }
     const nextEnabled = !tracker.enabled;
+    const scrollY = window.scrollY;
     setTrackers((list) => list.map((row) => (row.id === id ? { ...row, enabled: nextEnabled } : row)));
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: scrollY });
+    });
     if (isMock) {
       onToast?.("Demo profiles cannot update trackers.");
       setTrackers((list) => list.map((row) => (row.id === id ? { ...row, enabled: tracker.enabled } : row)));
@@ -1062,6 +1096,9 @@ export function HealthProgressSection({ user, onToast }) {
       onToast?.(err.message || "Could not update tracker");
     } finally {
       setSavingId("");
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: scrollY });
+      });
     }
   }
 
@@ -1072,9 +1109,15 @@ export function HealthProgressSection({ user, onToast }) {
           <h2 className="ua-cp-hptrack__title">Health Progress</h2>
           <p className="ua-cp-hptrack__sub">What this client is tracking. Enable a tracker to show it in their app.</p>
           <span className="ua-cp-hptrack__live">Trackers · {liveCount} of {trackers.length} live in app</span>
-          {loading ? <p className="ua-cp-hptrack__status">Loading health progress…</p> : null}
-          {error && !loading ? <p className="ua-cp-hptrack__status ua-cp-hptrack__status--error">{error}</p> : null}
-          {logsLoading && !loading ? <p className="ua-cp-hptrack__status">Loading tracker history…</p> : null}
+          <p className={`ua-cp-hptrack__status${error && !loading ? " ua-cp-hptrack__status--error" : ""}${!(loading || error || logsLoading) ? " is-empty" : ""}`}>
+            {loading
+              ? "Loading health progress…"
+              : error
+                ? error
+                : logsLoading
+                  ? "Loading tracker history…"
+                  : "\u00a0"}
+          </p>
         </div>
         <label className="ua-cp-hptrack__filter">
           <span>Tracking</span>
@@ -1104,7 +1147,9 @@ export function HealthProgressSection({ user, onToast }) {
                   <strong>{tracker.name}</strong>
                   <span> · {menstrualLocked ? "Female clients only" : tracker.category}</span>
                 </div>
-                {tracker.enabled ? <span className="ua-cp-hptrack-list__status">Live in app</span> : null}
+                <span className={`ua-cp-hptrack-list__status${tracker.enabled ? "" : " is-off"}`}>
+                  Live in app
+                </span>
                 <button
                   type="button"
                   className={`ua-toggle${tracker.enabled ? " ua-toggle--on" : ""}`}

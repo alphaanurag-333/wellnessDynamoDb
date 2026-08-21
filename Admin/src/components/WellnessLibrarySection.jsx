@@ -13,6 +13,7 @@ import {
   WELLNESS_LIBRARY_TYPES,
   WELLNESS_AUDIO_ACCEPT,
   WELLNESS_AUDIO_MAX_MB,
+  WELLNESS_TITLE_MAX_LEN,
   WELLNESS_VIDEO_ACCEPT,
   WELLNESS_VIDEO_MAX_MB,
   displayTypeLabel,
@@ -30,6 +31,19 @@ import { ConfirmDialog } from "./ConfirmDialog.jsx";
 const IMAGE_ACCEPT = "image/jpeg,image/png,image/gif,image/webp,image/jpg";
 const TIME_HINT = "Enter time as 5:12 (minutes:seconds), not a number";
 const SEARCH_DEBOUNCE_MS = 400;
+
+function CharHint({ value, max }) {
+  const length = String(value || "").length;
+  return (
+    <span className={`ua-cfg-dd-char${length >= max ? " is-limit" : ""}`}>
+      {length}/{max}
+    </span>
+  );
+}
+
+function clampTitle(raw) {
+  return String(raw ?? "").slice(0, WELLNESS_TITLE_MAX_LEN);
+}
 const TYPE_FILTERS = [
   { value: "", label: "All types" },
   { value: "ytlink", label: "YouTube" },
@@ -463,6 +477,7 @@ export function WellnessLibrarySection({ kind, onToast }) {
   async function saveEditedItem(item) {
     if (!item?.id || busy) return;
     const next = snapshotItem(item);
+    next.title = clampTitle(next.title);
     if (!next.title) {
       onToast("Title is required");
       return;
@@ -607,7 +622,7 @@ export function WellnessLibrarySection({ kind, onToast }) {
   }
 
   async function addItem() {
-    const title = draft.title.trim();
+    const title = clampTitle(draft.title.trim());
     const type = resolveLibraryType(draft.type);
     const ytLink = draft.ytLink.trim();
     let duration = draft.duration.trim();
@@ -770,13 +785,20 @@ export function WellnessLibrarySection({ kind, onToast }) {
               </div>
               <div className="ua-cfg-rc-new__fields">
                 <label className="ua-cfg-rc-field">
-                  <span>Title</span>
+                  <span className="ua-cfg-rc-field__head">
+                    <span>Title</span>
+                    <CharHint value={draft.title} max={WELLNESS_TITLE_MAX_LEN} />
+                  </span>
                   <input
                     className="ua-cfg-vh-input"
                     placeholder="Title"
                     value={draft.title}
+                    maxLength={WELLNESS_TITLE_MAX_LEN}
                     disabled={locked}
-                    onChange={(event) => setDraft((prev) => ({ ...prev, title: event.target.value }))}
+                    onChange={(event) => setDraft((prev) => ({
+                      ...prev,
+                      title: clampTitle(event.target.value),
+                    }))}
                   />
                 </label>
                 <label className="ua-cfg-rc-field">
@@ -898,12 +920,16 @@ export function WellnessLibrarySection({ kind, onToast }) {
                     <div className="ua-cfg-rc-item__head">
                       <div className="ua-cfg-rc-item__identity">
                         {editing ? (
-                          <input
-                            className="ua-cfg-vh-input ua-cfg-rc-title"
-                            value={item.title}
-                            disabled={locked}
-                            onChange={(event) => updateItem(item.id, { title: event.target.value })}
-                          />
+                          <div className="ua-cfg-rc-title-edit">
+                            <input
+                              className="ua-cfg-vh-input ua-cfg-rc-title"
+                              value={item.title}
+                              maxLength={WELLNESS_TITLE_MAX_LEN}
+                              disabled={locked}
+                              onChange={(event) => updateItem(item.id, { title: clampTitle(event.target.value) })}
+                            />
+                            <CharHint value={item.title} max={WELLNESS_TITLE_MAX_LEN} />
+                          </div>
                         ) : (
                           <strong>{item.title}</strong>
                         )}

@@ -10,6 +10,10 @@ const {
   normalizeType,
 } = require("../../models/healthDisorderModel");
 
+const TITLE_MAX_LEN = 100;
+const DESCRIPTION_MAX_LEN = 500;
+const SYMPTOM_MAX_LEN = 120;
+
 function parseSymptomsInput(input) {
   if (Array.isArray(input)) return normalizeSymptoms(input);
   if (typeof input === "string") {
@@ -50,8 +54,15 @@ exports.createHealthDisorderController = asyncHandler(async (req, res) => {
   const symptoms = parseSymptomsInput(req.body.symptoms);
 
   if (!title) throw new AppError("title is required", 400);
+  if (title.length > TITLE_MAX_LEN) throw new AppError(`title cannot exceed ${TITLE_MAX_LEN} characters`, 400);
   if (!description) throw new AppError("description is required", 400);
+  if (description.length > DESCRIPTION_MAX_LEN) {
+    throw new AppError(`description cannot exceed ${DESCRIPTION_MAX_LEN} characters`, 400);
+  }
   if (!symptoms.length) throw new AppError("symptoms is required (non-empty array)", 400);
+  if (symptoms.some((row) => String(row).length > SYMPTOM_MAX_LEN)) {
+    throw new AppError(`each symptom cannot exceed ${SYMPTOM_MAX_LEN} characters`, 400);
+  }
   if (!["active", "inactive"].includes(status)) {
     throw new AppError("status must be active or inactive", 400);
   }
@@ -83,16 +94,23 @@ exports.updateHealthDisorderController = asyncHandler(async (req, res) => {
   if (req.body.title !== undefined) {
     const title = String(req.body.title || "").trim();
     if (!title) throw new AppError("title cannot be empty", 400);
+    if (title.length > TITLE_MAX_LEN) throw new AppError(`title cannot exceed ${TITLE_MAX_LEN} characters`, 400);
     updates.title = title;
   }
   if (req.body.description !== undefined) {
     const description = String(req.body.description || "").trim();
     if (!description) throw new AppError("description cannot be empty", 400);
+    if (description.length > DESCRIPTION_MAX_LEN) {
+      throw new AppError(`description cannot exceed ${DESCRIPTION_MAX_LEN} characters`, 400);
+    }
     updates.description = description;
   }
   if (req.body.symptoms !== undefined) {
     const symptoms = parseSymptomsInput(req.body.symptoms);
     if (!symptoms.length) throw new AppError("symptoms cannot be empty", 400);
+    if (symptoms.some((row) => String(row).length > SYMPTOM_MAX_LEN)) {
+      throw new AppError(`each symptom cannot exceed ${SYMPTOM_MAX_LEN} characters`, 400);
+    }
     updates.symptoms = symptoms;
   }
   if (req.body.type !== undefined) {

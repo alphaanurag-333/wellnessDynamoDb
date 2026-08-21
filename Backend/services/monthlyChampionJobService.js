@@ -10,12 +10,26 @@ const { dispatchMonthlyChampionNotification } = require("./notificationDispatchS
 const { emitMonthlyChampion } = require("./adminActivityService");
 const { getUserById } = require("../models/userModel");
 
+const IST_TZ = "Asia/Kolkata";
+
+/** Previous calendar month in Asia/Kolkata (matches cron timezone). */
 function previousMonthYear(reference = new Date()) {
-  const year = reference.getUTCFullYear();
-  const month = reference.getUTCMonth(); // 0-based; subtracting 1 month from "this month" index
-  const prevDate = new Date(Date.UTC(year, month - 1, 1));
-  const y = prevDate.getUTCFullYear();
-  const m = String(prevDate.getUTCMonth() + 1).padStart(2, "0");
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: IST_TZ,
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(reference);
+  const year = Number(parts.find((part) => part.type === "year")?.value);
+  const month = Number(parts.find((part) => part.type === "month")?.value);
+  if (!year || !month) {
+    const fallback = new Date(Date.UTC(reference.getUTCFullYear(), reference.getUTCMonth() - 1, 1));
+    const y = fallback.getUTCFullYear();
+    const m = String(fallback.getUTCMonth() + 1).padStart(2, "0");
+    return `${y}-${m}`;
+  }
+  const prev = new Date(Date.UTC(year, month - 2, 1));
+  const y = prev.getUTCFullYear();
+  const m = String(prev.getUTCMonth() + 1).padStart(2, "0");
   return `${y}-${m}`;
 }
 

@@ -21,6 +21,8 @@ const { parseVideoSpecificationFromBody } = require("../../utils/mediaFieldAlias
 const { dispatchBroadcastNotification } = require("../../services/notificationDispatchService");
 
 const S3_FOLDER = "health-recipe";
+const TITLE_MAX_LEN = 100;
+const DESCRIPTION_MAX_LEN = 500;
 
 function resolveRecipeVideoField(body, uploadedVideo, type) {
   if (type === "ytlink") {
@@ -90,7 +92,11 @@ exports.createHealthRecipeController = asyncHandler(async (req, res) => {
   const status = String(req.body.status || "active").trim().toLowerCase();
 
   if (!title) throw new AppError("title is required", 400);
+  if (title.length > TITLE_MAX_LEN) throw new AppError(`title cannot exceed ${TITLE_MAX_LEN} characters`, 400);
   if (!description) throw new AppError("description is required", 400);
+  if (description.length > DESCRIPTION_MAX_LEN) {
+    throw new AppError(`description cannot exceed ${DESCRIPTION_MAX_LEN} characters`, 400);
+  }
   if (!thumbnail) throw new AppError("thumbnail is required", 400);
   if (!HEALTH_RECIPE_ALLOWED_TYPE.includes(rawType)) throw new AppError("type must be ytlink or video", 400);
   if (!HEALTH_RECIPE_ALLOWED_STATUS.includes(status)) throw new AppError("status must be active or inactive", 400);
@@ -141,11 +147,15 @@ exports.updateHealthRecipeController = asyncHandler(async (req, res) => {
   if (req.body.title !== undefined) {
     const title = String(req.body.title || "").trim();
     if (!title) throw new AppError("title cannot be empty", 400);
+    if (title.length > TITLE_MAX_LEN) throw new AppError(`title cannot exceed ${TITLE_MAX_LEN} characters`, 400);
     updates.title = title;
   }
   if (req.body.description !== undefined) {
     const description = String(req.body.description || "").trim();
     if (!description) throw new AppError("description cannot be empty", 400);
+    if (description.length > DESCRIPTION_MAX_LEN) {
+      throw new AppError(`description cannot exceed ${DESCRIPTION_MAX_LEN} characters`, 400);
+    }
     updates.description = description;
   }
   if (req.body.status !== undefined) {

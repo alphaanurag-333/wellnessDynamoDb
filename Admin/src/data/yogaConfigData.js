@@ -1,7 +1,13 @@
-import { recipeCategoryLabel } from "./recipesConfigData.js";
+import {
+  RECIPE_DESCRIPTION_MAX_LEN,
+  RECIPE_TITLE_MAX_LEN,
+  recipeCategoryLabel,
+} from "./recipesConfigData.js";
 
 export const YOGA_PAGE_SIZE = 20;
 export const YOGA_CATEGORY_SLUG = "yoga-category";
+export const YOGA_TITLE_MAX_LEN = RECIPE_TITLE_MAX_LEN;
+export const YOGA_DESCRIPTION_MAX_LEN = RECIPE_DESCRIPTION_MAX_LEN;
 
 export const YOGA_CATEGORIES = [
   "Morning flow",

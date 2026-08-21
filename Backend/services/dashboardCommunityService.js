@@ -301,29 +301,43 @@ async function loadChampionRankings(allowedIds) {
   const liveMonth = currentMonthYear();
   let monthYear = liveMonth;
   let rows = [];
+  let source = "live";
 
+  // Prefer MonthlyChampionPost (same source as APK / public feed) so dashboard
+  // matches what clients see after the monthly job runs.
   try {
-    const averaged = await computeUserAveragesForMonth(liveMonth);
-    rows = (averaged || [])
-      .filter((row) => row?.userId && (!allowedIds || allowedIds.has(String(row.userId).trim())))
-      .map((row) => ({
-        userId: String(row.userId).trim(),
-        totalScore: inferredTotalScore(row),
-        averageScore: Number(row.averageScore) || 0,
-        daysSubmitted: Number(row.daysSubmitted) || 0,
-      }));
+    const latest = await findLatestMonthWithChampions();
+    if (latest) {
+      const fromPosts = await rankingsFromChampionPosts(latest, allowedIds);
+      if (fromPosts.rows.length) {
+        monthYear = fromPosts.monthYear || latest;
+        rows = fromPosts.rows;
+        source = "posts";
+      }
+    }
   } catch (err) {
-    console.warn("[dashboardCommunity] live rankings failed:", err?.message || err);
+    console.warn("[dashboardCommunity] champion posts failed:", err?.message || err);
   }
 
   if (!rows.length) {
-    const latest = await findLatestMonthWithChampions();
-    const fallback = await rankingsFromChampionPosts(latest, allowedIds);
-    monthYear = fallback.monthYear || liveMonth;
-    rows = fallback.rows;
+    try {
+      const averaged = await computeUserAveragesForMonth(liveMonth);
+      rows = (averaged || [])
+        .filter((row) => row?.userId && (!allowedIds || allowedIds.has(String(row.userId).trim())))
+        .map((row) => ({
+          userId: String(row.userId).trim(),
+          totalScore: inferredTotalScore(row),
+          averageScore: Number(row.averageScore) || 0,
+          daysSubmitted: Number(row.daysSubmitted) || 0,
+        }));
+      monthYear = liveMonth;
+      source = "live";
+    } catch (err) {
+      console.warn("[dashboardCommunity] live rankings failed:", err?.message || err);
+    }
   }
 
-  return { monthYear, rows };
+  return { monthYear, rows, source };
 }
 
 async function loadChampionsAndLeaderboard(allowedIds) {

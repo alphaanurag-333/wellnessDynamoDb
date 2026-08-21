@@ -1,4 +1,5 @@
 export const WELLNESS_LIBRARY_PAGE_SIZE = 20;
+export const WELLNESS_TITLE_MAX_LEN = 100;
 export const WELLNESS_VIDEO_MAX_MB = 25;
 export const WELLNESS_AUDIO_MAX_MB = 25;
 export const WELLNESS_VIDEO_ACCEPT = "video/mp4,video/webm,video/quicktime,video/x-msvideo";

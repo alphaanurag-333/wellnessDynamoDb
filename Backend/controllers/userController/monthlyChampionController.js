@@ -9,7 +9,6 @@ const {
 } = require("../../models/monthlyChampionPostModel");
 const { listMonthlyChampionPostComments } = require("../../models/monthlyChampionPostCommentModel");
 const { getUserById, toPublicUser } = require("../../models/userModel");
-const { todayDateOnly } = require("../../utils/dateOnly");
 const { getCurrentMonthStandingForUser } = require("../../services/monthlyChampionScoreService");
 
 async function enrichPost(post) {
@@ -53,7 +52,11 @@ exports.getMyMonthlyChampionStandingController = asyncHandler(async (req, res) =
   const userId = req.auth?.sub;
   if (!userId) throw new AppError("Unauthorized", 401);
 
-  const monthYear = todayDateOnly().slice(0, 7);
+  const monthYear = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+  }).format(new Date());
   const standing = await getCurrentMonthStandingForUser(userId, monthYear);
 
   return res.status(200).json({

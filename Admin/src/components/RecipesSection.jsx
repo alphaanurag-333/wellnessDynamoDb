@@ -12,8 +12,11 @@ import {
   mapDropdownCategoryOptions,
   RECIPE_CATEGORIES,
   RECIPE_CATEGORY_SLUG,
+  RECIPE_DESCRIPTION_MAX_LEN,
   RECIPE_GALLERY_OWNERS,
   RECIPE_PAGE_SIZE,
+  RECIPE_TITLE_MAX_LEN,
+  clampRecipeText,
   formatRecipeDate,
   persistRecipeCategory,
   recipeCategoryLabel,
@@ -28,6 +31,15 @@ import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
 
 const RECIPE_SEARCH_DEBOUNCE_MS = 400;
+
+function CharHint({ value, max }) {
+  const length = String(value || "").length;
+  return (
+    <span className={`ua-cfg-dd-char${length >= max ? " is-limit" : ""}`}>
+      {length}/{max}
+    </span>
+  );
+}
 const CROP_RATIOS = ["Original", "1:1", "4:3", "3:4", "16:9"];
 const CROP_ASPECT = {
   Original: [16, 9],
@@ -873,8 +885,8 @@ export function RecipesSection({
   }
 
   async function addItem() {
-    const title = asCopyString(draft.title).trim();
-    const description = asCopyString(draft.description).trim();
+    const title = clampRecipeText(asCopyString(draft.title).trim(), RECIPE_TITLE_MAX_LEN);
+    const description = clampRecipeText(asCopyString(draft.description).trim(), RECIPE_DESCRIPTION_MAX_LEN);
     const category = asCopyString(draft.category).trim();
     if (!title || !description) {
       onToast("Add a title and description");
@@ -958,8 +970,8 @@ export function RecipesSection({
       onToast(`${itemNoun} saved`);
       return;
     }
-    const title = asCopyString(entry.title).trim();
-    const description = asCopyString(entry.description).trim();
+    const title = clampRecipeText(asCopyString(entry.title).trim(), RECIPE_TITLE_MAX_LEN);
+    const description = clampRecipeText(asCopyString(entry.description).trim(), RECIPE_DESCRIPTION_MAX_LEN);
     const category = persist
       ? persistRecipeCategory(asCopyString(entry.category).trim(), categoryOptions)
       : asCopyString(entry.category).trim();
@@ -1296,27 +1308,41 @@ export function RecipesSection({
                   />
                 </label>
                 <label className="ua-cfg-rc-field">
-                  <span>Title</span>
+                  <span className="ua-cfg-rc-field__head">
+                    <span>Title</span>
+                    <CharHint value={draft.title} max={RECIPE_TITLE_MAX_LEN} />
+                  </span>
                   <input
                     className="ua-cfg-vh-input"
                     placeholder={titlePlaceholder}
                     value={asCopyString(draft.title)}
+                    maxLength={RECIPE_TITLE_MAX_LEN}
                     disabled={disabled}
-                    onChange={(event) => setDraft((prev) => ({ ...prev, title: event.target.value }))}
+                    onChange={(event) => setDraft((prev) => ({
+                      ...prev,
+                      title: clampRecipeText(event.target.value, RECIPE_TITLE_MAX_LEN),
+                    }))}
                   />
                 </label>
                 {persist && !categoryOptions.length ? (
                   <p className="ua-cfg-panel__sub ua-cfg-rc-new__hint">{copy?.dropdownHint || "Add categories in Configs → Dropdowns first."}</p>
                 ) : null}
                 <label className="ua-cfg-rc-field ua-cfg-rc-field--wide">
-                  <span>Description</span>
+                  <span className="ua-cfg-rc-field__head">
+                    <span>Description</span>
+                    <CharHint value={draft.description} max={RECIPE_DESCRIPTION_MAX_LEN} />
+                  </span>
                   <textarea
                     className="ua-cfg-tf-story"
                     rows={3}
                     placeholder={descriptionPlaceholder}
                     value={asCopyString(draft.description)}
+                    maxLength={RECIPE_DESCRIPTION_MAX_LEN}
                     disabled={disabled}
-                    onChange={(event) => setDraft((prev) => ({ ...prev, description: event.target.value }))}
+                    onChange={(event) => setDraft((prev) => ({
+                      ...prev,
+                      description: clampRecipeText(event.target.value, RECIPE_DESCRIPTION_MAX_LEN),
+                    }))}
                   />
                 </label>
                 {showSpecs ? (
@@ -1468,14 +1494,20 @@ export function RecipesSection({
                       <div className="ua-cfg-rc-item__identity">
                         {!persist ? <span className="ua-cfg-bn-live__handle" aria-hidden="true">⠿</span> : null}
                         {editing ? (
-                          <input
-                            className="ua-cfg-vh-input ua-cfg-rc-title"
-                            placeholder={titlePlaceholder}
-                            aria-label="Recipe title"
-                            value={asCopyString(entry.title)}
-                            disabled={disabled}
-                            onChange={(event) => updateItem(entry.id, { title: event.target.value })}
-                          />
+                          <div className="ua-cfg-rc-title-edit">
+                            <input
+                              className="ua-cfg-vh-input ua-cfg-rc-title"
+                              placeholder={titlePlaceholder}
+                              aria-label="Recipe title"
+                              value={asCopyString(entry.title)}
+                              maxLength={RECIPE_TITLE_MAX_LEN}
+                              disabled={disabled}
+                              onChange={(event) => updateItem(entry.id, {
+                                title: clampRecipeText(event.target.value, RECIPE_TITLE_MAX_LEN),
+                              })}
+                            />
+                            <CharHint value={entry.title} max={RECIPE_TITLE_MAX_LEN} />
+                          </div>
                         ) : (
                           <strong>{asCopyString(entry.title)}</strong>
                         )}
@@ -1588,15 +1620,24 @@ export function RecipesSection({
                     </div>
                     {editing ? (
                       <div className="ua-cfg-rc-edit">
-                        <textarea
-                          className="ua-cfg-tf-story ua-cfg-rc-edit__desc"
-                          rows={3}
-                          placeholder={descriptionPlaceholder}
-                          aria-label="Recipe description"
-                          value={asCopyString(entry.description)}
-                          disabled={disabled}
-                          onChange={(event) => updateItem(entry.id, { description: event.target.value })}
-                        />
+                        <div className="ua-cfg-rc-edit__desc-wrap">
+                          <div className="ua-cfg-rc-field__head">
+                            <span>Description</span>
+                            <CharHint value={entry.description} max={RECIPE_DESCRIPTION_MAX_LEN} />
+                          </div>
+                          <textarea
+                            className="ua-cfg-tf-story ua-cfg-rc-edit__desc"
+                            rows={3}
+                            placeholder={descriptionPlaceholder}
+                            aria-label="Recipe description"
+                            value={asCopyString(entry.description)}
+                            maxLength={RECIPE_DESCRIPTION_MAX_LEN}
+                            disabled={disabled}
+                            onChange={(event) => updateItem(entry.id, {
+                              description: clampRecipeText(event.target.value, RECIPE_DESCRIPTION_MAX_LEN),
+                            })}
+                          />
+                        </div>
                         {persist ? (
                           <div className="ua-cfg-rc-edit__media">
                             <div className="ua-cfg-rc-edit__media-main">

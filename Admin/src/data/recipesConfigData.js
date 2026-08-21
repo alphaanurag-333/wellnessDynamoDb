@@ -1,9 +1,15 @@
 export const RECIPE_PAGE_SIZE = 20;
 export const RECIPE_CATEGORY_SLUG = "recipe-category";
+export const RECIPE_TITLE_MAX_LEN = 100;
+export const RECIPE_DESCRIPTION_MAX_LEN = 500;
 export const RECIPE_IMAGE_MAX_MB = 25;
 export const RECIPE_VIDEO_MAX_MB = 25;
 export const RECIPE_IMAGE_MAX_BYTES = RECIPE_IMAGE_MAX_MB * 1024 * 1024;
 export const RECIPE_VIDEO_MAX_BYTES = RECIPE_VIDEO_MAX_MB * 1024 * 1024;
+
+export function clampRecipeText(raw, maxLen) {
+  return String(raw ?? "").slice(0, maxLen);
+}
 
 export const RECIPE_CATEGORIES = [
   "Fat loss",
