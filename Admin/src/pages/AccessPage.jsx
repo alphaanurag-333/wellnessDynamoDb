@@ -1228,9 +1228,28 @@ function RolesPermissionsTab({ onToast }) {
 
         <div className="ua-ac-matrix">
           <div className="ua-ac-matrix__head">
-            <div>
-              <div className="ua-ac-matrix__title">Permission baseline</div>
-              <p className="ua-ac-matrix__hint">Tap a toggle to grant or revoke. Dashes mean the action does not apply.</p>
+            <div className="ua-ac-matrix__head-main">
+              <div className="ua-ac-matrix__title-row">
+                <div className="ua-ac-matrix__title">
+                  {activeSection
+                    ? `${AC_SECTIONS.find((s) => s.id === activeSection)?.label || "Section"} permissions`
+                    : "Permission baseline"}
+                </div>
+                {activeSection ? (
+                  <button
+                    type="button"
+                    className="ua-ac-matrix__show-all"
+                    onClick={() => setActiveSection(null)}
+                  >
+                    Show all sections
+                  </button>
+                ) : null}
+              </div>
+              <p className="ua-ac-matrix__hint">
+                {activeSection
+                  ? "Tap a toggle to grant or revoke. Dashes mean the action does not apply."
+                  : "Tap a section on the left to focus its permissions, or toggle actions below."}
+              </p>
             </div>
             <div className="ua-ac-legend">
               <span>
