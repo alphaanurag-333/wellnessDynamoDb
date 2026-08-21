@@ -69,6 +69,8 @@ function toPublicClientAppConfig(doc) {
     app_details: config.app_details ?? "",
     app_footer_text: config.app_footer_text ?? "",
     payment_gateways,
+    /** When false, clients hide Hindi and force English */
+    multilang: config.multilang === true || String(config.multilang || "").toLowerCase() === "true",
     updatedAt: config.updatedAt,
   };
 }
