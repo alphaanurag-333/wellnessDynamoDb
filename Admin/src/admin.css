@@ -16515,6 +16515,10 @@ scrollbar-width: thin;
   border-color: #5e6ad2;
 }
 
+.updated-admin .ua-cp-launch-controls--prakriti {
+  margin: -6px 0 0;
+}
+
 .updated-admin .ua-cp-launch-controls--prakriti .ua-cp-launch-controls__attempt {
   color: #6d4fd0;
   background: #f0ecfd;
@@ -16833,7 +16837,7 @@ scrollbar-width: thin;
   width: 28%;
 }
 
-.updated-admin .ua-cp-launch-qtable__col-weight {
+.updated-admin .ua-cp-launch-qtable thead th.ua-cp-launch-qtable__col-weight {
   width: 12%;
   text-align: right;
 }
@@ -16845,13 +16849,19 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cp-launch-qtable__q {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px;
   font-weight: 650;
   color: #16233f;
   line-height: 1.45;
 }
 
 .updated-admin .ua-cp-launch-qtable__q-text {
-  display: inline;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 
 .updated-admin .ua-cp-launch-qtable__reply {
@@ -16887,10 +16897,10 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cp-launch-qtable__n {
-  display: inline-block;
-  margin-right: 6px;
+  flex: 0 0 auto;
   color: #8a97ac;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .updated-admin .ua-cp-launch-qtable__info {
@@ -16898,7 +16908,7 @@ scrollbar-width: thin;
   place-items: center;
   width: 16px;
   height: 16px;
-  margin-left: 6px;
+  margin-left: 0;
   border-radius: 50%;
   border: 1px solid #cdd5e6;
   background: #fff;
@@ -16909,7 +16919,7 @@ scrollbar-width: thin;
   cursor: pointer;
   font-family: inherit;
   padding: 0;
-  flex-shrink: 0;
+  flex: 0 0 auto;
 }
 
 .updated-admin .ua-cp-launch-qtable__info:hover {
@@ -51783,16 +51793,42 @@ scrollbar-width: thin;
     color: #8a97ac;
   }
 
+  .updated-admin .ua-cp-launch .ua-cp-launch-qtable__q {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .updated-admin .ua-cp-launch .ua-cp-launch-qtable__q[data-label]::before {
+    flex: 0 0 100%;
+    margin-bottom: 6px;
+  }
+
   .updated-admin .ua-cp-launch .ua-cp-launch-qtable__q-text {
     overflow-wrap: break-word;
   }
 
+  .updated-admin .ua-cp-launch .ua-cp-launch-qtable__n {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
   .updated-admin .ua-cp-launch .ua-cp-launch-qtable__weight {
-    text-align: left;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    text-align: right;
+  }
+
+  .updated-admin .ua-cp-launch .ua-cp-launch-qtable__weight[data-label]::before {
+    margin-bottom: 0;
   }
 
   .updated-admin .ua-cp-launch .ua-cp-launch-qtable__weight span {
-    text-align: left;
+    margin-left: auto;
+    text-align: right;
   }
 
   .updated-admin .ua-cp-launch .ua-cp-launch-qtable__rating {
