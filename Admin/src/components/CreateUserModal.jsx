@@ -52,7 +52,7 @@ function emptyForm() {
   return {
     name: "",
     email: "",
-    dob: "",
+    dob: maxAllowedDob(),
     gender: "male",
     whatsappSameAsMobile: true,
     phoneCountryCode: "+91",
@@ -357,7 +357,11 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
                 value={form.dob}
                 max={maxAllowedDob()}
                 disabled={busy}
-                onChange={(e) => patch({ dob: e.target.value })}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  const dobMax = maxAllowedDob();
+                  patch({ dob: next && next > dobMax ? dobMax : next });
+                }}
               />
             </Field>
             <Field label="Gender" required error={errors.gender}>

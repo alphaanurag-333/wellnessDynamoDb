@@ -8457,6 +8457,7 @@
 
 .updated-admin .ua-teams-create .ua-cfg-select.is-open {
   z-index: 40;
+  position: relative;
 }
 
 .updated-admin .ua-teams-create .ua-cfg-select__trigger {
@@ -8493,14 +8494,26 @@
   transform: rotate(180deg);
 }
 
+.updated-admin .ua-teams-create__body:has(.ua-cfg-select.is-open) {
+  overflow: visible;
+  position: relative;
+  z-index: 5;
+}
+
 .updated-admin .ua-teams-create .ua-cfg-select__menu {
+  top: calc(100% + 6px);
+  bottom: auto;
   left: 0;
   right: 0;
+  z-index: 50;
   width: 100%;
   min-width: 100%;
   max-width: none;
-  max-height: 220px;
+  /* 4 options: menu pad 4+4 + 4 × (~36px option) */
+  max-height: calc(8px + 4 * 36px);
   padding: 4px;
+  overflow-x: hidden;
+  overflow-y: auto;
   box-sizing: border-box;
 }
 
@@ -8512,6 +8525,7 @@
 
 .updated-admin .ua-teams-create .ua-cfg-select__option {
   width: 100%;
+  min-height: 36px;
   box-sizing: border-box;
   border-radius: 8px;
 }
@@ -8527,6 +8541,8 @@
   border-top: 1px solid #edf1f7;
   background: #fff;
   flex-shrink: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .updated-admin .ua-teams-create__foot .ua-cfg-btn {
