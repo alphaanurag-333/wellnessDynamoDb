@@ -58,6 +58,7 @@ import { DynamicLeadershipSection } from "../components/DynamicLeadershipSection
 import { DynamicWellnessTeamSection } from "../components/DynamicWellnessTeamSection.jsx";
 import { DynamicGoogleReviewSection } from "../components/DynamicGoogleReviewSection.jsx";
 import { DropdownsSection } from "../components/DropdownsSection.jsx";
+import { HealthDisordersSection } from "../components/HealthDisordersSection.jsx";
 import { RecipesSection } from "../components/RecipesSection.jsx";
 import { YogaSection } from "../components/YogaSection.jsx";
 import { WellnessLibrarySection } from "../components/WellnessLibrarySection.jsx";
@@ -1666,6 +1667,8 @@ export function ConfigDetailPage() {
                 ? (grStats ?? []).some((entry) => String(entry.value || "").trim())
               : item.id === "common-dropdowns"
                 ? dropdownLists.some((list) => list.options.some((entry) => entry.on))
+              : item.id === "common-health-disorders"
+                ? true
               : item.id === "common-recipes"
                 ? rcItems.some((entry) => entry.live)
               : item.id === "common-yoga"
@@ -2186,6 +2189,8 @@ export function ConfigDetailPage() {
             onToast={onToast}
           />
         );
+      case "common-health-disorders":
+        return <HealthDisordersSection onToast={onToast} />;
       case "common-recipes":
         return (
           <RecipesSection
@@ -2233,7 +2238,7 @@ export function ConfigDetailPage() {
   }
 
   return (
-    <main className={`content ua-page-enter ua-cfg-detail${item.id === "app-faq" || item.id === "app-measurement-video" || item.id === "app-nutrition-bank" || item.id === "app-launch" || item.id === "app-ai-enable" || item.id === "common-banner" || item.id === "common-champion" || item.id === "common-birthday" || item.id === "common-transformation" || item.id === "common-client-review" || item.id === "common-real-people" || item.id === "common-voice" || item.id === "common-cofounder" || item.id === "common-leadership" || item.id === "common-wellness-team" || item.id === "common-about" || item.id === "common-google-review" || item.id === "common-dropdowns" || item.id === "common-recipes" || item.id === "common-yoga" || item.id === "common-blogs" || item.id === "common-mental-wellbeing" || item.id === "common-wellness-yoga" || item.id === "common-physical-exercise" || item.id === "web-program-testimonials" || item.id === "web-footer" || item.id === "web-fs-social" || item.id === "web-fs-links" || item.id === "web-location" || item.id === "feature-flags" ? " ua-cfg-detail--wide" : ""}`}>
+    <main className={`content ua-page-enter ua-cfg-detail${item.id === "app-faq" || item.id === "app-measurement-video" || item.id === "app-nutrition-bank" || item.id === "app-launch" || item.id === "app-ai-enable" || item.id === "common-banner" || item.id === "common-champion" || item.id === "common-birthday" || item.id === "common-transformation" || item.id === "common-client-review" || item.id === "common-real-people" || item.id === "common-voice" || item.id === "common-cofounder" || item.id === "common-leadership" || item.id === "common-wellness-team" || item.id === "common-about" || item.id === "common-google-review" || item.id === "common-dropdowns" || item.id === "common-health-disorders" || item.id === "common-recipes" || item.id === "common-yoga" || item.id === "common-blogs" || item.id === "common-mental-wellbeing" || item.id === "common-wellness-yoga" || item.id === "common-physical-exercise" || item.id === "web-program-testimonials" || item.id === "web-footer" || item.id === "web-fs-social" || item.id === "web-fs-links" || item.id === "web-location" || item.id === "feature-flags" ? " ua-cfg-detail--wide" : ""}`}>
       <Link to={UPDATED_ADMIN_PATHS.configs} className="ua-cfg-detail__back">
         ← Configs
       </Link>

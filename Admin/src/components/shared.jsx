@@ -160,7 +160,7 @@ export function CfgSelect({
 
   return (
     <div className={`ua-cfg-select${open ? " is-open" : ""}${className ? ` ${className}` : ""}`} ref={ref}>
-      {/* <button
+      <button
         type="button"
         className="ua-cfg-select__trigger"
         disabled={disabled}
@@ -171,7 +171,7 @@ export function CfgSelect({
       >
         <span className={`ua-cfg-select__value${isPlaceholder ? " is-placeholder" : ""}`}>{label}</span>
         <span className="ua-cfg-select__chev" aria-hidden="true">▾</span>
-      </button> */}
+      </button>
       {open ? (
         <ul className="ua-cfg-select__menu" role="listbox">
           {options.length ? options.map((entry) => {

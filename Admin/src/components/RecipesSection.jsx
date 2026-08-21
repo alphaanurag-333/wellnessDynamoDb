@@ -23,7 +23,7 @@ import {
   withCategoryLabels,
   youtubeEmbedUrl,
 } from "../data/recipesConfigData.js";
-import { CfgSelect, ListPagination } from "./shared.jsx";
+import { ListPagination } from "./shared.jsx";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
 
@@ -196,21 +196,29 @@ function HistoryModal({ entry, onClose, onToast }) {
 function CategorySelect({ options, value, disabled, onChange, className = "", ariaLabel = "Category", placeholder = "Choose category" }) {
   const selected = resolveCategorySelectValue(value, options);
   const known = options.some((entry) => entry.value === selected);
+  const allowEmpty = options.some((entry) => entry.value === "");
   const selectOptions = [
-    ...(!options.length ? [{ value: "", label: "No categories" }] : []),
+    ...(!options.length && !allowEmpty ? [{ value: "", label: "No categories" }] : []),
     ...(!known && value ? [{ value, label: recipeCategoryLabel(value, options) }] : []),
     ...options,
   ];
+  const current = known ? selected : (value || "");
+  const isEmptyDisabled = disabled || (!options.length && !allowEmpty);
   return (
-    <CfgSelect
-      className={`ua-cfg-rc-select${className ? ` ${className}` : ""}`}
-      options={selectOptions}
-      value={known ? selected : value || ""}
-      disabled={disabled || !options.length}
-      onChange={onChange}
-      ariaLabel={ariaLabel}
-      placeholder={placeholder}
-    />
+    <select
+      className={`ua-cfg-rc-native-select${className ? ` ${className}` : ""}`}
+      value={current}
+      disabled={isEmptyDisabled}
+      aria-label={ariaLabel}
+      onChange={(event) => onChange(event.target.value)}
+    >
+      {!current && !allowEmpty ? <option value="">{placeholder}</option> : null}
+      {selectOptions.map((entry) => (
+        <option key={entry.id || `${entry.value}-${entry.label}`} value={entry.value}>
+          {entry.label}
+        </option>
+      ))}
+    </select>
   );
 }
 
@@ -432,7 +440,34 @@ function revokeBlobUrl(url) {
   if (url && String(url).startsWith("blob:")) URL.revokeObjectURL(url);
 }
 
-function VideoDrop({ previewUrl, embedUrl, fileName, disabled, onPick, onRemove }) {
+function MediaModeTabs({ value, disabled, onChange }) {
+  return (
+    <div className="ua-cfg-rc-media-mode" role="tablist" aria-label="Media type">
+      <button
+        type="button"
+        role="tab"
+        aria-selected={value === "ytlink"}
+        className={`ua-cfg-rc-media-mode__btn${value === "ytlink" ? " is-on" : ""}`}
+        disabled={disabled}
+        onClick={() => onChange("ytlink")}
+      >
+        YouTube link
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={value === "video"}
+        className={`ua-cfg-rc-media-mode__btn${value === "video" ? " is-on" : ""}`}
+        disabled={disabled}
+        onClick={() => onChange("video")}
+      >
+        Upload video
+      </button>
+    </div>
+  );
+}
+
+function VideoDrop({ previewUrl, embedUrl, fileName, disabled, onPick, onRemove, pickLabel = "Upload video" }) {
   const inputRef = useRef(null);
   const filled = Boolean(previewUrl || embedUrl || fileName);
 
@@ -457,7 +492,7 @@ function VideoDrop({ previewUrl, embedUrl, fileName, disabled, onPick, onRemove 
         disabled={disabled}
         onClick={() => inputRef.current?.click()}
       >
-        {previewUrl ? "Replace video" : "Upload video"}
+        {previewUrl ? "Replace video" : pickLabel}
       </button>
       {filled && onRemove ? (
         <button type="button" className="ua-cfg-rc-media-x" aria-label="Remove video" disabled={disabled} onClick={onRemove}>×</button>
@@ -737,6 +772,7 @@ export function RecipesSection({
       revokeBlobUrl(prev.videoPreview);
       return {
         ...prev,
+        mediaMode: "video",
         video: true,
         videoFile: file,
         videoName: file.name,
@@ -765,8 +801,53 @@ export function RecipesSection({
         videoFile: null,
         videoName: "",
         videoPreview: "",
+        videoLink: prev.mediaMode === "ytlink" ? "" : prev.videoLink,
+      };
+    });
+  }
+
+  function setDraftMediaMode(mode) {
+    const next = mode === "video" ? "video" : "ytlink";
+    setDraft((prev) => {
+      if (prev.mediaMode === next) return prev;
+      revokeBlobUrl(prev.videoPreview);
+      return {
+        ...prev,
+        mediaMode: next,
+        video: false,
+        videoFile: null,
+        videoName: "",
+        videoPreview: "",
         videoLink: "",
       };
+    });
+  }
+
+  function setItemMediaMode(id, mode) {
+    const next = mode === "video" ? "video" : "ytlink";
+    const current = itemsRef.current.find((row) => row.id === id);
+    if (!current || (current.mediaMode || current.apiType) === next) return;
+    if (next === "ytlink") {
+      revokeBlobUrl(current.videoPreview);
+      updateItem(id, {
+        mediaMode: "ytlink",
+        apiType: "ytlink",
+        type: "YT",
+        duration: "YouTube",
+        videoFile: null,
+        videoPreview: "",
+        videoName: "",
+        // keep remote `video` until Save so switching back to Upload video still works
+      });
+      return;
+    }
+    updateItem(id, {
+      mediaMode: "video",
+      apiType: "video",
+      type: "VIDEO",
+      duration: "Video",
+      videoLink: "",
+      clearRemoteVideo: false,
     });
   }
 
@@ -810,8 +891,13 @@ export function RecipesSection({
         return;
       }
       const videoLink = asCopyString(draft.videoLink).trim();
-      if (!draft.videoFile && !videoLink) {
-        onToast("Add a YouTube link or upload a video");
+      const mediaMode = draft.mediaMode === "video" || draft.videoFile ? "video" : "ytlink";
+      if (mediaMode === "video" && !draft.videoFile) {
+        onToast("Upload a video file");
+        return;
+      }
+      if (mediaMode === "ytlink" && !videoLink) {
+        onToast("Add a YouTube link");
         return;
       }
       setBusy(true);
@@ -822,12 +908,12 @@ export function RecipesSection({
             category,
             title,
             description,
-            type: draft.videoFile ? "video" : "ytlink",
-            ytLink: draft.videoFile ? "" : videoLink,
+            type: mediaMode,
+            ytLink: mediaMode === "ytlink" ? videoLink : "",
             live: true,
             videoSpecification: Array.isArray(draft.videoSpecification) ? draft.videoSpecification : [],
           },
-          { thumbnailFile: draft.coverFile, videoFile: draft.videoFile },
+          { thumbnailFile: draft.coverFile, videoFile: mediaMode === "video" ? draft.videoFile : null },
         );
         if (!created) throw new Error(copy?.failAdd || "Failed to add item");
         if (draft.coverPreview.startsWith("blob:")) URL.revokeObjectURL(draft.coverPreview);
@@ -886,9 +972,15 @@ export function RecipesSection({
     }
     const videoLink = asCopyString(entry.videoLink).trim();
     const hasNewVideo = entry.videoFile instanceof File;
-    const hasUploadedVideo = hasNewVideo || Boolean(entry.video);
-    if (!hasUploadedVideo && !videoLink) {
-      onToast("Add a YouTube link or upload a video");
+    const resolvedMode = entry.mediaMode === "ytlink" || entry.mediaMode === "video"
+      ? entry.mediaMode
+      : (hasNewVideo || (entry.video && !videoLink) ? "video" : "ytlink");
+    if (resolvedMode === "video" && !hasNewVideo && !entry.video) {
+      onToast("Upload a video file");
+      return;
+    }
+    if (resolvedMode === "ytlink" && !videoLink) {
+      onToast("Add a YouTube link");
       return;
     }
     const fields = {
@@ -896,14 +988,14 @@ export function RecipesSection({
       description,
       category,
       videoSpecification: Array.isArray(entry.videoSpecification) ? entry.videoSpecification : [],
-      type: hasUploadedVideo && !videoLink ? "video" : "ytlink",
-      ytLink: hasUploadedVideo && !videoLink ? "" : videoLink,
-      ...(hasUploadedVideo ? {} : { video: "" }),
+      type: resolvedMode,
+      ytLink: resolvedMode === "ytlink" ? videoLink : "",
+      ...(resolvedMode === "ytlink" ? { video: "" } : {}),
     };
     const saved = await persistItem(
       entry.id,
       fields,
-      hasNewVideo ? { videoFile: entry.videoFile } : {},
+      hasNewVideo && resolvedMode === "video" ? { videoFile: entry.videoFile } : {},
       `${itemNoun} saved`,
     );
     if (saved) setEditingId(null);
@@ -988,15 +1080,18 @@ export function RecipesSection({
   function clearItemVideo(id) {
     const current = itemsRef.current.find((row) => row.id === id);
     revokeBlobUrl(current?.videoPreview);
-    const hasLink = Boolean(asCopyString(current?.videoLink).trim());
+    const mode = current?.mediaMode || current?.apiType || "video";
     updateItem(id, {
       video: "",
       videoFile: null,
       videoPreview: "",
       videoName: "",
-      type: hasLink ? "YT" : "VIDEO",
-      apiType: hasLink ? "ytlink" : "video",
-      duration: hasLink ? "YouTube" : "Video",
+      videoLink: mode === "ytlink" ? "" : (current?.videoLink || ""),
+      clearRemoteVideo: true,
+      type: mode === "ytlink" ? "YT" : "VIDEO",
+      apiType: mode === "ytlink" ? "ytlink" : "video",
+      mediaMode: mode === "ytlink" ? "ytlink" : "video",
+      duration: mode === "ytlink" ? "YouTube" : "Video",
     });
   }
 
@@ -1010,6 +1105,7 @@ export function RecipesSection({
     const current = itemsRef.current.find((row) => row.id === id);
     revokeBlobUrl(current?.videoPreview);
     updateItem(id, {
+      mediaMode: "video",
       type: "VIDEO",
       apiType: "video",
       duration: "Video",
@@ -1017,16 +1113,14 @@ export function RecipesSection({
       videoPreview: preview,
       videoName: file.name,
       videoLink: "",
+      clearRemoteVideo: false,
     });
     if (!persist) {
       onToast("Video attached");
       return;
     }
-    const saved = await persistItem(id, { type: "video", ytLink: "" }, { videoFile: file }, "Video updated");
-    if (saved) {
-      revokeBlobUrl(preview);
-      updateItem(id, { videoPreview: "", videoFile: null, videoName: file.name });
-    }
+    // Keep local until Save — do not auto-persist so mode switch stays reversible
+    onToast("Video attached — click Save to apply");
   }
 
   async function confirmDelete() {
@@ -1146,14 +1240,30 @@ export function RecipesSection({
                   </div>
                 )}
                 {persist ? (
-                  <VideoDrop
-                    previewUrl={draft.videoPreview}
-                    embedUrl={draft.videoFile ? "" : youtubeEmbedUrl(draft.videoLink)}
-                    fileName={draft.videoName}
-                    disabled={disabled}
-                    onPick={pickDraftVideo}
-                    onRemove={clearDraftVideo}
-                  />
+                  draft.mediaMode === "video" ? (
+                    <VideoDrop
+                      previewUrl={draft.videoPreview}
+                      embedUrl=""
+                      fileName={draft.videoName}
+                      disabled={disabled}
+                      onPick={pickDraftVideo}
+                      onRemove={clearDraftVideo}
+                    />
+                  ) : (
+                    <div className={`ua-cfg-tf-drop ua-cfg-tf-drop--after ua-cfg-rc-dropbox${youtubeEmbedUrl(draft.videoLink) ? " is-on" : ""}`}>
+                      {youtubeEmbedUrl(draft.videoLink) ? (
+                        <iframe
+                          className="ua-cfg-tf-drop__img ua-cfg-rc-video-preview"
+                          title="YouTube preview"
+                          src={youtubeEmbedUrl(draft.videoLink)}
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        />
+                      ) : null}
+                      <span className="ua-cfg-tf-drop__icon" aria-hidden="true">▶</span>
+                      <p className="ua-cfg-tf-drop__label">YouTube preview</p>
+                    </div>
+                  )
                 ) : (
                   <div className={`ua-cfg-vh-drop ua-cfg-rc-video-drop${draft.videoFile || draft.video ? " is-on" : ""}`}>
                     <span className="ua-cfg-vh-drop__play" aria-hidden="true">▶</span>
@@ -1169,6 +1279,12 @@ export function RecipesSection({
                 )}
               </div>
               <div className="ua-cfg-rc-new__fields">
+                {persist ? (
+                  <div className="ua-cfg-rc-field">
+                    <span>Media</span>
+                    <MediaModeTabs value={draft.mediaMode || "ytlink"} disabled={disabled} onChange={setDraftMediaMode} />
+                  </div>
+                ) : null}
                 <label className="ua-cfg-rc-field">
                   <span>Category</span>
                   <CategorySelect
@@ -1212,26 +1328,48 @@ export function RecipesSection({
                     />
                   </div>
                 ) : null}
-                <label className="ua-cfg-rc-field ua-cfg-rc-field--wide">
-                  <span>YouTube link</span>
-                  <input
-                    className="ua-cfg-vh-input"
-                    placeholder="https://youtube.com/…"
-                    value={asCopyString(draft.videoLink)}
-                    disabled={disabled}
-                    onChange={(event) => setDraft((prev) => {
-                      revokeBlobUrl(prev.videoPreview);
-                      return {
+                {persist && (draft.mediaMode || "ytlink") === "ytlink" ? (
+                  <label className="ua-cfg-rc-field ua-cfg-rc-field--wide">
+                    <span>YouTube link</span>
+                    <input
+                      className="ua-cfg-vh-input"
+                      placeholder="https://youtube.com/…"
+                      value={asCopyString(draft.videoLink)}
+                      disabled={disabled}
+                      onChange={(event) => setDraft((prev) => ({
                         ...prev,
+                        mediaMode: "ytlink",
                         videoLink: event.target.value,
                         videoFile: null,
                         videoName: "",
                         videoPreview: "",
                         video: false,
-                      };
-                    })}
-                  />
-                </label>
+                      }))}
+                    />
+                  </label>
+                ) : null}
+                {!persist ? (
+                  <label className="ua-cfg-rc-field ua-cfg-rc-field--wide">
+                    <span>YouTube link</span>
+                    <input
+                      className="ua-cfg-vh-input"
+                      placeholder="https://youtube.com/…"
+                      value={asCopyString(draft.videoLink)}
+                      disabled={disabled}
+                      onChange={(event) => setDraft((prev) => {
+                        revokeBlobUrl(prev.videoPreview);
+                        return {
+                          ...prev,
+                          videoLink: event.target.value,
+                          videoFile: null,
+                          videoName: "",
+                          videoPreview: "",
+                          video: false,
+                        };
+                      })}
+                    />
+                  </label>
+                ) : null}
                 <div className="ua-cfg-rc-new__foot">
                   <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={disabled} onClick={addItem}>
                     {busy && creating ? "Saving…" : persist ? "Add recipe" : "Add item"}
@@ -1252,8 +1390,8 @@ export function RecipesSection({
               onChange={(event) => setListQuery(event.target.value)}
               aria-label={`Search ${copy?.nouns || "items"}`}
             />
-            <CfgSelect
-              className="ua-cfg-rc-select ua-cfg-rc-filter"
+            <CategorySelect
+              className="ua-cfg-rc-filter"
               options={[{ value: "", label: "All categories" }, ...categoryOptions]}
               value={categoryFilter}
               disabled={disabled}
@@ -1423,7 +1561,7 @@ export function RecipesSection({
                               <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={disabled} onClick={() => setEditingId(null)}>Cancel</button>
                             </>
                           ) : (
-                            <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={disabled} onClick={() => { setViewingId(null); setEditingId(entry.id); }}>Edit</button>
+                            <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={disabled} onClick={() => { setViewingId(null); setEditingId(entry.id); updateItem(entry.id, { mediaMode: entry.mediaMode || entry.apiType || "ytlink" }); }}>Edit</button>
                           )}
                           {!persist ? (
                             <>
@@ -1454,37 +1592,67 @@ export function RecipesSection({
                         />
                         {persist ? (
                           <div className="ua-cfg-rc-edit__media">
-                            <VideoDrop
-                              previewUrl={entry.videoPreview || entry.video || ""}
-                              embedUrl={(entry.videoPreview || entry.video) ? "" : youtubeEmbedUrl(entry.videoLink)}
-                              fileName={entry.videoName}
-                              disabled={disabled}
-                              onPick={(file) => replaceVideo(entry.id, file)}
-                              onRemove={() => clearItemVideo(entry.id)}
-                            />
-                            <div className="ua-cfg-rc-edit__side">
-                              <input
-                                className="ua-cfg-vh-input"
-                                placeholder="YouTube link · youtube.com/watch?v=…"
-                                value={asCopyString(entry.videoLink)}
+                            <div className="ua-cfg-rc-edit__media-main">
+                              <MediaModeTabs
+                                value={entry.mediaMode || entry.apiType || "ytlink"}
                                 disabled={disabled}
-                                onChange={(event) => {
-                                  const videoLink = event.target.value;
-                                  if (videoLink.trim()) {
+                                onChange={(mode) => setItemMediaMode(entry.id, mode)}
+                              />
+                              {(entry.mediaMode || entry.apiType) === "video" ? (
+                                <VideoDrop
+                                  previewUrl={entry.videoPreview || entry.video || ""}
+                                  embedUrl=""
+                                  fileName={entry.videoName}
+                                  disabled={disabled}
+                                  onPick={(file) => replaceVideo(entry.id, file)}
+                                  onRemove={() => clearItemVideo(entry.id)}
+                                />
+                              ) : (
+                                <div className={`ua-cfg-tf-drop ua-cfg-tf-drop--after ua-cfg-rc-dropbox${youtubeEmbedUrl(entry.videoLink) ? " is-on" : ""}`}>
+                                  {youtubeEmbedUrl(entry.videoLink) ? (
+                                    <iframe
+                                      className="ua-cfg-tf-drop__img ua-cfg-rc-video-preview"
+                                      title="YouTube preview"
+                                      src={youtubeEmbedUrl(entry.videoLink)}
+                                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                      allowFullScreen
+                                    />
+                                  ) : null}
+                                  <span className="ua-cfg-tf-drop__icon" aria-hidden="true">▶</span>
+                                  <p className="ua-cfg-tf-drop__label">YouTube preview</p>
+                                </div>
+                              )}
+                            </div>
+                            <div className="ua-cfg-rc-edit__side">
+                              {(entry.mediaMode || entry.apiType) !== "video" ? (
+                                <input
+                                  className="ua-cfg-vh-input"
+                                  placeholder="YouTube link · youtube.com/watch?v=…"
+                                  value={asCopyString(entry.videoLink)}
+                                  disabled={disabled}
+                                  onChange={(event) => {
+                                    const videoLink = event.target.value;
                                     revokeBlobUrl(entry.videoPreview);
                                     updateItem(entry.id, {
+                                      mediaMode: "ytlink",
                                       videoLink,
                                       videoPreview: "",
                                       videoFile: null,
+                                      video: "",
+                                      clearRemoteVideo: true,
                                       apiType: "ytlink",
                                       type: "YT",
                                       duration: "YouTube",
                                     });
-                                    return;
-                                  }
-                                  updateItem(entry.id, { videoLink, apiType: entry.video ? "video" : entry.apiType, type: entry.video ? "VIDEO" : entry.type });
-                                }}
-                              />
+                                  }}
+                                />
+                              ) : (
+                                <p className="ua-cfg-panel__sub">
+                                  {entry.videoFile || entry.video
+                                    ? "Video file selected. Click Save to keep this mode."
+                                    : "Upload a video file, then Save."}
+                                </p>
+                              )}
                               {showSpecs ? (
                                 <SpecsEditor
                                   value={entry.videoSpecification}
