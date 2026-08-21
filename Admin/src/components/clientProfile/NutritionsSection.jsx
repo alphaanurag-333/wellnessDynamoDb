@@ -1080,11 +1080,21 @@ export function NutritionsSection({ user, onToast }) {
               {pool.length ? pool.map((s) => <option key={s.id} value={s.id}>{s.name}</option>) : <option value="">No supplements in pool</option>}
             </select>
             <div className="ua-cp-timing-wrap" ref={timingRef}>
-              <button type="button" className="ua-cp-timing-btn" disabled={!canWrite || saving || !isHealClient} onClick={() => setTimingOpen((o) => !o)}>
-                {addPeriods.length ? `${addPeriods.length} timings selected` : "Choose timings…"}
+              <button
+                type="button"
+                className={`ua-cp-timing-btn${timingOpen ? " is-open" : ""}${addPeriods.length ? " has-value" : ""}`}
+                disabled={!canWrite || saving || !isHealClient}
+                onClick={() => setTimingOpen((o) => !o)}
+                aria-haspopup="listbox"
+                aria-expanded={timingOpen}
+              >
+                <span className="ua-cp-timing-btn__label">
+                  {addPeriods.length ? `${addPeriods.length} timings selected` : "Choose timings…"}
+                </span>
+                <span className="ua-cp-timing-btn__chevron" aria-hidden="true" />
               </button>
               {timingOpen ? (
-                <div className="ua-cp-timing-menu">
+                <div className="ua-cp-timing-menu" role="listbox">
                   <div className="ua-cp-timing-menu__tools">
                     <button type="button" onClick={() => setAddPeriods(PERIOD_OPTIONS.map((p) => p.id))}>Select all</button>
                     <button type="button" onClick={() => setAddPeriods([])}>Clear</button>
