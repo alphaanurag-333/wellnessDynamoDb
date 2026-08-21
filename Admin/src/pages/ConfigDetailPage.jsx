@@ -1301,7 +1301,6 @@ const PREVIEW_CONFIGS = new Set([
   "common-client-review",
   "common-real-people",
   "common-voice",
-  "common-cofounder",
   "common-leadership",
   "common-wellness-team",
   "common-about",
@@ -2145,7 +2144,6 @@ export function ConfigDetailPage() {
             record={cfRecord}
             setRecord={setCfRecord}
             onToast={onToast}
-            onOpenPreview={() => setPreviewOpen(true)}
           />
         );
       case "common-leadership":

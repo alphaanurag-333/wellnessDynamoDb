@@ -60,7 +60,7 @@ function VideoThumb({ item, className = "" }) {
   if (preview?.type === "iframe") {
     return <iframe className={className} title={item?.displayTitle || item?.title || "Video"} src={preview.src} tabIndex={-1} />;
   }
-  return <span aria-hidden="true">▶</span>;
+  return <span className={className || undefined} aria-hidden="true">▶</span>;
 }
 
 function LinkModal({ open, title, initialUrl, onClose, onSave, busy }) {
@@ -403,7 +403,7 @@ function CoachRoster({ coaches, selectedId, onSelect, pagination, onPageChange }
   );
 }
 
-function GalleryPanel({ gallery, selectedCoachId, onSelect, page, onPageChange }) {
+function GalleryPanel({ gallery, selectedCoachId, onSelect, onToggleLive, busy, page, onPageChange }) {
   const [search, setSearch] = useState("");
   const owners = useMemo(
     () => ["All owners", ...Array.from(new Set(gallery.map((entry) => entry.owner).filter(Boolean)))],
@@ -432,7 +432,7 @@ function GalleryPanel({ gallery, selectedCoachId, onSelect, page, onPageChange }
       title="Gallery"
       subtitle="Videos currently attached to wellness coaches on this page. Open a card to edit that coach."
     >
-      <div className="ua-cfg-mv-gallery__filters">
+      <div className="ua-cfg-mv-gallery__filters ua-cfg-onb-gallery__filters">
         <input
           type="search"
           className="ua-cfg-mv-gallery__search"
@@ -452,25 +452,43 @@ function GalleryPanel({ gallery, selectedCoachId, onSelect, page, onPageChange }
       </div>
 
       {paged.length ? (
-        <div className="ua-cfg-mv-gallery__grid">
+        <div className="ua-cfg-mv-gallery__grid ua-cfg-onb-gallery__grid">
           {paged.map((entry) => {
             const isSelected = selectedCoachId === entry.id;
+            const hasVideo = Boolean(entry.videoUrl || entry.linkUrl || entry.hasMedia);
             return (
-              <article key={entry.id} className={`ua-cfg-mv-gallery-card${isSelected ? " is-selected" : ""}`}>
-                <button type="button" className="ua-cfg-mv-gallery-card__thumb" onClick={() => onSelect(entry.id)}>
+              <article
+                key={entry.id}
+                className={`ua-cfg-mv-gallery-card ua-cfg-onb-gallery-card${isSelected ? " is-selected" : ""}`}
+                onClick={() => onSelect(entry.id)}
+              >
+                <div className="ua-cfg-mv-gallery-card__thumb">
                   <span className="ua-cfg-mv-gallery-card__type">Video</span>
-                  <VideoThumb item={entry} />
+                  <VideoThumb item={entry} className="ua-cfg-onb-gallery__media" />
                   {entry.duration ? <span className="ua-cfg-mv-gallery-card__duration">{entry.duration}</span> : null}
-                </button>
+                </div>
                 <div className="ua-cfg-mv-gallery-card__body">
                   <strong>{entry.displayTitle || entry.title}</strong>
                   <span>{entry.owner}</span>
                   <span>{entry.versions ? `${entry.versions} versions` : "No versions yet"}</span>
                 </div>
-                <div className="ua-cfg-mv-gallery-card__live">
+                <div className={`ua-cfg-mv-gallery-card__live${entry.live ? " is-live" : ""}`}>
                   <span className={`ua-cfg-mv-gallery-card__status${entry.live ? " is-live" : ""}`}>
                     {entry.live ? "Live" : "Not live"}
                   </span>
+                  <button
+                    type="button"
+                    className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
+                    aria-label={entry.live ? `Hide ${entry.displayTitle || entry.title}` : `Publish ${entry.displayTitle || entry.title}`}
+                    aria-pressed={entry.live}
+                    disabled={busy || !hasVideo}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onToggleLive(entry, !entry.live);
+                    }}
+                  >
+                    <span className="ua-toggle__knob" />
+                  </button>
                 </div>
               </article>
             );
@@ -553,8 +571,8 @@ export function OnboardingVideoSection({
     loadCoaches(page);
   }, [loadCoaches, page]);
 
-  async function runSave(work, successMessage) {
-    if (busy || !selectedCoach) return null;
+  async function runSave(work, successMessage, coach = selectedCoach) {
+    if (busy || !coach) return null;
     setBusy(true);
     try {
       const account = await work();
@@ -621,6 +639,14 @@ export function OnboardingVideoSection({
         gallery={gallery}
         selectedCoachId={selectedCoachId}
         onSelect={setSelectedCoachId}
+        busy={busy}
+        onToggleLive={(entry, live) =>
+          runSave(
+            () => saveCoachIntroLive(entry.id, live),
+            live ? "Onboarding video is live" : "Onboarding video hidden",
+            entry,
+          )
+        }
         page={galleryPage}
         onPageChange={setGalleryPage}
       />

@@ -207,7 +207,9 @@ export function HealthDisordersSection({ onToast }) {
         }
         actions={
           loading ? null : (
-            <button
+            <button style={{    border: "1px dashed rgb(203, 213, 230)",
+              background: "rgb(255, 255, 255)",
+              color: "rgb(94, 106, 210)", height: "32px"}}
               type="button"
               className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
               disabled={locked}
@@ -263,7 +265,7 @@ export function HealthDisordersSection({ onToast }) {
                   onChange={(event) => setDraft((prev) => ({ ...prev, symptoms: event.target.value }))}
                 />
                 <div className="ua-cfg-hd-form__actions">
-                  <button
+                  <button style={{height: "32px"}}
                     type="button"
                     className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm"
                     disabled={locked}
@@ -274,7 +276,7 @@ export function HealthDisordersSection({ onToast }) {
                   >
                     Cancel
                   </button>
-                  <button
+                  <button style={{height: "32px"}}
                     type="button"
                     className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
                     disabled={locked}

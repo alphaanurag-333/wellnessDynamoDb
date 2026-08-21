@@ -517,7 +517,7 @@ export function DynamicWellnessTeamSection({ items, setItems, onToast }) {
   const hasListFilter = Boolean(query || statusFilter || designationFilter);
 
   return (
-    <div className="ua-cfg-rc ua-cfg-ld">
+    <div className="ua-cfg-rc ua-cfg-ld ua-cfg-wt">
       <Panel
         title="Wellness team profiles"
         subtitle={loading ? "Loading profiles…" : `${pagination.total} total · ${liveCount} live on this page`}
@@ -742,44 +742,45 @@ export function DynamicWellnessTeamSection({ items, setItems, onToast }) {
                         </div>
                       </div>
                     </div>
-                    {isEditing ? (
-                      <div className="ua-cfg-ld-edit">
-                        <label className="ua-cfg-ld-field">
-                          <span>Card title</span>
-                          <input
-                            className="ua-cfg-vh-input"
-                            value={asCopyString(item.title)}
-                            disabled={busy}
-                            placeholder="Card title (defaults to designation)"
-                            onChange={(event) => patchItem(item.id, { title: event.target.value })}
-                          />
-                        </label>
-                        <label className="ua-cfg-ld-field">
-                          <span>Badge label</span>
-                          <input
-                            className="ua-cfg-vh-input"
-                            value={asCopyString(item.badge) || DEFAULT_BADGE}
-                            disabled={busy}
-                            placeholder="Badge label"
-                            onChange={(event) => patchItem(item.id, { badge: event.target.value })}
-                          />
-                        </label>
-                        <label className="ua-cfg-ld-field ua-cfg-ld-field--wide">
-                          <span>Message</span>
-                          <textarea
-                            className="ua-cfg-tf-story"
-                            rows={4}
-                            value={asCopyString(item.message)}
-                            disabled={busy}
-                            placeholder="Profile message"
-                            onChange={(event) => patchItem(item.id, { message: event.target.value })}
-                          />
-                        </label>
-                      </div>
-                    ) : (
+                    {isEditing ? null : (
                       <p>{asCopyString(item.message)}</p>
                     )}
                   </div>
+                  {isEditing ? (
+                    <div className="ua-cfg-ld-edit">
+                      <label className="ua-cfg-ld-field">
+                        <span>Card title</span>
+                        <input
+                          className="ua-cfg-vh-input"
+                          value={asCopyString(item.title)}
+                          disabled={busy}
+                          placeholder="Card title (defaults to designation)"
+                          onChange={(event) => patchItem(item.id, { title: event.target.value })}
+                        />
+                      </label>
+                      <label className="ua-cfg-ld-field">
+                        <span>Badge label</span>
+                        <input
+                          className="ua-cfg-vh-input"
+                          value={asCopyString(item.badge) || DEFAULT_BADGE}
+                          disabled={busy}
+                          placeholder="Badge label"
+                          onChange={(event) => patchItem(item.id, { badge: event.target.value })}
+                        />
+                      </label>
+                      <label className="ua-cfg-ld-field ua-cfg-ld-field--wide">
+                        <span>Message</span>
+                        <textarea
+                          className="ua-cfg-tf-story"
+                          rows={4}
+                          value={asCopyString(item.message)}
+                          disabled={busy}
+                          placeholder="Profile message"
+                          onChange={(event) => patchItem(item.id, { message: event.target.value })}
+                        />
+                      </label>
+                    </div>
+                  ) : null}
                 </article>
               );
             })}
