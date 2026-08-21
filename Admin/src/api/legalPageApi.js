@@ -26,22 +26,61 @@ export function sectionsFromBlocks(blocks = []) {
   })).filter((row) => row.id);
 }
 
-export function blocksFromSections(sections = []) {
-  return (Array.isArray(sections) ? sections : []).map((section) => ({
-    id: String(section.id || "").trim(),
-    title: String(section.title || "").trim(),
-    shown: section.shown !== false,
-    webVersion: 1,
-    appVersion: 1,
-    versions: [
-      {
+export function blocksFromSections(sections = [], previousBlocks = []) {
+  const prevById = new Map(
+    (Array.isArray(previousBlocks) ? previousBlocks : [])
+      .filter((row) => row && row.id)
+      .map((row) => [String(row.id), row]),
+  );
+
+  return (Array.isArray(sections) ? sections : []).map((section) => {
+    const id = String(section.id || "").trim();
+    const title = String(section.title || "").trim();
+    const body = String(section.body || "").trim();
+    const prev = prevById.get(id);
+    const versions = Array.isArray(prev?.versions)
+      ? prev.versions.map((version) => ({ ...version }))
+      : [];
+
+    if (!versions.length) {
+      versions.push({
         n: 1,
         date: todayLabel(),
         author: "Admin",
-        text: String(section.body || "").trim(),
-      },
-    ],
-  })).filter((row) => row.id && row.title);
+        text: body,
+      });
+    } else {
+      // Panel edits apply to both surfaces so website + app stay in sync.
+      const webN = Number(prev?.webVersion) || versions[0].n;
+      const appN = Number(prev?.appVersion) || versions[0].n;
+      const touch = new Set([webN, appN]);
+      for (const version of versions) {
+        if (touch.has(Number(version.n))) {
+          version.text = body;
+          version.date = todayLabel();
+          version.author = "Admin";
+        }
+      }
+    }
+
+    const versionNs = new Set(versions.map((entry) => Number(entry.n)));
+    const webVersion = versionNs.has(Number(prev?.webVersion))
+      ? Number(prev.webVersion)
+      : versions[0].n;
+    const appVersion = versionNs.has(Number(prev?.appVersion))
+      ? Number(prev.appVersion)
+      : versions[0].n;
+
+    return {
+      id,
+      title,
+      shown: section.shown !== false,
+      webVersion,
+      appVersion,
+      assets: prev?.assets,
+      versions,
+    };
+  }).filter((row) => row.id && row.title);
 }
 
 function cloneBlocks(blocks = []) {

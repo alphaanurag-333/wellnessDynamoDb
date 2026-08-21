@@ -8,6 +8,7 @@ const {
   toPublicList,
 } = require("../../models/configDropdownModel");
 const { getPageBySlugWithAliases, slugify, withResolvedBlocks } = require("../../models/staticPageModel");
+const { compileLegalBlocksToHtml } = require("../../utils/legalBlocks");
 const { listClientTestimonials } = require("../../models/clientTestimonials");
 const { listProgramTestimonials } = require("../../models/programTestimonialModel");
 const { listRealPeopleTestimonials } = require("../../models/realPeopleTestimonialModel");
@@ -154,7 +155,23 @@ exports.getStaticPageBySlug = asyncHandler(async (req, res) => {
   if (!page || String(page.status || "").toLowerCase() !== "active") {
     throw new AppError("Page not found", 404);
   }
-  return res.status(200).json({ status: true, page: withResolvedBlocks(page) });
+  const surface =
+    String(req.query.platform || req.query.surface || "web")
+      .toLowerCase()
+      .trim() === "app"
+      ? "app"
+      : "web";
+  const resolved = withResolvedBlocks(page);
+  // Always compile from live blocks so panel edits show up even if stored
+  // `content` lagged behind (website already prefers blocks; app used content).
+  const compiled = compileLegalBlocksToHtml(resolved.blocks, surface);
+  return res.status(200).json({
+    status: true,
+    page: {
+      ...resolved,
+      content: compiled || String(resolved.content || "").trim(),
+    },
+  });
 });
 
 exports.getActiveClientTestimonials = asyncHandler(async (req, res) => {
