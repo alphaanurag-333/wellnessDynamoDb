@@ -13,6 +13,7 @@ const {
   deleteYoga,
   listYoga,
   normalizeType,
+  normalizeVisibleFlag,
   YOGA_ALLOWED_STATUS,
   YOGA_ALLOWED_TYPE,
 } = require("../../models/yogaModel");
@@ -74,7 +75,23 @@ exports.createYogaController = asyncHandler(async (req, res) => {
   if (type === "ytlink" && !ytLink) throw new AppError("ytLink is required when type is ytlink", 400);
   if (type === "video" && !video) throw new AppError("video is required when type is video", 400);
 
-  const yoga = await createYoga({ category, title, description, thumbnail, type, ytLink, video, status });
+  const webVisible =
+    req.body.webVisible !== undefined ? normalizeVisibleFlag(req.body.webVisible, true) : true;
+  const appVisible =
+    req.body.appVisible !== undefined ? normalizeVisibleFlag(req.body.appVisible, true) : true;
+
+  const yoga = await createYoga({
+    category,
+    title,
+    description,
+    thumbnail,
+    type,
+    ytLink,
+    video,
+    status,
+    webVisible,
+    appVisible,
+  });
 
   if (status === "active") {
     dispatchBroadcastNotification({
@@ -112,6 +129,12 @@ exports.updateYogaController = asyncHandler(async (req, res) => {
     const status = String(req.body.status || "").trim().toLowerCase();
     if (!YOGA_ALLOWED_STATUS.includes(status)) throw new AppError("status must be active or inactive", 400);
     updates.status = status;
+  }
+  if (req.body.webVisible !== undefined) {
+    updates.webVisible = normalizeVisibleFlag(req.body.webVisible, true);
+  }
+  if (req.body.appVisible !== undefined) {
+    updates.appVisible = normalizeVisibleFlag(req.body.appVisible, true);
   }
   if (req.body.type !== undefined) {
     const rawType = String(req.body.type || "").trim().toLowerCase();

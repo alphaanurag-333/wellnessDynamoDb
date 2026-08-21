@@ -138,7 +138,7 @@ export default function VideoTestimonials() {
 
     (async () => {
       try {
-        const data = await fetchVideoTestimonials({ page: 1, limit: 24 });
+        const data = await fetchVideoTestimonials({ page: 1, limit: 24, platform: "web" });
         if (cancelled) return;
         const rows = Array.isArray(data?.videoTestimonials) ? data.videoTestimonials : [];
         setItems(rows.map(mapVideoTestimonial).filter(Boolean));

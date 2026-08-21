@@ -168,6 +168,8 @@ export function mapHealthRecipe(row, categoryOptions = []) {
     description: String(row.description || "").trim(),
     live: row.status !== "inactive",
     status: row.status === "inactive" ? "inactive" : "active",
+    webVisible: row.webVisible !== false,
+    appVisible: row.appVisible !== false,
     cover: Boolean(row.thumbnail),
     thumbnail: row.thumbnail || "",
     videoLink: String(row.ytLink || "").trim(),

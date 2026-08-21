@@ -26,6 +26,7 @@ function Panel({ title, subtitle, actions, children, className = "" }) {
 function FaqItemControls({
   item,
   onToggleShown,
+  onToggleSurface,
   onEdit,
   onSave,
   onMoveUp,
@@ -36,19 +37,49 @@ function FaqItemControls({
 }) {
   return (
     <div className="ua-cfg-faq__controls">
-      <span className={`ua-cfg-faq__shown${item.shown ? " is-on" : ""}`}>
-        {item.shown ? "SHOWN" : "HIDDEN"}
-      </span>
-      <button
-        type="button"
-        className={`ua-toggle ua-toggle--sm${item.shown ? " ua-toggle--on" : ""}`}
-        aria-pressed={item.shown}
-        aria-label={`Toggle ${item.question || "question"}`}
-        disabled={busy}
-        onClick={onToggleShown}
-      >
-        <span className="ua-toggle__knob" />
-      </button>
+      <div className="ua-cfg-faq__surfaces">
+        <div className="ua-cfg-faq__live">
+          <span className={`ua-cfg-faq__shown${item.webVisible ? " is-on" : ""}`}>WEB</span>
+          <button
+            type="button"
+            className={`ua-toggle ua-toggle--sm${item.webVisible ? " ua-toggle--on" : ""}`}
+            aria-pressed={item.webVisible}
+            aria-label={item.webVisible ? "Hide on web" : "Show on web"}
+            disabled={busy}
+            onClick={() => onToggleSurface("webVisible")}
+          >
+            <span className="ua-toggle__knob" />
+          </button>
+        </div>
+        <div className="ua-cfg-faq__live">
+          <span className={`ua-cfg-faq__shown${item.appVisible ? " is-on" : ""}`}>APP</span>
+          <button
+            type="button"
+            className={`ua-toggle ua-toggle--sm${item.appVisible ? " ua-toggle--on" : ""}`}
+            aria-pressed={item.appVisible}
+            aria-label={item.appVisible ? "Hide on app" : "Show on app"}
+            disabled={busy}
+            onClick={() => onToggleSurface("appVisible")}
+          >
+            <span className="ua-toggle__knob" />
+          </button>
+        </div>
+        <div className="ua-cfg-faq__live">
+          <span className={`ua-cfg-faq__shown${item.shown ? " is-on" : ""}`}>
+            {item.shown ? "SHOWN" : "HIDDEN"}
+          </span>
+          <button
+            type="button"
+            className={`ua-toggle ua-toggle--sm${item.shown ? " ua-toggle--on" : ""}`}
+            aria-pressed={item.shown}
+            aria-label={`Toggle ${item.question || "question"}`}
+            disabled={busy}
+            onClick={onToggleShown}
+          >
+            <span className="ua-toggle__knob" />
+          </button>
+        </div>
+      </div>
       {isEditing ? (
         <button
           type="button"
@@ -111,11 +142,37 @@ function FaqNewQuestionForm({ draft, onChange, onClose, onSubmit, inputRef, busy
       <textarea
         className="ua-cfg-faq-new__answer"
         value={asCopyString(draft.answer)}
-        placeholder="Answer shown in the app..."
+        placeholder="Answer shown on app and web..."
         rows={5}
         disabled={busy}
         onChange={(event) => onChange({ ...draft, answer: event.target.value })}
       />
+      <div className="ua-cfg-bn-surfaces ua-cfg-faq-new__surfaces">
+        <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--web${draft.webVisible ? " is-on" : ""}`}>
+          <span>Web {draft.webVisible ? "Visible" : "Hidden"}</span>
+          <button
+            type="button"
+            className={`ua-toggle ua-toggle--sm${draft.webVisible ? " ua-toggle--on" : ""}`}
+            aria-pressed={draft.webVisible}
+            disabled={busy}
+            onClick={() => onChange({ ...draft, webVisible: !draft.webVisible })}
+          >
+            <span className="ua-toggle__knob" />
+          </button>
+        </div>
+        <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--app${draft.appVisible ? " is-on" : ""}`}>
+          <span>App {draft.appVisible ? "Visible" : "Hidden"}</span>
+          <button
+            type="button"
+            className={`ua-toggle ua-toggle--sm${draft.appVisible ? " ua-toggle--on" : ""}`}
+            aria-pressed={draft.appVisible}
+            disabled={busy}
+            onClick={() => onChange({ ...draft, appVisible: !draft.appVisible })}
+          >
+            <span className="ua-toggle__knob" />
+          </button>
+        </div>
+      </div>
       <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={onSubmit}>
         {busy ? "Adding…" : "Add question"}
       </button>
@@ -141,7 +198,7 @@ export function FaqConfigPanel({ items, setItems, onToast }) {
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState({ question: "", answer: "" });
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newDraft, setNewDraft] = useState({ question: "", answer: "" });
+  const [newDraft, setNewDraft] = useState({ question: "", answer: "", webVisible: true, appVisible: true });
   const [dragId, setDragId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
   const addFormRef = useRef(null);
@@ -191,7 +248,7 @@ export function FaqConfigPanel({ items, setItems, onToast }) {
 
   function closeAddForm() {
     setShowAddForm(false);
-    setNewDraft({ question: "", answer: "" });
+    setNewDraft({ question: "", answer: "", webVisible: true, appVisible: true });
   }
 
   function openAddForm() {
@@ -234,7 +291,13 @@ export function FaqConfigPanel({ items, setItems, onToast }) {
     }
     setBusy(true);
     try {
-      const created = await adminCreateFaq(null, { question, answer, shown: true });
+      const created = await adminCreateFaq(null, {
+        question,
+        answer,
+        shown: true,
+        webVisible: newDraft.webVisible !== false,
+        appVisible: newDraft.appVisible !== false,
+      });
       setItems((prev) => [...prev, created]);
       closeAddForm();
       onToast("Question added");
@@ -268,6 +331,27 @@ export function FaqConfigPanel({ items, setItems, onToast }) {
         ),
       );
       onToast(error?.message || "Failed to update visibility");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toggleSurface(item, field) {
+    if (busy || (field !== "webVisible" && field !== "appVisible")) return;
+    const nextValue = !item[field];
+    setItems((prev) =>
+      prev.map((entry) => (entry.id === item.id ? { ...entry, [field]: nextValue } : entry)),
+    );
+    setBusy(true);
+    try {
+      const updated = await adminUpdateFaq(null, item.id, { [field]: nextValue });
+      setItems((prev) => prev.map((entry) => (entry.id === item.id ? { ...entry, ...updated } : entry)));
+      onToast(`${field === "webVisible" ? "Web" : "App"} ${nextValue ? "visible" : "hidden"}`);
+    } catch (error) {
+      setItems((prev) =>
+        prev.map((entry) => (entry.id === item.id ? { ...entry, [field]: item[field] } : entry)),
+      );
+      onToast(error?.message || `Could not update ${field === "webVisible" ? "web" : "app"} visibility`);
     } finally {
       setBusy(false);
     }
@@ -452,6 +536,7 @@ export function FaqConfigPanel({ items, setItems, onToast }) {
                   isEditing={isEditing}
                   busy={busy}
                   onToggleShown={() => toggleShown(item)}
+                  onToggleSurface={(field) => toggleSurface(item, field)}
                   onEdit={() => startEdit(item)}
                   onSave={() => saveEdit(item.id)}
                   onMoveUp={() => moveItem(item.id, -1)}

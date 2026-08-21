@@ -15,6 +15,7 @@ const {
   reorderBlogPosts,
   normalizeStatus,
   normalizeSortOrder,
+  normalizeVisibleFlag,
   SORT_ORDER_MIN,
   SORT_ORDER_MAX,
 } = require("../../models/blogPostModel");
@@ -54,6 +55,10 @@ exports.createBlogPostController = asyncHandler(async (req, res) => {
   const description = String(req.body.description || "").trim();
   const status = normalizeStatus(req.body.status, "active");
   const sortOrder = validateSortOrder(req.body.sortOrder);
+  const webVisible =
+    req.body.webVisible !== undefined ? normalizeVisibleFlag(req.body.webVisible, true) : true;
+  const appVisible =
+    req.body.appVisible !== undefined ? normalizeVisibleFlag(req.body.appVisible, true) : true;
   const uploadedCover =
     (await uploadMulterField(req, "coverFile", S3_FOLDER)) ||
     (await uploadMulterField(req, "file", S3_FOLDER));
@@ -71,6 +76,8 @@ exports.createBlogPostController = asyncHandler(async (req, res) => {
     coverImage,
     status,
     sortOrder,
+    webVisible,
+    appVisible,
   });
 
   return res.status(201).json({
@@ -104,6 +111,12 @@ exports.updateBlogPostController = asyncHandler(async (req, res) => {
   }
   if (req.body.sortOrder !== undefined) {
     updates.sortOrder = validateSortOrder(req.body.sortOrder);
+  }
+  if (req.body.webVisible !== undefined) {
+    updates.webVisible = normalizeVisibleFlag(req.body.webVisible, true);
+  }
+  if (req.body.appVisible !== undefined) {
+    updates.appVisible = normalizeVisibleFlag(req.body.appVisible, true);
   }
   if (req.body.coverImage !== undefined) {
     updates.coverImage = parseMediaKeyFromBody(req.body.coverImage, "coverImage") ?? "";

@@ -9,6 +9,7 @@ const {
   reorderFaqs,
   normalizeStatus,
   normalizeSortOrder,
+  normalizeVisibleFlag,
   SORT_ORDER_MIN,
   SORT_ORDER_MAX,
 } = require("../../models/faqModel");
@@ -57,12 +58,23 @@ exports.createFaqController = asyncHandler(async (req, res) => {
   const answer = String(req.body.answer || "").trim();
   const status = normalizeStatus(req.body.status, "active");
   const sortOrder = validateSortOrder(req.body.sortOrder);
+  const webVisible =
+    req.body.webVisible !== undefined ? normalizeVisibleFlag(req.body.webVisible, true) : true;
+  const appVisible =
+    req.body.appVisible !== undefined ? normalizeVisibleFlag(req.body.appVisible, true) : true;
 
   if (!question || !answer) {
     throw new AppError("question and answer are required", 400);
   }
 
-  const faq = await createFaq({ question, answer, status, sortOrder });
+  const faq = await createFaq({
+    question,
+    answer,
+    status,
+    sortOrder,
+    webVisible,
+    appVisible,
+  });
 
   return res.status(201).json({
     status: true,
@@ -96,6 +108,14 @@ exports.updateFaqController = asyncHandler(async (req, res) => {
 
   if (req.body.sortOrder !== undefined) {
     updates.sortOrder = validateSortOrder(req.body.sortOrder);
+  }
+
+  if (req.body.webVisible !== undefined) {
+    updates.webVisible = normalizeVisibleFlag(req.body.webVisible, true);
+  }
+
+  if (req.body.appVisible !== undefined) {
+    updates.appVisible = normalizeVisibleFlag(req.body.appVisible, true);
   }
 
   if (Object.keys(updates).length === 0) {

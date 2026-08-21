@@ -12,7 +12,9 @@ const { normalizeDataPoints } = require("../utils/testimonialDataPoints");
 const {
   listByPartitionKey,
   buildContainsFilter,
+  appendFilter,
 } = require("../utils/dynamoList");
+const { normalizeVisibleFlag, visibilityFilterParts } = require("./wellnessCoachModel");
 
 const TRANSFORM_MEDIA = ["oldImage", "newImage"];
 
@@ -44,6 +46,8 @@ function toPublicTransformation(item) {
   return {
     ...resolved,
     order: normalizeOrder(resolved.order, 9999),
+    webVisible: normalizeVisibleFlag(resolved.webVisible, true),
+    appVisible: normalizeVisibleFlag(resolved.appVisible, true),
     dataPoints: (() => {
       try {
         return normalizeDataPoints(resolved.dataPoints);
@@ -80,6 +84,8 @@ async function createTransformation({
   dataPoints = [],
   order = 0,
   status = "active",
+  webVisible = true,
+  appVisible = true,
 }) {
   const now = new Date().toISOString();
   const item = {
@@ -96,6 +102,8 @@ async function createTransformation({
     dataPoints: normalizeDataPoints(dataPoints),
     order: normalizeOrder(order),
     status: normalizeStatus(status),
+    webVisible: normalizeVisibleFlag(webVisible, true),
+    appVisible: normalizeVisibleFlag(appVisible, true),
     createdAt: now,
     updatedAt: now,
   };
@@ -141,6 +149,8 @@ async function updateTransformation(id, updates) {
       exprValues[v] = normalizeOrder(value);
     } else if (key === "status") {
       exprValues[v] = normalizeStatus(value);
+    } else if (key === "webVisible" || key === "appVisible") {
+      exprValues[v] = normalizeVisibleFlag(value, true);
     } else if (key === "dataPoints") {
       exprValues[v] = normalizeDataPoints(value);
     } else {
@@ -170,13 +180,38 @@ async function deleteTransformation(id) {
   }));
 }
 
-async function listTransformations({ page = 1, limit = 10, status, search } = {}) {
+async function listTransformations({
+  page = 1,
+  limit = 10,
+  status,
+  search,
+  platform,
+  webVisible,
+  appVisible,
+} = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const searchFilter = buildContainsFilter(["name", "achievements", "description"], search);
-  const filterExpression = searchFilter.filterExpression;
-  const exprNames = { ...searchFilter.exprNames };
-  const exprValues = { ...searchFilter.exprValues };
+  const channel = String(platform || "").toLowerCase().trim();
+  const wantWebVisible =
+    webVisible !== undefined ? webVisible : channel === "web" ? true : undefined;
+  const wantAppVisible =
+    appVisible !== undefined ? appVisible : channel === "app" ? true : undefined;
+
+  let filterExpression = searchFilter.filterExpression;
+  const exprNames = { ...(searchFilter.exprNames || {}) };
+  const exprValues = { ...(searchFilter.exprValues || {}) };
+  for (const part of [
+    visibilityFilterParts("webVisible", wantWebVisible),
+    visibilityFilterParts("appVisible", wantAppVisible),
+  ]) {
+    if (!part) continue;
+    Object.assign(exprNames, part.exprNames);
+    Object.assign(exprValues, part.exprValues);
+    filterExpression = appendFilter(filterExpression, part.expression);
+  }
+
   const hasSearch = Boolean(searchFilter.search);
+  const hasVisibilityFilter = wantWebVisible !== undefined || wantAppVisible !== undefined;
 
   // StatusOrderIndex: status HASH + order RANGE (ascending). Dynamo paginates in order.
   // In-memory sort only when merging statuses or after search (GSI order no longer applies).
@@ -190,11 +225,32 @@ async function listTransformations({ page = 1, limit = 10, status, search } = {}
     exprValues,
     search: searchFilter.search,
     searchFields: searchFilter.searchFields,
+    searchFn: searchFilter.search
+      ? (item, term) => {
+          if (
+            wantWebVisible !== undefined &&
+            normalizeVisibleFlag(item.webVisible, true) !== normalizeVisibleFlag(wantWebVisible, true)
+          ) {
+            return false;
+          }
+          if (
+            wantAppVisible !== undefined &&
+            normalizeVisibleFlag(item.appVisible, true) !== normalizeVisibleFlag(wantAppVisible, true)
+          ) {
+            return false;
+          }
+          return ["name", "achievements", "description"].some((field) =>
+            String(item[field] || "")
+              .toLowerCase()
+              .includes(term)
+          );
+        }
+      : undefined,
     scanIndexForward: true,
     page,
     limit,
     maxLimit: 200,
-    sortFn: !normalizedStatus || hasSearch ? sortByOrderAsc : undefined,
+    sortFn: !normalizedStatus || hasSearch || hasVisibilityFilter ? sortByOrderAsc : undefined,
   });
 
   return {
@@ -212,6 +268,7 @@ module.exports = {
   listTransformations,
   normalizeStatus,
   normalizeOrder,
+  normalizeVisibleFlag,
   ORDER_MIN,
   ORDER_MAX,
 };

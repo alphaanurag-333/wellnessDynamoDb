@@ -19,6 +19,7 @@ exports.listUserRealPeopleTestimonialsController = asyncHandler(async (req, res)
       limit,
       status: "active",
       healthConcernId: normalizedHealthConcernId,
+      platform: String(req.query.platform || "app").trim().toLowerCase() || "app",
     }),
     "realPeopleTestimonials",
     ["profileImage", "userAvatar"]

@@ -37,6 +37,11 @@ function surfaceSubtitle(surfaces, activeId, item) {
   if (item?.id === "common-voice" || item?.id === "common-cofounder" || item?.id === "common-leadership" || item?.id === "common-wellness-team" || item?.id === "common-google-review" || item?.id === "common-recipes" || item?.id === "common-yoga" || item?.id === "common-blogs") {
     return "Common asset · renders on both surfaces · 16:9";
   }
+  if (item?.id === "app-faq") {
+    if (item.app && item.web) return "Toggle App / Web · accordion preview";
+    if (item.app && !item.web) return "App only · FAQ list";
+    if (item.web && !item.app) return "Web only · FAQ list";
+  }
   if (item?.id === "common-client-review") {
     return "Common asset · renders on both surfaces · 3:4";
   }
@@ -139,29 +144,70 @@ function ContentPreviewWeb({ title, rows = [] }) {
   );
 }
 
-function FaqPreviewPhone() {
-  return <AppContentPreviewPhone title="FAQ" />;
+function FaqPreviewPhone({ items = [] }) {
+  const shown = items.filter((entry) => entry.shown && entry.appVisible !== false);
+  return (
+    <div className="ua-cfg-faq-live__phone-wrap">
+      <div className="ua-cfg-bn-preview__phone ua-cfg-faq-live__phone">
+        <div className="ua-cfg-bn-preview__phone-bar">
+          <span>9:41</span>
+          <strong>FAQ</strong>
+          <span aria-hidden="true">🔔</span>
+        </div>
+        <div className="ua-cfg-faq-live__app-body">
+          <div className="ua-cfg-faq-live__app-head">
+            <span className="ua-cfg-pt-live-preview__brand">IR</span>
+            <strong>Help & FAQ</strong>
+          </div>
+          {shown.length ? (
+            <div className="ua-cfg-faq-live__app-list">
+              {shown.slice(0, 5).map((entry, index) => (
+                <details
+                  key={entry.id}
+                  className="ua-cfg-faq-live__app-item"
+                  open={index === 0}
+                >
+                  <summary>{asCopyString(entry.question)}</summary>
+                  <p>{asCopyString(entry.answer)}</p>
+                </details>
+              ))}
+            </div>
+          ) : (
+            <p className="ua-cfg-faq-live__empty">No questions shown on app yet.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function FaqPreviewWeb({ items }) {
-  const shown = items.filter((entry) => entry.shown);
+  const shown = items.filter((entry) => entry.shown && entry.webVisible !== false);
 
   return (
-    <div className="ua-cfg-preview-faq-web">
-      <div className="ua-cfg-preview-faq-web__head">
+    <div className="ua-cfg-pt-live-preview ua-cfg-faq-live__web">
+      <div className="ua-cfg-pt-live-preview__bar">
+        <span className="ua-cfg-pt-live-preview__brand">IR</span>
         <strong>Frequently asked questions</strong>
+        <span className="ua-cfg-pt-live-preview__url">irwellness.in/faq</span>
       </div>
       {shown.length ? (
-        <div className="ua-cfg-preview-faq-web__list">
-          {shown.slice(0, 4).map((entry) => (
-            <details key={entry.id} className="ua-cfg-preview-faq-web__item" open={entry.id === shown[0]?.id}>
-              <summary>{entry.question}</summary>
-              <p>{entry.answer}</p>
+        <div className="ua-cfg-faq-live__web-list">
+          {shown.slice(0, 6).map((entry, index) => (
+            <details
+              key={entry.id}
+              className="ua-cfg-faq-live__web-item"
+              open={index === 0}
+            >
+              <summary>{asCopyString(entry.question)}</summary>
+              <p>{asCopyString(entry.answer)}</p>
             </details>
           ))}
         </div>
       ) : (
-        <div className="ua-cfg-preview-faq-web__empty">No questions are marked as shown yet.</div>
+        <div className="ua-cfg-faq-live__empty ua-cfg-faq-live__empty--web">
+          No questions shown on web yet.
+        </div>
       )}
     </div>
   );
@@ -202,11 +248,14 @@ function SubscriptionPreview({ fySettings, surface, item }) {
   );
 }
 
-function FaqPreview({ items, surface, item }) {
+function FaqPreview({ items, surface }) {
   return (
-    <PreviewStage surface={surface} item={item}>
-      {surface === "web" ? <FaqPreviewWeb items={items} /> : <FaqPreviewPhone />}
-    </PreviewStage>
+    <div className={`ua-cfg-faq-live ua-cfg-faq-live--${surface}`}>
+      <span className={`ua-cfg-bn-preview__label ${surface === "app" ? "is-app" : "is-web"}`}>
+        {surface === "app" ? "App" : "Website"}
+      </span>
+      {surface === "web" ? <FaqPreviewWeb items={items} /> : <FaqPreviewPhone items={items} />}
+    </div>
   );
 }
 
@@ -1609,22 +1658,29 @@ function LeadershipPreview({ items = [], heading = "Leadership Profile", empty =
 function GoogleReviewPreview({ stats = [] }) {
   const rows = stats.filter((entry) => String(entry.value || "").trim());
 
-  function statRow(surfaceLabel) {
+  function statGrid(surface) {
     if (!rows.length) return <div className="ua-cfg-pt-preview__empty">No stats set yet.</div>;
     return (
-      <div className="ua-cfg-gr-preview">
-        {rows.map((entry) => (
-          <div key={entry.id} className={`ua-cfg-gr-preview__stat ua-cfg-gr-preview__stat--${entry.tone}`}>
-            <span>{asCopyString(entry.label)}</span>
-            <strong>{asCopyString(entry.value)}</strong>
-          </div>
-        ))}
+      <div className={`ua-cfg-gr-preview ua-cfg-gr-preview--${surface}`}>
+        {rows.map((entry) => {
+          const value = asCopyString(entry.value);
+          const showStar = entry.tone === "gold" && !/[★⭐*]/.test(value);
+          return (
+            <div key={entry.id} className={`ua-cfg-gr-preview__stat ua-cfg-gr-preview__stat--${entry.tone}`}>
+              <strong>
+                {value}
+                {showStar ? <span className="ua-cfg-gr-preview__star" aria-hidden="true">★</span> : null}
+              </strong>
+              <span>{asCopyString(entry.label)}</span>
+            </div>
+          );
+        })}
       </div>
     );
   }
 
   return (
-    <div className="ua-cfg-tf-live">
+    <div className="ua-cfg-tf-live ua-cfg-gr-live">
       <div className="ua-cfg-tf-live__pane">
         <span className="ua-cfg-bn-preview__label is-web">Website</span>
         <div className="ua-cfg-pt-live-preview">
@@ -1633,7 +1689,7 @@ function GoogleReviewPreview({ stats = [] }) {
             <strong>Google Review & Followers</strong>
             <span className="ua-cfg-pt-live-preview__url">irwellness.in</span>
           </div>
-          {statRow("web")}
+          {statGrid("web")}
         </div>
       </div>
       <div className="ua-cfg-tf-live__pane ua-cfg-tf-live__pane--app">
@@ -1649,7 +1705,7 @@ function GoogleReviewPreview({ stats = [] }) {
               <span className="ua-cfg-pt-live-preview__brand">IR</span>
               <strong>Stats</strong>
             </div>
-            {statRow("app")}
+            {statGrid("app")}
           </div>
         </div>
       </div>
@@ -1753,7 +1809,7 @@ function renderPreviewBody(item, surface, previewState) {
     case "app-language-disable":
       return <LanguagePreview hindiOn={previewState.hindiOn} surface={surface} item={item} />;
     case "app-faq":
-      return <FaqPreview items={previewState.faqItems ?? []} surface={surface} item={item} />;
+      return <FaqPreview items={previewState.faqItems ?? []} surface={surface} />;
     case "app-program":
       return <ProgramPreview rows={previewState.programRows ?? []} surface={surface} item={item} />;
     case "app-subscriptions":

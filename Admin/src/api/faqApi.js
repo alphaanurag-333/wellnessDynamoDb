@@ -17,6 +17,8 @@ function mapFaq(row) {
     answer: row.answer || "",
     status: row.status === "inactive" ? "inactive" : "active",
     shown: row.status !== "inactive",
+    webVisible: row.webVisible !== false,
+    appVisible: row.appVisible !== false,
     sortOrder: Number.isFinite(Number(row.sortOrder)) ? Number(row.sortOrder) : 0,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -51,6 +53,8 @@ export async function adminCreateFaq(token, fields) {
         question: String(fields.question ?? "").trim(),
         answer: String(fields.answer ?? "").trim(),
         status: fields.status || (fields.shown === false ? "inactive" : "active"),
+        webVisible: fields.webVisible !== false,
+        appVisible: fields.appVisible !== false,
         ...(fields.sortOrder !== undefined ? { sortOrder: fields.sortOrder } : {}),
       },
       { headers: authHeader(tokenOrStored(token)) },
@@ -67,6 +71,8 @@ export async function adminUpdateFaq(token, id, fields) {
   if (fields.answer !== undefined) payload.answer = String(fields.answer).trim();
   if (fields.status !== undefined) payload.status = String(fields.status);
   else if (fields.shown !== undefined) payload.status = fields.shown ? "active" : "inactive";
+  if (fields.webVisible !== undefined) payload.webVisible = Boolean(fields.webVisible);
+  if (fields.appVisible !== undefined) payload.appVisible = Boolean(fields.appVisible);
   if (fields.sortOrder !== undefined) payload.sortOrder = fields.sortOrder;
 
   try {

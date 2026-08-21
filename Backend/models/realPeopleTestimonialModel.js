@@ -16,9 +16,11 @@ const {
 const {
   listByPartitionKey,
   buildContainsFilter,
+  appendFilter,
   sortByCreatedAtDesc,
   paginateItems,
 } = require("../utils/dynamoList");
+const { normalizeVisibleFlag, visibilityFilterParts } = require("./wellnessCoachModel");
 const {
   enrichRealPeopleTestimonial,
   enrichRealPeopleTestimonials,
@@ -91,6 +93,8 @@ function toPublicRealPeopleTestimonial(item) {
   } catch {
     row.dataPoints = [];
   }
+  row.webVisible = normalizeVisibleFlag(row.webVisible, true);
+  row.appVisible = normalizeVisibleFlag(row.appVisible, true);
   return row;
 }
 
@@ -102,6 +106,7 @@ function sanitizeUpdateField(key, value) {
   if (field === "stars" || field === "rating") return sanitizeStars(value);
   if (field === "healthConcernId") return sanitizeHealthConcernId(value);
   if (field === "status") return normalizeStatus(value);
+  if (field === "webVisible" || field === "appVisible") return normalizeVisibleFlag(value, true);
   if (field === "dataPoints") return normalizeDataPoints(value);
   return value;
 }
@@ -117,6 +122,8 @@ async function createRealPeopleTestimonial({
   healthConcernId,
   dataPoints = [],
   status = "active",
+  webVisible = true,
+  appVisible = true,
 }) {
   const now = new Date().toISOString();
   const imageKey = normalizeProfileImageField(profileImage ?? profile_image);
@@ -131,6 +138,8 @@ async function createRealPeopleTestimonial({
     healthConcernId: sanitizeHealthConcernId(healthConcernId),
     dataPoints: normalizeDataPoints(dataPoints),
     status: normalizeStatus(status, "active"),
+    webVisible: normalizeVisibleFlag(webVisible, true),
+    appVisible: normalizeVisibleFlag(appVisible, true),
     createdAt: now,
     updatedAt: now,
   };
@@ -231,27 +240,70 @@ async function listRealPeopleTestimonials({
   status,
   search,
   healthConcernId,
+  platform,
+  webVisible,
+  appVisible,
 } = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const normalizedHealthConcernId = String(healthConcernId || "").trim();
   const searchFilter = buildContainsFilter(["name", "review"], search);
+  const channel = String(platform || "").toLowerCase().trim();
+  const wantWebVisible =
+    webVisible !== undefined ? webVisible : channel === "web" ? true : undefined;
+  const wantAppVisible =
+    appVisible !== undefined ? appVisible : channel === "app" ? true : undefined;
   const useHealthConcernFilter = Boolean(normalizedHealthConcernId);
+  const useVisibilityFilter = wantWebVisible !== undefined || wantAppVisible !== undefined;
   const queryPage = useHealthConcernFilter || searchFilter.search ? 1 : page;
   const queryLimit =
     useHealthConcernFilter || searchFilter.search ? Number.MAX_SAFE_INTEGER : limit;
   const queryMaxLimit =
     useHealthConcernFilter || searchFilter.search ? Number.MAX_SAFE_INTEGER : 200;
 
+  let filterExpression = searchFilter.filterExpression;
+  const exprNames = { ...(searchFilter.exprNames || {}) };
+  const exprValues = { ...(searchFilter.exprValues || {}) };
+  for (const part of [
+    visibilityFilterParts("webVisible", wantWebVisible),
+    visibilityFilterParts("appVisible", wantAppVisible),
+  ]) {
+    if (!part) continue;
+    Object.assign(exprNames, part.exprNames);
+    Object.assign(exprValues, part.exprValues);
+    filterExpression = appendFilter(filterExpression, part.expression);
+  }
+
   const { items, pagination } = await listByPartitionKey({
     tableName: TABLE,
     indexName: "StatusCreatedAtIndex",
     partitionKeyName: "status",
     partitionKeyValue: normalizedStatus || undefined,
-    filterExpression: searchFilter.filterExpression,
-    exprNames: searchFilter.exprNames,
-    exprValues: searchFilter.exprValues,
+    filterExpression,
+    exprNames,
+    exprValues,
     search: searchFilter.search,
     searchFields: searchFilter.searchFields,
+    searchFn: searchFilter.search
+      ? (item, term) => {
+          if (
+            wantWebVisible !== undefined &&
+            normalizeVisibleFlag(item.webVisible, true) !== normalizeVisibleFlag(wantWebVisible, true)
+          ) {
+            return false;
+          }
+          if (
+            wantAppVisible !== undefined &&
+            normalizeVisibleFlag(item.appVisible, true) !== normalizeVisibleFlag(wantAppVisible, true)
+          ) {
+            return false;
+          }
+          return ["name", "review"].some((field) =>
+            String(item[field] || "")
+              .toLowerCase()
+              .includes(term)
+          );
+        }
+      : undefined,
     scanIndexForward: false,
     page: queryPage,
     limit: queryLimit,
@@ -263,10 +315,36 @@ async function listRealPeopleTestimonials({
     items.map((row) => toPublicRealPeopleTestimonial(row))
   );
 
+  if (useVisibilityFilter) {
+    realPeopleTestimonials = realPeopleTestimonials.filter((row) => {
+      if (
+        wantWebVisible !== undefined &&
+        normalizeVisibleFlag(row.webVisible, true) !== normalizeVisibleFlag(wantWebVisible, true)
+      ) {
+        return false;
+      }
+      if (
+        wantAppVisible !== undefined &&
+        normalizeVisibleFlag(row.appVisible, true) !== normalizeVisibleFlag(wantAppVisible, true)
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }
+
   if (useHealthConcernFilter) {
     realPeopleTestimonials = realPeopleTestimonials.filter((row) =>
       matchesHealthConcern(row, normalizedHealthConcernId)
     );
+    const paged = paginateItems(realPeopleTestimonials, page, limit, 200);
+    return {
+      realPeopleTestimonials: paged.items,
+      pagination: paged.pagination,
+    };
+  }
+
+  if (useVisibilityFilter && (searchFilter.search || useHealthConcernFilter)) {
     const paged = paginateItems(realPeopleTestimonials, page, limit, 200);
     return {
       realPeopleTestimonials: paged.items,
@@ -283,6 +361,7 @@ async function listRealPeopleTestimonials({
 module.exports = {
   TABLE,
   normalizeStatus,
+  normalizeVisibleFlag,
   createRealPeopleTestimonial,
   getRealPeopleTestimonialById,
   getRealPeopleTestimonialRecordById,

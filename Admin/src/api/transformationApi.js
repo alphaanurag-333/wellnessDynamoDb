@@ -25,6 +25,8 @@ export function mapTransformation(row) {
     order: Number.isFinite(Number(row.order)) ? Number(row.order) : 0,
     live: row.status !== "inactive",
     status: row.status === "inactive" ? "inactive" : "active",
+    webVisible: row.webVisible !== false,
+    appVisible: row.appVisible !== false,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -44,6 +46,8 @@ function appendFields(form, fields) {
   }
   if (fields.status !== undefined) form.append("status", String(fields.status));
   else if (fields.live !== undefined) form.append("status", fields.live ? "active" : "inactive");
+  if (fields.webVisible !== undefined) form.append("webVisible", String(Boolean(fields.webVisible)));
+  if (fields.appVisible !== undefined) form.append("appVisible", String(Boolean(fields.appVisible)));
 }
 
 function jsonFields(fields) {
@@ -57,6 +61,8 @@ function jsonFields(fields) {
   if (fields.dataPoints !== undefined) payload.dataPoints = pointsToPayload(fields.dataPoints);
   if (fields.status !== undefined) payload.status = String(fields.status);
   else if (fields.live !== undefined) payload.status = fields.live ? "active" : "inactive";
+  if (fields.webVisible !== undefined) payload.webVisible = Boolean(fields.webVisible);
+  if (fields.appVisible !== undefined) payload.appVisible = Boolean(fields.appVisible);
   return payload;
 }
 

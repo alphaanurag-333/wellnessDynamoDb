@@ -12,6 +12,7 @@ const {
   buildContainsFilter,
   appendFilter,
 } = require("../utils/dynamoList");
+const { normalizeVisibleFlag, visibilityFilterParts } = require("./wellnessCoachModel");
 
 const TABLE = "BlogPost";
 const MEDIA_FIELDS = ["coverImage"];
@@ -42,6 +43,8 @@ function toPublicBlogPost(item) {
   return {
     ...resolved,
     sortOrder: normalizeSortOrder(resolved.sortOrder, 9999),
+    webVisible: normalizeVisibleFlag(resolved.webVisible, true),
+    appVisible: normalizeVisibleFlag(resolved.appVisible, true),
   };
 }
 
@@ -57,6 +60,7 @@ function sortBySortOrderAsc(a, b) {
 function sanitizeUpdateField(key, value) {
   if (key === "status") return normalizeStatus(value);
   if (key === "sortOrder") return normalizeSortOrder(value);
+  if (key === "webVisible" || key === "appVisible") return normalizeVisibleFlag(value, true);
   if (key === "coverImage") {
     if (value == null || String(value).trim() === "") return "";
     return normalizeMediaField(value, "coverImage");
@@ -85,6 +89,8 @@ async function createBlogPost({
   coverImage = "",
   status = "active",
   sortOrder,
+  webVisible = true,
+  appVisible = true,
 } = {}) {
   const now = new Date().toISOString();
   const existing = await listAllBlogPostsUnpaged();
@@ -100,6 +106,8 @@ async function createBlogPost({
     coverImage: coverImage ? normalizeMediaField(coverImage, "coverImage") : "",
     status: normalizeStatus(status),
     sortOrder: resolvedOrder,
+    webVisible: normalizeVisibleFlag(webVisible, true),
+    appVisible: normalizeVisibleFlag(appVisible, true),
     createdAt: now,
     updatedAt: now,
   };
@@ -170,12 +178,35 @@ async function deleteBlogPost(id) {
   );
 }
 
-async function listBlogPosts({ page = 1, limit = 50, status, search } = {}) {
+async function listBlogPosts({
+  page = 1,
+  limit = 50,
+  status,
+  search,
+  platform,
+  webVisible,
+  appVisible,
+} = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const searchFilter = buildContainsFilter(["title", "description"], search);
+  const channel = String(platform || "").toLowerCase().trim();
+  const wantWebVisible =
+    webVisible !== undefined ? webVisible : channel === "web" ? true : undefined;
+  const wantAppVisible =
+    appVisible !== undefined ? appVisible : channel === "app" ? true : undefined;
+
   let filterExpression = searchFilter.filterExpression;
-  const exprNames = { ...searchFilter.exprNames };
-  const exprValues = { ...searchFilter.exprValues };
+  const exprNames = { ...(searchFilter.exprNames || {}) };
+  const exprValues = { ...(searchFilter.exprValues || {}) };
+  for (const part of [
+    visibilityFilterParts("webVisible", wantWebVisible),
+    visibilityFilterParts("appVisible", wantAppVisible),
+  ]) {
+    if (!part) continue;
+    Object.assign(exprNames, part.exprNames);
+    Object.assign(exprValues, part.exprValues);
+    filterExpression = appendFilter(filterExpression, part.expression);
+  }
 
   const { items, pagination } = await listByPartitionKey({
     tableName: TABLE,
@@ -186,6 +217,27 @@ async function listBlogPosts({ page = 1, limit = 50, status, search } = {}) {
     exprValues,
     search: searchFilter.search,
     searchFields: searchFilter.searchFields,
+    searchFn: searchFilter.search
+      ? (item, term) => {
+          if (
+            wantWebVisible !== undefined &&
+            normalizeVisibleFlag(item.webVisible, true) !== normalizeVisibleFlag(wantWebVisible, true)
+          ) {
+            return false;
+          }
+          if (
+            wantAppVisible !== undefined &&
+            normalizeVisibleFlag(item.appVisible, true) !== normalizeVisibleFlag(wantAppVisible, true)
+          ) {
+            return false;
+          }
+          return ["title", "description"].some((field) =>
+            String(item[field] || "")
+              .toLowerCase()
+              .includes(term)
+          );
+        }
+      : undefined,
     scanIndexForward: false,
     page,
     limit,
@@ -237,6 +289,7 @@ module.exports = {
   reorderBlogPosts,
   normalizeStatus,
   normalizeSortOrder,
+  normalizeVisibleFlag,
   SORT_ORDER_MIN,
   SORT_ORDER_MAX,
 };

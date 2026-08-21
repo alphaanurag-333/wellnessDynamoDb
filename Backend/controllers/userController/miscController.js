@@ -121,7 +121,8 @@ exports.getActiveBanners = asyncHandler(async (req, res) => {
 
 exports.getActiveFaqs = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
-  const data = await listFaqs({ page, limit, status: "active" });
+  const platform = String(req.query.platform || "").trim().toLowerCase() || undefined;
+  const data = await listFaqs({ page, limit, status: "active", platform });
   return res.status(200).json({ status: true, faqs: data.faqs, pagination: data.pagination });
 });
 
@@ -188,12 +189,14 @@ exports.getActiveProgramTestimonials = asyncHandler(async (req, res) => {
 exports.getActiveRealPeopleTestimonials = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
   const healthConcernId = String(req.query.healthConcernId || "").trim() || undefined;
+  const platform = String(req.query.platform || "").trim().toLowerCase() || undefined;
   const data = resolveListMedia(
     await listRealPeopleTestimonials({
       page,
       limit,
       status: "active",
       healthConcernId,
+      platform,
     }),
     "realPeopleTestimonials",
     ["profileImage", "userAvatar"]
@@ -207,8 +210,9 @@ exports.getActiveRealPeopleTestimonials = asyncHandler(async (req, res) => {
 
 exports.getActiveVideoTestimonials = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
+  const platform = String(req.query.platform || "").trim().toLowerCase() || undefined;
   const data = resolveListMedia(
-    await listVideoTestimonials({ page, limit, status: "active" }),
+    await listVideoTestimonials({ page, limit, status: "active", platform }),
     "videoTestimonials",
     ["profileImage", "video"]
   );
@@ -291,6 +295,7 @@ exports.getActiveYoga = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
   const type = String(req.query.type || "").trim().toLowerCase() || undefined;
   const category = String(req.query.category || "").trim() || undefined;
+  const platform = String(req.query.platform || "").trim().toLowerCase() || undefined;
   const data = resolveListMedia(
     await listYoga({
       page,
@@ -299,6 +304,7 @@ exports.getActiveYoga = asyncHandler(async (req, res) => {
       type,
       category,
       search: readSearch(req.query),
+      platform,
     }),
     "yoga",
     ["thumbnail", "video"]
@@ -321,12 +327,14 @@ exports.getBlogConfig = asyncHandler(async (_req, res) => {
 
 exports.getActiveBlogPosts = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
+  const platform = String(req.query.platform || "").trim().toLowerCase() || undefined;
   const data = resolveListMedia(
     await listBlogPosts({
       page,
       limit,
       status: "active",
       search: readSearch(req.query),
+      platform,
     }),
     "posts",
     ["coverImage"]
@@ -361,6 +369,7 @@ exports.getActiveHealthRecipes = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
   const type = String(req.query.type || "").trim().toLowerCase() || undefined;
   const category = String(req.query.category || "").trim() || undefined;
+  const platform = String(req.query.platform || "").trim().toLowerCase() || undefined;
   const data = resolveListMedia(
     await listHealthRecipes({
       page,
@@ -369,6 +378,7 @@ exports.getActiveHealthRecipes = asyncHandler(async (req, res) => {
       type,
       category,
       search: readSearch(req.query),
+      platform,
     }),
     "healthRecipes",
     ["thumbnail", "video"]
@@ -382,12 +392,14 @@ exports.getActiveHealthRecipes = asyncHandler(async (req, res) => {
 
 exports.getActiveTransformations = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
+  const platform = String(req.query.platform || "").trim().toLowerCase() || undefined;
   const data = resolveListMedia(
     await listTransformations({
       page,
       limit,
       status: "active",
       search: readSearch(req.query),
+      platform,
     }),
     "transformations",
     ["oldImage", "newImage"]

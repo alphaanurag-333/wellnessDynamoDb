@@ -466,6 +466,20 @@ export function DynamicLeadershipSection({ items, setItems, onToast }) {
     }
   }
 
+  async function toggleSurface(item, field) {
+    if (busy || (field !== "webVisible" && field !== "appVisible")) return;
+    const next = !item[field];
+    const prev = item[field];
+    patchItem(item.id, { [field]: next });
+    try {
+      const saved = await adminUpdateLeadershipNote(null, item.id, { [field]: next });
+      patchItem(item.id, saved);
+    } catch (error) {
+      patchItem(item.id, { [field]: prev });
+      onToast(error?.message || `Could not update ${field === "webVisible" ? "web" : "app"} visibility`);
+    }
+  }
+
   async function deleteItem() {
     if (!pendingDelete) return;
     const item = pendingDelete;
@@ -607,32 +621,58 @@ export function DynamicLeadershipSection({ items, setItems, onToast }) {
                               {asCopyString(item.designation) || asCopyString(item.title) || "No designation"}
                             </span>
                           )}
-                          {isEditing ? null : (
-                            <>
-                              {updated ? <span className="ua-cfg-panel__sub">Updated {updated}</span> : null}
-                              <span className="ua-cfg-ld-item__chips">
-                                <span className={`ua-cfg-ld-chip${item.webVisible ? " is-on" : ""}`}>Web</span>
-                                <span className={`ua-cfg-ld-chip ua-cfg-ld-chip--app${item.appVisible ? " is-on" : ""}`}>App</span>
-                              </span>
-                            </>
+                          {isEditing || !updated ? null : (
+                            <span className="ua-cfg-panel__sub">Updated {updated}</span>
                           )}
                         </div>
                       </div>
                       <div className="ua-cfg-ld-item__actions">
-                        <div className="ua-cfg-ld-item__live">
-                          <span className={`ua-cfg-faq__shown${item.live ? " is-on" : ""}`}>
-                            {item.live ? "LIVE" : "HIDDEN"}
-                          </span>
-                          <button
-                            type="button"
-                            className={`ua-toggle ua-toggle--sm${item.live ? " ua-toggle--on" : ""}`}
-                            aria-pressed={item.live}
-                            aria-label={item.live ? "Hide note" : "Publish note"}
-                            disabled={busy}
-                            onClick={() => toggleLive(item)}
-                          >
-                            <span className="ua-toggle__knob" />
-                          </button>
+                        <div className="ua-cfg-ld-item__surfaces">
+                          <div className="ua-cfg-ld-item__live">
+                            <span className={`ua-cfg-faq__shown${item.webVisible ? " is-on" : ""}`}>
+                              WEB
+                            </span>
+                            <button
+                              type="button"
+                              className={`ua-toggle ua-toggle--sm${item.webVisible ? " ua-toggle--on" : ""}`}
+                              aria-pressed={item.webVisible}
+                              aria-label={item.webVisible ? "Hide on web" : "Show on web"}
+                              disabled={busy}
+                              onClick={() => toggleSurface(item, "webVisible")}
+                            >
+                              <span className="ua-toggle__knob" />
+                            </button>
+                          </div>
+                          <div className="ua-cfg-ld-item__live">
+                            <span className={`ua-cfg-faq__shown${item.appVisible ? " is-on" : ""}`}>
+                              APP
+                            </span>
+                            <button
+                              type="button"
+                              className={`ua-toggle ua-toggle--sm${item.appVisible ? " ua-toggle--on" : ""}`}
+                              aria-pressed={item.appVisible}
+                              aria-label={item.appVisible ? "Hide on app" : "Show on app"}
+                              disabled={busy}
+                              onClick={() => toggleSurface(item, "appVisible")}
+                            >
+                              <span className="ua-toggle__knob" />
+                            </button>
+                          </div>
+                          <div className="ua-cfg-ld-item__live">
+                            <span className={`ua-cfg-faq__shown${item.live ? " is-on" : ""}`}>
+                              {item.live ? "LIVE" : "HIDDEN"}
+                            </span>
+                            <button
+                              type="button"
+                              className={`ua-toggle ua-toggle--sm${item.live ? " ua-toggle--on" : ""}`}
+                              aria-pressed={item.live}
+                              aria-label={item.live ? "Hide note" : "Publish note"}
+                              disabled={busy}
+                              onClick={() => toggleLive(item)}
+                            >
+                              <span className="ua-toggle__knob" />
+                            </button>
+                          </div>
                         </div>
                         <div className="ua-cfg-ld-item__btns">
                           <button
@@ -703,32 +743,6 @@ export function DynamicLeadershipSection({ items, setItems, onToast }) {
                             onChange={(event) => patchItem(item.id, { message: event.target.value })}
                           />
                         </label>
-                        <div className="ua-cfg-bn-surfaces ua-cfg-ld-field--wide">
-                          <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--web${item.webVisible ? " is-on" : ""}`}>
-                            <span>Web {item.webVisible ? "Visible" : "Hidden"}</span>
-                            <button
-                              type="button"
-                              className={`ua-toggle ua-toggle--sm${item.webVisible ? " ua-toggle--on" : ""}`}
-                              aria-pressed={item.webVisible}
-                              disabled={busy}
-                              onClick={() => patchItem(item.id, { webVisible: !item.webVisible })}
-                            >
-                              <span className="ua-toggle__knob" />
-                            </button>
-                          </div>
-                          <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--app${item.appVisible ? " is-on" : ""}`}>
-                            <span>App {item.appVisible ? "Visible" : "Hidden"}</span>
-                            <button
-                              type="button"
-                              className={`ua-toggle ua-toggle--sm${item.appVisible ? " ua-toggle--on" : ""}`}
-                              aria-pressed={item.appVisible}
-                              disabled={busy}
-                              onClick={() => patchItem(item.id, { appVisible: !item.appVisible })}
-                            >
-                              <span className="ua-toggle__knob" />
-                            </button>
-                          </div>
-                        </div>
                       </div>
                     ) : (
                       <p>{asCopyString(item.message)}</p>

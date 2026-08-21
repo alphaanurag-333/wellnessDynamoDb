@@ -79,6 +79,8 @@ export async function adminCreateBlogPost(token, fields, files = {}) {
     description: fields.description ?? "",
     status: fields.status || (fields.live === false ? "inactive" : "active"),
     sortOrder: fields.sortOrder,
+    webVisible: fields.webVisible !== false,
+    appVisible: fields.appVisible !== false,
   };
   try {
     if (coverFile) {
@@ -86,6 +88,8 @@ export async function adminCreateBlogPost(token, fields, files = {}) {
       fd.append("title", payload.title);
       fd.append("description", payload.description);
       fd.append("status", payload.status);
+      fd.append("webVisible", String(payload.webVisible));
+      fd.append("appVisible", String(payload.appVisible));
       if (payload.sortOrder !== undefined && payload.sortOrder !== null && payload.sortOrder !== "") {
         fd.append("sortOrder", String(payload.sortOrder));
       }
@@ -110,6 +114,8 @@ export async function adminUpdateBlogPost(token, id, fields, files = {}) {
       if (fields.description !== undefined) fd.append("description", String(fields.description ?? "").trim());
       if (fields.status !== undefined) fd.append("status", String(fields.status));
       else if (fields.live !== undefined) fd.append("status", fields.live ? "active" : "inactive");
+      if (fields.webVisible !== undefined) fd.append("webVisible", String(Boolean(fields.webVisible)));
+      if (fields.appVisible !== undefined) fd.append("appVisible", String(Boolean(fields.appVisible)));
       fd.append("coverFile", coverFile);
       const { data } = await api.patch(`/admin/blog-posts/${encodeURIComponent(id)}`, fd, { headers });
       return mapBlogPost(data.post);
@@ -119,6 +125,8 @@ export async function adminUpdateBlogPost(token, id, fields, files = {}) {
     if (fields.description !== undefined) payload.description = String(fields.description ?? "").trim();
     if (fields.status !== undefined) payload.status = String(fields.status);
     else if (fields.live !== undefined) payload.status = fields.live ? "active" : "inactive";
+    if (fields.webVisible !== undefined) payload.webVisible = Boolean(fields.webVisible);
+    if (fields.appVisible !== undefined) payload.appVisible = Boolean(fields.appVisible);
     if (fields.sortOrder !== undefined) payload.sortOrder = fields.sortOrder;
     const { data } = await api.patch(`/admin/blog-posts/${encodeURIComponent(id)}`, payload, { headers });
     return mapBlogPost(data.post);

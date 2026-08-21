@@ -31356,15 +31356,39 @@ scrollbar-width: thin;
   grid-row: 1;
   display: flex;
   align-items: center;
-  flex-wrap: nowrap;
-  height: 28px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  min-height: 28px;
   gap: 8px;
+}
+
+.updated-admin .ua-cfg-faq__surfaces {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-faq__live {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-faq-new__surfaces {
+  margin: 0 0 12px;
 }
 
 .updated-admin .ua-cfg-faq--editing .ua-cfg-faq__drag,
 .updated-admin .ua-cfg-faq--editing .ua-cfg-faq__num,
 .updated-admin .ua-cfg-faq--editing .ua-cfg-faq__controls {
-  height: 38px;
+  height: auto;
+  min-height: 38px;
 }
 
 .updated-admin .ua-cfg-faq__controls .ua-cfg-btn {
@@ -32275,27 +32299,33 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cfg-preview-modal__tabs {
-  display: flex;
-  gap: 8px;
-  padding: 0 20px 12px;
+  display: inline-flex;
+  align-self: flex-start;
+  gap: 0;
+  margin: 0 20px 12px;
+  padding: 3px;
+  border: 1px solid #e3e9f2;
+  border-radius: 999px;
+  background: #f8fafc;
 }
 
 .updated-admin .ua-cfg-preview-modal__tab {
   height: 30px;
-  padding: 0 12px;
+  padding: 0 16px;
   border-radius: 999px;
-  border: 1px solid var(--border);
-  background: #fff;
+  border: 0;
+  background: transparent;
   color: #5a6b85;
-  font-size: 11.5px;
-  font-weight: 650;
+  font-size: 12px;
+  font-weight: 700;
   cursor: pointer;
 }
 
 .updated-admin .ua-cfg-preview-modal__tab.is-active {
-  background: #eef0fc;
-  border-color: #dcdff7;
+  background: #fff;
+  border-color: transparent;
   color: #5e6ad2;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
 }
 
 .updated-admin .ua-cfg-preview-modal__frame {
@@ -32787,6 +32817,162 @@ scrollbar-width: thin;
   padding: 24px 18px;
   font-size: 13px;
   color: #8a97ac;
+}
+
+.updated-admin .ua-cfg-faq-live {
+  width: 100%;
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-faq-live--web {
+  max-width: 720px;
+}
+
+.updated-admin .ua-cfg-faq-live--app {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.updated-admin .ua-cfg-faq-live__web {
+  width: 100%;
+}
+
+.updated-admin .ua-cfg-faq-live__web-list {
+  padding: 4px 0 8px;
+}
+
+.updated-admin .ua-cfg-faq-live__web-item {
+  border-bottom: 1px solid #edf1f7;
+  padding: 0 16px;
+}
+
+.updated-admin .ua-cfg-faq-live__web-item:last-child {
+  border-bottom: 0;
+}
+
+.updated-admin .ua-cfg-faq-live__web-item summary {
+  position: relative;
+  padding: 14px 28px 14px 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #16233f;
+  cursor: pointer;
+  list-style: none;
+  line-height: 1.35;
+}
+
+.updated-admin .ua-cfg-faq-live__web-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.updated-admin .ua-cfg-faq-live__web-item summary::after {
+  content: "+";
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #8a97ab;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.updated-admin .ua-cfg-faq-live__web-item[open] summary::after {
+  content: "−";
+}
+
+.updated-admin .ua-cfg-faq-live__web-item p {
+  margin: 0 0 14px;
+  padding-right: 28px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #5a6b85;
+}
+
+.updated-admin .ua-cfg-faq-live__phone-wrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.updated-admin .ua-cfg-faq-live__phone {
+  width: 100%;
+  max-width: 220px;
+}
+
+.updated-admin .ua-cfg-faq-live__app-body {
+  padding: 0 0 10px;
+  min-height: 320px;
+}
+
+.updated-admin .ua-cfg-faq-live__app-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 10px;
+  font-size: 12px;
+  color: #16233f;
+}
+
+.updated-admin .ua-cfg-faq-live__app-list {
+  padding: 0 8px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.updated-admin .ua-cfg-faq-live__app-item {
+  border: 1px solid #e8edf5;
+  border-radius: 10px;
+  background: #fff;
+  padding: 0 10px;
+}
+
+.updated-admin .ua-cfg-faq-live__app-item summary {
+  padding: 10px 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: #16233f;
+  cursor: pointer;
+  list-style: none;
+  line-height: 1.35;
+}
+
+.updated-admin .ua-cfg-faq-live__app-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.updated-admin .ua-cfg-faq-live__app-item p {
+  margin: 0 0 10px;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: #5a6b85;
+}
+
+.updated-admin .ua-cfg-faq-live__empty {
+  margin: 12px;
+  font-size: 12px;
+  color: #8a97ab;
+  line-height: 1.4;
+}
+
+.updated-admin .ua-cfg-faq-live__empty--web {
+  margin: 0;
+  padding: 28px 18px;
+}
+
+.updated-admin .ua-cfg-preview-modal__frame--web:has(.ua-cfg-faq-live) {
+  justify-items: stretch;
+}
+
+.updated-admin .ua-cfg-preview-modal__frame--app:has(.ua-cfg-faq-live) {
+  justify-items: center;
 }
 
 /* Program / subscription setup modal */
@@ -43531,6 +43717,15 @@ scrollbar-width: thin;
   min-width: 0;
 }
 
+.updated-admin .ua-cfg-tf-item__surfaces {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
 .updated-admin .ua-cfg-tf-item__actions .ua-cfg-btn--outline {
   color: rgb(94, 106, 210);
   border: 1px solid rgb(203, 213, 230);
@@ -44820,6 +45015,15 @@ scrollbar-width: thin;
   min-width: 0;
 }
 
+.updated-admin .ua-cfg-rp-item__surfaces {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
 .updated-admin .ua-cfg-rp-item__live,
 .updated-admin .ua-cfg-rp-item__btns {
   display: flex;
@@ -45382,6 +45586,15 @@ scrollbar-width: thin;
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-vh-item__surfaces {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
   flex: 0 0 auto;
   min-width: 0;
 }
@@ -46184,31 +46397,59 @@ scrollbar-width: thin;
   color: #b45309;
 }
 
+.updated-admin .ua-cfg-gr-live {
+  align-items: stretch;
+}
+
 .updated-admin .ua-cfg-gr-preview {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   padding: 14px;
+  align-content: start;
 }
 
 .updated-admin .ua-cfg-gr-preview__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 0;
   border: 1px solid #e8edf5;
   border-radius: 10px;
-  padding: 10px 12px;
+  padding: 14px 12px;
   background: #fff;
+  text-align: center;
 }
 
-.updated-admin .ua-cfg-gr-preview__stat span {
+.updated-admin .ua-cfg-gr-preview__stat strong {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.1;
+  color: #16233f;
+}
+
+.updated-admin .ua-cfg-gr-preview__stat > span {
   display: block;
+  margin: 0;
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: #8a97ab;
+  line-height: 1.25;
 }
 
-.updated-admin .ua-cfg-gr-preview__stat strong {
-  font-size: 22px;
+.updated-admin .ua-cfg-gr-preview__star {
+  font-size: 0.72em;
+  line-height: 1;
+  color: #eab308;
 }
 
 .updated-admin .ua-cfg-gr-preview__stat--gold strong {
@@ -46217,6 +46458,18 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cfg-gr-preview__stat--blue strong {
   color: #2563eb;
+}
+
+.updated-admin .ua-cfg-gr-preview__stat--teal strong {
+  color: #0d9488;
+}
+
+.updated-admin .ua-cfg-gr-preview__stat--green strong {
+  color: #16a34a;
+}
+
+.updated-admin .ua-cfg-gr-preview__stat--purple strong {
+  color: #7c3aed;
 }
 
 .updated-admin .ua-cfg-gr-preview__stat--pink strong {
@@ -46229,6 +46482,25 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cfg-gr-preview__stat--accent strong {
   color: #5e6ad2;
+}
+
+.updated-admin .ua-cfg-gr-preview--app {
+  gap: 8px;
+  padding: 8px 10px 12px;
+}
+
+.updated-admin .ua-cfg-gr-preview--app .ua-cfg-gr-preview__stat {
+  gap: 4px;
+  padding: 10px 8px;
+}
+
+.updated-admin .ua-cfg-gr-preview--app .ua-cfg-gr-preview__stat strong {
+  font-size: 16px;
+}
+
+.updated-admin .ua-cfg-gr-preview--app .ua-cfg-gr-preview__stat > span {
+  font-size: 8px;
+  letter-spacing: 0.04em;
 }
 
 
@@ -47115,6 +47387,15 @@ scrollbar-width: thin;
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
+}
+
+.updated-admin .ua-cfg-rc-item__surfaces {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-width: 0;
 }
 
 .updated-admin .ua-cfg-rc-item__actions .ua-cfg-btn--outline {
@@ -48205,6 +48486,15 @@ scrollbar-width: thin;
   min-width: 0;
 }
 
+.updated-admin .ua-cfg-ld-item__surfaces {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
 .updated-admin .ua-cfg-ld-item__live,
 .updated-admin .ua-cfg-ld-item__btns {
   display: flex;
@@ -48719,6 +49009,15 @@ scrollbar-width: thin;
   min-width: 0;
 }
 
+.updated-admin .ua-cfg-bl-item__surfaces {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
 .updated-admin .ua-cfg-bl-item__live,
 .updated-admin .ua-cfg-bl-item__btns {
   display: inline-flex;
@@ -48726,6 +49025,10 @@ scrollbar-width: thin;
   align-items: center;
   gap: 8px;
   min-width: 0;
+}
+
+.updated-admin .ua-cfg-bl-new__surfaces {
+  margin: 0 0 4px;
 }
 
 .updated-admin .ua-cfg-bl-edit__desc {
@@ -51161,6 +51464,7 @@ scrollbar-width: thin;
   }
 
   .updated-admin .ua-cfg-vh-item__actions,
+  .updated-admin .ua-cfg-vh-item__surfaces,
   .updated-admin .ua-cfg-vh-item__live,
   .updated-admin .ua-cfg-vh-item__btns {
     flex-wrap: nowrap;
@@ -51189,6 +51493,7 @@ scrollbar-width: thin;
   }
 
   .updated-admin .ua-cfg-ld-item__actions,
+  .updated-admin .ua-cfg-ld-item__surfaces,
   .updated-admin .ua-cfg-ld-item__live,
   .updated-admin .ua-cfg-ld-item__btns {
     flex-wrap: nowrap;
@@ -54233,6 +54538,7 @@ scrollbar-width: thin;
   }
 
   .updated-admin .ua-cfg-bl-item__actions,
+  .updated-admin .ua-cfg-bl-item__surfaces,
   .updated-admin .ua-cfg-bl-item__live,
   .updated-admin .ua-cfg-bl-item__btns {
     flex-wrap: nowrap;
@@ -54671,6 +54977,7 @@ scrollbar-width: thin;
 
   .updated-admin .ua-cfg-tf-item__head,
   .updated-admin .ua-cfg-tf-item__actions,
+  .updated-admin .ua-cfg-tf-item__surfaces,
   .updated-admin .ua-cfg-tf-item__live,
   .updated-admin .ua-cfg-tf-item__moves,
   .updated-admin .ua-cfg-tf-item__btns {
@@ -54760,6 +55067,7 @@ scrollbar-width: thin;
 
   .updated-admin .ua-cfg-tf-item__head,
   .updated-admin .ua-cfg-tf-item__actions,
+  .updated-admin .ua-cfg-tf-item__surfaces,
   .updated-admin .ua-cfg-tf-item__live,
   .updated-admin .ua-cfg-tf-item__moves,
   .updated-admin .ua-cfg-tf-item__btns {
@@ -55450,6 +55758,7 @@ scrollbar-width: thin;
   }
 
   .updated-admin .ua-cfg-rp-item__live,
+  .updated-admin .ua-cfg-rp-item__surfaces,
   .updated-admin .ua-cfg-rp-item__btns {
     flex: 0 0 auto;
     flex-wrap: nowrap;
@@ -55589,6 +55898,7 @@ scrollbar-width: thin;
   }
 
   .updated-admin .ua-cfg-rp-item__live,
+  .updated-admin .ua-cfg-rp-item__surfaces,
   .updated-admin .ua-cfg-rp-item__btns {
     flex: 0 0 auto;
     flex-wrap: nowrap;
@@ -56106,6 +56416,7 @@ scrollbar-width: thin;
 
   .updated-admin .ua-cfg-vh-item__head,
   .updated-admin .ua-cfg-vh-item__actions,
+  .updated-admin .ua-cfg-vh-item__surfaces,
   .updated-admin .ua-cfg-vh-item__live,
   .updated-admin .ua-cfg-vh-item__btns {
     flex-wrap: nowrap;
@@ -56177,6 +56488,7 @@ scrollbar-width: thin;
 
   .updated-admin .ua-cfg-vh-item__head,
   .updated-admin .ua-cfg-vh-item__actions,
+  .updated-admin .ua-cfg-vh-item__surfaces,
   .updated-admin .ua-cfg-vh-item__live,
   .updated-admin .ua-cfg-vh-item__btns {
     flex-wrap: wrap;
@@ -56249,6 +56561,7 @@ scrollbar-width: thin;
 
   .updated-admin .ua-cfg-vh-item__head,
   .updated-admin .ua-cfg-vh-item__actions,
+  .updated-admin .ua-cfg-vh-item__surfaces,
   .updated-admin .ua-cfg-vh-item__live,
   .updated-admin .ua-cfg-vh-item__btns {
     flex-wrap: wrap;
@@ -56318,6 +56631,7 @@ scrollbar-width: thin;
 
   .updated-admin .ua-cfg-ld-item__head,
   .updated-admin .ua-cfg-ld-item__actions,
+  .updated-admin .ua-cfg-ld-item__surfaces,
   .updated-admin .ua-cfg-ld-item__live,
   .updated-admin .ua-cfg-ld-item__btns {
     flex-wrap: nowrap;
@@ -56402,6 +56716,7 @@ scrollbar-width: thin;
 
   .updated-admin .ua-cfg-ld-item__head,
   .updated-admin .ua-cfg-ld-item__actions,
+  .updated-admin .ua-cfg-ld-item__surfaces,
   .updated-admin .ua-cfg-ld-item__live,
   .updated-admin .ua-cfg-ld-item__btns {
     flex-wrap: wrap;
@@ -56487,6 +56802,7 @@ scrollbar-width: thin;
 
   .updated-admin .ua-cfg-ld-item__head,
   .updated-admin .ua-cfg-ld-item__actions,
+  .updated-admin .ua-cfg-ld-item__surfaces,
   .updated-admin .ua-cfg-ld-item__live,
   .updated-admin .ua-cfg-ld-item__btns {
     flex-wrap: wrap;

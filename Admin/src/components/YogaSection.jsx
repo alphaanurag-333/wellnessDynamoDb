@@ -913,6 +913,20 @@ export function YogaSection({
     if (!saved) updateItem(entry.id, { live: entry.live, status: entry.status });
   }
 
+  async function toggleSurface(entry, field) {
+    if (field !== "webVisible" && field !== "appVisible") return;
+    if (!persist) {
+      updateItem(entry.id, { [field]: !entry[field] });
+      return;
+    }
+    if (busy) return;
+    const next = !entry[field];
+    const prev = entry[field];
+    updateItem(entry.id, { [field]: next });
+    const saved = await persistItem(entry.id, { [field]: next });
+    if (!saved) updateItem(entry.id, { [field]: prev });
+  }
+
   async function saveLink(url) {
     if (!url) return;
     if (linkFor === "draft") {
@@ -1280,17 +1294,45 @@ export function YogaSection({
                         </div>
                       </div>
                       <div className="ua-cfg-rc-item__actions">
-                        <div className="ua-cfg-rc-item__live">
-                          <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>{entry.live ? "LIVE" : "HIDDEN"}</span>
-                          <button
-                            type="button"
-                            className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
-                            aria-pressed={entry.live}
-                            disabled={disabled}
-                            onClick={() => toggleLive(entry)}
-                          >
-                            <span className="ua-toggle__knob" />
-                          </button>
+                        <div className="ua-cfg-rc-item__surfaces">
+                          <div className="ua-cfg-rc-item__live">
+                            <span className={`ua-cfg-faq__shown${entry.webVisible !== false ? " is-on" : ""}`}>WEB</span>
+                            <button
+                              type="button"
+                              className={`ua-toggle ua-toggle--sm${entry.webVisible !== false ? " ua-toggle--on" : ""}`}
+                              aria-pressed={entry.webVisible !== false}
+                              aria-label={entry.webVisible !== false ? "Hide on web" : "Show on web"}
+                              disabled={disabled}
+                              onClick={() => toggleSurface(entry, "webVisible")}
+                            >
+                              <span className="ua-toggle__knob" />
+                            </button>
+                          </div>
+                          <div className="ua-cfg-rc-item__live">
+                            <span className={`ua-cfg-faq__shown${entry.appVisible !== false ? " is-on" : ""}`}>APP</span>
+                            <button
+                              type="button"
+                              className={`ua-toggle ua-toggle--sm${entry.appVisible !== false ? " ua-toggle--on" : ""}`}
+                              aria-pressed={entry.appVisible !== false}
+                              aria-label={entry.appVisible !== false ? "Hide on app" : "Show on app"}
+                              disabled={disabled}
+                              onClick={() => toggleSurface(entry, "appVisible")}
+                            >
+                              <span className="ua-toggle__knob" />
+                            </button>
+                          </div>
+                          <div className="ua-cfg-rc-item__live">
+                            <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>{entry.live ? "LIVE" : "HIDDEN"}</span>
+                            <button
+                              type="button"
+                              className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
+                              aria-pressed={entry.live}
+                              disabled={disabled}
+                              onClick={() => toggleLive(entry)}
+                            >
+                              <span className="ua-toggle__knob" />
+                            </button>
+                          </div>
                         </div>
                         <div className="ua-cfg-rc-item__btns">
                           <button

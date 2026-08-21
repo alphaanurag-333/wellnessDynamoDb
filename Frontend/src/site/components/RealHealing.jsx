@@ -169,7 +169,7 @@ export default function RealHealingSlider() {
 
     (async () => {
       try {
-        const data = await fetchRealPeopleTestimonials({ page: 1, limit: 24 });
+        const data = await fetchRealPeopleTestimonials({ page: 1, limit: 24, platform: "web" });
         if (cancelled) return;
         const rows = Array.isArray(data?.realPeopleTestimonials) ? data.realPeopleTestimonials : [];
         setItems(rows.map(mapHealingTestimonial).filter(Boolean));

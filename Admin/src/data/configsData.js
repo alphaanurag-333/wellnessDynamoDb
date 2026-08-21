@@ -30,7 +30,7 @@ export const CONFIG_GROUPS = {
           note: "Question and answer list",
           owner: "Admin / Support",
           app: true,
-          web: false,
+          web: true,
           live: true,
           on: true,
           tags: ["Text"],

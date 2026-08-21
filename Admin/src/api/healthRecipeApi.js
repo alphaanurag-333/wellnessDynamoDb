@@ -19,6 +19,8 @@ function appendFields(fd, fields) {
   if (fields.video !== undefined) fd.append("video", String(fields.video ?? "").trim());
   if (fields.status !== undefined) fd.append("status", String(fields.status));
   else if (fields.live !== undefined) fd.append("status", fields.live ? "active" : "inactive");
+  if (fields.webVisible !== undefined) fd.append("webVisible", String(Boolean(fields.webVisible)));
+  if (fields.appVisible !== undefined) fd.append("appVisible", String(Boolean(fields.appVisible)));
   if (fields.videoSpecification !== undefined) {
     fd.append("videoSpecification", JSON.stringify(Array.isArray(fields.videoSpecification) ? fields.videoSpecification : []));
   }
@@ -34,6 +36,8 @@ function fieldsToPayload(fields) {
   if (fields.video !== undefined) payload.video = String(fields.video ?? "").trim();
   if (fields.status !== undefined) payload.status = String(fields.status);
   else if (fields.live !== undefined) payload.status = fields.live ? "active" : "inactive";
+  if (fields.webVisible !== undefined) payload.webVisible = Boolean(fields.webVisible);
+  if (fields.appVisible !== undefined) payload.appVisible = Boolean(fields.appVisible);
   if (fields.videoSpecification !== undefined) {
     payload.videoSpecification = Array.isArray(fields.videoSpecification) ? fields.videoSpecification : [];
   }

@@ -13,6 +13,7 @@ const {
   deleteTransformation,
   listTransformations,
   normalizeOrder,
+  normalizeVisibleFlag,
   ORDER_MIN,
   ORDER_MAX,
 } = require("../../models/transformationModel");
@@ -110,6 +111,11 @@ exports.createTransformationController = asyncHandler(async (req, res) => {
   if (!oldImage || !newImage) throw new AppError("oldImage and newImage are required", 400);
   if (!["active", "inactive"].includes(status)) throw new AppError("status must be active or inactive", 400);
 
+  const webVisible =
+    req.body.webVisible !== undefined ? normalizeVisibleFlag(req.body.webVisible, true) : true;
+  const appVisible =
+    req.body.appVisible !== undefined ? normalizeVisibleFlag(req.body.appVisible, true) : true;
+
   const transformation = await createTransformation({
     name,
     timeTaken,
@@ -121,6 +127,8 @@ exports.createTransformationController = asyncHandler(async (req, res) => {
     dataPoints,
     order,
     status,
+    webVisible,
+    appVisible,
   });
 
   return res.status(201).json({
@@ -168,6 +176,13 @@ exports.updateTransformationController = asyncHandler(async (req, res) => {
     const status = String(req.body.status || "").trim().toLowerCase();
     if (!["active", "inactive"].includes(status)) throw new AppError("status must be active or inactive", 400);
     updates.status = status;
+  }
+
+  if (req.body.webVisible !== undefined) {
+    updates.webVisible = normalizeVisibleFlag(req.body.webVisible, true);
+  }
+  if (req.body.appVisible !== undefined) {
+    updates.appVisible = normalizeVisibleFlag(req.body.appVisible, true);
   }
 
   if (req.body.name !== undefined) {

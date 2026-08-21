@@ -9355,6 +9355,12 @@ flex-shrink: 0;
   background: var(--admin-bg);
 }
 
+/* Keep the old medicalBoard lavender band after coaches were removed */
+.about-page > .methodology + .leadership.leadership-slider,
+.about-page > .leadership.leadership-slider + .leadership.leadership-slider {
+  background: var(--admin-bg);
+}
+
 .about-page .medicalBoard__top {
   margin-bottom: var(--space-4);
   align-items: center;

@@ -14,6 +14,8 @@ const {
   sortByCreatedAtDesc,
 } = require("../utils/dynamoList");
 
+const { normalizeVisibleFlag, visibilityFilterParts } = require("./wellnessCoachModel");
+
 const YOGA_MEDIA_FIELDS = ["thumbnail", "video"];
 
 const TABLE = "Yoga";
@@ -39,12 +41,17 @@ function withLegacyId(item) {
 
 function toPublicYoga(item) {
   const row = withLegacyId(item);
-  return row ? resolveMediaFields(row, YOGA_MEDIA_FIELDS) : null;
+  if (!row) return null;
+  const resolved = resolveMediaFields(row, YOGA_MEDIA_FIELDS);
+  resolved.webVisible = normalizeVisibleFlag(resolved.webVisible, true);
+  resolved.appVisible = normalizeVisibleFlag(resolved.appVisible, true);
+  return resolved;
 }
 
 function sanitizeUpdateField(key, value) {
   if (key === "status") return normalizeStatus(value);
   if (key === "type") return normalizeType(value);
+  if (key === "webVisible" || key === "appVisible") return normalizeVisibleFlag(value, true);
   if (key === "thumbnail" || key === "video") {
     if (value == null || String(value).trim() === "") return "";
     return normalizeMediaField(value, key);
@@ -64,6 +71,8 @@ async function createYoga({
   ytLink = "",
   video = "",
   status = "active",
+  webVisible = true,
+  appVisible = true,
 }) {
   const now = new Date().toISOString();
   const item = {
@@ -76,6 +85,8 @@ async function createYoga({
     ytLink: String(ytLink || "").trim(),
     video: video ? normalizeMediaField(video, "video") : "",
     status: normalizeStatus(status),
+    webVisible: normalizeVisibleFlag(webVisible, true),
+    appVisible: normalizeVisibleFlag(appVisible, true),
     createdAt: now,
     updatedAt: now,
   };
@@ -137,11 +148,27 @@ async function deleteYoga(id) {
   }));
 }
 
-async function listYoga({ page = 1, limit = 10, status, type, category, search } = {}) {
+async function listYoga({
+  page = 1,
+  limit = 10,
+  status,
+  type,
+  category,
+  search,
+  platform,
+  webVisible,
+  appVisible,
+} = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const normalizedType = type ? String(type).toLowerCase().trim() : "";
   const normalizedCategory = String(category || "").trim();
   const searchFilter = buildContainsFilter(["title", "description", "category"], search);
+  const channel = String(platform || "").toLowerCase().trim();
+  const wantWebVisible =
+    webVisible !== undefined ? webVisible : channel === "web" ? true : undefined;
+  const wantAppVisible =
+    appVisible !== undefined ? appVisible : channel === "app" ? true : undefined;
+
   let filterExpression = searchFilter.filterExpression;
   const exprNames = { ...searchFilter.exprNames };
   const exprValues = { ...searchFilter.exprValues };
@@ -158,6 +185,16 @@ async function listYoga({ page = 1, limit = 10, status, type, category, search }
     filterExpression = appendFilter(filterExpression, "#category = :category");
   }
 
+  for (const part of [
+    visibilityFilterParts("webVisible", wantWebVisible),
+    visibilityFilterParts("appVisible", wantAppVisible),
+  ]) {
+    if (!part) continue;
+    Object.assign(exprNames, part.exprNames);
+    Object.assign(exprValues, part.exprValues);
+    filterExpression = appendFilter(filterExpression, part.expression);
+  }
+
   const { items, pagination } = await listByPartitionKey({
     tableName: TABLE,
     indexName: "StatusCreatedAtIndex",
@@ -167,6 +204,27 @@ async function listYoga({ page = 1, limit = 10, status, type, category, search }
     exprValues,
     search: searchFilter.search,
     searchFields: searchFilter.searchFields,
+    searchFn: searchFilter.search
+      ? (item, term) => {
+          if (
+            wantWebVisible !== undefined &&
+            normalizeVisibleFlag(item.webVisible, true) !== normalizeVisibleFlag(wantWebVisible, true)
+          ) {
+            return false;
+          }
+          if (
+            wantAppVisible !== undefined &&
+            normalizeVisibleFlag(item.appVisible, true) !== normalizeVisibleFlag(wantAppVisible, true)
+          ) {
+            return false;
+          }
+          return ["title", "description", "category"].some((field) =>
+            String(item[field] || "")
+              .toLowerCase()
+              .includes(term)
+          );
+        }
+      : undefined,
     scanIndexForward: false,
     page,
     limit,
@@ -185,6 +243,7 @@ module.exports = {
   YOGA_ALLOWED_TYPE,
   normalizeStatus,
   normalizeType,
+  normalizeVisibleFlag,
   createYoga,
   getYogaById,
   getYogaRecordById,

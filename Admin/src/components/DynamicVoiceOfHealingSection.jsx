@@ -371,6 +371,20 @@ export function DynamicVoiceOfHealingSection({ items, setItems, onToast }) {
     }
   }
 
+  async function toggleSurface(item, field) {
+    if (busy || (field !== "webVisible" && field !== "appVisible")) return;
+    const next = !item[field];
+    const prev = item[field];
+    patchItem(item.id, { [field]: next });
+    try {
+      const saved = await adminUpdateVideoTestimonial(null, item.id, { [field]: next });
+      patchItem(item.id, saved);
+    } catch (error) {
+      patchItem(item.id, { [field]: prev });
+      onToast(error?.message || `Could not update ${field === "webVisible" ? "web" : "app"} visibility`);
+    }
+  }
+
   async function deleteItem() {
     if (!pendingDelete) return;
     const item = pendingDelete;
@@ -535,11 +549,39 @@ export function DynamicVoiceOfHealingSection({ items, setItems, onToast }) {
                         </div>
                       </div>
                       <div className="ua-cfg-vh-item__actions">
-                        <div className="ua-cfg-vh-item__live">
-                          <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>{entry.live ? "LIVE" : "HIDDEN"}</span>
-                          <button type="button" className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`} aria-pressed={entry.live} disabled={busy} onClick={() => toggleLive(entry)}>
-                            <span className="ua-toggle__knob" />
-                          </button>
+                        <div className="ua-cfg-vh-item__surfaces">
+                          <div className="ua-cfg-vh-item__live">
+                            <span className={`ua-cfg-faq__shown${entry.webVisible ? " is-on" : ""}`}>WEB</span>
+                            <button
+                              type="button"
+                              className={`ua-toggle ua-toggle--sm${entry.webVisible ? " ua-toggle--on" : ""}`}
+                              aria-pressed={entry.webVisible}
+                              aria-label={entry.webVisible ? "Hide on web" : "Show on web"}
+                              disabled={busy}
+                              onClick={() => toggleSurface(entry, "webVisible")}
+                            >
+                              <span className="ua-toggle__knob" />
+                            </button>
+                          </div>
+                          <div className="ua-cfg-vh-item__live">
+                            <span className={`ua-cfg-faq__shown${entry.appVisible ? " is-on" : ""}`}>APP</span>
+                            <button
+                              type="button"
+                              className={`ua-toggle ua-toggle--sm${entry.appVisible ? " ua-toggle--on" : ""}`}
+                              aria-pressed={entry.appVisible}
+                              aria-label={entry.appVisible ? "Hide on app" : "Show on app"}
+                              disabled={busy}
+                              onClick={() => toggleSurface(entry, "appVisible")}
+                            >
+                              <span className="ua-toggle__knob" />
+                            </button>
+                          </div>
+                          <div className="ua-cfg-vh-item__live">
+                            <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>{entry.live ? "LIVE" : "HIDDEN"}</span>
+                            <button type="button" className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`} aria-pressed={entry.live} disabled={busy} onClick={() => toggleLive(entry)}>
+                              <span className="ua-toggle__knob" />
+                            </button>
+                          </div>
                         </div>
                         <div className="ua-cfg-vh-item__btns">
                           <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={() => setViewingId(entry.id)}>View</button>

@@ -43,6 +43,8 @@ export function mapBlogPost(row) {
     description: String(row.description || "").trim(),
     live: row.status !== "inactive",
     status: row.status === "inactive" ? "inactive" : "active",
+    webVisible: row.webVisible !== false,
+    appVisible: row.appVisible !== false,
     cover: Boolean(row.coverImage),
     coverImage: row.coverImage || "",
     sortOrder: Number(row.sortOrder) || 0,

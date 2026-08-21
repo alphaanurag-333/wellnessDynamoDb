@@ -18,6 +18,7 @@ const {
   appendFilter,
   sortByCreatedAtDesc,
 } = require("../utils/dynamoList");
+const { normalizeVisibleFlag, visibilityFilterParts } = require("./wellnessCoachModel");
 
 const RECIPE_MEDIA_FIELDS = ["thumbnail", "video"];
 
@@ -51,13 +52,17 @@ function toPublicHealthRecipe(item) {
   const row = withLegacyId(normalizeMediaItemFromStorage(item));
   if (!row) return null;
   const { healthConcernId: _healthConcernId, healthConcern: _healthConcern, ...rest } = row;
-  return resolveMediaFields(rest, RECIPE_MEDIA_FIELDS);
+  const resolved = resolveMediaFields(rest, RECIPE_MEDIA_FIELDS);
+  resolved.webVisible = normalizeVisibleFlag(resolved.webVisible, true);
+  resolved.appVisible = normalizeVisibleFlag(resolved.appVisible, true);
+  return resolved;
 }
 
 function sanitizeUpdateField(key, value) {
   const field = normalizeUpdateFieldName(key);
   if (field === "status") return normalizeStatus(value);
   if (field === "type") return normalizeType(value);
+  if (field === "webVisible" || field === "appVisible") return normalizeVisibleFlag(value, true);
   if (field === "videoSpecification") return normalizeVideoSpecification(value);
   if (field === "thumbnail" || field === "video") {
     if (value == null || String(value).trim() === "") return "";
@@ -80,6 +85,8 @@ async function createHealthRecipe({
   videoSpecification,
   video_specification = [],
   status = "active",
+  webVisible = true,
+  appVisible = true,
 }) {
   const now = new Date().toISOString();
   const item = {
@@ -93,6 +100,8 @@ async function createHealthRecipe({
     video: video ? normalizeMediaField(video, "video") : "",
     videoSpecification: normalizeVideoSpecification(videoSpecification ?? video_specification),
     status: normalizeStatus(status),
+    webVisible: normalizeVisibleFlag(webVisible, true),
+    appVisible: normalizeVisibleFlag(appVisible, true),
     createdAt: now,
     updatedAt: now,
   };
@@ -170,11 +179,27 @@ async function deleteHealthRecipe(id) {
   );
 }
 
-async function listHealthRecipes({ page = 1, limit = 10, status, type, category, search } = {}) {
+async function listHealthRecipes({
+  page = 1,
+  limit = 10,
+  status,
+  type,
+  category,
+  search,
+  platform,
+  webVisible,
+  appVisible,
+} = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const normalizedType = type ? normalizeType(type, "") : "";
   const normalizedCategory = String(category || "").trim();
   const searchFilter = buildContainsFilter(["title", "description", "category"], search);
+  const channel = String(platform || "").toLowerCase().trim();
+  const wantWebVisible =
+    webVisible !== undefined ? webVisible : channel === "web" ? true : undefined;
+  const wantAppVisible =
+    appVisible !== undefined ? appVisible : channel === "app" ? true : undefined;
+
   let filterExpression = searchFilter.filterExpression;
   const exprNames = { ...searchFilter.exprNames };
   const exprValues = { ...searchFilter.exprValues };
@@ -191,6 +216,16 @@ async function listHealthRecipes({ page = 1, limit = 10, status, type, category,
     filterExpression = appendFilter(filterExpression, "#category = :category");
   }
 
+  for (const part of [
+    visibilityFilterParts("webVisible", wantWebVisible),
+    visibilityFilterParts("appVisible", wantAppVisible),
+  ]) {
+    if (!part) continue;
+    Object.assign(exprNames, part.exprNames);
+    Object.assign(exprValues, part.exprValues);
+    filterExpression = appendFilter(filterExpression, part.expression);
+  }
+
   const { items, pagination } = await listByPartitionKey({
     tableName: TABLE,
     indexName: "StatusCreatedAtIndex",
@@ -201,6 +236,27 @@ async function listHealthRecipes({ page = 1, limit = 10, status, type, category,
     exprValues,
     search: searchFilter.search,
     searchFields: searchFilter.searchFields,
+    searchFn: searchFilter.search
+      ? (item, term) => {
+          if (
+            wantWebVisible !== undefined &&
+            normalizeVisibleFlag(item.webVisible, true) !== normalizeVisibleFlag(wantWebVisible, true)
+          ) {
+            return false;
+          }
+          if (
+            wantAppVisible !== undefined &&
+            normalizeVisibleFlag(item.appVisible, true) !== normalizeVisibleFlag(wantAppVisible, true)
+          ) {
+            return false;
+          }
+          return ["title", "description", "category"].some((field) =>
+            String(item[field] || "")
+              .toLowerCase()
+              .includes(term)
+          );
+        }
+      : undefined,
     scanIndexForward: false,
     page,
     limit,
@@ -219,6 +275,7 @@ module.exports = {
   HEALTH_RECIPE_ALLOWED_TYPE,
   normalizeStatus,
   normalizeType,
+  normalizeVisibleFlag,
   normalizeVideoSpecification,
   createHealthRecipe,
   getHealthRecipeById,

@@ -1,24 +1,12 @@
-import React, { useEffect, useState, useRef } from "react";
-import { Swiper, SwiperSlide } from "swiper/react";
-import { Navigation } from "swiper/modules";
-import {
-  DEFAULT_IMAGE_SRC,
-  handleMediaImageError,
-  mediaUrl,
-} from "../../media.js";
+import React, { useEffect, useState } from "react";
 import {
   fetchCofounderMessage,
-  fetchWellnessCoaches,
-  fetchAssistantWellnessCoaches,
   fetchLeadershipNotes,
   fetchWellnessTeamNotes,
   fetchStaticPageBySlugSafe,
   pillarCopyFromStaticPage,
   heroCopyFromStaticPage,
 } from "../api/publicMisc.js";
-
-import "swiper/css";
-import "swiper/css/navigation";
 
 import clinicImage from "../images/about-hero.png";
 import oilImage from "../images/Exercise.jpg";
@@ -44,8 +32,6 @@ import {
   Tags,
   CreditCard,
   Brain,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 import { FiArrowRight } from "react-icons/fi";
 import Methodology from "./Methodology.jsx";
@@ -79,162 +65,6 @@ We are currently working on a Project to inspire & educate 10 Lakhs families wit
 
 I wish you all the very best ! Come & join us in our mission… Let’s make this world a better place to live !`,
 };
-
-function coachDesignation(coach, fallback = "WELLNESS COACH") {
-  const specialization = coach?.specializationTitle?.trim();
-  if (specialization) return specialization.toUpperCase();
-
-  const designation = coach?.designation?.trim();
-  if (designation) return designation.toUpperCase();
-
-  const bio = coach?.bio?.trim();
-  if (bio) return bio;
-
-  return fallback;
-}
-
-function CoachBoardSection({
-  title,
-  subtitle,
-  coaches,
-  loading,
-  loadingLabel,
-  emptyFallbackLabel,
-  prevRef,
-  nextRef,
-  ariaPrev,
-  ariaNext,
-}) {
-  if (!loading && coaches.length === 0) return null;
-
-  return (
-    <section className="medicalBoard">
-      <div className="site-container">  
-        
-        {/* <div className="medicalBoard__top mb-0">
-          
-          <div className="medicalBoard__heading">
-            <h2>{title}</h2>
-            <p>{subtitle}</p>
-          </div>
-
-          {coaches.length > 0 && (
-            <div className="medicalBoard__navigation">
-              <button
-                ref={prevRef}
-                className="medicalBoard__navBtn"
-                type="button"
-                aria-label={ariaPrev}
-              >
-                <ChevronLeft size={22} />
-              </button>
-
-              <button
-                ref={nextRef}
-                className="medicalBoard__navBtn"
-                type="button"
-                aria-label={ariaNext}
-              >
-                <ChevronRight size={22} />
-              </button>
-            </div>
-          )}
-        </div> */}
-
-
- <div className="transformation-header mb-2">
-          <div className="header-left">
-            <h2>{title}</h2>
-            <p>{subtitle}</p>
-          </div>
-         
-        {coaches.length > 0 ? (
-          <div className="leadership-slider__nav">
-            <button ref={prevRef} type="button" className="leadership-slider__navBtn" aria-label="Previous note">
-              <ChevronLeft size={22} />
-            </button>
-            <button ref={nextRef} type="button" className="leadership-slider__navBtn" aria-label="Next note">
-              <ChevronRight size={22} />
-            </button>
-          </div>
-        ) : null}
- </div>
-        {loading ? (
-          <p className="medicalBoard__loading">{loadingLabel}</p>
-        ) : (
-          <Swiper
-          loop={true}
-            modules={[Navigation]}
-            spaceBetween={16}
-            slidesPerView={4}
-            onInit={(swiper) => {
-              swiper.params.navigation.prevEl = prevRef.current;
-              swiper.params.navigation.nextEl = nextRef.current;
-
-              swiper.navigation.destroy();
-              swiper.navigation.init();
-              swiper.navigation.update();
-            }}
-            navigation={{
-              prevEl: prevRef.current,
-              nextEl: nextRef.current,
-            }}
-            breakpoints={{
-              0: {
-                slidesPerView: 1,
-                spaceBetween: 12,
-              },
-              640: {
-                slidesPerView: 2,
-                spaceBetween: 12,
-              },
-              768: {
-                slidesPerView: 3,
-                spaceBetween: 14,
-              },
-              992: {
-                slidesPerView: 4,
-                spaceBetween: 16,
-              },
-              1200: {
-                slidesPerView: 5,
-                spaceBetween: 16,
-              },
-            }}
-            className="medicalBoardSlider"
-          >
-            {coaches.map((coach) => (
-              <SwiperSlide key={coach.id || coach._id}>
-                <div className="doctorCard">
-                  <div className="doctorCard__image">
-                    <img
-                      src={mediaUrl(coach.profileImage) || DEFAULT_IMAGE_SRC}
-                      alt={coach.name || emptyFallbackLabel}
-                      onError={handleMediaImageError}
-                    />
-                  </div>
-<div
-    className="doctorCard__content pt-2 margingmmane"
-    
-  >
-    <h3 className="manmargin">{coach.name}</h3>
-    <p className="manhesd">
-      {coachDesignation(coach, emptyFallbackLabel)}
-    </p>
-  </div>
-                  {/* <div className="doctorCard__content">
-                    <h3>{coach.name}</h3>
-                    <p>{coachDesignation(coach, emptyFallbackLabel)}</p>
-                  </div> */}
-                </div>
-              </SwiperSlide>
-            ))}
-          </Swiper>
-        )}
-      </div>
-    </section>
-  );
-}
 
 function highlightWellnessTitle(title) {
   const text = String(title || "");
@@ -337,17 +167,9 @@ const AboutUsSection = () => {
   const [leadershipNotesLoading, setLeadershipNotesLoading] = useState(true);
   const [wellnessTeamNotes, setWellnessTeamNotes] = useState([]);
   const [wellnessTeamNotesLoading, setWellnessTeamNotesLoading] = useState(true);
-  const [wellnessCoaches, setWellnessCoaches] = useState([]);
-  const [coachesLoading, setCoachesLoading] = useState(true);
-  const [assistantWellnessCoaches, setAssistantWellnessCoaches] = useState([]);
-  const [assistantsLoading, setAssistantsLoading] = useState(true);
   const [aboutPage, setAboutPage] = useState(null);
   const [pillarPages, setPillarPages] = useState({});
   const [aboutPagesLoaded, setAboutPagesLoaded] = useState(false);
-  const prevRef = useRef(null);
-  const nextRef = useRef(null);
-  const assistantPrevRef = useRef(null);
-  const assistantNextRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -433,58 +255,6 @@ const AboutUsSection = () => {
         if (!cancelled) setWellnessTeamNotes([]);
       } finally {
         if (!cancelled) setWellnessTeamNotesLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      setCoachesLoading(true);
-      try {
-        const response = await fetchWellnessCoaches({ page: 1, limit: 50, platform: "web" });
-        if (!cancelled) {
-          setWellnessCoaches(
-            Array.isArray(response?.wellnessCoaches)
-              ? response.wellnessCoaches
-              : [],
-          );
-        }
-      } catch {
-        if (!cancelled) setWellnessCoaches([]);
-      } finally {
-        if (!cancelled) setCoachesLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      setAssistantsLoading(true);
-      try {
-        const response = await fetchAssistantWellnessCoaches({ page: 1, limit: 50, platform: "web" });
-        if (!cancelled) {
-          setAssistantWellnessCoaches(
-            Array.isArray(response?.assistantWellnessCoaches)
-              ? response.assistantWellnessCoaches
-              : [],
-          );
-        }
-      } catch {
-        if (!cancelled) setAssistantWellnessCoaches([]);
-      } finally {
-        if (!cancelled) setAssistantsLoading(false);
       }
     })();
 
@@ -635,33 +405,6 @@ const AboutUsSection = () => {
       ) : null}
 
       <Methodology />
-
-      <CoachBoardSection
-        title="Wellness Coaches"
-        subtitle="World-class experts dedicated to your sanctuary journey."
-        coaches={wellnessCoaches}
-        loading={coachesLoading}
-        loadingLabel="Loading wellness coaches…"
-        emptyFallbackLabel="WELLNESS COACH"
-        prevRef={prevRef}
-        nextRef={nextRef}
-        ariaPrev="Previous coach"
-        ariaNext="Next coach"
-      />
-
-      <CoachBoardSection
-        title="Assistant Wellness Coaches"
-        subtitle="Dedicated support coaches helping you stay on your wellness path."
-        coaches={assistantWellnessCoaches}
-        loading={assistantsLoading}
-        loadingLabel="Loading assistant wellness coaches…"
-        emptyFallbackLabel="ASSISTANT WELLNESS COACH"
-        prevRef={assistantPrevRef}
-        nextRef={assistantNextRef}
-        ariaPrev="Previous assistant coach"
-        ariaNext="Next assistant coach"
-      />
-
 
 <LeadershipNotesSlider
         notes={wellnessTeamNotes}

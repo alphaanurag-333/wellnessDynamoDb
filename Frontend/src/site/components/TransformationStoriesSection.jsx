@@ -116,7 +116,7 @@ export default function TransformationStoriesSection() {
     if (nextPage > 1) setLoadingMore(true);
 
     try {
-      const data = await fetchTransformations({ page: nextPage, limit: PAGE_SIZE });
+      const data = await fetchTransformations({ page: nextPage, limit: PAGE_SIZE, platform: "web" });
       const rows = Array.isArray(data?.transformations) ? data.transformations : [];
       const mapped = rows.map(mapTransformation).filter(Boolean).filter((item) => {
         if (seenIdsRef.current.has(item.id)) return false;

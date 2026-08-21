@@ -108,6 +108,12 @@ function BlogViewModal({ entry, onClose, onEdit }) {
             <h3 id="bl-view-title">{asCopyString(entry.title) || "Untitled post"}</h3>
             <p className="ua-cfg-bl-view__meta">
               <span>{formatRecipeDate(entry.updatedAt || entry.createdAt)}</span>
+              <span className={`ua-cfg-tf-view__status${entry.webVisible !== false ? " is-live" : ""}`}>
+                Web {entry.webVisible !== false ? "Visible" : "Hidden"}
+              </span>
+              <span className={`ua-cfg-tf-view__status${entry.appVisible !== false ? " is-live" : ""}`}>
+                App {entry.appVisible !== false ? "Visible" : "Hidden"}
+              </span>
               <span className={`ua-cfg-tf-view__status${entry.live ? " is-live" : ""}`}>
                 {entry.live ? "Live" : "Hidden"}
               </span>
@@ -191,7 +197,15 @@ export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, galler
   const [viewingId, setViewingId] = useState(null);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ page: 1, limit: POSTS_PAGE_SIZE, total: 0, pages: 1 });
-  const [draft, setDraft] = useState({ title: "", description: "", coverFile: null, coverPreview: "", position: "last" });
+  const [draft, setDraft] = useState({
+    title: "",
+    description: "",
+    coverFile: null,
+    coverPreview: "",
+    position: "last",
+    webVisible: true,
+    appVisible: true,
+  });
   const [cropPending, setCropPending] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
 
@@ -316,12 +330,22 @@ export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, galler
         description,
         live: true,
         sortOrder: sortOrderForPosition(draft.position, pagination.total),
+        webVisible: draft.webVisible !== false,
+        appVisible: draft.appVisible !== false,
       }, draft.coverFile ? { coverFile: draft.coverFile } : {});
       if (!created) throw new Error("Failed to add post");
       setPage(1);
       await loadPosts(1);
       if (draft.coverPreview?.startsWith("blob:")) URL.revokeObjectURL(draft.coverPreview);
-      setDraft({ title: "", description: "", coverFile: null, coverPreview: "", position: "last" });
+      setDraft({
+        title: "",
+        description: "",
+        coverFile: null,
+        coverPreview: "",
+        position: "last",
+        webVisible: true,
+        appVisible: true,
+      });
       setCreating(false);
       onToast("Post added");
     } catch (error) {
@@ -336,6 +360,19 @@ export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, galler
     updateLocalPost(entry.id, { live });
     const saved = await persistPost(entry.id, { live }, {}, live ? "Post is live" : "Post hidden");
     if (!saved) updateLocalPost(entry.id, { live: entry.live });
+  }
+
+  async function togglePostSurface(entry, field) {
+    if (busy || (field !== "webVisible" && field !== "appVisible")) return;
+    const nextValue = !entry[field];
+    updateLocalPost(entry.id, { [field]: nextValue });
+    const saved = await persistPost(
+      entry.id,
+      { [field]: nextValue },
+      {},
+      `${field === "webVisible" ? "Web" : "App"} ${nextValue ? "visible" : "hidden"}`,
+    );
+    if (!saved) updateLocalPost(entry.id, { [field]: entry[field] });
   }
 
   async function saveEditedPost(entry) {
@@ -489,6 +526,32 @@ export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, galler
                   disabled={busy}
                   onChange={(event) => setDraft((prev) => ({ ...prev, description: event.target.value }))}
                 />
+                <div className="ua-cfg-bn-surfaces ua-cfg-bl-new__surfaces">
+                  <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--web${draft.webVisible !== false ? " is-on" : ""}`}>
+                    <span>Web {draft.webVisible !== false ? "Visible" : "Hidden"}</span>
+                    <button
+                      type="button"
+                      className={`ua-toggle ua-toggle--sm${draft.webVisible !== false ? " ua-toggle--on" : ""}`}
+                      aria-pressed={draft.webVisible !== false}
+                      disabled={busy}
+                      onClick={() => setDraft((prev) => ({ ...prev, webVisible: !(prev.webVisible !== false) }))}
+                    >
+                      <span className="ua-toggle__knob" />
+                    </button>
+                  </div>
+                  <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--app${draft.appVisible !== false ? " is-on" : ""}`}>
+                    <span>App {draft.appVisible !== false ? "Visible" : "Hidden"}</span>
+                    <button
+                      type="button"
+                      className={`ua-toggle ua-toggle--sm${draft.appVisible !== false ? " ua-toggle--on" : ""}`}
+                      aria-pressed={draft.appVisible !== false}
+                      disabled={busy}
+                      onClick={() => setDraft((prev) => ({ ...prev, appVisible: !(prev.appVisible !== false) }))}
+                    >
+                      <span className="ua-toggle__knob" />
+                    </button>
+                  </div>
+                </div>
                 <div className="ua-cfg-bl-new-foot">
                   <CfgSelect
                     className="ua-cfg-bl-pos"
@@ -552,17 +615,45 @@ export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, galler
                         )}
                       </div>
                       <div className="ua-cfg-bl-item__actions">
-                        <div className="ua-cfg-bl-item__live">
-                          <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>{entry.live ? "LIVE" : "HIDDEN"}</span>
-                          <button
-                            type="button"
-                            className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
-                            aria-pressed={entry.live}
-                            disabled={busy}
-                            onClick={() => togglePostLive(entry)}
-                          >
-                            <span className="ua-toggle__knob" />
-                          </button>
+                        <div className="ua-cfg-bl-item__surfaces">
+                          <div className="ua-cfg-bl-item__live">
+                            <span className={`ua-cfg-faq__shown${entry.webVisible !== false ? " is-on" : ""}`}>WEB</span>
+                            <button
+                              type="button"
+                              className={`ua-toggle ua-toggle--sm${entry.webVisible !== false ? " ua-toggle--on" : ""}`}
+                              aria-pressed={entry.webVisible !== false}
+                              aria-label={entry.webVisible !== false ? "Hide on web" : "Show on web"}
+                              disabled={busy}
+                              onClick={() => togglePostSurface(entry, "webVisible")}
+                            >
+                              <span className="ua-toggle__knob" />
+                            </button>
+                          </div>
+                          <div className="ua-cfg-bl-item__live">
+                            <span className={`ua-cfg-faq__shown${entry.appVisible !== false ? " is-on" : ""}`}>APP</span>
+                            <button
+                              type="button"
+                              className={`ua-toggle ua-toggle--sm${entry.appVisible !== false ? " ua-toggle--on" : ""}`}
+                              aria-pressed={entry.appVisible !== false}
+                              aria-label={entry.appVisible !== false ? "Hide on app" : "Show on app"}
+                              disabled={busy}
+                              onClick={() => togglePostSurface(entry, "appVisible")}
+                            >
+                              <span className="ua-toggle__knob" />
+                            </button>
+                          </div>
+                          <div className="ua-cfg-bl-item__live">
+                            <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>{entry.live ? "LIVE" : "HIDDEN"}</span>
+                            <button
+                              type="button"
+                              className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
+                              aria-pressed={entry.live}
+                              disabled={busy}
+                              onClick={() => togglePostLive(entry)}
+                            >
+                              <span className="ua-toggle__knob" />
+                            </button>
+                          </div>
                         </div>
                         <div className="ua-cfg-bl-item__btns">
                           <button

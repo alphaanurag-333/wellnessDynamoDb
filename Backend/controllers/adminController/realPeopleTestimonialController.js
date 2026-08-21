@@ -17,6 +17,7 @@ const {
   updateRealPeopleTestimonial,
   deleteRealPeopleTestimonial,
   listRealPeopleTestimonials,
+  normalizeVisibleFlag,
 } = require("../../models/realPeopleTestimonialModel");
 const {
   readIdParam,
@@ -86,6 +87,11 @@ exports.createRealPeopleTestimonialController = asyncHandler(async (req, res) =>
 
   if (!profileImage) throw new AppError("profileImage is required", 400);
 
+  const webVisible =
+    req.body.webVisible !== undefined ? normalizeVisibleFlag(req.body.webVisible, true) : true;
+  const appVisible =
+    req.body.appVisible !== undefined ? normalizeVisibleFlag(req.body.appVisible, true) : true;
+
   const testimonial = await createRealPeopleTestimonial({
     name,
     review,
@@ -94,6 +100,8 @@ exports.createRealPeopleTestimonialController = asyncHandler(async (req, res) =>
     profileImage,
     dataPoints,
     status,
+    webVisible,
+    appVisible,
   });
 
   return res.status(201).json({
@@ -119,6 +127,12 @@ exports.updateRealPeopleTestimonialController = asyncHandler(async (req, res) =>
     updates.stars = validateStars(req.body.stars ?? req.body.rating);
   }
   if (req.body.status !== undefined) updates.status = validateStatus(req.body.status);
+  if (req.body.webVisible !== undefined) {
+    updates.webVisible = normalizeVisibleFlag(req.body.webVisible, true);
+  }
+  if (req.body.appVisible !== undefined) {
+    updates.appVisible = normalizeVisibleFlag(req.body.appVisible, true);
+  }
   if (req.body.healthConcernId !== undefined) {
     updates.healthConcernId = await assertHealthConcernExists(req.body.healthConcernId);
   }

@@ -19,6 +19,8 @@ const {
   sortByCreatedAtDesc,
 } = require("../utils/dynamoList");
 
+const { normalizeVisibleFlag, visibilityFilterParts } = require("./wellnessCoachModel");
+
 const VIDEO_TESTIMONIAL_MEDIA = ["profileImage", "video"];
 
 const TABLE = "VideoTestimonials";
@@ -42,13 +44,18 @@ function withLegacyId(item) {
 
 function toPublicVideoTestimonial(item) {
   const row = withLegacyId(normalizeMediaItemFromStorage(item));
-  return row ? resolveMediaFields(row, VIDEO_TESTIMONIAL_MEDIA) : null;
+  if (!row) return null;
+  const resolved = resolveMediaFields(row, VIDEO_TESTIMONIAL_MEDIA);
+  resolved.webVisible = normalizeVisibleFlag(resolved.webVisible, true);
+  resolved.appVisible = normalizeVisibleFlag(resolved.appVisible, true);
+  return resolved;
 }
 
 function sanitizeUpdateField(key, value) {
   const field = normalizeUpdateFieldName(key);
   if (field === "type") return normalizeType(value);
   if (field === "status") return normalizeStatus(value);
+  if (field === "webVisible" || field === "appVisible") return normalizeVisibleFlag(value, true);
   if (field === "profileImage" || field === "video") {
     if (value == null || String(value).trim() === "") return "";
     return normalizeMediaField(value, field);
@@ -65,6 +72,8 @@ async function createVideoTestimonial({
   video,
   type = "link",
   status = "active",
+  webVisible = true,
+  appVisible = true,
 }) {
   const now = new Date().toISOString();
   const item = {
@@ -75,6 +84,8 @@ async function createVideoTestimonial({
     video: video ? normalizeMediaField(video, "video") : "",
     type: normalizeType(type),
     status: normalizeStatus(status),
+    webVisible: normalizeVisibleFlag(webVisible, true),
+    appVisible: normalizeVisibleFlag(appVisible, true),
     createdAt: now,
     updatedAt: now,
   };
@@ -147,10 +158,25 @@ async function deleteVideoTestimonial(id) {
   );
 }
 
-async function listVideoTestimonials({ page = 1, limit = 10, type, status, search } = {}) {
+async function listVideoTestimonials({
+  page = 1,
+  limit = 10,
+  type,
+  status,
+  search,
+  platform,
+  webVisible,
+  appVisible,
+} = {}) {
   const normalizedType = type ? normalizeType(type, "") : "";
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const searchFilter = buildContainsFilter(["name"], search);
+  const channel = String(platform || "").toLowerCase().trim();
+  const wantWebVisible =
+    webVisible !== undefined ? webVisible : channel === "web" ? true : undefined;
+  const wantAppVisible =
+    appVisible !== undefined ? appVisible : channel === "app" ? true : undefined;
+
   let filterExpression = searchFilter.filterExpression;
   const exprNames = { ...searchFilter.exprNames };
   const exprValues = { ...searchFilter.exprValues };
@@ -159,6 +185,16 @@ async function listVideoTestimonials({ page = 1, limit = 10, type, status, searc
     exprNames["#type"] = "type";
     exprValues[":type"] = normalizedType;
     filterExpression = appendFilter(filterExpression, "#type = :type");
+  }
+
+  for (const part of [
+    visibilityFilterParts("webVisible", wantWebVisible),
+    visibilityFilterParts("appVisible", wantAppVisible),
+  ]) {
+    if (!part) continue;
+    Object.assign(exprNames, part.exprNames);
+    Object.assign(exprValues, part.exprValues);
+    filterExpression = appendFilter(filterExpression, part.expression);
   }
 
   const { items, pagination } = await listByPartitionKey({
@@ -170,6 +206,25 @@ async function listVideoTestimonials({ page = 1, limit = 10, type, status, searc
     exprValues,
     search: searchFilter.search,
     searchFields: searchFilter.searchFields,
+    searchFn: searchFilter.search
+      ? (item, term) => {
+          if (
+            wantWebVisible !== undefined &&
+            normalizeVisibleFlag(item.webVisible, true) !== normalizeVisibleFlag(wantWebVisible, true)
+          ) {
+            return false;
+          }
+          if (
+            wantAppVisible !== undefined &&
+            normalizeVisibleFlag(item.appVisible, true) !== normalizeVisibleFlag(wantAppVisible, true)
+          ) {
+            return false;
+          }
+          return String(item.name || "")
+            .toLowerCase()
+            .includes(term);
+        }
+      : undefined,
     scanIndexForward: false,
     page,
     limit,
@@ -186,6 +241,7 @@ async function listVideoTestimonials({ page = 1, limit = 10, type, status, searc
 module.exports = {
   normalizeType,
   normalizeStatus,
+  normalizeVisibleFlag,
   createVideoTestimonial,
   getVideoTestimonialById,
   getVideoTestimonialRecordById,

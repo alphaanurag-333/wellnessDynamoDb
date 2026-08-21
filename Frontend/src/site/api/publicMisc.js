@@ -99,6 +99,15 @@ export async function fetchHealthRecipes(params = {}) {
   }
 }
 
+export async function fetchYoga(params = {}) {
+  try {
+    const { data } = await api.get("/public/misc/yoga", { params });
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function fetchActiveBanners(params = {}) {
   try {
     const { data } = await api.get("/public/misc/banners", { params });

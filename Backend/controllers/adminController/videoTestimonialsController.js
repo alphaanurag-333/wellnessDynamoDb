@@ -16,6 +16,7 @@ const {
   updateVideoTestimonial,
   deleteVideoTestimonial,
   listVideoTestimonials,
+  normalizeVisibleFlag,
 } = require("../../models/videoTestimonials");
 
 const ALLOWED_TYPE = ["link", "video"];
@@ -60,6 +61,11 @@ exports.createVideoTestimonialController = asyncHandler(async (req, res) => {
   if (type === "link" && !ytLink) throw new AppError("ytLink is required when type is link", 400);
   if (type === "video" && !video) throw new AppError("video is required when type is video", 400);
 
+  const webVisible =
+    req.body.webVisible !== undefined ? normalizeVisibleFlag(req.body.webVisible, true) : true;
+  const appVisible =
+    req.body.appVisible !== undefined ? normalizeVisibleFlag(req.body.appVisible, true) : true;
+
   const videoTestimonial = await createVideoTestimonial({
     name,
     profileImage,
@@ -67,6 +73,8 @@ exports.createVideoTestimonialController = asyncHandler(async (req, res) => {
     video,
     type,
     status,
+    webVisible,
+    appVisible,
   });
 
   return res.status(201).json({
@@ -97,6 +105,12 @@ exports.updateVideoTestimonialController = asyncHandler(async (req, res) => {
     const status = String(req.body.status || "").trim().toLowerCase();
     if (!ALLOWED_STATUS.includes(status)) throw new AppError("status must be active or inactive", 400);
     updates.status = status;
+  }
+  if (req.body.webVisible !== undefined) {
+    updates.webVisible = normalizeVisibleFlag(req.body.webVisible, true);
+  }
+  if (req.body.appVisible !== undefined) {
+    updates.appVisible = normalizeVisibleFlag(req.body.appVisible, true);
   }
   if (req.body.ytLink !== undefined) {
     updates.ytLink = String(req.body.ytLink || "").trim();

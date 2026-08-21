@@ -11,7 +11,9 @@ const {
   listByPartitionKey,
   paginateItems,
   filterItemsBySearch,
+  appendFilter,
 } = require("../utils/dynamoList");
+const { normalizeVisibleFlag, visibilityFilterParts } = require("./wellnessCoachModel");
 
 const TABLE = "Faq";
 const ALLOWED_STATUS = new Set(["active", "inactive"]);
@@ -27,6 +29,23 @@ function normalizeSortOrder(value, fallback = 0) {
   const n = Number(value);
   if (!Number.isFinite(n) || n < SORT_ORDER_MIN) return fallback;
   return Math.min(Math.floor(n), SORT_ORDER_MAX);
+}
+
+function toPublicFaq(item) {
+  if (!item) return null;
+  return {
+    ...item,
+    webVisible: normalizeVisibleFlag(item.webVisible, true),
+    appVisible: normalizeVisibleFlag(item.appVisible, true),
+  };
+}
+
+function sanitizeUpdateValue(key, value) {
+  if (key === "sortOrder") return normalizeSortOrder(value);
+  if (key === "status") return normalizeStatus(value);
+  if (key === "webVisible" || key === "appVisible") return normalizeVisibleFlag(value, true);
+  if (key === "question" || key === "answer") return String(value ?? "").trim();
+  return value;
 }
 
 function sortFaqsByOrder(a, b) {
@@ -60,7 +79,14 @@ async function nextSortOrder() {
   return Math.min(max + 1, SORT_ORDER_MAX);
 }
 
-async function createFaq({ question, answer, status = "active", sortOrder } = {}) {
+async function createFaq({
+  question,
+  answer,
+  status = "active",
+  sortOrder,
+  webVisible = true,
+  appVisible = true,
+} = {}) {
   const now = new Date().toISOString();
   const resolvedOrder =
     sortOrder === undefined || sortOrder === null || sortOrder === ""
@@ -73,6 +99,8 @@ async function createFaq({ question, answer, status = "active", sortOrder } = {}
     answer: String(answer || "").trim(),
     status: normalizeStatus(status),
     sortOrder: resolvedOrder,
+    webVisible: normalizeVisibleFlag(webVisible, true),
+    appVisible: normalizeVisibleFlag(appVisible, true),
     createdAt: now,
     updatedAt: now,
   };
@@ -83,7 +111,7 @@ async function createFaq({ question, answer, status = "active", sortOrder } = {}
     ConditionExpression: "attribute_not_exists(id)",
   }));
 
-  return item;
+  return toPublicFaq(item);
 }
 
 async function getFaqById(id) {
@@ -91,7 +119,7 @@ async function getFaqById(id) {
     TableName: TABLE,
     Key: { id },
   }));
-  return Item || null;
+  return toPublicFaq(Item || null);
 }
 
 async function updateFaq(id, updates) {
@@ -108,7 +136,7 @@ async function updateFaq(id, updates) {
     const n = `#${key}`;
     const v = `:${key}`;
     exprNames[n] = key;
-    exprValues[v] = key === "sortOrder" ? normalizeSortOrder(value) : value;
+    exprValues[v] = sanitizeUpdateValue(key, value);
     setExpr += `, ${n} = ${v}`;
   }
 
@@ -122,7 +150,7 @@ async function updateFaq(id, updates) {
     ReturnValues: "ALL_NEW",
   }));
 
-  return Attributes || null;
+  return toPublicFaq(Attributes || null);
 }
 
 async function deleteFaq(id) {
@@ -133,15 +161,44 @@ async function deleteFaq(id) {
   }));
 }
 
-async function listFaqs({ page = 1, limit = 20, status, search } = {}) {
+async function listFaqs({
+  page = 1,
+  limit = 20,
+  status,
+  search,
+  platform,
+  webVisible,
+  appVisible,
+} = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const searchTerm = String(search || "").trim();
   const searching = Boolean(searchTerm);
+  const channel = String(platform || "").toLowerCase().trim();
+  const wantWebVisible =
+    webVisible !== undefined ? webVisible : channel === "web" ? true : undefined;
+  const wantAppVisible =
+    appVisible !== undefined ? appVisible : channel === "app" ? true : undefined;
+
+  let filterExpression;
+  const exprNames = {};
+  const exprValues = {};
+  for (const part of [
+    visibilityFilterParts("webVisible", wantWebVisible),
+    visibilityFilterParts("appVisible", wantAppVisible),
+  ]) {
+    if (!part) continue;
+    Object.assign(exprNames, part.exprNames);
+    Object.assign(exprValues, part.exprValues);
+    filterExpression = appendFilter(filterExpression, part.expression);
+  }
 
   const result = await listByPartitionKey({
     tableName: TABLE,
     indexName: "StatusIndex",
     partitionKeyValue: normalizedStatus || undefined,
+    filterExpression,
+    exprNames: Object.keys(exprNames).length ? exprNames : undefined,
+    exprValues: Object.keys(exprValues).length ? exprValues : undefined,
     scanIndexForward: true,
     page: searching ? 1 : page,
     limit: searching ? Number.MAX_SAFE_INTEGER : limit,
@@ -149,16 +206,30 @@ async function listFaqs({ page = 1, limit = 20, status, search } = {}) {
     sortFn: sortFaqsByOrder,
   });
 
-  if (!searching) {
-    return { faqs: result.items, pagination: result.pagination };
+  let items = (result.items || []).map(toPublicFaq);
+
+  if (searching) {
+    items = filterItemsBySearch(items, {
+      search: searchTerm,
+      searchFields: ["question", "answer"],
+    });
+    if (wantWebVisible !== undefined) {
+      items = items.filter(
+        (item) =>
+          normalizeVisibleFlag(item.webVisible, true) === normalizeVisibleFlag(wantWebVisible, true),
+      );
+    }
+    if (wantAppVisible !== undefined) {
+      items = items.filter(
+        (item) =>
+          normalizeVisibleFlag(item.appVisible, true) === normalizeVisibleFlag(wantAppVisible, true),
+      );
+    }
+    const paged = paginateItems(items, page, limit, 200);
+    return { faqs: paged.items, pagination: paged.pagination };
   }
 
-  const filtered = filterItemsBySearch(result.items, {
-    search: searchTerm,
-    searchFields: ["question", "answer"],
-  });
-  const paged = paginateItems(filtered, page, limit, 200);
-  return { faqs: paged.items, pagination: paged.pagination };
+  return { faqs: items, pagination: result.pagination };
 }
 
 /**
@@ -205,6 +276,7 @@ module.exports = {
   reorderFaqs,
   normalizeStatus,
   normalizeSortOrder,
+  normalizeVisibleFlag,
   SORT_ORDER_MIN,
   SORT_ORDER_MAX,
 };
