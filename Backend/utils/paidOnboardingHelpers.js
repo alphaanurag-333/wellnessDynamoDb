@@ -73,9 +73,13 @@ function syncDerivedOnboardingSteps(status) {
   if (status.profileSetup === "done" && status.personalDetails !== "done") {
     status.personalDetails = "done";
   }
-  // Parent completes only when every sub-screen is done (skipped does not count).
+  // Promote parent when every sub-screen is actually done.
+  // Do not demote here — admin may mark bodyAnalytics done from the panel,
+  // and skipped subkeys must not wipe that (or prior steps) on normalize.
   const allBodyDone = BODY_ANALYTICS_SUBKEYS.every((key) => status[key] === "done");
-  status.bodyAnalytics = allBodyDone ? "done" : "pending";
+  if (allBodyDone) {
+    status.bodyAnalytics = "done";
+  }
   return status;
 }
 
@@ -123,6 +127,13 @@ function markStepDone(stepStatus, stepKey) {
   const next = normalizePaidOnboardingStepStatus(stepStatus);
   assertKnownStepKey(stepKey);
   next[stepKey] = "done";
+  // Admin / coach completing the parent must also complete the three subkeys
+  // so later normalize/promote stays consistent.
+  if (stepKey === "bodyAnalytics") {
+    for (const key of BODY_ANALYTICS_SUBKEYS) {
+      next[key] = "done";
+    }
+  }
   return syncDerivedOnboardingSteps(next);
 }
 
@@ -163,7 +174,14 @@ function setCanonicalStepStatus(stepStatus, stepKey, value, { sequential = true 
     throw err;
   }
   next[stepKey] = normalized;
-  return next;
+  if (stepKey === "bodyAnalytics") {
+    if (normalized === "done") {
+      for (const key of BODY_ANALYTICS_SUBKEYS) {
+        next[key] = "done";
+      }
+    }
+  }
+  return syncDerivedOnboardingSteps(next);
 }
 
 function wizardStepIndex(step) {

@@ -86,10 +86,36 @@ function normalizeTotalScore(value) {
   return Math.round(n);
 }
 
+function normalizeFocusPoints(value) {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) {
+    const err = new Error("focusPoints must be an array of strings");
+    err.name = "ValidationError";
+    throw err;
+  }
+  return value.map((row) => String(row || "").trim()).filter(Boolean);
+}
+
+function mergeAreasToFocus(focusPoints = [], focusAreas = []) {
+  const seen = new Set();
+  const out = [];
+  const catalogTitles = (focusAreas || []).map((area) => String(area?.title || "").trim()).filter(Boolean);
+  for (const text of [...(focusPoints || []), ...catalogTitles]) {
+    const trimmed = String(text || "").trim();
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(trimmed);
+  }
+  return out;
+}
+
 function toUserLaunchAssessmentPublic(item, focusAreas = null) {
   const row = withLegacyId(item);
   if (!row) return null;
   const focusAreaIds = normalizeFocusAreaIds(row.focusAreaIds);
+  const focusPoints = Array.isArray(row.focusPoints) ? normalizeFocusPoints(row.focusPoints) || [] : [];
   const resolved =
     focusAreas !== null
       ? focusAreas
@@ -105,6 +131,7 @@ function toUserLaunchAssessmentPublic(item, focusAreas = null) {
     totalScore: Number(row.totalScore) || 0,
     answers: Array.isArray(row.answers) ? normalizeAnswers(row.answers) || [] : [],
     focusAreaIds,
+    focusPoints,
     createdByRole: normalizeCreatedByRole(row.createdByRole),
     createdById: row.createdById,
     createdAt: row.createdAt,
@@ -112,7 +139,9 @@ function toUserLaunchAssessmentPublic(item, focusAreas = null) {
   };
   if (resolved !== undefined) {
     base.focusAreas = resolved;
-    base.areasToFocus = resolved.map((area) => area.title);
+    base.areasToFocus = mergeAreasToFocus(focusPoints, resolved);
+  } else {
+    base.areasToFocus = focusPoints;
   }
   return base;
 }
@@ -181,6 +210,7 @@ async function createUserLaunchAssessment({
   assessmentDate,
   totalScore,
   focusAreaIds = [],
+  focusPoints = [],
   answers = [],
   createdByRole = "wellness_coach",
   createdById,
@@ -201,6 +231,7 @@ async function createUserLaunchAssessment({
   }
 
   const validatedFocusAreaIds = await validateActiveFocusAreaIds(focusAreaIds);
+  const normalizedFocusPoints = normalizeFocusPoints(focusPoints) || [];
 
   const now = new Date().toISOString();
   const item = {
@@ -211,6 +242,7 @@ async function createUserLaunchAssessment({
     totalScore: normalizeTotalScore(totalScore),
     answers: normalizeAnswers(answers) || [],
     focusAreaIds: validatedFocusAreaIds,
+    focusPoints: normalizedFocusPoints,
     createdByRole: normalizeCreatedByRole(createdByRole),
     createdById: creatorId,
     createdAt: now,
@@ -228,7 +260,7 @@ async function createUserLaunchAssessment({
   return enrichAssessmentPublic(item);
 }
 
-async function updateUserLaunchAssessment(id, { assessmentDate, totalScore, focusAreaIds, answers } = {}) {
+async function updateUserLaunchAssessment(id, { assessmentDate, totalScore, focusAreaIds, focusPoints, answers } = {}) {
   const current = await getUserLaunchAssessmentRecordById(id);
   if (!current) {
     const err = new Error("Assessment not found");
@@ -254,6 +286,9 @@ async function updateUserLaunchAssessment(id, { assessmentDate, totalScore, focu
   }
   if (focusAreaIds !== undefined) {
     updates.focusAreaIds = await validateActiveFocusAreaIds(focusAreaIds);
+  }
+  if (focusPoints !== undefined) {
+    updates.focusPoints = normalizeFocusPoints(focusPoints) || [];
   }
   if (answers !== undefined) {
     updates.answers = normalizeAnswers(answers) || [];
@@ -313,6 +348,7 @@ module.exports = {
   normalizeAssessmentDate,
   normalizeTotalScore,
   normalizeAnswers,
+  normalizeFocusPoints,
   normalizeCreatedByRole,
   createUserLaunchAssessment,
   getUserLaunchAssessmentById,

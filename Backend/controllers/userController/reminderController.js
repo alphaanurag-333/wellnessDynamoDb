@@ -6,7 +6,11 @@ const {
   deleteReminder,
   listRemindersByUserId,
   toggleReminderActive,
+  toPublicReminder,
 } = require("../../models/reminderModel");
+const {
+  ensureReminderDueInbox,
+} = require("../../services/notificationDispatchService");
 const {
   parseReminderBody,
   handleValidationError,
@@ -126,5 +130,32 @@ exports.deleteMyReminderController = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     message: "Reminder deleted successfully",
+  });
+});
+
+exports.recordMyReminderFiredController = asyncHandler(async (req, res) => {
+  const userId = req.auth?.sub;
+  if (!userId) throw new AppError("Unauthorized", 401);
+
+  const reminderId = String(req.params.id || "").trim();
+  const reminder = await loadReminderForUser(reminderId, userId);
+  const occurrenceDate = String(req.body?.occurrenceDate || "").trim() || null;
+
+  const notification = await ensureReminderDueInbox({
+    userId,
+    reminderId: reminder.id,
+    reminderName: reminder.name,
+    occurrenceDate,
+  });
+
+  if (!notification) {
+    throw new AppError("Could not record reminder notification", 400);
+  }
+
+  return res.status(200).json({
+    status: true,
+    message: "Reminder notification recorded",
+    notification,
+    reminder: toPublicReminder(reminder),
   });
 });

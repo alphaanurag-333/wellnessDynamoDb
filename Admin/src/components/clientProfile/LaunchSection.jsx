@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { PillTabs } from "../shared.jsx";
 import { suggestRating } from "../../data/launchData.js";
@@ -436,7 +436,7 @@ function FocusAreas({ autoPoints, catalog, selectedFocus, onToggleFocus, extraPo
     if (!trimmed) return;
     onAddPoint(trimmed);
     setPoint("");
-    onToast("Focus point added");
+    onToast("Focus point added — save assessment to sync to the app");
   }
 
   return (
@@ -598,6 +598,7 @@ function LifestyleTab({
   const [selectedFocus, setSelectedFocus] = useState([]);
   const [extraPoints, setExtraPoints] = useState([]);
   const [saving, setSaving] = useState(false);
+  const hydratedFocusRef = useRef(null);
 
   const ratingOptions = config.ratings || [];
   const totals = useMemo(
@@ -636,6 +637,15 @@ function LifestyleTab({
     .filter((d) => !d.general && d.max && (d.score / d.max) < 0.5)
     .map((d) => `${d.title} is below 50% (${d.score} / ${d.max})`);
 
+  useEffect(() => {
+    if (!latest?.id) return;
+    if (hydratedFocusRef.current === latest.id) return;
+    const saved = Array.isArray(latest.focusPoints) ? latest.focusPoints : [];
+    const isAutoPoint = (text) => / is below 50% \(\d+(?:\.\d+)? \/ \d+\)$/.test(String(text || ""));
+    setExtraPoints(saved.filter((point) => !isAutoPoint(point)));
+    hydratedFocusRef.current = latest.id;
+  }, [latest]);
+
   function handleRate(questionId, ratingId) {
     setRatings((r) => ({ ...r, [questionId]: ratingId }));
   }
@@ -671,6 +681,7 @@ function LifestyleTab({
       assessmentDate: today,
       totalScore: Math.round(totals.overall),
       focusAreaIds: selectedFocus,
+      focusPoints: [...autoPoints, ...extraPoints],
       answers: Object.keys({ ...ratings, ...replies }).map((questionId) => ({
         questionId,
         ratingId: ratings[questionId] || "",
@@ -688,6 +699,7 @@ function LifestyleTab({
         ...(assessments || []).filter((row) => row.id !== saved.id),
       ];
       onAssessmentsChange(next);
+      if (saved?.id) hydratedFocusRef.current = saved.id;
 
       const launchStatus = String(user?.paidOnboardingStepStatus?.launch || "").toLowerCase();
       const shouldCompleteLaunch =

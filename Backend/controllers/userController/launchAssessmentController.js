@@ -7,6 +7,14 @@ const {
   SCORE_MIN,
   SCORE_MAX,
 } = require("../../models/userLaunchAssessmentModel");
+const { listAllRatingsUnpaged } = require("../../models/launchRatingModel");
+const { listAllDomainsUnpaged } = require("../../models/launchDomainModel");
+const { listAllQuestionsUnpaged } = require("../../models/launchDomainQuestionModel");
+const {
+  isLiveDomain,
+  isEnabledQuestion,
+  scoreAnswers,
+} = require("../../services/launchScoreService");
 
 const LAUNCH_SCORE_ZONES = [
   { min: 0, max: 150, label: "Needs attention", color: "#ef4444" },
@@ -23,14 +31,70 @@ function getScoreZone(score) {
   return LAUNCH_SCORE_ZONES.find((zone) => n >= zone.min && n <= zone.max) || LAUNCH_SCORE_ZONES[0];
 }
 
-function toHistoryItem(assessment) {
+function mergeUniqueTexts(...lists) {
+  const seen = new Set();
+  const out = [];
+  for (const list of lists) {
+    for (const text of list || []) {
+      const trimmed = String(text || "").trim();
+      if (!trimmed) continue;
+      const key = trimmed.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(trimmed);
+    }
+  }
+  return out;
+}
+
+async function buildAutoFocusPoints(answers = []) {
+  const [ratings, domains, questions] = await Promise.all([
+    listAllRatingsUnpaged(),
+    listAllDomainsUnpaged(),
+    listAllQuestionsUnpaged(),
+  ]);
+  const byDomain = new Map();
+  for (const question of questions) {
+    if (!isEnabledQuestion(question)) continue;
+    const list = byDomain.get(question.domainId) || [];
+    list.push(question);
+    byDomain.set(question.domainId, list);
+  }
+  const nested = domains
+    .filter(isLiveDomain)
+    .map((domain) => ({
+      ...domain,
+      questions: byDomain.get(domain.id) || [],
+    }));
+  const scored = scoreAnswers({
+    ratings,
+    domains: nested,
+    answers: Array.isArray(answers) ? answers : [],
+  });
+  return (scored.domainScores || [])
+    .filter((row) => !row.general && row.score != null && Number(row.score) < 50)
+    .map((row) => `${row.name} is below 50% (${row.score} / 100)`);
+}
+
+async function resolveAreasToFocus(assessment) {
+  if (!assessment) return [];
+  const focusPoints = Array.isArray(assessment.focusPoints) ? assessment.focusPoints : [];
+  const existing = Array.isArray(assessment.areasToFocus) ? assessment.areasToFocus : [];
+  if (focusPoints.length) {
+    return mergeUniqueTexts(focusPoints, existing);
+  }
+  const autoPoints = await buildAutoFocusPoints(assessment.answers);
+  return mergeUniqueTexts(autoPoints, existing);
+}
+
+function toHistoryItem(assessment, areasToFocus) {
   return {
     id: assessment.id,
     _id: assessment._id,
     assessmentDate: assessment.assessmentDate,
     totalScore: assessment.totalScore,
     zone: getScoreZone(assessment.totalScore),
-    areasToFocus: assessment.areasToFocus || [],
+    areasToFocus: areasToFocus || assessment.areasToFocus || [],
     focusAreas: assessment.focusAreas || [],
   };
 }
@@ -55,18 +119,19 @@ exports.getMyLaunchScoresController = asyncHandler(async (req, res) => {
     String(b.assessmentDate || "").localeCompare(String(a.assessmentDate || ""))
   );
   const latest = sorted[0] || null;
+  const areasToFocus = await resolveAreasToFocus(latest);
   const history = [...assessments]
     .sort((a, b) => String(a.assessmentDate || "").localeCompare(String(b.assessmentDate || "")))
-    .map(toHistoryItem);
+    .map((row) => toHistoryItem(row, row === latest ? areasToFocus : row.areasToFocus));
 
   return res.status(200).json({
     status: true,
     message: "LAUNCH scores fetched successfully",
     currentScore: latest?.totalScore ?? null,
     zone: latest ? getScoreZone(latest.totalScore) : null,
-    areasToFocus: latest?.areasToFocus ?? [],
+    areasToFocus,
     focusAreas: latest?.focusAreas ?? [],
-    latest: latest ? toHistoryItem(latest) : null,
+    latest: latest ? toHistoryItem(latest, areasToFocus) : null,
     history,
     scoreRange: { min: SCORE_MIN, max: SCORE_MAX },
     maxReferenceScore: LAUNCH_MAX_REFERENCE_SCORE,

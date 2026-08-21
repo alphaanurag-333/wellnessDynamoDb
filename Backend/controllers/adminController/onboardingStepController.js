@@ -76,6 +76,16 @@ exports.patchUserOnboardingStepController = asyncHandler(async (req, res) => {
     paidOnboardingCompleted: computePaidOnboardingCompleted(nextStatus),
   });
 
+  const savedValue = String(
+    updated?.paidOnboardingStepStatus?.[stepKey] || ""
+  ).toLowerCase();
+  if (status === "done" && savedValue !== "done") {
+    throw new AppError(
+      `Failed to persist ${stepKey} as done. Check body analytics sub-steps or try again.`,
+      500
+    );
+  }
+
   return res.status(200).json({
     status: true,
     message: status === "done" ? `${stepKey} marked done` : `${stepKey} reopened`,

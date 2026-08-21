@@ -33,6 +33,7 @@ const KIND = new Set([
   "internal_parameters_recommendation",
   "internal_parameters_upload",
   "coach_reminder",
+  "reminder_due",
   "daily_reflection_reminder",
   "physical_exercise_assigned",
   "mental_wellbeing_assigned",

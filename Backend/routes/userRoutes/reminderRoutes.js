@@ -6,6 +6,7 @@ const {
   updateMyReminderController,
   toggleMyReminderController,
   deleteMyReminderController,
+  recordMyReminderFiredController,
 } = require("../../controllers/userController/reminderController");
 
 const router = express.Router();
@@ -16,6 +17,7 @@ router.get("/", listMyRemindersController);
 router.post("/", createMyReminderController);
 router.put("/:id", updateMyReminderController);
 router.patch("/:id/toggle", toggleMyReminderController);
+router.post("/:id/fired", recordMyReminderFiredController);
 router.delete("/:id", deleteMyReminderController);
 
 module.exports = router;
