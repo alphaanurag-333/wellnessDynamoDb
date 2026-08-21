@@ -27,6 +27,37 @@ async function toPublicComment(item) {
   };
 }
 
+async function findMonthlyChampionPostCommentByUser(
+  monthlyChampionPostId,
+  commenterUserId
+) {
+  const postId = String(monthlyChampionPostId || "").trim();
+  const uid = String(commenterUserId || "").trim();
+  if (!postId || !uid) return null;
+
+  let lastKey;
+  do {
+    const { Items, LastEvaluatedKey } = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE,
+        IndexName: "MonthlyChampionPostCreatedAtIndex",
+        KeyConditionExpression: "monthlyChampionPostId = :monthlyChampionPostId",
+        FilterExpression: "commenterUserId = :commenterUserId",
+        ExpressionAttributeValues: {
+          ":monthlyChampionPostId": postId,
+          ":commenterUserId": uid,
+        },
+        Limit: 25,
+        ExclusiveStartKey: lastKey,
+      })
+    );
+    if (Items?.length) return withLegacyId(Items[0]);
+    lastKey = LastEvaluatedKey;
+  } while (lastKey);
+
+  return null;
+}
+
 async function createMonthlyChampionPostComment({ monthlyChampionPostId, commenterUserId, comment }) {
   const postId = String(monthlyChampionPostId || "").trim();
   const uid = String(commenterUserId || "").trim();
@@ -36,6 +67,13 @@ async function createMonthlyChampionPostComment({ monthlyChampionPostId, comment
   if (!uid) throw new Error("commenterUserId is required");
   if (!text) throw new Error("comment is required");
   if (text.length > 2000) throw new Error("comment cannot exceed 2000 characters");
+
+  const existing = await findMonthlyChampionPostCommentByUser(postId, uid);
+  if (existing) {
+    const err = new Error("You have already commented on this champion post");
+    err.code = "ALREADY_COMMENTED";
+    throw err;
+  }
 
   const now = new Date().toISOString();
   const item = {
@@ -133,6 +171,7 @@ async function countCommentsForPost(monthlyChampionPostId) {
 
 module.exports = {
   createMonthlyChampionPostComment,
+  findMonthlyChampionPostCommentByUser,
   getMonthlyChampionPostCommentById,
   getMonthlyChampionPostCommentRecordById,
   deleteMonthlyChampionPostComment,

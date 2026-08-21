@@ -11,6 +11,7 @@ const {
 const {
   listBirthdayPostComments,
   countCommentsForPost,
+  findBirthdayPostCommentByUser,
 } = require("../../models/birthdayPostCommentModel");
 const { getUserById, toPublicUser } = require("../../models/userModel");
 
@@ -20,13 +21,19 @@ function readPaging(query, defaultLimit = 20) {
   return { page, limit };
 }
 
-async function enrichPostSummary(post) {
+async function enrichPostSummary(post, viewerUserId) {
   const user = await getUserById(post.userId);
-  const commentCount = await countCommentsForPost(post.id);
+  const [commentCount, ownComment] = await Promise.all([
+    countCommentsForPost(post.id),
+    viewerUserId
+      ? findBirthdayPostCommentByUser(post.id, viewerUserId)
+      : Promise.resolve(null),
+  ]);
   return {
     ...post,
     user: user ? toPublicUser(user) : null,
     commentCount,
+    hasCommented: Boolean(ownComment),
   };
 }
 
@@ -46,7 +53,10 @@ exports.listBirthdayPostsController = asyncHandler(async (req, res) => {
     status: "active",
   });
 
-  const birthdayPosts = await Promise.all(data.birthdayPosts.map(enrichPostSummary));
+  const viewerUserId = req.user?.id || req.auth?.sub || null;
+  const birthdayPosts = await Promise.all(
+    data.birthdayPosts.map((post) => enrichPostSummary(post, viewerUserId))
+  );
 
   return res.status(200).json({
     status: true,
@@ -64,12 +74,19 @@ exports.getBirthdayPostByIdController = asyncHandler(async (req, res) => {
     throw new AppError("Birthday post not found", 404);
   }
 
+  const viewerUserId = req.user?.id || req.auth?.sub || null;
   const user = await getUserById(post.userId);
   const { comments, pagination } = await listBirthdayPostComments({
     birthdayPostId: post.id,
     page: 1,
     limit: 200,
   });
+  const hasCommented = viewerUserId
+    ? comments.some(
+        (c) =>
+          c.commenterUserId === viewerUserId || c.commenter?.id === viewerUserId
+      )
+    : false;
 
   return res.status(200).json({
     status: true,
@@ -78,6 +95,7 @@ exports.getBirthdayPostByIdController = asyncHandler(async (req, res) => {
       user: user ? toPublicUser(user) : null,
       comments,
       commentCount: pagination?.total ?? comments.length,
+      hasCommented,
     },
   });
 });

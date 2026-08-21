@@ -7,17 +7,28 @@ const {
   findLatestMonthWithChampions,
   normalizeMonthYear,
 } = require("../../models/monthlyChampionPostModel");
-const { listMonthlyChampionPostComments } = require("../../models/monthlyChampionPostCommentModel");
+const { listMonthlyChampionPostComments, findMonthlyChampionPostCommentByUser, countCommentsForPost } = require("../../models/monthlyChampionPostCommentModel");
 const { getUserById, toPublicUser } = require("../../models/userModel");
 const { getCurrentMonthStandingForUser } = require("../../services/monthlyChampionScoreService");
 
-async function enrichPost(post) {
+async function enrichPost(post, viewerUserId) {
   const user = await getUserById(post.userId);
-  return { ...post, user: user ? toPublicUser(user) : null };
+  const [commentCount, ownComment] = await Promise.all([
+    countCommentsForPost(post.id),
+    viewerUserId
+      ? findMonthlyChampionPostCommentByUser(post.id, viewerUserId)
+      : Promise.resolve(null),
+  ]);
+  return {
+    ...post,
+    user: user ? toPublicUser(user) : null,
+    commentCount,
+    hasCommented: Boolean(ownComment),
+  };
 }
 
 exports.listUserMonthlyChampionsController = asyncHandler(async (req, res) => {
-  const userId = req.auth?.sub;
+  const userId = req.auth?.sub || req.user?.id;
   if (!userId) throw new AppError("Unauthorized", 401);
 
   let monthYear = normalizeMonthYear(req.query.monthYear);
@@ -39,7 +50,9 @@ exports.listUserMonthlyChampionsController = asyncHandler(async (req, res) => {
     status: "active",
   });
 
-  const monthlyChampions = await Promise.all(monthlyChampionPosts.map(enrichPost));
+  const monthlyChampions = await Promise.all(
+    monthlyChampionPosts.map((post) => enrichPost(post, userId))
+  );
 
   return res.status(200).json({
     status: true,
@@ -79,7 +92,7 @@ exports.getMyMonthlyChampionHistoryController = asyncHandler(async (req, res) =>
 });
 
 exports.getUserMonthlyChampionByIdController = asyncHandler(async (req, res) => {
-  const userId = req.auth?.sub;
+  const userId = req.auth?.sub || req.user?.id;
   if (!userId) throw new AppError("Unauthorized", 401);
 
   const post = await getMonthlyChampionPostById(req.params.id);
@@ -93,7 +106,7 @@ exports.getUserMonthlyChampionByIdController = asyncHandler(async (req, res) => 
     limit: 200,
   });
 
-  const enriched = await enrichPost(post);
+  const enriched = await enrichPost(post, userId);
 
   return res.status(200).json({
     status: true,
@@ -101,6 +114,11 @@ exports.getUserMonthlyChampionByIdController = asyncHandler(async (req, res) => 
       ...enriched,
       comments,
       commentCount: pagination?.total ?? comments.length,
+      hasCommented:
+        enriched.hasCommented ||
+        comments.some(
+          (c) => c.commenterUserId === userId || c.commenter?.id === userId
+        ),
     },
   });
 });

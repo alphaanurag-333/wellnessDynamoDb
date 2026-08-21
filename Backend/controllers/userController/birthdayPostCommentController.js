@@ -55,11 +55,19 @@ exports.createBirthdayPostCommentController = asyncHandler(async (req, res) => {
   }
 
   const commenterUserId = req.user.id;
-  const created = await createBirthdayPostComment({
-    birthdayPostId: req.params.postId,
-    commenterUserId,
-    comment,
-  });
+  let created;
+  try {
+    created = await createBirthdayPostComment({
+      birthdayPostId: req.params.postId,
+      commenterUserId,
+      comment,
+    });
+  } catch (err) {
+    if (err?.code === "ALREADY_COMMENTED") {
+      throw new AppError(err.message || "You have already commented on this birthday post", 409);
+    }
+    throw err;
+  }
 
   if (post.userId && post.userId !== commenterUserId) {
     const commenter = await getUserById(commenterUserId);

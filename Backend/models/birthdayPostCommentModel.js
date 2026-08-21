@@ -27,6 +27,34 @@ async function toPublicComment(item) {
   };
 }
 
+async function findBirthdayPostCommentByUser(birthdayPostId, commenterUserId) {
+  const postId = String(birthdayPostId || "").trim();
+  const uid = String(commenterUserId || "").trim();
+  if (!postId || !uid) return null;
+
+  let lastKey;
+  do {
+    const { Items, LastEvaluatedKey } = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE,
+        IndexName: "BirthdayPostCreatedAtIndex",
+        KeyConditionExpression: "birthdayPostId = :birthdayPostId",
+        FilterExpression: "commenterUserId = :commenterUserId",
+        ExpressionAttributeValues: {
+          ":birthdayPostId": postId,
+          ":commenterUserId": uid,
+        },
+        Limit: 25,
+        ExclusiveStartKey: lastKey,
+      })
+    );
+    if (Items?.length) return withLegacyId(Items[0]);
+    lastKey = LastEvaluatedKey;
+  } while (lastKey);
+
+  return null;
+}
+
 async function createBirthdayPostComment({ birthdayPostId, commenterUserId, comment }) {
   const postId = String(birthdayPostId || "").trim();
   const uid = String(commenterUserId || "").trim();
@@ -36,6 +64,13 @@ async function createBirthdayPostComment({ birthdayPostId, commenterUserId, comm
   if (!uid) throw new Error("commenterUserId is required");
   if (!text) throw new Error("comment is required");
   if (text.length > 2000) throw new Error("comment cannot exceed 2000 characters");
+
+  const existing = await findBirthdayPostCommentByUser(postId, uid);
+  if (existing) {
+    const err = new Error("You have already commented on this birthday post");
+    err.code = "ALREADY_COMMENTED";
+    throw err;
+  }
 
   const now = new Date().toISOString();
   const item = {
@@ -133,6 +168,7 @@ async function countCommentsForPost(birthdayPostId) {
 
 module.exports = {
   createBirthdayPostComment,
+  findBirthdayPostCommentByUser,
   getBirthdayPostCommentById,
   getBirthdayPostCommentRecordById,
   deleteBirthdayPostComment,
