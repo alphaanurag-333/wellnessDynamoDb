@@ -523,7 +523,7 @@ export function DynamicTransformationSection({ items, setItems, onToast }) {
         {creating ? (
           <section className="ua-cfg-rc-new ua-cfg-tf-new">
             <div className="ua-cfg-rc-new__head">
-              <strong><span aria-hidden="true">🔁</span> New transformation</strong>
+              <strong><span aria-hidden="true"></span> New transformation</strong>
               <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={() => setCreating(false)}>×</button>
             </div>
             <div className="ua-cfg-rc-new__grid ua-cfg-tf-new__grid">

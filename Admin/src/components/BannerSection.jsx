@@ -390,42 +390,46 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast }) {
 
   return (
     <div className="ua-cfg-bn">
-      <Panel title="Where this is live" subtitle="Turn it on for the app, the website, or both.">
-        <div className="ua-cfg-bn-surfaces">
-          <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--app${editor.appOn ? " is-on" : ""}`}>
-            <span>App {editor.appOn ? "Enabled" : "Off"}</span>
-            <button
-              type="button"
-              className={`ua-toggle ua-toggle--sm${editor.appOn ? " ua-toggle--on" : ""}`}
-              aria-pressed={editor.appOn}
-              disabled={busy}
-              onClick={() => {
-                const appOn = !editor.appOn;
-                if (editor.id) persistPatch({ id: editor.id }, { appOn });
-                else patch({ appOn });
-              }}
-            >
-              <span className="ua-toggle__knob" />
-            </button>
+      <Panel
+        title="Where this is live"
+        subtitle="Turn it on for the app, the website, or both."
+        actions={(
+          <div className="ua-cfg-bn-surfaces">
+            <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--app${editor.appOn ? " is-on" : ""}`}>
+              <span>App {editor.appOn ? "Enabled" : "Disabled"}</span>
+              <button
+                type="button"
+                className={`ua-toggle ua-toggle--sm${editor.appOn ? " ua-toggle--on" : ""}`}
+                aria-pressed={editor.appOn}
+                disabled={busy}
+                onClick={() => {
+                  const appOn = !editor.appOn;
+                  if (editor.id) persistPatch({ id: editor.id }, { appOn });
+                  else patch({ appOn });
+                }}
+              >
+                <span className="ua-toggle__knob" />
+              </button>
+            </div>
+            <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--web${editor.webOn ? " is-on" : ""}`}>
+              <span>Web {editor.webOn ? "Enabled" : "Disabled"}</span>
+              <button
+                type="button"
+                className={`ua-toggle ua-toggle--sm${editor.webOn ? " ua-toggle--on" : ""}`}
+                aria-pressed={editor.webOn}
+                disabled={busy}
+                onClick={() => {
+                  const webOn = !editor.webOn;
+                  if (editor.id) persistPatch({ id: editor.id }, { webOn });
+                  else patch({ webOn });
+                }}
+              >
+                <span className="ua-toggle__knob" />
+              </button>
+            </div>
           </div>
-          <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--web${editor.webOn ? " is-on" : ""}`}>
-            <span>Web {editor.webOn ? "Enabled" : "Off"}</span>
-            <button
-              type="button"
-              className={`ua-toggle ua-toggle--sm${editor.webOn ? " ua-toggle--on" : ""}`}
-              aria-pressed={editor.webOn}
-              disabled={busy}
-              onClick={() => {
-                const webOn = !editor.webOn;
-                if (editor.id) persistPatch({ id: editor.id }, { webOn });
-                else patch({ webOn });
-              }}
-            >
-              <span className="ua-toggle__knob" />
-            </button>
-          </div>
-        </div>
-      </Panel>
+        )}
+      />
 
       <div className="ua-cfg-bn-layout">
         <Panel

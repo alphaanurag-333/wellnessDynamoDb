@@ -228,7 +228,8 @@ export function LegalSectionsEditor({
                   <span className="ua-toggle__knob" />
                 </button>
               </div>
-              <button
+              <button style={{color: "rgb(94, 106, 210)",
+    border: "1px dashed rgb(203, 213, 230)"}}
                 type="button"
                 className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
                 disabled={locked}
@@ -237,7 +238,7 @@ export function LegalSectionsEditor({
                   setShowAdd(true);
                 }}
               >
-                + Add section
+                + Add sections
               </button>
             </>
           )
@@ -246,7 +247,7 @@ export function LegalSectionsEditor({
         {loading ? (
           <p className="ua-cfg-panel__sub">Fetching {defaultTitle.toLowerCase()} from Static Pages…</p>
         ) : (
-          <label className="ua-cfg-legal-edit__field">
+          <label className="ua-cfg-legal-edit__field ua-cfg-privacy__page-title">
             <span className="ua-cfg-legal-edit__label">Page title</span>
             <input
               type="text"
@@ -267,7 +268,7 @@ export function LegalSectionsEditor({
       </Panel>
 
       {showAdd ? (
-        <section className="ua-cfg-faq-new">
+        <section className="ua-cfg-faq-new ua-cfg-privacy-add">
           <div className="ua-cfg-faq-new__head">
             <h4 className="ua-cfg-faq-new__title">New {noun}</h4>
             <button
@@ -306,9 +307,11 @@ export function LegalSectionsEditor({
                 onChange={(html) => setNewDraft((prev) => ({ ...prev, body: html }))}
               />
             </label>
-            <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={locked} onClick={addSection}>
-              Add section
-            </button>
+            <div className="ua-cfg-privacy-add__foot">
+              <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={locked} onClick={addSection}>
+                Add section
+              </button>
+            </div>
           </div>
         </section>
       ) : null}
@@ -365,7 +368,7 @@ export function LegalSectionsEditor({
                   ) : (
                     <button
                       type="button"
-                      className="ua-cfg-btn ua-cfg-btn--ghost"
+                      className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm"
                       disabled={locked}
                       onClick={() => startEdit(section)}
                     >

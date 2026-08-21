@@ -241,7 +241,7 @@ export function DynamicBirthdaySection({ posts, setPosts, queue, setQueue, onToa
   const liveCount = useMemo(() => posts.filter((row) => row.live).length, [posts]);
 
   return (
-    <div className="ua-cfg-ch">
+    <div className="ua-cfg-bd">
       <Panel
         title="⏱ Automatic trigger"
         subtitle="Runs every night at ~12:05 AM IST and sends a wish + social post to everyone whose birthday it is."
@@ -283,33 +283,33 @@ export function DynamicBirthdaySection({ posts, setPosts, queue, setQueue, onToa
           <div className={`ua-cfg-bd-queue${loadingQueue ? " is-loading" : ""}`}>
             {queue.map((entry) => (
               <article key={entry.id} className="ua-cfg-bd-queue__row">
-                <div style={{ display: "flex", gap: 10, alignItems: "center", minWidth: 0 }}>
+                <div className="ua-cfg-bd-queue__person">
                   <Avatar src={entry.profileImage} name={asCopyString(entry.name)} />
-                  <div>
+                  <div className="ua-cfg-bd-queue__copy">
                     <strong>{asCopyString(entry.name)}</strong>
                     <p>{asCopyString(entry.message) || "Birthday wish"}</p>
                   </div>
                 </div>
-                <span className="ua-cfg-bd-queue__time">{entry.time}</span>
-                <span
-                  className={`ua-cfg-bd-queue__status is-${
-                    entry.status === "pending" ? "queued" : entry.status
-                  }`}
-                >
-                  {entry.status}
-                </span>
-                {entry.status === "failed" || entry.status === "pending" ? (
-                  <button
-                    type="button"
-                    className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm ua-cfg-bd-queue__resend"
-                    disabled={busy}
-                    onClick={() => resend(entry)}
+                <div className="ua-cfg-bd-queue__meta">
+                  <span className="ua-cfg-bd-queue__time">{entry.time || "—"}</span>
+                  <span
+                    className={`ua-cfg-bd-queue__status is-${
+                      entry.status === "pending" ? "queued" : entry.status
+                    }`}
                   >
-                    Resend
-                  </button>
-                ) : (
-                  <span className="ua-cfg-bd-queue__spacer" />
-                )}
+                    {entry.status}
+                  </span>
+                  {entry.status === "failed" || entry.status === "pending" ? (
+                    <button
+                      type="button"
+                      className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm ua-cfg-bd-queue__resend"
+                      disabled={busy}
+                      onClick={() => resend(entry)}
+                    >
+                      Resend
+                    </button>
+                  ) : null}
+                </div>
               </article>
             ))}
           </div>
@@ -325,45 +325,50 @@ export function DynamicBirthdaySection({ posts, setPosts, queue, setQueue, onToa
         subtitle={`${pagination.total} total · ${liveCount} live on the public feed`}
       >
         {posts.length ? (
-          <div className={`ua-cfg-cr-live__list${loadingPosts ? " is-loading" : ""}`}>
-            {posts.map((entry) => (
-              <article key={entry.id} className={`ua-cfg-cr-row${entry.live ? " ua-cfg-cr-row--live" : ""}`}>
-                <Avatar src={entry.profileImage} name={asCopyString(entry.name)} />
-                <div className="ua-cfg-cr-row__copy">
-                  <div className="ua-cfg-cr-row__meta">
-                    <strong>{asCopyString(entry.name)}</strong>
-                    <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>
-                      {entry.live ? "LIVE" : "HIDDEN"}
-                    </span>
+          <div className={`ua-cfg-bd-posts${loadingPosts ? " is-loading" : ""}`}>
+            {posts.map((entry) => {
+              const comments = Number(entry.commentCount) || 0;
+              return (
+                <article key={entry.id} className={`ua-cfg-bd-post${entry.live ? " ua-cfg-bd-post--live" : ""}`}>
+                  <Avatar src={entry.profileImage} name={asCopyString(entry.name)} />
+                  <div className="ua-cfg-bd-post__copy">
+                    <div className="ua-cfg-bd-post__meta">
+                      <strong>{asCopyString(entry.name)}</strong>
+                      <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>
+                        {entry.live ? "LIVE" : "HIDDEN"}
+                      </span>
+                    </div>
+                    <p className="ua-cfg-bd-post__message">{asCopyString(entry.message) || "No message"}</p>
+                    <p className="ua-cfg-bd-post__info">
+                      {entry.postDate || "—"}
+                      {comments
+                        ? ` · ${comments} comment${comments === 1 ? "" : "s"}`
+                        : ""}
+                      {entry.updatedAt ? ` · ${formatRecipeDate(entry.updatedAt)}` : ""}
+                    </p>
                   </div>
-                  <p>{asCopyString(entry.message) || "No message"}</p>
-                  <p className="ua-cfg-panel__sub">
-                    {entry.postDate || "—"}
-                    {entry.commentCount ? ` · ${entry.commentCount} comments` : ""}
-                    {entry.updatedAt ? ` · ${formatRecipeDate(entry.updatedAt)}` : ""}
-                  </p>
-                </div>
-                <div className="ua-cfg-cr-row__actions">
-                  <button
-                    type="button"
-                    className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
-                    aria-pressed={entry.live}
-                    disabled={busy}
-                    onClick={() => toggleLive(entry)}
-                  >
-                    <span className="ua-toggle__knob" />
-                  </button>
-                  <button
-                    type="button"
-                    className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
-                    disabled={busy}
-                    onClick={() => setEditing(entry)}
-                  >
-                    Edit
-                  </button>
-                </div>
-              </article>
-            ))}
+                  <div className="ua-cfg-bd-post__actions">
+                    <button
+                      type="button"
+                      className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
+                      aria-pressed={entry.live}
+                      disabled={busy}
+                      onClick={() => toggleLive(entry)}
+                    >
+                      <span className="ua-toggle__knob" />
+                    </button>
+                    <button
+                      type="button"
+                      className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                      disabled={busy}
+                      onClick={() => setEditing(entry)}
+                    >
+                      Edit
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         ) : (
           <p className="ua-cfg-panel__sub">
