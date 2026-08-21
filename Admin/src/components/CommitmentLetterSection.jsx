@@ -13,6 +13,13 @@ import {
   pendingCoachCount,
 } from "../data/commitmentLetterData.js";
 
+function formatSavedTime(date = new Date()) {
+  return date.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function Panel({ title, subtitle, children, className = "" }) {
   return (
     <section className={`ua-cfg-panel${className ? ` ${className}` : ""}`}>
@@ -188,7 +195,7 @@ export function CommitmentLetterSection({
   const [remindCoachId, setRemindCoachId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [editing, setEditing] = useState(false);
+  const [savedAt, setSavedAt] = useState("");
 
   const isDirty = text.trim() !== savedText.trim();
   const pendingCount = pendingCoachCount(coaches);
@@ -202,7 +209,7 @@ export function CommitmentLetterSection({
       const nextText = normalizeCommitmentLetterText(config?.text);
       setText(nextText);
       setSavedText(nextText);
-      setEditing(false);
+      setSavedAt(formatSavedTime());
       if (typeof setVersion === "function") setVersion(nextVersion);
       const rows = await listCommitmentLetterCoaches(nextVersion);
       if (typeof setCoaches === "function") setCoaches(rows);
@@ -230,7 +237,7 @@ export function CommitmentLetterSection({
       const nextText = normalizeCommitmentLetterText(config.text);
       setText(nextText);
       setSavedText(nextText);
-      setEditing(false);
+      setSavedAt(formatSavedTime());
       if (typeof setVersion === "function") setVersion(config.version);
       if (typeof setCoaches === "function") {
         setCoaches(await listCommitmentLetterCoaches(config.version));
@@ -263,45 +270,22 @@ export function CommitmentLetterSection({
         title="Commitment letter"
         subtitle="Signed by the wellness coach at onboarding and shareable with clients."
       >
-        {editing ? (
-          <textarea
-            className="ua-cfg-cl__textarea"
-            rows={12}
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-          />
-        ) : (
-          <CommitmentLetterDocument text={text} version={version} />
-        )}
+        <textarea
+          className="ua-cfg-cl__textarea"
+          rows={4}
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+        />
 
         <div className="ua-cfg-cl__actions">
-          {editing ? (
-            <>
-              <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={saveText}>
-                {busy ? "Saving…" : "Save text"}
-              </button>
-              <button
-                type="button"
-                className="ua-cfg-btn ua-cfg-btn--outline"
-                disabled={busy}
-                onClick={() => {
-                  setText(savedText);
-                  setEditing(false);
-                }}
-              >
-                Cancel
-              </button>
-              <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" disabled={busy} onClick={resetToDefault}>
-                Reset to default
-              </button>
-            </>
-          ) : (
-            <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={() => setEditing(true)}>
-              Edit letter
-            </button>
-          )}
+          <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={saveText}>
+            {busy ? "Saving…" : "Save text"}
+          </button>
+          <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" disabled={busy} onClick={resetToDefault}>
+            Reset to default
+          </button>
           <span className="ua-cfg-cl__status">
-            {isDirty ? "Not saved yet" : "Saved"} · v{version}
+            {isDirty ? "Not saved yet" : savedAt ? `Saved ${savedAt}` : "Saved"} · v{version}
           </span>
         </div>
 
@@ -332,12 +316,10 @@ export function CommitmentLetterSection({
                   >
                     {coach.initials}
                   </span>
-                  <div className="ua-cfg-cl-coach__meta">
-                    <strong>{coach.name}</strong>
-                    <span className={`ua-cfg-cl-coach__status is-${coach.status}`}>
-                      {coach.status === "pending" ? "Pending" : "Signed"}
-                    </span>
-                  </div>
+                  <strong className="ua-cfg-cl-coach__name">{coach.name}</strong>
+                  <span className={`ua-cfg-cl-coach__status is-${coach.status}`}>
+                    {coach.status === "pending" ? "Pending" : "Signed"}
+                  </span>
                   {coach.status === "pending" ? (
                     <button
                       type="button"
