@@ -342,35 +342,20 @@ export function HealthDisordersSection({ onToast }) {
             : `Catalog from HealthDisorder · ${activeCount} of ${items.length} live`
         }
         actions={
-          loading ? null : (
-            <button style={{    border: "1px dashed rgb(203, 213, 230)",
-              background: "rgb(255, 255, 255)",
-              color: "rgb(94, 106, 210)", height: "32px"}}
+          loading || creating ? null : (
+            <button
               type="button"
-              className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+              className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-tf-add-btn"
               disabled={locked}
               onClick={() => {
                 cancelEdit();
-                setShowAdd(true);
+                setCreating(true);
               }}
             >
               + Add disorder
             </button>
           )
         }
-        actions={(
-          <button
-            type="button"
-            className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-tf-add-btn"
-            disabled={locked}
-            onClick={() => {
-              cancelEdit();
-              setCreating(true);
-            }}
-          >
-            + Add disorder
-          </button>
-        )}
       >
         {creating ? (
           <section className="ua-cfg-rc-new">
@@ -443,27 +428,6 @@ export function HealthDisordersSection({ onToast }) {
                   disabled={locked}
                   onChange={(symptoms) => setDraft((prev) => ({ ...prev, symptoms }))}
                 />
-                <div className="ua-cfg-hd-form__actions">
-                  <button style={{height: "32px"}}
-                    type="button"
-                    className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm"
-                    disabled={locked}
-                    onClick={() => {
-                      setShowAdd(false);
-                      setDraft(EMPTY_DRAFT);
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button style={{height: "32px"}}
-                    type="button"
-                    className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
-                    disabled={locked}
-                    onClick={addItem}
-                  >
-                    {busy ? "Saving…" : "Save"}
-                  </button>
-                </div>
               </div>
               <div className="ua-cfg-bl-new-foot">
                 <button
