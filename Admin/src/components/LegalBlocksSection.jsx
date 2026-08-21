@@ -281,7 +281,7 @@ export function LegalBlocksSection({
           </div>
 
           <div className="ua-cfg-lb-card__copy">
-            <span className="ua-cfg-lb-card__tag">{surfaceVersionLabel(block)}</span>
+            <span style={{border:"1px solid rgb(230, 235, 242)",backgroundColor:"rgb(238, 240, 252)",color:"rgb(90, 107, 133)"}} className="ua-cfg-lb-card__tag">{surfaceVersionLabel(block)}</span>
             {block.webVersion === block.appVersion ? (
               <LegalCopy text={liveVersionText(block)} />
             ) : (
