@@ -157,12 +157,15 @@ function AttemptControls({
   rerunLabel = "Re-run assessment",
   variant = "lifestyle",
 }) {
+  const showHistory = variant !== "prakriti" || historyCount > 0 || historyOpen;
   return (
     <div className={`ua-cp-launch-controls${variant === "prakriti" ? " ua-cp-launch-controls--prakriti" : ""}`}>
       <span className="ua-cp-launch-controls__attempt">Attempt {attempt}</span>
-      <button type="button" className="ua-cp-launch-controls__btn" onClick={onToggleHistory}>
-        {historyOpen ? `Hide history · ${historyCount}` : `History · ${historyCount}`}
-      </button>
+      {showHistory ? (
+        <button type="button" className="ua-cp-launch-controls__btn" onClick={onToggleHistory}>
+          {historyOpen ? `Hide history · ${historyCount}` : `History · ${historyCount}`}
+        </button>
+      ) : null}
       {onRerun ? (
         <button type="button" className="ua-cp-launch-controls__rerun" onClick={onRerun} title="Archive this result and start a fresh pass">
           <span className="ua-cp-launch-controls__rerun-icon" aria-hidden="true">↻</span>
@@ -308,7 +311,7 @@ function DomainAccordion({
         </div>
         <div className="ua-cp-launch-domain__subhead">
           <span className="ua-cp-launch-domain__meta">
-            {domain.questions} questions{domain.weight ? ` · ${domain.weight}%` : ""}
+            {domain.questions} questions
           </span>
           <div className="ua-cp-launch-domain__bar-wrap">
             <div className="ua-cp-launch-domain__bar"><span style={{ width: `${pct}%` }} /></div>
@@ -505,7 +508,7 @@ function DoshaColumn({ dosha, onToggle, canWrite = true }) {
         </div>
         <span className="ua-cp-launch-dosha__score">
           <strong>{dosha.score}</strong>
-          <span>/10</span>
+          <span>/ 10</span>
         </span>
       </div>
       <div className="ua-cp-launch-dosha__list">
@@ -540,6 +543,12 @@ function categoryKey(category) {
 function isDoshaCatalog(questions) {
   const keys = new Set((questions || []).map((q) => categoryKey(q.category)));
   return DOSHA_KEYS.every((k) => keys.has(k));
+}
+
+/** Prefer Vata/Pitta/Kapha checklist rows when the catalog includes them (Figma LAUNCH). */
+function doshaQuestionsOnly(questions) {
+  const rows = (questions || []).filter((q) => DOSHA_KEYS.includes(categoryKey(q.category)));
+  return isDoshaCatalog(rows) ? rows : questions || [];
 }
 
 function typeFromDoshaScores(scores) {
@@ -867,7 +876,7 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
     ])
       .then(([qs, avoid, data]) => {
         if (cancelled) return;
-        setQuestions(Array.isArray(qs) ? qs : []);
+        setQuestions(doshaQuestionsOnly(Array.isArray(qs) ? qs : []));
         setThingsToAvoid(Array.isArray(avoid) ? avoid : []);
         setTypes(data?.prakrutiTypes || []);
         setAssessment(data?.assessment || null);
@@ -1002,8 +1011,12 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
   useEffect(() => {
     if (!doshaMode) return;
     const next = typeFromDoshaScores(scores);
-    if (next.type !== selectedType) setSelectedType(next.type || "");
-  }, [doshaMode, scores.vata, scores.pitta, scores.kapha]);
+    if (next.type !== selectedType) {
+      setSelectedType(next.type || "");
+      // Fresh ticks should refresh catalog guidance until the coach edits lists.
+      if (!listsTouched) setRecItems([]);
+    }
+  }, [doshaMode, scores.vata, scores.pitta, scores.kapha, selectedType, listsTouched]);
 
   async function savePrakriti() {
     const userId = user?.id;

@@ -1,8 +1,10 @@
 require("dotenv").config();
 
 const { v4: uuidv4 } = require("uuid");
-const { PutCommand, ScanCommand } = require("@aws-sdk/lib-dynamodb");
+const { PutCommand, ScanCommand, UpdateCommand } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../config/db");
+
+const DOSHA_CATEGORIES = new Set(["vata", "pitta", "kapha"]);
 
 const QUESTION_TABLE = "PrakrutiQuestion";
 const THING_TABLE = "PrakrutiThingToAvoid";
@@ -141,6 +143,43 @@ async function scanKeys(tableName, projection, keyFn) {
   return keys;
 }
 
+async function deactivateLegacyInterviewQuestions() {
+  console.log(`Deactivating non-dosha ${QUESTION_TABLE} rows...\n`);
+  let deactivated = 0;
+  let lastKey;
+  do {
+    const { Items, LastEvaluatedKey } = await docClient.send(
+      new ScanCommand({
+        TableName: QUESTION_TABLE,
+        ExclusiveStartKey: lastKey,
+      })
+    );
+    for (const item of Items || []) {
+      const cat = String(item.category || "").trim().toLowerCase();
+      const isDosha = DOSHA_CATEGORIES.has(cat);
+      const status = String(item.status || "").toLowerCase();
+      if (isDosha || status === "inactive" || !item.id) continue;
+      await docClient.send(
+        new UpdateCommand({
+          TableName: QUESTION_TABLE,
+          Key: { id: item.id },
+          UpdateExpression: "SET #status = :inactive, updatedAt = :updatedAt",
+          ExpressionAttributeNames: { "#status": "status" },
+          ExpressionAttributeValues: {
+            ":inactive": "inactive",
+            ":updatedAt": new Date().toISOString(),
+          },
+        })
+      );
+      console.log(`  ○ inactive: [${item.category}] ${item.question}`);
+      deactivated++;
+    }
+    lastKey = LastEvaluatedKey;
+  } while (lastKey);
+  console.log(`\nLegacy questions deactivated: ${deactivated}\n`);
+  return deactivated;
+}
+
 async function seedQuestions() {
   console.log(`Seeding ${QUESTION_TABLE}...\n`);
   const seen = await scanKeys(QUESTION_TABLE, "category, question", (item) =>
@@ -149,6 +188,38 @@ async function seedQuestions() {
   const base = Date.now();
   let created = 0;
   let skipped = 0;
+  let reactivated = 0;
+
+  // Ensure any previously seeded dosha rows are active (in case they were toggled off).
+  let lastKey;
+  do {
+    const { Items, LastEvaluatedKey } = await docClient.send(
+      new ScanCommand({
+        TableName: QUESTION_TABLE,
+        ExclusiveStartKey: lastKey,
+      })
+    );
+    for (const item of Items || []) {
+      const cat = String(item.category || "").trim().toLowerCase();
+      if (!DOSHA_CATEGORIES.has(cat) || !item.id) continue;
+      if (String(item.status || "").toLowerCase() === "active") continue;
+      await docClient.send(
+        new UpdateCommand({
+          TableName: QUESTION_TABLE,
+          Key: { id: item.id },
+          UpdateExpression: "SET #status = :active, updatedAt = :updatedAt",
+          ExpressionAttributeNames: { "#status": "status" },
+          ExpressionAttributeValues: {
+            ":active": "active",
+            ":updatedAt": new Date().toISOString(),
+          },
+        })
+      );
+      console.log(`  ↔ reactivated: [${item.category}] ${item.question}`);
+      reactivated++;
+    }
+    lastKey = LastEvaluatedKey;
+  } while (lastKey);
 
   for (let i = 0; i < QUESTIONS.length; i++) {
     const row = QUESTIONS[i];
@@ -178,8 +249,10 @@ async function seedQuestions() {
     created++;
   }
 
-  console.log(`\nQuestions: ${created} created, ${skipped} skipped.\n`);
-  return { created, skipped };
+  console.log(
+    `\nQuestions: ${created} created, ${skipped} skipped, ${reactivated} reactivated.\n`
+  );
+  return { created, skipped, reactivated };
 }
 
 async function seedThingsToAvoid() {
@@ -267,13 +340,15 @@ async function seedRecommendations() {
 async function main() {
   console.log("Seeding Prakruti assessment catalog...\n");
 
+  const legacyDeactivated = await deactivateLegacyInterviewQuestions();
   const questions = await seedQuestions();
   const things = await seedThingsToAvoid();
   const recommendations = await seedRecommendations();
 
   console.log("Done!");
+  console.log(`  Legacy interview questions deactivated: ${legacyDeactivated}`);
   console.log(
-    `  Questions: ${questions.created} created, ${questions.skipped} skipped (${QUESTIONS.length} in catalog)`
+    `  Questions: ${questions.created} created, ${questions.skipped} skipped, ${questions.reactivated} reactivated (${QUESTIONS.length} in catalog)`
   );
   console.log(
     `  Things to avoid: ${things.created} created, ${things.skipped} skipped (${THINGS_TO_AVOID.length} in catalog)`
