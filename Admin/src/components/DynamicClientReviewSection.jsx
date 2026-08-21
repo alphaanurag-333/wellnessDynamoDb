@@ -44,9 +44,12 @@ function Avatar({ src, name }) {
   if (src) {
     return <img className="ua-cfg-cr-avatar ua-cfg-cr-avatar--img" src={src} alt="" />;
   }
-  const initial = String(name || "?").trim().charAt(0).toUpperCase() || "?";
   return (
-    <span className="ua-cfg-cr-avatar" aria-hidden="true">{initial}</span>
+    <span className="ua-cfg-cr-avatar ua-cfg-cr-avatar--empty" aria-hidden="true" title={asCopyString(name)}>
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+        <path d="M12 12a4.5 4.5 0 1 0-4.5-4.5A4.5 4.5 0 0 0 12 12Zm0 2.25c-3.6 0-6.75 1.8-6.75 4.05V20h13.5v-1.7c0-2.25-3.15-4.05-6.75-4.05Z" />
+      </svg>
+    </span>
   );
 }
 
@@ -66,7 +69,7 @@ function EditReviewModal({ review, busy, onClose, onSave }) {
       <div className="ua-cfg-cr-edit" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="cr-edit-title">
         <div className="ua-cfg-cr-edit__head">
           <div>
-            <p className="ua-cfg-rc-view__tag">Client review</p>
+            {/* <p className="ua-cfg-rc-view__tag">Client review</p> */}
             <h3 id="cr-edit-title" className="ua-cfg-cr-edit__title">Edit review</h3>
             <p className="ua-cfg-cr-edit__sub">{asCopyString(review.name)}</p>
           </div>
@@ -96,7 +99,7 @@ function EditReviewModal({ review, busy, onClose, onSave }) {
           </label>
         </div>
         <div className="ua-cfg-cr-edit__foot">
-          <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose}>Cancel</button>
+          <button style={{color:"rgb(90, 107, 133)"}} type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose}>Cancel</button>
           <button
             type="button"
             className="ua-cfg-btn ua-cfg-btn--primary"
@@ -131,7 +134,7 @@ function ReviewViewModal({ entry, onClose, onEdit }) {
         </div>
         <div className="ua-cfg-cr-view__body">
           {entry.profileImage ? (
-            <div className="ua-cfg-rc-view__media ua-cfg-rc-view__media--photo">
+            <div className="ua-cfg-rc-view__media ua-cfg-rc-view__media--photo ua-cfg-cr-view__photo">
               <img src={entry.profileImage} alt="" />
             </div>
           ) : null}
@@ -283,8 +286,13 @@ export function DynamicClientReviewSection({ queue, setQueue, published, setPubl
     <div className="ua-cfg-cr">
       <Panel
         title="Review queue"
-        subtitle="Submitted by clients in the app"
-        actions={<strong className="ua-cfg-cr-count">{loading ? "…" : `${queue.length} awaiting review`}</strong>}
+        actions={(
+          <p className="ua-cfg-cr-headmeta">
+            Submitted by clients in the app ·{" "}
+            <strong className="ua-cfg-cr-count">{loading ? "…" : queue.length}</strong>
+            {" "}awaiting review
+          </p>
+        )}
       >
         <div className="ua-cfg-rc-toolbar">
           <input
@@ -307,25 +315,31 @@ export function DynamicClientReviewSection({ queue, setQueue, published, setPubl
                     <Stars count={entry.rating} />
                     <em className="ua-cfg-cr-pending">Pending</em>
                   </div>
+                  {asCopyString(entry.quote) ? <p className="ua-cfg-cr-row__quote">{asCopyString(entry.quote)}</p> : null}
                 </div>
                 <div className="ua-cfg-cr-row__actions">
-                  <button
+                  <button style={{    border: "1px solid rgb(230, 235, 242)",
+    background: "rgb(255, 255, 255)",
+    color:" rgb(94, 106, 210)"}}
                     type="button"
                     className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
                     disabled={busy}
                     onClick={() => { setViewingId(null); setEditing(entry); }}
                   >
-                    Edit
+                    Modify
                   </button>
-                  <button
+                  <button style={{background: "rgb(231, 246, 238)",
+    color: "rgb(43, 143, 91)",borderColor:"rgb(231, 246, 238)"}}
                     type="button"
-                    className="ua-cfg-btn ua-cfg-btn--sm ua-cfg-cr-btn-approve"
+                    className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-cr-btn-approve"
                     disabled={busy}
                     onClick={() => approve(entry)}
                   >
                     Approve
                   </button>
-                  <button
+                  <button style={{border: "1px solid rgb(246, 208, 209)",
+    background: "rgb(255, 255, 255)",
+    color: "rgb(192, 57, 43)"}}
                     type="button"
                     className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-cr-btn-reject"
                     disabled={busy}
@@ -334,7 +348,6 @@ export function DynamicClientReviewSection({ queue, setQueue, published, setPubl
                     Reject
                   </button>
                 </div>
-                {asCopyString(entry.quote) ? <p className="ua-cfg-cr-row__quote">{asCopyString(entry.quote)}</p> : null}
               </article>
             ))}
           </div>
@@ -357,6 +370,7 @@ export function DynamicClientReviewSection({ queue, setQueue, published, setPubl
                     <strong>{asCopyString(entry.name)}</strong>
                     <Stars count={entry.rating} />
                   </div>
+                  {asCopyString(entry.quote) ? <p className="ua-cfg-cr-row__quote">{asCopyString(entry.quote)}</p> : null}
                 </div>
                 <div className="ua-cfg-cr-row__actions">
                   <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>
@@ -399,7 +413,6 @@ export function DynamicClientReviewSection({ queue, setQueue, published, setPubl
                     </button>
                   </div>
                 </div>
-                {asCopyString(entry.quote) ? <p className="ua-cfg-cr-row__quote">{asCopyString(entry.quote)}</p> : null}
               </article>
             ))}
           </div>

@@ -5,7 +5,7 @@ const BASE = "/account/app-config";
 
 export const GOOGLE_REVIEW_STAT_FIELDS = [
   { id: "gr-rating", key: "average_rating", label: "Google rating", icon: "★", tone: "gold" },
-  { id: "gr-reviews", key: "google_reviews", label: "Google reviews", icon: "✎", tone: "blue" },
+  { id: "gr-reviews", key: "google_reviews", label: "Google reviews", icon: "✍", tone: "blue" },
   { id: "gr-clients", key: "happy_clients", label: "Happy clients", icon: "👥", tone: "teal" },
   { id: "gr-success", key: "success_rate", label: "Success rate (%)", icon: "✓", tone: "green" },
   { id: "gr-improved", key: "improved_user", label: "Lives improved", icon: "✦", tone: "purple" },

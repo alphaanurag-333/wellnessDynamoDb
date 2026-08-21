@@ -27,7 +27,7 @@ function Panel({ title, subtitle, actions, children }) {
   return (
     <section className="ua-cfg-panel">
       <div className="ua-cfg-panel__head">
-        <div>
+        <div className="ua-cfg-panel__copy">
           {title ? <h3 className="ua-cfg-panel__title">{title}</h3> : null}
           {subtitle ? <p className="ua-cfg-panel__sub">{subtitle}</p> : null}
         </div>
@@ -75,7 +75,7 @@ function PortraitPicker({ previewUrl, disabled, onPick, onRemove }) {
   );
 }
 
-export function DynamicCofounderSection({ record, setRecord, onToast, onOpenPreview }) {
+export function DynamicCofounderSection({ record, setRecord, onToast }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [exists, setExists] = useState(false);
@@ -272,39 +272,42 @@ export function DynamicCofounderSection({ record, setRecord, onToast, onOpenPrev
   return (
     <div className="ua-cfg-cf">
       <Panel
-        title="Co-Founder message"
-        subtitle={loading ? "Loading…" : exists ? `Last updated ${formatRecipeDate(mapped?.updatedAt)}` : "No cofounder message yet — fill in the details below and save"}
+        title="Where this is live"
+        subtitle="Turn it on for the app, the website, or both."
         actions={(
-          <div className="ua-cfg-panel__actions" style={{ display: "flex", gap: 8 }}>
-            {onOpenPreview ? (
-              <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={loading || busy} onClick={onOpenPreview}>
-                Preview
+          <div className="ua-cfg-bn-surfaces">
+            <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--app${mapped?.live ? " is-on" : ""}`}>
+              <span>App {mapped?.live ? "Enabled" : "Off"}</span>
+              <button
+                type="button"
+                className={`ua-toggle ua-toggle--sm${mapped?.live ? " ua-toggle--on" : ""}`}
+                aria-pressed={Boolean(mapped?.live)}
+                disabled={loading || busy || !exists}
+                onClick={toggleLive}
+              >
+                <span className="ua-toggle__knob" />
               </button>
-            ) : null}
-            <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={loading || busy || !dirty} onClick={() => saveRecord()}>
-              {busy ? "Saving…" : exists ? "Save changes" : "Create message"}
-            </button>
+            </div>
+            <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--web${mapped?.live ? " is-on" : ""}`}>
+              <span>Web {mapped?.live ? "Enabled" : "Off"}</span>
+              <button
+                type="button"
+                className={`ua-toggle ua-toggle--sm${mapped?.live ? " ua-toggle--on" : ""}`}
+                aria-pressed={Boolean(mapped?.live)}
+                disabled={loading || busy || !exists}
+                onClick={toggleLive}
+              >
+                <span className="ua-toggle__knob" />
+              </button>
+            </div>
           </div>
         )}
-      >
-        <div className="ua-cfg-bn-surfaces">
-          <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--app${mapped?.live ? " is-on" : ""}`}>
-            <span>{mapped?.live ? "Live on site" : "Hidden"}</span>
-            <button
-              type="button"
-              className={`ua-toggle ua-toggle--sm${mapped?.live ? " ua-toggle--on" : ""}`}
-              aria-pressed={Boolean(mapped?.live)}
-              disabled={loading || busy || !exists}
-              onClick={toggleLive}
-            >
-              <span className="ua-toggle__knob" />
-            </button>
-          </div>
-          <span className="ua-cfg-panel__sub">Shown on the About page when status is live.</span>
-        </div>
-      </Panel>
+      />
 
-      <Panel title="Profile" subtitle="Portrait sits beside the message on the About page, shown at its original aspect ratio.">
+      <Panel
+        title="Co-Founder message"
+        subtitle={loading ? "Loading…" : exists ? `Last updated ${formatRecipeDate(mapped?.updatedAt)}` : "No cofounder message yet — fill in the details below and save"}
+      >
         <div className="ua-cfg-cf-photo">
           <PortraitPicker
             previewUrl={photo}
@@ -316,7 +319,7 @@ export function DynamicCofounderSection({ record, setRecord, onToast, onOpenPrev
             <label className="ua-cfg-cf-label" htmlFor="cf-name">Name</label>
             <input
               id="cf-name"
-              className="ua-cfg-vh-input"
+              className="ua-cfg-vh-input ua-cfg-cf-input"
               value={draft.name}
               disabled={loading || busy}
               onChange={(event) => setDraft((prev) => ({ ...prev, name: event.target.value }))}
@@ -324,8 +327,8 @@ export function DynamicCofounderSection({ record, setRecord, onToast, onOpenPrev
             <label className="ua-cfg-cf-label" htmlFor="cf-message">Message</label>
             <textarea
               id="cf-message"
-              className="ua-cfg-tf-story"
-              rows={10}
+              className="ua-cfg-tf-story ua-cfg-cf-message"
+              rows={8}
               value={draft.message}
               disabled={loading || busy}
               onChange={(event) => setDraft((prev) => ({ ...prev, message: event.target.value }))}
@@ -336,48 +339,62 @@ export function DynamicCofounderSection({ record, setRecord, onToast, onOpenPrev
 
       <Panel title="Video" subtitle="Optional welcome video — YouTube link or uploaded file.">
         <div className="ua-cfg-cf-video-box">
-          <label className="ua-cfg-cf-label">Video type</label>
-          <CfgSelect
-            options={VIDEO_TYPE_OPTIONS}
-            value={draft.type}
-            disabled={loading || busy}
-            ariaLabel="Video type"
-            onChange={(value) => setDraft((prev) => ({
-              ...prev,
-              type: value,
-              ytLink: value === "link" ? prev.ytLink : "",
-            }))}
-          />
-          {draft.type === "link" ? (
-            <>
-              <label className="ua-cfg-cf-label" htmlFor="cf-yt">YouTube link</label>
-              <input
-                id="cf-yt"
-                type="url"
-                className="ua-cfg-vh-input"
-                placeholder="https://youtube.com/watch?v=…"
-                value={draft.ytLink}
+          <div className="ua-cfg-cf-video-fields is-split">
+            <div className="ua-cfg-cf-video-field">
+              <label className="ua-cfg-cf-label">Video type</label>
+              <CfgSelect
+                className="ua-cfg-cf-select"
+                options={VIDEO_TYPE_OPTIONS}
+                value={draft.type}
                 disabled={loading || busy}
-                onChange={(event) => setDraft((prev) => ({ ...prev, ytLink: event.target.value }))}
+                ariaLabel="Video type"
+                onChange={(value) => setDraft((prev) => ({
+                  ...prev,
+                  type: value,
+                  ytLink: value === "link" ? prev.ytLink : "",
+                }))}
               />
-              {embed ? (
-                <div className="ua-cfg-rc-view__embed">
-                  <iframe title="Co-founder video preview" src={embed} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+            </div>
+            {draft.type === "link" ? (
+              <div className="ua-cfg-cf-video-field">
+                <label className="ua-cfg-cf-label" htmlFor="cf-yt">YouTube link</label>
+                <input
+                  id="cf-yt"
+                  type="url"
+                  className="ua-cfg-vh-input ua-cfg-cf-input"
+                  placeholder="https://youtube.com/watch?v=…"
+                  value={draft.ytLink}
+                  disabled={loading || busy}
+                  onChange={(event) => setDraft((prev) => ({ ...prev, ytLink: event.target.value }))}
+                />
+              </div>
+            ) : null}
+            {draft.type === "video" ? (
+              <div className="ua-cfg-cf-video-field ua-cfg-cf-video-field--attach">
+                <label className="ua-cfg-cf-label" aria-hidden="true">&nbsp;</label>
+                <div className="ua-cfg-cf-video-row">
+                  <span className="ua-cfg-vh-thumb" aria-hidden="true">▶</span>
+                  <strong>{videoName || (mapped?.video ? "Current video attached" : "No video yet")}</strong>
+                  <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={loading || busy} onClick={() => videoInputRef.current?.click()}>
+                    {mapped?.video || videoFile ? "Replace video" : "Upload video"}
+                  </button>
                 </div>
-              ) : null}
-            </>
+              </div>
+            ) : null}
+          </div>
+
+          {draft.type === "link" && embed ? (
+            <div className="ua-cfg-cf-video-preview">
+              <iframe title="Co-founder video preview" src={embed} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+            </div>
           ) : null}
+
           {draft.type === "video" ? (
             <>
-              <div className="ua-cfg-cf-video-row">
-                <span className="ua-cfg-vh-thumb" aria-hidden="true">▶</span>
-                <strong>{videoName || (mapped?.video ? "Current video attached" : "No video yet")}</strong>
-                <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={loading || busy} onClick={() => videoInputRef.current?.click()}>
-                  {mapped?.video || videoFile ? "Replace video" : "Upload video"}
-                </button>
-              </div>
               {mapped?.video && !videoFile ? (
-                <video className="ua-cfg-rc-view__player" src={mapped.video} controls preload="metadata" />
+                <div className="ua-cfg-cf-video-preview">
+                  <video className="ua-cfg-rc-view__player" src={mapped.video} controls preload="metadata" />
+                </div>
               ) : null}
               <input
                 ref={videoInputRef}
@@ -398,6 +415,17 @@ export function DynamicCofounderSection({ record, setRecord, onToast, onOpenPrev
           ) : null}
         </div>
       </Panel>
+
+      <div className="ua-cfg-cf-foot">
+        <button
+          type="button"
+          className="ua-cfg-btn ua-cfg-btn--primary"
+          disabled={loading || busy || !dirty}
+          onClick={() => saveRecord()}
+        >
+          {busy ? "Saving…" : exists ? "Save changes" : "Create message"}
+        </button>
+      </div>
 
       <ImageCropModal
         open={Boolean(cropPending)}

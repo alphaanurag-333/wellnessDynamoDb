@@ -44,7 +44,7 @@ function CoverDrop({ previewUrl, disabled, onPick, onRemove }) {
   return (
     <div className={`ua-cfg-tf-drop ua-cfg-tf-drop--before ua-cfg-vh-dropbox${filled ? " is-on" : ""}`}>
       {filled ? <img className="ua-cfg-tf-drop__img" src={previewUrl} alt="" /> : null}
-      <span className="ua-cfg-tf-drop__icon" aria-hidden="true">🖼</span>
+      <span className="ua-cfg-tf-drop__icon" aria-hidden="true">▶</span>
       <p className="ua-cfg-tf-drop__label">Cover image</p>
       <button
         type="button"
