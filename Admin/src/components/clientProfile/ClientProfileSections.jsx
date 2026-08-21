@@ -152,6 +152,7 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
     || user.goal
     || "";
 
+  const userReferralCode = String(user?.referralCode || "").trim();
   const usedReferralCode = String(user?.referredByCode || "").trim();
   const fields = [
     { key: "name", label: "Full name", editable: true },
@@ -166,6 +167,7 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
     { key: "goal", label: "Goal", editable: true },
     { key: "coach", label: "Assigned coach", value: user.coach, editable: false },
     { key: "joined", label: "Joined", value: user.joined, editable: false },
+    { key: "referralCode", label: "Referral code", value: userReferralCode || "—", editable: false },
     ...(usedReferralCode
       ? [{ key: "referredByCode", label: "Referral code used", value: usedReferralCode, editable: false }]
       : []),
