@@ -19,16 +19,27 @@ import {
 
 function Panel({ title, subtitle, actions, children, className = "" }) {
   const hasHead = Boolean(title || subtitle || actions);
+  const isDrf = className.includes("ua-cfg-drf");
   return (
     <section className={`ua-cfg-panel${className ? ` ${className}` : ""}`}>
       {hasHead ? (
-        <div className="ua-cfg-panel__head">
-          <div className="ua-cfg-panel__copy">
-            {title ? <h3 className="ua-cfg-panel__title">{title}</h3> : null}
+        isDrf ? (
+          <div className="ua-cfg-panel__head ua-cfg-drf__head">
+            <div className="ua-cfg-drf__head-row">
+              {title ? <h3 className="ua-cfg-panel__title">{title}</h3> : null}
+              {actions ? <div className="ua-cfg-panel__actions">{actions}</div> : null}
+            </div>
             {subtitle ? <p className="ua-cfg-panel__sub">{subtitle}</p> : null}
           </div>
-          {actions ? <div className="ua-cfg-panel__actions">{actions}</div> : null}
-        </div>
+        ) : (
+          <div className="ua-cfg-panel__head">
+            <div className="ua-cfg-panel__copy">
+              {title ? <h3 className="ua-cfg-panel__title">{title}</h3> : null}
+              {subtitle ? <p className="ua-cfg-panel__sub">{subtitle}</p> : null}
+            </div>
+            {actions ? <div className="ua-cfg-panel__actions">{actions}</div> : null}
+          </div>
+        )
       ) : null}
       {children}
     </section>
@@ -333,18 +344,22 @@ export function DrfBankSection({ sections, setSections, onToast }) {
     <>
       <Panel
         className="ua-cfg-drf"
-        title="Daily Reflection form · sections"
-        subtitle="Section weights must total 100%, and the questions inside one section must total 100 points. Mark a section or question Fixed to lock its weightage against coach edits."
-        actions={(
-          <div className="ua-cfg-drf__head-actions">
+        title={(
+          <>
+            Daily Reflection form · sections
             <span className={`ua-cfg-drf__allocated${weightTotal === 100 ? " is-full" : " is-warn"}`}>
               {weightTotal === 100 ? "100% allocated" : `${weightTotal}% allocated`}
             </span>
+          </>
+        )}
+        subtitle="Section weights must total 100%, and the questions inside one section must total 100 points — anything above the cap is trimmed on save. Mark a section or question Fixed to lock its weightage against coach edits."
+        actions={(
+          <div className="ua-cfg-drf__head-actions">
             <span className="ua-cfg-drf__live-count">{liveQuestions} of {totalQuestions} questions live</span>
-            <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm" onClick={() => setExpanded(new Set(sections.map((entry) => entry.id)))}>
+            <button style={{color:"rgb(90, 107, 133)"}} type="button" className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm" onClick={() => setExpanded(new Set(sections.map((entry) => entry.id)))}>
               Expand all
             </button>
-            <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm" onClick={() => setExpanded(new Set())}>
+            <button style={{color:"rgb(90, 107, 133)"}} type="button" className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm" onClick={() => setExpanded(new Set())}>
               Collapse all
             </button>
           </div>
@@ -367,6 +382,7 @@ export function DrfBankSection({ sections, setSections, onToast }) {
                     type="button"
                     className="ua-cfg-drf-section__toggle"
                     aria-expanded={isOpen}
+                    aria-label={isOpen ? `Collapse ${section.name}` : `Expand ${section.name}`}
                     onClick={() => {
                       setExpanded((prev) => {
                         const next = new Set(prev);
@@ -376,7 +392,9 @@ export function DrfBankSection({ sections, setSections, onToast }) {
                       });
                     }}
                   >
-                    {isOpen ? "▾" : "▸"}
+                    <svg viewBox="0 0 12 12" aria-hidden="true">
+                      <path d="M3 4.5 6 8l3-3.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
                   </button>
                   <input
                     type="text"
@@ -532,7 +550,7 @@ export function DrfBankSection({ sections, setSections, onToast }) {
                       />
                       <button
                         type="button"
-                        className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                        className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-drf-add-q__btn"
                         disabled={busy || remainingPts <= 0}
                         onClick={() => addQuestion(section.id)}
                       >
@@ -547,7 +565,7 @@ export function DrfBankSection({ sections, setSections, onToast }) {
         </div>
       </Panel>
 
-      <Panel
+      <Panel style={{maxWidth: "100%"}}
         title="Add a section"
         subtitle={`Section weights must total 100% — a new section can only take the weight that is still free (${remainingWeight}% available). Questions inside a section total 100 points.`}
       >

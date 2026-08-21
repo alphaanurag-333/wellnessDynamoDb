@@ -515,10 +515,10 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
         actions={(
           <div className="ua-cfg-drf__head-actions">
             <span className="ua-cfg-drf__live-count">{liveQuestions} of {totalQuestions} questions live</span>
-            <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm" onClick={() => setExpanded(new Set(domains.map((entry) => entry.id)))}>
+            <button style={{color:"rgb(90, 107, 133)"}} type="button" className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm" onClick={() => setExpanded(new Set(domains.map((entry) => entry.id)))}>
               Expand all
             </button>
-            <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm" onClick={() => setExpanded(new Set())}>
+            <button style={{color:"rgb(90, 107, 133)"}} type="button" className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm" onClick={() => setExpanded(new Set())}>
               Collapse all
             </button>
           </div>
@@ -563,29 +563,29 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
                     disabled={busy}
                     onChange={(event) => persistDomain(domain.id, { name: event.target.value })}
                   />
-                  <div className="ua-cfg-drf-section__weight">
-                    <span>Weight</span>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={domain.weight}
-                      disabled={domain.fixed || busy}
-                      onChange={(event) =>
-                        persistDomain(domain.id, { weight: parseWeight(event.target.value) })
-                      }
-                    />
-                    <span>%</span>
-                  </div>
-                  <span className="ua-cfg-drf-section__meta ua-cfg-launch-domain__meta">
-                    <span className={`ua-cfg-launch-domain__stats${pointsValid ? "" : " is-invalid"}`}>
-                      {liveInDomain} of {questions.length} questions · {pointsTotal}/100 pts
-                      {!isGeneral && remainingPts > 0 ? ` · ${remainingPts} free` : ""}
+                  <div className="ua-cfg-launch-domain__trail">
+                    <div className="ua-cfg-drf-section__weight">
+                      <span>Weight</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={domain.weight}
+                        disabled={domain.fixed || busy}
+                        onChange={(event) =>
+                          persistDomain(domain.id, { weight: parseWeight(event.target.value) })
+                        }
+                      />
+                      <span>%</span>
+                    </div>
+                    <span className={`ua-cfg-drf-section__meta ua-cfg-launch-domain__meta${pointsValid ? "" : " is-invalid"}`}>
+                      <span className="ua-cfg-launch-domain__stats">
+                        {liveInDomain} of {questions.length} questions · {pointsTotal}/100 pts
+                        {!isGeneral && remainingPts > 0 ? ` · ${remainingPts} free` : ""}
+                      </span>
+                      {isGeneral ? (
+                        <span className="ua-cfg-launch-general-badge">General · unscored</span>
+                      ) : null}
                     </span>
-                    {isGeneral ? (
-                      <span className="ua-cfg-launch-general-badge">General · unscored</span>
-                    ) : null}
-                  </span>
-                  <div className="ua-cfg-drf-section__controls">
                     <button
                       type="button"
                       className={`ua-cfg-drf-fix${domain.fixed ? " is-on" : ""}`}
@@ -622,7 +622,7 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
                   <div className="ua-cfg-drf-section__body">
                     {questions.length ? (
                       questions.map((question, index) => (
-                        <div key={question.id} className="ua-cfg-launch-question ua-cfg-drf-question">
+                        <div key={question.id} className="ua-cfg-drf-question ua-cfg-launch-question">
                           <span className="ua-cfg-drf-question__num">{index + 1}</span>
                           <input
                             type="text"
@@ -633,7 +633,7 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
                               persistQuestion(domain.id, question.id, { name: event.target.value })
                             }
                           />
-                          <div className="ua-cfg-launch-question__controls">
+                          <div className="ua-cfg-launch-question__trail">
                             <button
                               type="button"
                               className="ua-cfg-launch-info"
@@ -722,7 +722,7 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
                       />
                       <button
                         type="button"
-                        className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-launch-add-q"
+                        className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-drf-add-q__btn"
                         disabled={busy || (!isGeneral && remainingPts <= 0)}
                         onClick={() => addQuestion(domain.id)}
                       >
@@ -738,7 +738,8 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
       </Panel>
 
       <Panel
-       title="Add a domain"
+        className="ua-cfg-drf"
+        title="Add a domain"
         subtitle={`Scored domains share the 100% — a new one can only take the weight that is still free (${remainingWeight}% available). Leave the weight at 0 for a general, unscored section (name, age, occupation and the like).`}
       >
         <div className="ua-cfg-drf-add-section">
