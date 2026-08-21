@@ -39,11 +39,17 @@ curl -s "$BASE/api/admin/consultancy/transactions?paymentStatus=all" \
 
 ## User (mobile)
 
+Full APK endpoint catalog: **[user-apk.md](./user-apk.md)** (auth, public content with `platform=app`, payments, tracking, Heal care).
+
 ```bash
 # Password login
 curl -s -X POST "$BASE/api/user/auth/login/password" \
   -H "Content-Type: application/json" \
   -d '{"phone":"9876543210","phoneCountryCode":"+91","password":"your-password"}'
+
+# Content for APK (respect Admin WEB/APP toggles)
+curl -s "$BASE/api/public/misc/health-recipes?platform=app&page=1&limit=20"
+curl -s "$BASE/api/public/misc/transformations?platform=app&page=1&limit=20"
 
 # Water tracking today
 curl -s "$BASE/api/user/water-tracking" -H "Authorization: Bearer $ACCESS_TOKEN"
