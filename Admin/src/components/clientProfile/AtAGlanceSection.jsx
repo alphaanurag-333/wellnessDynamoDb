@@ -698,10 +698,6 @@ function buildRcaSubmittedNote(by = "Admin desk") {
   return `RCA submitted by ${by} · ${formatOnboardingStamp()}`;
 }
 
-function priorStepsDone(steps, n) {
-  return steps.filter((s) => s.n < n).every((s) => s.done);
-}
-
 function StepToggle({ done, current, onClick }) {
   const className = `ua-cp-onboard-step__toggle${done ? " ua-cp-onboard-step__toggle--done" : current ? " ua-cp-onboard-step__toggle--current" : ""}`;
   if (!onClick) {
@@ -728,43 +724,40 @@ function StepToggle({ done, current, onClick }) {
   );
 }
 
-function resolveStepAction(step, steps) {
-  const done = step.done;
-  const ready = priorStepsDone(steps, step.n);
-
+/** Per-step coach actions — always shown for pending steps (Figma At a Glance). */
+function resolveStepAction(step) {
+  if (step.done) {
+    return { label: "Undo", tone: "ghost" };
+  }
   if (step.action === "submit-rca") {
-    if (done) return { label: "Undo", tone: "ghost" };
-    if (ready) return { label: "Submit RCA", tone: "green" };
-    return null;
+    return { label: "Submit RCA", tone: "green" };
   }
   if (step.action === "schedule-launch") {
-    if (done) return { label: "Undo", tone: "ghost" };
-    if (ready) return { label: "Schedule LAUNCH", tone: "green" };
-    return null;
+    return { label: "Schedule LAUNCH", tone: "green" };
   }
   if (step.action === "schedule-briefing") {
-    if (done) return { label: "Undo", tone: "ghost" };
-    if (ready) return { label: "Schedule briefing", tone: "green" };
-    return null;
+    return { label: "Schedule briefing", tone: "green" };
   }
   if (step.action === "schedule-hap") {
-    if (done) return { label: "Undo", tone: "ghost" };
-    if (ready) return { label: "Schedule HAP", tone: "green" };
-    return null;
+    return { label: "Schedule HAP", tone: "green" };
   }
   if (step.action === "schedule-initiation") {
-    if (done) return { label: "Undo", tone: "ghost" };
-    if (ready) return { label: "Schedule initiation", tone: "green" };
-    return null;
-  }
-  if (done) {
-    return { label: "Undo", tone: "ghost" };
+    return { label: "Schedule initiation", tone: "green" };
   }
   if (step.section) return { label: "Open ›", tone: "link" };
   return { label: "Mark done", tone: "ghost" };
 }
 
-function OnboardingStatusCard({ user, onToast, onNavigate, onProgressChange, onUserUpdated, canEdit = true, canCalEdit = true }) {
+function OnboardingStatusCard({
+  user,
+  onToast,
+  onNavigate,
+  onProgressChange,
+  onUserUpdated,
+  canEdit = true,
+  canCalEdit = true,
+  canRemind = true,
+}) {
   const [doneMap, setDoneMap] = useState(() => buildInitialDone(user));
   const [stepNotes, setStepNotes] = useState(() => buildInitialStepNotes(buildInitialDone(user)));
   const [scheduleModal, setScheduleModal] = useState(null);
@@ -901,11 +894,19 @@ function OnboardingStatusCard({ user, onToast, onNavigate, onProgressChange, onU
           <div className="ua-cp-onboard-card__title"><span>🧭</span> Onboarding status</div>
           <div className="ua-cp-onboard-card__actions">
             <span className="ua-cp-onboard-card__count">{doneCount} / {total} done</span>
-            {canEdit && nextStep ? (
+            {nextStep ? (
               <button
                 type="button"
                 className="backgrounrd ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm ua-cp-onboard-card__remind"
-                onClick={() => setRemindOpen(true)}
+                disabled={!canRemind || remindBusy}
+                title={canRemind ? "Remind client" : "You do not have permission to send reminders"}
+                onClick={() => {
+                  if (!canRemind) {
+                    onToast("You do not have permission to send reminders");
+                    return;
+                  }
+                  setRemindOpen(true);
+                }}
               >
                 🔔 Remind
               </button>
@@ -948,7 +949,7 @@ function OnboardingStatusCard({ user, onToast, onNavigate, onProgressChange, onU
         </div>
         <div className="ua-cp-onboard-steps">
           {steps.map((step) => {
-            const action = resolveStepAction(step, steps);
+            const action = resolveStepAction(step);
             const isCurrent = !step.done && step.n === currentStep.n;
             const note = stepNotes[step.n];
             const meeting = meetings.find((row) => row.stepKey === step.key && ["slots_offered", "time_requested", "confirmed"].includes(row.status));
@@ -1030,11 +1031,24 @@ function OnboardingStatusCard({ user, onToast, onNavigate, onProgressChange, onU
                       Reject
                     </button>
                   </div>
-                ) : canEdit && action ? (
+                ) : action ? (
                   <button
                     type="button"
                     className={`ua-cp-onboard-step__btn ua-cp-onboard-step__btn--${action.tone}`}
-                    onClick={() => handleStepAction(step)}
+                    disabled={
+                      busy
+                      || (step.done && !canEdit)
+                      || (!step.done && step.action?.startsWith("schedule-") && !canCalEdit && !canEdit)
+                      || (!step.done && step.action === "submit-rca" && !canEdit)
+                      || (!step.done && !step.action && !canEdit && !step.section)
+                    }
+                    onClick={() => {
+                      if (step.done && !canEdit) {
+                        onToast("You do not have permission to update onboarding steps");
+                        return;
+                      }
+                      handleStepAction(step);
+                    }}
                   >
                     {action.label}
                   </button>
@@ -1212,9 +1226,10 @@ function RemindersModal({ user, reminders, deletingId, onClose, onDelete }) {
 }
 
 export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
-  const { can } = useViewAs();
-  const canEditClient = can("console.cl.edit");
-  const canCalEdit = can("console.cal.edit") || can("console.cal.create");
+  const { can, isAdminView } = useViewAs();
+  const canEditClient = isAdminView || can("console.cl.edit");
+  const canCalEdit = isAdminView || can("console.cal.edit") || can("console.cal.create");
+  const canRemindClient = canEditClient || canCalEdit || can("console.diet.edit");
   const inProgress = user.paidOnboardingCompleted
     ? false
     : (user.onboardingDone ?? 0) < (user.onboardingTotal ?? 7);
@@ -1339,6 +1354,7 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
             onUserUpdated={onUserUpdated}
             canEdit={canEditClient}
             canCalEdit={canCalEdit}
+            canRemind={canRemindClient}
           />
         </>
       )}

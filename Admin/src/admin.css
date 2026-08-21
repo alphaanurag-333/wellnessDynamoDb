@@ -11598,7 +11598,7 @@
 .updated-admin .ua-cp-onboard-steps {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px 16px;
+  gap: 8px 20px;
 }
 
 .updated-admin .ua-cp-onboard-step {
@@ -11608,6 +11608,7 @@
   min-width: 0;
   padding: 4px 0;
   font-size: 12.5px;
+  overflow: visible;
 }
 
 .updated-admin .ua-cp-onboard-step--has-note {
@@ -11623,7 +11624,7 @@
 }
 
 .updated-admin .ua-cp-onboard-step__copy {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
 }
 
@@ -11706,6 +11707,12 @@
   font-family: inherit;
   border: 1px solid #e6ebf2;
   background: #fff;
+  margin-left: auto;
+}
+
+.updated-admin .ua-cp-onboard-step__btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .updated-admin .ua-cp-onboard-step__btns {
@@ -11713,17 +11720,19 @@
   flex-wrap: wrap;
   gap: 6px;
   justify-content: flex-end;
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .updated-admin .ua-cp-onboard-step__btn--link {
   color: #5e6ad2;
-  border-color: #e6ebf2;
-  background: #fff;
+  border-color: #e0e3f8;
+  background: #f5f6fd;
 }
 
 .updated-admin .ua-cp-onboard-step__btn--ghost {
-  color: #b6c1d1;
-  border-color: #eef1f6;
+  color: #8a97ac;
+  border-color: #e6ebf2;
   background: #fff;
 }
 
