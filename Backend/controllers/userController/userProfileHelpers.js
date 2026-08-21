@@ -16,6 +16,8 @@ const {
 } = require("../../models/userProgramModel");
 const {
   parseHealthConcernOtherFromBody,
+  resolveHealthConcernForConsultancy,
+  isOtherHealthConcernTitle,
   MAX_HEALTH_CONCERN_OTHER_LENGTH,
 } = require("../../services/consultancyHealthConcern");
 const { getWellnessCoachById } = require("../../models/wellnessCoachModel");
@@ -485,10 +487,59 @@ async function buildUserUpdatesFromBody(body, current, { allowStatus = true, req
   if (body.primaryHealthConcern !== undefined) {
     const phc = String(body.primaryHealthConcern || "").trim() || null;
     if (phc) {
-      const concern = await getHealthConcernById(phc);
-      if (!concern) throw new AppError("primaryHealthConcern not found", 400);
+      try {
+        const healthConcernOther = parseHealthConcernOtherFromBody(body);
+        const resolved = await resolveHealthConcernForConsultancy(phc, {
+          healthConcernOther,
+        });
+        updates.primaryHealthConcern = resolved.healthConcernId;
+        const concern = await getHealthConcernById(resolved.healthConcernId);
+        updates.primaryHealthConcernOther = isOtherHealthConcernTitle(
+          concern?.title,
+        )
+          ? String(healthConcernOther || "").trim() || null
+          : null;
+      } catch (err) {
+        if (err?.name === "ValidationError") {
+          throw new AppError(err.message, 400);
+        }
+        throw err;
+      }
+    } else {
+      updates.primaryHealthConcern = null;
+      updates.primaryHealthConcernOther = null;
     }
-    updates.primaryHealthConcern = phc;
+  } else if (
+    body.primaryHealthConcernOther !== undefined ||
+    body.primary_health_concern_other !== undefined ||
+    body.healthConcernOther !== undefined ||
+    body.health_concern_other !== undefined ||
+    body.customHealthConcern !== undefined ||
+    body.custom_health_concern !== undefined
+  ) {
+    const healthConcernOther = parseHealthConcernOtherFromBody(body);
+    if (
+      healthConcernOther &&
+      healthConcernOther.length > MAX_HEALTH_CONCERN_OTHER_LENGTH
+    ) {
+      throw new AppError(
+        `primaryHealthConcernOther must be at most ${MAX_HEALTH_CONCERN_OTHER_LENGTH} characters`,
+        400,
+      );
+    }
+    const concernId = String(current.primaryHealthConcern || "").trim();
+    const concern = concernId ? await getHealthConcernById(concernId) : null;
+    if (isOtherHealthConcernTitle(concern?.title)) {
+      if (!healthConcernOther) {
+        throw new AppError(
+          "healthConcernOther is required when concern is Other",
+          400,
+        );
+      }
+      updates.primaryHealthConcernOther = healthConcernOther;
+    } else {
+      updates.primaryHealthConcernOther = null;
+    }
   }
   if (body.termsAccepted !== undefined) {
     updates.termsAccepted = parseBool(body.termsAccepted);
