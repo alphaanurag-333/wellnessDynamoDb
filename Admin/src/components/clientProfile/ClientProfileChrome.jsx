@@ -116,17 +116,17 @@ export function ClientProfileSidebar({
             {user?.name || "Client"}
           </div>
           <div className="ua-cp-sidebar__mobile-sub">{programLabel} · {programs} programs</div>
-          <button
-            type="button"
-            className="ua-cp-sidebar__view-btn"
-            aria-expanded={mobileOpen}
-            aria-controls="ua-cp-sidebar-panel"
-            aria-label={`View ${user?.name || "client"} menu`}
-            onClick={() => setMobileOpen(true)}
-          >
-            View
-          </button>
         </div>
+        <button
+          type="button"
+          className="ua-cp-sidebar__view-btn"
+          aria-expanded={mobileOpen}
+          aria-controls="ua-cp-sidebar-panel"
+          aria-label={`View ${user?.name || "client"} menu`}
+          onClick={() => setMobileOpen(true)}
+        >
+          View
+        </button>
       </div>
 
       <button

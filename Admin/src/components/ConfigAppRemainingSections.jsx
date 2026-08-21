@@ -13,7 +13,9 @@ function Panel({ title, subtitle, actions, children, className = "" }) {
   return (
     <section className={`ua-cfg-panel${className ? ` ${className}` : ""}`}>
       {hasHead ? (
-        <div className="ua-cfg-panel__head">
+        <div style={{marginBottom
+            :"0px"
+        }} className="ua-cfg-panel__head">
           <div className="ua-cfg-panel__copy">
             {title ? <h3 className="ua-cfg-panel__title">{title}</h3> : null}
             {subtitle ? <p className="ua-cfg-panel__sub">{subtitle}</p> : null}
@@ -107,7 +109,7 @@ export function HealthProgressTrackersPanel({ items = [], setItems, onToast }) {
             if (event.key === "Enter") addTracker();
           }}
         />
-        <button
+        <button style={{border:"0px",color:"rgb(255, 255, 255)",background:"rgb(94, 106, 210)"}}
           type="button"
           className="ua-cfg-btn ua-cfg-hp__add-btn"
           disabled={busy || loading || !newName.trim()}

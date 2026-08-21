@@ -112,7 +112,7 @@ function FaqNewQuestionForm({ draft, onChange, onClose, onSubmit, inputRef, busy
         className="ua-cfg-faq-new__answer"
         value={asCopyString(draft.answer)}
         placeholder="Answer shown in the app..."
-        rows={5}
+        rows={3}
         disabled={busy}
         onChange={(event) => onChange({ ...draft, answer: event.target.value })}
       />

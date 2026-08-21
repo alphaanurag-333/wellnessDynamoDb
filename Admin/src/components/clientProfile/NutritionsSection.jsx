@@ -441,17 +441,19 @@ export function NutritionsSection({ user, onToast }) {
               <div className="ua-cp-rec-items">
                 {selected.map((s) => (
                   <div key={s.id} className="ua-cp-rec-item">
-                    <div>
+                    <div className="ua-cp-rec-item__info">
                       <div className="ua-cp-rec-item__name">{s.name}</div>
                       {packPriceLabel(s) ? <div className="ua-cp-rec-item__pack">{packPriceLabel(s)}</div> : null}
                     </div>
-                    <div className="ua-cp-rec-item__qty">
-                      <button type="button" disabled={!canWrite || saving} onClick={() => setSelected((list) => list.map((x) => (x.id === s.id ? { ...x, qty: Math.max(1, x.qty - 1) } : x)))}>−</button>
-                      <span>{s.qty}</span>
-                      <button type="button" disabled={!canWrite || saving} onClick={() => setSelected((list) => list.map((x) => (x.id === s.id ? { ...x, qty: x.qty + 1 } : x)))}>+</button>
+                    <div className="ua-cp-rec-item__meta">
+                      <div className="ua-cp-rec-item__qty">
+                        <button type="button" disabled={!canWrite || saving} onClick={() => setSelected((list) => list.map((x) => (x.id === s.id ? { ...x, qty: Math.max(1, x.qty - 1) } : x)))}>−</button>
+                        <span>{s.qty}</span>
+                        <button type="button" disabled={!canWrite || saving} onClick={() => setSelected((list) => list.map((x) => (x.id === s.id ? { ...x, qty: x.qty + 1 } : x)))}>+</button>
+                      </div>
+                      <div className="ua-cp-rec-item__total">Rs. {((Number(s.price) || 0) * s.qty).toLocaleString("en-IN")}</div>
+                      <button type="button" className="ua-cp-rec-item__remove" disabled={!canWrite || saving} onClick={() => setSelected((list) => list.filter((x) => x.id !== s.id))} aria-label={`Remove ${s.name}`}>×</button>
                     </div>
-                    <div className="ua-cp-rec-item__total">Rs. {((Number(s.price) || 0) * s.qty).toLocaleString("en-IN")}</div>
-                    <button type="button" className="ua-cp-rec-item__remove" disabled={!canWrite || saving} onClick={() => setSelected((list) => list.filter((x) => x.id !== s.id))} aria-label={`Remove ${s.name}`}>×</button>
                   </div>
                 ))}
               </div>

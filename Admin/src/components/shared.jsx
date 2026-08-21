@@ -139,6 +139,7 @@ export function CfgSelect({
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const selected = options.find((row) => String(row.value) === String(value));
+  const isPlaceholder = value === undefined || value === null || String(value) === "";
   const label = selected?.label || placeholder;
 
   useEffect(() => {
@@ -168,7 +169,7 @@ export function CfgSelect({
         aria-haspopup="listbox"
         onClick={() => !disabled && setOpen((current) => !current)}
       >
-        <span className="ua-cfg-select__value">{label}</span>
+        <span className={`ua-cfg-select__value${isPlaceholder ? " is-placeholder" : ""}`}>{label}</span>
         <span className="ua-cfg-select__chev" aria-hidden="true">▾</span>
       </button>
       {open ? (

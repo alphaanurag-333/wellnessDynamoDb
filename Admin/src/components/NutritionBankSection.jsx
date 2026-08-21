@@ -557,7 +557,10 @@ export function NutritionBankSection({ items, setItems, onToast }) {
         subtitle="Name it, set pack size and bottle price, then it joins the bank for every coach."
         actions={
           !showAddForm ? (
-            <button
+            <button style={{borderRadius: "9px",
+              border: "1px dashed rgb(203, 213, 230)",
+              background: "rgb(255, 255, 255)",
+              color: "rgb(94, 106, 210)"}}
               type="button"
               className="ua-cfg-btn ua-cfg-btn--outline"
               disabled={busy || loading}
