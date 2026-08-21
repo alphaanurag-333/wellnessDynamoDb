@@ -713,7 +713,7 @@ export function ProfileModal({ open, onClose, onToast }) {
             <div className="ua-profile-modal__card-head">
               <div className="ua-profile-modal__card-title">Your details</div>
               <div className="ua-profile-modal__card-hint">
-                Update your name, mobile number and address. Role stays set by access control.
+              Details are set by admin — you can change your photo.
               </div>
             </div>
             <div className="ua-profile-modal__grid">

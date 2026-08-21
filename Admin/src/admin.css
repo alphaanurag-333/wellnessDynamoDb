@@ -5925,7 +5925,7 @@
 .updated-admin .ua-avatar img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
 }
 
@@ -19771,15 +19771,37 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-sop-field__select .ua-cfg-select__trigger {
-  height: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 44px;
   min-height: 44px;
-  padding: 11px 13px;
+  padding: 0 12px 0 13px;
   border: 1px solid #e3e8f0;
   border-radius: 10px;
   background: #fafbfd;
   color: #16233f;
   font-size: 13.5px;
   font-weight: 600;
+}
+
+.updated-admin .ua-sop-field__select .ua-cfg-select__chev {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-size: 0;
+  line-height: 0;
+  color: transparent;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%2316233f' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 12px 8px no-repeat;
+  transition: transform 0.15s ease;
+}
+
+.updated-admin .ua-sop-field__select.is-open .ua-cfg-select__chev {
+  transform: rotate(180deg);
 }
 
 .updated-admin .ua-sop-field__select.is-open .ua-cfg-select__trigger,
@@ -19964,7 +19986,7 @@ scrollbar-width: thin;
   font-size: 10.5px;
   color: var(--muted-light);
   text-align: right;
-  max-width: 220px;
+  max-width: 300px;
 }
 
 .updated-admin .ua-profile-modal__card-head--stack {
