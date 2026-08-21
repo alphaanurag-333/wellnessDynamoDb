@@ -12,11 +12,11 @@ import {
 } from "../api/measurementVideoApi.js";
 import { MEASUREMENT_GUIDE, MEASUREMENT_PARAMETERS } from "../data/measurementVideoData.js";
 
-function Panel({ title, subtitle, actions, children }) {
+function Panel({ title, subtitle, actions, children, className = "" }) {
   return (
-    <section className="ua-cfg-panel">
+    <section className={`ua-cfg-panel${className ? ` ${className}` : ""}`}>
       <div className="ua-cfg-panel__head">
-        <div>
+        <div className="ua-cfg-panel__copy">
           <h3 className="ua-cfg-panel__title">{title}</h3>
           {subtitle ? <p className="ua-cfg-panel__sub">{subtitle}</p> : null}
         </div>
@@ -25,6 +25,19 @@ function Panel({ title, subtitle, actions, children }) {
       {children}
     </section>
   );
+}
+
+function formatClock(seconds) {
+  if (!Number.isFinite(seconds) || seconds <= 0) return "";
+  const total = Math.round(seconds);
+  const mins = Math.floor(total / 60);
+  const secs = total % 60;
+  return `${mins}:${String(secs).padStart(2, "0")}`;
+}
+
+function youtubeThumbUrl(url) {
+  const match = String(url || "").match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/i);
+  return match ? `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg` : "";
 }
 
 function LinkModal({ open, title, initialUrl, onClose, onSave, busy }) {
@@ -75,7 +88,10 @@ function GuidePanel({ guide, busy, onToast, onChangeCopy, onChangeLink, onChange
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({ title: guide.title, description: guide.description });
   const [linkOpen, setLinkOpen] = useState(false);
+  const [duration, setDuration] = useState(guide.duration || "");
   const videoInputRef = useRef(null);
+  const coverThumb = youtubeThumbUrl(guide.linkUrl);
+  const typeLabel = guide.sourceType === "link" ? "LINK" : guide.sourceType === "video" ? "VIDEO" : "OFF";
 
   useEffect(() => {
     if (!editing) {
@@ -83,30 +99,54 @@ function GuidePanel({ guide, busy, onToast, onChangeCopy, onChangeLink, onChange
     }
   }, [editing, guide.description, guide.title]);
 
+  useEffect(() => {
+    setDuration(guide.duration || "");
+  }, [guide.duration, guide.videoUrl, guide.linkUrl]);
+
   async function saveEdit() {
     await onChangeCopy({ title: draft.title.trim(), description: draft.description.trim() });
+    setEditing(false);
+  }
+
+  function cancelEdit() {
+    setDraft({ title: guide.title, description: guide.description });
     setEditing(false);
   }
 
   return (
     <>
       <Panel
+        className="ua-cfg-mv-panel"
         title="Measurement video"
-        subtitle="One how-to-measure guide · video or link and description shown in the app. Uploading a new video or link replaces what is live."
+        subtitle={
+          <>
+            One how-to-measure guide · cover photo, video and description shown in the app.
+            <span className="ua-cfg-mv-panel__hint">One video only — uploading a new cover or video replaces what is live.</span>
+          </>
+        }
       >
-        <div className="ua-cfg-mv-guide">
+        <article className={`ua-cfg-mv-guide${editing ? " is-editing" : ""}`}>
           <button
             type="button"
-            className="ua-cfg-mv-guide__cover"
+            className={`ua-cfg-mv-guide__cover${guide.videoUrl || coverThumb ? " has-media" : ""}`}
             disabled={busy}
             onClick={() => videoInputRef.current?.click()}
           >
             {guide.videoUrl ? (
-              <video className="ua-cfg-mv-guide__cover-video" src={guide.videoUrl} muted playsInline />
+              <video
+                className="ua-cfg-mv-guide__cover-video"
+                src={guide.videoUrl}
+                muted
+                playsInline
+                preload="metadata"
+                onLoadedMetadata={(event) => setDuration(formatClock(event.currentTarget.duration))}
+              />
+            ) : coverThumb ? (
+              <img className="ua-cfg-mv-guide__cover-img" src={coverThumb} alt="" />
             ) : (
               <span className="ua-cfg-mv-guide__cover-icon" aria-hidden="true">▶</span>
             )}
-            <span>{guide.hasCover ? (guide.sourceType === "link" ? "Linked" : "Replace video") : "Upload video"}</span>
+            <em>Cover</em>
           </button>
           <input
             ref={videoInputRef}
@@ -121,7 +161,7 @@ function GuidePanel({ guide, busy, onToast, onChangeCopy, onChangeLink, onChange
           />
 
           <div className="ua-cfg-mv-guide__main">
-            <div className="ua-cfg-mv-guide__row">
+            <div className="ua-cfg-mv-guide__copy">
               {editing ? (
                 <input
                   type="text"
@@ -132,75 +172,94 @@ function GuidePanel({ guide, busy, onToast, onChangeCopy, onChangeLink, onChange
               ) : (
                 <strong className="ua-cfg-mv-guide__title">{guide.title}</strong>
               )}
-              <div className="ua-cfg-mv-guide__badges">
-                <span className="ua-cfg-mv-guide__badge ua-cfg-mv-guide__badge--type">
-                  {guide.sourceType === "link" ? "LINK" : guide.sourceType === "video" ? "VIDEO" : "OFF"}
-                </span>
-                {guide.live ? <span className="ua-cfg-mv-guide__badge ua-cfg-mv-guide__badge--live">Live</span> : null}
-              </div>
-              <button
-                type="button"
-                className={`ua-toggle${guide.live ? " ua-toggle--on" : ""}`}
-                aria-pressed={guide.live}
-                disabled={busy}
-                onClick={() => onToggleLive(!guide.live)}
-              >
-                <span className="ua-toggle__knob" />
-              </button>
+              {editing ? (
+                <textarea
+                  className="ua-cfg-mv-guide__desc-input"
+                  rows={3}
+                  value={draft.description}
+                  onChange={(event) => setDraft({ ...draft, description: event.target.value })}
+                />
+              ) : (
+                <p className="ua-cfg-mv-guide__desc">{guide.description}</p>
+              )}
+              {guide.sourceType === "link" && guide.linkUrl ? (
+                <p className="ua-cfg-mv-guide__link">{guide.linkUrl}</p>
+              ) : null}
             </div>
 
-            {editing ? (
-              <textarea
-                className="ua-cfg-mv-guide__desc-input"
-                rows={3}
-                value={draft.description}
-                onChange={(event) => setDraft({ ...draft, description: event.target.value })}
-              />
-            ) : (
-              <p className="ua-cfg-mv-guide__desc">{guide.description}</p>
-            )}
-
-            {guide.sourceType === "link" && guide.linkUrl ? (
-              <p className="ua-cfg-mv-guide__desc">{guide.linkUrl}</p>
-            ) : null}
-
-            <div className="ua-cfg-mv-guide__actions">
-              <button
-                type="button"
-                className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
-                disabled={busy}
-                onClick={() => videoInputRef.current?.click()}
-              >
-                Video
-              </button>
-              <button
-                type="button"
-                className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
-                disabled={busy}
-                onClick={() => setLinkOpen(true)}
-              >
-                Link
-              </button>
-              {editing ? (
-                <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={busy} onClick={saveEdit}>
-                  Save
-                </button>
-              ) : (
+            <div className="ua-cfg-mv-guide__side">
+              <div className="ua-cfg-mv-guide__meta">
+                <span className="ua-cfg-mv-guide__badge">{typeLabel}</span>
+                {duration ? <span className="ua-cfg-mv-guide__duration">{duration}</span> : null}
+                <div className="ua-cfg-mv-guide__live">
+                  <span className={`ua-cfg-faq__shown${guide.live ? " is-on" : ""}`}>
+                    {guide.live ? "LIVE" : "HIDDEN"}
+                  </span>
+                  <button
+                    type="button"
+                    className={`ua-toggle ua-toggle--sm${guide.live ? " ua-toggle--on" : ""}`}
+                    aria-pressed={guide.live}
+                    aria-label={guide.live ? "Hide measurement guide" : "Make measurement guide live"}
+                    disabled={busy}
+                    onClick={() => onToggleLive(!guide.live)}
+                  >
+                    <span className="ua-toggle__knob" />
+                  </button>
+                </div>
+              </div>
+              <div className="ua-cfg-mv-guide__actions">
                 <button
                   type="button"
-                  className="ua-cfg-btn ua-cfg-btn--ghost"
+                  className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
                   disabled={busy}
-                  onClick={() => {
-                    setDraft({ title: guide.title, description: guide.description });
-                    setEditing(true);
-                  }}
+                  onClick={() => videoInputRef.current?.click()}
                 >
-                  Edit
+                  Video
                 </button>
-              )}
+                <button
+                  type="button"
+                  className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                  disabled={busy}
+                  onClick={() => setLinkOpen(true)}
+                >
+                  Link
+                </button>
+                {editing ? (
+                  <>
+                    <button
+                      type="button"
+                      className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
+                      disabled={busy}
+                      onClick={saveEdit}
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                      disabled={busy}
+                      onClick={cancelEdit}
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                    disabled={busy}
+                    onClick={() => {
+                      setDraft({ title: guide.title, description: guide.description });
+                      setEditing(true);
+                    }}
+                  >
+                    Edit
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        </article>
       </Panel>
 
       <LinkModal
@@ -228,6 +287,7 @@ function ParametersPanel({ parameters, busy, onUpload }) {
 
   return (
     <Panel
+      className="ua-cfg-mv-params"
       title="Internal parameters"
       subtitle="Reference images shown beside each measurement in the app. Images only — labels are fixed."
       actions={<span className="ua-cfg-mv-params__count">{shownCount} of {parameters.length} have images</span>}
@@ -319,7 +379,7 @@ export function MeasurementVideoSection({ guide, setGuide, parameters, setParame
   return (
     <div className="ua-cfg-mv">
       {loading ? (
-        <Panel title="Measurement video" subtitle="Loading measurement guide from App Config…">
+        <Panel className="ua-cfg-mv-panel" title="Measurement video" subtitle="Loading measurement guide from App Config…">
           <p className="ua-cfg-panel__sub">Fetching the how-to-measure video and reference images…</p>
         </Panel>
       ) : (

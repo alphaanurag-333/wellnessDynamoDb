@@ -568,7 +568,10 @@ export function TestCatalogSection({ tests, setTests, onToast }) {
         subtitle="Name it, set the category, and add reference parameters. Coaches can then assign it to a client."
         actions={
           !showAddForm ? (
-            <button
+            <button style={{borderRadius: "9px",
+              border: "1px dashed rgb(203, 213, 230)",
+              background: "rgb(255, 255, 255)",
+              color: "rgb(94, 106, 210)"}}
               type="button"
               className="ua-cfg-btn ua-cfg-btn--outline"
               disabled={busy || loading}

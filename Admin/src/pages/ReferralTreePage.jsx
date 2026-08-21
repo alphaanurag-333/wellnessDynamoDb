@@ -232,11 +232,6 @@ export function ReferralTreePage() {
     });
   }, []);
 
-  const expandAll = useCallback(() => setCollapsed(new Set()), []);
-  const collapseDeep = useCallback(() => {
-    if (root) setCollapsed(defaultCollapsed(root));
-  }, [root]);
-
   const treeSubtitle = useMemo(() => {
     if (!meta) return null;
     const parts = [
@@ -309,14 +304,6 @@ export function ReferralTreePage() {
             {root?.referralCode ? <span className="ua-rt-chip">{root.referralCode}</span> : null}
             {meta?.mode === "coach" ? <span className="ua-rt-chip ua-rt-chip--staff">Staff code</span> : null}
             {meta?.mode === "user" ? <span className="ua-rt-chip ua-rt-chip--muted">Peer tree</span> : null}
-          </div>
-          <div className="ua-rt-treebar__actions">
-            <button type="button" className="ua-rt-ghost" onClick={expandAll} disabled={!root}>
-              Expand all
-            </button>
-            <button type="button" className="ua-rt-ghost" onClick={collapseDeep} disabled={!root}>
-              Collapse
-            </button>
           </div>
         </div>
       ) : (

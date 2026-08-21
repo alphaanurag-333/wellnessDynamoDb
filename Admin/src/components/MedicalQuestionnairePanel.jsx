@@ -278,7 +278,7 @@ export function MedicalQuestionnairePanel({ items, setItems, onToast }) {
           options={ANSWER_TYPE_OPTIONS}
           onChange={setNewAnswerType}
         />
-        <button
+        <button style={{border:"0px",color:"rgb(255, 255, 255)",background:"rgb(94, 106, 210)"}}
           type="button"
           className="ua-cfg-btn ua-cfg-mq-add__btn"
           disabled={busy || loading}

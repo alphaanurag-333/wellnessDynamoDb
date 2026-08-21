@@ -132,11 +132,14 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 12px;
+  width: max-content;
+  max-width: 100%;
   margin: 0 0 16px;
   padding: 12px 14px;
   background: #fff;
   border: 1px solid #e8edf3;
   border-radius: 12px;
+  box-sizing: border-box;
 }
 
 .updated-admin .ua-rt-treebar__back {
@@ -169,7 +172,7 @@
   align-items: center;
   gap: 8px;
   min-width: 0;
-  flex: 1 1 160px;
+  flex: 0 1 auto;
 }
 
 .updated-admin .ua-rt-treebar__name {
@@ -180,13 +183,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: min(420px, 100%);
-}
-
-.updated-admin .ua-rt-treebar__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-left: auto;
 }
 
 .updated-admin .ua-rt-suggest__empty {
@@ -396,22 +392,6 @@
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
-}
-
-.updated-admin .ua-rt-ghost {
-  border: 1px solid #e2e8f0;
-  background: #fff;
-  color: #334155;
-  border-radius: 8px;
-  padding: 8px 12px;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.updated-admin .ua-rt-ghost:hover {
-  background: #f8fafc;
 }
 
 .updated-admin .ua-rt-panel--org {
@@ -767,31 +747,20 @@ a.ua-rt-name:hover {
   }
 
   .updated-admin .ua-rt-treebar {
-    align-items: stretch;
+    align-items: center;
   }
 
   .updated-admin .ua-rt-treebar__back {
-    width: 100%;
+    width: auto;
     justify-content: center;
   }
 
   .updated-admin .ua-rt-treebar__info {
-    flex: 1 1 100%;
+    flex: 0 1 auto;
   }
 
   .updated-admin .ua-rt-treebar__name {
     max-width: 100%;
-  }
-
-  .updated-admin .ua-rt-treebar__actions {
-    margin-left: 0;
-    width: 100%;
-  }
-
-  .updated-admin .ua-rt-treebar__actions .ua-rt-ghost {
-    flex: 1 1 auto;
-    justify-content: center;
-    text-align: center;
   }
 }
 
