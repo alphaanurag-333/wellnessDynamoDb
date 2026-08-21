@@ -27908,10 +27908,14 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cp-reflect-callout p {
-  margin: 0;
+  margin: 6px 0 0;
   font-size: 12.5px;
   line-height: 1.5;
   color: rgb(74, 83, 168);
+}
+
+.updated-admin .ua-cp-reflect-callout__row p {
+  margin: 0;
 }
 
 .updated-admin .ua-cp-reflect-callout--app p {
@@ -28320,7 +28324,7 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cp-reflect-question__score {
-  flex: 0 0 auto;
+  flex: 0 0 320px;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -28331,7 +28335,7 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cp-reflect-question__score input {
-  width: 48px;
+  width: 52px;
   height: 32px;
   border: 1px solid #d5dbe8;
   border-radius: 8px;
@@ -28351,6 +28355,65 @@ scrollbar-width: thin;
 .updated-admin .ua-cp-reflect-question__score input[readonly] {
   background: #fff;
   color: #16233f;
+}
+
+.updated-admin .ua-cp-reflect-question__text--readonly {
+  display: block;
+  border-color: transparent;
+  background: transparent;
+  cursor: default;
+  color: #16233f;
+}
+
+.updated-admin .ua-cp-reflect-question__text--readonly:hover,
+.updated-admin .ua-cp-reflect-question__text--readonly:focus {
+  border-color: transparent;
+  background: transparent;
+}
+
+.updated-admin .ua-cp-reflect-question.is-off .ua-cp-reflect-question__text--readonly {
+  color: #8a97ac;
+}
+
+.updated-admin .ua-cp-reflect-field {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #9aa6b8;
+}
+
+.updated-admin .ua-cp-reflect-tracking {
+  font-size: 12px;
+  font-weight: 700;
+  color: #16233f;
+}
+
+.updated-admin .ua-cp-reflect-yesno {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.updated-admin .ua-cp-reflect-yesno__btn {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #fff;
+  color: #5b6b85;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.updated-admin .ua-cp-reflect-yesno__btn.is-on {
+  border-color: #ec7a45;
+  background: #fff4ec;
+  color: #c2410c;
 }
 
 .updated-admin .ua-cp-reflect-add-question,
