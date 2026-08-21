@@ -97,12 +97,7 @@ import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import { DEFAULT_HEALTH_PROGRESS_TRACKERS } from "../data/healthProgressData.js";
 import {
-  APP_HEAL_PERIODS,
   APP_SUBSCRIPTION_FY_DEFAULTS,
-  DISCOUNT_SLABS,
-  PROGRAM_PRICING,
-  SUBSCRIPTION_PRICING,
-  VALIDITY_PERIODS,
   activePaymentGateway,
   createDefaultGateways,
   APP_TOS_BLOCKS,
@@ -1340,14 +1335,17 @@ export function ConfigDetailPage() {
 
   const [hindiOn, setHindiOn] = useState(false);
   const [faqItems, setFaqItems] = useState([]);
-  const [programRows, setProgramRows] = useState(PROGRAM_PRICING);
-  const [subRows, setSubRows] = useState(SUBSCRIPTION_PRICING);
+  const [programRows, setProgramRows] = useState([]);
+  const [subRows, setSubRows] = useState([]);
   const [fySubscriptionSettings, setFySubscriptionSettings] = useState(APP_SUBSCRIPTION_FY_DEFAULTS);
-  const [programValidityPeriods, setProgramValidityPeriods] = useState(VALIDITY_PERIODS);
-  const [programDiscountSlabs, setProgramDiscountSlabs] = useState(DISCOUNT_SLABS);
-  const [subscriptionValidityPeriods, setSubscriptionValidityPeriods] = useState(VALIDITY_PERIODS);
-  const [subscriptionDiscountSlabs, setSubscriptionDiscountSlabs] = useState(DISCOUNT_SLABS);
-  const [appHealPeriods, setAppHealPeriods] = useState(APP_HEAL_PERIODS);
+  const [programValidityPeriods, setProgramValidityPeriods] = useState([]);
+  const [programDiscountSlabs, setProgramDiscountSlabs] = useState([]);
+  const [subscriptionValidityPeriods, setSubscriptionValidityPeriods] = useState([]);
+  const [subscriptionDiscountSlabs, setSubscriptionDiscountSlabs] = useState([]);
+  const [appHealPeriods, setAppHealPeriods] = useState([]);
+  const [coachCheckoutLoading, setCoachCheckoutLoading] = useState(
+    () => configId === "app-program" || configId === "app-subscriptions",
+  );
   const [coachesCanAddProgramValidity, setCoachesCanAddProgramValidity] = useState(true);
   const [coachesCanAddSubscriptionValidity, setCoachesCanAddSubscriptionValidity] = useState(true);
   const [coachesCanAddAppHeal, setCoachesCanAddAppHeal] = useState(true);
@@ -1435,16 +1433,17 @@ export function ConfigDetailPage() {
   useEffect(() => {
     if (configId !== "app-program" && configId !== "app-subscriptions") return undefined;
     let active = true;
+    setCoachCheckoutLoading(true);
 
     getCoachCheckoutOptions({
-      validityPeriods: VALIDITY_PERIODS,
-      discountSlabs: DISCOUNT_SLABS,
-      appHealPeriods: APP_HEAL_PERIODS,
+      validityPeriods: [],
+      discountSlabs: [],
+      appHealPeriods: [],
     })
       .then((options) => {
         if (!active) return;
-        if (options.programPricing !== null) setProgramRows(options.programPricing);
-        if (options.subscriptionPricing !== null) setSubRows(options.subscriptionPricing);
+        setProgramRows(options.programPricing ?? []);
+        setSubRows(options.subscriptionPricing ?? []);
         setProgramValidityPeriods(options.programValidityPeriods);
         setProgramDiscountSlabs(options.programDiscountSlabs);
         setSubscriptionValidityPeriods(options.subscriptionValidityPeriods);
@@ -1456,6 +1455,9 @@ export function ConfigDetailPage() {
       })
       .catch((error) => {
         if (active) onToast(error.message || "Could not load coach checkout options");
+      })
+      .finally(() => {
+        if (active) setCoachCheckoutLoading(false);
       });
 
     return () => {
@@ -1690,6 +1692,13 @@ export function ConfigDetailPage() {
       case "app-faq":
         return <FaqConfigPanel items={faqItems} setItems={setFaqItems} onToast={onToast} />;
       case "app-program":
+        if (coachCheckoutLoading) {
+          return (
+            <Panel title="Program pricing">
+              <p className="ua-cfg-panel__sub">Fetching program pricing from App Config…</p>
+            </Panel>
+          );
+        }
         return (
           <>
             <ExchangeClientSection
@@ -1746,6 +1755,13 @@ export function ConfigDetailPage() {
           </>
         );
       case "app-subscriptions":
+        if (coachCheckoutLoading) {
+          return (
+            <Panel title="Subscriptions">
+              <p className="ua-cfg-panel__sub">Fetching subscription settings from App Config…</p>
+            </Panel>
+          );
+        }
         return (
           <>
             <AppSubscriptionFySection
