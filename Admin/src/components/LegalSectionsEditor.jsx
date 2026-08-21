@@ -88,7 +88,7 @@ export function LegalSectionsEditor({
   }, [loadPage]);
 
   async function persist(nextSections, extra = {}, successMessage) {
-    const nextBlocks = blocksFromSections(nextSections);
+    const nextBlocks = blocksFromSections(nextSections, blocks);
     const previous = blocks;
     setBlocks(nextBlocks);
     setBusy(true);

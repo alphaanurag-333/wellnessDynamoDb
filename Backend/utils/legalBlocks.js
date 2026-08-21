@@ -169,11 +169,12 @@ function liveBlockText(block, surface = "web") {
   return String(version?.text || "").trim();
 }
 
-function compileLegalBlocksToHtml(blocks) {
+function compileLegalBlocksToHtml(blocks, surface = "web") {
+  const resolvedSurface = surface === "app" ? "app" : "web";
   return normalizeLegalBlocks(blocks)
     .filter((block) => block.shown)
     .map((block) => {
-      const text = liveBlockText(block, "web");
+      const text = liveBlockText(block, resolvedSurface);
       const body = looksLikeHtml(text) ? text : text ? `<p>${escapeHtml(text)}</p>` : "";
       if (!body) return "";
       if (block.id === "intro") return body;
