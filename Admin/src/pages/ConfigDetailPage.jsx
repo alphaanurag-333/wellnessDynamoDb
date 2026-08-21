@@ -2032,7 +2032,7 @@ export function ConfigDetailPage() {
         );
       case "web-fs-contact":
         return (
-          <>
+          <div className="ua-cfg-contact-page">
             <LegalSectionsEditor
               slug="contact-us"
               defaultTitle="Contact Us"
@@ -2048,7 +2048,7 @@ export function ConfigDetailPage() {
               setDetails={setContactDetails}
               onToast={onToast}
             />
-          </>
+          </div>
         );
       case "web-fs-text":
         return (
