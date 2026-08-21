@@ -27,9 +27,10 @@ export const PERM_CATALOG = [
   ["SOP", "SOP library", "sop", ["view", "create", "edit", "delete", "upload"], "sop"],
   ["Configs", "Testimonials & media", "ct", ["view", "create", "upload", "delete"], "configs"],
   ["Configs", "Banners & slots", "bn", ["view", "create", "edit", "toggle"], "configs"],
-  ["Configs", "App & web configs", "cf", ["view", "edit", "toggle"], "configs"],
+  ["Configs", "App & web configs", "cf", ["view", "edit", "toggle", "delete"], "configs"],
   ["Configs", "Roles & policies", "rp", ["view", "create", "edit", "delete"], "configs"],
   ["Referral Tree", "Referral genealogy", "rt", ["view"], "referral-tree"],
+  ["Contact Inquiries", "Contact inquiries", "ci", ["view", "edit", "delete"], "contact-inquiries"],
 ];
 
 export const AC_SECTIONS = [
@@ -41,6 +42,7 @@ export const AC_SECTIONS = [
   { id: "sop", label: "SOP" },
   { id: "configs", label: "Configs" },
   { id: "referral-tree", label: "Referral Tree" },
+  { id: "contact-inquiries", label: "Contact Inquiries" },
 ];
 
 export const TOTAL_PERM_SLOTS = PERM_CATALOG.reduce((n, row) => n + row[3].length, 0);
@@ -51,11 +53,11 @@ export const TOTAL_PERM_SLOTS = PERM_CATALOG.reduce((n, row) => n + row[3].lengt
  * permissions (see utils/permissions.js).
  */
 export const DEFAULT_VIEWS = {
-  admin: ["dashboard", "users", "teams", "calendar", "pending", "sop", "configs", "referral-tree"],
+  admin: ["dashboard", "users", "teams", "calendar", "pending", "sop", "configs", "referral-tree", "contact-inquiries"],
   wc: ["dashboard", "users", "teams", "calendar", "pending", "sop", "referral-tree"],
   awc: ["dashboard", "users", "teams", "calendar", "pending", "sop"],
   trainee: ["dashboard", "users", "pending", "sop"],
-  support: ["dashboard", "pending", "configs"],
+  support: ["dashboard", "pending", "configs", "contact-inquiries"],
 };
 
 /** Role id → parent role id (null = standalone) */
@@ -115,6 +117,7 @@ export const DEFAULT_GRANTS = {
     ct: ["view", "create", "upload", "delete"],
     bn: ["view", "create", "edit", "toggle"],
     cf: ["view", "edit"],
+    ci: ["view", "edit", "delete"],
   },
 };
 

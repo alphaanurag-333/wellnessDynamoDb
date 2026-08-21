@@ -28,7 +28,7 @@ export const NAV_ITEMS = [
   { id: "configs", label: "Configs", icon: "settings", path: UPDATED_ADMIN_PATHS.configs, adminOnly: true },
   { id: "pending", label: "Pending Tasks", icon: "bell", path: UPDATED_ADMIN_PATHS.pending },
   { id: "sop", label: "SOP", icon: "file", path: UPDATED_ADMIN_PATHS.sop },
-  { id: "contact-inquiries", label:  "Contact Inquiries", icon: "mail", path: UPDATED_ADMIN_PATHS.contactInquiries, visibleWith: "configs" },
+  { id: "contact-inquiries", label: "Contact Inquiries", icon: "mail", path: UPDATED_ADMIN_PATHS.contactInquiries },
 ];
 
 export const VIEW_AS_ROLES = [

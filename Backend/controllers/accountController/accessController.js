@@ -1691,6 +1691,21 @@ exports.ensureConsoleRolesSeeded = async function ensureConsoleRolesSeeded() {
           dataScope: meta.dataScope,
         });
       }
+    } else if (roleKey === "support") {
+      // Additive merge for Support: pick up new baseline slugs/nav (e.g. contact-inquiries)
+      // without stripping custom grants already on the role.
+      const baselinePerms = grantsMapToPermissions(DEFAULT_CONSOLE_GRANTS.support);
+      const currentPerms = Array.isArray(role.permissions) ? role.permissions : [];
+      const missingPerms = baselinePerms.filter((slug) => !currentPerms.includes(slug));
+      const baselineNav = DEFAULT_NAV_SECTIONS.support || [];
+      const currentNav = Array.isArray(role.navSections) ? role.navSections : [];
+      const missingNav = baselineNav.filter((id) => !currentNav.includes(id));
+      if (missingPerms.length || missingNav.length) {
+        role = await updateRole(role.id, {
+          permissions: [...currentPerms, ...missingPerms],
+          navSections: [...currentNav, ...missingNav],
+        });
+      }
     }
     byKey[roleKey] = role;
   }

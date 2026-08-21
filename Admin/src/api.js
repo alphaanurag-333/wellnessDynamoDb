@@ -4,8 +4,8 @@ import {
   hydrateStoreFromApiResponse,
 } from "./store/hydrateFromApi.js";
 
-const API_BASE = "http://localhost:5000";
-// const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
+// const API_BASE = "http://localhost:5000";
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
 // const API_BASE = "https://wellness-development.developmentalphawizz.com";
 
 //  const API_BASE = "https://wellness.developmentalphawizz.com:5005";

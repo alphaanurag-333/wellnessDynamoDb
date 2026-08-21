@@ -24,9 +24,10 @@ const PERM_CATALOG = [
   ["SOP", "SOP library", "sop", ["view", "create", "edit", "delete", "upload"], "sop"],
   ["Configs", "Testimonials & media", "ct", ["view", "create", "upload", "delete"], "configs"],
   ["Configs", "Banners & slots", "bn", ["view", "create", "edit", "toggle"], "configs"],
-  ["Configs", "App & web configs", "cf", ["view", "edit", "toggle"], "configs"],
+  ["Configs", "App & web configs", "cf", ["view", "edit", "toggle", "delete"], "configs"],
   ["Configs", "Roles & policies", "rp", ["view", "create", "edit", "delete"], "configs"],
   ["Referral Tree", "Referral genealogy", "rt", ["view"], "referral-tree"],
+  ["Contact Inquiries", "Contact inquiries", "ci", ["view", "edit", "delete"], "contact-inquiries"],
 ];
 
 const AC_SECTIONS = [
@@ -38,6 +39,7 @@ const AC_SECTIONS = [
   { id: "sop", label: "SOP" },
   { id: "configs", label: "Configs" },
   { id: "referral-tree", label: "Referral Tree" },
+  { id: "contact-inquiries", label: "Contact Inquiries" },
   { id: "access", label: "Access Control" },
 ];
 
@@ -144,15 +146,16 @@ const DEFAULT_CONSOLE_GRANTS = {
     ct: ["view", "create", "upload", "delete"],
     bn: ["view", "create", "edit", "toggle"],
     cf: ["view", "edit"],
+    ci: ["view", "edit", "delete"],
   },
 };
 
 const DEFAULT_NAV_SECTIONS = {
-  admin: ["dashboard", "users", "access", "teams", "calendar", "pending", "sop", "configs", "referral-tree"],
+  admin: ["dashboard", "users", "access", "teams", "calendar", "pending", "sop", "configs", "referral-tree", "contact-inquiries"],
   wc: ["dashboard", "users", "teams", "calendar", "pending", "sop", "referral-tree"],
   awc: ["dashboard", "users", "teams", "calendar", "pending", "sop"],
   trainee: ["dashboard", "users", "pending", "sop"],
-  support: ["dashboard", "pending", "configs"],
+  support: ["dashboard", "pending", "configs", "contact-inquiries"],
 };
 
 const ROLE_KEY_META = {

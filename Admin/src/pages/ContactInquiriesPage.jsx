@@ -158,9 +158,9 @@ function InquiryDetail({ inquiry, canEdit, canDelete, busy, onClose, onStatus, o
 export function ContactInquiriesPage() {
   const { showToast } = useOutletContext() || {};
   const { can } = useViewAs();
-  const canView = can("console.cf.view");
-  const canEdit = can("console.cf.edit");
-  const canDelete = can("console.cf.delete");
+  const canView = can("console.ci.view");
+  const canEdit = can("console.ci.edit");
+  const canDelete = can("console.ci.delete");
 
   const [rows, setRows] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, limit: PAGE_SIZE, total: 0, pages: 1 });
