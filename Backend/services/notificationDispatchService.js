@@ -28,6 +28,7 @@ const FCM_TYPE_BY_KIND = {
   internal_parameters_upload: "internal_parameters_upload_notification",
   diet_plan_assignment: "diet_plan_assignment_notification",
   coach_reminder: "reminder_notification",
+  reminder_due: "reminder_due_notification",
   daily_reflection_reminder: "reminder_notification",
   physical_exercise_assigned: "physical_exercise_notification",
   mental_wellbeing_assigned: "mental_wellbeing_notification",
@@ -344,6 +345,43 @@ async function dispatchCoachReminderNotification({
 
   runPushSafely(deliverTargetedPush(userId, notification));
   return notification;
+}
+
+/**
+ * Inbox entry when a scheduled reminder fires (local push already shown — no FCM).
+ * Dedupes once per reminder per calendar day via referenceId.
+ */
+async function ensureReminderDueInbox({
+  userId,
+  reminderId,
+  reminderName,
+  occurrenceDate = null,
+}) {
+  const uid = String(userId || "").trim();
+  const rid = String(reminderId || "").trim();
+  if (!uid || !rid) return null;
+
+  const dateKey = String(
+    occurrenceDate || new Date().toISOString().slice(0, 10)
+  ).trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return null;
+
+  const referenceId = `${rid}:${dateKey}`;
+  const existing = await findTargetedNotificationForUser(uid, {
+    kind: "reminder_due",
+    referenceId,
+  });
+  if (existing) return existing;
+
+  const label = String(reminderName || "Reminder").trim() || "Reminder";
+  return createTargetedNotification({
+    userId: uid,
+    kind: "reminder_due",
+    message: `Time for ${label}`,
+    referenceId,
+    referenceType: "reminder",
+    title: label,
+  });
 }
 
 async function collectCoachFcmTokensForUser(user) {
@@ -911,6 +949,7 @@ module.exports = {
   dispatchDietPlanAssignmentNotification,
   dispatchWellnessPrescriptionAssignedNotification,
   dispatchCoachReminderNotification,
+  ensureReminderDueInbox,
   dispatchDailyReflectionBedtimeNotification,
   dispatchPhysicalExerciseAssignedNotification,
   dispatchMentalWellbeingAssignedNotification,
