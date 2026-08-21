@@ -14,7 +14,7 @@ const HISTORY_METRIC_TYPES = new Set([...METRIC_TYPES, "fatty_liver"]);
 
 function normalizeGender(value) {
   const next = String(value || "").toLowerCase().trim();
-  if (next === "male" || next === "m" || next === "man") return "male";
+  if (next === "male" || next === "m" || next === "man" || next === "boy") return "male";
   if (next === "female" || next === "f" || next === "woman" || next === "girl") return "female";
   return "male";
 }

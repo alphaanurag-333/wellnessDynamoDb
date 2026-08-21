@@ -21,18 +21,16 @@ export const CLIENT_MENU = [
 ];
 
 const PERSONAL_MENU_ITEM = CLIENT_MENU.find((item) => item.id === "personal");
-const MEDICAL_MENU_ITEM = CLIENT_MENU.find((item) => item.id === "medical");
 const INTERNAL_MENU_ITEM = CLIENT_MENU.find((item) => item.id === "internal");
 const NUTRITIONS_MENU_ITEM = CLIENT_MENU.find((item) => item.id === "nutritions");
 const EXCHANGE_MENU_ITEM = CLIENT_MENU.find((item) => item.id === "exchange");
 const COUNSELLING_MENU_ITEM = CLIENT_MENU.find((item) => item.id === "counselling");
 export const CONSULTATION_MENU_ITEM = { id: "consultation", label: "Consultation" };
 
-/** Seek / PWC clients — WC, AWC and other staff see this reduced coaching set. */
+/** Seek / PWC clients — WC, AWC and other staff see this reduced coaching set.
+ *  Medical Conditions + Internal Parameters are HEAL/paid-only, so they stay off free profiles. */
 export const COMPACT_CLIENT_MENU = [
   PERSONAL_MENU_ITEM,
-  MEDICAL_MENU_ITEM,
-  INTERNAL_MENU_ITEM,
   CONSULTATION_MENU_ITEM,
   EXCHANGE_MENU_ITEM,
 ];
@@ -68,7 +66,7 @@ export function isCompactClientProfileTier(tier) {
 /**
  * Eagle: Personal Details, Internal Parameters, Nutritions, Counselling, Energy Exchange.
  * HEAL / Maintenance (non-eagle): full coaching workspace.
- * Seek and PWC: compact set until conversion.
+ * Seek and PWC: compact set (personal, consultation, energy exchange) until conversion.
  */
 export function getClientProfileDefinition(user) {
   if (isEagleClientProfile(user)) {

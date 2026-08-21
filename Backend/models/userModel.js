@@ -34,7 +34,17 @@ const SPARSE_GSI_ATTRIBUTES = new Set([
 ]);
 
 const USER_ALLOWED_STATUS = ["active", "inactive", "blocked"];
-const USER_ALLOWED_GENDERS = ["male", "female", "other", "boy", "girl", "guess"];
+const USER_ALLOWED_GENDERS = ["male", "female", "other"];
+/** Legacy UI aliases accepted on write, stored as canonical values above. */
+const USER_GENDER_ALIASES = {
+  boy: "male",
+  girl: "female",
+  guess: "other",
+  m: "male",
+  f: "female",
+  man: "male",
+  woman: "female",
+};
 const USER_ALLOWED_TIERS = ["seek", "consultancy_only", "heal", "maintenance"];
 const USER_ALLOWED_CLIENT_CATEGORIES = ["individual", "eagle"];
 const USER_ALLOWED_ASSIGNMENT_STATUSES = ["assigned", "pending_admin"];
@@ -152,8 +162,9 @@ function normalizeStatus(value, fallback = "active") {
   return STATUS.has(next) ? next : fallback;
 }
 
-function normalizeGender(value, fallback = "boy") {
-  const next = String(value || fallback).toLowerCase().trim();
+function normalizeGender(value, fallback = "male") {
+  const raw = String(value || fallback).toLowerCase().trim();
+  const next = USER_GENDER_ALIASES[raw] || raw;
   return GENDERS.has(next) ? next : fallback;
 }
 

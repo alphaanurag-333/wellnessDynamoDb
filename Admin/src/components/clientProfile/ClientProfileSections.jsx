@@ -16,6 +16,8 @@ import {
   moveUserToSeek,
   moveMaintenanceUserToHeal,
   updateUserPersonalDetails,
+  GENDER_UI_OPTIONS,
+  toApiGender,
 } from "../../api/usersApi.js";
 import {
   PERSON_NAME_MAX_LEN,
@@ -89,6 +91,7 @@ function formFromUser(user) {
   return {
     name: user?.name || "",
     dob: user?.dob || "",
+    gender: toApiGender(user?.gender) || "",
     phone: user?.phone || "",
     whatsapp: user?.whatsapp || "",
     address: user?.addressLine1 || "",
@@ -153,6 +156,7 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
   const fields = [
     { key: "name", label: "Full name", editable: true },
     { key: "dob", label: "Date of birth", editable: true },
+    { key: "gender", label: "Gender", editable: true },
     { key: "email", label: "Email", value: user.email, editable: false },
     { key: "phone", label: "Phone", editable: true },
     { key: "whatsapp", label: "WhatsApp", editable: true },
@@ -213,6 +217,9 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
       state: state || null,
       country: country || null,
     };
+
+    const apiGender = toApiGender(form.gender);
+    if (apiGender) payload.gender = apiGender;
 
     if (phoneParts.phone) {
       payload.phone = phoneParts.phone;
@@ -283,6 +290,7 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
   function fieldValue(f) {
     if (f.value !== undefined) return f.value;
     if (f.key === "goal") return goalLabel;
+    if (f.key === "gender" && !editing) return user.gender || "";
     if (f.key === "address" && !editing) return user.address || form.address || "";
     if (f.key === "state" && !editing) return user.state || form.state || "";
     return form[f.key] ?? "";
@@ -312,6 +320,21 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
           <option value="">Select goal</option>
           {goalOptions.map((opt) => (
             <option key={opt.id} value={opt.id}>{opt.title}</option>
+          ))}
+        </select>
+      );
+    }
+    if (f.key === "gender") {
+      return (
+        <select
+          className="ua-cp-field__input ua-cp-field__input--select"
+          value={form.gender}
+          disabled={saveBusy}
+          onChange={(e) => setForm((prev) => ({ ...prev, gender: e.target.value }))}
+        >
+          <option value="">Select gender</option>
+          {GENDER_UI_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>
       );
